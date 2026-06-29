@@ -22,7 +22,7 @@
   Minimal API project, health endpoint, EF Core + Npgsql wired, DI container.
   *Done when:* `dotnet run --project src/Jaarplanner.Api` serves `/health`; EF Core connects to Postgres.
 
-- [~] **E0-05 — Frontend bootstrap (React 18 + TS + Vite + Tailwind)**
+- [x] **E0-05 — Frontend bootstrap (React 18 + TS + Vite + Tailwind)**
   Vite SPA, Tailwind, TanStack Query + Zustand providers, `@dnd-kit/core` installed.
   *Done when:* `pnpm dev` serves the app; `pnpm build` and `pnpm lint` pass.
 
