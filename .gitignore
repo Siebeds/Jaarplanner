@@ -1,0 +1,6 @@
+# Transient agent worktrees (created by the build orchestrator)
+.claude/worktrees/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
