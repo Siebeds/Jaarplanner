@@ -1,0 +1,8 @@
+{
+  "name": "jaarplanner-frontend",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24"
+  }
+}
