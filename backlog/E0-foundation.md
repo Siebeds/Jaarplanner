@@ -18,7 +18,7 @@
   `docker-compose.yml` with a `db` service.
   *Done when:* `docker compose up -d db` gives a reachable Postgres; connection string via user-secrets, **never committed** (Art. VI.4).
 
-- [ ] **E0-04 — Backend bootstrap (ASP.NET Core Web API)**
+- [x] **E0-04 — Backend bootstrap (ASP.NET Core Web API)**
   Minimal API project, health endpoint, EF Core + Npgsql wired, DI container.
   *Done when:* `dotnet run --project src/Jaarplanner.Api` serves `/health`; EF Core connects to Postgres.
 
@@ -26,7 +26,7 @@
   Vite SPA, Tailwind, TanStack Query + Zustand providers, `@dnd-kit/core` installed.
   *Done when:* `pnpm dev` serves the app; `pnpm build` and `pnpm lint` pass.
 
-- [ ] **E0-06 — i18n scaffold (`frontend/src/i18n/nl.json`)**
+- [x] **E0-06 — i18n scaffold (`frontend/src/i18n/nl.json`)**
   Central Dutch strings file + a `t()` helper; lint/check that forbids hard-coded Dutch literals in components.
   *Done when:* sample screen renders all text from `nl.json`. Ref: Art. II.3.
 
