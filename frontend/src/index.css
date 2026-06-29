@@ -42,11 +42,11 @@
     --suggestie-manueel: 262 52% 47%; /* teacher-made — purple marker */
     --suggestie-manueel-foreground: 0 0% 100%;
 
-    /* dekking — coverage state (FR-9) */
+    /* dekking — coverage state (FR-9). BINARY for the MVP (Art. IX.3): only
+     * gedekt / niet-gedekt. A graded "deels" state is an Art. XIV open decision
+     * (herhaling/opbouw) and is deliberately NOT pre-defined here. */
     --dekking-gedekt: 142 72% 29%; /* covered — green */
     --dekking-gedekt-foreground: 0 0% 100%;
-    --dekking-deels: 36 100% 30%; /* partially covered — amber */
-    --dekking-deels-foreground: 0 0% 100%;
     --dekking-niet-gedekt: 0 72% 42%; /* not covered — red */
     --dekking-niet-gedekt-foreground: 0 0% 100%;
 

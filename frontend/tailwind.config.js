@@ -44,10 +44,10 @@ export default {
           manueel: pair("suggestie-manueel"),
         },
 
-        // dekking — coverage state (FR-9)
+        // dekking — coverage state (FR-9), BINARY for the MVP (Art. IX.3).
+        // A graded "deels" state is an Art. XIV open decision — not pre-defined.
         dekking: {
           gedekt: pair("dekking-gedekt"),
-          deels: pair("dekking-deels"),
           "niet-gedekt": pair("dekking-niet-gedekt"),
         },
       },

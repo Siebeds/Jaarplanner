@@ -147,3 +147,33 @@ by a component (their consumers are later epics — AI review UX E?, dekkingsove
 No open decision hard-assumed.
 
 - **Branch:** story/E0-09
+
+## Fix round (gate findings) — 3 cleanup items
+
+1. **Removed the `dekking-deels` token** (finding: MVP coverage is BINARY per Art. IX.3;
+   graded/partial coverage is an Art. XIV open decision we must not pre-decide). Dropped the
+   `--dekking-deels` / `--dekking-deels-foreground` CSS variables (`src/index.css`), the
+   `dekking.deels` Tailwind token (`tailwind.config.js`), and the `deels` Badge variant
+   (`src/components/ui/badge.tsx`). Only `gedekt` / `niet-gedekt` remain. Added a short
+   comment in each place noting the binary-MVP / Art. XIV rationale.
+   - Grep confirmation: `rg deels frontend` returns only the two explanatory comments
+     (index.css, tailwind.config.js) — no token/variant references remain.
+2. **Removed the unused `lucide-react` dependency** (zero imports in `src`/`.storybook`).
+   Dropped from `frontend/package.json` and refreshed the lockfile via `corepack pnpm
+   install` (`- lucide-react 1.22.0`). Can be re-added at first real icon use.
+   - Grep confirmation: `rg lucide frontend/src frontend/.storybook` → no matches.
+3. **Removed the spurious `allowBuilds:` placeholder block** from `pnpm-workspace.yaml`
+   (literal `esbuild: set this to true or false` — not a valid pnpm key). Kept
+   `onlyBuiltDependencies: [esbuild]`. The follow-up `corepack pnpm install` ran with no
+   `ERR_PNPM_IGNORED_BUILDS` warning and did not re-add the block — esbuild's build step is
+   still approved via `onlyBuiltDependencies`.
+
+The `*.stories` i18n exemption and the demo "Opslaan" string were left as-is (accepted).
+
+### Re-run gates (from `frontend/`, `corepack pnpm`)
+
+- `pnpm install` ✓ — `- lucide-react 1.22.0`; no ignored-build warning.
+- `pnpm lint` ✓ — 0 errors (2 `warn`-level shadcn `*Variants` co-export warnings, unchanged).
+- `pnpm test` ✓ — 7 passed, axe smoke check still green.
+- `pnpm build` ✓ — CSS 13.80 → 13.51 kB (deels token gone).
+- `pnpm build-storybook` ✓ — static Storybook built.

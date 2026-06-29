@@ -45,8 +45,6 @@ const badgeVariants = cva(
         // dekking — coverage state (FR-9)
         gedekt:
           "border-transparent bg-dekking-gedekt text-dekking-gedekt-foreground",
-        deels:
-          "border-transparent bg-dekking-deels text-dekking-deels-foreground",
         "niet-gedekt":
           "border-transparent bg-dekking-niet-gedekt text-dekking-niet-gedekt-foreground",
       },
