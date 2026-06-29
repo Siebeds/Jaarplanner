@@ -7,5 +7,21 @@
     "gesloten": "Zijbalk is gesloten",
     "toggleOpenen": "Zijbalk openen",
     "toggleSluiten": "Zijbalk sluiten"
+  },
+  "doelsoort": {
+    "md": "Minimumdoel",
+    "gemeenschappelijk": "Gemeenschappelijk",
+    "verdieping": "Verdieping",
+    "precurriculum": "Precurriculum",
+    "specifiek": "Specifiek",
+    "anderstalige": "Anderstalige nieuwkomers"
+  },
+  "doelsoortAfkorting": {
+    "md": "MD",
+    "gemeenschappelijk": "G",
+    "verdieping": "+",
+    "precurriculum": "P",
+    "specifiek": "S",
+    "anderstalige": "A"
   }
 }

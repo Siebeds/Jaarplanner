@@ -1,3 +1,6 @@
+allowBuilds:
+  esbuild: set this to true or false
+
 # Allow esbuild (Vite's native bundler dependency) to run its install script.
 # pnpm 11 blocks dependency build scripts by default; esbuild needs its
 # postinstall to place the platform binary used by `vite build` / `vite dev`.
