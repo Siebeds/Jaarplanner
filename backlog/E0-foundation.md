@@ -14,7 +14,7 @@
   `global.json` pins the current .NET LTS SDK; frontend uses pnpm with a pinned Node version.
   *Done when:* `dotnet --version` and `pnpm` resolve to pinned versions on a clean machine.
 
-- [ ] **E0-03 — Local Postgres via Docker**
+- [x] **E0-03 — Local Postgres via Docker**
   `docker-compose.yml` with a `db` service.
   *Done when:* `docker compose up -d db` gives a reachable Postgres; connection string via user-secrets, **never committed** (Art. VI.4).
 
@@ -22,7 +22,7 @@
   Minimal API project, health endpoint, EF Core + Npgsql wired, DI container.
   *Done when:* `dotnet run --project src/Jaarplanner.Api` serves `/health`; EF Core connects to Postgres.
 
-- [ ] **E0-05 — Frontend bootstrap (React 18 + TS + Vite + Tailwind)**
+- [~] **E0-05 — Frontend bootstrap (React 18 + TS + Vite + Tailwind)**
   Vite SPA, Tailwind, TanStack Query + Zustand providers, `@dnd-kit/core` installed.
   *Done when:* `pnpm dev` serves the app; `pnpm build` and `pnpm lint` pass.
 
