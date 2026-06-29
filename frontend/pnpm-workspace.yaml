@@ -1,0 +1,10 @@
+# Allow esbuild (Vite's native bundler dependency) to run its install script.
+# pnpm 11 blocks dependency build scripts by default; esbuild needs its
+# postinstall to place the platform binary used by `vite build` / `vite dev`.
+onlyBuiltDependencies:
+  - esbuild
+
+# Do not auto-run `pnpm install` before scripts. This repo uses Corepack
+# (`corepack pnpm ...`); a bare `pnpm` is not on PATH in agents/CI, and the
+# pre-run deps check would otherwise try to invoke it and fail.
+verifyDepsBeforeRun: false
