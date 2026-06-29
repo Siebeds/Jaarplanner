@@ -1,7 +1,13 @@
+using Jaarplanner.Api.Configuration;
 using Jaarplanner.Infrastructure;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Cloud secrets (E0-07 / ADR-0012, Art. VI.4): add Azure Key Vault as a configuration
+// source ONLY in non-Development environments when a "KeyVault:Uri" is configured.
+// No-op locally and in tests (no URI present) — keeps zero Azure dependency for dev/CI.
+builder.Configuration.AddAzureKeyVaultIfConfigured(builder.Environment);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
