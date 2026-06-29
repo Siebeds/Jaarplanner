@@ -4,6 +4,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Enables `dotnet user-secrets` for local dev secrets (DB connection string). -->
+    <!-- No secret is stored here; the id only points at a per-user store (Art. VI.4 / ADR-0012). -->
+    <UserSecretsId>jaarplanner-api-dev</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
