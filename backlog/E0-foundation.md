@@ -30,7 +30,7 @@
   Central Dutch strings file + a `t()` helper; lint/check that forbids hard-coded Dutch literals in components.
   *Done when:* sample screen renders all text from `nl.json`. Ref: Art. II.3.
 
-- [ ] **E0-07 — Secrets & config strategy**
+- [x] **E0-07 — Secrets & config strategy**
   .NET user-secrets locally; Azure Key Vault binding stubbed for cloud; **AI keys server-side only**.
   *Done when:* no secret is in the repo; a documented `dotnet user-secrets` flow exists. Ref: Art. VI.4.
 
@@ -38,6 +38,6 @@
   CI runs `dotnet build` + `dotnet test` + `dotnet format --verify-no-changes` and `pnpm lint` + `pnpm test` + `pnpm build`.
   *Done when:* CI is green on an empty skeleton and blocks on format/lint failures. Ref: Art. X.
 
-- [ ] **E0-09 — Design-system foundation (Radix + shadcn/ui + tokens + Storybook)**
+- [~] **E0-09 — Design-system foundation (Radix + shadcn/ui + tokens + Storybook)**
   Add Radix UI + shadcn/ui (components copied into `frontend/src/components/ui/`); define Tailwind **design tokens** for doelsoort/suggestion-status/coverage colours; set up **Storybook**; wire **axe** accessibility checks into the dev/CI loop.
   *Done when:* a sample component renders from tokens, appears in Storybook, and passes an axe smoke check. Ref: ADR-0017, Art. VIII, Art. XII; UX doc `docs/ux/ui-ux-approach.md`.
