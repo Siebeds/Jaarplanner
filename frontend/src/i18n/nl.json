@@ -1,0 +1,11 @@
+{
+  "app": {
+    "ondertitel": "Plan en bewijs de dekking van je leerplandoelen."
+  },
+  "zijbalk": {
+    "open": "Zijbalk is open",
+    "gesloten": "Zijbalk is gesloten",
+    "toggleOpenen": "Zijbalk openen",
+    "toggleSluiten": "Zijbalk sluiten"
+  }
+}
