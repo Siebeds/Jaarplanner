@@ -24,7 +24,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 
 | Epic | File | Phase | Stories | Done | Status |
 | --- | --- | --- | --- | --- | --- |
-| E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 9 | 1 | In progress |
+| E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 9 | 2 | In progress |
 | E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 11 | 0 | Todo |
 | E2 — AI-matching thema ↔ doel | [E2-ai-matching.md](E2-ai-matching.md) | 2 | 7 | 0 | Todo |
 | E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 0 | Todo |
@@ -33,7 +33,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
 | E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 10 | 0 | Todo |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 6 | 0 | Todo |
-| **Totaal** | | | **78** | **1** | **1%** |
+| **Totaal** | | | **78** | **2** | **3%** |
 
 ## Milestones (MVP)
 

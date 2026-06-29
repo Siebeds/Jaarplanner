@@ -10,7 +10,7 @@
   Create the intended tree: `frontend/`, `backend/src/{Jaarplanner.Api,Application,Domain,Infrastructure}`, `backend/tests/{UnitTests,IntegrationTests}`, `docs/`, `backlog/`.
   *Done when:* solution builds empty; layering enforced (Domain ← Application ← Infrastructure, thin Api). Ref: Art. VIII.
 
-- [ ] **E0-02 — Pin toolchain**
+- [x] **E0-02 — Pin toolchain**
   `global.json` pins the current .NET LTS SDK; frontend uses pnpm with a pinned Node version.
   *Done when:* `dotnet --version` and `pnpm` resolve to pinned versions on a clean machine.
 
