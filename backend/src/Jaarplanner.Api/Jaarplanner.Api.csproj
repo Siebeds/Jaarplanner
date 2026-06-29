@@ -11,6 +11,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+    <!-- Cloud secrets binding (E0-07 / ADR-0012): adds Azure Key Vault as a configuration -->
+    <!-- source ONLY when a vault URI is configured (no-op locally + in tests — Art. VI.4). -->
+    <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.1" />
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
   </ItemGroup>
 
   <ItemGroup>
