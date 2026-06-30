@@ -44,6 +44,14 @@ public sealed class LeerplandoelConfiguration : IEntityTypeConfiguration<Leerpla
         builder.Property(l => l.Woordenschat);
         builder.Property(l => l.MinimumdoelRef).HasMaxLength(64);
 
+        // Import-managed review flag (E1-05, Art. III.4 / IV.2): set by the re-import path when a
+        // goal disappears from Op.stap but is still referenced by teacher content (FK Restrict, so
+        // it cannot be deleted). Defaults false; never written by normal app code.
+        builder.Property(l => l.NietMeerInOpstap)
+            .HasColumnName("niet_meer_in_opstap")
+            .HasDefaultValue(false)
+            .IsRequired();
+
         // The grouping/browse key is the composite (domein, subdomein) — subdomein names
         // are not globally unique (Art. VII.0), so this index backs roll-ups and filters.
         builder.HasIndex(l => new { l.Domein, l.Subdomein });
