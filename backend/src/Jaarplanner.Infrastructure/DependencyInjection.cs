@@ -1,3 +1,4 @@
+using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -33,6 +34,9 @@ public static class DependencyInjection
 
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
+
+        // Bidirectional concordance read access (Art. V — enables minimumdoel-level coverage; E5).
+        services.AddScoped<IConcordantieQuery, ConcordantieQuery>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(
