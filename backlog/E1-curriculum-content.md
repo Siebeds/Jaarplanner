@@ -26,7 +26,7 @@
   Map doelsoort enum (MD/G/+/P/S/A); build `minimumdoelRef` = B+C; link minimumdoelen ↔ leerplandoelen.
   *Done when:* concordance is queryable; coverage at minimumdoel level becomes possible (feeds E5). Ref: FR-2.2/2.3.
 
-- [ ] **E1-05 — Re-import without clobbering plans**
+- [x] **E1-05 — Re-import without clobbering plans**
   Re-importing updated Op.stap data updates reference data but **does not auto-overwrite jaarplannen**; flags what to review.
   *Done when:* a re-import diff/notice is produced; existing plans intact. Ref: FR-2.5.
 
