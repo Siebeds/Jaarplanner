@@ -20,7 +20,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0004](0004-postgresql-efcore-npgsql.md) | PostgreSQL via EF Core + Npgsql | Accepted |
 | [0005](0005-dutch-ubiquitous-language-i18n.md) | Dutch ubiquitous language & centralised i18n | Accepted |
 | [0006](0006-opstap-readonly-import-closedxml.md) | Op.stap as read-only reference data via single-source ClosedXML import | Accepted |
-| [0007](0007-curriculum-taxonomy-concordance.md) | Curriculum taxonomy & concordance model | Accepted |
+| [0007](0007-curriculum-taxonomy-concordance.md) | Curriculum taxonomy & concordance model | Accepted (concordance clause superseded by 0018) |
 | [0008](0008-themalaag-level-scoping.md) | Two-tier themalaag with level-based ownership/scoping | Accepted |
 | [0009](0009-dekking-computed-not-stored.md) | Dekking is computed, never stored | Accepted |
 | [0010](0010-ai-advisory-architecture.md) | AI advisory architecture (injectable client, server-side, structured+validated) | Accepted |
@@ -31,6 +31,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0015](0015-testing-strategy.md) | Testing strategy & high-risk coverage | Accepted |
 | [0016](0016-azure-hosting-eu-residency.md) | Azure hosting & EU data residency | Accepted |
 | [0017](0017-ui-ux-design-system.md) | UI/UX approach & design system (shadcn/ui + Radix, WCAG 2.2 AA) | Accepted |
+| [0018](0018-concordance-one-to-many-fk.md) | Concordance is a one-to-many nullable FK (M:N rejected; supersedes 0007 concordance clause) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -54,6 +55,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0015 | Art. V.6, IV.6, X, VIII | E0-08, E1-03, E5-01, E2-01 | FR-2/4/9; NFR-3 |
 | 0016 | Art. VI.3, VIII | E7-04/05/06/09 | NFR-4/5/6/9 |
 | 0017 | Art. VIII, II, XII | E0-09, E3-06/07/10, E5-02/03/09, E6-05, E7-02/10 | FR-4/6/9; NFR-1/2/7 |
+| 0018 | Art. VII.1, IX.1, III.5, V | E1-04, E5 | FR-2.2/2.3, FR-9.3 |
 
 ## Open decisions referenced by ADRs
 

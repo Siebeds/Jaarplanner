@@ -108,3 +108,35 @@ that as the single source of truth and reference it here rather than duplicating
   wording — I kept the single FK as faithful to the one-D-per-row data and isolated the decision
   behind `IConcordantieQuery`. If the architect wants the literal join now, it's a localized change
   behind that seam. No Art. XIV open decision (planningsblok/graadklas/scope) was touched.
+
+## Fix round 1 — governance: ADR record made accurate (no code change)
+
+The antagonist ruled the **code** correct and faithful to the data + Constitution, and raised one
+MAJOR: a **governance/ADR gap**. The shipped concordance is a one-to-many nullable FK (M:N rejected
+— the right call), but [ADR-0007](../../../docs/adr/0007-curriculum-taxonomy-concordance.md) still
+described the link as "many-to-many-capable", so the binding architecture log misdescribed the
+shipped system. ADRs must be kept accurate ("supersede, never rewrite").
+
+Resolution (documentation only — no source/test changes):
+
+- **New ADR-0018** (`docs/adr/0018-concordance-one-to-many-fk.md`): records the one-to-many nullable
+  FK `Leerplandoel.MinimumdoelRef → Minimumdoel.Ref`, rejects the M:N `Concordantie` join as
+  over-provisioning (Op.stap emits one column D per row — Art. VII.1 / IX.1 describe a single
+  `minimumdoelRef`), documents the `IConcordantieQuery` forward-compat seam, and confirms
+  minimumdoel-level coverage (E5) is fully supported via `LeerplandoelenVoorMinimumdoelAsync` feeding
+  ADR-0009's roll-up. Status **Accepted**; explicitly **supersedes the concordance clause of
+  ADR-0007**. Includes the standard compliance trace (Art. VII.1 / IX.1 / III.5 / V; E1-04; E5).
+- **ADR-0007** (kept intact, not rewritten): Status header annotated "concordance clause partially
+  superseded by ADR-0018"; an inline `>` superseded note added directly under the
+  many-to-many-capable bullet pointing to ADR-0018.
+- **ADR index** (`docs/adr/README.md`): ADR-0018 added to the index list (Status Accepted) and to the
+  traceability matrix (`0018 | Art. VII.1, IX.1, III.5, V | E1-04, E5 | FR-2.2/2.3, FR-9.3`);
+  ADR-0007's index Status note updated to "(concordance clause superseded by 0018)".
+
+**Doelsoort note (MINOR, informational):** doelsoort recognition (MD/G/+/P/S/A) was already fully
+delivered in E1-01/E1-03 via the single-source `DoelsoortCodes` and is pinned by the existing
+`DoelsoortCodesTests`. E1-04 only **reused** it (verified non-duplication — no new recognition code
+was added) and contributed the concordance build/query plus the ADR-0018 governance record.
+
+**Gates (re-run after doc changes):** `dotnet build` ✓ · `dotnet test` ✓ (111 unit + 7 integration,
+unchanged) · `dotnet format --verify-no-changes` ✓.
