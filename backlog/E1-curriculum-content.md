@@ -36,7 +36,7 @@
 
 ### FR-1 — Thema/activiteit import
 
-- [ ] **E1-07 — Excel upload + validation + per-row errors**
+- [x] **E1-07 — Excel upload + validation + per-row errors**
   Upload `.xlsx` of thema's/subthema's/activiteiten; validate required columns/fields; clear per-row error messages.
   *Done when:* invalid rows are reported precisely; valid file proceeds. Ref: FR-1.1/1.2.
 

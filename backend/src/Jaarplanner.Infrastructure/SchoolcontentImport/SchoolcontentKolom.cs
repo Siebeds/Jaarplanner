@@ -21,7 +21,7 @@ namespace Jaarplanner.Infrastructure.SchoolcontentImport;
 /// back into the hierarchy; commit/preview is E1-08. Goal-link columns carry leerplandoel <i>codes</i>
 /// as free text references — they are not resolved to entities here (concordance/persist is E1-08+).
 /// </para>
-/// <para>Values are the 1-based ClosedXML column indices (A = 1 … P = 16).</para>
+/// <para>Values are the 1-based ClosedXML column indices (A = 1 … Q = 17).</para>
 /// </summary>
 public enum SchoolcontentKolom
 {
