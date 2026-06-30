@@ -6,7 +6,7 @@ Project context for Claude Code. Read this at the start of every session.
 >
 > **Backlog & progress:** the build plan lives in [`backlog/`](backlog/README.md) — epics (E0–E8) aligned to the build order, with checkbox-tracked stories citing their FR + Constitution article. **Consult it to know what to do next, and update the story checkbox + the progress table in [`backlog/README.md`](backlog/README.md) as work completes.** The backlog is subordinate to the constitution — if a story conflicts, fix the story.
 >
-> **Architecture decisions:** the technical architecture is recorded as ADRs in [`docs/adr/`](docs/adr/README.md) (ADR-0001…0018), each with a **compliance trace** to the Constitution article(s) and backlog epic(s) it realises (see the traceability matrix in the ADR index). Consult the relevant ADR before building a component; record any new significant decision as a new ADR (supersede, never rewrite). ADRs are subordinate to the constitution.
+> **Architecture decisions:** the technical architecture is recorded as ADRs in [`docs/adr/`](docs/adr/README.md) (ADR-0001…0019), each with a **compliance trace** to the Constitution article(s) and backlog epic(s) it realises (see the traceability matrix in the ADR index). Consult the relevant ADR before building a component; record any new significant decision as a new ADR (supersede, never rewrite). ADRs are subordinate to the constitution.
 >
 > **UI/UX:** the design approach lives in [`docs/ux/ui-ux-approach.md`](docs/ux/ui-ux-approach.md) ([ADR-0017](docs/adr/0017-ui-ux-design-system.md)): Tailwind + Radix UI + shadcn/ui (copied in), design tokens for doelsoort/status/coverage, wireframes-first for the anchor screens, WCAG 2.2 AA.
 

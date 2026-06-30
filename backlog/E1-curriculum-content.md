@@ -30,7 +30,7 @@
   Re-importing updated Op.stap data updates reference data but **does not auto-overwrite jaarplannen**; flags what to review.
   *Done when:* a re-import diff/notice is produced; existing plans intact. Ref: FR-2.5.
 
-- [!] **E1-06 — Discipline selection (starter set vs all)** — *blocked: Art. XIV "Disciplines first" + "cluster presence"*
+- [x] **E1-06 — Discipline selection (starter set vs all)** — *data-driven seam built ([ADR-0019](../docs/adr/0019-discipline-selection-config-seam.md)); the actual disciplines-first choice (Art. XIV) stays runtime config (`Opstap:DisciplineSelectie`), not compiled in*
   Make the imported discipline set configurable; isolate behind a seam so neither "all" nor a subset is hard-coded.
   *Done when:* the choice is data-driven, not compiled in.
 
