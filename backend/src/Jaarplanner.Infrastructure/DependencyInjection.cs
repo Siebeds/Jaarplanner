@@ -1,6 +1,8 @@
 using Jaarplanner.Application.Curriculum;
+using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
+using Jaarplanner.Infrastructure.SchoolcontentBeheer;
 using Jaarplanner.Infrastructure.SchoolcontentImport;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -58,6 +60,11 @@ public static class DependencyInjection
         // non-destructive guarantee that teacher DoelKoppeling decisions survive an overwrite (E1-08,
         // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
         services.AddScoped<ISchoolcontentImportService, SchoolcontentImportService>();
+
+        // CRUD for the autonomous school-content hierarchy + manual goal links (E1-10, FR-3.1/3.2).
+        // Enforces level scoping (Art. IX.2) and persists manual links as `manueel` (Art. IV.2); a
+        // sibling of the import service that drives the same domain mutators.
+        services.AddScoped<ISchoolcontentBeheerService, SchoolcontentBeheerService>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(

@@ -60,6 +60,19 @@ public sealed class Activiteit
     }
 
     /// <summary>
+    /// Removes a goal link from this activiteit (CRUD, E1-10). Used when a teacher unlinks a leerdoel;
+    /// it is a deliberate human decision, so the caller persists the removal (Art. IV.2).
+    /// </summary>
+    public void VerwijderDoelkoppeling(DoelKoppeling koppeling)
+    {
+        ArgumentNullException.ThrowIfNull(koppeling);
+        _doelkoppelingen.Remove(koppeling);
+    }
+
+    /// <summary>Renames the activiteit (CRUD, E1-10); the import path leaves the naam (its match key) alone.</summary>
+    public void WijzigNaam(string naam) => Naam = Require(naam, nameof(naam));
+
+    /// <summary>
     /// Updates the activiteit's attributes (mutable autonomous content, Art. III). Used by the
     /// school-content import overwrite path (E1-08); the naam (the match key) and the goal links are
     /// not changed here — links are managed separately via AI matching / CRUD, so an overwrite never

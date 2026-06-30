@@ -1,4 +1,5 @@
 using Jaarplanner.Api.Configuration;
+using Jaarplanner.Api.Infrastructure;
 using Jaarplanner.Infrastructure;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -13,12 +14,30 @@ builder.Configuration.AddAzureKeyVaultIfConfigured(builder.Environment);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// REST controllers (thin Api, Art. VIII) for the school-content CRUD endpoints (E1-10).
+// Serialise/accept enums by their name (e.g. ActiviteitType "Waarneming", KoppelingStatus
+// "Manueel") so the JSON is legible and stable for the Dutch, non-technical-facing frontend —
+// matching how the enums are persisted by name in the store.
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
+// RFC 7807 ProblemDetails + the school-content exception handler: maps the CRUD application
+// exceptions (not-found → 404, validation/scoping/goal-link → 400) without leaking plumbing
+// into the controllers (Art. VIII).
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<SchoolcontentExceptionHandler>();
+
 // Data access + database health check live in Infrastructure (Art. VIII — keep Api thin).
 // This registers AppDbContext (UseNpgsql, connection string from configuration) and a
 // "db"/"ready"-tagged readiness check that /health/ready reflects.
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+// Translate unhandled exceptions to ProblemDetails (uses SchoolcontentExceptionHandler above).
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -41,6 +60,8 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
 {
     Predicate = registration => registration.Tags.Contains("ready"),
 });
+
+app.MapControllers();
 
 app.Run();
 

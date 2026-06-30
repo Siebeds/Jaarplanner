@@ -82,6 +82,33 @@ public sealed class Subthema
         DuurWeken = RequirePositive(duurWeken, nameof(duurWeken));
 
     /// <summary>
+    /// Renames the subthema (CRUD, E1-10). The class/age scope (<see cref="KlasId"/>/<see cref="Leeftijd"/>)
+    /// is part of its identity and is changed only via <see cref="WijzigScope"/>.
+    /// </summary>
+    public void WijzigNaam(string naam) => Naam = Require(naam, nameof(naam));
+
+    /// <summary>
+    /// Re-scopes the subthema to a different class/age (CRUD, E1-10). Class scoping stays structural:
+    /// a subthema can never become school-wide — both a non-empty <paramref name="klasId"/> and a
+    /// non-blank <paramref name="leeftijd"/> remain required (Art. IX.2).
+    /// </summary>
+    public void WijzigScope(Guid klasId, string leeftijd)
+    {
+        KlasId = RequireKlas(klasId);
+        Leeftijd = Require(leeftijd, nameof(leeftijd));
+    }
+
+    /// <summary>
+    /// Removes an activiteit (and, via the EF cascade, its goal links) from this subthema. CRUD delete
+    /// of a class/age-scoped activiteit (E1-10).
+    /// </summary>
+    public void VerwijderActiviteit(Activiteit activiteit)
+    {
+        ArgumentNullException.ThrowIfNull(activiteit);
+        _activiteiten.Remove(activiteit);
+    }
+
+    /// <summary>
     /// Removes a subdoel from this subthema. Used by the import overwrite reconciliation (E1-08) to drop
     /// an AI-only <c>voorgesteld</c> link the file no longer carries, or — only on explicit teacher
     /// confirmation — a discarded human decision (Art. IV.2).
