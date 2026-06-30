@@ -49,6 +49,11 @@ public static class DependencyInjection
         // pure parser/validator (no persistence) so it is stateless and singleton-safe.
         services.AddSingleton<ISchoolcontentParser, ClosedXmlSchoolcontentParser>();
 
+        // The downloadable import template generator: emits the header + one valid example row from
+        // the SAME single-source column mapping the parser reads, so template and parser never drift
+        // (E1-09, FR-1.5, Gap A.4, Art. III.3). Stateless → singleton-safe.
+        services.AddSingleton<ISchoolcontentTemplateGenerator, ClosedXmlSchoolcontentTemplateGenerator>();
+
         // The school-content import-commit path: preview/diff + add/update-overwrite re-import, with the
         // non-destructive guarantee that teacher DoelKoppeling decisions survive an overwrite (E1-08,
         // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
