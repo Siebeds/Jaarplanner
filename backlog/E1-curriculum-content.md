@@ -54,6 +54,6 @@
   Add/edit/delete at each level; link an activiteit/subthema to one or more leerdoelen; manage 2–3 themadoelen per thema.
   *Done when:* CRUD respects level scoping; goal links persist with status. Ref: FR-3.1/3.2.
 
-- [ ] **E1-11 — Gedeelde thema-bibliotheek (school-wide thema's)**
+- [x] **E1-11 — Gedeelde thema-bibliotheek (school-wide thema's)**
   Thema + themadoelen + kernwoordenschat owned at school level; per-class derivation of subthema's/subdoelen without cross-class bleed.
   *Done when:* editing a class's subthema does not mutate the shared thema. Ref: FR-3.3 (resolved per-level), Art. IX.2, Gap A.5.
