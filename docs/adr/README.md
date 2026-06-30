@@ -32,6 +32,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0016](0016-azure-hosting-eu-residency.md) | Azure hosting & EU data residency | Accepted |
 | [0017](0017-ui-ux-design-system.md) | UI/UX approach & design system (shadcn/ui + Radix, WCAG 2.2 AA) | Accepted |
 | [0018](0018-concordance-one-to-many-fk.md) | Concordance is a one-to-many nullable FK (M:N rejected; supersedes 0007 concordance clause) | Accepted |
+| [0019](0019-discipline-selection-config-seam.md) | Discipline-selection config seam for an open decision (Art. XIV; data-driven, not compiled in) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -56,7 +57,8 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0016 | Art. VI.3, VIII | E7-04/05/06/09 | NFR-4/5/6/9 |
 | 0017 | Art. VIII, II, XII | E0-09, E3-06/07/10, E5-02/03/09, E6-05, E7-02/10 | FR-4/6/9; NFR-1/2/7 |
 | 0018 | Art. VII.1, IX.1, III.5, V | E1-04, E5 | FR-2.2/2.3, FR-9.3 |
+| 0019 | Art. XIV, III, VII.0, VIII, II | E1-06 | FR-2 |
 
 ## Open decisions referenced by ADRs
 
-Where an ADR depends on an unresolved [Art. XIV](../../CONSTITUTION.md#article-xiv--open-decisions-awaiting-directie) decision, it documents the **seam** rather than presupposing an answer. The clearest example is [ADR-0013 (planningsblok)](0013-planningsblok-abstraction.md).
+Where an ADR depends on an unresolved [Art. XIV](../../CONSTITUTION.md#article-xiv--open-decisions-awaiting-directie) decision, it documents the **seam** rather than presupposing an answer. The clearest examples are [ADR-0013 (planningsblok)](0013-planningsblok-abstraction.md) and [ADR-0019 (discipline selection)](0019-discipline-selection-config-seam.md).
