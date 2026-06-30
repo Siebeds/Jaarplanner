@@ -1,6 +1,7 @@
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
+using Jaarplanner.Infrastructure.SchoolcontentImport;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,11 @@ public static class DependencyInjection
         // The single sanctioned writer of official Op.stap reference data: non-destructive,
         // idempotent (re-)import with a reviewable diff (E1-05, Art. III.4 / IV.2 / FR-2.5).
         services.AddScoped<IOpstapImportService, OpstapImportService>();
+
+        // The school-content (thema/subthema/activiteit) Excel parser/validator: validates
+        // required columns/fields and produces clear per-row diagnostics (E1-07, FR-1.1/1.2). A
+        // pure parser/validator — preview/commit is E1-08 — so it is stateless and singleton-safe.
+        services.AddSingleton<ISchoolcontentParser, ClosedXmlSchoolcontentParser>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(
