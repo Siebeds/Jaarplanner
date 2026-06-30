@@ -50,7 +50,7 @@ public sealed class ClosedXmlOpstapParser : IOpstapParser
             return new OpstapParseResult(disciplineNummer.Trim(), leerplandoelen, problemen);
         }
 
-        var sawDataRow = false;
+        var firstNonEmptySeen = false;
         for (var rowNumber = 1; rowNumber <= lastRow.RowNumber(); rowNumber++)
         {
             var row = sheet.Row(rowNumber);
@@ -60,23 +60,29 @@ public sealed class ClosedXmlOpstapParser : IOpstapParser
                 continue;
             }
 
-            var doelsoortCode = Cell(row, OpstapKolom.Doelsoort);
-            if (!DoelsoortCodes.TryFromCode(doelsoortCode, out var doelsoort))
+            // Header detection is structural, not "first unrecognised doelsoort": only the very
+            // first non-empty row is a header candidate, and only when it actually carries the
+            // Op.stap header labels (column A reads "Doelsoort"). This guarantees a malformed data
+            // row — including the first one in a headerless file — is reported, never swallowed
+            // (Art. V.6 / ADR-0006 §4 "report, never silently drop").
+            if (!firstNonEmptySeen)
             {
-                // A non-data first row is the header; an unknown code in the body is a problem.
-                if (!sawDataRow && problemen.Count == 0)
+                firstNonEmptySeen = true;
+                if (IsHeaderRow(row))
                 {
                     continue;
                 }
+            }
 
+            var doelsoortCode = Cell(row, OpstapKolom.Doelsoort);
+            if (!DoelsoortCodes.TryFromCode(doelsoortCode, out var doelsoort))
+            {
                 problemen.Add(new OpstapRijProbleem(
                     rowNumber,
                     $"Unknown or missing doelsoort code '{doelsoortCode}'.",
                     Cell(row, OpstapKolom.Code)));
                 continue;
             }
-
-            sawDataRow = true;
 
             try
             {
@@ -140,6 +146,13 @@ public sealed class ClosedXmlOpstapParser : IOpstapParser
         var value = Cell(row, kolom);
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
+
+    /// <summary>
+    /// True when the row is the Op.stap column-header row: the doelsoort cell (column A) holds the
+    /// literal label <c>"Doelsoort"</c> rather than a doelsoort code. Matched case-insensitively.
+    /// </summary>
+    private static bool IsHeaderRow(IXLRow row) =>
+        string.Equals(Cell(row, OpstapKolom.Doelsoort), "Doelsoort", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>True when no mapped A–M cell on the row carries content.</summary>
     private static bool IsRowEmpty(IXLRow row)

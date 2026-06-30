@@ -66,13 +66,6 @@ internal sealed class OpstapWorkbookBuilder
         return this;
     }
 
-    /// <summary>Adds a raw data row via a callback, for edge cases (e.g. hidden columns).</summary>
-    public OpstapWorkbookBuilder MetRuweRij(Action<IXLWorksheet, int> schrijf)
-    {
-        _rows.Add(schrijf);
-        return this;
-    }
-
     /// <summary>Marks the given A–M column as hidden on the produced sheet.</summary>
     public OpstapWorkbookBuilder MetVerborgenKolom(OpstapKolom kolom)
     {

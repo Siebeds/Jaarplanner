@@ -120,6 +120,23 @@ public class ClosedXmlOpstapParserTests
         Assert.Equal("4-12", doel.MinimumdoelRef);
     }
 
+    [Theory]
+    [InlineData("K-", null, "K-")]
+    [InlineData(null, "5", "5")]
+    public void Builds_a_partial_minimumdoelRef_from_whichever_of_B_or_C_is_present(
+        string? leeftijdMd, string? nummerMd, string expected)
+    {
+        // Intentional E1-04 seam contract: when only B or only C is present (and D is empty), the
+        // partial key is preserved rather than discarded, so E1-04 can diagnose it. Pinned, not changed.
+        var result = Parse(new OpstapWorkbookBuilder().MetHeader().MetRij(
+            leeftijdMd: leeftijdMd,
+            nummerMd: nummerMd,
+            minimumdoelRef: null));
+
+        var doel = Assert.Single(result.Leerplandoelen);
+        Assert.Equal(expected, doel.MinimumdoelRef);
+    }
+
     [Fact]
     public void Leaves_the_minimumdoelRef_null_when_the_row_carries_no_concordance()
     {
@@ -169,6 +186,25 @@ public class ClosedXmlOpstapParserTests
 
         var doel = Assert.Single(result.Leerplandoelen);
         Assert.Equal("NC-9", doel.Code);
+    }
+
+    [Fact]
+    public void Reports_a_malformed_FIRST_data_row_in_a_headerless_file_rather_than_dropping_it()
+    {
+        // Header detection is structural (column A must read "Doelsoort"), so a first row with a
+        // typo'd doelsoort in a file that has no header is a data row — and must be reported.
+        var result = Parse(new OpstapWorkbookBuilder()
+            .MetRij(doelsoort: "ZZ", code: "TYPO-1")
+            .MetRij(code: "OK-2"));
+
+        var doel = Assert.Single(result.Leerplandoelen);
+        Assert.Equal("OK-2", doel.Code);
+
+        var probleem = Assert.Single(result.Problemen);
+        Assert.Equal(1, probleem.RijNummer);
+        Assert.Equal("TYPO-1", probleem.Code);
+        Assert.Contains("doelsoort", probleem.Reden, StringComparison.OrdinalIgnoreCase);
+        Assert.False(result.IsSchoon);
     }
 
     [Fact]

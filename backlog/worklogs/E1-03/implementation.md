@@ -82,3 +82,30 @@
 - **Open questions / Art. XIV touched:** None resolved here. The `cluster`-presence and
   discipline-selection open decisions are honoured by keeping cluster nullable and accepting the
   discipline number as a caller-supplied parameter (no hard-coded discipline list).
+
+## Fix round 1 — structural header detection + hygiene (antagonist MINOR finding)
+
+- **Finding (MINOR, Art. V.6 leak):** the header skip was `if (!sawDataRow && problemen.Count == 0) continue;`,
+  which silently dropped the first non-empty row whenever its doelsoort cell wasn't a recognised code —
+  including a genuine first DATA row with a typo'd/unknown doelsoort, with no `OpstapRijProbleem`. That broke
+  the "report, never silently drop" guarantee for exactly one row.
+
+- **Fix (structural, content-based):** `ClosedXmlOpstapParser` now detects the header by its *content*, not by
+  "first unrecognised doelsoort". New `IsHeaderRow(row)` returns true only when column A literally reads
+  `"Doelsoort"` (case-insensitive — the Op.stap header label). Only the **very first non-empty row** is even a
+  header candidate; once past it, every row is data. Consequence: a malformed/typo'd doelsoort anywhere —
+  including the first row of a headerless file — now produces an `OpstapRijProbleem` and is never swallowed.
+  The `sawDataRow`/`problemen.Count == 0` heuristic was removed. A comment documents the choice.
+
+- **New test:** `Reports_a_malformed_FIRST_data_row_in_a_headerless_file_rather_than_dropping_it` — a headerless
+  file whose first row carries doelsoort `"ZZ"` (code `TYPO-1`) yields one problem at row 1 (code `TYPO-1`,
+  reason mentions "doelsoort") while the valid second row still parses. Pins the closed leak.
+
+- **Also pinned (no logic change):** `Builds_a_partial_minimumdoelRef_from_whichever_of_B_or_C_is_present`
+  ([Theory]) makes the partial-key behaviour (only B or only C present → partial key preserved) an
+  *intentional* E1-04 seam contract rather than an accident. Logic left exactly as-is per the coordinator note.
+
+- **Hygiene:** removed the unused `OpstapWorkbookBuilder.MetRuweRij` dead-code helper.
+
+- **Gates (fix round):** `dotnet format --verify-no-changes` ✓ clean · `dotnet build` ✓ · `dotnet test` ✓ —
+  **100 unit + 7 integration** pass (was 97+7; +1 header test, +2 partial-ref theory cases).
