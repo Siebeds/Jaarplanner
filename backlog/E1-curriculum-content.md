@@ -44,7 +44,7 @@
   Show a preview before commit; on re-import let the user choose add vs. update/overwrite.
   *Done when:* preview matches committed result; re-import modes work; **the overwrite path preserves (or explicitly warns before discarding) teacher-set `DoelKoppeling` statuses** (`aanvaard`/`geweigerd`/`manueel`) so a re-import never silently destroys human decisions. Ref: FR-1.3/1.4, Art. IV.2 (mirrors E1-05's non-destructive stance).
 
-- [ ] **E1-09 — Downloadable import template**
+- [x] **E1-09 — Downloadable import template**
   Template `.xlsx` matching the import structure, incl. fields for themadoelen, subthema onderzoeksvragen, two-tier woordenschat, activiteittype, duurWeken.
   *Done when:* template downloads and round-trips through E1-07. Ref: FR-1.5, Gap A.4. *Note: final columns gated on Art. XIV "Thema/activiteit Excel structure".*
 
