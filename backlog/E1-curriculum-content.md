@@ -18,7 +18,7 @@
 
 ### FR-2 — Op.stap import
 
-- [ ] **E1-03 — Op.stap Excel parser (ClosedXML), single-source mapping**
+- [x] **E1-03 — Op.stap Excel parser (ClosedXML), single-source mapping**
   Parse one Excel per discipline using the A–M mapping in **one place** in code (Art. III.3, VII.1). Handle hidden/empty columns; nullable cluster.
   *Done when:* a discipline file produces correct `Leerplandoel`/`Minimumdoel` rows. **High-risk logic — unit-tested thoroughly** (Art. V.6).
 
