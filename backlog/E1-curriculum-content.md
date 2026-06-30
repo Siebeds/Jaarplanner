@@ -40,7 +40,7 @@
   Upload `.xlsx` of thema's/subthema's/activiteiten; validate required columns/fields; clear per-row error messages.
   *Done when:* invalid rows are reported precisely; valid file proceeds. Ref: FR-1.1/1.2.
 
-- [ ] **E1-08 — Import preview + add/update-or-overwrite on re-import**
+- [x] **E1-08 — Import preview + add/update-or-overwrite on re-import**
   Show a preview before commit; on re-import let the user choose add vs. update/overwrite.
   *Done when:* preview matches committed result; re-import modes work; **the overwrite path preserves (or explicitly warns before discarding) teacher-set `DoelKoppeling` statuses** (`aanvaard`/`geweigerd`/`manueel`) so a re-import never silently destroys human decisions. Ref: FR-1.3/1.4, Art. IV.2 (mirrors E1-05's non-destructive stance).
 
