@@ -113,3 +113,40 @@ in `OpstapImportServiceTests`. No Playwright applicable.
   "never delete, only flag" — flip the constant; nothing else changes. Referenced goals are always
   kept regardless.
 - No API/UI surface yet: the diff is built to be returned by a future FR-2 import endpoint.
+
+## Fix round 2 — conservative-by-default purge policy + empty-file guard
+
+Addresses the antagonist QUESTION + MINOR (converging on one change): the brief asked for a
+"safe non-destructive default", but Build round 1 shipped the destructive purge as the default.
+
+1. **Flipped the unreferenced-purge default to non-destructive (flag-first).** A disappeared
+   **unreferenced** goal is now **flagged `NietMeerInOpstap = true` and kept** by default, not
+   deleted — matching the headline guarantee and the Art. XIV "preserve data, require explicit
+   opt-in to purge" reading. The destructive purge remains available behind the same seam, now as a
+   **constructor policy flag** (`OpstapImportService(context, verwijderVerweesdeNietGekoppelde: true)`)
+   with the registered default constant renamed to `VerwijderVerweesdeNietGekoppeldeStandaard = false`.
+   (Made it a ctor flag rather than a compile-time `const` so both behaviours are testable; the DI
+   registration still binds the safe default.)
+2. **Empty/implausible-file guard.** If the parse result has **no valid rows** for the discipline but
+   the discipline already has persisted goals, the import is **skipped**: nothing is flagged or
+   deleted, and the diff is returned with `Overgeslagen = true` and a Dutch notice in `Opmerkingen`
+   ("Geen geldige leerplandoelen ingelezen … niets toegepast"). Absence of input is not a curriculum
+   change (Art. III.4). `OpstapHerimportDiff` gained `Overgeslagen` + `Opmerkingen` (optional ctor
+   params, back-compatible); `VereistReview` now also trips on a skip. A genuinely first, empty
+   import (no existing rows) stays a harmless no-op.
+3. **Tests.**
+   - Renamed/updated `Disappeared_unreferenced_leerplandoel_is_flagged_and_kept_by_default_policy` —
+     now asserts the row is flagged and **kept** (not deleted).
+   - Added `Disappeared_unreferenced_leerplandoel_is_purged_only_with_the_opt_in_policy` — pins the
+     purge path via the ctor flag = true.
+   - Added `Empty_or_parse_failed_re_import_skips_and_keeps_existing_rows` — empty parse result does
+     not flag/delete existing rows, surfaces the notice, and the teacher link survives.
+
+**Gates (fix round 2):** `dotnet build` ✓ (0/0) · `dotnet test` ✓ **123 unit + 7 integration green**
+(was 121 + 7; +2) · `dotnet format --verify-no-changes` ✓ · `dotnet ef migrations
+has-pending-model-changes` ✓ ("No changes … since the last migration" — logic-only, no model
+change). Files touched: `OpstapImportService.cs`, `OpstapHerimportDiff.cs`, `OpstapImportServiceTests.cs`.
+
+**Net policy now:** disappeared goal → **never deleted by default**, flagged for review (referenced
+*or* not). Purge of unreferenced disappeared goals is an explicit directie opt-in behind the ctor
+seam. Empty/partial/wrong file → skipped with a notice, existing data untouched.

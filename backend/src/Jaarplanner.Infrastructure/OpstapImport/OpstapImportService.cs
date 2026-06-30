@@ -26,29 +26,50 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// <c>manueel</c>) are never touched by this path; the service only ever writes curriculum rows.
 /// </para>
 /// <para>
-/// <b>Removed-but-referenced policy (Art. XIV seam).</b> Whether such an orphaned goal is eventually
-/// purged or kept indefinitely is a directie call. The safe, non-destructive default chosen here is
-/// <i>flag and keep</i>; the decision is isolated to <see cref="VerwijderVerweesdeNietGekoppelde"/>
-/// (whether truly unreferenced disappeared goals are removed at all), so a future "keep everything"
-/// or "ask before removing" policy is a one-line change without touching the diff or the link model.
+/// <b>Disappeared-goal policy (Art. XIV seam).</b> A goal that vanished from Op.stap is <b>never</b>
+/// deleted by default — referenced <i>or</i> not. The safe, non-destructive default is <i>flag and
+/// keep</i> (<c>NietMeerInOpstap = true</c>); a referenced goal is kept because of the <c>Restrict</c>
+/// FK, and an unreferenced goal is kept because preserving data and requiring an explicit opt-in to
+/// purge is the conservative reading of Art. III.4 / XIV. The purge is isolated to a single ctor
+/// policy flag (<see cref="VerwijderVerweesdeNietGekoppeldeStandaard"/>, opt-in), so enabling it is a
+/// one-line change that never touches the diff or the link model.
+/// </para>
+/// <para>
+/// <b>Empty/implausible-file guard.</b> An import whose parse result has <b>no valid rows</b> for the
+/// discipline (an empty, partial, or wrong file) is <b>skipped</b>: the existing rows are not treated
+/// as a mass disappearance, nothing is flagged or deleted, and the diff carries a notice. Absence of
+/// input is not a curriculum change (Art. III.4).
 /// </para>
 /// </summary>
 public sealed class OpstapImportService : IOpstapImportService
 {
     /// <summary>
     /// Policy seam (Art. XIV): when a goal disappears from Op.stap and is <b>not</b> referenced by any
-    /// teacher content, should it be removed from the database? The conservative default is
-    /// <c>true</c> (remove the truly unused stale row — reference data should track the curriculum),
-    /// while referenced goals are always kept and flagged regardless. Flip to <c>false</c> for a
-    /// "never delete, only flag" directie policy without touching anything else.
+    /// teacher content, should it be <b>removed</b> from the database? The conservative, non-destructive
+    /// default is <c>false</c> — keep the stale row and flag it (<c>NietMeerInOpstap = true</c>) so the
+    /// disappearance is visible without losing data. Referenced goals are always kept regardless. Set
+    /// <c>true</c> only for an explicit directie "purge unused, disappeared goals" opt-in; nothing else
+    /// changes. This is the registered default; an opt-in deployment can pass <c>true</c> to the ctor.
     /// </summary>
-    public const bool VerwijderVerweesdeNietGekoppelde = true;
+    public const bool VerwijderVerweesdeNietGekoppeldeStandaard = false;
 
     private readonly AppDbContext _context;
+    private readonly bool _verwijderVerweesdeNietGekoppelde;
 
     public OpstapImportService(AppDbContext context)
+        : this(context, VerwijderVerweesdeNietGekoppeldeStandaard)
+    {
+    }
+
+    /// <summary>
+    /// Constructs the import service with an explicit disappeared-unreferenced-goal purge policy. The
+    /// DI default uses <see cref="VerwijderVerweesdeNietGekoppeldeStandaard"/> (false — flag-and-keep);
+    /// the opt-in directie purge passes <c>true</c>.
+    /// </summary>
+    public OpstapImportService(AppDbContext context, bool verwijderVerweesdeNietGekoppelde)
     {
         _context = context;
+        _verwijderVerweesdeNietGekoppelde = verwijderVerweesdeNietGekoppelde;
     }
 
     /// <inheritdoc />
@@ -72,6 +93,30 @@ public sealed class OpstapImportService : IOpstapImportService
             .Where(l => l.DisciplineNummer == disciplineNummer)
             .ToListAsync(cancellationToken);
         var bestaandPerCode = bestaand.ToDictionary(l => l.Code, StringComparer.Ordinal);
+
+        // Empty/implausible-file guard (Art. III.4): if the file yielded no valid rows but the
+        // discipline already has persisted goals, treating every existing goal as "disappeared"
+        // would be a destructive over-reaction to a bad/partial/wrong upload. Skip instead — flag or
+        // delete nothing — and surface a notice. (A genuinely first, empty import is simply a no-op.)
+        if (inkomend.Count == 0 && bestaand.Count > 0)
+        {
+            var notice = new OpstapHerimportDiff(
+                disciplineNummer,
+                toegevoegd: [],
+                gewijzigd: [],
+                ongewijzigd: [],
+                verdwenen: [],
+                verdwenenMaarGekoppeld: [],
+                overgeslagen: true,
+                opmerkingen:
+                [
+                    $"Geen geldige leerplandoelen ingelezen voor discipline {disciplineNummer} — " +
+                    $"niets toegepast. De {bestaand.Count} bestaande doelen blijven ongewijzigd " +
+                    "(bestand mogelijk leeg, onvolledig of verkeerd).",
+                ]);
+
+            return new OpstapImportResultaat(notice, toegepast: false);
+        }
 
         var toegevoegd = new List<string>();
         var gewijzigd = new List<LeerplandoelWijziging>();
@@ -151,13 +196,15 @@ public sealed class OpstapImportService : IOpstapImportService
                 else
                 {
                     verdwenen.Add(code);
-                    if (toepassen && VerwijderVerweesdeNietGekoppelde)
+                    if (toepassen && _verwijderVerweesdeNietGekoppelde)
                     {
+                        // Opt-in directie purge only: remove the truly unused, disappeared row.
                         _context.Leerplandoelen.Remove(oud);
                     }
                     else if (toepassen)
                     {
-                        // Policy: keep stale rows; flag them so they are visibly out of curriculum.
+                        // Conservative default: keep the stale row and flag it, so the disappearance
+                        // is visible for review without destroying data (Art. III.4).
                         ZetReviewVlag(_context.Entry(oud), true);
                     }
                 }

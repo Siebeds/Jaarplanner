@@ -112,16 +112,54 @@ public sealed class OpstapImportServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Disappeared_unreferenced_leerplandoel_is_removed_by_default_policy()
+    public async Task Disappeared_unreferenced_leerplandoel_is_flagged_and_kept_by_default_policy()
     {
         await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
 
-        // LP-2 is gone from the new file and nothing references it.
+        // LP-2 is gone from the new file and nothing references it. The conservative default is
+        // flag-and-keep (never delete) — a disappearance is reported, the data is preserved.
         var result = await _service.ImporteerAsync(Parse(Doel("LP-1")), toepassen: true);
 
         Assert.Equal(["LP-2"], result.Diff.Verdwenen.ToArray());
         Assert.Empty(result.Diff.VerdwenenMaarGekoppeld);
+
+        var lp2 = await _context.Leerplandoelen.SingleAsync(l => l.Code == "LP-2");
+        Assert.True(lp2.NietMeerInOpstap);
+    }
+
+    [Fact]
+    public async Task Disappeared_unreferenced_leerplandoel_is_purged_only_with_the_opt_in_policy()
+    {
+        // Explicit directie opt-in: the purge seam removes truly unused, disappeared goals.
+        var purgeService = new OpstapImportService(_context, verwijderVerweesdeNietGekoppelde: true);
+        await purgeService.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
+
+        var result = await purgeService.ImporteerAsync(Parse(Doel("LP-1")), toepassen: true);
+
+        Assert.Equal(["LP-2"], result.Diff.Verdwenen.ToArray());
         Assert.False(await _context.Leerplandoelen.AnyAsync(l => l.Code == "LP-2"));
+    }
+
+    [Fact]
+    public async Task Empty_or_parse_failed_re_import_skips_and_keeps_existing_rows()
+    {
+        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
+        await LinkThemadoelAsync("LP-1", KoppelingStatus.Aanvaard);
+
+        // An empty/partial/wrong file (no valid rows parsed) must NOT be read as a mass disappearance.
+        var result = await _service.ImporteerAsync(Parse(), toepassen: true);
+
+        Assert.False(result.Toegepast);
+        Assert.True(result.Diff.Overgeslagen);
+        Assert.NotEmpty(result.Diff.Opmerkingen);
+        Assert.Empty(result.Diff.Verdwenen);
+        Assert.Empty(result.Diff.VerdwenenMaarGekoppeld);
+
+        // Both existing rows are untouched — not flagged, not deleted — and the teacher link survives.
+        Assert.Equal(2, await _context.Leerplandoelen.CountAsync());
+        Assert.False(await _context.Leerplandoelen.AnyAsync(l => l.NietMeerInOpstap));
+        var themadoel = await _context.Themadoelen.SingleAsync(td => td.Koppeling.LeerplandoelCode == "LP-1");
+        Assert.Equal(KoppelingStatus.Aanvaard, themadoel.Koppeling.Status);
     }
 
     [Fact]

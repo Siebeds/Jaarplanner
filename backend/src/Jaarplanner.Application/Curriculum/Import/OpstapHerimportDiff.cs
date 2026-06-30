@@ -22,7 +22,9 @@ public sealed class OpstapHerimportDiff
         IReadOnlyList<LeerplandoelWijziging> gewijzigd,
         IReadOnlyList<string> ongewijzigd,
         IReadOnlyList<string> verdwenen,
-        IReadOnlyList<VerdwenenGekoppeldDoel> verdwenenMaarGekoppeld)
+        IReadOnlyList<VerdwenenGekoppeldDoel> verdwenenMaarGekoppeld,
+        bool overgeslagen = false,
+        IReadOnlyList<string>? opmerkingen = null)
     {
         DisciplineNummer = disciplineNummer;
         Toegevoegd = toegevoegd;
@@ -30,6 +32,8 @@ public sealed class OpstapHerimportDiff
         Ongewijzigd = ongewijzigd;
         Verdwenen = verdwenen;
         VerdwenenMaarGekoppeld = verdwenenMaarGekoppeld;
+        Overgeslagen = overgeslagen;
+        Opmerkingen = opmerkingen ?? [];
     }
 
     /// <summary>The discipline this re-import covers.</summary>
@@ -46,8 +50,9 @@ public sealed class OpstapHerimportDiff
 
     /// <summary>
     /// Codes in the database (for this discipline) that are <b>absent</b> from the new file and are
-    /// <b>not referenced</b> by any teacher content. These can be removed safely; whether the import
-    /// actually removes them is policy (see the import service) — by default they are removed.
+    /// <b>not referenced</b> by any teacher content. Whether the import removes them is policy (see the
+    /// import service) — the <b>conservative default is flag-and-keep</b> (mark
+    /// <c>NietMeerInOpstap = true</c>, never delete); an actual purge is an explicit directie opt-in.
     /// </summary>
     public IReadOnlyList<string> Verdwenen { get; }
 
@@ -59,6 +64,22 @@ public sealed class OpstapHerimportDiff
     /// </summary>
     public IReadOnlyList<VerdwenenGekoppeldDoel> VerdwenenMaarGekoppeld { get; }
 
+    /// <summary>
+    /// True when the (re-)import was deliberately <b>skipped</b> as a safety measure — e.g. the parse
+    /// result carried <b>no valid rows</b> for the discipline (an empty/partial/wrong file). In that
+    /// case the existing rows are <b>not</b> treated as disappeared: nothing is flagged or deleted,
+    /// and <see cref="Opmerkingen"/> explains why (Art. III.4 — absence of input is not a curriculum
+    /// change). A skipped diff is always empty in its add/change/remove buckets.
+    /// </summary>
+    public bool Overgeslagen { get; }
+
+    /// <summary>
+    /// Human-readable notices about this (re-)import (Dutch — surfaced to the teacher/directie). Used
+    /// for the empty/implausible-file guard ("geen geldige rijen ingelezen — niets toegepast") so the
+    /// reason a file did nothing is never silent.
+    /// </summary>
+    public IReadOnlyList<string> Opmerkingen { get; }
+
     /// <summary>True when the re-import changes nothing (no adds, changes, or disappearances).</summary>
     public bool IsLeeg =>
         Toegevoegd.Count == 0 &&
@@ -66,8 +87,9 @@ public sealed class OpstapHerimportDiff
         Verdwenen.Count == 0 &&
         VerdwenenMaarGekoppeld.Count == 0;
 
-    /// <summary>True when something needs human review: a change, or a goal that disappeared.</summary>
+    /// <summary>True when something needs human review: a skip notice, a change, or a disappearance.</summary>
     public bool VereistReview =>
+        Overgeslagen ||
         Gewijzigd.Count > 0 ||
         Verdwenen.Count > 0 ||
         VerdwenenMaarGekoppeld.Count > 0;
