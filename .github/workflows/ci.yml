@@ -1,0 +1,83 @@
+name: CI
+
+# Quality gates for the Definition of Done (CONSTITUTION.md Art. X).
+# Backend: dotnet build + test + format --verify-no-changes.
+# Frontend: pnpm lint + test + build.
+# CI only — no deploy/release/CD here.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save runner minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Honour the SDK pinned in repo-root global.json (10.0.201) — do not hardcode here.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore backend/Jaarplanner.sln
+
+      - name: Build
+        run: dotnet build backend/Jaarplanner.sln --no-restore -c Release
+
+      # TODO E1: the current tests run without Postgres/Azure. When real DB
+      # integration tests arrive in E1, add a Postgres service container here.
+      - name: Test
+        run: dotnet test backend/Jaarplanner.sln --no-build -c Release
+
+      # Blocking format gate: a non-zero exit (any unformatted file) fails the job.
+      - name: Format (verify only)
+        run: dotnet format backend/Jaarplanner.sln --verify-no-changes
+
+  frontend:
+    name: Frontend gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Honour the Node line pinned in repo-root .nvmrc (24) — do not hardcode here.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # Corepack resolves pnpm to the version pinned in frontend/package.json
+      # (packageManager: pnpm@11.9.0). A bare `pnpm` is not guaranteed on PATH.
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: corepack pnpm install --frozen-lockfile
+
+      # Blocking lint gate: a non-zero exit (any lint/type error) fails the job.
+      - name: Lint
+        run: corepack pnpm lint
+
+      - name: Test
+        run: corepack pnpm test
+
+      - name: Build
+        run: corepack pnpm build
