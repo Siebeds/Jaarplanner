@@ -23,6 +23,24 @@ public interface ISchoolcontentBeheerService
 
     Task<ThemaWeergave> HaalThemaOpAsync(Guid themaId, CancellationToken cancellationToken = default);
 
+    // --- Gedeelde thema-bibliotheek + per-klas afleiding (E1-11, FR-3.3 resolved per-level, Art. IX.2). ---
+
+    /// <summary>
+    /// Lists the <b>shared thema-bibliotheek</b>: every school-wide thema with its themadoelen +
+    /// kernwoordenschat/rijke woordenschat, <b>without any class's subthema's</b> (no cross-class bleed,
+    /// Art. IX.2 / Gap A.5). This is the directie/team view of the shared library; the school-wide content
+    /// is edited only via the thema-level operations above, never as a side effect of class-level work.
+    /// </summary>
+    Task<IReadOnlyList<ThemaBibliotheekItem>> HaalThemaBibliotheekOpAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a thema <b>as derived for a given klas</b>: the shared thema (its school-wide naam/duur/themadoelen/
+    /// woordenschat) plus <b>only that klas's</b> subthema's/subdoelen/activiteiten — class A's derivations never
+    /// appear under class B even though both derive from the same shared thema (Art. IX.2). Coherent with
+    /// <see cref="HaalThemaBibliotheekOpAsync"/>: same school-wide layer, class-filtered derivations.
+    /// </summary>
+    Task<ThemaWeergave> HaalThemaVoorKlasAsync(Guid themaId, Guid klasId, CancellationToken cancellationToken = default);
+
     Task<ThemaWeergave> WijzigThemaAsync(Guid themaId, ThemaWijziging wijziging, CancellationToken cancellationToken = default);
 
     Task VerwijderThemaAsync(Guid themaId, CancellationToken cancellationToken = default);

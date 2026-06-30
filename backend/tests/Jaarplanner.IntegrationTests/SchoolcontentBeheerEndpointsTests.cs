@@ -125,6 +125,49 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
 
+    [Fact]
+    public async Task Bibliotheek_returns_school_wide_thema_without_subthemas_and_voor_klas_filters_by_class()
+    {
+        // E1-11 (FR-3.3 resolved per-level, Art. IX.2): the shared thema-bibliotheek exposes the school-wide
+        // layer only; the per-klas view derives only that class's subthema's — no cross-class bleed.
+        var client = _factory.CreateClient();
+        var klasId = _factory.KlasId;
+
+        var themaResp = await client.PostAsJsonAsync("/api/themas", new
+        {
+            naam = "Bibliotheek-Water",
+            duurWeken = 5,
+            kernwoordenschat = new[] { "plas" },
+        });
+        var thema = await themaResp.Content.ReadFromJsonAsync<ThemaDto>();
+        await client.PostAsJsonAsync($"/api/themas/{thema!.Id}/subthemas", new
+        {
+            naam = "Regen",
+            duurWeken = 2,
+            klasId,
+            leeftijd = "K3",
+        });
+
+        // Bibliotheek view: school-wide attributes, and structurally no subthema's field at all.
+        var bibliotheek = await client.GetFromJsonAsync<IReadOnlyList<BibliotheekItemDto>>("/api/themas/bibliotheek");
+        Assert.NotNull(bibliotheek);
+        var item = Assert.Single(bibliotheek!, b => b.Naam == "Bibliotheek-Water");
+        Assert.Equal(5, item.DuurWeken);
+        Assert.Equal(new[] { "plas" }, item.Kernwoordenschat);
+        Assert.Equal(1, item.AantalAfgeleideKlassen);
+
+        // Per-klas derivation: the shared thema + this klas's single subthema.
+        var voorKlas = await client.GetFromJsonAsync<ThemaDto>($"/api/themas/{thema.Id}/voor-klas/{klasId}");
+        Assert.NotNull(voorKlas);
+        Assert.Equal("Bibliotheek-Water", voorKlas!.Naam);
+        var sub = Assert.Single(voorKlas.Subthemas);
+        Assert.Equal(klasId, sub.KlasId);
+
+        // A different (random) klas yields the shared thema with no derivations — and 404 if the klas is unknown.
+        var onbekend = await client.GetAsync($"/api/themas/{thema.Id}/voor-klas/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.BadRequest, onbekend.StatusCode);
+    }
+
     // --- Response DTOs (mirror the Application read views; only the fields asserted here). ---
 
     private sealed record ThemaDto(Guid Id, string Naam, int DuurWeken, IReadOnlyList<ThemadoelDto> Themadoelen, IReadOnlyList<SubthemaDto> Subthemas);
@@ -138,6 +181,8 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
     private sealed record ActiviteitDto(Guid Id, string Naam, IReadOnlyList<KoppelingDto> Doelkoppelingen);
 
     private sealed record KoppelingDto(Guid Id, string LeerplandoelCode, string Status);
+
+    private sealed record BibliotheekItemDto(Guid Id, string Naam, int DuurWeken, IReadOnlyList<string> Kernwoordenschat, int AantalAfgeleideKlassen);
 
     /// <summary>
     /// WebApplicationFactory that swaps the Npgsql <see cref="AppDbContext"/> for the in-memory provider

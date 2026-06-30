@@ -29,6 +29,22 @@ public sealed class ThemasController : ControllerBase
     public async Task<ActionResult<ThemaWeergave>> Detail(Guid themaId, CancellationToken cancellationToken) =>
         Ok(await _service.HaalThemaOpAsync(themaId, cancellationToken));
 
+    /// <summary>
+    /// The shared thema-bibliotheek (E1-11, FR-3.3 resolved per-level, Art. IX.2): school-wide themadoelen +
+    /// woordenschat per thema, without any class's subthema's.
+    /// </summary>
+    [HttpGet("bibliotheek")]
+    public async Task<ActionResult<IReadOnlyList<ThemaBibliotheekItem>>> Bibliotheek(CancellationToken cancellationToken) =>
+        Ok(await _service.HaalThemaBibliotheekOpAsync(cancellationToken));
+
+    /// <summary>
+    /// A thema as derived for a given klas (E1-11, Art. IX.2): the shared thema plus only that klas's
+    /// subthema's/subdoelen/activiteiten — no other class's derivations.
+    /// </summary>
+    [HttpGet("{themaId:guid}/voor-klas/{klasId:guid}")]
+    public async Task<ActionResult<ThemaWeergave>> VoorKlas(Guid themaId, Guid klasId, CancellationToken cancellationToken) =>
+        Ok(await _service.HaalThemaVoorKlasAsync(themaId, klasId, cancellationToken));
+
     [HttpPost]
     public async Task<ActionResult<ThemaWeergave>> Maak([FromBody] ThemaCreatie creatie, CancellationToken cancellationToken)
     {
