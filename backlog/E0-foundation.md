@@ -34,7 +34,7 @@
   .NET user-secrets locally; Azure Key Vault binding stubbed for cloud; **AI keys server-side only**.
   *Done when:* no secret is in the repo; a documented `dotnet user-secrets` flow exists. Ref: Art. VI.4.
 
-- [ ] **E0-08 — CI pipeline & quality gates**
+- [x] **E0-08 — CI pipeline & quality gates**
   CI runs `dotnet build` + `dotnet test` + `dotnet format --verify-no-changes` and `pnpm lint` + `pnpm test` + `pnpm build`.
   *Done when:* CI is green on an empty skeleton and blocks on format/lint failures. Ref: Art. X.
 
