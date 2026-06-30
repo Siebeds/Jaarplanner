@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Curriculum;
+using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -37,6 +38,10 @@ public static class DependencyInjection
 
         // Bidirectional concordance read access (Art. V — enables minimumdoel-level coverage; E5).
         services.AddScoped<IConcordantieQuery, ConcordantieQuery>();
+
+        // The single sanctioned writer of official Op.stap reference data: non-destructive,
+        // idempotent (re-)import with a reviewable diff (E1-05, Art. III.4 / IV.2 / FR-2.5).
+        services.AddScoped<IOpstapImportService, OpstapImportService>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(

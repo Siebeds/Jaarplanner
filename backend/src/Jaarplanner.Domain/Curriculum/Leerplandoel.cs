@@ -69,6 +69,7 @@ public sealed class Leerplandoel
         Toelichting = Optional(toelichting);
         Woordenschat = Optional(woordenschat);
         MinimumdoelRef = Optional(minimumdoelRef);
+        NietMeerInOpstap = false;
     }
 
     /// <summary>The unique leerplandoel code — stable identity (Art. III.5).</summary>
@@ -106,6 +107,19 @@ public sealed class Leerplandoel
 
     /// <summary>Optional concordance key to a <see cref="Minimumdoel"/> (Excel D); null when not concorded.</summary>
     public string? MinimumdoelRef { get; private set; }
+
+    /// <summary>
+    /// Import-managed review marker: <c>true</c> when this leerplandoel was present in an earlier
+    /// Op.stap import but is <b>absent</b> from the most recent re-import of its discipline, yet is
+    /// still referenced by teacher content (a <c>DoelKoppeling</c>) so it cannot be hard-deleted
+    /// (the FK is <c>Restrict</c>, Art. III.4 / IV.2). It is <b>not</b> decreed Op.stap content —
+    /// it is the tool's own non-destructive flag telling a teacher/directie to review a goal that
+    /// has disappeared from the curriculum while still in use. The only writer is the sanctioned
+    /// re-import path (the import service in Infrastructure); normal app code never sets it, which
+    /// keeps the official content immutable (Art. III.1). A later import that re-introduces the
+    /// code clears the flag again.
+    /// </summary>
+    public bool NietMeerInOpstap { get; private set; }
 
     private static string Require(string value, string paramName)
     {

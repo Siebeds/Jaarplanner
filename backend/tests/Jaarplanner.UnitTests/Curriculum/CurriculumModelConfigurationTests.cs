@@ -63,6 +63,19 @@ public class CurriculumModelConfigurationTests
     }
 
     [Fact]
+    public void Leerplandoel_niet_meer_in_opstap_is_a_required_flag_defaulting_false()
+    {
+        // The E1-05 import-managed review flag (Art. III.4 / IV.2): non-null, defaults false so
+        // existing/new reference data is "in Op.stap" until a re-import says otherwise.
+        var entity = BuildModel().FindEntityType(typeof(Leerplandoel))!;
+        var flag = entity.FindProperty(nameof(Leerplandoel.NietMeerInOpstap))!;
+
+        Assert.False(flag.IsNullable);
+        Assert.Equal("niet_meer_in_opstap", flag.GetColumnName());
+        Assert.Equal(false, flag.GetDefaultValue());
+    }
+
+    [Fact]
     public void Leerplandoel_has_a_composite_domein_subdomein_grouping_index()
     {
         var entity = BuildModel().FindEntityType(typeof(Leerplandoel))!;
