@@ -76,6 +76,50 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         return MapThema(thema);
     }
 
+    // --- Gedeelde thema-bibliotheek + per-klas afleiding (E1-11, FR-3.3 resolved per-level, Art. IX.2). ---
+
+    public async Task<IReadOnlyList<ThemaBibliotheekItem>> HaalThemaBibliotheekOpAsync(CancellationToken cancellationToken = default)
+    {
+        // The bibliotheek view is the school-wide layer ONLY: themadoelen + woordenschat, no subthema's.
+        // We deliberately do NOT Include the subthema's so a class's per-class derivations can never leak
+        // into the shared-library view (no cross-class bleed, Art. IX.2 / Gap A.5). AantalAfgeleideKlassen
+        // is a distinct-class count over the subthema's, computed in SQL without materialising their content.
+        var themas = await _context.Themas
+            .AsNoTracking()
+            .Include(t => t.Themadoelen)
+            .OrderBy(t => t.Naam)
+            .Select(t => new
+            {
+                Thema = t,
+                AantalAfgeleideKlassen = t.Subthemas.Select(s => s.KlasId).Distinct().Count(),
+            })
+            .ToListAsync(cancellationToken);
+
+        return themas.Select(x => MapBibliotheekItem(x.Thema, x.AantalAfgeleideKlassen)).ToList();
+    }
+
+    public async Task<ThemaWeergave> HaalThemaVoorKlasAsync(Guid themaId, Guid klasId, CancellationToken cancellationToken = default)
+    {
+        await VereisKlasAsync(klasId, cancellationToken);
+
+        // The shared thema (school-wide layer) plus ONLY this klas's subthema-derivations and their
+        // subtree. Filtering the subthema Include by KlasId guarantees class A's subthema's never appear
+        // under class B even though both derive from the same shared thema (Art. IX.2). Read-only graph.
+        var thema = await _context.Themas
+            .AsNoTracking()
+            .Include(t => t.Themadoelen)
+            .Include(t => t.Subthemas.Where(s => s.KlasId == klasId)).ThenInclude(s => s.Subdoelen)
+            .Include(t => t.Subthemas.Where(s => s.KlasId == klasId)).ThenInclude(s => s.Activiteiten)
+            .FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken);
+
+        if (thema is null)
+        {
+            throw new SchoolcontentNietGevondenFout($"Thema {themaId} bestaat niet.");
+        }
+
+        return MapThema(thema);
+    }
+
     public async Task<ThemaWeergave> WijzigThemaAsync(Guid themaId, ThemaWijziging wijziging, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(wijziging);
@@ -395,6 +439,17 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         thema.HeeftVoldoendeThemadoelen,
         thema.Themadoelen.Select(MapThemadoel).ToList(),
         thema.Subthemas.Select(MapSubthema).ToList());
+
+    private static ThemaBibliotheekItem MapBibliotheekItem(Thema thema, int aantalAfgeleideKlassen) => new(
+        thema.Id,
+        thema.Naam,
+        thema.DuurWeken,
+        thema.Invalshoeken,
+        thema.Kernwoordenschat.ToList(),
+        thema.RijkeWoordenschat.ToList(),
+        thema.HeeftVoldoendeThemadoelen,
+        thema.Themadoelen.Select(MapThemadoel).ToList(),
+        aantalAfgeleideKlassen);
 
     private static ThemadoelWeergave MapThemadoel(Themadoel themadoel) =>
         new(themadoel.Id, MapKoppeling(themadoel.Koppeling));

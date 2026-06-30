@@ -103,3 +103,22 @@ public sealed record ThemaWeergave(
     bool HeeftVoldoendeThemadoelen,
     IReadOnlyList<ThemadoelWeergave> Themadoelen,
     IReadOnlyList<SubthemaWeergave> Subthemas);
+
+/// <summary>
+/// Read view of a single entry in the <b>shared thema-bibliotheek</b> (E1-11, FR-3.3 resolved per-level,
+/// Art. IX.2, Gap A.5). It exposes <b>only</b> the school-wide layer of a thema — naam, duur, invalshoeken,
+/// the two-tier woordenschat and the 2–3 themadoelen — and <b>deliberately omits all subthema's</b>: those
+/// are class/age-scoped derivations and must never leak into the school-wide library view (no cross-class
+/// bleed). <see cref="AantalAfgeleideKlassen"/> is a derived count (how many classes have derived a subthema
+/// from this thema) so the directie can see uptake without exposing any class's content.
+/// </summary>
+public sealed record ThemaBibliotheekItem(
+    Guid Id,
+    string Naam,
+    int DuurWeken,
+    string? Invalshoeken,
+    IReadOnlyList<string> Kernwoordenschat,
+    IReadOnlyList<string> RijkeWoordenschat,
+    bool HeeftVoldoendeThemadoelen,
+    IReadOnlyList<ThemadoelWeergave> Themadoelen,
+    int AantalAfgeleideKlassen);
