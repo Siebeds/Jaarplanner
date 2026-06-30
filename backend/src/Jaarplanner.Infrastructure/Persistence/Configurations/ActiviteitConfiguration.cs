@@ -1,0 +1,42 @@
+using Jaarplanner.Domain.Schoolcontent;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
+namespace Jaarplanner.Infrastructure.Persistence.Configurations;
+
+/// <summary>
+/// EF Core mapping for <see cref="Activiteit"/> — class/age-scoped (Art. IX.2), inheriting the
+/// class/age scope from its owning subthema. <see cref="Activiteit.ActiviteitType"/> is persisted
+/// by name so adding an enum member never renumbers existing rows. It owns a collection of
+/// <see cref="DoelKoppeling"/> links (one or more leerdoelen; Art. IX.2).
+/// </summary>
+public sealed class ActiviteitConfiguration : IEntityTypeConfiguration<Activiteit>
+{
+    public void Configure(EntityTypeBuilder<Activiteit> builder)
+    {
+        builder.ToTable("activiteiten");
+
+        builder.HasKey(a => a.Id);
+        builder.Property(a => a.SubthemaId).IsRequired();
+        builder.Property(a => a.Naam).HasMaxLength(256).IsRequired();
+
+        var typeConverter = new ValueConverter<ActiviteitType, string>(
+            t => t.ToString(),
+            t => Enum.Parse<ActiviteitType>(t));
+        builder.Property(a => a.ActiviteitType)
+            .HasConversion(typeConverter)
+            .HasColumnName("activiteit_type")
+            .HasMaxLength(32)
+            .IsRequired();
+
+        builder.Property(a => a.Hoek).HasMaxLength(128);
+        builder.Property(a => a.VerwachteUitkomsten);
+
+        // Zero or more goal links — owned collection in its own table.
+        builder.OwnsMany(a => a.Doelkoppelingen, DoelKoppelingMapping.Configure);
+        builder.Navigation(a => a.Doelkoppelingen)
+            .HasField("_doelkoppelingen")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
