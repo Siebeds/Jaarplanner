@@ -5,6 +5,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Excel parsing for the Op.stap import (Art. VIII — ClosedXML/MIT; EPPlus is forbidden). -->
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <!-- EF Core + Npgsql provider (transitively brings Microsoft.EntityFrameworkCore 10). -->
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
     <!-- DbContext readiness health check (AddDbContextCheck) — first-party, no Xabaril dependency. -->
