@@ -50,7 +50,7 @@
 
 ### FR-3 — Beheer
 
-- [ ] **E1-10 — CRUD for thema/subthema/activiteit + goal links**
+- [x] **E1-10 — CRUD for thema/subthema/activiteit + goal links**
   Add/edit/delete at each level; link an activiteit/subthema to one or more leerdoelen; manage 2–3 themadoelen per thema.
   *Done when:* CRUD respects level scoping; goal links persist with status. Ref: FR-3.1/3.2.
 
