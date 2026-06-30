@@ -12,7 +12,7 @@
   `Discipline` (string `nummer`, optional `parentDiscipline`, 9.x split), `Leerplandoel` (code unique, doelsoort enum, jaarFase, domein, subdomein, **cluster nullable**, tekst, voorbeelden?, toelichting?, woordenschat?, `minimumdoelRef`), `Minimumdoel` (ref, leeftijd K-/4-/6-, nr, omschrijving). Grouping key `(domein, subdomein)`; identity = `code`.
   *Done when:* migrations create the tables; entities are immutable from app code paths (Art. III.1). Ref: Art. IX.1, VII.0.
 
-- [ ] **E1-02 — School-content entities (autonomous, level-scoped)**
+- [x] **E1-02 — School-content entities (autonomous, level-scoped)**
   `Thema` (school-scoped: naam, invalshoeken?, `duurWeken`, `kernwoordenschat[]`, `rijkeWoordenschat[]`), `Themadoel` (school-scoped, 2–3, links to leerplandoel/minimumdoel), `Subthema` (class/age-scoped: probleemstelling?, onderzoeksvraag?, `duurWeken`), `Subdoel` (class/age-scoped, per `(subthema × leeftijd)`), `Activiteit` (class/age-scoped: `activiteitType` enum, hoek?, verwachteUitkomsten?), `DoelKoppeling` (status enum + `aiMotivatie`).
   *Done when:* migrations created; scoping enforced (Thema/Themadoel/kernwoordenschat school-wide; Subthema/Subdoel/Activiteit per class & age). Ref: Art. IX.2.
 
