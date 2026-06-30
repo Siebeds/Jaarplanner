@@ -1,0 +1,39 @@
+# Local development services for Jaarplanner.
+# Currently just PostgreSQL (Art. VIII: PostgreSQL local via Docker).
+#
+# Usage:
+#   1. Copy .env.example to .env and fill in a local-only password.
+#   2. docker compose up -d db
+#   3. docker compose ps            # wait for the db service to report "healthy"
+#
+# Secrets discipline (Art. VI.4): no credentials are baked into this file.
+# All sensitive values come from the gitignored .env (see .env.example).
+# The backend (E0-04/E0-07) reads its connection string from .NET user-secrets,
+# not from this file — these env vars only configure the local container itself.
+
+services:
+  db:
+    image: postgres:17.5
+    container_name: jaarplanner-db
+    restart: unless-stopped
+    # Host port is configurable; defaults to 5433 to avoid clashing with a
+    # local Postgres install on the default 5432. Override via DB_HOST_PORT.
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jaarplanner}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - jaarplanner-db-data:/var/lib/postgresql/data
+    healthcheck:
+      # Readiness probe: confirms the server accepts connections for our DB+user.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  jaarplanner-db-data:
+    name: jaarplanner-db-data

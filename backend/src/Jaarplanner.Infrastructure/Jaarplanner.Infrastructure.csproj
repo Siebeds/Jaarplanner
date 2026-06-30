@@ -1,7 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Jaarplanner.Application\Jaarplanner.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- EF Core + Npgsql provider (transitively brings Microsoft.EntityFrameworkCore 10). -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <!-- DbContext readiness health check (AddDbContextCheck) — first-party, no Xabaril dependency. -->
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.9" />
+    <!-- Configuration + DI abstractions for the AddInfrastructure extension method. -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
   </ItemGroup>
 
   <PropertyGroup>
