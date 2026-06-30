@@ -1,3 +1,4 @@
+using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.OpstapImport;
@@ -18,6 +19,14 @@ public sealed class OpstapImportServiceTests : IDisposable
 {
     private const string Discipline = "2";
 
+    /// <summary>
+    /// A selection that admits every discipline, so these E1-05 tests exercise the import behaviour
+    /// itself (the E1-06 seam is tested separately in <see cref="OpstapImportDisciplineSelectieTests"/>).
+    /// </summary>
+    private static readonly IDisciplineSelectie AlleInScope =
+        new GeconfigureerdeDisciplineSelectie(
+            new DisciplineSelectieOptions { Modus = DisciplineSelectieModus.Alle });
+
     private readonly AppDbContext _context;
     private readonly OpstapImportService _service;
 
@@ -27,7 +36,7 @@ public sealed class OpstapImportServiceTests : IDisposable
             .UseInMemoryDatabase($"import_{Guid.NewGuid():N}")
             .Options;
         _context = new AppDbContext(options);
-        _service = new OpstapImportService(_context);
+        _service = new OpstapImportService(_context, AlleInScope);
     }
 
     private static Leerplandoel Doel(
@@ -131,7 +140,7 @@ public sealed class OpstapImportServiceTests : IDisposable
     public async Task Disappeared_unreferenced_leerplandoel_is_purged_only_with_the_opt_in_policy()
     {
         // Explicit directie opt-in: the purge seam removes truly unused, disappeared goals.
-        var purgeService = new OpstapImportService(_context, verwijderVerweesdeNietGekoppelde: true);
+        var purgeService = new OpstapImportService(_context, AlleInScope, verwijderVerweesdeNietGekoppelde: true);
         await purgeService.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
 
         var result = await purgeService.ImporteerAsync(Parse(Doel("LP-1")), toepassen: true);

@@ -40,6 +40,15 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// as a mass disappearance, nothing is flagged or deleted, and the diff carries a notice. Absence of
 /// input is not a curriculum change (Art. III.4).
 /// </para>
+/// <para>
+/// <b>Discipline-selection seam (E1-06, Art. XIV "Disciplines first").</b> Before touching any data
+/// the service asks the injected <see cref="IDisciplineSelectie"/> whether the parse result's
+/// discipline is in scope for import. The answer is <b>data-driven</b> (configuration/data), never a
+/// discipline list compiled into this logic: "all" and "a starter selection" are two configured
+/// outcomes of the same code. An out-of-scope discipline is <b>skipped</b> (no rows accepted,
+/// nothing flagged or deleted) with a review notice — exactly as the empty-file guard behaves. The
+/// directie's actual choice is left to runtime config (Art. XIV); this path only consults it.
+/// </para>
 /// </summary>
 public sealed class OpstapImportService : IOpstapImportService
 {
@@ -55,20 +64,32 @@ public sealed class OpstapImportService : IOpstapImportService
 
     private readonly AppDbContext _context;
     private readonly bool _verwijderVerweesdeNietGekoppelde;
+    private readonly IDisciplineSelectie _disciplineSelectie;
 
-    public OpstapImportService(AppDbContext context)
-        : this(context, VerwijderVerweesdeNietGekoppeldeStandaard)
+    /// <summary>
+    /// The DI constructor (E1-06): the discipline-selection seam is injected so the in-scope set is
+    /// resolved from runtime configuration/data (Art. XIV), never compiled in. The disappeared-goal
+    /// purge policy keeps its conservative default.
+    /// </summary>
+    public OpstapImportService(AppDbContext context, IDisciplineSelectie disciplineSelectie)
+        : this(context, disciplineSelectie, VerwijderVerweesdeNietGekoppeldeStandaard)
     {
     }
 
     /// <summary>
     /// Constructs the import service with an explicit disappeared-unreferenced-goal purge policy. The
     /// DI default uses <see cref="VerwijderVerweesdeNietGekoppeldeStandaard"/> (false — flag-and-keep);
-    /// the opt-in directie purge passes <c>true</c>.
+    /// the opt-in directie purge passes <c>true</c>. The discipline-selection seam is injected
+    /// (Art. XIV); use this overload to combine an explicit selection with an explicit purge policy.
     /// </summary>
-    public OpstapImportService(AppDbContext context, bool verwijderVerweesdeNietGekoppelde)
+    public OpstapImportService(
+        AppDbContext context,
+        IDisciplineSelectie disciplineSelectie,
+        bool verwijderVerweesdeNietGekoppelde)
     {
         _context = context;
+        _disciplineSelectie = disciplineSelectie
+            ?? throw new ArgumentNullException(nameof(disciplineSelectie));
         _verwijderVerweesdeNietGekoppelde = verwijderVerweesdeNietGekoppelde;
     }
 
@@ -81,6 +102,31 @@ public sealed class OpstapImportService : IOpstapImportService
         ArgumentNullException.ThrowIfNull(parseResultaat);
 
         var disciplineNummer = parseResultaat.DisciplineNummer;
+
+        // Discipline-selection seam (E1-06, Art. XIV). The in-scope set is resolved from runtime
+        // configuration/data — no discipline list is compiled in here. An out-of-scope discipline is
+        // skipped before any data is touched: nothing is inserted, flagged, or deleted, and the diff
+        // carries a review notice. This mirrors the empty-file guard: a discipline the directie has
+        // not (yet) opted to import is not a curriculum change.
+        if (!_disciplineSelectie.IsInScope(disciplineNummer))
+        {
+            var buitenScope = new OpstapHerimportDiff(
+                disciplineNummer,
+                toegevoegd: [],
+                gewijzigd: [],
+                ongewijzigd: [],
+                verdwenen: [],
+                verdwenenMaarGekoppeld: [],
+                overgeslagen: true,
+                opmerkingen:
+                [
+                    $"Discipline {disciplineNummer} valt buiten de geconfigureerde importselectie " +
+                    $"({_disciplineSelectie.Omschrijving}) — niets ingelezen of gewijzigd. " +
+                    "Pas de configuratie 'Opstap:DisciplineSelectie' aan om deze discipline op te nemen.",
+                ]);
+
+            return new OpstapImportResultaat(buitenScope, toegepast: false);
+        }
 
         // The parsed (incoming) goals, keyed by their stable identity. Last-wins on a duplicate code
         // within a file (the parser already reports row problems; here identity must stay unique).

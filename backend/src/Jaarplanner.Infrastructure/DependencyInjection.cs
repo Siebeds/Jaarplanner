@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Curriculum;
+using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
@@ -42,8 +43,19 @@ public static class DependencyInjection
         // Bidirectional concordance read access (Art. V — enables minimumdoel-level coverage; E5).
         services.AddScoped<IConcordantieQuery, ConcordantieQuery>();
 
+        // Discipline-selection seam (E1-06, Art. XIV "Disciplines first"): which disciplines the
+        // Op.stap import path may process is DATA-DRIVEN, never compiled in. The in-scope set is bound
+        // from the `Opstap:DisciplineSelectie` configuration section (appsettings / env / user-secrets
+        // / Key Vault), so the directie can switch between "all" and a starter selection WITHOUT a code
+        // change. Absent config resolves to the documented placeholder default (Modus = Alle) pending
+        // the Art. XIV directie decision — itself overridable purely by adding the config section.
+        services.Configure<DisciplineSelectieOptions>(
+            configuration.GetSection(DisciplineSelectieOptions.SectionName));
+        services.AddSingleton<IDisciplineSelectie, GeconfigureerdeDisciplineSelectie>();
+
         // The single sanctioned writer of official Op.stap reference data: non-destructive,
-        // idempotent (re-)import with a reviewable diff (E1-05, Art. III.4 / IV.2 / FR-2.5).
+        // idempotent (re-)import with a reviewable diff (E1-05, Art. III.4 / IV.2 / FR-2.5). It
+        // consults the discipline-selection seam (E1-06) to decide which disciplines it processes.
         services.AddScoped<IOpstapImportService, OpstapImportService>();
 
         // The school-content (thema/subthema/activiteit) Excel parser/validator: validates

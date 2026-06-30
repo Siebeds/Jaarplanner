@@ -14,6 +14,9 @@
     <!-- Configuration + DI abstractions for the AddInfrastructure extension method. -->
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+    <!-- Options-pattern config binding (services.Configure<T>(section)) for the E1-06 data-driven
+         discipline-selection seam (Art. XIV); also brings IOptions<T>. -->
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
   </ItemGroup>
 
   <PropertyGroup>
