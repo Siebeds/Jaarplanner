@@ -1,3 +1,69 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Design tokens (E0-09, ADR-0017, Art. XII) as CSS variables — the shadcn/ui pattern.
+ * Defined once here, referenced by the Tailwind `theme.extend.colors` tokens in
+ * tailwind.config.js, and reused everywhere. Never inline a hex value in a component.
+ *
+ * Values are HSL channels (without the `hsl()` wrapper) so Tailwind can compose them
+ * with opacity modifiers, e.g. `bg-doelsoort-md/10`.
+ *
+ * Three semantic groups, all paired in the UI with a label/icon (colour is never the
+ * sole signal — WCAG 2.2 AA, ADR-0017 §4):
+ *   1. doelsoort        — Op.stap goal types (Art. XII colour conventions)
+ *   2. suggestiestatus  — DoelKoppeling AI-suggestion lifecycle (Art. IV)
+ *   3. dekking          — coverage state of a (minimum)doel (FR-9)
+ */
+@layer base {
+  :root {
+    /* doelsoort — MD blue, G neutral, + green, P/S pink, A yellow (Art. XII) */
+    --doelsoort-md: 217 91% 40%; /* minimumdoel — blue (inspection-level) */
+    --doelsoort-md-foreground: 0 0% 100%;
+    --doelsoort-gemeenschappelijk: 215 19% 35%; /* G — neutral/grey */
+    --doelsoort-gemeenschappelijk-foreground: 0 0% 100%;
+    --doelsoort-verdieping: 142 72% 29%; /* + — green */
+    --doelsoort-verdieping-foreground: 0 0% 100%;
+    --doelsoort-precurriculum: 330 81% 42%; /* P — pink (illustratief) */
+    --doelsoort-precurriculum-foreground: 0 0% 100%;
+    --doelsoort-specifiek: 330 70% 45%; /* S — pink (illustratief) */
+    --doelsoort-specifiek-foreground: 0 0% 100%;
+    --doelsoort-anderstalige: 36 100% 30%; /* A — yellow/amber (anderstalige nieuwkomers) */
+    --doelsoort-anderstalige-foreground: 0 0% 100%;
+
+    /* suggestiestatus — DoelKoppeling lifecycle (Art. IV, advisory AI) */
+    --suggestie-voorgesteld: 217 91% 40%; /* provisional — blue */
+    --suggestie-voorgesteld-foreground: 0 0% 100%;
+    --suggestie-aanvaard: 142 72% 29%; /* confirmed — green */
+    --suggestie-aanvaard-foreground: 0 0% 100%;
+    --suggestie-geweigerd: 0 72% 42%; /* rejected — red */
+    --suggestie-geweigerd-foreground: 0 0% 100%;
+    --suggestie-manueel: 262 52% 47%; /* teacher-made — purple marker */
+    --suggestie-manueel-foreground: 0 0% 100%;
+
+    /* dekking — coverage state (FR-9). BINARY for the MVP (Art. IX.3): only
+     * gedekt / niet-gedekt. A graded "deels" state is an Art. XIV open decision
+     * (herhaling/opbouw) and is deliberately NOT pre-defined here. */
+    --dekking-gedekt: 142 72% 29%; /* covered — green */
+    --dekking-gedekt-foreground: 0 0% 100%;
+    --dekking-niet-gedekt: 0 72% 42%; /* not covered — red */
+    --dekking-niet-gedekt-foreground: 0 0% 100%;
+
+    /* base UI tokens (shadcn baseline) for the copied-in primitives */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --border: 214 32% 84%;
+    --input: 214 32% 84%;
+    --ring: 222 47% 11%;
+    --radius: 0.5rem;
+  }
+}

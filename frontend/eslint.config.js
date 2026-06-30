@@ -35,7 +35,7 @@ const noHardcodedTextAttribute = {
 };
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules", "coverage"] },
+  { ignores: ["dist", "node_modules", "coverage", "storybook-static"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -61,9 +61,10 @@ export default tseslint.config(
     },
   },
   {
-    // Tests assert against rendered copy and reference nl.json values directly;
-    // they are not shipped UI, so the JSX-text guard does not apply to them.
-    files: ["**/*.test.{ts,tsx}", "src/test/**"],
+    // Tests assert against rendered copy and reference nl.json values directly,
+    // and Storybook stories (E0-09) use illustrative demo copy. Neither is shipped
+    // UI, so the JSX-text / a11y-attribute i18n guard does not apply to them.
+    files: ["**/*.test.{ts,tsx}", "**/*.stories.{ts,tsx}", "src/test/**"],
     rules: {
       "no-restricted-syntax": "off",
     },
