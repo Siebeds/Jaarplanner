@@ -61,6 +61,28 @@ public sealed class Thema
     /// <summary>The per-class/age subthema's that belong to this thema (Art. IX.2).</summary>
     public IReadOnlyList<Subthema> Subthemas => _subthemas;
 
+    /// <summary>
+    /// Updates the thema's basic attributes (mutable autonomous content, Art. III). Used by the
+    /// school-content import overwrite path (E1-08) and by CRUD; the naam (the match key) is not
+    /// changed here.
+    /// </summary>
+    public void WerkBasisGegevensBij(int duurWeken, string? invalshoeken)
+    {
+        DuurWeken = RequirePositive(duurWeken, nameof(duurWeken));
+        Invalshoeken = Optional(invalshoeken);
+    }
+
+    /// <summary>
+    /// Removes a themadoel from this thema. Used by the import overwrite reconciliation (E1-08) to drop
+    /// an AI-only <c>voorgesteld</c> link the file no longer carries, or — only on explicit teacher
+    /// confirmation — a discarded human decision (Art. IV.2).
+    /// </summary>
+    public void VerwijderThemadoel(Themadoel themadoel)
+    {
+        ArgumentNullException.ThrowIfNull(themadoel);
+        _themadoelen.Remove(themadoel);
+    }
+
     /// <summary>Replaces the school-wide kernwoordenschat list.</summary>
     public void StelKernwoordenschatIn(IEnumerable<string> woorden) =>
         Replace(_kernwoordenschat, woorden);

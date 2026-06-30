@@ -59,6 +59,19 @@ public sealed class Activiteit
         _doelkoppelingen.Add(koppeling);
     }
 
+    /// <summary>
+    /// Updates the activiteit's attributes (mutable autonomous content, Art. III). Used by the
+    /// school-content import overwrite path (E1-08); the naam (the match key) and the goal links are
+    /// not changed here — links are managed separately via AI matching / CRUD, so an overwrite never
+    /// touches a teacher's link decision (Art. IV.2).
+    /// </summary>
+    public void WerkGegevensBij(ActiviteitType activiteitType, string? hoek, string? verwachteUitkomsten)
+    {
+        ActiviteitType = Validate(activiteitType);
+        Hoek = Optional(hoek);
+        VerwachteUitkomsten = Optional(verwachteUitkomsten);
+    }
+
     private static ActiviteitType Validate(ActiviteitType type) =>
         Enum.IsDefined(type)
             ? type

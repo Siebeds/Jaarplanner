@@ -74,6 +74,25 @@ public sealed class Subthema
     }
 
     /// <summary>
+    /// Updates the subthema's basic attributes (mutable autonomous content, Art. III). Used by the
+    /// school-content import overwrite path (E1-08); the identity fields (naam, klas, leeftijd) are
+    /// the match key and are not changed here.
+    /// </summary>
+    public void WerkBasisGegevensBij(int duurWeken) =>
+        DuurWeken = RequirePositive(duurWeken, nameof(duurWeken));
+
+    /// <summary>
+    /// Removes a subdoel from this subthema. Used by the import overwrite reconciliation (E1-08) to drop
+    /// an AI-only <c>voorgesteld</c> link the file no longer carries, or — only on explicit teacher
+    /// confirmation — a discarded human decision (Art. IV.2).
+    /// </summary>
+    public void VerwijderSubdoel(Subdoel subdoel)
+    {
+        ArgumentNullException.ThrowIfNull(subdoel);
+        _subdoelen.Remove(subdoel);
+    }
+
+    /// <summary>
     /// Adds an age-differentiated subdoel. The <paramref name="leeftijd"/> records the
     /// per-<c>(subthema × leeftijd)</c> differentiation (Art. IX.2).
     /// </summary>

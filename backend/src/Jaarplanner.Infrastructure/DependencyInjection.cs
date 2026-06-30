@@ -46,8 +46,13 @@ public static class DependencyInjection
 
         // The school-content (thema/subthema/activiteit) Excel parser/validator: validates
         // required columns/fields and produces clear per-row diagnostics (E1-07, FR-1.1/1.2). A
-        // pure parser/validator — preview/commit is E1-08 — so it is stateless and singleton-safe.
+        // pure parser/validator (no persistence) so it is stateless and singleton-safe.
         services.AddSingleton<ISchoolcontentParser, ClosedXmlSchoolcontentParser>();
+
+        // The school-content import-commit path: preview/diff + add/update-overwrite re-import, with the
+        // non-destructive guarantee that teacher DoelKoppeling decisions survive an overwrite (E1-08,
+        // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
+        services.AddScoped<ISchoolcontentImportService, SchoolcontentImportService>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(
