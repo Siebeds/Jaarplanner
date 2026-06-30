@@ -73,6 +73,33 @@ public sealed class Thema
     }
 
     /// <summary>
+    /// Renames the thema (CRUD, E1-10). Naam is the import match key, so the import path leaves it
+    /// alone, but an explicit teacher rename through the beheerpagina is allowed (autonomous content,
+    /// Art. III). School-wide scope is unaffected.
+    /// </summary>
+    public void WijzigNaam(string naam) => Naam = Require(naam, nameof(naam));
+
+    /// <summary>
+    /// Removes a subthema (and, via the EF cascade, its subdoelen + activiteiten) from this thema.
+    /// CRUD delete of a class/age-scoped subthema (E1-10) — deleting a subthema never touches the
+    /// school-wide thema attributes (level scoping, Art. IX.2).
+    /// </summary>
+    public void VerwijderSubthema(Subthema subthema)
+    {
+        ArgumentNullException.ThrowIfNull(subthema);
+        _subthemas.Remove(subthema);
+    }
+
+    /// <summary>
+    /// Whether the thema already carries the pedagogically required minimum of 2 themadoelen
+    /// (Art. IX.2: "2–3 overarching goals"). The upper bound (3) is a hard invariant enforced in
+    /// <see cref="VoegThemadoelToe"/>; the lower bound is <b>advisory</b> — a thema under construction
+    /// may temporarily have fewer — so callers surface "nog niet compleet" rather than block, and only
+    /// validate completeness at the appropriate point (E1-10).
+    /// </summary>
+    public bool HeeftVoldoendeThemadoelen => _themadoelen.Count >= MinThemadoelen;
+
+    /// <summary>
     /// Removes a themadoel from this thema. Used by the import overwrite reconciliation (E1-08) to drop
     /// an AI-only <c>voorgesteld</c> link the file no longer carries, or — only on explicit teacher
     /// confirmation — a discarded human decision (Art. IV.2).
@@ -122,6 +149,9 @@ public sealed class Thema
 
     /// <summary>The maximum number of overarching themadoelen per thema (Art. IX.2: 2–3).</summary>
     public const int MaxThemadoelen = 3;
+
+    /// <summary>The pedagogically required minimum number of themadoelen per thema (Art. IX.2: 2–3).</summary>
+    public const int MinThemadoelen = 2;
 
     private static void Replace(List<string> target, IEnumerable<string> source)
     {

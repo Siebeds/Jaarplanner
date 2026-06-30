@@ -191,4 +191,69 @@ public class SchoolContentEntitiesTests
             new[] { "Voorgesteld", "Aanvaard", "Geweigerd", "Manueel" },
             Enum.GetNames<KoppelingStatus>());
     }
+
+    // --- E1-10 CRUD mutators (Art. III autonomous content; level scoping preserved). ---
+
+    [Fact]
+    public void Thema_advises_when_it_has_fewer_than_two_themadoelen()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        Assert.False(thema.HeeftVoldoendeThemadoelen);
+
+        thema.VoegThemadoelToe(Voorstel("A"));
+        Assert.False(thema.HeeftVoldoendeThemadoelen);
+
+        thema.VoegThemadoelToe(Voorstel("B"));
+        Assert.True(thema.HeeftVoldoendeThemadoelen);
+    }
+
+    [Fact]
+    public void Thema_can_be_renamed_and_rejects_a_blank_naam()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        thema.WijzigNaam("Lucht");
+        Assert.Equal("Lucht", thema.Naam);
+        Assert.Throws<ArgumentException>(() => thema.WijzigNaam("  "));
+    }
+
+    [Fact]
+    public void Subthema_rescope_stays_class_and_age_bound()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+
+        var nieuweKlas = Guid.NewGuid();
+        subthema.WijzigScope(nieuweKlas, "K2");
+        Assert.Equal(nieuweKlas, subthema.KlasId);
+        Assert.Equal("K2", subthema.Leeftijd);
+
+        // A subthema can never become school-wide (Art. IX.2).
+        Assert.Throws<ArgumentException>(() => subthema.WijzigScope(Guid.Empty, "K2"));
+        Assert.Throws<ArgumentException>(() => subthema.WijzigScope(nieuweKlas, " "));
+    }
+
+    [Fact]
+    public void Activiteit_link_can_be_removed()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var activiteit = subthema.VoegActiviteitToe("Waterproef", ActiviteitType.Experiment);
+        var koppeling = new DoelKoppeling("WT-001", KoppelingStatus.Manueel);
+        activiteit.VoegDoelkoppelingToe(koppeling);
+        Assert.Single(activiteit.Doelkoppelingen);
+
+        activiteit.VerwijderDoelkoppeling(koppeling);
+        Assert.Empty(activiteit.Doelkoppelingen);
+    }
+
+    [Fact]
+    public void Verwijder_subthema_detaches_it_from_the_school_wide_thema()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        Assert.Single(thema.Subthemas);
+
+        thema.VerwijderSubthema(subthema);
+        Assert.Empty(thema.Subthemas);
+    }
 }
