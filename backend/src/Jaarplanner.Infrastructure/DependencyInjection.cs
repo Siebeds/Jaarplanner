@@ -1,6 +1,9 @@
+using Jaarplanner.Application.Ai;
+using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.SchoolcontentBeheer;
@@ -77,6 +80,18 @@ public static class DependencyInjection
         // Enforces level scoping (Art. IX.2) and persists manual links as `manueel` (Art. IV.2); a
         // sibling of the import service that drives the same domain mutators.
         services.AddScoped<ISchoolcontentBeheerService, SchoolcontentBeheerService>();
+
+        // AI seam (E2-01, Art. IV.6 / VI.4). The matching/plan logic depends on the injectable
+        // IAiClient interface (Application) so it is fakeable with no network in tests; the real
+        // implementation is the Azure AI Foundry client (Infrastructure, Art. VIII). Its key/endpoint
+        // are read from the server-side `AzureAI` config section only (user-secrets / Key Vault) —
+        // the key never reaches the frontend (Art. VI.4).
+        services.Configure<AzureAIOptions>(configuration.GetSection(AzureAIOptions.SectionName));
+        services.AddHttpClient<IAiClient, AzureAiFoundryClient>();
+
+        // The AI goal-matching service seam (FR-4) that E2-02..E2-04 flesh out; it depends only on
+        // IAiClient, so the same registration works against the fake in tests.
+        services.AddScoped<DoelMatchingService>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(
