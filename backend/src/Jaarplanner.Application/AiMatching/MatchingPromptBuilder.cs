@@ -51,7 +51,12 @@ public static class MatchingPromptBuilder
         "- Geef bij elk voorstel een korte motivatie in het Nederlands (\"waarom past dit doel " +
         "hier?\")." + Nl +
         "- Je stelt enkel voor; de leerkracht beslist. Pas niets automatisch toe." + Nl +
-        "- Antwoord met gestructureerde JSON (per voorstel: leerplandoelcode + motivatie).";
+        "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst of uitleg " +
+        "eromheen:" + Nl +
+        "  {\"suggesties\": [{\"code\": \"<leerplandoelcode>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
+        "- Gebruik exact de veldnamen \"suggesties\", \"code\" en \"motivatie\". \"code\" is een " +
+        "leerplandoelcode uit de lijst hierboven; \"motivatie\" is één zin." + Nl +
+        "- Vind je geen enkel passend doel, antwoord dan met een lege lijst: {\"suggesties\": []}.";
 
     /// <summary>
     /// Builds the grounded <see cref="AiRequest"/> for matching the given <paramref name="thema"/>

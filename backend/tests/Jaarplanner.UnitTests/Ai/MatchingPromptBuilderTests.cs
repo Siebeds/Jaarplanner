@@ -144,6 +144,22 @@ public sealed class MatchingPromptBuilderTests
     }
 
     [Fact]
+    public void Systeemprompt_vraagt_exact_het_parser_contract()
+    {
+        // E2-04 alignment: the system prompt must instruct the EXACT JSON shape the E2-03 parser
+        // accepts — the `suggesties` envelope with load-bearing field names `code`/`motivatie`
+        // (Art. IV.5). The parser is the canonical contract; the prompt is made to match it.
+        var systemPrompt = MatchingPromptBuilder.SystemPrompt;
+
+        Assert.Contains("{\"suggesties\": [{\"code\": \"<leerplandoelcode>\", \"motivatie\": \"<één zin>\"}]}",
+            systemPrompt, StringComparison.Ordinal);
+        Assert.Contains("\"suggesties\"", systemPrompt, StringComparison.Ordinal);
+        Assert.Contains("\"code\"", systemPrompt, StringComparison.Ordinal);
+        Assert.Contains("\"motivatie\"", systemPrompt, StringComparison.Ordinal);
+        Assert.Contains("{\"suggesties\": []}", systemPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Is_deterministisch_ongeacht_leerdoelvolgorde()
     {
         var leerdoelen = EenLeerdoelenSet();
