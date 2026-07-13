@@ -6,7 +6,7 @@
 
 ---
 
-- [ ] **E2-01 — AI client behind an injectable interface**
+- [x] **E2-01 — AI client behind an injectable interface**
   Abstract Azure AI Foundry behind an interface; provide a **faked client** for tests. Keys server-side only.
   *Done when:* the matching service runs against the fake in unit tests with no network. Ref: Art. IV.6, VI.4.
 
