@@ -1,9 +1,11 @@
 using Jaarplanner.Application.Ai;
+using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
+using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
@@ -99,6 +101,14 @@ public static class DependencyInjection
         // E2-03 validation → E2-04 persistence as `voorgesteld`). It depends only on IAiClient +
         // IDoelMatchOpslag, so the same registration works against the fakes in tests (Art. IV.6).
         services.AddScoped<DoelMatchingService>();
+
+        // Goal-first authoring assist (E2-07, Art. IV.8, Gap A.7): the wizard's step 2 (themadoel) and
+        // step 6 (subdoel) AI hooks. It depends only on IAiClient (E2-01) + ILeerdoelCatalogus (a
+        // read-only Op.stap leerplandoel query), so the same registration works against the fakes in
+        // tests (Art. IV.6). It returns advisory suggestions transiently — nothing is persisted or
+        // auto-applied (Art. IV.1/IV.2); the wizard persists an accepted suggestion via the beheer path.
+        services.AddScoped<ILeerdoelCatalogus, EfLeerdoelCatalogus>();
+        services.AddScoped<IThemaOpbouwAssistService, ThemaOpbouwAssistService>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(
