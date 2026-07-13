@@ -18,9 +18,10 @@
   Define the response schema (goal codes + one-line motivation); validate before use; reject/repair malformed output.
   *Done when:* invalid AI output never reaches the domain; validated objects only. Ref: Art. IV.5.
 
-- [~] **E2-04 — Suggestion persistence as `DoelKoppeling` (status + motivatie)**
+- [x] **E2-04 — Suggestion persistence as `DoelKoppeling` (status + motivatie)**
   Persist each suggestion as `voorgesteld` with `aiMotivatie`.
-  *Done when:* suggestions are stored and queryable per thema/activiteit. Ref: Art. IV.2, FR-4.1/4.2.
+  *Done when:* suggestions are stored and queryable **per thema**. Ref: Art. IV.2, FR-4.1/4.2.
+  *Scope (directie decision 2026-07-13):* FR-4 matching persists at **thema (school-wide) scope** as `Thema.doelsuggesties[]` (Art. IX.2 amended to sanction it). Activiteit-/subdoel-level (class/age) matching is deferred to fast-follow **[E8-07]**.
 
 - [ ] **E2-05 — Accept / reject / adjust in the UI**
   Teacher reviews each suggestion with its motivation and sets status `aanvaard`/`geweigerd`/`manueel`.

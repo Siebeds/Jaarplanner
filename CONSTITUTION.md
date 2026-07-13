@@ -173,12 +173,13 @@ One Excel file per discipline. Hidden columns may be empty. **This mapping is ke
 
 Scoping is **level-dependent and prescribed by pedagogy** (not a single shared/per-class flag):
 
-- **Thema** *(school-scoped — shared school-wide)* — id, naam, invalshoeken?, `duurWeken` (≈ 4–6), `kernwoordenschat[]`, `rijkeWoordenschat[]`, subthema's[], themadoelen[]. Owned by the team/directie via the shared thema-bibliotheek.
+- **Thema** *(school-scoped — shared school-wide)* — id, naam, invalshoeken?, `duurWeken` (≈ 4–6), `kernwoordenschat[]`, `rijkeWoordenschat[]`, subthema's[], themadoelen[], `doelsuggesties[]`. Owned by the team/directie via the shared thema-bibliotheek.
+  - **`doelsuggesties[]`** *(ratified — directie decision 2026-07-13)* — the AI's **FR-4 thema↔doel match suggestions** (E2-04), each a `DoelKoppeling` persisted as `voorgesteld` with `aiMotivatie`. Uncapped and deliberately **distinct from the 2–3 capped `themadoelen`**: these are advisory matches awaiting teacher accept/reject (Art. IV), not the curated overarching anchors. Attaching FR-4 match output at **thema (school-wide) scope** is the ratified MVP granularity; **activiteit- and subdoel-level (class/age) matching is deferred to fast-follow** (backlog E8) and would carry a per-suggestion target in the response contract.
 - **Themadoel** *(school-scoped)* — the **2–3 overarching goals** that anchor a whole thema and are deliberately the same school-wide; each links to a `Leerplandoel`/`Minimumdoel` and is meant to be *verbreed/verdiept/herhaald*. Distinct from a per-activity goal link.
 - **Subthema** *(class/age-scoped)* — naam, `probleemstelling?`, `onderzoeksvraag?`, `duurWeken` (≈ 2), belongs to a Thema. May differ per klas/leeftijd.
 - **Subdoel** *(class/age-scoped)* — a concrete, **age-differentiated** goal at the `(Subthema × leeftijd)` level, linking to a `Leerplandoel`/`Minimumdoel`; builds up toward the themadoelen. Themes are **interdisciplinary** — subdoelen routinely span multiple disciplines.
 - **Activiteit** *(class/age-scoped)* — naam, `activiteitType` (enum: experiment, prentenboek, hoek, uitstap, spel, waarneming, beweging, onderzoek, …), optional `hoek`, `verwachteUitkomsten?`; can link to one or more leerdoelen.
-- **DoelKoppeling** (the link entity, formerly "ThemaDoel") — any link School-content↔Leerplandoel with `status` (voorgesteld / aanvaard / geweigerd / manueel) and `aiMotivatie`. Used for themadoelen, subdoelen, and activity links alike.
+- **DoelKoppeling** (the link entity, formerly "ThemaDoel") — any link School-content↔Leerplandoel with `status` (voorgesteld / aanvaard / geweigerd / manueel) and `aiMotivatie`. Used for themadoelen, subdoelen, activity links, and thema-level FR-4 match `doelsuggesties` (E2-04) alike.
 
 ### IX.3 Planning & coverage
 
