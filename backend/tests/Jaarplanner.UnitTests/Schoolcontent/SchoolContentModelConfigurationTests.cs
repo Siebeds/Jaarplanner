@@ -100,6 +100,27 @@ public class SchoolContentModelConfigurationTests
     }
 
     [Fact]
+    public void Thema_owns_the_ai_doelsuggesties_in_their_own_table()
+    {
+        // E2-04: thema-level AI match suggestions are an owned DoelKoppeling collection in their own
+        // table, distinct from the capped themadoelen, each persisted as `voorgesteld` + aiMotivatie.
+        var thema = BuildModel().FindEntityType(typeof(Thema))!;
+        var nav = thema.GetNavigations().SingleOrDefault(n => n.Name == nameof(Thema.Doelsuggesties));
+        Assert.NotNull(nav);
+
+        var owned = nav!.TargetEntityType;
+        Assert.True(owned.IsOwned());
+        Assert.Equal("thema_doelsuggesties", owned.GetTableName());
+
+        // Shares the single DoelKoppeling mapping: status persisted by its Dutch name, FK to leerplandoel.
+        var status = owned.FindProperty(nameof(DoelKoppeling.Status))!;
+        Assert.Equal("Voorgesteld", status.GetValueConverter()!.ConvertToProvider(KoppelingStatus.Voorgesteld));
+        var fk = owned.GetForeignKeys()
+            .FirstOrDefault(f => f.PrincipalEntityType.ClrType == typeof(Domain.Curriculum.Leerplandoel));
+        Assert.NotNull(fk);
+    }
+
+    [Fact]
     public void DoelKoppeling_status_is_persisted_as_its_dutch_name()
     {
         // The themadoel owns its DoelKoppeling; inspect the owned type's status conversion.

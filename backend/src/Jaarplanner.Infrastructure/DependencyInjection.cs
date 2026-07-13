@@ -4,6 +4,7 @@ using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
+using Jaarplanner.Infrastructure.AiMatching;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.SchoolcontentBeheer;
@@ -89,8 +90,14 @@ public static class DependencyInjection
         services.Configure<AzureAIOptions>(configuration.GetSection(AzureAIOptions.SectionName));
         services.AddHttpClient<IAiClient, AzureAiFoundryClient>();
 
-        // The AI goal-matching service seam (FR-4) that E2-02..E2-04 flesh out; it depends only on
-        // IAiClient, so the same registration works against the fake in tests.
+        // The AI goal-matching persistence port (E2-04, Art. VIII layering): the matching service
+        // persists/queries thema-level suggestions through this seam, so it stays free of EF Core and
+        // is fakeable with no database in tests. EF Core implementation over AppDbContext.
+        services.AddScoped<IDoelMatchOpslag, EfDoelMatchOpslag>();
+
+        // The AI goal-matching service (FR-4), now wired end-to-end (E2-02 prompt → E2-01 client →
+        // E2-03 validation → E2-04 persistence as `voorgesteld`). It depends only on IAiClient +
+        // IDoelMatchOpslag, so the same registration works against the fakes in tests (Art. IV.6).
         services.AddScoped<DoelMatchingService>();
 
         services.AddHealthChecks()

@@ -17,6 +17,7 @@ public sealed class Thema
 {
     private readonly List<Themadoel> _themadoelen = [];
     private readonly List<Subthema> _subthemas = [];
+    private readonly List<DoelKoppeling> _doelsuggesties = [];
     private readonly List<string> _kernwoordenschat = [];
     private readonly List<string> _rijkeWoordenschat = [];
 
@@ -60,6 +61,21 @@ public sealed class Thema
 
     /// <summary>The per-class/age subthema's that belong to this thema (Art. IX.2).</summary>
     public IReadOnlyList<Subthema> Subthemas => _subthemas;
+
+    /// <summary>
+    /// The AI goal-match suggestions for this thema (E2-04, FR-4). Each is a thema-level
+    /// <see cref="DoelKoppeling"/> the AI proposed with status <see cref="KoppelingStatus.Voorgesteld"/>
+    /// and an <see cref="DoelKoppeling.AiMotivatie"/> — advisory only, never auto-applied (Art. IV.1/IV.2).
+    /// <para>
+    /// This is deliberately <b>separate</b> from the curated 2–3 <see cref="Themadoelen"/>: a match run
+    /// may propose any number of candidates, so it must not be bound by (or pollute) the themadoel cap.
+    /// The teacher reviews these in E2-05; an accepted candidate is promoted to a <see cref="Themadoel"/>
+    /// (or another link) at curation time, where the 2–3 bound applies. This keeps AI candidates and the
+    /// school-authored anchors cleanly distinct while both remaining a <see cref="DoelKoppeling"/> — the
+    /// single link entity of Art. IX.2 ("any link School-content↔Leerplandoel").
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<DoelKoppeling> Doelsuggesties => _doelsuggesties;
 
     /// <summary>
     /// Updates the thema's basic attributes (mutable autonomous content, Art. III). Used by the
@@ -134,6 +150,52 @@ public sealed class Thema
         var themadoel = new Themadoel(Id, koppeling);
         _themadoelen.Add(themadoel);
         return themadoel;
+    }
+
+    /// <summary>
+    /// Records an AI goal-match suggestion at thema level (E2-04, FR-4). The link must be
+    /// <see cref="KoppelingStatus.Voorgesteld"/> — the AI only ever proposes and nothing is
+    /// auto-applied (Art. IV.1/IV.2). Unlike <see cref="VoegThemadoelToe"/> this carries no cap:
+    /// a match run may surface any number of candidates for the teacher to curate (Art. IV.8).
+    /// </summary>
+    public DoelKoppeling VoegDoelsuggestieToe(DoelKoppeling koppeling)
+    {
+        ArgumentNullException.ThrowIfNull(koppeling);
+        if (koppeling.Status != KoppelingStatus.Voorgesteld)
+        {
+            throw new InvalidOperationException(
+                "Een AI-doelsuggestie start altijd als 'voorgesteld'; de leerkracht beslist (Art. IV.1/IV.2).");
+        }
+
+        _doelsuggesties.Add(koppeling);
+        return koppeling;
+    }
+
+    /// <summary>
+    /// Whether this thema already carries a link (a curated themadoel or an existing AI suggestion) to
+    /// <paramref name="leerplandoelCode"/>. Used by the matching flow to stay idempotent across re-runs
+    /// and to avoid re-proposing an already-anchored doel (E2-04).
+    /// </summary>
+    public bool IsAlGekoppeldAan(string leerplandoelCode)
+    {
+        if (string.IsNullOrWhiteSpace(leerplandoelCode))
+        {
+            return false;
+        }
+
+        var code = leerplandoelCode.Trim();
+        return _doelsuggesties.Any(k => string.Equals(k.LeerplandoelCode, code, StringComparison.Ordinal))
+            || _themadoelen.Any(td => string.Equals(td.Koppeling.LeerplandoelCode, code, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Removes an AI suggestion from this thema (E2-04 re-import reconciliation / E2-05 reject cleanup).
+    /// Only a <c>voorgesteld</c> suggestion lives here; a teacher decision is recorded elsewhere.
+    /// </summary>
+    public void VerwijderDoelsuggestie(DoelKoppeling suggestie)
+    {
+        ArgumentNullException.ThrowIfNull(suggestie);
+        _doelsuggesties.Remove(suggestie);
     }
 
     /// <summary>
