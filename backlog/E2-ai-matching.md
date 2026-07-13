@@ -18,7 +18,7 @@
   Define the response schema (goal codes + one-line motivation); validate before use; reject/repair malformed output.
   *Done when:* invalid AI output never reaches the domain; validated objects only. Ref: Art. IV.5.
 
-- [ ] **E2-04 — Suggestion persistence as `DoelKoppeling` (status + motivatie)**
+- [~] **E2-04 — Suggestion persistence as `DoelKoppeling` (status + motivatie)**
   Persist each suggestion as `voorgesteld` with `aiMotivatie`.
   *Done when:* suggestions are stored and queryable per thema/activiteit. Ref: Art. IV.2, FR-4.1/4.2.
 
