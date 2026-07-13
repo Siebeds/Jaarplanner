@@ -14,7 +14,7 @@
   Build the prompt from the relevant leerdoelen + the thema's themadoelen/subthema's/activiteiten; no external sources.
   *Done when:* prompt contains only school + Op.stap data; snapshot-tested. Ref: Art. IV.4.
 
-- [~] **E2-03 — Structured-JSON response contract + validation**
+- [x] **E2-03 — Structured-JSON response contract + validation**
   Define the response schema (goal codes + one-line motivation); validate before use; reject/repair malformed output.
   *Done when:* invalid AI output never reaches the domain; validated objects only. Ref: Art. IV.5.
 
