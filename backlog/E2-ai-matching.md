@@ -10,7 +10,7 @@
   Abstract Azure AI Foundry behind an interface; provide a **faked client** for tests. Keys server-side only.
   *Done when:* the matching service runs against the fake in unit tests with no network. Ref: Art. IV.6, VI.4.
 
-- [~] **E2-02 — Prompt builder grounded only on school data + loaded goals**
+- [x] **E2-02 — Prompt builder grounded only on school data + loaded goals**
   Build the prompt from the relevant leerdoelen + the thema's themadoelen/subthema's/activiteiten; no external sources.
   *Done when:* prompt contains only school + Op.stap data; snapshot-tested. Ref: Art. IV.4.
 
