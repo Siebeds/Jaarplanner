@@ -23,7 +23,7 @@
   *Done when:* suggestions are stored and queryable **per thema**. Ref: Art. IV.2, FR-4.1/4.2.
   *Scope (directie decision 2026-07-13):* FR-4 matching persists at **thema (school-wide) scope** as `Thema.doelsuggesties[]` (Art. IX.2 amended to sanction it). Activiteit-/subdoel-level (class/age) matching is deferred to fast-follow **[E8-07]**.
 
-- [ ] **E2-05 — Accept / reject / adjust in the UI**
+- [~] **E2-05 — Accept / reject / adjust in the UI**
   Teacher reviews each suggestion with its motivation and sets status `aanvaard`/`geweigerd`/`manueel`.
   *Done when:* status changes persist and drive coverage (E5). Ref: FR-4.3, Art. IV.1/IV.3.
 
@@ -31,7 +31,7 @@
   Show which leerdoelen are not (yet) linked to any thema.
   *Done when:* the list updates as links change. Ref: FR-4.4.
 
-- [ ] **E2-07 — Goal-first authoring assist (thema-opbouw wizard hooks)**
+- [~] **E2-07 — Goal-first authoring assist (thema-opbouw wizard hooks)**
   Wire AI assist at **step 2 (themadoelen)** and **step 6 (subdoelen)** of the wizard (the wizard UI itself lives in E1/E6 beheer; this story provides its AI suggestions).
   *Done when:* the wizard can request themadoel/subdoel suggestions; all advisory. Ref: Art. IV.8 (committed MVP), Gap A.7.
 
