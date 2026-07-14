@@ -17,3 +17,29 @@ export interface Doelsuggestie {
   status: SuggestieStatus;
   aiMotivatie: string | null;
 }
+
+/**
+ * The Op.stap doelsoort as the API serialises it — the backend `Doelsoort` enum by name (Art. VII.1).
+ * The `DoelsoortBadge` uses its own lowercase keys, so the view maps between the two.
+ */
+export type DoelsoortNaam =
+  | "Minimumdoel"
+  | "Gemeenschappelijk"
+  | "Verdieping"
+  | "Precurriculum"
+  | "Specifiek"
+  | "AnderstaligeNieuwkomers";
+
+/**
+ * One leerplandoel that is (nog) niet aan een thema gekoppeld (E2-06, FR-4.4). Mirrors the backend
+ * `OngekoppeldDoelWeergave`. A doel is only "gekoppeld" once a suggestion is aanvaard or a manual link
+ * exists (status aanvaard/manueel, Art. V) — so a doel with only an open suggestion appears here.
+ */
+export interface OngekoppeldDoel {
+  code: string;
+  doelsoort: DoelsoortNaam;
+  jaarFase: string;
+  domein: string;
+  subdomein: string;
+  tekst: string;
+}
