@@ -10,6 +10,7 @@
 - [ ] **E5-01 — Coverage computation (computed, never stored)**
   Leerplandoel *gedekt* ⇔ linked (status `aanvaard`/`manueel`) to a thema placed in the plan. Minimumdoel *gedekt* ⇔ ≥1 concorded leerplandoel gedekt.
   *Done when:* coverage is derived on read, not persisted. **High-risk logic — unit-tested thoroughly.** Ref: Art. V.1/V.6.
+  *Carry-forward (E2-06 antagonist):* the E2-06 ongekoppelde-doelen query (`OngekoppeldeDoelenQuery`) unions the four owned `DoelKoppeling` sources but is only tested on EF **in-memory** — add a **Postgres-test-container** test for that UNION-of-owned-subqueries translation when building the (similar) coverage queries here.
 
 - [ ] **E5-02 — Per-class coverage view (gedekt / niet gedekt)**
   Show, per class, which leerplandoelen are covered and which are not.
