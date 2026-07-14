@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { t } from "../../i18n";
 import { DoelsuggestieLijst } from "./DoelsuggestieLijst";
+import { OngekoppeldeDoelenLijst } from "./OngekoppeldeDoelenLijst";
 
 /**
  * The doelsuggestie review page (E2-05). Until the app has thema navigation, it takes the thema-id
@@ -35,6 +36,16 @@ export function DoelsuggestieReview() {
           <DoelsuggestieLijst themaId={themaId} />
         )}
       </div>
+
+      {/* School-wide gap list (E2-06, FR-4.4): updates as links change — accepting a suggestion above
+          removes its doel here via the shared TanStack Query invalidation. */}
+      <section className="mt-8 border-t border-input pt-6">
+        <h3 className="text-lg font-semibold">{t("ongekoppeld.titel")}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{t("ongekoppeld.uitleg")}</p>
+        <div className="mt-4">
+          <OngekoppeldeDoelenLijst />
+        </div>
+      </section>
     </section>
   );
 }

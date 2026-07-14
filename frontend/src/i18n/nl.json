@@ -48,5 +48,15 @@
     "weigerenAria": "Leerplandoel {code} weigeren",
     "manueelAria": "Leerplandoel {code} manueel aanpassen",
     "wijzigenMislukt": "De status kon niet gewijzigd worden. Probeer opnieuw."
+  },
+  "ongekoppeld": {
+    "titel": "Ongekoppelde leerplandoelen",
+    "uitleg": "Deze leerplandoelen zijn nog niet aan een thema gekoppeld. Een doel telt pas als gekoppeld wanneer een suggestie aanvaard is of je manueel een koppeling maakt.",
+    "laden": "Ongekoppelde doelen laden…",
+    "fout": "De ongekoppelde doelen konden niet geladen worden.",
+    "leeg": "Alle leerplandoelen zijn gekoppeld aan een thema.",
+    "aantal": "{aantal} nog niet gekoppeld",
+    "domeinKop": "{domein} · {subdomein}",
+    "jaarFaseLabel": "Jaar/fase"
   }
 }

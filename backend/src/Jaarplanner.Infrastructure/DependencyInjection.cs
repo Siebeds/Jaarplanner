@@ -49,6 +49,11 @@ public static class DependencyInjection
         // Bidirectional concordance read access (Art. V — enables minimumdoel-level coverage; E5).
         services.AddScoped<IConcordantieQuery, ConcordantieQuery>();
 
+        // "Ongekoppelde doelen" gap list (E2-06, FR-4.4): the leerplandoelen not (yet) linked to any
+        // thema. "Linked" = a DoelKoppeling with status aanvaard/manueel (Art. V), computed per call so
+        // the list tracks the current link state. Pure read over read-only reference data (Art. III.1).
+        services.AddScoped<IOngekoppeldeDoelenQuery, OngekoppeldeDoelenQuery>();
+
         // Discipline-selection seam (E1-06, Art. XIV "Disciplines first"): which disciplines the
         // Op.stap import path may process is DATA-DRIVEN, never compiled in. The in-scope set is bound
         // from the `Opstap:DisciplineSelectie` configuration section (appsettings / env / user-secrets
