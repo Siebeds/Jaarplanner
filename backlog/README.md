@@ -49,7 +49,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 ## Open decisions that gate stories (see [Art. XIV](../CONSTITUTION.md#article-xiv--open-decisions-awaiting-directie))
 
 Stories blocked on these are marked `[!]`:
-- Planningsblok granularity (themaperiode 4–6 wk / subthemaperiode ~2 wk vs. month/week) — **do not hard-assume months**.
+- ~~Planningsblok granularity~~ — **RESOLVED (directie 2026-07-14):** two-tier default = themaperiode (4–6 wk) + subthemaperiode (~2 wk), configurable behind a seam (E3-05); never hard-assume months.
 - Disciplines first (all vs. starter selection); `cluster` presence per discipline.
 - `leergebied`/Wereldoriëntatie surfacing & mapping; `jaarFase` code form (1K/2K/3K ↔ JK/K2/K3).
 - Op.stap import source (manual per-discipline Excel vs. automated).
