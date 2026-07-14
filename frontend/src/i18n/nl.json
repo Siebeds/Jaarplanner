@@ -23,5 +23,30 @@
     "precurriculum": "P",
     "specifiek": "S",
     "anderstalige": "A"
+  },
+  "suggestieStatus": {
+    "voorgesteld": "Voorgesteld",
+    "aanvaard": "Aanvaard",
+    "geweigerd": "Geweigerd",
+    "manueel": "Manueel"
+  },
+  "matching": {
+    "titel": "AI-doelsuggesties",
+    "uitleg": "De AI stelt leerplandoelen voor bij dit thema. Jij beslist: aanvaard, weiger of pas manueel aan.",
+    "themaIdLabel": "Thema-id",
+    "themaIdPlaceholder": "Plak hier het thema-id",
+    "laden": "Suggesties laden…",
+    "fout": "De doelsuggesties konden niet geladen worden.",
+    "leeg": "Er zijn nog geen AI-doelsuggesties voor dit thema.",
+    "geenThema": "Geef een thema-id op om de doelsuggesties te bekijken.",
+    "motivatieLabel": "Waarom past dit doel hier?",
+    "statusLabel": "Status",
+    "aanvaarden": "Aanvaarden",
+    "weigeren": "Weigeren",
+    "manueel": "Manueel aanpassen",
+    "aanvaardenAria": "Leerplandoel {code} aanvaarden",
+    "weigerenAria": "Leerplandoel {code} weigeren",
+    "manueelAria": "Leerplandoel {code} manueel aanpassen",
+    "wijzigenMislukt": "De status kon niet gewijzigd worden. Probeer opnieuw."
   }
 }

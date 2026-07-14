@@ -29,6 +29,11 @@ builder.Services
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<SchoolcontentExceptionHandler>();
 
+// AI goal-matching exception handler (E2-05): maps the matching faults (thema/suggestie not-found →
+// 404, invalid teacher status → 400) to ProblemDetails. Runs after the school-content handler, which
+// returns false for anything that is not its own (Art. VIII — keep controllers thin).
+builder.Services.AddExceptionHandler<AiMatchingExceptionHandler>();
+
 // Data access + database health check live in Infrastructure (Art. VIII — keep Api thin).
 // This registers AppDbContext (UseNpgsql, connection string from configuration) and a
 // "db"/"ready"-tagged readiness check that /health/ready reflects.
