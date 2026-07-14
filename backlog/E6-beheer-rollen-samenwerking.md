@@ -16,6 +16,7 @@
 - [ ] **E6-02 — Role-based authorization (configurable matrix)**
   Roles `Beheerder`, `Leerkracht`, optional `Zorgcoördinator/co-teacher`; enforce the §3.2 permission matrix; configurable.
   *Done when:* each action in the matrix is allowed/denied per role; checks are server-enforced. Ref: FR-10/§3.2, Art. VI.1.
+  *Carry-forward (E2 antagonist notes):* no endpoint carries `[Authorize]` yet — cover the E2 AI endpoints `POST /api/thema-opbouw/*` (E2-07) and `/api/doelsuggesties/*` (E2-05) when this lands (Art. VI.1).
 
 ### Beheerpagina (FR-12)
 

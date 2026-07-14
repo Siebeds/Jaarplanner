@@ -31,7 +31,7 @@
   Show which leerdoelen are not (yet) linked to any thema.
   *Done when:* the list updates as links change. Ref: FR-4.4.
 
-- [~] **E2-07 — Goal-first authoring assist (thema-opbouw wizard hooks)**
+- [x] **E2-07 — Goal-first authoring assist (thema-opbouw wizard hooks)**
   Wire AI assist at **step 2 (themadoelen)** and **step 6 (subdoelen)** of the wizard (the wizard UI itself lives in E1/E6 beheer; this story provides its AI suggestions).
   *Done when:* the wizard can request themadoel/subdoel suggestions; all advisory. Ref: Art. IV.8 (committed MVP), Gap A.7.
 
