@@ -27,7 +27,7 @@
   Teacher reviews each suggestion with its motivation and sets status `aanvaard`/`geweigerd`/`manueel`.
   *Done when:* status changes persist and drive coverage (E5). Ref: FR-4.3, Art. IV.1/IV.3.
 
-- [ ] **E2-06 — "Ongekoppelde doelen" view**
+- [~] **E2-06 — "Ongekoppelde doelen" view**
   Show which leerdoelen are not (yet) linked to any thema.
   *Done when:* the list updates as links change. Ref: FR-4.4.
 
