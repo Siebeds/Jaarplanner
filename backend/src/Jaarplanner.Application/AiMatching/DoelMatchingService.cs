@@ -113,6 +113,48 @@ public sealed class DoelMatchingService
         CancellationToken cancellationToken = default) =>
         _opslag.HaalSuggestiesVoorThemaAsync(themaId, cancellationToken);
 
+    /// <summary>
+    /// Records a teacher decision on one persisted doelsuggestie (E2-05, FR-4.3): accept
+    /// (<see cref="KoppelingStatus.Aanvaard"/>), reject (<see cref="KoppelingStatus.Geweigerd"/>) or
+    /// adjust/curate (<see cref="KoppelingStatus.Manueel"/>). The teacher is the only actor that moves a
+    /// suggestion off <c>voorgesteld</c>; the AI never auto-applies (Art. IV.1/IV.2). The new status is
+    /// persisted through the store so it survives a reload and is the exact value E5 coverage reads
+    /// (<c>aanvaard</c>/<c>manueel</c> count toward dekking; <c>voorgesteld</c>/<c>geweigerd</c> do not).
+    /// </summary>
+    /// <param name="themaId">The thema the suggestion belongs to.</param>
+    /// <param name="suggestieId">The doelsuggestie (<c>DoelKoppeling</c>) to decide on.</param>
+    /// <param name="status">The teacher decision — must be <c>aanvaard</c>, <c>geweigerd</c> or <c>manueel</c>.</param>
+    /// <param name="cancellationToken">Cancels the operation.</param>
+    /// <returns>The updated read view of the suggestion.</returns>
+    /// <exception cref="OngeldigeSuggestieStatusFout"><paramref name="status"/> is not a teacher decision (e.g. <c>voorgesteld</c>).</exception>
+    /// <exception cref="ThemaNietGevondenFout">The thema does not exist.</exception>
+    /// <exception cref="DoelsuggestieNietGevondenFout">The thema has no suggestion with that id.</exception>
+    public async Task<DoelMatchSuggestieWeergave> WijzigSuggestieStatusAsync(
+        Guid themaId,
+        Guid suggestieId,
+        KoppelingStatus status,
+        CancellationToken cancellationToken = default)
+    {
+        // The teacher may only accept / reject / adjust — `voorgesteld` is AI-only (Art. IV.1/IV.2).
+        if (status is not (KoppelingStatus.Aanvaard or KoppelingStatus.Geweigerd or KoppelingStatus.Manueel))
+        {
+            throw new OngeldigeSuggestieStatusFout(
+                $"Status '{status}' is geen leerkrachtbeslissing; kies aanvaard, geweigerd of manueel (Art. IV.1/IV.2).");
+        }
+
+        var thema = await _opslag.LaadThemaAsync(themaId, cancellationToken)
+            ?? throw new ThemaNietGevondenFout($"Thema {themaId} bestaat niet.");
+
+        var koppeling = thema.Doelsuggesties.FirstOrDefault(k => k.Id == suggestieId)
+            ?? throw new DoelsuggestieNietGevondenFout($"Doelsuggestie {suggestieId} bestaat niet op thema {themaId}.");
+
+        // Human-in-the-loop decision recorded on the domain entity, then persisted (Art. IV.2 — survives reload).
+        koppeling.WijzigStatus(status);
+        await _opslag.BewaarAsync(cancellationToken);
+
+        return MapSuggestie(koppeling);
+    }
+
     private static DoelMatchSuggestieWeergave MapSuggestie(DoelKoppeling koppeling) =>
         new(koppeling.Id, koppeling.LeerplandoelCode, koppeling.Status.ToString(), koppeling.AiMotivatie);
 }
