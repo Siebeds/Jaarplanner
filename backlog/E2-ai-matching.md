@@ -23,7 +23,7 @@
   *Done when:* suggestions are stored and queryable **per thema**. Ref: Art. IV.2, FR-4.1/4.2.
   *Scope (directie decision 2026-07-13):* FR-4 matching persists at **thema (school-wide) scope** as `Thema.doelsuggesties[]` (Art. IX.2 amended to sanction it). Activiteit-/subdoel-level (class/age) matching is deferred to fast-follow **[E8-07]**.
 
-- [~] **E2-05 — Accept / reject / adjust in the UI**
+- [x] **E2-05 — Accept / reject / adjust in the UI**
   Teacher reviews each suggestion with its motivation and sets status `aanvaard`/`geweigerd`/`manueel`.
   *Done when:* status changes persist and drive coverage (E5). Ref: FR-4.3, Art. IV.1/IV.3.
 
