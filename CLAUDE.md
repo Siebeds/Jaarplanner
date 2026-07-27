@@ -16,7 +16,9 @@ Project context for Claude Code. Read this at the start of every session.
 Full requirements live in [`docs/Functionele_Analyse_Jaarplanner.md`](docs/Functionele_Analyse_Jaarplanner.md) (v0.4 body + Bijlage A refinements; original at `assets/Functionele_Analyse_Jaarplanner.docx`). **This file is the source of truth for the *build*; the functional analysis is the source of truth for *scope*; and [`CONSTITUTION.md`](CONSTITUTION.md) wins on any conflict.**
 
 ## Status
-Greenfield — repo is empty apart from this file. When scaffolding, follow the structure and stack below and the MVP order in **Roadmap**.
+**Phase 3 — in progress.** E0 (foundation & scaffolding), E1 (curriculum & content fundament) and E2 (AI-matching thema ↔ doel) are complete: **27/79 stories; milestones M0, M1 and M2 reached**. Next is **E3 — Jaarplan-generatie & kalender** (M3) — start with the kalender wireframe (E3-10, wireframes-first per [ADR-0017](docs/adr/0017-ui-ux-design-system.md)) before building E3-06/07, and the planningsblok model (E3-05, now unblocked).
+
+> [`backlog/README.md`](backlog/README.md) is the source of truth for live progress — consult it rather than this paragraph, and keep this in rough sync at epic boundaries.
 
 ## Working agreements (read before writing code)
 - **Domain language is Dutch.** Use Dutch names for domain entities and concepts in code (`Leerplandoel`, `Minimumdoel`, `Doelsoort`, `Thema`, `Jaarplan`, `Dekking`, …). Keep generic/infrastructure code, technical identifiers, tooling, and comments in **English**. Rationale: *leerplandoel* vs *minimumdoel* have no clean English equivalent — translating loses meaning.
@@ -94,7 +96,7 @@ Database / EF Core:
 - **Minimumdoel** — ref, leeftijd (K-/4-/6-), nr, omschrijving. The decreed eindterm; concorded to leerplandoelen.
 - **Thema** — id, naam, subthema's[], activiteiten[].
 - **DoelKoppeling** (formerly **ThemaDoel**, see Art. IX.2) — link school-content↔Leerplandoel with `status` (voorgesteld/aanvaard/geweigerd/manueel) and `aiMotivatie`.
-- **Jaarplan** — klasId; per **planningsblok** a list of thema's, with a `vergrendeld` flag per thema (excluded from regeneration). Planningsblok granularity is an **open decision** (real cadence: themaperiode 4–6 wk / subthemaperiode ~2 wk) — do **not** hard-assume months; see [`CONSTITUTION.md` Art. IX.3 / XIV](CONSTITUTION.md#article-ix--core-data-model-functional).
+- **Jaarplan** — klasId; per **planningsblok** a list of thema's, with a `vergrendeld` flag per thema (excluded from regeneration). Planningsblok granularity is **ratified (directie 2026-07-14)**: two-tier default = themaperiode (4–6 wk) + subthemaperiode (~2 wk), configurable behind the E3-05 seam — still never hard-assume months; see [`CONSTITUTION.md` Art. IX.3](CONSTITUTION.md#article-ix--core-data-model-functional).
 - **Dekking** is computed, not stored: a leerplandoel is *gedekt* when linked (status aanvaard/manueel) to a thema placed in the plan; a minimumdoel is *gedekt* when ≥1 concorded leerplandoel is gedekt.
 
 ## Op.stap Excel → model mapping
@@ -128,7 +130,7 @@ One Excel file per discipline. Hidden columns may be empty. **Keep this mapping 
 - **Leerroute** — an Op.stap learning trajectory (optional, later phase).
 - **Jaar/fase** — JK, K2, K3 (kleuter) and L1–L6 (lager); minimumdoelen anchor at mijlpalen K3/L4/L6.
 - **Thema / subthema / activiteit** — the school's own content building blocks.
-- **Jaarplan / planningsblok** — the year plan per class / a time slot (granularity is an open decision; real cadence: themaperiode 4–6 wk / subthemaperiode ~2 wk — do not assume months).
+- **Jaarplan / planningsblok** — the year plan per class / a time slot (ratified two-tier default: themaperiode 4–6 wk + subthemaperiode ~2 wk, configurable behind a seam — do not assume months).
 - **Dekking** — coverage; **gap-analyse** — the missing-goals overview.
 - **Graadklas / menggroep** — combined-grade class; a planning edge case to support.
 
@@ -152,6 +154,6 @@ Fast-follow: multi-class dekkingsdashboard (FR-9.4), samenwerking/opmerkingen (F
 ## Open decisions (confirm before building deep)
 - Which disciplines to include first (all vs. a starter selection).
 - Op.stap import: manual per-discipline Excel download vs. an automated source.
-- Planningsblok granularity (month / week / lesblok / themaperiode).
+- ~~Planningsblok granularity~~ — **resolved (directie 2026-07-14):** two-tier default = themaperiode (4–6 wk) + subthemaperiode (~2 wk), configurable behind the E3-05 seam.
 - Handling of graadklassen / menggroepen.
 - Whether a leerplandoel/thema is shared school-wide or per class.
