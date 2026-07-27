@@ -11,20 +11,24 @@
 - [x] **E1-01 — Curriculum entities (read-only)**
   `Discipline` (string `nummer`, optional `parentDiscipline`, 9.x split), `Leerplandoel` (code unique, doelsoort enum, jaarFase, domein, subdomein, **cluster nullable**, tekst, voorbeelden?, toelichting?, woordenschat?, `minimumdoelRef`), `Minimumdoel` (ref, leeftijd K-/4-/6-, nr, omschrijving). Grouping key `(domein, subdomein)`; identity = `code`.
   *Done when:* migrations create the tables; entities are immutable from app code paths (Art. III.1). Ref: Art. IX.1, VII.0.
+  *Note (2026-07-27):* stays done — the AC is about tables + immutability, both met. Two reference-data gaps found by code review were fixed/logged separately: the `disciplines` table had **no rows** and nothing to create them (its FK broke the first import) — now seeded from the Art. VII.0 authoritative list; `minimumdoelen` is still empty (see E1-03/E1-04). The 9.x nesting is seeded with `parentDiscipline = null` because the authoritative list has no bare `"9"` row and does not name it.
 
 - [x] **E1-02 — School-content entities (autonomous, level-scoped)**
   `Thema` (school-scoped: naam, invalshoeken?, `duurWeken`, `kernwoordenschat[]`, `rijkeWoordenschat[]`), `Themadoel` (school-scoped, 2–3, links to leerplandoel/minimumdoel), `Subthema` (class/age-scoped: probleemstelling?, onderzoeksvraag?, `duurWeken`), `Subdoel` (class/age-scoped, per `(subthema × leeftijd)`), `Activiteit` (class/age-scoped: `activiteitType` enum, hoek?, verwachteUitkomsten?), `DoelKoppeling` (status enum + `aiMotivatie`).
   *Done when:* migrations created; scoping enforced (Thema/Themadoel/kernwoordenschat school-wide; Subthema/Subdoel/Activiteit per class & age). Ref: Art. IX.2.
+  *Note (2026-07-27):* stays done — migrations exist and scoping is enforced. Code review found the class scope was **unusable in practice**: nothing could create a `Klas`, so every subthema was rejected/dropped. Fixed by the `Klas` CRUD endpoint (`IKlasBeheerService` + `POST /api/klassen`), which E3 needs anyway for per-class plan generation.
 
 ### FR-2 — Op.stap import
 
-- [x] **E1-03 — Op.stap Excel parser (ClosedXML), single-source mapping**
+- [~] **E1-03 — Op.stap Excel parser (ClosedXML), single-source mapping** — *reopened 2026-07-27 (code review): the `Minimumdoel` half of the AC is not met*
   Parse one Excel per discipline using the A–M mapping in **one place** in code (Art. III.3, VII.1). Handle hidden/empty columns; nullable cluster.
   *Done when:* a discipline file produces correct `Leerplandoel`/`Minimumdoel` rows. **High-risk logic — unit-tested thoroughly** (Art. V.6).
+  *Open:* the parser produces **`Leerplandoel` rows only — never a `Minimumdoel`**. It reads the concordance *key* (col D, or B+C) but the per-discipline goal Excel has **no `omschrijving` column** (Art. VII.1), so there is no source for the decreed minimumdoel text and no code path inserts one. **Blocked on an Art. XIV decision: where do minimumdoel rows come from?** Also: `ResolveMinimumdoelRef` emits partial keys like `"K-"` when col D is blank and only one of B/C is filled.
 
-- [x] **E1-04 — Doelsoort recognition & concordance**
+- [~] **E1-04 — Doelsoort recognition & concordance** — *reopened 2026-07-27 (code review): concordance cannot yield minimumdoel-level coverage*
   Map doelsoort enum (MD/G/+/P/S/A); build `minimumdoelRef` = B+C; link minimumdoelen ↔ leerplandoelen.
   *Done when:* concordance is queryable; coverage at minimumdoel level becomes possible (feeds E5). Ref: FR-2.2/2.3.
+  *Open:* `Leerplandoel.MinimumdoelRef` is a **`Restrict` FK** to `minimumdoelen.Ref`, and the `minimumdoelen` table is never populated (see E1-03). So every MD-concorded row **fails to commit** (SQLSTATE 23503), and minimumdoel-level coverage — the level the **onderwijsinspectie** tests (Art. V.2) — can return nothing. Doelsoort mapping itself is done and tested; the concordance *chain* is proven to work as soon as a minimumdoel exists (`ReferentiedataIntegriteitTests`), so this is purely the missing data source.
 
 - [x] **E1-05 — Re-import without clobbering plans**
   Re-importing updated Op.stap data updates reference data but **does not auto-overwrite jaarplannen**; flags what to review.
@@ -36,9 +40,10 @@
 
 ### FR-1 — Thema/activiteit import
 
-- [x] **E1-07 — Excel upload + validation + per-row errors**
+- [~] **E1-07 — Excel upload + validation + per-row errors** — *reopened 2026-07-27 (code review): there is no upload endpoint*
   Upload `.xlsx` of thema's/subthema's/activiteiten; validate required columns/fields; clear per-row error messages.
   *Done when:* invalid rows are reported precisely; valid file proceeds. Ref: FR-1.1/1.2.
+  *Open:* the parser and import service are complete and unit-tested, but **no HTTP endpoint invokes `ISchoolcontentImportService`** — it is DI-registered and unreachable, so nothing can actually be *uploaded*. (The "onbekende klas" blocker is resolved: `POST /api/klassen` now exists.) Also open: `OntbrekendeVerplichteKolommen` validates only that each required header label exists *somewhere*, then reads every cell by fixed index — a reordered template passes validation and imports silently-wrong data.
 
 - [x] **E1-08 — Import preview + add/update-or-overwrite on re-import**
   Show a preview before commit; on re-import let the user choose add vs. update/overwrite.

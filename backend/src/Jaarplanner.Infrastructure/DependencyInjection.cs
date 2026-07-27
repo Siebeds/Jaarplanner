@@ -3,12 +3,14 @@ using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
+using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
+using Jaarplanner.Infrastructure.PlanningBeheer;
 using Jaarplanner.Infrastructure.SchoolcontentBeheer;
 using Jaarplanner.Infrastructure.SchoolcontentImport;
 using Microsoft.EntityFrameworkCore;
@@ -83,6 +85,12 @@ public static class DependencyInjection
         // non-destructive guarantee that teacher DoelKoppeling decisions survive an overwrite (E1-08,
         // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
         services.AddScoped<ISchoolcontentImportService, SchoolcontentImportService>();
+
+        // Klas CRUD (Art. IX.3). Without a creation path a fresh deployment can hold no class-scoped
+        // content at all: the school-content import drops every subthema as "onbekende klas" and
+        // MaakSubthemaAsync rejects every call. E3 generates a jaarplan PER CLASS, so this is a
+        // prerequisite for that epic, not a convenience.
+        services.AddScoped<IKlasBeheerService, KlasBeheerService>();
 
         // CRUD for the autonomous school-content hierarchy + manual goal links (E1-10, FR-3.1/3.2).
         // Enforces level scoping (Art. IX.2) and persists manual links as `manueel` (Art. IV.2); a
