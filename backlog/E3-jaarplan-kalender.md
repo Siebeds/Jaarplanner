@@ -9,7 +9,7 @@
 
 ### FR-5 — Generation
 
-- [ ] **E3-01 — Jaarplan generation service (structured JSON, advisory)**
+- [~] **E3-01 — Jaarplan generation service (structured JSON, advisory)** — *claimed 2026-07-28*
   Generate a per-class plan: thema's + goals across planningsblokken; returned as validated JSON; persisted as a proposal (not auto-applied).
   *Done when:* a class yields a reviewable generated plan via the faked + real AI client. Ref: FR-5.1, Art. IV.
   *Also owns (assigned 2026-07-28):* Art. IX.3's "**`Schooljaar` contains multiple klassen**". E3-05 implemented only the vakantie-/periodestructuur half of `Schooljaar`; the Schooljaar↔Klas containment (and the `Jaarplan` entity itself, with its `vergrendeld` flag per thema) belongs here. Flagged by the E3-05 audit as previously unowned by any story.
