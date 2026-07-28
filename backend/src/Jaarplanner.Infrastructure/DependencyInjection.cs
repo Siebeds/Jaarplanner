@@ -1,8 +1,9 @@
-using Jaarplanner.Application.Ai;
+﻿using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
+using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
@@ -10,6 +11,7 @@ using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
+using Jaarplanner.Infrastructure.Planning;
 using Jaarplanner.Infrastructure.PlanningBeheer;
 using Jaarplanner.Infrastructure.SchoolcontentBeheer;
 using Jaarplanner.Infrastructure.SchoolcontentImport;
@@ -85,6 +87,16 @@ public static class DependencyInjection
         // non-destructive guarantee that teacher DoelKoppeling decisions survive an overwrite (E1-08,
         // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
         services.AddScoped<ISchoolcontentImportService, SchoolcontentImportService>();
+
+        // Planningsblok-indeling seam (E3-05, ADR-0013, Art. IX.3/XIV). The planning grain is DATA-DRIVEN:
+        // the two-tier default ratified by directie on 2026-07-14 (themaperiode 4–6 wk + subthemaperiode
+        // ~2 wk) lives in the `Planning:Blokindeling` configuration section, never as a literal in planning
+        // logic, and never as a calendar month. Generation (E3-01), the calendar (E3-06/08) and
+        // drag-and-drop (E3-07) all consume Planningsblok, so changing the grain is a config edit.
+        // Stateless once bound → singleton-safe, matching the discipline-selection seam.
+        services.Configure<PlanningsblokOptions>(
+            configuration.GetSection(PlanningsblokOptions.SectionName));
+        services.AddSingleton<IPlanningsblokIndeling, GeconfigureerdePlanningsblokIndeling>();
 
         // Klas CRUD (Art. IX.3). Without a creation path a fresh deployment can hold no class-scoped
         // content at all: the school-content import drops every subthema as "onbekende klas" and

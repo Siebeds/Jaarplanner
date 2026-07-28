@@ -41,6 +41,13 @@ public class AppDbContext : DbContext
     /// <summary>The class groups (Art. IX.3) — anchor for the class/age-scoped school content.</summary>
     public DbSet<Klas> Klassen => Set<Klas>();
 
+    /// <summary>
+    /// The school years with their vakantie-/periodestructuur (Art. IX.3, E3-05). Note there is
+    /// deliberately no <c>Planningsblokken</c> set: blocks are derived from a schooljaar by the
+    /// <c>IPlanningsblokIndeling</c> seam, so no row commits the school to a granularity (ADR-0013).
+    /// </summary>
+    public DbSet<Schooljaar> Schooljaren => Set<Schooljaar>();
+
     /// <summary>The school's thema's — school-scoped autonomous content (Art. IX.2).</summary>
     public DbSet<Thema> Themas => Set<Thema>();
 

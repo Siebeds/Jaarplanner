@@ -27,10 +27,11 @@
 
 ### FR-6 — Calendar
 
-- [ ] **E3-05 — Planningsblok model & calendar grid**
+- [~] **E3-05 — Planningsblok model & calendar grid** — *implemented 2026-07-28; awaiting the antagonist audit (and CI for the persistence tests) before `[x]`*
   Model the school year as configurable planningsblokken; **do not hard-assume months** — support themaperiode (4–6 wk) / subthemaperiode (~2 wk). Belgian school year Sept→June.
   *Done when:* the block unit is configurable behind a seam; default is documented, not compiled-in. Ref: Art. IX.3, Gap A.6.
   *Decision (directie 2026-07-14, Art. XIV resolved):* default is the **two-tier** model — themaperiode (4–6 wk, coarse) + subthemaperiode (~2 wk, fine); zoom levels (E3-08) map to these tiers; unit configurable behind the seam, default documented not compiled-in.
+  *Built (2026-07-28):* `Planningsblokniveau` (Themaperiode | Subthemaperiode — **no `Maand` member, guarded by a test**), `Planningsblok` (niveau/ordinaal/start/eind, no calendar unit), `Schooljaar` + owned `Schoolvakantie` with `Lesperiodes()`, the `IPlanningsblokIndeling` seam and its config-driven implementation (`Planning:Blokindeling`, default themaperiode 5 wk / subthemaperiode 2 wk documented in configuration space), plus migration `SchooljaarEnVakanties`. **Blocks are derived, never stored** — persisting them would bake the granularity into rows. 15 unit tests pass locally; 3 persistence tests need CI. See [worklog](worklogs/E3-05/implementation.md).
 
 - [ ] **E3-06 — Calendar/agenda view of the plan**
   Render the year plan as a calendar/agenda over the school year.
