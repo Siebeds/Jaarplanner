@@ -63,7 +63,8 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
 
         var antwoord = await Upload(client, "voorbeeld", Werkboek(("Herfst", "Bladeren", KlasNaam)));
 
-        Assert.True(antwoord.GetProperty("isGeldig").GetBoolean());
+        Assert.True(antwoord.GetProperty("isBestandGeldig").GetBoolean());
+        Assert.True(antwoord.GetProperty("isVolledigVerwerkt").GetBoolean());
         Assert.False(antwoord.GetProperty("toegepast").GetBoolean());
 
         // Nothing persisted.
@@ -79,7 +80,8 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
 
         var antwoord = await Upload(client, string.Empty, Werkboek(("Herfst", "Bladeren", KlasNaam)));
 
-        Assert.True(antwoord.GetProperty("isGeldig").GetBoolean());
+        Assert.True(antwoord.GetProperty("isBestandGeldig").GetBoolean());
+        Assert.True(antwoord.GetProperty("isVolledigVerwerkt").GetBoolean());
         Assert.True(antwoord.GetProperty("toegepast").GetBoolean());
 
         var themas = await client.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("/api/themas");
@@ -102,7 +104,8 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
 
         var antwoord = await Upload(client, string.Empty, werkboek);
 
-        Assert.False(antwoord.GetProperty("isGeldig").GetBoolean());
+        Assert.False(antwoord.GetProperty("isBestandGeldig").GetBoolean());
+        Assert.False(antwoord.GetProperty("isVolledigVerwerkt").GetBoolean());
 
         var problemen = antwoord.GetProperty("problemen").EnumerateArray().ToList();
         var probleem = Assert.Single(problemen);
@@ -113,6 +116,34 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
         var themas = await client.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("/api/themas");
         Assert.Single(themas!);
         Assert.Equal("Herfst", themas![0].GetProperty("naam").GetString());
+    }
+
+    /// <summary>
+    /// The two flags are not the same question, and this is the case that separates them: a file that
+    /// parses perfectly but still loses content during the import. The klas cell is filled, so the parser
+    /// has nothing to complain about (<c>isBestandGeldig</c> stays true), yet the named klas does not
+    /// exist, so the subthema is skipped and reported as an opmerking — <c>isVolledigVerwerkt</c> must be
+    /// false. Collapsing these into one flag is exactly what E1-07's audit rejected (finding 3): a UI
+    /// trusting a single "geldig" would have told the teacher the file was fine while content vanished.
+    /// </summary>
+    [PostgresFact]
+    public async Task Geldig_bestand_dat_inhoud_laat_vallen_is_niet_volledig_verwerkt()
+    {
+        var client = _factory.CreateClient();
+
+        var antwoord = await Upload(
+            client,
+            string.Empty,
+            Werkboek(("Herfst", "Bladeren", "L6 — bestaat niet")));
+
+        Assert.True(antwoord.GetProperty("isBestandGeldig").GetBoolean());
+        Assert.False(antwoord.GetProperty("isVolledigVerwerkt").GetBoolean());
+        Assert.Empty(antwoord.GetProperty("problemen").EnumerateArray());
+
+        // The reason the content was dropped is stated, not silent (ADR-0006 §4).
+        var opmerkingen = antwoord.GetProperty("diff").GetProperty("opmerkingen")
+            .EnumerateArray().Select(o => o.GetString()!).ToList();
+        Assert.Contains(opmerkingen, o => o.Contains("L6 — bestaat niet", StringComparison.Ordinal));
     }
 
     /// <summary>A reordered header is refused wholesale — a shifted layout cannot be read safely.</summary>
@@ -127,7 +158,7 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
             Werkboek(new[] { ("Herfst", "Bladeren", (string?)KlasNaam) },
                 verwissel: (SchoolcontentKolom.ThemaNaam, SchoolcontentKolom.SubthemaNaam)));
 
-        Assert.False(antwoord.GetProperty("isGeldig").GetBoolean());
+        Assert.False(antwoord.GetProperty("isBestandGeldig").GetBoolean());
         Assert.Contains(
             "kolomindeling",
             antwoord.GetProperty("problemen").EnumerateArray().First().GetProperty("melding").GetString()!,
