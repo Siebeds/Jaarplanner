@@ -166,3 +166,43 @@ shifts, and it did not, because even distribution leaves blocks *before* the edi
 property is real but only holds after the edit point, so the test now asserts it generally ("some ordinal now
 denotes a different span") instead of at a hand-picked ordinal. A spot-check would have been a fragile way to
 state it.
+
+---
+
+## Round 3 — 2026-07-28: vakantie vs vrije dag (directie ruling)
+
+The last open question from the audit — what to do with a teaching stretch too short for a themaperiode — was
+put to directie with four options and resolved in favour of **distinguishing the two kinds of closure**.
+
+**The question was mis-framed as "short stretches".** The real cause was that *every* closure was treated as a
+period boundary. In a real Belgian May, Hemelvaart + brugdag and Pinkstermaandag fall a week apart, so the
+5 teaching days between them became their own **one-week "themaperiode"** — unplannable. That is a routine
+occurrence, not an edge case.
+
+**What changed**
+- New `Sluitingssoort` enum: `Vakantie` (ends a planning period) | `VrijeDag` (a day off *inside* one).
+- `Schoolvakantie` → **`Schoolsluiting`**, carrying `Soort` and `BreektPeriode`. Renamed because a
+  "Schoolvakantie" whose soort is `VrijeDag` would be a name asserting something false about the domain — the
+  same defect the E1 audit flagged when `Schoolcontent*Fout` was reused for a Planning entity.
+- `Schooljaar` now exposes `Sluitingen` (all) and `Vakanties` (only period-breaking); `Lesperiodes()` cuts only
+  on vakanties; `IsLesdag` still excludes **any** closure.
+- Migration `SluitingssoortVakantieOfVrijeDag`, **hand-written as a rename + backfill**. EF scaffolded
+  `DropTable` + `CreateTable`, which would have discarded every stored closure. Harmless today (the table was
+  created by the preceding migration on this same unmerged branch) but shipping a destructive migration when a
+  rename does the job is the habit that eventually loses a school's calendar. `Soort` is added nullable,
+  backfilled to `Vakantie`, then set `NOT NULL`, so no database default lingers that the model does not declare.
+
+**Why not a threshold.** "Interruptions of ≤ N days don't break a period" needs no new data, but N is invented,
+and the audit had just flagged precisely this class of invention in this file (`MinimumBlokDagen`). Classifying
+each closure puts the answer in data the school owns, and makes ADR-0020's decision 5 — *a block never spans a
+vakantie* — exactly true instead of approximately true.
+
+**Consequence recorded honestly:** a block may now contain non-teaching days, so `AantalDagen` is a **calendar**
+span and its doc says so. `Planningsblok`'s previous claim that "every day in that span is a teaching day"
+would otherwise have become false — the same doc-versus-code drift the audit caught twice already.
+
+**Tests.** Two new: `Vrije_dag_breekt_de_periode_niet` (the May calendar stays one plannable period, the vrije
+dagen sit inside a block and are not teaching days) and `Dezelfde_dagen_als_vakantie_leveren_wel_een_onplanbaar_restje`
+— the counter-example, kept so the distinction's value is *measured* rather than asserted.
+
+**Gates:** 328 unit passed / 0 failed (24 planning); integration 19 passed / 22 skipped; format clean; no drift.

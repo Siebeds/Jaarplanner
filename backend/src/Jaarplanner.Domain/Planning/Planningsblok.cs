@@ -93,8 +93,14 @@ public sealed class Planningsblok : IEquatable<Planningsblok>
     public DateOnly Eind { get; }
 
     /// <summary>
-    /// Calendar days spanned, inclusive. Every day in that span is a teaching day: blocks are derived per
-    /// teaching stretch, so a block never contains a vacation day.
+    /// Calendar days spanned, inclusive — <b>not</b> a count of teaching days.
+    /// <para>
+    /// A block never spans a <see cref="Sluitingssoort.Vakantie"/>, because blocks are derived per teaching
+    /// stretch and stretches are cut at vacations. It <b>may</b> contain a <see cref="Sluitingssoort.VrijeDag"/>
+    /// (Hemelvaart, Pinkstermaandag, a pedagogische studiedag): those deliberately do not break a period, so a
+    /// week containing one stays part of its surrounding block rather than becoming an unplannable sliver.
+    /// Use <see cref="Schooljaar.IsLesdag"/> when you need actual teaching days.
+    /// </para>
     /// </summary>
     public int AantalDagen => Eind.DayNumber - Start.DayNumber + 1;
 

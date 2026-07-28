@@ -100,10 +100,10 @@ public sealed class PlanningsblokIndelingTests
 
         // Shift only the kerstvakantie one week earlier; the teaching stretches around it change length.
         var gewijzigd = new Schooljaar("2026-2027", Start, Eind);
-        gewijzigd.VoegVakantieToe(new Schoolvakantie("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
-        gewijzigd.VoegVakantieToe(new Schoolvakantie("Kerstvakantie", new DateOnly(2026, 12, 14), new DateOnly(2026, 12, 27)));
-        gewijzigd.VoegVakantieToe(new Schoolvakantie("Krokusvakantie", new DateOnly(2027, 2, 15), new DateOnly(2027, 2, 21)));
-        gewijzigd.VoegVakantieToe(new Schoolvakantie("Paasvakantie", new DateOnly(2027, 4, 5), new DateOnly(2027, 4, 18)));
+        gewijzigd.VoegSluitingToe(new Schoolsluiting("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
+        gewijzigd.VoegSluitingToe(new Schoolsluiting("Kerstvakantie", new DateOnly(2026, 12, 14), new DateOnly(2026, 12, 27)));
+        gewijzigd.VoegSluitingToe(new Schoolsluiting("Krokusvakantie", new DateOnly(2027, 2, 15), new DateOnly(2027, 2, 21)));
+        gewijzigd.VoegSluitingToe(new Schoolsluiting("Paasvakantie", new DateOnly(2027, 4, 5), new DateOnly(2027, 4, 18)));
 
         var na = indeling.Blokken(gewijzigd, Planningsblokniveau.Themaperiode);
 
@@ -209,11 +209,12 @@ public sealed class PlanningsblokIndelingTests
             Assert.DoesNotContain(blokken, b => b.Bevat(vakantie.Start) || b.Bevat(vakantie.Eind));
         }
 
-        // Every day inside a block is a teaching day.
+        // A block starts and ends on a teaching day. Note a block MAY contain a vrije dag in the middle —
+        // see Vrije_dag_breekt_de_periode_niet.
         foreach (var blok in blokken)
         {
-            Assert.True(schooljaar.IsLesdag(blok.Start), $"blok {blok.Ordinaal} start op een vakantiedag");
-            Assert.True(schooljaar.IsLesdag(blok.Eind), $"blok {blok.Ordinaal} eindigt op een vakantiedag");
+            Assert.True(schooljaar.IsLesdag(blok.Start), $"blok {blok.Ordinaal} start op een sluitingsdag");
+            Assert.True(schooljaar.IsLesdag(blok.Eind), $"blok {blok.Ordinaal} eindigt op een sluitingsdag");
         }
     }
 
@@ -298,14 +299,61 @@ public sealed class PlanningsblokIndelingTests
         Assert.DoesNotContain("Maand", namen);
     }
 
+    /// <summary>
+    /// <b>The reason <see cref="Sluitingssoort"/> exists</b> (directie 2026-07-28). Hemelvaart + brugdag and
+    /// Pinkstermaandag fall a week apart in May. Treating them as period boundaries — which every closure used
+    /// to be — left the 5 teaching days between them as their own <b>one-week "themaperiode"</b>, which no
+    /// teacher can plan a thema into. Marked as <c>VrijeDag</c> they no longer split the year, so May stays one
+    /// plannable period that simply contains a few days off.
+    /// </summary>
+    [Fact]
+    public void Vrije_dag_breekt_de_periode_niet()
+    {
+        var schooljaar = new Schooljaar("2026-2027", new DateOnly(2027, 4, 19), Eind);
+        schooljaar.VoegSluitingToe(new Schoolsluiting(
+            "Hemelvaart", new DateOnly(2027, 5, 13), new DateOnly(2027, 5, 14), Sluitingssoort.VrijeDag));
+        schooljaar.VoegSluitingToe(new Schoolsluiting(
+            "Pinkstermaandag", new DateOnly(2027, 5, 24), new DateOnly(2027, 5, 24), Sluitingssoort.VrijeDag));
+
+        var blokken = new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions())
+            .Blokken(schooljaar, Planningsblokniveau.Themaperiode);
+
+        // One uninterrupted teaching stretch → no 1-week sliver, and every block inside the ratified range.
+        Assert.Single(schooljaar.Lesperiodes());
+        Assert.All(blokken, b => Assert.InRange(b.AantalDagen, 4 * 7, 6 * 7));
+
+        // The vrije dagen sit INSIDE a block and are correctly not teaching days.
+        Assert.Contains(blokken, b => b.Bevat(new DateOnly(2027, 5, 13)));
+        Assert.False(schooljaar.IsLesdag(new DateOnly(2027, 5, 13)));
+        Assert.False(schooljaar.IsLesdag(new DateOnly(2027, 5, 24)));
+    }
+
+    /// <summary>
+    /// The same May calendar with those days marked as vacations instead — the old behaviour — does produce the
+    /// unplannable sliver. Kept as the counter-example so the distinction's value is measured, not asserted.
+    /// </summary>
+    [Fact]
+    public void Dezelfde_dagen_als_vakantie_leveren_wel_een_onplanbaar_restje()
+    {
+        var schooljaar = new Schooljaar("2026-2027", new DateOnly(2027, 4, 19), Eind);
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Hemelvaart", new DateOnly(2027, 5, 13), new DateOnly(2027, 5, 14)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Pinkstermaandag", new DateOnly(2027, 5, 24), new DateOnly(2027, 5, 24)));
+
+        var blokken = new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions())
+            .Blokken(schooljaar, Planningsblokniveau.Themaperiode);
+
+        Assert.Equal(3, schooljaar.Lesperiodes().Count);
+        Assert.Contains(blokken, b => b.AantalDagen < 4 * 7);
+    }
+
     /// <summary>A Belgian school year with the four standard vacations.</summary>
     private static Schooljaar Schooljaar()
     {
         var schooljaar = new Schooljaar("2026-2027", Start, Eind);
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Kerstvakantie", new DateOnly(2026, 12, 21), new DateOnly(2027, 1, 3)));
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Krokusvakantie", new DateOnly(2027, 2, 15), new DateOnly(2027, 2, 21)));
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Paasvakantie", new DateOnly(2027, 4, 5), new DateOnly(2027, 4, 18)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Kerstvakantie", new DateOnly(2026, 12, 21), new DateOnly(2027, 1, 3)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Krokusvakantie", new DateOnly(2027, 2, 15), new DateOnly(2027, 2, 21)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Paasvakantie", new DateOnly(2027, 4, 5), new DateOnly(2027, 4, 18)));
         return schooljaar;
     }
 }

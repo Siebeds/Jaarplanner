@@ -48,7 +48,13 @@ comment, plus overridable by any standard .NET config source); what lives on the
 **vakantie-/periodestructuur** that decides where blocks *break*. So one deployment currently applies one
 cadence to all of its school years.
 
-**5. Blocks never span a vacation.** Each teaching stretch is derived independently.
+**5. Blocks never span a *vakantie*; they may contain a *vrije dag*.** Each teaching stretch is derived
+independently, and stretches are cut only at closures the school classified as a `Vakantie`. A closure
+classified as a `VrijeDag` — Hemelvaart, Pinkstermaandag, a pedagogische studiedag — is a non-teaching day
+*inside* a block. Without that distinction (directie 2026-07-28) every closure broke a period, and the 5
+teaching days between Hemelvaart and Pinksteren became their own one-week "themaperiode". The classification
+is **data the school owns**, entered with the calendar, rather than a threshold ("interruptions of ≤ 3 days
+don't count") compiled into planning logic.
 
 ## Alternatives considered
 
@@ -77,13 +83,18 @@ cadence to all of its school years.
 - Block spans vary (4,4–6,0 weeks on 2026-2027) rather than being uniform. This is deliberate and is what the
   E3-10 wireframe makes visible; a teacher sees why one period is shorter than another.
 - One cadence per deployment until E6-03 (see decision 4).
-- **A teaching stretch shorter than roughly two-thirds of the target still yields one short block** — a 2-week
-  stretch between two closures cannot be made into a 4-week themaperiode. The behaviour is asserted by test;
-  what *should* happen pedagogically is an open question (below).
+- **A teaching stretch shorter than roughly two-thirds of the target still yields one short block** — a school
+  closing for three weeks mid-year cannot have a 4-week themaperiode around it. Asserted by test. The
+  `Vakantie`/`VrijeDag` distinction removed the *routine* cause of this (scattered single free days), leaving
+  it a rare edge that is accepted rather than tracked as open.
+- `AantalDagen` is a **calendar** span, not a count of teaching days, since a block may contain vrije dagen.
 
 **Follow-ups**
-- **Open (Art. XIV):** what should happen to a teaching stretch too short to hold a full themaperiode — its
-  own short period, merge into a neighbour across the vacation, or excluded from planning?
+- **Resolved (directie 2026-07-28):** the routine cause of unplannable short stretches was every closure
+  breaking a period. Closures are now classified `Vakantie` (breaks) vs `VrijeDag` (does not) — see decision 5.
+  Rejected alternatives: a day-count threshold (an invented number, and the audit flagged exactly this class of
+  invention in this code), leaving 1-week periods in the calendar, and excluding short stretches from planning
+  (goals taught that week would then appear nowhere and coverage would understate).
 - **Resolved (directie 2026-07-28), shapes E3-07/E3-09/E5:** when a school edits its vacation dates and the
   grid reshapes, an affected jaarplan placement is **never silently moved**. It keeps its stored date and
   raises a **persistent, non-dismissible** notification naming the affected thema's, to be resolved by a human

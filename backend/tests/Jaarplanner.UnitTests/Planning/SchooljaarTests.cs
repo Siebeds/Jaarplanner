@@ -1,4 +1,4 @@
-using Jaarplanner.Domain.Planning;
+﻿using Jaarplanner.Domain.Planning;
 
 namespace Jaarplanner.UnitTests.Planning;
 
@@ -31,8 +31,8 @@ public sealed class SchooljaarTests
     {
         var schooljaar = Basis();
 
-        var fout = Assert.Throws<ArgumentException>(() => schooljaar.VoegVakantieToe(
-            new Schoolvakantie("Zomervakantie", new DateOnly(2027, 7, 5), new DateOnly(2027, 7, 20))));
+        var fout = Assert.Throws<ArgumentException>(() => schooljaar.VoegSluitingToe(
+            new Schoolsluiting("Zomervakantie", new DateOnly(2027, 7, 5), new DateOnly(2027, 7, 20))));
 
         Assert.Contains("buiten het schooljaar", fout.Message);
     }
@@ -41,10 +41,10 @@ public sealed class SchooljaarTests
     public void Overlappende_vakanties_worden_geweigerd()
     {
         var schooljaar = Basis();
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Kerstvakantie", new DateOnly(2026, 12, 21), new DateOnly(2027, 1, 3)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Kerstvakantie", new DateOnly(2026, 12, 21), new DateOnly(2027, 1, 3)));
 
-        var fout = Assert.Throws<ArgumentException>(() => schooljaar.VoegVakantieToe(
-            new Schoolvakantie("Extra", new DateOnly(2027, 1, 2), new DateOnly(2027, 1, 9))));
+        var fout = Assert.Throws<ArgumentException>(() => schooljaar.VoegSluitingToe(
+            new Schoolsluiting("Extra", new DateOnly(2027, 1, 2), new DateOnly(2027, 1, 9))));
 
         Assert.Contains("overlapt", fout.Message);
     }
@@ -53,8 +53,8 @@ public sealed class SchooljaarTests
     public void Lesperiodes_splitsen_het_jaar_rond_de_vakanties()
     {
         var schooljaar = Basis();
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Kerstvakantie", new DateOnly(2026, 12, 21), new DateOnly(2027, 1, 3)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Kerstvakantie", new DateOnly(2026, 12, 21), new DateOnly(2027, 1, 3)));
 
         var periodes = schooljaar.Lesperiodes();
 
@@ -81,7 +81,7 @@ public sealed class SchooljaarTests
     public void Lesdag_sluit_vakantiedagen_en_dagen_buiten_het_jaar_uit()
     {
         var schooljaar = Basis();
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Kerstvakantie", new DateOnly(2026, 12, 21), new DateOnly(2027, 1, 3)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Kerstvakantie", new DateOnly(2026, 12, 21), new DateOnly(2027, 1, 3)));
 
         Assert.True(schooljaar.IsLesdag(new DateOnly(2026, 12, 18)));
         Assert.False(schooljaar.IsLesdag(new DateOnly(2026, 12, 25)));  // in the vacation
@@ -92,8 +92,8 @@ public sealed class SchooljaarTests
     public void Vakanties_worden_op_startdatum_geordend()
     {
         var schooljaar = Basis();
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Paasvakantie", new DateOnly(2027, 4, 5), new DateOnly(2027, 4, 18)));
-        schooljaar.VoegVakantieToe(new Schoolvakantie("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Paasvakantie", new DateOnly(2027, 4, 5), new DateOnly(2027, 4, 18)));
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
 
         Assert.Equal(["Herfstvakantie", "Paasvakantie"], schooljaar.Vakanties.Select(v => v.Naam));
     }
