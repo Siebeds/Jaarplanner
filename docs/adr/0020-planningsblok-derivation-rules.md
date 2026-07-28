@@ -84,9 +84,12 @@ cadence to all of its school years.
 **Follow-ups**
 - **Open (Art. XIV):** what should happen to a teaching stretch too short to hold a full themaperiode — its
   own short period, merge into a neighbour across the vacation, or excluded from planning?
-- **Open (Art. XIV), gates E3-07:** what happens to an existing jaarplan when a school edits its vacation
-  dates and the grid reshapes? Art. III.4's stance for curriculum re-import applies by analogy — flag what
-  must be reviewed rather than silently moving a teacher's plan.
+- **Resolved (directie 2026-07-28), shapes E3-07/E3-09/E5:** when a school edits its vacation dates and the
+  grid reshapes, an affected jaarplan placement is **never silently moved**. It keeps its stored date and
+  raises a **persistent, non-dismissible** notification naming the affected thema's, to be resolved by a human
+  as soon as possible. While any placement is unresolved, dekking is reported as *onbetrouwbaar / te herzien*
+  rather than as a number — a thema whose period is unknown is not demonstrably taught, and an inspectie-facing
+  figure must not overstate (Art. V.2, mirroring Art. III.4's review report).
 - **E6-03** may move block lengths onto the `Schooljaar`, superseding decision 4.
 - Art. IX.3's "`Schooljaar` contains multiple klassen" is still unimplemented; assigned to **E3-01**.
 

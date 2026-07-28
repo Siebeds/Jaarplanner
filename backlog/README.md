@@ -68,7 +68,12 @@ Stories blocked on these are marked `[!]`:
 ### Surfaced by the E3-05 antagonist audit of 2026-07-28 (need a ruling, not a guess)
 
 - **What happens to a teaching stretch too short for a full themaperiode?** A 2-week stretch between two closures cannot become a 4-week themaperiode. Current behaviour (asserted by test, [ADR-0020](../docs/adr/0020-planningsblok-derivation-rules.md)): it becomes its own short block. Alternatives: merge it into a neighbour across the vacation, or exclude it from planning. Pedagogical question — not answered in code.
-- **What happens to an existing jaarplan when a school edits its vakantiedata? — gates E3-07.** Blocks are derived, so changing a vacation reshapes the grid and a stored placement can end up pointing at a date that is no longer a block boundary. Art. III.4's stance for curriculum re-import applies by analogy: **flag what must be reviewed rather than silently moving a teacher's plan.** E3-07 cannot persist drag-and-drop results until this is decided.
+- ~~What happens to an existing jaarplan when a school edits its vakantiedata?~~ — **RESOLVED (directie 2026-07-28): flag it loudly; never move it silently.** Blocks are derived, so editing a vacation reshapes the grid and a stored thema placement can end up pointing at a date that is no longer a block boundary. The ruling:
+  1. **Never silently relocate a teacher's thema.** The application does not guess a new period. A stale placement keeps its stored date and is marked as needing attention.
+  2. **The signal must be impossible to ignore and impossible to dismiss.** Not a toast, not a badge tucked in a corner: a persistent notification on the jaarplan that stays until every affected placement is resolved by a human. "Fix later" is not an option the UI offers.
+  3. **It must be resolved as soon as possible**, so the flag names exactly which thema's are affected and offers the re-placement action inline.
+  4. **Coverage must not claim what it cannot prove.** A jaarplan with unresolved stale placements cannot report trustworthy dekking, because a thema whose period is unknown is not demonstrably taught in the school year. Until resolved, the dekkingsoverzicht and any export mark the figure as **onbetrouwbaar / te herzien** rather than showing a number that would mislead an inspectie (Art. V.2, and the same spirit as Art. III.4's review report for curriculum re-import).
+  *Implementation is split:* **E3-07** detects and persists (placements key on the block's start date, per [ADR-0020](../docs/adr/0020-planningsblok-derivation-rules.md)); **E3-09** renders the non-dismissible flag; **E5** must honour point 4.
 
 ### Surfaced by the earlier antagonist audit of 2026-07-28 — E1 remediation (need a ruling, not a guess)
 

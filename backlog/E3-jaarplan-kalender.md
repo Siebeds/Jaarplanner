@@ -42,6 +42,12 @@
 - [ ] **E3-07 — Drag-and-drop (`@dnd-kit/core`)**
   Drag thema's/activiteiten between periods.
   *Done when:* dragging moves an item and persists immediately (links to E4-01). Ref: FR-6.2.
+  *Binding constraints from [ADR-0020](../docs/adr/0020-planningsblok-derivation-rules.md) + the directie ruling of 2026-07-28:*
+  - A placement **keys on the block's start date**, never on `Ordinaal`. The ordinal is a display position and shifts when the schooljaar's vacations change; keying on it would silently relocate a teacher's thema.
+  - When a vacation edit reshapes the grid, a placement whose stored date is no longer a block boundary becomes **stale**. The application **must not guess** a new period for it.
+  - A stale placement raises a **persistent, non-dismissible** notification that names the affected thema's and offers re-placement inline. The UI offers no "later" — see E3-09 for the rendering.
+  - While any placement is stale the jaarplan is *te herzien*, and **E5 must not report a dekking figure** for it (Art. V.2).
+  *Done when (added):* a vacation edit that invalidates a placement produces the flag, no thema has moved on its own, and coverage refuses to report a number until it is resolved.
 
 - [ ] **E3-08 — Zoom levels (jaar ↔ periode/blok)**
   Switch the view between a year overview and a finer period/block view. **No unit hard-named** — follows the planningsblok seam from E3-05; do not presuppose months while Art. XIV is open.
@@ -50,6 +56,8 @@
 - [ ] **E3-09 — Knelpunt-signalering**
   Visually flag overloaded blocks and goals that appear nowhere. Signal with icon/label, not colour alone (a11y).
   *Done when:* an over-full block and an unplaced goal are both visibly flagged. Ref: FR-6.4, ADR-0017.
+  *Third signal (added 2026-07-28, directie ruling):* a **stale placement** after a vakantie-edit (see E3-07). Unlike the other two knelpunten this one is **not dismissible** and must persist until a human resolves it — an over-full period is a judgement call a teacher may accept, a placement pointing at a date that no longer exists is not.
+  *From the approved E3-10 wireframe:* an over-full period is flagged in place (border + icon + the word "Te vol"); goals placed nowhere get their own tray, because something absent cannot stand out inside the ribbon. Open from the review: **what makes a period "te vol"** — a count of thema's, of goals, or scaled by the period's length — and whether the ongeplande-doelen tray needs filtering at real volume (hundreds after a full import).
 
 - [x] **E3-10 — Kalender wireframe + teacher feedback (wireframes-first)** — *wireframe **approved** 2026-07-28*
   Low-fidelity wireframe of the kalender reviewed with directie/teachers **before** building E3-06/07.
