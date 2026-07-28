@@ -1,4 +1,4 @@
-using Jaarplanner.Application.Schoolcontent.Import;
+﻿using Jaarplanner.Application.Schoolcontent.Import;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
@@ -10,7 +10,7 @@ namespace Jaarplanner.UnitTests.Schoolcontent;
 
 /// <summary>
 /// Robustness of the school-content import against the three ways a real teacher's file broke it
-/// (E1-07, FR-1.1/1.2, ADR-0006 §4 "report, never silently drop"):
+/// (E1-07, FR-1.1/1.2, in the spirit of ADR-0006 §4, whose actual text is "validation produces clear, per-row diagnostics before commit"):
 /// a reordered header silently importing wrong data, one typo'd goal code aborting the entire import,
 /// and a 4th themadoel passing preview then throwing on commit.
 /// </summary>
@@ -141,6 +141,76 @@ public sealed class SchoolcontentImportRobustheidTests
 
         Assert.False(voorbeeld.Toegepast);
         Assert.True(commit.Toegepast);
+        Assert.Equal(
+            voorbeeld.Diff.Opmerkingen.Where(o => o.Contains("genegeerd", StringComparison.Ordinal)),
+            commit.Diff.Opmerkingen.Where(o => o.Contains("genegeerd", StringComparison.Ordinal)));
+    }
+
+    /// <summary>
+    /// The overwrite path reports its ignored themadoel codes too. This had <b>no</b> coverage: the cap on
+    /// <c>ReconcileThemadoelen</c> skipped over-cap codes with a bare <c>continue</c> and emitted no
+    /// opmerking at all, so an overwrite discarded goal codes in complete silence — while the create path
+    /// reported them.
+    /// </summary>
+    [Fact]
+    public async Task Overschrijven_meldt_genegeerde_themadoelen_ook()
+    {
+        await using var context = MaakContext();
+        await SeedAsync(context, GeldigeCode, TweedeCode, DerdeCode, VierdeCode);
+
+        var service = new SchoolcontentImportService(context);
+
+        // First import establishes the thema with a single themadoel.
+        await service.ImporteerAsync(
+            Parse(new SchoolcontentWorkbookBuilder().MetHeader().MetRij(themadoelen: GeldigeCode).Bouw()),
+            SchoolcontentImportOpties.Toevoegen,
+            toepassen: true);
+
+        // Re-import in overwrite mode with four codes — one fits, three cannot.
+        var resultaat = await service.ImporteerAsync(
+            Parse(new SchoolcontentWorkbookBuilder()
+                .MetHeader()
+                .MetRij(themadoelen: $"{GeldigeCode};{TweedeCode};{DerdeCode};{VierdeCode}")
+                .Bouw()),
+            SchoolcontentImportOpties.Bijwerken,
+            toepassen: true);
+
+        Assert.True(resultaat.Toegepast);
+        Assert.Contains(
+            resultaat.Diff.Opmerkingen,
+            o => o.Contains(VierdeCode, StringComparison.Ordinal) && o.Contains("genegeerd", StringComparison.Ordinal));
+
+        var thema = await context.Themas.Include(t => t.Themadoelen).SingleAsync();
+        Assert.Equal(Thema.MaxThemadoelen, thema.Themadoelen.Count);
+    }
+
+    /// <summary>
+    /// Preview and commit agree on the overwrite path as well. The cap guard used to read
+    /// <c>thema.Themadoelen.Count</c>, which the removal loop mutates only when <c>toepassen</c> is true —
+    /// so the two passes walked different arithmetic entirely.
+    /// </summary>
+    [Fact]
+    public async Task Overschrijven_voorbeeld_en_commit_melden_hetzelfde()
+    {
+        await using var context = MaakContext();
+        await SeedAsync(context, GeldigeCode, TweedeCode, DerdeCode, VierdeCode);
+
+        var service = new SchoolcontentImportService(context);
+        await service.ImporteerAsync(
+            Parse(new SchoolcontentWorkbookBuilder().MetHeader().MetRij(themadoelen: GeldigeCode).Bouw()),
+            SchoolcontentImportOpties.Toevoegen,
+            toepassen: true);
+
+        var werkboek = () => new SchoolcontentWorkbookBuilder()
+            .MetHeader()
+            .MetRij(themadoelen: $"{GeldigeCode};{TweedeCode};{DerdeCode};{VierdeCode}")
+            .Bouw();
+
+        var voorbeeld = await service.ImporteerAsync(
+            Parse(werkboek()), SchoolcontentImportOpties.Bijwerken, toepassen: false);
+        var commit = await service.ImporteerAsync(
+            Parse(werkboek()), SchoolcontentImportOpties.Bijwerken, toepassen: true);
+
         Assert.Equal(
             voorbeeld.Diff.Opmerkingen.Where(o => o.Contains("genegeerd", StringComparison.Ordinal)),
             commit.Diff.Opmerkingen.Where(o => o.Contains("genegeerd", StringComparison.Ordinal)));

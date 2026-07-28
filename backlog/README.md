@@ -31,9 +31,9 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E4 — Manuele bewerking & (her)generatie | [E4-bewerking-hergeneratie.md](E4-bewerking-hergeneratie.md) | 4 | 7 | 0 | Todo |
 | E5 — Dekking & export | [E5-dekking-export.md](E5-dekking-export.md) | 5 | 9 | 0 | Todo |
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
-| E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 10 | 0 | Todo |
+| E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 11 | 0 | ⚠️ E7-11 is a deployment gate |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **80** | **24** | **30%** |
+| **Totaal** | | | **81** | **24** | **30%** |
 
 > **Correction (2026-07-27).** A code review of the E1+E2 branch before merging to `main` reopened
 > **E1-03**, **E1-04** and **E1-07**: each was marked done with an acceptance criterion that cannot
@@ -64,3 +64,10 @@ Stories blocked on these are marked `[!]`:
 - Op.stap import source (manual per-discipline Excel vs. automated).
 - ~~Minimumdoel source~~ — **RESOLVED (2026-07-28): a separate decreed-minimumdoelen import.** `Minimumdoel` requires an `omschrijving` (Art. IX.1) that **neither** documented Op.stap source carries — the ordeningskader has only Discipline→Domein→Subdomein, and the per-discipline goal Excel's A–M mapping has no such column (Art. VII.1), only the concordance key (B/C/D). Decision: a **second import path** for the decreed eindtermen (ref + leeftijd + nr + omschrijving), keeping Art. IX.1 unchanged and the curriculum read-only (Art. III.1). Tracked as **E1-12** below; it needs directie to supply the source file. Until E1-12 lands, every MD-concorded leerplandoel still fails its FK on insert, so **E1-03/E1-04 stay `[~]`**.
 - Teacher visibility scope; export formats & layouts; coverage depth (binary vs. herhaling/opbouw).
+
+### Surfaced by the antagonist audit of 2026-07-28 (need a ruling, not a guess)
+
+- **Art. II.3 — where do user-facing Dutch diagnostics live?** Three documents currently disagree and cannot all hold: Art. II.3/X.3 say Dutch UI text belongs in `frontend/src/i18n/nl.json`; `frontend/src/lib/api.ts` states the client "never echoes a raw backend message to the teacher"; yet FR-1.2's whole value (row numbers, offending column, the unknown codes, the ignored themadoel codes) **can only** be delivered by displaying `problemen[].melding` and `diff.opmerkingen[]` verbatim. Options: (a) amend Art. II.3 to scope it to UI chrome and permit server-generated diagnostics; (b) restructure the payload as machine-readable codes + parameters the UI renders from `nl.json`. Until ruled, the backend keeps growing as a second source of Dutch copy.
+- **Discipline 9's official name / the 9.x nesting.** The Art. VII.0 list has no bare `"9"` row and never names it, so 9.1/9.2/9.3 are seeded with `parentDiscipline = null` and **nothing** in the codebase ever sets that column. Art. XII meanwhile describes 9 as a subject that *is split*. Directie to supply discipline 9's official name, or confirm 9.1/9.2/9.3 are genuinely top-level. Until then any UI grouping of 9.x is impossible.
+- **Does seeding the full taxonomy pre-empt "disciplines first"?** The migration seeds all 13 disciplines unconditionally, without consulting the [ADR-0019](../docs/adr/0019-discipline-selection-config-seam.md) `IDisciplineSelectie` seam. The reading taken is that the seam scopes which disciplines' **goals** are imported, while the discipline rows are the authoritative taxonomy (Art. VII.0) that the FK cannot do without. Consequence to confirm: any UI listing `disciplines` will show all 13, so a later "starter selection" answer becomes a filtering concern rather than a config change.
+- **Is "2–3 themadoelen" (Art. IX.2) a range or just a maximum?** Only the upper bound (3) exists in code. A thema imported with 0 or 1 themadoel lands silently, un-anchored, while an over-anchored one is reported. Either the minimum should be reported too, or Art. IX.2 should say 2 is a pedagogical guideline rather than an invariant.

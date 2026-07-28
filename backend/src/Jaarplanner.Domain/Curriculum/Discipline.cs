@@ -6,8 +6,17 @@ namespace Jaarplanner.Domain.Curriculum;
 /// <para>
 /// The <see cref="Nummer"/> is a <b>string</b> because the numbering is partly nested
 /// (the 9.x split: 9.1 Veilige en gezonde levensstijl, 9.2 Leren leren, 9.3 Sociaal en
-/// emotioneel leren). <see cref="ParentDisciplineNummer"/> is set for those children and
-/// null for the top-level disciplines (Art. VII.0, Art. IX.1).
+/// emotioneel leren). <see cref="ParentDisciplineNummer"/> exists to express that nesting
+/// (Art. VII.0, Art. IX.1).
+/// </para>
+/// <para>
+/// <b>Currently no row sets it.</b> The seeded reference data (see <c>DisciplineConfiguration</c>)
+/// writes the 13 disciplines of the Art. VII.0 authoritative list flat, including 9.1/9.2/9.3 with a
+/// <c>null</c> parent: that list contains no bare <c>"9"</c> row and never names it, and the parent is a
+/// self-FK so it cannot reference a row that does not exist. Inventing a name for discipline 9 would
+/// fabricate official reference data (Art. III.1). The column and the self-FK are the seam; the nesting
+/// gets populated once directie supplies discipline 9's official name — or confirms 9.1/9.2/9.3 are
+/// genuinely top-level. Until then, do not assume this property is ever non-null.
 /// </para>
 /// <para>
 /// Immutability is structural: every property has a <c>private set</c>, the only public

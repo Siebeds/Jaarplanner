@@ -47,13 +47,28 @@ public sealed class SchoolcontentImportController : ControllerBase
         _templateGenerator = templateGenerator;
     }
 
-    /// <summary>The response for a preview or a commit: the row problems plus the diff.</summary>
-    /// <param name="IsGeldig">True when the file produced no problems at all.</param>
-    /// <param name="Problemen">Per-row and file-level problems, in Dutch (FR-1.2).</param>
-    /// <param name="Diff">What changed (or would change) per thema/subthema/activiteit.</param>
+    /// <summary>
+    /// The response for a preview or a commit: the row problems plus the diff.
+    /// <para>
+    /// <b>Two separate notions of "clean", deliberately.</b> A file can parse perfectly and still lose
+    /// content during the import — an unknown leerplandoel code, a 4th themadoel, a subthema naming a klas
+    /// that does not exist. Those are reported in <see cref="SchoolcontentImportDiff.Opmerkingen"/>, not in
+    /// <see cref="Problemen"/>. Collapsing both into one flag meant an upload that silently discarded a
+    /// typo'd goal code still answered "geldig", so a UI trusting that flag would tell the teacher the file
+    /// was fine. <see cref="IsBestandGeldig"/> is about <i>parsing</i>; <see cref="IsVolledigVerwerkt"/> is
+    /// about <i>nothing having been dropped</i>. Show a warning unless both are true.
+    /// </para>
+    /// </summary>
+    /// <param name="IsBestandGeldig">True when the file parsed with no per-row or file-level problems.</param>
+    /// <param name="IsVolledigVerwerkt">
+    /// True when the import additionally discarded nothing — no problems <b>and</b> no opmerkingen.
+    /// </param>
+    /// <param name="Problemen">Per-row and file-level parse problems, in Dutch (FR-1.2).</param>
+    /// <param name="Diff">What changed (or would change) per thema/subthema/activiteit, incl. opmerkingen.</param>
     /// <param name="Toegepast">False for a preview; true when the changes were committed.</param>
     public sealed record ImportAntwoord(
-        bool IsGeldig,
+        bool IsBestandGeldig,
+        bool IsVolledigVerwerkt,
         IReadOnlyList<SchoolcontentRijProbleem> Problemen,
         SchoolcontentImportDiff Diff,
         bool Toegepast);
@@ -131,7 +146,8 @@ public sealed class SchoolcontentImportController : ControllerBase
         var resultaat = await _importService.ImporteerAsync(parseResultaat, opties, toepassen, cancellationToken);
 
         return Ok(new ImportAntwoord(
-            parseResultaat.IsGeldig,
+            IsBestandGeldig: parseResultaat.IsGeldig,
+            IsVolledigVerwerkt: parseResultaat.IsGeldig && resultaat.Diff.Opmerkingen.Count == 0,
             parseResultaat.Problemen,
             resultaat.Diff,
             resultaat.Toegepast));

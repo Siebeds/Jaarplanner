@@ -70,6 +70,78 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, tweede.StatusCode);
     }
 
+    /// <summary>
+    /// A rename round-trips, including keeping its own name (the `uitgezonderd` branch), and is refused
+    /// when the target name is taken. `PUT` was previously untested altogether.
+    /// </summary>
+    [PostgresFact]
+    public async Task Klas_kan_hernoemd_worden()
+    {
+        var client = _factory.CreateClient();
+
+        var klas = await Maak(client, "L4 — vierde leerjaar", 4);
+        var ander = await Maak(client, "L5 — vijfde leerjaar", 5);
+
+        // Rename to a free name.
+        var hernoemd = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = "L4A — vierde leerjaar A", leerjaar = 4 });
+        Assert.Equal(HttpStatusCode.OK, hernoemd.StatusCode);
+        var na = await hernoemd.Content.ReadFromJsonAsync<KlasWeergave>();
+        Assert.Equal("L4A — vierde leerjaar A", na!.Naam);
+
+        // Keeping its own name must be allowed — the uniqueness check excludes the class itself.
+        var zelfde = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = "L4A — vierde leerjaar A", leerjaar = 5 });
+        Assert.Equal(HttpStatusCode.OK, zelfde.StatusCode);
+        Assert.Equal(5, (await zelfde.Content.ReadFromJsonAsync<KlasWeergave>())!.Leerjaar);
+
+        // Taking another class's name must be refused.
+        var conflict = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = ander.Naam, leerjaar = 4 });
+        Assert.Equal(HttpStatusCode.BadRequest, conflict.StatusCode);
+    }
+
+    /// <summary>A class with no school content deletes cleanly — the happy path of the Restrict-FK guard.</summary>
+    [PostgresFact]
+    public async Task Lege_klas_kan_verwijderd_worden()
+    {
+        var client = _factory.CreateClient();
+        var klas = await Maak(client, "L6 — zesde leerjaar", 6);
+
+        var verwijderd = await client.DeleteAsync($"/api/klassen/{klas.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, verwijderd.StatusCode);
+
+        var opnieuw = await client.GetAsync($"/api/klassen/{klas.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, opnieuw.StatusCode);
+    }
+
+    /// <summary>
+    /// A name containing LIKE metacharacters is stored and matched literally. The duplicate pre-check
+    /// once passed the raw name as an <c>ILIKE</c> <i>pattern</i>, so "K3_groen" matched the existing
+    /// "K3-groen" — any single character in that position — and a valid class was refused as a duplicate
+    /// that did not exist.
+    /// </summary>
+    [PostgresFact]
+    public async Task Naam_met_jokertekens_wordt_letterlijk_vergeleken()
+    {
+        var client = _factory.CreateClient();
+
+        await Maak(client, "K3-groen", 0);
+
+        // Differs from the existing name only in the character an unescaped LIKE pattern would wildcard.
+        var response = await client.PostAsJsonAsync("/api/klassen", new { naam = "K3_groen", leerjaar = 0 });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        // A 100%-literal name must also survive.
+        var procent = await client.PostAsJsonAsync("/api/klassen", new { naam = "100% instroom", leerjaar = 0 });
+        Assert.Equal(HttpStatusCode.Created, procent.StatusCode);
+    }
+
+    private static async Task<KlasWeergave> Maak(HttpClient client, string naam, int leerjaar)
+    {
+        var response = await client.PostAsJsonAsync("/api/klassen", new { naam, leerjaar });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        return (await response.Content.ReadFromJsonAsync<KlasWeergave>())!;
+    }
+
     [PostgresFact]
     public async Task Onbekende_klas_geeft_404()
     {

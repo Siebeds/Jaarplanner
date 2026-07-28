@@ -34,6 +34,12 @@ jobs:
         env:
           POSTGRES_DB: jaarplanner_test
           POSTGRES_USER: jaarplanner
+          # NOT a secret, and deliberately inline (contrast docker-compose.yml, which refuses to start
+          # without an externally supplied password). This credentials a throwaway service container that
+          # exists only for the life of this job and is reachable only from it — there is nothing to
+          # protect and no environment it grants access to. Do NOT read this as licence to inline a real
+          # credential in this file: anything reaching a deployed environment belongs in GitHub secrets
+          # (and, for the app itself, in Key Vault — Art. VI.4).
           POSTGRES_PASSWORD: jaarplanner_ci
         ports:
           - 5432:5432

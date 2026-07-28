@@ -20,15 +20,14 @@ public sealed class KlasConfiguration : IEntityTypeConfiguration<Klas>
         builder.Property(k => k.Leerjaar).IsRequired();
 
         // The school-content Excel import resolves a class BY NAME, so a duplicate name would make
-        // that resolution arbitrary. Enforced in the database so the guarantee survives the concurrent
-        // -POST race an in-memory check cannot cover.
+        // that resolution arbitrary. Enforced in the database so the guarantee survives the
+        // concurrent-POST race an in-memory check cannot cover.
         //
-        // Known limit: this index is case-SENSITIVE, so it stops "L3" twice but not "l3" vs "L3".
-        // KlasBeheerService additionally pre-checks case-insensitively (ILIKE, evaluated in Postgres),
-        // which covers the ordinary path; only a genuine concurrent race between two case-variant names
-        // can still slip through. Closing that fully needs a functional unique index on lower(naam),
-        // which EF cannot express declaratively — deliberately deferred rather than introducing
-        // model/migration drift.
+        // This declared index is case-SENSITIVE (it stops "L3" twice, but not "l3" vs "L3"). The
+        // case-insensitive half is a functional unique index on lower("Naam"), added as raw SQL by
+        // migration KlasNaamCaseInsensitiefUniek: EF cannot express a functional index in the *model*,
+        // but a migration can simply emit the DDL, and hand-written SQL causes no snapshot drift.
+        // So case-insensitive uniqueness is a real database guarantee, not an application convention.
         builder.HasIndex(k => k.Naam).IsUnique();
     }
 }

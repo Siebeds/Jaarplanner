@@ -1,4 +1,4 @@
-using Jaarplanner.Application.Planning.Beheer;
+﻿using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Infrastructure.Persistence;
@@ -76,20 +76,17 @@ public sealed class KlasBeheerService : IKlasBeheerService
         ArgumentNullException.ThrowIfNull(wijziging);
 
         var klas = await VindKlasAsync(klasId, cancellationToken);
-        var naam = VereisNaam(wijziging.Naam);
-        await VereisVrijeNaamAsync(naam, uitgezonderd: klasId, cancellationToken);
+        await VereisVrijeNaamAsync(wijziging.Naam, uitgezonderd: klasId, cancellationToken);
 
-        // Klas is deliberately mutator-free (it predates any CRUD story), so the rename is written
-        // through EF's property metadata — the same technique the Op.stap import uses to refresh
-        // read-only curriculum content without giving the entity public setters.
-        var entry = _context.Entry(klas);
-        entry.Property(k => k.Naam).CurrentValue = naam;
-        entry.Property(k => k.Leerjaar).CurrentValue = wijziging.Leerjaar;
-        await BewaarAsync(naam, cancellationToken);
+        // The domain owns the invariant (Klas.Wijzig validates naam once) — the service does not
+        // re-implement it, and does not write through EF property metadata, which is a technique
+        // reserved for keeping read-only curriculum content unmutatable (Art. III.1).
+        klas.Wijzig(wijziging.Naam, wijziging.Leerjaar);
+        await BewaarAsync(klas.Naam, cancellationToken);
 
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, naam, wijziging.Leerjaar, aantal);
+        return new KlasWeergave(klas.Id, klas.Naam, klas.Leerjaar, aantal);
     }
 
     /// <inheritdoc />
@@ -98,7 +95,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
         var klas = await VindKlasAsync(klasId, cancellationToken);
 
         // Report the blocking references as a 400 with a count, rather than letting the Restrict FK
-        // surface as an opaque 500 (ADR-0006 §4: report, never dump plumbing on the teacher).
+        // surface as an opaque 500 (in the spirit of ADR-0006 §4 — clear diagnostics rather than raw plumbing).
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
         if (aantal > 0)
         {
@@ -129,20 +126,31 @@ public sealed class KlasBeheerService : IKlasBeheerService
     }
 
     /// <summary>
-    /// Rejects a name already taken by another class. Compared case-insensitively <b>in the database</b>
-    /// (<c>ILIKE</c> via <see cref="EF.Functions"/>) rather than with a .NET comparer, because an
-    /// <c>OrdinalIgnoreCase</c> comparison in LINQ-to-Entities translates to a case-<i>sensitive</i> SQL
-    /// predicate — the exact defect that lets "water" and "Water" both persist elsewhere in this codebase.
+    /// Rejects a name already taken by another class, compared case-insensitively <b>in the database</b>.
+    /// <para>
+    /// Uses <c>lower(naam) = lower(@naam)</c> (EF translates <see cref="string.ToLower()"/> to SQL
+    /// <c>lower</c>), deliberately <b>not</b> <c>ILIKE</c>. <c>ILIKE</c>'s second argument is a LIKE
+    /// <i>pattern</i>, so passing an unescaped class name straight from the request body made <c>%</c> and
+    /// <c>_</c> act as wildcards: creating "K3_groen" matched an existing "K3-groen" and was refused as a
+    /// duplicate that does not exist. A .NET <c>OrdinalIgnoreCase</c> comparer is equally wrong — in
+    /// LINQ-to-Entities it translates to a case-<i>sensitive</i> SQL predicate.
+    /// </para>
+    /// <para>
+    /// This is the friendly-message path; the database's own functional unique index on
+    /// <c>lower(naam)</c> is what actually holds under a concurrent race.
+    /// </para>
     /// </summary>
-    private async Task VereisVrijeNaamAsync(string naam, Guid? uitgezonderd, CancellationToken cancellationToken)
+    private async Task VereisVrijeNaamAsync(string? naam, Guid? uitgezonderd, CancellationToken cancellationToken)
     {
+        var genormaliseerd = VereisNaam(naam).ToLower();
+
         var bezet = await _context.Klassen
             .Where(k => uitgezonderd == null || k.Id != uitgezonderd)
-            .AnyAsync(k => EF.Functions.ILike(k.Naam, naam), cancellationToken);
+            .AnyAsync(k => k.Naam.ToLower() == genormaliseerd, cancellationToken);
 
         if (bezet)
         {
-            throw new SchoolcontentValidatieFout($"Er bestaat al een klas met de naam '{naam}'.");
+            throw new SchoolcontentValidatieFout($"Er bestaat al een klas met de naam '{naam!.Trim()}'.");
         }
     }
 

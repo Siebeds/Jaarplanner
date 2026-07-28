@@ -174,30 +174,24 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                     themaNaam,
                     gewijzigd ? WijzigingSoort.Bijgewerkt : WijzigingSoort.Ongewijzigd));
 
-                ReconcileThemadoelen(doelThema, themaGroep, opties, codeControle, toepassen, bedreigd);
+                ReconcileThemadoelen(doelThema, themaGroep, opties, codeControle, toepassen, bedreigd, opmerkingen);
             }
 
             // On a brand-new thema, themadoelen come straight from the file (no existing decisions to protect).
             if (!bestaat)
             {
-                // The 2–3 cap (Art. IX.2) is enforced HERE rather than left to VoegThemadoelToe, which
-                // throws on the 4th. Two reasons: an InvalidOperationException would abort the whole
-                // import as a 500 instead of reporting a row problem (ADR-0006 §4), and — worse — the
-                // check used to run only under `toepassen`, so a preview reported "Toegevoegd" with no
-                // problem and the commit then threw. Capping in both passes keeps the file's documented
-                // "preview == commit" guarantee true.
-                var codes = VerzamelThemadoelCodes(themaGroep, codeControle);
-                var teVeel = codes.Count - Thema.MaxThemadoelen;
-                if (teVeel > 0)
+                // The cap is applied through the shared PasThemadoelCapToe helper rather than left to
+                // Thema.VoegThemadoelToe, which throws on the 4th and would abort the whole import as a
+                // 500 instead of reporting (in the spirit of ADR-0006 §4). Running it in both passes —
+                // not only under `toepassen` — keeps the documented "preview == commit" guarantee true.
+                var alleCodes = VerzamelThemadoelCodes(themaGroep, codeControle);
+                var (codes, capOpmerking) = PasThemadoelCapToe(themaNaam, reedsAanwezig: 0, alleCodes);
+                if (capOpmerking is not null)
                 {
-                    opmerkingen.Add(
-                        $"Thema '{themaNaam}' heeft {codes.Count} themadoelen in het bestand; " +
-                        $"een thema wordt door ten hoogste {Thema.MaxThemadoelen} themadoelen geankerd " +
-                        $"(Art. IX.2). De eerste {Thema.MaxThemadoelen} zijn overgenomen, " +
-                        $"{teVeel} genegeerd: {string.Join(", ", codes.Skip(Thema.MaxThemadoelen))}.");
+                    opmerkingen.Add(capOpmerking);
                 }
 
-                foreach (var code in codes.Take(Thema.MaxThemadoelen))
+                foreach (var code in codes)
                 {
                     if (toepassen)
                     {
@@ -391,7 +385,8 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         SchoolcontentImportOpties opties,
         DoelCodeControle codeControle,
         bool toepassen,
-        List<BedreigdeBeslissing> bedreigd)
+        List<BedreigdeBeslissing> bedreigd,
+        List<string> opmerkingen)
     {
         var inkomendeCodes = VerzamelThemadoelCodes(themaGroep, codeControle);
         var inkomendeSet = inkomendeCodes.ToHashSet(StringComparer.Ordinal);
@@ -431,20 +426,65 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
             }
         }
 
-        // Newly suggested codes (respecting the 2–3 upper bound enforced by the domain).
-        foreach (var code in inkomendeCodes)
-        {
-            if (bestaandeCodes.Contains(code) || thema.Themadoelen.Count >= Thema.MaxThemadoelen)
-            {
-                continue;
-            }
+        // How many themadoelen this thema will hold after the removals above — computed from the
+        // *predicate*, never from thema.Themadoelen.Count, which the removal loop only mutates when
+        // `toepassen` is true. Counting the mutated collection made preview and commit walk different
+        // arithmetic: preview kept the stale links and added nothing, while commit removed them first,
+        // took three codes and dropped the rest in silence.
+        var behouden = thema.Themadoelen.Count(td =>
+            inkomendeSet.Contains(td.Koppeling.LeerplandoelCode) ||
+            (IsMenselijkeBeslissing(td.Koppeling.Status) && !opties.MenselijkeBeslissingenVerwijderen));
 
+        var nieuweCodes = inkomendeCodes.Where(c => !bestaandeCodes.Contains(c)).ToList();
+        var (toeTeVoegen, capOpmerking) = PasThemadoelCapToe(thema.Naam, behouden, nieuweCodes);
+        if (capOpmerking is not null)
+        {
+            opmerkingen.Add(capOpmerking);
+        }
+
+        foreach (var code in toeTeVoegen)
+        {
             if (toepassen)
             {
                 var themadoel = thema.VoegThemadoelToe(new DoelKoppeling(code, KoppelingStatus.Voorgesteld));
                 _context.Themadoelen.Add(themadoel);
             }
         }
+    }
+
+    /// <summary>
+    /// Applies Art. IX.2's upper bound on themadoelen in <b>one</b> place, shared by the create and the
+    /// overwrite path, and returns both the codes that fit and the notice for those that do not.
+    /// <para>
+    /// Centralised deliberately: enforcing it via <c>Thema.VoegThemadoelToe</c>'s guard would throw and
+    /// abort the whole import as a 500, and enforcing it separately per branch is how the overwrite path
+    /// came to drop codes with no notice at all. The result depends only on the incoming codes and the
+    /// retained count, so preview and commit always agree.
+    /// </para>
+    /// <para>
+    /// Note this bounds only the <i>maximum</i> (3). Art. IX.2 describes themadoelen as "2–3"; the
+    /// minimum of 2 is enforced nowhere in the codebase, so an under-anchored thema imports silently.
+    /// Whether 2 is an invariant or a pedagogical guideline is an open question for directie.
+    /// </para>
+    /// </summary>
+    private static (IReadOnlyList<string> ToeTeVoegen, string? Opmerking) PasThemadoelCapToe(
+        string themaNaam,
+        int reedsAanwezig,
+        IReadOnlyList<string> nieuweCodes)
+    {
+        var ruimte = Math.Max(0, Thema.MaxThemadoelen - reedsAanwezig);
+        if (nieuweCodes.Count <= ruimte)
+        {
+            return (nieuweCodes, null);
+        }
+
+        var genegeerd = nieuweCodes.Skip(ruimte).ToList();
+        var opmerking =
+            $"Thema '{themaNaam}' zou {reedsAanwezig + nieuweCodes.Count} themadoelen krijgen; " +
+            $"een thema wordt door ten hoogste {Thema.MaxThemadoelen} themadoelen geankerd (Art. IX.2). " +
+            $"{genegeerd.Count} genegeerd: {string.Join(", ", genegeerd)}.";
+
+        return (nieuweCodes.Take(ruimte).ToList(), opmerking);
     }
 
     /// <summary>Subdoel-link analogue of <see cref="ReconcileThemadoelen"/>.</summary>
