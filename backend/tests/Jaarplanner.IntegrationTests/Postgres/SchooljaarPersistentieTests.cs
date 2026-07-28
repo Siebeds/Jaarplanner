@@ -61,15 +61,22 @@ public sealed class SchooljaarPersistentieTests : IAsyncLifetime
 
     /// <summary>
     /// <see cref="Sluitingssoort"/> must still differentiate two closures after a round-trip — and this is the
-    /// only test that would notice if it stopped.
+    /// only test anywhere that persists a <see cref="Sluitingssoort.VrijeDag"/> at all.
     /// <para>
     /// <b>Why it is needed.</b> Every other persistence test constructs a <see cref="Schoolsluiting"/> without a
-    /// soort, which defaults to <see cref="Sluitingssoort.Vakantie"/> (= enum 0). So deleting the column mapping
-    /// in <c>SchooljaarConfiguration</c> would leave all of them green while silently turning every persisted
-    /// <see cref="Sluitingssoort.VrijeDag"/> back into a <see cref="Sluitingssoort.Vakantie"/> — reinstating
-    /// exactly the one-week-sliver defect the directie ruling of 2026-07-28 was issued to kill (ADR-0020). The
-    /// domain behaviour is unit-tested, but *storage* is the layer the E1 reopening proved cannot be taken on
-    /// trust from the in-memory provider.
+    /// soort, which defaults to <see cref="Sluitingssoort.Vakantie"/> (= enum 0). So before this test, no
+    /// evidence existed that the field which decides whether a closure breaks a planning period — the most
+    /// consequential column here, and the subject of the directie ruling of 2026-07-28 (ADR-0020) — survives
+    /// storage as anything other than <c>Vakantie</c>. The domain behaviour is unit-tested; storage is the layer
+    /// the E1 reopening proved cannot be taken on trust from the in-memory provider.
+    /// </para>
+    /// <para>
+    /// <b>What it does and does not guard.</b> Dropping the mapping outright (<c>Ignore()</c>) hits a
+    /// <c>NOT NULL</c> column and fails loudly, and removing only <c>HasConversion&lt;string&gt;()</c> sends an
+    /// int at a <c>varchar</c> column, which also fails loudly — neither is a silent corruption, and both would
+    /// already break the tests above. What was genuinely unasserted is the positive property below: that a
+    /// <c>VrijeDag</c> comes back a <c>VrijeDag</c> and is therefore still excluded from
+    /// <see cref="Schooljaar.Vakanties"/> and from the period cuts.
     /// </para>
     /// </summary>
     [PostgresFact]
@@ -110,8 +117,10 @@ public sealed class SchooljaarPersistentieTests : IAsyncLifetime
 
         await using (var context = _db.MaakContext())
         {
-            // Stored by name, not as an int (SchooljaarConfiguration: "legible in the database"). Asserted in
-            // raw SQL because an int mapping would satisfy the round-trip above while losing that legibility.
+            // Stored by name, not as an int. This is a deliberate coupling to a documented preference
+            // (SchooljaarConfiguration: "legible in the database"), not a correctness guard — switching to an
+            // int mapping would preserve every property asserted above. Asserted here so that switching is a
+            // decision someone makes on purpose rather than a silent drift away from a readable schema.
             var soorten = await context.Database
                 .SqlQueryRaw<string>("SELECT \"Soort\" AS \"Value\" FROM schoolsluitingen ORDER BY \"Start\"")
                 .ToListAsync();

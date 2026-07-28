@@ -34,7 +34,8 @@
 
 - [x] **E1-05 — Re-import without clobbering plans**
   Re-importing updated Op.stap data updates reference data but **does not auto-overwrite jaarplannen**; flags what to review.
-  *Done when:* a re-import diff/notice is produced; existing plans intact. Ref: FR-2.5.
+  *Done when:* a re-import diff/notice is produced; existing plans intact. Ref: **FR-2.5 server side only**.
+  *Scope boundary (2026-07-28, antagonist audit):* FR-2.5 says the tool *"**signaleert** wat herbekeken moet worden"* — the same verb class as FR-1.2's *toont*. The diff/notice is **produced and returned**; nothing surfaces it to a teacher. The review report's display half is deferred to **E1-13**, which owns the import/diff rendering surface. `[x]` here means the notice exists and plans survive, not that anyone is shown it.
 
 - [x] **E1-06 — Discipline selection (starter set vs all)** — *data-driven seam built ([ADR-0019](../docs/adr/0019-discipline-selection-config-seam.md)); the actual disciplines-first choice (Art. XIV) stays runtime config (`Opstap:DisciplineSelectie`), not compiled in*
   Make the imported discipline set configurable; isolate behind a seam so neither "all" nor a subset is hard-coded.
@@ -45,23 +46,31 @@
 - [x] **E1-07 — Excel upload + validation + per-row errors** — *reopened 2026-07-27 (code review); closed 2026-07-28 on green CI*
   Upload `.xlsx` of thema's/subthema's/activiteiten; validate required columns/fields; clear per-row error messages.
   *Done when:* invalid rows are reported precisely; valid file proceeds. Ref: FR-1.1, **FR-1.2 server side only**.
-  *Scope boundary (clarified 2026-07-28, antagonist audit):* this story owns the **server side** — parse, validate, report, commit. **FR-1.2's "**toont** duidelijke foutmeldingen per rij" clause is deferred to [E1-13](#), which owns the import UI.** The `[x]` here means the endpoint reports precisely and is proven from HTTP to PostgreSQL; it does **not** mean a teacher can see any of it yet. FR-1.2 is not satisfied until E1-13 lands.
+  *Scope boundary (clarified 2026-07-28, antagonist audit):* this story owns the **server side** — parse, validate, report, commit. **FR-1.2's "**toont** duidelijke foutmeldingen per rij" clause is deferred to **E1-13**, which owns the import UI.** The `[x]` here means the endpoint reports precisely and is proven from HTTP to PostgreSQL; it does **not** mean a teacher can see any of it yet. FR-1.2 is not satisfied until E1-13 lands.
   *Progress (2026-07-28):* all three gaps **implemented** — `SchoolcontentImportController` adds `GET sjabloon` / `POST voorbeeld` / `POST` (which also makes E1-09's template generator reachable); header validation is now **positional** so a reordered template is refused instead of importing wrong data; and unknown goal codes plus a 4th themadoel are **reported** rather than aborting the import as a 500 (the cap is now checked in both preview and commit, restoring "preview == commit"). See [worklog](worklogs/E1-07/implementation.md).
   *Closed (2026-07-28), CI run [30357426252](https://github.com/Siebeds/Jaarplanner/actions/runs/30357426252):* the Postgres-backed endpoint tests now run green — **42 integration passed / 0 skipped**, 328 unit passed. They had been *failing*, not merely unexecuted: four of them still asserted the old single `isGeldig` property after this story's own audit fix (finding 3) split the response into `isBestandGeldig` + `isVolledigVerwerkt`, so CI was red on every push from 2026-07-28 09:11 onward while the backlog recorded only "awaiting CI". Assertions corrected, and a seventh test now pins the distinction the split exists for: a workbook naming a non-existent klas parses clean (`isBestandGeldig` true) yet drops its subthema (`isVolledigVerwerkt` false) — previously unasserted.
   *Lesson (same root cause as the E1 reopening):* a test that can only run in CI is not evidence until CI has run it. "Awaiting CI" and "passing in CI" were conflated for five pushes.
 
 - [x] **E1-08 — Import preview + add/update-or-overwrite on re-import**
   Show a preview before commit; on re-import let the user choose add vs. update/overwrite.
-  *Done when:* preview matches committed result; re-import modes work; **the overwrite path preserves (or explicitly warns before discarding) teacher-set `DoelKoppeling` statuses** (`aanvaard`/`geweigerd`/`manueel`) so a re-import never silently destroys human decisions. Ref: FR-1.3/1.4, Art. IV.2 (mirrors E1-05's non-destructive stance).
+  *Done when:* preview matches committed result; re-import modes work; **the overwrite path preserves (or explicitly warns before discarding) teacher-set `DoelKoppeling` statuses** (`aanvaard`/`geweigerd`/`manueel`) so a re-import never silently destroys human decisions. Ref: **FR-1.3/1.4 server side only**, Art. IV.2 (mirrors E1-05's non-destructive stance).
+  *Scope boundary (2026-07-28, antagonist audit):* both cited FRs name the **user**, not the API. FR-1.3: *"Vóór het definitief inlezen **krijgt de gebruiker** een voorbeeldweergave"*; FR-1.4: *"Bij herimport **kan de gebruiker kiezen** tussen toevoegen of bestaande gegevens bijwerken/overschrijven."* A `POST …/voorbeeld` returning JSON is not a user receiving a preview, and a `modus` field on a request body is not a user choosing. Both display halves are deferred to **E1-13**, including the add-vs-overwrite choice and the Art. IV.2 warning before discarding human decisions — which is the one place in this flow where a silent default would destroy teacher work.
 
 - [x] **E1-09 — Downloadable import template**
   Template `.xlsx` matching the import structure, incl. fields for themadoelen, subthema onderzoeksvragen, two-tier woordenschat, activiteittype, duurWeken.
-  *Done when:* template downloads and round-trips through E1-07. Ref: FR-1.5, Gap A.4. *Note: final columns gated on Art. XIV "Thema/activiteit Excel structure".*
+  *Done when:* template downloads and round-trips through E1-07. Ref: **FR-1.5 server side only**, Gap A.4. *Note: final columns gated on Art. XIV "Thema/activiteit Excel structure".*
+  *Scope boundary (2026-07-28, antagonist audit):* FR-1.5 wants the template *"downloadbaar, zodat duidelijk is hoe het bestand eruit moet zien"* — a teacher needs somewhere to click. `GET …/sjabloon` serves the file correctly and is proven by test, but no UI links to it. The download surface is deferred to **E1-13**.
 
 - [ ] **E1-13 — Import-UI: upload, preview & per-row foutmeldingen op het scherm** — *added 2026-07-28 (antagonist audit): FR-1.2's display half was unowned*
   The teacher-facing screen for the school-content import: pick an `.xlsx`, see the preview diff, and **read the per-row problems and opmerkingen on screen** — with the sjabloon download alongside it.
   *Why this story exists:* E1-07 built and proved the whole server side, but FR-1.2 reads *"De tool valideert het bestand … en **toont** duidelijke foutmeldingen per rij."* Nothing showed them: `frontend/src/features/` contained only `matching`, no component referenced `schoolcontent-import`/`problemen`/`opmerkingen`, and `nl.json` had no import keys. The audit found no story in E1–E8 owned it, so closing E1-07 would have retired FR-1.2 with half of it unbuilt. Users are **non-technical teachers** — a diagnostic that exists only in a JSON response does not satisfy the FR.
-  *Done when:* a teacher can upload a file and see, on screen: the per-row problems (row number + offending column), the diff, the opmerkingen for content that was dropped, and a clear distinction between **`isBestandGeldig`** (it parsed) and **`isVolledigVerwerkt`** (nothing was dropped) — the two flags must not be collapsed into one "OK" in the UI, which is the whole point of E1-07's audit finding 3. Preview precedes commit (FR-1.3). Ref: FR-1.2 (display half), FR-1.3/1.5, Art. II.3, ADR-0017.
+  *Done when:* a teacher can, on screen —
+  1. download the sjabloon (FR-1.5) and upload a filled `.xlsx` (FR-1.1);
+  2. read the per-row problems (row number + offending column) and the opmerkingen for content that was dropped (FR-1.2);
+  3. see a distinction between **`isBestandGeldig`** (it parsed) and **`isVolledigVerwerkt`** (nothing was dropped) — the two **must not** be collapsed into one "OK", which is exactly the defect E1-07's audit finding 3 rejected, and this is the layer where it would reach a teacher;
+  4. review the preview *before* committing (FR-1.3);
+  5. **choose add vs. update/overwrite on re-import (FR-1.4)**, and be warned before an overwrite discards teacher-set `DoelKoppeling` statuses (Art. IV.2) — never a silent default.
+  Ref: FR-1.2 (display half), FR-1.1/1.3/1.4/1.5 (display halves, deferred from E1-07/E1-08/E1-09), FR-2.5's review notice (from E1-05), Art. II.3, Art. IV.2, ADR-0017.
   *Depends on:* E1-07 `[x]` (the endpoint + response contract).
   *Gated by an open decision — read before building:* the **Art. II.3 diagnostics ruling** (see `README.md`, unresolved). `problemen[].melding` and `diff.opmerkingen[]` are today **server-generated Dutch free text**, while Art. II.3/X.3 require Dutch UI copy to live in `nl.json`. Option (a) permits displaying them verbatim; option (b) restructures the payload as codes + parameters the UI renders from `nl.json`. **Do not hard-assume one** — if the ruling has not landed, isolate the rendering behind a single formatter module so option (b) becomes a change in one place rather than throughout the UI.
 
@@ -69,7 +78,15 @@
 
 - [x] **E1-10 — CRUD for thema/subthema/activiteit + goal links**
   Add/edit/delete at each level; link an activiteit/subthema to one or more leerdoelen; manage 2–3 themadoelen per thema.
-  *Done when:* CRUD respects level scoping; goal links persist with status. Ref: FR-3.1/3.2.
+  *Done when:* CRUD respects level scoping; goal links persist with status. Ref: **FR-3.1/3.2 server side only**.
+  *Scope boundary (2026-07-28, antagonist audit):* FR-3.1 is the most explicitly actor-naming FR in the set — *"**Leerkrachten kunnen** thema's, subthema's en activiteiten toevoegen, wijzigen en verwijderen"* — and there is no UI for any of it. The REST surface and its level-scoping invariants are done and tested; the teacher-facing beheer screens are deferred to **E1-14**. Note E6-05 (thema-opbouw wizard) covers *guided creation* of a new thema and does not cite FR-3.1, so it does not own *wijzigen/verwijderen* of existing content.
+
+- [ ] **E1-14 — Beheer-UI voor thema's, subthema's & activiteiten** — *added 2026-07-28 (antagonist audit): FR-3.1's interaction half was unowned*
+  The teacher-facing screens for managing school content: list/inspect thema's, and add, edit and delete at thema / subthema / activiteit level, including the 2–3 themadoelen and the goal links with their status.
+  *Why this story exists:* the audit that closed E1-07 found the same defect in E1-10 — a `[x]` retiring FR-3.1 while *"leerkrachten kunnen … toevoegen, wijzigen en verwijderen"* had no surface a leerkracht could use. E1-13 was scoped to the import flow and does not cover ongoing content management.
+  *Done when:* a teacher can create, edit and delete a thema, a subthema and an activiteit from the UI; level scoping is visible and respected (thema/themadoel/kernwoordenschat school-wide, subthema/subdoel/activiteit per klas & leeftijd, Art. IX.2); the 2–3 themadoel guideline is surfaced rather than silently enforced; and accepting/rejecting a goal link persists its status (Art. IV). Ref: FR-3.1/3.2 (display halves, deferred from E1-10), FR-3.3, Art. IX.2, ADR-0017.
+  *Relationship to E6-05:* E6-05 is the opinionated 10-step wizard for *building a thema from scratch* (Gap A.7, Art. IV.8). E1-14 is the plain CRUD surface for content that already exists. Build E1-14 first — the wizard needs somewhere to land its output.
+  *Depends on:* E1-10 `[x]` (the endpoints + level-scoping rules).
 
 - [x] **E1-11 — Gedeelde thema-bibliotheek (school-wide thema's)**
   Thema + themadoelen + kernwoordenschat owned at school level; per-class derivation of subthema's/subdoelen without cross-class bleed.

@@ -81,23 +81,34 @@ The audit that reviewed this story's closure accepted the `[x]` but identified *
 it was the most consequential field in the entity**: no PostgreSQL test persisted a `Sluitingssoort.VrijeDag`.
 
 All three tests above construct a `Schoolsluiting` without a `soort`, which defaults to `Vakantie` (enum `0`).
-So **deleting `sluiting.Property(s => s.Soort).HasConversion<string>()` from `SchooljaarConfiguration` would
-have left all three green** while silently turning every persisted `VrijeDag` back into a `Vakantie` — which
-is exactly the one-week-sliver defect the directie ruling of 2026-07-28 was issued to kill. The domain
-behaviour was unit-tested; storage was not, and storage is the layer the E1 reopening proved cannot be taken
-on trust from the in-memory provider. Same failure shape as round 1's, one level down: a property credited to
-tests that did not assert it.
+So no test anywhere persisted a `VrijeDag`, and there was no evidence that the field deciding whether a
+closure breaks a planning period — the subject of the directie ruling of 2026-07-28 — survives storage as
+anything other than `Vakantie`. The domain behaviour was unit-tested; storage was not, and storage is the
+layer the E1 reopening proved cannot be taken on trust from the in-memory provider. Same failure shape as
+round 1's, one level down: a property credited to tests that did not assert it.
+
+> **Correction (2026-07-28, second audit).** An earlier revision of this section claimed that deleting
+> `sluiting.Property(s => s.Soort).HasConversion<string>()` "would have left all three green while silently
+> turning every persisted `VrijeDag` back into a `Vakantie`". That is **false**, and the audit was right to
+> reject it. `Soort` is `varchar(16) NOT NULL`, so removing the conversion makes EF send an `int` at a
+> `varchar` column → SQLSTATE `42804`, and the three tests above go **red**. Removing the mapping with
+> `Ignore()` hits the `NOT NULL` column → `23502`, also red. And deleting the conversion *plus* regenerating
+> the migration to an int column preserves the distinction perfectly — an int round-trips fine. **There is no
+> single change to that file producing the silent corruption described.** The gap was real, but it was the
+> absence of a positive assertion, not the presence of a silent-failure mode. Correcting this here because
+> the round it belonged to was itself about documents crediting tests with guarantees they do not provide —
+> repeating that sin while fixing it would be worse than the original.
 
 **Added:** `Sluitingssoort_blijft_onderscheiden_en_alleen_een_vakantie_breekt_de_periode` persists a
 `Vakantie` (Herfstvakantie) **and** a `VrijeDag` (Pinkstermaandag) in one schooljaar and asserts, after
 reload:
 
-| Property | Assertion |
-| --- | --- |
-| The soort differentiates after a round-trip | `Sluitingen[0].Soort == Vakantie`, `Sluitingen[1].Soort == VrijeDag` — the assertion that fails if the mapping is dropped |
-| Only a vakantie cuts the year | `Vakanties` contains **only** Herfstvakantie; `Lesperiodes().Count == 2`, not 3 |
-| A vrije dag is a non-teaching day *inside* a stretch | `IsLesdag(21 May 2029)` false, yet that date falls within one of the returned stretches |
-| Stored legibly, by name | raw SQL over `schoolsluitingen` returns `["Vakantie", "VrijeDag"]` — an int mapping would satisfy the round-trip above while losing the legibility `SchooljaarConfiguration` documents as deliberate |
+| Property | Assertion | Kind |
+| --- | --- | --- |
+| The soort differentiates after a round-trip | `Sluitingen[0].Soort == Vakantie`, `Sluitingen[1].Soort == VrijeDag` | **The load-bearing one** — previously unasserted at any layer against a real database |
+| Only a vakantie cuts the year | `Vakanties` contains **only** Herfstvakantie; `Lesperiodes().Count == 2`, not 3 | Consequence that matters to the grid |
+| A vrije dag is a non-teaching day *inside* a stretch | `IsLesdag(21 May 2029)` false, yet that date falls within one of the returned stretches | Sharpest: pins the difference between "not a teaching day" and "ends a period" |
+| Stored legibly, by name | raw SQL over `schoolsluitingen` returns `["Vakantie", "VrijeDag"]` | Change-detector, **not** a correctness guard — an int mapping would satisfy every row above. Kept so a move away from a readable schema is deliberate rather than accidental |
 
 This makes the ratified vakantie/vrije-dag distinction falsifiable at the storage layer, where it was
 previously only assumed.
