@@ -144,6 +144,16 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
         var opmerkingen = antwoord.GetProperty("diff").GetProperty("opmerkingen")
             .EnumerateArray().Select(o => o.GetString()!).ToList();
         Assert.Contains(opmerkingen, o => o.Contains("L6 — bestaat niet", StringComparison.Ordinal));
+
+        // Observe the *drop*, not merely the report. Asserting the opmerking alone would stay green if a
+        // future change quietly resolved the unknown klas to a fallback (or created it) while still
+        // reporting — and the story text would then credit an assertion that does not exist.
+        // Note the asymmetry this pins: the thema is school-scoped and lands, while the klas-bound
+        // subthema does not (Art. IX.2). The thema is added before the subthema pass runs.
+        var themas = await client.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("/api/themas");
+        var thema = Assert.Single(themas!);
+        Assert.Equal("Herfst", thema.GetProperty("naam").GetString());
+        Assert.Empty(thema.GetProperty("subthemas").EnumerateArray());
     }
 
     /// <summary>A reordered header is refused wholesale — a shifted layout cannot be read safely.</summary>

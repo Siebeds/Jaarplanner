@@ -57,9 +57,11 @@ The three PostgreSQL persistence tests round 2 left unrunnable are now executed 
 
 | Test | Pins |
 | --- | --- |
-| `Schooljaar_met_vakanties_rondtript` | the owned `Schoolvakantie` collection and `DateOnly` → `date` survive a round-trip through real Npgsql |
-| `Schooljaarnaam_is_uniek` | the unique index is enforced by the database, not just by application code |
-| `Verwijderen_neemt_de_vakanties_mee` | cascade delete of the owned collection |
+| `Schooljaar_met_vakanties_rondtript` | the owned `Sluitingen` collection and `DateOnly` → `date` survive a round-trip through real Npgsql, read back through the `Vakanties` projection |
+| `Schooljaarnaam_is_uniek` | the unique index is enforced by the database (SQLSTATE `23505`), not just by application code |
+| `Verwijderen_neemt_de_vakanties_mee` | cascade delete of the owned collection, verified in raw SQL against `schoolsluitingen` |
+
+*Corrected 2026-07-28 (antagonist audit).* This table first credited the round-trip test with pinning "the owned `Schoolvakantie` collection" — a type renamed to `Schoolsluiting` in the commit immediately before, precisely because the old name asserted something false. It also named the wrong member: the owned collection is `Sluitingen`; `Vakanties` is the filtered projection `_sluitingen.Where(s => s.BreektPeriode)` that the test actually reads.
 
 **Correction to round 2's framing.** It said the story was held at `[~]` "awaiting CI". Reading the logs
 afterwards shows these three tests **passed on their very first CI run** (2026-07-28 09:11) and every run
@@ -70,3 +72,32 @@ being read.
 
 Worth noting for the same reason round 2 was written the way it was: the honest move is to name which test
 failed, not which build failed.
+
+---
+
+## Round 4 — 2026-07-28: the gap the closing audit found
+
+The audit that reviewed this story's closure accepted the `[x]` but identified **one unasserted property, and
+it was the most consequential field in the entity**: no PostgreSQL test persisted a `Sluitingssoort.VrijeDag`.
+
+All three tests above construct a `Schoolsluiting` without a `soort`, which defaults to `Vakantie` (enum `0`).
+So **deleting `sluiting.Property(s => s.Soort).HasConversion<string>()` from `SchooljaarConfiguration` would
+have left all three green** while silently turning every persisted `VrijeDag` back into a `Vakantie` — which
+is exactly the one-week-sliver defect the directie ruling of 2026-07-28 was issued to kill. The domain
+behaviour was unit-tested; storage was not, and storage is the layer the E1 reopening proved cannot be taken
+on trust from the in-memory provider. Same failure shape as round 1's, one level down: a property credited to
+tests that did not assert it.
+
+**Added:** `Sluitingssoort_blijft_onderscheiden_en_alleen_een_vakantie_breekt_de_periode` persists a
+`Vakantie` (Herfstvakantie) **and** a `VrijeDag` (Pinkstermaandag) in one schooljaar and asserts, after
+reload:
+
+| Property | Assertion |
+| --- | --- |
+| The soort differentiates after a round-trip | `Sluitingen[0].Soort == Vakantie`, `Sluitingen[1].Soort == VrijeDag` — the assertion that fails if the mapping is dropped |
+| Only a vakantie cuts the year | `Vakanties` contains **only** Herfstvakantie; `Lesperiodes().Count == 2`, not 3 |
+| A vrije dag is a non-teaching day *inside* a stretch | `IsLesdag(21 May 2029)` false, yet that date falls within one of the returned stretches |
+| Stored legibly, by name | raw SQL over `schoolsluitingen` returns `["Vakantie", "VrijeDag"]` — an int mapping would satisfy the round-trip above while losing the legibility `SchooljaarConfiguration` documents as deliberate |
+
+This makes the ratified vakantie/vrije-dag distinction falsifiable at the storage layer, where it was
+previously only assumed.

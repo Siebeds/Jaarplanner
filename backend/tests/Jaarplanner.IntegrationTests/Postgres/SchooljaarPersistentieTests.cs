@@ -59,6 +59,67 @@ public sealed class SchooljaarPersistentieTests : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// <see cref="Sluitingssoort"/> must still differentiate two closures after a round-trip — and this is the
+    /// only test that would notice if it stopped.
+    /// <para>
+    /// <b>Why it is needed.</b> Every other persistence test constructs a <see cref="Schoolsluiting"/> without a
+    /// soort, which defaults to <see cref="Sluitingssoort.Vakantie"/> (= enum 0). So deleting the column mapping
+    /// in <c>SchooljaarConfiguration</c> would leave all of them green while silently turning every persisted
+    /// <see cref="Sluitingssoort.VrijeDag"/> back into a <see cref="Sluitingssoort.Vakantie"/> — reinstating
+    /// exactly the one-week-sliver defect the directie ruling of 2026-07-28 was issued to kill (ADR-0020). The
+    /// domain behaviour is unit-tested, but *storage* is the layer the E1 reopening proved cannot be taken on
+    /// trust from the in-memory provider.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Sluitingssoort_blijft_onderscheiden_en_alleen_een_vakantie_breekt_de_periode()
+    {
+        var vrijeDag = new DateOnly(2029, 5, 21); // Pinkstermaandag
+
+        var schooljaar = new Schooljaar("2028-2029", new DateOnly(2028, 9, 1), new DateOnly(2029, 6, 30));
+        schooljaar.VoegSluitingToe(new Schoolsluiting(
+            "Herfstvakantie", new DateOnly(2028, 10, 30), new DateOnly(2028, 11, 5), Sluitingssoort.Vakantie));
+        schooljaar.VoegSluitingToe(new Schoolsluiting(
+            "Pinkstermaandag", vrijeDag, vrijeDag, Sluitingssoort.VrijeDag));
+
+        await using (var context = _db.MaakContext())
+        {
+            context.Schooljaren.Add(schooljaar);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var opnieuw = await context.Schooljaren.SingleAsync();
+
+            // Both closures came back — and, the point of the test, they came back *different*.
+            Assert.Equal(["Herfstvakantie", "Pinkstermaandag"], opnieuw.Sluitingen.Select(s => s.Naam));
+            Assert.Equal(Sluitingssoort.Vakantie, opnieuw.Sluitingen[0].Soort);
+            Assert.Equal(Sluitingssoort.VrijeDag, opnieuw.Sluitingen[1].Soort);
+
+            // The consequence that actually matters: only the vakantie cuts the teaching year, so the
+            // Pinkstermaandag week stays one plannable period instead of splitting into slivers.
+            Assert.Equal(["Herfstvakantie"], opnieuw.Vakanties.Select(v => v.Naam));
+            Assert.Equal(2, opnieuw.Lesperiodes().Count);
+
+            // The free day is still a non-teaching day, and it sits *inside* a stretch rather than ending one.
+            Assert.False(opnieuw.IsLesdag(vrijeDag));
+            Assert.Contains(opnieuw.Lesperiodes(), p => p.Start <= vrijeDag && vrijeDag <= p.Eind);
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // Stored by name, not as an int (SchooljaarConfiguration: "legible in the database"). Asserted in
+            // raw SQL because an int mapping would satisfy the round-trip above while losing that legibility.
+            var soorten = await context.Database
+                .SqlQueryRaw<string>("SELECT \"Soort\" AS \"Value\" FROM schoolsluitingen ORDER BY \"Start\"")
+                .ToListAsync();
+
+            Assert.Equal(["Vakantie", "VrijeDag"], soorten);
+        }
+    }
+
     /// <summary>One school year per label — a second "2026-2027" is a data-entry mistake, not a new year.</summary>
     [PostgresFact]
     public async Task Schooljaarnaam_is_uniek()

@@ -25,7 +25,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | Epic | File | Phase | Stories | Done | Status |
 | --- | --- | --- | --- | --- | --- |
 | E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 9 | 9 | ✅ Done |
-| E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 12 | 9 | ⚠️ E1-03/04 blocked on E1-12, which needs the source file from directie |
+| E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 13 | 9 | ⚠️ E1-03/04 blocked on E1-12 (needs the source file from directie); E1-13 owns FR-1.2's unbuilt UI half |
 | E2 — AI-matching thema ↔ doel | [E2-ai-matching.md](E2-ai-matching.md) | 2 | 7 | 7 | ✅ Done |
 | E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 2 | 🚧 E3-05 + E3-10 done; E3-01 is next |
 | E4 — Manuele bewerking & (her)generatie | [E4-bewerking-hergeneratie.md](E4-bewerking-hergeneratie.md) | 4 | 7 | 0 | Todo |
@@ -33,7 +33,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
 | E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 11 | 0 | ⚠️ E7-11 is a deployment gate |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **81** | **27** | **33%** |
+| **Totaal** | | | **82** | **27** | **33%** |
 
 > **Correction (2026-07-27).** A code review of the E1+E2 branch before merging to `main` reopened
 > **E1-03**, **E1-04** and **E1-07**: each was marked done with an acceptance criterion that cannot
@@ -47,7 +47,10 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 ## Milestones (MVP)
 
 - **M0 — Skeleton up** (E0): repo scaffolded, Postgres + API + SPA run locally, CI green.
-- **M1 — Fundament** (E1): Op.stap goals imported, school thema's imported & manageable, data model live. — ⚠️ **not yet reached** (previously claimed). The upload half is now proven end-to-end: **E1-07 closed 2026-07-28** with the school-content endpoint exercised over HTTP against real PostgreSQL in CI. What remains is the curriculum half — no `Minimumdoel` can exist, so minimumdoel-level coverage (the level the inspectie tests) returns nothing. Gated on **E1-12**, which needs the decreed-eindtermen source file from directie; that unblocks E1-03/04. See the correction above.
+- **M1 — Fundament** (E1): Op.stap goals imported, school thema's imported & manageable, data model live. — ⚠️ **not yet reached** (previously claimed). Two distinct gaps remain:
+  1. **The curriculum half.** No `Minimumdoel` can exist, so minimumdoel-level coverage — the level the inspectie tests — returns nothing. Gated on **E1-12**, which needs the decreed-eindtermen source file from directie; that unblocks E1-03/04.
+  2. **The teacher-facing half of the import.** **E1-07 closed 2026-07-28**, proven **from HTTP to PostgreSQL** in CI — *not* user-to-screen. There is no import UI: nothing renders the per-row foutmeldingen that FR-1.2 requires the tool to *show*. Tracked as **E1-13**.
+  > *An earlier revision of this line said the upload half was "proven end-to-end", which the antagonist audit of 2026-07-28 correctly called an overstatement: for a product whose users are non-technical teachers, end-to-end means teacher → screen, and what was proven was HTTP → database. Corrected, and E1-13 added to own the rest — the same failure mode as the 2026-07-27 correction below, caught one step earlier this time.*
 - **M2 — AI koppelt** (E2): teacher gets accept/reject thema↔doel suggestions with motivation.
 - **M3 — Plan & kalender** (E3): a year plan is generated and shown in the drag-and-drop calendar.
 - **M4 — Volledige controle** (E4): manual edits + full/partial regeneration with locked blocks.
@@ -79,6 +82,7 @@ Stories blocked on these are marked `[!]`:
 ### Surfaced by the earlier antagonist audit of 2026-07-28 — E1 remediation (need a ruling, not a guess)
 
 - **Art. II.3 — where do user-facing Dutch diagnostics live?** Three documents currently disagree and cannot all hold: Art. II.3/X.3 say Dutch UI text belongs in `frontend/src/i18n/nl.json`; `frontend/src/lib/api.ts` states the client "never echoes a raw backend message to the teacher"; yet FR-1.2's whole value (row numbers, offending column, the unknown codes, the ignored themadoel codes) **can only** be delivered by displaying `problemen[].melding` and `diff.opmerkingen[]` verbatim. Options: (a) amend Art. II.3 to scope it to UI chrome and permit server-generated diagnostics; (b) restructure the payload as machine-readable codes + parameters the UI renders from `nl.json`. Until ruled, the backend keeps growing as a second source of Dutch copy.
+  **Migration cost, so it is visible when directie rules (updated 2026-07-28):** the prediction in the line above is now measurable. Under option (b) `diff.opmerkingen` stops being `string[]`, so every test that substring-matches it must be rewritten. There are now **four** endpoint tests in `SchoolcontentImportEndpointsTests` whose shape presumes option (a), one of which (`Geldig_bestand_dat_inhoud_laat_vallen_is_niet_volledig_verwerkt`) asserts on `diff.opmerkingen[]` directly. **The ruling is still genuinely free** — the frontend consumes none of this yet (zero references, no import keys in `nl.json`), so option (b) costs backend + test changes only, with no UI rework. That freedom ends when **E1-13** ships, which is why E1-13 is written to isolate the rendering behind one formatter module. Ruling before E1-13 is materially cheaper than after.
 - **Discipline 9's official name / the 9.x nesting.** The Art. VII.0 list has no bare `"9"` row and never names it, so 9.1/9.2/9.3 are seeded with `parentDiscipline = null` and **nothing** in the codebase ever sets that column. Art. XII meanwhile describes 9 as a subject that *is split*. Directie to supply discipline 9's official name, or confirm 9.1/9.2/9.3 are genuinely top-level. Until then any UI grouping of 9.x is impossible.
 - **Does seeding the full taxonomy pre-empt "disciplines first"?** The migration seeds all 13 disciplines unconditionally, without consulting the [ADR-0019](../docs/adr/0019-discipline-selection-config-seam.md) `IDisciplineSelectie` seam. The reading taken is that the seam scopes which disciplines' **goals** are imported, while the discipline rows are the authoritative taxonomy (Art. VII.0) that the FK cannot do without. Consequence to confirm: any UI listing `disciplines` will show all 13, so a later "starter selection" answer becomes a filtering concern rather than a config change.
 - **Is "2–3 themadoelen" (Art. IX.2) a range or just a maximum?** Only the upper bound (3) exists in code. A thema imported with 0 or 1 themadoel lands silently, un-anchored, while an over-anchored one is reported. Either the minimum should be reported too, or Art. IX.2 should say 2 is a pedagogical guideline rather than an invariant.
