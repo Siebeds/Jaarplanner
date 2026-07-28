@@ -27,13 +27,13 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 9 | 9 | ✅ Done |
 | E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 12 | 8 | ⚠️ E1-07 awaiting CI; E1-03/04 blocked on E1-12 |
 | E2 — AI-matching thema ↔ doel | [E2-ai-matching.md](E2-ai-matching.md) | 2 | 7 | 7 | ✅ Done |
-| E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 0 | 🚧 E3-05 in progress |
+| E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 1 | 🚧 E3-10 done; E3-05 in progress |
 | E4 — Manuele bewerking & (her)generatie | [E4-bewerking-hergeneratie.md](E4-bewerking-hergeneratie.md) | 4 | 7 | 0 | Todo |
 | E5 — Dekking & export | [E5-dekking-export.md](E5-dekking-export.md) | 5 | 9 | 0 | Todo |
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
 | E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 11 | 0 | ⚠️ E7-11 is a deployment gate |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **81** | **24** | **30%** |
+| **Totaal** | | | **81** | **25** | **31%** |
 
 > **Correction (2026-07-27).** A code review of the E1+E2 branch before merging to `main` reopened
 > **E1-03**, **E1-04** and **E1-07**: each was marked done with an acceptance criterion that cannot
@@ -65,7 +65,12 @@ Stories blocked on these are marked `[!]`:
 - ~~Minimumdoel source~~ — **RESOLVED (2026-07-28): a separate decreed-minimumdoelen import.** `Minimumdoel` requires an `omschrijving` (Art. IX.1) that **neither** documented Op.stap source carries — the ordeningskader has only Discipline→Domein→Subdomein, and the per-discipline goal Excel's A–M mapping has no such column (Art. VII.1), only the concordance key (B/C/D). Decision: a **second import path** for the decreed eindtermen (ref + leeftijd + nr + omschrijving), keeping Art. IX.1 unchanged and the curriculum read-only (Art. III.1). Tracked as **E1-12** below; it needs directie to supply the source file. Until E1-12 lands, every MD-concorded leerplandoel still fails its FK on insert, so **E1-03/E1-04 stay `[~]`**.
 - Teacher visibility scope; export formats & layouts; coverage depth (binary vs. herhaling/opbouw).
 
-### Surfaced by the antagonist audit of 2026-07-28 (need a ruling, not a guess)
+### Surfaced by the E3-05 antagonist audit of 2026-07-28 (need a ruling, not a guess)
+
+- **What happens to a teaching stretch too short for a full themaperiode?** A 2-week stretch between two closures cannot become a 4-week themaperiode. Current behaviour (asserted by test, [ADR-0020](../docs/adr/0020-planningsblok-derivation-rules.md)): it becomes its own short block. Alternatives: merge it into a neighbour across the vacation, or exclude it from planning. Pedagogical question — not answered in code.
+- **What happens to an existing jaarplan when a school edits its vakantiedata? — gates E3-07.** Blocks are derived, so changing a vacation reshapes the grid and a stored placement can end up pointing at a date that is no longer a block boundary. Art. III.4's stance for curriculum re-import applies by analogy: **flag what must be reviewed rather than silently moving a teacher's plan.** E3-07 cannot persist drag-and-drop results until this is decided.
+
+### Surfaced by the earlier antagonist audit of 2026-07-28 — E1 remediation (need a ruling, not a guess)
 
 - **Art. II.3 — where do user-facing Dutch diagnostics live?** Three documents currently disagree and cannot all hold: Art. II.3/X.3 say Dutch UI text belongs in `frontend/src/i18n/nl.json`; `frontend/src/lib/api.ts` states the client "never echoes a raw backend message to the teacher"; yet FR-1.2's whole value (row numbers, offending column, the unknown codes, the ignored themadoel codes) **can only** be delivered by displaying `problemen[].melding` and `diff.opmerkingen[]` verbatim. Options: (a) amend Art. II.3 to scope it to UI chrome and permit server-generated diagnostics; (b) restructure the payload as machine-readable codes + parameters the UI renders from `nl.json`. Until ruled, the backend keeps growing as a second source of Dutch copy.
 - **Discipline 9's official name / the 9.x nesting.** The Art. VII.0 list has no bare `"9"` row and never names it, so 9.1/9.2/9.3 are seeded with `parentDiscipline = null` and **nothing** in the codebase ever sets that column. Art. XII meanwhile describes 9 as a subject that *is split*. Directie to supply discipline 9's official name, or confirm 9.1/9.2/9.3 are genuinely top-level. Until then any UI grouping of 9.x is impossible.

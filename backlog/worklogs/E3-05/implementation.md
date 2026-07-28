@@ -7,6 +7,12 @@ themaperiode (4–6 wk) / subthemaperiode (~2 wk). Belgian school year Sept→Ju
 **Directie decision (2026-07-14):** two-tier default — themaperiode (4–6 wk, coarse) + subthemaperiode
 (~2 wk, fine); zoom levels (E3-08) map to these tiers; unit configurable behind the seam.
 
+> ⚠️ **Round 1 below is a historical record and is superseded in three places** — read
+> [Round 2](#round-2--2026-07-28-antagonist-findings-fixed) for what the code actually does now. Specifically,
+> round 1 describes greedy chopping with a `MinimumBlokDagen` tail-absorption knob (both **removed**), claims
+> `Planningsblok`'s identity is its ordinal (it is **`(Niveau, Start)`**), and counts 15 unit tests (now 22).
+> Kept rather than rewritten, because the audit trail matters more than a tidy document.
+
 ## Approach
 
 ADR-0013 already settled the architecture, so this story implements it rather than re-deciding it. Its
@@ -93,3 +99,70 @@ acceptance criteria do not depend on them.
 - **Where the grain is configured per school.** ADR-0013 anticipates the schooljaar's period structure
   driving the unit (E6-03). Today the lengths are per-deployment config and the *breaks* are per-schooljaar
   data; making lengths per-schooljaar is an E6-03 extension of this seam, not a change to its consumers.
+
+---
+
+## Round 2 — 2026-07-28: antagonist findings fixed
+
+The audit returned **VIOLATIONS FOUND** (6 MAJOR, 5 MINOR, 1 QUESTION). Verdict recorded in
+[`antagonist.md`](antagonist.md). All findings are now addressed; nothing was waived.
+
+### MAJOR 1 + 6 — even distribution replaces greedy chopping
+`VerdeelGelijkmatig` divides each teaching stretch into `max(1, round(dagen / doeldagen))` near-equal blocks,
+spreading the remainder one day at a time over the leading blocks. The old code took a target-length bite off
+the front and left the remainder as its own block, which on the fixture year produced three **1-week
+"themaperioden"**. The corrected grid for 2026-2027 is **7 periods, all 4,4–6,0 weeks** — inside the ratified
+range, and identical to what the approved E3-10 wireframe shows.
+
+`MinimumBlokDagen` is **removed**, not re-tuned. It existed only to absorb the tail that greedy chopping
+created; with even distribution there is no tail. That also disposes of MAJOR 6 by deletion rather than by
+adding a strategy knob — the invented policy is gone instead of being made configurable, since only one
+candidate policy actually satisfies Art. IX.3's ratified range.
+
+### MAJOR 2 — the fine tier nests inside the coarse tier
+`Blokken(…, Subthemaperiode)` now derives subperiods **within each themaperiode**, and each carries
+`OuderOrdinaal`. Previously both tiers were independent chops of the same stretches, so a subthemaperiode
+could straddle a themaperiode boundary — which would have made E3-08's zoom incoherent and left the approved
+wireframe's zoom strip unimplementable. A new test asserts every fine block lies in exactly one coarse block
+*and* that the children tile their parent exactly (no gap, no overlap).
+
+### MAJOR 3 + the record-equality MINOR — honest identity
+`Planningsblok` is no longer a `record`; it is a sealed class with equality on **`(Niveau, Start)`**, matching
+its documented identity. The claim that `Ordinaal` "stays stable when a school later shifts its vacation
+dates" is **deleted** — it was false, and I had repeated it in the entity doc, the worklog and the commit
+message. `Ordinaal` is now documented as a display position, and a test asserts the instability rather than
+denying it. Re-anchoring after a vacation edit is logged as an open decision that **gates E3-07**.
+
+### MAJOR 4 + the binding-test MINOR — the default is now genuinely documented in configuration
+`appsettings.json` carries a `Planning:Blokindeling` section with the values and a `_comment`, in the same
+style as `Opstap:DisciplineSelectie`. Two tests were added: one binds the options from a real
+`IConfiguration` using the section path and property names a deployer would write, and one pins the section
+name. Without those, a wrong path would have shipped silently while the object-level tests still passed.
+
+### MAJOR 5 — the deviation is recorded as an ADR
+[**ADR-0020**](../../../docs/adr/0020-planningsblok-derivation-rules.md) records the derivation rules and
+**supersedes ADR-0013's "granularity is configuration on the `Schooljaar`" clause**: lengths are
+per-deployment config, the schooljaar owns where blocks *break*. ADR-0013's index entry is annotated and
+ADR-0020 is registered in the traceability matrix.
+
+### Remaining MINORs
+- `AantalDagen`'s doc no longer claims a span may include a vacation (it cannot, by construction).
+- The short-stretch case is now **asserted by test** (a stretch too short for a full themaperiode yields one
+  short block) and the pedagogical question is logged as an open decision instead of being silently decided.
+- A new guard rejects `SubthemaperiodeWeken > ThemaperiodeWeken`, since the fine tier subdivides the coarse.
+- Art. IX.3's "`Schooljaar` contains multiple klassen" was unowned by any story; **assigned to E3-01** along
+  with the `Jaarplan` entity and its `vergrendeld` flag.
+- `Omschrijving`'s Dutch prose: the auditor ruled it not a violation today (identical in kind to the accepted
+  `GeconfigureerdeDisciplineSelectie.Omschrijving`). The preventive constraint is noted — if E3-06/E3-08
+  renders it as a UI label, the label must come from `nl.json` with the numbers as parameters.
+
+### Gates after the fixes
+326 unit passed / 0 failed (22 of them planning); integration 19 passed / 22 skipped; `dotnet format` clean;
+no migration drift. Still `[~]`: the 3 PostgreSQL persistence tests remain unrunnable on this machine.
+
+### One thing worth noting about the process
+The instability test I wrote first **failed** — it asserted that ordinal 3 moves when the kerstvakantie
+shifts, and it did not, because even distribution leaves blocks *before* the edited vacation untouched. The
+property is real but only holds after the edit point, so the test now asserts it generally ("some ordinal now
+denotes a different span") instead of at a hand-picked ordinal. A spot-check would have been a fragile way to
+state it.

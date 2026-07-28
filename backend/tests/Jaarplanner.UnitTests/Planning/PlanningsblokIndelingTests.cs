@@ -1,5 +1,6 @@
-using Jaarplanner.Domain.Planning;
+﻿using Jaarplanner.Domain.Planning;
 using Jaarplanner.Infrastructure.Planning;
+using Microsoft.Extensions.Configuration;
 
 namespace Jaarplanner.UnitTests.Planning;
 
@@ -26,10 +27,147 @@ public sealed class PlanningsblokIndelingTests
         var themaperiodes = indeling.Blokken(Schooljaar(), Planningsblokniveau.Themaperiode);
         var subthemaperiodes = indeling.Blokken(Schooljaar(), Planningsblokniveau.Subthemaperiode);
 
-        // The fine tier must subdivide the coarse one, so there are strictly more of them.
         Assert.True(subthemaperiodes.Count > themaperiodes.Count);
         Assert.All(themaperiodes, b => Assert.Equal(Planningsblokniveau.Themaperiode, b.Niveau));
         Assert.All(subthemaperiodes, b => Assert.Equal(Planningsblokniveau.Subthemaperiode, b.Niveau));
+    }
+
+    /// <summary>
+    /// <b>The regression that mattered most.</b> The first implementation chopped a target-length block off
+    /// the front of each teaching stretch and left the remainder as its own block, which on this very fixture
+    /// produced three <b>1-week</b> "themaperioden" (14–20 dec, 8–14 feb, 29 mrt–4 apr) — outside the 4–6 week
+    /// range directie ratified on 2026-07-14. No test asserted block duration, so it passed.
+    /// </summary>
+    [Fact]
+    public void Elke_themaperiode_valt_binnen_de_geratificeerde_vier_tot_zes_weken()
+    {
+        var blokken = new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions())
+            .Blokken(Schooljaar(), Planningsblokniveau.Themaperiode);
+
+        Assert.NotEmpty(blokken);
+        foreach (var blok in blokken)
+        {
+            Assert.InRange(blok.AantalDagen, 4 * 7, 6 * 7);
+        }
+    }
+
+    /// <summary>
+    /// The fine tier subdivides the coarse one: every subthemaperiode lies entirely within exactly one
+    /// themaperiode and names it via <c>OuderOrdinaal</c>. Previously the two tiers were independent chops of
+    /// the year, so a subthemaperiode could straddle a themaperiode boundary — which would make E3-08's "zoom
+    /// into this period" incoherent. The old test only asserted the fine tier had *more* blocks, which is a
+    /// strictly weaker claim and was true even while the nesting property was false.
+    /// </summary>
+    [Fact]
+    public void Elke_subthemaperiode_ligt_in_precies_een_themaperiode()
+    {
+        var indeling = new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions());
+        var schooljaar = Schooljaar();
+
+        var grof = indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
+        var fijn = indeling.Blokken(schooljaar, Planningsblokniveau.Subthemaperiode);
+
+        foreach (var sub in fijn)
+        {
+            var ouders = grof.Where(t => t.Omvat(sub)).ToList();
+            Assert.Single(ouders);
+            Assert.Equal(ouders[0].Ordinaal, sub.OuderOrdinaal);
+        }
+
+        // And together they tile each coarse block exactly — no gap, no overlap.
+        foreach (var themaperiode in grof)
+        {
+            var kinderen = fijn.Where(s => s.OuderOrdinaal == themaperiode.Ordinaal).ToList();
+            Assert.NotEmpty(kinderen);
+            Assert.Equal(themaperiode.Start, kinderen[0].Start);
+            Assert.Equal(themaperiode.Eind, kinderen[^1].Eind);
+            Assert.Equal(themaperiode.AantalDagen, kinderen.Sum(k => k.AantalDagen));
+        }
+    }
+
+    /// <summary>
+    /// Pins the honest contract about <c>Ordinaal</c>: it is a display position, <b>not</b> a key that
+    /// survives a vacation edit. Moving one vacation reshapes the grid, so the same ordinal can denote a
+    /// different stretch of the year. The type previously claimed the opposite. Persisted placements must key
+    /// on <c>Start</c>, and re-anchoring after a vacation edit is an explicit E3-07 concern.
+    /// </summary>
+    [Fact]
+    public void Ordinaal_is_geen_stabiele_sleutel_over_vakantiewijzigingen()
+    {
+        var indeling = new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions());
+
+        var origineel = indeling.Blokken(Schooljaar(), Planningsblokniveau.Themaperiode);
+
+        // Shift only the kerstvakantie one week earlier; the teaching stretches around it change length.
+        var gewijzigd = new Schooljaar("2026-2027", Start, Eind);
+        gewijzigd.VoegVakantieToe(new Schoolvakantie("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
+        gewijzigd.VoegVakantieToe(new Schoolvakantie("Kerstvakantie", new DateOnly(2026, 12, 14), new DateOnly(2026, 12, 27)));
+        gewijzigd.VoegVakantieToe(new Schoolvakantie("Krokusvakantie", new DateOnly(2027, 2, 15), new DateOnly(2027, 2, 21)));
+        gewijzigd.VoegVakantieToe(new Schoolvakantie("Paasvakantie", new DateOnly(2027, 4, 5), new DateOnly(2027, 4, 18)));
+
+        var na = indeling.Blokken(gewijzigd, Planningsblokniveau.Themaperiode);
+
+        // At least one ordinal now denotes a different stretch of the year. Asserted generally rather than at
+        // a hand-picked ordinal: even distribution leaves the blocks *before* the edited vacation untouched,
+        // so only later ordinals move — which is precisely why a spot-check would be a fragile way to state
+        // the property.
+        var verschoven = origineel
+            .Where(voor => na.Any(nu => nu.Ordinaal == voor.Ordinaal && nu.Start != voor.Start))
+            .ToList();
+
+        Assert.NotEmpty(verschoven);
+
+        // Identity is (niveau, start), so a shifted ordinal is correctly a *different* block.
+        foreach (var voor in verschoven)
+        {
+            Assert.NotEqual(voor, na.Single(nu => nu.Ordinaal == voor.Ordinaal));
+        }
+    }
+
+    /// <summary>
+    /// Two blocks with the same tier and start date are the same block, whatever their ordinal — the
+    /// documented identity. Previously <c>Planningsblok</c> was a record whose synthesised equality compared
+    /// all four properties, contradicting its own doc.
+    /// </summary>
+    [Fact]
+    public void Identiteit_is_niveau_plus_startdatum()
+    {
+        var a = new Planningsblok(Planningsblokniveau.Themaperiode, 3, Start, Start.AddDays(30));
+        var b = new Planningsblok(Planningsblokniveau.Themaperiode, 7, Start, Start.AddDays(20));
+        var c = new Planningsblok(Planningsblokniveau.Subthemaperiode, 3, Start, Start.AddDays(30));
+
+        Assert.Equal(a, b);
+        Assert.Equal(a.GetHashCode(), b.GetHashCode());
+        Assert.NotEqual(a, c); // different tier
+    }
+
+    /// <summary>
+    /// The documented known limit (Art. XIV, open): a teaching stretch too short to hold a full themaperiode
+    /// yields one short block rather than being silently dropped or merged across the vacation. Asserted so
+    /// the behaviour is visible and deliberate instead of incidental.
+    /// </summary>
+    [Fact]
+    public void Te_korte_lesperiode_levert_een_kort_blok()
+    {
+        // A 12-day school "year" — far shorter than one themaperiode.
+        var kort = new Schooljaar("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 12));
+
+        var blokken = new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions())
+            .Blokken(kort, Planningsblokniveau.Themaperiode);
+
+        var blok = Assert.Single(blokken);
+        Assert.Equal(12, blok.AantalDagen);
+        Assert.Equal(1, blok.Ordinaal);
+    }
+
+    [Fact]
+    public void Subthemaperiode_langer_dan_themaperiode_wordt_geweigerd()
+    {
+        var fout = Assert.Throws<ArgumentException>(() =>
+            new GeconfigureerdePlanningsblokIndeling(
+                new PlanningsblokOptions { ThemaperiodeWeken = 2, SubthemaperiodeWeken = 5 }));
+
+        Assert.Contains(PlanningsblokOptions.SectionName, fout.Message);
     }
 
     /// <summary>
@@ -99,22 +237,42 @@ public sealed class PlanningsblokIndelingTests
     }
 
     /// <summary>
-    /// A too-short remainder is absorbed into the preceding block instead of becoming a stub: a two-day
-    /// "period" is not plannable. This is why block spans vary — the grid is pedagogical, not arithmetic.
+    /// Proves the grain travels as <b>configuration</b>, not merely as constructor arguments: the options are
+    /// bound from a real <see cref="IConfiguration"/> using the section path and property names a deployer
+    /// would write in <c>appsettings.json</c>. Without this, a wrong section path would ship silently and the
+    /// grain would be un-overridable in practice — the object-level tests above would still pass. Mirrors
+    /// <c>OpstapImportDisciplineSelectieTests</c>, the precedent this seam is modelled on.
     /// </summary>
     [Fact]
-    public void Te_korte_restduur_wordt_bij_het_vorige_blok_gevoegd()
+    public void Grain_wordt_gebonden_uit_de_configuratiesectie()
     {
-        // A 16-day stretch with a 14-day block leaves a 2-day tail, below the 5-day minimum.
-        var schooljaar = new Schooljaar("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 16));
-        var indeling = new GeconfigureerdePlanningsblokIndeling(
-            new PlanningsblokOptions { ThemaperiodeWeken = 2, MinimumBlokDagen = 5 });
+        var configuratie = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{PlanningsblokOptions.SectionName}:ThemaperiodeWeken"] = "4",
+                [$"{PlanningsblokOptions.SectionName}:SubthemaperiodeWeken"] = "1",
+            })
+            .Build();
 
-        var blokken = indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
+        var opties = new PlanningsblokOptions();
+        configuratie.GetSection(PlanningsblokOptions.SectionName).Bind(opties);
 
-        var blok = Assert.Single(blokken);
-        Assert.Equal(schooljaar.Eind, blok.Eind);
-        Assert.Equal(16, blok.AantalDagen);
+        Assert.Equal(4, opties.ThemaperiodeWeken);
+        Assert.Equal(1, opties.SubthemaperiodeWeken);
+
+        var indeling = new GeconfigureerdePlanningsblokIndeling(opties);
+        Assert.Contains("themaperiode 4 wk", indeling.Omschrijving);
+        Assert.Contains("subthemaperiode 1 wk", indeling.Omschrijving);
+    }
+
+    /// <summary>
+    /// The section path in <c>appsettings.json</c> must be exactly the one the options class declares —
+    /// finding 4 was that no such section existed at all, so nothing caught a mismatch.
+    /// </summary>
+    [Fact]
+    public void Sectienaam_is_de_verwachte_configuratiesleutel()
+    {
+        Assert.Equal("Planning:Blokindeling", PlanningsblokOptions.SectionName);
     }
 
     [Fact]

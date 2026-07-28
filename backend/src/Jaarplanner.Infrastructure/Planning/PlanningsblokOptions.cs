@@ -5,11 +5,13 @@ namespace Jaarplanner.Infrastructure.Planning;
 /// configuration section <c>Planning:Blokindeling</c> (appsettings, environment, user-secrets, Key Vault —
 /// any standard .NET config source), so the grain can change <b>without a code change</b>.
 /// <para>
-/// <b>The default lives here, in configuration space — not in planning logic.</b> When the section is
-/// absent these values are what an unconfigured deployment resolves to, and they encode the directie
-/// decision of 2026-07-14: a themaperiode of 5 weeks (the midpoint of the ratified 4–6 range) subdivided
-/// into subthemaperioden of 2 weeks. E3-05's acceptance criterion is precisely this: "the block unit is
-/// configurable behind a seam; default is documented, not compiled-in."
+/// <b>The default is documented in <c>appsettings.json</c>, not only here.</b> The property initialisers
+/// below are the fallback an unconfigured deployment resolves to, but a compiled-in fallback alone does not
+/// satisfy E3-05's "default is documented, not compiled-in" — a deployer could not discover the section name
+/// or the property names without reading Infrastructure source. So <c>appsettings.json</c> carries the
+/// section with its values and a comment, exactly as <c>Opstap:DisciplineSelectie</c> does. The values encode
+/// the directie decision of 2026-07-14: a themaperiode of 5 weeks (midpoint of the ratified 4–6 range)
+/// subdivided into subthemaperioden of 2 weeks.
 /// </para>
 /// <para>
 /// <b>Weeks, deliberately — never months.</b> There is no month option and there must not be one
@@ -33,15 +35,15 @@ public sealed class PlanningsblokOptions
     public int ThemaperiodeWeken { get; init; } = 5;
 
     /// <summary>
-    /// Length of a fine subthemaperiode in weeks. Defaults to 2, per the ratified ~2 week cadence.
+    /// Length of a fine subthemaperiode in weeks. Defaults to 2, per the ratified ~2 week cadence. Must not
+    /// exceed <see cref="ThemaperiodeWeken"/>, since the fine tier subdivides the coarse one.
     /// Overridable purely by configuration.
     /// </summary>
     public int SubthemaperiodeWeken { get; init; } = 2;
 
-    /// <summary>
-    /// The shortest tail (in days) that still becomes its own block. A teaching stretch's remainder shorter
-    /// than this is absorbed into the preceding block rather than becoming a stub of a few days — a
-    /// two-day "period" is not something a teacher can plan a thema into. Defaults to 5 (a school week).
-    /// </summary>
-    public int MinimumBlokDagen { get; init; } = 5;
+    // There is deliberately no "minimum block length" knob. An earlier version had one, to absorb the short
+    // tail left by chopping target-length blocks off the front of a teaching stretch. Blocks are now
+    // distributed evenly across each stretch, so no tail is produced and the knob had nothing to do — and the
+    // policy it encoded (absorb backwards below N days) was an invented answer to a pedagogical question that
+    // belongs to directie, not to this class.
 }

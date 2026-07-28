@@ -1,6 +1,6 @@
 # E3-05 — Antagonist
 
-**Status: RUN 2026-07-28 — verdict VIOLATIONS FOUND. See below.**
+**Status: RUN 2026-07-28 — verdict VIOLATIONS FOUND. All findings fixed the same day; see the fix log in [`implementation.md`](implementation.md#round-2--2026-07-28-antagonist-findings-fixed). Nothing was waived.**
 
 The independent antagonist audit has not been performed for E3-05. The previous story's round-3 audit
 demonstrated concretely why that matters: the self-audit there returned "compliant" and missed three real

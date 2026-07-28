@@ -12,6 +12,7 @@
 - [ ] **E3-01 — Jaarplan generation service (structured JSON, advisory)**
   Generate a per-class plan: thema's + goals across planningsblokken; returned as validated JSON; persisted as a proposal (not auto-applied).
   *Done when:* a class yields a reviewable generated plan via the faked + real AI client. Ref: FR-5.1, Art. IV.
+  *Also owns (assigned 2026-07-28):* Art. IX.3's "**`Schooljaar` contains multiple klassen**". E3-05 implemented only the vakantie-/periodestructuur half of `Schooljaar`; the Schooljaar↔Klas containment (and the `Jaarplan` entity itself, with its `vergrendeld` flag per thema) belongs here. Flagged by the E3-05 audit as previously unowned by any story.
 
 - [ ] **E3-02 — Spreading heuristics**
   Respect number of available blocks, logical order (e.g. seasonal thema's in season), and balanced goal distribution.
@@ -27,11 +28,12 @@
 
 ### FR-6 — Calendar
 
-- [~] **E3-05 — Planningsblok model & calendar grid** — *implemented 2026-07-28; awaiting the antagonist audit (and CI for the persistence tests) before `[x]`*
+- [~] **E3-05 — Planningsblok model & calendar grid** — *audited 2026-07-28 (VIOLATIONS FOUND), findings fixed; awaiting CI for the persistence tests before `[x]`*
   Model the school year as configurable planningsblokken; **do not hard-assume months** — support themaperiode (4–6 wk) / subthemaperiode (~2 wk). Belgian school year Sept→June.
   *Done when:* the block unit is configurable behind a seam; default is documented, not compiled-in. Ref: Art. IX.3, Gap A.6.
   *Decision (directie 2026-07-14, Art. XIV resolved):* default is the **two-tier** model — themaperiode (4–6 wk, coarse) + subthemaperiode (~2 wk, fine); zoom levels (E3-08) map to these tiers; unit configurable behind the seam, default documented not compiled-in.
-  *Built (2026-07-28):* `Planningsblokniveau` (Themaperiode | Subthemaperiode — **no `Maand` member, guarded by a test**), `Planningsblok` (niveau/ordinaal/start/eind, no calendar unit), `Schooljaar` + owned `Schoolvakantie` with `Lesperiodes()`, the `IPlanningsblokIndeling` seam and its config-driven implementation (`Planning:Blokindeling`, default themaperiode 5 wk / subthemaperiode 2 wk documented in configuration space), plus migration `SchooljaarEnVakanties`. **Blocks are derived, never stored** — persisting them would bake the granularity into rows. 15 unit tests pass locally; 3 persistence tests need CI. See [worklog](worklogs/E3-05/implementation.md).
+  *Built (2026-07-28):* `Planningsblokniveau` (Themaperiode | Subthemaperiode — **no `Maand` member, guarded by a test**), `Planningsblok` (niveau/ordinaal/start/eind, no calendar unit), `Schooljaar` + owned `Schoolvakantie` with `Lesperiodes()`, the `IPlanningsblokIndeling` seam and its config-driven implementation (`Planning:Blokindeling`, default themaperiode 5 wk / subthemaperiode 2 wk documented in configuration space), plus migration `SchooljaarEnVakanties`. **Blocks are derived, never stored** — persisting them would bake the granularity into rows. See [worklog](worklogs/E3-05/implementation.md).
+  *Audit + fixes (2026-07-28):* the antagonist returned **VIOLATIONS FOUND** (6 MAJOR). Fixed: blocks are now **distributed evenly** per teaching stretch (greedy chopping produced 1-week "themaperioden" outside the ratified 4–6 wk range), the **fine tier nests inside the coarse tier** (they were independent chops, so a subthemaperiode could straddle a boundary), identity is now **`(Niveau, Start)`** and the false "`Ordinaal` is stable" claim is gone, the default is documented in **`appsettings.json`**, and the derivation rules are recorded in **[ADR-0020](../docs/adr/0020-planningsblok-derivation-rules.md)** (superseding ADR-0013's "configuration on the `Schooljaar`" clause). 22 unit tests pass locally — including the three properties the audit showed were unasserted (block duration, tier nesting, ordinal instability); 3 persistence tests still need CI.
 
 - [ ] **E3-06 — Calendar/agenda view of the plan**
   Render the year plan as a calendar/agenda over the school year.
@@ -49,9 +51,9 @@
   Visually flag overloaded blocks and goals that appear nowhere. Signal with icon/label, not colour alone (a11y).
   *Done when:* an over-full block and an unplaced goal are both visibly flagged. Ref: FR-6.4, ADR-0017.
 
-- [~] **E3-10 — Kalender wireframe + teacher feedback (wireframes-first)** — *wireframe drafted 2026-07-28; **awaiting the review session** with directie/teachers*
+- [x] **E3-10 — Kalender wireframe + teacher feedback (wireframes-first)** — *wireframe **approved** 2026-07-28*
   Low-fidelity wireframe of the kalender reviewed with directie/teachers **before** building E3-06/07.
   *Done when:* a wireframe is approved and informs the build. Ref: ADR-0017 (wireframes-first), `docs/ux/ui-ux-approach.md` §4; NFR-2.
   *Drafted (2026-07-28):* [`docs/ux/wireframes/e3-10-kalender.html`](../docs/ux/wireframes/e3-10-kalender.html) (open in a browser, no build step) with the rationale and the five review questions in [`e3-10-kalender.md`](../docs/ux/wireframes/e3-10-kalender.md). Low-fidelity by design — greyscale, doelsoort as lettered grey chips, so reviewers critique structure not palette. Central idea: the year is a **ribbon of unequal periods with vacations as literal gaps**, block width proportional to teaching days — a uniform month grid is refused (Art. IX.3 / ADR-0013).
-  *Cannot be `[x]` without the review:* the AC is "a wireframe is **approved**". Only directie/teachers can approve it. The five questions (period rhythm, thema spanning two periods, what "te vol" means, the ongeplande-doelen tray, what belongs on a card) are the agenda.
+  *Approved (2026-07-28):* the wireframe is approved as the basis for E3-06/E3-07. The five open questions (period rhythm, thema spanning two periods, what "te vol" means, the ongeplande-doelen tray, what belongs on a card) were **not** individually answered at approval — they stay open as build-time decisions and are carried into E3-06/E3-09; see [worklog](worklogs/E3-10/implementation.md).
   *It already earned its keep:* feeding real 2026-2027 dates through the E3-05 grid exposed three **1-week "themaperioden"** — outside the ratified 4–6 wk range. See E3-05's antagonist verdict.
