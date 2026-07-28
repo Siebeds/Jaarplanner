@@ -54,3 +54,31 @@
 
 ## Defects
 - None.
+
+---
+
+## Round 2 — 2026-07-28
+
+**Executed locally:** `dotnet test backend/Jaarplanner.sln` → **302 unit passed, 0 failed**;
+integration **19 passed, 16 skipped**. `dotnet format --verify-no-changes` clean. No migration drift.
+Frontend gates untouched by this story but re-run green.
+
+| Criterion | Verdict | Evidence |
+| --- | --- | --- |
+| Upload `.xlsx` of thema's/subthema's/activiteiten | ⏳ **unverified locally** | Endpoint exists (`POST /api/schoolcontent-import`); covered by `SchoolcontentImportEndpointsTests.Geldig_bestand_wordt_geimporteerd` — **skipped here, needs CI** |
+| Validate required columns | ✅ PASS | `Verwisselde_kolommen_worden_geweigerd`, `Standaard_kolomindeling_blijft_geldig` + the pre-existing missing-header tests |
+| Clear per-row error messages | ✅ PASS (unit) / ⏳ (HTTP) | Existing parser tests; HTTP shape via `Ongeldige_rij_wordt_precies_gerapporteerd_en_geldige_rij_gaat_door` — skipped here |
+| Invalid rows reported precisely | ✅ PASS | Row number + column asserted; unknown-code and cap paths now report instead of throwing |
+| Valid file proceeds | ✅ PASS (unit) / ⏳ (HTTP) | `Onbekende_doelcode_...` and cap tests prove good content still lands |
+
+**Why the gap.** The 6 Postgres-backed endpoint tests require a real server (deliberately — the EF
+in-memory provider enforces no FKs, which is how these defects passed CI for two epics). No Docker or
+local PostgreSQL is available on this machine, so they skip. `PostgresAvailabilityTests` guarantees CI
+cannot skip them silently: a missing `JAARPLANNER_TEST_POSTGRES` on CI is a hard failure.
+
+**Verify on CI / with a database:**
+```
+docker compose up -d db
+export JAARPLANNER_TEST_POSTGRES="Host=localhost;Port=5433;Database=postgres;Username=<user>;Password=<pw>"
+dotnet test backend/Jaarplanner.sln
+```

@@ -25,7 +25,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | Epic | File | Phase | Stories | Done | Status |
 | --- | --- | --- | --- | --- | --- |
 | E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 9 | 9 | ✅ Done |
-| E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 11 | 8 | ⚠️ Reopened (E1-03/04/07) |
+| E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 12 | 8 | ⚠️ E1-07 awaiting CI; E1-03/04 blocked on E1-12 |
 | E2 — AI-matching thema ↔ doel | [E2-ai-matching.md](E2-ai-matching.md) | 2 | 7 | 7 | ✅ Done |
 | E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 0 | Todo |
 | E4 — Manuele bewerking & (her)generatie | [E4-bewerking-hergeneratie.md](E4-bewerking-hergeneratie.md) | 4 | 7 | 0 | Todo |
@@ -33,7 +33,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
 | E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 10 | 0 | Todo |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **79** | **24** | **30%** |
+| **Totaal** | | | **80** | **24** | **30%** |
 
 > **Correction (2026-07-27).** A code review of the E1+E2 branch before merging to `main` reopened
 > **E1-03**, **E1-04** and **E1-07**: each was marked done with an acceptance criterion that cannot
@@ -62,5 +62,5 @@ Stories blocked on these are marked `[!]`:
 - Disciplines first (all vs. starter selection); `cluster` presence per discipline.
 - `leergebied`/Wereldoriëntatie surfacing & mapping; `jaarFase` code form (1K/2K/3K ↔ JK/K2/K3).
 - Op.stap import source (manual per-discipline Excel vs. automated).
-- **Minimumdoel source (new, 2026-07-27 — gates E1-03, E1-04 and therefore E5's inspectie-facing coverage).** `Minimumdoel` requires an `omschrijving` (Art. IX.1), but **neither** documented Op.stap source carries the decreed text: the ordeningskader has only Discipline→Domein→Subdomein, and the per-discipline goal Excel's A–M mapping has no such column (Art. VII.1) — it carries only the concordance key (B/C/D). Options: (a) a separate decreed-minimumdoelen import (Excel/CSV from the eindtermen decreet); (b) make `omschrijving` nullable and create stub rows from B/C/D on import, enriching later — **requires amending Art. IX.1**; (c) a one-off seed migration. Until decided, every MD-concorded leerplandoel fails its FK on insert.
+- ~~Minimumdoel source~~ — **RESOLVED (2026-07-28): a separate decreed-minimumdoelen import.** `Minimumdoel` requires an `omschrijving` (Art. IX.1) that **neither** documented Op.stap source carries — the ordeningskader has only Discipline→Domein→Subdomein, and the per-discipline goal Excel's A–M mapping has no such column (Art. VII.1), only the concordance key (B/C/D). Decision: a **second import path** for the decreed eindtermen (ref + leeftijd + nr + omschrijving), keeping Art. IX.1 unchanged and the curriculum read-only (Art. III.1). Tracked as **E1-12** below; it needs directie to supply the source file. Until E1-12 lands, every MD-concorded leerplandoel still fails its FK on insert, so **E1-03/E1-04 stay `[~]`**.
 - Teacher visibility scope; export formats & layouts; coverage depth (binary vs. herhaling/opbouw).

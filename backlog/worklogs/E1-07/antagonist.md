@@ -24,3 +24,25 @@ No other findings. Clean, exemplary implementation.
 - **Art. XIV — Thema/activiteit Excel structure**: provisional, seam-isolated. The `;`-separated list convention and `(thema, subthema)` denormalisation need directie confirmation when the real template is settled at E1-09.
 
 **Conclusion:** COMPLIANT. Satisfies FR-1.1/1.2 (precise per-row errors; valid file proceeds). The lone MINOR was cosmetic and fixed on landing.
+
+---
+
+## Round 2 — 2026-07-28: SELF-AUDIT (not the antagonist subagent)
+
+**Provenance, stated plainly:** the `antagonist` subagent was **not** spawned for this round — the user
+has a standing instruction in this session not to invoke subagents unless they ask. What follows is the
+implementer's own constitution check and carries **less weight than an independent audit**. Re-run the
+real antagonist before treating E1-07 as audited.
+
+| Article | Check | Verdict |
+| --- | --- | --- |
+| III.1 read-only curriculum | Import only *reads* `Leerplandoelen` to validate codes; never inserts/mutates curriculum | ✅ |
+| III.3 single-source mapping | Positional header check reads `SchoolcontentKolom`/`Kolommen`; no second column map (the test builder uses the same source) | ✅ |
+| III.5 identity by code | Goal links validated against `Leerplandoel.Code` before construction | ✅ |
+| IV.1/IV.2 AI advisory, decisions preserved | Import still writes links as `voorgesteld`; the discard opt-in is unchanged and still defaults false | ✅ |
+| IX.2 level scoping + 2–3 themadoelen | Cap enforced in the service in both passes; subthema still requires klas + leeftijd | ✅ |
+| ADR-0006 §4 report-don't-drop | Unknown codes, capped themadoelen, corrupt workbook and wrong layout all *reported*, never a silent drop or a 500 | ✅ |
+| VI.4 no secrets | No config/keys touched | ✅ |
+| GDPR / no pupil data | Endpoint accepts thema/activiteit content only | ✅ |
+| II.3 Dutch UI strings in `nl.json` | ⚠️ **Noted** — new Dutch messages are produced at the parser/service layer, consistent with `SchoolcontentRijProbleem`'s documented design. No frontend strings were added. When the SPA surfaces these, Art. II.3 requires the UI copy to come from `nl.json`. |
+| X Definition of Done | Tests/format/lint green **except** the 6 endpoint tests are unexecuted locally — story deliberately left `[~]` | ⚠️ |

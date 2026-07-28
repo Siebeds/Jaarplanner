@@ -1,4 +1,4 @@
-using Jaarplanner.Application.Schoolcontent.Import;
+﻿using Jaarplanner.Application.Schoolcontent.Import;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
@@ -86,7 +86,28 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
             .GroupBy(t => t.Naam, KeyComparer)
             .ToDictionary(g => g.Key, g => g.First(), KeyComparer);
 
-        var diff = await VerwerkAsync(parseResultaat, opties, klasPerNaam, bestaandeThemaPerNaam, toepassen, cancellationToken);
+        // Validate every referenced leerplandoel code BEFORE any DoelKoppeling is constructed.
+        // DoelKoppeling.LeerplandoelCode is a required Restrict FK (Art. III.5), so a single typo in the
+        // sheet's Themadoelen/Subdoelen column would otherwise abort the ENTIRE import with a
+        // DbUpdateException surfacing as a 500 — instead of a per-row problem report (ADR-0006 §4).
+        // The CRUD sibling has always validated codes via VereisLeerplandoelAsync; the import did not.
+        var verwezenCodes = parseResultaat.Rijen
+            .SelectMany(r => r.Themadoelen.Concat(r.Subdoelen))
+            .Select(c => c.Trim())
+            .Where(c => c.Length > 0)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var geldigeCodes = verwezenCodes.Count == 0
+            ? []
+            : (await _context.Leerplandoelen
+                .Where(l => verwezenCodes.Contains(l.Code))
+                .Select(l => l.Code)
+                .ToListAsync(cancellationToken))
+                .ToHashSet(StringComparer.Ordinal);
+
+        var codeControle = new DoelCodeControle(geldigeCodes);
+
+        var diff = await VerwerkAsync(parseResultaat, opties, klasPerNaam, bestaandeThemaPerNaam, codeControle, toepassen, cancellationToken);
 
         if (toepassen)
         {
@@ -106,6 +127,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         SchoolcontentImportOpties opties,
         IReadOnlyDictionary<string, Klas> klasPerNaam,
         IReadOnlyDictionary<string, Thema> bestaandeThemaPerNaam,
+        DoelCodeControle codeControle,
         bool toepassen,
         CancellationToken cancellationToken)
     {
@@ -152,13 +174,30 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                     themaNaam,
                     gewijzigd ? WijzigingSoort.Bijgewerkt : WijzigingSoort.Ongewijzigd));
 
-                ReconcileThemadoelen(doelThema, themaGroep, opties, toepassen, bedreigd);
+                ReconcileThemadoelen(doelThema, themaGroep, opties, codeControle, toepassen, bedreigd);
             }
 
             // On a brand-new thema, themadoelen come straight from the file (no existing decisions to protect).
             if (!bestaat)
             {
-                foreach (var code in VerzamelThemadoelCodes(themaGroep))
+                // The 2–3 cap (Art. IX.2) is enforced HERE rather than left to VoegThemadoelToe, which
+                // throws on the 4th. Two reasons: an InvalidOperationException would abort the whole
+                // import as a 500 instead of reporting a row problem (ADR-0006 §4), and — worse — the
+                // check used to run only under `toepassen`, so a preview reported "Toegevoegd" with no
+                // problem and the commit then threw. Capping in both passes keeps the file's documented
+                // "preview == commit" guarantee true.
+                var codes = VerzamelThemadoelCodes(themaGroep, codeControle);
+                var teVeel = codes.Count - Thema.MaxThemadoelen;
+                if (teVeel > 0)
+                {
+                    opmerkingen.Add(
+                        $"Thema '{themaNaam}' heeft {codes.Count} themadoelen in het bestand; " +
+                        $"een thema wordt door ten hoogste {Thema.MaxThemadoelen} themadoelen geankerd " +
+                        $"(Art. IX.2). De eerste {Thema.MaxThemadoelen} zijn overgenomen, " +
+                        $"{teVeel} genegeerd: {string.Join(", ", codes.Skip(Thema.MaxThemadoelen))}.");
+                }
+
+                foreach (var code in codes.Take(Thema.MaxThemadoelen))
                 {
                     if (toepassen)
                     {
@@ -173,6 +212,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                 themaGroep,
                 opties,
                 klasPerNaam,
+                codeControle,
                 toepassen,
                 subthemaWijzigingen,
                 activiteitWijzigingen,
@@ -181,6 +221,16 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         }
 
         await Task.CompletedTask;
+
+        // Report every unknown goal code once, at the end, instead of failing the import. The rest of
+        // the file is imported; the curriculum is never touched (Art. III).
+        if (codeControle.Onbekend.Count > 0)
+        {
+            opmerkingen.Add(
+                $"{codeControle.Onbekend.Count} onbekende leerplandoelcode(s) overgeslagen — deze bestaan " +
+                "niet in de ingelezen Op.stap-doelen: " + string.Join(", ", codeControle.Onbekend) +
+                ". Controleer de codes of importeer eerst de betreffende discipline.");
+        }
 
         return new SchoolcontentImportDiff(
             opties.Modus,
@@ -198,6 +248,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         IReadOnlyList<SchoolcontentRij> themaGroep,
         SchoolcontentImportOpties opties,
         IReadOnlyDictionary<string, Klas> klasPerNaam,
+        DoelCodeControle codeControle,
         bool toepassen,
         List<SubthemaWijziging> subthemaWijzigingen,
         List<ActiviteitWijziging> activiteitWijzigingen,
@@ -244,7 +295,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                 // New subthema: subdoelen straight from the file.
                 if (toepassen)
                 {
-                    foreach (var code in VerzamelSubdoelCodes(subthemaGroep))
+                    foreach (var code in VerzamelSubdoelCodes(subthemaGroep, codeControle))
                     {
                         doelSubthema.VoegSubdoelToe(sleutel.Leeftijd, new DoelKoppeling(code, KoppelingStatus.Voorgesteld));
                     }
@@ -264,7 +315,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                     themaNaam, sleutel.Naam, sleutel.Klas, sleutel.Leeftijd,
                     gewijzigd ? WijzigingSoort.Bijgewerkt : WijzigingSoort.Ongewijzigd));
 
-                ReconcileSubdoelen(doelSubthema, subthemaGroep, opties, toepassen, bedreigd);
+                ReconcileSubdoelen(doelSubthema, subthemaGroep, opties, codeControle, toepassen, bedreigd);
             }
 
             VerwerkActiviteiten(
@@ -338,10 +389,11 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         Thema thema,
         IReadOnlyList<SchoolcontentRij> themaGroep,
         SchoolcontentImportOpties opties,
+        DoelCodeControle codeControle,
         bool toepassen,
         List<BedreigdeBeslissing> bedreigd)
     {
-        var inkomendeCodes = VerzamelThemadoelCodes(themaGroep);
+        var inkomendeCodes = VerzamelThemadoelCodes(themaGroep, codeControle);
         var inkomendeSet = inkomendeCodes.ToHashSet(StringComparer.Ordinal);
         var bestaandeCodes = thema.Themadoelen
             .Select(td => td.Koppeling.LeerplandoelCode)
@@ -400,10 +452,11 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         Subthema subthema,
         IEnumerable<SchoolcontentRij> subthemaGroep,
         SchoolcontentImportOpties opties,
+        DoelCodeControle codeControle,
         bool toepassen,
         List<BedreigdeBeslissing> bedreigd)
     {
-        var inkomendeCodes = VerzamelSubdoelCodes(subthemaGroep);
+        var inkomendeCodes = VerzamelSubdoelCodes(subthemaGroep, codeControle);
         var inkomendeSet = inkomendeCodes.ToHashSet(StringComparer.Ordinal);
         var bestaandeCodes = subthema.Subdoelen
             .Select(sd => sd.Koppeling.LeerplandoelCode)
@@ -482,21 +535,64 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
             .Select(g => new KeyValuePair<string, IReadOnlyList<SchoolcontentRij>>(g.Key, g.ToList()))
             .ToList();
 
-    private static IReadOnlyList<string> VerzamelThemadoelCodes(IEnumerable<SchoolcontentRij> rijen) =>
-        rijen
-            .SelectMany(r => r.Themadoelen)
-            .Select(c => c.Trim())
-            .Where(c => c.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+    private static IReadOnlyList<string> VerzamelThemadoelCodes(
+        IEnumerable<SchoolcontentRij> rijen,
+        DoelCodeControle controle) =>
+        controle.FilterGeldig(rijen.SelectMany(r => r.Themadoelen));
 
-    private static IReadOnlyList<string> VerzamelSubdoelCodes(IEnumerable<SchoolcontentRij> rijen) =>
-        rijen
-            .SelectMany(r => r.Subdoelen)
-            .Select(c => c.Trim())
-            .Where(c => c.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+    private static IReadOnlyList<string> VerzamelSubdoelCodes(
+        IEnumerable<SchoolcontentRij> rijen,
+        DoelCodeControle controle) =>
+        controle.FilterGeldig(rijen.SelectMany(r => r.Subdoelen));
+
+    /// <summary>
+    /// Keeps goal-code references honest: normalises the codes from a sheet, drops those that do not
+    /// exist as a <c>Leerplandoel</c>, and remembers the rejects so the import can report them.
+    /// <para>
+    /// Filtering rather than throwing is the point. <c>DoelKoppeling.LeerplandoelCode</c> is a required
+    /// <c>Restrict</c> FK, so passing an unknown code through would fail the whole
+    /// <c>SaveChanges</c> — one typo in one cell discarding an otherwise valid import of hundreds of
+    /// rows, as an opaque 500. Reporting the unknown codes and importing the rest matches ADR-0006 §4
+    /// ("report, never silently drop") and the curriculum stays untouched (Art. III).
+    /// </para>
+    /// </summary>
+    private sealed class DoelCodeControle
+    {
+        private readonly HashSet<string> _geldig;
+        private readonly SortedSet<string> _onbekend = new(StringComparer.Ordinal);
+
+        public DoelCodeControle(HashSet<string> geldigeCodes) => _geldig = geldigeCodes;
+
+        /// <summary>The unknown codes encountered, for the import's opmerkingen.</summary>
+        public IReadOnlyCollection<string> Onbekend => _onbekend;
+
+        /// <summary>Trims, de-duplicates and keeps only codes that exist as a leerplandoel.</summary>
+        public IReadOnlyList<string> FilterGeldig(IEnumerable<string> codes)
+        {
+            var resultaat = new List<string>();
+            var gezien = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var ruw in codes)
+            {
+                var code = ruw.Trim();
+                if (code.Length == 0 || !gezien.Add(code))
+                {
+                    continue;
+                }
+
+                if (_geldig.Contains(code))
+                {
+                    resultaat.Add(code);
+                }
+                else
+                {
+                    _onbekend.Add(code);
+                }
+            }
+
+            return resultaat;
+        }
+    }
 
     private static Thema MaakThema(SchoolcontentRij rij)
     {

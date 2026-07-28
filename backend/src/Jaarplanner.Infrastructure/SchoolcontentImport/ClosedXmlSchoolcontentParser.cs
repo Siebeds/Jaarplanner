@@ -55,15 +55,17 @@ public sealed class ClosedXmlSchoolcontentParser : ISchoolcontentParser
             return new SchoolcontentParseResult(rijen, problemen);
         }
 
-        // Validate that every required header column is present. A missing required column makes
-        // the layout unsafe to interpret by position, so we report and stop (file-level problem).
-        var ontbrekend = OntbrekendeVerplichteKolommen(sheet.Row(headerRowNumber.Value));
-        if (ontbrekend.Count > 0)
+        // Validate the header BY POSITION. Cells are read by fixed column index, so a reordered or
+        // shifted layout is unsafe to interpret at all — report and stop (file-level problem) rather
+        // than import confidently-wrong values.
+        var koprijProblemen = KoprijProblemen(sheet.Row(headerRowNumber.Value));
+        if (koprijProblemen.Count > 0)
         {
-            var labels = string.Join(", ", ontbrekend.Select(SchoolcontentKolommen.Label));
             problemen.Add(new SchoolcontentRijProbleem(
                 headerRowNumber.Value,
-                $"Verplichte kolom(men) ontbreken in de koprij: {labels}."));
+                "De koprij komt niet overeen met de verwachte kolomindeling: " +
+                string.Join("; ", koprijProblemen) +
+                ". Download de importsjabloon en behoud de kolomvolgorde."));
             return new SchoolcontentParseResult(rijen, problemen);
         }
 
@@ -205,22 +207,51 @@ public sealed class ClosedXmlSchoolcontentParser : ISchoolcontentParser
         return null;
     }
 
-    /// <summary>The required header columns absent from the given header row.</summary>
-    private static IReadOnlyList<SchoolcontentKolom> OntbrekendeVerplichteKolommen(IXLRow headerRow)
+    /// <summary>
+    /// Validates the header row <b>by position</b>, returning one Dutch phrase per problem.
+    /// <para>
+    /// This must be positional, not a presence check. Every data cell is read by fixed column index
+    /// (<see cref="Cell"/> via the <see cref="SchoolcontentKolom"/> enum), so a file whose columns are
+    /// reordered — or which drops an optional column, shifting everything after it left — is read
+    /// entirely from the wrong cells. A set-based "does this label appear anywhere" check passes such a
+    /// file happily and then imports thema names as klas names: valid-looking, silently wrong data. The
+    /// only safe contract is that column <i>N</i> holds the column we expect at <i>N</i>.
+    /// </para>
+    /// <para>
+    /// A non-empty header cell must therefore match its expected label, and every required column must
+    /// be present at its own position. An empty header cell for an <i>optional</i> column is fine (the
+    /// column is simply not supplied) — and if that omission shifted later columns, the mismatch is
+    /// caught on those.
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<string> KoprijProblemen(IXLRow headerRow)
     {
-        var aanwezig = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var problemen = new List<string>();
+        var verplicht = SchoolcontentKolommen.Verplicht.ToHashSet();
+
         foreach (SchoolcontentKolom kolom in Enum.GetValues<SchoolcontentKolom>())
         {
-            var label = Cell(headerRow, kolom);
-            if (!string.IsNullOrWhiteSpace(label))
+            var verwacht = SchoolcontentKolommen.Label(kolom);
+            var gevonden = Cell(headerRow, kolom);
+
+            if (string.IsNullOrWhiteSpace(gevonden))
             {
-                aanwezig.Add(label);
+                if (verplicht.Contains(kolom))
+                {
+                    problemen.Add($"verplichte kolom '{verwacht}' ontbreekt (verwacht in kolom {(int)kolom})");
+                }
+
+                continue;
+            }
+
+            if (!string.Equals(gevonden, verwacht, StringComparison.OrdinalIgnoreCase))
+            {
+                problemen.Add(
+                    $"in kolom {(int)kolom} wordt '{verwacht}' verwacht, maar staat '{gevonden}'");
             }
         }
 
-        return SchoolcontentKolommen.Verplicht
-            .Where(k => !aanwezig.Contains(SchoolcontentKolommen.Label(k)))
-            .ToList();
+        return problemen;
     }
 
     /// <summary>The number of the first non-empty row (the header), or null when the sheet is empty.</summary>

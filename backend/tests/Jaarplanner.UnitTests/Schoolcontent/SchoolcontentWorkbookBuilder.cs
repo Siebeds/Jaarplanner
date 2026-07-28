@@ -44,6 +44,24 @@ internal sealed class SchoolcontentWorkbookBuilder
         return this;
     }
 
+    /// <summary>
+    /// Adds a header row with two columns' labels swapped — a realistic "teacher reordered the
+    /// template" file. Every cell is still read by fixed index, so such a file must be rejected: read
+    /// positionally it would import one column's values as another's.
+    /// </summary>
+    public SchoolcontentWorkbookBuilder MetHeaderVerwisseld(SchoolcontentKolom a, SchoolcontentKolom b)
+    {
+        _rows.Add((sheet, r) =>
+        {
+            foreach (SchoolcontentKolom kolom in Enum.GetValues<SchoolcontentKolom>())
+            {
+                var label = kolom == a ? b : kolom == b ? a : kolom;
+                sheet.Cell(r, (int)kolom).Value = SchoolcontentKolommen.Label(label);
+            }
+        });
+        return this;
+    }
+
     /// <summary>Adds a fully blank row.</summary>
     public SchoolcontentWorkbookBuilder MetLegeRij()
     {

@@ -92,3 +92,53 @@
   open decision flagged on backlog E1-09. I picked a reasonable flat layout and isolated it behind the
   single-source `SchoolcontentKolom`/`SchoolcontentKolommen` mapping + documented it as provisional, so
   E1-09 can finalise columns without changing parser/validator logic. No layout assumption is baked deep.
+
+---
+
+## Reopened round 2 — 2026-07-28 (upload endpoint + import robustness)
+
+**Why reopened.** A pre-merge code review of the E1+E2 branch found E1-07 marked `[x]` while its own
+acceptance criteria could not be met. Three defects, all inside "validate required columns/fields;
+clear per-row error messages; invalid rows reported precisely, valid file proceeds":
+
+1. **No HTTP entry point existed.** `ISchoolcontentParser`, `ISchoolcontentImportService` and
+   `ISchoolcontentTemplateGenerator` were built, tested and DI-registered but **unreachable** — nothing
+   could actually be *uploaded*, so FR-1 was dead in a deployed app.
+2. **Header validation was not positional.** `OntbrekendeVerplichteKolommen` collected header labels
+   into a `HashSet` and only asked whether each required label appeared *somewhere*, while every data
+   cell is read by fixed column index. A reordered template therefore **passed validation and imported
+   silently-wrong data** (thema names as klas names).
+3. **Two ways one cell aborted the whole import as a 500:** an unknown leerplandoel code became a
+   `DoelKoppeling` whose required `Restrict` FK failed; and a 4th themadoel hit
+   `Thema.VoegThemadoelToe`'s cap guard, which threw — and only under `toepassen`, so **preview
+   reported success and commit then threw**, breaking the service's documented "preview == commit".
+
+**What changed.**
+
+- `Jaarplanner.Api/Controllers/SchoolcontentImportController.cs` (new) — `GET sjabloon` (makes E1-09's
+  generator reachable), `POST voorbeeld` (preview, writes nothing), `POST` (commit). Multipart, 10 MB
+  cap, `.xlsx`-only, and a corrupt workbook is a Dutch 400 rather than a 500.
+- `ClosedXmlSchoolcontentParser` — `OntbrekendeVerplichteKolommen` replaced by `KoprijProblemen`,
+  which validates **by position**: a non-empty header cell must match its expected label and every
+  required column must be present at its own index. An empty *optional* header is fine; if that
+  omission shifted later columns, the mismatch is caught there. Message names the position and both
+  labels so a teacher can fix it.
+- `SchoolcontentImportService` — new private `DoelCodeControle` filters goal codes against the
+  curriculum **before** any `DoelKoppeling` is constructed, collecting unknown codes into one
+  `opmerking`; the rest of the file still imports (ADR-0006 §4). The themadoel cap is now enforced in
+  the service in **both** passes with an `opmerking` listing the ignored codes, so preview == commit.
+
+**Tests.** `SchoolcontentImportRobustheidTests` (5, unit, **passing locally**) cover the reordered
+header, the unmodified layout still parsing, unknown-code report-and-skip, the cap, and
+preview/commit agreement. `Postgres/SchoolcontentImportEndpointsTests` (6, real PostgreSQL) cover
+template download, preview-writes-nothing, valid-file-imports, precise per-row reporting with the good
+row still landing, reordered-header-imports-nothing, and non-xlsx → 400.
+
+**Also fixed:** 8 pre-existing `SchoolcontentImportServiceTests` were passing only because the EF
+in-memory provider ignores foreign keys — they linked goal codes with no `Leerplandoel` seeded. Their
+fixture now seeds the codes, which is what the real FK requires.
+
+**Status: still `[~]`, deliberately.** The 6 endpoint tests could not be executed here — this machine
+has no Docker and no local PostgreSQL, so they report as skipped. The project's own rule is "never mark
+`[x]` without PASS", so E1-07 flips to `[x]` only once CI (which has the Postgres service container)
+runs them green.

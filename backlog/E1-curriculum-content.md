@@ -43,7 +43,8 @@
 - [~] **E1-07 — Excel upload + validation + per-row errors** — *reopened 2026-07-27 (code review): there is no upload endpoint*
   Upload `.xlsx` of thema's/subthema's/activiteiten; validate required columns/fields; clear per-row error messages.
   *Done when:* invalid rows are reported precisely; valid file proceeds. Ref: FR-1.1/1.2.
-  *Open:* the parser and import service are complete and unit-tested, but **no HTTP endpoint invokes `ISchoolcontentImportService`** — it is DI-registered and unreachable, so nothing can actually be *uploaded*. (The "onbekende klas" blocker is resolved: `POST /api/klassen` now exists.) Also open: `OntbrekendeVerplichteKolommen` validates only that each required header label exists *somewhere*, then reads every cell by fixed index — a reordered template passes validation and imports silently-wrong data.
+  *Progress (2026-07-28):* all three gaps **implemented** — `SchoolcontentImportController` adds `GET sjabloon` / `POST voorbeeld` / `POST` (which also makes E1-09's template generator reachable); header validation is now **positional** so a reordered template is refused instead of importing wrong data; and unknown goal codes plus a 4th themadoel are **reported** rather than aborting the import as a 500 (the cap is now checked in both preview and commit, restoring "preview == commit"). See [worklog](worklogs/E1-07/implementation.md).
+  *Why still `[~]`:* the 6 Postgres-backed endpoint tests could not be executed on the dev machine (no Docker / no local PostgreSQL) and report as skipped. Per the build rule "never mark `[x]` without PASS", this flips to `[x]` once CI — which has the Postgres service container — runs them green. The 5 unit-level robustness tests **do** pass locally.
 
 - [x] **E1-08 — Import preview + add/update-or-overwrite on re-import**
   Show a preview before commit; on re-import let the user choose add vs. update/overwrite.
@@ -62,3 +63,11 @@
 - [x] **E1-11 — Gedeelde thema-bibliotheek (school-wide thema's)**
   Thema + themadoelen + kernwoordenschat owned at school level; per-class derivation of subthema's/subdoelen without cross-class bleed.
   *Done when:* editing a class's subthema does not mutate the shared thema. Ref: FR-3.3 (resolved per-level), Art. IX.2, Gap A.5.
+
+### FR-2 — Decreed minimumdoelen (added 2026-07-28)
+
+- [!] **E1-12 — Decreed-minimumdoelen import** — *blocked: needs the source file from directie*
+  Import the decreed eindtermen as `Minimumdoel` rows (`ref`, `leeftijd` K-/4-/6-, `nr`, `omschrijving`) from a dedicated source, separate from the per-discipline goal Excel. Read-only reference data (Art. III.1); identity is `ref`, which is the concordance key leerplandoelen already point at.
+  *Done when:* a decreed source imports, `minimumdoelen` is populated, MD-concorded leerplandoelen commit without FK failure, and minimumdoel-level coverage returns results. Ref: FR-2.2/2.3, Art. IX.1, Art. V.2.
+  *Background:* the Art. XIV "minimumdoel source" decision was **resolved 2026-07-28 in favour of a separate import** (over making `omschrijving` nullable, which would have required amending Art. IX.1). **Unblocks E1-03 and E1-04**, and E5's inspectie-facing coverage depends on it — the minimumdoel level is what the onderwijsinspectie tests.
+  *Blocked on:* the actual decreed source (Excel/CSV of the eindtermen). The column mapping cannot be written against a file that has not been supplied.
