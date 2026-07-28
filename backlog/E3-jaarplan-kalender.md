@@ -49,6 +49,9 @@
   Visually flag overloaded blocks and goals that appear nowhere. Signal with icon/label, not colour alone (a11y).
   *Done when:* an over-full block and an unplaced goal are both visibly flagged. Ref: FR-6.4, ADR-0017.
 
-- [ ] **E3-10 — Kalender wireframe + teacher feedback (wireframes-first)**
+- [~] **E3-10 — Kalender wireframe + teacher feedback (wireframes-first)** — *wireframe drafted 2026-07-28; **awaiting the review session** with directie/teachers*
   Low-fidelity wireframe of the kalender reviewed with directie/teachers **before** building E3-06/07.
   *Done when:* a wireframe is approved and informs the build. Ref: ADR-0017 (wireframes-first), `docs/ux/ui-ux-approach.md` §4; NFR-2.
+  *Drafted (2026-07-28):* [`docs/ux/wireframes/e3-10-kalender.html`](../docs/ux/wireframes/e3-10-kalender.html) (open in a browser, no build step) with the rationale and the five review questions in [`e3-10-kalender.md`](../docs/ux/wireframes/e3-10-kalender.md). Low-fidelity by design — greyscale, doelsoort as lettered grey chips, so reviewers critique structure not palette. Central idea: the year is a **ribbon of unequal periods with vacations as literal gaps**, block width proportional to teaching days — a uniform month grid is refused (Art. IX.3 / ADR-0013).
+  *Cannot be `[x]` without the review:* the AC is "a wireframe is **approved**". Only directie/teachers can approve it. The five questions (period rhythm, thema spanning two periods, what "te vol" means, the ongeplande-doelen tray, what belongs on a card) are the agenda.
+  *It already earned its keep:* feeding real 2026-2027 dates through the E3-05 grid exposed three **1-week "themaperioden"** — outside the ratified 4–6 wk range. See E3-05's antagonist verdict.

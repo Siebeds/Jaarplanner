@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe — Jaarplanner kalender (E3-10)</title>
+<style>
+/* ---------------------------------------------------------------------------
+   LOW-FIDELITY WIREFRAME — deliberately unstyled.
+   Greyscale + mono annotations so reviewers critique STRUCTURE, not colour.
+   The doelsoort/dekking colour tokens (E0-09) are intentionally NOT used here;
+   swatches are grey with letter labels. Final colours come at E3-06 build time.
+   --------------------------------------------------------------------------- */
+:root {
+  --paper:    #fbfbfa;
+  --ink:      #1a1a18;
+  --graphite: #6b6b66;
+  --draft:    #a8a29b;
+  --rule:     #d9d7d1;
+  --fill:     #efeeea;
+  --flag:     #b3452b;   /* ONLY for knelpunt semantics — never decoration */
+  --focus:    #1d4ed8;
+  --mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 5rem;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+
+/* --- draft banner --------------------------------------------------------- */
+.draftbar {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  border: 1px dashed var(--draft);
+  padding: .5rem .75rem;
+  margin-bottom: 1.75rem;
+}
+.draftbar b { color: var(--ink); }
+
+/* --- app chrome ----------------------------------------------------------- */
+.appbar {
+  display: flex; flex-wrap: wrap; gap: .75rem 1.25rem;
+  align-items: flex-end; justify-content: space-between;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: .75rem; margin-bottom: .25rem;
+}
+.titleblock h1 { font-size: 1.3rem; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+.titleblock p  { margin: .15rem 0 0; color: var(--graphite); font-size: .85rem; }
+.controls { display: flex; flex-wrap: wrap; gap: .5rem; }
+.ctl {
+  font: inherit; font-size: .85rem;
+  border: 1px solid var(--draft); background: #fff; color: var(--ink);
+  padding: .4rem .7rem; border-radius: 3px; cursor: default;
+}
+.ctl[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.ctlgroup { display: flex; }
+.ctlgroup .ctl { border-radius: 0; margin-left: -1px; }
+.ctlgroup .ctl:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
+.ctlgroup .ctl:last-child  { border-radius: 0 3px 3px 0; }
+
+/* --- scale strip ---------------------------------------------------------- */
+.scale {
+  display: flex; align-items: stretch; gap: 0;
+  font-family: var(--mono); font-size: 10px; color: var(--graphite);
+  margin: 1.25rem 0 .25rem;
+}
+.scale-seg { border-left: 1px solid var(--rule); padding: 0 .35rem; white-space: nowrap; }
+.scale-gap { color: var(--draft); }
+
+/* --- THE RIBBON (signature element) --------------------------------------
+   Block width is PROPORTIONAL to teaching days, and vacations are real gaps.
+   This is the whole point: the year is not a uniform grid, and a teacher can
+   see why one period is shorter than the next. Refuses the month-grid model
+   the constitution forbids (Art. IX.3 / ADR-0013).
+   ------------------------------------------------------------------------- */
+.ribbon { display: flex; align-items: stretch; gap: 0; min-height: 250px; }
+.gap {
+  flex: 0 0 auto; width: 26px;
+  display: flex; align-items: flex-start; justify-content: center;
+  border-top: 2px solid var(--paper);
+  position: relative;
+}
+.gap-label {
+  font-family: var(--mono); font-size: 9px; color: var(--graphite);
+  writing-mode: vertical-rl; text-orientation: mixed;
+  padding-top: .35rem; letter-spacing: .04em;
+}
+.gap::before {
+  content: ""; position: absolute; inset: 0 auto 0 50%;
+  border-left: 1px dashed var(--draft);
+}
+
+.blok {
+  border: 1px solid var(--rule); border-top: 3px solid var(--ink);
+  background: #fff; margin-right: 4px;
+  display: flex; flex-direction: column; min-width: 0;
+}
+.blok:last-child { margin-right: 0; }
+.blok-head { padding: .45rem .5rem .4rem; border-bottom: 1px dashed var(--rule); }
+.blok-id {
+  font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .04em;
+}
+.blok-dates { font-family: var(--mono); font-size: 9.5px; color: var(--graphite); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.blok-weeks { font-family: var(--mono); font-size: 9.5px; color: var(--draft); }
+.blok-body { padding: .4rem; display: flex; flex-direction: column; gap: .35rem; flex: 1; }
+.blok.is-vol { border-color: var(--flag); border-top-color: var(--flag); }
+
+/* --- thema card ----------------------------------------------------------- */
+.thema {
+  border: 1px solid var(--draft); background: var(--fill);
+  padding: .35rem .4rem; border-radius: 2px; cursor: grab;
+}
+.thema:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.thema-naam { font-size: .8rem; font-weight: 600; line-height: 1.25; }
+.thema-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem; margin-top: .25rem; }
+.chip {
+  font-family: var(--mono); font-size: 8.5px; font-weight: 700;
+  border: 1px solid var(--graphite); background: #fff; color: var(--ink);
+  padding: 0 .2rem; border-radius: 2px;
+}
+.chip-fill { background: var(--graphite); color: #fff; }
+.thema-dekking { font-family: var(--mono); font-size: 9px; color: var(--graphite); margin-top: .2rem; }
+.lock { font-family: var(--mono); font-size: 9px; color: var(--ink); }
+.grip { float: right; color: var(--draft); font-size: .7rem; letter-spacing: -1px; }
+
+/* --- flags: icon + WORD, never colour alone (Art. XII / WCAG) ------------- */
+.flag {
+  display: inline-flex; align-items: center; gap: .25rem;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 700;
+  color: var(--flag); border: 1px solid var(--flag); background: #fff;
+  padding: 0 .25rem; border-radius: 2px;
+}
+.flag-mark { font-size: 11px; }
+
+/* --- tray (second knelpunt: goals placed nowhere) ------------------------- */
+.tray { border: 1px solid var(--rule); border-left: 3px solid var(--flag); background: #fff; margin-top: 1.5rem; }
+.tray-head { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; justify-content: space-between; padding: .6rem .75rem; border-bottom: 1px dashed var(--rule); }
+.tray-title { font-size: .9rem; font-weight: 650; margin: 0; }
+.tray-body { padding: .6rem .75rem; display: flex; flex-wrap: wrap; gap: .35rem; }
+.doel {
+  border: 1px solid var(--draft); background: var(--fill);
+  font-family: var(--mono); font-size: 10px; padding: .15rem .35rem; border-radius: 2px;
+}
+
+/* --- annotations ---------------------------------------------------------- */
+.callout {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; flex: 0 0 17px;
+  border-radius: 50%; background: var(--ink); color: #fff;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  vertical-align: 1px;
+}
+.notes { margin-top: 2.5rem; border-top: 2px solid var(--ink); padding-top: 1.25rem; }
+.notes h2 { font-size: 1rem; margin: 0 0 .75rem; }
+.notelist { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.notelist li { display: flex; gap: .6rem; align-items: flex-start; font-size: .875rem; }
+.notelist p { margin: 0; }
+.notelist code { font-family: var(--mono); font-size: .78rem; background: var(--fill); padding: 0 .2rem; }
+.ask { border-left: 3px solid var(--flag); padding-left: .6rem; }
+.ask strong { color: var(--flag); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; font-family: var(--mono); font-size: 10px; color: var(--graphite); }
+
+/* --- keyboard help ------------------------------------------------------- */
+.kbd {
+  margin-top: 1rem; border: 1px dashed var(--draft); padding: .6rem .75rem;
+  font-size: .82rem;
+}
+.kbd kbd {
+  font-family: var(--mono); font-size: .75rem; border: 1px solid var(--draft);
+  border-bottom-width: 2px; border-radius: 3px; padding: 0 .25rem; background: #fff;
+}
+
+/* --- zoomed (periode) view ----------------------------------------------- */
+.zoomstrip { display: flex; gap: 4px; margin-top: .4rem; }
+.sub {
+  flex: 1; border: 1px solid var(--rule); border-top: 2px solid var(--graphite);
+  background: #fff; padding: .35rem .4rem; min-width: 0;
+}
+.sub-id { font-family: var(--mono); font-size: 10px; font-weight: 700; }
+.sub-dates { font-family: var(--mono); font-size: 9px; color: var(--graphite); }
+.sub-thema { font-size: .78rem; margin-top: .3rem; border-top: 1px dashed var(--rule); padding-top: .25rem; }
+.zoomhead { font-size: .95rem; margin: 1.75rem 0 .2rem; }
+.zoomnote { margin: 0 0 .1rem; font-size: .82rem; color: var(--graphite); max-width: 62ch; }
+
+/* Empty space in a block is a drop target, so say so rather than leaving it blank. */
+.drop {
+  border: 1px dashed var(--draft); border-radius: 2px;
+  font-family: var(--mono); font-size: 9px; color: var(--draft);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 34px; margin-top: auto;
+}
+
+/* --- responsive: the ribbon stacks; gaps become horizontal rules ---------- */
+@media (max-width: 860px) {
+  .ribbon { flex-direction: column; }
+  .blok { margin: 0 0 4px; }
+  .gap { width: auto; height: 24px; border-top: none; align-items: center; }
+  .gap::before { inset: 50% 0 auto 0; border-left: none; border-top: 1px dashed var(--draft); }
+  .gap-label { writing-mode: horizontal-tb; padding: 0; background: var(--paper); position: relative; padding: 0 .4rem; }
+  .scale { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="draftbar">
+    <b>Wireframe — niet het uiteindelijke ontwerp.</b> Grijstinten en blokken; kleur, iconen en
+    typografie komen later (E3-06). Bekijk vooral de <b>structuur</b>: staan de periodes goed, is
+    duidelijk waar een thema hoort, en zie je meteen wat er misgaat?
+  </p>
+
+  <!-- ===================== app chrome ===================== -->
+  <header class="appbar">
+    <div class="titleblock">
+      <h1>Jaarplan — L3, derde leerjaar</h1>
+      <p>Schooljaar 2026-2027 · 7 themaperiodes · laatst gewijzigd vandaag om 14:02</p>
+    </div>
+    <div class="controls">
+      <span class="ctlgroup" role="group" aria-label="Klas kiezen">
+        <button class="ctl" type="button">L1</button>
+        <button class="ctl" type="button">L2</button>
+        <button class="ctl" type="button" aria-pressed="true">L3</button>
+        <button class="ctl" type="button">L4</button>
+      </span>
+      <span class="ctlgroup" role="group" aria-label="Zoomniveau">
+        <button class="ctl" type="button" aria-pressed="true">Hele jaar</button>
+        <button class="ctl" type="button">Per periode</button>
+      </span>
+      <button class="ctl" type="button">Jaarplan genereren…</button>
+    </div>
+  </header>
+
+  <!-- ===================== lesperiode grouping ===================== -->
+  <!-- Groups the blocks by the teaching stretches BETWEEN vacations. Deliberately NOT a month
+       axis: labelling this strip "sep | okt | nov–dec" would reintroduce exactly the calendar
+       model the screen exists to replace, and would contradict annotation 1 below. -->
+  <div class="scale" aria-hidden="true">
+    <span class="scale-seg" style="flex:62">Lesperiode 1 — 9 lesweken</span>
+    <span class="scale-gap">·</span>
+    <span class="scale-seg" style="flex:42">Lesperiode 2 — 6</span>
+    <span class="scale-gap">·</span>
+    <span class="scale-seg" style="flex:42">Lesperiode 3 — 6</span>
+    <span class="scale-gap">·</span>
+    <span class="scale-seg" style="flex:42">Lesperiode 4 — 6</span>
+    <span class="scale-gap">·</span>
+    <span class="scale-seg" style="flex:73">Lesperiode 5 — 10 lesweken</span>
+  </div>
+
+  <!-- ===================== THE RIBBON ===================== -->
+  <!-- Block widths are proportional to real teaching days. Vacations are gaps. -->
+  <div class="ribbon" role="list" aria-label="Themaperiodes van het schooljaar">
+
+    <div class="blok" style="flex:31" role="listitem">
+      <div class="blok-head">
+        <div class="blok-id">Periode 1</div>
+        <div class="blok-dates">1 sep – 1 okt</div>
+        <div class="blok-weeks">4,4 weken</div>
+      </div>
+      <div class="blok-body">
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Ik en mijn klas</div>
+          <div class="thema-meta">
+            <span class="chip chip-fill">MD 4</span><span class="chip">G 6</span><span class="chip">+ 1</span>
+          </div>
+          <div class="thema-dekking">11 doelen gedekt</div>
+        </div>
+        <div class="drop">sleep hier</div>
+      </div>
+    </div>
+
+    <div class="blok" style="flex:31" role="listitem">
+      <div class="blok-head">
+        <div class="blok-id">Periode 2</div>
+        <div class="blok-dates">2 okt – 1 nov</div>
+        <div class="blok-weeks">4,4 weken</div>
+      </div>
+      <div class="blok-body">
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Herfst en oogst</div>
+          <div class="thema-meta">
+            <span class="chip chip-fill">MD 3</span><span class="chip">G 5</span>
+          </div>
+          <div class="thema-dekking">8 doelen gedekt</div>
+        </div>
+        <div class="drop">sleep hier</div>
+      </div>
+    </div>
+
+    <div class="gap" aria-hidden="true"><span class="gap-label">Herfstvakantie</span></div>
+
+    <div class="blok" style="flex:42" role="listitem">
+      <div class="blok-head">
+        <div class="blok-id">Periode 3</div>
+        <div class="blok-dates">9 nov – 20 dec</div>
+        <div class="blok-weeks">6,0 weken</div>
+      </div>
+      <div class="blok-body">
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Licht en donker</div>
+          <div class="thema-meta">
+            <span class="chip chip-fill">MD 5</span><span class="chip">G 4</span><span class="chip">P 2</span>
+          </div>
+          <div class="thema-dekking">11 doelen gedekt</div>
+        </div>
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Feesten in december</div>
+          <div class="thema-meta">
+            <span class="chip">G 3</span>
+            <span class="lock">🔒 vast</span>
+          </div>
+          <div class="thema-dekking">3 doelen gedekt</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gap" aria-hidden="true"><span class="gap-label">Kerstvakantie</span></div>
+
+    <div class="blok is-vol" style="flex:42" role="listitem">
+      <div class="blok-head">
+        <div class="blok-id">Periode 4</div>
+        <div class="blok-dates">4 jan – 14 feb</div>
+        <div class="blok-weeks">6,0 weken</div>
+        <span class="flag"><span class="flag-mark" aria-hidden="true">▲</span> Te vol — 3 thema’s</span>
+      </div>
+      <div class="blok-body">
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Water</div>
+          <div class="thema-meta"><span class="chip chip-fill">MD 6</span><span class="chip">G 7</span></div>
+          <div class="thema-dekking">13 doelen gedekt</div>
+        </div>
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Wonen</div>
+          <div class="thema-meta"><span class="chip chip-fill">MD 4</span><span class="chip">G 5</span></div>
+          <div class="thema-dekking">9 doelen gedekt</div>
+        </div>
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Gezond eten</div>
+          <div class="thema-meta"><span class="chip chip-fill">MD 3</span><span class="chip">G 4</span></div>
+          <div class="thema-dekking">7 doelen gedekt</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gap" aria-hidden="true"><span class="gap-label">Krokusvakantie</span></div>
+
+    <div class="blok" style="flex:42" role="listitem">
+      <div class="blok-head">
+        <div class="blok-id">Periode 5</div>
+        <div class="blok-dates">22 feb – 4 apr</div>
+        <div class="blok-weeks">6,0 weken</div>
+      </div>
+      <div class="blok-body">
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Lente en groei</div>
+          <div class="thema-meta"><span class="chip chip-fill">MD 5</span><span class="chip">G 6</span></div>
+          <div class="thema-dekking">11 doelen gedekt</div>
+        </div>
+        <div class="drop">sleep hier</div>
+      </div>
+    </div>
+
+    <div class="gap" aria-hidden="true"><span class="gap-label">Paasvakantie</span></div>
+
+    <div class="blok" style="flex:37" role="listitem">
+      <div class="blok-head">
+        <div class="blok-id">Periode 6</div>
+        <div class="blok-dates">19 apr – 25 mei</div>
+        <div class="blok-weeks">5,3 weken</div>
+      </div>
+      <div class="blok-body">
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Verkeer</div>
+          <div class="thema-meta"><span class="chip chip-fill">MD 4</span><span class="chip">G 3</span></div>
+          <div class="thema-dekking">7 doelen gedekt</div>
+        </div>
+        <div class="drop">sleep hier</div>
+      </div>
+    </div>
+
+    <div class="blok" style="flex:36" role="listitem">
+      <div class="blok-head">
+        <div class="blok-id">Periode 7</div>
+        <div class="blok-dates">26 mei – 30 jun</div>
+        <div class="blok-weeks">5,1 weken</div>
+      </div>
+      <div class="blok-body">
+        <div class="thema" tabindex="0" draggable="true">
+          <span class="grip">⣿</span>
+          <div class="thema-naam">Zomer en vakantie</div>
+          <div class="thema-meta"><span class="chip">G 4</span><span class="chip">+ 2</span></div>
+          <div class="thema-dekking">6 doelen gedekt</div>
+        </div>
+        <div class="drop">sleep hier</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <span>MD = minimumdoel · G = gemeenschappelijk · + = verdieping · P = precurriculum</span>
+    <span>🔒 vast = blijft staan bij hergenereren</span>
+    <span>▲ = knelpunt</span>
+  </div>
+
+  <!-- ===================== zoomed view preview ===================== -->
+  <h2 class="zoomhead">Zoom “Per periode” — periode 3 in subthemaperiodes</h2>
+  <p class="zoomnote">
+    Zo ziet één themaperiode eruit als je inzoomt: drie subthemaperiodes van ±2 weken, waar de
+    subthema’s en activiteiten in komen. Je verlaat het jaaroverzicht niet — de balk hierboven blijft staan.
+  </p>
+  <div class="zoomstrip" aria-label="Periode 3 opgesplitst in subthemaperiodes">
+    <div class="sub"><div class="sub-id">P3 · deel 1</div><div class="sub-dates">9 – 22 nov</div><div class="sub-thema">Licht en donker</div></div>
+    <div class="sub"><div class="sub-id">P3 · deel 2</div><div class="sub-dates">23 nov – 6 dec</div><div class="sub-thema">Licht en donker</div></div>
+    <div class="sub"><div class="sub-id">P3 · deel 3</div><div class="sub-dates">7 – 20 dec</div><div class="sub-thema">Feesten in december</div></div>
+  </div>
+
+  <!-- ===================== keyboard path ===================== -->
+  <div class="kbd">
+    <strong>Verplaatsen met het toetsenbord.</strong>
+    Ga met <kbd>Tab</kbd> naar een thema, druk <kbd>Space</kbd> om het op te pakken,
+    <kbd>←</kbd> <kbd>→</kbd> om naar een andere periode te gaan, <kbd>Space</kbd> om neer te zetten,
+    <kbd>Esc</kbd> om te annuleren. Elke wijziging wordt meteen bewaard.
+  </div>
+
+  <!-- ===================== unplaced goals tray ===================== -->
+  <div class="tray">
+    <div class="tray-head">
+      <h2 class="tray-title">Nog nergens gepland — 12 leerplandoelen</h2>
+      <span class="flag"><span class="flag-mark" aria-hidden="true">▲</span> Sleep naar een periode</span>
+    </div>
+    <div class="tray-body">
+      <span class="doel">WIS-L3-014</span><span class="doel">WIS-L3-018</span>
+      <span class="doel">NL-L3-022</span><span class="doel">NL-L3-031</span>
+      <span class="doel">WET-L3-006</span><span class="doel">MUZ-L3-009</span>
+      <span class="doel">LO-L3-011</span><span class="doel">AAR-L3-004</span>
+      <span class="doel">GES-L3-002</span><span class="doel">ICT-L3-007</span>
+      <span class="doel">FR-L3-001</span><span class="doel">RKG-L3-005</span>
+    </div>
+  </div>
+
+  <!-- ===================== annotations ===================== -->
+  <div class="notes">
+    <h2>Toelichting bij het wireframe</h2>
+    <ul class="notelist">
+      <li><span class="callout">1</span><p><strong>Periodes, geen maanden.</strong> De balk toont
+        <em>themaperiodes</em> waarvan de breedte klopt met het aantal lesdagen. Vakanties zijn echte
+        gaten. Daarom is periode 1 korter dan periode 3 — en dat is te zien in plaats van uitgelegd.
+        Een maandraster zou hier liegen (Art. IX.3, <code>ADR-0013</code>).</p></li>
+      <li><span class="callout">2</span><p><strong>Twee zoomniveaus, geen kalendereenheden.</strong>
+        “Hele jaar” toont themaperiodes; “Per periode” splitst er één in subthemaperiodes (de strook
+        onder de balk). De schakelaar heet nooit “maand” of “week”. FR-6.3.</p></li>
+      <li><span class="callout">3</span><p><strong>Slepen én toetsenbord.</strong> Elk thema is een
+        greep­baar kaartje met een zichtbare grip, en de toetsenbordroute staat expliciet op het
+        scherm — geen verstopte sneltoets. Verplicht voor WCAG 2.2 AA. FR-6.2.</p></li>
+      <li><span class="callout">4</span><p><strong>Knelpunten met woord én teken.</strong> Een te
+        volle periode krijgt een rand, een driehoek <em>en</em> het woord “Te vol”; kleur is nooit de
+        enige drager. Het tweede knelpunt — doelen die nergens staan — heeft een eigen lade onderaan,
+        want iets wat nergens is kan niet in de balk opvallen. FR-6.4.</p></li>
+      <li><span class="callout">5</span><p><strong>Vaste thema’s.</strong> “Feesten in december” hoort
+        bij december en draagt een slotje: hergenereren laat het staan (E4-06). Het slotje zit op het
+        kaartje, niet in een menu, zodat je het ziet zonder te zoeken.</p></li>
+      <li><span class="callout">6</span><p><strong>Dekking meteen zichtbaar.</strong> Elk kaartje toont
+        hoeveel doelen het dekt en de mix per doelsoort. Na elke verplaatsing verandert dat direct
+        (FR-6.5) — het volledige overzicht blijft het dekkingsscherm (FR-9).</p></li>
+    </ul>
+
+    <h2 style="margin-top:1.75rem">Vragen voor de review</h2>
+    <ul class="notelist">
+      <li class="ask"><span class="callout">A</span><p><strong>Kloppen 7 periodes voor een schooljaar?</strong>
+        Met een themaperiode van ±5 weken vallen er 7 in 2026-2027. Voelt dat als jullie ritme, of
+        plannen jullie eerder in 8–9 kortere blokken?</p></li>
+      <li class="ask"><span class="callout">B</span><p><strong>Hoort een thema in één periode, of mag het
+        er twee beslaan?</strong> Nu is een thema aan één periode gekoppeld. Lopen er bij jullie thema’s
+        door een vakantie heen?</p></li>
+      <li class="ask"><span class="callout">C</span><p><strong>Wanneer is een periode “te vol”?</strong>
+        Nu bij 3 thema’s. Hangt dat af van het aantal thema’s, van het aantal doelen, of van iets anders?</p></li>
+      <li class="ask"><span class="callout">D</span><p><strong>Is de lade met ongeplande doelen bruikbaar,
+        of te lang?</strong> Na een volledige import staan er honderden. Moet die per discipline of per
+        doelsoort gefilterd worden?</p></li>
+      <li class="ask"><span class="callout">E</span><p><strong>Wat wil je op een kaartje zien?</strong>
+        Nu: naam, doelsoortmix, aantal gedekte doelen. Mist er iets — subthema’s, activiteiten, wie het
+        gemaakt heeft?</p></li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
