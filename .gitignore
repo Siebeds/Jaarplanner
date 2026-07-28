@@ -13,3 +13,11 @@ Thumbs.db
 # Playwright MCP session artifacts (console logs, page snapshots) — written next to
 # the repo root when a wireframe is reviewed in a browser; regenerated on demand.
 .playwright-mcp/
+
+# TEMPORARY, remove once the directory is gone. Debris from moving the repo root up
+# out of C:\source\Jaarplanner\Jaarplanner (b2257f7). A root-level directory named
+# "Jaarplanner" inside this repo is never legitimate. It could not be deleted because
+# VS Code's language server held handles on it and kept regenerating obj/ artifacts
+# there — which a `git add -A` then swept into the repo. This guard stops that
+# recurring until the folder is deleted.
+/Jaarplanner/
