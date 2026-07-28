@@ -42,11 +42,12 @@
 
 ### FR-1 — Thema/activiteit import
 
-- [~] **E1-07 — Excel upload + validation + per-row errors** — *reopened 2026-07-27 (code review): there is no upload endpoint*
+- [x] **E1-07 — Excel upload + validation + per-row errors** — *reopened 2026-07-27 (code review); closed 2026-07-28 on green CI*
   Upload `.xlsx` of thema's/subthema's/activiteiten; validate required columns/fields; clear per-row error messages.
   *Done when:* invalid rows are reported precisely; valid file proceeds. Ref: FR-1.1/1.2.
   *Progress (2026-07-28):* all three gaps **implemented** — `SchoolcontentImportController` adds `GET sjabloon` / `POST voorbeeld` / `POST` (which also makes E1-09's template generator reachable); header validation is now **positional** so a reordered template is refused instead of importing wrong data; and unknown goal codes plus a 4th themadoel are **reported** rather than aborting the import as a 500 (the cap is now checked in both preview and commit, restoring "preview == commit"). See [worklog](worklogs/E1-07/implementation.md).
-  *Why still `[~]`:* the 6 Postgres-backed endpoint tests could not be executed on the dev machine (no Docker / no local PostgreSQL) and report as skipped. Per the build rule "never mark `[x]` without PASS", this flips to `[x]` once CI — which has the Postgres service container — runs them green. The 5 unit-level robustness tests **do** pass locally.
+  *Closed (2026-07-28), CI run [30357426252](https://github.com/Siebeds/Jaarplanner/actions/runs/30357426252):* the Postgres-backed endpoint tests now run green — **42 integration passed / 0 skipped**, 328 unit passed. They had been *failing*, not merely unexecuted: four of them still asserted the old single `isGeldig` property after this story's own audit fix (finding 3) split the response into `isBestandGeldig` + `isVolledigVerwerkt`, so CI was red on every push from 2026-07-28 09:11 onward while the backlog recorded only "awaiting CI". Assertions corrected, and a seventh test now pins the distinction the split exists for: a workbook naming a non-existent klas parses clean (`isBestandGeldig` true) yet drops its subthema (`isVolledigVerwerkt` false) — previously unasserted.
+  *Lesson (same root cause as the E1 reopening):* a test that can only run in CI is not evidence until CI has run it. "Awaiting CI" and "passing in CI" were conflated for five pushes.
 
 - [x] **E1-08 — Import preview + add/update-or-overwrite on re-import**
   Show a preview before commit; on re-import let the user choose add vs. update/overwrite.

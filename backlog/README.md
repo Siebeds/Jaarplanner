@@ -25,15 +25,15 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | Epic | File | Phase | Stories | Done | Status |
 | --- | --- | --- | --- | --- | --- |
 | E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 9 | 9 | ✅ Done |
-| E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 12 | 8 | ⚠️ E1-07 awaiting CI; E1-03/04 blocked on E1-12 |
+| E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 12 | 9 | ⚠️ E1-03/04 blocked on E1-12, which needs the source file from directie |
 | E2 — AI-matching thema ↔ doel | [E2-ai-matching.md](E2-ai-matching.md) | 2 | 7 | 7 | ✅ Done |
-| E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 1 | 🚧 E3-10 done; E3-05 in progress |
+| E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 2 | 🚧 E3-05 + E3-10 done; E3-01 is next |
 | E4 — Manuele bewerking & (her)generatie | [E4-bewerking-hergeneratie.md](E4-bewerking-hergeneratie.md) | 4 | 7 | 0 | Todo |
 | E5 — Dekking & export | [E5-dekking-export.md](E5-dekking-export.md) | 5 | 9 | 0 | Todo |
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
 | E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 11 | 0 | ⚠️ E7-11 is a deployment gate |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **81** | **25** | **31%** |
+| **Totaal** | | | **81** | **27** | **33%** |
 
 > **Correction (2026-07-27).** A code review of the E1+E2 branch before merging to `main` reopened
 > **E1-03**, **E1-04** and **E1-07**: each was marked done with an acceptance criterion that cannot
@@ -47,7 +47,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 ## Milestones (MVP)
 
 - **M0 — Skeleton up** (E0): repo scaffolded, Postgres + API + SPA run locally, CI green.
-- **M1 — Fundament** (E1): Op.stap goals imported, school thema's imported & manageable, data model live. — ⚠️ **not yet reached** (previously claimed): the data model is live, but no `Minimumdoel` can exist and there is no upload endpoint, so "goals imported / thema's imported" is unproven end-to-end. See the correction above and E1-03/04/07.
+- **M1 — Fundament** (E1): Op.stap goals imported, school thema's imported & manageable, data model live. — ⚠️ **not yet reached** (previously claimed). The upload half is now proven end-to-end: **E1-07 closed 2026-07-28** with the school-content endpoint exercised over HTTP against real PostgreSQL in CI. What remains is the curriculum half — no `Minimumdoel` can exist, so minimumdoel-level coverage (the level the inspectie tests) returns nothing. Gated on **E1-12**, which needs the decreed-eindtermen source file from directie; that unblocks E1-03/04. See the correction above.
 - **M2 — AI koppelt** (E2): teacher gets accept/reject thema↔doel suggestions with motivation.
 - **M3 — Plan & kalender** (E3): a year plan is generated and shown in the drag-and-drop calendar.
 - **M4 — Volledige controle** (E4): manual edits + full/partial regeneration with locked blocks.

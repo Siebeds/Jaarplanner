@@ -45,3 +45,28 @@ falsify it"* — three properties were credited to tests that did not assert the
 wireframe depicts. Code and design agree.
 
 **Still `[~]`:** the 3 PostgreSQL persistence tests remain unrunnable here (no Docker / no local PostgreSQL).
+
+---
+
+## CI round — 2026-07-28 (story closed)
+
+**Run [30357426252](https://github.com/Siebeds/Jaarplanner/actions/runs/30357426252) — green.**
+`Failed: 0, Passed: 42, Skipped: 0` integration · `Failed: 0, Passed: 328, Skipped: 0` unit.
+
+The three PostgreSQL persistence tests round 2 left unrunnable are now executed and green:
+
+| Test | Pins |
+| --- | --- |
+| `Schooljaar_met_vakanties_rondtript` | the owned `Schoolvakantie` collection and `DateOnly` → `date` survive a round-trip through real Npgsql |
+| `Schooljaarnaam_is_uniek` | the unique index is enforced by the database, not just by application code |
+| `Verwijderen_neemt_de_vakanties_mee` | cascade delete of the owned collection |
+
+**Correction to round 2's framing.** It said the story was held at `[~]` "awaiting CI". Reading the logs
+afterwards shows these three tests **passed on their very first CI run** (2026-07-28 09:11) and every run
+since. The red CI that appeared to gate this story was four stale assertions in E1-07's
+`SchoolcontentImportEndpointsTests` — a different story, a different file, an unrelated failure. E3-05 was
+held for two days by a red badge it did not cause, because "CI is red" was taken at face value instead of
+being read.
+
+Worth noting for the same reason round 2 was written the way it was: the honest move is to name which test
+failed, not which build failed.
