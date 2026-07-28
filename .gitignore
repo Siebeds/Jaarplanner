@@ -9,3 +9,7 @@
 # OS / editor cruft
 .DS_Store
 Thumbs.db
+
+# Playwright MCP session artifacts (console logs, page snapshots) — written next to
+# the repo root when a wireframe is reviewed in a browser; regenerated on demand.
+.playwright-mcp/
