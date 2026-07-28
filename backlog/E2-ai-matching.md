@@ -6,31 +6,32 @@
 
 ---
 
-- [ ] **E2-01 — AI client behind an injectable interface**
+- [x] **E2-01 — AI client behind an injectable interface**
   Abstract Azure AI Foundry behind an interface; provide a **faked client** for tests. Keys server-side only.
   *Done when:* the matching service runs against the fake in unit tests with no network. Ref: Art. IV.6, VI.4.
 
-- [ ] **E2-02 — Prompt builder grounded only on school data + loaded goals**
+- [x] **E2-02 — Prompt builder grounded only on school data + loaded goals**
   Build the prompt from the relevant leerdoelen + the thema's themadoelen/subthema's/activiteiten; no external sources.
   *Done when:* prompt contains only school + Op.stap data; snapshot-tested. Ref: Art. IV.4.
 
-- [ ] **E2-03 — Structured-JSON response contract + validation**
+- [x] **E2-03 — Structured-JSON response contract + validation**
   Define the response schema (goal codes + one-line motivation); validate before use; reject/repair malformed output.
   *Done when:* invalid AI output never reaches the domain; validated objects only. Ref: Art. IV.5.
 
-- [ ] **E2-04 — Suggestion persistence as `DoelKoppeling` (status + motivatie)**
+- [x] **E2-04 — Suggestion persistence as `DoelKoppeling` (status + motivatie)**
   Persist each suggestion as `voorgesteld` with `aiMotivatie`.
-  *Done when:* suggestions are stored and queryable per thema/activiteit. Ref: Art. IV.2, FR-4.1/4.2.
+  *Done when:* suggestions are stored and queryable **per thema**. Ref: Art. IV.2, FR-4.1/4.2.
+  *Scope (directie decision 2026-07-13):* FR-4 matching persists at **thema (school-wide) scope** as `Thema.doelsuggesties[]` (Art. IX.2 amended to sanction it). Activiteit-/subdoel-level (class/age) matching is deferred to fast-follow **[E8-07]**.
 
-- [ ] **E2-05 — Accept / reject / adjust in the UI**
+- [x] **E2-05 — Accept / reject / adjust in the UI**
   Teacher reviews each suggestion with its motivation and sets status `aanvaard`/`geweigerd`/`manueel`.
   *Done when:* status changes persist and drive coverage (E5). Ref: FR-4.3, Art. IV.1/IV.3.
 
-- [ ] **E2-06 — "Ongekoppelde doelen" view**
+- [x] **E2-06 — "Ongekoppelde doelen" view**
   Show which leerdoelen are not (yet) linked to any thema.
   *Done when:* the list updates as links change. Ref: FR-4.4.
 
-- [ ] **E2-07 — Goal-first authoring assist (thema-opbouw wizard hooks)**
+- [x] **E2-07 — Goal-first authoring assist (thema-opbouw wizard hooks)**
   Wire AI assist at **step 2 (themadoelen)** and **step 6 (subdoelen)** of the wizard (the wizard UI itself lives in E1/E6 beheer; this story provides its AI suggestions).
   *Done when:* the wizard can request themadoel/subdoel suggestions; all advisory. Ref: Art. IV.8 (committed MVP), Gap A.7.
 

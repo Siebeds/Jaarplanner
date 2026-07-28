@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ClosedXML in tests builds the in-memory .xlsx fixtures the Op.stap parser reads. -->
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <!-- EF Core in-memory provider: exercises the bidirectional concordance query without Docker.
+         The FK that prevents phantom links is pinned by CurriculumModelConfigurationTests + the
+         relationship config; the query's own no-match handling is asserted here directly. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.2" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />

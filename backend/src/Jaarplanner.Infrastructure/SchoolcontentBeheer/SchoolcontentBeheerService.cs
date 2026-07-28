@@ -1,0 +1,482 @@
+using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Domain.Schoolcontent;
+using Jaarplanner.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Jaarplanner.Infrastructure.SchoolcontentBeheer;
+
+/// <summary>
+/// EF Core implementation of <see cref="ISchoolcontentBeheerService"/> over <see cref="AppDbContext"/>
+/// (E1-10, FR-3.1/3.2). It is the CRUD sibling of the import service: it drives the same domain mutators
+/// (<c>Thema.VoegThemadoelToe</c>, <c>Subthema.VoegSubdoelToe</c>, <c>Activiteit.VoegDoelkoppelingToe</c>, …)
+/// rather than reaching into the entities, so every invariant — the 2–3 themadoel bound, the required
+/// klas/leeftijd scope — is enforced in one place (the domain, Art. IX.2).
+/// <para>
+/// <b>Level scoping (Art. IX.2).</b> Thema/Themadoel inputs carry no klas/leeftijd (school-wide).
+/// Subthema creation requires a real <c>KlasId</c> that resolves to a persisted <c>Klas</c> and a
+/// non-blank leeftijd; the domain ctor rejects an empty klas, and this service additionally verifies the
+/// klas exists. A subthema can therefore never become school-wide.
+/// </para>
+/// <para>
+/// <b>Goal links (Art. III + IV.2).</b> Every link references a read-only <c>Leerplandoel</c> by its
+/// stable code; the service verifies the code exists before linking (no phantom link, Art. III.5) and
+/// never mutates curriculum data. A manually created link is persisted with status <c>manueel</c>.
+/// </para>
+/// </summary>
+public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
+{
+    private readonly AppDbContext _context;
+
+    public SchoolcontentBeheerService(AppDbContext context) => _context = context;
+
+    // --- Thema (school-scoped). ---
+
+    public async Task<ThemaWeergave> MaakThemaAsync(ThemaCreatie creatie, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(creatie);
+
+        Thema thema;
+        try
+        {
+            thema = new Thema(creatie.Naam, creatie.DuurWeken, creatie.Invalshoeken);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        if (creatie.Kernwoordenschat is not null)
+        {
+            thema.StelKernwoordenschatIn(creatie.Kernwoordenschat);
+        }
+
+        if (creatie.RijkeWoordenschat is not null)
+        {
+            thema.StelRijkeWoordenschatIn(creatie.RijkeWoordenschat);
+        }
+
+        _context.Themas.Add(thema);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return MapThema(thema);
+    }
+
+    public async Task<IReadOnlyList<ThemaWeergave>> HaalThemasOpAsync(CancellationToken cancellationToken = default)
+    {
+        var themas = await ThemasMetSubtreeQuery()
+            .OrderBy(t => t.Naam)
+            .ToListAsync(cancellationToken);
+
+        return themas.Select(MapThema).ToList();
+    }
+
+    public async Task<ThemaWeergave> HaalThemaOpAsync(Guid themaId, CancellationToken cancellationToken = default)
+    {
+        var thema = await LaadThemaAsync(themaId, cancellationToken);
+        return MapThema(thema);
+    }
+
+    // --- Gedeelde thema-bibliotheek + per-klas afleiding (E1-11, FR-3.3 resolved per-level, Art. IX.2). ---
+
+    public async Task<IReadOnlyList<ThemaBibliotheekItem>> HaalThemaBibliotheekOpAsync(CancellationToken cancellationToken = default)
+    {
+        // The bibliotheek view is the school-wide layer ONLY: themadoelen + woordenschat, no subthema's.
+        // We deliberately do NOT Include the subthema's so a class's per-class derivations can never leak
+        // into the shared-library view (no cross-class bleed, Art. IX.2 / Gap A.5). AantalAfgeleideKlassen
+        // is a distinct-class count over the subthema's, computed in SQL without materialising their content.
+        var themas = await _context.Themas
+            .AsNoTracking()
+            .Include(t => t.Themadoelen)
+            .OrderBy(t => t.Naam)
+            .Select(t => new
+            {
+                Thema = t,
+                AantalAfgeleideKlassen = t.Subthemas.Select(s => s.KlasId).Distinct().Count(),
+            })
+            .ToListAsync(cancellationToken);
+
+        return themas.Select(x => MapBibliotheekItem(x.Thema, x.AantalAfgeleideKlassen)).ToList();
+    }
+
+    public async Task<ThemaWeergave> HaalThemaVoorKlasAsync(Guid themaId, Guid klasId, CancellationToken cancellationToken = default)
+    {
+        await VereisKlasAsync(klasId, cancellationToken);
+
+        // The shared thema (school-wide layer) plus ONLY this klas's subthema-derivations and their
+        // subtree. Filtering the subthema Include by KlasId guarantees class A's subthema's never appear
+        // under class B even though both derive from the same shared thema (Art. IX.2). Read-only graph.
+        var thema = await _context.Themas
+            .AsNoTracking()
+            .Include(t => t.Themadoelen)
+            .Include(t => t.Subthemas.Where(s => s.KlasId == klasId)).ThenInclude(s => s.Subdoelen)
+            .Include(t => t.Subthemas.Where(s => s.KlasId == klasId)).ThenInclude(s => s.Activiteiten)
+            .FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken);
+
+        if (thema is null)
+        {
+            throw new SchoolcontentNietGevondenFout($"Thema {themaId} bestaat niet.");
+        }
+
+        return MapThema(thema);
+    }
+
+    public async Task<ThemaWeergave> WijzigThemaAsync(Guid themaId, ThemaWijziging wijziging, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(wijziging);
+        var thema = await LaadThemaAsync(themaId, cancellationToken);
+
+        try
+        {
+            thema.WijzigNaam(wijziging.Naam);
+            thema.WerkBasisGegevensBij(wijziging.DuurWeken, wijziging.Invalshoeken);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        if (wijziging.Kernwoordenschat is not null)
+        {
+            thema.StelKernwoordenschatIn(wijziging.Kernwoordenschat);
+        }
+
+        if (wijziging.RijkeWoordenschat is not null)
+        {
+            thema.StelRijkeWoordenschatIn(wijziging.RijkeWoordenschat);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapThema(thema);
+    }
+
+    public async Task VerwijderThemaAsync(Guid themaId, CancellationToken cancellationToken = default)
+    {
+        var thema = await LaadThemaAsync(themaId, cancellationToken);
+
+        // The EF cascade (ThemaConfiguration) deletes themadoelen + subthema's (and, through the
+        // subthema cascade, subdoelen + activiteiten + their owned goal links) with the thema.
+        _context.Themas.Remove(thema);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    // --- Themadoel (school-scoped; 2–3 per thema). ---
+
+    public async Task<ThemadoelWeergave> VoegThemadoelToeAsync(Guid themaId, string leerplandoelCode, CancellationToken cancellationToken = default)
+    {
+        var thema = await LaadThemaAsync(themaId, cancellationToken);
+        var code = await VereisLeerplandoelAsync(leerplandoelCode, cancellationToken);
+
+        Themadoel themadoel;
+        try
+        {
+            // Manual link → status manueel (Art. IV.2); no AI motivation.
+            themadoel = thema.VoegThemadoelToe(new DoelKoppeling(code, KoppelingStatus.Manueel));
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Upper-bound (4th themadoel) breach — a structural rule, surfaced as a 400 (Art. IX.2).
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        // Mark the new child Added explicitly (the thema is loaded Unchanged; adding through the
+        // backing-field navigation alone does not flag the insert) — mirrors the import service.
+        _context.Themadoelen.Add(themadoel);
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapThemadoel(themadoel);
+    }
+
+    public async Task VerwijderThemadoelAsync(Guid themaId, Guid themadoelId, CancellationToken cancellationToken = default)
+    {
+        var thema = await LaadThemaAsync(themaId, cancellationToken);
+        var themadoel = thema.Themadoelen.FirstOrDefault(td => td.Id == themadoelId)
+            ?? throw new SchoolcontentNietGevondenFout($"Themadoel {themadoelId} bestaat niet binnen thema {themaId}.");
+
+        thema.VerwijderThemadoel(themadoel);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    // --- Subthema (class/age-scoped). ---
+
+    public async Task<SubthemaWeergave> MaakSubthemaAsync(Guid themaId, SubthemaCreatie creatie, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(creatie);
+        var thema = await LaadThemaAsync(themaId, cancellationToken);
+        await VereisKlasAsync(creatie.KlasId, cancellationToken);
+
+        Subthema subthema;
+        try
+        {
+            // The domain ctor enforces the structural scope: non-empty klas + non-blank leeftijd (Art. IX.2).
+            subthema = thema.VoegSubthemaToe(creatie.Naam, creatie.DuurWeken, creatie.KlasId, creatie.Leeftijd);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        subthema.StelVraagstellingIn(creatie.Probleemstelling, creatie.Onderzoeksvraag);
+
+        _context.Subthemas.Add(subthema);
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapSubthema(subthema);
+    }
+
+    public async Task<SubthemaWeergave> WijzigSubthemaAsync(Guid subthemaId, SubthemaWijzigingInvoer wijziging, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(wijziging);
+        var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
+        await VereisKlasAsync(wijziging.KlasId, cancellationToken);
+
+        try
+        {
+            subthema.WijzigNaam(wijziging.Naam);
+            subthema.WerkBasisGegevensBij(wijziging.DuurWeken);
+            // Re-scoping stays structural: a subthema can never become school-wide (Art. IX.2).
+            subthema.WijzigScope(wijziging.KlasId, wijziging.Leeftijd);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        subthema.StelVraagstellingIn(wijziging.Probleemstelling, wijziging.Onderzoeksvraag);
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapSubthema(subthema);
+    }
+
+    public async Task VerwijderSubthemaAsync(Guid subthemaId, CancellationToken cancellationToken = default)
+    {
+        var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
+
+        // Removing the subthema cascades to its subdoelen + activiteiten (SubthemaConfiguration); it never
+        // touches the school-wide thema attributes (level scoping, Art. IX.2).
+        _context.Subthemas.Remove(subthema);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<SubdoelWeergave> KoppelSubthemaAanDoelAsync(Guid subthemaId, string leerplandoelCode, CancellationToken cancellationToken = default)
+    {
+        var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
+        var code = await VereisLeerplandoelAsync(leerplandoelCode, cancellationToken);
+
+        if (subthema.Subdoelen.Any(sd => string.Equals(sd.Koppeling.LeerplandoelCode, code, StringComparison.Ordinal)))
+        {
+            throw new SchoolcontentValidatieFout($"Subthema is al gekoppeld aan leerdoel '{code}'.");
+        }
+
+        // The subdoel carries the link at the subthema's own leeftijd (the per-(subthema × leeftijd)
+        // link carrier in the model, Art. IX.2). Manual link → status manueel (Art. IV.2).
+        var subdoel = subthema.VoegSubdoelToe(subthema.Leeftijd, new DoelKoppeling(code, KoppelingStatus.Manueel));
+
+        _context.Subdoelen.Add(subdoel);
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapSubdoel(subdoel);
+    }
+
+    public async Task OntkoppelSubdoelAsync(Guid subthemaId, Guid subdoelId, CancellationToken cancellationToken = default)
+    {
+        var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
+        var subdoel = subthema.Subdoelen.FirstOrDefault(sd => sd.Id == subdoelId)
+            ?? throw new SchoolcontentNietGevondenFout($"Subdoel {subdoelId} bestaat niet binnen subthema {subthemaId}.");
+
+        subthema.VerwijderSubdoel(subdoel);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    // --- Activiteit (class/age-scoped). ---
+
+    public async Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(creatie);
+        var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
+
+        Activiteit activiteit;
+        try
+        {
+            activiteit = subthema.VoegActiviteitToe(creatie.Naam, creatie.ActiviteitType, creatie.Hoek, creatie.VerwachteUitkomsten);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        _context.Activiteiten.Add(activiteit);
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapActiviteit(activiteit);
+    }
+
+    public async Task<ActiviteitWeergave> WijzigActiviteitAsync(Guid activiteitId, ActiviteitWijzigingInvoer wijziging, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(wijziging);
+        var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
+
+        try
+        {
+            activiteit.WijzigNaam(wijziging.Naam);
+            activiteit.WerkGegevensBij(wijziging.ActiviteitType, wijziging.Hoek, wijziging.VerwachteUitkomsten);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapActiviteit(activiteit);
+    }
+
+    public async Task VerwijderActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken = default)
+    {
+        var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
+
+        _context.Activiteiten.Remove(activiteit);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<DoelKoppelingWeergave> KoppelActiviteitAanDoelAsync(Guid activiteitId, string leerplandoelCode, CancellationToken cancellationToken = default)
+    {
+        var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
+        var code = await VereisLeerplandoelAsync(leerplandoelCode, cancellationToken);
+
+        if (activiteit.Doelkoppelingen.Any(k => string.Equals(k.LeerplandoelCode, code, StringComparison.Ordinal)))
+        {
+            throw new SchoolcontentValidatieFout($"Activiteit is al gekoppeld aan leerdoel '{code}'.");
+        }
+
+        var koppeling = new DoelKoppeling(code, KoppelingStatus.Manueel);
+        activiteit.VoegDoelkoppelingToe(koppeling);
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapKoppeling(koppeling);
+    }
+
+    public async Task OntkoppelActiviteitDoelAsync(Guid activiteitId, Guid koppelingId, CancellationToken cancellationToken = default)
+    {
+        var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
+        var koppeling = activiteit.Doelkoppelingen.FirstOrDefault(k => k.Id == koppelingId)
+            ?? throw new SchoolcontentNietGevondenFout($"Doelkoppeling {koppelingId} bestaat niet binnen activiteit {activiteitId}.");
+
+        activiteit.VerwijderDoelkoppeling(koppeling);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    // --- Loading helpers (graph-loaded so the read views are complete and the domain mutators see the subtree). ---
+
+    private IQueryable<Thema> ThemasMetSubtreeQuery() =>
+        _context.Themas
+            .Include(t => t.Themadoelen)
+            .Include(t => t.Subthemas).ThenInclude(s => s.Subdoelen)
+            .Include(t => t.Subthemas).ThenInclude(s => s.Activiteiten);
+
+    private async Task<Thema> LaadThemaAsync(Guid themaId, CancellationToken cancellationToken)
+    {
+        var thema = await ThemasMetSubtreeQuery().FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken);
+        return thema ?? throw new SchoolcontentNietGevondenFout($"Thema {themaId} bestaat niet.");
+    }
+
+    private async Task<Subthema> LaadSubthemaAsync(Guid subthemaId, CancellationToken cancellationToken)
+    {
+        var subthema = await _context.Subthemas
+            .Include(s => s.Subdoelen)
+            .Include(s => s.Activiteiten)
+            .FirstOrDefaultAsync(s => s.Id == subthemaId, cancellationToken);
+        return subthema ?? throw new SchoolcontentNietGevondenFout($"Subthema {subthemaId} bestaat niet.");
+    }
+
+    private async Task<Activiteit> LaadActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken)
+    {
+        var activiteit = await _context.Activiteiten
+            .Include(a => a.Doelkoppelingen)
+            .FirstOrDefaultAsync(a => a.Id == activiteitId, cancellationToken);
+        return activiteit ?? throw new SchoolcontentNietGevondenFout($"Activiteit {activiteitId} bestaat niet.");
+    }
+
+    /// <summary>
+    /// Verifies the leerplandoel code exists (Art. III.5) and returns its trimmed form. Read-only —
+    /// curriculum data is never mutated by linking (Art. III.1).
+    /// </summary>
+    private async Task<string> VereisLeerplandoelAsync(string leerplandoelCode, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(leerplandoelCode))
+        {
+            throw new SchoolcontentValidatieFout("Een leerdoelcode is verplicht.");
+        }
+
+        var code = leerplandoelCode.Trim();
+        var bestaat = await _context.Leerplandoelen.AsNoTracking().AnyAsync(l => l.Code == code, cancellationToken);
+        if (!bestaat)
+        {
+            throw new SchoolcontentValidatieFout($"Onbekende leerdoelcode '{code}' — koppeling geweigerd (Art. III.5).");
+        }
+
+        return code;
+    }
+
+    /// <summary>Verifies the klas exists; class scoping is structural for a subthema (Art. IX.2).</summary>
+    private async Task VereisKlasAsync(Guid klasId, CancellationToken cancellationToken)
+    {
+        if (klasId == Guid.Empty)
+        {
+            throw new SchoolcontentValidatieFout("Een subthema is klas-gebonden; een klas is verplicht (Art. IX.2).");
+        }
+
+        var bestaat = await _context.Klassen.AsNoTracking().AnyAsync(k => k.Id == klasId, cancellationToken);
+        if (!bestaat)
+        {
+            throw new SchoolcontentValidatieFout($"Onbekende klas '{klasId}'.");
+        }
+    }
+
+    // --- Mapping to read views. ---
+
+    private static ThemaWeergave MapThema(Thema thema) => new(
+        thema.Id,
+        thema.Naam,
+        thema.DuurWeken,
+        thema.Invalshoeken,
+        thema.Kernwoordenschat.ToList(),
+        thema.RijkeWoordenschat.ToList(),
+        thema.HeeftVoldoendeThemadoelen,
+        thema.Themadoelen.Select(MapThemadoel).ToList(),
+        thema.Subthemas.Select(MapSubthema).ToList());
+
+    private static ThemaBibliotheekItem MapBibliotheekItem(Thema thema, int aantalAfgeleideKlassen) => new(
+        thema.Id,
+        thema.Naam,
+        thema.DuurWeken,
+        thema.Invalshoeken,
+        thema.Kernwoordenschat.ToList(),
+        thema.RijkeWoordenschat.ToList(),
+        thema.HeeftVoldoendeThemadoelen,
+        thema.Themadoelen.Select(MapThemadoel).ToList(),
+        aantalAfgeleideKlassen);
+
+    private static ThemadoelWeergave MapThemadoel(Themadoel themadoel) =>
+        new(themadoel.Id, MapKoppeling(themadoel.Koppeling));
+
+    private static SubthemaWeergave MapSubthema(Subthema subthema) => new(
+        subthema.Id,
+        subthema.ThemaId,
+        subthema.Naam,
+        subthema.DuurWeken,
+        subthema.KlasId,
+        subthema.Leeftijd,
+        subthema.Probleemstelling,
+        subthema.Onderzoeksvraag,
+        subthema.Subdoelen.Select(MapSubdoel).ToList(),
+        subthema.Activiteiten.Select(MapActiviteit).ToList());
+
+    private static SubdoelWeergave MapSubdoel(Subdoel subdoel) =>
+        new(subdoel.Id, subdoel.Leeftijd, MapKoppeling(subdoel.Koppeling));
+
+    private static ActiviteitWeergave MapActiviteit(Activiteit activiteit) => new(
+        activiteit.Id,
+        activiteit.Naam,
+        activiteit.ActiviteitType,
+        activiteit.Hoek,
+        activiteit.VerwachteUitkomsten,
+        activiteit.Doelkoppelingen.Select(MapKoppeling).ToList());
+
+    private static DoelKoppelingWeergave MapKoppeling(DoelKoppeling koppeling) =>
+        new(koppeling.Id, koppeling.LeerplandoelCode, koppeling.Status, koppeling.AiMotivatie);
+}

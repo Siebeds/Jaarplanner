@@ -26,14 +26,21 @@ type DotKeys<T> = {
 
 export type TranslationKey = DotKeys<NlCatalogue>;
 
+/** Values substituted into `{placeholder}` slots of a catalogue string. */
+export type TranslationParams = Record<string, string | number>;
+
 /**
  * Resolve a translation key to its Dutch string from `nl.json`.
+ *
+ * Optional `params` fill `{placeholder}` slots in the catalogue value (simple, dependency-free
+ * interpolation), e.g. `t("matching.aanvaardenAria", { code: "NAT-K3-01" })` against
+ * `"Leerplandoel {code} aanvaarden"`. Missing slots are left untouched.
  *
  * @throws never at runtime for valid keys; an unknown key is rejected at compile time.
  *         As a defensive runtime fallback (e.g. catalogue edited out of sync) the key
  *         itself is returned so the UI degrades visibly rather than crashing.
  */
-export function t(key: TranslationKey): string {
+export function t(key: TranslationKey, params?: TranslationParams): string {
   const value = key
     .split(".")
     .reduce<unknown>(
@@ -44,5 +51,13 @@ export function t(key: TranslationKey): string {
       nl,
     );
 
-  return typeof value === "string" ? value : key;
+  let result = typeof value === "string" ? value : key;
+
+  if (params) {
+    for (const [name, replacement] of Object.entries(params)) {
+      result = result.replaceAll(`{${name}}`, String(replacement));
+    }
+  }
+
+  return result;
 }

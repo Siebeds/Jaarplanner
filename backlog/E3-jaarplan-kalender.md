@@ -27,9 +27,10 @@
 
 ### FR-6 — Calendar
 
-- [!] **E3-05 — Planningsblok model & calendar grid** — *blocked: Art. XIV planningsblok granularity*
+- [ ] **E3-05 — Planningsblok model & calendar grid**
   Model the school year as configurable planningsblokken; **do not hard-assume months** — support themaperiode (4–6 wk) / subthemaperiode (~2 wk). Belgian school year Sept→June.
   *Done when:* the block unit is configurable behind a seam; default is documented, not compiled-in. Ref: Art. IX.3, Gap A.6.
+  *Decision (directie 2026-07-14, Art. XIV resolved):* default is the **two-tier** model — themaperiode (4–6 wk, coarse) + subthemaperiode (~2 wk, fine); zoom levels (E3-08) map to these tiers; unit configurable behind the seam, default documented not compiled-in.
 
 - [ ] **E3-06 — Calendar/agenda view of the plan**
   Render the year plan as a calendar/agenda over the school year.

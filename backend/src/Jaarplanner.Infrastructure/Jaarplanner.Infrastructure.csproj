@@ -5,6 +5,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Excel parsing for the Op.stap import (Art. VIII — ClosedXML/MIT; EPPlus is forbidden). -->
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <!-- EF Core + Npgsql provider (transitively brings Microsoft.EntityFrameworkCore 10). -->
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
     <!-- DbContext readiness health check (AddDbContextCheck) — first-party, no Xabaril dependency. -->
@@ -12,6 +14,12 @@
     <!-- Configuration + DI abstractions for the AddInfrastructure extension method. -->
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+    <!-- Options-pattern config binding (services.Configure<T>(section)) for the E1-06 data-driven
+         discipline-selection seam (Art. XIV) and the E2-01 AzureAI options seam; brings IOptions<T>. -->
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
+    <!-- Typed HttpClient factory (AddHttpClient<IAiClient, AzureAiFoundryClient>) for the Azure AI
+         Foundry client (E2-01). -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
   </ItemGroup>
 
   <PropertyGroup>

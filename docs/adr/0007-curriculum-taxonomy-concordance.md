@@ -1,6 +1,6 @@
 # ADR-0007 — Curriculum taxonomy & concordance model
 
-- **Status:** Accepted
+- **Status:** Accepted (concordance clause **partially superseded by [ADR-0018](0018-concordance-one-to-many-fk.md)** — concordance is a one-to-many nullable FK, not many-to-many; all other decisions stand)
 - **Date:** 2026-06-29
 - **Deciders:** Architect (Siebe De Saedeleir / team)
 
@@ -16,6 +16,7 @@ We will model the curriculum as:
 - **`Leerplandoel`** — **`code` is the unique identity**; `doelsoort` (MD/G/+/P/S/A enum), `jaarFase`, `domein`, `subdomein`, **`cluster` nullable**, tekst, voorbeelden?, toelichting?, woordenschat?, `minimumdoelRef`.
 - **`Minimumdoel`** — `ref`, `leeftijd` (K-/4-/6-), `nr`, `omschrijving`.
 - **`Concordantie`** — many-to-many-capable link Leerplandoel ↔ Minimumdoel via `minimumdoelRef` (= Excel B+C), enabling coverage roll-up to minimumdoel level.
+  > **Superseded by [ADR-0018](0018-concordance-one-to-many-fk.md)** — concordance is modelled as a **one-to-many nullable FK** `Leerplandoel.MinimumdoelRef → Minimumdoel.Ref` (Minimumdoel 1 — \* Leerplandoel; max one minimumdoel per leerplandoel). The M:N join is rejected: Op.stap emits exactly one column D per leerplandoel row (Art. VII.1 / IX.1). Coverage roll-up to minimumdoel level is unaffected (via `IConcordantieQuery`).
 - `leergebied`/`Wereldoriëntatie` is **not** a stored taxonomy level — at most a presentation mapping over disciplines (open decision, Art. XIV).
 
 ## Alternatives considered

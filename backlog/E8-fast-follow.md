@@ -24,4 +24,7 @@
 - [ ] **E8-06 — Op.stap-leerroutes incorporeren**
   Bring in Op.stap leerroutes as planning support. Distinct from `leerlijn`. Ref: FR-2 (opmerking), Art. XII.
 
+- [ ] **E8-07 — Activiteit-/subdoel-niveau AI-matching**
+  Extend FR-4 matching below thema level: attach AI match `DoelKoppeling`s at **activiteit** and **subdoel** (class/age) scope, not only school-wide thema level. Requires widening the E2-03 response contract with a per-suggestion **target** (thema | activiteit | subdoel + id) and routing persistence accordingly; the `DoelKoppeling` shape is unchanged. Ref: FR-4.1/4.2, Art. IV.8 (subdoel step 6), Art. IX.2. *Deferred from E2-04 by directie decision 2026-07-13 (MVP matching ratified thema-level).*
+
 > **Out of scope entirely** (would need a constitution amendment, Art. I.2): pupil-level tracking, school-admin/LVS integrations, parent/pupil access, lesson-material generation, grading.

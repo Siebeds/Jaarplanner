@@ -173,18 +173,19 @@ One Excel file per discipline. Hidden columns may be empty. **This mapping is ke
 
 Scoping is **level-dependent and prescribed by pedagogy** (not a single shared/per-class flag):
 
-- **Thema** *(school-scoped — shared school-wide)* — id, naam, invalshoeken?, `duurWeken` (≈ 4–6), `kernwoordenschat[]`, `rijkeWoordenschat[]`, subthema's[], themadoelen[]. Owned by the team/directie via the shared thema-bibliotheek.
+- **Thema** *(school-scoped — shared school-wide)* — id, naam, invalshoeken?, `duurWeken` (≈ 4–6), `kernwoordenschat[]`, `rijkeWoordenschat[]`, subthema's[], themadoelen[], `doelsuggesties[]`. Owned by the team/directie via the shared thema-bibliotheek.
+  - **`doelsuggesties[]`** *(ratified — directie decision 2026-07-13)* — the AI's **FR-4 thema↔doel match suggestions** (E2-04), each a `DoelKoppeling` persisted as `voorgesteld` with `aiMotivatie`. Uncapped and deliberately **distinct from the 2–3 capped `themadoelen`**: these are advisory matches awaiting teacher accept/reject (Art. IV), not the curated overarching anchors. Attaching FR-4 match output at **thema (school-wide) scope** is the ratified MVP granularity; **activiteit- and subdoel-level (class/age) matching is deferred to fast-follow** (backlog E8) and would carry a per-suggestion target in the response contract.
 - **Themadoel** *(school-scoped)* — the **2–3 overarching goals** that anchor a whole thema and are deliberately the same school-wide; each links to a `Leerplandoel`/`Minimumdoel` and is meant to be *verbreed/verdiept/herhaald*. Distinct from a per-activity goal link.
 - **Subthema** *(class/age-scoped)* — naam, `probleemstelling?`, `onderzoeksvraag?`, `duurWeken` (≈ 2), belongs to a Thema. May differ per klas/leeftijd.
 - **Subdoel** *(class/age-scoped)* — a concrete, **age-differentiated** goal at the `(Subthema × leeftijd)` level, linking to a `Leerplandoel`/`Minimumdoel`; builds up toward the themadoelen. Themes are **interdisciplinary** — subdoelen routinely span multiple disciplines.
 - **Activiteit** *(class/age-scoped)* — naam, `activiteitType` (enum: experiment, prentenboek, hoek, uitstap, spel, waarneming, beweging, onderzoek, …), optional `hoek`, `verwachteUitkomsten?`; can link to one or more leerdoelen.
-- **DoelKoppeling** (the link entity, formerly "ThemaDoel") — any link School-content↔Leerplandoel with `status` (voorgesteld / aanvaard / geweigerd / manueel) and `aiMotivatie`. Used for themadoelen, subdoelen, and activity links alike.
+- **DoelKoppeling** (the link entity, formerly "ThemaDoel") — any link School-content↔Leerplandoel with `status` (voorgesteld / aanvaard / geweigerd / manueel) and `aiMotivatie`. Used for themadoelen, subdoelen, activity links, and thema-level FR-4 match `doelsuggesties` (E2-04) alike.
 
 ### IX.3 Planning & coverage
 
 - **Schooljaar** — contains multiple klassen; carries the vakantie-/periodestructuur.
 - **Klas** — id, naam (e.g. "L3 — derde leerjaar"), leerjaar/leeftijdsgroep; has one `Jaarplan`.
-- **Jaarplan** — klasId; per **planningsblok** a list of thema's, with a `vergrendeld` flag per thema (excluded from regeneration). Planningsblok granularity is an **open decision** (Art. XIV): the real cadence is *themaperiode* (4–6 wk) and *subthemaperiode* (~2 wk), which does **not** cleanly align to the legacy "maand" default — do not hard-assume months.
+- **Jaarplan** — klasId; per **planningsblok** a list of thema's, with a `vergrendeld` flag per thema (excluded from regeneration). Planningsblok granularity is **settled** (Art. XIV, directie 2026-07-14): a **two-tier** model — *themaperiode* (4–6 wk) and *subthemaperiode* (~2 wk) — is the default, configurable behind a seam (E3-05); **never hard-assume months**.
 - **Dekking** — computed, not stored (see Article V). Binary (gedekt/niet-gedekt) for the MVP is a **deliberate simplification**; "herhaling/opbouw over leeftijden" (verticale samenhang) may be surfaced later (Art. XIV).
 
 ---
@@ -268,7 +269,6 @@ These are **not yet settled** and must be confirmed before building deep. Until 
 - **Op.stap import**: manual per-discipline Excel download vs. an automated/online source.
 - **`cluster` presence**: is `cluster` populated in every discipline's Excel, or only some? (Affects roll-ups; cluster is nullable regardless — Art. VII.0.)
 - **Ordering & graadklassen**: follow Op.stap jaar/fase ordering (JK–L6, mijlpalen K3/L4/L6); how to handle graadklassen / menggroepen?
-- **Planningsblok granularity**: themaperiode (4–6 wk) and/or subthemaperiode (~2 wk) vs. month / week / lesblok. The pedagogical cadence does not align to months — pick deliberately. Until decided, isolate behind a seam (do not hard-assume months).
 - **`leergebied` / Wereldoriëntatie surfacing**: show it as a presentation grouping over disciplines? Confirm the Wereldoriëntatie → {Aardrijkskunde, Geschiedenis, Wetenschap en techniek} mapping.
 - **Coverage depth**: keep binary dekking for MVP, or later surface herhaling/opbouw over ages (verticale samenhang)?
 - **`jaarFase` codes**: confirm whether Excel col F uses 1K/2K/3K or JK/K2/K3.
@@ -281,6 +281,7 @@ These are **not yet settled** and must be confirmed before building deep. Until 
 - **Final product name.**
 
 > **Resolved (no longer open):**
+> - **Planningsblok granularity** (directie decision 2026-07-14): a **two-tier** model — coarse **themaperiode (4–6 wk)** and fine **subthemaperiode (~2 wk)** — is the default; calendar zoom levels (E3-08) map to these two tiers. **Never hard-assume months.** The block unit stays **configurable behind a seam** (E3-05) with this two-tier default documented, not compiled-in, so a different cadence can be adopted without a code change. (Supersedes the former open granularity binary.)
 > - **Thema scope** is now settled *per level* (Art. IX.2): `Thema` + `Themadoel` + `kernwoordenschat` are **school-wide**; `Subthema` + `Subdoel` + `Activiteit` are **per class & age**. (Supersedes the former open "shared vs per-class" binary and FR-3.3.)
 > - **The decreed/autonomous boundary** (Art. III): only minimumdoelen/leerinhouden/kennisopbouw are decreed; the thema layer is professional autonomy, tested only at minimumdoel level.
 > - **Hosting/AI sign-off** (2026-06-29): **Azure + EU hosting and EU AI data zone confirmed** (see [ADR-0016](docs/adr/0016-azure-hosting-eu-residency.md)).

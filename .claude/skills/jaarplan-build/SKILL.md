@@ -35,6 +35,18 @@ fix-loop run from here.** Keep the user informed and **pause after each complete
   - **dependency-ready** — its prerequisites are `[x]`. Respect intra-epic order (e.g. `E0-01` structure before `E0-04` backend bootstrap) and the epic build order E0→E1→…→E6.
 - If the only remaining stories are blocked or depend on an open decision (Art. XIV), **stop and ask the user** to decide — do not hard-assume an answer.
 
+### 1.5. Ensure you're on the right feature branch (multi-branch safe)
+Multiple epics/features may be in flight on separate branches at once, so **confirm the working branch matches the picked story's epic before you claim or merge** — both the `[~]` claim edit (step 2) and the final merge (step 6) must land on the correct branch, not whichever branch you happened to start on.
+
+- **Convention: one feature branch per epic**, named `feature/e<n>-<slug>` (e.g. `feature/e1-curriculum-content` for E1). The `<slug>` is descriptive and chosen once per epic. Each epic branch is created from `main` so features stay independent and mergeable in any order.
+- Determine the epic `E<n>` of the picked story, then read the current branch: `git branch --show-current` and the working-tree state: `git status --porcelain`.
+- **If the working tree is dirty** (uncommitted changes), **stop and surface to the user** — do not switch branches over uncommitted work.
+- Then decide:
+  - **Current branch already matches `feature/e<n>-*` for this epic** → you're in the right place; proceed.
+  - **You're on a different epic's branch (`feature/e<m>-*`, m≠n) or `main`, and exactly one `feature/e<n>-*` branch exists** (`git branch --list "feature/e<n>-*"`) → switch to it: `git switch feature/e<n>-<slug>`. Note the switch in your step-7 report.
+  - **No `feature/e<n>-*` branch exists yet** → propose a name `feature/e<n>-<slug>` and **ask the user to confirm the slug** (don't invent it silently); once confirmed, create it from `main`: `git switch main && git switch -c feature/e<n>-<slug>`.
+  - **Multiple `feature/e<n>-*` branches exist** → ambiguous; **ask the user** which one to use.
+
 ### 2. Claim it (prevents double-assignment)
 **Before spawning**, edit the story's checkbox to `[~]` in its epic file. The claim is yours, made here — never rely on the agent to claim it. Create the worklog folder path `backlog/worklogs/<story-id>/` (the implementer writes into it).
 
@@ -53,7 +65,7 @@ In **one message**, spawn both:
 - **FAIL or VIOLATIONS FOUND** → spawn the **`implementer` in FIX mode** with the consolidated findings (defects + cited violations). Then re-run step 4. Cap at **3 fix rounds**; if still red, **stop and surface to the user** with the open findings — do not silently loosen criteria or waive a constitution finding (only the user waives, per the antagonist's contract).
 
 ### 6. Land it
-- Merge the worktree branch `story/<id>` into the current working branch (local only — **do not push, do not open a PR** unless the user asks).
+- Merge the worktree branch `story/<id>` into **this epic's feature branch** (the one confirmed in step 1.5 — verify with `git branch --show-current` before merging; never merge a story onto a different epic's branch). Local only — **do not push, do not open a PR** unless the user asks.
 - Flip the story checkbox `[ ]`/`[~]` → `[x]` in the epic file.
 - Update the **progress table in `backlog/README.md`** (Done count + Status + the Totaal row/percentage).
 - Confirm the worklog folder has `implementation.md`, `test-report.md`, and `antagonist.md`.
@@ -66,6 +78,7 @@ Everything lands under `backlog/worklogs/<story-id>/` — one folder per story, 
 - `implementation.md` (implementer), `test-report.md` (test-runner), `antagonist.md` (paste the antagonist verdict here).
 
 ## Hard rules
+- **One feature branch per epic** (`feature/e<n>-<slug>`). Confirm the branch (step 1.5) **before** claiming or merging; never claim or merge a story onto a different epic's branch. Multiple epic branches may be in flight in parallel — keep them independent (each branched from `main`).
 - **You claim and check off the backlog**, not the agents — they can't safely coordinate the shared file.
 - **Never mark `[x]` without PASS + COMPLIANT.** A red gate means the story is not done (Art. X).
 - **Never hard-assume an open decision** — block the story `[!]` and ask.
