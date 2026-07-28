@@ -60,6 +60,10 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 
 ## Open decisions that gate stories (see [Art. XIV](../CONSTITUTION.md#article-xiv--open-decisions-awaiting-directie))
 
+> **Forwardable version:** [`docs/besluiten-gevraagd.md`](../docs/besluiten-gevraagd.md) states the directie-facing
+> asks in plain Dutch, ordered by urgency, with the consequence of leaving each one open. Send that; keep this
+> section as the engineering-side record.
+
 Stories blocked on these are marked `[!]`:
 - ~~Planningsblok granularity~~ — **RESOLVED (directie 2026-07-14):** two-tier default = themaperiode (4–6 wk) + subthemaperiode (~2 wk), configurable behind a seam (E3-05); never hard-assume months.
 - Disciplines first (all vs. starter selection); `cluster` presence per discipline.
