@@ -14,10 +14,18 @@ Thumbs.db
 # the repo root when a wireframe is reviewed in a browser; regenerated on demand.
 .playwright-mcp/
 
-# TEMPORARY, remove once the directory is gone. Debris from moving the repo root up
-# out of C:\source\Jaarplanner\Jaarplanner (b2257f7). A root-level directory named
-# "Jaarplanner" inside this repo is never legitimate. It could not be deleted because
-# VS Code's language server held handles on it and kept regenerating obj/ artifacts
-# there — which a `git add -A` then swept into the repo. This guard stops that
-# recurring until the folder is deleted.
+# TEMPORARY, remove together with the folder. Debris from moving the repo root up out
+# of C:\source\Jaarplanner\Jaarplanner (b2257f7); a root-level directory named
+# "Jaarplanner" inside this repo is never legitimate. It is now empty of files — only
+# an undeletable `docs/ux` directory chain remains, still held by an editor process —
+# so this pattern is prophylactic, not describing an active leak. It earned its place:
+# regenerated obj/ artifacts under it were swept into a commit by `git add -A` (96aa434,
+# undone in 2081055). Delete the folder and this block once the handle is released.
 /Jaarplanner/
+
+# Screenshot of the approved E3-10 kalender wireframe, captured to the working dir by a
+# browser session. Untracked deliberately (it was committed by accident in 96aa434 and
+# removed in 369fee5), and ignored so the next `git add -A` cannot re-stage it. If it is
+# worth keeping as approval evidence it belongs under docs/ux/wireframes/ with a
+# reference from e3-10-kalender.md — not loose at the repo root.
+/wireframe-desktop.png
