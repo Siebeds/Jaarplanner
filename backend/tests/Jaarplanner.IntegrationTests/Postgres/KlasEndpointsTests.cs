@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using Jaarplanner.Application.Planning.Beheer;
+using Jaarplanner.Domain.Planning;
+using Jaarplanner.Domain.Schoolcontent;
+using Microsoft.EntityFrameworkCore;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
@@ -113,6 +116,51 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
         // Taking another class's name must be refused.
         var conflict = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = ander.Naam, leerjaar = 4 });
         Assert.Equal(HttpStatusCode.BadRequest, conflict.StatusCode);
+    }
+
+    /// <summary>
+    /// A class whose jaarplan holds a reviewed, locked placement cannot be deleted — a 400 with the count, not a
+    /// silent cascade that destroys the teacher's decisions (Art. IV.2). Driven over HTTP because that is the route a
+    /// caller has; the service-level halves are covered by executed in-memory tests in <c>KlasVerwijderenTests</c>.
+    /// </summary>
+    [PostgresFact]
+    public async Task Klas_met_beoordeeld_jaarplan_kan_niet_verwijderd_worden()
+    {
+        var client = _factory.CreateClient();
+        var klas = await Maak(client, "L3B — jaarplanklas", 3);
+
+        var thema = await (await client.PostAsJsonAsync("/api/themas", new
+        {
+            naam = "Herfst — jaarplanklas",
+            duurWeken = 5,
+        })).Content.ReadFromJsonAsync<Application.Schoolcontent.Beheer.ThemaWeergave>();
+
+        // Place the thema on the first derived themaperiode (= the school year's first teaching day) and accept it.
+        await using (var context = _db.MaakContext())
+        {
+            var schooljaar = await context.Schooljaren.FirstAsync(s => s.Id == klas.SchooljaarId);
+            var jaarplan = new Jaarplan(klas.Id);
+            var plaatsing = jaarplan.VoegPlaatsingToe(
+                thema!.Id,
+                Planningsblokniveau.Themaperiode,
+                schooljaar.Start,
+                KoppelingStatus.Voorgesteld,
+                "seizoen");
+            plaatsing.WijzigStatus(KoppelingStatus.Aanvaard);
+            plaatsing.StelVergrendelingIn(true);
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+        }
+
+        var verwijder = await client.DeleteAsync($"/api/klassen/{klas.Id}");
+        Assert.Equal(HttpStatusCode.BadRequest, verwijder.StatusCode);
+
+        // Still there, plan intact.
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/klassen/{klas.Id}")).StatusCode);
+        await using (var context = _db.MaakContext())
+        {
+            Assert.Single(await context.Jaarplannen.Where(j => j.KlasId == klas.Id).ToListAsync());
+        }
     }
 
     /// <summary>A class with no school content deletes cleanly — the happy path of the Restrict-FK guard.</summary>

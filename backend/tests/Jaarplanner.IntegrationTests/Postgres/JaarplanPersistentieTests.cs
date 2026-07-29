@@ -216,6 +216,49 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// The relational cascade itself: deleting the <b>klas</b> row removes its jaarplan and every placement. This is
+    /// the destructive behaviour <c>KlasBeheerService.VerwijderKlasAsync</c> guards against for reviewed/locked
+    /// placements, and it is asserted here around the service on purpose — the guard is only worth having if the
+    /// cascade underneath it is real, and the in-memory provider enforces no FK at all so it cannot show this.
+    /// <para>
+    /// Note the earlier <c>Verwijderen_neemt_de_plaatsingen_mee</c> deletes the <i>jaarplan</i>, never the
+    /// <i>klas</i> — which is exactly why the silent-destruction defect went unnoticed.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_klas_verwijderen_neemt_haar_jaarplan_en_plaatsingen_mee()
+    {
+        var (klasId, themaId, blokStart) = await SeedAsync();
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = new Jaarplan(klasId);
+            jaarplan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "voorstel");
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // Raw DELETE, so the database's own ON DELETE CASCADE is what is under test — not EF's change tracker.
+            var verwijderd = await context.Database.ExecuteSqlAsync(
+                $"""DELETE FROM klassen WHERE "Id" = '{klasId}'""");
+            Assert.Equal(1, verwijderd);
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            Assert.Empty(await context.Jaarplannen.Where(j => j.KlasId == klasId).ToListAsync());
+
+            var resterend = await context.Database
+                .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
+                .SingleAsync();
+            Assert.Equal(0, resterend);
+        }
+    }
+
+    /// <summary>
     /// Art. IX.3's "Schooljaar contains multiple klassen", as a real FK: a class cannot exist without a school year,
     /// the containment loads back, and deleting the year is <b>refused</b> while it still holds classes rather than
     /// cascading away a class, its jaarplan and its school content.

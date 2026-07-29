@@ -24,7 +24,8 @@ public sealed record JaarplanGeneratieResultaat
         int aantalBehouden,
         IReadOnlyList<string> onbekendeThemas,
         IReadOnlyList<string> onbekendeBlokken,
-        IReadOnlyList<string> duplicaten)
+        IReadOnlyList<string> duplicaten,
+        IReadOnlyList<string> afgewezen)
     {
         IsGeslaagd = isGeslaagd;
         Fout = fout;
@@ -34,6 +35,7 @@ public sealed record JaarplanGeneratieResultaat
         OnbekendeThemas = onbekendeThemas;
         OnbekendeBlokken = onbekendeBlokken;
         Duplicaten = duplicaten;
+        Afgewezen = afgewezen;
     }
 
     /// <summary><c>true</c> when the AI response was valid and a (possibly empty) proposal was persisted.</summary>
@@ -63,8 +65,29 @@ public sealed record JaarplanGeneratieResultaat
     /// </summary>
     public IReadOnlyList<string> OnbekendeBlokken { get; }
 
-    /// <summary>Placements the plan already held identically (kept locked/decided ones) — skipped for idempotency.</summary>
+    /// <summary>
+    /// Placements the plan already held identically as a <b>still-standing</b> proposal or an accepted/adjusted one
+    /// — skipped for idempotency. This reports genuine AI repetition: the model proposed something already there.
+    /// </summary>
     public IReadOnlyList<string> Duplicaten { get; }
+
+    /// <summary>
+    /// Placements the model proposed that the teacher has explicitly <b>rejected</b> in that exact block — reported
+    /// separately from <see cref="Duplicaten"/> on purpose.
+    /// <para>
+    /// A <c>geweigerd</c> placement is kept (a human decision is not the generator's to discard, Art. IV.1) and
+    /// therefore still occupies its slot, so re-proposing it is suppressed. But labelling that a "duplicate" would
+    /// tell the teacher the AI repeated itself, when what actually happened is that <i>their own</i> rejection is
+    /// holding. Those are different facts and a teacher may act differently on each.
+    /// </para>
+    /// <para>
+    /// The lifecycle consequence is real and deliberately <b>not</b> resolved here: nothing can remove a rejected
+    /// placement, so it suppresses that thema/block indefinitely. A delete path is E3-07's scope; see the E3-01
+    /// worklog and <c>KoppelingStatus</c>'s documentation for the divergence this creates against
+    /// <c>DoelKoppeling</c>.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> Afgewezen { get; }
 
     /// <summary>Builds a success result.</summary>
     public static JaarplanGeneratieResultaat Geslaagd(
@@ -73,7 +96,8 @@ public sealed record JaarplanGeneratieResultaat
         int aantalBehouden,
         IReadOnlyList<string> onbekendeThemas,
         IReadOnlyList<string> onbekendeBlokken,
-        IReadOnlyList<string> duplicaten) =>
+        IReadOnlyList<string> duplicaten,
+        IReadOnlyList<string> afgewezen) =>
         new(isGeslaagd: true,
             fout: null,
             jaarplan,
@@ -81,7 +105,8 @@ public sealed record JaarplanGeneratieResultaat
             aantalBehouden,
             onbekendeThemas ?? LeegTekst,
             onbekendeBlokken ?? LeegTekst,
-            duplicaten ?? LeegTekst);
+            duplicaten ?? LeegTekst,
+            afgewezen ?? LeegTekst);
 
     /// <summary>Builds a failure result — nothing persisted, no partial plan (Art. IV.5).</summary>
     public static JaarplanGeneratieResultaat Mislukt(string fout) =>
@@ -90,6 +115,7 @@ public sealed record JaarplanGeneratieResultaat
             jaarplan: null,
             aantalNieuw: 0,
             aantalBehouden: 0,
+            LeegTekst,
             LeegTekst,
             LeegTekst,
             LeegTekst);

@@ -129,6 +129,40 @@ public sealed class SchooljaarPersistentieTests : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// The label is unique <b>case-insensitively</b>, via the functional index on <c>lower("Naam")</c> added by
+    /// migration <c>SchooljaarNaamCaseInsensitiefUniek</c> (E3-01 fix round 1). Mirrors
+    /// <c>ReferentiedataIntegriteitTests.Klas_naam_is_uniek_in_de_database</c> and the same <c>Klas</c> precedent.
+    /// <para>
+    /// <b>Why it was needed.</b> <c>SchooljaarBeheerService</c> pre-checks the label case-insensitively and catches a
+    /// <c>DbUpdateException</c> for the concurrent-POST race, but the EF-declared index was case-<i>sensitive</i>: two
+    /// simultaneous POSTs of "2026-2027" and "2026-2027 "/differing case both passed the pre-check <i>and</i> both
+    /// passed the index, so the race handler was unreachable for exactly the case it was written for. Only a
+    /// relational test can show this — the in-memory provider ignores unique indexes entirely.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Schooljaarnaam_is_ook_case_insensitief_uniek()
+    {
+        // A label carrying letters, so "differs only in case" is expressible at all.
+        await using (var context = _db.MaakContext())
+        {
+            context.Schooljaren.Add(new Schooljaar("2030-2031 proefjaar", new DateOnly(2030, 9, 1), new DateOnly(2031, 6, 30)));
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // The declared case-sensitive index accepts this happily; the functional one must not.
+            context.Schooljaren.Add(new Schooljaar("2030-2031 PROEFJAAR", new DateOnly(2030, 9, 2), new DateOnly(2031, 6, 29)));
+
+            var ex = await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+            var pg = Assert.IsType<Npgsql.PostgresException>(ex.InnerException);
+            Assert.Equal("23505", pg.SqlState);
+            Assert.Equal("IX_schooljaren_Naam_lower", pg.ConstraintName);
+        }
+    }
+
     /// <summary>One school year per label — a second "2026-2027" is a data-entry mistake, not a new year.</summary>
     [PostgresFact]
     public async Task Schooljaarnaam_is_uniek()

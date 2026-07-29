@@ -254,12 +254,20 @@ classes belong to and must not be guessed in a migration.
   provider, so they run here and in CI with no container.
 - **Skipped here (31 total):** every `[PostgresFact]`, because this machine has no Docker/local Postgres. That
   includes **all 7 of my new `JaarplanPersistentieTests`**. I am **not** presenting any of those 7 as evidence for
-  anything. They were written so CI runs them, and they are the only coverage for: the `date` mapping of `BlokStart`,
-  the absence of an ordinal column in the real schema, the unique one-plan-per-class index, the unique
-  `(plan, thema, niveau, start)` index, the owned-collection cascade, the Schooljaar→Klas Restrict FK, and that
-  `Vergrendeld` survives storage. **Until CI runs them, the persistence half of this story is unverified.** That is a
-  real gap, not a formality — the E1 reopening happened because in-memory results were trusted for exactly this class
-  of thing.
+  anything. They were written so CI runs them, and they are the only coverage for:
+  - the `date` mapping of `BlokStart` and the two enum-as-name columns;
+  - the **absence of an ordinal column** in the real schema;
+  - the unique **one-plan-per-class** index;
+  - the unique **`(JaarplanId, ThemaId, BlokNiveau, BlokStart)`** index (`Dezelfde_plaatsing_kan_niet_twee_keer_bestaan`,
+    SqlState `23505`) — note the *rule* itself **is** covered by an executed domain test
+    (`JaarplanTests.Een_thema_kan_niet_twee_keer_in_hetzelfde_blok`); only the database index is skipped;
+  - the owned-collection cascade on deleting the jaarplan;
+  - the **Schooljaar→Klas Restrict FK** (both directions);
+  - and that `Vergrendeld` survives storage — note its *logical* round-trip **is** covered in-memory
+    (`Beslissing_en_vergrendeling_overleven_een_herlaad` re-`GET`s it); only the relational column mapping is skipped.
+
+  **Until CI runs them, the relational half of this story is unverified.** That is a real gap, not a formality — the
+  E1 reopening happened because in-memory results were trusted for exactly this class of thing.
 - One test file I touched, `KlasEndpointsTests`, is entirely `[PostgresFact]`, so my change to it (the nested POST
   route + creating a schooljaar in `InitializeAsync`) is **also unverified locally**. It compiles; it has not run.
 
@@ -356,3 +364,173 @@ generated for returns an empty plan rather than a 404.
    but until they land a stale placement is only *visible*, not *blocking*.
 6. **The migration guard is a design choice, not a test.** It has never executed against a non-empty `klassen`
    table, because no such database exists here.
+
+---
+
+## Fix round 1 — 2026-07-29
+
+Both gates came back red on `dfb1407`: the antagonist raised 1 MAJOR + 5 MINOR, the test-runner 1 MAJOR. The
+antagonist could **not** falsify the four binding constraints (start-date keying, exact block resolution with no
+snapping, validation-before-mutation, `IsVervangbaar` as the sole regeneration predicate) and judged the reachability
+genuine — none of that was touched. All seven findings are addressed; **nothing is disputed.**
+
+### 1. [MAJOR] Deleting a `Klas` silently destroyed accepted and locked placements
+
+**Real, and worse than a missing test: a comment asserted a guard that did not exist.** `JaarplanConfiguration` maps
+`jaarplannen → klassen` as `Cascade` and claimed *"Klas deletion is itself already refused while class-scoped content
+exists (KlasBeheerService)"*. That guard counts **`Subthemas` only**, so `DELETE /api/klassen/{klasId}` on a class
+whose sole content was a fully reviewed, locked jaarplan succeeded, and the database removed the plan and every
+`Themaplaatsing` — including ones a teacher explicitly set to `Aanvaard` and explicitly locked. The same endpoint
+meanwhile returned a 400 to protect a bare subthema. The existing cascade test
+(`Verwijderen_neemt_de_plaatsingen_mee`) deletes the *jaarplan*, never the *klas*, which is exactly why it went
+unnoticed.
+
+Three changes:
+
+- **Guard extended.** `VerwijderKlasAsync` now also refuses while the class's jaarplan holds any placement a human
+  committed to, reporting the count the way the subthema guard does. A bare unreviewed `voorgesteld` proposal carries
+  no human decision and still cascades freely.
+- **The predicate is the *complement of the existing one*, deliberately.** New
+  `Jaarplan.MenselijkBeslotenPlaatsingen => _plaatsingen.Where(p => !p.IsVervangbaar)`. A second, independently
+  written "is this a human decision?" test is precisely how a plan ends up protected against regeneration but not
+  against deletion — which *is* this bug.
+  `KlasVerwijderenTests.De_verwijdergrens_is_precies_het_complement_van_de_hergeneratiegrens` enumerates all 4
+  statuses × locked/unlocked and asserts the two sets partition the plan with no overlap.
+- **The false comment is gone,** replaced by what is actually true — including that the earlier claim was wrong and why.
+
+Tests: `KlasVerwijderenTests` (6 tests, **executed** in-memory) covers the refusal for
+`Aanvaard`/`Geweigerd`/`Manueel`/locked-`Voorgesteld`, a real multi-placement count (3 blocking, 1 bare proposal not
+counted), the proposals-only success path, a class with no plan at all, and the partition property. Two new
+`[PostgresFact]`s (**skipped here**): `JaarplanPersistentieTests.Een_klas_verwijderen_neemt_haar_jaarplan_en_plaatsingen_mee`
+deletes the `klassen` row with **raw SQL** so the database's own `ON DELETE CASCADE` is what is under test rather than
+EF's change tracker; `KlasEndpointsTests.Klas_met_beoordeeld_jaarplan_kan_niet_verwijderd_worden` drives the 400 over
+HTTP.
+
+> **A second defect fell out of this fix, and it would have taken the whole app down.** Adding
+> `MenselijkBeslotenPlaatsingen` made `dotnet ef` fail with *"Unable to determine the relationship represented by
+> navigation 'Jaarplan.MenselijkBeslotenPlaatsingen'"* — EF reads any `IReadOnlyList<Themaplaatsing>` property as a
+> second navigation and then refuses to build the model at all, i.e. a startup failure, not a degraded aggregate.
+> Fixed with `builder.Ignore(j => j.MenselijkBeslotenPlaatsingen)` beside the existing `Ignore` for `Plaatsingen`, and
+> the comment now says *why* both must be ignored so the next projection property added here does not repeat it.
+
+### 2. [MAJOR] The real `AzureAiFoundryClient` had never executed — and the offline part was achievable
+
+Correct, and my earlier framing ("can only claim the faked half") wrongly implied a live endpoint was needed. It is
+not: the client is a typed `HttpClient` taking `(HttpClient, IOptions<AzureAIOptions>)`, so a stub
+`HttpMessageHandler` plus dummy options drives everything except the network hop.
+
+New `tests/Jaarplanner.UnitTests/Ai/AzureAiFoundryClientTests.cs` — **12 executed tests**, no endpoint, no key, no
+sockets. This is the first execution of this class anywhere in the repo, E2-01 included:
+
+- **Outbound request asserted exactly:** `POST {endpoint}/openai/deployments/{deployment}/chat/completions?api-version=2024-10-21`
+  with the trailing slash trimmed; the key on the `api-key` **header**, present once, with no `Authorization` header
+  and the key **absent from the URI** (Art. VI.4); both prompt roles in `messages`; and
+  `response_format.type == "json_object"` (Art. IV.5 — the model is genuinely *asked* for structured JSON).
+- **Raw passthrough:** the assistant content returns verbatim; the client parses nothing, so the trust boundary stays
+  in Application. A `null` content normalises to `""`, which the parser then rejects.
+- **The full offline seam of the story's "real AI client" criterion:** a canned Azure envelope goes through the
+  **real** client → the real parser → the real `JaarplanGeneratieService`, and a reviewable `voorgesteld` plan with a
+  motivation comes out keyed on the derived block's start date. The grounded prompt is asserted to have actually
+  travelled in the body the client built.
+- **Failure paths:** 401/429/500 each throw `HttpRequestException` rather than yielding an empty completion — an empty
+  completion is indistinguishable from "the model proposed nothing", so a throttled deployment would otherwise read as
+  a legitimately empty plan. `EnsureConfigured` throws for each of endpoint/key/deployment missing *or* whitespace, the
+  message names the config keys without echoing the key, and **nothing leaves the process**
+  (`AantalAanroepen == 0`).
+
+**Still out of scope:** a genuine live round-trip against Azure AI Foundry. That needs a real endpoint and key, and is
+the orchestrator's waiver-or-run decision.
+
+### 3. [MINOR] A constitution citation shipped to a teacher, and one payload was bilingual
+
+- The 400 body no longer reads `"… (Art. IV.1/IV.2)"`. The citation moved into the method's doc comment, where a
+  developer reads it.
+- **The 422 body is now English throughout, documented as an operator/developer diagnostic rather than teacher copy.**
+  Reasoning: `Detail` carries the parser's diagnostic (`"Malformed JSON: …"`, `"Placement at index 2 has a
+  missing/blank 'thema'"`), deliberately English because it describes malformed model output no teacher can act on.
+  The two *consistent* options were (a) English title + English detail, or (b) Dutch both — but (b) means translating
+  parser diagnostics into teacher copy for a condition a teacher cannot act on, i.e. **inventing new hard-coded Dutch
+  in the backend**, which is the Art. II.3 problem rather than a fix for it. So (a): `Title = "Invalid AI response"`,
+  and the teacher-facing message ("de AI gaf geen bruikbaar antwoord, probeer opnieuw") belongs in `nl.json` keyed on
+  the 422 status. **Acknowledged divergence:** the school-content and AI-matching exception handlers use Dutch
+  `Title`s; those describe conditions a teacher *can* act on (a bad request, a missing thema), which this one is not.
+  Recorded in the controller's doc comment. **Art. II.3 itself is untouched** — it is an open decision, and this
+  choice is a contribution to its cost, not a resolution of it.
+
+### 4. [MINOR] Art. II.2 language drift inside the new domain types
+
+All three programmer-error guards are now English, with a comment saying why (they catch programmer error, never
+teacher input):
+
+- `Themaplaatsing`: `"Onbekend planningsblokniveau."` → `"Unknown planningsblokniveau."`, now consistent with its
+  neighbour `"Unknown plaatsingsstatus."`.
+- `Jaarplan.VoegPlaatsingToe`'s duplicate guard: Dutch → `"Thema {id} is already placed in the {niveau} starting
+  {date}."`, with a note that **no handler maps this exception**, so if it ever escaped it would be a 500 — which is
+  exactly why it must not carry Dutch.
+
+### 5. [MINOR] `Schooljaar` name uniqueness repeated a bug already fixed for `Klas`
+
+Real, and the race handler was unreachable for exactly the case it was written for: the service pre-checks
+`lower(naam) = lower(@naam)` and catches `DbUpdateException`, but the EF-declared index on `schooljaren."Naam"` is
+case-**sensitive**, so two labels differing only in case passed both. Mirrored the `Klas` fix with migration
+`20260729075450_SchooljaarNaamCaseInsensitiefUniek`, emitting
+`CREATE UNIQUE INDEX "IX_schooljaren_Naam_lower" ON schooljaren (lower("Naam"))`.
+
+Generated with `dotnet ef migrations add` — it came out **empty**, confirming no model change and therefore no
+snapshot drift — then hand-filled with the SQL, exactly as `KlasNaamCaseInsensitiefUniek` was. New `[PostgresFact]`
+`SchooljaarPersistentieTests.Schooljaarnaam_is_ook_case_insensitief_uniek` asserts SqlState `23505` **and** the
+constraint name, using a label carrying letters ("2030-2031 proefjaar" vs "2030-2031 PROEFJAAR") so "differs only in
+case" is expressible at all. **Skipped here** — in-memory ignores unique indexes entirely, so only CI can show it.
+
+### 6. [MINOR] A rejected placement was reported to the caller as a "duplicaat"
+
+`JaarplanGeneratieResultaat` gains **`Afgewezen`** beside `Duplicaten`. Both suppress the re-proposal, but they are
+different facts: a duplicate means the AI repeated itself, while this means the *teacher's own* rejection is holding —
+and labelling the second as the first blames the AI for the teacher's decision.
+
+Implementation note: the service now calls a new `Jaarplan.VindPlaatsingOp(...)`, which returns the placement so the
+*reason* the slot is occupied is available, and `IsAlGeplaatst` is **redefined in terms of it** so the two cannot
+answer differently. Pinned by `Een_afgewezen_plaatsing_wordt_niet_als_duplicaat_gerapporteerd`: a rejected slot lands
+in `Afgewezen` and *not* in `Duplicaten`, an accepted slot stays a `Duplicaat`, and both survive the run.
+
+**The lifecycle divergence is now written down** in `KoppelingStatus`'s XML doc as an explicit contrast:
+
+- on a `DoelKoppeling`, `geweigerd` is purely negative — the link "does not count" toward dekking (Art. V.1) and blocks
+  nothing else;
+- on a `Themaplaatsing`, it **additionally occupies the slot** and suppresses re-proposal.
+
+**Deliberately not fixed:** nothing can *remove* a rejected placement, so the suppression is permanent. A DELETE
+endpoint is E3-07's scope and I did not add one. This is a real functional gap a teacher can hit — reject a thema in a
+period, change your mind, and the product offers no undo. It is now documented in three places (here,
+`JaarplanGeneratieResultaat.Afgewezen`, `KoppelingStatus`) so E3-07 cannot miss it.
+
+### 7. [MINOR] Worklog corrections
+
+The "awaits CI" list now names the **unique `(JaarplanId, ThemaId, BlokNiveau, BlokStart)` index** (`23505`), which it
+omitted, and records the two nuances in my favour: `Vergrendeld`'s *logical* round-trip **is** covered in-memory (only
+the relational column mapping is skipped), and the duplicate-placement *rule* **is** covered by an executed domain test
+(only the DB index is skipped).
+
+### Gates after fix round 1
+
+| Gate | Result |
+| --- | --- |
+| `dotnet build Jaarplanner.sln` | **Build succeeded**, 0 errors |
+| `dotnet test Jaarplanner.sln` | **402 unit passed / 0 failed / 0 skipped** (was 380 — **+22**) · **26 integration passed / 0 failed / 34 skipped** (was 31 — **+3 `[PostgresFact]`**) |
+| `dotnet format --verify-no-changes` | **Clean**, exit 0 (after `dotnet format` reflowed some new files) |
+
+**Executed vs skipped, restated for this round.** All 22 new unit tests **executed**: 12 for the real
+`AzureAiFoundryClient`, 6 for the `Klas` delete guard, 1 for `Afgewezen` vs `Duplicaten`, plus 3 further
+domain/partition assertions. All 3 new integration tests are `[PostgresFact]` and **skipped here** — the raw
+`ON DELETE CASCADE` on `klassen`, the functional `lower("Naam")` index on `schooljaren`, and the HTTP 400 for a class
+with a reviewed plan. So the *service-level* halves of finding 1 and **all** of finding 2 are verified locally; the
+*relational* halves of findings 1 and 5 remain CI-only.
+
+### Still open after this round
+
+1. **No live Azure round-trip** (finding 2's remainder) — waiver-or-run decision for the owner.
+2. **No way to remove a rejected placement** (finding 6) — E3-07 scope, now documented in three places.
+3. **The relational half remains CI-only** — 34 `[PostgresFact]`s skip on this machine.
+4. **Art. II.3 is untouched.** My 422 payload is English by reasoned choice, which diverges from the Dutch
+   `ProblemDetails` titles two neighbouring handlers use. Whichever way the open decision lands, one of the two will
+   need changing; I did not pre-empt it.

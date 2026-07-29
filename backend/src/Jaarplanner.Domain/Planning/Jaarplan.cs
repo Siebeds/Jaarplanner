@@ -78,10 +78,12 @@ public sealed class Jaarplan
         KoppelingStatus status,
         string? aiMotivatie = null)
     {
+        // A caller that has not checked IsAlGeplaatst first is a programmer error, not teacher input — no handler
+        // maps this exception, so it must never reach a teacher. English per Art. II.2.
         if (IsAlGeplaatst(themaId, blokNiveau, blokStart))
         {
             throw new InvalidOperationException(
-                $"Thema {themaId} staat al in het planningsblok van {blokStart:yyyy-MM-dd} ({blokNiveau}).");
+                $"Thema {themaId} is already placed in the {blokNiveau} starting {blokStart:yyyy-MM-dd}.");
         }
 
         var plaatsing = new Themaplaatsing(Id, themaId, blokNiveau, blokStart, status, aiMotivatie);
@@ -95,7 +97,33 @@ public sealed class Jaarplan
     /// to stay idempotent instead of stacking the same proposal twice.
     /// </summary>
     public bool IsAlGeplaatst(Guid themaId, Planningsblokniveau blokNiveau, DateOnly blokStart) =>
-        _plaatsingen.Any(p => p.ThemaId == themaId && p.BlokNiveau == blokNiveau && p.BlokStart == blokStart);
+        VindPlaatsingOp(themaId, blokNiveau, blokStart) is not null;
+
+    /// <summary>
+    /// The existing placement of this thema in that exact block, or <c>null</c>. Callers need the placement itself
+    /// and not just its existence, because <b>why</b> a slot is occupied matters: a still-standing proposal is AI
+    /// repetition, while a <see cref="KoppelingStatus.Geweigerd"/> one is the teacher's own rejection holding.
+    /// <see cref="IsAlGeplaatst"/> is defined in terms of this method so the two cannot answer differently.
+    /// </summary>
+    public Themaplaatsing? VindPlaatsingOp(Guid themaId, Planningsblokniveau blokNiveau, DateOnly blokStart) =>
+        _plaatsingen.FirstOrDefault(p =>
+            p.ThemaId == themaId && p.BlokNiveau == blokNiveau && p.BlokStart == blokStart);
+
+    /// <summary>
+    /// The placements a human has committed to: locked, or moved off <see cref="KoppelingStatus.Voorgesteld"/>.
+    /// <para>
+    /// Deliberately expressed as the <b>complement of <see cref="Themaplaatsing.IsVervangbaar"/></b> — the one
+    /// predicate that also decides what a regeneration may discard — so the two can never drift apart. A second,
+    /// independently written "is this a human decision?" test is exactly how a plan ends up protected against
+    /// regeneration but not against deletion.
+    /// </para>
+    /// <para>
+    /// Used by the <c>Klas</c> delete guard: a persisted human decision is the human's to discard (Art. IV.2), not
+    /// something a cascade may remove as a side effect of deleting the class.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Themaplaatsing> MenselijkBeslotenPlaatsingen =>
+        _plaatsingen.Where(p => !p.IsVervangbaar).ToList();
 
     /// <summary>
     /// Drops the placements a (re)generation run is allowed to replace — untouched, unlocked AI proposals — and

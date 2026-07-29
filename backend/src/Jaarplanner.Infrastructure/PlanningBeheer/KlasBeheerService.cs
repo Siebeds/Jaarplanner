@@ -120,6 +120,22 @@ public sealed class KlasBeheerService : IKlasBeheerService
                 "Verwijder of verplaats eerst die klasgebonden inhoud.");
         }
 
+        // The jaarplan is a CASCADE dependent (JaarplanConfiguration), so without this guard deleting the class
+        // would silently destroy the plan and every Themaplaatsing in it — including ones the teacher explicitly
+        // accepted and explicitly locked. A persisted human decision is the human's to discard (Art. IV.2), so the
+        // delete is refused while any placement is one, and the count is reported the way the subthema guard does.
+        // Loading it also tracks it, which is what makes the cascade below happen through the change tracker rather
+        // than only through the database's own ON DELETE.
+        var jaarplan = await _context.Jaarplannen
+            .FirstOrDefaultAsync(j => j.KlasId == klasId, cancellationToken);
+        var besloten = jaarplan?.MenselijkBeslotenPlaatsingen.Count ?? 0;
+        if (besloten > 0)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Klas '{klas.Naam}' heeft een jaarplan met {besloten} beoordeelde of vergrendelde " +
+                "themaplaatsing(en) en kan niet verwijderd worden. Verwijder eerst die plaatsingen uit het jaarplan.");
+        }
+
         _context.Klassen.Remove(klas);
         await _context.SaveChangesAsync(cancellationToken);
     }

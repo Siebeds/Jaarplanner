@@ -41,8 +41,15 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
         // load-or-create, so a concurrent double generation cannot end up with two plans for one class.
         builder.HasIndex(j => j.KlasId).IsUnique();
 
-        // The plan belongs to its class; deleting the class takes the plan (and its placements) with it. Klas
-        // deletion is itself already refused while class-scoped content exists (KlasBeheerService).
+        // The plan belongs to its class, so deleting the class takes the plan and every placement with it.
+        //
+        // A cascade this destructive needs a guard ABOVE it, and the guard is in KlasBeheerService.VerwijderKlasAsync:
+        // it refuses the delete while the plan holds any placement a human committed to (accepted, rejected, adjusted
+        // or locked), because that is a persisted human decision and Art. IV.2 makes it the human's to discard — not a
+        // side effect of removing the class. An earlier version of this comment claimed the existing subthema guard
+        // already covered this; it did not — that guard counts Subthemas only, so a class whose sole content was a
+        // fully reviewed, locked jaarplan deleted silently. A bare unreviewed `voorgesteld` proposal carries no human
+        // decision and may cascade freely.
         builder.HasOne<Klas>()
             .WithMany()
             .HasForeignKey(j => j.KlasId)
@@ -96,8 +103,12 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
             plaatsing.HasIndex(p => new { p.JaarplanId, p.BlokStart });
         });
 
-        // The backing field is the source of truth; `Plaatsingen` is a computed, ordered projection over it.
+        // The backing field is the source of truth; `Plaatsingen` and `MenselijkBeslotenPlaatsingen` are computed
+        // projections over it and must both be ignored — EF otherwise reads either as a second navigation to
+        // Themaplaatsing and fails to build the model at all ("Unable to determine the relationship represented by
+        // navigation ..."), which takes the whole app down at startup, not just this aggregate.
         builder.Navigation("_plaatsingen").UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Ignore(j => j.Plaatsingen);
+        builder.Ignore(j => j.MenselijkBeslotenPlaatsingen);
     }
 }

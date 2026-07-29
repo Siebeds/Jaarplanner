@@ -118,10 +118,11 @@ public sealed class Themaplaatsing
             ? status
             : throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown plaatsingsstatus.");
 
+    // Both guards below catch programmer error, never teacher input, so their messages are English (Art. II.2).
     private static Planningsblokniveau RequireNiveau(Planningsblokniveau niveau) =>
         Enum.IsDefined(niveau)
             ? niveau
-            : throw new ArgumentOutOfRangeException(nameof(niveau), niveau, "Onbekend planningsblokniveau.");
+            : throw new ArgumentOutOfRangeException(nameof(niveau), niveau, "Unknown planningsblokniveau.");
 
     private static Guid RequireId(Guid value, string paramName) =>
         value == Guid.Empty

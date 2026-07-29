@@ -52,6 +52,17 @@ public sealed class JaarplanController : ControllerBase
     /// the plan (Art. IV.5). 422 rather than 500 because nothing is broken — the model answered badly, and the
     /// caller can simply retry.
     /// </para>
+    /// <para>
+    /// <b>This 422 body is an operator/developer diagnostic, not teacher copy — and it is English throughout on
+    /// purpose.</b> <c>Detail</c> carries the parser's diagnostic ("Malformed JSON: …", "Placement at index 2 has a
+    /// missing/blank 'thema'"), which is deliberately English because it describes malformed model output that no
+    /// teacher can act on. Pairing that with a Dutch <c>Title</c> made one payload bilingual for no reason, so the
+    /// title is English too. The <b>teacher-facing</b> message for this case ("de AI gaf geen bruikbaar antwoord,
+    /// probeer opnieuw") belongs in <c>frontend/src/i18n/nl.json</c>, keyed on the 422 status — not hard-coded here,
+    /// whichever way the open Art. II.3 decision lands. Note this diverges from the Dutch <c>Title</c>s the
+    /// school-content/AI-matching exception handlers use; those describe conditions a teacher <i>can</i> act on
+    /// (a bad request, a missing thema), which this one is not.
+    /// </para>
     /// </summary>
     [HttpPost("generatie")]
     public async Task<ActionResult<JaarplanGeneratieResultaat>> Genereer(Guid klasId, CancellationToken cancellationToken)
@@ -63,7 +74,7 @@ public sealed class JaarplanController : ControllerBase
             : UnprocessableEntity(new ProblemDetails
             {
                 Status = StatusCodes.Status422UnprocessableEntity,
-                Title = "Ongeldig AI-antwoord",
+                Title = "Invalid AI response",
                 Detail = resultaat.Fout,
             });
     }

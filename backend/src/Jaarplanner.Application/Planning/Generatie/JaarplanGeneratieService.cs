@@ -111,6 +111,7 @@ public sealed class JaarplanGeneratieService
         var onbekendeThemas = new List<string>();
         var onbekendeBlokken = new List<string>();
         var duplicaten = new List<string>();
+        var afgewezen = new List<string>();
         var nieuw = 0;
 
         foreach (var suggestie in parse.Plaatsingen)
@@ -127,10 +128,22 @@ public sealed class JaarplanGeneratieService
                 continue;
             }
 
-            // Idempotent: a placement kept because it was locked/decided is not proposed a second time.
-            if (jaarplan.IsAlGeplaatst(thema.Id, GeneratieNiveau, suggestie.BlokStart))
+            // Idempotent: a placement kept because it was locked/decided is not proposed a second time. A slot the
+            // teacher REJECTED is reported separately from a genuine repetition — calling their own rejection a
+            // "duplicaat" would blame the AI for a decision the teacher made (see JaarplanGeneratieResultaat).
+            var bestaande = jaarplan.VindPlaatsingOp(thema.Id, GeneratieNiveau, suggestie.BlokStart);
+            if (bestaande is not null)
             {
-                duplicaten.Add($"{thema.Naam} @ {Datum(suggestie.BlokStart)}");
+                var beschrijving = $"{thema.Naam} @ {Datum(suggestie.BlokStart)}";
+                if (bestaande.Status == KoppelingStatus.Geweigerd)
+                {
+                    afgewezen.Add(beschrijving);
+                }
+                else
+                {
+                    duplicaten.Add(beschrijving);
+                }
+
                 continue;
             }
 
@@ -152,7 +165,8 @@ public sealed class JaarplanGeneratieService
             behouden,
             onbekendeThemas,
             onbekendeBlokken,
-            duplicaten);
+            duplicaten,
+            afgewezen);
     }
 
     /// <summary>
@@ -188,11 +202,12 @@ public sealed class JaarplanGeneratieService
         CancellationToken cancellationToken = default)
     {
         // The teacher may only accept / reject / adjust — `voorgesteld` is AI-only (Art. IV.1/IV.2).
+        // The message reaches a non-technical teacher in a 400 body, so it carries no constitution citation; the
+        // citation belongs in this method's doc comment, where a developer reads it.
         if (status is not (KoppelingStatus.Aanvaard or KoppelingStatus.Geweigerd or KoppelingStatus.Manueel))
         {
             throw new OngeldigePlaatsingsstatusFout(
-                $"Status '{status}' is geen leerkrachtbeslissing; kies aanvaard, geweigerd of manueel " +
-                "(Art. IV.1/IV.2).");
+                $"Status '{status}' is geen leerkrachtbeslissing; kies aanvaard, geweigerd of manueel.");
         }
 
         return await MuteerPlaatsingAsync(

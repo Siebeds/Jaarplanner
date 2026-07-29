@@ -231,6 +231,52 @@ public sealed class JaarplanGeneratieServiceTests
     }
 
     /// <summary>
+    /// A slot the teacher <b>rejected</b> is reported as <c>Afgewezen</c>, not as a <c>Duplicaat</c>. Both suppress
+    /// the re-proposal, but they are different facts: a duplicate means the AI repeated itself, while this means the
+    /// teacher's own rejection is holding. Labelling the second as the first would blame the AI for the teacher's
+    /// decision. (The absence of any way to *remove* a rejected placement is a known, documented gap — E3-07.)
+    /// </summary>
+    [Fact]
+    public async Task Een_afgewezen_plaatsing_wordt_niet_als_duplicaat_gerapporteerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var herfst = Herfst();
+        var water = Water();
+
+        var jaarplan = new Jaarplan(klas.Id);
+        var geweigerd = jaarplan.VoegPlaatsingToe(
+            herfst.Id, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Voorgesteld, "eerder");
+        geweigerd.WijzigStatus(KoppelingStatus.Geweigerd);
+        var aanvaard = jaarplan.VoegPlaatsingToe(
+            water.Id, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Voorgesteld, "eerder");
+        aanvaard.WijzigStatus(KoppelingStatus.Aanvaard);
+
+        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [herfst, water], jaarplan);
+        var service = new JaarplanGeneratieService(
+            new FakeAiClient(Antwoord(("Herfst", blokken[0].Start), ("Water", blokken[1].Start))),
+            Indeling,
+            opslag);
+
+        var resultaat = await service.GenereerAsync(klas.Id);
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(0, resultaat.AantalNieuw);
+
+        // The teacher's rejection is reported as such, and is NOT in duplicaten.
+        Assert.Equal($"Herfst @ {blokken[0].Start:yyyy-MM-dd}", Assert.Single(resultaat.Afgewezen));
+        Assert.DoesNotContain(resultaat.Duplicaten, d => d.StartsWith("Herfst", StringComparison.Ordinal));
+
+        // The accepted one is genuine AI repetition and stays a duplicaat.
+        Assert.Equal($"Water @ {blokken[1].Start:yyyy-MM-dd}", Assert.Single(resultaat.Duplicaten));
+
+        // Both survived the run untouched (Art. IV.1) — the rejection is not silently revived either.
+        Assert.Equal(2, resultaat.AantalBehouden);
+        Assert.Equal(KoppelingStatus.Geweigerd, jaarplan.VindPlaatsing(geweigerd.Id)!.Status);
+    }
+
+    /// <summary>
     /// <b>The reason placements key on a date</b> (ADR-0020 §3). The school shifts its kerstvakantie a week earlier;
     /// the grid reshapes and later ordinals re-point. A placement keyed on the ordinal would silently be a different
     /// period. Keyed on the start date, the stored value is <b>unchanged</b>, and when that date is no longer a
