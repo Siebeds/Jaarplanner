@@ -6,10 +6,12 @@ using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Planning.Generatie;
+using Jaarplanner.Application.Planning.Rooster;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
+using Jaarplanner.Infrastructure.Demo;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.Planning;
@@ -19,6 +21,7 @@ using Jaarplanner.Infrastructure.SchoolcontentImport;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Jaarplanner.Infrastructure;
 
@@ -42,9 +45,15 @@ public static class DependencyInjection
     /// The connection string is resolved from configuration; if absent the app still starts
     /// and the health check reports Unhealthy rather than crashing.
     /// </summary>
+    /// <param name="environment">
+    /// Optional. When supplied, environment-gated registrations (currently only the demo data seeder) can
+    /// require Development. Omitting it — as tests that call this directly would — simply means those
+    /// registrations are skipped, which is the safe default.
+    /// </param>
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment? environment = null)
     {
         var connectionString = configuration.GetConnectionString(PostgresConnectionStringName);
 
@@ -112,6 +121,12 @@ public static class DependencyInjection
         // placement (directie 2026-07-28); full schooljaarbeheer stays E6-03.
         services.AddScoped<ISchooljaarBeheerService, SchooljaarBeheerService>();
 
+        // The derived planning grid as a read model (E3-06). The calendar must render EMPTY periods and the
+        // vacation gaps between them, which JaarplanWeergave cannot express — it returns placements only. Kept
+        // server-side on purpose: re-deriving the grid in TypeScript would duplicate the ADR-0013 seam and
+        // disagree with it the moment `Planning:Blokindeling` changes.
+        services.AddScoped<IPlanningsroosterService, PlanningsroosterService>();
+
         // CRUD for the autonomous school-content hierarchy + manual goal links (E1-10, FR-3.1/3.2).
         // Enforces level scoping (Art. IX.2) and persists manual links as `manueel` (Art. IV.2); a
         // sibling of the import service that drives the same domain mutators.
@@ -149,6 +164,22 @@ public static class DependencyInjection
         // through JaarplanController — POST /api/klassen/{klasId}/jaarplan/generatie — rather than only from tests.
         services.AddScoped<IJaarplanOpslag, EfJaarplanOpslag>();
         services.AddScoped<JaarplanGeneratieService>();
+
+        // Demo data for the E3-06 review session, OPT-IN ONLY. The flag is checked HERE rather than only
+        // inside the service, so an environment that does not ask for it never registers a hosted service
+        // that writes to its database at all.
+        //
+        // `Demo:Seed` is set in Properties/launchSettings.json — i.e. only when a developer starts the app by
+        // hand — and deliberately NOT in appsettings.Development.json. WebApplicationFactory loads the latter,
+        // so putting it there ran the seeder inside every integration test and broke one on a thema-name
+        // collision. If you are tempted to move it back for convenience: that is the bug.
+        // Belt and braces: the flag alone is not enough. `Demo__Seed=true` set as a stray environment
+        // variable in staging or production would otherwise write demo rows into that database, so
+        // Development is required as well.
+        if (configuration.GetValue<bool>("Demo:Seed") && environment?.IsDevelopment() == true)
+        {
+            services.AddHostedService<DemoDataSeeder>();
+        }
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(

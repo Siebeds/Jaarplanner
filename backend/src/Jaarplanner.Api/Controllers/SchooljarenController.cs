@@ -1,4 +1,6 @@
 using Jaarplanner.Application.Planning.Beheer;
+using Jaarplanner.Application.Planning.Rooster;
+using Jaarplanner.Domain.Planning;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -19,8 +21,13 @@ namespace Jaarplanner.Api.Controllers;
 public sealed class SchooljarenController : ControllerBase
 {
     private readonly ISchooljaarBeheerService _service;
+    private readonly IPlanningsroosterService _rooster;
 
-    public SchooljarenController(ISchooljaarBeheerService service) => _service = service;
+    public SchooljarenController(ISchooljaarBeheerService service, IPlanningsroosterService rooster)
+    {
+        _service = service;
+        _rooster = rooster;
+    }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<SchooljaarWeergave>>> Lijst(CancellationToken cancellationToken) =>
@@ -30,6 +37,27 @@ public sealed class SchooljarenController : ControllerBase
     [HttpGet("{schooljaarId:guid}")]
     public async Task<ActionResult<SchooljaarWeergave>> Detail(Guid schooljaarId, CancellationToken cancellationToken) =>
         Ok(await _service.HaalSchooljaarOpAsync(schooljaarId, cancellationToken));
+
+    /// <summary>
+    /// The year's <b>derived planning grid</b> (E3-06, FR-6.1): every block of the requested tier, plus the
+    /// vakanties that separate them. This is what the calendar renders the ribbon from.
+    /// <para>
+    /// Separate from <c>GET /api/klassen/{klasId}/jaarplan</c> on purpose: that returns a class's
+    /// <i>placements</i>, and a calendar built from placements alone cannot show an <b>empty</b> period — so a
+    /// teacher could not see where there is room, and E3-09's "nergens gepland" tray would have no ribbon to
+    /// sit against. The grid belongs to the school year, not to any one class, so it is read here.
+    /// </para>
+    /// </summary>
+    /// <param name="niveau">
+    /// Which tier to derive: <c>Themaperiode</c> (default, the "hele jaar" view) or <c>Subthemaperiode</c>
+    /// (E3-08's "per periode" zoom). Deliberately a tier, never a calendar unit (Art. IX.3, ADR-0013).
+    /// </param>
+    [HttpGet("{schooljaarId:guid}/rooster")]
+    public async Task<ActionResult<PlanningsroosterWeergave>> Rooster(
+        Guid schooljaarId,
+        CancellationToken cancellationToken,
+        [FromQuery] Planningsblokniveau niveau = Planningsblokniveau.Themaperiode) =>
+        Ok(await _rooster.HaalRoosterOpAsync(schooljaarId, niveau, cancellationToken));
 
     /// <summary>
     /// Creates a school year with its vakantie-/periodestructuur. Each closure is classified
