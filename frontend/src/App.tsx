@@ -2,6 +2,7 @@ import { DndContext } from "@dnd-kit/core";
 import { useUiStore } from "./store/uiStore";
 import { t } from "./i18n";
 import { DoelsuggestieReview } from "./features/matching/DoelsuggestieReview";
+import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
 
 /**
  * App skeleton (E0-05) + i18n seam (E0-06). Wires the mandated state/DnD libraries:
@@ -34,6 +35,7 @@ function App() {
         >
           {sidebarOpen ? t("zijbalk.open") : t("zijbalk.gesloten")}
         </button>
+        <JaarplanPagina />
         <DoelsuggestieReview />
       </main>
     </DndContext>

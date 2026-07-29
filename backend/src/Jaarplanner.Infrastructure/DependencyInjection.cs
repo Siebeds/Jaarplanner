@@ -6,8 +6,10 @@ using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Planning.Generatie;
+using Jaarplanner.Application.Planning.Rooster;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
+using Jaarplanner.Infrastructure.Demo;
 using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
 using Jaarplanner.Infrastructure.OpstapImport;
@@ -112,6 +114,12 @@ public static class DependencyInjection
         // placement (directie 2026-07-28); full schooljaarbeheer stays E6-03.
         services.AddScoped<ISchooljaarBeheerService, SchooljaarBeheerService>();
 
+        // The derived planning grid as a read model (E3-06). The calendar must render EMPTY periods and the
+        // vacation gaps between them, which JaarplanWeergave cannot express — it returns placements only. Kept
+        // server-side on purpose: re-deriving the grid in TypeScript would duplicate the ADR-0013 seam and
+        // disagree with it the moment `Planning:Blokindeling` changes.
+        services.AddScoped<IPlanningsroosterService, PlanningsroosterService>();
+
         // CRUD for the autonomous school-content hierarchy + manual goal links (E1-10, FR-3.1/3.2).
         // Enforces level scoping (Art. IX.2) and persists manual links as `manueel` (Art. IV.2); a
         // sibling of the import service that drives the same domain mutators.
@@ -149,6 +157,19 @@ public static class DependencyInjection
         // through JaarplanController — POST /api/klassen/{klasId}/jaarplan/generatie — rather than only from tests.
         services.AddScoped<IJaarplanOpslag, EfJaarplanOpslag>();
         services.AddScoped<JaarplanGeneratieService>();
+
+        // Demo data for the E3-06 review session, OPT-IN ONLY. The flag is checked HERE rather than only
+        // inside the service, so an environment that does not ask for it never registers a hosted service
+        // that writes to its database at all.
+        //
+        // `Demo:Seed` is set in Properties/launchSettings.json — i.e. only when a developer starts the app by
+        // hand — and deliberately NOT in appsettings.Development.json. WebApplicationFactory loads the latter,
+        // so putting it there ran the seeder inside every integration test and broke one on a thema-name
+        // collision. If you are tempted to move it back for convenience: that is the bug.
+        if (configuration.GetValue<bool>("Demo:Seed"))
+        {
+            services.AddHostedService<DemoDataSeeder>();
+        }
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(
