@@ -1,14 +1,19 @@
-using Jaarplanner.Application.Ai;
+﻿using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
+using Jaarplanner.Application.Planning;
+using Jaarplanner.Application.Planning.Beheer;
+using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
+using Jaarplanner.Infrastructure.Planning;
+using Jaarplanner.Infrastructure.PlanningBeheer;
 using Jaarplanner.Infrastructure.SchoolcontentBeheer;
 using Jaarplanner.Infrastructure.SchoolcontentImport;
 using Microsoft.EntityFrameworkCore;
@@ -84,6 +89,29 @@ public static class DependencyInjection
         // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
         services.AddScoped<ISchoolcontentImportService, SchoolcontentImportService>();
 
+        // Planningsblok-indeling seam (E3-05, ADR-0013, Art. IX.3/XIV). The planning grain is DATA-DRIVEN:
+        // the two-tier default ratified by directie on 2026-07-14 (themaperiode 4–6 wk + subthemaperiode
+        // ~2 wk) lives in the `Planning:Blokindeling` configuration section, never as a literal in planning
+        // logic, and never as a calendar month. Generation (E3-01), the calendar (E3-06/08) and
+        // drag-and-drop (E3-07) all consume Planningsblok, so changing the grain is a config edit.
+        // Stateless once bound → singleton-safe, matching the discipline-selection seam.
+        services.Configure<PlanningsblokOptions>(
+            configuration.GetSection(PlanningsblokOptions.SectionName));
+        services.AddSingleton<IPlanningsblokIndeling, GeconfigureerdePlanningsblokIndeling>();
+
+        // Klas CRUD (Art. IX.3). Without a creation path a fresh deployment can hold no class-scoped
+        // content at all: the school-content import drops every subthema as "onbekende klas" and
+        // MaakSubthemaAsync rejects every call. E3 generates a jaarplan PER CLASS, so this is a
+        // prerequisite for that epic, not a convenience.
+        services.AddScoped<IKlasBeheerService, KlasBeheerService>();
+
+        // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
+        // multiple klassen"), so the container needs a creation path in the same change that makes it required —
+        // otherwise class creation, and jaarplan generation with it, would be unreachable. Deliberately no update
+        // or delete: editing vakanties reshapes the derived grid and must raise a review signal rather than move a
+        // placement (directie 2026-07-28); full schooljaarbeheer stays E6-03.
+        services.AddScoped<ISchooljaarBeheerService, SchooljaarBeheerService>();
+
         // CRUD for the autonomous school-content hierarchy + manual goal links (E1-10, FR-3.1/3.2).
         // Enforces level scoping (Art. IX.2) and persists manual links as `manueel` (Art. IV.2); a
         // sibling of the import service that drives the same domain mutators.
@@ -114,6 +142,13 @@ public static class DependencyInjection
         // auto-applied (Art. IV.1/IV.2); the wizard persists an accepted suggestion via the beheer path.
         services.AddScoped<ILeerdoelCatalogus, EfLeerdoelCatalogus>();
         services.AddScoped<IThemaOpbouwAssistService, ThemaOpbouwAssistService>();
+
+        // AI jaarplan generation (E3-01, FR-5.1, Art. IV). The persistence port keeps EF Core out of the service;
+        // the service itself depends only on IAiClient (E2-01), IPlanningsblokIndeling (E3-05) and this port, so
+        // the whole flow runs against fakes with no network and no database in tests (Art. IV.6). It is reachable
+        // through JaarplanController — POST /api/klassen/{klasId}/jaarplan/generatie — rather than only from tests.
+        services.AddScoped<IJaarplanOpslag, EfJaarplanOpslag>();
+        services.AddScoped<JaarplanGeneratieService>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(

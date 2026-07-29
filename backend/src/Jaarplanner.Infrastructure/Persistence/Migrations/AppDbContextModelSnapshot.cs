@@ -42,6 +42,73 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.HasIndex("ParentDisciplineNummer");
 
                     b.ToTable("disciplines", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Nummer = "1",
+                            Naam = "Nederlands en communicatie"
+                        },
+                        new
+                        {
+                            Nummer = "2",
+                            Naam = "Wiskunde"
+                        },
+                        new
+                        {
+                            Nummer = "3",
+                            Naam = "Wetenschap en techniek"
+                        },
+                        new
+                        {
+                            Nummer = "4",
+                            Naam = "Aardrijkskunde"
+                        },
+                        new
+                        {
+                            Nummer = "5",
+                            Naam = "Geschiedenis"
+                        },
+                        new
+                        {
+                            Nummer = "6",
+                            Naam = "Muzische vorming"
+                        },
+                        new
+                        {
+                            Nummer = "7",
+                            Naam = "Lichamelijke opvoeding en motoriek"
+                        },
+                        new
+                        {
+                            Nummer = "8",
+                            Naam = "ICT"
+                        },
+                        new
+                        {
+                            Nummer = "9.1",
+                            Naam = "Veilige en gezonde levensstijl"
+                        },
+                        new
+                        {
+                            Nummer = "9.2",
+                            Naam = "Leren leren"
+                        },
+                        new
+                        {
+                            Nummer = "9.3",
+                            Naam = "Sociaal en emotioneel leren"
+                        },
+                        new
+                        {
+                            Nummer = "10",
+                            Naam = "Frans"
+                        },
+                        new
+                        {
+                            Nummer = "11",
+                            Naam = "Rooms-katholieke godsdienst"
+                        });
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Curriculum.Leerplandoel", b =>
@@ -139,6 +206,23 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("minimumdoelen", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("KlasId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KlasId")
+                        .IsUnique();
+
+                    b.ToTable("jaarplannen", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Klas", b =>
                 {
                     b.Property<Guid>("Id")
@@ -153,9 +237,42 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<Guid>("SchooljaarId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("Naam")
+                        .IsUnique();
+
+                    b.HasIndex("SchooljaarId");
+
                     b.ToTable("klassen", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Schooljaar", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Eind")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Naam")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateOnly>("Start")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Naam")
+                        .IsUnique();
+
+                    b.ToTable("schooljaren", (string)null);
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Activiteit", b =>
@@ -319,6 +436,120 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("MinimumdoelRef")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
+                        .WithMany()
+                        .HasForeignKey("KlasId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("Jaarplanner.Domain.Planning.Themaplaatsing", "_plaatsingen", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("AiMotivatie")
+                                .HasColumnType("text");
+
+                            b1.Property<string>("BlokNiveau")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)");
+
+                            b1.Property<DateOnly>("BlokStart")
+                                .HasColumnType("date");
+
+                            b1.Property<Guid>("JaarplanId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Status")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)");
+
+                            b1.Property<Guid>("ThemaId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<bool>("Vergrendeld")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("boolean")
+                                .HasDefaultValue(false);
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("ThemaId");
+
+                            b1.HasIndex("JaarplanId", "BlokStart");
+
+                            b1.HasIndex("JaarplanId", "ThemaId", "BlokNiveau", "BlokStart")
+                                .IsUnique();
+
+                            b1.ToTable("themaplaatsingen", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("JaarplanId");
+
+                            b1.HasOne("Jaarplanner.Domain.Schoolcontent.Thema", null)
+                                .WithMany()
+                                .HasForeignKey("ThemaId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+                        });
+
+                    b.Navigation("_plaatsingen");
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Klas", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Planning.Schooljaar", null)
+                        .WithMany("_klassen")
+                        .HasForeignKey("SchooljaarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Schooljaar", b =>
+                {
+                    b.OwnsMany("Jaarplanner.Domain.Planning.Schoolsluiting", "_sluitingen", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateOnly>("Eind")
+                                .HasColumnType("date");
+
+                            b1.Property<string>("Naam")
+                                .IsRequired()
+                                .HasMaxLength(64)
+                                .HasColumnType("character varying(64)");
+
+                            b1.Property<Guid>("SchooljaarId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Soort")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)");
+
+                            b1.Property<DateOnly>("Start")
+                                .HasColumnType("date");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("SchooljaarId", "Start");
+
+                            b1.ToTable("schoolsluitingen", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("SchooljaarId");
+                        });
+
+                    b.Navigation("_sluitingen");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Activiteit", b =>
@@ -536,6 +767,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Koppeling")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Schooljaar", b =>
+                {
+                    b.Navigation("_klassen");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subthema", b =>

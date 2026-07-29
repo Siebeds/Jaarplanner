@@ -1,4 +1,4 @@
-using ClosedXML.Excel;
+﻿using ClosedXML.Excel;
 using Jaarplanner.Domain.Curriculum;
 
 namespace Jaarplanner.Infrastructure.OpstapImport;
@@ -64,7 +64,7 @@ public sealed class ClosedXmlOpstapParser : IOpstapParser
             // first non-empty row is a header candidate, and only when it actually carries the
             // Op.stap header labels (column A reads "Doelsoort"). This guarantees a malformed data
             // row — including the first one in a headerless file — is reported, never swallowed
-            // (Art. V.6 / ADR-0006 §4 "report, never silently drop").
+            // (Art. V.6 / in the spirit of ADR-0006 §4, whose actual text is "validation produces clear, per-row diagnostics before commit").
             if (!firstNonEmptySeen)
             {
                 firstNonEmptySeen = true;

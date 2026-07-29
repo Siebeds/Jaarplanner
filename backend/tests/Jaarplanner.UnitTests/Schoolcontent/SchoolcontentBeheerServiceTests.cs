@@ -28,8 +28,11 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
             .Options;
 
         using var seed = new AppDbContext(_options);
-        _klas = new Klas("L1 — eerste leerjaar", leerjaar: 1);
-        seed.Klassen.Add(_klas);
+
+        // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
+        var schooljaar = TestSchooljaar.Maak();
+        _klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
+        seed.Schooljaren.Add(schooljaar);
 
         // Seed read-only curriculum codes the goal links can reference (Art. III.5). The in-memory
         // provider does not enforce the Discipline FK, so no discipline row is needed here.
@@ -105,6 +108,77 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         Assert.Empty(await NieuwContext().Themadoelen.ToListAsync());
         Assert.Empty(await NieuwContext().Subthemas.ToListAsync());
         Assert.Empty(await NieuwContext().Activiteiten.ToListAsync());
+    }
+
+    /// <summary>
+    /// A thema placed in a jaarplan cannot be deleted, and the refusal is a friendly 400 with a count rather than the
+    /// RESTRICT FK on <c>themaplaatsingen.ThemaId</c> surfacing as an unhandled 500 (ADR-0006 §4).
+    /// <para>
+    /// <b>Why it matters that this is reported and not just prevented.</b> Thema's are school-<i>wide</i> (Art. IX.2)
+    /// while a jaarplan is per class, so the blocking placement may live in a class the deleting teacher never opens.
+    /// Before this guard the FK prevented the dangling row but the "clear diagnostics" its comment claimed did not
+    /// exist — the call threw <c>23503</c> and no handler mapped it.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Verwijder_thema_wordt_geweigerd_zolang_het_in_een_jaarplan_staat()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+
+        await using (var context = NieuwContext())
+        {
+            var jaarplan = new Jaarplan(_klas.Id);
+            jaarplan.VoegPlaatsingToe(
+                thema.Id,
+                Planningsblokniveau.Themaperiode,
+                new DateOnly(2026, 9, 1),
+                KoppelingStatus.Voorgesteld,
+                "voorstel");
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+        }
+
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => NieuweService().VerwijderThemaAsync(thema.Id));
+
+        Assert.Contains("Water", fout.Message);
+        Assert.Contains("1", fout.Message);
+        Assert.Contains("jaarplan", fout.Message);
+
+        // Nothing was destroyed.
+        Assert.Single(await NieuwContext().Themas.ToListAsync());
+    }
+
+    /// <summary>
+    /// The other half: once the placement is gone the thema deletes normally. Without this the guard could have been
+    /// written as "refuse whenever any jaarplan exists", which would make every placed thema permanently undeletable.
+    /// </summary>
+    [Fact]
+    public async Task Verwijder_thema_lukt_weer_nadat_de_plaatsing_verdwenen_is()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+
+        await using (var context = NieuwContext())
+        {
+            var jaarplan = new Jaarplan(_klas.Id);
+            jaarplan.VoegPlaatsingToe(
+                thema.Id, Planningsblokniveau.Themaperiode, new DateOnly(2026, 9, 1), KoppelingStatus.Aanvaard, "ja");
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+        }
+
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(() => NieuweService().VerwijderThemaAsync(thema.Id));
+
+        await using (var context = NieuwContext())
+        {
+            var jaarplan = await context.Jaarplannen.FirstAsync();
+            jaarplan.VerwijderPlaatsing(jaarplan.Plaatsingen[0]);
+            await context.SaveChangesAsync();
+        }
+
+        await NieuweService().VerwijderThemaAsync(thema.Id);
+
+        Assert.Empty(await NieuwContext().Themas.ToListAsync());
     }
 
     [Fact]

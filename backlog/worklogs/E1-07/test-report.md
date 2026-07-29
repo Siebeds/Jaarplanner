@@ -54,3 +54,66 @@
 
 ## Defects
 - None.
+
+---
+
+## Round 2 — 2026-07-28
+
+**Executed locally:** `dotnet test backend/Jaarplanner.sln` → **302 unit passed, 0 failed**;
+integration **19 passed, 16 skipped**. `dotnet format --verify-no-changes` clean. No migration drift.
+Frontend gates untouched by this story but re-run green.
+
+| Criterion | Verdict | Evidence |
+| --- | --- | --- |
+| Upload `.xlsx` of thema's/subthema's/activiteiten | ⏳ **unverified locally** | Endpoint exists (`POST /api/schoolcontent-import`); covered by `SchoolcontentImportEndpointsTests.Geldig_bestand_wordt_geimporteerd` — **skipped here, needs CI** |
+| Validate required columns | ✅ PASS | `Verwisselde_kolommen_worden_geweigerd`, `Standaard_kolomindeling_blijft_geldig` + the pre-existing missing-header tests |
+| Clear per-row error messages | ✅ PASS (unit) / ⏳ (HTTP) | Existing parser tests; HTTP shape via `Ongeldige_rij_wordt_precies_gerapporteerd_en_geldige_rij_gaat_door` — skipped here |
+| Invalid rows reported precisely | ✅ PASS | Row number + column asserted; unknown-code and cap paths now report instead of throwing |
+| Valid file proceeds | ✅ PASS (unit) / ⏳ (HTTP) | `Onbekende_doelcode_...` and cap tests prove good content still lands |
+
+**Why the gap.** The 6 Postgres-backed endpoint tests require a real server (deliberately — the EF
+in-memory provider enforces no FKs, which is how these defects passed CI for two epics). No Docker or
+local PostgreSQL is available on this machine, so they skip. `PostgresAvailabilityTests` guarantees CI
+cannot skip them silently: a missing `JAARPLANNER_TEST_POSTGRES` on CI is a hard failure.
+
+**Verify on CI / with a database:**
+```
+docker compose up -d db
+export JAARPLANNER_TEST_POSTGRES="Host=localhost;Port=5433;Database=postgres;Username=<user>;Password=<pw>"
+dotnet test backend/Jaarplanner.sln
+```
+
+---
+
+## CI round — 2026-07-28 (story closed)
+
+**Run [30357426252](https://github.com/Siebeds/Jaarplanner/actions/runs/30357426252) — green.**
+`Failed: 0, Passed: 42, Skipped: 0` integration · `Failed: 0, Passed: 328, Skipped: 0` unit.
+The Postgres-backed endpoint tests above are executed evidence now, not pending evidence.
+
+**What the previous round got wrong.** It recorded the endpoint tests as *skipped locally, awaiting CI*.
+They were in fact **failing in CI** — from the first push of 2026-07-28 09:11 through 11:33, five
+consecutive red runs, all four failures `KeyNotFoundException` on `isGeldig`. This story's own audit fix
+(finding 3) had split the response into `isBestandGeldig` + `isVolledigVerwerkt` and updated the
+controller without updating these assertions. Nobody read the CI log; the backlog said "awaiting CI" for
+five pushes while CI had already answered.
+
+| Test | Was | Now |
+| --- | --- | --- |
+| `Voorbeeld_wijzigt_niets` | FAIL (`isGeldig`) | ✅ asserts both flags true, `toegepast` false |
+| `Geldig_bestand_wordt_geimporteerd` | FAIL (`isGeldig`) | ✅ asserts both flags true, `toegepast` true |
+| `Ongeldige_rij_wordt_precies_gerapporteerd_en_geldige_rij_gaat_door` | FAIL (`isGeldig`) | ✅ both flags false; rij 3 + "Klas" reported; good row landed |
+| `Verwisselde_koprij_importeert_niets` | FAIL (`isGeldig`) | ✅ `isBestandGeldig` false, "kolomindeling", nothing imported |
+| `Sjabloon_is_downloadbaar_als_xlsx`, `Niet_xlsx_bestand_geeft_400` | passing | ✅ unchanged |
+| `Geldig_bestand_dat_inhoud_laat_vallen_is_niet_volledig_verwerkt` | **did not exist** | ✅ new |
+
+**The new test is the one that matters.** The two flags existed to be different, and no test made them
+differ — all four cases had them agreeing, so the split was untested and a regression collapsing them back
+into one would have passed. It uploads a workbook naming a klas that does not exist: the cell is filled, so
+the parser reports nothing (`isBestandGeldig` true, `problemen` empty), but the import skips the subthema
+and says so in `diff.opmerkingen` (`isVolledigVerwerkt` false). That is precisely the scenario finding 3
+described — an upload that answers "fine" while content vanishes — and it is now pinned.
+
+**Lesson carried forward.** A test that can only run against real PostgreSQL is not evidence of anything
+until CI has run it *and the log has been read*. This is the same root cause as the E1 reopening (defects
+hidden by the in-memory provider), one level up: not "the tests can't see it" but "nobody looked".

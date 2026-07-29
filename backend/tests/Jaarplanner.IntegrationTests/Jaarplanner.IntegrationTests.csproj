@@ -10,9 +10,18 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
-    <!-- EF Core in-memory provider: lets the school-content CRUD endpoints be integration-tested
-         end-to-end (HTTP → controller → service → EF) without a Postgres test container, so the
-         suite runs in CI/dev with zero Docker dependency. -->
+    <!-- EF Core in-memory provider. Used ONLY by the two legacy endpoint suites
+         (DoelsuggestieEndpointsTests, SchoolcontentBeheerEndpointsTests), which exercise HTTP →
+         controller → service wiring rather than database guarantees.
+
+         It must NOT be used for anything that depends on the database behaving like a database:
+         the in-memory provider enforces no foreign keys, no unique indexes and no collation. That
+         is not a lighter Postgres, it is a different store, and relying on it here let a required
+         Restrict FK with no data to satisfy it ship through two whole epics unnoticed.
+
+         Database-level guarantees are covered by the Postgres-backed suite in ./Postgres, which runs
+         against a real server (CLAUDE.md: "integration-test the API against a Postgres test
+         container"). Converting these two legacy suites over is a tracked follow-up. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />

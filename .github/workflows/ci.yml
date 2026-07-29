@@ -23,6 +23,39 @@ jobs:
   backend:
     name: Backend gates
     runs-on: ubuntu-latest
+
+    # Real PostgreSQL for the integration tests. The suite previously ran entirely on the EF Core
+    # in-memory provider, which enforces no foreign keys, unique indexes or collation — so
+    # database-level defects (a required Restrict FK with no data to satisfy it) passed CI for two
+    # epics. Version tracks docker-compose.yml.
+    services:
+      postgres:
+        image: postgres:17.5
+        env:
+          POSTGRES_DB: jaarplanner_test
+          POSTGRES_USER: jaarplanner
+          # NOT a secret, and deliberately inline (contrast docker-compose.yml, which refuses to start
+          # without an externally supplied password). This credentials a throwaway service container that
+          # exists only for the life of this job and is reachable only from it — there is nothing to
+          # protect and no environment it grants access to. Do NOT read this as licence to inline a real
+          # credential in this file: anything reaching a deployed environment belongs in GitHub secrets
+          # (and, for the app itself, in Key Vault — Art. VI.4).
+          POSTGRES_PASSWORD: jaarplanner_ci
+        ports:
+          - 5432:5432
+        # Give the job a database that is actually accepting connections before tests start.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # The integration tests create/drop their own per-test-class databases on this server.
+      # PostgresAvailabilityTests fails the build if this is ever missing on CI, so the suite
+      # cannot silently fall back to skipping every real-database test.
+      JAARPLANNER_TEST_POSTGRES: "Host=localhost;Port=5432;Database=postgres;Username=jaarplanner;Password=jaarplanner_ci"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,8 +72,8 @@ jobs:
       - name: Build
         run: dotnet build backend/Jaarplanner.sln --no-restore -c Release
 
-      # TODO E1: the current tests run without Postgres/Azure. When real DB
-      # integration tests arrive in E1, add a Postgres service container here.
+      # Runs against the Postgres service container above (see the job-level env). Azure AI is still
+      # faked via IAiClient — no network dependency there by design (Art. IV.6).
       - name: Test
         run: dotnet test backend/Jaarplanner.sln --no-build -c Release
 

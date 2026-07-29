@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Schoolcontent.Import;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
@@ -28,8 +29,22 @@ public sealed class SchoolcontentImportServiceTests : IDisposable
         _context = new AppDbContext(options);
         _service = new SchoolcontentImportService(_context);
 
-        _klas = new Klas("L1 — eerste leerjaar", leerjaar: 1);
-        _context.Klassen.Add(_klas);
+        // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
+        var schooljaar = TestSchooljaar.Maak();
+        _klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
+        _context.Schooljaren.Add(schooljaar);
+
+        // Seed the leerplandoelen these fixtures link to. The import now validates every goal code
+        // against the curriculum before building a DoelKoppeling, because that code is a required
+        // Restrict FK — an unknown code is reported and skipped rather than aborting the whole import.
+        // These tests previously passed only because the in-memory provider ignores foreign keys; with
+        // the codes absent the links are (correctly) filtered out and nothing links at all.
+        foreach (var code in (string[])["LP-1", "LP-2", "LP-3", "LP-7", "LP-9"])
+        {
+            _context.Leerplandoelen.Add(new Leerplandoel(
+                code, Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "3", tekst: "doeltekst"));
+        }
+
         _context.SaveChanges();
     }
 
