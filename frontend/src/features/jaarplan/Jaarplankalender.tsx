@@ -90,8 +90,8 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
           <h2 id="kalender-titel" className="text-2xl font-bold text-ink sm:text-[1.75rem]">
             {t("kalender.titel")}
           </h2>
-          {/* The class is the subtitle rather than being spliced into the heading with a dash: "Jaarplan —
-              L3 — derde leerjaar (demo)" read as three things joined by punctuation. */}
+          {/* The class is the subtitle rather than being spliced into the heading with a dash, which read
+              as three unrelated things joined by punctuation. */}
           <p className="mt-1 text-base text-ink-zacht">
             {plan.klasNaam}
             <span aria-hidden="true" className="px-2 text-border">

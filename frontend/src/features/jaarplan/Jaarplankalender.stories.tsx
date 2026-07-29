@@ -119,7 +119,7 @@ const plaatsingen: Themaplaatsing[] = [
 function jaarplan(eigen: Themaplaatsing[]): Jaarplan {
   return {
     klasId: "11111111-1111-1111-1111-111111111111",
-    klasNaam: "L3 — derde leerjaar",
+    klasNaam: "L3 derde leerjaar",
     schooljaarId: SCHOOLJAAR_ID,
     schooljaarNaam: "2026-2027",
     blokindeling: rooster.blokindeling,

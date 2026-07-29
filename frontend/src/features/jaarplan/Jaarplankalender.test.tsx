@@ -36,7 +36,7 @@ const rooster: Planningsrooster = {
 function maakJaarplan(plaatsingen: Jaarplan["plaatsingen"]): Jaarplan {
   return {
     klasId: KLAS_ID,
-    klasNaam: "L3 — derde leerjaar",
+    klasNaam: "L3 derde leerjaar",
     schooljaarId: SCHOOLJAAR_ID,
     schooljaarNaam: "2026-2027",
     blokindeling: rooster.blokindeling,
@@ -195,8 +195,12 @@ describe("Jaarplankalender", () => {
 
     // The thema is named, not merely counted — a teacher must see which plan item needs attention.
     expect(melding).toHaveTextContent("Feesten in december");
-    // Correct Dutch for a count of one: "1 thema STAAT", not "1 thema's STAAN".
-    expect(melding).toHaveTextContent("Te herzien — 1 thema staat niet meer in een periode");
+    // Correct Dutch for a count of one: "1 thema STAAT", not "1 thema's STAAN". Asserted against the
+    // catalogue rather than a literal, which is the convention elsewhere in the suite and the reason a
+    // later copy edit should not be able to fail this test: what matters is that the SINGULAR entry is
+    // chosen, not which words it currently contains.
+    expect(melding).toHaveTextContent(t("kalender.herzienTitelEnkelvoud"));
+    expect(melding).not.toHaveTextContent(t("kalender.herzienTitel", { aantal: 1 }));
 
     // And there is no way to dismiss it (directie 2026-07-28: "fix later" is not an option offered).
     // Checked for links as well as buttons: with no buttons anywhere in the feature, asserting only

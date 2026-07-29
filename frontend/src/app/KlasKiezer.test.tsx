@@ -28,8 +28,8 @@ const schooljaren = [
     start: "2026-09-01",
     eind: "2027-06-30",
     klassen: [
-      { id: KLAS_L3, naam: "L3 — derde leerjaar", leerjaar: 3 },
-      { id: KLAS_L4, naam: "L4 — vierde leerjaar", leerjaar: 4 },
+      { id: KLAS_L3, naam: "L3 derde leerjaar", leerjaar: 3 },
+      { id: KLAS_L4, naam: "L4 vierde leerjaar", leerjaar: 4 },
     ],
   },
   { id: JAAR_B, naam: "2027-2028", start: "2027-09-01", eind: "2028-06-30", klassen: [] },
@@ -101,7 +101,7 @@ describe("KlasKiezer — choosing from a list (E0-10 clause 3)", () => {
     await schooljaarKeuze();
 
     expect(klasKeuze()).toBeDisabled();
-    expect(within(klasKeuze()).queryByRole("option", { name: "L3 — derde leerjaar" })).toBeNull();
+    expect(within(klasKeuze()).queryByRole("option", { name: "L3 derde leerjaar" })).toBeNull();
   });
 
   it("lists only the classes the chosen year contains", async () => {
@@ -110,8 +110,8 @@ describe("KlasKiezer — choosing from a list (E0-10 clause 3)", () => {
     fireEvent.change(await schooljaarKeuze(), { target: { value: JAAR_A } });
 
     await waitFor(() => expect(klasKeuze()).toBeEnabled());
-    expect(within(klasKeuze()).getByRole("option", { name: "L3 — derde leerjaar" })).toBeInTheDocument();
-    expect(within(klasKeuze()).getByRole("option", { name: "L4 — vierde leerjaar" })).toBeInTheDocument();
+    expect(within(klasKeuze()).getByRole("option", { name: "L3 derde leerjaar" })).toBeInTheDocument();
+    expect(within(klasKeuze()).getByRole("option", { name: "L4 vierde leerjaar" })).toBeInTheDocument();
   });
 
   it("writes the choice to the URL, so the screen is deep-linkable", async () => {

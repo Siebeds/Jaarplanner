@@ -26,7 +26,7 @@ const schooljaren = [
     naam: "2026-2027",
     start: "2026-09-01",
     eind: "2027-06-30",
-    klassen: [{ id: KLAS_ID, naam: "L3 — derde leerjaar", leerjaar: 3 }],
+    klassen: [{ id: KLAS_ID, naam: "L3 derde leerjaar", leerjaar: 3 }],
   },
 ];
 
