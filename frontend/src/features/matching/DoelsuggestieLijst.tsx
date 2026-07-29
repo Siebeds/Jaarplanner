@@ -1,9 +1,7 @@
 import { useState } from "react";
 
-import {
-  DoelsoortBadge,
-  type Doelsoort as DoelsoortBadgeSoort,
-} from "../../components/DoelsoortBadge";
+import { DoelsoortBadge } from "../../components/DoelsoortBadge";
+import { doelsoortBadgeSoort } from "../../components/doelsoort";
 import { Badge, type BadgeProps } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { t, type TranslationKey } from "../../i18n";
@@ -13,7 +11,7 @@ import {
   useVervangSuggestieDoel,
   useWijzigSuggestieStatus,
 } from "./useDoelsuggesties";
-import type { DoelsoortNaam, Doelsuggestie, SuggestieStatus } from "./types";
+import type { Doelsuggestie, SuggestieStatus } from "./types";
 
 /**
  * The AI doelsuggestie review list (E2-05/E2-08, FR-4.2/4.3, Art. IV.1/IV.3). For a thema it shows every AI
@@ -45,16 +43,6 @@ const statusLabelKey: Record<SuggestieStatus, TranslationKey> = {
   Aanvaard: "suggestieStatus.aanvaard",
   Geweigerd: "suggestieStatus.geweigerd",
   Manueel: "suggestieStatus.manueel",
-};
-
-/** Map the (PascalCase) API doelsoort to the DoelsoortBadge's own key — same table as the gap list uses. */
-const badgeSoort: Record<DoelsoortNaam, DoelsoortBadgeSoort> = {
-  Minimumdoel: "md",
-  Gemeenschappelijk: "gemeenschappelijk",
-  Verdieping: "verdieping",
-  Precurriculum: "precurriculum",
-  Specifiek: "specifiek",
-  AnderstaligeNieuwkomers: "anderstalige",
 };
 
 export interface DoelsuggestieLijstProps {
@@ -103,6 +91,12 @@ export function DoelsuggestieLijst({ themaId }: DoelsuggestieLijstProps) {
             : t("matching.vervangenOnbeschikbaar")}
         </p>
       )}
+      {/* Four buttons, two of which land the row on the same visible `Manueel` badge — and for dekking
+          `Aanvaard` and `Manueel` count identically. So both need copy saying what they do, not just the
+          one that happens to be new. Which of the two FR-4.3 actually means is still directie's to rule. */}
+      <p className="mb-2 text-xs text-muted-foreground">
+        {t("matching.manueelUitleg")}
+      </p>
       <p className="mb-2 text-xs text-muted-foreground">
         {t("matching.vervangenUitleg")}
       </p>
@@ -151,7 +145,9 @@ function SuggestieRij({ suggestie, bezig, onBeslis, onVervang }: SuggestieRijPro
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-sm font-semibold">{code}</span>
         <div className="flex items-center gap-2">
-          {doelsoort && <DoelsoortBadge doelsoort={badgeSoort[doelsoort]} />}
+          {doelsoort && (
+            <DoelsoortBadge doelsoort={doelsoortBadgeSoort[doelsoort]} />
+          )}
           <Badge variant={statusVariant[status]}>{t(statusLabelKey[status])}</Badge>
         </div>
       </div>

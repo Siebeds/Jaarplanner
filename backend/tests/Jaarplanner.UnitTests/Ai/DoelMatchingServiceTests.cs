@@ -248,6 +248,24 @@ public sealed class DoelMatchingServiceTests
         Assert.Equal(2, resultaat.AantalKandidaten);
     }
 
+    [Theory]
+    [InlineData("k3")]
+    [InlineData("K3")]
+    [InlineData(" k3 ")]
+    public async Task Een_selectie_in_kleine_letters_vindt_dezelfde_kandidaten(string jaarFase)
+    {
+        // The teacher types the jaar/fase by hand. A case-sensitive filter answers with zero candidates,
+        // which the UI can only report as "er zijn geen leerplandoelen die aan je keuze voldoen" — a silent
+        // wrong answer that reads like an empty curriculum.
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out _, out _);
+
+        var resultaat = await service.GenereerSuggestiesAsync(
+            ThemaId, new LeerdoelSelectie { JaarFasen = [jaarFase] });
+
+        Assert.Equal(2, resultaat.AantalKandidaten);
+    }
+
     [Fact]
     public async Task Zonder_kandidaten_wordt_de_ai_niet_aangeroepen()
     {
@@ -341,6 +359,23 @@ public sealed class DoelMatchingServiceTests
         Assert.Equal(Doelsoort.Gemeenschappelijk, weergave.Doelsoort);
         Assert.Equal("Manueel", weergave.Status);
         Assert.Equal(1, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Aanpassen_aanvaardt_een_code_in_kleine_letters_en_bewaart_de_officiele_code()
+    {
+        // The teacher types the code by hand, so casing is theirs; the code that gets *stored* is always the
+        // curriculum's own (Art. III.5 — a link points at a real Op.stap code, spelled the way Op.stap does).
+        var thema = EenThema();
+        var suggestie = thema.VoegDoelsuggestieToe(
+            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
+        var service = Service(new FakeAiClient(), out _, out _, thema);
+
+        var weergave = await service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "nat-k3-02");
+
+        Assert.Equal("NAT-K3-02", suggestie.LeerplandoelCode);
+        Assert.Equal("NAT-K3-02", weergave.LeerplandoelCode);
+        Assert.Equal(KoppelingStatus.Manueel, suggestie.Status);
     }
 
     [Fact]

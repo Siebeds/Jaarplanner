@@ -278,10 +278,15 @@ public sealed class DoelMatchingService
 
     // Resolves one code through the read-only curriculum seam. Uses the code dimension of LeerdoelSelectie so
     // this is a targeted read rather than loading the whole curriculum to answer "does this code exist?".
+    //
+    // The re-check is case-insensitive because the seam's own matching is (a teacher types the code by hand),
+    // and an Ordinal check here would throw away a row the catalogus just returned — telling the teacher the
+    // code "zit niet in de geladen Op.stap-leerplandoelen" when it does. What gets stored is always the
+    // curriculum's own `doel.Code`, so the link still carries the canonical Op.stap code (Art. III.5).
     private async Task<Leerplandoel?> ZoekLeerdoelAsync(string code, CancellationToken cancellationToken)
     {
         var doelen = await _catalogus.HaalLeerdoelenAsync(new LeerdoelSelectie { Codes = [code] }, cancellationToken);
-        return doelen.FirstOrDefault(d => string.Equals(d.Code, code, StringComparison.Ordinal));
+        return doelen.FirstOrDefault(d => string.Equals(d.Code, code, StringComparison.OrdinalIgnoreCase));
     }
 
     // The read view. `doel` carries the official text + doelsoort so the teacher judges the goal itself and not

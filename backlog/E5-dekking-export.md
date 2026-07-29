@@ -37,6 +37,12 @@
 - [!] **E5-07 — Export jaarplan (PDF/Excel, layout)** — *blocked: Art. XIV export formats & layout*
   Export a class year plan for print / klassenmap / inspectie.
   *Done when:* format(s) and layout chosen with directie; export matches the plan. Ref: FR-11.1.
+  *An export cannot show how a coupling arose (recorded here by E2-08, 2026-07-29).* When a teacher
+  substitutes a different leerplandoel on an AI suggestion, `DoelKoppeling.VervangLeerplandoel` overwrites
+  `LeerplandoelCode` and clears `AiMotivatie`, so afterwards nothing distinguishes an overridden AI
+  suggestion from a purely manual link. If directie wants that provenance in an export, it needs a nullable
+  `VervangenLeerplandoelCode` column + a migration — decide **before** an export claims to explain a
+  coupling's origin. Applies to **E5-06** too, for the same reason.
 
 - [ ] **E5-08 — Coverage depth note (binary for MVP)**
   Keep binary gedekt/niet-gedekt for MVP as a deliberate simplification; leave a seam for later herhaling/opbouw (verticale samenhang).

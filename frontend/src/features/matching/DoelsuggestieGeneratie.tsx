@@ -106,13 +106,11 @@ export function DoelsuggestieGeneratie({ themaId }: DoelsuggestieGeneratieProps)
         </div>
       </div>
 
+      {/* No aria-label: the visible text is the accessible name. An aria-label would replace it, so a
+          speech-input user saying "Doelsuggesties genereren" — what is written on the button — could not
+          activate it (WCAG 2.2 SC 2.5.3, Label in Name). The text is unique on the panel already. */}
       <div className="mt-3">
-        <Button
-          type="button"
-          onClick={genereer}
-          disabled={generatie.isPending}
-          aria-label={t("matching.genereerAria")}
-        >
+        <Button type="button" onClick={genereer} disabled={generatie.isPending}>
           {generatie.isPending
             ? t("matching.genereerBezig")
             : t("matching.genereer")}
@@ -132,7 +130,21 @@ export function DoelsuggestieGeneratie({ themaId }: DoelsuggestieGeneratieProps)
         </p>
       )}
 
-      {generatie.isSuccess && <Runverslag resultaat={generatie.data} />}
+      {/* The live region is mounted **empty, with the panel**, and filled when a run finishes. A
+          `role="status"` element that enters the DOM already populated is frequently not announced at
+          all, which would silence the entire run report — including the candidate count, the one thing
+          that distinguishes "the AI found nothing" from "there was nothing to search". The box styling
+          is applied only once there is something in it, so an empty region draws nothing. */}
+      <div
+        role="status"
+        className={
+          generatie.isSuccess
+            ? "mt-3 rounded-md border border-input bg-background p-3"
+            : undefined
+        }
+      >
+        {generatie.isSuccess && <Runverslag resultaat={generatie.data} />}
+      </div>
     </section>
   );
 }
@@ -150,10 +162,7 @@ function Runverslag({ resultaat }: { resultaat: Doelsuggestiegeneratie }) {
   const aantalNieuw = resultaat.bewaard.length;
 
   return (
-    <div
-      role="status"
-      className="mt-3 rounded-md border border-input bg-background p-3"
-    >
+    <>
       {resultaat.aantalKandidaten === 0 ? (
         <p className="text-sm font-medium">{t("matching.geenKandidaten")}</p>
       ) : (
@@ -177,14 +186,21 @@ function Runverslag({ resultaat }: { resultaat: Doelsuggestiegeneratie }) {
         </>
       )}
 
+      {/* One skipped code must not read "deze codes staan niet in …" — Dutch inflects the demonstrative
+          and the verb, so the count picks the string (`tAantal`), as the two lines above already do. */}
       {resultaat.overgeslagenOnbekend.length > 0 && (
         <p className="mt-1 text-xs text-muted-foreground">
-          {t("matching.onbekendeCodes", {
-            codes: resultaat.overgeslagenOnbekend.join(" · "),
-          })}
+          {tAantal(
+            resultaat.overgeslagenOnbekend.length,
+            "matching.onbekendeCodesEnkelvoud",
+            "matching.onbekendeCodes",
+            { codes: resultaat.overgeslagenOnbekend.join(" · ") },
+          )}
         </p>
       )}
 
+      {/* `duplicaatCodes` needs no singular: "Overgeslagen — al aan dit thema gekoppeld: …" names no
+          count and carries no demonstrative, so it reads correctly for one code and for ten. */}
       {resultaat.overgeslagenDuplicaat.length > 0 && (
         <p className="mt-1 text-xs text-muted-foreground">
           {t("matching.duplicaatCodes", {
@@ -192,6 +208,6 @@ function Runverslag({ resultaat }: { resultaat: Doelsuggestiegeneratie }) {
           })}
         </p>
       )}
-    </div>
+    </>
   );
 }

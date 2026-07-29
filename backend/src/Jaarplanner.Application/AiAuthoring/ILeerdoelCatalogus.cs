@@ -20,7 +20,9 @@ public interface ILeerdoelCatalogus
     /// <summary>
     /// Loads the read-only Op.stap leerplandoelen that match <paramref name="selectie"/>. Never
     /// mutates curriculum data (Art. III.1). An empty selection dimension means "no filter on that
-    /// dimension"; <see cref="LeerdoelSelectie.Alles"/> loads the full set.
+    /// dimension"; <see cref="LeerdoelSelectie.Alles"/> loads the full set. Matching is
+    /// <b>case-insensitive</b> on every dimension — the values are typed by a teacher, so <c>k3</c> must
+    /// find <c>K3</c> rather than silently returning nothing.
     /// </summary>
     Task<IReadOnlyList<Leerplandoel>> HaalLeerdoelenAsync(
         LeerdoelSelectie selectie,

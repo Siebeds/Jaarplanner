@@ -12,6 +12,12 @@ namespace Jaarplanner.Application.AiAuthoring;
 /// omitted selection resolves to <see cref="Alles"/> at the one place that documents it — visible in
 /// the UI and changeable per run, never compiled in.
 /// </para>
+/// <para>
+/// <b>Every dimension matches case-insensitively</b> (part of the <see cref="ILeerdoelCatalogus"/>
+/// contract, honoured by the EF implementation and the test fake alike). A teacher types <c>k3</c> or
+/// <c>L3</c> by hand, and a case-sensitive filter would answer with an empty candidate set that is
+/// indistinguishable from "the curriculum holds nothing for your class".
+/// </para>
 /// </summary>
 public sealed record LeerdoelSelectie
 {

@@ -153,6 +153,26 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
     }
 
     [Fact]
+    public async Task Een_selectie_in_kleine_letters_begrenst_even_goed()
+    {
+        // A teacher types "l1" into the panel's free-text field. With a case-sensitive comparison — which is
+        // what Postgres' default collation gives you — the run answers 0 candidates and the UI reports an
+        // empty curriculum. Honest limit: this runs the real EfLeerdoelCatalogus query on the **in-memory**
+        // provider, so it pins the filter's semantics, not its translation to SQL `lower()`.
+        var client = _factory.CreateClient();
+        var themaId = await _factory.SeedThemaZonderSuggestiesAsync();
+        _factory.AiAntwoord = """{"suggesties":[]}""";
+
+        var post = await client.PostAsJsonAsync(
+            $"/api/themas/{themaId}/doelsuggesties/genereer",
+            new { selectie = new { jaarFasen = new[] { "l1" } } });
+
+        var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
+        Assert.True(resultaat!.IsGeslaagd);
+        Assert.Equal(1, resultaat.AantalKandidaten);
+    }
+
+    [Fact]
     public async Task Kapot_ai_antwoord_geeft_422_en_persisteert_niets()
     {
         var client = _factory.CreateClient();

@@ -107,8 +107,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * Queried by its **visible** label on purpose: this is the accessible name, so the query fails the moment
+ * an aria-label is (re)introduced that replaces the text on the button (WCAG 2.2 SC 2.5.3).
+ */
 function genereerKnop() {
-  return screen.getByRole("button", { name: t("matching.genereerAria") });
+  return screen.getByRole("button", { name: t("matching.genereer") });
 }
 
 describe("DoelsuggestieGeneratie", () => {
@@ -138,17 +142,44 @@ describe("DoelsuggestieGeneratie", () => {
     ]);
   });
 
+  it("keeps the visible label as the accessible name (WCAG 2.2 SC 2.5.3)", async () => {
+    renderPagina();
+
+    // Speech input activates a control by saying what is written on it. An aria-label replaces the
+    // accessible name, so "Doelsuggesties genereren" would no longer work — hence none here.
+    const knop = genereerKnop();
+    expect(knop).not.toHaveAttribute("aria-label");
+    expect(knop).toHaveTextContent(t("matching.genereer"));
+    expect(knop).toHaveAccessibleName(t("matching.genereer"));
+  });
+
+  it("has its live region in the DOM before a run, so the report is announced", async () => {
+    renderPagina();
+    // Wait out the list's own loading `role="status"`, so the only one left is the panel's report region.
+    await screen.findByText(t("matching.leeg"));
+
+    // A role="status" element that is mounted together with its content is frequently never announced.
+    // The region must therefore exist (empty) from the start and be filled by the run.
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+
+    fireEvent.click(genereerKnop());
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).not.toBeEmptyDOMElement();
+    });
+  });
+
   it("reports the run with correctly inflected counts", async () => {
     renderPagina();
     fireEvent.click(genereerKnop());
 
-    // Singular for the one suggestion, plural for the twelve candidates — via tAantal, not a template that
-    // would read "1 suggesties".
+    // Literal Dutch, not `t(...)`: an assertion built from the same catalogue entry the component renders
+    // can only prove they agree, never that the sentence is correct Dutch.
     expect(
-      await screen.findByText(t("matching.genereerGeluktEnkelvoud")),
+      await screen.findByText("1 nieuwe suggestie voorgesteld."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(t("matching.kandidaten", { aantal: 12 })),
+      screen.getByText("Gezocht in 12 leerplandoelen."),
     ).toBeInTheDocument();
   });
 
@@ -188,7 +219,10 @@ describe("DoelsuggestieGeneratie", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("names the codes the model invented instead of swallowing them", async () => {
+  // The expected Dutch is written out **literally** in the next two tests. Asserting against
+  // `t("matching.onbekendeCodes", …)` compares the render to the very template it renders, so it cannot
+  // fail on grammar — the earlier version of this test passed happily on "deze codes staan" for one code.
+  it("uses the singular for exactly one unknown code", async () => {
     vi.unstubAllGlobals();
     stub({ onbekend: ["VERZONNEN-99"] });
     renderPagina();
@@ -197,7 +231,21 @@ describe("DoelsuggestieGeneratie", () => {
 
     expect(
       await screen.findByText(
-        t("matching.onbekendeCodes", { codes: "VERZONNEN-99" }),
+        "Genegeerd — deze code staat niet in de geladen leerplandoelen: VERZONNEN-99",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("uses the plural for more than one unknown code", async () => {
+    vi.unstubAllGlobals();
+    stub({ onbekend: ["VERZONNEN-99", "VERZONNEN-98"] });
+    renderPagina();
+
+    fireEvent.click(genereerKnop());
+
+    expect(
+      await screen.findByText(
+        "Genegeerd — deze codes staan niet in de geladen leerplandoelen: VERZONNEN-99 · VERZONNEN-98",
       ),
     ).toBeInTheDocument();
   });

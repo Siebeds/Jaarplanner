@@ -32,21 +32,34 @@ public sealed class FakeLeerdoelCatalogus : ILeerdoelCatalogus
 
         IEnumerable<Leerplandoel> query = _leerdoelen;
 
-        if (selectie.Disciplines is { Count: > 0 } disciplines)
+        // Normalised and compared exactly as the EF implementation does: trimmed, blanks dropped, and
+        // **case-insensitive** on every dimension (the ILeerdoelCatalogus contract). A fake that is stricter
+        // than the real query lets a case bug pass here and fail only in a browser.
+        var disciplines = Genormaliseerd(selectie.Disciplines);
+        if (disciplines.Count > 0)
         {
-            query = query.Where(d => disciplines.Contains(d.DisciplineNummer));
+            query = query.Where(d => disciplines.Contains(d.DisciplineNummer.ToLowerInvariant()));
         }
 
-        if (selectie.JaarFasen is { Count: > 0 } jaarFasen)
+        var jaarFasen = Genormaliseerd(selectie.JaarFasen);
+        if (jaarFasen.Count > 0)
         {
-            query = query.Where(d => jaarFasen.Contains(d.JaarFase));
+            query = query.Where(d => jaarFasen.Contains(d.JaarFase.ToLowerInvariant()));
         }
 
-        if (selectie.Codes is { Count: > 0 } codes)
+        var codes = Genormaliseerd(selectie.Codes);
+        if (codes.Count > 0)
         {
-            query = query.Where(d => codes.Contains(d.Code));
+            query = query.Where(d => codes.Contains(d.Code.ToLowerInvariant()));
         }
 
         return Task.FromResult<IReadOnlyList<Leerplandoel>>(query.OrderBy(d => d.Code, StringComparer.Ordinal).ToList());
     }
+
+    private static List<string> Genormaliseerd(IReadOnlyCollection<string>? waarden) =>
+        (waarden ?? [])
+            .Where(w => !string.IsNullOrWhiteSpace(w))
+            .Select(w => w.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 }

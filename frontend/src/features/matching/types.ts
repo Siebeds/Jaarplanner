@@ -3,6 +3,7 @@
  * backend read view (`DoelMatchSuggestieWeergave`) and the `KoppelingStatus` enum (Art. IV.2),
  * serialised by name — so the status strings are PascalCase exactly as the API sends/accepts them.
  */
+import type { DoelsoortNaam } from "../../components/doelsoort";
 
 /** The human-in-the-loop status of a doelsuggestie (Art. IV.2). */
 export type SuggestieStatus = "Voorgesteld" | "Aanvaard" | "Geweigerd" | "Manueel";
@@ -57,16 +58,11 @@ export interface Doelsuggestiegeneratie {
 }
 
 /**
- * The Op.stap doelsoort as the API serialises it — the backend `Doelsoort` enum by name (Art. VII.1).
- * The `DoelsoortBadge` uses its own lowercase keys, so the view maps between the two.
+ * The Op.stap doelsoort as the API serialises it. Defined once in `components/doelsoort`, next to the
+ * single `doelsoortBadgeSoort` table that maps it onto the badge's lowercase keys; re-exported here so the
+ * matching types still read as one set.
  */
-export type DoelsoortNaam =
-  | "Minimumdoel"
-  | "Gemeenschappelijk"
-  | "Verdieping"
-  | "Precurriculum"
-  | "Specifiek"
-  | "AnderstaligeNieuwkomers";
+export type { DoelsoortNaam };
 
 /**
  * One leerplandoel that is (nog) niet aan een thema gekoppeld (E2-06, FR-4.4). Mirrors the backend

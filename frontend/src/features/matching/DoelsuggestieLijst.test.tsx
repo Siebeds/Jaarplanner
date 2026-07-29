@@ -194,17 +194,40 @@ describe("DoelsuggestieLijst", () => {
     ]);
   });
 
-  it("does not send an empty substitution", async () => {
+  it("enables the substitution only once a real code is typed", async () => {
     renderLijst();
     await screen.findByText("NAT-K3-01");
 
+    const veld = screen.getByLabelText(
+      t("matching.vervangenLabel", { code: "NAT-K3-01" }),
+    );
     const knop = screen.getByRole("button", {
       name: t("matching.vervangenAria", { code: "NAT-K3-01" }),
     });
-    expect(knop).toBeDisabled();
-    fireEvent.click(knop);
 
-    expect(putBodies).toEqual([]);
+    expect(knop).toBeDisabled();
+
+    // Whitespace is not a code — the field is trimmed before the button unlocks, so a stray space cannot
+    // produce a blank substitution. (The server refuses one as well; this is the visible half.)
+    fireEvent.change(veld, { target: { value: "   " } });
+    expect(knop).toBeDisabled();
+
+    fireEvent.change(veld, { target: { value: "NAT-K3-02" } });
+    expect(knop).toBeEnabled();
+  });
+
+  it("explains 'Manueel overnemen' and warns that a substitution is not reversible", async () => {
+    renderLijst();
+    await screen.findByText("NAT-K3-01");
+
+    // Two of the four buttons land the row on the same visible `Manueel` badge, and for dekking `Aanvaard`
+    // and `Manueel` count the same — so both need copy. Asserted on the substance, in literal Dutch.
+    expect(
+      screen.getByText(/telt dat even zwaar als “Aanvaarden”/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/niet bewaard: dat kan je niet ongedaan maken/),
+    ).toBeInTheDocument();
   });
 
   it("renders local Dutch copy when a substitution is refused, never the server message", async () => {

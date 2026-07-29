@@ -108,4 +108,11 @@
   *Why this story exists:* `IOpstapImportService` is DI-registered at `Infrastructure/DependencyInjection.cs` but referenced by **no controller** and by no test outside `OpstapImportServiceTests`. The parser, the concordance logic, the non-destructive re-import and the review diff are all built and tested — and **none of it can be run.** FR-2.1 (*"De leerplandoelen … worden ingeladen"*) and FR-2.5 (*"de doelen kunnen **opnieuw ingeladen** worden"*) both fail on the trigger, not the logic. This is the same defect as E2-08, in the other importer, and it went unnoticed for the same reason: unit tests reach a service directly, so "tested" and "reachable" look identical from the test report.
   *Done when:* an initial Op.stap import and a re-import can both be triggered in a deployed app; the re-import returns its review report; the curriculum stays read-only (Art. III.1) and existing jaarplannen are untouched (Art. III.4). Ref: FR-2.1, FR-2.5, Art. III.1/III.4.
   *Interacts with:* **E1-12** (the decreed-minimumdoelen import needs a trigger too — decide whether it shares this surface); **E1-13** clause 6 (rendering the review notice). Note this story does **not** unblock E1-03/E1-04 — those wait on the source file.
+  *Weigh a narrower matching default when this ships (recorded here by E2-08, 2026-07-29).* The FR-4.1
+  matching prompt's candidate set defaults to `LeerdoelSelectie.Alles` — every loaded leerplandoel, with no
+  cap. That is harmless while the database holds only the demo seeder's `DEMO-*` goals, and it stops being
+  harmless the moment this story makes a real per-discipline import runnable: prompt size (and AI cost) then
+  grows with the curriculum. No cap was invented in E2-08 on purpose — deciding which goals are silently
+  withheld from the model is pedagogical, not technical. The levers that exist are the endpoint's optional
+  `selectie` and the panel's two filters.
   *Open (Art. XIV):* who may run an import, and from where? This is reference-data administration, so it likely belongs behind a directie-only role (Art. VI, FR-10) rather than a teacher-facing screen — which is a permissions decision, not just a routing one. Do not hard-assume; if E6-02's role matrix has not landed, put the endpoint behind a single authorisation seam.
