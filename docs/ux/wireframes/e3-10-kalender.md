@@ -1,6 +1,23 @@
 # E3-10 — Kalender wireframe (FR-6)
 
-**Status:** draft, **awaiting review with directie + teachers**. Nothing here is approved.
+**Status:** **approved 2026-07-28 by directie (auteur)** as the basis for E3-06 (calendar view) and
+E3-07 (drag-and-drop). Recorded in [`backlog/worklogs/E3-10/implementation.md`](../../../backlog/worklogs/E3-10/implementation.md).
+The five review questions below were **not** individually answered at approval — they stay open as
+build-time decisions carried into E3-06/E3-09.
+
+> **What this approval does and does not evidence.** ADR-0017 names two reviewer groups, *directie
+> **and** teachers*. Only the directie half is on record: **no separate teacher-feedback session is
+> documented anywhere in the repo** — not a date, not participants, not a captured comment — despite
+> E3-10 being titled "wireframe **+ teacher feedback**". The worklog's test-report evidences the
+> criterion *"Reviewed with directie/teachers"* with the string *"Approved 2026-07-28"*, i.e. with its
+> own conclusion. Treat the teacher half as **unmet and owed**, not as absorbed by the `[x]`; the five
+> open questions below are exactly the kind a teacher answers in five minutes. Route it through E3-06
+> before the calendar is built on assumptions no teacher has seen.
+>
+> *Two prior states of this header, both wrong in opposite directions:* it read "draft, awaiting review
+> — nothing here is approved" until 2026-07-29, contradicting the backlog and worklog that authorise the
+> build; the correction then asserted a bare "approved" with no actor, silently dropping the teacher half
+> that the original text had named. The gate you name is the gate you can check.
 **Artifact:** [`e3-10-kalender.html`](e3-10-kalender.html) — open it in a browser; no build step, works offline.
 **Refs:** FR-6.1–6.5, [ADR-0017](../../adr/0017-ui-ux-design-system.md) (wireframes-first),
 [ADR-0013](../../adr/0013-planningsblok-abstraction.md), [`ui-ux-approach.md` §4](../ui-ux-approach.md),

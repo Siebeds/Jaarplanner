@@ -69,4 +69,19 @@ export default tseslint.config(
       "no-restricted-syntax": "off",
     },
   },
+  {
+    // shadcn/ui primitives are **copied in** rather than depended on (ADR-0017), so these
+    // files are vendored upstream code we want to keep diffable against it. The upstream
+    // pattern exports the `cva` variant map next to the component (`buttonVariants`,
+    // `badgeVariants`) so other components can compose the same styles. That trips
+    // `react-refresh/only-export-components`, whose complaint is real but confined to dev
+    // HMR granularity for these two files — not a correctness or a11y issue. Scoped off
+    // here so `pnpm lint` stays at zero output and a genuine warning elsewhere is visible.
+    // Prefer this over deleting the exports: that would be a silent divergence from
+    // upstream, and the next shadcn component copied in would reintroduce the warning.
+    files: ["src/components/ui/**"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
 );
