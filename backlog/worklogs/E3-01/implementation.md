@@ -670,3 +670,98 @@ impossible to pass, but **I have still never seen it pass**; only CI can show th
 4. **Art. II.3 untouched**; my English 422 still diverges from the two Dutch-titled handlers, by reasoned choice.
 5. **A slice of FR-7/E3-07 scope now lives in E3-01** (the placement DELETE). The orchestrator is noting it in the
    backlog.
+
+---
+
+## Fix round 3 — 2026-07-29 (CI evidence)
+
+`story/E3-01` was pushed to get a real Postgres run rather than merge on two green local gates. **CI run
+30435714639 on `e61ea77` FAILED: 16 integration tests failed, 47 passed, 0 skipped** (unit 412/412). Two defects, both
+mine, both invisible to every local run. Fixed.
+
+### Defect 1 — the seed helper overflowed `Schooljaar.Naam`, killing all 9 new `JaarplanPersistentieTests`
+
+`Npgsql.PostgresException 22001: value too long for type character varying(32)`, thrown from the fixture's `SeedAsync`,
+so every test in the class died before its first assertion.
+
+`Schooljaar.Naam` is `HasMaxLength(32)`. Two seeds built `$"{prefix}-{Guid.NewGuid():N}"`:
+
+| Seed | Length |
+| --- | --- |
+| `$"jaarplan-{Guid.NewGuid():N}"` | 9 + 32 = **41** |
+| `$"containment-{Guid.NewGuid():N}"` | 12 + 32 = **44** |
+
+Galling, because the same fixture already sliced the leerplandoel code with `[..16]` — I knew the technique and simply
+did not apply it to the labels.
+
+**Fixed by moving the bound into the helper rather than patching call sites**, so a future seed cannot reintroduce it:
+
+- `TestSchooljaar.MaxNaamLengte = 32` and `TestSchooljaar.UniekeNaam(prefix)`, which truncates to 32 while keeping ≥ 8
+  hex characters of the guid (labels only need to be unique within one per-class database).
+- `Maak(...)` additionally clamps a caller-supplied literal as a last-resort net.
+- All four generated labels now go through it — the two Postgres ones, plus two in `JaarplanEndpointsTests` that were
+  the same latent bug hiding behind the in-memory provider's lack of length enforcement.
+
+**The column was not widened.** `varchar(32)` is correct for a label like `"2026-2027"`; the test data was wrong.
+
+### Defect 2 — a regression in six previously-green E1-07 tests, invisible locally
+
+`SchoolcontentImportEndpointsTests` failed **all six** of its tests — including `Sjabloon_is_downloadbaar_als_xlsx`,
+which has nothing to do with classes — because its `InitializeAsync` still posted to `POST /api/klassen`, the route this
+story **moved** to `POST /api/schooljaren/{schooljaarId}/klassen`. `EnsureSuccessStatusCode()` in the fixture turns one
+stale route into a whole-class failure.
+
+I updated `KlasEndpointsTests`, `ReferentiedataIntegriteitTests` and `SchoolcontentBeheerEndpointsTests` for the moved
+route and **missed this file entirely** — it never appeared in my diff, so nothing drew my eye to it. Fixed the same
+way: create the schooljaar, then POST the class through the nested route, with a comment explaining why a stale route
+here is fatal to the entire class. A repo-wide sweep confirms this was the last remaining use of the old route.
+
+These six matter more than their count: they are E1-07's acceptance evidence, they were red for five pushes earlier in
+this project's history, and they had been repaired only that same day.
+
+### Why neither gate could see either defect — and what I did about it
+
+Both the antagonist and the test-runner reported "no regression" on `93b211c`, and **both were honest**: they checked
+that no assertion had been loosened or removed, and none had. Neither could see this, because the affected tests
+**skip** in every local environment. *A skipped test cannot visibly regress.* That is the same blind spot that caused
+this project's E1-07 reopening — and it just bit the very tests that reopening produced. It is also why pushing a story
+branch for CI beat merging on two green gates.
+
+I did not want to leave that as a lesson only in prose, so this round adds **`TestSeedPastInHetSchemaTests`** — 10
+plain `[Fact]`s (they **cannot** skip) that build the EF **model** without connecting to anything and compare the seed
+helpers against the *real mapped* column lengths. They fail if the helper over-runs a column **or** if a migration
+changes a column out from under the helper. Defect 1 would have been caught locally, at the cost of one cheap test
+class.
+
+**Its honest limit:** it guards the *helper* and detects *column drift*. A future test that builds a seed name inline,
+bypassing `TestSchooljaar`, is still invisible locally. The helper is now the path of least resistance, which is the
+best structural defence available without a local Postgres — the real fix remains running the Postgres suite before
+trusting a green local run.
+
+### Gates after fix round 3
+
+| Gate | Result |
+| --- | --- |
+| `dotnet build Jaarplanner.sln` | **Build succeeded**, 0 errors |
+| `dotnet test Jaarplanner.sln` | **412 unit passed / 0 failed / 0 skipped** (unchanged) · **37 integration passed / 0 failed / 36 skipped** (was 27 — **+10 executed** guard tests) |
+| `dotnet format --verify-no-changes` | **Clean**, exit 0 |
+
+**A clean local run proves nothing about either defect, and I am not claiming otherwise.** Both defects live in tests
+that **skip** here: the 9 `JaarplanPersistentieTests` and the 6 `SchoolcontentImportEndpointsTests` are all
+`[PostgresFact]`. What is locally verified is only the new guard class (10 executed tests) and that nothing else
+regressed. **CI on the next push is the evidence** for the two fixes themselves.
+
+### Still open after this round
+
+1. **No live Azure round-trip** — owner's waiver-or-run decision.
+2. **The relational half remains CI-verified only**, by construction on this machine.
+3. **`Themaplaatsing` is owned**, so it cannot be queried server-side — fine for today's guards, wrong for E5 dekking.
+4. **Art. II.3 untouched**; the English 422 still diverges from two Dutch-titled handlers, by reasoned choice.
+5. **A slice of FR-7/E3-07 scope lives in E3-01** (the placement DELETE).
+
+### For the next story — the trap to expect
+
+If you change a route, a required field, or a column-bounded value, **grep the whole test tree, not your diff**. The
+tests that will break are the ones that skip locally, so neither a green `dotnet test` nor a careful reviewer reading
+your diff will show them. `POST /api/klassen` → the nested route broke a file I never opened; a 41-character label broke
+a fixture I wrote myself.

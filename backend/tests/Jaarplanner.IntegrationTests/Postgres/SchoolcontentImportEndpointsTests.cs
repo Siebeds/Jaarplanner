@@ -29,8 +29,26 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
 
         // The import resolves subthema's klas BY NAME, so the class must exist first — created through
         // the API the same way a school would.
+        //
+        // A Klas now lives inside a Schooljaar (Art. IX.3, E3-01), so the school year is created first and the class
+        // is POSTed to the NESTED route. `POST /api/klassen` no longer exists; E3-01 moved it to
+        // `POST /api/schooljaren/{schooljaarId}/klassen` so the route carries the containment. Because
+        // EnsureSuccessStatusCode below runs in InitializeAsync, a stale route here fails EVERY test in this class —
+        // including Sjabloon_is_downloadbaar_als_xlsx, which has nothing to do with classes.
         var client = _factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/klassen", new { naam = KlasNaam, leerjaar = 1 });
+
+        var schooljaar = await client.PostAsJsonAsync("/api/schooljaren", new
+        {
+            naam = "2026-2027",
+            start = "2026-09-01",
+            eind = "2027-06-30",
+        });
+        schooljaar.EnsureSuccessStatusCode();
+        var schooljaarId = (await schooljaar.Content
+            .ReadFromJsonAsync<Application.Planning.Beheer.SchooljaarWeergave>())!.Id;
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/schooljaren/{schooljaarId}/klassen", new { naam = KlasNaam, leerjaar = 1 });
         response.EnsureSuccessStatusCode();
     }
 

@@ -210,7 +210,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
 
         var schooljaar = await (await client.PostAsJsonAsync("/api/schooljaren", new
         {
-            naam = $"beheer-{Guid.NewGuid():N}",
+            naam = TestSchooljaar.UniekeNaam("beheer"),
             start = "2028-09-01",
             eind = "2029-06-30",
             sluitingen = new[]
@@ -322,7 +322,10 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await db.Database.EnsureCreatedAsync();
 
-            var schooljaar = TestSchooljaar.MetVakanties($"jaarplan-{Guid.NewGuid():N}");
+            // Bounded to Schooljaar.Naam's varchar(32). This factory runs on the in-memory provider, which enforces no
+            // max length, so an over-long name here would pass locally and only break if the fixture were ever pointed
+            // at Postgres — the same blind spot that took out the [PostgresFact] suite in CI.
+            var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("jaarplan"));
             var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", leerjaar: 3);
             db.Schooljaren.Add(schooljaar);
 

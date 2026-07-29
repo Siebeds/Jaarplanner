@@ -353,7 +353,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
 
         await using (var context = _db.MaakContext())
         {
-            var schooljaar = TestSchooljaar.MetVakanties($"containment-{Guid.NewGuid():N}");
+            var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("containment"));
             schooljaar.VoegKlasToe($"L1-{Guid.NewGuid():N}", leerjaar: 1);
             schooljaar.VoegKlasToe($"L2-{Guid.NewGuid():N}", leerjaar: 2);
             context.Schooljaren.Add(schooljaar);
@@ -400,7 +400,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     {
         await using var context = _db.MaakContext();
 
-        var schooljaar = TestSchooljaar.MetVakanties($"jaarplan-{Guid.NewGuid():N}");
+        var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("jaarplan"));
         var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", leerjaar: 3);
         context.Schooljaren.Add(schooljaar);
 
