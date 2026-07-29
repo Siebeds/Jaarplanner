@@ -11,6 +11,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+    <!-- Transitive pin, NOT a direct dependency (E7-12). Microsoft.AspNetCore.OpenApi still -->
+    <!-- resolves Microsoft.OpenApi 2.0.0 — true as of 10.0.10, so bumping it does not help — -->
+    <!-- and 2.0.0 carries GHSA-v5pm-xwqc-g5wc / CVE-2026-49451 (high: uncontrolled recursion -->
+    <!-- on circular schema refs → stack overflow). Advisory patches 2.x at 2.7.5; pinned to -->
+    <!-- the latest 2.x. Do NOT move to 3.x while the framework package asks for 2.x. -->
+    <!-- Remove this pin once Microsoft.AspNetCore.OpenApi depends on >= 2.7.5 itself. -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
     <!-- Cloud secrets binding (E0-07 / ADR-0012): adds Azure Key Vault as a configuration -->
     <!-- source ONLY when a vault URI is configured (no-op locally + in tests — Art. VI.4). -->
     <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.1" />

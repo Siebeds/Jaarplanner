@@ -1,6 +1,11 @@
 # E3-10 — Kalender wireframe (FR-6)
 
-**Status:** draft, **awaiting review with directie + teachers**. Nothing here is approved.
+**Status:** **approved 2026-07-28** as the basis for E3-06 (calendar view) and E3-07 (drag-and-drop).
+The five review questions below were **not** individually answered at approval — they stay open as
+build-time decisions carried into E3-06/E3-09. See the [worklog](../../../backlog/worklogs/E3-10/implementation.md).
+*This header read "draft, awaiting review — nothing here is approved" until 2026-07-29: the approval was
+recorded in the backlog and the worklog but never in the artifact itself, so the document that a builder
+opens first contradicted the two that authorise the build.*
 **Artifact:** [`e3-10-kalender.html`](e3-10-kalender.html) — open it in a browser; no build step, works offline.
 **Refs:** FR-6.1–6.5, [ADR-0017](../../adr/0017-ui-ux-design-system.md) (wireframes-first),
 [ADR-0013](../../adr/0013-planningsblok-abstraction.md), [`ui-ux-approach.md` §4](../ui-ux-approach.md),
