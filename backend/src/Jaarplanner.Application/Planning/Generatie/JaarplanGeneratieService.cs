@@ -227,6 +227,40 @@ public sealed class JaarplanGeneratieService
         MuteerPlaatsingAsync(
             klasId, plaatsingId, plaatsing => plaatsing.StelVergrendelingIn(vergrendeld), cancellationToken);
 
+    /// <summary>
+    /// Removes one placement from the plan — taking a thema out of a period (FR-7, and the escape hatch the
+    /// <c>Klas</c> delete guard depends on). Works whatever the placement's status or lock: an explicit teacher
+    /// action is the one actor Art. IV.2 allows to discard a human decision.
+    /// <para>
+    /// This is also the <b>only</b> way a <c>geweigerd</c> placement can ever leave a plan. Without it, rejecting a
+    /// thema in a period was irreversible and permanently suppressed the AI from re-proposing it there.
+    /// </para>
+    /// </summary>
+    /// <returns>The updated plan, so a caller need not re-fetch it.</returns>
+    /// <exception cref="SchoolcontentNietGevondenFout">The class, its plan, or the placement does not exist.</exception>
+    public async Task<JaarplanWeergave> VerwijderPlaatsingAsync(
+        Guid klasId,
+        Guid plaatsingId,
+        CancellationToken cancellationToken = default)
+    {
+        var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
+
+        var jaarplan = await _opslag.LaadJaarplanAsync(klasId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Klas {klasId} heeft nog geen jaarplan.");
+
+        var plaatsing = jaarplan.VindPlaatsing(plaatsingId)
+            ?? throw new SchoolcontentNietGevondenFout(
+                $"Themaplaatsing {plaatsingId} bestaat niet in het jaarplan van klas {klasId}.");
+
+        jaarplan.VerwijderPlaatsing(plaatsing);
+        await _opslag.BewaarAsync(cancellationToken);
+
+        var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau);
+        var themas = await _opslag.LaadThemasAsync(cancellationToken);
+
+        return Projecteer(klas, schooljaar, blokken, themas, jaarplan);
+    }
+
     private async Task<JaarplanWeergave> MuteerPlaatsingAsync(
         Guid klasId,
         Guid plaatsingId,

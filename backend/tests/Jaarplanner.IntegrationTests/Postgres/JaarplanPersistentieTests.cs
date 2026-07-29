@@ -184,6 +184,83 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// Removing one placement actually deletes its <b>row</b>, and leaves the rest of the plan alone. Asserted against
+    /// real Postgres because an owned-collection element removed from its parent's backing list is exactly the kind of
+    /// change the in-memory provider can appear to accept without a corresponding DELETE reaching a database.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_plaatsing_verwijderen_verwijdert_haar_rij()
+    {
+        var (klasId, themaId, blokStart) = await SeedAsync();
+        Guid teVerwijderen;
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = new Jaarplan(klasId);
+            var eerste = jaarplan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Aanvaard, "aanvaard");
+            eerste.StelVergrendelingIn(true);
+            jaarplan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Subthemaperiode, blokStart, KoppelingStatus.Voorgesteld, "blijft");
+
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+            teVerwijderen = eerste.Id;
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = await context.Jaarplannen.SingleAsync();
+
+            // Accepted AND locked — removal is an explicit human act and must not be blocked by either (Art. IV.2).
+            jaarplan.VerwijderPlaatsing(jaarplan.VindPlaatsing(teVerwijderen)!);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = await context.Jaarplannen.SingleAsync();
+            var overgebleven = Assert.Single(jaarplan.Plaatsingen);
+            Assert.Equal(Planningsblokniveau.Subthemaperiode, overgebleven.BlokNiveau);
+            Assert.Null(jaarplan.VindPlaatsing(teVerwijderen));
+
+            // One row, not two — the DELETE really reached the table.
+            var aantal = await context.Database
+                .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
+                .SingleAsync();
+            Assert.Equal(1, aantal);
+        }
+    }
+
+    /// <summary>
+    /// A thema still placed in a jaarplan cannot be deleted: the RESTRICT FK on <c>themaplaatsingen.ThemaId</c> is
+    /// real. This is the database half of the guard added to <c>SchoolcontentBeheerService.VerwijderThemaAsync</c> —
+    /// the guard exists to turn this <c>23503</c> into an actionable 400 instead of an unhandled 500.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_geplaatst_thema_kan_niet_uit_de_database_verwijderd_worden()
+    {
+        var (klasId, themaId, blokStart) = await SeedAsync();
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = new Jaarplan(klasId);
+            jaarplan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "voorstel");
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            context.Themas.Remove(await context.Themas.SingleAsync(t => t.Id == themaId));
+
+            var ex = await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+            Assert.Equal("23503", Assert.IsType<Npgsql.PostgresException>(ex.InnerException).SqlState);
+        }
+    }
+
     /// <summary>Deleting a plan takes its placements with it — they are owned and have no independent lifetime.</summary>
     [PostgresFact]
     public async Task Verwijderen_neemt_de_plaatsingen_mee()
@@ -242,8 +319,14 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         await using (var context = _db.MaakContext())
         {
             // Raw DELETE, so the database's own ON DELETE CASCADE is what is under test — not EF's change tracker.
+            //
+            // NOTE the interpolation hole carries NO surrounding quotes. ExecuteSqlAsync takes a FormattableString
+            // and turns every hole into a DbParameter, splicing the placeholder NAME into the SQL. Quoting it would
+            // emit `WHERE "Id" = '@p0'` — a text literal — which Postgres rejects with 22P02 (invalid input syntax
+            // for type uuid: "@p0"), so the assertion below would never be reached. The first version of this test
+            // had exactly that bug and could never have passed in CI.
             var verwijderd = await context.Database.ExecuteSqlAsync(
-                $"""DELETE FROM klassen WHERE "Id" = '{klasId}'""");
+                $"""DELETE FROM klassen WHERE "Id" = {klasId}""");
             Assert.Equal(1, verwijderd);
         }
 

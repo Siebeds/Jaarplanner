@@ -102,4 +102,27 @@ public sealed class JaarplanController : ControllerBase
         [FromBody] VergrendelingWijziging wijziging,
         CancellationToken cancellationToken) =>
         Ok(await _service.WijzigVergrendelingAsync(klasId, plaatsingId, wijziging.Vergrendeld, cancellationToken));
+
+    /// <summary>
+    /// Removes a thema from a period (FR-7), whatever the placement's status or lock — an explicit teacher action is
+    /// the one actor Art. IV.2 allows to discard a human decision.
+    /// <para>
+    /// <b>Why this ships with E3-01 rather than waiting for E3-07/E4.</b> The <c>Klas</c> delete guard added in fix
+    /// round 1 refuses while any placement is a human decision. Without a way to remove one, a single accepted or
+    /// rejected placement made the class permanently undeletable and the guard's own error message instructed an
+    /// action the API did not offer — a guard whose remediation does not exist is a trap, not a safeguard. It is also
+    /// the only way a <c>geweigerd</c> placement can ever leave a plan; before this, rejecting a thema in a period was
+    /// irreversible.
+    /// </para>
+    /// <para>
+    /// Returns the updated plan rather than 204, matching the two PUTs above so a caller never has to re-fetch to
+    /// render the result.
+    /// </para>
+    /// </summary>
+    [HttpDelete("plaatsingen/{plaatsingId:guid}")]
+    public async Task<ActionResult<JaarplanWeergave>> VerwijderPlaatsing(
+        Guid klasId,
+        Guid plaatsingId,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.VerwijderPlaatsingAsync(klasId, plaatsingId, cancellationToken));
 }

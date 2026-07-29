@@ -534,3 +534,139 @@ with a reviewed plan. So the *service-level* halves of finding 1 and **all** of 
 4. **Art. II.3 is untouched.** My 422 payload is English by reasoned choice, which diverges from the Dutch
    `ProblemDetails` titles two neighbouring handlers use. Whichever way the open decision lands, one of the two will
    need changing; I did not pre-empt it.
+
+---
+
+## Fix round 2 — 2026-07-29
+
+Test-runner returned **PASS** on `93b211c`; the antagonist returned VIOLATIONS FOUND with three MAJORs. All four
+findings addressed; **nothing disputed**. The antagonist separately verified that the round-1 delete predicate is
+byte-for-byte the complement and cannot drift, that the hand-filled migration is safe (all three model snapshots
+byte-identical), and that no *other* collection projection on any mapped entity hits the EF navigation trap.
+
+### 1. [MAJOR] The delete guard was unsatisfiable, and its message instructed an impossible action
+
+The round-1 guard counted non-replaceable placements and told the teacher *"Verwijder eerst die plaatsingen uit het
+jaarplan"* — but nothing could do that. `VerwijderVervangbarePlaatsingen()` by construction skips exactly what the
+guard counts, `JaarplanController` had no DELETE, and `WijzigPlaatsingStatusAsync` refuses `Voorgesteld` so a decision
+could not be downgraded back into the replaceable set. Net effect: **one** accepted/rejected/adjusted/locked placement
+made `DELETE /api/klassen/{id}` return 400 **forever**. A guard whose remediation does not exist is a trap, not a
+safeguard.
+
+**Fixed by adding the escape hatch** — the same reasoning as `SchooljarenController` in round 0: I introduced the
+constraint, so I own its remedy.
+
+- `Jaarplan.VerwijderPlaatsing(Themaplaatsing)` — removes one placement **regardless of status or lock**. Status is
+  deliberately *not* checked: Art. IV.2 reserves disposal of a human decision to the human, it does not make that
+  decision permanent, and this path is only ever reached from an explicit teacher action. The contrast with
+  `VerwijderVervangbarePlaatsingen` (reached from *generation*, so it must skip anything a human touched) is documented
+  on both members.
+- `JaarplanGeneratieService.VerwijderPlaatsingAsync(klasId, plaatsingId)`.
+- `DELETE /api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}`, returning the **updated plan** rather than 204 so
+  it matches the two PUTs and a caller never re-fetches to render the result.
+- The guard's message now names a remediation that exists, and the code comment records that the first version did not.
+
+`Geweigerd` **remains** a blocker, now defensibly: it is a human decision, and it can now be removed. The finding
+called it "the least defensible blocker"; the fix is the escape hatch rather than carving an exception into the
+predicate, which would have re-broken the complement property the antagonist just verified.
+
+**Scope note (for the backlog).** This advances a slice of FR-7 / E3-07's manual-editing scope. Justification: removing
+a thema from a period is basic manual editing a teacher must be able to do, *and* it is the precondition for a guard
+this story already shipped. Deferring it would have left E3-01 with a documented trap.
+
+**Tests.** Executed: `Een_plaatsing_kan_verwijderd_worden_ongeacht_status_of_vergrendeling` (5 theory cases across all
+statuses plus locked), `Na_het_verwijderen_van_een_afwijzing_kan_het_thema_opnieuw_voorgesteld_worden` (proves the
+suppression is now reversible — generate → blocked as `Afgewezen` → delete → generate → proposed),
+`Een_onbekende_plaatsing_verwijderen_geeft_een_nietgevonden_fout`,
+`KlasVerwijderenTests.Na_het_verwijderen_van_de_plaatsingen_kan_de_klas_wel_verwijderd_worden` (closes the loop the
+guard's message promises), and the HTTP-level
+`JaarplanEndpointsTests.Een_plaatsing_kan_verwijderd_worden_ook_als_ze_aanvaard_en_vergrendeld_is` (incl. a second
+DELETE returning 404 rather than a silent success). New `[PostgresFact]` (**skipped here**):
+`Een_plaatsing_verwijderen_verwijdert_haar_rij` — asserts the row count actually drops, since an owned-collection
+element removed from its parent's backing list is exactly what the in-memory provider can appear to accept without a
+DELETE reaching a database.
+
+### 2. [MAJOR] My `[PostgresFact]` for the raw `ON DELETE CASCADE` could never have passed
+
+Correct and entirely mine. `ExecuteSqlAsync` takes a `FormattableString` and turns every interpolation hole into a
+`DbParameter`, splicing the *placeholder name* into the SQL. My hole sat inside single quotes, so the emitted SQL was
+`WHERE "Id" = '@p0'` — a text literal — which Postgres rejects with `22P02 invalid input syntax for type uuid: "@p0"`,
+so `Assert.Equal(1, verwijderd)` was unreachable. The neighbouring test three assertions away dodges this exact trap
+with `ExecuteSqlRawAsync`; I reintroduced it. This was **the only assertion that the database-level cascade is real** —
+i.e. the premise of finding 1's entire guard — so it mattered that it ran.
+
+Fixed by dropping the quotes so the parameter binds as a `uuid`, with a comment naming the failure mode and the
+SqlState so the next person does not repeat it.
+
+**I re-audited every SQL call in my new `[PostgresFact]`s** (`grep -n "ExecuteSql\|SqlQuery"`): this was the only
+interpolated one. The rest are `SqlQueryRaw` with literal SQL and an `AS "Value"` alias, or `ExecuteSqlRawAsync` with a
+fully pre-substituted string. I also verified two other preconditions that would have made new tests fail unrun:
+`PostgresTestDatabase` uses `MigrateAsync()` (not `EnsureCreated`), so the hand-written raw-SQL migration from round 1
+**is** applied and the functional-index test can pass; and `ThemaCreatie`'s `Kernwoordenschat`/`Invalshoeken` are
+optional, so the thema POST in the new `KlasEndpointsTests` case binds. **None of these are executed evidence** — they
+are static checks that remove known reasons for CI to go red.
+
+### 3. [MAJOR] `DELETE /api/themas/{id}` had no guard above the new Restrict FK
+
+Real, and the same false-comment pattern as round 1's MAJOR, one file away: `JaarplanConfiguration` justified the
+`themaplaatsingen → Thema` Restrict with *"clear diagnostics over dangling rows"*, but `VerwijderThemaAsync` counted
+nothing, caught nothing, and no handler maps `DbUpdateException`. Deleting a thema placed in **any** class's jaarplan
+threw `23503` as an **unhandled 500**. The FK prevented the dangling row; the diagnostic it claimed to buy was never
+built.
+
+Guarded the way `VerwijderKlasAsync` now is: count the placements, throw `SchoolcontentValidatieFout` naming the count
+→ actionable 400. The message stresses "in een jaarplan" because thema's are school-**wide** while a jaarplan is per
+class, so the blocking placement may sit in a class the deleting teacher never opens.
+
+**One implementation compromise, stated plainly.** `Themaplaatsing` is mapped as an *owned* collection, and EF Core
+exposes no `DbSet` — hence no server-side query — for an owned type. So the count loads the plans and counts in memory.
+Correct on both providers, no raw SQL, and the volume makes it a non-issue (one plan per class, a few dozen classes, and
+it runs only on an explicit thema delete). **But it is the wrong shape if placements ever need real querying** — E5's
+dekking must ask "is this thema placed anywhere?" for every leerplandoel — and at that point `Themaplaatsing` should
+stop being owned and get its own `DbSet`. The table and columns are already identical either way, so that is a mapping
+change, not a data migration. Deliberately not done here: it is outside this fix's scope and would be a risky remap
+late in a limited fix budget. Documented on the method.
+
+**Tests.** Executed: `Verwijder_thema_wordt_geweigerd_zolang_het_in_een_jaarplan_staat` and
+`Verwijder_thema_lukt_weer_nadat_de_plaatsing_verdwenen_is` (the second matters — it proves the guard is not "refuse
+whenever any jaarplan exists", which would make every placed thema permanently undeletable). New `[PostgresFact]`
+(**skipped here**): `Een_geplaatst_thema_kan_niet_uit_de_database_verwijderd_worden`, asserting the `23503` the guard
+exists to translate.
+
+### 4. [MINOR] Art. II.2 drift in `Planningsblok` (E3-05 code, outside my diff)
+
+Fixed anyway — three strings, and it makes the rule I wrote into `Themaplaatsing` consistent. `Planningsblok` is
+constructed only by the derivation seam, never from a request body, and no handler maps its exceptions, so its guards
+are programmer-error messages and belong in English. The comment now also records the deliberate **contrast**:
+`Schooljaar`/`Schoolsluiting` keep Dutch guard messages because `SchooljaarBeheerService` re-throws them as user-facing
+400s. Left those alone, as instructed.
+
+### 5. Housekeeping
+
+`backlog/worklogs/E3-01/test-report.md` is committed.
+
+### Gates after fix round 2
+
+| Gate | Result |
+| --- | --- |
+| `dotnet build Jaarplanner.sln` | **Build succeeded**, 0 errors |
+| `dotnet test Jaarplanner.sln` | **412 unit passed / 0 failed / 0 skipped** (was 402 — **+10**) · **27 integration passed / 0 failed / 36 skipped** (was 26/34 — **+1 executed, +2 `[PostgresFact]`**) |
+| `dotnet format --verify-no-changes` | **Clean**, exit 0 |
+
+**Executed vs skipped for this round.** Executed: 10 new unit tests (5 theory cases for status-agnostic removal, the
+rejection-reversibility test, the unknown-placement 404, the klas-delete loop closure, and 2 for the thema guard) plus
+1 new HTTP endpoint test. `[PostgresFact]` and therefore **skipped here**: `Een_plaatsing_verwijderen_verwijdert_haar_rij`
+and `Een_geplaatst_thema_kan_niet_uit_de_database_verwijderd_worden`. The **repaired** cascade test
+(`Een_klas_verwijderen_neemt_haar_jaarplan_en_plaatsingen_mee`) is also `[PostgresFact]` — I fixed a bug that made it
+impossible to pass, but **I have still never seen it pass**; only CI can show that.
+
+### Still open after this round
+
+1. **No live Azure round-trip** — owner's waiver-or-run decision.
+2. **The relational half is still CI-only** — 36 `[PostgresFact]`s skip here, now including three whose whole purpose
+   is to back guards this story added (the klas cascade, the placement-row delete, the thema Restrict).
+3. **`Themaplaatsing` is owned, so it cannot be queried server-side** — fine for today's two guards, wrong for E5
+   dekking. Flagged in code and here.
+4. **Art. II.3 untouched**; my English 422 still diverges from the two Dutch-titled handlers, by reasoned choice.
+5. **A slice of FR-7/E3-07 scope now lives in E3-01** (the placement DELETE). The orchestrator is noting it in the
+   backlog.

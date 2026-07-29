@@ -47,19 +47,24 @@ public sealed class Planningsblok : IEquatable<Planningsblok>
         DateOnly eind,
         int? ouderOrdinaal = null)
     {
+        // All three guards below catch programmer error, never user input: a Planningsblok is constructed only by the
+        // derivation seam (IPlanningsblokIndeling), never from a request body, and no handler maps these exceptions.
+        // English per Art. II.2 — the same rule Themaplaatsing's guards follow. Contrast Schooljaar/Schoolsluiting,
+        // whose Dutch guard messages ARE deliberately Dutch because SchooljaarBeheerService re-throws them as
+        // user-facing 400s.
         if (ordinaal < 1)
         {
-            throw new ArgumentOutOfRangeException(nameof(ordinaal), ordinaal, "Een planningsblok begint bij ordinaal 1.");
+            throw new ArgumentOutOfRangeException(nameof(ordinaal), ordinaal, "A planningsblok's ordinaal starts at 1.");
         }
 
         if (eind < start)
         {
-            throw new ArgumentException("Het einde van een planningsblok mag niet voor de start liggen.", nameof(eind));
+            throw new ArgumentException("A planningsblok's end must not precede its start.", nameof(eind));
         }
 
         if (niveau == Planningsblokniveau.Themaperiode && ouderOrdinaal is not null)
         {
-            throw new ArgumentException("Een themaperiode heeft geen ouderblok.", nameof(ouderOrdinaal));
+            throw new ArgumentException("A themaperiode has no parent block.", nameof(ouderOrdinaal));
         }
 
         Niveau = niveau;

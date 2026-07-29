@@ -128,6 +128,45 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         Assert.Equal(blokStart, overlevend.BlokStart);
     }
 
+    /// <summary>
+    /// <b>The escape hatch, over HTTP.</b> A placement can be deleted even when accepted and locked, and the response
+    /// carries the updated plan. Without this route the <c>Klas</c> delete guard was a trap: one accepted placement
+    /// made the class undeletable forever while the guard's message instructed an action the API did not offer.
+    /// </summary>
+    [Fact]
+    public async Task Een_plaatsing_kan_verwijderd_worden_ook_als_ze_aanvaard_en_vergrendeld_is()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+        _factory.AiAntwoord =
+            $"{{\"plaatsingen\":[{{\"blokStart\":\"{blokStart:yyyy-MM-dd}\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}}]}}";
+
+        await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        var plan = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        var plaatsingId = Assert.Single(plan!.Plaatsingen).Id;
+
+        // Make it a human decision AND lock it — the state that blocks a klas delete.
+        await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/status", new { status = "Aanvaard" });
+        await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/vergrendeling", new { vergrendeld = true });
+
+        var verwijder = await client.DeleteAsync($"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}");
+        Assert.Equal(HttpStatusCode.OK, verwijder.StatusCode);
+
+        // The response already carries the updated plan, so no re-fetch is needed to render the result.
+        Assert.Empty((await verwijder.Content.ReadFromJsonAsync<JaarplanDto>())!.Plaatsingen);
+
+        // And it is genuinely gone on a fresh GET.
+        var na = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        Assert.Empty(na!.Plaatsingen);
+
+        // Deleting it twice is a 404, not a silent success.
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await client.DeleteAsync($"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}")).StatusCode);
+    }
+
     [Fact]
     public async Task Voorgesteld_terugzetten_geeft_400()
     {

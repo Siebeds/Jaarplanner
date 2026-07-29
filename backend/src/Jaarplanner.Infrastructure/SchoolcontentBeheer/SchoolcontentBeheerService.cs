@@ -153,10 +153,46 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         var thema = await LaadThemaAsync(themaId, cancellationToken);
 
+        // A thema placed in any class's jaarplan cannot be deleted: `themaplaatsingen.ThemaId` is a RESTRICT FK
+        // (JaarplanConfiguration), so without this the delete threw a raw 23503 that no handler maps — an unhandled
+        // 500 for an ordinary user action. The FK already prevented dangling rows; the "clear diagnostics" it was
+        // documented as buying did not exist until this guard. Thema's are school-WIDE, so the blocking plan may
+        // belong to a class the deleting teacher never looks at, which is exactly why the count must be reported.
+        var aantalPlaatsingen = await AantalThemaplaatsingenAsync(themaId, cancellationToken);
+        if (aantalPlaatsingen > 0)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Thema '{thema.Naam}' staat nog {aantalPlaatsingen} keer in een jaarplan en kan niet verwijderd " +
+                "worden. Verwijder het thema eerst uit die jaarplannen.");
+        }
+
         // The EF cascade (ThemaConfiguration) deletes themadoelen + subthema's (and, through the
         // subthema cascade, subdoelen + activiteiten + their owned goal links) with the thema.
         _context.Themas.Remove(thema);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// How many jaarplan placements reference this thema, across every class.
+    /// <para>
+    /// <b>Counted in memory on purpose.</b> <c>Themaplaatsing</c> is mapped as an <i>owned</i> collection of
+    /// <c>Jaarplan</c>, and EF Core exposes no <c>DbSet</c> — and therefore no server-side query — for an owned type.
+    /// The owned collection does load with its owner, so loading the plans and counting is correct on both the Npgsql
+    /// and the in-memory provider, and needs no raw SQL. The volume makes it a non-issue: one plan per class, a
+    /// primary school has a few dozen classes, and this runs only on an explicit thema delete.
+    /// </para>
+    /// <para>
+    /// If a later story needs to <i>query</i> placements properly — E5's dekking must ask "is this thema placed
+    /// anywhere?" for every leerplandoel — <c>Themaplaatsing</c> should stop being owned and get its own
+    /// <c>DbSet</c>. The table and columns are already identical either way, so that is a mapping change rather than
+    /// a data migration. Deliberately not done here: it is outside this fix's scope.
+    /// </para>
+    /// </summary>
+    private async Task<int> AantalThemaplaatsingenAsync(Guid themaId, CancellationToken cancellationToken)
+    {
+        var plannen = await _context.Jaarplannen.ToListAsync(cancellationToken);
+
+        return plannen.Sum(plan => plan.Plaatsingen.Count(p => p.ThemaId == themaId));
     }
 
     // --- Themadoel (school-scoped; 2–3 per thema). ---

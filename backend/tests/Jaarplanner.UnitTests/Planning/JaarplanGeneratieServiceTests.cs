@@ -459,6 +459,91 @@ public sealed class JaarplanGeneratieServiceTests
             service.WijzigVergrendelingAsync(klas.Id, Guid.NewGuid(), vergrendeld: true));
     }
 
+    /// <summary>
+    /// A placement can be removed whatever its status or lock — an explicit teacher action is the one actor Art. IV.2
+    /// allows to discard a human decision. This is the escape hatch the <c>Klas</c> delete guard depends on, and
+    /// (see the next test) the only way a <c>geweigerd</c> placement can ever leave a plan.
+    /// </summary>
+    [Theory]
+    [InlineData(KoppelingStatus.Voorgesteld, false)]
+    [InlineData(KoppelingStatus.Aanvaard, false)]
+    [InlineData(KoppelingStatus.Geweigerd, false)]
+    [InlineData(KoppelingStatus.Manueel, false)]
+    [InlineData(KoppelingStatus.Aanvaard, true)]   // locked as well
+    public async Task Een_plaatsing_kan_verwijderd_worden_ongeacht_status_of_vergrendeling(
+        KoppelingStatus status,
+        bool vergrendeld)
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var herfst = Herfst();
+
+        var jaarplan = new Jaarplan(klas.Id);
+        var plaatsing = jaarplan.VoegPlaatsingToe(
+            herfst.Id, Planningsblokniveau.Themaperiode, blokken[0].Start, status, "motivatie");
+        plaatsing.StelVergrendelingIn(vergrendeld);
+
+        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [herfst], jaarplan);
+        var service = new JaarplanGeneratieService(new FakeAiClient(), Indeling, opslag);
+
+        var na = await service.VerwijderPlaatsingAsync(klas.Id, plaatsing.Id);
+
+        Assert.Empty(na.Plaatsingen);
+        Assert.Empty(jaarplan.Plaatsingen);
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// Removing a <c>geweigerd</c> placement lifts the suppression: the AI can propose that thema/block again. Before
+    /// the delete endpoint existed, a rejection was irreversible and silenced that slot for good.
+    /// </summary>
+    [Fact]
+    public async Task Na_het_verwijderen_van_een_afwijzing_kan_het_thema_opnieuw_voorgesteld_worden()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var herfst = Herfst();
+
+        var jaarplan = new Jaarplan(klas.Id);
+        var geweigerd = jaarplan.VoegPlaatsingToe(
+            herfst.Id, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Geweigerd, "afgewezen");
+
+        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [herfst], jaarplan);
+        var antwoord = Antwoord(("Herfst", blokken[0].Start));
+
+        // While the rejection stands, the proposal is suppressed and reported as Afgewezen.
+        var geblokkeerd = await new JaarplanGeneratieService(new FakeAiClient(antwoord), Indeling, opslag)
+            .GenereerAsync(klas.Id);
+        Assert.Equal(0, geblokkeerd.AantalNieuw);
+        Assert.Single(geblokkeerd.Afgewezen);
+
+        // The teacher removes it.
+        await new JaarplanGeneratieService(new FakeAiClient(), Indeling, opslag)
+            .VerwijderPlaatsingAsync(klas.Id, geweigerd.Id);
+
+        // Now the same thema/block can be proposed again.
+        var opnieuw = await new JaarplanGeneratieService(new FakeAiClient(antwoord), Indeling, opslag)
+            .GenereerAsync(klas.Id);
+
+        Assert.Equal(1, opnieuw.AantalNieuw);
+        Assert.Empty(opnieuw.Afgewezen);
+        Assert.Equal("Voorgesteld", Assert.Single(opnieuw.Jaarplan!.Plaatsingen).Status);
+    }
+
+    [Fact]
+    public async Task Een_onbekende_plaatsing_verwijderen_geeft_een_nietgevonden_fout()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+        await service.GenereerAsync(klas.Id);
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => service.VerwijderPlaatsingAsync(klas.Id, Guid.NewGuid()));
+    }
+
     [Fact]
     public void Service_verwerpt_null_afhankelijkheden()
     {

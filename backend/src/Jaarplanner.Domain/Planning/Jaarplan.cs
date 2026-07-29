@@ -144,4 +144,26 @@ public sealed class Jaarplan
     /// <summary>The placement with this id, or null. Used by the review path (status / vergrendeling).</summary>
     public Themaplaatsing? VindPlaatsing(Guid plaatsingId) =>
         _plaatsingen.FirstOrDefault(p => p.Id == plaatsingId);
+
+    /// <summary>
+    /// Removes one placement — taking a thema out of a period — <b>regardless of its status or lock</b>.
+    /// <para>
+    /// <b>Why status is deliberately not checked here.</b> Art. IV.2 reserves the disposal of a human decision to the
+    /// human; it does not make that decision permanent. This method is only ever reached from an explicit teacher
+    /// action, which is exactly the actor allowed to discard it. Contrast
+    /// <see cref="VerwijderVervangbarePlaatsingen"/>, which is reached from <i>generation</i> and therefore must skip
+    /// anything a human touched.
+    /// </para>
+    /// <para>
+    /// It exists because the <c>Klas</c> delete guard counts <see cref="MenselijkBeslotenPlaatsingen"/>, and a guard
+    /// whose remediation does not exist is a trap rather than a safeguard: without this, one accepted or rejected
+    /// placement made the class permanently undeletable and its own message instructed an impossible action.
+    /// Removing a thema from a period is also plain manual editing a teacher must be able to do (FR-7).
+    /// </para>
+    /// </summary>
+    public void VerwijderPlaatsing(Themaplaatsing plaatsing)
+    {
+        ArgumentNullException.ThrowIfNull(plaatsing);
+        _plaatsingen.Remove(plaatsing);
+    }
 }

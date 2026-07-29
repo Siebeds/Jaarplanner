@@ -126,6 +126,10 @@ public sealed class KlasBeheerService : IKlasBeheerService
         // delete is refused while any placement is one, and the count is reported the way the subthema guard does.
         // Loading it also tracks it, which is what makes the cascade below happen through the change tracker rather
         // than only through the database's own ON DELETE.
+        //
+        // The remediation this message names is REAL: DELETE /api/klassen/{klasId}/jaarplan/plaatsingen/{id} removes
+        // a placement whatever its status or lock. The first version of this guard shipped without that endpoint, so
+        // one accepted placement made the class undeletable forever and this message instructed the impossible.
         var jaarplan = await _context.Jaarplannen
             .FirstOrDefaultAsync(j => j.KlasId == klasId, cancellationToken);
         var besloten = jaarplan?.MenselijkBeslotenPlaatsingen.Count ?? 0;
@@ -133,7 +137,8 @@ public sealed class KlasBeheerService : IKlasBeheerService
         {
             throw new SchoolcontentValidatieFout(
                 $"Klas '{klas.Naam}' heeft een jaarplan met {besloten} beoordeelde of vergrendelde " +
-                "themaplaatsing(en) en kan niet verwijderd worden. Verwijder eerst die plaatsingen uit het jaarplan.");
+                "themaplaatsing(en) en kan niet verwijderd worden. Verwijder die themaplaatsingen eerst uit " +
+                "het jaarplan van deze klas.");
         }
 
         _context.Klassen.Remove(klas);

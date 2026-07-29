@@ -160,6 +160,58 @@ public sealed class KlasVerwijderenTests
     }
 
     /// <summary>
+    /// <b>The escape hatch the guard depends on.</b> Removing the blocking placements makes the class deletable again.
+    /// <para>
+    /// Without this the guard was a trap, not a safeguard: one accepted or rejected placement made
+    /// <c>DELETE /api/klassen/{id}</c> return 400 <b>forever</b>, and the guard's own message instructed an action the
+    /// API did not offer. This test is the proof that the loop actually closes — it drives the exact remediation the
+    /// message names.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Na_het_verwijderen_van_de_plaatsingen_kan_de_klas_wel_verwijderd_worden()
+    {
+        var (klasId, themaId) = await SeedAsync();
+        await MetJaarplanAsync(klasId, plan =>
+        {
+            var aanvaard = plan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 9, 1), KoppelingStatus.Aanvaard);
+            var geweigerd = plan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 10, 6), KoppelingStatus.Geweigerd);
+            geweigerd.StelVergrendelingIn(true);
+            _ = aanvaard;
+        });
+
+        // Refused first — the precondition this test is about.
+        await using (var context = Context())
+        {
+            await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+                () => new KlasBeheerService(context).VerwijderKlasAsync(klasId));
+        }
+
+        // The teacher removes them (what DELETE …/jaarplan/plaatsingen/{id} does).
+        await using (var context = Context())
+        {
+            var jaarplan = await context.Jaarplannen.FirstAsync(j => j.KlasId == klasId);
+            foreach (var plaatsing in jaarplan.MenselijkBeslotenPlaatsingen)
+            {
+                jaarplan.VerwijderPlaatsing(plaatsing);
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        // Now it goes through.
+        await using (var context = Context())
+        {
+            await new KlasBeheerService(context).VerwijderKlasAsync(klasId);
+        }
+
+        await using var na = Context();
+        Assert.Null(await na.Klassen.FirstOrDefaultAsync(k => k.Id == klasId));
+    }
+
+    /// <summary>
     /// The guard is expressed as the complement of <see cref="Themaplaatsing.IsVervangbaar"/>, the one predicate that
     /// also decides what a regeneration may discard. Pinned so the two cannot drift: a second, independently written
     /// "is this a human decision?" test is exactly how a plan ends up protected against regeneration but not against
