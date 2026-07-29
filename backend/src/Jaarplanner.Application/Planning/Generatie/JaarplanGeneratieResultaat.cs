@@ -25,7 +25,8 @@ public sealed record JaarplanGeneratieResultaat
         IReadOnlyList<string> onbekendeThemas,
         IReadOnlyList<string> onbekendeBlokken,
         IReadOnlyList<string> duplicaten,
-        IReadOnlyList<string> afgewezen)
+        IReadOnlyList<string> afgewezen,
+        Spreidingsrapport? spreiding)
     {
         IsGeslaagd = isGeslaagd;
         Fout = fout;
@@ -36,6 +37,7 @@ public sealed record JaarplanGeneratieResultaat
         OnbekendeBlokken = onbekendeBlokken;
         Duplicaten = duplicaten;
         Afgewezen = afgewezen;
+        Spreiding = spreiding;
     }
 
     /// <summary><c>true</c> when the AI response was valid and a (possibly empty) proposal was persisted.</summary>
@@ -89,6 +91,18 @@ public sealed record JaarplanGeneratieResultaat
     /// </summary>
     public IReadOnlyList<string> Afgewezen { get; }
 
+    /// <summary>
+    /// How the resulting plan is spread over the year (E3-02, FR-5.2) — blocks used vs available, goals per
+    /// block, and any block whose thema's need more weeks than it spans. <c>null</c> on failure, because nothing
+    /// was persisted and there is no plan to measure.
+    /// <para>
+    /// <b>Advisory.</b> An uneven spread does not fail the run: the report states the fact and the teacher
+    /// decides (Art. IV.1). It carries no pass/fail verdict — see <see cref="Spreidingsrapport"/> for why a
+    /// threshold is deliberately absent.
+    /// </para>
+    /// </summary>
+    public Spreidingsrapport? Spreiding { get; }
+
     /// <summary>Builds a success result.</summary>
     public static JaarplanGeneratieResultaat Geslaagd(
         JaarplanWeergave jaarplan,
@@ -97,7 +111,8 @@ public sealed record JaarplanGeneratieResultaat
         IReadOnlyList<string> onbekendeThemas,
         IReadOnlyList<string> onbekendeBlokken,
         IReadOnlyList<string> duplicaten,
-        IReadOnlyList<string> afgewezen) =>
+        IReadOnlyList<string> afgewezen,
+        Spreidingsrapport spreiding) =>
         new(isGeslaagd: true,
             fout: null,
             jaarplan,
@@ -106,7 +121,8 @@ public sealed record JaarplanGeneratieResultaat
             onbekendeThemas ?? LeegTekst,
             onbekendeBlokken ?? LeegTekst,
             duplicaten ?? LeegTekst,
-            afgewezen ?? LeegTekst);
+            afgewezen ?? LeegTekst,
+            spreiding);
 
     /// <summary>Builds a failure result — nothing persisted, no partial plan (Art. IV.5).</summary>
     public static JaarplanGeneratieResultaat Mislukt(string fout) =>
@@ -118,5 +134,6 @@ public sealed record JaarplanGeneratieResultaat
             LeegTekst,
             LeegTekst,
             LeegTekst,
-            LeegTekst);
+            LeegTekst,
+            spreiding: null);
 }

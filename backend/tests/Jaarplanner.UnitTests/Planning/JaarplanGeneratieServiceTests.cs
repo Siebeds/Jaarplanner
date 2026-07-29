@@ -362,6 +362,101 @@ public sealed class JaarplanGeneratieServiceTests
         Assert.DoesNotContain("NAT-K3-02", prompt);
     }
 
+    /// <summary>
+    /// E3-02 / FR-5.2: the prompt actually <b>asks</b> for the three spreading properties, and supplies the data
+    /// each one needs to be satisfiable.
+    /// <para>
+    /// This is the honest limit of what a unit test can claim here. Whether the model complies is a property of
+    /// the model, and the client is a fake — so asserting compliance would be asserting the fake. What is pinned
+    /// is that the request is not silently missing the instruction or the figures, which is the failure mode that
+    /// would make FR-5.2 quietly unimplemented while looking done. The <i>result</i> side is measured by
+    /// <c>SpreidingsrapportTests</c>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task De_prompt_vraagt_spreiding_en_geeft_de_cijfers_die_daarvoor_nodig_zijn()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, client, klas, _, _) = Opzet("""{"plaatsingen":[]}""", schooljaar);
+
+        await service.GenereerAsync(klas.Id);
+
+        var systeem = client.LaatsteRequest!.SystemPrompt;
+        var prompt = client.LaatsteRequest.UserPrompt;
+
+        // 1. Spread over as many blocks as possible, rather than clumping.
+        Assert.Contains("zoveel mogelijk verschillende planningsblokken", systeem);
+
+        // 2. A thema must fit the block: expressed in weeks, so the block's weeks are printed.
+        Assert.Contains("niet groter", systeem);
+        Assert.Contains("weken van het blok", systeem);
+        Assert.Contains("weken)", prompt);
+
+        // 3. Logical/seasonal order — and, crucially, derived from the supplied dates and the thema's own words
+        //    rather than from outside knowledge, which Art. IV.4 forbids and the system prompt still refuses.
+        Assert.Contains("seizoen", systeem);
+        Assert.Contains("zoek niets op", systeem);
+        Assert.Contains("Gebruik geen externe kennis", systeem);
+
+        // 4. An even goal distribution needs a per-thema weight, so the goal COUNT is stated, not just the codes.
+        Assert.Contains("evenwichtig", systeem);
+        Assert.Contains("Gekoppelde leerplandoelen (1): NAT-K3-01", prompt);
+
+        // "Respect the number of available blocks" needs the denominator stated outright, not tallied from a list.
+        Assert.Contains($"Aantal beschikbare blokken: {blokken.Count}", prompt);
+
+        // Still no calendar unit smuggled in by the new spreading text (Art. IX.3) — "weken" is a block LENGTH,
+        // never a planning unit, and no month may appear.
+        foreach (var maand in (string[])["januari", "maart", "mei", "september", "december"])
+        {
+            Assert.DoesNotContain(maand, systeem, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// The run reports how the resulting plan is spread (E3-02), so a teacher sees a clumped proposal as clumped.
+    /// It is <b>advisory</b>: the badly spread plan is still returned in full and the run still succeeds
+    /// (Art. IV.1) — a generator that rejected its own output would be deciding for the teacher.
+    /// </summary>
+    [Fact]
+    public async Task Een_geklonterd_voorstel_slaagt_en_wordt_als_geklonterd_gerapporteerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var eerste = blokken[0].Start.ToString("yyyy-MM-dd");
+
+        // Both thema's in the SAME first block, leaving every other period empty.
+        var antwoord =
+            $"{{\"plaatsingen\":[" +
+            $"{{\"blokStart\":\"{eerste}\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}}," +
+            $"{{\"blokStart\":\"{eerste}\",\"thema\":\"Water\",\"motivatie\":\"ook hier\"}}]}}";
+        var (service, _, _, klas, _, _) = Opzet(antwoord, schooljaar);
+
+        var resultaat = await service.GenereerAsync(klas.Id);
+
+        Assert.True(resultaat.IsGeslaagd);          // advisory: a bad spread is not a failed run
+        Assert.Equal(2, resultaat.AantalNieuw);     // and nothing was dropped
+
+        var spreiding = resultaat.Spreiding;
+        Assert.NotNull(spreiding);
+        Assert.Equal(blokken.Count, spreiding!.AantalBlokken);
+        Assert.Equal(1, spreiding.AantalGebruikteBlokken);
+        Assert.Equal(blokken.Count - 1, spreiding.LegeBlokOrdinalen.Count);
+    }
+
+    /// <summary>A failed run has nothing to measure, so it reports no spread rather than a misleading zero.</summary>
+    [Fact]
+    public async Task Een_mislukte_generatie_levert_geen_spreidingsrapport_op()
+    {
+        var (service, _, _, klas, _, _) = Opzet("dit is geen JSON {kapot");
+
+        var resultaat = await service.GenereerAsync(klas.Id);
+
+        Assert.False(resultaat.IsGeslaagd);
+        Assert.Null(resultaat.Spreiding);
+    }
+
     [Fact]
     public async Task Een_leeg_geldig_antwoord_slaagt_en_plaatst_niets()
     {

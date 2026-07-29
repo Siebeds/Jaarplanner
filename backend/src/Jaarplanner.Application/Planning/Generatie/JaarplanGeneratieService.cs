@@ -159,6 +159,15 @@ public sealed class JaarplanGeneratieService
 
         await _opslag.BewaarAsync(cancellationToken);
 
+        // Measure what the model actually produced (E3-02, FR-5.2). Deliberately AFTER persisting and with no
+        // power to veto: the prompt asks for a good spread, this reports the one that arrived, and the teacher
+        // decides (Art. IV.1). Measured over the whole plan — not just this run's additions — because the year a
+        // teacher looks at includes the placements they had already accepted or locked.
+        var spreiding = Spreidingsrapport.Meet(
+            jaarplan.Plaatsingen.Where(p => p.BlokNiveau == GeneratieNiveau),
+            blokken,
+            themas.ToDictionary(t => t.Id));
+
         return JaarplanGeneratieResultaat.Geslaagd(
             Projecteer(klas, schooljaar, blokken, themas, jaarplan),
             nieuw,
@@ -166,7 +175,8 @@ public sealed class JaarplanGeneratieService
             onbekendeThemas,
             onbekendeBlokken,
             duplicaten,
-            afgewezen);
+            afgewezen,
+            spreiding);
     }
 
     /// <summary>

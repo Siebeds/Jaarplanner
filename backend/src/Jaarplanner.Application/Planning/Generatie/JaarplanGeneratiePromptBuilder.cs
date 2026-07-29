@@ -63,6 +63,18 @@ public static class JaarplanGeneratiePromptBuilder
         "aanpast." + Nl +
         "- Geef bij elk voorstel een korte motivatie in het Nederlands (\"waarom past dit thema hier?\")." + Nl +
         "- Je stelt enkel voor; de leerkracht beslist. Pas niets automatisch toe." + Nl +
+        Nl +
+        "Spreiding (in deze volgorde belangrijk):" + Nl +
+        "- Gebruik zoveel mogelijk verschillende planningsblokken in plaats van enkele thema's samen in " +
+        "één blok te zetten. Er zijn niet meer thema's dan blokken nodig." + Nl +
+        "- Plaats een thema in een blok dat lang genoeg is: de duur van het thema in weken mag niet groter " +
+        "zijn dan het aantal weken van het blok." + Nl +
+        "- Let op een logische volgorde. Wijst de naam of wijzen de invalshoeken van een thema op een " +
+        "seizoen of een moment in het schooljaar, kies dan een blok waarvan de opgegeven datums in dat " +
+        "seizoen vallen. Leid dat af uit de themanaam en de datums die hieronder staan; zoek niets op en " +
+        "voeg geen kennis van buiten toe." + Nl +
+        "- Verdeel de gekoppelde leerplandoelen evenwichtig over het schooljaar. Zet niet alle " +
+        "doelenrijke thema's in de eerste blokken." + Nl +
         "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst of uitleg eromheen:" + Nl +
         "  {\"plaatsingen\": [{\"blokStart\": \"" + JaarplanGeneratieResponseParser.DatumFormaat +
         "\", \"thema\": \"<themanaam>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
@@ -140,13 +152,21 @@ public static class JaarplanGeneratiePromptBuilder
             return;
         }
 
+        // The count is stated explicitly rather than left to be counted from the list: FR-5.2's first property is
+        // "respect the number of available blocks", and a model that has to tally a list to know the denominator
+        // is a model that may get the denominator wrong.
+        Line(sb, $"Aantal beschikbare blokken: {blokken.Count}");
+        Line(sb, string.Empty);
+
         // Ordered by the stable key (start date) so caller ordering cannot change the prompt.
         foreach (var blok in blokken.OrderBy(b => b.Start))
         {
+            // Weeks are printed next to days because the fit rule is expressed in weeks (a thema's DuurWeken).
+            // Making the model divide by 7 itself is an arithmetic step that buys nothing.
             Line(
                 sb,
                 $"- startdatum {Datum(blok.Start)} | einddatum {Datum(blok.Eind)} | {blok.AantalDagen} dagen " +
-                $"| label \"{blok.Niveau} {blok.Ordinaal}\"");
+                $"({Weken(blok.AantalDagen)} weken) | label \"{blok.Niveau} {blok.Ordinaal}\"");
         }
     }
 
@@ -187,7 +207,10 @@ public static class JaarplanGeneratiePromptBuilder
         var doelcodes = ThemaDoelcodes(thema);
         if (doelcodes.Count > 0)
         {
-            Line(sb, $"  Gekoppelde leerplandoelen: {string.Join(", ", doelcodes)}");
+            // The count is stated as well as the codes. FR-5.2 asks for an even distribution OF THE GOALS, so the
+            // model needs the per-thema weight to balance against; deriving it by counting a comma-separated list
+            // is exactly the kind of incidental arithmetic that goes wrong quietly.
+            Line(sb, $"  Gekoppelde leerplandoelen ({doelcodes.Count}): {string.Join(", ", doelcodes)}");
         }
     }
 
@@ -209,6 +232,13 @@ public static class JaarplanGeneratiePromptBuilder
             .OrderBy(code => code, StringComparer.Ordinal)
             .ToList();
     }
+
+    /// <summary>
+    /// Days as weeks to one decimal, invariant-formatted so the prompt is byte-identical on every platform (a
+    /// Dutch locale would render "4,4" and break the snapshot on one OS but not the other).
+    /// </summary>
+    private static string Weken(int dagen) =>
+        (dagen / 7.0).ToString("0.0", CultureInfo.InvariantCulture);
 
     private static string Datum(DateOnly datum) =>
         datum.ToString(JaarplanGeneratieResponseParser.DatumFormaat, CultureInfo.InvariantCulture);

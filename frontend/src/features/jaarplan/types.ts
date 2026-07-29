@@ -68,6 +68,54 @@ export interface Themaplaatsing {
   doelcodes: string[];
 }
 
+/** One block's share of the plan, as measured after generation (E3-02, FR-5.2). */
+export interface Blokspreiding {
+  ordinaal: number;
+  start: string;
+  aantalThemas: number;
+  /** Distinct leerplandoelen carried by the thema's in this block. */
+  aantalDoelen: number;
+  /** Sum of the placed thema's durations, in weeks. */
+  benodigdeWeken: number;
+  /** The block's own span in weeks. */
+  beschikbareWeken: number;
+  /** True when the placed thema's need more weeks than the block spans. */
+  isOverbelast: boolean;
+}
+
+/**
+ * How a generated plan is spread over the year (E3-02, FR-5.2).
+ *
+ * **Advisory and threshold-free by design.** There is no "good/bad" verdict here, because nothing in the
+ * functional analysis defines an acceptable spread and inventing a limit in code would answer a question that
+ * belongs to the school — the same reasoning that keeps the kalender's "te vol" threshold provisional.
+ */
+export interface Spreidingsrapport {
+  aantalBlokken: number;
+  aantalGebruikteBlokken: number;
+  blokken: Blokspreiding[];
+  legeBlokOrdinalen: number[];
+  overbelasteBlokOrdinalen: number[];
+  minsteDoelenInEenBlok: number;
+  meesteDoelenInEenBlok: number;
+}
+
+/** The outcome of one generation run (FR-5.1). On failure nothing is persisted (Art. IV.5). */
+export interface Generatieresultaat {
+  isGeslaagd: boolean;
+  fout: string | null;
+  jaarplan: Jaarplan | null;
+  /** Placements added by this run, each as `Voorgesteld` (Art. IV.2). */
+  aantalNieuw: number;
+  /** Pre-existing placements left alone because they were locked or already decided on. */
+  aantalBehouden: number;
+  onbekendeThemas: string[];
+  onbekendeBlokken: string[];
+  duplicaten: string[];
+  afgewezen: string[];
+  spreiding: Spreidingsrapport | null;
+}
+
 /** A class's jaarplan as the calendar reviews it. */
 export interface Jaarplan {
   klasId: string;
