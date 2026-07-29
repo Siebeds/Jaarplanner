@@ -5,19 +5,29 @@ E3-07 (drag-and-drop). Recorded in [`backlog/worklogs/E3-10/implementation.md`](
 The five review questions below were **not** individually answered at approval — they stay open as
 build-time decisions carried into E3-06/E3-09.
 
-> **What this approval does and does not evidence.** ADR-0017 names two reviewer groups, *directie
-> **and** teachers*. Only the directie half is on record: **no separate teacher-feedback session is
-> documented anywhere in the repo** — not a date, not participants, not a captured comment — despite
-> E3-10 being titled "wireframe **+ teacher feedback**". The worklog's test-report evidences the
-> criterion *"Reviewed with directie/teachers"* with the string *"Approved 2026-07-28"*, i.e. with its
-> own conclusion. Treat the teacher half as **unmet and owed**, not as absorbed by the `[x]`; the five
-> open questions below are exactly the kind a teacher answers in five minutes. Route it through E3-06
-> before the calendar is built on assumptions no teacher has seen.
+> **What was approved, and what the teachers still assess** *(clarified by the project owner, 2026-07-29)*.
+> ADR-0017 names two reviewer groups, *directie **and** teachers*, and only the directie half is on
+> record here. That is **by design, not an omission**: this wireframe is approved as the basis for
+> building the **first clickable draft** of the kalender (E3-06), and *that* draft is what directie **and
+> teachers** will assess and click through. The teacher review is **sequenced after** the draft, not
+> skipped — a paper wireframe is a poor thing to hand a non-technical teacher when the interaction is
+> the whole point.
 >
-> *Two prior states of this header, both wrong in opposite directions:* it read "draft, awaiting review
-> — nothing here is approved" until 2026-07-29, contradicting the backlog and worklog that authorise the
-> build; the correction then asserted a bare "approved" with no actor, silently dropping the teacher half
-> that the original text had named. The gate you name is the gate you can check.
+> Two consequences, both binding:
+> 1. **E3-06 is a review artifact before it is a feature.** It is built to be assessed and changed, so
+>    prefer the cheapest structure that can be clicked through honestly. Do not harden or optimise
+>    against requirements the review has not confirmed.
+> 2. **The five open questions below stay open, and the draft must not quietly answer them.** Where the
+>    build has to pick something to be clickable, pick visibly and reversibly, and list it for the review
+>    rather than letting an implementation detail become a decision nobody made.
+>
+> *Prior states of this header, each wrong differently:* it read "draft, awaiting review — nothing here
+> is approved" until 2026-07-29, contradicting the backlog and worklog that authorise the build; the
+> first correction asserted a bare "approved" with no actor; the second inferred from the missing
+> teacher record that the teacher half had been **skipped and was owed**, when in fact it is scheduled
+> against the artifact this approval authorises. Absent evidence was read as evidence of absence. The
+> lesson worth keeping is the narrow one: **the gate you name is the gate you can check** — the record
+> should have said *when* the teacher review happens, and now it does.
 **Artifact:** [`e3-10-kalender.html`](e3-10-kalender.html) — open it in a browser; no build step, works offline.
 **Refs:** FR-6.1–6.5, [ADR-0017](../../adr/0017-ui-ux-design-system.md) (wireframes-first),
 [ADR-0013](../../adr/0013-planningsblok-abstraction.md), [`ui-ux-approach.md` §4](../ui-ux-approach.md),
