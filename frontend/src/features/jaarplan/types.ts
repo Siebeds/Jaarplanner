@@ -19,7 +19,7 @@ export interface Planningsblok {
   /** For a subthemaperiode, the themaperiode it nests in; null for a themaperiode. */
   ouderOrdinaal: number | null;
   /** Days the school is open in this block — what the ribbon sizes blocks on. */
-  aantalLesdagen: number;
+  aantalOpenDagen: number;
 }
 
 /** A vakantie: a literal gap between two blocks in the ribbon. */

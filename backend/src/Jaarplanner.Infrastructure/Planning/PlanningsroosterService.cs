@@ -43,7 +43,7 @@ public sealed class PlanningsroosterService : IPlanningsroosterService
                 blok.Start,
                 blok.Eind,
                 blok.OuderOrdinaal,
-                TelLesdagen(schooljaar, blok)))
+                TelOpenDagen(schooljaar, blok)))
             .ToList();
 
         // Vakanties only — a VrijeDag sits inside a block and must not be drawn as a gap (ADR-0020 §5).
@@ -68,18 +68,18 @@ public sealed class PlanningsroosterService : IPlanningsroosterService
     /// already owns the "inside the year and covered by no closure" rule. Blocks span weeks, so the day-by-day
     /// loop is trivially cheap and keeps the definition in exactly one place.
     /// </summary>
-    private static int TelLesdagen(Schooljaar schooljaar, Planningsblok blok)
+    private static int TelOpenDagen(Schooljaar schooljaar, Planningsblok blok)
     {
-        var lesdagen = 0;
+        var openDagen = 0;
 
         for (var datum = blok.Start; datum <= blok.Eind; datum = datum.AddDays(1))
         {
             if (schooljaar.IsLesdag(datum))
             {
-                lesdagen++;
+                openDagen++;
             }
         }
 
-        return lesdagen;
+        return openDagen;
     }
 }

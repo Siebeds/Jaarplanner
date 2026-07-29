@@ -62,10 +62,16 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
         <h2 id="kalender-titel" className="text-lg font-semibold text-slate-900">
           {t("kalender.titel")} — {plan.klasNaam}
         </h2>
-        <p className="text-xs text-slate-500">
-          {t("kalender.schooljaarLabel")}: {plan.schooljaarNaam} ·{" "}
-          {t("kalender.indelingLabel")}: {grid.blokindeling}
+        {/* `grid.blokindeling` is deliberately NOT rendered. It is a Dutch label authored server-side in
+            GeconfigureerdePlanningsblokIndeling, and Art. II.3's first clause ("all user-facing strings
+            are Dutch AND centralised in nl.json") forbids that until the open ruling in backlog/README.md
+            lands. Displaying it would have made this the first story to put server-generated Dutch in
+            front of a user — the exact threshold that entry says ends "backend + tests only" for option
+            (b). The grain is explained from nl.json instead, which costs the review nothing. */}
+        <p className="text-xs text-muted-foreground">
+          {t("kalender.schooljaarLabel")}: {plan.schooljaarNaam}
         </p>
+        <p className="text-xs text-muted-foreground">{t("kalender.indelingUitleg")}</p>
       </header>
 
       {/* Says out loud what the draft cannot do yet, so the review does not mistake absence for a bug.
@@ -95,11 +101,12 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             ) : (
               <li
                 key={`gat-${segment.onderbreking.start}`}
-                /* A real break in the ribbon, named in the gap — not a period. */
+                /* A real break in the ribbon, named in the gap — not a period. No `title`: it would only
+                   repeat the visible name, and routing a server value through t() purely to satisfy the
+                   i18n lint selector is the guard being satisfied rather than served. */
                 className="flex w-8 shrink-0 items-center justify-center rounded bg-slate-100 px-1"
-                title={t("kalender.vakantie", { naam: segment.onderbreking.naam })}
               >
-                <span className="whitespace-nowrap text-[0.625rem] uppercase tracking-wide text-slate-500 [writing-mode:vertical-rl]">
+                <span className="whitespace-nowrap text-[0.625rem] uppercase tracking-wide text-foreground [writing-mode:vertical-rl]">
                   {segment.onderbreking.naam}
                 </span>
               </li>

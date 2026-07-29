@@ -25,12 +25,12 @@ export function formatteerPeriode(start: string, eind: string): string {
 /**
  * The block's length in weeks, Dutch-formatted to one decimal ("4,4").
  *
- * Derived from `aantalLesdagen`, i.e. days the school is not closed. Note this still counts weekends —
- * see the caveat on `PlanningsblokWeergave.AantalLesdagen`; the resulting figure matches the approved
+ * Derived from `aantalOpenDagen`, i.e. days the school is not closed. Note this still counts weekends —
+ * see the caveat on `PlanningsblokWeergave.AantalOpenDagen`; the resulting figure matches the approved
  * wireframe's own arithmetic (31 days ÷ 7 = "4,4 weken") and is a review question, not a silent choice.
  */
-export function formatteerWeken(aantalLesdagen: number): string {
-  return (aantalLesdagen / 7).toLocaleString("nl-BE", {
+export function formatteerWeken(aantalOpenDagen: number): string {
+  return (aantalOpenDagen / 7).toLocaleString("nl-BE", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });

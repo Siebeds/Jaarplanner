@@ -16,8 +16,8 @@ import type { Planningsblok, Planningsonderbreking, Themaplaatsing } from "./typ
  * stale placement is a lie about the plan, not a cosmetic bug.
  */
 
-function blok(ordinaal: number, start: string, eind: string, aantalLesdagen = 30): Planningsblok {
-  return { ordinaal, start, eind, ouderOrdinaal: null, aantalLesdagen };
+function blok(ordinaal: number, start: string, eind: string, aantalOpenDagen = 30): Planningsblok {
+  return { ordinaal, start, eind, ouderOrdinaal: null, aantalOpenDagen };
 }
 
 function plaatsing(overrides: Partial<Themaplaatsing> & { id: string }): Themaplaatsing {
@@ -43,10 +43,14 @@ describe("formatteerDatum", () => {
     expect(formatteerDatum("2026-12-20")).toBe("20 dec");
   });
 
-  it("does not shift the date across midnight (parsed as local, never UTC)", () => {
-    // `new Date("2026-09-01")` is UTC midnight and renders as 31 August west of Greenwich.
-    expect(formatteerDatum("2026-09-01")).toBe("1 sep");
-  });
+  // NOTE: there is deliberately no test here for "does not shift across midnight". An earlier revision
+  // had one, asserting `formatteerDatum("2026-09-01") === "1 sep"` — byte-identical to the assertion
+  // above it. `new Date("2026-09-01")` parses as UTC midnight, which still formats as "1 sep" in both UTC
+  // (CI) and Europe/Brussels (dev), so the test could not fail on either machine even if the
+  // implementation regressed to the unsafe form. It only distinguishes the two west of Greenwich. A test
+  // that cannot fail is worse than no test: it reports coverage it does not have. Pinning this properly
+  // needs the process timezone set (e.g. TZ=America/New_York), which belongs in the vitest config rather
+  // than in an assertion that quietly passes.
 
   it("formats a span", () => {
     expect(formatteerPeriode("2026-09-01", "2026-10-01")).toBe("1 sep – 1 okt");

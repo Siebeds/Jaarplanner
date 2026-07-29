@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -26,8 +26,8 @@ const rooster: Planningsrooster = {
   niveau: "Themaperiode",
   blokindeling: "themaperiode 5 wk, subthemaperiode 2 wk",
   blokken: [
-    { ordinaal: 1, start: "2026-09-01", eind: "2026-11-01", ouderOrdinaal: null, aantalLesdagen: 62 },
-    { ordinaal: 2, start: "2026-11-09", eind: "2026-12-20", ouderOrdinaal: null, aantalLesdagen: 42 },
+    { ordinaal: 1, start: "2026-09-01", eind: "2026-11-01", ouderOrdinaal: null, aantalOpenDagen: 62 },
+    { ordinaal: 2, start: "2026-11-09", eind: "2026-12-20", ouderOrdinaal: null, aantalOpenDagen: 42 },
   ],
   onderbrekingen: [{ naam: "Herfstvakantie", start: "2026-11-02", eind: "2026-11-08" }],
 };
@@ -40,6 +40,26 @@ function maakJaarplan(plaatsingen: Jaarplan["plaatsingen"]): Jaarplan {
     schooljaarNaam: "2026-2027",
     blokindeling: rooster.blokindeling,
     plaatsingen,
+  };
+}
+
+/** A placement in the first block, overridable per field. */
+function maakPlaatsing(
+  overrides: Partial<Jaarplan["plaatsingen"][number]> & { id: string },
+): Jaarplan["plaatsingen"][number] {
+  return {
+    themaId: `t-${overrides.id}`,
+    themaNaam: "Thema",
+    blokNiveau: "Themaperiode",
+    blokStart: "2026-09-01",
+    blokEind: "2026-11-01",
+    blokOrdinaal: 1,
+    isVervallen: false,
+    status: "Voorgesteld",
+    aiMotivatie: "past hier volgens de AI",
+    vergrendeld: false,
+    doelcodes: [],
+    ...overrides,
   };
 }
 
@@ -112,8 +132,12 @@ describe("Jaarplankalender", () => {
     expect(screen.getByText("8,9 weken")).toBeInTheDocument();
     expect(screen.getByText("6,0 weken")).toBeInTheDocument();
 
-    // Coverage count and the AI motivation are on the card (Art. IV.3).
-    expect(screen.getByText("2 doelen gedekt")).toBeInTheDocument();
+    // The count says GEKOPPELD, not "gedekt": doelcodes are links, and Art. V.1 makes a doel gedekt only
+    // once its thema is placed. Asserting the exact word is the point — "gedekt" here would be a false
+    // coverage claim in the product whose purpose is provable coverage.
+    expect(screen.getByText("2 doelen gekoppeld")).toBeInTheDocument();
+    expect(screen.queryByText(/gedekt/)).toBeNull();
+
     expect(screen.getByText(/past bij het begin van het schooljaar/)).toBeInTheDocument();
   });
 
@@ -146,17 +170,43 @@ describe("Jaarplankalender", () => {
     expect(melding).toHaveTextContent("Te herzien");
 
     // And there is no way to dismiss it (directie 2026-07-28: "fix later" is not an option offered).
+    // Checked for links as well as buttons: with no buttons anywhere in the feature, asserting only
+    // `queryByRole("button")` would pass vacuously and would not catch a dismiss control added as an <a>.
     expect(within(melding).queryByRole("button")).toBeNull();
+    expect(within(melding).queryByRole("link")).toBeNull();
+
+    // It must NOT claim a coverage figure: this thema sits in no period, so under Art. V.1 nothing it
+    // links to is gedekt — and the notice itself says the plan's dekking is untrustworthy while this holds.
+    expect(melding).toHaveTextContent("Dekking onbekend");
+    expect(melding).not.toHaveTextContent("1 doel gekoppeld");
   });
 
-  it("has no axe violations", async () => {
-    stubFetch(maakJaarplan([]));
+  it("has no axe violations on a POPULATED plan", async () => {
+    // Populated deliberately. An earlier revision ran axe over `maakJaarplan([])` — an empty ribbon with
+    // no card, no badge, no lock and no alert, i.e. none of the components most likely to carry a
+    // violation. This renders a te-vol period, a locked accepted card, a motivation and the stale alert.
+    stubFetch(
+      maakJaarplan([
+        maakPlaatsing({ id: "a", themaNaam: "Water", doelcodes: ["A-1", "A-2"] }),
+        maakPlaatsing({ id: "b", themaNaam: "Wonen", status: "Aanvaard", vergrendeld: true }),
+        maakPlaatsing({ id: "c", themaNaam: "Gezond eten", status: "Manueel" }),
+        maakPlaatsing({
+          id: "d",
+          themaNaam: "Feesten in december",
+          blokStart: "2026-12-01",
+          blokEind: null,
+          blokOrdinaal: null,
+          isVervallen: true,
+        }),
+      ]),
+    );
     const { container } = renderKalender();
 
-    await screen.findByText("Periode 1");
+    await screen.findByText("Water");
+    // Premises for this test's reach: the te-vol flag and the stale alert are actually on screen.
+    expect(screen.getByText(/Te vol/)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
 
-    await waitFor(async () => {
-      expect(await axe(container)).toHaveNoViolations();
-    });
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

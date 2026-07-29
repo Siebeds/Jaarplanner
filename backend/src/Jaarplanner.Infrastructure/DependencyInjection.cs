@@ -9,9 +9,9 @@ using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Application.Planning.Rooster;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
-using Jaarplanner.Infrastructure.Demo;
 using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
+using Jaarplanner.Infrastructure.Demo;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.Planning;
@@ -21,6 +21,7 @@ using Jaarplanner.Infrastructure.SchoolcontentImport;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Jaarplanner.Infrastructure;
 
@@ -44,9 +45,15 @@ public static class DependencyInjection
     /// The connection string is resolved from configuration; if absent the app still starts
     /// and the health check reports Unhealthy rather than crashing.
     /// </summary>
+    /// <param name="environment">
+    /// Optional. When supplied, environment-gated registrations (currently only the demo data seeder) can
+    /// require Development. Omitting it — as tests that call this directly would — simply means those
+    /// registrations are skipped, which is the safe default.
+    /// </param>
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment? environment = null)
     {
         var connectionString = configuration.GetConnectionString(PostgresConnectionStringName);
 
@@ -166,7 +173,10 @@ public static class DependencyInjection
         // hand — and deliberately NOT in appsettings.Development.json. WebApplicationFactory loads the latter,
         // so putting it there ran the seeder inside every integration test and broke one on a thema-name
         // collision. If you are tempted to move it back for convenience: that is the bug.
-        if (configuration.GetValue<bool>("Demo:Seed"))
+        // Belt and braces: the flag alone is not enough. `Demo__Seed=true` set as a stray environment
+        // variable in staging or production would otherwise write demo rows into that database, so
+        // Development is required as well.
+        if (configuration.GetValue<bool>("Demo:Seed") && environment?.IsDevelopment() == true)
         {
             services.AddHostedService<DemoDataSeeder>();
         }

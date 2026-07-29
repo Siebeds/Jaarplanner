@@ -69,10 +69,10 @@ public sealed record PlanningsroosterWeergave(
 /// </param>
 /// <param name="Eind">Last day covered, inclusive.</param>
 /// <param name="OuderOrdinaal">For a subthemaperiode, the themaperiode it nests in; null for a themaperiode.</param>
-/// <param name="AantalLesdagen">
-/// Days in the block for which <see cref="Schooljaar.IsLesdag"/> holds: inside the year and covered by
-/// <b>no</b> closure. So a <see cref="Sluitingssoort.VrijeDag"/> inside the block is excluded here even
-/// though it does not split the block — which is the point.
+/// <param name="AantalOpenDagen">
+/// Days in the block on which the school is <b>open</b>: inside the year and covered by <b>no</b> closure
+/// (<see cref="Schooljaar.IsLesdag"/>). So a <see cref="Sluitingssoort.VrijeDag"/> inside the block is
+/// excluded here even though it does not split the block — which is the point.
 /// <para>
 /// <b>The calendar sizes blocks on this, not on the calendar-day span.</b> The wireframe's central claim is
 /// that block width is proportional to teaching time, so a period containing Hemelvaart plus a brugdag must
@@ -80,15 +80,22 @@ public sealed record PlanningsroosterWeergave(
 /// something untrue about how much teaching fits in it.
 /// </para>
 /// <para>
-/// <b>Caveat, stated rather than silently absorbed: this counts weekends.</b> <c>IsLesdag</c> excludes only
-/// closures, and nothing in the codebase models weekends at all (no <c>DayOfWeek</c> anywhere in
-/// <c>backend/src</c>), so a Sunday counts as a lesdag. The figure is therefore "days the school is not
-/// closed", and dividing by 7 yields the calendar-week count the approved wireframe itself uses ("4,4 weken"
-/// for 1 sep – 1 okt = 31/7). Proportional width is unaffected, because weekends fall near-uniformly across
-/// blocks. It is deliberately <b>not</b> fixed here: a second, weekend-aware definition of "lesdag" living in
-/// this mapper while the domain keeps another is precisely the drift this project keeps paying for. Whether
-/// <c>IsLesdag</c> should exclude weekends is a domain question — raised as a review item for E3-06, since a
-/// teacher reading "5,1 weken" is the person who can say whether that reads as five teaching weeks.
+/// <b>Called "open dagen" and not "lesdagen" on purpose: this counts weekends.</b> The domain's
+/// <c>IsLesdag</c> excludes only closures — nothing in the codebase models weekends at all (no
+/// <c>DayOfWeek</c> anywhere in <c>backend/src</c>) — so a Sunday satisfies it. Whether <c>IsLesdag</c>
+/// should exclude weekends is a <b>domain</b> question, deliberately left open for the teachers rather than
+/// answered by a second, weekend-aware definition living in this mapper: that drift is what this project
+/// keeps paying for. What is <i>not</i> deferred is the name. An earlier revision called this field
+/// <c>AantalLesdagen</c> and explained the discrepancy in this comment — but a comment does not travel with
+/// the JSON, and the TypeScript mirror had already re-glossed it as "days the school is open", giving one
+/// field two meanings in a single commit. Naming it for what it counts costs nothing and removes the lie
+/// from the wire contract; the open question survives intact.
+/// </para>
+/// <para>
+/// Dividing by 7 therefore yields the calendar-week figure the approved wireframe itself uses ("4,4 weken"
+/// for 1 sep – 1 okt = 31/7). Proportional width is barely affected, because weekends fall near-uniformly
+/// across blocks — but a block containing vrije dagen renders a slightly weaker narrowing than teaching-day
+/// counting would give, which is part of what the teachers are being asked about.
 /// </para>
 /// </param>
 public sealed record PlanningsblokWeergave(
@@ -96,7 +103,7 @@ public sealed record PlanningsblokWeergave(
     DateOnly Start,
     DateOnly Eind,
     int? OuderOrdinaal,
-    int AantalLesdagen);
+    int AantalOpenDagen);
 
 /// <summary>One vacation, rendered as a gap in the ribbon.</summary>
 /// <param name="Naam">The school's own Dutch name for it ("Herfstvakantie") — shown in the gap.</param>

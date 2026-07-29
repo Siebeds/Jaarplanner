@@ -88,7 +88,7 @@ public sealed class PlanningsroosterEndpointTests : IClassFixture<Planningsroost
         var blok = Assert.Single(rooster!.Blokken, b => b.Start <= pinkstermaandag && pinkstermaandag <= b.Eind);
 
         var kalenderdagen = blok.Eind.DayNumber - blok.Start.DayNumber + 1;
-        Assert.Equal(kalenderdagen - 1, blok.AantalLesdagen);
+        Assert.Equal(kalenderdagen - 1, blok.AantalOpenDagen);
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ public sealed class PlanningsroosterEndpointTests : IClassFixture<Planningsroost
         List<BlokDto> Blokken,
         List<OnderbrekingDto> Onderbrekingen);
 
-    private sealed record BlokDto(int Ordinaal, DateOnly Start, DateOnly Eind, int? OuderOrdinaal, int AantalLesdagen);
+    private sealed record BlokDto(int Ordinaal, DateOnly Start, DateOnly Eind, int? OuderOrdinaal, int AantalOpenDagen);
 
     private sealed record OnderbrekingDto(string Naam, DateOnly Start, DateOnly Eind);
 

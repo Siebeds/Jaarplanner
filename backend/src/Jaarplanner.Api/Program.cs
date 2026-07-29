@@ -41,7 +41,7 @@ builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
 // Data access + database health check live in Infrastructure (Art. VIII — keep Api thin).
 // This registers AppDbContext (UseNpgsql, connection string from configuration) and a
 // "db"/"ready"-tagged readiness check that /health/ready reflects.
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 

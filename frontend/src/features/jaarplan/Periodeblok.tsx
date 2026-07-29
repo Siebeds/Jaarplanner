@@ -27,7 +27,7 @@ export function Periodeblok({ blok, plaatsingen }: PeriodeblokProps) {
     <li
       /* Width proportional to teaching days — the ribbon's central claim (ADR-0013, Art. IX.3).
          `flexGrow` is the one inline style here because the value is data, not design. */
-      style={{ flexGrow: blok.aantalLesdagen }}
+      style={{ flexGrow: blok.aantalOpenDagen }}
       className={`flex min-w-[9rem] shrink-0 basis-0 flex-col rounded-lg border bg-slate-50 ${
         teVol ? "border-amber-500 bg-amber-50" : "border-slate-200"
       }`}
@@ -36,28 +36,35 @@ export function Periodeblok({ blok, plaatsingen }: PeriodeblokProps) {
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700">
           {t("kalender.periode", { ordinaal: blok.ordinaal })}
         </h3>
-        <p className="text-xs text-slate-500">
+        {/* `text-muted-foreground` (a design token, deliberately darkened in index.css) rather than
+            `slate-400`/`slate-500`: those measure 2.45:1 and 4.35:1 against these tinted backgrounds at
+            12px, below the 4.5:1 WCAG 2.2 AA threshold. jsdom cannot evaluate contrast, so the axe test
+            does not catch this — it has to be got right by construction (ADR-0017 §2/§4). */}
+        <p className="text-xs text-muted-foreground">
           {formatteerPeriode(blok.start, blok.eind)}
         </p>
-        <p className="text-xs text-slate-400">
-          {t("kalender.weken", { weken: formatteerWeken(blok.aantalLesdagen) })}
+        <p className="text-xs text-muted-foreground">
+          {t("kalender.weken", { weken: formatteerWeken(blok.aantalOpenDagen) })}
         </p>
 
         {teVol && (
-          /* Icon AND word, never colour alone (Art. XII, FR-6.4). */
-          <p
-            className="mt-1 text-xs font-medium text-amber-800"
-            title={t("kalender.teVolUitleg")}
-          >
-            <span aria-hidden="true">▲</span>{" "}
-            {t("kalender.teVol", { aantal: plaatsingen.length })}
-          </p>
+          <>
+            {/* Icon AND word, never colour alone (Art. XII, FR-6.4). */}
+            <p className="mt-1 text-xs font-medium text-amber-900">
+              <span aria-hidden="true">▲</span>{" "}
+              {t("kalender.teVol", { aantal: plaatsingen.length })}
+            </p>
+            {/* Visible, not a `title` tooltip. The threshold is a placeholder for review question C, and a
+                disclosure that only appears on hover is invisible on touch, unreachable by keyboard and
+                usually unread by screen readers — i.e. not a disclosure at the session it exists for. */}
+            <p className="mt-0.5 text-xs text-amber-900">{t("kalender.teVolUitleg")}</p>
+          </>
         )}
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5 p-2">
         {plaatsingen.length === 0 ? (
-          <p className="text-xs italic text-slate-400">{t("kalender.legeperiode")}</p>
+          <p className="text-xs italic text-muted-foreground">{t("kalender.legeperiode")}</p>
         ) : (
           plaatsingen.map((plaatsing) => (
             <Themakaart key={plaatsing.id} plaatsing={plaatsing} />

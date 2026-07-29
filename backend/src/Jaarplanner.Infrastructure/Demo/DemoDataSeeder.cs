@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Planning;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
@@ -21,21 +22,53 @@ namespace Jaarplanner.Infrastructure.Demo;
 /// </para>
 /// <para>
 /// <b>Guards, because seeding a database on startup is otherwise a trap.</b> It runs only when
-/// <c>Demo:Seed</c> is true (set in <c>appsettings.Development.json</c>, absent everywhere else), it is
-/// idempotent on the school year's name, and it never touches an existing row. It is registered from
-/// <c>AddInfrastructure</c> but does nothing at all unless that flag is on, so a production host that somehow
-/// loaded this assembly still writes nothing.
+/// <c>Demo:Seed</c> is true — set in <c>Properties/launchSettings.json</c>, i.e. only when a developer
+/// starts the app by hand, and <b>deliberately not</b> in <c>appsettings.Development.json</c>, which
+/// <c>WebApplicationFactory</c> loads (putting it there ran this seeder inside every integration test).
+/// Registration additionally requires <c>IsDevelopment()</c>. It is idempotent on the school year's name,
+/// it guards the uniquely-indexed class name separately, and <b>no failure here can take the host down</b>:
+/// the whole body is wrapped, because an unhandled exception from <see cref="IHostedService.StartAsync"/>
+/// aborts startup, and the likeliest first-run state — an existing but unmigrated database — throws on the
+/// very first query.
 /// </para>
 /// <para>
-/// <b>The placements are seeded as <c>Voorgesteld</c> with a motivation</b> — the state real generation
-/// produces (Art. IV.1/IV.2). Seeding them as <c>Aanvaard</c> would show a reviewer a plan that appears
-/// already decided, which is precisely the human-in-the-loop claim the review is meant to test.
+/// <b>The placements are seeded as <c>Voorgesteld</c></b> — the state real generation produces
+/// (Art. IV.1/IV.2). Seeding them as <c>Aanvaard</c> would show a reviewer a plan that appears already
+/// decided, which is precisely the human-in-the-loop claim the review is meant to test.
+/// </para>
+/// <para>
+/// <b>And the motivations are marked as examples, for the same reason.</b> They are hand-written, not model
+/// output, but they land in <c>AiMotivatie</c> and render under "Waarom hier?" — at the very session where
+/// teachers judge whether AI motivations are useful. Unmarked, feedback on this fixture prose would be
+/// recorded as feedback on the AI. Each one is therefore prefixed with <see cref="Voorbeeldmarkering"/> so
+/// the invented text is self-identifying wherever it is rendered, without a UI change.
+/// </para>
+/// <para>
+/// <b>What the demo must be able to show.</b> A review artifact that can only render one card variant
+/// teaches the review nothing, so the seed deliberately produces: cards that carry goals (via a handful of
+/// leerplandoelen + themadoelen), and one period holding three thema's so the "te vol" flag — the named
+/// mitigation for E3-10 question C — is actually visible. It does <b>not</b> produce a stale placement:
+/// that would put a permanent alert on every demo. To see that path, edit a vakantie date.
 /// </para>
 /// </summary>
 public sealed class DemoDataSeeder : IHostedService
 {
     /// <summary>The label the seed is idempotent on. A year with this name means the seed already ran.</summary>
     public const string SchooljaarNaam = "2026-2027";
+
+    /// <summary>
+    /// The class the demo plan belongs to. <c>Klas.Naam</c> is uniquely indexed, so its presence is checked
+    /// separately from the school year — otherwise a developer who already created a class by this name
+    /// (it is the example name used throughout the constitution and the tests) would get a unique-violation
+    /// on startup rather than a demo.
+    /// </summary>
+    public const string KlasNaam = "L3 — derde leerjaar (demo)";
+
+    /// <summary>
+    /// Prefix marking a motivation as fixture prose rather than model output. Present in the persisted value
+    /// so it cannot be lost by a UI that forgets to say so.
+    /// </summary>
+    public const string Voorbeeldmarkering = "Voorbeeld (geen AI-antwoord) — ";
 
     private readonly IServiceProvider _services;
     private readonly ILogger<DemoDataSeeder> _logger;
@@ -49,13 +82,27 @@ public sealed class DemoDataSeeder : IHostedService
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        try
+        {
+            await SeedAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Demo data must never stop the app from starting. An exception thrown from StartAsync aborts
+            // the host, and the likeliest first-run state — `docker compose up -d db` with no migration yet
+            // applied — throws 42P01 on the first query below, which would present as "the app is broken"
+            // at the exact moment someone is trying to open the review draft.
+            _logger.LogWarning(ex, "Demo seed failed and was skipped; the application starts regardless.");
+        }
+    }
+
+    private async Task SeedAsync(CancellationToken cancellationToken)
+    {
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         if (!await context.Database.CanConnectAsync(cancellationToken))
         {
-            // No database is not an error here — the app must still start (the /health split exists for
-            // exactly this). Log and skip rather than taking the host down over demo data.
             _logger.LogWarning("Demo seed skipped: no database connection.");
 
             return;
@@ -68,11 +115,21 @@ public sealed class DemoDataSeeder : IHostedService
             return;
         }
 
+        // Klas.Naam is uniquely indexed school-wide, so it needs its own check: the school year can be
+        // absent while a class by this name already exists.
+        if (await context.Klassen.AnyAsync(k => k.Naam == KlasNaam, cancellationToken))
+        {
+            _logger.LogInformation("Demo seed skipped: klas {Naam} already exists.", KlasNaam);
+
+            return;
+        }
+
         var schooljaar = BouwSchooljaar();
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe(KlasNaam, leerjaar: 3);
         context.Schooljaren.Add(schooljaar);
 
         var themas = BouwThemas();
+        await KoppelDoelenAsync(context, themas, cancellationToken);
         context.Themas.AddRange(themas);
 
         // Place the thema's on the blocks the CONFIGURED seam derives, never on hard-coded dates: a demo plan
@@ -84,17 +141,20 @@ public sealed class DemoDataSeeder : IHostedService
         var jaarplan = new Jaarplan(klas.Id);
         foreach (var (thema, index) in themas.Select((t, i) => (t, i)))
         {
-            if (index >= blokken.Count)
+            var blokIndex = BlokVoorThema[index];
+            if (blokIndex >= blokken.Count)
             {
-                break;
+                // Fewer periods than the layout assumes (a different configured grain). Skip rather than
+                // guess: an over-clamped placement would silently invent a crowded period.
+                continue;
             }
 
             jaarplan.VoegPlaatsingToe(
                 thema.Id,
                 Planningsblokniveau.Themaperiode,
-                blokken[index].Start,
+                blokken[blokIndex].Start,
                 KoppelingStatus.Voorgesteld,
-                Motivaties[index % Motivaties.Length]);
+                Voorbeeldmarkering + Motivaties[index % Motivaties.Length]);
         }
 
         context.Jaarplannen.Add(jaarplan);
@@ -110,6 +170,59 @@ public sealed class DemoDataSeeder : IHostedService
 
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    /// <summary>
+    /// Gives each demo thema two themadoelen, so the cards show a goal count instead of all reading
+    /// "Nog geen doelen gekoppeld".
+    /// <para>
+    /// <b>Why it needs leerplandoelen at all.</b> <c>DoelKoppeling.LeerplandoelCode</c> is a real foreign key
+    /// to <c>Leerplandoel.Code</c>, and a fresh database has no curriculum (the Op.stap import is E1-15, and
+    /// minimumdoelen are blocked on E1-12). So the seed creates a small set of its own — clearly marked
+    /// <c>DEMO-*</c> codes against discipline 1, which the E0 migration seeds, and with
+    /// <c>minimumdoelRef = null</c> so they need no <c>Minimumdoel</c> row.
+    /// </para>
+    /// <para>
+    /// <b>These are not Op.stap goals and must never be mistaken for them</b> (Art. III.1: imported
+    /// curriculum is read-only reference data). The <c>DEMO-</c> prefix and the explicit tekst say so on the
+    /// row itself, so a reviewer or a later import sees invented data for what it is. Existing codes are
+    /// left untouched: if a real curriculum has been imported, the seed reuses whatever is there instead.
+    /// </para>
+    /// </summary>
+    private static async Task KoppelDoelenAsync(
+        AppDbContext context,
+        List<Thema> themas,
+        CancellationToken cancellationToken)
+    {
+        var codes = new List<string>();
+
+        for (var i = 1; i <= themas.Count * 2; i++)
+        {
+            var code = $"DEMO-L3-{i:D2}";
+            codes.Add(code);
+
+            if (await context.Leerplandoelen.AnyAsync(d => d.Code == code, cancellationToken))
+            {
+                continue;
+            }
+
+            context.Leerplandoelen.Add(new Leerplandoel(
+                code,
+                Doelsoort.Gemeenschappelijk,
+                jaarFase: "L3",
+                domein: "Demo",
+                subdomein: "Demo",
+                disciplineNummer: "1",
+                tekst: $"Voorbeelddoel {i} — demodata voor de review, geen Op.stap-leerplandoel."));
+        }
+
+        foreach (var (thema, index) in themas.Select((t, i) => (t, i)))
+        {
+            // Two per thema: Art. IX.2's advisory lower bound, so the demo does not also illustrate an
+            // under-anchored thema while it is illustrating everything else.
+            thema.VoegThemadoelToe(new DoelKoppeling(codes[index * 2], KoppelingStatus.Manueel));
+            thema.VoegThemadoelToe(new DoelKoppeling(codes[(index * 2) + 1], KoppelingStatus.Manueel));
+        }
+    }
 
     /// <summary>
     /// The real Belgian 2026-2027 calendar: four vakanties that break a period, and two single free days that
@@ -131,6 +244,18 @@ public sealed class DemoDataSeeder : IHostedService
 
         return schooljaar;
     }
+
+    /// <summary>
+    /// Which themaperiode each thema in <see cref="BouwThemas"/> is placed in, by index.
+    /// <para>
+    /// Not simply <c>0,1,2,3,…</c>: periode 3 (index 2) deliberately holds <b>three</b> thema's so the
+    /// "te vol" flag actually fires in the demo. One card per period would leave
+    /// <c>VOORLOPIGE_TE_VOL_DREMPEL</c> unreachable, and E3-10 question C — "when is a period te vol?" —
+    /// would go to the review with its own illustration invisible. Periode 4 (index 3) is left empty for
+    /// the same reason in reverse: the empty-period state is what a teacher looking for room actually sees.
+    /// </para>
+    /// </summary>
+    private static readonly int[] BlokVoorThema = [0, 1, 2, 2, 2, 4, 5];
 
     private static List<Thema> BouwThemas() =>
     [
