@@ -21,13 +21,15 @@ public sealed record DoelMatchResultaat
         string? fout,
         IReadOnlyList<DoelMatchSuggestieWeergave> bewaard,
         IReadOnlyList<string> overgeslagenOnbekend,
-        IReadOnlyList<string> overgeslagenDuplicaat)
+        IReadOnlyList<string> overgeslagenDuplicaat,
+        int aantalKandidaten)
     {
         IsGeslaagd = isGeslaagd;
         Fout = fout;
         Bewaard = bewaard;
         OvergeslagenOnbekend = overgeslagenOnbekend;
         OvergeslagenDuplicaat = overgeslagenDuplicaat;
+        AantalKandidaten = aantalKandidaten;
     }
 
     /// <summary><c>true</c> when the AI response was valid and (zero or more) suggestions were persisted.</summary>
@@ -45,17 +47,28 @@ public sealed record DoelMatchResultaat
     /// <summary>Codes the model returned that were already linked to the thema — skipped for idempotency.</summary>
     public IReadOnlyList<string> OvergeslagenDuplicaat { get; }
 
+    /// <summary>
+    /// How many Op.stap leerplandoelen the run actually considered — the size of the candidate set the
+    /// selection resolved to (E2-08). Reported so the teacher can <i>see</i> the scope their run used
+    /// instead of trusting an invisible default: "0 kandidaten" is a loading problem, not an AI problem,
+    /// and the two are indistinguishable from an empty suggestion list (Art. XIV — disciplines-first is
+    /// still open, so the scope of a run must never be silent).
+    /// </summary>
+    public int AantalKandidaten { get; }
+
     /// <summary>Builds a success result.</summary>
     public static DoelMatchResultaat Geslaagd(
         IReadOnlyList<DoelMatchSuggestieWeergave> bewaard,
         IReadOnlyList<string> overgeslagenOnbekend,
-        IReadOnlyList<string> overgeslagenDuplicaat) =>
+        IReadOnlyList<string> overgeslagenDuplicaat,
+        int aantalKandidaten) =>
         new(isGeslaagd: true, fout: null,
             bewaard ?? LeegBewaard,
             overgeslagenOnbekend ?? LeegCodes,
-            overgeslagenDuplicaat ?? LeegCodes);
+            overgeslagenDuplicaat ?? LeegCodes,
+            aantalKandidaten);
 
     /// <summary>Builds a failure result — nothing persisted (Art. IV.5).</summary>
-    public static DoelMatchResultaat Mislukt(string fout) =>
-        new(isGeslaagd: false, fout, LeegBewaard, LeegCodes, LeegCodes);
+    public static DoelMatchResultaat Mislukt(string fout, int aantalKandidaten = 0) =>
+        new(isGeslaagd: false, fout, LeegBewaard, LeegCodes, LeegCodes, aantalKandidaten);
 }

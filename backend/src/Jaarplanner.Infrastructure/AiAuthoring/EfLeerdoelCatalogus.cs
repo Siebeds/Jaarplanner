@@ -8,7 +8,7 @@ namespace Jaarplanner.Infrastructure.AiAuthoring;
 /// <summary>
 /// EF Core implementation of <see cref="ILeerdoelCatalogus"/> over <see cref="AppDbContext"/> (E2-07).
 /// Reads the Op.stap leerplandoelen <c>AsNoTracking</c> — a pure read of read-only reference data, so
-/// it never mutates curriculum content (Art. III.1) — applying the optional discipline/jaar-fase
+/// it never mutates curriculum content (Art. III.1) — applying the optional discipline/jaar-fase/code
 /// filter and ordering by the stable code so callers get a deterministic candidate set.
 /// </summary>
 public sealed class EfLeerdoelCatalogus : ILeerdoelCatalogus
@@ -36,6 +36,12 @@ public sealed class EfLeerdoelCatalogus : ILeerdoelCatalogus
         if (jaarFasen.Count > 0)
         {
             query = query.Where(d => jaarFasen.Contains(d.JaarFase));
+        }
+
+        var codes = Genormaliseerd(selectie.Codes);
+        if (codes.Count > 0)
+        {
+            query = query.Where(d => codes.Contains(d.Code));
         }
 
         return await query

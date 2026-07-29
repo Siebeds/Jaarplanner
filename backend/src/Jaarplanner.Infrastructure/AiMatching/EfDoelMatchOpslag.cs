@@ -44,9 +44,32 @@ public sealed class EfDoelMatchOpslag : IDoelMatchOpslag
             return [];
         }
 
+        // Enrich each link with its leerplandoel's official text + doelsoort (FR-4.2): a teacher cannot judge a
+        // suggestion from a bare code. One extra read of the read-only curriculum, keyed on the codes actually
+        // linked; nothing here writes to it (Art. III.1). A code that no longer resolves yields nulls rather
+        // than dropping the row — a link the teacher can still see and decide on.
+        var codes = thema.Doelsuggesties
+            .Select(k => k.LeerplandoelCode)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var perCode = await _context.Leerplandoelen
+            .AsNoTracking()
+            .Where(l => codes.Contains(l.Code))
+            .ToDictionaryAsync(l => l.Code, StringComparer.Ordinal, cancellationToken);
+
         return thema.Doelsuggesties
-            .Select(k => new DoelMatchSuggestieWeergave(
-                k.Id, k.LeerplandoelCode, k.Status.ToString(), k.AiMotivatie))
+            .Select(k =>
+            {
+                perCode.TryGetValue(k.LeerplandoelCode, out var doel);
+                return new DoelMatchSuggestieWeergave(
+                    k.Id,
+                    k.LeerplandoelCode,
+                    k.Status.ToString(),
+                    k.AiMotivatie,
+                    doel?.Tekst,
+                    doel?.Doelsoort);
+            })
             .ToList();
     }
 }

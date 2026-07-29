@@ -12,23 +12,46 @@ import type { Doelsuggestie } from "./types";
  * motivation render, and a teacher decision sends the right PUT and reflects the persisted status.
  * The API is faked at the fetch boundary so the test needs no backend — the mutation → refetch cycle
  * is what proves the status change is driven by the server (the source of truth for coverage, E5).
+ *
+ * Extended by E2-08 with the two things that flow was missing: the leerplandoel's own text/doelsoort in the
+ * row (FR-4.2 — a teacher cannot judge a bare code), and the substitution of a *different* doel, which is
+ * what FR-4.3's third verb "aanpassen" asks for.
  */
 
 const THEMA_ID = "11111111-1111-1111-1111-111111111111";
 const SUGGESTIE_ID = "22222222-2222-2222-2222-222222222222";
 
-/** A fetch fake with a mutable server-side status, so the refetch after a PUT sees the new value. */
-function maakFetchFake() {
+/** A fetch fake with mutable server-side state, so the refetch after a PUT sees the new value. */
+function maakFetchFake(vervangStatus = 200) {
   const suggestie: Doelsuggestie = {
     id: SUGGESTIE_ID,
     leerplandoelCode: "NAT-K3-01",
     status: "Voorgesteld",
     aiMotivatie: "past bij het observeren van bomen",
+    tekst: "herkent bomen aan hun bladeren.",
+    doelsoort: "Minimumdoel",
   };
   const putBodies: unknown[] = [];
 
   const fetchFake = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    if (init?.method === "PUT" && url.endsWith("/leerplandoel")) {
+      const body = JSON.parse(String(init.body)) as { leerplandoelCode: string };
+      putBodies.push({ url, leerplandoelCode: body.leerplandoelCode });
+      if (vervangStatus !== 200) {
+        return new Response("{}", { status: vervangStatus });
+      }
+
+      // The server's own semantics: the link becomes the teacher's manual choice, the AI motivation goes
+      // with the code it described, and the new goal's text comes back.
+      suggestie.leerplandoelCode = body.leerplandoelCode;
+      suggestie.status = "Manueel";
+      suggestie.aiMotivatie = null;
+      suggestie.tekst = "observeert de natuur.";
+      suggestie.doelsoort = "Gemeenschappelijk";
+      return new Response(JSON.stringify(suggestie), { status: 200 });
+    }
+
     if (init?.method === "PUT") {
       const body = JSON.parse(String(init.body)) as { status: Doelsuggestie["status"] };
       putBodies.push({ url, status: body.status });
@@ -75,6 +98,19 @@ describe("DoelsuggestieLijst", () => {
     expect(
       screen.getByText(t("suggestieStatus.voorgesteld")),
     ).toBeInTheDocument();
+  });
+
+  it("shows the leerplandoel's own text and doelsoort so it can be judged (FR-4.2)", async () => {
+    renderLijst();
+
+    expect(
+      await screen.findByText("herkent bomen aan hun bladeren."),
+    ).toBeInTheDocument();
+    // The doelsoort is carried by its abbreviation + accessible label, never by colour alone (Art. XII).
+    expect(
+      screen.getByLabelText(t("doelsoort.md")),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t("doelsoortAfkorting.md"))).toBeInTheDocument();
   });
 
   it("accepts a suggestion: sends the right PUT and reflects the persisted status", async () => {
@@ -126,6 +162,75 @@ describe("DoelsuggestieLijst", () => {
       await screen.findByText(t("suggestieStatus.manueel")),
     ).toBeInTheDocument();
     expect(putBodies).toEqual([expect.objectContaining({ status: "Manueel" })]);
+  });
+
+  it("substitutes a different leerplandoel and lands as manueel (FR-4.3 'aanpassen')", async () => {
+    renderLijst();
+
+    fireEvent.change(
+      await screen.findByLabelText(
+        t("matching.vervangenLabel", { code: "NAT-K3-01" }),
+      ),
+      { target: { value: " NAT-K3-02 " } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: t("matching.vervangenAria", { code: "NAT-K3-01" }),
+      }),
+    );
+
+    // The refetched row now shows the substituted doel, its text, and the manual status.
+    expect(await screen.findByText("NAT-K3-02")).toBeInTheDocument();
+    expect(await screen.findByText("observeert de natuur.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(t("suggestieStatus.manueel")),
+    ).toBeInTheDocument();
+    // The code is trimmed before it is sent, and it goes to the dedicated leerplandoel endpoint.
+    expect(putBodies).toEqual([
+      {
+        url: `/api/themas/${THEMA_ID}/doelsuggesties/${SUGGESTIE_ID}/leerplandoel`,
+        leerplandoelCode: "NAT-K3-02",
+      },
+    ]);
+  });
+
+  it("does not send an empty substitution", async () => {
+    renderLijst();
+    await screen.findByText("NAT-K3-01");
+
+    const knop = screen.getByRole("button", {
+      name: t("matching.vervangenAria", { code: "NAT-K3-01" }),
+    });
+    expect(knop).toBeDisabled();
+    fireEvent.click(knop);
+
+    expect(putBodies).toEqual([]);
+  });
+
+  it("renders local Dutch copy when a substitution is refused, never the server message", async () => {
+    vi.unstubAllGlobals();
+    const fake = maakFetchFake(400);
+    putBodies = fake.putBodies;
+    vi.stubGlobal("fetch", fake.fetchFake);
+
+    renderLijst();
+
+    fireEvent.change(
+      await screen.findByLabelText(
+        t("matching.vervangenLabel", { code: "NAT-K3-01" }),
+      ),
+      { target: { value: "VERZONNEN-99" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: t("matching.vervangenAria", { code: "NAT-K3-01" }),
+      }),
+    );
+
+    const melding = await screen.findByRole("alert");
+    expect(melding).toHaveTextContent(t("matching.vervangenMislukt"));
+    // The row is unchanged: nothing is applied client-side (Art. IV.1).
+    expect(screen.getByText("NAT-K3-01")).toBeInTheDocument();
   });
 
   it("has no axe violations", async () => {

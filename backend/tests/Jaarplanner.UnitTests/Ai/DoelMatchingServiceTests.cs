@@ -1,6 +1,8 @@
+using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
+using Jaarplanner.UnitTests.AiAuthoring;
 
 namespace Jaarplanner.UnitTests.Ai;
 
@@ -28,12 +30,25 @@ public sealed class DoelMatchingServiceTests
     [
         new Leerplandoel("NAT-K3-01", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
         new Leerplandoel("NAT-K3-02", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9", tekst: "observeert de natuur."),
+        new Leerplandoel("REK-L1-01", Doelsoort.Gemeenschappelijk, "L1", "Getallen", "Getalbegrip", "2", tekst: "telt tot 20."),
     ];
 
     private static DoelMatchingService Service(FakeAiClient client, out FakeDoelMatchOpslag opslag, Thema? thema = null)
     {
         opslag = new FakeDoelMatchOpslag(thema ?? EenThema());
-        return new DoelMatchingService(client, opslag);
+        return new DoelMatchingService(client, opslag, new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
+    }
+
+    private static DoelMatchingService Service(
+        FakeAiClient client,
+        out FakeDoelMatchOpslag opslag,
+        out FakeLeerdoelCatalogus catalogus,
+        Thema? thema = null,
+        IReadOnlyList<Leerplandoel>? leerdoelen = null)
+    {
+        opslag = new FakeDoelMatchOpslag(thema ?? EenThema());
+        catalogus = new FakeLeerdoelCatalogus(leerdoelen ?? EenLeerdoelenSet());
+        return new DoelMatchingService(client, opslag, catalogus);
     }
 
     [Fact]
@@ -154,7 +169,8 @@ public sealed class DoelMatchingServiceTests
     public async Task Onbekend_thema_gooit_ThemaNietGevondenFout()
     {
         var fake = new FakeAiClient();
-        var service = new DoelMatchingService(fake, new FakeDoelMatchOpslag(thema: null));
+        var service = new DoelMatchingService(
+            fake, new FakeDoelMatchOpslag(thema: null), new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
 
         await Assert.ThrowsAsync<ThemaNietGevondenFout>(
             () => service.MatchThemaAsync(ThemaId, EenLeerdoelenSet()));
@@ -165,7 +181,248 @@ public sealed class DoelMatchingServiceTests
     [Fact]
     public void Service_verwerpt_null_afhankelijkheden()
     {
-        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(null!, new FakeDoelMatchOpslag(EenThema())));
-        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), null!));
+        var catalogus = new FakeLeerdoelCatalogus(EenLeerdoelenSet());
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(null!, new FakeDoelMatchOpslag(EenThema()), catalogus));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), null!, catalogus));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), new FakeDoelMatchOpslag(EenThema()), null!));
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // E2-08 — the invocation surface (FR-4.1). Everything above drives MatchThemaAsync with a
+    // candidate set handed in by the test; these drive GenereerSuggestiesAsync, the entry point a
+    // controller can actually call, which resolves that set itself through ILeerdoelCatalogus.
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Genereren_haalt_de_kandidaten_zelf_op_en_persisteert_als_voorgesteld()
+    {
+        var thema = EenThema();
+        var fake = new FakeAiClient(cannedContent:
+            "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"past bij het observeren van bomen\"}]}");
+        var service = Service(fake, out var opslag, out var catalogus, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.True(resultaat.IsGeslaagd);
+        var bewaard = Assert.Single(resultaat.Bewaard);
+        Assert.Equal("NAT-K3-01", bewaard.LeerplandoelCode);
+        Assert.Equal("Voorgesteld", bewaard.Status);
+        Assert.Equal("past bij het observeren van bomen", bewaard.AiMotivatie);
+        // FR-4.2: the goal's own text + doelsoort travel with the suggestion so it is judgeable.
+        Assert.Equal("herkent bomen.", bewaard.Tekst);
+        Assert.Equal(Doelsoort.Minimumdoel, bewaard.Doelsoort);
+
+        // The candidate set came from the read-only curriculum seam — no caller had to supply it.
+        Assert.Equal(1, catalogus.AantalAanroepen);
+        Assert.Equal(3, resultaat.AantalKandidaten);
+
+        // Advisory only: persisted as `voorgesteld`, nothing accepted (Art. IV.1/IV.2).
+        Assert.All(thema.Doelsuggesties, k => Assert.Equal(KoppelingStatus.Voorgesteld, k.Status));
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Zonder_selectie_zoekt_de_generatie_in_alles()
+    {
+        // The default is "no filter", applied in ONE documented place — not a discipline list picked on the
+        // school's behalf (Art. XIV, "disciplines first" is still open). The teacher narrows it per run.
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out _, out var catalogus);
+
+        await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.Equal(LeerdoelSelectie.Alles, catalogus.LaatsteSelectie);
+    }
+
+    [Fact]
+    public async Task Een_selectie_van_de_leerkracht_begrenst_de_kandidaten()
+    {
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out _, out var catalogus);
+
+        var resultaat = await service.GenereerSuggestiesAsync(
+            ThemaId, new LeerdoelSelectie { JaarFasen = ["K3"] });
+
+        Assert.Equal(new[] { "K3" }, catalogus.LaatsteSelectie!.JaarFasen!);
+        // Only the two K3 goals were candidates — the L1 one was out of scope.
+        Assert.Equal(2, resultaat.AantalKandidaten);
+    }
+
+    [Fact]
+    public async Task Zonder_kandidaten_wordt_de_ai_niet_aangeroepen()
+    {
+        // The realistic cause today: no Op.stap import has run (E1-15), so the curriculum is empty. Calling the
+        // model would burn a request on a prompt with an empty goal list whose every answer must be discarded.
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"x\"}]}");
+        var service = Service(fake, out var opslag, out _, thema: null, leerdoelen: []);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(0, resultaat.AantalKandidaten);
+        Assert.Empty(resultaat.Bewaard);
+        Assert.Equal(0, fake.AantalAanroepen);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Genereren_op_kapotte_json_persisteert_niets()
+    {
+        var thema = EenThema();
+        var fake = new FakeAiClient(cannedContent: "dit is geen JSON {kapot");
+        var service = Service(fake, out var opslag, out _, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.False(resultaat.IsGeslaagd);
+        Assert.NotNull(resultaat.Fout);
+        Assert.Empty(thema.Doelsuggesties);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+        // The run still reports what it searched in, so a 0-suggestion failure is not mistaken for an empty
+        // curriculum.
+        Assert.Equal(3, resultaat.AantalKandidaten);
+    }
+
+    [Fact]
+    public async Task Genereren_slaat_een_verzonnen_code_over()
+    {
+        var thema = EenThema();
+        var fake = new FakeAiClient(cannedContent:
+            "{\"suggesties\":[" +
+            "{\"code\":\"NAT-K3-02\",\"motivatie\":\"geldig\"}," +
+            "{\"code\":\"VERZONNEN-99\",\"motivatie\":\"deze code bestaat niet\"}]}");
+        var service = Service(fake, out _, out _, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.Equal("NAT-K3-02", Assert.Single(thema.Doelsuggesties).LeerplandoelCode);
+        Assert.Equal("VERZONNEN-99", Assert.Single(resultaat.OvergeslagenOnbekend));
+    }
+
+    [Fact]
+    public async Task Genereren_slaat_een_al_gekoppelde_code_over()
+    {
+        var thema = EenThema();
+        thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "eerdere ronde"));
+
+        var fake = new FakeAiClient(cannedContent:
+            "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"opnieuw voorgesteld\"}]}");
+        var service = Service(fake, out var opslag, out _, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Single(thema.Doelsuggesties);
+        Assert.Equal("NAT-K3-01", Assert.Single(resultaat.OvergeslagenDuplicaat));
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // E2-08 — FR-4.3 "aanpassen": substituting a DIFFERENT leerplandoel, landing as `manueel`.
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Aanpassen_vervangt_het_doel_en_zet_de_koppeling_op_manueel()
+    {
+        var thema = EenThema();
+        var suggestie = thema.VoegDoelsuggestieToe(
+            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past bij het observeren van bomen"));
+        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
+
+        var weergave = await service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "NAT-K3-02");
+
+        // The link now points at the teacher's goal and is the teacher's own choice.
+        Assert.Equal("NAT-K3-02", suggestie.LeerplandoelCode);
+        Assert.Equal(KoppelingStatus.Manueel, suggestie.Status);
+        // The AI motivation described the goal it proposed, not this one — it goes with the old code (Art. IV.3).
+        Assert.Null(suggestie.AiMotivatie);
+        // The view carries the NEW goal's text so the teacher sees what they now coupled (FR-4.2).
+        Assert.Equal("observeert de natuur.", weergave.Tekst);
+        Assert.Equal(Doelsoort.Gemeenschappelijk, weergave.Doelsoort);
+        Assert.Equal("Manueel", weergave.Status);
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Aanpassen_naar_een_onbestaande_code_wordt_geweigerd()
+    {
+        // Art. III.5: a link may only ever point at a code the read-only Op.stap set carries.
+        var thema = EenThema();
+        var suggestie = thema.VoegDoelsuggestieToe(
+            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
+        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
+
+        await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
+            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "VERZONNEN-99"));
+
+        Assert.Equal("NAT-K3-01", suggestie.LeerplandoelCode);
+        Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
+        Assert.Equal("motivatie", suggestie.AiMotivatie);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Aanpassen_zonder_code_wordt_geweigerd(string code)
+    {
+        var thema = EenThema();
+        var suggestie = thema.VoegDoelsuggestieToe(
+            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
+        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
+
+        await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
+            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, code));
+
+        Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Aanpassen_naar_een_al_gekoppeld_doel_wordt_geweigerd()
+    {
+        // Two links to one doel would double-count it in dekking (Art. V), and the second is not an adjustment.
+        var thema = EenThema();
+        var suggestie = thema.VoegDoelsuggestieToe(
+            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
+        thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-02", KoppelingStatus.Voorgesteld, "andere suggestie"));
+        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
+
+        await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
+            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "NAT-K3-02"));
+
+        Assert.Equal("NAT-K3-01", suggestie.LeerplandoelCode);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Aanpassen_naar_hetzelfde_doel_wordt_geweigerd()
+    {
+        var thema = EenThema();
+        var suggestie = thema.VoegDoelsuggestieToe(
+            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
+        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
+
+        await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
+            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "NAT-K3-01"));
+
+        // Still `voorgesteld`: setting `manueel` without changing anything is the OTHER action (the status PUT),
+        // and this path must not become a back door to it.
+        Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Aanpassen_van_een_onbekende_suggestie_of_thema_geeft_niet_gevonden()
+    {
+        var thema = EenThema();
+        var service = Service(new FakeAiClient(), out _, out _, thema);
+        await Assert.ThrowsAsync<DoelsuggestieNietGevondenFout>(
+            () => service.VervangSuggestieDoelAsync(ThemaId, Guid.NewGuid(), "NAT-K3-02"));
+
+        var zonderThema = new DoelMatchingService(
+            new FakeAiClient(), new FakeDoelMatchOpslag(thema: null), new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
+        await Assert.ThrowsAsync<ThemaNietGevondenFout>(
+            () => zonderThema.VervangSuggestieDoelAsync(ThemaId, Guid.NewGuid(), "NAT-K3-02"));
     }
 }

@@ -10,12 +10,50 @@ export type SuggestieStatus = "Voorgesteld" | "Aanvaard" | "Geweigerd" | "Manuee
 /** A teacher decision on a suggestion (E2-05): accept / reject / adjust — never `Voorgesteld` (AI-only). */
 export type Leerkrachtbeslissing = Exclude<SuggestieStatus, "Voorgesteld">;
 
-/** One persisted AI goal-match suggestion for a thema (FR-4.3). */
+/**
+ * One persisted AI goal-match suggestion for a thema (FR-4.3).
+ *
+ * `tekst` and `doelsoort` are the leerplandoel's own official content, added in E2-08: FR-4.2 wants the
+ * teacher to be able to *judge* a suggestion, and a bare code plus one AI sentence is not enough for
+ * that. Both are nullable — a code that no longer resolves is still shown, never hidden.
+ */
 export interface Doelsuggestie {
   id: string;
   leerplandoelCode: string;
   status: SuggestieStatus;
   aiMotivatie: string | null;
+  tekst: string | null;
+  doelsoort: DoelsoortNaam | null;
+}
+
+/**
+ * Which Op.stap leerplandoelen a match run may choose from (E2-08). Every dimension is optional and an
+ * omitted/empty one means "no filter", so leaving all of them out searches the whole loaded set.
+ *
+ * It is part of the request on purpose: "which disciplines does the school start with?" is an open
+ * decision (Constitution Art. XIV), so the scope of a run stays the teacher's visible, per-run choice
+ * rather than something the frontend or backend picks for them.
+ */
+export interface Leerdoelselectie {
+  disciplines?: string[];
+  jaarFasen?: string[];
+}
+
+/**
+ * The outcome of one match run (E2-08, FR-4.1): what was proposed, what was skipped, and how many
+ * leerplandoelen were actually searched.
+ *
+ * `aantalKandidaten` matters more than it looks: without it, "0 suggesties" cannot be told apart from
+ * "there were no leerplandoelen to search" — which, until the Op.stap import ships, is the likelier
+ * cause and is not an AI problem at all.
+ */
+export interface Doelsuggestiegeneratie {
+  isGeslaagd: boolean;
+  fout: string | null;
+  aantalKandidaten: number;
+  bewaard: Doelsuggestie[];
+  overgeslagenOnbekend: string[];
+  overgeslagenDuplicaat: string[];
 }
 
 /**

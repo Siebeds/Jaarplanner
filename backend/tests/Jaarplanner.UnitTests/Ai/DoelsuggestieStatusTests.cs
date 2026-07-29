@@ -1,5 +1,7 @@
 using Jaarplanner.Application.AiMatching;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
+using Jaarplanner.UnitTests.AiAuthoring;
 
 namespace Jaarplanner.UnitTests.Ai;
 
@@ -14,13 +16,21 @@ public sealed class DoelsuggestieStatusTests
 {
     private static readonly Guid ThemaId = Guid.NewGuid();
 
+    private static IReadOnlyList<Leerplandoel> EenLeerdoelenSet() =>
+    [
+        new Leerplandoel("NAT-K3-01", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
+    ];
+
     private static (DoelMatchingService service, FakeDoelMatchOpslag opslag, DoelKoppeling suggestie) Opzet()
     {
         var thema = new Thema("Herfst", duurWeken: 4);
         var suggestie = thema.VoegDoelsuggestieToe(
             new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past bij het observeren van bomen"));
         var opslag = new FakeDoelMatchOpslag(thema);
-        var service = new DoelMatchingService(new FakeAiClient(cannedContent: "{\"suggesties\":[]}"), opslag);
+        var service = new DoelMatchingService(
+            new FakeAiClient(cannedContent: "{\"suggesties\":[]}"),
+            opslag,
+            new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
         return (service, opslag, suggestie);
     }
 
@@ -78,9 +88,24 @@ public sealed class DoelsuggestieStatusTests
     {
         var service = new DoelMatchingService(
             new FakeAiClient(cannedContent: "{\"suggesties\":[]}"),
-            new FakeDoelMatchOpslag(thema: null));
+            new FakeDoelMatchOpslag(thema: null),
+            new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
 
         await Assert.ThrowsAsync<ThemaNietGevondenFout>(
             () => service.WijzigSuggestieStatusAsync(ThemaId, Guid.NewGuid(), KoppelingStatus.Aanvaard));
+    }
+
+    [Fact]
+    public async Task Beslissing_geeft_de_doeltekst_mee_zodat_de_leerkracht_kan_beoordelen()
+    {
+        // FR-4.2's purpose clause: the read view carries the leerplandoel's own text + doelsoort, not just a
+        // code, on every path that returns a suggestion — the status PUT included, so the row never flickers
+        // between an enriched and a bare shape.
+        var (service, _, suggestie) = Opzet();
+
+        var weergave = await service.WijzigSuggestieStatusAsync(ThemaId, suggestie.Id, KoppelingStatus.Aanvaard);
+
+        Assert.Equal("herkent bomen.", weergave.Tekst);
+        Assert.Equal(Doelsoort.Minimumdoel, weergave.Doelsoort);
     }
 }
