@@ -135,7 +135,12 @@ function TeHerzien({ plaatsingen }: { plaatsingen: ReturnType<typeof vervallenPl
     >
       <h3 className="text-sm font-semibold text-amber-900">
         <span aria-hidden="true">▲</span>{" "}
-        {t("kalender.herzienTitel", { aantal: plaatsingen.length })}
+        {/* Separate singular copy: "1 thema's staan niet meer" is wrong Dutch, and this notice is most
+            often shown for exactly one placement. Caught by looking at the rendered screen — no test
+            asserted the sentence, which is the kind of defect only a browser (or a teacher) finds. */}
+        {plaatsingen.length === 1
+          ? t("kalender.herzienTitelEnkelvoud")
+          : t("kalender.herzienTitel", { aantal: plaatsingen.length })}
       </h3>
       <p className="mt-1 text-xs text-amber-900">{t("kalender.herzienUitleg")}</p>
 

@@ -167,7 +167,8 @@ describe("Jaarplankalender", () => {
 
     // The thema is named, not merely counted — a teacher must see which plan item needs attention.
     expect(melding).toHaveTextContent("Feesten in december");
-    expect(melding).toHaveTextContent("Te herzien");
+    // Correct Dutch for a count of one: "1 thema STAAT", not "1 thema's STAAN".
+    expect(melding).toHaveTextContent("Te herzien — 1 thema staat niet meer in een periode");
 
     // And there is no way to dismiss it (directie 2026-07-28: "fix later" is not an option offered).
     // Checked for links as well as buttons: with no buttons anywhere in the feature, asserting only
