@@ -4,7 +4,7 @@ import { Button } from "../../components/ui/button";
 import { t, tAantal } from "../../i18n";
 import { ApiError } from "../../lib/api";
 import { Jaarspine } from "./Jaarspine";
-import { Periodeblok } from "./Periodeblok";
+import { Periodekolom, Vakantiegat } from "./Periodekolom";
 import { Spreidingsoverzicht } from "./Spreidingsoverzicht";
 import { Themakaart } from "./Themakaart";
 import {
@@ -115,7 +115,6 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
       ) : (
         <Jaarspine
           segmenten={segmenten}
-          onderbrekingen={grid.onderbrekingen}
           gevuldeOrdinalen={gevuldeOrdinalen}
           teVolleOrdinalen={teVolleOrdinalen}
         />
@@ -163,22 +162,40 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
       </div>
 
       {grid.blokken.length > 0 && (
-        <ol
-          // A vertical sequence of full-width bands. Proportional length lives in the spine above; here the
-          // year reads strictly top to bottom and each period's thema's flow across the available width.
-          // Both tile layouts tried before this one left dead space beside a short period — see Periodeblok.
-          className="flex flex-col gap-3"
-          aria-label={t("kalender.ribbonLabel")}
-        >
-          {grid.blokken.map((blok) => (
-            <Periodeblok
-              key={`blok-${blok.start}`}
-              blok={blok}
-              plaatsingen={plaatsingenIn(plan.plaatsingen, blok)}
-            />
-          ))}
-        </ol>
+        <div className="flex flex-col gap-3">
+          {/* Said ONCE, above the board, instead of repeated inside every flagged column. The disclosure is
+              still visible text rather than a tooltip (E3-06) — it just is not printed seven times. */}
+          {teVolleOrdinalen.size > 0 && (
+            <p className="rounded-md bg-attentie-zacht px-3.5 py-2.5 text-xs leading-snug text-attentie-ink">
+              <span aria-hidden="true">▲</span> {t("kalender.teVolUitleg")}
+            </p>
+          )}
+
+          <ol
+            // The board: periods left to right, vakanties as literal gaps. `items-start` is load-bearing —
+            // without it flex stretches every column to the tallest and one full period turns its
+            // neighbours into empty troughs, which is what made the first version unusable.
+            className="-mx-1 flex items-start gap-2 overflow-x-auto px-1 pb-3"
+            aria-label={t("kalender.ribbonLabel")}
+          >
+            {segmenten.map((segment) =>
+              segment.soort === "blok" ? (
+                <Periodekolom
+                  key={`blok-${segment.blok.start}`}
+                  blok={segment.blok}
+                  plaatsingen={plaatsingenIn(plan.plaatsingen, segment.blok)}
+                />
+              ) : (
+                <Vakantiegat
+                  key={`gat-${segment.onderbreking.start}`}
+                  naam={segment.onderbreking.naam}
+                />
+              ),
+            )}
+          </ol>
+        </div>
       )}
+
     </section>
   );
 }

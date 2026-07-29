@@ -156,7 +156,7 @@ every hue free to mean something. Concretely:
   nav items and made the menu read as mostly broken; the placeholder page still states it in full. *Flag for the
   review:* "binnenkort" is friendlier but faintly promises timing — the backlog has stories, not dates.
 
-Evidence: [shell + jaarplan](../../docs/ux/wireframes/e0-10-shell-jaarplan.png) ·
+Evidence: [shell + jaarplan](../../docs/ux/wireframes/e0-10-jaarplan-bord.png) ·
 [mobile, 390 px](../../docs/ux/wireframes/e0-10-shell-mobiel.png).
 
 ### Verified in the browser (Edge, live API + Postgres)
@@ -278,8 +278,8 @@ Two kalender tests needed rescoping, not weakening: the spine's legend legitimat
 the page, so a document-wide text query became ambiguous. They now scope to the period list — a test that
 passes because it matched the wrong element is worse than one that fails.
 
-Evidence: [jaarplan](../../docs/ux/wireframes/e0-10-shell-jaarplan.png) ·
-[volledig jaar](../../docs/ux/wireframes/e0-10-jaarplan-volledig.png) ·
+Evidence: [jaarplan](../../docs/ux/wireframes/e0-10-jaarplan-bord.png) ·
+[volledig jaar](../../docs/ux/wireframes/e0-10-jaarplan-bord.png) ·
 [mobiel, 390px](../../docs/ux/wireframes/e0-10-shell-mobiel.png).
 
 ### Still true after the redesign

@@ -1,7 +1,6 @@
 import { t } from "../../i18n";
 import type { Ribbonsegment } from "./kalenderFormat";
-import { formatteerDatum, formatteerPeriode } from "./kalenderFormat";
-import type { Planningsonderbreking } from "./types";
+import { formatteerDatum } from "./kalenderFormat";
 
 /**
  * The school year as one proportional strip — the whole September→June stretch at a glance.
@@ -18,29 +17,22 @@ import type { Planningsonderbreking } from "./types";
  * surface below became uniform, readable cards. **Flagged for the directie review as the one structural
  * change to the approved wireframe.**
  *
- * Two things it must not do. It must not become the *only* place vakanties appear — losing their names
- * would be information loss dressed up as cleanliness, so they are listed in full underneath. And it must
- * not carry meaning in colour alone (Art. XII, WCAG 2.2 AA), hence the legend.
+ * It must not carry meaning in colour alone (Art. XII, WCAG 2.2 AA), hence the legend. It deliberately does
+ * **not** name the vakanties: the board below names each one in its gap, and printing them here as well put
+ * the same list on screen twice.
  *
  * Purely presentational: no click targets, because selecting a period does nothing yet (E3-08 owns zoom,
  * E3-07 the dragging). A control that does nothing teaches a review the wrong thing.
  */
 export interface JaarspineProps {
   segmenten: Ribbonsegment[];
-  /** Every closure of the year, including any at its edges — those are absent from the strip by design. */
-  onderbrekingen: readonly Planningsonderbreking[];
   /** Ordinals holding at least one planned thema, so the strip shows where the year is filled. */
   gevuldeOrdinalen: ReadonlySet<number>;
   /** Ordinals flagged as over-full, matching the period cards below. */
   teVolleOrdinalen: ReadonlySet<number>;
 }
 
-export function Jaarspine({
-  segmenten,
-  onderbrekingen,
-  gevuldeOrdinalen,
-  teVolleOrdinalen,
-}: JaarspineProps) {
+export function Jaarspine({ segmenten, gevuldeOrdinalen, teVolleOrdinalen }: JaarspineProps) {
   return (
     <figure className="rounded-lg border border-border bg-card p-4 shadow-card sm:p-5">
       <figcaption className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
@@ -92,21 +84,6 @@ export function Jaarspine({
         <Legende klasse="bg-attentie" label={t("spine.legendeTeVol")} />
       </div>
 
-      {onderbrekingen.length > 0 && (
-        <div className="mt-3 text-xs text-ink-zacht">
-          <span className="font-semibold text-ink">{t("spine.vakantiesLabel")}: </span>
-          {onderbrekingen.map((onderbreking, index) => (
-            <span key={onderbreking.start}>
-              {index > 0 && <span aria-hidden="true"> · </span>}
-              {/* The vakantie name is school-owned data, not UI copy, so it is rendered as-is. */}
-              {onderbreking.naam}{" "}
-              <span className="text-ink-zacht" data-cijfers>
-                ({formatteerPeriode(onderbreking.start, onderbreking.eind)})
-              </span>
-            </span>
-          ))}
-        </div>
-      )}
     </figure>
   );
 }

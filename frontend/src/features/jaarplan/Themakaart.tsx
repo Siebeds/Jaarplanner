@@ -3,12 +3,17 @@ import { t } from "../../i18n";
 import type { Themaplaatsing } from "./types";
 
 /**
- * One thema on the plan (E3-06).
+ * One thema on the board (E3-06).
  *
- * **Not yet draggable.** The wireframe shows a grip and the keyboard route, but both belong to E3-07,
- * which also owns the confirmation that protects an accepted or locked placement from being discarded.
- * Rendering a grip that does nothing would promise an interaction the draft cannot honour, so the card is
- * inert and the review is told plainly what is missing.
+ * **Compact by design.** On a board the card competes for a 288px column, and the first version put the
+ * thema name, a status chip, a goal count and a full motivation paragraph in every one — seven of those on
+ * screen read as a wall of prose. The motivation is clamped to two lines here; the full text belongs on the
+ * thema detail page (**E1-14**), and until that exists a teacher can still see enough to judge whether the
+ * suggestion is plausible, which is what Art. IV.3 asks of the surface.
+ *
+ * **Not yet draggable.** The wireframe shows a grip and the keyboard route, but both belong to E3-07, which
+ * also owns the confirmation that protects an accepted or locked placement from being discarded. Rendering a
+ * grip that does nothing would promise an interaction the draft cannot honour.
  *
  * **The doelsoort mix from the wireframe (`MD 4 · G 6 · + 1`) is deliberately absent.** The jaarplan API
  * returns `doelcodes` — the codes a thema carries — but not each code's doelsoort, so the mix cannot be
@@ -19,8 +24,7 @@ import type { Themaplaatsing } from "./types";
  * thema (themadoelen + aanvaarde/manuele koppelingen). Under Art. V.1 a doel is only *gedekt* once that
  * thema is placed in the plan — so for a **stale** placement, which by definition sits in no period, the
  * count proves nothing about coverage and the card says so instead of printing a number. Calling a link
- * "gedekt" would be a false coverage claim in the one product whose purpose is provable coverage, and it
- * would contradict the notice directly above the stale cards (Art. V.2, directie 2026-07-28).
+ * "gedekt" would be a false coverage claim in the one product whose purpose is provable coverage.
  */
 export interface ThemakaartProps {
   plaatsing: Themaplaatsing;
@@ -62,15 +66,16 @@ export function Themakaart({ plaatsing }: ThemakaartProps) {
       </div>
 
       {plaatsing.aiMotivatie && (
-        // The motivation is the AI's argument, so it is set apart as a quote rather than run on as another
-        // paragraph — a teacher deciding accept/reject needs to see where the tool's reasoning starts and
-        // stops (Art. IV.3).
-        <div className="mt-3 rounded-md bg-paper px-3 py-2">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
-            {t("kalender.motivatieLabel")}
-          </p>
-          <p className="mt-0.5 text-xs leading-snug text-ink">{plaatsing.aiMotivatie}</p>
-        </div>
+        <p
+          // Clamped to two lines: the full motivation belongs on the thema detail page (E1-14). `title`
+          // carries the rest for a mouse user, which is an addition here rather than the only route to it —
+          // the clamped text is real, visible text, not a placeholder for a tooltip.
+          className="mt-2.5 line-clamp-2 border-t border-border pt-2 text-xs leading-snug text-ink-zacht"
+          title={plaatsing.aiMotivatie}
+        >
+          <span className="font-semibold text-ink">{t("kalender.motivatieLabel")} </span>
+          {plaatsing.aiMotivatie}
+        </p>
       )}
     </article>
   );
