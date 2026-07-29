@@ -230,6 +230,18 @@ describe("Jaarplankalender", () => {
     expect(screen.queryByText("Jaarplan laden…")).toBeNull();
   });
 
+  it("keeps the board reachable by keyboard, since it scrolls sideways", async () => {
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "a", themaNaam: "Water" })]));
+    renderKalender();
+    await screen.findByText("Water");
+
+    // The board is a horizontal scroll region with no focusable children yet (cards are inert until
+    // E3-07), so without a tab stop a keyboard user cannot scroll the year sideways at all. This is what
+    // axe's `scrollable-region-focusable` rule asks for, and jsdom cannot see overflow so axe will not
+    // catch its removal here.
+    expect(periodes()).toHaveAttribute("tabindex", "0");
+  });
+
   it("does not count a rejected thema toward 'te vol', but still shows it", async () => {
     // Regression (E3-02 code review): a geweigerd placement survives regeneration and occupies its slot for
     // idempotency, but nothing is taught in that period because of it. Counting it pushed a period over the

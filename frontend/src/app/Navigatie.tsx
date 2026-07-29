@@ -26,7 +26,7 @@ export function Navigatie() {
   const location = useLocation();
 
   return (
-    <nav aria-label={t("navigatie.hoofdnavigatie")} className="-mx-1.5 overflow-x-auto pb-2">
+    <nav aria-label={t("navigatie.hoofdnavigatie")} className="subtle-scrollbar -mx-1.5 overflow-x-auto pb-2">
       <ul className="flex items-center gap-0.5">
         {NAVIGATIE.map((bestemming) => (
           <li key={bestemming.pad}>

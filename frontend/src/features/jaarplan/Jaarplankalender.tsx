@@ -175,8 +175,15 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             // The board: periods left to right, vakanties as literal gaps. `items-start` is load-bearing —
             // without it flex stretches every column to the tallest and one full period turns its
             // neighbours into empty troughs, which is what made the first version unusable.
-            className="-mx-1 flex items-start gap-2 overflow-x-auto px-1 pb-3"
+            //
+            // `tabIndex={0}` makes the scroll region reachable by keyboard. It is not decoration: the board
+            // holds no focusable children yet (cards are inert until E3-07), so without it a keyboard user
+            // has no way to scroll the year sideways at all — and axe's `scrollable-region-focusable` rule
+            // asks for exactly this. Distinct from the tabIndex E3-06's audit removed, which made every
+            // inert card its own tab stop; this is one stop for a region that genuinely scrolls.
+            className="subtle-scrollbar -mx-1 flex items-start gap-2 overflow-x-auto px-1 pb-3"
             aria-label={t("kalender.ribbonLabel")}
+            tabIndex={0}
           >
             {segmenten.map((segment) =>
               segment.soort === "blok" ? (
