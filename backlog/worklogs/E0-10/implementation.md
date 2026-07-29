@@ -109,15 +109,88 @@ because a deferral recorded only where it was discovered is a deferral that gets
 | API + dev server against live Postgres 17 | `/health/ready` 200; `GET /api/schooljaren` returns the seeded 2026-2027 year with its klas |
 | Deep-link fallback under Vite | `GET /dekking` → 200 |
 
-### Not done — and not claimed
+## Build round 2 — the browser pass, and a design pass on the shell
 
-- **Nobody has looked at the screen.** The one check this repo insists on ("31 green tests … said nothing about
-  whether the sentence was grammatical") did not happen: both Playwright MCP servers share one Edge profile and
-  the concurrent E2-08 run holds it. The suite drives the real router, the real URL and a real axe pass, and the
-  app is confirmed serving — but that is not the same thing, and E3-06's precedent is that looking finds things
-  tests do not. **Servers left running on `http://localhost:5199` (API `:5184`) so this can be done directly.**
-- **No test-runner and no antagonist pass yet.** Per `worklogs/README.md` a story is `[x]` only on
-  **PASS + COMPLIANT**; this one stays `[~]`.
+The owner freed the Playwright profile, so round 1's outstanding item — *nobody has looked at the screen* — was
+done. It found **three defects the 58 green tests did not**, which is round 1's own prediction coming true.
+
+### What looking found
+
+1. **The skip-link covered the wordmark.** `focus:absolute` with no positioned ancestor placed it over the `h1`,
+   hiding half of "Jaarplanner" whenever a keyboard user focused it. Now in flow when focused (`not-sr-only`
+   restores `position: static`), so it pushes the page down as a full-width bar instead of covering it.
+2. **The root redirect stole focus — and the test that "proved" it did not was unsound.** `/` → `/jaarplan` is a
+   pathname change, so the focus-after-navigation effect fired on the very first visit and dropped focus into an
+   empty `<main>`. Everything in the header, including the class selector a teacher needs *first*, sat behind the
+   focus position, reachable only by Shift+Tab.
+   **The instructive part is why the test passed.** The guard was a `useRef(true)` "skip the first render" flag,
+   and `StrictMode` **deliberately double-invokes effects in development**: the first invocation cleared the flag,
+   the second focused `main` anyway. The test rendered `App` *without* `StrictMode`, while `main.tsx` wraps it in
+   one — so the harness was gentler than the runtime it was supposed to represent, and dev and production
+   disagreed with each other too. Fixed twice over: the guard now compares against the **previous pathname**
+   (idempotent under double invocation) and skips `REPLACE` navigations, and **both test files now render inside
+   `StrictMode`**, so this class of bug cannot hide there again.
+3. **Two favicon 404s on every page load** — nothing declared an icon, so the browser probed `/favicon.ico`. Added
+   `public/favicon.svg`: unequal ink bars with a gap, i.e. the year-ribbon with a vakantie in it. Deliberately not
+   a calendar-page glyph, since a uniform month grid is the one thing ADR-0013 and the approved E3-10 wireframe
+   refuse. Console is now clean: **0 errors**.
+
+### The design pass, and the position behind it
+
+The shell as first built was stock shadcn slate: an undifferentiated white band in which the wordmark, the class
+selector and the navigation all competed, and whose heaviest object was a solid dark pill — which on `/dekking`
+meant *the boldest thing on screen was advertising a screen that does not work yet*.
+
+**The position taken: the chrome carries no colour at all.** Art. XII already assigns fixed meaning to six
+doelsoort hues, and the token set adds coverage and suggestion-status colours on top. A seventh accent for
+navigation would compete with the one signal this tool exists to communicate, so the shell earns its identity from
+a **tonal chrome/content split** (muted header band against a white page) and from typographic hierarchy, leaving
+every hue free to mean something. Concretely:
+
+- Header is one band with a clear internal order: wordmark + one line of purpose, then the context selector, then
+  the tabs. Selector labels dropped to small tracked caps — at body size they competed with the wordmark.
+- Active tab is **weight + a 2px rule** flush with the header's edge, not a filled block. A rule reads as
+  *position*, which is all it should say, and it echoes the ribbon the kalender is built on. `aria-current` still
+  carries it programmatically, so the state is never colour- or weight-alone.
+- The unbuilt marker went from "nog niet beschikbaar" to **"binnenkort"**. The long form nearly doubled four of six
+  nav items and made the menu read as mostly broken; the placeholder page still states it in full. *Flag for the
+  review:* "binnenkort" is friendlier but faintly promises timing — the backlog has stories, not dates.
+
+Evidence: [shell + jaarplan](../../docs/ux/wireframes/e0-10-shell-jaarplan.png) ·
+[mobile, 390 px](../../docs/ux/wireframes/e0-10-shell-mobiel.png).
+
+### Verified in the browser (Edge, live API + Postgres)
+
+| Check | Result |
+| --- | --- |
+| `/` redirects to `/jaarplan` | ✓, and focus stays on `body` (`document.activeElement` asserted, not inferred) |
+| Clicked nav moves focus into `main` | ✓ `activeElement.id === "hoofdinhoud"` |
+| Chosen class survives navigation | ✓ `?klas=` intact after jaarplan → dekking |
+| Deep link `/dekking` opened cold | ✓ renders that screen |
+| Kalender renders the seeded year | ✓ 7 periods, 4 vakantie gaps, te-vol flag on periode 3, two empty periods, every motivation carrying its *"Voorbeeld (geen AI-antwoord)"* marker |
+| Console | **0 errors** |
+| Responsive at 390 × 844 | ✓ header stacks, nav wraps to three rows, content legible |
+
+### Gates (round 2)
+
+`pnpm test` **59 passed** / 7 files, 0 warnings · `pnpm lint` exit 0 · `pnpm build` exit 0.
+
+### Still not done — and not claimed
+
+- **No test-runner and no antagonist pass.** Per `worklogs/README.md` a story is `[x]` only on
+  **PASS + COMPLIANT**; this stays `[~]`.
+- **No teacher or directie has seen it.** I looked at it; they have not. That is a different check and it belongs
+  with E3-06's review session.
+- **A real mobile navigation** (a disclosure rather than three wrapped rows) is not built. Acceptable — the
+  kalender ribbon wants width and teachers will be on laptops — but it is a known edge, not an oversight.
+- **The `/themas` screen still asks for a thema-id by hand** (E1-14) and cannot generate suggestions (E2-08).
+
+### One thing to reconcile, owned by nobody
+
+The repo now has **two error-colour conventions**: `text-red-700` (kalender, and the selector, which followed it)
+and `text-suggestie-geweigerd` — a *status* token — in the matching feature. Both pass contrast; they should not
+both exist. Not fixed here because picking one is a design-system decision that touches E2's components, and this
+story owns the shell.
 
 ### Concurrency note
 

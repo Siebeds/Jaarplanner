@@ -1,3 +1,5 @@
+import { StrictMode } from "react";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { axe } from "jest-axe";
@@ -48,10 +50,15 @@ function renderApp(pad = "/") {
   window.history.pushState({}, "", pad);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+  // Wrapped in StrictMode because `main.tsx` is: it double-invokes effects in development, and a
+  // focus-management bug hid in exactly that gap — a ref-based "skip the first render" guard passed here
+  // and failed in a real browser. A test harness that is gentler than the dev runtime is not a harness.
   return render(
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>,
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </StrictMode>,
   );
 }
 
@@ -82,7 +89,7 @@ function bestemming(pad: string) {
 function navLabel(item: (typeof NAVIGATIE)[number]) {
   return item.isGebouwd
     ? t(item.labelKey)
-    : `${t(item.labelKey)} ${t("navigatie.nogNietBeschikbaar")}`;
+    : `${t(item.labelKey)} ${t("navigatie.binnenkort")}`;
 }
 
 beforeEach(() => {
@@ -145,7 +152,7 @@ describe("App shell — navigation (E0-10 clause 2)", () => {
     expect(ongebouwd.length).toBeGreaterThan(0);
     // Rendered text inside the link, so screen readers get it as part of the accessible name. A `title`
     // would be invisible on touch, unreachable by keyboard and unread by most screen readers (E3-06).
-    expect(within(navigatie).getAllByText(t("navigatie.nogNietBeschikbaar"))).toHaveLength(
+    expect(within(navigatie).getAllByText(t("navigatie.binnenkort"))).toHaveLength(
       ongebouwd.length,
     );
 
@@ -220,6 +227,18 @@ describe("App shell — accessibility (E0-10 clause 5)", () => {
 
     expect(document.getElementById("hoofdinhoud")).not.toHaveFocus();
     expect(document.body).toHaveFocus();
+  });
+
+  it("does not move focus on the root redirect, so the header stays ahead of the user", async () => {
+    // Found by opening the app, not by a test: `/` → `/jaarplan` is a pathname change, so the
+    // focus-after-navigation effect fired on the very first visit and dropped focus into an empty
+    // `<main>`. Everything in the header — including the class selector a teacher needs first — was then
+    // *behind* the focus position, reachable only by Shift+Tab.
+    renderApp("/");
+    await waitFor(() => expect(window.location.pathname).toBe("/jaarplan"));
+    await wachtOpShell();
+
+    expect(document.getElementById("hoofdinhoud")).not.toHaveFocus();
   });
 
   it("keeps the main region out of the tab order", async () => {

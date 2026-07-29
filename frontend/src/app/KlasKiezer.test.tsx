@@ -1,3 +1,5 @@
+import { StrictMode } from "react";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -53,10 +55,15 @@ function renderApp(pad = "/jaarplan") {
   window.history.pushState({}, "", pad);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+  // Wrapped in StrictMode because `main.tsx` is: it double-invokes effects in development, and a
+  // focus-management bug hid in exactly that gap — a ref-based "skip the first render" guard passed here
+  // and failed in a real browser. A test harness that is gentler than the dev runtime is not a harness.
   return render(
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>,
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </StrictMode>,
   );
 }
 
@@ -146,7 +153,7 @@ describe("KlasKiezer — choosing from a list (E0-10 clause 3)", () => {
 
     fireEvent.click(
       screen.getByRole("link", {
-        name: `${t("navigatie.dekking")} ${t("navigatie.nogNietBeschikbaar")}`,
+        name: `${t("navigatie.dekking")} ${t("navigatie.binnenkort")}`,
       }),
     );
 

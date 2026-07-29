@@ -40,17 +40,23 @@ export function KlasKiezer() {
   const gekozenSchooljaar = schooljaren.find((schooljaar) => schooljaar.id === schooljaarId);
   const klassen = gekozenSchooljaar?.klassen ?? [];
 
+  // Labels are small and tracked rather than body-sized: this is the app's context strip, not a form to
+  // fill in, and at body size the two labels competed with the wordmark beside them.
+  const labelKlassen = "text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground";
+  const veldKlassen =
+    "rounded-md border border-input bg-background px-2.5 py-1.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   return (
-    <div className="flex flex-wrap items-end gap-4">
+    <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-foreground" htmlFor="selectie-schooljaar">
+        <label className={labelKlassen} htmlFor="selectie-schooljaar">
           {t("selectie.schooljaarLabel")}
         </label>
         <select
           id="selectie-schooljaar"
           value={gekozenSchooljaar?.id ?? ""}
           onChange={(event) => kiesSchooljaar(event.target.value)}
-          className="min-w-48 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className={`min-w-40 ${veldKlassen}`}
         >
           <option value="">{t("selectie.kiesSchooljaar")}</option>
           {schooljaren.map((schooljaar) => (
@@ -62,7 +68,7 @@ export function KlasKiezer() {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-foreground" htmlFor="selectie-klas">
+        <label className={labelKlassen} htmlFor="selectie-klas">
           {t("selectie.klasLabel")}
         </label>
         <select
@@ -70,7 +76,7 @@ export function KlasKiezer() {
           value={klassen.some((klas) => klas.id === klasId) ? klasId : ""}
           onChange={(event) => kiesKlas(event.target.value)}
           disabled={klassen.length === 0}
-          className="min-w-56 rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className={`min-w-52 disabled:cursor-not-allowed disabled:opacity-60 ${veldKlassen}`}
         >
           <option value="">{t("selectie.kiesKlas")}</option>
           {klassen.map((klas) => (
@@ -82,7 +88,7 @@ export function KlasKiezer() {
       </div>
 
       {gekozenSchooljaar && klassen.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("selectie.geenKlassen")}</p>
+        <p className="pb-1.5 text-sm text-muted-foreground">{t("selectie.geenKlassen")}</p>
       ) : null}
     </div>
   );
