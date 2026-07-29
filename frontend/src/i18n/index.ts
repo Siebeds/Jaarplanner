@@ -40,6 +40,24 @@ export type TranslationParams = Record<string, string | number>;
  *         As a defensive runtime fallback (e.g. catalogue edited out of sync) the key
  *         itself is returned so the UI degrades visibly rather than crashing.
  */
+/**
+ * Resolve a count-dependent string, picking the singular catalogue entry when `aantal === 1`.
+ *
+ * Dutch inflects both the noun and the verb ("1 thema **staat**" vs "2 thema's **staan**"), so a single
+ * template with an `{aantal}` slot cannot be correct for both — it produces "1 thema's staan", which is what
+ * a teacher would read on screen. Rather than a ternary at each call site, the choice lives here: the same
+ * bug appeared in five separate strings during E3-02/E3-06 and was fixed one instance at a time until this
+ * helper existed. `aantal` is passed into both entries, so the singular text may use it or ignore it.
+ */
+export function tAantal(
+  aantal: number,
+  enkelvoud: TranslationKey,
+  meervoud: TranslationKey,
+  params?: TranslationParams,
+): string {
+  return t(aantal === 1 ? enkelvoud : meervoud, { aantal, ...params });
+}
+
 export function t(key: TranslationKey, params?: TranslationParams): string {
   const value = key
     .split(".")

@@ -133,6 +133,37 @@ public sealed class Schooljaar
         datum >= Start && datum <= Eind && !_sluitingen.Any(s => s.Bevat(datum));
 
     /// <summary>
+    /// Days between <paramref name="start"/> and <paramref name="eind"/> (inclusive) on which the school is
+    /// <b>open</b> — i.e. <see cref="IsLesdag"/> holds.
+    /// <para>
+    /// <b>The single definition, deliberately.</b> Two callers previously counted this for themselves: the
+    /// planning grid (which reported open days) and the spreading report (which used the raw calendar span).
+    /// The two therefore disagreed about how long the same block was — the kalender printed "4,9 weken" for a
+    /// period the overload check treated as 5,3 — so a thema could be reported as fitting a period the screen
+    /// beside it called too short. Counting lives here so there is one answer (E3-02 code review).
+    /// </para>
+    /// <para>
+    /// Note this counts weekends, because <see cref="IsLesdag"/> excludes only closures and nothing in this
+    /// model represents a weekend. Whether it should is an open question for the school; what matters here is
+    /// that every caller gets the <i>same</i> figure.
+    /// </para>
+    /// </summary>
+    public int TelOpenDagen(DateOnly start, DateOnly eind)
+    {
+        var open = 0;
+
+        for (var datum = start; datum <= eind; datum = datum.AddDays(1))
+        {
+            if (IsLesdag(datum))
+            {
+                open++;
+            }
+        }
+
+        return open;
+    }
+
+    /// <summary>
     /// The teaching stretches between <b>vacations</b> — the raw material the indeling seam turns into blocks.
     /// Returned as (start, eind) pairs; a year with no vacations yields a single stretch.
     /// <para>

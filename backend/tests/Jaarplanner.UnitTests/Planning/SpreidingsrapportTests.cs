@@ -28,6 +28,14 @@ public class SpreidingsrapportTests
         new(Planningsblokniveau.Themaperiode, 3, Blok3Start, new DateOnly(2027, 2, 14)),    // 42 dagen = 6,0 wk
     ];
 
+    /// <summary>
+    /// A year spanning the three blocks with no closures, so `TelOpenDagen` equals the calendar span and the
+    /// week arithmetic in these tests stays easy to read. `Een_vrije_dag_verkort_het_blok` covers the case
+    /// where they differ.
+    /// </summary>
+    private static Schooljaar Jaar() =>
+        new("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
+
     private static Thema Thema(string naam, int duurWeken, params string[] doelcodes)
     {
         var thema = new Thema(naam, duurWeken);
@@ -62,7 +70,7 @@ public class SpreidingsrapportTests
             (Thema("Licht en donker", 5, "B-1", "B-2"), Blok2Start),
             (Thema("Water", 5, "C-1", "C-2"), Blok3Start));
 
-        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId);
+        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId, Jaar());
 
         Assert.Equal(3, rapport.AantalBlokken);
         Assert.Equal(3, rapport.AantalGebruikteBlokken);
@@ -84,7 +92,7 @@ public class SpreidingsrapportTests
             (Thema("Licht en donker", 2, "B-1", "B-2"), Blok1Start),
             (Thema("Water", 2, "C-1", "C-2"), Blok1Start));
 
-        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId);
+        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId, Jaar());
 
         Assert.Equal(3, rapport.AantalBlokken);
         Assert.Equal(1, rapport.AantalGebruikteBlokken);
@@ -106,7 +114,7 @@ public class SpreidingsrapportTests
             (Thema("Wonen", 6, "B-1"), Blok1Start),
             (Thema("Verkeer", 3, "C-1"), Blok2Start));
 
-        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId);
+        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId, Jaar());
 
         Assert.Equal([1], rapport.OverbelasteBlokOrdinalen);
 
@@ -129,7 +137,7 @@ public class SpreidingsrapportTests
             (Thema("Water", 2, "GEDEELD-1", "A-2"), Blok1Start),
             (Thema("Wonen", 2, "GEDEELD-1", "B-2"), Blok1Start));
 
-        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId);
+        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId, Jaar());
 
         Assert.Equal(3, rapport.Blokken.Single(b => b.Ordinaal == 1).AantalDoelen);
     }
@@ -147,7 +155,7 @@ public class SpreidingsrapportTests
             (levend, Blok1Start),
             (zwevend, new DateOnly(2026, 12, 1)));
 
-        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId);
+        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId, Jaar());
 
         Assert.Equal(1, rapport.AantalGebruikteBlokken);
         Assert.Equal(1, rapport.Blokken.Single(b => b.Ordinaal == 1).AantalThemas);
@@ -162,7 +170,7 @@ public class SpreidingsrapportTests
     [Fact]
     public void Een_leeg_plan_meldt_elk_blok_als_leeg_zonder_te_delen_door_nul()
     {
-        var rapport = Spreidingsrapport.Meet([], Blokken(), new Dictionary<Guid, Thema>());
+        var rapport = Spreidingsrapport.Meet([], Blokken(), new Dictionary<Guid, Thema>(), Jaar());
 
         Assert.Equal(3, rapport.AantalBlokken);
         Assert.Equal(0, rapport.AantalGebruikteBlokken);
@@ -171,11 +179,55 @@ public class SpreidingsrapportTests
         Assert.Equal(0, rapport.MeesteDoelenInEenBlok);
     }
 
+    /// <summary>
+    /// Regression (E3-02 code review): a rejected placement survives regeneration but nothing is taught in that
+    /// period because of it. Counting it reported a period as used — and could flag it overbelast — purely on
+    /// the strength of a thema the teacher had thrown out. Filtering happens at the caller via
+    /// <c>Themaplaatsing.IsGepland</c>, which is what this test exercises.
+    /// </summary>
+    [Fact]
+    public void Een_geweigerde_plaatsing_maakt_een_blok_niet_bezet()
+    {
+        var geweigerd = Thema("Water", 6, "A-1");
+        var (plan, perId) = Plan((geweigerd, Blok1Start));
+        plan.Plaatsingen.Single().WijzigStatus(KoppelingStatus.Geweigerd);
+
+        var rapport = Spreidingsrapport.Meet(
+            plan.Plaatsingen.Where(p => p.IsGepland), Blokken(), perId, Jaar());
+
+        Assert.Equal(0, rapport.AantalGebruikteBlokken);
+        Assert.Equal([1, 2, 3], rapport.LegeBlokOrdinalen);
+        Assert.Empty(rapport.OverbelasteBlokOrdinalen);
+        Assert.Equal(0, rapport.Blokken.Single(b => b.Ordinaal == 1).BenodigdeWeken);
+    }
+
+    /// <summary>
+    /// Regression (E3-02 code review): the report measured blocks in raw calendar days while the kalender
+    /// measured the same blocks in <b>open</b> days, so the overload check allowed more content than the screen
+    /// said the period held. Both now go through <see cref="Schooljaar.TelOpenDagen"/>.
+    /// </summary>
+    [Fact]
+    public void Een_vrije_dag_verkort_het_blok_net_zoals_op_de_kalender()
+    {
+        var jaar = new Schooljaar("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
+        // 7 free days inside block 1 (42 calendar days) leave 35 open days = exactly 5,0 weeks.
+        jaar.VoegSluitingToe(new Schoolsluiting(
+            "Pedagogische week", new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 13), Sluitingssoort.VrijeDag));
+
+        var (plan, perId) = Plan((Thema("Water", 6, "A-1"), Blok1Start));
+
+        var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId, jaar);
+        var blok = rapport.Blokken.Single(b => b.Ordinaal == 1);
+
+        Assert.Equal(5.0, blok.BeschikbareWeken);   // open days, not the 6,0 the calendar span would give
+        Assert.True(blok.IsOverbelast);             // a 6-week thema no longer "fits" a 5-week period
+    }
+
     [Fact]
     public void Een_jaar_zonder_blokken_levert_een_leeg_rapport_op()
     {
         // Defensive: a schooljaar whose configured grain yields nothing must not throw here.
-        var rapport = Spreidingsrapport.Meet([], [], new Dictionary<Guid, Thema>());
+        var rapport = Spreidingsrapport.Meet([], [], new Dictionary<Guid, Thema>(), Jaar());
 
         Assert.Equal(0, rapport.AantalBlokken);
         Assert.Empty(rapport.Blokken);

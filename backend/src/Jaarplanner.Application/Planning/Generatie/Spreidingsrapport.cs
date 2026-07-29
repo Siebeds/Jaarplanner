@@ -71,14 +71,23 @@ public sealed record Spreidingsrapport(
     /// </param>
     /// <param name="blokken">The derived grid at the generation tier.</param>
     /// <param name="themaPerId">The placed thema's, for their duration and their goal codes.</param>
+    /// <param name="schooljaar">
+    /// The year the blocks were derived from, used only to measure each block in <b>open days</b> via
+    /// <see cref="Schooljaar.TelOpenDagen"/>. Required rather than optional: this used to divide the raw
+    /// calendar span by 7, while the kalender sized and labelled the same block in open days, so the two
+    /// screens disagreed about how long a period was and a thema could be called "fitting" a period the
+    /// ribbon beside it described as shorter (E3-02 code review).
+    /// </param>
     public static Spreidingsrapport Meet(
         IEnumerable<Themaplaatsing> plaatsingen,
         IReadOnlyCollection<Planningsblok> blokken,
-        IReadOnlyDictionary<Guid, Thema> themaPerId)
+        IReadOnlyDictionary<Guid, Thema> themaPerId,
+        Schooljaar schooljaar)
     {
         ArgumentNullException.ThrowIfNull(plaatsingen);
         ArgumentNullException.ThrowIfNull(blokken);
         ArgumentNullException.ThrowIfNull(themaPerId);
+        ArgumentNullException.ThrowIfNull(schooljaar);
 
         var perBlokStart = plaatsingen
             .GroupBy(p => p.BlokStart)
@@ -86,7 +95,7 @@ public sealed record Spreidingsrapport(
 
         var detail = blokken
             .OrderBy(b => b.Start)
-            .Select(blok => BouwBlokspreiding(blok, perBlokStart, themaPerId))
+            .Select(blok => BouwBlokspreiding(blok, perBlokStart, themaPerId, schooljaar))
             .ToList();
 
         return new Spreidingsrapport(
@@ -98,7 +107,8 @@ public sealed record Spreidingsrapport(
     private static BlokspreidingWeergave BouwBlokspreiding(
         Planningsblok blok,
         IReadOnlyDictionary<DateOnly, List<Themaplaatsing>> perBlokStart,
-        IReadOnlyDictionary<Guid, Thema> themaPerId)
+        IReadOnlyDictionary<Guid, Thema> themaPerId,
+        Schooljaar schooljaar)
     {
         var inBlok = perBlokStart.TryGetValue(blok.Start, out var lijst) ? lijst : [];
 
@@ -117,7 +127,10 @@ public sealed record Spreidingsrapport(
             .Count();
 
         var benodigdeWeken = themas.Sum(t => t.DuurWeken);
-        var blokWeken = blok.AantalDagen / 7.0;
+
+        // Open days, NOT the calendar span — the same basis the kalender sizes and labels blocks with, so the
+        // overload check and the "N,N weken" on screen can never contradict each other.
+        var blokWeken = schooljaar.TelOpenDagen(blok.Start, blok.Eind) / 7.0;
 
         return new BlokspreidingWeergave(
             Ordinaal: blok.Ordinaal,

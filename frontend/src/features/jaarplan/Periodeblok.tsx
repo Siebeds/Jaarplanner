@@ -21,7 +21,11 @@ export interface PeriodeblokProps {
 }
 
 export function Periodeblok({ blok, plaatsingen }: PeriodeblokProps) {
-  const teVol = plaatsingen.length >= VOORLOPIGE_TE_VOL_DREMPEL;
+  // A rejected thema is still SHOWN — a teacher should see what they threw out, and the status badge renders
+  // it struck through — but it must not count toward "te vol": nothing is taught in this period on its
+  // account. The backend applies the same rule via `Themaplaatsing.IsGepland` (E3-02 code review).
+  const gepland = plaatsingen.filter((p) => p.status !== "Geweigerd");
+  const teVol = gepland.length >= VOORLOPIGE_TE_VOL_DREMPEL;
 
   return (
     <li
@@ -52,7 +56,7 @@ export function Periodeblok({ blok, plaatsingen }: PeriodeblokProps) {
             {/* Icon AND word, never colour alone (Art. XII, FR-6.4). */}
             <p className="mt-1 text-xs font-medium text-amber-900">
               <span aria-hidden="true">▲</span>{" "}
-              {t("kalender.teVol", { aantal: plaatsingen.length })}
+              {t("kalender.teVol", { aantal: gepland.length })}
             </p>
             {/* Visible, not a `title` tooltip. The threshold is a placeholder for review question C, and a
                 disclosure that only appears on hover is invisible on touch, unreachable by keyboard and

@@ -198,6 +198,45 @@ describe("Jaarplankalender", () => {
     expect(melding).not.toHaveTextContent("1 doel gekoppeld");
   });
 
+  it("shows the error state when the jaarplan cannot be loaded, not an endless spinner", async () => {
+    // Regression: `rooster` is chained behind the schooljaarId the jaarplan returns, so while that id is
+    // unknown the rooster query is DISABLED — and a disabled TanStack Query v5 query reports
+    // `isPending === true`. With the pending guard placed before the error guard, a failed jaarplan fetch
+    // showed "Jaarplan laden…" forever and the error copy was dead code. The realistic trigger is the only
+    // way into this screen today: a teacher pastes a klas-id that does not exist and gets a 404.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("not found", { status: 404 })),
+    );
+    renderKalender();
+
+    expect(await screen.findByText("Het jaarplan kon niet geladen worden.")).toBeInTheDocument();
+    expect(screen.queryByText("Jaarplan laden…")).toBeNull();
+  });
+
+  it("does not count a rejected thema toward 'te vol', but still shows it", async () => {
+    // Regression (E3-02 code review): a geweigerd placement survives regeneration and occupies its slot for
+    // idempotency, but nothing is taught in that period because of it. Counting it pushed a period over the
+    // te-vol threshold on the strength of a thema the teacher had thrown out.
+    stubFetch(
+      maakJaarplan([
+        maakPlaatsing({ id: "a", themaNaam: "Water" }),
+        maakPlaatsing({ id: "b", themaNaam: "Wonen" }),
+        maakPlaatsing({ id: "c", themaNaam: "Weggegooid", status: "Geweigerd" }),
+      ]),
+    );
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    // Three placements in the block, but only two are planned — below the threshold of 3.
+    expect(screen.queryByText(/Te vol/)).toBeNull();
+
+    // The rejected one is still visible: a teacher should see what they rejected, struck through by its badge.
+    expect(screen.getByText("Weggegooid")).toBeInTheDocument();
+    expect(screen.getByText("Geweigerd")).toBeInTheDocument();
+  });
+
   it("reports the spreading measurement after a generation run, with no verdict attached", async () => {
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
@@ -205,6 +244,7 @@ describe("Jaarplankalender", () => {
       jaarplan: null,
       aantalNieuw: 3,
       aantalBehouden: 1,
+      aantalVervangen: 2,
       onbekendeThemas: ["Ruimtevaart"],
       onbekendeBlokken: [],
       duplicaten: [],
@@ -228,13 +268,18 @@ describe("Jaarplankalender", () => {
 
     // FR-5.2's three measurements are surfaced.
     expect(screen.getByText("1 van 2 periodes gebruikt.")).toBeInTheDocument();
-    expect(screen.getByText("Nog leeg: periode 2.")).toBeInTheDocument();
+    expect(screen.getByText("Nog leeg: periode 2.")).toBeInTheDocument();   // singular ordinal
     expect(
       screen.getByText(/Te weinig weken voor de geplande thema's: periode 1\./),
     ).toBeInTheDocument();
 
     // Locked/decided placements survived, and the model's miss is named rather than swallowed (Art. IV.4).
-    expect(screen.getByText(/1 bestaande plaatsingen bleven staan/)).toBeInTheDocument();
+    // Grammatical singular. The previous revision pinned "1 bestaande plaatsingen bleven staan", so the test
+    // was actively protecting the bug — fixing the copy would have looked like a regression.
+    expect(screen.getByText(/1 bestaande plaatsing bleef staan/)).toBeInTheDocument();
+
+    // A run that discarded the previous proposal must say so; see the aantalVervangen assertions below.
+    expect(screen.getByText("2 eerdere voorstellen zijn vervangen.")).toBeInTheDocument();
     expect(screen.getByText(/Ruimtevaart/)).toBeInTheDocument();
 
     // And it explicitly disclaims a judgement: no threshold is defined anywhere, so the tool must not imply one.

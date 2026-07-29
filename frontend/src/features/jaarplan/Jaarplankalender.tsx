@@ -1,5 +1,5 @@
 import { Button } from "../../components/ui/button";
-import { t } from "../../i18n";
+import { t, tAantal } from "../../i18n";
 import { ApiError } from "../../lib/api";
 import { Periodeblok } from "./Periodeblok";
 import { Spreidingsoverzicht } from "./Spreidingsoverzicht";
@@ -40,16 +40,22 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
     return <p className="text-sm text-slate-500">{t("kalender.geenKlas")}</p>;
   }
 
-  if (jaarplan.isPending || rooster.isPending) {
-    return <p className="text-sm text-slate-500">{t("kalender.laden")}</p>;
-  }
-
+  // Errors are checked BEFORE pending, and the order is load-bearing rather than stylistic. `rooster` is
+  // chained behind the schooljaarId the jaarplan returns, so while that id is unknown the rooster query is
+  // *disabled* — and a disabled TanStack Query v5 query reports `isPending === true`, not idle. With the
+  // pending guard first, a failed jaarplan fetch never reached its error branch: the screen showed
+  // "Jaarplan laden…" forever and `kalender.fout` was dead code. The realistic trigger is the only route
+  // into this screen today — a teacher pastes a klas-id that does not exist and gets a 404.
   if (jaarplan.isError) {
     return <p className="text-sm text-red-700">{t("kalender.fout")}</p>;
   }
 
   if (rooster.isError) {
     return <p className="text-sm text-red-700">{t("kalender.roosterFout")}</p>;
+  }
+
+  if (jaarplan.isPending || rooster.isPending) {
+    return <p className="text-sm text-slate-500">{t("kalender.laden")}</p>;
   }
 
   const plan = jaarplan.data;
@@ -172,12 +178,13 @@ function TeHerzien({ plaatsingen }: { plaatsingen: ReturnType<typeof vervallenPl
     >
       <h3 className="text-sm font-semibold text-amber-900">
         <span aria-hidden="true">▲</span>{" "}
-        {/* Separate singular copy: "1 thema's staan niet meer" is wrong Dutch, and this notice is most
-            often shown for exactly one placement. Caught by looking at the rendered screen — no test
-            asserted the sentence, which is the kind of defect only a browser (or a teacher) finds. */}
-        {plaatsingen.length === 1
-          ? t("kalender.herzienTitelEnkelvoud")
-          : t("kalender.herzienTitel", { aantal: plaatsingen.length })}
+        {/* Via the shared helper rather than an inline ternary: the same singular/plural bug turned up in five
+            separate strings before `tAantal` existed, and each was fixed on its own. */}
+        {tAantal(
+          plaatsingen.length,
+          "kalender.herzienTitelEnkelvoud",
+          "kalender.herzienTitel",
+        )}
       </h3>
       <p className="mt-1 text-xs text-amber-900">{t("kalender.herzienUitleg")}</p>
 

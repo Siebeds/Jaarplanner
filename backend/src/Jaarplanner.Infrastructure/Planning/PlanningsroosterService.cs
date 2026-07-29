@@ -63,23 +63,10 @@ public sealed class PlanningsroosterService : IPlanningsroosterService
     }
 
     /// <summary>
-    /// Counts the block's actual teaching days by asking the year about each date, rather than subtracting a
-    /// closure's length — a closure may only partly overlap the block, and <see cref="Schooljaar.IsLesdag"/>
-    /// already owns the "inside the year and covered by no closure" rule. Blocks span weeks, so the day-by-day
-    /// loop is trivially cheap and keeps the definition in exactly one place.
+    /// Delegates to <see cref="Schooljaar.TelOpenDagen"/> so the ribbon and the spreading report cannot drift
+    /// apart. This method used to implement the count itself, while <c>Spreidingsrapport</c> used the raw
+    /// calendar span — so the two disagreed about the length of the same block.
     /// </summary>
-    private static int TelOpenDagen(Schooljaar schooljaar, Planningsblok blok)
-    {
-        var openDagen = 0;
-
-        for (var datum = blok.Start; datum <= blok.Eind; datum = datum.AddDays(1))
-        {
-            if (schooljaar.IsLesdag(datum))
-            {
-                openDagen++;
-            }
-        }
-
-        return openDagen;
-    }
+    private static int TelOpenDagen(Schooljaar schooljaar, Planningsblok blok) =>
+        schooljaar.TelOpenDagen(blok.Start, blok.Eind);
 }
