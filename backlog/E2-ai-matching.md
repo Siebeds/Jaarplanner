@@ -45,7 +45,7 @@
 > in any one story. **M2 stays withdrawn** in the meantime — the milestone claims something a teacher can do,
 > and until E2-08 lands they cannot. Do not re-open this question; do not re-flip these checkboxes.
 
-- [ ] **E2-08 — Trigger the matching: an invocation surface for FR-4.1** — *added 2026-07-28 (third antagonist audit): E2's headline feature is unreachable*
+- [~] **E2-08 — Trigger the matching: an invocation surface for FR-4.1** — *added 2026-07-28 (third antagonist audit): E2's headline feature is unreachable; **claimed 2026-07-29**, in progress on `feature/e2-ai-matching`*
   Give `DoelMatchingService.MatchThemaAsync` a way to be called in a running application — an endpoint (e.g. `POST /api/themas/{themaId}/doelsuggesties/genereer`) plus the frontend action that invokes it and refreshes the review list.
   *Why this story exists:* `MatchThemaAsync` is invoked from **exactly one place in the repository — its own unit tests.** No controller, no hosted service, no frontend function calls it. `DoelsuggestiesController` exposes only `GET` (list) and `PUT .../status` (accept/reject), so suggestions can be *read* and *decided on* but never *created*. In a deployed app `DoelsuggestieLijst` would always render `matching.leeg`. `DoelsuggestieEndpointsTests` seeds rows directly into the database, bypassing generation, which is why no test caught it. FR-4.1 reads *"de tool **stelt** … **voor**"* — the same verb class as FR-1.2's *toont*, and it fails the same test.
   *Consequence:* **M2 is withdrawn** until this lands (see `README.md`). E2's other six stories are genuinely built; this is the missing wire between them.
