@@ -61,6 +61,53 @@ The app runs **without** any secret set — `/health` returns 200 and `/health/r
 the DB as unreachable (503) rather than crashing. Set the connection string when you want a
 live database (`docker compose up -d db` from the repo root first).
 
+### Running Postgres without Docker (verified 2026-07-29)
+
+Docker is not the only option, and on a corporate machine it may not be the cheapest one:
+**Docker Desktop requires a paid subscription for companies over 250 employees or $10M
+revenue**, and on Windows it also needs WSL2 (admin rights + a reboot). A native install
+avoids both. `.env.example` already anticipates this — its port 5433 exists precisely to
+"avoid clashing with a local Postgres install".
+
+```powershell
+winget install -e --id PostgreSQL.PostgreSQL.17 --accept-package-agreements --accept-source-agreements
+```
+
+Notes from doing it, so the next person does not rediscover them:
+
+- The unattended install sets the **`postgres` superuser password to `postgres`** and listens
+  on the default **5432** (not 5433 — that number only mattered for the Docker mapping).
+- Create the role and database the repo's conventions expect (`psql` lives in
+  `C:\Program Files\PostgreSQL\17\bin`):
+
+  ```sql
+  CREATE ROLE jaarplanner LOGIN PASSWORD 'jaarplanner_local' CREATEDB;
+  CREATE DATABASE jaarplanner OWNER jaarplanner;
+  ```
+
+- **Use `Host=127.0.0.1`, not `Host=localhost`, and add `SSL Mode=Disable`.** With
+  `localhost` and negotiation left on, Npgsql hung and `dotnet ef database update` failed
+  with *"The operation has timed out"* while `psql` connected fine over the same
+  host/port — the hang is in the SSL/GSS negotiation, not in name resolution or auth.
+  The working value:
+
+  ```
+  Host=127.0.0.1;Port=5432;Database=jaarplanner;Username=jaarplanner;Password=jaarplanner_local;SSL Mode=Disable
+  ```
+
+- Then `dotnet ef database update --project src/Jaarplanner.Infrastructure --startup-project src/Jaarplanner.Api`.
+- To run the **Postgres integration suite** (36 tests that otherwise skip), set:
+
+  ```
+  JAARPLANNER_TEST_POSTGRES=Host=127.0.0.1;Port=5432;Database=postgres;Username=jaarplanner;Password=jaarplanner_local;SSL Mode=Disable
+  ```
+
+  The role needs `CREATEDB` because the fixtures create their own databases.
+
+> `jaarplanner_local` is a **local-only** password for a throwaway database, in the same
+> spirit as `.env.example`'s `changeme-local-dev` ("Any value is fine locally"). It still
+> lives in user-secrets, never in the repo (Art. VI.4).
+
 ## Cloud: Azure Key Vault binding (stubbed)
 
 In **non-Development** environments the host adds Azure Key Vault as a configuration source

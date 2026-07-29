@@ -21,9 +21,12 @@ import type { Jaarplan, Planningsrooster, Themaplaatsing } from "./types";
 const SCHOOLJAAR_ID = "22222222-2222-2222-2222-222222222222";
 
 /**
- * The derived grid for 2026-2027. `aantalOpenDagen` drives block width, so periode 6 (35 calendar days
- * minus the 2-day Hemelvaart closure = 33) renders marginally narrower than its span suggests — exactly the
- * effect the design exists to show.
+ * The derived grid for 2026-2027, **copied from what the real API returns** for the seeded demo year
+ * (`GET /api/schooljaren/{id}/rooster`, verified 2026-07-29) rather than estimated. Periode 6 is 34 open
+ * days, not 37: both Hemelvaart (2 days) and Pinkstermaandag fall inside it, so it renders visibly narrower
+ * than its calendar span — exactly the effect the design exists to show. An earlier revision of this fixture
+ * guessed 33/35 for periodes 6 and 7 and put Pinkstermaandag in the wrong period; a fixture claiming to be
+ * the genuine calendar has to actually be it, or the story quietly misrepresents the product.
  */
 const rooster: Planningsrooster = {
   schooljaarId: SCHOOLJAAR_ID,
@@ -38,8 +41,8 @@ const rooster: Planningsrooster = {
     { ordinaal: 3, start: "2026-11-09", eind: "2026-12-20", ouderOrdinaal: null, aantalOpenDagen: 42 },
     { ordinaal: 4, start: "2027-01-04", eind: "2027-02-14", ouderOrdinaal: null, aantalOpenDagen: 42 },
     { ordinaal: 5, start: "2027-02-22", eind: "2027-04-04", ouderOrdinaal: null, aantalOpenDagen: 42 },
-    { ordinaal: 6, start: "2027-04-19", eind: "2027-05-25", ouderOrdinaal: null, aantalOpenDagen: 33 },
-    { ordinaal: 7, start: "2027-05-26", eind: "2027-06-30", ouderOrdinaal: null, aantalOpenDagen: 35 },
+    { ordinaal: 6, start: "2027-04-19", eind: "2027-05-25", ouderOrdinaal: null, aantalOpenDagen: 34 },
+    { ordinaal: 7, start: "2027-05-26", eind: "2027-06-30", ouderOrdinaal: null, aantalOpenDagen: 36 },
   ],
   onderbrekingen: [
     { naam: "Herfstvakantie", start: "2026-11-02", eind: "2026-11-08" },
