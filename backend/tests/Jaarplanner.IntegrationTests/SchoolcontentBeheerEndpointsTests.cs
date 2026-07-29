@@ -244,8 +244,10 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
                 var klas = db.Klassen.FirstOrDefault();
                 if (klas is null)
                 {
-                    klas = new Klas("L1 — eerste leerjaar", leerjaar: 1);
-                    db.Klassen.Add(klas);
+                    // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
+                    var schooljaar = TestSchooljaar.Maak();
+                    klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
+                    db.Schooljaren.Add(schooljaar);
                     db.Leerplandoelen.AddRange(
                         Leerdoel("NL-001"),
                         Leerdoel("WIS-001"));

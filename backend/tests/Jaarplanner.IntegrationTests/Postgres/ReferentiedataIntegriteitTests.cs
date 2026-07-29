@@ -139,11 +139,18 @@ public sealed class ReferentiedataIntegriteitTests : IAsyncLifetime
     {
         await using var context = _db.MaakContext();
 
-        context.Klassen.Add(new Klas("L3 — derde leerjaar", 3));
+        // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01) — a real FK here, unlike in-memory. The
+        // second class is put in a DIFFERENT year on purpose: the name index is deliberately school-wide rather
+        // than per-year, because the school-content import resolves a class by name.
+        var eersteJaar = TestSchooljaar.Maak("2026-2027");
+        eersteJaar.VoegKlasToe("L3 — derde leerjaar", 3);
+        context.Schooljaren.Add(eersteJaar);
         await context.SaveChangesAsync();
 
         await using var tweede = _db.MaakContext();
-        tweede.Klassen.Add(new Klas("L3 — derde leerjaar", 3));
+        var tweedeJaar = TestSchooljaar.Maak("2027-2028", startJaar: 2027);
+        tweedeJaar.VoegKlasToe("L3 — derde leerjaar", 3);
+        tweede.Schooljaren.Add(tweedeJaar);
 
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => tweede.SaveChangesAsync());
         Assert.Equal("23505", Assert.IsType<Npgsql.PostgresException>(ex.InnerException).SqlState);

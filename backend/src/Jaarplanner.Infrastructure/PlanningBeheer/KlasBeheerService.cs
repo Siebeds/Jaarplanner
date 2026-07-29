@@ -40,6 +40,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
         return klassen
             .Select(k => new KlasWeergave(
                 k.Id,
+                k.SchooljaarId,
                 k.Naam,
                 k.Leerjaar,
                 subthemaAantallen.TryGetValue(k.Id, out var aantal) ? aantal : 0))
@@ -52,22 +53,37 @@ public sealed class KlasBeheerService : IKlasBeheerService
         var klas = await VindKlasAsync(klasId, cancellationToken);
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.Naam, klas.Leerjaar, aantal);
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal);
     }
 
     /// <inheritdoc />
-    public async Task<KlasWeergave> MaakKlasAsync(KlasCreatie creatie, CancellationToken cancellationToken = default)
+    public async Task<KlasWeergave> MaakKlasAsync(
+        Guid schooljaarId,
+        KlasCreatie creatie,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(creatie);
 
         var naam = VereisNaam(creatie.Naam);
         await VereisVrijeNaamAsync(naam, uitgezonderd: null, cancellationToken);
 
-        var klas = new Klas(naam, creatie.Leerjaar);
+        // A klas must live in an existing school year (Art. IX.3 containment, E3-01). Checked here so a bad id is
+        // a friendly 404 rather than an opaque FK violation, and created THROUGH the schooljaar so the containment
+        // is expressed by the aggregate that owns it.
+        var schooljaar = await _context.Schooljaren
+            .FirstOrDefaultAsync(s => s.Id == schooljaarId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Schooljaar {schooljaarId} is niet gevonden.");
+
+        var klas = schooljaar.VoegKlasToe(naam, creatie.Leerjaar);
+
+        // Registered explicitly as Added. Reaching a new entity only through a navigation of an already-tracked
+        // principal makes EF apply its "key is set, so it must already exist" heuristic and mark the Klas *Modified*,
+        // which then fails with a concurrency error because there is no such row yet. The domain mutator still owns
+        // the containment; this line only says "insert it".
         _context.Klassen.Add(klas);
         await BewaarAsync(naam, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.Naam, klas.Leerjaar, AantalSubthemas: 0);
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, AantalSubthemas: 0);
     }
 
     /// <inheritdoc />
@@ -86,7 +102,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
 
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.Naam, klas.Leerjaar, aantal);
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal);
     }
 
     /// <inheritdoc />

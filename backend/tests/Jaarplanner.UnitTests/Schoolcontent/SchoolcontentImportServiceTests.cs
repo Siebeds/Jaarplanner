@@ -29,8 +29,10 @@ public sealed class SchoolcontentImportServiceTests : IDisposable
         _context = new AppDbContext(options);
         _service = new SchoolcontentImportService(_context);
 
-        _klas = new Klas("L1 — eerste leerjaar", leerjaar: 1);
-        _context.Klassen.Add(_klas);
+        // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
+        var schooljaar = TestSchooljaar.Maak();
+        _klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
+        _context.Schooljaren.Add(schooljaar);
 
         // Seed the leerplandoelen these fixtures link to. The import now validates every goal code
         // against the curriculum before building a DoelKoppeling, because that code is a required

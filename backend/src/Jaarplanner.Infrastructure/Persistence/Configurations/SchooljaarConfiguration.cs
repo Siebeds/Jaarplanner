@@ -46,9 +46,21 @@ public sealed class SchooljaarConfiguration : IEntityTypeConfiguration<Schooljaa
             sluiting.HasIndex("SchooljaarId", "Start");
         });
 
-        // The backing field is the source of truth; Sluitingen and Vakanties are computed projections.
+        // Art. IX.3: "Schooljaar — contains multiple klassen" (E3-01). Unlike the closures a Klas is NOT owned:
+        // it has its own identity, its own CRUD and its own jaarplan, and class-scoped school content references
+        // it. Restrict rather than Cascade — deleting a school year must not silently take every class, its
+        // jaarplan and its subthema's with it; that is a decision a human makes explicitly (ADR-0006 §4), and
+        // there is deliberately no delete endpoint for a schooljaar yet (E6-03).
+        builder.HasMany<Klas>("_klassen")
+            .WithOne()
+            .HasForeignKey(k => k.SchooljaarId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The backing fields are the source of truth; Sluitingen, Vakanties and Klassen are computed projections.
         builder.Navigation("_sluitingen").UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation("_klassen").UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Ignore(s => s.Sluitingen);
         builder.Ignore(s => s.Vakanties);
+        builder.Ignore(s => s.Klassen);
     }
 }

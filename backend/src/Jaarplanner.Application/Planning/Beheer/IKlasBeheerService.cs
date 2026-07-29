@@ -25,11 +25,15 @@ public interface IKlasBeheerService
     Task<KlasWeergave> HaalKlasOpAsync(Guid klasId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Creates a class group. The name must be unique (case-insensitively) — a duplicate is a
-    /// validation fault, not a second class, because the Excel import resolves classes <b>by name</b>
-    /// and two same-named classes would make that resolution arbitrary.
+    /// Creates a class group <b>inside a school year</b> (Art. IX.3: "Schooljaar — contains multiple klassen";
+    /// E3-01). The school year must exist. The name must be unique (case-insensitively) <b>school-wide</b> — a
+    /// duplicate is a validation fault, not a second class, because the Excel import resolves classes <b>by
+    /// name</b> and two same-named classes would make that resolution arbitrary.
     /// </summary>
-    Task<KlasWeergave> MaakKlasAsync(KlasCreatie creatie, CancellationToken cancellationToken = default);
+    Task<KlasWeergave> MaakKlasAsync(
+        Guid schooljaarId,
+        KlasCreatie creatie,
+        CancellationToken cancellationToken = default);
 
     Task<KlasWeergave> WijzigKlasAsync(Guid klasId, KlasCreatie wijziging, CancellationToken cancellationToken = default);
 
@@ -41,14 +45,21 @@ public interface IKlasBeheerService
     Task VerwijderKlasAsync(Guid klasId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Input for creating/renaming a class group.</summary>
-/// <param name="Naam">The class name (e.g. "L3 — derde leerjaar"). Required, unique.</param>
+/// <summary>
+/// Input for creating/renaming a class group. It deliberately carries <b>no</b> <c>SchooljaarId</c>: on create the
+/// year comes from the route (<c>POST /api/schooljaren/{schooljaarId}/klassen</c>), and on update it must not
+/// change — moving a class to another school year would move its jaarplan onto a different vakantiestructuur,
+/// which is a copy (E8-03), not a rename. A <c>SchooljaarId</c> in this record would have made "rename" able to
+/// silently do that.
+/// </summary>
+/// <param name="Naam">The class name (e.g. "L3 — derde leerjaar"). Required, unique school-wide.</param>
 /// <param name="Leerjaar">The leerjaar/leeftijdsgroep ordinal (e.g. 3 for L3); 0 for kleuter groepen.</param>
 public sealed record KlasCreatie(string Naam, int Leerjaar);
 
 /// <summary>A class group as returned by the API.</summary>
 /// <param name="Id">Surrogate identity.</param>
+/// <param name="SchooljaarId">The school year that contains this class (Art. IX.3).</param>
 /// <param name="Naam">The class name.</param>
 /// <param name="Leerjaar">The leerjaar/leeftijdsgroep ordinal.</param>
 /// <param name="AantalSubthemas">How many subthema's are scoped to this class (0 for a fresh class).</param>
-public sealed record KlasWeergave(Guid Id, string Naam, int Leerjaar, int AantalSubthemas);
+public sealed record KlasWeergave(Guid Id, Guid SchooljaarId, string Naam, int Leerjaar, int AantalSubthemas);

@@ -30,9 +30,12 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
             .Options;
 
         using var seed = new AppDbContext(_options);
-        _klasA = new Klas("L1 — eerste leerjaar", leerjaar: 1);
-        _klasB = new Klas("L2 — tweede leerjaar", leerjaar: 2);
-        seed.Klassen.AddRange(_klasA, _klasB);
+
+        // Both classes live in the same school year — the Art. IX.3 containment E3-01 made required.
+        var schooljaar = TestSchooljaar.Maak();
+        _klasA = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
+        _klasB = schooljaar.VoegKlasToe("L2 — tweede leerjaar", leerjaar: 2);
+        seed.Schooljaren.Add(schooljaar);
 
         seed.Leerplandoelen.AddRange(
             Leerdoel("NL-001"),

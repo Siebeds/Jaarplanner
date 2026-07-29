@@ -232,7 +232,10 @@ public sealed class SchoolcontentImportRobustheidTests
     /// <summary>Seeds the klas the fixture rows reference plus the given (valid) leerplandoel codes.</summary>
     private static async Task SeedAsync(AppDbContext context, params string[] codes)
     {
-        context.Klassen.Add(new Klas("K3", leerjaar: 0));
+        // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
+        var schooljaar = TestSchooljaar.Maak();
+        schooljaar.VoegKlasToe("K3", leerjaar: 0);
+        context.Schooljaren.Add(schooljaar);
         foreach (var code in codes)
         {
             context.Leerplandoelen.Add(new Leerplandoel(

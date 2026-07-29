@@ -28,8 +28,11 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
             .Options;
 
         using var seed = new AppDbContext(_options);
-        _klas = new Klas("L1 — eerste leerjaar", leerjaar: 1);
-        seed.Klassen.Add(_klas);
+
+        // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
+        var schooljaar = TestSchooljaar.Maak();
+        _klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
+        seed.Schooljaren.Add(schooljaar);
 
         // Seed read-only curriculum codes the goal links can reference (Art. III.5). The in-memory
         // provider does not enforce the Discipline FK, so no discipline row is needed here.
