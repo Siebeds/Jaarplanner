@@ -3,12 +3,12 @@ import { t } from "../../i18n";
 import type { Themaplaatsing } from "./types";
 
 /**
- * One thema on the ribbon (E3-06).
+ * One thema on the plan (E3-06).
  *
  * **Not yet draggable.** The wireframe shows a grip and the keyboard route, but both belong to E3-07,
  * which also owns the confirmation that protects an accepted or locked placement from being discarded.
- * Rendering a grip that does nothing would promise an interaction the draft cannot honour, so the card
- * is a plain focusable element and the review is told plainly what is missing.
+ * Rendering a grip that does nothing would promise an interaction the draft cannot honour, so the card is
+ * inert and the review is told plainly what is missing.
  *
  * **The doelsoort mix from the wireframe (`MD 4 · G 6 · + 1`) is deliberately absent.** The jaarplan API
  * returns `doelcodes` — the codes a thema carries — but not each code's doelsoort, so the mix cannot be
@@ -37,37 +37,40 @@ export function Themakaart({ plaatsing }: ThemakaartProps) {
         ? t("kalender.eenDoelGekoppeld")
         : t("kalender.doelenGekoppeld", { aantal });
 
-  // No `tabIndex` while the card does nothing: E3-07 owns the grip and the keyboard route, and until then
-  // a tab stop per card is N stops that lead nowhere for a keyboard user. The focus ring stays in the class
-  // list so E3-07 only has to make the card focusable, not restyle it.
   return (
-    <article className="rounded-md border border-slate-300 bg-white p-2 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-1">
-      <h4 className="text-sm font-medium leading-tight text-slate-900">
-        {plaatsing.themaNaam}
-      </h4>
-
-      <p className="mt-1 text-xs text-muted-foreground">{koppeling}</p>
-
-      <div className="mt-2 flex flex-wrap items-center gap-1">
-        {/* The status token variants carry the same colours as the matching screen, so a
-            "voorgesteld" thema reads identically wherever a teacher meets it. */}
-        <Badge variant={statusSleutel(plaatsing.status)}>
-          {t(`suggestieStatus.${statusSleutel(plaatsing.status)}`)}
-        </Badge>
+    <article className="rounded-md border border-border bg-card p-3 shadow-card">
+      <div className="flex items-start justify-between gap-2">
+        <h4 className="text-sm font-semibold leading-snug text-ink">{plaatsing.themaNaam}</h4>
 
         {plaatsing.vergrendeld && (
           /* Icon AND word — colour or a glyph alone is never the sole carrier (Art. XII, WCAG 2.2 AA). */
-          <Badge variant="outline" title={t("kalender.vergrendeldUitleg")}>
+          <Badge variant="outline" className="shrink-0" title={t("kalender.vergrendeldUitleg")}>
             <span aria-hidden="true">🔒</span> {t("kalender.vergrendeld")}
           </Badge>
         )}
       </div>
 
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        {/* The status token variants carry the same colours as the matching screen, so a "voorgesteld"
+            thema reads identically wherever a teacher meets it. */}
+        <Badge variant={statusSleutel(plaatsing.status)}>
+          {t(`suggestieStatus.${statusSleutel(plaatsing.status)}`)}
+        </Badge>
+        <span className="text-xs text-ink-zacht" data-cijfers>
+          {koppeling}
+        </span>
+      </div>
+
       {plaatsing.aiMotivatie && (
-        <p className="mt-2 border-t border-slate-100 pt-2 text-xs italic text-slate-500">
-          <span className="not-italic font-medium">{t("kalender.motivatieLabel")} </span>
-          {plaatsing.aiMotivatie}
-        </p>
+        // The motivation is the AI's argument, so it is set apart as a quote rather than run on as another
+        // paragraph — a teacher deciding accept/reject needs to see where the tool's reasoning starts and
+        // stops (Art. IV.3).
+        <div className="mt-3 rounded-md bg-paper px-3 py-2">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
+            {t("kalender.motivatieLabel")}
+          </p>
+          <p className="mt-0.5 text-xs leading-snug text-ink">{plaatsing.aiMotivatie}</p>
+        </div>
       )}
     </article>
   );

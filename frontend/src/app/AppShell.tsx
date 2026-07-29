@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigationType } from "react-router-dom";
 
 import { t } from "../i18n";
 import { KlasKiezer } from "./KlasKiezer";
+import { Merkteken } from "./Merkteken";
 import { Navigatie } from "./Navigatie";
 
 /** The id the skip-link targets, and the element that takes focus after a navigation. */
@@ -15,11 +16,14 @@ const HOOFDINHOUD_ID = "hoofdinhoud";
  * pasting a GUID into a text input. That was a deliberate trade at the time — a reachable screen beats an
  * unreachable one — but it meant no story had anywhere to put a *second* screen.
  *
- * **The chrome carries no colour, on purpose.** Art. XII gives six doelsoort hues a fixed meaning, and the
- * token set adds coverage and suggestion-status colours on top; a seventh accent for navigation would
- * compete with the one signal this tool exists to communicate. So the header separates itself from the
- * content tonally (a muted band against a white page) and the hierarchy is carried by type and structure.
- * Every hue stays available to mean something.
+ * **Layout.** A sticky header carrying the mark, the class switcher and the primary navigation; then the
+ * page. The switcher lives in the header rather than on each screen because the choice is cross-cutting:
+ * Jaarplan, Dekking and Thema's all scope to the same class, and "which class am I planning?" is the one
+ * question a teacher must never get wrong.
+ *
+ * **The chrome carries a single hue** (`petrol`) and no categorical colour at all. Art. XII spends six
+ * hues on doelsoort and the tokens spend more on status and dekking; a second chrome accent would compete
+ * with the signal the tool exists to send. See the palette note in `src/index.css`.
  */
 export function AppShell() {
   const location = useLocation();
@@ -41,7 +45,7 @@ export function AppShell() {
    *   made dev and production behave differently, which is worse than either behaviour on its own.
    * - **`REPLACE` navigations.** `/` redirects to `/jaarplan`, which is a pathname change like any other,
    *   so this effect fired on the very first visit and dropped focus into an empty `<main>` — the entire
-   *   header, including the class selector a teacher needs first, sat *behind* the focus position,
+   *   header, including the class switcher a teacher needs first, sat *behind* the focus position,
    *   reachable only by Shift+Tab. A redirect is not something the user did. Selection changes are
    *   `REPLACE` too, so the dropdown being used can never lose focus mid-choice either.
    */
@@ -60,32 +64,36 @@ export function AppShell() {
   }, [location.pathname, navigationType]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background">
       {/*
         In flow when focused (`not-sr-only` restores `position: static`), so it pushes the page down
         instead of covering it. Absolutely positioned, it landed on top of the wordmark and hid half of it.
       */}
       <a
         href={`#${HOOFDINHOUD_ID}`}
-        className="sr-only focus:not-sr-only focus:block focus:bg-foreground focus:px-6 focus:py-2 focus:text-sm focus:font-medium focus:text-background"
+        className="sr-only focus:not-sr-only focus:block focus:bg-petrol focus:px-6 focus:py-3 focus:text-sm focus:font-semibold focus:text-petrol-foreground"
       >
         {t("navigatie.overslaan")}
       </a>
 
-      <header className="border-b border-border bg-muted/50">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-5 pb-4 pt-5">
-            <div>
-              {/* Brand / proper noun, not translatable copy — exempt from the i18n guard. */}
-              {/* eslint-disable-next-line no-restricted-syntax */}
-              <h1 className="text-xl font-semibold tracking-tight">Jaarplanner</h1>
-              <p className="mt-0.5 text-xs text-muted-foreground">{t("app.ondertitel")}</p>
+      {/* Sticky, because the class switcher and the navigation are the two things a teacher reaches for
+          mid-scroll on a long jaarplan. `backdrop-blur` keeps it legible over scrolled content. */}
+      <header className="sticky top-0 z-40 border-b border-border bg-paper/85 backdrop-blur">
+        <div className="mx-auto max-w-[100rem] px-5 sm:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 py-4">
+            <div className="flex items-center gap-3">
+              <Merkteken className="h-9 w-9 shrink-0 text-petrol" />
+              <div>
+                {/* Brand / proper noun, not translatable copy — exempt from the i18n guard. */}
+                {/* eslint-disable-next-line no-restricted-syntax */}
+                <h1 className="text-lg font-bold text-ink">Jaarplanner</h1>
+                <p className="text-xs text-ink-zacht">{t("app.ondertitel")}</p>
+              </div>
             </div>
             <KlasKiezer />
           </div>
 
-          {/* `-mb-px` lets an active tab's 2px rule sit over the header's hairline instead of beside it. */}
-          <Navigatie className="-mb-px" />
+          <Navigatie />
         </div>
       </header>
 
@@ -95,7 +103,7 @@ export function AppShell() {
         // Focusable only as a script target: -1 keeps it out of the tab order (E3-06's audit removed a
         // tabIndex that made every inert card a tab stop) while allowing the focus() call above.
         tabIndex={-1}
-        className="mx-auto max-w-7xl px-6 py-8 focus-visible:outline-none"
+        className="mx-auto max-w-[100rem] px-5 py-8 focus-visible:outline-none focus-visible:ring-0 sm:px-8 sm:py-10"
       >
         <Outlet />
       </main>

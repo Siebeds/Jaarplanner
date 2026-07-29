@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 
+import { buttonVariants } from "../components/ui/button";
 import { t } from "../i18n";
 import { JAARPLAN_PAD } from "./routes";
 
@@ -12,12 +13,14 @@ export function NietGevondenPagina() {
   const location = useLocation();
 
   return (
-    <section className="max-w-2xl">
-      <h2 className="text-xl font-semibold text-foreground">{t("navigatie.nietGevondenTitel")}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">{t("navigatie.nietGevondenUitleg")}</p>
+    <section className="mx-auto flex max-w-xl flex-col items-center px-6 py-14 text-center">
+      <h2 className="text-xl font-bold text-ink">{t("navigatie.nietGevondenTitel")}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-ink-zacht">
+        {t("navigatie.nietGevondenUitleg")}
+      </p>
       <Link
         to={{ pathname: JAARPLAN_PAD, search: location.search }}
-        className="mt-4 inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className={`mt-6 ${buttonVariants()}`}
       >
         {t("navigatie.naarJaarplan")}
       </Link>

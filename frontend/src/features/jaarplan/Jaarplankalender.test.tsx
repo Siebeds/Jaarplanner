@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { t } from "../../i18n";
 import { Jaarplankalender } from "./Jaarplankalender";
 import type { Generatieresultaat, Jaarplan, Planningsrooster } from "./types";
 
@@ -96,6 +97,17 @@ function stubFetch(jaarplan: Jaarplan, generatie?: Generatieresultaat | number) 
       return new Response("unexpected request", { status: 404 });
     }),
   );
+}
+
+/**
+ * The list of period cards.
+ *
+ * Needed because the year spine repeats two of the card labels by design — it carries a legend so its
+ * colours never stand alone (Art. XII) — so a document-wide text query for "Te vol" is ambiguous and would
+ * pass for the wrong reason.
+ */
+function periodes() {
+  return screen.getByRole("list", { name: t("kalender.ribbonLabel") });
 }
 
 function renderKalender() {
@@ -230,7 +242,9 @@ describe("Jaarplankalender", () => {
     await screen.findByText("Water");
 
     // Three placements in the block, but only two are planned — below the threshold of 3.
-    expect(screen.queryByText(/Te vol/)).toBeNull();
+    // Scoped to the period list: "Te vol" also appears in the year spine's legend, which explains what the
+    // colour means and is present regardless of whether any period is actually flagged.
+    expect(within(periodes()).queryByText(/Te vol/)).toBeNull();
 
     // The rejected one is still visible: a teacher should see what they rejected, struck through by its badge.
     expect(screen.getByText("Weggegooid")).toBeInTheDocument();
@@ -339,7 +353,7 @@ describe("Jaarplankalender", () => {
 
     await screen.findByText("Water");
     // Premises for this test's reach: the te-vol flag and the stale alert are actually on screen.
-    expect(screen.getByText(/Te vol/)).toBeInTheDocument();
+    expect(within(periodes()).getByText(/Te vol/)).toBeInTheDocument();
     expect(screen.getByRole("alert")).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();

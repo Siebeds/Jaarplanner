@@ -26,6 +26,29 @@ export default {
         muted: pair("muted"),
         accent: pair("accent"),
 
+        // chrome — ONE structural hue, so categorical colour stays reserved for the
+        // domain (see the palette note in src/index.css).
+        paper: {
+          DEFAULT: channel("paper"),
+          diep: channel("paper-diep"),
+        },
+        card: channel("card"),
+        ink: {
+          DEFAULT: channel("ink"),
+          zacht: channel("ink-zacht"),
+        },
+        petrol: {
+          DEFAULT: channel("petrol"),
+          foreground: channel("petrol-foreground"),
+          helder: channel("petrol-helder"),
+          wash: channel("petrol-wash"),
+        },
+        attentie: {
+          DEFAULT: channel("attentie"),
+          zacht: channel("attentie-zacht"),
+          ink: channel("attentie-ink"),
+        },
+
         // doelsoort — Op.stap goal types (Art. XII colour conventions)
         doelsoort: {
           md: pair("doelsoort-md"),
@@ -51,10 +74,39 @@ export default {
           "niet-gedekt": pair("dekking-niet-gedekt"),
         },
       },
+      fontFamily: {
+        // No webfont: a self-hosted face is an asset + licence decision (and Art. VI.2
+        // rules out a third-party font CDN), so the stack leans on the good variable UI
+        // faces the target platforms already ship. The character comes from the scale,
+        // the weights and the spacing — not from a novel typeface.
+        sans: [
+          "Segoe UI Variable Text",
+          "Segoe UI",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Inter",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
+      },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 6px)",
+        xl: "calc(var(--radius) + 4px)",
+      },
+      boxShadow: {
+        // Tinted with the ink hue rather than neutral black: a grey shadow on warm paper
+        // reads as dirt, a petrol-tinted one reads as depth.
+        card: "0 1px 2px hsl(196 38% 13% / 0.04), 0 2px 6px -1px hsl(196 38% 13% / 0.06)",
+        lift: "0 6px 16px -4px hsl(196 38% 13% / 0.12), 0 2px 4px -2px hsl(196 38% 13% / 0.08)",
+        balk: "0 1px 0 hsl(40 14% 87% / 1)",
+      },
+      transitionTimingFunction: {
+        uit: "cubic-bezier(0.2, 0.8, 0.2, 1)",
       },
     },
   },

@@ -15,20 +15,19 @@ import { NAVIGATIE } from "./routes";
  * 2. **An unbuilt destination says so, in visible text.** Not a tooltip: E3-06's audit found a `title`
  *    disclosure was invisible on touch, unreachable by keyboard and unread by most screen readers, while
  *    the story claimed the UI "said it out loud".
- * 3. **The active tab is marked by weight and a rule, not by a filled block.** The first build used a solid
- *    dark pill, which made the navigation the heaviest thing on the page — and on `/dekking` it meant the
- *    boldest object on screen was advertising a screen that does not work yet. A 2px rule reads as
- *    position, which is all it should say, and it echoes the year-ribbon the kalender is built on.
+ * 3. **The active tab is a filled `petrol-wash` pill, and unbuilt items are quieter than built ones.**
+ *    Both matter for honesty as much as looks: the first draft made the active tab the heaviest object on
+ *    the page, so on `/dekking` the boldest thing on screen advertised a screen that does not work.
  *
  * `NavLink` supplies `aria-current="page"`, so the active state is never carried by styling alone
  * (Art. XII, WCAG 2.2 AA, E7-10).
  */
-export function Navigatie({ className }: { className?: string }) {
+export function Navigatie() {
   const location = useLocation();
 
   return (
-    <nav aria-label={t("navigatie.hoofdnavigatie")} className={className}>
-      <ul className="flex flex-wrap gap-x-6">
+    <nav aria-label={t("navigatie.hoofdnavigatie")} className="-mx-1.5 overflow-x-auto pb-2">
+      <ul className="flex items-center gap-0.5">
         {NAVIGATIE.map((bestemming) => (
           <li key={bestemming.pad}>
             <NavLink
@@ -36,17 +35,23 @@ export function Navigatie({ className }: { className?: string }) {
               to={{ pathname: bestemming.pad, search: location.search }}
               className={({ isActive }) =>
                 [
-                  "inline-flex items-baseline gap-1.5 border-b-2 py-2.5 text-sm",
-                  "focus-visible:rounded-t-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex items-baseline gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm",
+                  "transition-colors duration-150 ease-uit",
                   isActive
-                    ? "border-foreground font-semibold text-foreground"
-                    : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
+                    ? "bg-petrol-wash font-semibold text-petrol"
+                    : bestemming.isGebouwd
+                      ? "font-medium text-ink-zacht hover:bg-muted hover:text-ink"
+                      // Unbuilt items are quieter by WEIGHT, not by a lighter colour:
+                      // `text-ink-zacht/80` measures 3.66:1 on paper, under the 4.5:1
+                      // floor at this size. Opacity on already-muted text is the exact
+                      // trap E3-06's audit caught, and jsdom/axe cannot see it.
+                      : "font-normal text-ink-zacht hover:bg-muted hover:text-ink",
                 ].join(" ")
               }
             >
               {t(bestemming.labelKey)}
               {bestemming.isGebouwd ? null : (
-                <span className="text-[11px] font-normal tracking-wide text-muted-foreground">
+                <span className="text-[0.6875rem] font-normal">
                   {t("navigatie.binnenkort")}
                 </span>
               )}

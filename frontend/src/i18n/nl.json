@@ -60,6 +60,7 @@
     "titel": "AI-doelsuggesties",
     "uitleg": "De AI stelt leerplandoelen voor bij dit thema. Jij beslist: aanvaard, weiger of pas manueel aan.",
     "themaIdLabel": "Thema-id",
+    "themaIdStopgap": "Tijdelijk: kies je thema straks uit een lijst. Zolang die er niet is, plak je hier het id.",
     "themaIdPlaceholder": "Plak hier het thema-id",
     "laden": "Suggesties laden…",
     "fout": "De doelsuggesties konden niet geladen worden.",
@@ -74,6 +75,14 @@
     "weigerenAria": "Leerplandoel {code} weigeren",
     "manueelAria": "Leerplandoel {code} manueel aanpassen",
     "wijzigenMislukt": "De status kon niet gewijzigd worden. Probeer opnieuw."
+  },
+  "spine": {
+    "titel": "Het schooljaar in periodes",
+    "uitleg": "De breedte volgt het aantal dagen dat de school open is. De openingen zijn de vakanties.",
+    "legendeGevuld": "Thema's ingepland",
+    "legendeLeeg": "Nog leeg",
+    "legendeTeVol": "Te vol",
+    "vakantiesLabel": "Vakanties"
   },
   "kalender": {
     "titel": "Jaarplan",

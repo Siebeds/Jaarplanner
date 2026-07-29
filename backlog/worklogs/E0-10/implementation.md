@@ -185,12 +185,114 @@ Evidence: [shell + jaarplan](../../docs/ux/wireframes/e0-10-shell-jaarplan.png) 
   kalender ribbon wants width and teachers will be on laptops — but it is a known edge, not an oversight.
 - **The `/themas` screen still asks for a thema-id by hand** (E1-14) and cannot generate suggestions (E2-08).
 
+## Build round 3 — a full visual redesign, on the owner's verdict
+
+The owner's assessment of round 2 was blunt and correct: *"extremely ugly and not user friendly, this is not an
+application to show users."* Round 2 had fixed defects and tidied hierarchy without ever asking whether the
+result was something a teacher would enjoy opening. It was stock shadcn slate: 12–14px grey text on white,
+tracked micro-caps, cramped cards, and empty states that were a lone grey sentence in a void.
+
+### What was kept, deliberately, and what was not
+
+Structural claims the directie ratified are **domain truth, not taste**, and survive untouched: periods derived
+from vakanties, never a month grid (Art. IX.3, ADR-0013/0020); proportional length; vakanties as literal gaps;
+doelsoort/status never carried by colour alone (Art. XII); every string from `nl.json` (Art. II.3). Everything
+visual was rebuilt.
+
+### The palette decision, because it is the one that shapes everything else
+
+This app cannot spend colour freely. Art. XII already assigns fixed meaning to six doelsoort hues, and the
+tokens spend more on suggestiestatus and dekking. So the chrome takes **exactly one structural hue** — a deep
+petrol — plus one attention hue for knelpunten and warm neutrals for the rest. Categorical colour stays
+reserved for the domain, which is the opposite of the round-2 position ("the chrome carries no colour at all"):
+that was disciplined to the point of lifelessness, and it produced the grey admin tool the owner rejected. One
+hue, used with conviction, reads as a product; zero hues read as a wireframe.
+
+Also: `paper` is a warm off-white, not white, so white cards read as objects lying on a surface. Base font size
+went 14px → 15px with a 1.6 line-height, because the users are non-technical adults reading dense Dutch
+curriculum prose.
+
+### The layout problem, and the two wrong answers before the right one
+
+The kalender's real defect was never colour — it was that **one period holding three thema's dictated the size
+of every other period**.
+
+1. *Original*: a horizontal ribbon of proportional columns. Flex stretched every column to the tallest, so six
+   periods became tall empty troughs beside the full one.
+2. *First attempt*: a responsive card grid. Fixed the stretching, but a grid still sizes each **row** to its
+   tallest cell, so a short period sat beside ~500px of nothing.
+3. *Shipped*: **the proportional view and the planning view are now separate things.** A new
+   {@link Jaarspine} strip carries proportional length (width ∝ open days, vakanties as openings, plus a
+   legend and the vakantie names in full), and each period below is a **full-width band** — identity on the
+   left, its thema's flowing across the width on the right. No stretching, no dead space, and the year reads
+   strictly top to bottom.
+
+**This is the one structural change to the approved E3-10 wireframe and it must go to the directie review**:
+proportionality moved from the planning surface to a strip above it. The claim the wireframe makes is preserved
+and arguably clearer; where it is *rendered* changed.
+
+### Also rebuilt
+
+- **The class switcher** is one raised control reading year → class, not two anonymous fields in a corner.
+  "Which class am I planning?" is a single question and the expensive one to get wrong.
+- **Thema card**: the AI's motivation is set apart in its own well rather than run on as another paragraph, so a
+  teacher deciding accept/reject can see where the tool's reasoning starts and stops (Art. IV.3).
+- **Empty period**: a recessed dashed well that reads "there is room here" — and is where E3-07's drop target
+  will land — instead of a line of italic text.
+- **Buttons** to 44px targets, pill badges, tinted-outline chips for provisional states, petrol-tinted shadows
+  (a neutral grey shadow on warm paper reads as dirt), `prefers-reduced-motion` honoured globally, one
+  app-wide `:focus-visible` treatment, `tabular-nums` on dates and counts.
+- **A real mark** (`Merkteken` + favicon): unequal bars with a gap. The year-ribbon, not a calendar page —
+  drawing a month grid in the logo of an app whose ADR forbids month grids would have been its own joke.
+
+### Three defects found by looking, again
+
+- **Nothing petrol rendered at first.** The dev server had cached the old `tailwind.config.js`, so `bg-petrol`
+  did not exist as a utility while the CSS variables resolved fine — the page looked "designed but colourless".
+  Diagnosed by querying `document.styleSheets` for the rule rather than guessing at the CSS; a clean `pnpm
+  build` proved the config was correct and a restart fixed it.
+- **The class switcher overflowed a 390px phone**, and because it is the widest thing in the header the *whole
+  page* got a horizontal scrollbar. Fixed length constraints → `min-w-0` + `w-full`, with the fixed widths
+  restored from `sm` up. Asserted afterwards: `scrollWidth` 375 vs viewport 390.
+- **The generate button was clipped on mobile** — as one wrapping flex row, the explanation shrank into a
+  narrow column and squeezed the button. Now stacked below `sm`.
+
+### Contrast, measured rather than assumed
+
+jsdom cannot evaluate colour, so axe passing says nothing about the palette — the lesson from E3-06's two
+WCAG failures. A script run **in the browser** composited every semi-transparent background up the ancestor
+chain and checked all **24 distinct text/background pairs** on the densest screen against the 4.5:1 (or 3:1
+large-text) floor: **0 failures**. Worth recording that the first version of that script reported a false
+positive on the `Voorgesteld` chip by treating a 10% tint as a solid fill — a contrast check that ignores alpha
+will lie to you in both directions.
+
+One near-miss caught while writing the nav: `text-ink-zacht/80` computes to **3.66:1** on paper. Opacity on
+already-muted text is exactly the trap E3-06 hit, so unbuilt nav items are now quieter by *weight*, not colour.
+
+### Gates (round 3)
+
+`pnpm test` **59 passed** / 7 files · `pnpm lint` exit 0 · `pnpm build` exit 0 · 0 console errors in the
+browser · no horizontal overflow at 390px.
+
+Two kalender tests needed rescoping, not weakening: the spine's legend legitimately puts a second "Te vol" on
+the page, so a document-wide text query became ambiguous. They now scope to the period list — a test that
+passes because it matched the wrong element is worse than one that fails.
+
+Evidence: [jaarplan](../../docs/ux/wireframes/e0-10-shell-jaarplan.png) ·
+[volledig jaar](../../docs/ux/wireframes/e0-10-jaarplan-volledig.png) ·
+[mobiel, 390px](../../docs/ux/wireframes/e0-10-shell-mobiel.png).
+
+### Still true after the redesign
+
+No teacher or directie has seen it; the test-runner and antagonist gates have not run; `/themas` still asks for
+a thema-id by hand (E1-14 / E2-08) — though the field now says out loud that it is a stopgap. A proper mobile
+navigation (a disclosure rather than a scrolling tab strip) is still not built.
+
 ### One thing to reconcile, owned by nobody
 
-The repo now has **two error-colour conventions**: `text-red-700` (kalender, and the selector, which followed it)
-and `text-suggestie-geweigerd` — a *status* token — in the matching feature. Both pass contrast; they should not
-both exist. Not fixed here because picking one is a design-system decision that touches E2's components, and this
-story owns the shell.
+~~The repo now has **two error-colour conventions**~~ — **resolved in round 3.** `text-red-700` is gone; every
+error now uses the `suggestie-geweigerd` token, tinted for message blocks. It was a design-system decision that
+touched E2's components, and the redesign was the moment to take it rather than leave it noted.
 
 ### Concurrency note
 

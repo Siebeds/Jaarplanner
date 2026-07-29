@@ -79,6 +79,38 @@ export function bouwRibbon(
   return segmenten;
 }
 
+/**
+ * The provisional "te vol" threshold, in thema's per period.
+ *
+ * **This is a placeholder for review question C, not a decision.** The approved wireframe flags at 3, and
+ * question C asks whether "te vol" should count thema's, count goals, or scale with the period's length — a
+ * 6-week period is genuinely wider than a 4-week one and can hold more before it looks full. It lives in one
+ * place, and the UI says out loud that the threshold is provisional, so the review can change it without
+ * hunting for a magic number.
+ */
+export const VOORLOPIGE_TE_VOL_DREMPEL = 3;
+
+/**
+ * The placements that actually occupy teaching time in a period.
+ *
+ * A rejected thema is still *shown* — a teacher should see what they threw out, and the status chip renders
+ * it struck through — but it must not count toward "te vol": nothing is taught in this period on its
+ * account. The backend applies the same rule via `Themaplaatsing.IsGepland` (E3-02 code review).
+ */
+export function geplandeIn(plaatsingen: readonly Themaplaatsing[]): Themaplaatsing[] {
+  return plaatsingen.filter((p) => p.status !== "Geweigerd");
+}
+
+/**
+ * Whether a period counts as over-full.
+ *
+ * Lives here rather than in the component so the year spine and the period card cannot disagree about
+ * which period is flagged — they now read the same predicate.
+ */
+export function isTeVol(plaatsingen: readonly Themaplaatsing[]): boolean {
+  return geplandeIn(plaatsingen).length >= VOORLOPIGE_TE_VOL_DREMPEL;
+}
+
 /** The placements sitting in a given block, matched on the block start date they key on. */
 export function plaatsingenIn(
   plaatsingen: readonly Themaplaatsing[],
