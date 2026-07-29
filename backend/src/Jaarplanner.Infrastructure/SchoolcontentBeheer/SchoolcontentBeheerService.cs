@@ -175,22 +175,32 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     /// <summary>
     /// How many jaarplan placements reference this thema, across every class.
     /// <para>
-    /// <b>Counted in memory on purpose.</b> <c>Themaplaatsing</c> is mapped as an <i>owned</i> collection of
-    /// <c>Jaarplan</c>, and EF Core exposes no <c>DbSet</c> — and therefore no server-side query — for an owned type.
-    /// The owned collection does load with its owner, so loading the plans and counting is correct on both the Npgsql
-    /// and the in-memory provider, and needs no raw SQL. The volume makes it a non-issue: one plan per class, a
-    /// primary school has a few dozen classes, and this runs only on an explicit thema delete.
+    /// <b>Counted in memory on purpose.</b> The owned collection loads with its owner, so loading the plans and
+    /// counting is correct on both the Npgsql and the in-memory provider and needs no raw SQL. The volume makes it a
+    /// non-issue: one plan per class, a primary school has a few dozen classes, and this runs only on an explicit
+    /// thema delete.
     /// </para>
     /// <para>
-    /// If a later story needs to <i>query</i> placements properly — E5's dekking must ask "is this thema placed
-    /// anywhere?" for every leerplandoel — <c>Themaplaatsing</c> should stop being owned and get its own
-    /// <c>DbSet</c>. The table and columns are already identical either way, so that is a mapping change rather than
-    /// a data migration. Deliberately not done here: it is outside this fix's scope.
+    /// <b>Why not a server-side query — the precise reason.</b> Not because the type is owned: EF Core does translate
+    /// <c>Any()</c>/<c>Count()</c> over an owned <i>collection navigation</i> into a SQL subquery. What owning forbids
+    /// is querying the type <i>independently of its owner</i> (there is no <c>DbSet&lt;Themaplaatsing&gt;</c>). The
+    /// actual blocker here is local: <see cref="Jaarplan.Plaatsingen"/> is <c>Ignore</c>d in
+    /// <c>JaarplanConfiguration</c> because it returns a freshly materialised ordered list, so the only navigation is
+    /// a bare backing field LINQ cannot address.
+    /// </para>
+    /// <para>
+    /// So if a later story needs a real query, the minimal change is to expose a <i>mapped</i> collection navigation
+    /// alongside the ordered projection — <b>keeping the type owned</b>, because un-owning would surrender the
+    /// ownership cascade the <c>Klas</c> delete guard relies on. An earlier revision of this comment prescribed
+    /// un-owning; that was an oversized remedy for a misdiagnosed cause. E5 may not need it at all: per-class dekking
+    /// loads one jaarplan aggregate, which yields the placed thema ids for free. See E5-01 in the backlog.
     /// </para>
     /// </summary>
     private async Task<int> AantalThemaplaatsingenAsync(Guid themaId, CancellationToken cancellationToken)
     {
-        var plannen = await _context.Jaarplannen.ToListAsync(cancellationToken);
+        // AsNoTracking: a pure read taken immediately before a delete in the same unit of work — tracking these
+        // aggregates would add change-detection cost and put unrelated entities in the ChangeTracker.
+        var plannen = await _context.Jaarplannen.AsNoTracking().ToListAsync(cancellationToken);
 
         return plannen.Sum(plan => plan.Plaatsingen.Count(p => p.ThemaId == themaId));
     }

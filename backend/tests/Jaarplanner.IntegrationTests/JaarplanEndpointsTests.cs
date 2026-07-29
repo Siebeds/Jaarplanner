@@ -145,11 +145,23 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         var plan = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
         var plaatsingId = Assert.Single(plan!.Plaatsingen).Id;
 
-        // Make it a human decision AND lock it — the state that blocks a klas delete.
-        await client.PutAsJsonAsync(
+        // Make it a human decision AND lock it — the state that blocks a klas delete. Both status codes are
+        // asserted because this test's whole claim is "ook als ze aanvaard en vergrendeld is": if either PUT
+        // regressed to 400/404 the placement would stay Voorgesteld and unlocked, the DELETE below would still
+        // succeed, and the test would pass while proving nothing.
+        var beslissing = await client.PutAsJsonAsync(
             $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/status", new { status = "Aanvaard" });
-        await client.PutAsJsonAsync(
+        Assert.Equal(HttpStatusCode.OK, beslissing.StatusCode);
+
+        var vergrendeling = await client.PutAsJsonAsync(
             $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/vergrendeling", new { vergrendeld = true });
+        Assert.Equal(HttpStatusCode.OK, vergrendeling.StatusCode);
+
+        // Read the premise back rather than trusting the two 200s — this is the state under test.
+        var voorVerwijderen = Assert.Single(
+            (await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan"))!.Plaatsingen);
+        Assert.Equal("Aanvaard", voorVerwijderen.Status);
+        Assert.True(voorVerwijderen.Vergrendeld);
 
         var verwijder = await client.DeleteAsync($"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}");
         Assert.Equal(HttpStatusCode.OK, verwijder.StatusCode);

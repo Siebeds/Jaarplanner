@@ -11,9 +11,17 @@ namespace Jaarplanner.Api.Controllers;
 /// <b>This is the story's invocation surface, and it is the point.</b> Three consecutive audits on this project
 /// found "done" features nobody could reach — the E2 matching service is still called from nothing but its own
 /// unit tests, which is why M2 was withdrawn. Plan generation therefore ships with the trigger in the same change
-/// as the service: <c>POST …/jaarplan/generatie</c> generates, <c>GET …/jaarplan</c> reviews, and the two PUTs let
-/// the teacher decide and lock. A teacher-facing screen is E3-06's job, so today this is reachable by an API
-/// client and not yet from a browser — stated plainly rather than implied.
+/// as the service: <c>POST …/jaarplan/generatie</c> generates, <c>GET …/jaarplan</c> reviews, the two PUTs let the
+/// teacher decide and lock, and <c>DELETE …/jaarplan/plaatsingen/{id}</c> removes a placement outright. A
+/// teacher-facing screen is E3-06's job, so today this is reachable by an API client and not yet from a browser —
+/// stated plainly rather than implied.
+/// </para>
+/// <para>
+/// <b>The DELETE is listed deliberately.</b> It is the only destructive member here, it ignores status and lock by
+/// design (Art. IX.3 scopes <c>vergrendeld</c> to regeneration, and Art. IV.2's "adjustable" presupposes
+/// revisable), and E3-07 owns the UI confirmation that compensates. An earlier revision of this summary enumerated
+/// only the two PUTs and silently omitted it — the same stale-comment drift that produced two of this story's
+/// audit findings, so the enumeration is kept complete on purpose.
 /// </para>
 /// <para>
 /// <b>Nothing here auto-applies</b> (Art. IV.1/IV.2): generation persists placements as <c>voorgesteld</c> with a

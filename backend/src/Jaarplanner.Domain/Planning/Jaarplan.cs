@@ -161,9 +161,21 @@ public sealed class Jaarplan
     /// Removing a thema from a period is also plain manual editing a teacher must be able to do (FR-7).
     /// </para>
     /// </summary>
+    /// <param name="plaatsing">A placement belonging to <b>this</b> jaarplan.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The placement does not belong to this jaarplan. Swallowing <see cref="List{T}.Remove"/>'s <c>false</c> would
+    /// make a cross-aggregate delete a silent no-op that the API still answers <c>200 OK</c> with an unchanged plan —
+    /// an aggregate should refuse work that is not its own rather than pretend to have done it. Unreachable through
+    /// the API today (the service resolves the placement from this same aggregate first), so this is hardening.
+    /// </exception>
     public void VerwijderPlaatsing(Themaplaatsing plaatsing)
     {
         ArgumentNullException.ThrowIfNull(plaatsing);
-        _plaatsingen.Remove(plaatsing);
+
+        if (!_plaatsingen.Remove(plaatsing))
+        {
+            throw new InvalidOperationException(
+                "The placement does not belong to this jaarplan.");
+        }
     }
 }
