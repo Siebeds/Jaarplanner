@@ -34,6 +34,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0018](0018-concordance-one-to-many-fk.md) | Concordance is a one-to-many nullable FK (M:N rejected; supersedes 0007 concordance clause) | Accepted |
 | [0019](0019-discipline-selection-config-seam.md) | Discipline-selection config seam for an open decision (Art. XIV; data-driven, not compiled in) | Accepted |
 | [0020](0020-planningsblok-derivation-rules.md) | Planningsblok derivation rules — even distribution, nested tiers, identity = (niveau, start), lengths per deployment (refines 0013) | Accepted |
+| [0021](0021-frontend-routing-and-url-selection.md) | Frontend routing (`react-router-dom`, declarative) and the URL as the single source of truth for the klas/schooljaar selection | Accepted |
 
 ## Compliance traceability matrix
 
@@ -60,6 +61,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0018 | Art. VII.1, IX.1, III.5, V | E1-04, E5 | FR-2.2/2.3, FR-9.3 |
 | 0019 | Art. XIV, III, VII.0, VIII, II | E1-06 | FR-2 |
 | 0020 | Art. IX.3, XIV, XI.2/XI.3 | E3-05, E3-01, E3-07, E3-08, E6-03 | FR-5.1, FR-6.1/6.2/6.3 |
+| 0021 | Art. VIII, II.3, XII, IX.3 | E0-10; enables E1-13/14/15, E2-08, E5-02, E6-03/04 | FR-6, FR-9, FR-10/§3.2; NFR-2/7 |
 
 ## Open decisions referenced by ADRs
 

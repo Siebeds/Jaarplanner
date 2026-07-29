@@ -7,6 +7,10 @@
 allowBuilds:
   esbuild: true
 
+minimumReleaseAgeExclude:
+  - react-router-dom@7.18.2
+  - react-router@7.18.2
+
 # Retained for older pnpm versions / tooling that read the pnpm 10 key.
 onlyBuiltDependencies:
   - esbuild

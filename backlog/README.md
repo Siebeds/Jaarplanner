@@ -24,7 +24,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 
 | Epic | File | Phase | Stories | Done | Status |
 | --- | --- | --- | --- | --- | --- |
-| E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 10 | 9 | ⚠️ Reopened 2026-07-29 — **E0-10** owns the app shell (routing, navigatie, klas/schooljaar-keuze) that no story owned |
+| E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 10 | 9 | ⚠️ Reopened 2026-07-29 — **E0-10 `[~]`**: the app shell no story owned. Built on `story/E0-10` (58 tests green, lint + build clean, [ADR-0021](../docs/adr/0021-frontend-routing-and-url-selection.md) recorded first); open because **nobody has looked at the screen yet** and the test-runner/antagonist gates have not run |
 | E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 15 | 9 | ⚠️ E1-03/04 blocked on E1-12 (source file from directie); **E1-13 + E1-14 own the unbuilt UI halves of FR-1.1–1.5, FR-2.5, FR-3.1/3.2**; **E1-15** owns the missing Op.stap import trigger |
 | E2 — AI-matching thema ↔ doel | [E2-ai-matching.md](E2-ai-matching.md) | 2 | 8 | 7 | ⚠️ **M2 withdrawn** — FR-4.1 has no trigger: matching is unreachable outside unit tests. **E2-08** owns it |
 | E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 4 | 🚧 E3-01 + E3-02 + E3-05 + E3-10 done; **E3-06 `[~]`** — draft verified end-to-end in a browser 2026-07-29 but **not yet reviewed**; it closes only when the directie/teacher session happens and is captured. E3-03 is blocked (its criterion measures coverage in E5, unbuilt); E3-04, or E3-07 after the review, is next |

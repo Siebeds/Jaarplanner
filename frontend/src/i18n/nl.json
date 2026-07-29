@@ -2,11 +2,37 @@
   "app": {
     "ondertitel": "Plan en bewijs de dekking van je leerplandoelen."
   },
-  "zijbalk": {
-    "open": "Zijbalk is open",
-    "gesloten": "Zijbalk is gesloten",
-    "toggleOpenen": "Zijbalk openen",
-    "toggleSluiten": "Zijbalk sluiten"
+  "navigatie": {
+    "overslaan": "Ga naar de hoofdinhoud",
+    "hoofdnavigatie": "Hoofdnavigatie",
+    "doelen": "Doelen",
+    "themas": "Thema's",
+    "jaarplan": "Jaarplan",
+    "dekking": "Dekking",
+    "import": "Import",
+    "beheer": "Beheer",
+    "nogNietBeschikbaar": "nog niet beschikbaar",
+    "nietGevondenTitel": "Deze pagina bestaat niet",
+    "nietGevondenUitleg": "De link die je volgde bestaat niet (meer). Kies hierboven een onderdeel.",
+    "naarJaarplan": "Naar het jaarplan"
+  },
+  "binnenkort": {
+    "titel": "Dit onderdeel is nog niet beschikbaar",
+    "uitleg": "Dit deel van de tool is nog in opbouw. Het staat al in het menu zodat je ziet wat er komt — er gaat nog niets werken op deze pagina.",
+    "doelen": "Hier kan je straks alle leerplandoelen en minimumdoelen van Op.stap doorzoeken en filteren.",
+    "dekking": "Hier komt het dekkingsoverzicht: hoeveel van je doelen gedekt zijn, welke doelen nog ontbreken, en het bewijs dat je aan de inspectie kan voorleggen.",
+    "import": "Hier laad je straks je thema's en activiteiten in via een Excel-bestand, en vernieuw je de Op.stap-doelen.",
+    "beheer": "Hier beheert de directie straks de schooljaren, de klassen, de leerkrachten en hun rechten."
+  },
+  "selectie": {
+    "schooljaarLabel": "Schooljaar",
+    "klasLabel": "Klas",
+    "kiesSchooljaar": "Kies een schooljaar",
+    "kiesKlas": "Kies een klas",
+    "laden": "Schooljaren en klassen laden…",
+    "fout": "De schooljaren en klassen konden niet geladen worden. Probeer de pagina opnieuw te laden.",
+    "geenSchooljaren": "Er is nog geen schooljaar aangemaakt.",
+    "geenKlassen": "Dit schooljaar heeft nog geen klassen."
   },
   "doelsoort": {
     "md": "Minimumdoel",
@@ -51,9 +77,7 @@
   },
   "kalender": {
     "titel": "Jaarplan",
-    "klasIdLabel": "Klas-id",
-    "klasIdPlaceholder": "Plak hier het klas-id",
-    "geenKlas": "Geef een klas-id op om het jaarplan te bekijken.",
+    "geenKlas": "Kies hierboven een schooljaar en een klas om het jaarplan te bekijken.",
     "laden": "Jaarplan laden…",
     "fout": "Het jaarplan kon niet geladen worden.",
     "roosterFout": "De periode-indeling kon niet geladen worden.",
