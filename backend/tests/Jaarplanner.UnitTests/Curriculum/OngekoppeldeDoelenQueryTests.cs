@@ -80,7 +80,10 @@ public sealed class OngekoppeldeDoelenQueryTests
                 Leerdoel("VIA-ACTIVITEIT"),
                 Leerdoel("BLIJFT-OVER"));
 
-            ctx.Klassen.Add(new Klas("L3", leerjaar: 3));
+            // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
+            var schooljaar = TestSchooljaar.Maak();
+            schooljaar.VoegKlasToe("L3", leerjaar: 3);
+            ctx.Schooljaren.Add(schooljaar);
 
             var thema = new Thema("Water", duurWeken: 5);
 

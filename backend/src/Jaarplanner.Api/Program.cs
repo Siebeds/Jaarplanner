@@ -34,6 +34,10 @@ builder.Services.AddExceptionHandler<SchoolcontentExceptionHandler>();
 // returns false for anything that is not its own (Art. VIII — keep controllers thin).
 builder.Services.AddExceptionHandler<AiMatchingExceptionHandler>();
 
+// Planning exception handler (E3-01): maps the one planning-specific fault — a teacher asking to set a jaarplan
+// placement back to `voorgesteld` (Art. IV.1/IV.2) — to a 400. Planning not-found reuses the school-content 404.
+builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
+
 // Data access + database health check live in Infrastructure (Art. VIII — keep Api thin).
 // This registers AppDbContext (UseNpgsql, connection string from configuration) and a
 // "db"/"ready"-tagged readiness check that /health/ready reflects.

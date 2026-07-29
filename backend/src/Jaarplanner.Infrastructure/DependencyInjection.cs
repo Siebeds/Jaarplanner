@@ -5,6 +5,7 @@ using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Beheer;
+using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.AiAuthoring;
@@ -104,6 +105,13 @@ public static class DependencyInjection
         // prerequisite for that epic, not a convenience.
         services.AddScoped<IKlasBeheerService, KlasBeheerService>();
 
+        // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
+        // multiple klassen"), so the container needs a creation path in the same change that makes it required —
+        // otherwise class creation, and jaarplan generation with it, would be unreachable. Deliberately no update
+        // or delete: editing vakanties reshapes the derived grid and must raise a review signal rather than move a
+        // placement (directie 2026-07-28); full schooljaarbeheer stays E6-03.
+        services.AddScoped<ISchooljaarBeheerService, SchooljaarBeheerService>();
+
         // CRUD for the autonomous school-content hierarchy + manual goal links (E1-10, FR-3.1/3.2).
         // Enforces level scoping (Art. IX.2) and persists manual links as `manueel` (Art. IV.2); a
         // sibling of the import service that drives the same domain mutators.
@@ -134,6 +142,13 @@ public static class DependencyInjection
         // auto-applied (Art. IV.1/IV.2); the wizard persists an accepted suggestion via the beheer path.
         services.AddScoped<ILeerdoelCatalogus, EfLeerdoelCatalogus>();
         services.AddScoped<IThemaOpbouwAssistService, ThemaOpbouwAssistService>();
+
+        // AI jaarplan generation (E3-01, FR-5.1, Art. IV). The persistence port keeps EF Core out of the service;
+        // the service itself depends only on IAiClient (E2-01), IPlanningsblokIndeling (E3-05) and this port, so
+        // the whole flow runs against fakes with no network and no database in tests (Art. IV.6). It is reachable
+        // through JaarplanController — POST /api/klassen/{klasId}/jaarplan/generatie — rather than only from tests.
+        services.AddScoped<IJaarplanOpslag, EfJaarplanOpslag>();
+        services.AddScoped<JaarplanGeneratieService>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(

@@ -24,6 +24,7 @@ namespace Jaarplanner.Domain.Planning;
 public sealed class Schooljaar
 {
     private readonly List<Schoolsluiting> _sluitingen = [];
+    private readonly List<Klas> _klassen = [];
 
     // EF Core materialisation only.
     private Schooljaar()
@@ -73,6 +74,30 @@ public sealed class Schooljaar
     /// </summary>
     public IReadOnlyList<Schoolsluiting> Vakanties =>
         _sluitingen.Where(s => s.BreektPeriode).OrderBy(s => s.Start).ToList();
+
+    /// <summary>
+    /// The classes this school year contains (Art. IX.3: "Schooljaar — contains multiple klassen"), ordered by
+    /// leerjaar then name. Each <see cref="Klas"/> has one <see cref="Jaarplan"/>, planned over the blocks
+    /// derived from <i>this</i> year's vakantiestructuur — which is why the containment exists rather than
+    /// classes floating free of any year.
+    /// </summary>
+    public IReadOnlyList<Klas> Klassen =>
+        _klassen.OrderBy(k => k.Leerjaar).ThenBy(k => k.Naam, StringComparer.Ordinal).ToList();
+
+    /// <summary>
+    /// Creates a class inside this school year and returns it — the containment expressed as a mutator on the
+    /// owning side, mirroring <c>Thema.VoegSubthemaToe</c>. Uniqueness of the class name is a school-wide
+    /// database guarantee checked by the beheer service, not re-implemented here.
+    /// </summary>
+    /// <param name="naam">The class name (e.g. "L3 — derde leerjaar").</param>
+    /// <param name="leerjaar">The leerjaar/leeftijdsgroep ordinal; 0 for kleuter groepen.</param>
+    public Klas VoegKlasToe(string naam, int leerjaar)
+    {
+        var klas = new Klas(Id, naam, leerjaar);
+        _klassen.Add(klas);
+
+        return klas;
+    }
 
     /// <summary>
     /// Adds a closure. Rejects one falling outside the school year, and one overlapping an existing closure.

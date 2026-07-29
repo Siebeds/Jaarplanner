@@ -28,10 +28,18 @@ public sealed class KlassenController : ControllerBase
     public async Task<ActionResult<KlasWeergave>> Detail(Guid klasId, CancellationToken cancellationToken) =>
         Ok(await _service.HaalKlasOpAsync(klasId, cancellationToken));
 
-    [HttpPost]
-    public async Task<ActionResult<KlasWeergave>> Maak([FromBody] KlasCreatie creatie, CancellationToken cancellationToken)
+    /// <summary>
+    /// Creates a class <b>inside a school year</b> (Art. IX.3: "Schooljaar — contains multiple klassen"; E3-01).
+    /// The route carries the containment, so the body cannot disagree with it and a "rename" can never move a
+    /// class to another year. Create the school year first via <c>POST /api/schooljaren</c>.
+    /// </summary>
+    [HttpPost("/api/schooljaren/{schooljaarId:guid}/klassen")]
+    public async Task<ActionResult<KlasWeergave>> Maak(
+        Guid schooljaarId,
+        [FromBody] KlasCreatie creatie,
+        CancellationToken cancellationToken)
     {
-        var klas = await _service.MaakKlasAsync(creatie, cancellationToken);
+        var klas = await _service.MaakKlasAsync(schooljaarId, creatie, cancellationToken);
         return CreatedAtAction(nameof(Detail), new { klasId = klas.Id }, klas);
     }
 

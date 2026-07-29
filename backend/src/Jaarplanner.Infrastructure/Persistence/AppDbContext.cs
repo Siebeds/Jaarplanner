@@ -48,6 +48,13 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<Schooljaar> Schooljaren => Set<Schooljaar>();
 
+    /// <summary>
+    /// The per-class year plans with their thema placements (Art. IX.3, E3-01). A placement stores the
+    /// planningsblok's <b>start date</b> + tier, never an ordinal (ADR-0020 §3) — and, as with the schooljaar,
+    /// there is deliberately no <c>Planningsblokken</c> set: the grid stays derived (ADR-0013).
+    /// </summary>
+    public DbSet<Jaarplan> Jaarplannen => Set<Jaarplan>();
+
     /// <summary>The school's thema's — school-scoped autonomous content (Art. IX.2).</summary>
     public DbSet<Thema> Themas => Set<Thema>();
 

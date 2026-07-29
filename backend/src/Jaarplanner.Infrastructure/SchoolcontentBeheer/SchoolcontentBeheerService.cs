@@ -153,10 +153,56 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         var thema = await LaadThemaAsync(themaId, cancellationToken);
 
+        // A thema placed in any class's jaarplan cannot be deleted: `themaplaatsingen.ThemaId` is a RESTRICT FK
+        // (JaarplanConfiguration), so without this the delete threw a raw 23503 that no handler maps — an unhandled
+        // 500 for an ordinary user action. The FK already prevented dangling rows; the "clear diagnostics" it was
+        // documented as buying did not exist until this guard. Thema's are school-WIDE, so the blocking plan may
+        // belong to a class the deleting teacher never looks at, which is exactly why the count must be reported.
+        var aantalPlaatsingen = await AantalThemaplaatsingenAsync(themaId, cancellationToken);
+        if (aantalPlaatsingen > 0)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Thema '{thema.Naam}' staat nog {aantalPlaatsingen} keer in een jaarplan en kan niet verwijderd " +
+                "worden. Verwijder het thema eerst uit die jaarplannen.");
+        }
+
         // The EF cascade (ThemaConfiguration) deletes themadoelen + subthema's (and, through the
         // subthema cascade, subdoelen + activiteiten + their owned goal links) with the thema.
         _context.Themas.Remove(thema);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// How many jaarplan placements reference this thema, across every class.
+    /// <para>
+    /// <b>Counted in memory on purpose.</b> The owned collection loads with its owner, so loading the plans and
+    /// counting is correct on both the Npgsql and the in-memory provider and needs no raw SQL. The volume makes it a
+    /// non-issue: one plan per class, a primary school has a few dozen classes, and this runs only on an explicit
+    /// thema delete.
+    /// </para>
+    /// <para>
+    /// <b>Why not a server-side query — the precise reason.</b> Not because the type is owned: EF Core does translate
+    /// <c>Any()</c>/<c>Count()</c> over an owned <i>collection navigation</i> into a SQL subquery. What owning forbids
+    /// is querying the type <i>independently of its owner</i> (there is no <c>DbSet&lt;Themaplaatsing&gt;</c>). The
+    /// actual blocker here is local: <see cref="Jaarplan.Plaatsingen"/> is <c>Ignore</c>d in
+    /// <c>JaarplanConfiguration</c> because it returns a freshly materialised ordered list, so the only navigation is
+    /// a bare backing field LINQ cannot address.
+    /// </para>
+    /// <para>
+    /// So if a later story needs a real query, the minimal change is to expose a <i>mapped</i> collection navigation
+    /// alongside the ordered projection — <b>keeping the type owned</b>, because un-owning would surrender the
+    /// ownership cascade the <c>Klas</c> delete guard relies on. An earlier revision of this comment prescribed
+    /// un-owning; that was an oversized remedy for a misdiagnosed cause. E5 may not need it at all: per-class dekking
+    /// loads one jaarplan aggregate, which yields the placed thema ids for free. See E5-01 in the backlog.
+    /// </para>
+    /// </summary>
+    private async Task<int> AantalThemaplaatsingenAsync(Guid themaId, CancellationToken cancellationToken)
+    {
+        // AsNoTracking: a pure read taken immediately before a delete in the same unit of work — tracking these
+        // aggregates would add change-detection cost and put unrelated entities in the ChangeTracker.
+        var plannen = await _context.Jaarplannen.AsNoTracking().ToListAsync(cancellationToken);
+
+        return plannen.Sum(plan => plan.Plaatsingen.Count(p => p.ThemaId == themaId));
     }
 
     // --- Themadoel (school-scoped; 2–3 per thema). ---

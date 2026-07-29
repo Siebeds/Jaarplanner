@@ -40,6 +40,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
         return klassen
             .Select(k => new KlasWeergave(
                 k.Id,
+                k.SchooljaarId,
                 k.Naam,
                 k.Leerjaar,
                 subthemaAantallen.TryGetValue(k.Id, out var aantal) ? aantal : 0))
@@ -52,22 +53,37 @@ public sealed class KlasBeheerService : IKlasBeheerService
         var klas = await VindKlasAsync(klasId, cancellationToken);
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.Naam, klas.Leerjaar, aantal);
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal);
     }
 
     /// <inheritdoc />
-    public async Task<KlasWeergave> MaakKlasAsync(KlasCreatie creatie, CancellationToken cancellationToken = default)
+    public async Task<KlasWeergave> MaakKlasAsync(
+        Guid schooljaarId,
+        KlasCreatie creatie,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(creatie);
 
         var naam = VereisNaam(creatie.Naam);
         await VereisVrijeNaamAsync(naam, uitgezonderd: null, cancellationToken);
 
-        var klas = new Klas(naam, creatie.Leerjaar);
+        // A klas must live in an existing school year (Art. IX.3 containment, E3-01). Checked here so a bad id is
+        // a friendly 404 rather than an opaque FK violation, and created THROUGH the schooljaar so the containment
+        // is expressed by the aggregate that owns it.
+        var schooljaar = await _context.Schooljaren
+            .FirstOrDefaultAsync(s => s.Id == schooljaarId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Schooljaar {schooljaarId} is niet gevonden.");
+
+        var klas = schooljaar.VoegKlasToe(naam, creatie.Leerjaar);
+
+        // Registered explicitly as Added. Reaching a new entity only through a navigation of an already-tracked
+        // principal makes EF apply its "key is set, so it must already exist" heuristic and mark the Klas *Modified*,
+        // which then fails with a concurrency error because there is no such row yet. The domain mutator still owns
+        // the containment; this line only says "insert it".
         _context.Klassen.Add(klas);
         await BewaarAsync(naam, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.Naam, klas.Leerjaar, AantalSubthemas: 0);
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, AantalSubthemas: 0);
     }
 
     /// <inheritdoc />
@@ -86,7 +102,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
 
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.Naam, klas.Leerjaar, aantal);
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal);
     }
 
     /// <inheritdoc />
@@ -102,6 +118,27 @@ public sealed class KlasBeheerService : IKlasBeheerService
             throw new SchoolcontentValidatieFout(
                 $"Klas '{klas.Naam}' heeft nog {aantal} subthema('s) en kan niet verwijderd worden. " +
                 "Verwijder of verplaats eerst die klasgebonden inhoud.");
+        }
+
+        // The jaarplan is a CASCADE dependent (JaarplanConfiguration), so without this guard deleting the class
+        // would silently destroy the plan and every Themaplaatsing in it — including ones the teacher explicitly
+        // accepted and explicitly locked. A persisted human decision is the human's to discard (Art. IV.2), so the
+        // delete is refused while any placement is one, and the count is reported the way the subthema guard does.
+        // Loading it also tracks it, which is what makes the cascade below happen through the change tracker rather
+        // than only through the database's own ON DELETE.
+        //
+        // The remediation this message names is REAL: DELETE /api/klassen/{klasId}/jaarplan/plaatsingen/{id} removes
+        // a placement whatever its status or lock. The first version of this guard shipped without that endpoint, so
+        // one accepted placement made the class undeletable forever and this message instructed the impossible.
+        var jaarplan = await _context.Jaarplannen
+            .FirstOrDefaultAsync(j => j.KlasId == klasId, cancellationToken);
+        var besloten = jaarplan?.MenselijkBeslotenPlaatsingen.Count ?? 0;
+        if (besloten > 0)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Klas '{klas.Naam}' heeft een jaarplan met {besloten} beoordeelde of vergrendelde " +
+                "themaplaatsing(en) en kan niet verwijderd worden. Verwijder die themaplaatsingen eerst uit " +
+                "het jaarplan van deze klas.");
         }
 
         _context.Klassen.Remove(klas);
