@@ -31,9 +31,9 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E4 — Manuele bewerking & (her)generatie | [E4-bewerking-hergeneratie.md](E4-bewerking-hergeneratie.md) | 4 | 7 | 0 | Todo |
 | E5 — Dekking & export | [E5-dekking-export.md](E5-dekking-export.md) | 5 | 9 | 0 | Todo |
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
-| E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 11 | 0 | ⚠️ E7-11 is a deployment gate |
+| E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 12 | 0 | ⚠️ E7-11 is a deployment gate; E7-12 owns dependency advisories |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **85** | **27** | **32%** |
+| **Totaal** | | | **86** | **27** | **31%** |
 
 > **Correction (2026-07-27).** A code review of the E1+E2 branch before merging to `main` reopened
 > **E1-03**, **E1-04** and **E1-07**: each was marked done with an acceptance criterion that cannot
