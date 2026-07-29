@@ -56,8 +56,26 @@ public sealed class SchooljarenController : ControllerBase
     public async Task<ActionResult<PlanningsroosterWeergave>> Rooster(
         Guid schooljaarId,
         CancellationToken cancellationToken,
-        [FromQuery] Planningsblokniveau niveau = Planningsblokniveau.Themaperiode) =>
-        Ok(await _rooster.HaalRoosterOpAsync(schooljaarId, niveau, cancellationToken));
+        [FromQuery] Planningsblokniveau niveau = Planningsblokniveau.Themaperiode)
+    {
+        // ASP.NET Core binds ANY integer to an enum parameter without complaint, so `?niveau=99` bound to
+        // (Planningsblokniveau)99, passed model validation, and only blew up deep in the indeling seam as an
+        // unmapped ArgumentOutOfRangeException — a 500 on a public GET for what is plainly a bad request.
+        // (`?niveau=Maand` was always a clean 400; only the numeric form slipped through.) Checked here rather
+        // than in the service because it is a binding concern, and the seam's guard stays as the backstop.
+        if (!Enum.IsDefined(niveau))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Onbekend planningsblokniveau",
+                Detail = $"'{niveau}' is geen geldig niveau. Kies {nameof(Planningsblokniveau.Themaperiode)} " +
+                         $"of {nameof(Planningsblokniveau.Subthemaperiode)}.",
+            });
+        }
+
+        return Ok(await _rooster.HaalRoosterOpAsync(schooljaarId, niveau, cancellationToken));
+    }
 
     /// <summary>
     /// Creates a school year with its vakantie-/periodestructuur. Each closure is classified

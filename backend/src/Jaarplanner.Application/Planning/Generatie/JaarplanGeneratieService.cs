@@ -99,7 +99,10 @@ public sealed class JaarplanGeneratieService
         var jaarplan = await LaadOfMaakJaarplanAsync(klasId, cancellationToken);
 
         // Clear the superseded proposal; keep everything locked or decided on by a human (Art. IX.3 / IV.1).
-        jaarplan.VerwijderVervangbarePlaatsingen();
+        // Count what the run DISCARDS, not just what it keeps. The superseded proposal is deleted here and
+        // persisted below, so a run that then places nothing has still changed the plan — and telling a teacher
+        // "er is niets gewijzigd" in that case would be false about their own data.
+        var vervangen = jaarplan.VerwijderVervangbarePlaatsingen().Count;
         var behouden = jaarplan.Plaatsingen.Count;
 
         // Resolvable sets. A name/date outside them is skipped, never fabricated (Art. IV.4).
@@ -163,15 +166,20 @@ public sealed class JaarplanGeneratieService
         // power to veto: the prompt asks for a good spread, this reports the one that arrived, and the teacher
         // decides (Art. IV.1). Measured over the whole plan — not just this run's additions — because the year a
         // teacher looks at includes the placements they had already accepted or locked.
+        // `IsGepland` excludes rejected placements: a geweigerd thema survives regeneration but nothing is
+        // taught in that period because of it, so counting it would report a period as used — and possibly as
+        // overbelast — on the strength of something the teacher threw out.
         var spreiding = Spreidingsrapport.Meet(
-            jaarplan.Plaatsingen.Where(p => p.BlokNiveau == GeneratieNiveau),
+            jaarplan.Plaatsingen.Where(p => p.BlokNiveau == GeneratieNiveau && p.IsGepland),
             blokken,
-            themas.ToDictionary(t => t.Id));
+            themas.ToDictionary(t => t.Id),
+            schooljaar);
 
         return JaarplanGeneratieResultaat.Geslaagd(
             Projecteer(klas, schooljaar, blokken, themas, jaarplan),
             nieuw,
             behouden,
+            vervangen,
             onbekendeThemas,
             onbekendeBlokken,
             duplicaten,

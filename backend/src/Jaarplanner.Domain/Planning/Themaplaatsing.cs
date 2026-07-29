@@ -105,6 +105,20 @@ public sealed class Themaplaatsing
     public bool IsVervangbaar => Status == KoppelingStatus.Voorgesteld && !Vergrendeld;
 
     /// <summary>
+    /// Whether this placement means the thema is actually <b>planned</b> in its block — anything except a
+    /// placement the teacher has rejected.
+    /// <para>
+    /// A <see cref="KoppelingStatus.Geweigerd"/> placement is kept (a human decision is not the generator's to
+    /// discard, Art. IV.1) and therefore still occupies its slot for idempotency purposes, but nothing is
+    /// taught in that period on its account. Anything that answers "how full is this period" or "what does
+    /// this period cover" must use <b>this</b> predicate rather than mere existence: the E3-02 code review
+    /// found the spreading report calling a period "used" and even "overbelast" purely because of a thema the
+    /// teacher had thrown out.
+    /// </para>
+    /// </summary>
+    public bool IsGepland => Status != KoppelingStatus.Geweigerd;
+
+    /// <summary>
     /// Records the teacher's decision on this placement (Art. IV.1/IV.2). The teacher is the only actor that
     /// moves a placement off <see cref="KoppelingStatus.Voorgesteld"/>.
     /// </summary>

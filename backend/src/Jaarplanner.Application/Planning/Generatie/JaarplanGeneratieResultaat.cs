@@ -22,6 +22,7 @@ public sealed record JaarplanGeneratieResultaat
         JaarplanWeergave? jaarplan,
         int aantalNieuw,
         int aantalBehouden,
+        int aantalVervangen,
         IReadOnlyList<string> onbekendeThemas,
         IReadOnlyList<string> onbekendeBlokken,
         IReadOnlyList<string> duplicaten,
@@ -33,6 +34,7 @@ public sealed record JaarplanGeneratieResultaat
         Jaarplan = jaarplan;
         AantalNieuw = aantalNieuw;
         AantalBehouden = aantalBehouden;
+        AantalVervangen = aantalVervangen;
         OnbekendeThemas = onbekendeThemas;
         OnbekendeBlokken = onbekendeBlokken;
         Duplicaten = duplicaten;
@@ -57,6 +59,17 @@ public sealed record JaarplanGeneratieResultaat
     /// the teacher (Art. IX.3 <c>vergrendeld</c>, Art. IV.1).
     /// </summary>
     public int AantalBehouden { get; }
+
+    /// <summary>
+    /// How many superseded proposals this run <b>discarded</b> — the untouched, unlocked <c>voorgesteld</c>
+    /// placements the previous run had left, cleared before the new ones are added.
+    /// <para>
+    /// Reported because a run that places nothing has still changed the plan when this is non-zero. Without it
+    /// the UI said "er is niets gewijzigd" after wiping a teacher's whole previous proposal, which is a false
+    /// statement about their own data (found in the E3-02 code review).
+    /// </para>
+    /// </summary>
+    public int AantalVervangen { get; }
 
     /// <summary>Thema names the model returned that the school does not own — skipped, never fabricated (Art. IV.4).</summary>
     public IReadOnlyList<string> OnbekendeThemas { get; }
@@ -108,6 +121,7 @@ public sealed record JaarplanGeneratieResultaat
         JaarplanWeergave jaarplan,
         int aantalNieuw,
         int aantalBehouden,
+        int aantalVervangen,
         IReadOnlyList<string> onbekendeThemas,
         IReadOnlyList<string> onbekendeBlokken,
         IReadOnlyList<string> duplicaten,
@@ -118,6 +132,7 @@ public sealed record JaarplanGeneratieResultaat
             jaarplan,
             aantalNieuw,
             aantalBehouden,
+            aantalVervangen,
             onbekendeThemas ?? LeegTekst,
             onbekendeBlokken ?? LeegTekst,
             duplicaten ?? LeegTekst,
@@ -131,6 +146,7 @@ public sealed record JaarplanGeneratieResultaat
             jaarplan: null,
             aantalNieuw: 0,
             aantalBehouden: 0,
+            aantalVervangen: 0,
             LeegTekst,
             LeegTekst,
             LeegTekst,

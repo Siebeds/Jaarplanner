@@ -109,6 +109,11 @@ export interface Generatieresultaat {
   aantalNieuw: number;
   /** Pre-existing placements left alone because they were locked or already decided on. */
   aantalBehouden: number;
+  /**
+   * Superseded proposals this run **discarded**. Non-zero means the plan changed even when `aantalNieuw` is 0,
+   * so the UI must not claim nothing happened.
+   */
+  aantalVervangen: number;
   onbekendeThemas: string[];
   onbekendeBlokken: string[];
   duplicaten: string[];

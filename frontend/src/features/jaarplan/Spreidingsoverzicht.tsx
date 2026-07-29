@@ -1,4 +1,4 @@
-import { t } from "../../i18n";
+import { t, tAantal } from "../../i18n";
 import type { Generatieresultaat } from "./types";
 
 /**
@@ -35,12 +35,34 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
       <p className="text-sm font-medium text-slate-900">
         {resultaat.aantalNieuw === 0
           ? t("kalender.genereerNiets")
-          : t("kalender.genereerGelukt", { aantal: resultaat.aantalNieuw })}
+          : tAantal(
+              resultaat.aantalNieuw,
+              "kalender.genereerGeluktEnkelvoud",
+              "kalender.genereerGelukt",
+            )}
       </p>
+
+      {/* The superseded proposal is deleted BEFORE the new placements are added and is persisted either way,
+          so a run that places nothing has still changed the plan. This line used to be absent and the
+          zero-result copy read "Er is niets gewijzigd" — a false statement about the teacher's own data, which
+          the E3-02 code review caught. Shown whenever anything was discarded, success or not. */}
+      {resultaat.aantalVervangen > 0 && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {tAantal(
+            resultaat.aantalVervangen,
+            "kalender.genereerVervangenEnkelvoud",
+            "kalender.genereerVervangen",
+          )}
+        </p>
+      )}
 
       {resultaat.aantalBehouden > 0 && (
         <p className="mt-1 text-xs text-muted-foreground">
-          {t("kalender.genereerBehouden", { aantal: resultaat.aantalBehouden })}
+          {tAantal(
+            resultaat.aantalBehouden,
+            "kalender.genereerBehoudenEnkelvoud",
+            "kalender.genereerBehouden",
+          )}
         </p>
       )}
 
@@ -66,9 +88,12 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
 
             {spreiding.legeBlokOrdinalen.length > 0 && (
               <li>
-                {t("kalender.spreidingLeeg", {
-                  ordinalen: spreiding.legeBlokOrdinalen.join(", "),
-                })}
+                {tAantal(
+                  spreiding.legeBlokOrdinalen.length,
+                  "kalender.spreidingLeegEnkelvoud",
+                  "kalender.spreidingLeeg",
+                  { ordinalen: spreiding.legeBlokOrdinalen.join(", ") },
+                )}
               </li>
             )}
 
@@ -76,9 +101,12 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
               /* Icon AND word, never colour alone (Art. XII, WCAG 2.2 AA). */
               <li className="font-medium text-amber-900">
                 <span aria-hidden="true">▲</span>{" "}
-                {t("kalender.spreidingOverbelast", {
-                  ordinalen: spreiding.overbelasteBlokOrdinalen.join(", "),
-                })}
+                {tAantal(
+                  spreiding.overbelasteBlokOrdinalen.length,
+                  "kalender.spreidingOverbelastEnkelvoud",
+                  "kalender.spreidingOverbelast",
+                  { ordinalen: spreiding.overbelasteBlokOrdinalen.join(", ") },
+                )}
               </li>
             )}
 

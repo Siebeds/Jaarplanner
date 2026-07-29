@@ -119,6 +119,26 @@ public sealed class PlanningsroosterEndpointTests : IClassFixture<Planningsroost
         }
     }
 
+    /// <summary>
+    /// Regression (E3-02 code review): ASP.NET Core binds any integer to an enum parameter, so
+    /// <c>?niveau=99</c> passed model validation, reached the indeling seam and threw an unmapped
+    /// <c>ArgumentOutOfRangeException</c> — a 500 on a public GET for a plainly bad request. The named form
+    /// (<c>?niveau=Maand</c>) always 400'd correctly; only the numeric form slipped through, which is why it is
+    /// the one asserted here.
+    /// </summary>
+    [Fact]
+    public async Task Een_ongeldig_niveau_geeft_400_en_geen_500()
+    {
+        var client = _factory.CreateClient();
+        var schooljaarId = await _factory.SeedAsync();
+
+        var numeriek = await client.GetAsync($"/api/schooljaren/{schooljaarId}/rooster?niveau=99");
+        Assert.Equal(HttpStatusCode.BadRequest, numeriek.StatusCode);
+
+        var benoemd = await client.GetAsync($"/api/schooljaren/{schooljaarId}/rooster?niveau=Maand");
+        Assert.Equal(HttpStatusCode.BadRequest, benoemd.StatusCode);
+    }
+
     [Fact]
     public async Task Een_onbekend_schooljaar_geeft_404()
     {

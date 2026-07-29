@@ -128,7 +128,32 @@ public sealed class DemoDataSeeder : IHostedService
         var klas = schooljaar.VoegKlasToe(KlasNaam, leerjaar: 3);
         context.Schooljaren.Add(schooljaar);
 
-        var themas = BouwThemas();
+        // Thema.Naam is NOT uniquely indexed, so a collision throws nothing — it silently creates a second
+        // "Water". That matters because generation resolves a model's answer BY NAME
+        // (`themaPerNaam ... g.First()`), so a duplicate would make the developer's own thema unreachable and
+        // quietly bind their plan to the demo one instead. Skip rather than duplicate (E3-02 code review).
+        var bestaandeNamen = await context.Themas
+            .Select(t => t.Naam)
+            .ToListAsync(cancellationToken);
+        var botsingen = bestaandeNamen.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // The thema is carried together with its block index and its motivation, so dropping one for a name
+        // collision cannot shift the others onto different periods — which plain positional filtering would
+        // do, quietly undoing the "three thema's in periode 3" the te-vol flag depends on.
+        var geplande = BouwThemas()
+            .Select((thema, index) => (Thema: thema, BlokIndex: BlokVoorThema[index], Motivatie: Motivaties[index]))
+            .Where(p => !botsingen.Contains(p.Thema.Naam))
+            .ToList();
+
+        if (geplande.Count == 0)
+        {
+            _logger.LogInformation("Demo seed skipped: every demo thema name is already taken.");
+
+            return;
+        }
+
+        var themas = geplande.Select(p => p.Thema).ToList();
+
         await KoppelDoelenAsync(context, themas, cancellationToken);
         context.Themas.AddRange(themas);
 
@@ -139,9 +164,8 @@ public sealed class DemoDataSeeder : IHostedService
         var blokken = indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
 
         var jaarplan = new Jaarplan(klas.Id);
-        foreach (var (thema, index) in themas.Select((t, i) => (t, i)))
+        foreach (var (thema, blokIndex, motivatie) in geplande)
         {
-            var blokIndex = BlokVoorThema[index];
             if (blokIndex >= blokken.Count)
             {
                 // Fewer periods than the layout assumes (a different configured grain). Skip rather than
@@ -154,7 +178,7 @@ public sealed class DemoDataSeeder : IHostedService
                 Planningsblokniveau.Themaperiode,
                 blokken[blokIndex].Start,
                 KoppelingStatus.Voorgesteld,
-                Voorbeeldmarkering + Motivaties[index % Motivaties.Length]);
+                Voorbeeldmarkering + motivatie);
         }
 
         context.Jaarplannen.Add(jaarplan);
