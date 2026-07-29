@@ -1,5 +1,8 @@
+import { Button } from "../../components/ui/button";
 import { t } from "../../i18n";
+import { ApiError } from "../../lib/api";
 import { Periodeblok } from "./Periodeblok";
+import { Spreidingsoverzicht } from "./Spreidingsoverzicht";
 import { Themakaart } from "./Themakaart";
 import {
   bouwRibbon,
@@ -7,7 +10,7 @@ import {
   plaatsingenIn,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
-import { useJaarplan, usePlanningsrooster } from "./useJaarplan";
+import { useGenereerJaarplan, useJaarplan, usePlanningsrooster } from "./useJaarplan";
 
 /**
  * The kalender: a class's jaarplan rendered over the school year's derived periods (E3-06, FR-6.1).
@@ -31,6 +34,7 @@ export interface JaarplankalenderProps {
 export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   const jaarplan = useJaarplan(klasId);
   const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId);
+  const generatie = useGenereerJaarplan(klasId);
 
   if (klasId.length === 0) {
     return <p className="text-sm text-slate-500">{t("kalender.geenKlas")}</p>;
@@ -73,6 +77,39 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
         </p>
         <p className="text-xs text-muted-foreground">{t("kalender.indelingUitleg")}</p>
       </header>
+
+      {/* Generation (FR-5.1) with its spreading report (E3-02, FR-5.2). This is the only action on the
+          screen, and it is safe to offer before E3-07 exists because it only ADDS proposals — it never
+          discards a teacher's decision or a locked placement (Art. IV.1, Art. IX.3). */}
+      <div className="mb-4 rounded-md border border-slate-300 bg-slate-50 p-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            onClick={() => generatie.mutate()}
+            disabled={generatie.isPending}
+          >
+            {generatie.isPending ? t("kalender.genereerBezig") : t("kalender.genereer")}
+          </Button>
+          <p className="text-xs text-muted-foreground">{t("kalender.genereerUitleg")}</p>
+        </div>
+
+        {/* The 422 body is an English operator diagnostic (a model parse failure a teacher cannot act on),
+            so it is never echoed — the teacher gets Dutch copy from nl.json keyed on the STATUS.
+            422 and 5xx are told apart deliberately: 422 means the model answered badly and retrying is
+            sensible, while anything else means the tool is broken or unconfigured (with no AzureAI:ApiKey set
+            the client throws, which surfaces as a 500). Showing "de AI gaf geen bruikbaar antwoord" for a
+            missing API key would blame the model for a configuration fault and send the teacher into a
+            pointless retry loop. Both messages state that nothing changed, which Art. IV.5 guarantees. */}
+        {generatie.isError && (
+          <p role="alert" className="mt-2 text-sm text-red-700">
+            {generatie.error instanceof ApiError && generatie.error.status === 422
+              ? t("kalender.genereerMislukt")
+              : t("kalender.genereerOnbeschikbaar")}
+          </p>
+        )}
+
+        {generatie.isSuccess && <Spreidingsoverzicht resultaat={generatie.data} />}
+      </div>
 
       {/* Says out loud what the draft cannot do yet, so the review does not mistake absence for a bug.
           A plain div, not an <aside>: a complementary landmark may not nest inside this labelled

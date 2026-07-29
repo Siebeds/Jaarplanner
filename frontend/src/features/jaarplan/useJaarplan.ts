@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { haalJaarplan, haalRooster } from "./api";
+import { genereerJaarplan, haalJaarplan, haalRooster } from "./api";
 
 /** Query key for one class's jaarplan. */
 const jaarplanKey = (klasId: string) => ["jaarplan", klasId] as const;
@@ -30,5 +30,24 @@ export function usePlanningsrooster(schooljaarId: string | undefined) {
     queryKey: roosterKey(schooljaarId ?? ""),
     queryFn: () => haalRooster(schooljaarId!),
     enabled: Boolean(schooljaarId),
+  });
+}
+
+/**
+ * Triggers a generation run for a class (FR-5.1) and refreshes the plan from the server on success.
+ *
+ * The mutation's own `data` carries the run report — how many placements were added, what was skipped, and the
+ * spreading measurement (E3-02) — while the rendered plan comes from the invalidated query. Deliberately not
+ * an optimistic update: the server decides what was actually persisted (a returned thema the school does not
+ * own is skipped, not invented), so guessing locally could show a teacher a placement that does not exist.
+ */
+export function useGenereerJaarplan(klasId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => genereerJaarplan(klasId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: jaarplanKey(klasId) });
+    },
   });
 }

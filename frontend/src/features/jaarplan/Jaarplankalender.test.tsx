@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Jaarplankalender } from "./Jaarplankalender";
-import type { Jaarplan, Planningsrooster } from "./types";
+import type { Generatieresultaat, Jaarplan, Planningsrooster } from "./types";
 
 /**
  * Pins E3-06's acceptance criterion — "a generated plan renders per block" (FR-6.1) — and the two
@@ -63,18 +63,34 @@ function maakPlaatsing(
   };
 }
 
-/** Routes the two GETs the kalender makes; everything else is a test bug, so it 404s loudly. */
-function stubFetch(jaarplan: Jaarplan) {
+/**
+ * Routes the GETs the kalender makes; everything else is a test bug, so it 404s loudly.
+ *
+ * `generatie` optionally controls the POST: a run result for success, or an HTTP status number to simulate a
+ * failure. The order of the checks matters — the generation URL also contains "/jaarplan".
+ */
+function stubFetch(jaarplan: Jaarplan, generatie?: Generatieresultaat | number) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (input: RequestInfo | URL) => {
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
 
-      if (url.includes("/jaarplan")) {
-        return new Response(JSON.stringify(jaarplan), { status: 200 });
+      if (init?.method === "POST" && url.includes("/generatie")) {
+        if (typeof generatie === "number") {
+          // The real failure body is English ProblemDetails; the UI must never echo it.
+          return new Response(
+            JSON.stringify({ title: "Invalid AI response", detail: "Malformed JSON: …" }),
+            { status: generatie },
+          );
+        }
+
+        return new Response(JSON.stringify(generatie), { status: 200 });
       }
       if (url.includes("/rooster")) {
         return new Response(JSON.stringify(rooster), { status: 200 });
+      }
+      if (url.includes("/jaarplan")) {
+        return new Response(JSON.stringify(jaarplan), { status: 200 });
       }
 
       return new Response("unexpected request", { status: 404 });
@@ -180,6 +196,79 @@ describe("Jaarplankalender", () => {
     // links to is gedekt — and the notice itself says the plan's dekking is untrustworthy while this holds.
     expect(melding).toHaveTextContent("Dekking onbekend");
     expect(melding).not.toHaveTextContent("1 doel gekoppeld");
+  });
+
+  it("reports the spreading measurement after a generation run, with no verdict attached", async () => {
+    const resultaat: Generatieresultaat = {
+      isGeslaagd: true,
+      fout: null,
+      jaarplan: null,
+      aantalNieuw: 3,
+      aantalBehouden: 1,
+      onbekendeThemas: ["Ruimtevaart"],
+      onbekendeBlokken: [],
+      duplicaten: [],
+      afgewezen: [],
+      spreiding: {
+        aantalBlokken: 2,
+        aantalGebruikteBlokken: 1,
+        blokken: [],
+        legeBlokOrdinalen: [2],
+        overbelasteBlokOrdinalen: [1],
+        minsteDoelenInEenBlok: 11,
+        meesteDoelenInEenBlok: 11,
+      },
+    };
+    stubFetch(maakJaarplan([]), resultaat);
+    renderKalender();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+
+    expect(await screen.findByText("3 thema's voorgesteld.")).toBeInTheDocument();
+
+    // FR-5.2's three measurements are surfaced.
+    expect(screen.getByText("1 van 2 periodes gebruikt.")).toBeInTheDocument();
+    expect(screen.getByText("Nog leeg: periode 2.")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Te weinig weken voor de geplande thema's: periode 1\./),
+    ).toBeInTheDocument();
+
+    // Locked/decided placements survived, and the model's miss is named rather than swallowed (Art. IV.4).
+    expect(screen.getByText(/1 bestaande plaatsingen bleven staan/)).toBeInTheDocument();
+    expect(screen.getByText(/Ruimtevaart/)).toBeInTheDocument();
+
+    // And it explicitly disclaims a judgement: no threshold is defined anywhere, so the tool must not imply one.
+    expect(screen.getByText(/Wat een goede spreiding is, beslist de school/)).toBeInTheDocument();
+  });
+
+  it("shows Dutch copy on a 422 and never echoes the English diagnostic", async () => {
+    stubFetch(maakJaarplan([]), 422);
+    renderKalender();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+
+    const melding = await screen.findByRole("alert");
+    expect(melding).toHaveTextContent("De AI gaf geen bruikbaar antwoord");
+    // It must also reassure that nothing changed -- Art. IV.5 persists nothing on a bad response.
+    expect(melding).toHaveTextContent("niets gewijzigd");
+
+    // The backend's English operator diagnostic must not reach the teacher.
+    expect(screen.queryByText(/Malformed JSON/)).toBeNull();
+    expect(screen.queryByText(/Invalid AI response/)).toBeNull();
+  });
+
+  it("distinguishes an unconfigured tool from a bad AI answer", async () => {
+    // With no AzureAI:ApiKey the client throws and this surfaces as a 500. Telling the teacher "de AI gaf geen
+    // bruikbaar antwoord" would blame the model for a configuration fault and invite a pointless retry loop.
+    stubFetch(maakJaarplan([]), 500);
+    renderKalender();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+
+    const melding = await screen.findByRole("alert");
+    expect(melding).toHaveTextContent("nu niet beschikbaar");
+    expect(melding).toHaveTextContent("niets gewijzigd");
+    expect(melding).not.toHaveTextContent("geen bruikbaar antwoord");
   });
 
   it("has no axe violations on a POPULATED plan", async () => {

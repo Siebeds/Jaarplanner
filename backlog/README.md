@@ -27,13 +27,13 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 9 | 9 | ✅ Done |
 | E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 15 | 9 | ⚠️ E1-03/04 blocked on E1-12 (source file from directie); **E1-13 + E1-14 own the unbuilt UI halves of FR-1.1–1.5, FR-2.5, FR-3.1/3.2**; **E1-15** owns the missing Op.stap import trigger |
 | E2 — AI-matching thema ↔ doel | [E2-ai-matching.md](E2-ai-matching.md) | 2 | 8 | 7 | ⚠️ **M2 withdrawn** — FR-4.1 has no trigger: matching is unreachable outside unit tests. **E2-08** owns it |
-| E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 3 | 🚧 E3-01 + E3-05 + E3-10 done; **E3-06 `[~]`** — first clickable draft built 2026-07-29, **not yet opened in a browser** (no Docker here) and **not yet reviewed**; it closes only when the directie/teacher session happens and is captured. E3-02 is the next unblocked story |
+| E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 4 | 🚧 E3-01 + E3-02 + E3-05 + E3-10 done; **E3-06 `[~]`** — draft verified end-to-end in a browser 2026-07-29 but **not yet reviewed**; it closes only when the directie/teacher session happens and is captured. E3-03 is blocked (its criterion measures coverage in E5, unbuilt); E3-04, or E3-07 after the review, is next |
 | E4 — Manuele bewerking & (her)generatie | [E4-bewerking-hergeneratie.md](E4-bewerking-hergeneratie.md) | 4 | 7 | 0 | Todo |
 | E5 — Dekking & export | [E5-dekking-export.md](E5-dekking-export.md) | 5 | 9 | 0 | Todo |
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
 | E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 13 | 0 | ⚠️ E7-11 is a deployment gate; **E7-12** `[~]` — advisory cleared, the two CI clauses that stop it recurring are still open; **E7-13** owns an Art. VIII layering leak (`ISchoolcontentParser` port sits in Infrastructure) |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **87** | **28** | **32%** |
+| **Totaal** | | | **87** | **29** | **33%** |
 
 > **Correction (2026-07-27).** A code review of the E1+E2 branch before merging to `main` reopened
 > **E1-03**, **E1-04** and **E1-07**: each was marked done with an acceptance criterion that cannot
