@@ -49,6 +49,8 @@
   - A stale placement raises a **persistent, non-dismissible** notification that names the affected thema's and offers re-placement inline. The UI offers no "later" — see E3-09 for the rendering.
   - While any placement is stale the jaarplan is *te herzien*, and **E5 must not report a dekking figure** for it (Art. V.2).
   *Done when (added):* a vacation edit that invalidates a placement produces the flag, no thema has moved on its own, and coverage refuses to report a number until it is resolved.
+  *Done when (added 2026-07-29, from the E3-01 audit):* **a teacher can remove a thema from a period, and reverse a rejection.** E3-01 discovered that `Geweigerd` makes a placement non-replaceable, so a rejection survived every regeneration with no undo — reject a thema in a period, change your mind, stuck. E3-01 lands the API (`DELETE …/jaarplan/plaatsingen/{id}`) because a delete-guard it introduced instructed teachers to do something no endpoint supported; **this story owns the UI affordance** and must make removal discoverable rather than implied. Ref: Art. IV.2 (accept/reject/**adjust** must all be meaningful).
+  *Why this clause exists:* E3-01's worklog claimed the gap was documented "so E3-07 cannot miss it", but it was recorded in three source files and E3-01's own worklog and **not here** — the story that has to act on it. A deferral recorded only in the deferring story is a deferral that gets lost.
 
 - [ ] **E3-08 — Zoom levels (jaar ↔ periode/blok)**
   Switch the view between a year overview and a finer period/block view. **No unit hard-named** — follows the planningsblok seam from E3-05; do not presuppose months while Art. XIV is open.
