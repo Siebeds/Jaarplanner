@@ -251,6 +251,132 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             (await client.DeleteAsync($"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}")).StatusCode);
     }
 
+    /// <summary>
+    /// <b>The E3-07 move, over HTTP</b> (FR-6.2/FR-6.5): the placement lands on another period, is persisted at once,
+    /// and comes back as <c>manueel</c> without the motivation that argued for the period it left.
+    /// <para>
+    /// The target period is read from <c>GET /api/schooljaren/{id}/rooster</c> — the same endpoint the kalender draws
+    /// its columns from — rather than hard-coded or taken from the seam directly. That is deliberate: it proves the
+    /// board a teacher drops onto and the endpoint that accepts the drop agree about where a period starts. A test
+    /// that computed the boundary itself could pass while the two disagreed.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_plaatsing_kan_naar_een_andere_periode_verplaatst_worden()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+        _factory.AiAntwoord =
+            $"{{\"plaatsingen\":[{{\"blokStart\":\"{blokStart:yyyy-MM-dd}\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}}]}}";
+
+        await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        var plan = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        var voor = Assert.Single(plan!.Plaatsingen);
+        Assert.Equal("Voorgesteld", voor.Status);
+        Assert.Equal("seizoen", voor.AiMotivatie);
+
+        // The board's own view of where the periods start.
+        var rooster = await client.GetFromJsonAsync<RoosterDto>($"/api/schooljaren/{plan.SchooljaarId}/rooster");
+        var doel = rooster!.Blokken.First(b => b.Start != voor.BlokStart);
+
+        var verplaats = await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{voor.Id}/blok", new { blokStart = doel.Start });
+        Assert.Equal(HttpStatusCode.OK, verplaats.StatusCode);
+
+        // The response carries the updated plan, so the UI never has to re-fetch to render the drop.
+        var uitResponse = Assert.Single((await verplaats.Content.ReadFromJsonAsync<JaarplanDto>())!.Plaatsingen);
+        Assert.Equal(doel.Start, uitResponse.BlokStart);
+        Assert.Equal(doel.Ordinaal, uitResponse.BlokOrdinaal);
+
+        // And it is genuinely persisted — the immediate-save half of FR-6.5, read back on a fresh request.
+        var na = Assert.Single((await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan"))!.Plaatsingen);
+        Assert.Equal(voor.Id, na.Id);
+        Assert.Equal(doel.Start, na.BlokStart);
+        Assert.False(na.IsVervallen);
+
+        // The position is the teacher's now, and the plan no longer credits the model for it.
+        Assert.Equal("Manueel", na.Status);
+        Assert.Null(na.AiMotivatie);
+    }
+
+    /// <summary>
+    /// A move to a date that starts no period is a <b>400</b> with the plan untouched: refused, never snapped to the
+    /// nearest period (ADR-0020, directie 2026-07-28). An unknown placement is a 404.
+    /// </summary>
+    [Fact]
+    public async Task Verplaatsen_naar_een_niet_bestaande_periodegrens_geeft_400_en_wijzigt_niets()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+        _factory.AiAntwoord =
+            $"{{\"plaatsingen\":[{{\"blokStart\":\"{blokStart:yyyy-MM-dd}\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}}]}}";
+
+        await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        var plan = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        var plaatsingId = Assert.Single(plan!.Plaatsingen).Id;
+
+        // One day past a real boundary — the nearest period is unambiguous, which is the point of refusing.
+        var response = await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/blok",
+            new { blokStart = blokStart.AddDays(1) });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var na = Assert.Single((await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan"))!.Plaatsingen);
+        Assert.Equal(blokStart, na.BlokStart);
+        Assert.Equal("Voorgesteld", na.Status);
+
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await client.PutAsJsonAsync(
+                $"/api/klassen/{klasId}/jaarplan/plaatsingen/{Guid.NewGuid()}/blok",
+                new { blokStart })).StatusCode);
+    }
+
+    /// <summary>
+    /// <b>A rejected placement is refused a move, over HTTP</b> — the one transition in this endpoint with a
+    /// <i>dekking</i> consequence. Under the binding reading in <c>backlog/E5-dekking-export.md</c> only
+    /// <c>aanvaard</c>/<c>manueel</c> count as placed (Art. V.1), so converting a rejection to <c>manueel</c> by
+    /// dragging would move a thema from "not taught" to "taught" in an inspectie-facing figure with no teacher
+    /// decision behind it. The way back stays the explicit status PUT.
+    /// </summary>
+    [Fact]
+    public async Task Een_geweigerde_plaatsing_verplaatsen_geeft_400_en_de_weigering_blijft_staan()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+        _factory.AiAntwoord =
+            $"{{\"plaatsingen\":[{{\"blokStart\":\"{blokStart:yyyy-MM-dd}\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}}]}}";
+
+        await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        var plan = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        var plaatsingId = Assert.Single(plan!.Plaatsingen).Id;
+
+        var weiger = await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/status", new { status = "Geweigerd" });
+        Assert.Equal(HttpStatusCode.OK, weiger.StatusCode);
+
+        var rooster = await client.GetFromJsonAsync<RoosterDto>($"/api/schooljaren/{plan.SchooljaarId}/rooster");
+        var doel = rooster!.Blokken.First(b => b.Start != blokStart);
+
+        var verplaats = await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/blok", new { blokStart = doel.Start });
+        Assert.Equal(HttpStatusCode.BadRequest, verplaats.StatusCode);
+
+        // The rejection stands, in its original period.
+        var na = Assert.Single((await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan"))!.Plaatsingen);
+        Assert.Equal("Geweigerd", na.Status);
+        Assert.Equal(blokStart, na.BlokStart);
+
+        // And the explicit route out still works: reverse the rejection, then the move is allowed.
+        await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/status", new { status = "Manueel" });
+        var opnieuw = await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/blok", new { blokStart = doel.Start });
+        Assert.Equal(HttpStatusCode.OK, opnieuw.StatusCode);
+        Assert.Equal(doel.Start, Assert.Single((await opnieuw.Content.ReadFromJsonAsync<JaarplanDto>())!.Plaatsingen).BlokStart);
+    }
+
     [Fact]
     public async Task Voorgesteld_terugzetten_geeft_400()
     {
@@ -370,6 +496,11 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         DateOnly BlokStart,
         string MomentNaam,
         string? AiMotivatie);
+
+    /// <summary>Only the parts of the rooster payload the move tests read: where each period starts.</summary>
+    private sealed record RoosterDto(List<RoosterBlokDto> Blokken);
+
+    private sealed record RoosterBlokDto(int Ordinaal, DateOnly Start, DateOnly Eind);
 
     /// <summary>
     /// WebApplicationFactory on the in-memory EF provider with a <b>stub AI client</b>. The container is otherwise

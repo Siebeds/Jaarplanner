@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  bepaalVerplaatsing,
   bouwRibbon,
   formatteerDatum,
   formatteerPeriode,
@@ -153,5 +154,51 @@ describe("vervallenPlaatsingen", () => {
     const vervallen = vervallenPlaatsingen(plaatsingen, blokken);
 
     expect([...inBlokken, ...vervallen].map((p) => p.id).sort()).toEqual(["gezond", "ziek"]);
+  });
+});
+
+describe("bepaalVerplaatsing (E3-07 — what a drop does)", () => {
+  // The gesture cannot be simulated in jsdom (zero-sized rects, and dnd-kit resolves drops by measuring
+  // them), but this decides what a drop DOES, and that is plain logic. Left untested in the first pass and
+  // flagged by the antagonist audit: the "nothing is guessed" guarantee had no assertion behind it.
+
+  it("moves the placement to the block it was released over", () => {
+    expect(bepaalVerplaatsing(plaatsing({ id: "a", blokStart: "2026-09-01" }), "2026-11-09")).toBe(
+      "2026-11-09",
+    );
+  });
+
+  it("changes nothing when released over no period, and never guesses one", () => {
+    // Clause 1 of the directie ruling: the application does not pick a period on the teacher's behalf.
+    expect(bepaalVerplaatsing(plaatsing({ id: "a" }), undefined)).toBeNull();
+  });
+
+  it("changes nothing when a draggable carries no placement", () => {
+    expect(bepaalVerplaatsing(undefined, "2026-11-09")).toBeNull();
+  });
+
+  it("changes nothing when dropped back where it started", () => {
+    // Otherwise a no-op gesture would cost a standing AI proposal its Voorgesteld status and its motivation.
+    expect(bepaalVerplaatsing(plaatsing({ id: "a", blokStart: "2026-09-01" }), "2026-09-01")).toBeNull();
+  });
+
+  it("refuses to move a rejected placement", () => {
+    // Moving it would convert Geweigerd to Manueel and hand the thema dekking it must not have (Art. V.1).
+    expect(
+      bepaalVerplaatsing(
+        plaatsing({ id: "a", blokStart: "2026-09-01", status: "Geweigerd" }),
+        "2026-11-09",
+      ),
+    ).toBeNull();
+  });
+
+  it("moves a STALE placement, which is the re-placement route the ruling requires", () => {
+    // Nothing validates where the placement currently sits — only where it is going.
+    expect(
+      bepaalVerplaatsing(
+        plaatsing({ id: "a", blokStart: "2026-12-01", blokOrdinaal: null, isVervallen: true }),
+        "2026-11-09",
+      ),
+    ).toBe("2026-11-09");
   });
 });

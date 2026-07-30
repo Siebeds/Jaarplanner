@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -199,7 +199,17 @@ describe("Jaarplankalender", () => {
     );
     renderKalender();
 
-    const melding = await screen.findByRole("alert");
+    // A labelled `region`, not an `alert`, since E3-07 (see `TeHerzien`): the notice now contains interactive
+    // controls and a nested alert, and nesting live regions has undefined announcement behaviour. The
+    // announcement moved to an sr-only `role="status"` line, asserted separately below.
+    const melding = await screen.findByRole("region", {
+      name: t("kalender.herzienTitelEnkelvoud"),
+    });
+
+    // The count sentence is still announced, just by a small live region instead of the whole notice.
+    expect(within(melding).getByRole("status")).toHaveTextContent(
+      t("kalender.herzienTitelEnkelvoud"),
+    );
 
     // The thema is named, not merely counted — a teacher must see which plan item needs attention.
     expect(melding).toHaveTextContent("Feesten in december");
@@ -210,10 +220,18 @@ describe("Jaarplankalender", () => {
     expect(melding).toHaveTextContent(t("kalender.herzienTitelEnkelvoud"));
     expect(melding).not.toHaveTextContent(t("kalender.herzienTitel", { aantal: 1 }));
 
-    // And there is no way to dismiss it (directie 2026-07-28: "fix later" is not an option offered).
-    // Checked for links as well as buttons: with no buttons anywhere in the feature, asserting only
-    // `queryByRole("button")` would pass vacuously and would not catch a dismiss control added as an <a>.
-    expect(within(melding).queryByRole("button")).toBeNull();
+    // And there is still no way to dismiss it (directie 2026-07-28: "fix later" is not an option offered).
+    //
+    // E3-07 *does* add a control inside this notice — the inline re-placement the same ruling asks for — so
+    // the original "there are no buttons here" assertion could not survive it. What replaces it is stronger
+    // rather than weaker: the FULL set of controls is pinned, so a dismiss, close or "later" affordance added
+    // as a button changes the set and fails. The link check stays for the same reason it was written: a
+    // dismiss control smuggled in as an <a>.
+    expect(
+      within(melding)
+        .getAllByRole("button")
+        .map((control) => control.getAttribute("aria-label") ?? control.textContent),
+    ).toEqual([t("kalender.aanpassenLabel", { thema: "Feesten in december" })]);
     expect(within(melding).queryByRole("link")).toBeNull();
 
     // It must NOT claim a coverage figure: this thema sits in no period, so under Art. V.1 nothing it
@@ -380,10 +398,417 @@ describe("Jaarplankalender", () => {
     const { container } = renderKalender();
 
     await screen.findByText("Water");
-    // Premises for this test's reach: the te-vol flag and the stale alert are actually on screen.
+    // Premises for this test's reach: the te-vol flag and the stale notice are actually on screen.
     expect(within(periodes()).getByText(/Te vol/)).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: t("kalender.herzienTitelEnkelvoud") }),
+    ).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+/**
+ * E3-07: moving a thema between periods (FR-6.2), taking one out of a period (FR-7), and reversing a
+ * rejection.
+ *
+ * Driven through the **accessible** route rather than a synthetic drag. `jsdom` gives every element a
+ * zero-sized bounding rect, and dnd-kit resolves a drop by measuring rectangles, so a simulated drop lands
+ * nowhere: a green "drag test" here would prove only that the harness ran. The period picker performs the same
+ * mutation through the same hook against the same endpoint, so what these tests pin is the contract the drop
+ * shares with it — which request goes out, with which body, and what the teacher sees when it is refused. The
+ * gesture itself is verified in a browser, and that is stated rather than implied.
+ */
+describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
+  /** One thema's card, so a query cannot pick up a control belonging to a different card. */
+  function kaart(themaNaam: string): HTMLElement {
+    const article = screen.getByText(themaNaam).closest("article");
+    if (!article) {
+      throw new Error(`No card found for "${themaNaam}".`);
+    }
+
+    return article as HTMLElement;
+  }
+
+  /** The "Aanpassen" disclosure on one card. */
+  function aanpassen(themaNaam: string) {
+    return within(kaart(themaNaam)).getByRole("button", {
+      name: t("kalender.aanpassenLabel", { thema: themaNaam }),
+    });
+  }
+
+  /**
+   * Serves the reads and records every write, answering each write with `naPlan` so the board re-renders from
+   * the response, exactly as it does against the real API.
+   */
+  function stubBewerking(plan: Jaarplan, naPlan: Jaarplan = plan, mislukStatus?: number) {
+    const verzoeken: { method: string; url: string; body: unknown }[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (method !== "GET") {
+          verzoeken.push({
+            method,
+            url,
+            body: init?.body ? JSON.parse(String(init.body)) : undefined,
+          });
+
+          if (mislukStatus !== undefined) {
+            return new Response(
+              JSON.stringify({ title: "Ongeldige aanvraag", detail: "geen periodegrens" }),
+              { status: mislukStatus },
+            );
+          }
+
+          return new Response(JSON.stringify(naPlan), { status: 200 });
+        }
+
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(plan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    return verzoeken;
+  }
+
+  it("moves a thema to the chosen period and keys the request on the block START DATE", async () => {
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    // Period 2 is offered; period 1, the one it already sits in, is not — that move is a no-op server-side,
+    // and offering it invites a click that does nothing.
+    const keuze = within(kaart("Water")).getByLabelText(t("kalender.verplaatsNaar"));
+    expect(within(keuze).getByRole("option", { name: /Periode 2/ })).toBeInTheDocument();
+    expect(within(keuze).queryByRole("option", { name: /Periode 1/ })).toBeNull();
+
+    fireEvent.change(keuze, { target: { value: "2026-11-09" } });
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.verplaatsen") }));
+
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+
+    // **The load-bearing assertion of this story.** A placement keys on the block's start date, never on its
+    // ordinal (ADR-0020 §3): the ordinal is a display position that re-points when the school edits a
+    // vakantie, so sending one would silently relocate the thema later. Deep equality rather than a property
+    // check, so an `ordinaal` added to this payload in future fails here instead of passing quietly.
+    expect(verzoeken[0].method).toBe("PUT");
+    expect(verzoeken[0].url).toMatch(/\/jaarplan\/plaatsingen\/p1\/blok$/);
+    expect(verzoeken[0].body).toEqual({ blokStart: "2026-11-09" });
+  });
+
+  it("offers every period for a stale placement, because it sits in none", async () => {
+    const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p9",
+        themaNaam: "Feesten in december",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Aanvaard",
+      }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Feesten in december");
+    fireEvent.click(aanpassen("Feesten in december"));
+
+    const keuze = screen.getByLabelText(t("kalender.verplaatsNaar"));
+    expect(within(keuze).getByRole("option", { name: /Periode 1/ })).toBeInTheDocument();
+    expect(within(keuze).getByRole("option", { name: /Periode 2/ })).toBeInTheDocument();
+
+    // Nothing is pre-selected. Clause 1 of the directie ruling is that the application never chooses a period
+    // for a stale placement, and a default here would be exactly that guess, made by the UI.
+    expect((keuze as HTMLSelectElement).value).toBe("");
+  });
+
+  it("removes an untouched AI proposal on one click, with no confirmation", async () => {
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const verzoeken = stubBewerking(plan, maakJaarplan([]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.click(
+      within(kaart("Water")).getByRole("button", { name: t("kalender.uitPeriodeHalen") }),
+    );
+
+    // Straight to the DELETE: a standing proposal costs nothing to discard, because regeneration can propose
+    // it again. The confirmation is reserved for work that cannot be recovered.
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].method).toBe("DELETE");
+    expect(verzoeken[0].url).toMatch(/\/jaarplan\/plaatsingen\/p1$/);
+  });
+
+  it.each([
+    ["an accepted", { status: "Aanvaard" as const, vergrendeld: false }],
+    ["a locked", { status: "Voorgesteld" as const, vergrendeld: true }],
+  ])(
+    "makes removing %s placement confirm first, naming the thema and the period",
+    async (_soort, eigenschappen) => {
+      const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water", ...eigenschappen })]);
+      const verzoeken = stubBewerking(plan, maakJaarplan([]));
+      renderKalender();
+
+      await screen.findByText("Water");
+      fireEvent.click(aanpassen("Water"));
+      fireEvent.click(
+        within(kaart("Water")).getByRole("button", { name: t("kalender.uitPeriodeHalen") }),
+      );
+
+      // Nothing has gone yet. This confirmation is the ONLY protection for decided or locked teacher work in
+      // a codebase with no soft delete and no audit trail, so that it fires at all is the assertion.
+      expect(verzoeken).toHaveLength(0);
+
+      // The question names BOTH the thema and the period: specificity is what makes an endpoint that ignores
+      // status and lock safe to expose, per the E3-01 audit that assigned this obligation.
+      expect(
+        within(kaart("Water")).getByText(
+          t("kalender.verwijderVraag", { thema: "Water", ordinaal: 1 }),
+        ),
+      ).toBeInTheDocument();
+
+      // Cancelling is genuinely non-destructive, and the guarded control comes back rather than vanishing.
+      fireEvent.click(
+        within(kaart("Water")).getByRole("button", { name: t("kalender.annuleren") }),
+      );
+      expect(verzoeken).toHaveLength(0);
+
+      // Confirming does delete.
+      fireEvent.click(
+        within(kaart("Water")).getByRole("button", { name: t("kalender.uitPeriodeHalen") }),
+      );
+      fireEvent.click(
+        within(kaart("Water")).getByRole("button", { name: t("kalender.verwijderBevestig") }),
+      );
+
+      await waitFor(() => expect(verzoeken).toHaveLength(1));
+      expect(verzoeken[0].method).toBe("DELETE");
+    },
+  );
+
+  it("refuses to move a REJECTED placement, because that would grant it dekking", async () => {
+    // The story built an explicit, explained control for reversing a rejection — and a drag did the same
+    // transition silently. It is the one transition here with an Art. V.1 consequence: only aanvaard/manueel
+    // placements count as placed, so a sideways nudge would flip a thema from "not taught" to "taught" in the
+    // figure an onderwijsinspectie is shown. Caught by the E3-07 antagonist audit.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Geweigerd" }),
+    ]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    // No picker at all, and the reason is on screen rather than left to a failed attempt.
+    expect(within(kaart("Water")).queryByLabelText(t("kalender.verplaatsNaar"))).toBeNull();
+    expect(
+      within(kaart("Water")).getByText(t("kalender.weigeringEerstTerugdraaien")),
+    ).toBeInTheDocument();
+
+    // No drag grip either: a grip whose every drop is refused is a control that does nothing.
+    expect(kaart("Water").querySelector('span[role="presentation"]')).toBeNull();
+
+    // The explained route out is still offered, and it is the only thing that fires a request.
+    fireEvent.click(
+      within(kaart("Water")).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
+    );
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].url).toMatch(/\/status$/);
+  });
+
+  it("discloses that a move is not reversible, before the move", async () => {
+    // The first version justified leaving a move unconfirmed on the grounds it was reversible. It is not:
+    // moving back restores the date only, while the AI motivation and any `Aanvaard` decision are gone.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    expect(within(kaart("Water")).getByText(t("kalender.verplaatsGevolg"))).toBeInTheDocument();
+  });
+
+  it("does not warn about losing something a card has nothing to lose", async () => {
+    // A warning that does not apply is how teachers learn to ignore warnings: an already-manual placement with
+    // no motivation loses nothing a move could take.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Manueel", aiMotivatie: null }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    expect(within(kaart("Water")).queryByText(t("kalender.verplaatsGevolg"))).toBeNull();
+    // The picker is still there — this is about the warning, not the action.
+    expect(within(kaart("Water")).getByLabelText(t("kalender.verplaatsNaar"))).toBeInTheDocument();
+  });
+
+  it("names the stored date when confirming the delete of a STALE placement", async () => {
+    // The unique index is (JaarplanId, ThemaId, BlokNiveau, BlokStart), so the same thema can be stale at two
+    // vanished dates. Without the date both cards would raise a byte-identical question for two different
+    // unrecoverable deletions — the exact failure the "name the thema and the period" clause guards against.
+    const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p1",
+        themaNaam: "Feesten",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Aanvaard",
+      }),
+      maakPlaatsing({
+        id: "p2",
+        themaNaam: "Feesten",
+        blokStart: "2027-01-11",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Aanvaard",
+      }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await waitFor(() => expect(screen.getAllByText("Feesten")).toHaveLength(2));
+
+    const kaarten = screen.getAllByText("Feesten").map((h) => h.closest("article") as HTMLElement);
+    for (const kaartEl of kaarten) {
+      fireEvent.click(
+        within(kaartEl).getByRole("button", {
+          name: t("kalender.aanpassenLabel", { thema: "Feesten" }),
+        }),
+      );
+      fireEvent.click(
+        within(kaartEl).getByRole("button", { name: t("kalender.uitJaarplanHalen") }),
+      );
+    }
+
+    const vragen = kaarten.map(
+      (kaartEl) =>
+        [...kaartEl.querySelectorAll("p")].find((p) => p.getAttribute("role") === "alert")
+          ?.textContent ?? "",
+    );
+
+    // Both name a date, and the two questions differ — which is the whole point.
+    expect(vragen[0]).toContain("1 dec");
+    expect(vragen[1]).toContain("11 jan");
+    expect(vragen[0]).not.toEqual(vragen[1]);
+  });
+
+  it("tells an unavailable tool apart from a refused move", async () => {
+    // A 500 with "kies een periode uit dit jaarplan" sends the teacher round a loop that cannot succeed. The
+    // generation panel already makes this split; the move path was making the mistake that panel warns about.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    stubBewerking(plan, plan, 500);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.change(within(kaart("Water")).getByLabelText(t("kalender.verplaatsNaar")), {
+      target: { value: "2026-11-09" },
+    });
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.verplaatsen") }));
+
+    expect(await screen.findByText(t("kalender.verplaatsOnbeschikbaar"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.verplaatsMislukt"))).toBeNull();
+  });
+
+  it("lets a teacher reverse a rejection", async () => {
+    // E3-01 discovered that `Geweigerd` makes a placement non-replaceable, so a rejection survived every
+    // regeneration with no undo: reject a thema in a period, change your mind, stuck. E3-07 owns the way back.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Geweigerd" })]);
+    const naPlan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Manueel" })]);
+    const verzoeken = stubBewerking(plan, naPlan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.click(
+      within(kaart("Water")).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
+    );
+
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].method).toBe("PUT");
+    expect(verzoeken[0].url).toMatch(/\/plaatsingen\/p1\/status$/);
+
+    // `Manueel`, not `Aanvaard`: the thema is in this period because the teacher put it back there. And never
+    // `Voorgesteld`, which the server refuses with a 400 because only the AI produces it.
+    expect(verzoeken[0].body).toEqual({ status: "Manueel" });
+  });
+
+  it("has no axe violations with an edit panel OPEN and its confirmation showing", async () => {
+    // The panel and the confirm question are the only parts of this feature that are not on screen at rest,
+    // so the existing axe pass over the board says nothing about them — exactly the gap that let two
+    // violations through in E3-06. Note what axe here can and cannot see: it checks the select's label
+    // association, the disclosure's aria-expanded/aria-controls pairing and the alert's role, but `jsdom`
+    // cannot evaluate colour, so nothing here covers contrast. That is measured in a browser.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard", vergrendeld: true }),
+      maakPlaatsing({ id: "p2", themaNaam: "Wonen", status: "Geweigerd" }),
+    ]);
+    stubBewerking(plan);
+    const { container } = renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.click(aanpassen("Wonen"));
+
+    // Put the guarded card into its confirmation state, so the question is in the tree too.
+    fireEvent.click(
+      within(kaart("Water")).getByRole("button", { name: t("kalender.uitPeriodeHalen") }),
+    );
+
+    // Premises, so this cannot pass by rendering nothing new.
+    expect(within(kaart("Water")).getByRole("button", { name: t("kalender.verwijderBevestig") }))
+      .toBeInTheDocument();
+    expect(
+      within(kaart("Wonen")).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
+    ).toBeInTheDocument();
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("reports a refused move in Dutch and never echoes the backend message", async () => {
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    stubBewerking(plan, plan, 400);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.change(within(kaart("Water")).getByLabelText(t("kalender.verplaatsNaar")), {
+      target: { value: "2026-11-09" },
+    });
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.verplaatsen") }));
+
+    expect(await screen.findByText(t("kalender.verplaatsMislukt"))).toBeInTheDocument();
+
+    // The refusal's `detail` is Dutch and server-authored, and `api.ts`'s rule is that no server string
+    // reaches a teacher — the copy comes from nl.json. That is also what keeps the open Art. II.3 ruling free
+    // of UI rework, which the backlog entry says gets more expensive with every screen that breaks it.
+    expect(screen.queryByText(/geen periodegrens/)).toBeNull();
+    expect(screen.queryByText(/Ongeldige aanvraag/)).toBeNull();
+
+    // The card has not moved: the board renders what the server last returned, never an optimistic guess.
+    expect(within(kaart("Water")).getByText("Water")).toBeInTheDocument();
   });
 });
