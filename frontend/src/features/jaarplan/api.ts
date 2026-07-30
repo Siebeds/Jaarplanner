@@ -58,9 +58,15 @@ export function genereerJaarplan(
  * The school's thema's, for the startthema pickers (E3-04).
  *
  * A picker rather than a text field on purpose: the server reports a thema name it does not own as
- * `onbekendeStartthemas`, and the cheapest way to make that case unreachable is to stop a teacher from being able
- * to mistype one. A full thema-beheer screen is still E1-14; this only needs the names.
+ * `onbekendeStartthemas`, and a picker makes that case far harder to reach than a text field does. A full
+ * thema-beheer screen is still E1-14; this only needs the names.
+ *
+ * **`/bibliotheek`, not `/api/themas`.** The plain list returns `ThemaWeergave`, whose `Subthemas` carry **every
+ * class's** class- and age-scoped subthema's, subdoelen and activiteiten — a whole subtree, to fill a dropdown
+ * with names. The bibliotheek endpoint exists precisely to avoid that: its own docs say it *"deliberately omits
+ * all subthema's … must never leak into the school-wide library view (no cross-class bleed)"* (Art. IX.2). This
+ * was the first frontend consumer of either, and it had picked the heavy one.
  */
 export function haalThemanamen(): Promise<Themakeuze[]> {
-  return apiFetch<Themakeuze[]>("/api/themas");
+  return apiFetch<Themakeuze[]>("/api/themas/bibliotheek");
 }

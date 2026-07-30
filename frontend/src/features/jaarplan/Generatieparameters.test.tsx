@@ -4,6 +4,7 @@ import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "../../i18n";
+import nl from "../../i18n/nl.json";
 import { Jaarplankalender } from "./Jaarplankalender";
 import type { Generatieresultaat, Jaarplan, Parameterrapport, Planningsrooster } from "./types";
 
@@ -166,11 +167,16 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     await waitFor(() => expect(within(startthemas).getAllByRole("combobox")).toHaveLength(1));
     fireEvent.change(within(startthemas).getAllByRole("combobox")[0], { target: { value: "Water" } });
 
+    // Asserted on the parenthesised SUMMARY, not the whole button: the trigger label itself now names its
+    // content ("startthema's en vaste momenten") for discoverability, so a button-wide match would pass or fail
+    // on the label rather than on the count.
     const knop = screen.getByRole("button", { name: new RegExp(t("parameters.titel")) });
-    await waitFor(() => expect(knop).toHaveTextContent("1 startthema)"));
-    expect(knop).not.toHaveTextContent("1 startthema's");
+    const samenvatting = () => /\(([^)]*)\)/.exec(knop.textContent ?? "")?.[1] ?? "";
+
+    await waitFor(() => expect(samenvatting()).toBe("1 startthema"));
+    expect(samenvatting()).not.toContain("startthema's");
     // Zero parts are omitted rather than printed as "0 vaste momenten".
-    expect(knop).not.toHaveTextContent("vaste momenten");
+    expect(samenvatting()).not.toContain("moment");
   });
 
   it("labels each startthema row with the period it targets, because the contract is positional", async () => {
@@ -291,6 +297,37 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     ]);
   });
 
+  // The defect this pins: the summary counted any named+dated moment, ignoring the blocking question, so a
+  // teacher who left it unanswered, COLLAPSED the panel and generated saw "(1 vast moment)" while the run sent
+  // nothing and the report said nothing. The warning that explains it lives inside the panel, which is closed by
+  // default — so the one surface that could have told them asserted the opposite.
+  it("does not claim an unfinished moment is set, and names it as unfinished while collapsed", async () => {
+    const posts = stubFetch(resultaat(null));
+    renderKalender();
+    const knop = await openForm();
+    const samenvatting = () => /\(([^)]*)\)/.exec(knop.textContent ?? "")?.[1] ?? "";
+
+    fireEvent.click(await screen.findByRole("button", { name: t("parameters.momentToevoegen") }));
+    fireEvent.change(screen.getByLabelText(t("parameters.momentNaam")), {
+      target: { value: "Schoolfeest" },
+    });
+    fireEvent.change(screen.getByLabelText(t("parameters.momentDatum")), {
+      target: { value: "2026-09-15" },
+    });
+
+    // Collapse it, which is how the defect hid.
+    fireEvent.click(knop);
+    expect(knop).toHaveAttribute("aria-expanded", "false");
+
+    await waitFor(() => expect(samenvatting()).toBe("1 nog onvolledig"));
+    // Emphatically NOT "1 vast moment": nothing will be sent.
+    expect(samenvatting()).not.toContain("vast moment");
+
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.genereer") }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]).toBeUndefined();
+  });
+
   it("offers no pre-selected answer to the blocking question", async () => {
     stubFetch(resultaat(null));
     renderKalender();
@@ -396,6 +433,40 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
     expect(screen.queryByText(t("parameters.rapportTitel"))).toBeNull();
   });
 
+  // The shape the server ACTUALLY sends for a successful run with no parameters is ParameterRapport.Geen - an
+  // object of empty lists - not null. Both must render nothing, and until now every "no parameters" test used the
+  // fictional null.
+  it("renders nothing for the empty report the server really sends", async () => {
+    stubFetch(resultaat(leegRapport));
+    renderKalender();
+    await screen.findByRole("button", { name: t("kalender.genereer") });
+    genereer();
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(new RegExp(t("kalender.genereerGeluktEnkelvoud", { aantal: 1 }))),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(t("parameters.rapportTitel"))).toBeNull();
+  });
+
+  it("names a single unknown thema in the singular", async () => {
+    stubFetch(
+      resultaat({ ...leegRapport, onbekendeStartthemas: ["Ruimtevaart"], heeftAandachtspunten: true }),
+    );
+    renderKalender();
+    await screen.findByRole("button", { name: t("kalender.genereer") });
+    genereer();
+
+    // This line was the one report entry with no singular sibling, so one unknown thema read
+    // "Deze thema's kent de school niet" - the fourth instance of a plural bug this project keeps shipping.
+    expect(
+      await screen.findByText(
+        new RegExp(t("parameters.rapportOnbekendEnkelvoud", { themas: "Ruimtevaart" })),
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("has no axe violations with the form open and a report showing", async () => {
     stubFetch(
       resultaat({
@@ -418,15 +489,15 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
   });
 });
 
-/** Guards the one thing a screenshot cannot: that no em dash reached a user-facing string (owner, 2026-07-29). */
-it("uses no em dashes in the parameter copy", () => {
-  const copy = JSON.stringify(
-    (t as unknown as { catalogus?: unknown }).catalogus ?? {},
-  );
-  expect(copy).not.toContain("—");
-  // The catalogue is not exported, so assert on the rendered keys this feature owns instead.
-  for (const key of ["parameters.uitleg", "parameters.momentenUitleg", "parameters.rapportGeweigerdWatNu"]) {
-    expect(t(key as Parameters<typeof t>[0])).not.toContain("—");
-  }
-  expect(within(document.body).queryByText("—")).toBeNull();
+/**
+ * Guards the owner's no-em-dash instruction across the WHOLE catalogue, not just this feature.
+ *
+ * The first version read `(t as unknown as { catalogus?: unknown }).catalogus ?? {}`, which always resolved to
+ * `{}` — so `expect("{}").not.toContain("—")` could never fail — and then queried a `document.body` that
+ * `afterEach` had already emptied, which could never fail either. Real coverage was three hard-listed keys out of
+ * roughly forty. A test that reads like a catalogue-wide guard and cannot fail is worse than no test, which is
+ * this repo's own recorded lesson about a test that pinned wrong copy.
+ */
+it("uses no em dashes anywhere in the Dutch catalogue", () => {
+  expect(JSON.stringify(nl)).not.toContain("—");
 });

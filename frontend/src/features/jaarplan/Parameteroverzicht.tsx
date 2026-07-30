@@ -104,7 +104,12 @@ export function Parameteroverzicht({ rapport }: ParameteroverzichtProps) {
         {onbekendeStartthemas.length > 0 && (
           <li className="font-medium text-attentie-ink">
             <span aria-hidden="true">▲</span>{" "}
-            {t("parameters.rapportOnbekend", { themas: onbekendeStartthemas.join(", ") })}
+            {tAantal(
+              onbekendeStartthemas.length,
+              "parameters.rapportOnbekendEnkelvoud",
+              "parameters.rapportOnbekend",
+              { themas: onbekendeStartthemas.join(", ") },
+            )}
           </li>
         )}
 

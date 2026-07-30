@@ -6,6 +6,9 @@ import type { Generatieparameters } from "./types";
 /** Query key for one class's jaarplan. */
 const jaarplanKey = (klasId: string) => ["jaarplan", klasId] as const;
 
+/** Query key for the thema names the startthema pickers offer (E3-04). Named here with its siblings. */
+export const themanamenKey = ["themanamen"] as const;
+
 /** Query key for one school year's derived block grid. */
 const roosterKey = (schooljaarId: string) => ["planningsrooster", schooljaarId] as const;
 

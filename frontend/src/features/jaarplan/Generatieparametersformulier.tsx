@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/button";
 import { t, tAantal } from "../../i18n";
 import { haalThemanamen } from "./api";
 import { formatteerPeriode } from "./kalenderFormat";
+import { themanamenKey } from "./useJaarplan";
 import type { Generatieparameters, Planningsblok, VastMoment } from "./types";
 
 /**
@@ -53,17 +54,34 @@ export function Generatieparametersformulier({
   onWijzig,
   disabled,
 }: GeneratieparametersformulierProps) {
-  // Startthema per period index. A sparse map rather than an array so "period 3 only" is expressible without
-  // inventing empty entries for 1 and 2 — the server drops blanks, but the UI should not have to rely on that.
-  const [startthemas, setStartthemas] = useState<Record<number, string>>({});
+  // Startthema keyed by the block's **start date**, never by its position.
+  //
+  // The wire contract is positional (the i-th name targets the i-th block), but keying local state that way made
+  // the form desync from the grid: `blokken` is refetched on window focus, so a beheerder editing the
+  // vakantiestructuur could shrink the year while this state still held a choice for a period that no longer
+  // exists. That extra name was then sent, and the server filed it under `TegenstrijdigeStartthemas` — telling the
+  // teacher they had marked the period as bezet themselves, which they had not. Keying on the same stable date the
+  // rest of the system uses (ADR-0020 §3) means a vanished block's choice stops being rendered and stops being
+  // sent, together.
+  const [startthemas, setStartthemas] = useState<Record<string, string>>({});
   const [momenten, setMomenten] = useState<MomentInvoer[]>([]);
   const [open, setOpen] = useState(false);
-  const titelId = useId();
+  const paneelId = useId();
 
-  const themas = useQuery({ queryKey: ["themanamen"], queryFn: haalThemanamen });
+  // Gated on `open`: the collapse is supposed to save the teacher attention, and fetching the thema list on
+  // every load of the anchor screen for a panel almost nobody opens would have saved pixels and no bytes.
+  const themas = useQuery({
+    queryKey: themanamenKey,
+    queryFn: haalThemanamen,
+    enabled: open,
+  });
+
+  // The grid in wire order. Every position below is derived from this one list, so the rendered rows and the
+  // request can never disagree about which period is which.
+  const geordendeBlokken = [...blokken].sort((a, b) => a.start.localeCompare(b.start));
 
   function meld(
-    nieuweStartthemas: Record<number, string>,
+    nieuweStartthemas: Record<string, string>,
     nieuweMomenten: MomentInvoer[],
   ) {
     // Only fully-answered moments are sent. A half-filled row is not an instruction yet, and sending it would
@@ -81,12 +99,12 @@ export function Generatieparametersformulier({
         blokkeertPlaatsing: moment.blokkeertPlaatsing,
       }));
 
-    // Contiguous from period 1, because the server reads position as the target block. A gap would silently
-    // shift every later choice one period earlier, so a teacher who set only period 3 must not have it read
-    // as period 1.
+    // Flattened to positions only here, at the boundary, walking the CURRENT grid in order. Contiguous from
+    // period 1, because the server reads position as the target block: a gap would shift every later choice one
+    // period earlier, so a teacher who set only period 3 must not have it read as period 1.
     const gewensteStartthemas: string[] = [];
-    for (let i = 0; i < blokken.length; i++) {
-      const keuze = nieuweStartthemas[i];
+    for (const blok of geordendeBlokken) {
+      const keuze = nieuweStartthemas[blok.start];
       if (!keuze) {
         break;
       }
@@ -99,16 +117,16 @@ export function Generatieparametersformulier({
 
   function kiesStartthema(index: number, naam: string) {
     const volgende = { ...startthemas };
+
     if (naam) {
-      volgende[index] = naam;
+      volgende[geordendeBlokken[index].start] = naam;
     } else {
       // Clearing a period clears the ones after it too. The server reads position as the target block, so a
       // cleared row in the middle would truncate the list and silently drop every later choice from the request
-      // while still showing it on screen. Taking them away visibly is the honest version of the same rule.
-      for (const key of Object.keys(volgende)) {
-        if (Number(key) >= index) {
-          delete volgende[Number(key)];
-        }
+      // while still showing it on screen. Taking them away visibly is the honest version of the same rule, and
+      // the row above the pickers warns before you do it.
+      for (const later of geordendeBlokken.slice(index)) {
+        delete volgende[later.start];
       }
     }
 
@@ -135,11 +153,28 @@ export function Generatieparametersformulier({
     meld(startthemas, volgende);
   }
 
-  const aantalStartthemas = Object.keys(startthemas).length;
-  const aantalMomenten = momenten.filter(
-    (moment) => moment.naam.trim().length > 0 && moment.datum.length > 0,
+  // Counted from what WILL BE SENT, never from what has been typed.
+  //
+  // The first version counted any moment with a name and a date, ignoring the blocking question. So a teacher who
+  // left that unanswered, collapsed the panel and generated saw "(1 vast moment)" while the run sent nothing and
+  // the report said nothing — the summary asserting an instruction was set when it was not. That is the same
+  // "indistinguishable from *your instruction was honoured*" defect the backend audit raised, one layer up, and it
+  // falsified this component's own justification for being collapsible.
+  const isVolledig = (moment: MomentInvoer) =>
+    moment.naam.trim().length > 0 && moment.datum.length > 0 && moment.blokkeertPlaatsing !== null;
+  const isBegonnen = (moment: MomentInvoer) =>
+    moment.naam.trim().length > 0 || moment.datum.length > 0 || moment.blokkeertPlaatsing !== null;
+
+  const aantalStartthemas = geordendeBlokken.filter((blok) => startthemas[blok.start]).length;
+  const aantalMomenten = momenten.filter(isVolledig).length;
+
+  // Begun but not finished, so not sent. Named separately in the summary because the warning that explains it
+  // lives inside the panel, and the panel is closed by default — which is exactly how the defect above hid.
+  const aantalOnvolledig = momenten.filter(
+    (moment) => isBegonnen(moment) && !isVolledig(moment),
   ).length;
-  const ietsIngesteld = aantalStartthemas > 0 || aantalMomenten > 0;
+
+  const ietsIngesteld = aantalStartthemas > 0 || aantalMomenten > 0 || aantalOnvolledig > 0;
 
   const samenvatting = ietsIngesteld
     ? `(${[
@@ -155,6 +190,12 @@ export function Generatieparametersformulier({
             "parameters.samenvattingMomentEnkelvoud",
             "parameters.samenvattingMoment",
           ),
+        aantalOnvolledig > 0 &&
+          tAantal(
+            aantalOnvolledig,
+            "parameters.samenvattingOnvolledigEnkelvoud",
+            "parameters.samenvattingOnvolledig",
+          ),
       ]
         .filter(Boolean)
         .join(", ")})`
@@ -163,12 +204,12 @@ export function Generatieparametersformulier({
   // The first period without a choice. Everything after it is unreachable, because the server reads position as
   // the target block and a gap would shift every later choice one period earlier.
   const eersteOpenIndex = (() => {
-    for (let i = 0; i < blokken.length; i++) {
-      if (!startthemas[i]) {
+    for (let i = 0; i < geordendeBlokken.length; i++) {
+      if (!startthemas[geordendeBlokken[i].start]) {
         return i;
       }
     }
-    return blokken.length;
+    return geordendeBlokken.length;
   })();
 
   // Show the chosen rows plus ONE open row, and grow as the teacher fills them.
@@ -178,7 +219,10 @@ export function Generatieparametersformulier({
   // names one or two thema's, and a disabled control reads as broken rather than as not-yet-reachable. Growing
   // the list also makes the top-to-bottom rule self-evident, so the sentence explaining it could go — prose is
   // the first thing to cut.
-  const zichtbareRijen = blokken.slice(0, Math.min(eersteOpenIndex + 1, blokken.length));
+  const zichtbareRijen = geordendeBlokken.slice(
+    0,
+    Math.min(eersteOpenIndex + 1, geordendeBlokken.length),
+  );
 
   return (
     <div className="mt-4 border-t border-border pt-4">
@@ -186,6 +230,7 @@ export function Generatieparametersformulier({
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
+        aria-controls={paneelId}
         className="flex items-center gap-2 rounded-md text-sm font-semibold text-ink hover:text-petrol focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-petrol"
       >
         <span aria-hidden="true" className="text-xs text-ink-zacht">
@@ -202,8 +247,8 @@ export function Generatieparametersformulier({
       </button>
 
       {open && (
-        <div className="mt-4 flex flex-col gap-6" aria-labelledby={titelId}>
-          <p id={titelId} className="text-xs leading-snug text-ink-zacht">
+        <div id={paneelId} className="mt-4 flex flex-col gap-6">
+          <p className="text-xs leading-snug text-ink-zacht">
             {t("parameters.uitleg")}
           </p>
 
@@ -237,7 +282,7 @@ export function Generatieparametersformulier({
                       </span>
                     </span>
                     <select
-                      value={startthemas[index] ?? ""}
+                      value={startthemas[blok.start] ?? ""}
                       disabled={disabled}
                       onChange={(event) => kiesStartthema(index, event.target.value)}
                       className="h-9 min-w-[12rem] rounded-md border border-input bg-card px-2 text-xs text-ink disabled:cursor-not-allowed disabled:text-ink-zacht"
@@ -252,8 +297,15 @@ export function Generatieparametersformulier({
                   </label>
                 ))}
 
+                {/* The clear-cascade is stated BEFORE it can happen. It removes up to N-1 choices on a single
+                    change event with no undo, and a consequence a teacher only discovers by triggering it is not
+                    a consequence they consented to. Shown only once there is something to lose. */}
+                {aantalStartthemas > 1 && (
+                  <p className="text-xs text-ink-zacht">{t("parameters.startthemasWisUitleg")}</p>
+                )}
+
                 {/* Only worth saying once every period is named; until then the growing list says it. */}
-                {eersteOpenIndex >= blokken.length && (
+                {eersteOpenIndex >= geordendeBlokken.length && (
                   <p className="text-xs text-ink-zacht">{t("parameters.startthemasAlleGevuld")}</p>
                 )}
               </>

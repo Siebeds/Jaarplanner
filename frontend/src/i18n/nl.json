@@ -174,9 +174,9 @@
     "jaarFaseLabel": "Jaar/fase"
   },
   "parameters": {
-    "titel": "Vooraf instellen",
+    "titel": "Vooraf instellen: startthema's en vaste momenten",
     "samenvattingLeeg": "(niets ingesteld)",
-    "uitleg": "Je kan de AI vooraf richting geven. Alles hier is optioneel: laat je het leeg, dan verdeelt de AI de thema's zelf. Vakanties hoef je niet in te vullen, die staan al bij het schooljaar en de periodes zijn erop gebouwd.",
+    "uitleg": "Je kan de AI vooraf richting geven. Alles hier is optioneel: laat je het leeg, dan verdeelt de AI de thema's zelf. Deze instellingen gelden voor deze generatie: genereer je later opnieuw, vul ze dan opnieuw in. Vakanties hoef je niet in te vullen, die staan al bij het schooljaar en de periodes zijn erop gebouwd.",
     "startthemasTitel": "Startthema's",
     "periodeLabel": "Periode {ordinaal}",
     "geenVoorkeur": "Geen voorkeur",
@@ -198,8 +198,8 @@
     "rapportTitel": "Wat er met je instellingen gebeurde",
     "rapportGehonoreerd": "De AI begon de periodes met {themas}, zoals je vroeg.",
     "rapportGehonoreerdEnkelvoud": "De AI begon de periode met {themas}, zoals je vroeg.",
-    "rapportNietGehonoreerd": "De AI koos andere thema's voor {themas}. Je voorstel blijft staan: je kan de thema's zelf verplaatsen of opnieuw genereren.",
-    "rapportNietGehonoreerdEnkelvoud": "De AI koos een ander thema dan {themas}. Je voorstel blijft staan: je kan het thema zelf verplaatsen of opnieuw genereren.",
+    "rapportNietGehonoreerd": "De AI koos andere thema's voor {themas}. Je keuze blijft staan: je kan de thema's zelf verplaatsen of opnieuw genereren.",
+    "rapportNietGehonoreerdEnkelvoud": "De AI koos een ander thema dan {themas}. Je keuze blijft staan: je kan het thema zelf verplaatsen of opnieuw genereren.",
     "rapportTegenstrijdig": "{themas} konden niet in de gevraagde periode: je hebt die periodes zelf als bezet gemarkeerd. Pas een van de twee instellingen aan.",
     "rapportTegenstrijdigEnkelvoud": "{themas} kon niet in de gevraagde periode: je hebt die periode zelf als bezet gemarkeerd. Pas een van de twee instellingen aan.",
     "rapportOnbekend": "Deze thema's kent de school niet: {themas}.",
@@ -218,6 +218,10 @@
     "samenvattingStartthema": "{aantal} startthema's",
     "samenvattingMomentEnkelvoud": "{aantal} vast moment",
     "samenvattingMoment": "{aantal} vaste momenten",
-    "rapportGeweigerdWatNuEnkelvoud": "Dit thema is niet ingepland. Geef het zelf een periode, of genereer opnieuw zonder die periode te blokkeren."
+    "rapportGeweigerdWatNuEnkelvoud": "Dit thema is niet ingepland. Geef het zelf een periode, of genereer opnieuw zonder die periode te blokkeren.",
+    "rapportOnbekendEnkelvoud": "Dit thema kent de school niet: {themas}.",
+    "samenvattingOnvolledigEnkelvoud": "{aantal} nog onvolledig",
+    "samenvattingOnvolledig": "{aantal} nog onvolledig",
+    "startthemasWisUitleg": "Zet je een periode terug op “Geen voorkeur”, dan vervallen ook de periodes daarna."
   }
 }
