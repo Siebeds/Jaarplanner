@@ -54,10 +54,10 @@ export function DoelsuggestieGeneratie({ themaId }: DoelsuggestieGeneratieProps)
 
   return (
     <section
-      className="rounded-md border border-input bg-muted/40 p-4"
+      className="rounded-lg border border-border bg-card p-4 shadow-card sm:p-5"
       aria-labelledby="doelsuggestie-generatie-titel"
     >
-      <h3 id="doelsuggestie-generatie-titel" className="text-base font-semibold">
+      <h3 id="doelsuggestie-generatie-titel" className="text-base font-semibold text-ink">
         {t("matching.generatieTitel")}
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
