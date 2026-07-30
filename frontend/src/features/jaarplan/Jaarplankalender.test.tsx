@@ -87,6 +87,14 @@ function stubFetch(jaarplan: Jaarplan, generatie?: Generatieresultaat | number) 
 
         return new Response(JSON.stringify(generatie), { status: 200 });
       }
+      // E3-04's parameter form lives in this screen. Its thema query is gated on the panel being open, so it
+      // never fires here — but the stub routes it anyway, because this file's own contract is that an unrouted
+      // URL "404s loudly" and an unrouted /themas 404'd SILENTLY: the form is closed, so the error never
+      // rendered and the only symptom was a React act() warning attributed to a component this file does not
+      // test. A stub that fails quietly is the thing this comment block was written against.
+      if (url.includes("/api/themas")) {
+        return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+      }
       if (url.includes("/rooster")) {
         return new Response(JSON.stringify(rooster), { status: 200 });
       }
@@ -297,6 +305,10 @@ describe("Jaarplankalender", () => {
       onbekendeBlokken: [],
       duplicaten: [],
       afgewezen: [],
+      // E3-04 added this to the run report. `null` is the FAILURE shape; a successful run with no parameters
+      // returns ParameterRapport.Geen, i.e. an object of empty lists (see the Geen-shaped case in
+      // Generatieparameters.test.tsx). Either renders nothing, which is why this fixture is still valid.
+      parameters: null,
       spreiding: {
         aantalBlokken: 2,
         aantalGebruikteBlokken: 1,

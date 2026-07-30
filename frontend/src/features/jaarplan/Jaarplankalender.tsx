@@ -16,6 +16,7 @@ import { t, tAantal } from "../../i18n";
 import { ApiError } from "../../lib/api";
 import { Jaarspine } from "./Jaarspine";
 import { Periodekolom, Vakantiegat } from "./Periodekolom";
+import { Generatieparametersformulier } from "./Generatieparametersformulier";
 import { Spreidingsoverzicht } from "./Spreidingsoverzicht";
 import { Sleepkaart, Themakaart } from "./Themakaart";
 import {
@@ -27,7 +28,7 @@ import {
   plaatsingenIn,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
-import type { Planningsblok, Themaplaatsing } from "./types";
+import type { Generatieparameters, Planningsblok, Themaplaatsing } from "./types";
 import {
   useGenereerJaarplan,
   useJaarplan,
@@ -59,6 +60,9 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId);
   const generatie = useGenereerJaarplan(klasId);
   const verplaats = useVerplaatsPlaatsing(klasId);
+
+  // Held here rather than inside the form so the run reads the current value at click time (E3-04).
+  const [parameters, setParameters] = useState<Generatieparameters | undefined>(undefined);
 
   // The card currently under the cursor, kept only so the DragOverlay can render a copy of it.
   const [sleepKaart, setSleepKaart] = useState<Themaplaatsing | null>(null);
@@ -226,7 +230,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-5">
             <Button
               type="button"
-              onClick={() => generatie.mutate()}
+              onClick={() => generatie.mutate(parameters)}
               disabled={generatie.isPending}
               className="w-full sm:w-auto"
             >
@@ -236,6 +240,15 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
               {t("kalender.genereerUitleg")}
             </p>
           </div>
+
+          {/* Pre-generation parameters (E3-04, FR-5.4), collapsed by default so the one-click run stays one click.
+              It is given the derived grid because a startthema targets a PERIOD by position, and a row that names
+              the period it applies to is the only way that positional contract is visible to a teacher. */}
+          <Generatieparametersformulier
+            blokken={grid.blokken}
+            onWijzig={setParameters}
+            disabled={generatie.isPending}
+          />
 
           {/* The 422 body is an English operator diagnostic (a model parse failure a teacher cannot act on),
               so it is never echoed — the teacher gets Dutch copy from nl.json keyed on the STATUS.

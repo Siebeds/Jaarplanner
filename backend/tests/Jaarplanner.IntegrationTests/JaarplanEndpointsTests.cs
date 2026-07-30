@@ -75,6 +75,78 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
     }
 
     /// <summary>
+    /// <b>The reachability test for E3-04.</b> The pre-generation parameters (FR-5.4) arrive over HTTP as a real JSON
+    /// body and measurably change what is persisted: the AI proposes a thema in the first block, the teacher has
+    /// blocked that period with a vast moment, and the placement is refused.
+    /// <para>
+    /// It exists for the same reason the test above it does. The unit tests call <c>GenereerAsync</c> directly, so they
+    /// prove the logic and say nothing about whether the body binds — and adding a constructor overload to
+    /// <c>VastMoment</c> would break the only enforced parameter with every other test still green. That is precisely
+    /// the shape of the defect that got M2 withdrawn on this project.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_vast_moment_uit_de_request_body_weigert_een_plaatsing()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+        _factory.AiAntwoord =
+            $"{{\"plaatsingen\":[{{\"blokStart\":\"{blokStart:yyyy-MM-dd}\",\"thema\":\"Herfst\"," +
+            "\"motivatie\":\"seizoen past bij het begin van het schooljaar\"}]}";
+
+        var generatie = await client.PostAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/generatie",
+            new
+            {
+                vasteMomenten = new[]
+                {
+                    new { naam = "Schoolfeest", datum = blokStart.ToString("yyyy-MM-dd"), blokkeertPlaatsing = true },
+                },
+            });
+
+        Assert.Equal(HttpStatusCode.OK, generatie.StatusCode);
+        var resultaat = await generatie.Content.ReadFromJsonAsync<GeneratieDto>();
+
+        // The run succeeds and the parameter changed the outcome: nothing was placed.
+        Assert.True(resultaat!.IsGeslaagd);
+        Assert.Equal(0, resultaat.AantalNieuw);
+
+        var geweigerd = Assert.Single(resultaat.Parameters!.GeweigerdDoorVastMoment);
+        Assert.Equal("Herfst", geweigerd.ThemaNaam);
+        Assert.Equal("Schoolfeest", geweigerd.MomentNaam);
+        Assert.Equal(blokStart, geweigerd.BlokStart);
+
+        // The model's own motivation survives the refusal, so the teacher can still act on the proposal.
+        Assert.Equal("seizoen past bij het begin van het schooljaar", geweigerd.AiMotivatie);
+        Assert.True(resultaat.Parameters!.HeeftAandachtspunten);
+
+        // And it really was not persisted — proven by a fresh GET, not by the response body.
+        var plan = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        Assert.Empty(plan!.Plaatsingen);
+    }
+
+    /// <summary>
+    /// <c>blokkeertPlaatsing</c> has no default and is <c>[JsonRequired]</c>, so omitting it is a 400 rather than a
+    /// silent <c>false</c>. Without this, a UI form that forgot one checkbox would post a parameter with no effect on
+    /// the result and no signal that it did nothing — the one thing CLAUDE.md's E3-06 rule forbids outright.
+    /// </summary>
+    [Fact]
+    public async Task Een_vast_moment_zonder_blokkeertPlaatsing_is_een_400_geen_stille_false()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+
+        var generatie = await client.PostAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/generatie",
+            new
+            {
+                vasteMomenten = new[] { new { naam = "Schoolfeest", datum = blokStart.ToString("yyyy-MM-dd") } },
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, generatie.StatusCode);
+    }
+
+    /// <summary>
     /// An invalid AI response yields 422 with a diagnostic and leaves the plan untouched — no partial application
     /// (Art. IV.5). 422 rather than 500: nothing is broken, the model answered badly.
     /// </summary>
@@ -408,7 +480,22 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         bool Vergrendeld,
         List<string> Doelcodes);
 
-    private sealed record GeneratieDto(bool IsGeslaagd, string? Fout, int AantalNieuw, int AantalBehouden);
+    private sealed record GeneratieDto(bool IsGeslaagd, string? Fout, int AantalNieuw, int AantalBehouden)
+    {
+        /// <summary>E3-04's parameter report, present once the request carries parameters.</summary>
+        public ParameterRapportDto? Parameters { get; init; }
+    }
+
+    private sealed record ParameterRapportDto(
+        IReadOnlyList<GeweigerdePlaatsingDto> GeweigerdDoorVastMoment,
+        IReadOnlyList<string> TegenstrijdigeStartthemas,
+        bool HeeftAandachtspunten);
+
+    private sealed record GeweigerdePlaatsingDto(
+        string ThemaNaam,
+        DateOnly BlokStart,
+        string MomentNaam,
+        string? AiMotivatie);
 
     /// <summary>Only the parts of the rooster payload the move tests read: where each period starts.</summary>
     private sealed record RoosterDto(List<RoosterBlokDto> Blokken);

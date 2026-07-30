@@ -102,11 +102,15 @@ failures twice that way. Every value below is composited over its real painted b
 | `Verplaats naar` label | 14.36:1 | 4.5 | ✅ |
 | Drag explanation (`ink-zacht` on paper) | 5.73:1 | 4.5 | ✅ |
 | `Annuleren`, text | 15.42:1 | 4.5 | ✅ |
-| **`Annuleren`, border (`--input`)** | **1.42:1** | 3.0 | ❌ **pre-existing, E7-10** |
+| **`Annuleren`, border (`--input`)** | **1.42:1** | 3.0 | ❌ pre-existing → **fixed at merge, see below** |
 
-The last row is E7-10's known app-wide `--input` failure, reproduced at exactly the figure already recorded in
-the backlog. Every token **this story authored** passes; the picker avoids the broken token on purpose. The new
-`variant="outline"` buttons inherit it, which is logged on E7-10 as added instances.
+The `--input` row was E7-10's known app-wide failure, reproduced at exactly the figure already recorded in the
+backlog. Every token **this story authored** passes; the picker avoids the broken token on purpose.
+
+> **Superseded at merge (2026-07-30): `--input` was fixed to `40 14% 52%` by E3-04, so these buttons inherit
+> 3,40:1 and never shipped failing.** Two stories one day apart independently measured the same token; only one
+> fixed it. The figure above is kept as measured against this story's base commit rather than quietly updated,
+> because a report that silently retcons its own measurements is worth less than one that dates them.
 
 > *Correction (antagonist audit).* The `attentie` row was first reported as **4.31:1 — fails**, and used as the
 > justification for the `destructive` variant. It is **4.53:1 and passes**; the error was an arithmetic slip in

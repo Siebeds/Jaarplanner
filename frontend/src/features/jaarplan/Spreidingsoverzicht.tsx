@@ -1,4 +1,5 @@
 import { t, tAantal } from "../../i18n";
+import { Parameteroverzicht } from "./Parameteroverzicht";
 import type { Generatieresultaat } from "./types";
 
 /**
@@ -74,9 +75,9 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
 
       {spreiding && (
         <div className="mt-4 border-t border-border pt-3">
-          <h4 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
+          <h3 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
             {t("kalender.spreidingTitel")}
-          </h4>
+          </h3>
 
           <ul className="mt-1.5 flex flex-col gap-1 text-xs text-ink" data-cijfers>
             <li>
@@ -125,6 +126,10 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
           </p>
         </div>
       )}
+
+      {/* The parameter report belongs to the same run, so it lives in the same panel (E3-04, FR-5.4). It renders
+          nothing when the teacher set no parameters. */}
+      {resultaat.parameters && <Parameteroverzicht rapport={resultaat.parameters} />}
     </div>
   );
 }

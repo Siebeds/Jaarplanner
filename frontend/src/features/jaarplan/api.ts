@@ -1,9 +1,16 @@
 import { apiFetch } from "../../lib/api";
-import type { Generatieresultaat, Jaarplan, Plaatsingstatus, Planningsrooster } from "./types";
+import type {
+  Generatieparameters,
+  Generatieresultaat,
+  Jaarplan,
+  Plaatsingstatus,
+  Planningsrooster,
+  Themakeuze,
+} from "./types";
 
 /**
- * The kalender's API calls (E3-06 read, E3-07 edit). Thin wrappers over {@link apiFetch}; caching is
- * TanStack Query's job (see useJaarplan).
+ * The kalender's API calls (E3-06 read, E3-04 parameters, E3-07 edit). Thin wrappers over {@link apiFetch};
+ * caching is TanStack Query's job (see useJaarplan).
  *
  * The three editing calls all return the **whole updated plan** rather than the changed placement, matching
  * the endpoints: one response re-renders the board, so a drop never leaves the screen briefly disagreeing
@@ -35,12 +42,19 @@ export function haalRooster(schooljaarId: string): Promise<Planningsrooster> {
  * persisted** (Art. IV.5), which surfaces here as an `ApiError` the UI maps to its own Dutch copy: the 422
  * body is an English operator diagnostic and is deliberately never shown to a teacher.
  */
-export function genereerJaarplan(klasId: string): Promise<Generatieresultaat> {
+export function genereerJaarplan(
+  klasId: string,
+  parameters?: Generatieparameters,
+): Promise<Generatieresultaat> {
+  // No parameters means no body at all, not an empty object: the server treats both identically, and sending
+  // nothing keeps a plain run byte-for-byte the request it always was.
   return apiFetch<Generatieresultaat>(`/api/klassen/${klasId}/jaarplan/generatie`, {
     method: "POST",
+    ...(parameters ? { body: JSON.stringify(parameters) } : {}),
   });
 }
 
+/**
 /**
  * Moves a thema to another period (E3-07, FR-6.2) and persists it at once (FR-6.5).
  *
@@ -89,4 +103,21 @@ export function wijzigPlaatsingStatus(
     method: "PUT",
     body: JSON.stringify({ status }),
   });
+}
+
+/**
+ * The school's thema's, for the startthema pickers (E3-04).
+ *
+ * A picker rather than a text field on purpose: the server reports a thema name it does not own as
+ * `onbekendeStartthemas`, and a picker makes that case far harder to reach than a text field does. A full
+ * thema-beheer screen is still E1-14; this only needs the names.
+ *
+ * **`/bibliotheek`, not `/api/themas`.** The plain list returns `ThemaWeergave`, whose `Subthemas` carry **every
+ * class's** class- and age-scoped subthema's, subdoelen and activiteiten — a whole subtree, to fill a dropdown
+ * with names. The bibliotheek endpoint exists precisely to avoid that: its own docs say it *"deliberately omits
+ * all subthema's … must never leak into the school-wide library view (no cross-class bleed)"* (Art. IX.2). This
+ * was the first frontend consumer of either, and it had picked the heavy one.
+ */
+export function haalThemanamen(): Promise<Themakeuze[]> {
+  return apiFetch<Themakeuze[]>("/api/themas/bibliotheek");
 }
