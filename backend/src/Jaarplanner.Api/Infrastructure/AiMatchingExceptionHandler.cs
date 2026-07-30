@@ -5,11 +5,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Infrastructure;
 
 /// <summary>
-/// Maps the AI goal-matching application exceptions (E2-04/E2-05) to RFC 7807 ProblemDetails so the
+/// Maps the AI goal-matching application exceptions (E2-04/E2-05/E2-08) to RFC 7807 ProblemDetails so the
 /// (thin) controllers never write status-code plumbing (Art. VIII): a <see cref="ThemaNietGevondenFout"/>
 /// or <see cref="DoelsuggestieNietGevondenFout"/> becomes 404, and an
 /// <see cref="OngeldigeSuggestieStatusFout"/> — a teacher asking for a status they may not set
-/// (Art. IV.1/IV.2) — becomes 400. Other exceptions are left to the next handler / default pipeline.
+/// (Art. IV.1/IV.2) — or an <see cref="OngeldigeDoelsubstitutieFout"/> — an "aanpassen" pointing at a code
+/// Op.stap does not carry or one already linked (Art. III.5, Art. V) — becomes 400. Other exceptions are
+/// left to the next handler / default pipeline.
 /// </summary>
 public sealed class AiMatchingExceptionHandler : IExceptionHandler
 {
@@ -25,6 +27,7 @@ public sealed class AiMatchingExceptionHandler : IExceptionHandler
             ThemaNietGevondenFout => StatusCodes.Status404NotFound,
             DoelsuggestieNietGevondenFout => StatusCodes.Status404NotFound,
             OngeldigeSuggestieStatusFout => StatusCodes.Status400BadRequest,
+            OngeldigeDoelsubstitutieFout => StatusCodes.Status400BadRequest,
             _ => (int?)null,
         };
 

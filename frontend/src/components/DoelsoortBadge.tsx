@@ -1,5 +1,6 @@
 import { Badge } from "./ui/badge";
 import { t } from "../i18n";
+import type { Doelsoort, DoelsoortNaam } from "./doelsoort";
 
 /**
  * Sample design-system component (E0-09 acceptance criterion: "a sample component
@@ -10,14 +11,12 @@ import { t } from "../i18n";
  * Accessibility (WCAG 2.2 AA, ADR-0017 §4): colour is never the only signal — the
  * badge always shows the doelsoort abbreviation (MD / G / + / …) and exposes the full
  * Dutch label as an accessible name, both sourced from nl.json via `t()` (Art. II.3).
+ *
+ * The doelsoort vocabulary and the wire-form mapping live in `./doelsoort` (one copy,
+ * shared by every list that renders a badge); the types are re-exported here so callers
+ * that already import from this module keep working.
  */
-export type Doelsoort =
-  | "md"
-  | "gemeenschappelijk"
-  | "verdieping"
-  | "precurriculum"
-  | "specifiek"
-  | "anderstalige";
+export type { Doelsoort, DoelsoortNaam };
 
 export interface DoelsoortBadgeProps {
   doelsoort: Doelsoort;
