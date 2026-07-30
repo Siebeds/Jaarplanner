@@ -24,8 +24,8 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 
 | Epic | File | Phase | Stories | Done | Status |
 | --- | --- | --- | --- | --- | --- |
-| E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 9 | 9 | ✅ Done |
-| E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 15 | 9 | ⚠️ E1-03/04 blocked on E1-12 (source file from directie); **E1-13 + E1-14 own the unbuilt UI halves of FR-1.1–1.5, FR-2.5, FR-3.1/3.2**; **E1-15** owns the missing Op.stap import trigger |
+| E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 10 | 9 | ⚠️ Reopened 2026-07-29 — **E0-10 `[~]`**: the app shell no story owned. Built on `story/E0-10` (58 tests green, lint + build clean, [ADR-0021](../docs/adr/0021-frontend-routing-and-url-selection.md) recorded first); open because **nobody has looked at the screen yet** and the test-runner/antagonist gates have not run |
+| E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 16 | 9 | ⚠️ E1-03/04 blocked on E1-12 (source file from directie); **E1-13 + E1-14 own the unbuilt UI halves of FR-1.1–1.5, FR-2.5, FR-3.1/3.2**; **E1-15** owns the missing Op.stap import trigger; **E1-16** owns the Doelen-screen that the nav points at and no story owned |
 | E2 — AI-matching thema ↔ doel | [E2-ai-matching.md](E2-ai-matching.md) | 2 | 8 | 7 | ⚠️ **M2 withdrawn** — FR-4.1 has no trigger: matching is unreachable outside unit tests. **E2-08** owns it |
 | E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 4 | 🚧 E3-01 + E3-02 + E3-05 + E3-10 done; **E3-06 `[~]`** — draft verified end-to-end in a browser 2026-07-29 but **not yet reviewed**; it closes only when the directie/teacher session happens and is captured. E3-03 is blocked (its criterion measures coverage in E5, unbuilt); E3-04, or E3-07 after the review, is next |
 | E4 — Manuele bewerking & (her)generatie | [E4-bewerking-hergeneratie.md](E4-bewerking-hergeneratie.md) | 4 | 7 | 0 | Todo |
@@ -33,7 +33,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
 | E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 13 | 0 | ⚠️ E7-11 is a deployment gate; **E7-12** `[~]` — advisory cleared, the two CI clauses that stop it recurring are still open; **E7-13** owns an Art. VIII layering leak (`ISchoolcontentParser` port sits in Infrastructure) |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **87** | **29** | **33%** |
+| **Totaal** | | | **89** | **29** | **33%** |
 
 > **Correction (2026-07-27).** A code review of the E1+E2 branch before merging to `main` reopened
 > **E1-03**, **E1-04** and **E1-07**: each was marked done with an acceptance criterion that cannot
@@ -44,9 +44,21 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 > `backend/tests/Jaarplanner.IntegrationTests/Postgres/` runs against a real server, and CI now fails
 > rather than skipping when no database is configured.
 
+> **Correction (2026-07-29).** Asked what it would take to have an application users can click
+> through, a sweep of E0–E8 found that **no story owned the app shell** — routing, a primary
+> navigation, and choosing a klas/schooljaar from a list rather than pasting a GUID. The only trace
+> of navigation in any planning document is a single line in `docs/ux/ui-ux-approach.md` §3 with no
+> story behind it. Meanwhile every feature built so far has been appended to `App.tsx`, which now
+> stacks the kalender and the matching review in one flex column, and a klas is selected by pasting
+> a GUID into a text input. Added as **E0-10**, which reopens E0 (9/10).
+> This is the third instance of one failure mode — **E2-08**, **E1-15**, now E0-10 — and the
+> sharpest, because the missing piece is *where the other unbuilt screens were supposed to go*.
+> The pattern to name: the stories were written per-FR, and a shell satisfies no FR by itself, so
+> nothing claimed it. Worth asking of any remaining infrastructure that no FR names.
+
 ## Milestones (MVP)
 
-- **M0 — Skeleton up** (E0): repo scaffolded, Postgres + API + SPA run locally, CI green.
+- **M0 — Skeleton up** (E0): repo scaffolded, Postgres + API + SPA run locally, CI green. — **still reached**, deliberately: M0's wording is about a running skeleton and that is true. E0 as an *epic* is no longer complete (E0-10), but claiming M0 regressed would be as inaccurate as the claims this backlog keeps having to retract. The shell is a gap in the epic, not in the milestone.
 - **M1 — Fundament** (E1): Op.stap goals imported, school thema's imported & manageable, data model live. — ⚠️ **not yet reached** (previously claimed). Two distinct gaps remain:
   1. **The curriculum half.** No `Minimumdoel` can exist, so minimumdoel-level coverage — the level the inspectie tests — returns nothing. Gated on **E1-12**, which needs the decreed-eindtermen source file from directie; that unblocks E1-03/04.
   2. **Everything teacher-facing in E1.** `frontend/src/features/` contains exactly one directory — `matching` (E2). **E1 has no UI at all.** Its stories are `[x]` on server-side evidence, and **seven** FRs name a user action or a display that consequently does not exist: FR-1.1/1.2/1.3/1.4/1.5 (upload, per-row foutmeldingen, preview, add-vs-overwrite choice, sjabloon download), FR-2.5 (the review notice *signaleert*) and FR-3.1 (*leerkrachten kunnen* thema's toevoegen/wijzigen/verwijderen). Tracked as **E1-13** (import flow) and **E1-14** (beheer screens); each affected story now carries an explicit *Scope boundary* note.

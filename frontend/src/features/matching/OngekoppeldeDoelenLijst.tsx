@@ -33,12 +33,19 @@ export function OngekoppeldeDoelenLijst() {
   const { data, isLoading, isError } = useOngekoppeldeDoelen();
 
   if (isLoading) {
-    return <p role="status">{t("ongekoppeld.laden")}</p>;
+    return (
+      <p role="status" className="text-sm text-ink-zacht">
+        {t("ongekoppeld.laden")}
+      </p>
+    );
   }
 
   if (isError) {
     return (
-      <p role="alert" className="text-suggestie-geweigerd">
+      <p
+        role="alert"
+        className="rounded-md bg-suggestie-geweigerd/10 px-3.5 py-2.5 text-sm font-medium text-suggestie-geweigerd"
+      >
         {t("ongekoppeld.fout")}
       </p>
     );
@@ -47,15 +54,19 @@ export function OngekoppeldeDoelenLijst() {
   const doelen = data ?? [];
 
   if (doelen.length === 0) {
-    return <p>{t("ongekoppeld.leeg")}</p>;
+    return (
+      <p className="rounded-lg border border-dashed border-border bg-card/60 px-4 py-8 text-center text-sm text-ink-zacht">
+        {t("ongekoppeld.leeg")}
+      </p>
+    );
   }
 
   return (
     <div>
-      <p className="mb-2 text-sm text-muted-foreground">
+      <p className="mb-3 text-sm font-medium text-ink-zacht" data-cijfers>
         {t("ongekoppeld.aantal", { aantal: doelen.length })}
       </p>
-      <ul className="flex flex-col gap-3">
+      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {doelen.map((doel) => (
           <DoelRij key={doel.code} doel={doel} />
         ))}
@@ -68,19 +79,21 @@ function DoelRij({ doel }: { doel: OngekoppeldDoel }) {
   const { code, doelsoort, jaarFase, domein, subdomein, tekst } = doel;
 
   return (
-    <li className="rounded-md border border-input p-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-sm font-semibold">{code}</span>
+    <li className="rounded-lg border border-border bg-card p-4 shadow-card">
+      <div className="flex items-center justify-between gap-3">
+        <span className="rounded-md bg-paper px-2 py-1 font-mono text-sm font-semibold text-ink">
+          {code}
+        </span>
         <DoelsoortBadge doelsoort={badgeSoort[doelsoort]} />
       </div>
 
-      <p className="mt-1 text-xs text-muted-foreground">
+      <p className="mt-2 text-xs text-ink-zacht">
         {t("ongekoppeld.domeinKop", { domein, subdomein })}
         {" · "}
         {t("ongekoppeld.jaarFaseLabel")}: {jaarFase}
       </p>
 
-      <p className="mt-2 text-sm">{tekst}</p>
+      <p className="mt-2 text-sm leading-snug text-ink">{tekst}</p>
     </li>
   );
 }

@@ -12,12 +12,14 @@ import { cn } from "../../lib/utils";
  * carries its label/abbreviation as text. Variant names use Dutch domain language.
  */
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+  // Pill-shaped and slightly taller than the shadcn default: these sit beside body text
+  // on a thema card, and a rounded-rect chip at 0.5 line-height read as a cramped button.
+  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold leading-5 transition-colors",
   {
     variants: {
       variant: {
         default: "border-transparent bg-primary text-primary-foreground",
-        outline: "border-input text-foreground",
+        outline: "border-border bg-card text-ink-zacht",
 
         // doelsoort — Op.stap goal types (Art. XII)
         md: "border-transparent bg-doelsoort-md text-doelsoort-md-foreground",
@@ -32,13 +34,16 @@ const badgeVariants = cva(
         anderstalige:
           "border-transparent bg-doelsoort-anderstalige text-doelsoort-anderstalige-foreground",
 
-        // suggestiestatus — DoelKoppeling lifecycle (Art. IV)
+        // suggestiestatus — DoelKoppeling lifecycle (Art. IV).
+        // `voorgesteld` and `geweigerd` are tinted outlines rather than solid fills: a
+        // provisional state should not shout as loudly as a decided one, and a wall of
+        // solid chips on the kalender was the loudest thing on the screen.
         voorgesteld:
-          "border-suggestie-voorgesteld bg-transparent text-suggestie-voorgesteld",
+          "border-suggestie-voorgesteld/25 bg-suggestie-voorgesteld/10 text-suggestie-voorgesteld",
         aanvaard:
           "border-transparent bg-suggestie-aanvaard text-suggestie-aanvaard-foreground",
         geweigerd:
-          "border-suggestie-geweigerd bg-transparent text-suggestie-geweigerd line-through",
+          "border-suggestie-geweigerd/25 bg-suggestie-geweigerd/10 text-suggestie-geweigerd line-through",
         manueel:
           "border-transparent bg-suggestie-manueel text-suggestie-manueel-foreground",
 

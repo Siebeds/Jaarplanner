@@ -31,8 +31,8 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
   ];
 
   return (
-    <div className="mt-3 rounded-md border border-slate-300 bg-white p-3">
-      <p className="text-sm font-medium text-slate-900">
+    <div className="mt-4 rounded-md border border-border bg-paper p-4">
+      <p className="text-sm font-semibold text-ink">
         {resultaat.aantalNieuw === 0
           ? t("kalender.genereerNiets")
           : tAantal(
@@ -47,7 +47,7 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
           zero-result copy read "Er is niets gewijzigd" — a false statement about the teacher's own data, which
           the E3-02 code review caught. Shown whenever anything was discarded, success or not. */}
       {resultaat.aantalVervangen > 0 && (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1.5 text-xs text-ink-zacht">
           {tAantal(
             resultaat.aantalVervangen,
             "kalender.genereerVervangenEnkelvoud",
@@ -57,7 +57,7 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
       )}
 
       {resultaat.aantalBehouden > 0 && (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1.5 text-xs text-ink-zacht">
           {tAantal(
             resultaat.aantalBehouden,
             "kalender.genereerBehoudenEnkelvoud",
@@ -67,18 +67,18 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
       )}
 
       {overgeslagen.length > 0 && (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1.5 text-xs text-ink-zacht">
           {t("kalender.genereerOvergeslagen", { details: overgeslagen.join(" · ") })}
         </p>
       )}
 
       {spreiding && (
-        <div className="mt-3 border-t border-slate-100 pt-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+        <div className="mt-4 border-t border-border pt-3">
+          <h4 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
             {t("kalender.spreidingTitel")}
           </h4>
 
-          <ul className="mt-1 flex flex-col gap-0.5 text-xs text-slate-700">
+          <ul className="mt-1.5 flex flex-col gap-1 text-xs text-ink" data-cijfers>
             <li>
               {t("kalender.spreidingBlokken", {
                 gebruikt: spreiding.aantalGebruikteBlokken,
@@ -99,7 +99,7 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
 
             {spreiding.overbelasteBlokOrdinalen.length > 0 && (
               /* Icon AND word, never colour alone (Art. XII, WCAG 2.2 AA). */
-              <li className="font-medium text-amber-900">
+              <li className="font-semibold text-attentie-ink">
                 <span aria-hidden="true">▲</span>{" "}
                 {tAantal(
                   spreiding.overbelasteBlokOrdinalen.length,
@@ -120,7 +120,7 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
             )}
           </ul>
 
-          <p className="mt-2 text-xs italic text-muted-foreground">
+          <p className="mt-2.5 text-xs italic text-ink-zacht">
             {t("kalender.spreidingGeenOordeel")}
           </p>
         </div>

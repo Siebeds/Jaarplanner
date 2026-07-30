@@ -62,13 +62,13 @@ public sealed class DemoDataSeeder : IHostedService
     /// (it is the example name used throughout the constitution and the tests) would get a unique-violation
     /// on startup rather than a demo.
     /// </summary>
-    public const string KlasNaam = "L3 — derde leerjaar (demo)";
+    public const string KlasNaam = "L3 derde leerjaar (demo)";
 
     /// <summary>
     /// Prefix marking a motivation as fixture prose rather than model output. Present in the persisted value
     /// so it cannot be lost by a UI that forgets to say so.
     /// </summary>
-    public const string Voorbeeldmarkering = "Voorbeeld (geen AI-antwoord) — ";
+    public const string Voorbeeldmarkering = "Voorbeeld (geen AI-antwoord): ";
 
     private readonly IServiceProvider _services;
     private readonly ILogger<DemoDataSeeder> _logger;

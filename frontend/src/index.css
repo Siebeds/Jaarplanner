@@ -10,8 +10,16 @@
  * Values are HSL channels (without the `hsl()` wrapper) so Tailwind can compose them
  * with opacity modifiers, e.g. `bg-doelsoort-md/10`.
  *
- * Three semantic groups, all paired in the UI with a label/icon (colour is never the
- * sole signal — WCAG 2.2 AA, ADR-0017 §4):
+ * ── The palette has a hard constraint most apps do not have ──────────────────────────
+ * Art. XII already spends six hues on doelsoort (MD blue, G neutral, + green, P/S pink,
+ * A yellow), and suggestiestatus and dekking spend more. Those colours *mean* something
+ * to a teacher, so the interface chrome may not compete with them. Hence exactly ONE
+ * structural hue — `petrol` — for brand, navigation and primary actions, one attention
+ * hue for knelpunten, and warm neutrals for everything else. Categorical colour stays
+ * reserved for the domain.
+ *
+ * Semantic groups, all paired in the UI with a label/icon (colour is never the sole
+ * signal — WCAG 2.2 AA, ADR-0017 §4):
  *   1. doelsoort        — Op.stap goal types (Art. XII colour conventions)
  *   2. suggestiestatus  — DoelKoppeling AI-suggestion lifecycle (Art. IV)
  *   3. dekking          — coverage state of a (minimum)doel (FR-9)
@@ -50,20 +58,149 @@
     --dekking-niet-gedekt: 0 72% 42%; /* not covered — red */
     --dekking-niet-gedekt-foreground: 0 0% 100%;
 
-    /* base UI tokens (shadcn baseline) for the copied-in primitives */
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --primary: 222 47% 11%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 40%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    --border: 214 32% 84%;
-    --input: 214 32% 84%;
-    --ring: 222 47% 11%;
-    --radius: 0.5rem;
+    /* ── chrome ──────────────────────────────────────────────────────────────────────
+     * `paper` is the page, `card` is a raised surface on it. The page is deliberately
+     * NOT pure white: a warm off-white lets white cards read as objects lying on it,
+     * which is what makes a planning surface feel like a planning surface. */
+    --paper: 40 33% 97%; /* warm off-white page */
+    --paper-diep: 40 20% 94%; /* recessed wells (empty period, scroll track) */
+    --card: 0 0% 100%;
+    --ink: 196 38% 13%; /* deep petrol-black — body text */
+    --ink-zacht: 200 14% 38%; /* secondary text; 6.4:1 on paper */
+
+    /* The single structural hue. Dark enough for white text at 8.9:1. */
+    --petrol: 188 60% 22%;
+    --petrol-foreground: 0 0% 100%;
+    --petrol-helder: 187 52% 32%; /* hover / active accent */
+    --petrol-wash: 186 38% 94%; /* tinted surface, selected nav, chips */
+
+    /* Attention — knelpunten (te vol, vervallen plaatsing). Warm, never alarming: an
+     * over-full period is a judgement call, not an error (FR-6.4).
+     *
+     * Darkened from 33 88% 45% after measuring it: as a bar on the year strip it came out at
+     * 2.89:1 against the page, just under the 3:1 WCAG 1.4.11 floor for a graphic that carries
+     * state. This value clears it. The miss was invisible to axe (jsdom cannot evaluate colour)
+     * and to the eye — it looked fine, and was 0.11 short. */
+    --attentie: 30 85% 38%;
+    --attentie-zacht: 40 90% 96%;
+    --attentie-ink: 25 68% 24%; /* text on attentie-zacht */
+
+    /* base UI tokens (shadcn baseline) for the copied-in primitives, remapped onto the
+     * palette above so a primitive dropped in anywhere inherits the same language. */
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --primary: var(--petrol);
+    --primary-foreground: var(--petrol-foreground);
+    --secondary: 40 20% 93%;
+    --secondary-foreground: var(--ink);
+    --muted: 40 20% 94%;
+    --muted-foreground: var(--ink-zacht);
+    --accent: var(--petrol-wash);
+    --accent-foreground: var(--petrol);
+    --border: 40 14% 87%;
+    --input: 40 14% 84%;
+    --ring: var(--petrol);
+    --radius: 0.75rem;
+  }
+
+  html {
+    /* Anchor jumps (the skip-link) should not slam the target under a sticky header. */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* 15px base rather than 14: the users are non-technical adults reading dense Dutch
+     * curriculum text, and the first draft of this UI was reviewed as "hard to read". */
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  /* Headings carry the hierarchy, so they get the tightening once, here. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-balance tracking-tight;
+    line-height: 1.25;
+  }
+
+  /* Dates and counts sit in columns all over the kalender; proportional digits make them
+   * visibly ragged. */
+  time,
+  [data-cijfers] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One focus treatment for the whole app, so nothing has to remember to add it. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer utilities {
+  /*
+   * A thin, quiet scrollbar for the horizontal scroll regions (the jaarplan board, the nav strip).
+   *
+   * The default Windows/Chromium scrollbar is a 17px grey trough, which on the board read as a piece of
+   * chrome heavier than the period columns above it. This keeps the affordance — a scrollbar has to stay
+   * *visible*, because it is the only hint that the year continues past the right edge — but sizes and
+   * colours it like part of the design.
+   *
+   * Both syntaxes are needed: `scrollbar-color`/`scrollbar-width` is the standard (Firefox, Chromium 121+),
+   * `::-webkit-scrollbar` covers older Chromium/Edge/Safari. The thumb keeps a border-box padding trick so
+   * it reads as a rounded bar inside a transparent track rather than filling the gutter.
+   */
+  .subtle-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .subtle-scrollbar::-webkit-scrollbar {
+    height: 0.625rem;
+    width: 0.625rem;
+  }
+
+  .subtle-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /*
+   * Must be explicit. The moment a page styles `::-webkit-scrollbar` at all, Chromium drops its modern
+   * overlay scrollbar and renders the legacy one — which brings back the little step arrows at both ends.
+   * So styling the bar to be subtler without this rule makes it look *older*, not quieter.
+   */
+  .subtle-scrollbar::-webkit-scrollbar-button {
+    display: none;
+    height: 0;
+    width: 0;
+  }
+
+  .subtle-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  .subtle-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+
+  .subtle-scrollbar:hover::-webkit-scrollbar-thumb,
+  .subtle-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--ink-zacht));
+  }
+
+  /* Respect the OS setting rather than animating regardless (ADR-0017 §7, WCAG 2.3.3). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
