@@ -98,7 +98,14 @@
     --accent: var(--petrol-wash);
     --accent-foreground: var(--petrol);
     --border: 40 14% 87%;
-    --input: 40 14% 84%;
+    /* Form-control boundary. 3,40:1 on card and 3,21:1 on paper, i.e. it clears WCAG 2.2 AA SC 1.4.11's 3:1
+       floor for the boundary of a user-interface component. Deliberately darker than --border (87%): --border
+       separates surfaces, where no minimum applies, while this one is the ONLY thing that says "this is a
+       field" — every control using it is bg-card on a bg-card panel, so the fill offers no fallback boundary.
+       Was 40 14% 84%, which measured 1,42:1 / 1,34:1 and failed on every input in the app. Two candidate
+       values that look plausible and do NOT clear the floor: 62% (2,50 / 2,36) and 55% (3,08 / 2,91 — passes
+       on card, fails on paper). Measure both surfaces before changing this. */
+    --input: 40 14% 52%;
     --ring: var(--petrol);
     --radius: 0.75rem;
   }

@@ -119,6 +119,73 @@ export interface Generatieresultaat {
   duplicaten: string[];
   afgewezen: string[];
   spreiding: Spreidingsrapport | null;
+  /** What became of the teacher's pre-generation parameters (E3-04, FR-5.4); absent when none were sent. */
+  parameters: Parameterrapport | null;
+}
+
+/**
+ * What the teacher sets before a run (E3-04, FR-5.4).
+ *
+ * **Vakanties are deliberately absent.** They are schooljaar data (FR-12.1, the beheerder) and the planning grid
+ * is derived from them, so a block can never span one. Offering them here would be a second place to enter the
+ * school calendar.
+ */
+export interface Generatieparameters {
+  /**
+   * Thema names, **one per period from the start of the year**: index 0 is the first period, index 1 the second.
+   * The position *is* the period, which is why the form renders a row per period rather than a bare list.
+   */
+  gewensteStartthemas: string[];
+  vasteMomenten: VastMoment[];
+}
+
+/**
+ * A date the school has already committed inside a teaching period. Anything that *closes* the school is a
+ * schoolsluiting on the schooljaar instead, not one of these.
+ */
+export interface VastMoment {
+  naam: string;
+  /** ISO `yyyy-MM-dd`. Never shown to a teacher in this form — see `formatteerDatum`. */
+  datum: string;
+  /**
+   * Required, with no default, and the form gives it no pre-selected value on purpose: the server rejects the
+   * moment outright when it is missing. `false` would otherwise be indistinguishable from a run with no
+   * parameters at all, i.e. a control that silently does nothing.
+   */
+  blokkeertPlaatsing: boolean;
+}
+
+/** One placement the run refused because a blocking vast moment holds its period. */
+export interface GeweigerdePlaatsing {
+  themaNaam: string;
+  blokStart: string;
+  momentNaam: string;
+  /** The model's own reason, kept so a refusal is not a silent loss: the teacher can still place it by hand. */
+  aiMotivatie: string | null;
+}
+
+/** What became of one vast moment. `blokStart` is null when its date falls in no period. */
+export interface VastMomentUitkomst {
+  naam: string;
+  datum: string;
+  blokkeertPlaatsing: boolean;
+  blokStart: string | null;
+}
+
+/**
+ * The parameter report (E3-04). Like the spreading report it states facts and passes no judgement, and it keeps
+ * four outcomes apart because a teacher acts differently on each: the model declined a request; the teacher's own
+ * two instructions conflicted; the tool refused a placement; or an instruction could not be applied at all.
+ */
+export interface Parameterrapport {
+  onbekendeStartthemas: string[];
+  gehonoreerdeStartthemas: string[];
+  nietGehonoreerdeStartthemas: string[];
+  tegenstrijdigeStartthemas: string[];
+  geweigerdDoorVastMoment: GeweigerdePlaatsing[];
+  toegepasteVasteMomenten: VastMomentUitkomst[];
+  onplaatsbareVasteMomenten: VastMomentUitkomst[];
+  heeftAandachtspunten: boolean;
 }
 
 /** A class's jaarplan as the calendar reviews it. */
@@ -129,4 +196,10 @@ export interface Jaarplan {
   schooljaarNaam: string;
   blokindeling: string;
   plaatsingen: Themaplaatsing[];
+}
+
+/** Just enough of a thema to offer it in a picker: the name is what the generation contract keys on. */
+export interface Themakeuze {
+  id: string;
+  naam: string;
 }

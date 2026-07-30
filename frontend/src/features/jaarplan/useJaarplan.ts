@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { genereerJaarplan, haalJaarplan, haalRooster } from "./api";
+import type { Generatieparameters } from "./types";
 
 /** Query key for one class's jaarplan. */
 const jaarplanKey = (klasId: string) => ["jaarplan", klasId] as const;
+
+/** Query key for the thema names the startthema pickers offer (E3-04). Named here with its siblings. */
+export const themanamenKey = ["themanamen"] as const;
 
 /** Query key for one school year's derived block grid. */
 const roosterKey = (schooljaarId: string) => ["planningsrooster", schooljaarId] as const;
@@ -45,7 +49,9 @@ export function useGenereerJaarplan(klasId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => genereerJaarplan(klasId),
+    // The parameters are passed at mutate() time rather than captured here, so the form's current value is what
+    // gets sent and a stale closure cannot generate with the previous run's settings (E3-04, FR-5.4).
+    mutationFn: (parameters?: Generatieparameters) => genereerJaarplan(klasId, parameters),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: jaarplanKey(klasId) });
     },
