@@ -19,7 +19,17 @@ export interface Navigatiebestemming {
   pad: string;
   /** Catalogue key for the label — never a literal (Art. II.3). */
   labelKey: TranslationKey;
-  /** False while the screen behind it is unbuilt; rendered as an explicit marker. */
+  /**
+   * False while the screen behind it is a placeholder; rendered as an explicit marker.
+   *
+   * Read it precisely: it means "a real screen answers this route", **not** "everything §3 promises for this
+   * destination exists". `/themas` is `true` and is knowingly partial — §3 defines Thema's as the shared
+   * thema-bibliotheek plus the goal-first opbouwwizard, and neither is built; what answers the route today is
+   * the E2 doelsuggestie-review (E1-14 adds beheer, E2-08 the trigger). Flipping it to `false` would hide
+   * working, tested UI behind a placeholder, which is worse than the over-claim; so the honest move is to say
+   * so here and on the story rather than to let clause 2's absent-or-labelled binary read as unconditionally
+   * met. Surfaced by the E0-10 close-out audit.
+   */
   isGebouwd: boolean;
   /** Directie-only per functional analysis §3.2. Not enforced here — see the note above. */
   magBeheerder: boolean;

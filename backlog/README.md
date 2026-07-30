@@ -24,7 +24,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 
 | Epic | File | Phase | Stories | Done | Status |
 | --- | --- | --- | --- | --- | --- |
-| E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 10 | 9 | ⚠️ Reopened 2026-07-29 — **E0-10 `[~]`**: the app shell no story owned. Built on `story/E0-10` (58 tests green, lint + build clean, [ADR-0021](../docs/adr/0021-frontend-routing-and-url-selection.md) recorded first); open because **nobody has looked at the screen yet** and the test-runner/antagonist gates have not run |
+| E0 — Project foundation & scaffolding | [E0-foundation.md](E0-foundation.md) | 0 (pre) | 10 | 10 | ✅ Complete again 2026-07-30 — **E0-10 closed**: the app shell no story owned ([ADR-0021](../docs/adr/0021-frontend-routing-and-url-selection.md) recorded first). Gates: 62 frontend tests / 7 files, lint + build clean, whole journey clicked through against live Postgres; antagonist returned VIOLATIONS FOUND and the three blocking findings were fixed. Contrast (SC 1.4.11) and three other deferrals routed to the stories that own them |
 | E1 — Curriculum & content fundament | [E1-curriculum-content.md](E1-curriculum-content.md) | 1 | 16 | 9 | ⚠️ E1-03/04 blocked on E1-12 (source file from directie); **E1-13 + E1-14 own the unbuilt UI halves of FR-1.1–1.5, FR-2.5, FR-3.1/3.2**; **E1-15** owns the missing Op.stap import trigger; **E1-16** owns the Doelen-screen that the nav points at and no story owned |
 | E2 — AI-matching thema ↔ doel | [E2-ai-matching.md](E2-ai-matching.md) | 2 | 8 | 7 | ⚠️ **M2 withdrawn** — FR-4.1 has no trigger: matching is unreachable outside unit tests. **E2-08** owns it |
 | E3 — Jaarplan-generatie & kalender | [E3-jaarplan-kalender.md](E3-jaarplan-kalender.md) | 3 | 10 | 4 | 🚧 E3-01 + E3-02 + E3-05 + E3-10 done; **E3-06 `[~]`** — draft verified end-to-end in a browser 2026-07-29 but **not yet reviewed**; it closes only when the directie/teacher session happens and is captured. E3-03 is blocked (its criterion measures coverage in E5, unbuilt); E3-04, or E3-07 after the review, is next |
@@ -33,7 +33,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
 | E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 13 | 0 | ⚠️ E7-11 is a deployment gate; **E7-12** `[~]` — advisory cleared, the two CI clauses that stop it recurring are still open; **E7-13** owns an Art. VIII layering leak (`ISchoolcontentParser` port sits in Infrastructure) |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **89** | **29** | **33%** |
+| **Totaal** | | | **89** | **30** | **34%** |
 
 > **Correction (2026-07-27).** A code review of the E1+E2 branch before merging to `main` reopened
 > **E1-03**, **E1-04** and **E1-07**: each was marked done with an acceptance criterion that cannot
@@ -58,7 +58,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 
 ## Milestones (MVP)
 
-- **M0 — Skeleton up** (E0): repo scaffolded, Postgres + API + SPA run locally, CI green. — **still reached**, deliberately: M0's wording is about a running skeleton and that is true. E0 as an *epic* is no longer complete (E0-10), but claiming M0 regressed would be as inaccurate as the claims this backlog keeps having to retract. The shell is a gap in the epic, not in the milestone.
+- **M0 — Skeleton up** (E0): repo scaffolded, Postgres + API + SPA run locally, CI green. — **reached**, and E0 is a complete epic again as of 2026-07-30 (E0-10 closed). It stayed reached throughout the reopening, deliberately: M0's wording is about a running skeleton and that was true the whole time, so claiming M0 had regressed would have been as inaccurate as the claims this backlog keeps having to retract. The shell was a gap in the epic, not in the milestone.
 - **M1 — Fundament** (E1): Op.stap goals imported, school thema's imported & manageable, data model live. — ⚠️ **not yet reached** (previously claimed). Two distinct gaps remain:
   1. **The curriculum half.** No `Minimumdoel` can exist, so minimumdoel-level coverage — the level the inspectie tests — returns nothing. Gated on **E1-12**, which needs the decreed-eindtermen source file from directie; that unblocks E1-03/04.
   2. **Everything teacher-facing in E1.** `frontend/src/features/` contains exactly one directory — `matching` (E2). **E1 has no UI at all.** Its stories are `[x]` on server-side evidence, and **seven** FRs name a user action or a display that consequently does not exist: FR-1.1/1.2/1.3/1.4/1.5 (upload, per-row foutmeldingen, preview, add-vs-overwrite choice, sjabloon download), FR-2.5 (the review notice *signaleert*) and FR-3.1 (*leerkrachten kunnen* thema's toevoegen/wijzigen/verwijderen). Tracked as **E1-13** (import flow) and **E1-14** (beheer screens); each affected story now carries an explicit *Scope boundary* note.

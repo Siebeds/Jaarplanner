@@ -38,6 +38,26 @@ The working UX guideline for Jaarplanner. It implements [ADR-0017](../adr/0017-u
 
 **Coverage state:** `gedekt` · `deels` · `niet gedekt` — colour + pattern/icon so it survives colour-blindness and printing.
 
+### 2.2 Typography
+
+**IBM Plex Sans** for all UI text, **IBM Plex Mono** for leerplandoel codes and other identifiers. Both are
+**self-hosted** as npm packages (`@fontsource-variable/ibm-plex-sans`, `@fontsource/ibm-plex-mono`) and imported in
+`frontend/src/main.tsx`, deliberately **not** loaded from a CDN: a font request to a third party would send every
+teacher's IP and referring URL out of the EU on every page load, which Art. VI.2's data-minimisation posture does not
+support for a cosmetic dependency. Licence is **OFL 1.1**, which permits bundling and redistribution — worth naming,
+because this repo already treats dependency licensing as a first-class constraint (Art. VIII rejects EPPlus on exactly
+that ground).
+
+Why Plex specifically: the users read dense Dutch curriculum prose, so the priorities were a large x-height, unambiguous
+`1`/`l`/`I` (leerplandoel codes are alphanumeric and get read aloud in meetings), and a companion mono that shares the
+same skeleton so a code sitting inside a sentence does not jump. Base size is **15px**, not 14, for the same reason.
+
+> *Filed retroactively at the E0-10 close-out (2026-07-30).* The fonts shipped with this reasoning living only in a
+> `main.tsx` docstring, while E0-10's own decision list had demanded the router be documented **before** installing on
+> the explicit ground that *"a library installed first gets documented never."* The fonts went in the other way round;
+> this section is the correction. Restarting the Vite dev server after adding a font or editing `tailwind.config.js` is
+> mandatory — a running server keeps the old config and silently generates no CSS for the new `fontFamily`.
+
 ## 3. Information architecture
 
 Primary navigation (per role, per the §3.2 matrix):

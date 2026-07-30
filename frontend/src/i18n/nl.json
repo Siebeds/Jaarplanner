@@ -1,5 +1,6 @@
 {
   "app": {
+    "naam": "Jaarplanner",
     "ondertitel": "Plan en bewijs de dekking van je leerplandoelen."
   },
   "navigatie": {
@@ -32,7 +33,9 @@
     "laden": "Schooljaren en klassen laden…",
     "fout": "De schooljaren en klassen konden niet geladen worden. Probeer de pagina opnieuw te laden.",
     "geenSchooljaren": "Er is nog geen schooljaar aangemaakt.",
-    "geenKlassen": "Geen klassen in dit schooljaar"
+    "geenKlassen": "Geen klassen in dit schooljaar",
+    "eerstSchooljaar": "Kies eerst een schooljaar",
+    "onbekendSchooljaar": "Dit schooljaar bestaat niet meer"
   },
   "doelsoort": {
     "md": "Minimumdoel",
