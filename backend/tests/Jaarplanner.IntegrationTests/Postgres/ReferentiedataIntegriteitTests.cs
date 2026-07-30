@@ -1,5 +1,7 @@
+using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
+using Jaarplanner.Infrastructure.AiAuthoring;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
@@ -154,5 +156,77 @@ public sealed class ReferentiedataIntegriteitTests : IAsyncLifetime
 
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => tweede.SaveChangesAsync());
         Assert.Equal("23505", Assert.IsType<Npgsql.PostgresException>(ex.InnerException).SqlState);
+    }
+
+    /// <summary>
+    /// <c>EfLeerdoelCatalogus</c>'s jaar/fase filter matches <b>case-insensitively against a real
+    /// PostgreSQL</b>, i.e. the <c>ToLower()</c> comparison really is translated to SQL <c>lower()</c>
+    /// and evaluated by the server.
+    /// <para>
+    /// This is the one assertion the in-memory provider structurally cannot make. In-memory applies
+    /// <c>no collation</c> — it compares strings with .NET semantics — so the E2-08 integration suite
+    /// that runs there pins the filter's <i>semantics</i> and would stay green against a query that
+    /// Postgres answers with zero rows. That is precisely the defect this filter was written to fix:
+    /// under a case-sensitive collation (Postgres' default, e.g. <c>English_Belgium.1252</c> on a
+    /// Windows install) a teacher typing <c>k3</c> got an empty candidate set indistinguishable from
+    /// "the curriculum holds nothing for your class".
+    /// </para>
+    /// <para>
+    /// The three spellings must return <b>the same rows</b>, not merely a non-empty set; and the
+    /// <c>L3</c> row must stay out, so a filter that silently degraded to "no filter" would fail too.
+    /// Leading/trailing whitespace is trimmed off (a pasted value carries it).
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Leerdoelcatalogus_filtert_jaarfase_case_insensitief_in_de_database()
+    {
+        await using (var seed = _db.MaakContext())
+        {
+            // Discipline "1" is seeded by the migrations; the required Restrict FK is real here.
+            seed.Leerplandoelen.AddRange(
+                new Leerplandoel("NAT-K3-01", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "1", tekst: "doeltekst"),
+                new Leerplandoel("NAT-K3-02", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "1", tekst: "doeltekst"),
+                new Leerplandoel("WIS-L3-01", Doelsoort.Gemeenschappelijk, "L3", "Getallen", "Getalbegrip", "2", tekst: "doeltekst"));
+            await seed.SaveChangesAsync();
+        }
+
+        await using var context = _db.MaakContext();
+        var catalogus = new EfLeerdoelCatalogus(context);
+
+        string[] verwacht = ["NAT-K3-01", "NAT-K3-02"];
+        foreach (var spelling in new[] { "K3", "k3", " k3 " })
+        {
+            var doelen = await catalogus.HaalLeerdoelenAsync(new LeerdoelSelectie { JaarFasen = [spelling] });
+
+            Assert.Equal(verwacht, doelen.Select(d => d.Code).ToArray());
+        }
+    }
+
+    /// <summary>
+    /// The <c>Codes</c> dimension matches case-insensitively against a real database too, and returns the
+    /// row carrying the curriculum's <b>own</b> casing.
+    /// <para>
+    /// This is the path <c>DoelMatchingService.ZoekLeerdoelAsync</c> uses to resolve the FR-4.3
+    /// substitution a teacher types by hand. Without the SQL <c>lower()</c> the teacher would be told
+    /// <i>"'nat-k3-01' zit niet in de geladen Op.stap-leerplandoelen"</i> about a code that does exist —
+    /// a false statement about the curriculum (Art. III.5). What is stored stays <c>NAT-K3-01</c>.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Leerdoelcatalogus_zoekt_een_code_case_insensitief_in_de_database()
+    {
+        await using (var seed = _db.MaakContext())
+        {
+            seed.Leerplandoelen.Add(new Leerplandoel(
+                "NAT-K3-01", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "1", tekst: "doeltekst"));
+            await seed.SaveChangesAsync();
+        }
+
+        await using var context = _db.MaakContext();
+        var catalogus = new EfLeerdoelCatalogus(context);
+
+        var doelen = await catalogus.HaalLeerdoelenAsync(new LeerdoelSelectie { Codes = ["nat-k3-01"] });
+
+        Assert.Equal("NAT-K3-01", Assert.Single(doelen).Code);
     }
 }

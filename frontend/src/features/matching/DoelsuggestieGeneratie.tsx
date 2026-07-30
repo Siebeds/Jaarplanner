@@ -156,7 +156,8 @@ export function DoelsuggestieGeneratie({ themaId }: DoelsuggestieGeneratieProps)
  * The candidate count is not decoration. "0 suggesties" and "there was nothing to search" look identical
  * on screen otherwise, and today the second is the likelier cause — no Op.stap import can be triggered yet
  * (E1-15), so a real deployment holds only demo goals. Skipped codes are named rather than swallowed
- * (Art. III.5/IV.4): the model returning a code that does not exist is information the teacher is owed.
+ * (Art. III.5/IV.4): the model answering with a code the tool could not resolve is information the teacher
+ * is owed.
  */
 function Runverslag({ resultaat }: { resultaat: Doelsuggestiegeneratie }) {
   const aantalNieuw = resultaat.bewaard.length;
@@ -186,8 +187,16 @@ function Runverslag({ resultaat }: { resultaat: Doelsuggestiegeneratie }) {
         </>
       )}
 
-      {/* One skipped code must not read "deze codes staan niet in …" — Dutch inflects the demonstrative
-          and the verb, so the count picks the string (`tAantal`), as the two lines above already do. */}
+      {/* Two things about this line.
+          (1) One skipped code must not read "deze codes komen niet …" — Dutch inflects the demonstrative
+          and the verb, so the count picks the string (`tAantal`), as the two lines above already do.
+          (2) The copy says the code did not match **exactly**; it deliberately does not say the code does
+          not exist. The server skips an AI-supplied code on an exact (ordinal) comparison, because a model
+          that re-cases a decreed identifier is altering goal identity (Art. III.5) — while the substitution
+          field one row below resolves the same string case-insensitively, since a teacher typing it is
+          naming a goal rather than redefining one. So `nat-k3-01` can legitimately appear here and still be
+          accepted below, and "deze code staat niet in de geladen leerplandoelen" would have been a false
+          claim about the curriculum. See the "Case policy" on `DoelMatchingService`. */}
       {resultaat.overgeslagenOnbekend.length > 0 && (
         <p className="mt-1 text-xs text-muted-foreground">
           {tAantal(

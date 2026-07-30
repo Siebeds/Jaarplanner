@@ -226,7 +226,7 @@ describe("DoelsuggestieLijst", () => {
       screen.getByText(/telt dat even zwaar als “Aanvaarden”/),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/niet bewaard: dat kan je niet ongedaan maken/),
+      screen.getByText(/niet bewaard: je kan dit niet ongedaan maken/),
     ).toBeInTheDocument();
   });
 

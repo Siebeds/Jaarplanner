@@ -379,6 +379,57 @@ public sealed class DoelMatchingServiceTests
     }
 
     [Fact]
+    public async Task Aanpassen_weigert_een_code_die_op_meerdere_doelen_past()
+    {
+        // `Leerplandoel.Code` is a case-SENSITIVE primary key, so two goals differing only in case could
+        // legally coexist. There is no evidence Op.stap produces such codes, but if it did, resolving the
+        // teacher's input to whichever row happened to sort first would be the tool guessing at goal identity
+        // — exactly what Art. III.5 forbids. Refusing and naming both candidates beats silently picking one.
+        var thema = EenThema();
+        var suggestie = thema.VoegDoelsuggestieToe(
+            new DoelKoppeling("REK-L1-01", KoppelingStatus.Voorgesteld, "motivatie"));
+        var service = Service(new FakeAiClient(), out var opslag, out _, thema, leerdoelen:
+        [
+            new Leerplandoel("NAT-K3-01", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
+            new Leerplandoel("nat-k3-01", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9", tekst: "een ander doel."),
+            new Leerplandoel("REK-L1-01", Doelsoort.Gemeenschappelijk, "L1", "Getallen", "Getalbegrip", "2", tekst: "telt tot 20."),
+        ]);
+
+        var fout = await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
+            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "Nat-K3-01"));
+
+        // The message names both candidates rather than asserting the code does not exist.
+        Assert.Contains("NAT-K3-01", fout.Message, StringComparison.Ordinal);
+        Assert.Contains("nat-k3-01", fout.Message, StringComparison.Ordinal);
+
+        Assert.Equal("REK-L1-01", suggestie.LeerplandoelCode);
+        Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Aanpassen_kiest_de_exacte_code_als_die_bestaat_naast_een_andere_schrijfwijze()
+    {
+        // The other half of the rule above: an exact hit is never ambiguous, so it wins outright instead of
+        // being refused. This is also what keeps WijzigSuggestieStatusAsync working — it resolves an
+        // already-persisted canonical code, which always has an exact match.
+        var thema = EenThema();
+        var suggestie = thema.VoegDoelsuggestieToe(
+            new DoelKoppeling("REK-L1-01", KoppelingStatus.Voorgesteld, "motivatie"));
+        var service = Service(new FakeAiClient(), out _, out _, thema, leerdoelen:
+        [
+            new Leerplandoel("NAT-K3-01", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
+            new Leerplandoel("nat-k3-01", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9", tekst: "een ander doel."),
+            new Leerplandoel("REK-L1-01", Doelsoort.Gemeenschappelijk, "L1", "Getallen", "Getalbegrip", "2", tekst: "telt tot 20."),
+        ]);
+
+        var weergave = await service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "nat-k3-01");
+
+        Assert.Equal("nat-k3-01", suggestie.LeerplandoelCode);
+        Assert.Equal("een ander doel.", weergave.Tekst);
+    }
+
+    [Fact]
     public async Task Aanpassen_naar_een_onbestaande_code_wordt_geweigerd()
     {
         // Art. III.5: a link may only ever point at a code the read-only Op.stap set carries.

@@ -219,10 +219,10 @@ describe("DoelsuggestieGeneratie", () => {
     ).not.toBeInTheDocument();
   });
 
-  // The expected Dutch is written out **literally** in the next two tests. Asserting against
+  // The expected Dutch is written out **literally** in the next three tests. Asserting against
   // `t("matching.onbekendeCodes", …)` compares the render to the very template it renders, so it cannot
   // fail on grammar — the earlier version of this test passed happily on "deze codes staan" for one code.
-  it("uses the singular for exactly one unknown code", async () => {
+  it("uses the singular for exactly one unresolved code", async () => {
     vi.unstubAllGlobals();
     stub({ onbekend: ["VERZONNEN-99"] });
     renderPagina();
@@ -231,12 +231,12 @@ describe("DoelsuggestieGeneratie", () => {
 
     expect(
       await screen.findByText(
-        "Genegeerd — deze code staat niet in de geladen leerplandoelen: VERZONNEN-99",
+        "Genegeerd — deze code uit het antwoord van de AI komt niet exact overeen met een geladen leerplandoel: VERZONNEN-99",
       ),
     ).toBeInTheDocument();
   });
 
-  it("uses the plural for more than one unknown code", async () => {
+  it("uses the plural for more than one unresolved code", async () => {
     vi.unstubAllGlobals();
     stub({ onbekend: ["VERZONNEN-99", "VERZONNEN-98"] });
     renderPagina();
@@ -245,9 +245,28 @@ describe("DoelsuggestieGeneratie", () => {
 
     expect(
       await screen.findByText(
-        "Genegeerd — deze codes staan niet in de geladen leerplandoelen: VERZONNEN-99 · VERZONNEN-98",
+        "Genegeerd — deze codes uit het antwoord van de AI komen niet exact overeen met een geladen leerplandoel: VERZONNEN-99 · VERZONNEN-98",
       ),
     ).toBeInTheDocument();
+  });
+
+  // The message must not assert that the code is absent from the curriculum, because it may well be
+  // present: the AI path matches a code **exactly** on purpose (a model altering the casing of a decreed
+  // identifier is altering identity), while the substitution field one row below resolves the very same
+  // string case-insensitively. So `nat-k3-01` can be skipped here and accepted there — and a teacher told
+  // "deze code staat niet in de geladen leerplandoelen" would have been told something false about the
+  // Op.stap curriculum. This test pins the honest wording, not just the inflection.
+  it("does not claim an unresolved code is absent from the curriculum", async () => {
+    vi.unstubAllGlobals();
+    stub({ onbekend: ["nat-k3-01"] });
+    renderPagina();
+
+    fireEvent.click(genereerKnop());
+
+    const melding = await screen.findByText(/nat-k3-01/);
+    expect(melding).toHaveTextContent("komt niet exact overeen");
+    expect(melding.textContent).not.toMatch(/staat niet in/);
+    expect(melding.textContent).not.toMatch(/bestaat niet/);
   });
 
   it("shows retry copy on a 422 and never echoes the server diagnostic", async () => {

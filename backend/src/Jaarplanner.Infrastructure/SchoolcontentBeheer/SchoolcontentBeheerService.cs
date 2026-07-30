@@ -440,6 +440,16 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     /// <summary>
     /// Verifies the leerplandoel code exists (Art. III.5) and returns its trimmed form. Read-only —
     /// curriculum data is never mutated by linking (Art. III.1).
+    /// <para>
+    /// <b>Exact match, and that is a policy rather than an accident.</b> <c>l.Code == code</c> translates to
+    /// SQL <c>=</c> under the database collation, so it is case-sensitive. The E2-08 matching flow reads a
+    /// code case-<i>insensitively</i> when a teacher types it into a free-text field
+    /// (<c>DoelMatchingService.ZoekLeerdoelAsync</c>, see the "Case policy" on that class) — a different
+    /// question from this one: the codes arriving here come from an import file or an API payload, where a
+    /// mis-cased decreed identifier is a data defect worth surfacing, not a typo to smooth over. The
+    /// asymmetry is recorded here so the next reader does not read either side as an oversight; deciding
+    /// whether the import path should also fold case belongs to the import stories (E1), not to E2-08.
+    /// </para>
     /// </summary>
     private async Task<string> VereisLeerplandoelAsync(string leerplandoelCode, CancellationToken cancellationToken)
     {

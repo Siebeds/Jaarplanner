@@ -30,6 +30,28 @@ namespace Jaarplanner.Application.AiMatching;
 /// stays (it is the pure core, and what the tests drive), but
 /// <see cref="GenereerSuggestiesAsync"/> is the entry point a controller can actually call.
 /// </para>
+/// <para>
+/// <b>Case policy — the split is deliberate, and it is a split.</b> A leerplandoel code is a decreed
+/// identifier (Art. III.5), so who supplies it decides how strictly it is read:
+/// <list type="bullet">
+/// <item><b>Strict (ordinal) where the AI supplies the code</b> — <c>perCode</c> and the loop over
+/// <c>parse.Suggesties</c> in <see cref="MatchThemaAsync"/>. A model that answers <c>nat-k3-01</c> for
+/// <c>NAT-K3-01</c> has altered curriculum identity; case-folding that away would let the AI decide what
+/// counts as the same goal. The answer is skipped and reported, never repaired.</item>
+/// <item><b>Lenient (ordinal-ignore-case) where a human types the code</b> —
+/// <see cref="VervangSuggestieDoelAsync"/> via <c>ZoekLeerdoelAsync</c>, matching the
+/// <see cref="ILeerdoelCatalogus"/> contract. A teacher typing <c>nat-k3-01</c> into a free-text field is
+/// naming a goal, not redefining one, and refusing it would tell them a code they can see does not exist.
+/// The <b>canonical</b> <c>doel.Code</c> is what gets stored either way.</item>
+/// </list>
+/// Consequence worth naming: the same string can be skipped on the AI path and accepted one field below on
+/// the substitution path. That is intended, and the run report's copy is worded so it does not claim the
+/// code is absent from Op.stap — only that it was not resolvable.
+/// <br/>
+/// (A third site, <c>SchoolcontentBeheerService.VereisLeerplandoelAsync</c>, is exact-match as well; it
+/// resolves codes arriving in an import/API payload rather than from this flow, and E2-08 left its policy
+/// untouched rather than change a path it does not own.)
+/// </para>
 /// </summary>
 public sealed class DoelMatchingService
 {
@@ -104,6 +126,11 @@ public sealed class DoelMatchingService
         // Only codes that actually exist in the loaded set are resolvable — never fabricate (Art. III.5/IV.4).
         // Indexed rather than a bare HashSet so a persisted suggestion can be enriched with the goal's own
         // text/doelsoort for the review row (FR-4.2) without a second query.
+        //
+        // `Ordinal` here is deliberate and is NOT the same policy as `ZoekLeerdoelAsync` below — see
+        // "Case policy" on this class. A model that returns `nat-k3-01` for `NAT-K3-01` has altered a decreed
+        // identifier, and accepting the alteration would let the AI reshape curriculum identity (Art. III.5).
+        // The answer is skipped and named in the run report, not silently repaired.
         var perCode = leerdoelen
             .GroupBy(d => d.Code, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
@@ -135,6 +162,9 @@ public sealed class DoelMatchingService
 
         foreach (var suggestie in parse.Suggesties)
         {
+            // Exact match only (see "Case policy"). `onbekend` therefore means "not resolvable in this run's
+            // candidate set" — which is not the same claim as "this code does not exist in Op.stap", and the
+            // UI copy for it must not overstate it (`matching.onbekendeCodes`).
             if (!perCode.TryGetValue(suggestie.Code, out var doel))
             {
                 onbekend.Add(suggestie.Code);
@@ -232,7 +262,7 @@ public sealed class DoelMatchingService
     /// action already satisfied FR-4.3 and this is an extra. Both are offered, so the ruling costs no rework.
     /// </para>
     /// </summary>
-    /// <exception cref="OngeldigeDoelsubstitutieFout">The replacement code is blank, unknown, unchanged, or already linked.</exception>
+    /// <exception cref="OngeldigeDoelsubstitutieFout">The replacement code is blank, unknown, unchanged, already linked, or matches more than one goal case-insensitively.</exception>
     /// <exception cref="ThemaNietGevondenFout">The thema does not exist.</exception>
     /// <exception cref="DoelsuggestieNietGevondenFout">The thema has no suggestion with that id.</exception>
     public async Task<DoelMatchSuggestieWeergave> VervangSuggestieDoelAsync(
@@ -276,17 +306,45 @@ public sealed class DoelMatchingService
         return MapSuggestie(koppeling, doel);
     }
 
-    // Resolves one code through the read-only curriculum seam. Uses the code dimension of LeerdoelSelectie so
-    // this is a targeted read rather than loading the whole curriculum to answer "does this code exist?".
+    // Resolves one human-typed code through the read-only curriculum seam. Uses the code dimension of
+    // LeerdoelSelectie so this is a targeted read rather than loading the whole curriculum to answer
+    // "does this code exist?".
     //
-    // The re-check is case-insensitive because the seam's own matching is (a teacher types the code by hand),
-    // and an Ordinal check here would throw away a row the catalogus just returned — telling the teacher the
-    // code "zit niet in de geladen Op.stap-leerplandoelen" when it does. What gets stored is always the
-    // curriculum's own `doel.Code`, so the link still carries the canonical Op.stap code (Art. III.5).
+    // Case-insensitive on purpose — the lenient half of the "Case policy" on this class. An Ordinal check here
+    // would throw away a row the catalogus just returned and tell the teacher the code "zit niet in de geladen
+    // Op.stap-leerplandoelen" when it does. What gets stored is always the curriculum's own `doel.Code`, so the
+    // link still carries the canonical Op.stap code (Art. III.5).
+    //
+    // `Leerplandoel.Code` is a case-SENSITIVE primary key, so `NAT-K3-01` and `nat-k3-01` could legally coexist
+    // as two distinct goals. There is no evidence Op.stap does that, but if it ever did, silently binding the
+    // link to whichever row sorted first would be the tool guessing at goal identity — the one thing Art. III.5
+    // forbids. So: an exact (ordinal) hit wins outright; otherwise the case-insensitive match must be unique,
+    // and an ambiguous one is refused with a message rather than resolved by luck. Only
+    // VervangSuggestieDoelAsync can reach the refusal — WijzigSuggestieStatusAsync resolves an already-persisted
+    // canonical code, which always has the exact hit.
     private async Task<Leerplandoel?> ZoekLeerdoelAsync(string code, CancellationToken cancellationToken)
     {
         var doelen = await _catalogus.HaalLeerdoelenAsync(new LeerdoelSelectie { Codes = [code] }, cancellationToken);
-        return doelen.FirstOrDefault(d => string.Equals(d.Code, code, StringComparison.OrdinalIgnoreCase));
+
+        var exact = doelen.FirstOrDefault(d => string.Equals(d.Code, code, StringComparison.Ordinal));
+        if (exact is not null)
+        {
+            return exact;
+        }
+
+        var kandidaten = doelen
+            .Where(d => string.Equals(d.Code, code, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (kandidaten.Count > 1)
+        {
+            throw new OngeldigeDoelsubstitutieFout(
+                $"Meerdere leerplandoelen komen overeen met '{code}' als je geen onderscheid maakt tussen " +
+                $"hoofd- en kleine letters ({string.Join(", ", kandidaten.Select(d => d.Code))}); " +
+                "geef de code exact zoals ze in Op.stap staat.");
+        }
+
+        return kandidaten.Count == 1 ? kandidaten[0] : null;
     }
 
     // The read view. `doel` carries the official text + doelsoort so the teacher judges the goal itself and not

@@ -328,8 +328,11 @@ visible label. **Fixed by removing the `aria-label`** — the visible text is a 
 accessible name — and `matching.genereerAria` is deleted from `nl.json` (it became unused). The other four
 aria-labels are supersets of their visible text and were left untouched.
 *Regression cover:* `genereerKnop()` in `DoelsuggestieGeneratie.test.tsx` now queries **by the visible
-label**, so every one of the 11 tests in that file fails if an overriding aria-label reappears; plus an
+label**, so **10 of the 11** tests in that file fail if an overriding aria-label reappears; plus an
 explicit test asserting no `aria-label`, `toHaveTextContent` and `toHaveAccessibleName` on the same string.
+*(Corrected in fix round 2: this line originally claimed "every one of the 11". The eleventh — "has no axe
+violations" — never calls `genereerKnop()`, and under mutation the jsdom axe pass did **not** flag the bad
+aria-label, so query-by-visible-label is the only real cover here, not the axe assertion.)*
 The finding was right that the sibling file already documents this rule — that comment now matches practice
 on both controls.
 
@@ -518,3 +521,254 @@ Frontend tests **48 → 52** (+3 in `DoelsuggestieGeneratie`: label-in-name, liv
 - `backlog/E5-dekking-export.md` (E5-07/E5-06) · `backlog/E1-curriculum-content.md` (E1-15) ·
   `backlog/E7-niet-functioneel.md` (E7-11) · `backlog/README.md` (Art. II.3 log + Art. XIV `jaarFase`) ·
   `backlog/E2-ai-matching.md` (cross-references + obligation 4) · this worklog (script corrections above).
+
+---
+
+## Fix round 2 — the four MINORs the round-1 fixes introduced
+
+Inputs: antagonist **both MAJORs and all eleven MINOR/QUESTION items closed**, 4 new MINORs; test-runner
+**PASS**. Nothing below re-litigates what the two gates confirmed: the collation fix is correct (proved on a
+real `English_Belgium.1252` server, on all three dimensions) and the copy fixes hold under mutation. The
+problem was that the proof lived in a throwaway probe — so round 2 turns it into a repository artefact.
+
+### 1 — the Postgres-backed test the lost probe stood in for
+
+Both gates asked for it independently, and it is the one finding the antagonist said it would not carry.
+Two new `[PostgresFact]`s in `ReferentiedataIntegriteitTests` (its stated remit is "every assertion the
+in-memory provider structurally cannot make", and the `.csproj` comment names *"no collation"* as one of the
+three gaps), exercising the real `EfLeerdoelCatalogus` against a migrated database:
+
+- `Leerdoelcatalogus_filtert_jaarfase_case_insensitief_in_de_database` — seeds two `K3` rows and one `L3`,
+  then asserts `K3`, `k3` and `" k3 "` each return **the same two codes**. Same rows, not merely non-empty:
+  a filter that degraded to "no filter" would fail on the `L3` row, and the whitespace case covers a pasted
+  value.
+- `Leerdoelcatalogus_zoekt_een_code_case_insensitief_in_de_database` — `Codes = ["nat-k3-01"]` resolves and
+  returns the curriculum's own casing `NAT-K3-01`. This is the path `ZoekLeerdoelAsync` uses for the FR-4.3
+  substitution.
+
+Neither skips when `JAARPLANNER_TEST_POSTGRES` is set (measured: integration 87 → **89**, and **0 skipped**
+with the variable — see gates).
+
+**Evidence the tests have teeth, recorded here rather than lost with a probe.** The local server's collation
+is genuinely case-sensitive, so the assertions are real:
+
+```
+$ psql -Atc "select datcollate from pg_database where datname='postgres'" -c "select 'K3'='k3'"
+English_Belgium.1252
+f
+```
+
+Then a mutation: `.ToLower()` removed from the `JaarFase` and `Code` predicates, both new tests run, both
+failed, and the mutation was reverted (`git diff` on `EfLeerdoelCatalogus.cs` shows only the intended
+comment change):
+
+```
+Failed  ReferentiedataIntegriteitTests.Leerdoelcatalogus_filtert_jaarfase_case_insensitief_in_de_database
+  Assert.Equal() Failure: Collections differ
+  Expected: ["NAT-K3-01", "NAT-K3-02"]
+  Actual:   []
+Failed  ReferentiedataIntegriteitTests.Leerdoelcatalogus_zoekt_een_code_case_insensitief_in_de_database
+  Assert.Single() Failure: The collection was empty
+Failed!  - Failed: 2, Passed: 0, Skipped: 0, Total: 2
+```
+
+No scratch file survives: the probe *is* the test.
+
+### 2 — the missing functional index: declined, with the reason recorded
+
+Documented in `EfLeerdoelCatalogus`'s class summary rather than added, which is what the orchestrator
+preferred and what the evidence supports (neither gate claims a performance defect at Op.stap scale). What
+the note says, and why it is not just "we did not bother":
+
+- the two precedents (`KlasNaamCaseInsensitiefUniek`, `SchooljaarNaamCaseInsensitiefUniek`) are **`UNIQUE`**
+  functional indexes that exist to *enforce a constraint* case-insensitively — they close a concurrent-POST
+  race, i.e. a correctness obligation. Here the only benefit would be speed, so the cases are not the
+  parallel they look like;
+- `leerplandoelen` is Op.stap-sized (13 disciplines' goals, thousands of rows at most), read-only, scanned
+  once per substitution on a path a teacher triggers by hand;
+- the migration that would add it is spelled out in the comment, so the decision is one line to reverse;
+- verified while writing it: `JaarFase` and `DisciplineNummer` carry **no** index at all today
+  (`LeerplandoelConfiguration` indexes only `(Domein, Subdomein)` and `MinimumdoelRef`), so the code filter
+  is not uniquely disadvantaged.
+
+### 3 — the user-facing message that could state a falsehood (the important one)
+
+**The defect.** Case folding landed on one of three code-resolution paths. If the model answers `nat-k3-01`,
+`perCode` (ordinal) skips it and the UI rendered *"Genegeerd — deze code staat niet in de geladen
+leerplandoelen: nat-k3-01"* — **while the code exists**, and while the substitution field one row below
+resolves that same string fine. Same class of harm as the round-1 finding it replaced: a message asserting
+something false about the curriculum.
+
+**Not fixed by making the AI path lenient**, per instruction and because the instruction is right: a model
+that re-cases a decreed identifier is altering identity, and folding that away would let the AI decide what
+counts as the same goal (Art. III.5).
+
+**Fixed in the copy.** `matching.onbekendeCodes` / `onbekendeCodesEnkelvoud` now say what actually happened:
+
+> Genegeerd — deze code**s** uit het antwoord van de AI kom**en** niet exact overeen met een geladen
+> leerplandoel: {codes}
+
+"niet exact overeen" is true (the comparison *is* exact) and asserts nothing about existence; "exact" also
+hints at the cause without technical vocabulary. Both numbers keep their own string — the demonstrative and
+the verb still inflect. A **third** test now pins the honest wording rather than only the inflection: it
+feeds `nat-k3-01` and asserts the rendered text contains "komt niet exact overeen" and does **not** contain
+"staat niet in" or "bestaat niet". Written as a negative assertion on purpose, because the previous copy
+would have passed a positive one.
+
+**The split is now documented at all three sites** so the next reader does not read it as an oversight:
+
+- a "Case policy" block on `DoelMatchingService` stating the rule (strict where the AI supplies the code,
+  lenient where a human types it), naming both sites, and naming the consequence out loud — the same string
+  can be skipped above and accepted below;
+- inline notes at `perCode` and at the `parse.Suggesties` loop, the second spelling out that `onbekend`
+  means "not resolvable in this run's candidate set" and that the copy must not overstate it;
+- the third site, `SchoolcontentBeheerService.VereisLeerplandoelAsync`, gets a summary paragraph: it is
+  exact-match too, but it resolves codes arriving in an **import/API payload** rather than typed into a
+  free-text box, where a mis-cased decreed identifier is a data defect worth surfacing. Behaviour untouched
+  — E2-08 does not own the import path — and the asymmetry is recorded as belonging to E1 to settle. Its
+  message is not user-facing today (no schoolcontent UI exists, and the frontend never echoes
+  `ProblemDetails`), so it carries no falsehood risk yet;
+- the frontend comment above the line explains the same thing where a UI reader will meet it.
+
+**The two-rows-differing-only-in-case hazard: implemented, not just recorded.** `Code` is a case-sensitive
+PK, so `NAT-K3-01` and `nat-k3-01` could legally coexist, and the old `FirstOrDefault(OrdinalIgnoreCase)`
+would have bound to whichever sorted first — the tool guessing at goal identity. `ZoekLeerdoelAsync` now: an
+**exact** ordinal hit wins outright; otherwise the case-insensitive match must be **unique**; an ambiguous
+one throws `OngeldigeDoelsubstitutieFout` (→ 400) naming every candidate. The exact-hit-wins rule is what
+keeps `WijzigSuggestieStatusAsync` unaffected — it resolves an already-persisted canonical code, which always
+has the exact hit, so the refusal is reachable only from the substitution. Two unit tests pin both halves. No
+new i18n key: the existing `vervangenMislukt` asks the teacher to check the code rather than asserting
+anything, and this case has no evidence of occurring.
+
+### 4 — `FakeLeerdoelCatalogus`'s parity claim, scoped to what is true
+
+The round-1 comment claimed the fake normalises and compares "exactly as the EF implementation does". True
+of **filtering**, false of **ordering**: the fake sorts `StringComparer.Ordinal`, the real query sorts under
+the database collation, and the two genuinely disagree on hyphenated, digit-bearing Op.stap codes. Since
+candidate order becomes prompt order (`MatchingPromptBuilder`), fake and production can hand the model
+differently sorted lists.
+
+Scoped the claim (the simplest honest option) rather than chasing collation parity a fake with no database
+cannot have. The class summary now says parity is claimed **for filtering only**; the comment at the
+`OrderBy` states the divergence, why it is a fidelity gap and not a defect (the response is matched back by
+**code**, not by position, so nothing in the flow depends on order), why ordinal is still the right choice
+here (stable ⇒ no order-flaky tests), and points at the new Postgres tests as where real ordering lives.
+The divergence itself predates the delta; the false claim did not, and is gone.
+
+### 5 — the small corrections
+
+- **The overstated number**, caught by both gates: the round-1 section said a reintroduced `aria-label` fails
+  "every one of the 11 tests". Verified by mapping every `genereerKnop()` call to its `it(...)`: **10 of 11**
+  — "has no axe violations" is the exception. Corrected in place, with the lesson attached (under mutation
+  the jsdom axe pass did *not* flag the bad aria-label, so query-by-visible-label is the only real cover).
+- **`manueelUitleg`:** *"houdt hetzelfde leerplandoel"* → *"**behoudt** hetzelfde leerplandoel"*.
+- **`vervangenUitleg`:** "het doel dat de AI voorstelde" no longer appears in two consecutive sentences —
+  the second now opens *"**Dat doel** wordt overschreven en niet bewaard: je kan dit niet ongedaan maken."*
+  The assertion in `DoelsuggestieLijst.test.tsx` was updated to the new clause (still literal Dutch, still
+  asserting the substance rather than comparing a template to itself).
+
+### Files changed in this round
+
+**Backend — source**
+
+- `backend/src/Jaarplanner.Application/AiMatching/DoelMatchingService.cs` — the "Case policy" block; inline
+  notes at `perCode` and the suggestion loop; `ZoekLeerdoelAsync` prefers an exact hit and refuses an
+  ambiguous case-insensitive match; `<exception>` doc extended.
+- `backend/src/Jaarplanner.Infrastructure/AiAuthoring/EfLeerdoelCatalogus.cs` — the declined-index decision
+  recorded in the class summary (comment only; no behaviour change).
+- `backend/src/Jaarplanner.Infrastructure/SchoolcontentBeheer/SchoolcontentBeheerService.cs` — the third
+  site's exact-match policy documented and handed to E1 (comment only).
+
+**Backend — tests**
+
+- `backend/tests/Jaarplanner.IntegrationTests/Postgres/ReferentiedataIntegriteitTests.cs` — the two new
+  `[PostgresFact]`s (+2).
+- `backend/tests/Jaarplanner.UnitTests/Ai/DoelMatchingServiceTests.cs` — the two ambiguity tests (+2).
+- `backend/tests/Jaarplanner.UnitTests/AiAuthoring/FakeLeerdoelCatalogus.cs` — parity claim scoped to
+  filtering; the ordering divergence stated.
+
+**Frontend**
+
+- `frontend/src/i18n/nl.json` — `onbekendeCodes`/`onbekendeCodesEnkelvoud` softened; `manueelUitleg`
+  *behoudt*; `vervangenUitleg` de-duplicated.
+- `frontend/src/features/matching/DoelsuggestieGeneratie.tsx` — the comment explaining the strict/lenient
+  split where a UI reader meets it; the `Runverslag` summary no longer says "a code that does not exist".
+- `frontend/src/features/matching/DoelsuggestieGeneratie.test.tsx` — two literal-Dutch assertions updated,
+  one new test pinning that the message does not claim absence (+1).
+- `frontend/src/features/matching/DoelsuggestieLijst.test.tsx` — assertion updated to the new clause.
+
+**Backlog / docs**
+
+- this worklog (round-1 correction + this section). No checkbox, no progress-table row touched.
+
+### Gates (verbatim)
+
+```
+$ dotnet build
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+$ dotnet format --verify-no-changes
+(no output — exit 0, no changes needed)
+
+$ dotnet test                                    # no JAARPLANNER_TEST_POSTGRES
+Passed!  - Failed: 0, Passed:  51, Skipped: 38, Total:  89, Duration:  9 s - Jaarplanner.IntegrationTests.dll (net10.0)
+Passed!  - Failed: 0, Passed: 445, Skipped:  0, Total: 445, Duration: 20 s - Jaarplanner.UnitTests.dll (net10.0)
+
+$ JAARPLANNER_TEST_POSTGRES="Host=127.0.0.1;Port=5432;Database=postgres;Username=jaarplanner;Password=jaarplanner_local;SSL Mode=Disable" dotnet test
+Passed!  - Failed: 0, Passed: 445, Skipped: 0, Total: 445, Duration:  9 s - Jaarplanner.UnitTests.dll (net10.0)
+Passed!  - Failed: 0, Passed:  89, Skipped: 0, Total:  89, Duration: 54 s - Jaarplanner.IntegrationTests.dll (net10.0)
+```
+
+Counts moved exactly as expected against the round-1 baselines: unit **443 → 445** (the two ambiguity
+tests), integration **87 → 89** (the two `PostgresFact`s), skipped **36 → 38** without the variable and
+**0 with it**. The teardown flake reported in round 1 did **not** recur across the runs above; per
+instruction the `PostgresTestDatabase` fixture was not touched — the test-runner root-caused it to a server
+privilege (`DROP DATABASE … WITH (FORCE)` needs `pg_signal_backend`, which the non-superuser `jaarplanner`
+role lacks, so an attached autovacuum worker aborts the DROP) and the orchestrator is filing it separately.
+
+```
+$ corepack pnpm lint
+$ eslint . --max-warnings 0 && tsc --noEmit
+(no output — clean)
+
+$ corepack pnpm test
+ ✓ src/features/jaarplan/kalenderFormat.test.ts (12 tests)
+ ✓ src/components/DoelsoortBadge.test.tsx (4 tests)
+ ✓ src/features/matching/OngekoppeldeDoelenLijst.test.tsx (4 tests)
+ ✓ src/App.test.tsx (3 tests)
+ ✓ src/features/matching/DoelsuggestieLijst.test.tsx (10 tests)
+ ✓ src/features/jaarplan/Jaarplankalender.test.tsx (8 tests)
+ ✓ src/features/matching/DoelsuggestieGeneratie.test.tsx (12 tests)
+ Test Files  7 passed (7)
+      Tests  53 passed (53)
+
+$ corepack pnpm build
+✓ 112 modules transformed.
+✓ built in 10.33s
+```
+
+Frontend **52 → 53**. No migration: nothing about the schema changed (that is the point of finding 2).
+
+### Not fixed, with the reason
+
+- **The AI-response path stays ordinal** — instructed, and correct: a model altering the casing of a decreed
+  code is altering identity (Art. III.5).
+- **No functional index** — finding 2, decided against by preference and evidence; the decision and its
+  reversal are recorded in the code.
+- **`PostgresTestDatabase` untouched** — instructed; a server-privilege property, not this story's.
+- **`SchoolcontentBeheerService`'s exact match left as-is** — documented, not changed; it is the import
+  path's policy to settle (E1), and E2-08 changing a path it does not own is how the round-1 findings about
+  filing obligations in the wrong story arose.
+- Still no provenance column, no candidate cap, no `AzureAI` status-code change, no checkbox or
+  progress-table edit.
+
+### For the test-runner
+
+Nothing new to click. The delta is one behaviour change (`ZoekLeerdoelAsync`'s ambiguity refusal, unit-tested
+— unreachable in a browser without two Op.stap codes differing only in case) and copy. The rest is comments
+and tests. To exercise the new Postgres tests:
+`JAARPLANNER_TEST_POSTGRES=... dotnet test --filter "FullyQualifiedName~ReferentiedataIntegriteitTests"`.
+Browser steps are unchanged from round 1, except step 7's refusal copy and the run report's unknown-code
+line now read as quoted above.
