@@ -75,8 +75,13 @@
     --petrol-wash: 186 38% 94%; /* tinted surface, selected nav, chips */
 
     /* Attention — knelpunten (te vol, vervallen plaatsing). Warm, never alarming: an
-     * over-full period is a judgement call, not an error (FR-6.4). */
-    --attentie: 33 88% 45%;
+     * over-full period is a judgement call, not an error (FR-6.4).
+     *
+     * Darkened from 33 88% 45% after measuring it: as a bar on the year strip it came out at
+     * 2.89:1 against the page, just under the 3:1 WCAG 1.4.11 floor for a graphic that carries
+     * state. This value clears it. The miss was invisible to axe (jsdom cannot evaluate colour)
+     * and to the eye — it looked fine, and was 0.11 short. */
+    --attentie: 30 85% 38%;
     --attentie-zacht: 40 90% 96%;
     --attentie-ink: 25 68% 24%; /* text on attentie-zacht */
 

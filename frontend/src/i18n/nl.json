@@ -32,7 +32,7 @@
     "laden": "Schooljaren en klassen laden…",
     "fout": "De schooljaren en klassen konden niet geladen worden. Probeer de pagina opnieuw te laden.",
     "geenSchooljaren": "Er is nog geen schooljaar aangemaakt.",
-    "geenKlassen": "Dit schooljaar heeft nog geen klassen."
+    "geenKlassen": "Geen klassen in dit schooljaar"
   },
   "doelsoort": {
     "md": "Minimumdoel",
@@ -77,12 +77,8 @@
     "wijzigenMislukt": "De status kon niet gewijzigd worden. Probeer opnieuw."
   },
   "spine": {
-    "titel": "Het schooljaar in periodes",
-    "uitleg": "De breedte volgt het aantal dagen dat de school open is. De openingen zijn de vakanties.",
-    "legendeGevuld": "Thema's ingepland",
-    "legendeLeeg": "Nog leeg",
-    "legendeTeVol": "Te vol",
-    "vakantiesLabel": "Vakanties"
+    "titel": "Het schooljaar in periodes: de breedte volgt het aantal dagen dat de school open is, de openingen zijn de vakanties.",
+    "teVol": "te vol"
   },
   "kalender": {
     "titel": "Jaarplan",

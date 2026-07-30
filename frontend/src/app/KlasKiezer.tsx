@@ -8,15 +8,21 @@ import { useSelectie } from "./useSelectie";
  * Choose a schooljaar and a klas (E0-10 clause 3) — the replacement for pasting a GUID into a text box,
  * which is how every screen built so far selected a class.
  *
- * **Two plain labelled selects, each in its own box.** An earlier version packed them into a single
- * bordered "one control" pill, which needed a negative margin to pull each select up under its label —
- * and that put the select's hit area 5px *on top of* the label it belonged to, stealing part of its click
- * target and clipping its descenders. The grouped look was not worth a control that misbehaves; a boring
- * field that works beats a clever one that does not.
+ * **Quiet by design, after two rounds of being told it was ugly.** The first version packed both selects
+ * into one bordered pill, which needed a negative margin and put each select's hit area on top of its own
+ * label. The second gave each a visible label above a bordered box — correct, but it put four boxes and two
+ * micro-captions in the top-right corner, which is a lot of furniture for a control you touch once a day.
+ *
+ * This version drops the boxes and the visible captions. The selected value *is* the label: a teacher reads
+ * "2026-2027" and "L3 derde leerjaar" and knows exactly what they are, and before anything is chosen the
+ * placeholder options say "Kies een schooljaar" / "Kies een klas". The `<label>`s are still there for
+ * screen readers (`sr-only`), so nothing is lost programmatically — this is a visual reduction, not an
+ * accessibility one. Borders appear on hover and focus, so the control still announces itself as
+ * interactive when you go near it.
  *
  * Native `<select>`s rather than a Radix combobox: the lists are a handful of items for a primary school,
- * and a native select is keyboard- and screen-reader-correct on every platform, including mobile, for
- * free (NFR-2/NFR-7, WCAG 2.2 AA). Reach for the design-system component when a list needs searching.
+ * and a native select is keyboard- and screen-reader-correct on every platform, including mobile, for free
+ * (NFR-2/NFR-7). Reach for the design-system component when a list needs searching.
  *
  * The class list comes from the chosen year's own `klassen`, so a class can never be shown under a year
  * that does not contain it (Art. IX.3). All copy from nl.json (Art. II.3).
@@ -47,13 +53,13 @@ export function KlasKiezer() {
   const klassen = gekozenSchooljaar?.klassen ?? [];
 
   return (
-    <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto">
-      <Veld id="selectie-schooljaar" label={t("selectie.schooljaarLabel")} breedte="sm:w-40">
+    <div className="flex w-full min-w-0 items-center gap-1 sm:w-auto">
+      <Keuze id="selectie-schooljaar" label={t("selectie.schooljaarLabel")}>
         <select
           id="selectie-schooljaar"
           value={gekozenSchooljaar?.id ?? ""}
           onChange={(event) => kiesSchooljaar(event.target.value)}
-          className={veldKlassen}
+          className={keuzeKlassen}
         >
           <option value="">{t("selectie.kiesSchooljaar")}</option>
           {schooljaren.map((schooljaar) => (
@@ -62,56 +68,60 @@ export function KlasKiezer() {
             </option>
           ))}
         </select>
-      </Veld>
+      </Keuze>
 
-      <Veld id="selectie-klas" label={t("selectie.klasLabel")} breedte="sm:w-60">
+      <span aria-hidden="true" className="text-border">
+        /
+      </span>
+
+      <Keuze id="selectie-klas" label={t("selectie.klasLabel")}>
         <select
           id="selectie-klas"
           value={klassen.some((klas) => klas.id === klasId) ? klasId : ""}
           onChange={(event) => kiesKlas(event.target.value)}
           disabled={klassen.length === 0}
-          className={`${veldKlassen} disabled:cursor-not-allowed disabled:bg-muted disabled:text-ink-zacht`}
+          className={`${keuzeKlassen} disabled:cursor-not-allowed disabled:text-ink-zacht disabled:hover:border-transparent`}
         >
-          <option value="">{t("selectie.kiesKlas")}</option>
+          {/* The empty-year case is stated *in* the control rather than as a sentence beside it. Dropping the
+              boxes removed the room for a caption, and an earlier revision of this component simply lost the
+              message — a teacher then saw a disabled dropdown with no reason given. A test caught it. */}
+          <option value="">
+            {klassen.length === 0 ? t("selectie.geenKlassen") : t("selectie.kiesKlas")}
+          </option>
           {klassen.map((klas) => (
             <option key={klas.id} value={klas.id}>
               {klas.naam}
             </option>
           ))}
         </select>
-      </Veld>
-
-      {gekozenSchooljaar && klassen.length === 0 ? (
-        <p className="pb-2 text-sm text-ink-zacht">{t("selectie.geenKlassen")}</p>
-      ) : null}
+      </Keuze>
     </div>
   );
 }
 
-// `min-w-0` keeps this from overflowing a 390px phone. With a fixed width the two selects plus their
-// padding measured wider than the viewport, and because this group is the widest thing in the header its
-// overflow became a horizontal scrollbar for the whole PAGE.
-const veldKlassen =
-  "h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm font-medium text-ink";
+// `appearance-none` removes the platform chevron so the control can be borderless; the chevron below
+// replaces it. `min-w-0` + `max-w` keeps a long class name from pushing the header wider than a phone.
+const keuzeKlassen = [
+  "h-9 w-full min-w-0 max-w-[13rem] appearance-none truncate rounded-md border border-transparent",
+  "bg-transparent pl-2 pr-7 text-sm font-semibold text-ink",
+  "transition-colors duration-150 ease-uit hover:border-border hover:bg-card",
+].join(" ");
 
-/** A label sitting cleanly above its control. No negative margins — that was the bug. */
-function Veld({
-  id,
-  label,
-  breedte,
-  children,
-}: {
-  id: string;
-  label: string;
-  breedte: string;
-  children: ReactNode;
-}) {
+/** A select whose value is its own label. The `<label>` stays for screen readers. */
+function Keuze({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   return (
-    <div className={`min-w-0 flex-1 ${breedte} sm:flex-none`}>
-      <label className="mb-1 block text-[0.6875rem] font-medium text-ink-zacht" htmlFor={id}>
+    <div className="relative min-w-0 flex-1 sm:flex-none">
+      <label className="sr-only" htmlFor={id}>
         {label}
       </label>
       {children}
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 12 12"
+        className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-ink-zacht"
+      >
+        <path d="M2 4.5 6 8.5l4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </div>
   );
 }

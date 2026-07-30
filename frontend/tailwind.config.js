@@ -75,21 +75,29 @@ export default {
         },
       },
       fontFamily: {
-        // No webfont: a self-hosted face is an asset + licence decision (and Art. VI.2
-        // rules out a third-party font CDN), so the stack leans on the good variable UI
-        // faces the target platforms already ship. The character comes from the scale,
-        // the weights and the spacing — not from a novel typeface.
+        // Self-hosted from npm (see the note in src/main.tsx) — never a font CDN, which would
+        // leak every visitor's IP to a third party (Art. VI.2). The system stack stays as the
+        // fallback so the app is legible before the webfont paints.
         sans: [
+          "IBM Plex Sans Variable",
+          "IBM Plex Sans",
           "Segoe UI Variable Text",
           "Segoe UI",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
-          "Inter",
-          "Roboto",
-          "Helvetica Neue",
           "Arial",
           "sans-serif",
+        ],
+        // Leerplandoel codes ("NAT-K3-01") are identifiers a teacher compares character by
+        // character, which is what a mono is for.
+        mono: [
+          "IBM Plex Mono",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Consolas",
+          "monospace",
         ],
       },
       borderRadius: {
