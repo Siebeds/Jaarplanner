@@ -4,7 +4,8 @@ import { useId, useState } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { t } from "../../i18n";
-import { formatteerPeriode } from "./kalenderFormat";
+import { ApiError } from "../../lib/api";
+import { formatteerDatum, formatteerPeriode } from "./kalenderFormat";
 import type { Planningsblok, Themaplaatsing } from "./types";
 import {
   useVerplaatsPlaatsing,
@@ -52,9 +53,16 @@ export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
   const [paneelOpen, setPaneelOpen] = useState(false);
   const paneelId = useId();
 
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  // A rejected placement is not draggable at all. Moving it would convert the rejection to `Manueel`, which is
+  // the one transition here that changes dekking (Art. V.1) — the server refuses it, and offering a grip that
+  // always fails would be a control that does nothing. Reversing a rejection stays the explained, explicit
+  // decision in the panel below.
+  const kanSlepen = plaatsing.status !== "Geweigerd";
+
+  const { listeners, setNodeRef, isDragging } = useDraggable({
     id: plaatsing.id,
     data: { plaatsing },
+    disabled: !kanSlepen,
   });
 
   const aantal = plaatsing.doelcodes.length;
@@ -79,17 +87,24 @@ export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-1.5">
           {/* Pointer-only affordance: see the class note. `touch-none` stops the browser claiming the gesture
-              as a scroll before dnd-kit sees it. */}
-          <span
-            {...attributes}
-            {...listeners}
-            aria-hidden="true"
-            tabIndex={-1}
-            role="presentation"
-            className="mt-0.5 shrink-0 cursor-grab touch-none select-none px-0.5 text-ink-zacht active:cursor-grabbing"
-          >
-            ⠿
-          </span>
+              as a scroll before dnd-kit sees it.
+
+              dnd-kit's `attributes` are deliberately NOT spread here. They carry `role="button"`, `tabIndex=0`,
+              `aria-roledescription="draggable"` and (mid-drag) `aria-pressed` — the first two are overridden
+              below, but the ARIA ones would remain on a `role="presentation"` node, which is invalid ARIA that
+              only passes axe because `aria-hidden` excludes the subtree from evaluation. Spreading only
+              `listeners` is the honest expression of "this is decoration that happens to accept a pointer". */}
+          {kanSlepen && (
+            <span
+              {...listeners}
+              aria-hidden="true"
+              tabIndex={-1}
+              role="presentation"
+              className="mt-0.5 shrink-0 cursor-grab touch-none select-none px-0.5 text-ink-zacht active:cursor-grabbing"
+            >
+              ⠿
+            </span>
+          )}
           <h4 className="min-w-0 text-sm font-semibold leading-snug text-ink">{plaatsing.themaNaam}</h4>
         </div>
 
@@ -182,7 +197,13 @@ function Bewerkpaneel({
 
   // A stale placement sits in no period, so every period is a candidate. Otherwise the period it is already in
   // is left out: the server treats that move as a no-op, and offering it invites a click that does nothing.
-  const doelen = blokken.filter((blok) => blok.start !== plaatsing.blokStart);
+  //
+  // A rejected placement offers none: the server refuses the move (it would silently grant dekking), so the
+  // picker is replaced by the instruction to reverse the rejection first.
+  const isGeweigerd = plaatsing.status === "Geweigerd";
+  const doelen = isGeweigerd
+    ? []
+    : blokken.filter((blok) => blok.start !== plaatsing.blokStart);
 
   /**
    * Whether removing this placement must be confirmed.
@@ -198,6 +219,12 @@ function Bewerkpaneel({
     <div id={id} className="mt-2.5 flex flex-col gap-3 rounded-md bg-paper-diep/60 p-2.5">
       {plaatsing.isVervallen && (
         <p className="text-xs leading-snug text-attentie-ink">{t("kalender.herplaatsKies")}</p>
+      )}
+
+      {isGeweigerd && (
+        <p className="text-xs leading-snug text-attentie-ink">
+          {t("kalender.weigeringEerstTerugdraaien")}
+        </p>
       )}
 
       {doelen.length > 0 && (
@@ -225,6 +252,16 @@ function Bewerkpaneel({
               </option>
             ))}
           </select>
+          {/* The consequence, stated where the action is taken and BEFORE it is taken.
+              A move is not reversible: putting the thema back restores the date and nothing else, so the AI
+              motivation and any `aanvaard` decision are gone for good. Shown only for a placement that has
+              something to lose — for one that is already `Manueel` with no motivation, the sentence would be
+              false, and a warning that does not apply is how teachers learn to ignore warnings.
+              Deliberately not a confirmation dialog: the loss is small and local, unlike a delete. */}
+          {(plaatsing.aiMotivatie !== null || plaatsing.status !== "Manueel") && (
+            <p className="text-xs leading-snug text-ink-zacht">{t("kalender.verplaatsGevolg")}</p>
+          )}
+
           <Button
             type="button"
             size="sm"
@@ -238,7 +275,16 @@ function Bewerkpaneel({
           >
             {verplaats.isPending ? t("kalender.bezig") : t("kalender.verplaatsen")}
           </Button>
-          {verplaats.isError && <Foutmelding>{t("kalender.verplaatsMislukt")}</Foutmelding>}
+          {/* 400 means the teacher can fix it by choosing differently; anything else means the tool is broken
+              and telling them to "kies een periode" would send them round a loop that cannot succeed. The same
+              split the generation panel makes, for the same reason. */}
+          {verplaats.isError && (
+            <Foutmelding>
+              {verplaats.error instanceof ApiError && verplaats.error.status === 400
+                ? t("kalender.verplaatsMislukt")
+                : t("kalender.verplaatsOnbeschikbaar")}
+            </Foutmelding>
+          )}
         </div>
       )}
 
@@ -264,10 +310,17 @@ function Bewerkpaneel({
         {vraagtBevestiging ? (
           <>
             {/* Names the thema AND the period, which is what makes the un-guarded endpoint safe to expose:
-                the teacher cannot be unaware of which object is about to go. */}
+                the teacher cannot be unaware of which object is about to go.
+                A stale placement has no period, so it names the **stored date** instead. Not cosmetic: the
+                unique index is (JaarplanId, ThemaId, BlokNiveau, BlokStart), so the same thema can be stale at
+                two vanished dates, and without the date both cards would raise a byte-identical question for
+                two different unrecoverable deletions. */}
             <p role="alert" className="text-xs font-semibold leading-snug text-ink">
               {plaatsing.blokOrdinaal === null
-                ? t("kalender.verwijderVraagVervallen", { thema: plaatsing.themaNaam })
+                ? t("kalender.verwijderVraagVervallen", {
+                    thema: plaatsing.themaNaam,
+                    datum: formatteerDatum(plaatsing.blokStart),
+                  })
                 : t("kalender.verwijderVraag", {
                     thema: plaatsing.themaNaam,
                     ordinaal: plaatsing.blokOrdinaal,

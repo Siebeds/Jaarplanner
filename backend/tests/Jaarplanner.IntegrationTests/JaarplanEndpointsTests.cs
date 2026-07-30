@@ -261,6 +261,50 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
                 new { blokStart })).StatusCode);
     }
 
+    /// <summary>
+    /// <b>A rejected placement is refused a move, over HTTP</b> — the one transition in this endpoint with a
+    /// <i>dekking</i> consequence. Under the binding reading in <c>backlog/E5-dekking-export.md</c> only
+    /// <c>aanvaard</c>/<c>manueel</c> count as placed (Art. V.1), so converting a rejection to <c>manueel</c> by
+    /// dragging would move a thema from "not taught" to "taught" in an inspectie-facing figure with no teacher
+    /// decision behind it. The way back stays the explicit status PUT.
+    /// </summary>
+    [Fact]
+    public async Task Een_geweigerde_plaatsing_verplaatsen_geeft_400_en_de_weigering_blijft_staan()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+        _factory.AiAntwoord =
+            $"{{\"plaatsingen\":[{{\"blokStart\":\"{blokStart:yyyy-MM-dd}\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}}]}}";
+
+        await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        var plan = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        var plaatsingId = Assert.Single(plan!.Plaatsingen).Id;
+
+        var weiger = await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/status", new { status = "Geweigerd" });
+        Assert.Equal(HttpStatusCode.OK, weiger.StatusCode);
+
+        var rooster = await client.GetFromJsonAsync<RoosterDto>($"/api/schooljaren/{plan.SchooljaarId}/rooster");
+        var doel = rooster!.Blokken.First(b => b.Start != blokStart);
+
+        var verplaats = await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/blok", new { blokStart = doel.Start });
+        Assert.Equal(HttpStatusCode.BadRequest, verplaats.StatusCode);
+
+        // The rejection stands, in its original period.
+        var na = Assert.Single((await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan"))!.Plaatsingen);
+        Assert.Equal("Geweigerd", na.Status);
+        Assert.Equal(blokStart, na.BlokStart);
+
+        // And the explicit route out still works: reverse the rejection, then the move is allowed.
+        await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/status", new { status = "Manueel" });
+        var opnieuw = await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/blok", new { blokStart = doel.Start });
+        Assert.Equal(HttpStatusCode.OK, opnieuw.StatusCode);
+        Assert.Equal(doel.Start, Assert.Single((await opnieuw.Content.ReadFromJsonAsync<JaarplanDto>())!.Plaatsingen).BlokStart);
+    }
+
     [Fact]
     public async Task Voorgesteld_terugzetten_geeft_400()
     {

@@ -31,8 +31,13 @@ periods, the genuine 2026-2027 Belgian calendar).
 Dragged the grip of **"Ik en mijn klas"** from Periode 1 onto the empty Periode 4, with 25 intermediate pointer
 moves.
 
-- **During** the gesture Periode 4 read `Nog niets gepland` + **`Hierheen verplaatsen`**, and its border turned
-  to the attentie hue.
+- **During** the gesture Periode 4 read `Nog niets gepland` + **`Hierheen verplaatsen`**.
+
+  > *Correction (antagonist audit).* This line originally added "and its border turned to the attentie hue".
+  > That was not measured and is not what the code paints: Periode 4 was **empty**, and the attentie border
+  > requires the te-vol preview (`gepland.length + 1 >= 3`), so an empty drop target paints `border-petrol`.
+  > §2 below is the attentie case and does quote the measured `rgb`. A detail asserted from expectation rather
+  > than observation is the same defect as a wrong contrast figure, in a report whose whole job is evidence.
 - **After** the drop: Periode 1 empty, Periode 4 holds the thema, status **`Manueel`**, motivation gone.
 - **After a full page reload:** unchanged. `Periode 4: Ik en mijn klas / Manueel / no "Waarom hier?"`,
   `Periode 1: leeg`. This is the FR-6.5 half a mutation test cannot prove — it went to Postgres and came back.
@@ -88,6 +93,8 @@ failures twice that way. Every value below is composited over its real painted b
 | Element | Measured | Floor | |
 | --- | --- | --- | --- |
 | `Ja, verwijderen` (white on `attentie-ink`) | **9.93:1** | 4.5 | ✅ |
+| …its hover state (`brightness-110`) | 8.98:1 | 4.5 | ✅ |
+| *(rejected alternative)* white on `attentie` | **4.53:1** | 4.5 | ⚠️ passes by 0.03 |
 | Period picker, text | 15.42:1 | 4.5 | ✅ |
 | Period picker, **border** (`border-ink-zacht`) | **6.08:1** | 3.0 | ✅ |
 | `Aanpassen` disclosure (petrol on card) | 8.90:1 | 4.5 | ✅ |
@@ -101,10 +108,64 @@ The last row is E7-10's known app-wide `--input` failure, reproduced at exactly 
 the backlog. Every token **this story authored** passes; the picker avoids the broken token on purpose. The new
 `variant="outline"` buttons inherit it, which is logged on E7-10 as added instances.
 
+> *Correction (antagonist audit).* The `attentie` row was first reported as **4.31:1 — fails**, and used as the
+> justification for the `destructive` variant. It is **4.53:1 and passes**; the error was an arithmetic slip in
+> the green channel, and it reached three backlog entries and a commit message before the audit re-derived it.
+> `attentie-ink` is still the right choice, on margin (0.03 is not a margin) and hierarchy — but the reason had
+> to be restated rather than the figure quietly swapped.
+
 ### 6. 390px ✅
 
 Card 266px wide, **zero** elements overflowing it, all controls ≥36px tall, the picker not overlapping its own
 label, and the confirmation question wrapping to three readable lines.
+
+## Round 2 — the audit fixes, in the browser (2026-07-30)
+
+Re-run after the 12 antagonist findings were addressed. Gates first: **455 unit + 92 integration** (0 skipped),
+**98 frontend** (was 87), lint/tsc/build/format clean.
+
+### 7. A rejected placement offers no way to move it ✅
+
+Rejected `Licht en donker` through the API (there is no UI route to *make* a rejection on this screen), reloaded,
+opened its panel:
+
+| | |
+| --- | --- |
+| drag grip present | **no** |
+| period picker present | **no** |
+| says *"Draai hieronder eerst de weigering terug"* | **yes** |
+| offers `Weigering terugdraaien` | **yes** |
+
+So the transition that would have silently granted dekking is unreachable from the UI, and the server refuses it
+independently (400, asserted at service and endpoint level). The explained route out is the only route.
+
+### 8. The irreversibility disclosure ✅
+
+A normal card's panel shows *"…de motivatie van de AI verdwijnt. Dat kan je niet terugdraaien."* above the
+`Verplaatsen` button, with the picker still present. Suppressed on a card with nothing to lose (tested in Vitest).
+
+### 9. A dead tool is told apart from a refused move ✅ — and the defect was reproduced first
+
+**The 93 console errors from round 1 turned out to be the evidence for finding 10.** They are all proxy 500s from
+the window when the API process had died (the API log carries **zero** errors across 859 lines and both
+instances, so nothing reached the application) — including one on `PUT …/blok`. Under the round-1 code that 500
+rendered *"Het thema kon niet verplaatst worden. **Kies een periode uit dit jaarplan.**"*: a teacher told to fix a
+choice, in front of a tool that was simply not running.
+
+Re-tested deliberately, with the API stopped:
+
+> Verplaatsen is nu niet beschikbaar. Er is niets gewijzigd aan je jaarplan. Meld dit aan de beheerder van de tool.
+
+and *not* the "kies een periode" copy, and with no server or proxy text echoed. Same 422-vs-5xx discipline the
+generation panel has had since E3-01.
+
+### Not verified in round 2, stated so it is not assumed
+
+The restructured stale notice (`role="region"` + `sr-only role="status"`) could **not** be exercised in the
+browser: the demo seeder deliberately seeds no stale placement, so `TeHerzien` never rendered. It is covered by
+two Vitest assertions (the region is found by its accessible name; the status line carries the count sentence).
+The nesting defect is fixed by construction, but **no screen reader has been run over it** — `axe` cannot judge
+announcement behaviour, and that remains the one open item on this story.
 
 ## The criterion that is not a pass
 

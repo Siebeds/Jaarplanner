@@ -262,9 +262,21 @@ public sealed class JaarplanGeneratieService
     /// <para>
     /// <b>Works on a locked placement, and does not clear the lock.</b> Art. IX.3 scopes <c>vergrendeld</c> to
     /// "excluded from <i>regeneration</i>" — it is not a teacher-proof latch, and a teacher who locks a thema and
-    /// then decides it belongs a period later is doing something the flag never spoke to. Moving it is also
-    /// reversible (drag it back), unlike <see cref="VerwijderPlaatsingAsync"/>, which is why no confirmation is
-    /// required for a move.
+    /// then decides it belongs a period later is doing something the flag never spoke to.
+    /// </para>
+    /// <para>
+    /// <b>A move is not reversible, and this method no longer claims it is.</b> An earlier revision justified leaving
+    /// a move unconfirmed on the grounds that the teacher could drag it back; that restores only the date, while the
+    /// AI motivation and any <c>Aanvaard</c> decision are gone for good (see <see cref="Themaplaatsing.VerplaatsNaar"/>).
+    /// The compensating control is disclosure in the picker rather than a confirmation dialog: a move is a small
+    /// unrecoverable edit, where a delete is a total one.
+    /// </para>
+    /// <para>
+    /// <b>A <c>geweigerd</c> placement is refused.</b> Moving it would silently turn a teacher's rejection into
+    /// <c>manueel</c>, and that is the one transition here with a <b>dekking</b> consequence: under the binding
+    /// reading recorded in <c>backlog/E5-dekking-export.md</c>, only <c>aanvaard</c>/<c>manueel</c> placements count
+    /// as placed (Art. V.1), so a sideways nudge would flip a thema from "not taught" to "taught" in the figure an
+    /// onderwijsinspectie is shown. The teacher reverses a rejection through the control that explains it.
     /// </para>
     /// </summary>
     /// <returns>The updated plan, so a caller need not re-fetch it.</returns>
@@ -297,8 +309,19 @@ public sealed class JaarplanGeneratieService
                 $"{Datum(doelBlokStart)} is geen begin van een periode in dit schooljaar. Kies een periode uit het jaarplan.");
         }
 
-        // Nothing to do, and saying so beats a 200 that pretends a move happened. Checked before the duplicate guard
-        // below, which would otherwise report the placement as colliding with itself.
+        // Refused rather than silently converted to `manueel` — the one transition here that would change dekking.
+        // Checked before the no-op test below, so that even dropping a rejected card back where it started is
+        // answered with the instruction rather than a 200 that teaches the gesture is available.
+        if (plaatsing.Status == KoppelingStatus.Geweigerd)
+        {
+            throw new OngeldigeVerplaatsingFout(
+                "Dit thema is geweigerd. Draai de weigering eerst terug als je het toch wil plannen.");
+        }
+
+        // A move to the period it already occupies changes nothing, so nothing is written and the unchanged plan is
+        // returned. Deliberately NOT an error: dropping a card back where it started is a normal gesture, and it must
+        // not cost a standing AI proposal its status and motivation. Checked before the duplicate guard below, which
+        // would otherwise report the placement as colliding with itself.
         if (plaatsing.BlokStart != doelBlokStart)
         {
             // A block holds several thema's (Art. IX.3), so only the same thema twice in the same block is refused —

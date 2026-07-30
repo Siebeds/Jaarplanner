@@ -191,7 +191,17 @@ describe("Jaarplankalender", () => {
     );
     renderKalender();
 
-    const melding = await screen.findByRole("alert");
+    // A labelled `region`, not an `alert`, since E3-07 (see `TeHerzien`): the notice now contains interactive
+    // controls and a nested alert, and nesting live regions has undefined announcement behaviour. The
+    // announcement moved to an sr-only `role="status"` line, asserted separately below.
+    const melding = await screen.findByRole("region", {
+      name: t("kalender.herzienTitelEnkelvoud"),
+    });
+
+    // The count sentence is still announced, just by a small live region instead of the whole notice.
+    expect(within(melding).getByRole("status")).toHaveTextContent(
+      t("kalender.herzienTitelEnkelvoud"),
+    );
 
     // The thema is named, not merely counted — a teacher must see which plan item needs attention.
     expect(melding).toHaveTextContent("Feesten in december");
@@ -376,9 +386,11 @@ describe("Jaarplankalender", () => {
     const { container } = renderKalender();
 
     await screen.findByText("Water");
-    // Premises for this test's reach: the te-vol flag and the stale alert are actually on screen.
+    // Premises for this test's reach: the te-vol flag and the stale notice are actually on screen.
     expect(within(periodes()).getByText(/Te vol/)).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: t("kalender.herzienTitelEnkelvoud") }),
+    ).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -576,6 +588,138 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
       expect(verzoeken[0].method).toBe("DELETE");
     },
   );
+
+  it("refuses to move a REJECTED placement, because that would grant it dekking", async () => {
+    // The story built an explicit, explained control for reversing a rejection — and a drag did the same
+    // transition silently. It is the one transition here with an Art. V.1 consequence: only aanvaard/manueel
+    // placements count as placed, so a sideways nudge would flip a thema from "not taught" to "taught" in the
+    // figure an onderwijsinspectie is shown. Caught by the E3-07 antagonist audit.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Geweigerd" }),
+    ]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    // No picker at all, and the reason is on screen rather than left to a failed attempt.
+    expect(within(kaart("Water")).queryByLabelText(t("kalender.verplaatsNaar"))).toBeNull();
+    expect(
+      within(kaart("Water")).getByText(t("kalender.weigeringEerstTerugdraaien")),
+    ).toBeInTheDocument();
+
+    // No drag grip either: a grip whose every drop is refused is a control that does nothing.
+    expect(kaart("Water").querySelector('span[role="presentation"]')).toBeNull();
+
+    // The explained route out is still offered, and it is the only thing that fires a request.
+    fireEvent.click(
+      within(kaart("Water")).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
+    );
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].url).toMatch(/\/status$/);
+  });
+
+  it("discloses that a move is not reversible, before the move", async () => {
+    // The first version justified leaving a move unconfirmed on the grounds it was reversible. It is not:
+    // moving back restores the date only, while the AI motivation and any `Aanvaard` decision are gone.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    expect(within(kaart("Water")).getByText(t("kalender.verplaatsGevolg"))).toBeInTheDocument();
+  });
+
+  it("does not warn about losing something a card has nothing to lose", async () => {
+    // A warning that does not apply is how teachers learn to ignore warnings: an already-manual placement with
+    // no motivation loses nothing a move could take.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Manueel", aiMotivatie: null }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    expect(within(kaart("Water")).queryByText(t("kalender.verplaatsGevolg"))).toBeNull();
+    // The picker is still there — this is about the warning, not the action.
+    expect(within(kaart("Water")).getByLabelText(t("kalender.verplaatsNaar"))).toBeInTheDocument();
+  });
+
+  it("names the stored date when confirming the delete of a STALE placement", async () => {
+    // The unique index is (JaarplanId, ThemaId, BlokNiveau, BlokStart), so the same thema can be stale at two
+    // vanished dates. Without the date both cards would raise a byte-identical question for two different
+    // unrecoverable deletions — the exact failure the "name the thema and the period" clause guards against.
+    const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p1",
+        themaNaam: "Feesten",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Aanvaard",
+      }),
+      maakPlaatsing({
+        id: "p2",
+        themaNaam: "Feesten",
+        blokStart: "2027-01-11",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Aanvaard",
+      }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await waitFor(() => expect(screen.getAllByText("Feesten")).toHaveLength(2));
+
+    const kaarten = screen.getAllByText("Feesten").map((h) => h.closest("article") as HTMLElement);
+    for (const kaartEl of kaarten) {
+      fireEvent.click(
+        within(kaartEl).getByRole("button", {
+          name: t("kalender.aanpassenLabel", { thema: "Feesten" }),
+        }),
+      );
+      fireEvent.click(
+        within(kaartEl).getByRole("button", { name: t("kalender.uitJaarplanHalen") }),
+      );
+    }
+
+    const vragen = kaarten.map(
+      (kaartEl) =>
+        [...kaartEl.querySelectorAll("p")].find((p) => p.getAttribute("role") === "alert")
+          ?.textContent ?? "",
+    );
+
+    // Both name a date, and the two questions differ — which is the whole point.
+    expect(vragen[0]).toContain("1 dec");
+    expect(vragen[1]).toContain("11 jan");
+    expect(vragen[0]).not.toEqual(vragen[1]);
+  });
+
+  it("tells an unavailable tool apart from a refused move", async () => {
+    // A 500 with "kies een periode uit dit jaarplan" sends the teacher round a loop that cannot succeed. The
+    // generation panel already makes this split; the move path was making the mistake that panel warns about.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    stubBewerking(plan, plan, 500);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.change(within(kaart("Water")).getByLabelText(t("kalender.verplaatsNaar")), {
+      target: { value: "2026-11-09" },
+    });
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.verplaatsen") }));
+
+    expect(await screen.findByText(t("kalender.verplaatsOnbeschikbaar"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.verplaatsMislukt"))).toBeNull();
+  });
 
   it("lets a teacher reverse a rejection", async () => {
     // E3-01 discovered that `Geweigerd` makes a placement non-replaceable, so a rejection survived every

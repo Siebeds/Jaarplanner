@@ -9,7 +9,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 import { Button } from "../../components/ui/button";
 import { t, tAantal } from "../../i18n";
@@ -19,6 +19,7 @@ import { Periodekolom, Vakantiegat } from "./Periodekolom";
 import { Spreidingsoverzicht } from "./Spreidingsoverzicht";
 import { Sleepkaart, Themakaart } from "./Themakaart";
 import {
+  bepaalVerplaatsing,
   bouwRibbon,
   formatteerDatum,
   geplandeIn,
@@ -127,16 +128,12 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
     setSleepKaart(null);
 
     const { active, over } = event;
-    if (!over) {
-      return; // Dropped outside every period: nothing happens, and nothing is guessed.
-    }
-
     const kaart = active.data.current?.plaatsing as Themaplaatsing | undefined;
-    const doelStart = String(over.id);
 
-    // A card dropped back where it started is a no-op. Skipped here as well as server-side, so the gesture does
-    // not cost a standing AI proposal its `voorgesteld` status and its motivation for nothing.
-    if (kaart && kaart.blokStart === doelStart) {
+    // Every "should this drop do anything?" branch lives in `bepaalVerplaatsing`, which is unit-tested. This
+    // handler only translates the dnd-kit event into its arguments and fires the mutation.
+    const doelStart = bepaalVerplaatsing(kaart, over ? String(over.id) : undefined);
+    if (doelStart === null) {
       return;
     }
 
@@ -363,6 +360,15 @@ function Melding({ soort, children }: { soort: "rustig" | "fout"; children: Reac
  * placement sits in none, so none is excluded). Dragging works too: these cards are inside the same
  * `DndContext` as the board below. What the application still never does is *choose* a period — clause 1 of
  * the ruling — so nothing here is pre-selected.
+ *
+ * **It is a labelled `region` with one small `status` line, not one big `alert` — changed in E3-07.** E3-06 could
+ * make the whole notice `role="alert"` because it was inert text. It now holds a select, several buttons per card
+ * and the confirmation for an unrecoverable delete (itself an `alert`), and a live region nested inside a live
+ * region has no defined behaviour: the outer one can re-announce its entire contents every time a panel opens, and
+ * the inner one — the delete confirmation — is the message most likely to be swallowed. So the announcement lives
+ * in a `role="status"` element carrying just the count sentence, and the container is a plain labelled region a
+ * screen-reader user can navigate into. **Still not dismissible:** there is no close control anywhere in it, which
+ * is what the ruling actually requires and what the test pins.
  */
 function TeHerzien({
   plaatsingen,
@@ -373,13 +379,28 @@ function TeHerzien({
   klasId: string;
   blokken: readonly Planningsblok[];
 }) {
+  const titelId = useId();
+  const titel = tAantal(
+    plaatsingen.length,
+    "kalender.herzienTitelEnkelvoud",
+    "kalender.herzienTitel",
+  );
+
   return (
-    <div role="alert" className="rounded-lg border-2 border-attentie bg-attentie-zacht p-4 sm:p-5">
-      <h3 className="text-base font-bold text-attentie-ink">
+    <div
+      role="region"
+      aria-labelledby={titelId}
+      className="rounded-lg border-2 border-attentie bg-attentie-zacht p-4 sm:p-5"
+    >
+      {/* The announcement, and only the announcement: the count sentence without the controls under it. */}
+      <p role="status" className="sr-only">
+        {titel}
+      </p>
+      <h3 id={titelId} className="text-base font-bold text-attentie-ink">
         <span aria-hidden="true">▲</span>{" "}
         {/* Via the shared helper rather than an inline ternary: the same singular/plural bug turned up in
             five separate strings before `tAantal` existed, and each was fixed on its own. */}
-        {tAantal(plaatsingen.length, "kalender.herzienTitelEnkelvoud", "kalender.herzienTitel")}
+        {titel}
       </h3>
       <p className="mt-1.5 max-w-3xl text-sm leading-snug text-attentie-ink">
         {t("kalender.herzienUitleg")}

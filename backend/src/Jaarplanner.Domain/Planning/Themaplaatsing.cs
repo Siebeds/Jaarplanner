@@ -151,6 +151,22 @@ public sealed class Themaplaatsing
     /// it argued for a placement the teacher overruled.
     /// </para>
     /// <para>
+    /// <b>A move is therefore NOT reversible, and the UI must say so.</b> An earlier revision of this type and of
+    /// <c>VerplaatsPlaatsingAsync</c> claimed a move was safe to leave unconfirmed because the teacher could "drag it
+    /// back". Dragging back restores <see cref="BlokStart"/> and <b>nothing else</b>: the motivation stays null
+    /// forever, and an <see cref="KoppelingStatus.Aanvaard"/> decision is gone. In a codebase with no soft delete and
+    /// no audit trail that makes a move a small unrecoverable edit, not a free one — which is why the picker
+    /// discloses the consequence before it happens (found by the E3-07 antagonist audit; the same worklog asserted
+    /// both "destroyed, not archived" and "reversible" two decisions apart).
+    /// </para>
+    /// <para>
+    /// <b>A <see cref="KoppelingStatus.Geweigerd"/> placement is not moved through here.</b> The caller refuses it,
+    /// because this method would convert a rejection into <see cref="KoppelingStatus.Manueel"/> — the one status
+    /// transition in the feature with a <i>dekking</i> consequence (Art. V.1: a rejected placement teaches nothing,
+    /// a manual one does). Reversing a rejection is a decision the teacher takes explicitly, through the control
+    /// that explains it, never as a side effect of a drag.
+    /// </para>
+    /// <para>
     /// A <i>stale</i> placement is moved through this same method, which is the whole re-placement route: nothing
     /// here requires the current <see cref="BlokStart"/> to still be a block boundary. Validating that the
     /// <b>target</b> is one belongs to the service, which is the only layer holding the derived grid.

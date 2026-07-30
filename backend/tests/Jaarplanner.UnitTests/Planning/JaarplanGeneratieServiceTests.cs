@@ -830,6 +830,54 @@ public sealed class JaarplanGeneratieServiceTests
     }
 
     /// <summary>
+    /// <b>A rejected placement is not moved, because moving it would grant dekking it must not have.</b>
+    /// <para>
+    /// This is the only status transition in the move path with an Art. V.1 consequence: under the binding reading in
+    /// <c>backlog/E5-dekking-export.md</c> only <c>aanvaard</c>/<c>manueel</c> placements count as *placed*, so
+    /// converting a rejection to <c>manueel</c> would flip the thema from "not taught" to "taught" in the figure the
+    /// onderwijsinspectie is shown — as a side effect of a drag, with no teacher decision. Found by the E3-07
+    /// antagonist audit: the story built an explicit, explained control for reversing a rejection and then let a drag
+    /// do the same thing silently.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_geweigerde_plaatsing_verplaatsen_wordt_geweigerd_en_verandert_geen_dekking()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var herfst = Herfst();
+
+        var jaarplan = new Jaarplan(klas.Id);
+        var geweigerd = jaarplan.VoegPlaatsingToe(
+            herfst.Id, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Geweigerd, "afgewezen");
+
+        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [herfst], jaarplan);
+        var service = new JaarplanGeneratieService(new FakeAiClient(), Indeling, opslag);
+
+        await Assert.ThrowsAsync<OngeldigeVerplaatsingFout>(
+            () => service.VerplaatsPlaatsingAsync(klas.Id, geweigerd.Id, blokken[1].Start));
+
+        // Nothing moved, the rejection stands, and nothing was written.
+        Assert.Equal(blokken[0].Start, geweigerd.BlokStart);
+        Assert.Equal(KoppelingStatus.Geweigerd, geweigerd.Status);
+        Assert.False(geweigerd.IsGepland);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+
+        // Refused even for a drop back onto its own period, so the gesture is never taught as available. Without
+        // this ordering the no-op branch would answer 200 and the card would look draggable.
+        await Assert.ThrowsAsync<OngeldigeVerplaatsingFout>(
+            () => service.VerplaatsPlaatsingAsync(klas.Id, geweigerd.Id, blokken[0].Start));
+
+        // The explicit route out is still open: the teacher reverses the rejection, and *then* it can move.
+        await service.WijzigPlaatsingStatusAsync(klas.Id, geweigerd.Id, KoppelingStatus.Manueel);
+        var na = Assert.Single(
+            (await service.VerplaatsPlaatsingAsync(klas.Id, geweigerd.Id, blokken[1].Start)).Plaatsingen);
+        Assert.Equal(blokken[1].Start, na.BlokStart);
+        Assert.Equal("Manueel", na.Status);
+    }
+
+    /// <summary>
     /// A locked placement can still be moved by the teacher, and stays locked. Art. IX.3 scopes <c>vergrendeld</c> to
     /// "excluded from <i>regeneration</i>" — it is not a latch against its own owner, and clearing it as a side effect
     /// of a drag would silently expose the thema to the next run.

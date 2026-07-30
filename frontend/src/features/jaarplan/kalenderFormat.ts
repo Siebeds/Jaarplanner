@@ -120,6 +120,43 @@ export function plaatsingenIn(
 }
 
 /**
+ * What a drop should do, decided from the dragged placement and the block it was released over.
+ *
+ * Extracted from the component so the three branches that matter can be tested without a browser. `jsdom` gives
+ * every element a zero-sized rect and dnd-kit resolves drops by measuring rects, so the *gesture* cannot be
+ * simulated there — but that is no reason to leave this **logic** unpinned, which is what the E3-07 antagonist
+ * audit caught. It is plain data in, plain data out.
+ *
+ * @param plaatsing the dragged placement, or `undefined` if the draggable carried no payload.
+ * @param doelBlokStart the released-over block's start date, or `undefined` when released over nothing.
+ * @returns the block start date to move to, or `null` when the drop must change nothing.
+ */
+export function bepaalVerplaatsing(
+  plaatsing: Themaplaatsing | undefined,
+  doelBlokStart: string | undefined,
+): string | null {
+  // Released outside every period. Nothing happens, and above all nothing is guessed — the application never
+  // picks a period on the teacher's behalf (directie 2026-07-28).
+  if (doelBlokStart === undefined || plaatsing === undefined) {
+    return null;
+  }
+
+  // Dropped back where it started. A no-op rather than a move, so the gesture cannot cost a standing AI proposal
+  // its `Voorgesteld` status and its motivation for nothing.
+  if (plaatsing.blokStart === doelBlokStart) {
+    return null;
+  }
+
+  // A rejected placement is never moved: that would turn the teacher's rejection into `Manueel` and hand the
+  // thema dekking it must not have (Art. V.1). The server refuses it too; this stops the request being made.
+  if (plaatsing.status === "Geweigerd") {
+    return null;
+  }
+
+  return doelBlokStart;
+}
+
+/**
  * Placements that belong to no current block — the school edited its vakanties and these now point at
  * a date that is not a period boundary.
  *

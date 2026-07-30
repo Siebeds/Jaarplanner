@@ -84,10 +84,17 @@ board still shows it in its old column, which reads as failure. An *optimistic* 
 the application guessing where a thema went, which is the one thing the stale-placement ruling forbids.
 
 **7. `destructive` button = `attentie-ink`, not a new red.** Art. XII spends six hues on doelsoort and more on
-suggestiestatus, so chrome gets petrol plus one attention hue. White on `attentie` measures **4.31:1** — under
-the 4.5:1 floor for 14px text — so the darker `attentie-ink` carries it at **9.93:1** (both hand-computed, then
-confirmed in the browser). Hover lightens the fill rather than swapping to `attentie`, because a contrast
-failure that exists only under the pointer is still one, and it is the state the teacher clicks in.
+suggestiestatus, so chrome gets petrol plus one attention hue; a bespoke red would be the second chrome accent.
+`attentie-ink` rather than `attentie` on **margin and hierarchy**: white on `attentie-ink` is **9.93:1**, white
+on `attentie` is **4.53:1** — a pass, but by 0.03, and E7-10's own entry rules that a value clearing a threshold
+by hundredths is too thin to cite as evidence later. It also reads heavier than the warning tint beside it,
+which is right for the card's one irreversible action. Hover measures 8.98:1.
+
+> **Correction (antagonist audit).** This paragraph originally said white on `attentie` measured **4.31:1** and
+> therefore *failed*, presented as hand-computed and browser-confirmed. It was neither: an arithmetic slip in
+> the green channel, repeated into three backlog entries and a commit message. The real figure is 4.53:1. The
+> decision was right and no WCAG failure shipped, but the *evidence* was false in a repo whose contrast figures
+> are cited as precedent — the category this backlog has already had to retract twice. Re-derived twice since.
 
 **8. The one place boldness was spent: the board answers "is there room here?" *during* the gesture.** A hovered
 period that the incoming thema would tip over the te-vol threshold says so before the drop, with the ▲ and the
