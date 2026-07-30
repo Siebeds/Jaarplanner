@@ -95,11 +95,17 @@ public static class JaarplanGeneratiePromptBuilder
     /// </param>
     /// <param name="themas">The school's own thema's (Art. IX.2) — the only content the model may place.</param>
     /// <returns>The grounded request (system + user prompt), ready for the AI client seam.</returns>
+    /// <param name="parameters">
+    /// What the teacher asked for before the run (FR-5.4). Omitted from the prompt entirely when empty, so a run
+    /// without parameters produces byte-for-byte the prompt it produced before this story existed — which is what
+    /// keeps the existing snapshot test meaningful rather than merely updated.
+    /// </param>
     public static AiRequest Bouw(
         Klas klas,
         Schooljaar schooljaar,
         IReadOnlyCollection<Planningsblok> blokken,
-        IReadOnlyCollection<Thema> themas)
+        IReadOnlyCollection<Thema> themas,
+        JaarplanGeneratieParameters? parameters = null)
     {
         ArgumentNullException.ThrowIfNull(klas);
         ArgumentNullException.ThrowIfNull(schooljaar);
@@ -109,7 +115,8 @@ public static class JaarplanGeneratiePromptBuilder
         return new AiRequest
         {
             SystemPrompt = SystemPrompt,
-            UserPrompt = BouwUserPrompt(klas, schooljaar, blokken, themas),
+            UserPrompt = BouwUserPrompt(
+                klas, schooljaar, blokken, themas, parameters ?? JaarplanGeneratieParameters.Geen),
         };
     }
 
@@ -117,7 +124,8 @@ public static class JaarplanGeneratiePromptBuilder
         Klas klas,
         Schooljaar schooljaar,
         IReadOnlyCollection<Planningsblok> blokken,
-        IReadOnlyCollection<Thema> themas)
+        IReadOnlyCollection<Thema> themas,
+        JaarplanGeneratieParameters parameters)
     {
         var sb = new StringBuilder();
 
@@ -127,7 +135,64 @@ public static class JaarplanGeneratiePromptBuilder
         sb.Append(Nl);
         SchrijfThemas(sb, themas);
 
+        // Last, and only when there is something to say. Placed after the data it refers to so the model reads the
+        // thema names and block dates before the constraints that cite them.
+        if (!parameters.IsLeeg)
+        {
+            sb.Append(Nl);
+            SchrijfParameters(sb, parameters, blokken);
+        }
+
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// The teacher's own pre-generation instructions (FR-5.4). Note what this section does <b>not</b> contain:
+    /// vakanties. They are already expressed in the block list above, because blocks are derived from them and never
+    /// span one (ADR-0020) — restating them as prose would invite the model to reason about holidays that the grid
+    /// has already removed from consideration.
+    /// </summary>
+    private static void SchrijfParameters(
+        StringBuilder sb,
+        JaarplanGeneratieParameters parameters,
+        IReadOnlyCollection<Planningsblok> blokken)
+    {
+        Line(sb, "# Wat de leerkracht vooraf vraagt");
+        Line(sb, string.Empty);
+
+        // One line per requested thema, each naming its OWN block. An earlier revision joined them into a single
+        // sentence naming one block, which told the model to put several 4–6 week thema's in one themaperiode —
+        // contradicting the system prompt's "use as many different blocks as possible" and its own fit rule.
+        var startthemas = parameters.GenormaliseerdeStartthemas();
+        var geordend = blokken.OrderBy(b => b.Start).ToList();
+        for (var i = 0; i < startthemas.Count && i < geordend.Count; i++)
+        {
+            Line(
+                sb,
+                $"- Plaats het thema \"{startthemas[i]}\" in het blok met startdatum " +
+                $"{Datum(geordend[i].Start)}.");
+        }
+
+        foreach (var moment in parameters.VasteMomenten.OrderBy(m => m.Datum).ThenBy(m => m.Naam, StringComparer.Ordinal))
+        {
+            if (moment.BlokkeertPlaatsing)
+            {
+                // Stated as a prohibition AND enforced by the service afterwards. The prompt asks so the model can
+                // produce a usable plan in one pass; the service enforces so a model that ignores the ask cannot
+                // put a thema in a period the teacher already spent.
+                Line(
+                    sb,
+                    $"- Op {Datum(moment.Datum)} is er \"{moment.Naam}\". Plaats GEEN thema in het blok waarin " +
+                    "die datum valt: die periode is al bezet.");
+            }
+            else
+            {
+                Line(
+                    sb,
+                    $"- Op {Datum(moment.Datum)} is er \"{moment.Naam}\". Houd er rekening mee dat die periode " +
+                    "daardoor minder tijd heeft, maar je mag er wel een thema plaatsen.");
+            }
+        }
     }
 
     private static void SchrijfKlas(StringBuilder sb, Klas klas, Schooljaar schooljaar)

@@ -72,10 +72,21 @@ public sealed class JaarplanController : ControllerBase
     /// (a bad request, a missing thema), which this one is not.
     /// </para>
     /// </summary>
+    /// <param name="klasId">The class to generate for.</param>
+    /// <param name="parameters">
+    /// Optional pre-generation parameters (FR-5.4, E3-04): gewenste startthema's and vaste momenten. The body may be
+    /// omitted entirely — a plain POST generates exactly as it did before this story, which keeps the existing
+    /// callers (and the E3-02 kalender button) working unchanged. Vakanties are deliberately not accepted: they are
+    /// schooljaar data and the derived grid already honours them.
+    /// </param>
+    /// <param name="cancellationToken">Cancels an in-flight call.</param>
     [HttpPost("generatie")]
-    public async Task<ActionResult<JaarplanGeneratieResultaat>> Genereer(Guid klasId, CancellationToken cancellationToken)
+    public async Task<ActionResult<JaarplanGeneratieResultaat>> Genereer(
+        Guid klasId,
+        [FromBody] JaarplanGeneratieParameters? parameters,
+        CancellationToken cancellationToken)
     {
-        var resultaat = await _service.GenereerAsync(klasId, cancellationToken);
+        var resultaat = await _service.GenereerAsync(klasId, parameters, cancellationToken);
 
         return resultaat.IsGeslaagd
             ? Ok(resultaat)

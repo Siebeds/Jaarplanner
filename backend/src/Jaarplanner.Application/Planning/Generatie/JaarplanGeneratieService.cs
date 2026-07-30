@@ -71,13 +71,21 @@ public sealed class JaarplanGeneratieService
     /// Art. IV.1/IV.2/IV.5). Never auto-applies, and persists nothing when the response is invalid.
     /// </summary>
     /// <param name="klasId">The class to generate for.</param>
+    /// <param name="parameters">
+    /// What the teacher asked for before the run (FR-5.4) — gewenste startthema's and vaste momenten. <c>null</c> or
+    /// empty generates exactly as before. Vakanties are deliberately not accepted here; see
+    /// <see cref="JaarplanGeneratieParameters"/> for why the schooljaar remains their single source of truth.
+    /// </param>
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     /// <returns>A success result carrying the reviewable plan, or an explicit failure with nothing persisted.</returns>
     /// <exception cref="SchoolcontentNietGevondenFout">The class does not exist.</exception>
     public async Task<JaarplanGeneratieResultaat> GenereerAsync(
         Guid klasId,
+        JaarplanGeneratieParameters? parameters = null,
         CancellationToken cancellationToken = default)
     {
+        parameters ??= JaarplanGeneratieParameters.Geen;
+
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
 
         // The grid comes from the seam. Nothing here knows how long a period is, or that periods exist at all
@@ -85,7 +93,7 @@ public sealed class JaarplanGeneratieService
         var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau);
         var themas = await _opslag.LaadThemasAsync(cancellationToken);
 
-        var request = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas);
+        var request = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas, parameters);
         var completion = await _aiClient.CompleteAsync(request, cancellationToken);
         var parse = JaarplanGeneratieResponseParser.Parse(completion);
 
@@ -111,10 +119,43 @@ public sealed class JaarplanGeneratieService
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var blokStarts = blokken.Select(b => b.Start).ToHashSet();
 
+        // Resolve every vast moment to the block that CONTAINS its date (FR-5.4). A date is resolved against the grid
+        // rather than supplied as a block key, so a teacher never has to know where a boundary falls; and a date in a
+        // vakantie or outside the year belongs to no block at all, which is reported rather than ignored — a teacher
+        // who blocked a period and saw nothing refused would otherwise assume it had been honoured.
+        //
+        // EVERY moment is reported, resolved or not, blocking or not. An earlier revision kept only the first name per
+        // period, so a second moment in the same period vanished from the report with no evidence it had been parsed —
+        // the same defect OnplaatsbareVasteMomenten exists to prevent, one case over.
+        var geblokkeerdeBlokken = new Dictionary<DateOnly, string>();
+        var toegepasteMomenten = new List<VastMomentUitkomst>();
+        var onplaatsbareMomenten = new List<VastMomentUitkomst>();
+        foreach (var moment in parameters.VasteMomenten.OrderBy(m => m.Datum).ThenBy(m => m.Naam, StringComparer.Ordinal))
+        {
+            var blok = blokken.FirstOrDefault(b => moment.Datum >= b.Start && moment.Datum <= b.Eind);
+            if (blok is null)
+            {
+                onplaatsbareMomenten.Add(
+                    new VastMomentUitkomst(moment.Naam, moment.Datum, moment.BlokkeertPlaatsing, BlokStart: null));
+                continue;
+            }
+
+            toegepasteMomenten.Add(
+                new VastMomentUitkomst(moment.Naam, moment.Datum, moment.BlokkeertPlaatsing, blok.Start));
+
+            if (moment.BlokkeertPlaatsing)
+            {
+                // The refusal sentence names one moment, because one reason explains a refusal; the full list above is
+                // what proves both were applied.
+                geblokkeerdeBlokken.TryAdd(blok.Start, moment.Naam);
+            }
+        }
+
         var onbekendeThemas = new List<string>();
         var onbekendeBlokken = new List<string>();
         var duplicaten = new List<string>();
         var afgewezen = new List<string>();
+        var geweigerdDoorVastMoment = new List<GeweigerdePlaatsing>();
         var nieuw = 0;
 
         foreach (var suggestie in parse.Plaatsingen)
@@ -128,6 +169,22 @@ public sealed class JaarplanGeneratieService
             if (!blokStarts.Contains(suggestie.BlokStart))
             {
                 onbekendeBlokken.Add(Datum(suggestie.BlokStart));
+                continue;
+            }
+
+            // The enforced half of FR-5.4. The prompt already asked the model to leave this period alone; this is what
+            // makes the parameter more than a request. It is NOT placed, and NOT relocated — moving it to a period the
+            // teacher never chose is what ADR-0020 forbids for stale placements.
+            //
+            // But unlike an unknown thema name or an unknown date, this proposal is fully RESOLVABLE: the thema
+            // exists, the block exists, and the model gave a motivatie. So the refusal keeps all of it, including the
+            // motivation, rather than reusing the drop-and-forget path. Throwing it away would leave a thema planned
+            // nowhere, lower the dekking Art. V exists to prove, and give the teacher nothing to act on.
+            if (geblokkeerdeBlokken.TryGetValue(suggestie.BlokStart, out var blokkerendMoment))
+            {
+                geweigerdDoorVastMoment.Add(
+                    new GeweigerdePlaatsing(
+                        thema.Naam, suggestie.BlokStart, blokkerendMoment, suggestie.Motivatie));
                 continue;
             }
 
@@ -175,6 +232,25 @@ public sealed class JaarplanGeneratieService
             themas.ToDictionary(t => t.Id),
             schooljaar);
 
+        // What became of the teacher's parameters (FR-5.4). Measured over the whole plan on the same reasoning as the
+        // spreading report, and — like it — carrying no verdict and triggering no retry (Art. IV.1). The enforced
+        // half is handed in because only this method knows what it refused; the advisory half is measured against the
+        // plan that came back.
+        var parameterRapport = parameters.IsLeeg
+            ? ParameterRapport.Geen
+            : ParameterRapport.Meet(
+                parameters,
+                jaarplan.Plaatsingen.Where(p => p.BlokNiveau == GeneratieNiveau),
+                themas.ToDictionary(t => t.Id),
+                blokken,
+                themas.Select(t => t.Naam).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                geblokkeerdeBlokken.Keys.ToHashSet()) with
+            {
+                GeweigerdDoorVastMoment = geweigerdDoorVastMoment,
+                ToegepasteVasteMomenten = toegepasteMomenten,
+                OnplaatsbareVasteMomenten = onplaatsbareMomenten,
+            };
+
         return JaarplanGeneratieResultaat.Geslaagd(
             Projecteer(klas, schooljaar, blokken, themas, jaarplan),
             nieuw,
@@ -184,7 +260,8 @@ public sealed class JaarplanGeneratieService
             onbekendeBlokken,
             duplicaten,
             afgewezen,
-            spreiding);
+            spreiding,
+            parameterRapport);
     }
 
     /// <summary>
