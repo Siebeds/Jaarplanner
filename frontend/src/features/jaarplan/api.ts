@@ -1,5 +1,11 @@
 import { apiFetch } from "../../lib/api";
-import type { Generatieresultaat, Jaarplan, Planningsrooster } from "./types";
+import type {
+  Generatieparameters,
+  Generatieresultaat,
+  Jaarplan,
+  Planningsrooster,
+  Themakeuze,
+} from "./types";
 
 /**
  * The kalender's API calls (E3-06, FR-6.1). Thin wrappers over {@link apiFetch}; caching is
@@ -36,8 +42,25 @@ export function haalRooster(schooljaarId: string): Promise<Planningsrooster> {
  * persisted** (Art. IV.5), which surfaces here as an `ApiError` the UI maps to its own Dutch copy: the 422
  * body is an English operator diagnostic and is deliberately never shown to a teacher.
  */
-export function genereerJaarplan(klasId: string): Promise<Generatieresultaat> {
+export function genereerJaarplan(
+  klasId: string,
+  parameters?: Generatieparameters,
+): Promise<Generatieresultaat> {
+  // No parameters means no body at all, not an empty object: the server treats both identically, and sending
+  // nothing keeps a plain run byte-for-byte the request it always was.
   return apiFetch<Generatieresultaat>(`/api/klassen/${klasId}/jaarplan/generatie`, {
     method: "POST",
+    ...(parameters ? { body: JSON.stringify(parameters) } : {}),
   });
+}
+
+/**
+ * The school's thema's, for the startthema pickers (E3-04).
+ *
+ * A picker rather than a text field on purpose: the server reports a thema name it does not own as
+ * `onbekendeStartthemas`, and the cheapest way to make that case unreachable is to stop a teacher from being able
+ * to mistype one. A full thema-beheer screen is still E1-14; this only needs the names.
+ */
+export function haalThemanamen(): Promise<Themakeuze[]> {
+  return apiFetch<Themakeuze[]>("/api/themas");
 }

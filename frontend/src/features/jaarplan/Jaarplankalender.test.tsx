@@ -279,6 +279,8 @@ describe("Jaarplankalender", () => {
       onbekendeBlokken: [],
       duplicaten: [],
       afgewezen: [],
+      // E3-04 added this to the run report; a run with no parameters returns null.
+      parameters: null,
       spreiding: {
         aantalBlokken: 2,
         aantalGebruikteBlokken: 1,
