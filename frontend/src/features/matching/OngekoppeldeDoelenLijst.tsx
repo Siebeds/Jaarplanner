@@ -1,10 +1,8 @@
-import {
-  DoelsoortBadge,
-  type Doelsoort as DoelsoortBadgeSoort,
-} from "../../components/DoelsoortBadge";
+import { DoelsoortBadge } from "../../components/DoelsoortBadge";
+import { doelsoortBadgeSoort } from "../../components/doelsoort";
 import { t } from "../../i18n";
 import { useOngekoppeldeDoelen } from "./useDoelsuggesties";
-import type { DoelsoortNaam, OngekoppeldDoel } from "./types";
+import type { OngekoppeldDoel } from "./types";
 
 /**
  * The "ongekoppelde doelen" view (E2-06, FR-4.4): the Op.stap leerplandoelen that are (nog) niet aan
@@ -18,16 +16,6 @@ import type { DoelsoortNaam, OngekoppeldDoel } from "./types";
  * "gekoppeld" = a link with status aanvaard/manueel (Art. V).
  * </para>
  */
-
-/** Map the (PascalCase) API doelsoort to the DoelsoortBadge's own key. */
-const badgeSoort: Record<DoelsoortNaam, DoelsoortBadgeSoort> = {
-  Minimumdoel: "md",
-  Gemeenschappelijk: "gemeenschappelijk",
-  Verdieping: "verdieping",
-  Precurriculum: "precurriculum",
-  Specifiek: "specifiek",
-  AnderstaligeNieuwkomers: "anderstalige",
-};
 
 export function OngekoppeldeDoelenLijst() {
   const { data, isLoading, isError } = useOngekoppeldeDoelen();
@@ -84,7 +72,7 @@ function DoelRij({ doel }: { doel: OngekoppeldDoel }) {
         <span className="rounded-md bg-paper px-2 py-1 font-mono text-sm font-semibold text-ink">
           {code}
         </span>
-        <DoelsoortBadge doelsoort={badgeSoort[doelsoort]} />
+        <DoelsoortBadge doelsoort={doelsoortBadgeSoort[doelsoort]} />
       </div>
 
       <p className="mt-2 text-xs text-ink-zacht">

@@ -51,6 +51,30 @@ public sealed class DoelKoppeling
     /// </summary>
     public void WijzigStatus(KoppelingStatus status) => Status = Validate(status);
 
+    /// <summary>
+    /// The teacher substitutes a <b>different</b> leerplandoel on this link — FR-4.3's third action,
+    /// <i>"aanpassen"</i> ("the AI proposed this doel; I think it should be that one"). The link becomes
+    /// <see cref="KoppelingStatus.Manueel"/>, which is what that status means: a link the human chose.
+    /// <para>
+    /// <b><see cref="AiMotivatie"/> is cleared, deliberately.</b> The motivation answered "waarom past
+    /// <i>dit</i> doel hier?" about the doel the AI proposed. Carrying it over would present an AI
+    /// justification for a goal the AI never suggested, which is exactly the kind of thing Art. IV.3
+    /// exists to prevent; and this class already documents a manual link as one with no AI motivation.
+    /// The consequence is accepted and recorded: after a substitution the tool no longer knows which code
+    /// the AI had originally proposed. Keeping that history needs a column and is not built here.
+    /// </para>
+    /// <para>
+    /// Validating that <paramref name="leerplandoelCode"/> is a code the read-only Op.stap set actually
+    /// carries is the application layer's job (Art. III.5) — the domain cannot see the curriculum table.
+    /// </para>
+    /// </summary>
+    public void VervangLeerplandoel(string leerplandoelCode)
+    {
+        LeerplandoelCode = Require(leerplandoelCode, nameof(leerplandoelCode));
+        Status = KoppelingStatus.Manueel;
+        AiMotivatie = null;
+    }
+
     private static KoppelingStatus Validate(KoppelingStatus status) =>
         Enum.IsDefined(status)
             ? status
