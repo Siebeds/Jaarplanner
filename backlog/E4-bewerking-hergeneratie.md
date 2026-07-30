@@ -15,6 +15,7 @@
 - [ ] **E4-02 — Override any AI suggestion**
   Anything proposed by AI can be manually overwritten; status moves to `manueel`.
   *Done when:* overriding a `voorgesteld`/`aanvaard` link sets `manueel` and sticks. Ref: FR-7.1, Art. IV.1.
+  *Partly delivered early by **E3-07** (2026-07-30), for **placements**.* Dragging a thema to another period *is* overriding an AI proposal, so `Themaplaatsing.VerplaatsNaar` implements this rule: the status moves to `Manueel`, it sticks across a reload, and it survives a regeneration (`IsVervangbaar` turns false). Asserted by `Een_verplaatste_plaatsing_overleeft_een_hergeneratie`. **What this story still owns:** the same rule for **DoelKoppelingen** (a goal↔thema link overridden by hand), which E3-07 does not touch. Recorded here rather than only in E3-07's log — a rule implemented in one story and specified in another is exactly how this project has lost obligations before.
 
 - [ ] **E4-03 — Manual add/move/remove independent of AI**
   Add/move/remove thema's, activiteiten, and goal links by hand, with no AI involved.

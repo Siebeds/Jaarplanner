@@ -26,6 +26,21 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-muted",
         outline: "border border-input bg-card text-ink shadow-card hover:bg-petrol-wash",
         ghost: "text-ink hover:bg-petrol-wash hover:text-petrol",
+        // Confirming something unrecoverable (E3-07: taking a decided or locked thema out of a period).
+        //
+        // Built from the **attentie** hue, not a new red. Art. XII already spends six hues on doelsoort and
+        // more on suggestiestatus and dekking, so chrome gets petrol plus one attention hue and nothing else —
+        // a bespoke destructive red would be the second chrome accent that competes with the signal this tool
+        // exists to send.
+        //
+        // Specifically `attentie-ink` rather than `attentie`: white on `attentie` measures **4.31:1**, under the
+        // 4.5:1 floor for 14px text, while white on `attentie-ink` measures 9.9:1. The lighter token stays what
+        // it was built for (a tint behind dark text). Colour is never the only carrier either way — the button
+        // that uses this says "Ja, verwijderen" and sits under a question naming the thema and the period.
+        // Hover lightens the fill slightly rather than swapping to `attentie`, which would drop the white label
+        // to that same failing 4.31:1 on hover — a contrast failure that only exists under the pointer is still
+        // a contrast failure, and it is the state the teacher is in when they click.
+        destructive: "bg-attentie-ink text-white shadow-card hover:brightness-110",
       },
       size: {
         // Comfortable targets: these are used by non-technical adults, sometimes on a

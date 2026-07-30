@@ -5,13 +5,18 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Infrastructure;
 
 /// <summary>
-/// Maps the planning application exceptions (E3-01) to RFC 7807 ProblemDetails so the (thin) controllers never
-/// write status-code plumbing (Art. VIII): an <see cref="OngeldigePlaatsingsstatusFout"/> — a teacher asking to set
-/// a jaarplan placement back to <c>voorgesteld</c>, which only the AI produces (Art. IV.1/IV.2) — becomes 400.
+/// Maps the planning application exceptions to RFC 7807 ProblemDetails so the (thin) controllers never write
+/// status-code plumbing (Art. VIII). Both faults become 400:
+/// <list type="bullet">
+/// <item><see cref="OngeldigePlaatsingsstatusFout"/> (E3-01) — a teacher asking to set a jaarplan placement back to
+/// <c>voorgesteld</c>, which only the AI produces (Art. IV.1/IV.2);</item>
+/// <item><see cref="OngeldigeVerplaatsingFout"/> (E3-07) — a move whose target is not a period boundary, or a thema
+/// moved onto a period it already occupies.</item>
+/// </list>
 /// <para>
-/// It handles only that one fault: planning not-found deliberately reuses <c>SchoolcontentNietGevondenFout</c>,
-/// which <c>SchoolcontentExceptionHandler</c> already maps to 404, as <c>KlasBeheerService</c> has done since E1.
-/// Other exceptions are left to the next handler / default pipeline.
+/// Planning not-found deliberately reuses <c>SchoolcontentNietGevondenFout</c>, which
+/// <c>SchoolcontentExceptionHandler</c> already maps to 404, as <c>KlasBeheerService</c> has done since E1. Other
+/// exceptions are left to the next handler / default pipeline.
 /// </para>
 /// </summary>
 public sealed class PlanningExceptionHandler : IExceptionHandler
@@ -23,7 +28,7 @@ public sealed class PlanningExceptionHandler : IExceptionHandler
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
-        if (exception is not OngeldigePlaatsingsstatusFout)
+        if (exception is not (OngeldigePlaatsingsstatusFout or OngeldigeVerplaatsingFout))
         {
             return false; // Not ours — let the next handler deal with it.
         }

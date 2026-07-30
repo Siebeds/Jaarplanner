@@ -127,6 +127,42 @@ public sealed class Themaplaatsing
     /// <summary>Locks or unlocks the placement against (re)generation (Art. IX.3).</summary>
     public void StelVergrendelingIn(bool vergrendeld) => Vergrendeld = vergrendeld;
 
+    /// <summary>
+    /// Moves this thema to the block starting on <paramref name="blokStart"/> — the teacher dragging it to
+    /// another period (E3-07, FR-6.2/FR-7).
+    /// <para>
+    /// <b>The new key is a start date, like the old one</b> (ADR-0020 §3). <see cref="BlokNiveau"/> is deliberately
+    /// left alone: the tier is not something a teacher picks by dragging along the board, and re-tiering a placement
+    /// is a different operation from repositioning it in the year.
+    /// </para>
+    /// <para>
+    /// <b>Moving makes this the teacher's placement, so the status becomes <see cref="KoppelingStatus.Manueel"/>.</b>
+    /// This is the rule E4-02 states (*"anything proposed by AI can be manually overwritten; status moves to
+    /// manueel"*), reached early because a drag is exactly that override. It also has a consequence the teacher
+    /// wants: <see cref="IsVervangbaar"/> turns false, so the next generation run cannot quietly undo a move they
+    /// made by hand.
+    /// </para>
+    /// <para>
+    /// <b>And the AI motivation is cleared, deliberately losing it.</b> <see cref="AiMotivatie"/> is documented as
+    /// the model's reason for placing this thema <i>here</i>; once "here" is the teacher's choice, keeping the text
+    /// would attribute their decision to the model and render a justification for a period the thema has left. That
+    /// is the inverse of what Art. IV.3 asks the motivation to do. The existing contract already says
+    /// "null for a purely manual placement", and after a move that is what this is. The lost reasoning is the cost:
+    /// it argued for a placement the teacher overruled.
+    /// </para>
+    /// <para>
+    /// A <i>stale</i> placement is moved through this same method, which is the whole re-placement route: nothing
+    /// here requires the current <see cref="BlokStart"/> to still be a block boundary. Validating that the
+    /// <b>target</b> is one belongs to the service, which is the only layer holding the derived grid.
+    /// </para>
+    /// </summary>
+    public void VerplaatsNaar(DateOnly blokStart)
+    {
+        BlokStart = blokStart;
+        Status = KoppelingStatus.Manueel;
+        AiMotivatie = null;
+    }
+
     private static KoppelingStatus RequireStatus(KoppelingStatus status) =>
         Enum.IsDefined(status)
             ? status

@@ -246,6 +246,80 @@ public sealed class JaarplanGeneratieService
             klasId, plaatsingId, plaatsing => plaatsing.StelVergrendelingIn(vergrendeld), cancellationToken);
 
     /// <summary>
+    /// Moves one placement to the planningsblok starting on <paramref name="doelBlokStart"/> — the teacher dragging a
+    /// thema to another period (E3-07, FR-6.2), persisted immediately (FR-6.5).
+    /// <para>
+    /// <b>The target is resolved against the derived grid and never snapped.</b> A date that is not the start of any
+    /// current block is refused with <see cref="OngeldigeVerplaatsingFout"/>, on the same reasoning that makes
+    /// <see cref="GenereerAsync"/> skip such a date: moving a thema to the nearest period would put it somewhere
+    /// nobody chose, which is the silent relocation ADR-0020 and the directie ruling of 2026-07-28 forbid.
+    /// </para>
+    /// <para>
+    /// <b>A stale placement moves through here too, and that is the re-placement route the ruling requires.</b> The
+    /// placement's <i>current</i> position is never validated — only the target — so a thema whose stored date stopped
+    /// being a period boundary can be given a real period without the application ever having guessed one for it.
+    /// </para>
+    /// <para>
+    /// <b>Works on a locked placement, and does not clear the lock.</b> Art. IX.3 scopes <c>vergrendeld</c> to
+    /// "excluded from <i>regeneration</i>" — it is not a teacher-proof latch, and a teacher who locks a thema and
+    /// then decides it belongs a period later is doing something the flag never spoke to. Moving it is also
+    /// reversible (drag it back), unlike <see cref="VerwijderPlaatsingAsync"/>, which is why no confirmation is
+    /// required for a move.
+    /// </para>
+    /// </summary>
+    /// <returns>The updated plan, so a caller need not re-fetch it.</returns>
+    /// <exception cref="OngeldigeVerplaatsingFout">
+    /// The target date is not a block boundary, or the thema is already placed in the target period.
+    /// </exception>
+    /// <exception cref="SchoolcontentNietGevondenFout">The class, its plan, or the placement does not exist.</exception>
+    public async Task<JaarplanWeergave> VerplaatsPlaatsingAsync(
+        Guid klasId,
+        Guid plaatsingId,
+        DateOnly doelBlokStart,
+        CancellationToken cancellationToken = default)
+    {
+        var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
+
+        var jaarplan = await _opslag.LaadJaarplanAsync(klasId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Klas {klasId} heeft nog geen jaarplan.");
+
+        var plaatsing = jaarplan.VindPlaatsing(plaatsingId)
+            ?? throw new SchoolcontentNietGevondenFout(
+                $"Themaplaatsing {plaatsingId} bestaat niet in het jaarplan van klas {klasId}.");
+
+        var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau);
+
+        // Resolved against the grid the teacher is actually looking at, on the placement's own tier. Refused, never
+        // snapped to a neighbour.
+        if (!blokken.Any(b => b.Start == doelBlokStart && b.Niveau == plaatsing.BlokNiveau))
+        {
+            throw new OngeldigeVerplaatsingFout(
+                $"{Datum(doelBlokStart)} is geen begin van een periode in dit schooljaar. Kies een periode uit het jaarplan.");
+        }
+
+        // Nothing to do, and saying so beats a 200 that pretends a move happened. Checked before the duplicate guard
+        // below, which would otherwise report the placement as colliding with itself.
+        if (plaatsing.BlokStart != doelBlokStart)
+        {
+            // A block holds several thema's (Art. IX.3), so only the same thema twice in the same block is refused —
+            // exactly the invariant `VoegPlaatsingToe` enforces, checked here because the aggregate's own guard
+            // throws an English programmer-error exception no handler maps to a teacher.
+            if (jaarplan.IsAlGeplaatst(plaatsing.ThemaId, plaatsing.BlokNiveau, doelBlokStart))
+            {
+                throw new OngeldigeVerplaatsingFout(
+                    "Dit thema staat al in die periode. Kies een andere periode.");
+            }
+
+            plaatsing.VerplaatsNaar(doelBlokStart);
+            await _opslag.BewaarAsync(cancellationToken);
+        }
+
+        var themas = await _opslag.LaadThemasAsync(cancellationToken);
+
+        return Projecteer(klas, schooljaar, blokken, themas, jaarplan);
+    }
+
+    /// <summary>
     /// Removes one placement from the plan — taking a thema out of a period (FR-7, and the escape hatch the
     /// <c>Klas</c> delete guard depends on). Works whatever the placement's status or lock: an explicit teacher
     /// action is the one actor Art. IV.2 allows to discard a human decision.

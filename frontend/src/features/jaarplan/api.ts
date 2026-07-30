@@ -1,14 +1,13 @@
 import { apiFetch } from "../../lib/api";
-import type { Generatieresultaat, Jaarplan, Planningsrooster } from "./types";
+import type { Generatieresultaat, Jaarplan, Plaatsingstatus, Planningsrooster } from "./types";
 
 /**
- * The kalender's API calls (E3-06, FR-6.1). Thin wrappers over {@link apiFetch}; caching is
+ * The kalender's API calls (E3-06 read, E3-07 edit). Thin wrappers over {@link apiFetch}; caching is
  * TanStack Query's job (see useJaarplan).
  *
- * Moving a thema between periods is still absent on purpose: that is E3-07 (drag-and-drop), which also
- * owns the confirmation guarding an accepted or locked placement, so shipping it here would ship the
- * destructive half without its safeguard. Generation is different — it only ever *adds* proposals and
- * never discards a human decision, so it is safe to trigger before E3-07 exists.
+ * The three editing calls all return the **whole updated plan** rather than the changed placement, matching
+ * the endpoints: one response re-renders the board, so a drop never leaves the screen briefly disagreeing
+ * with the server about where a thema is.
  */
 
 /** The class's jaarplan: its placements with status, motivation and lock. */
@@ -39,5 +38,55 @@ export function haalRooster(schooljaarId: string): Promise<Planningsrooster> {
 export function genereerJaarplan(klasId: string): Promise<Generatieresultaat> {
   return apiFetch<Generatieresultaat>(`/api/klassen/${klasId}/jaarplan/generatie`, {
     method: "POST",
+  });
+}
+
+/**
+ * Moves a thema to another period (E3-07, FR-6.2) and persists it at once (FR-6.5).
+ *
+ * `blokStart` is the target block's **start date**, never its ordinal: the ordinal is a display position that
+ * shifts when the school edits its vakanties, so sending one would reintroduce exactly the silent relocation
+ * the date key prevents (ADR-0020 §3).
+ *
+ * A date that starts no current period is a **400** rather than a nearest-period guess, and so is moving a
+ * thema onto a period it already occupies. The server also sets the placement to `Manueel` and drops the AI
+ * motivation, because the position is now the teacher's.
+ */
+export function verplaatsPlaatsing(
+  klasId: string,
+  plaatsingId: string,
+  blokStart: string,
+): Promise<Jaarplan> {
+  return apiFetch<Jaarplan>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/blok`, {
+    method: "PUT",
+    body: JSON.stringify({ blokStart }),
+  });
+}
+
+/**
+ * Takes a thema out of a period (FR-7). **Unrecoverable:** there is no soft delete and no audit trail, so the
+ * confirmation in the UI is the only protection for accepted or locked teacher work — see `Themakaart`.
+ */
+export function verwijderPlaatsing(klasId: string, plaatsingId: string): Promise<Jaarplan> {
+  return apiFetch<Jaarplan>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * Records a teacher decision on one placement (Art. IV.2).
+ *
+ * E3-07 uses it for one case only: reversing a rejection. Before this existed a `Geweigerd` placement could
+ * be removed but never restored, so a teacher who changed their mind was stuck. `Voorgesteld` is refused by
+ * the server (400) because only the AI produces it.
+ */
+export function wijzigPlaatsingStatus(
+  klasId: string,
+  plaatsingId: string,
+  status: Exclude<Plaatsingstatus, "Voorgesteld">,
+): Promise<Jaarplan> {
+  return apiFetch<Jaarplan>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
   });
 }

@@ -44,6 +44,13 @@ public sealed class JaarplanController : ControllerBase
     public sealed record VergrendelingWijziging(bool Vergrendeld);
 
     /// <summary>
+    /// Body for moving one placement to another period (E3-07): the <b>start date</b> of the target planningsblok.
+    /// Never an ordinal — the ordinal is a display position that shifts when the school edits its vakanties
+    /// (ADR-0020 §3), so accepting one here would reintroduce exactly the silent relocation the date key prevents.
+    /// </summary>
+    public sealed record BlokWijziging(DateOnly BlokStart);
+
+    /// <summary>
     /// The class's current jaarplan proposal (FR-5.1, Art. IV.2): every placement with its planningsblok, status,
     /// motivation and lock. A class that has not been generated for yet yields an empty plan, not a 404.
     /// </summary>
@@ -110,6 +117,30 @@ public sealed class JaarplanController : ControllerBase
         [FromBody] VergrendelingWijziging wijziging,
         CancellationToken cancellationToken) =>
         Ok(await _service.WijzigVergrendelingAsync(klasId, plaatsingId, wijziging.Vergrendeld, cancellationToken));
+
+    /// <summary>
+    /// Moves a thema to another period (E3-07, FR-6.2) and persists it immediately (FR-6.5) — the endpoint behind
+    /// dragging a card across the kalender, and the re-placement route for a stale placement.
+    /// <para>
+    /// The body carries the target block's <b>start date</b>. A date that starts no current block yields
+    /// <b>400</b> rather than a nearest-period guess: snapping would relocate a thema to a period nobody chose, which
+    /// is precisely what the stale-placement ruling of 2026-07-28 forbids. Moving a thema onto a period it already
+    /// occupies is likewise a 400.
+    /// </para>
+    /// <para>
+    /// A successful move sets the placement to <c>manueel</c> and drops its AI motivation: the position is now the
+    /// teacher's, so attributing it to the model would misreport who decided (Art. IV.3), and E4-02 already rules
+    /// that overriding an AI proposal moves it to <c>manueel</c>. Side effect the teacher wants: a moved placement is
+    /// no longer replaceable, so the next generation run cannot undo the move.
+    /// </para>
+    /// </summary>
+    [HttpPut("plaatsingen/{plaatsingId:guid}/blok")]
+    public async Task<ActionResult<JaarplanWeergave>> VerplaatsPlaatsing(
+        Guid klasId,
+        Guid plaatsingId,
+        [FromBody] BlokWijziging wijziging,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.VerplaatsPlaatsingAsync(klasId, plaatsingId, wijziging.BlokStart, cancellationToken));
 
     /// <summary>
     /// Removes a thema from a period (FR-7), whatever the placement's status or lock — an explicit teacher action is
