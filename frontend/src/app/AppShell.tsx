@@ -84,9 +84,14 @@ export function AppShell() {
             <div className="flex items-center gap-3">
               <Merkteken className="h-9 w-9 shrink-0 text-petrol" />
               <div>
-                {/* Brand / proper noun, not translatable copy — exempt from the i18n guard. */}
-                {/* eslint-disable-next-line no-restricted-syntax */}
-                <h1 className="text-lg font-bold text-ink">Jaarplanner</h1>
+                {/* Behind the seam like everything else. An earlier revision hard-coded this and granted itself
+                    an exemption on the ground that a brand name is not translatable copy. Art. X.3 says
+                    "everything in nl.json" and carves out no proper-noun exception, and this repo has already
+                    ruled that way once: see the Art. II.3 entry in backlog/README.md, which retracts a narrower
+                    reading of the same article as "wrong in the direction that made the decision look cheaper".
+                    The clincher is that the product name is an *open* Art. XIV decision, so the one string
+                    guaranteed to change was the one string not behind the seam. */}
+                <h1 className="text-lg font-bold text-ink">{t("app.naam")}</h1>
                 <p className="text-xs text-ink-zacht">{t("app.ondertitel")}</p>
               </div>
             </div>

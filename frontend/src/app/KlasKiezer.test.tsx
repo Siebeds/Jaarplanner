@@ -104,6 +104,32 @@ describe("KlasKiezer — choosing from a list (E0-10 clause 3)", () => {
     expect(within(klasKeuze()).queryByRole("option", { name: "L3 derde leerjaar" })).toBeNull();
   });
 
+  // Found by opening the app rather than by a test: before a year is chosen the control claimed "Geen klassen
+  // in dit schooljaar" — a statement about a schooljaar the teacher had not picked, shown on first load, and
+  // false (the demo year does contain a class). The real-empty-year branch below was always correct; the two
+  // states had simply been collapsed into one message. Both are pinned now so they cannot re-merge.
+  it("asks for a year first instead of claiming the unchosen year has no classes", async () => {
+    renderApp();
+    await schooljaarKeuze();
+
+    expect(within(klasKeuze()).getByRole("option", { name: t("selectie.eerstSchooljaar") })).toBeInTheDocument();
+    expect(within(klasKeuze()).queryByRole("option", { name: t("selectie.geenKlassen") })).toBeNull();
+  });
+
+  // A saved link naming a year that has since been deleted is a different event from an untouched selector, so
+  // it gets its own sentence: "kies eerst een schooljaar" would ask the teacher to redo what they thought they
+  // had done. Both branches resolve through a falsy `gekozenSchooljaar`, which is why this is asserted and not
+  // left to the reader of the ternary.
+  it("says the year is gone when a deep link names one that no longer exists", async () => {
+    renderApp("/jaarplan?schooljaar=00000000-0000-0000-0000-000000000000");
+    await schooljaarKeuze();
+
+    expect(
+      within(klasKeuze()).getByRole("option", { name: t("selectie.onbekendSchooljaar") }),
+    ).toBeInTheDocument();
+    expect(within(klasKeuze()).queryByRole("option", { name: t("selectie.eerstSchooljaar") })).toBeNull();
+  });
+
   it("lists only the classes the chosen year contains", async () => {
     renderApp();
 

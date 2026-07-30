@@ -84,9 +84,27 @@ export function KlasKiezer() {
         >
           {/* The empty-year case is stated *in* the control rather than as a sentence beside it. Dropping the
               boxes removed the room for a caption, and an earlier revision of this component simply lost the
-              message — a teacher then saw a disabled dropdown with no reason given. A test caught it. */}
+              message — a teacher then saw a disabled dropdown with no reason given. A test caught it.
+
+              Four inputs, four messages, deliberately not collapsed. `klassen` is empty for three different
+              reasons and an earlier revision printed one sentence for all of them: it asserted "Geen klassen in
+              dit schooljaar" about a schooljaar nobody had picked, on first load, which was both false and the
+              first thing every teacher read. Found by opening the app, not by a test.
+
+              The stale-bookmark case is split out on the same reasoning one level down (antagonist, E0-10
+              close-out): an unresolvable `schooljaarId` in the URL is not the same event as an empty selector,
+              and telling a teacher to "kies eerst een schooljaar" when their saved link named a year that has
+              since been deleted asks them to redo something they believe they did, with nothing saying the link
+              is dead. `gekozenSchooljaar` is falsy for both, so the raw `schooljaarId` is what distinguishes
+              them. */}
           <option value="">
-            {klassen.length === 0 ? t("selectie.geenKlassen") : t("selectie.kiesKlas")}
+            {schooljaarId && !gekozenSchooljaar
+              ? t("selectie.onbekendSchooljaar")
+              : !gekozenSchooljaar
+                ? t("selectie.eerstSchooljaar")
+                : klassen.length === 0
+                  ? t("selectie.geenKlassen")
+                  : t("selectie.kiesKlas")}
           </option>
           {klassen.map((klas) => (
             <option key={klas.id} value={klas.id}>
