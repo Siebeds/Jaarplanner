@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  genereerDoelsuggesties,
   haalDoelsuggesties,
   haalOngekoppeldeDoelen,
+  vervangSuggestieDoel,
   wijzigSuggestieStatus,
 } from "./api";
-import type { Leerkrachtbeslissing } from "./types";
+import type { Leerdoelselectie, Leerkrachtbeslissing } from "./types";
 
 /** Query key for a thema's doelsuggesties — one cache entry per thema. */
 const suggestiesKey = (themaId: string) => ["doelsuggesties", themaId] as const;
@@ -48,6 +50,45 @@ export function useWijzigSuggestieStatus(themaId: string) {
   return useMutation({
     mutationFn: (vars: { suggestieId: string; status: Leerkrachtbeslissing }) =>
       wijzigSuggestieStatus(themaId, vars.suggestieId, vars.status),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: suggestiesKey(themaId) });
+      void queryClient.invalidateQueries({ queryKey: ongekoppeldeDoelenKey });
+    },
+  });
+}
+
+/**
+ * Triggers a match run for a thema (E2-08, FR-4.1) and refreshes the review list from the server.
+ *
+ * This is the wire the epic was missing: the review list, the accept/reject actions and the gap list all
+ * existed, but nothing in the app could make a suggestion for them to show. The mutation's own `data`
+ * carries the run report (what was proposed, what was skipped, how many leerplandoelen were searched)
+ * while the rendered list comes from the invalidated query — deliberately not an optimistic update,
+ * because the server decides what was actually persisted: a fabricated code is skipped, not invented.
+ */
+export function useGenereerDoelsuggesties(themaId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (selectie?: Leerdoelselectie) =>
+      genereerDoelsuggesties(themaId, selectie),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: suggestiesKey(themaId) });
+    },
+  });
+}
+
+/**
+ * Mutation for FR-4.3's "aanpassen": substitutes a different leerplandoel on a suggestion, which makes it
+ * the teacher's own `Manueel` link. Invalidates both the thema's suggestions and the gap list, since a
+ * `manueel` link counts as coupled (Art. V) and therefore removes its doel from "nog niet gekoppeld".
+ */
+export function useVervangSuggestieDoel(themaId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vars: { suggestieId: string; leerplandoelCode: string }) =>
+      vervangSuggestieDoel(themaId, vars.suggestieId, vars.leerplandoelCode),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: suggestiesKey(themaId) });
       void queryClient.invalidateQueries({ queryKey: ongekoppeldeDoelenKey });

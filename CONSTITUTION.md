@@ -103,6 +103,7 @@ The following are explicitly **out of scope** and must not be built without an a
 2. **No pupil personal data in the MVP** (GDPR/AVG). Staff accounts only.
 3. **Host in an EU region.** AI processing happens in an EU, GDPR-compliant environment (e.g. Azure AI Foundry, EU data zone).
 4. **No secrets in the repo.** .NET user-secrets locally, Azure Key Vault in the cloud. **AI keys are server-side only — never exposed to the frontend.**
+   *Narrow ratified exception (2026-07-30):* credentials for a **throw-away local or CI test database** may live in the repo — `docker-compose.yml`, `.github/workflows/ci.yml`, dev-setup docs, story worklogs — because they authenticate a `127.0.0.1` or ephemeral-runner role that guards nothing reachable and holds no real data. The exception covers **nothing else**: no AI key, no production or staging credential, and no connection string to any database holding school data.
 5. Access via personal login; data encrypted in transit and at rest (NFR-5).
 6. A processing register and retention periods are provided (NFR-6).
 
@@ -196,7 +197,7 @@ Before a task is considered finished:
 1. The relevant **tests** pass (`dotnet test`, `pnpm test`).
 2. **`dotnet format`** applied (backend) and **`pnpm lint`** clean (frontend).
 3. **No user-facing Dutch text hard-coded** — everything in `nl.json`.
-4. **No secrets** added to the repo.
+4. **No secrets** added to the repo, save the narrow local/CI test-database exception in [Art. VI.4](#article-vi--roles-privacy--security).
 5. The change is **consistent with this constitution**; any conflict is resolved or escalated as an amendment.
 6. Changes are **small and reviewable**.
 7. **The Antagonist review has been run** on significant changes (see [Article XIII](#article-xiii--the-antagonist)) and its findings addressed or explicitly waived.
@@ -218,6 +219,7 @@ Before a task is considered finished:
 | 2026-06-29 | Siebe De Saedeleir (auteur/directie) | Adopted the Op.stap reference-material refinements as binding: **Art. III** professional-autonomy principle (GAP 0c), **Art. VII.0** taxonomy correction (`Discipline → Domein → Subdomein`, `cluster` nullable — GAP 0a), the **Art. IX** themalaag model (Themadoel/Subdoel + rich attributes + level scoping), and the **Art. IV.8** goal-first authoring with the thema-opbouw wizard as a **committed MVP feature**. Source: `docs/Gap-analyse_Opstap_referentie.md`. |
 | 2026-06-29 | Siebe De Saedeleir (auteur/directie) | Closed two Art. XIV open decisions: **Hosting/AI** = Azure + EU region + EU AI data zone ([ADR-0016](docs/adr/0016-azure-hosting-eu-residency.md)); **Identity provider** = Microsoft Entra ID ([ADR-0011](docs/adr/0011-authn-authz-rbac-gdpr.md)). |
 | 2026-06-29 | Siebe De Saedeleir (auteur/directie) | Adopted the **UI/UX approach** ([ADR-0017](docs/adr/0017-ui-ux-design-system.md)): Tailwind + Radix UI + shadcn/ui (copied in) as the accessible component layer, design tokens for doelsoort/status/coverage, wireframes-first for the anchor screens, **WCAG 2.2 AA** app-wide. Approach doc: `docs/ux/ui-ux-approach.md`. |
+| 2026-07-30 | Siebe De Saedeleir (auteur/directie) | Amended **Art. VI.4** (and Art. X.4 in step) to sanction a **narrow exception** for throw-away local/CI test-database credentials in the repo. *Why:* the practice already existed — `.github/workflows/ci.yml` commits `jaarplanner_ci`, dev-setup docs and story worklogs quote `jaarplanner_local` — so Art. VI.4's flat "no secrets" was being contradicted by precedent rather than by decision, and each audit had to re-argue it from scratch. AI keys, production/staging credentials and any connection string to school data remain **absolutely** excluded. *Surfaced by:* the E2-08 antagonist audit, which correctly flagged `Password=jaarplanner_local` in a worklog as an Art. VI.4 breach with no exception clause to appeal to. |
 
 ---
 

@@ -45,7 +45,7 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
     labelKey: "navigatie.themas",
     isGebouwd: true,
     magBeheerder: false,
-    story: "E2-05/E2-06 built the review; E1-14 adds beheer, E2-08 the trigger",
+    story: "E2-05/E2-06 built the review, E2-08 the trigger; E1-14 adds beheer",
   },
   {
     pad: JAARPLAN_PAD,

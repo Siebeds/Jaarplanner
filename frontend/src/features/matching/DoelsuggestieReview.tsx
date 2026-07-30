@@ -1,16 +1,22 @@
 import { useState } from "react";
 
 import { t } from "../../i18n";
+import { DoelsuggestieGeneratie } from "./DoelsuggestieGeneratie";
 import { DoelsuggestieLijst } from "./DoelsuggestieLijst";
 import { OngekoppeldeDoelenLijst } from "./OngekoppeldeDoelenLijst";
 
 /**
- * The doelsuggestie review page (E2-05).
+ * The doelsuggestie page (E2-05 review + E2-08 trigger), mounted at `/themas` by the app shell
+ * (E0-10, ADR-0021).
  *
- * It still takes the thema-id from a text field. That is **not** a design choice — a real thema list is
- * **E1-14** (beheer-UI) and generating suggestions at all is **E2-08**, so until one of those lands this is
- * the only way the flow is reachable, and a reachable screen beats an unreachable one. The field now says
- * out loud that it is a stopgap, rather than sitting there looking like the intended way in.
+ * **E2-08 put the trigger above the list**, in that order deliberately: the review list was the whole
+ * screen before, and it could only ever render "er zijn nog geen AI-doelsuggesties" because nothing in the
+ * app could create one. Generating is now the first thing on the page, and the list below it is the result.
+ *
+ * It still takes the thema-id from a text field, and that is **not** a design choice — a real thema list is
+ * **E1-14** (beheer-UI). E0-10 replaced the klas/schooljaar GUID inputs with pickers but has no thema
+ * source to draw on, so this one field outlives it; it says out loud that it is a stopgap rather than
+ * sitting there looking like the intended way in.
  *
  * All copy via nl.json (Art. II.3).
  */
@@ -49,7 +55,10 @@ export function DoelsuggestieReview() {
             {t("matching.geenThema")}
           </p>
         ) : (
-          <DoelsuggestieLijst themaId={themaId} />
+          <div className="flex flex-col gap-4">
+            <DoelsuggestieGeneratie themaId={themaId} />
+            <DoelsuggestieLijst themaId={themaId} />
+          </div>
         )}
       </section>
 
