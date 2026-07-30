@@ -59,10 +59,18 @@ export function Jaarspine({ segmenten, gevuldeOrdinalen, teVolleOrdinalen }: Jaa
               className="min-w-0 basis-0"
             >
               <p className="flex items-baseline gap-1 truncate text-[0.6875rem] leading-4 text-ink-zacht">
-                <span className="font-semibold text-ink" data-cijfers>
-                  {segment.blok.ordinaal}
+                {/*
+                  Only the date is shown. The period ordinal used to sit here too and produced labels like
+                  "4 4 jan" and "1 1 sep" — two numbers jammed together, where the first could be read as a
+                  day. The ordinal was also pure duplication: every board column below is headed
+                  "Periode 4" directly above "4 jan – 14 feb", so the start date already links a segment to
+                  its column, and a timeline is better anchored by *when* than by an internal number.
+                  Screen readers still get the ordinal, because they cannot use position to infer it.
+                */}
+                <span className="sr-only">
+                  {t("kalender.periode", { ordinaal: segment.blok.ordinaal })}:{" "}
                 </span>
-                <time dateTime={segment.blok.start} className="hidden truncate sm:inline">
+                <time dateTime={segment.blok.start} className="truncate">
                   {formatteerDatum(segment.blok.start)}
                 </time>
                 {teVol && (
