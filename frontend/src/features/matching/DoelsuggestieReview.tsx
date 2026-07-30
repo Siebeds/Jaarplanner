@@ -1,13 +1,20 @@
 import { useState } from "react";
 
 import { t } from "../../i18n";
+import { DoelsuggestieGeneratie } from "./DoelsuggestieGeneratie";
 import { DoelsuggestieLijst } from "./DoelsuggestieLijst";
 import { OngekoppeldeDoelenLijst } from "./OngekoppeldeDoelenLijst";
 
 /**
- * The doelsuggestie review page (E2-05). Until the app has thema navigation, it takes the thema-id
- * from an input so the review flow is reachable and demonstrable; once the themapagina exists it will
- * render <see cref="DoelsuggestieLijst"/> for the selected thema directly. All copy via nl.json (Art. II.3).
+ * The doelsuggestie page (E2-05 review + E2-08 trigger). Until the app has thema navigation, it takes the
+ * thema-id from an input so the flow is reachable and demonstrable; once the themapagina exists it will
+ * render the trigger and list for the selected thema directly (app-shell routing is E0-10).
+ *
+ * **E2-08 put the trigger above the list**, in that order deliberately: the review list was the whole
+ * screen before, and it could only ever render "er zijn nog geen AI-doelsuggesties" because nothing in the
+ * app could create one. Generating is now the first thing on the page, and the list below it is the result.
+ *
+ * All copy via nl.json (Art. II.3).
  */
 export function DoelsuggestieReview() {
   const [themaId, setThemaId] = useState("");
@@ -33,7 +40,10 @@ export function DoelsuggestieReview() {
         {themaId.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("matching.geenThema")}</p>
         ) : (
-          <DoelsuggestieLijst themaId={themaId} />
+          <div className="flex flex-col gap-4">
+            <DoelsuggestieGeneratie themaId={themaId} />
+            <DoelsuggestieLijst themaId={themaId} />
+          </div>
         )}
       </div>
 

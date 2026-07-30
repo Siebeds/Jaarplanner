@@ -145,9 +145,18 @@ public static class DependencyInjection
         // is fakeable with no database in tests. EF Core implementation over AppDbContext.
         services.AddScoped<IDoelMatchOpslag, EfDoelMatchOpslag>();
 
-        // The AI goal-matching service (FR-4), now wired end-to-end (E2-02 prompt → E2-01 client →
-        // E2-03 validation → E2-04 persistence as `voorgesteld`). It depends only on IAiClient +
-        // IDoelMatchOpslag, so the same registration works against the fakes in tests (Art. IV.6).
+        // The read-only Op.stap leerplandoel query (E2-07). Shared by the authoring assist and — since
+        // E2-08 — by the matching service, which needs it to resolve the candidate set a match run may
+        // choose from and to check that an "aanpassen" substitution names a code Op.stap really carries
+        // (Art. III.1/III.5). Registered once, above both consumers.
+        services.AddScoped<ILeerdoelCatalogus, EfLeerdoelCatalogus>();
+
+        // The AI goal-matching service (FR-4), wired end-to-end (E2-08 candidate selection → E2-02 prompt →
+        // E2-01 client → E2-03 validation → E2-04 persistence as `voorgesteld`). It depends only on
+        // IAiClient + IDoelMatchOpslag + ILeerdoelCatalogus, so the same registration works against the
+        // fakes in tests (Art. IV.6). It is reachable through DoelsuggestiesController — POST
+        // /api/themas/{themaId}/doelsuggesties/genereer — rather than only from its own unit tests, which
+        // was the entire defect E2-08 exists to fix.
         services.AddScoped<DoelMatchingService>();
 
         // Goal-first authoring assist (E2-07, Art. IV.8, Gap A.7): the wizard's step 2 (themadoel) and
@@ -155,7 +164,6 @@ public static class DependencyInjection
         // read-only Op.stap leerplandoel query), so the same registration works against the fakes in
         // tests (Art. IV.6). It returns advisory suggestions transiently — nothing is persisted or
         // auto-applied (Art. IV.1/IV.2); the wizard persists an accepted suggestion via the beheer path.
-        services.AddScoped<ILeerdoelCatalogus, EfLeerdoelCatalogus>();
         services.AddScoped<IThemaOpbouwAssistService, ThemaOpbouwAssistService>();
 
         // AI jaarplan generation (E3-01, FR-5.1, Art. IV). The persistence port keeps EF Core out of the service;
