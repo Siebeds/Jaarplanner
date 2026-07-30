@@ -21,6 +21,17 @@
 - [ ] **E7-04 — Cloud hosting, EU region (NFR-4, Art. VI.3)**
   Web app on Azure, EU region; no local install.
   *Done when:* deployed to an EU region; reachable via browser.
+  *Binding constraint added by E0-10 (2026-07-29) — an SPA fallback is now required:* the app uses real
+  URLs (`/jaarplan`, `/dekking`, … — `BrowserRouter`, [ADR-0021](../docs/adr/0021-frontend-routing-and-url-selection.md)),
+  so **whatever serves the built frontend must return `index.html` for any unmatched path.** Without it
+  every deep link and every bookmark 404s, while the app still works perfectly when navigated from the
+  root — a failure that is invisible in development and invisible to a smoke test that only opens `/`.
+  It is invisible locally because `pnpm dev` (Vite) does the fallback for free, and **the API does not
+  serve the frontend at all today** (no `UseStaticFiles`/`MapFallbackToFile` anywhere in `backend/src`),
+  so nothing in the repo currently provides it. Decide at deploy time whether the API hosts the SPA
+  (`MapFallbackToFile("index.html")`) or a static host does (Azure Static Web Apps handles it via
+  `navigationFallback`); either is fine, but **one of them must**. *Done when (added):* a deep link to a
+  non-root route, opened cold in a browser against the deployed app, renders that screen.
 
 - [ ] **E7-05 — Security: encryption + server-side AI keys (NFR-5, Art. VI.4/VI.5)**
   TLS in transit, encryption at rest; AI keys via Key Vault, never in frontend or repo.

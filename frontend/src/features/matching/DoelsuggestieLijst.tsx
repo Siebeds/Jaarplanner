@@ -55,12 +55,19 @@ export function DoelsuggestieLijst({ themaId }: DoelsuggestieLijstProps) {
   const vervang = useVervangSuggestieDoel(themaId);
 
   if (isLoading) {
-    return <p role="status">{t("matching.laden")}</p>;
+    return (
+      <p role="status" className="text-sm text-ink-zacht">
+        {t("matching.laden")}
+      </p>
+    );
   }
 
   if (isError) {
     return (
-      <p role="alert" className="text-suggestie-geweigerd">
+      <p
+        role="alert"
+        className="rounded-md bg-suggestie-geweigerd/10 px-3.5 py-2.5 text-sm font-medium text-suggestie-geweigerd"
+      >
         {t("matching.fout")}
       </p>
     );
@@ -69,7 +76,11 @@ export function DoelsuggestieLijst({ themaId }: DoelsuggestieLijstProps) {
   const suggesties = data ?? [];
 
   if (suggesties.length === 0) {
-    return <p>{t("matching.leeg")}</p>;
+    return (
+      <p className="rounded-lg border border-dashed border-border bg-card/60 px-4 py-8 text-center text-sm text-ink-zacht">
+        {t("matching.leeg")}
+      </p>
+    );
   }
 
   const bezig = wijzig.isPending || vervang.isPending;
@@ -77,7 +88,10 @@ export function DoelsuggestieLijst({ themaId }: DoelsuggestieLijstProps) {
   return (
     <div>
       {wijzig.isError && (
-        <p role="alert" className="mb-2 text-suggestie-geweigerd">
+        <p
+          role="alert"
+          className="mb-3 rounded-md bg-suggestie-geweigerd/10 px-3.5 py-2.5 text-sm font-medium text-suggestie-geweigerd"
+        >
           {t("matching.wijzigenMislukt")}
         </p>
       )}
@@ -143,13 +157,13 @@ function SuggestieRij({ suggestie, bezig, onBeslis, onVervang }: SuggestieRijPro
   }
 
   return (
-    <li className="rounded-md border border-input p-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-sm font-semibold">{code}</span>
+    <li className="rounded-lg border border-border bg-card p-4 shadow-card">
+      <div className="flex items-center justify-between gap-3">
+        <span className="rounded-md bg-paper px-2 py-1 font-mono text-sm font-semibold text-ink">
+          {code}
+        </span>
         <div className="flex items-center gap-2">
-          {doelsoort && (
-            <DoelsoortBadge doelsoort={doelsoortBadgeSoort[doelsoort]} />
-          )}
+          {doelsoort && <DoelsoortBadge doelsoort={doelsoortBadgeSoort[doelsoort]} />}
           <Badge variant={statusVariant[status]}>{t(statusLabelKey[status])}</Badge>
         </div>
       </div>
@@ -159,13 +173,15 @@ function SuggestieRij({ suggestie, bezig, onBeslis, onVervang }: SuggestieRijPro
       <p className="mt-2 text-sm">{tekst ?? t("matching.doelTekstOnbekend")}</p>
 
       {aiMotivatie && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          <span className="font-medium">{t("matching.motivatieLabel")}</span>{" "}
-          {aiMotivatie}
-        </p>
+        <div className="mt-3 rounded-md bg-paper px-3 py-2.5">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
+            {t("matching.motivatieLabel")}
+          </p>
+          <p className="mt-0.5 text-sm leading-snug text-ink">{aiMotivatie}</p>
+        </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <Button
           size="sm"
           disabled={bezig}

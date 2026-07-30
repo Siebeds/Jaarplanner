@@ -11,22 +11,29 @@ import { cn } from "../../lib/utils";
  * while keeping accessible focus/keyboard behaviour. WCAG 2.2 AA focus ring.
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  [
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold",
+    "transition-[background-color,box-shadow,transform] duration-150 ease-uit",
+    // A 1px lift on press is the whole interaction feedback budget: enough to feel
+    // physical, not enough to read as decoration.
+    "active:translate-y-px",
+    "disabled:pointer-events-none disabled:opacity-50",
+  ].join(" "),
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        default: "bg-petrol text-petrol-foreground shadow-card hover:bg-petrol-helder",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-muted",
+        outline: "border border-input bg-card text-ink shadow-card hover:bg-petrol-wash",
+        ghost: "text-ink hover:bg-petrol-wash hover:text-petrol",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-6",
-        icon: "h-9 w-9",
+        // Comfortable targets: these are used by non-technical adults, sometimes on a
+        // laptop trackpad (NFR-2). 36px was the old default and read as cramped.
+        default: "h-11 px-5 text-sm",
+        sm: "h-9 px-3.5 text-sm",
+        lg: "h-12 px-7 text-base",
+        icon: "h-11 w-11",
       },
     },
     defaultVariants: {

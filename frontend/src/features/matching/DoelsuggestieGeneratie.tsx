@@ -208,8 +208,10 @@ function Runverslag({ resultaat }: { resultaat: Doelsuggestiegeneratie }) {
         </p>
       )}
 
-      {/* `duplicaatCodes` needs no singular: "Overgeslagen — al aan dit thema gekoppeld: …" names no
-          count and carries no demonstrative, so it reads correctly for one code and for ten. */}
+      {/* `duplicaatCodes` needs no singular: "Overgeslagen. Al aan dit thema gekoppeld: …" names no
+          count and carries no demonstrative, so it reads correctly for one code and for ten. Kept that
+          way through the em-dash rewrite (E0-10's sweep) — "Deze codes zijn al …" would have needed a
+          singular variant and reintroduced the plural bug this project keeps paying for. */}
       {resultaat.overgeslagenDuplicaat.length > 0 && (
         <p className="mt-1 text-xs text-muted-foreground">
           {t("matching.duplicaatCodes", {

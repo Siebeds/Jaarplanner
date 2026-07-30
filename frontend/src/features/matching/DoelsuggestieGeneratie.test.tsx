@@ -231,7 +231,7 @@ describe("DoelsuggestieGeneratie", () => {
 
     expect(
       await screen.findByText(
-        "Genegeerd — deze code uit het antwoord van de AI komt niet exact overeen met een geladen leerplandoel: VERZONNEN-99",
+        "Genegeerd. Deze code uit het antwoord van de AI komt niet exact overeen met een geladen leerplandoel: VERZONNEN-99",
       ),
     ).toBeInTheDocument();
   });
@@ -245,7 +245,7 @@ describe("DoelsuggestieGeneratie", () => {
 
     expect(
       await screen.findByText(
-        "Genegeerd — deze codes uit het antwoord van de AI komen niet exact overeen met een geladen leerplandoel: VERZONNEN-99 · VERZONNEN-98",
+        "Genegeerd. Deze codes uit het antwoord van de AI komen niet exact overeen met een geladen leerplandoel: VERZONNEN-99 · VERZONNEN-98",
       ),
     ).toBeInTheDocument();
   });

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { t } from "../../i18n";
 import { Jaarplankalender } from "./Jaarplankalender";
 import type { Generatieresultaat, Jaarplan, Planningsrooster } from "./types";
 
@@ -35,7 +36,7 @@ const rooster: Planningsrooster = {
 function maakJaarplan(plaatsingen: Jaarplan["plaatsingen"]): Jaarplan {
   return {
     klasId: KLAS_ID,
-    klasNaam: "L3 — derde leerjaar",
+    klasNaam: "L3 derde leerjaar",
     schooljaarId: SCHOOLJAAR_ID,
     schooljaarNaam: "2026-2027",
     blokindeling: rooster.blokindeling,
@@ -96,6 +97,17 @@ function stubFetch(jaarplan: Jaarplan, generatie?: Generatieresultaat | number) 
       return new Response("unexpected request", { status: 404 });
     }),
   );
+}
+
+/**
+ * The list of period cards.
+ *
+ * Needed because the year spine repeats two of the card labels by design — it carries a legend so its
+ * colours never stand alone (Art. XII) — so a document-wide text query for "Te vol" is ambiguous and would
+ * pass for the wrong reason.
+ */
+function periodes() {
+  return screen.getByRole("list", { name: t("kalender.ribbonLabel") });
 }
 
 function renderKalender() {
@@ -183,8 +195,12 @@ describe("Jaarplankalender", () => {
 
     // The thema is named, not merely counted — a teacher must see which plan item needs attention.
     expect(melding).toHaveTextContent("Feesten in december");
-    // Correct Dutch for a count of one: "1 thema STAAT", not "1 thema's STAAN".
-    expect(melding).toHaveTextContent("Te herzien — 1 thema staat niet meer in een periode");
+    // Correct Dutch for a count of one: "1 thema STAAT", not "1 thema's STAAN". Asserted against the
+    // catalogue rather than a literal, which is the convention elsewhere in the suite and the reason a
+    // later copy edit should not be able to fail this test: what matters is that the SINGULAR entry is
+    // chosen, not which words it currently contains.
+    expect(melding).toHaveTextContent(t("kalender.herzienTitelEnkelvoud"));
+    expect(melding).not.toHaveTextContent(t("kalender.herzienTitel", { aantal: 1 }));
 
     // And there is no way to dismiss it (directie 2026-07-28: "fix later" is not an option offered).
     // Checked for links as well as buttons: with no buttons anywhere in the feature, asserting only
@@ -214,6 +230,18 @@ describe("Jaarplankalender", () => {
     expect(screen.queryByText("Jaarplan laden…")).toBeNull();
   });
 
+  it("keeps the board reachable by keyboard, since it scrolls sideways", async () => {
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "a", themaNaam: "Water" })]));
+    renderKalender();
+    await screen.findByText("Water");
+
+    // The board is a horizontal scroll region with no focusable children yet (cards are inert until
+    // E3-07), so without a tab stop a keyboard user cannot scroll the year sideways at all. This is what
+    // axe's `scrollable-region-focusable` rule asks for, and jsdom cannot see overflow so axe will not
+    // catch its removal here.
+    expect(periodes()).toHaveAttribute("tabindex", "0");
+  });
+
   it("does not count a rejected thema toward 'te vol', but still shows it", async () => {
     // Regression (E3-02 code review): a geweigerd placement survives regeneration and occupies its slot for
     // idempotency, but nothing is taught in that period because of it. Counting it pushed a period over the
@@ -230,7 +258,9 @@ describe("Jaarplankalender", () => {
     await screen.findByText("Water");
 
     // Three placements in the block, but only two are planned — below the threshold of 3.
-    expect(screen.queryByText(/Te vol/)).toBeNull();
+    // Scoped to the period list: "Te vol" also appears in the year spine's legend, which explains what the
+    // colour means and is present regardless of whether any period is actually flagged.
+    expect(within(periodes()).queryByText(/Te vol/)).toBeNull();
 
     // The rejected one is still visible: a teacher should see what they rejected, struck through by its badge.
     expect(screen.getByText("Weggegooid")).toBeInTheDocument();
@@ -339,7 +369,7 @@ describe("Jaarplankalender", () => {
 
     await screen.findByText("Water");
     // Premises for this test's reach: the te-vol flag and the stale alert are actually on screen.
-    expect(screen.getByText(/Te vol/)).toBeInTheDocument();
+    expect(within(periodes()).getByText(/Te vol/)).toBeInTheDocument();
     expect(screen.getByRole("alert")).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();

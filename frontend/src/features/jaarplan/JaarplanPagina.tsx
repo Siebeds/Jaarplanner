@@ -1,36 +1,23 @@
-import { useState } from "react";
-
-import { t } from "../../i18n";
+import { useSelectie } from "../../app/useSelectie";
 import { Jaarplankalender } from "./Jaarplankalender";
 
 /**
- * The jaarplan page (E3-06). Until the app has class navigation (E6), it takes the klas-id from an
- * input so the kalender is genuinely reachable rather than only unit-testable — the same shape as
- * {@link ../matching/DoelsuggestieReview}, and for the same reason: this project has three times
- * shipped a feature nobody could reach.
+ * The jaarplan page (E3-06).
  *
- * All copy via nl.json (Art. II.3).
+ * The class comes from the shell's selector via the URL (E0-10, ADR-0021). Until E0-10 this page carried
+ * its own text input for pasting a klas-id — the only way the kalender was reachable at all — and the
+ * page is now thin because selecting a class stopped being its job.
+ *
+ * The empty-selection message lives in {@link Jaarplankalender}, which already renders
+ * `kalender.geenKlas` when no class id is present; that copy now points at the selector above rather than
+ * at an input that no longer exists.
  */
 export function JaarplanPagina() {
-  const [klasId, setKlasId] = useState("");
+  const { klasId } = useSelectie();
 
   return (
-    <section className="w-full max-w-6xl text-left">
-      <label className="block text-sm font-medium" htmlFor="klas-id">
-        {t("kalender.klasIdLabel")}
-      </label>
-      <input
-        id="klas-id"
-        type="text"
-        value={klasId}
-        onChange={(event) => setKlasId(event.target.value.trim())}
-        placeholder={t("kalender.klasIdPlaceholder")}
-        className="mt-1 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      />
-
-      <div className="mt-6">
-        <Jaarplankalender klasId={klasId} />
-      </div>
+    <section className="w-full text-left">
+      <Jaarplankalender klasId={klasId} />
     </section>
   );
 }

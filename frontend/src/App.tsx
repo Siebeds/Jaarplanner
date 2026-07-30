@@ -1,44 +1,47 @@
-import { DndContext } from "@dnd-kit/core";
-import { useUiStore } from "./store/uiStore";
-import { t } from "./i18n";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+
+import { AppShell } from "./app/AppShell";
+import { BinnenkortPagina } from "./app/BinnenkortPagina";
+import { NietGevondenPagina } from "./app/NietGevondenPagina";
+import { JAARPLAN_PAD } from "./app/routes";
 import { DoelsuggestieReview } from "./features/matching/DoelsuggestieReview";
 import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
 
 /**
- * App skeleton (E0-05) + i18n seam (E0-06). Wires the mandated state/DnD libraries:
- * - TanStack Query provider is mounted in main.tsx (server state).
- * - Zustand example store proves local UI state wiring.
- * - @dnd-kit/core DndContext proves the DnD library is installed/importable.
+ * Route table (E0-10, ADR-0021). Declarative `react-router-dom`; every screen renders inside {@link AppShell}.
  *
- * All user-facing copy is sourced from `nl.json` via `t()` (Art. II.3, ADR-0005);
- * the only literal in JSX text is the brand word "Jaarplanner" (proper noun, not
- * translatable copy). The Radix/shadcn design system and full a11y tooling are E0-09.
+ * `/` redirects to the jaarplan — the kalender is an anchor screen (Art. VIII) and the most complete thing
+ * here, so it is the honest landing page. The redirect `replace`s so Back does not bounce off it.
+ *
+ * The four `BinnenkortPagina` routes exist so the §3 information architecture is visible and clickable
+ * without pretending to work; the nav marks them "nog niet beschikbaar". Keep these paths in step with
+ * `app/routes.ts`, which is what the navigation renders from.
+ *
+ * `DoelsuggestieReview` is mounted at `/themas` because reviewing a thema's AI-suggested goals is where it
+ * belongs in the IA. It still asks for a thema-id by hand: replacing that with a real thema list is
+ * **E1-14**, and generating suggestions at all is **E2-08**. Deliberately not fixed here — this story owns
+ * the frame, not the screens.
+ *
+ * `DndContext` is gone from this level. It wrapped an app with nothing draggable in it (an E0-05
+ * "library is importable" proof); **E3-07** introduces drag-and-drop and should mount it around the
+ * kalender that actually uses it, together with the sensors and keyboard support that story requires.
  */
 function App() {
-  const sidebarOpen = useUiStore((state) => state.sidebarOpen);
-  const toggleSidebar = useUiStore((state) => state.toggleSidebar);
-
   return (
-    <DndContext>
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 p-8 text-slate-900">
-        {/* Brand / proper noun, not translatable copy — exempt from the i18n guard. */}
-        {/* eslint-disable-next-line no-restricted-syntax */}
-        <h1 className="text-3xl font-bold tracking-tight">Jaarplanner</h1>
-        <p className="text-sm text-slate-500">{t("app.ondertitel")}</p>
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          aria-label={
-            sidebarOpen ? t("zijbalk.toggleSluiten") : t("zijbalk.toggleOpenen")
-          }
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
-        >
-          {sidebarOpen ? t("zijbalk.open") : t("zijbalk.gesloten")}
-        </button>
-        <JaarplanPagina />
-        <DoelsuggestieReview />
-      </main>
-    </DndContext>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route index element={<Navigate to={JAARPLAN_PAD} replace />} />
+          <Route path={JAARPLAN_PAD} element={<JaarplanPagina />} />
+          <Route path="/themas" element={<DoelsuggestieReview />} />
+          <Route path="/doelen" element={<BinnenkortPagina uitlegKey="binnenkort.doelen" />} />
+          <Route path="/dekking" element={<BinnenkortPagina uitlegKey="binnenkort.dekking" />} />
+          <Route path="/import" element={<BinnenkortPagina uitlegKey="binnenkort.import" />} />
+          <Route path="/beheer" element={<BinnenkortPagina uitlegKey="binnenkort.beheer" />} />
+          <Route path="*" element={<NietGevondenPagina />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
