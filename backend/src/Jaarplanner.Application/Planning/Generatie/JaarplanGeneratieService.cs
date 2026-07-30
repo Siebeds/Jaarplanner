@@ -119,31 +119,43 @@ public sealed class JaarplanGeneratieService
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var blokStarts = blokken.Select(b => b.Start).ToHashSet();
 
-        // Resolve each blocking vast moment to the block that CONTAINS its date (FR-5.4). A date is resolved against
-        // the grid rather than supplied as a block key, so a teacher never has to know where a boundary falls; and a
-        // date in a vakantie or outside the year belongs to no block at all, which is reported rather than ignored —
-        // a teacher who blocked a period and saw nothing refused would otherwise assume it had been honoured.
+        // Resolve every vast moment to the block that CONTAINS its date (FR-5.4). A date is resolved against the grid
+        // rather than supplied as a block key, so a teacher never has to know where a boundary falls; and a date in a
+        // vakantie or outside the year belongs to no block at all, which is reported rather than ignored — a teacher
+        // who blocked a period and saw nothing refused would otherwise assume it had been honoured.
+        //
+        // EVERY moment is reported, resolved or not, blocking or not. An earlier revision kept only the first name per
+        // period, so a second moment in the same period vanished from the report with no evidence it had been parsed —
+        // the same defect OnplaatsbareVasteMomenten exists to prevent, one case over.
         var geblokkeerdeBlokken = new Dictionary<DateOnly, string>();
-        var onplaatsbareMomenten = new List<string>();
-        foreach (var moment in parameters.VasteMomenten.Where(m => m.BlokkeertPlaatsing))
+        var toegepasteMomenten = new List<VastMomentUitkomst>();
+        var onplaatsbareMomenten = new List<VastMomentUitkomst>();
+        foreach (var moment in parameters.VasteMomenten.OrderBy(m => m.Datum).ThenBy(m => m.Naam, StringComparer.Ordinal))
         {
             var blok = blokken.FirstOrDefault(b => moment.Datum >= b.Start && moment.Datum <= b.Eind);
             if (blok is null)
             {
-                onplaatsbareMomenten.Add($"{moment.Naam} @ {Datum(moment.Datum)}");
+                onplaatsbareMomenten.Add(
+                    new VastMomentUitkomst(moment.Naam, moment.Datum, moment.BlokkeertPlaatsing, BlokStart: null));
                 continue;
             }
 
-            // Two blocking moments in one period is not an error; the first name is kept for the report because one
-            // reason is enough to explain a refusal and listing both would say the period was refused twice.
-            geblokkeerdeBlokken.TryAdd(blok.Start, moment.Naam);
+            toegepasteMomenten.Add(
+                new VastMomentUitkomst(moment.Naam, moment.Datum, moment.BlokkeertPlaatsing, blok.Start));
+
+            if (moment.BlokkeertPlaatsing)
+            {
+                // The refusal sentence names one moment, because one reason explains a refusal; the full list above is
+                // what proves both were applied.
+                geblokkeerdeBlokken.TryAdd(blok.Start, moment.Naam);
+            }
         }
 
         var onbekendeThemas = new List<string>();
         var onbekendeBlokken = new List<string>();
         var duplicaten = new List<string>();
         var afgewezen = new List<string>();
-        var geweigerdDoorVastMoment = new List<string>();
+        var geweigerdDoorVastMoment = new List<GeweigerdePlaatsing>();
         var nieuw = 0;
 
         foreach (var suggestie in parse.Plaatsingen)
@@ -160,16 +172,19 @@ public sealed class JaarplanGeneratieService
                 continue;
             }
 
-            // The enforced half of FR-5.4. The prompt already asked the model to leave this period alone; this is
-            // what makes the parameter more than a request. Skipping reuses the mechanism the service already applies
-            // to unknown thema's and dates, so a refused placement is dropped and reported rather than moved
-            // somewhere the teacher never chose — relocating it would be the same defect ADR-0020 forbids for stale
-            // placements. The report names the moment, because "one thema was dropped" without saying which
-            // instruction dropped it is not actionable.
+            // The enforced half of FR-5.4. The prompt already asked the model to leave this period alone; this is what
+            // makes the parameter more than a request. It is NOT placed, and NOT relocated — moving it to a period the
+            // teacher never chose is what ADR-0020 forbids for stale placements.
+            //
+            // But unlike an unknown thema name or an unknown date, this proposal is fully RESOLVABLE: the thema
+            // exists, the block exists, and the model gave a motivatie. So the refusal keeps all of it, including the
+            // motivation, rather than reusing the drop-and-forget path. Throwing it away would leave a thema planned
+            // nowhere, lower the dekking Art. V exists to prove, and give the teacher nothing to act on.
             if (geblokkeerdeBlokken.TryGetValue(suggestie.BlokStart, out var blokkerendMoment))
             {
                 geweigerdDoorVastMoment.Add(
-                    $"{thema.Naam} @ {Datum(suggestie.BlokStart)} ({blokkerendMoment})");
+                    new GeweigerdePlaatsing(
+                        thema.Naam, suggestie.BlokStart, blokkerendMoment, suggestie.Motivatie));
                 continue;
             }
 
@@ -227,10 +242,12 @@ public sealed class JaarplanGeneratieService
                 parameters,
                 jaarplan.Plaatsingen.Where(p => p.BlokNiveau == GeneratieNiveau),
                 themas.ToDictionary(t => t.Id),
-                blokken.OrderBy(b => b.Start).FirstOrDefault(),
-                themas.Select(t => t.Naam).ToHashSet(StringComparer.OrdinalIgnoreCase)) with
+                blokken,
+                themas.Select(t => t.Naam).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                geblokkeerdeBlokken.Keys.ToHashSet()) with
             {
                 GeweigerdDoorVastMoment = geweigerdDoorVastMoment,
+                ToegepasteVasteMomenten = toegepasteMomenten,
                 OnplaatsbareVasteMomenten = onplaatsbareMomenten,
             };
 

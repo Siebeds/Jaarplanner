@@ -160,16 +160,17 @@ public static class JaarplanGeneratiePromptBuilder
         Line(sb, "# Wat de leerkracht vooraf vraagt");
         Line(sb, string.Empty);
 
+        // One line per requested thema, each naming its OWN block. An earlier revision joined them into a single
+        // sentence naming one block, which told the model to put several 4–6 week thema's in one themaperiode —
+        // contradicting the system prompt's "use as many different blocks as possible" and its own fit rule.
         var startthemas = parameters.GenormaliseerdeStartthemas();
-        if (startthemas.Count > 0)
+        var geordend = blokken.OrderBy(b => b.Start).ToList();
+        for (var i = 0; i < startthemas.Count && i < geordend.Count; i++)
         {
-            var eerste = blokken.OrderBy(b => b.Start).FirstOrDefault();
-            var slot = eerste is null ? "het eerste blok" : $"het blok met startdatum {Datum(eerste.Start)}";
-
             Line(
                 sb,
-                $"- Begin het schooljaar met dit thema (in {slot}): " +
-                string.Join(", ", startthemas) + ".");
+                $"- Plaats het thema \"{startthemas[i]}\" in het blok met startdatum " +
+                $"{Datum(geordend[i].Start)}.");
         }
 
         foreach (var moment in parameters.VasteMomenten.OrderBy(m => m.Datum).ThenBy(m => m.Naam, StringComparer.Ordinal))

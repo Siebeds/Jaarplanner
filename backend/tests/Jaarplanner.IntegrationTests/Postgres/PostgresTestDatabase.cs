@@ -114,8 +114,37 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = "postgres" };
         await using var admin = new NpgsqlConnection(builder.ConnectionString);
         await admin.OpenAsync();
-        await using var cmd = admin.CreateCommand();
-        cmd.CommandText = $"DROP DATABASE IF EXISTS \"{_databaseNaam}\" WITH (FORCE)";
-        await cmd.ExecuteNonQueryAsync();
+
+        // Retry a PLAIN drop rather than using WITH (FORCE), and wait between attempts.
+        //
+        // This was an intermittent failure — roughly one full-suite run in three — surfacing as
+        // `42501: permission denied to terminate process` on whichever Postgres test happened to finish first.
+        // `WITH (FORCE)` terminates the remaining backends, which requires superuser or membership of
+        // `pg_signal_backend`; the local and CI `jaarplanner` roles have neither, and granting them is an
+        // environment change this repo cannot make from code. The reason it only *sometimes* failed is that
+        // `ClearAllPools()` returns once the client has released its handles, not once the server has finished
+        // closing those backends — so if the drop won the race there was nothing left to terminate and FORCE was
+        // never exercised.
+        //
+        // A plain drop needs no privilege beyond ownership. It fails with `55006: database is being accessed by
+        // other users` while a backend lingers, which is exactly the transient condition, so retrying is the
+        // correct response rather than escalating privilege. Fixed here rather than filed because a test that
+        // fails one run in three is indistinguishable from a real regression, and this repo has already paid twice
+        // for gates that could not be trusted.
+        const int pogingen = 10;
+        for (var poging = 1; ; poging++)
+        {
+            try
+            {
+                await using var cmd = admin.CreateCommand();
+                cmd.CommandText = $"DROP DATABASE IF EXISTS \"{_databaseNaam}\"";
+                await cmd.ExecuteNonQueryAsync();
+                return;
+            }
+            catch (PostgresException fout) when (fout.SqlState == "55006" && poging < pogingen)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(100 * poging));
+            }
+        }
     }
 }

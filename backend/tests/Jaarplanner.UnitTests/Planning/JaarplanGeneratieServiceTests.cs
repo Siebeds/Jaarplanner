@@ -1,4 +1,4 @@
-using Jaarplanner.Application.Planning;
+﻿using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Domain.Planning;
@@ -704,8 +704,16 @@ public sealed class JaarplanGeneratieServiceTests
         var rapport = resultaat.Parameters;
         Assert.NotNull(rapport);
         var geweigerd = Assert.Single(rapport!.GeweigerdDoorVastMoment);
-        Assert.Contains("Herfst", geweigerd);
-        Assert.Contains("Schoolfeest", geweigerd);
+        Assert.Equal("Herfst", geweigerd.ThemaNaam);
+        Assert.Equal(blokken[0].Start, geweigerd.BlokStart);
+        Assert.Equal("Schoolfeest", geweigerd.MomentNaam);
+
+        // The model's proposal survives the refusal: the motivation is kept so the teacher can still read what was
+        // suggested and place it by hand, rather than the thema vanishing with no trace (Art. IV.2/IV.3).
+        Assert.Equal("past hier", geweigerd.AiMotivatie);
+
+        // A refused placement IS an attention point: a thema the teacher wanted taught is now planned nowhere.
+        Assert.True(rapport.HeeftAandachtspunten);
     }
 
     /// <summary>
@@ -725,7 +733,7 @@ public sealed class JaarplanGeneratieServiceTests
             klas.Id,
             new JaarplanGeneratieParameters
             {
-                VasteMomenten = [new VastMoment("Sportdag", blokken[0].Start.AddDays(2))],
+                VasteMomenten = [new VastMoment("Sportdag", blokken[0].Start.AddDays(2), BlokkeertPlaatsing: false)],
             });
 
         Assert.Equal(1, resultaat.AantalNieuw);
@@ -759,7 +767,9 @@ public sealed class JaarplanGeneratieServiceTests
         Assert.True(resultaat.IsGeslaagd);
         Assert.Equal(1, resultaat.AantalNieuw);     // nothing was refused, because nothing could be
         var onplaatsbaar = Assert.Single(resultaat.Parameters!.OnplaatsbareVasteMomenten);
-        Assert.Contains("Oudercontact", onplaatsbaar);
+        Assert.Equal("Oudercontact", onplaatsbaar.Naam);
+        Assert.Null(onplaatsbaar.BlokStart);
+        Assert.Empty(resultaat.Parameters!.ToegepasteVasteMomenten);
         Assert.True(resultaat.Parameters!.HeeftAandachtspunten);
     }
 
@@ -913,6 +923,95 @@ public sealed class JaarplanGeneratieServiceTests
         await service2.GenereerAsync(klas2.Id, new JaarplanGeneratieParameters());
 
         Assert.Equal(promptZonder, client2.LaatsteRequest!.UserPrompt);
+    }
+
+    /// <summary>
+    /// The teacher's two instructions contradict each other: open with Water, and block the period Water would open.
+    /// The tool refuses it, so reporting that as the model declining would tell a teacher the AI ignored them when in
+    /// fact their own inputs could not both hold. Found by the E3-04 audit; the first revision had no test and did
+    /// exactly that.
+    /// </summary>
+    [Fact]
+    public async Task Een_startthema_in_een_geblokkeerd_blok_is_tegenstrijdig_niet_genegeerd_door_de_ai()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(
+            Antwoord(("Water", blokken[0].Start), ("Herfst", blokken[1].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = ["Water"],
+                VasteMomenten = [new VastMoment("Schoolfeest", blokken[0].Start.AddDays(1), BlokkeertPlaatsing: true)],
+            });
+
+        var rapport = resultaat.Parameters!;
+        Assert.Equal(["Water"], rapport.TegenstrijdigeStartthemas);
+
+        // Crucially NOT reported as the model declining, which is what the first revision did.
+        Assert.Empty(rapport.NietGehonoreerdeStartthemas);
+        Assert.Empty(rapport.GehonoreerdeStartthemas);
+        Assert.True(rapport.HeeftAandachtspunten);
+    }
+
+    /// <summary>
+    /// Several start thema's map one-per-block from the start of the year, in the order given. The earlier revision
+    /// joined them into one sentence naming a single block, which told the model to put two 4–6 week thema's in one
+    /// themaperiode and guaranteed the report a false "not honoured" entry.
+    /// </summary>
+    [Fact]
+    public async Task Meerdere_startthemas_gaan_elk_naar_hun_eigen_blok()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, client, klas, _, _) = Opzet(
+            Antwoord(("Water", blokken[0].Start), ("Herfst", blokken[1].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water", "Herfst"] });
+
+        // Each request names its OWN block in the prompt.
+        var prompt = client.LaatsteRequest!.UserPrompt;
+        Assert.Contains($"\"Water\" in het blok met startdatum {blokken[0].Start:yyyy-MM-dd}", prompt);
+        Assert.Contains($"\"Herfst\" in het blok met startdatum {blokken[1].Start:yyyy-MM-dd}", prompt);
+
+        // And both count as honoured, where the old single-block reading would have failed one of them.
+        var rapport = resultaat.Parameters!;
+        Assert.Equal(["Water", "Herfst"], rapport.GehonoreerdeStartthemas);
+        Assert.Empty(rapport.NietGehonoreerdeStartthemas);
+        Assert.False(rapport.HeeftAandachtspunten);
+    }
+
+    /// <summary>
+    /// Two vaste momenten in one period: both are reported as applied, even though only one name explains the
+    /// refusal. A teacher who enters two and sees one acknowledged has no evidence the other was parsed.
+    /// </summary>
+    [Fact]
+    public async Task Twee_vaste_momenten_in_hetzelfde_blok_worden_beide_gerapporteerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[1].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten =
+                [
+                    new VastMoment("Schoolfeest", blokken[0].Start.AddDays(1), BlokkeertPlaatsing: true),
+                    new VastMoment("Sportdag", blokken[0].Start.AddDays(2), BlokkeertPlaatsing: true),
+                ],
+            });
+
+        var toegepast = resultaat.Parameters!.ToegepasteVasteMomenten;
+        Assert.Equal(2, toegepast.Count);
+        Assert.All(toegepast, m => Assert.Equal(blokken[0].Start, m.BlokStart));
+        Assert.Contains(toegepast, m => m.Naam == "Schoolfeest");
+        Assert.Contains(toegepast, m => m.Naam == "Sportdag");
     }
 
     /// <summary>
