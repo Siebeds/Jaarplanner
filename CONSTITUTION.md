@@ -52,8 +52,16 @@ The following are explicitly **out of scope** and must not be built without an a
 
 1. **The domain language is Dutch.** Domain entities and concepts use Dutch names in code: `Leerplandoel`, `Minimumdoel`, `Doelsoort`, `Thema`, `Subthema`, `Activiteit`, `Jaarplan`, `Planningsblok`, `Dekking`, `Concordantie`, `Klas`, `Schooljaar`. Translating *leerplandoel* vs *minimumdoel* loses meaning — do not translate domain terms.
 2. **Generic / infrastructure code, technical identifiers, tooling, and comments are in English.**
-3. **All user-facing strings are Dutch** and centralised in `frontend/src/i18n/nl.json`. Never hard-code Dutch text in components.
+3. **All user-facing strings are Dutch.** UI text is centralised in `frontend/src/i18n/nl.json`; never hard-code Dutch text in components.
+   **Amended 2026-07-30 (owner ruling), resolving the open Art. XIV question:** the language of a message follows **who it is for**, not which layer produced it.
+   - **A message a teacher or directie can act on is Dutch.** A validation error, a per-row import problem, a reason a placement was refused. It may be **generated server-side**: this article no longer requires that every Dutch string a user reads live in `nl.json`, because a diagnostic that names a row number, an offending column or a specific thema cannot be assembled from a static catalogue without inventing a parallel one.
+   - **A message only a developer or operator can act on is English.** A malformed AI response, a parse failure, an unmapped exception. Translating these buys nothing: no teacher can fix them, and the audience is the log.
+   - **UI chrome, labels, buttons and any copy the frontend authors itself stay in `nl.json`.** The amendment scopes the catalogue rule to text the frontend owns; it does not license a component to hard-code Dutch.
+   *Consequence, stated so nobody has to rediscover it:* option (b) from the Art. XIV entry — restructuring payloads into machine-readable codes plus parameters — is **rejected**. `problemen[].melding`, `diff.opmerkingen[]` and the planning faults may stay free text. Where a payload is *presentation* rather than *diagnosis*, prefer structured fields anyway, so the frontend can format dates and compose sentences in real Dutch (see `ParameterRapport`, whose records exist for exactly that reason).
 4. The glossary in [Article XII](#article-xii--glossary-nl--en) is authoritative for domain terms. Extend it rather than inventing synonyms.
+5. **No em dashes in the product.** *(Owner instruction 2026-07-29, ratified **product-wide** 2026-07-30.)* No `—` in any string a user can read or that becomes data: `nl.json`, seeded and demo content, `Klas.Naam` and other stored names, exported documents, and the **canonical examples in this constitution and `CLAUDE.md`**, because an example in a governing document gets copied into real rows. **Rewrite the sentence** — split the clause, or use a colon — rather than deleting the character and leaving limp Dutch. En dashes (`–`) in date and number ranges are correct Dutch typography and stay.
+   *Scope, stated because "product-wide" could be read wider:* this binds the **product**, not developer prose. Code comments, commit messages, ADR analysis, backlog entries and worklogs are English text written for whoever reads the code later, and normal English typography applies there. The test is whether a reader outside the team can ever see the character.
+6. **Answer the project owner in Dutch.** *(Owner instruction, 2026-07-30.)* Every reply, summary, status update and question addressed to the owner is in Dutch, whatever language the question arrived in. This governs **communication only**: clauses 1–3 above are unchanged, and repo artefacts (commit messages, ADRs, backlog, worklogs, code comments) stay English as they already are, because switching language halfway through an archive makes it less readable, not more. Operational detail in [`CLAUDE.md`](CLAUDE.md).
 
 ---
 
@@ -185,7 +193,7 @@ Scoping is **level-dependent and prescribed by pedagogy** (not a single shared/p
 ### IX.3 Planning & coverage
 
 - **Schooljaar** — contains multiple klassen; carries the vakantie-/periodestructuur.
-- **Klas** — id, naam (e.g. "L3 — derde leerjaar"), leerjaar/leeftijdsgroep; has one `Jaarplan`.
+- **Klas** — id, naam (e.g. "L3 derde leerjaar"), leerjaar/leeftijdsgroep; has one `Jaarplan`.
 - **Jaarplan** — klasId; per **planningsblok** a list of thema's, with a `vergrendeld` flag per thema (excluded from regeneration). Planningsblok granularity is **settled** (Art. XIV, directie 2026-07-14): a **two-tier** model — *themaperiode* (4–6 wk) and *subthemaperiode* (~2 wk) — is the default, configurable behind a seam (E3-05); **never hard-assume months**.
 - **Dekking** — computed, not stored (see Article V). Binary (gedekt/niet-gedekt) for the MVP is a **deliberate simplification**; "herhaling/opbouw over leeftijden" (verticale samenhang) may be surfaced later (Art. XIV).
 
