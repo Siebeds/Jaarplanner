@@ -101,7 +101,10 @@ export function DoelsuggestieLijst({ themaId }: DoelsuggestieLijstProps) {
           which means this one string has to name every check the teacher can make, casing included: a check the
           copy omits is a way out the teacher never gets told about. */}
       {vervang.isError && (
-        <p role="alert" className="mb-2 text-suggestie-geweigerd">
+        <p
+          role="alert"
+          className="mb-2 rounded-md bg-suggestie-geweigerd/10 px-3.5 py-2.5 text-sm font-medium text-suggestie-geweigerd"
+        >
           {vervang.error instanceof ApiError && vervang.error.status === 400
             ? t("matching.vervangenMislukt")
             : t("matching.vervangenOnbeschikbaar")}
@@ -217,7 +220,7 @@ function SuggestieRij({ suggestie, bezig, onBeslis, onVervang }: SuggestieRijPro
           there is no doelenkiezer yet — browsing/searching the curriculum is E1-14's screen, not this
           story's. Deliberately a plain field over a fake picker: the server refuses a code Op.stap does not
           carry, and the refusal is shown above. */}
-      <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-input pt-3">
+      <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-border pt-3">
         <div className="flex-1">
           {/* The visible label carries the code, so it is unique per row and no aria-label is needed —
               an aria-label would override the visible text and break WCAG 2.5.3 (Label in Name). */}
@@ -233,7 +236,7 @@ function SuggestieRij({ suggestie, bezig, onBeslis, onVervang }: SuggestieRijPro
             value={nieuweCode}
             onChange={(event) => setNieuweCode(event.target.value)}
             placeholder={t("matching.vervangenPlaceholder")}
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="mt-1 h-11 w-full rounded-md border border-input bg-card px-3.5 font-mono text-sm text-ink placeholder:font-sans placeholder:text-ink-zacht focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
         </div>
         <Button

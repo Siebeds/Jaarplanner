@@ -66,7 +66,7 @@
     --paper-diep: 40 20% 94%; /* recessed wells (empty period, scroll track) */
     --card: 0 0% 100%;
     --ink: 196 38% 13%; /* deep petrol-black — body text */
-    --ink-zacht: 200 14% 38%; /* secondary text; 6.4:1 on paper */
+    --ink-zacht: 200 14% 38%; /* secondary text; 5.7:1 on paper, 6.0:1 on card (both AA) */
 
     /* The single structural hue. Dark enough for white text at 8.9:1. */
     --petrol: 188 60% 22%;

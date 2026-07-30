@@ -19,8 +19,8 @@ import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
  *
  * `DoelsuggestieReview` is mounted at `/themas` because reviewing a thema's AI-suggested goals is where it
  * belongs in the IA. It still asks for a thema-id by hand: replacing that with a real thema list is
- * **E1-14**, and generating suggestions at all is **E2-08**. Deliberately not fixed here — this story owns
- * the frame, not the screens.
+ * **E1-14**. Deliberately not fixed here — this story owns the frame, not the screens. (Generating the
+ * suggestions was **E2-08**, and has since landed; the trigger sits on that page.)
  *
  * `DndContext` is gone from this level. It wrapped an app with nothing draggable in it (an E0-05
  * "library is importable" proof); **E3-07** introduces drag-and-drop and should mount it around the

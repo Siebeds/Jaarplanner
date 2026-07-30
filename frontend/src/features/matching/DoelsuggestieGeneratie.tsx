@@ -85,7 +85,7 @@ export function DoelsuggestieGeneratie({ themaId }: DoelsuggestieGeneratieProps)
             value={disciplines}
             onChange={(event) => setDisciplines(event.target.value)}
             placeholder={t("matching.disciplinesPlaceholder")}
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="mt-1 h-11 w-full rounded-md border border-input bg-card px-3.5 text-sm text-ink placeholder:text-ink-zacht focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
         </div>
         <div className="flex-1">
@@ -101,7 +101,7 @@ export function DoelsuggestieGeneratie({ themaId }: DoelsuggestieGeneratieProps)
             value={jaarFasen}
             onChange={(event) => setJaarFasen(event.target.value)}
             placeholder={t("matching.jaarFasenPlaceholder")}
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="mt-1 h-11 w-full rounded-md border border-input bg-card px-3.5 text-sm text-ink placeholder:text-ink-zacht focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
         </div>
       </div>
@@ -139,7 +139,7 @@ export function DoelsuggestieGeneratie({ themaId }: DoelsuggestieGeneratieProps)
         role="status"
         className={
           generatie.isSuccess
-            ? "mt-3 rounded-md border border-input bg-background p-3"
+            ? "mt-3 rounded-md border border-border bg-paper-diep p-3"
             : undefined
         }
       >
