@@ -111,7 +111,7 @@ Database / EF Core:
 ## Data model (core entities)
 > **Refined model is in [`CONSTITUTION.md` Art. IX](CONSTITUTION.md#article-ix--core-data-model-functional).** It adds `Discipline` (numbered, 9.x split), `Themadoel` (2–3 school-wide anchors), `Subdoel` (per subthema × leeftijd), rich `Thema`/`Subthema`/`Activiteit` attributes, and **level-dependent scoping** (Thema/Themadoel/kernwoordenschat school-wide; Subthema/Subdoel/Activiteit per class & age). On conflict the constitution wins. The list below is the original sketch.
 
-- **Klas** — id, naam (e.g. "L3 — derde leerjaar"), leerjaar.
+- **Klas** — id, naam (e.g. "L3 derde leerjaar"), leerjaar.
 - **Leerplandoel** — code (unique), doelsoort, jaarFase, domein, subdomein, cluster?, tekst, voorbeelden?, toelichting?, woordenschat?, `minimumdoelRef` (concordance). Read-only reference data.
 - **Minimumdoel** — ref, leeftijd (K-/4-/6-), nr, omschrijving. The decreed eindterm; concorded to leerplandoelen.
 - **Thema** — id, naam, subthema's[], activiteiten[].
