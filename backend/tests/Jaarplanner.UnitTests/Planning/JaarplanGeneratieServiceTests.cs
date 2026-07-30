@@ -648,4 +648,288 @@ public sealed class JaarplanGeneratieServiceTests
         Assert.Throws<ArgumentNullException>(() => new JaarplanGeneratieService(new FakeAiClient(), null!, opslag));
         Assert.Throws<ArgumentNullException>(() => new JaarplanGeneratieService(new FakeAiClient(), Indeling, null!));
     }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // E3-04 — pre-generation parameters (FR-5.4)
+    //
+    // FR-5.4's criterion is that the parameters "measurably influence the result". With the AI client faked in
+    // every test (Art. IV.6), a parameter that only reaches the prompt cannot be shown to change an OUTCOME —
+    // asserting that would assert the fake. So the story is delivered in two halves that are each verifiable, the
+    // same split E3-02 used, and the tests are written to keep them distinguishable:
+    //   * ASKED     — the prompt carries the parameter (a preference the model may decline), and the run reports
+    //                 whether the returned plan honoured it.
+    //   * ENFORCED  — a blocking vast moment is applied by the service, so the SAME faked response persists a
+    //                 different plan depending on the parameter. That is the half that measurably influences.
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The enforced half, and the load-bearing test of FR-5.4: one faked response, two parameter sets, two
+    /// different persisted plans. Nothing about the model changes between the runs, so the difference is
+    /// attributable to the parameter alone.
+    /// </summary>
+    [Fact]
+    public async Task Een_vast_moment_dat_blokkeert_verandert_wat_er_bewaard_wordt()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var antwoord = Antwoord(("Herfst", blokken[0].Start), ("Water", blokken[1].Start));
+
+        // Baseline: no parameters, both placements land.
+        var (zonder, _, _, klasZonder, _, _) = Opzet(antwoord, TestSchooljaar.MetVakanties());
+        var basis = await zonder.GenereerAsync(klasZonder.Id);
+        Assert.Equal(2, basis.AantalNieuw);
+
+        // Same answer, but the teacher has spent the first period on a schoolfeest. The date is given as a DATE
+        // inside the block, never as the block's key — a teacher does not know where a boundary falls.
+        var (met, _, _, klasMet, _, _) = Opzet(antwoord, schooljaar);
+        var parameters = new JaarplanGeneratieParameters
+        {
+            VasteMomenten = [new VastMoment("Schoolfeest", blokken[0].Start.AddDays(3), BlokkeertPlaatsing: true)],
+        };
+
+        var resultaat = await met.GenereerAsync(klasMet.Id, parameters);
+
+        // The run still SUCCEEDS and the rest of the plan stands — a refused placement is not a failed run.
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(1, resultaat.AantalNieuw);
+        Assert.Single(resultaat.Jaarplan!.Plaatsingen);
+        Assert.Equal("Water", resultaat.Jaarplan!.Plaatsingen[0].ThemaNaam);
+
+        // Refused, not relocated. Moving it to a period the teacher never chose is exactly what ADR-0020 forbids
+        // for stale placements, and the reason would be invisible.
+        Assert.DoesNotContain(
+            resultaat.Jaarplan!.Plaatsingen, p => p.BlokStart == blokken[0].Start);
+
+        // And the refusal NAMES the instruction that caused it: "a thema was dropped" is not actionable.
+        var rapport = resultaat.Parameters;
+        Assert.NotNull(rapport);
+        var geweigerd = Assert.Single(rapport!.GeweigerdDoorVastMoment);
+        Assert.Contains("Herfst", geweigerd);
+        Assert.Contains("Schoolfeest", geweigerd);
+    }
+
+    /// <summary>
+    /// A vast moment that does not block is context only: the model is told the period has less time, but nothing
+    /// is refused. The default is deliberately the weaker reading, so a caller that omits the flag cannot
+    /// accidentally have work silently dropped.
+    /// </summary>
+    [Fact]
+    public async Task Een_vast_moment_zonder_blokkade_weigert_niets()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, client, klas, _, _) = Opzet(
+            Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten = [new VastMoment("Sportdag", blokken[0].Start.AddDays(2))],
+            });
+
+        Assert.Equal(1, resultaat.AantalNieuw);
+        Assert.Empty(resultaat.Parameters!.GeweigerdDoorVastMoment);
+
+        // Asked, though: the model is told it exists so it can reason about the period's real capacity.
+        Assert.Contains("Sportdag", client.LaatsteRequest!.UserPrompt);
+        Assert.Contains("minder tijd", client.LaatsteRequest.UserPrompt);
+    }
+
+    /// <summary>
+    /// A blocking moment whose date falls in no block at all — a vakantie is part of no planningsblok (ADR-0020) —
+    /// is <b>reported</b>, not silently ignored. A teacher who blocked a period and saw nothing refused would
+    /// otherwise conclude the block had been honoured when it was never applied at all.
+    /// </summary>
+    [Fact]
+    public async Task Een_vast_moment_in_een_vakantie_wordt_gerapporteerd_niet_stil_genegeerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var vakantie = schooljaar.Sluitingen.First(s => s.Soort == Sluitingssoort.Vakantie);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten = [new VastMoment("Oudercontact", vakantie.Start, BlokkeertPlaatsing: true)],
+            });
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(1, resultaat.AantalNieuw);     // nothing was refused, because nothing could be
+        var onplaatsbaar = Assert.Single(resultaat.Parameters!.OnplaatsbareVasteMomenten);
+        Assert.Contains("Oudercontact", onplaatsbaar);
+        Assert.True(resultaat.Parameters!.HeeftAandachtspunten);
+    }
+
+    /// <summary>
+    /// The asked half: a gewenst startthema reaches the prompt, naming the block it should open, so the model can
+    /// comply in one pass.
+    /// </summary>
+    [Fact]
+    public async Task Een_gewenst_startthema_staat_in_de_prompt_met_het_blok_erbij()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, client, klas, _, _) = Opzet("""{"plaatsingen":[]}""", schooljaar);
+
+        await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water"] });
+
+        var prompt = client.LaatsteRequest!.UserPrompt;
+        Assert.Contains("Wat de leerkracht vooraf vraagt", prompt);
+        Assert.Contains("Water", prompt);
+        Assert.Contains(blokken[0].Start.ToString("yyyy-MM-dd"), prompt);
+
+        // Vakanties are NOT restated as prose: the block list already expresses them, because blocks are derived
+        // from them and never span one. A second telling would invite the model to reason about holidays the grid
+        // has already removed from consideration.
+        Assert.DoesNotContain("vakantie", prompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A declined preference is reported and does <b>not</b> fail the run or trigger a retry (Art. IV.1). A model
+    /// that keeps ignoring a request is a fact the teacher should see, not one to bury in a loop — the same
+    /// reasoning that keeps <c>Spreidingsrapport</c> threshold-free.
+    /// </summary>
+    [Fact]
+    public async Task Een_genegeerd_startthema_laat_de_run_slagen_en_wordt_gerapporteerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+
+        // The teacher asked to open with Water; the model opens with Herfst and puts Water later.
+        var (service, _, _, klas, _, _) = Opzet(
+            Antwoord(("Herfst", blokken[0].Start), ("Water", blokken[1].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water"] });
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(2, resultaat.AantalNieuw);     // the plan stands in full
+        var rapport = resultaat.Parameters!;
+        Assert.Equal(["Water"], rapport.NietGehonoreerdeStartthemas);
+        Assert.Empty(rapport.GehonoreerdeStartthemas);
+        Assert.True(rapport.HeeftAandachtspunten);
+    }
+
+    /// <summary>
+    /// An honoured request reports as honoured, so the two states are distinguishable rather than both reading as
+    /// "parameters were considered".
+    /// </summary>
+    [Fact]
+    public async Task Een_gehonoreerd_startthema_wordt_als_gehonoreerd_gerapporteerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(
+            Antwoord(("Water", blokken[0].Start), ("Herfst", blokken[1].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water"] });
+
+        var rapport = resultaat.Parameters!;
+        Assert.Equal(["Water"], rapport.GehonoreerdeStartthemas);
+        Assert.Empty(rapport.NietGehonoreerdeStartthemas);
+        Assert.False(rapport.HeeftAandachtspunten);
+    }
+
+    /// <summary>
+    /// A start thema the school does not own is reported as unknown rather than as declined. Without the
+    /// distinction a typo in a parameter is indistinguishable from a model that ignored the request, and the
+    /// teacher would go looking for the wrong problem. Nothing is invented (Art. IV.4).
+    /// </summary>
+    [Fact]
+    public async Task Een_onbekend_startthema_wordt_als_onbekend_gerapporteerd_niet_als_genegeerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters { GewensteStartthemas = ["Ruimtevaart"] });
+
+        var rapport = resultaat.Parameters!;
+        Assert.Equal(["Ruimtevaart"], rapport.OnbekendeStartthemas);
+        Assert.Empty(rapport.NietGehonoreerdeStartthemas);
+        Assert.Empty(rapport.GehonoreerdeStartthemas);
+    }
+
+    /// <summary>
+    /// A rejected placement does not count as honouring a start-thema request. A <c>geweigerd</c> placement
+    /// survives regeneration but nothing is taught because of it, so crediting it would be the same defect the
+    /// E3-02 code review found in the spreading report, one story later.
+    /// </summary>
+    [Fact]
+    public async Task Een_geweigerde_plaatsing_honoreert_een_startthema_niet()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Water", blokken[0].Start)), schooljaar);
+
+        // Generate, then have the teacher reject the opening placement.
+        var eerste = await service.GenereerAsync(klas.Id);
+        var plaatsingId = eerste.Jaarplan!.Plaatsingen.Single(p => p.ThemaNaam == "Water").Id;
+        await service.WijzigPlaatsingStatusAsync(klas.Id, plaatsingId, KoppelingStatus.Geweigerd);
+
+        // Re-run asking to open with Water. Its rejected placement still sits in block 1 and suppresses a
+        // re-proposal, but it must not be reported as honouring the request.
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water"] });
+
+        var rapport = resultaat.Parameters!;
+        Assert.Equal(["Water"], rapport.NietGehonoreerdeStartthemas);
+        Assert.Empty(rapport.GehonoreerdeStartthemas);
+    }
+
+    /// <summary>
+    /// No parameters ⇒ the prompt is byte-for-byte what it was before this story, and the report is the empty one.
+    /// This is what keeps E3-02's snapshot assertions meaningful rather than merely updated, and it is why the
+    /// section is omitted entirely rather than rendered as "geen".
+    /// </summary>
+    [Fact]
+    public async Task Zonder_parameters_verandert_de_prompt_niet_en_is_het_rapport_leeg()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, client, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+
+        var zonderArgument = await service.GenereerAsync(klas.Id);
+        var promptZonder = client.LaatsteRequest!.UserPrompt;
+
+        Assert.DoesNotContain("Wat de leerkracht vooraf vraagt", promptZonder);
+        Assert.Same(ParameterRapport.Geen, zonderArgument.Parameters);
+        Assert.False(zonderArgument.Parameters!.HeeftAandachtspunten);
+
+        // An explicitly-empty parameter object must behave identically to omitting it, or a UI that always posts a
+        // (possibly empty) form would silently take a different path from the plain button.
+        var (service2, _, client2, klas2, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), TestSchooljaar.MetVakanties());
+        await service2.GenereerAsync(klas2.Id, new JaarplanGeneratieParameters());
+
+        Assert.Equal(promptZonder, client2.LaatsteRequest!.UserPrompt);
+    }
+
+    /// <summary>
+    /// Blank and duplicate start thema names are normalised away, so a form that posts an empty row cannot make
+    /// the prompt ask for "" and cannot make the report list the same thema twice.
+    /// </summary>
+    [Fact]
+    public void Startthemas_worden_genormaliseerd()
+    {
+        var parameters = new JaarplanGeneratieParameters
+        {
+            GewensteStartthemas = ["Water", "  ", "water", "", "  Herfst  "],
+        };
+
+        Assert.Equal(["Water", "Herfst"], parameters.GenormaliseerdeStartthemas());
+        Assert.False(parameters.IsLeeg);
+        Assert.True(new JaarplanGeneratieParameters().IsLeeg);
+        Assert.True(JaarplanGeneratieParameters.Geen.IsLeeg);
+    }
 }

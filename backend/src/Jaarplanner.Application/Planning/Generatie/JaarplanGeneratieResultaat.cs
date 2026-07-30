@@ -27,7 +27,8 @@ public sealed record JaarplanGeneratieResultaat
         IReadOnlyList<string> onbekendeBlokken,
         IReadOnlyList<string> duplicaten,
         IReadOnlyList<string> afgewezen,
-        Spreidingsrapport? spreiding)
+        Spreidingsrapport? spreiding,
+        ParameterRapport? parameters)
     {
         IsGeslaagd = isGeslaagd;
         Fout = fout;
@@ -40,6 +41,7 @@ public sealed record JaarplanGeneratieResultaat
         Duplicaten = duplicaten;
         Afgewezen = afgewezen;
         Spreiding = spreiding;
+        Parameters = parameters;
     }
 
     /// <summary><c>true</c> when the AI response was valid and a (possibly empty) proposal was persisted.</summary>
@@ -116,6 +118,17 @@ public sealed record JaarplanGeneratieResultaat
     /// </summary>
     public Spreidingsrapport? Spreiding { get; }
 
+    /// <summary>
+    /// What became of the teacher's pre-generation parameters (E3-04, FR-5.4) — which requested start thema's the
+    /// plan honoured, and which placements the service refused because a vast moment holds their period.
+    /// <c>null</c> on failure, and <see cref="ParameterRapport.Geen"/> when the teacher supplied nothing.
+    /// <para>
+    /// <b>Advisory in the same sense as <see cref="Spreiding"/>.</b> A declined preference does not fail the run and
+    /// never triggers a retry: the teacher sees that the model did not comply and decides (Art. IV.1).
+    /// </para>
+    /// </summary>
+    public ParameterRapport? Parameters { get; }
+
     /// <summary>Builds a success result.</summary>
     public static JaarplanGeneratieResultaat Geslaagd(
         JaarplanWeergave jaarplan,
@@ -126,7 +139,8 @@ public sealed record JaarplanGeneratieResultaat
         IReadOnlyList<string> onbekendeBlokken,
         IReadOnlyList<string> duplicaten,
         IReadOnlyList<string> afgewezen,
-        Spreidingsrapport spreiding) =>
+        Spreidingsrapport spreiding,
+        ParameterRapport? parameters = null) =>
         new(isGeslaagd: true,
             fout: null,
             jaarplan,
@@ -137,7 +151,8 @@ public sealed record JaarplanGeneratieResultaat
             onbekendeBlokken ?? LeegTekst,
             duplicaten ?? LeegTekst,
             afgewezen ?? LeegTekst,
-            spreiding);
+            spreiding,
+            parameters ?? ParameterRapport.Geen);
 
     /// <summary>Builds a failure result — nothing persisted, no partial plan (Art. IV.5).</summary>
     public static JaarplanGeneratieResultaat Mislukt(string fout) =>
@@ -151,5 +166,6 @@ public sealed record JaarplanGeneratieResultaat
             LeegTekst,
             LeegTekst,
             LeegTekst,
-            spreiding: null);
+            spreiding: null,
+            parameters: null);
 }

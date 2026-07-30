@@ -71,13 +71,21 @@ public sealed class JaarplanGeneratieService
     /// Art. IV.1/IV.2/IV.5). Never auto-applies, and persists nothing when the response is invalid.
     /// </summary>
     /// <param name="klasId">The class to generate for.</param>
+    /// <param name="parameters">
+    /// What the teacher asked for before the run (FR-5.4) — gewenste startthema's and vaste momenten. <c>null</c> or
+    /// empty generates exactly as before. Vakanties are deliberately not accepted here; see
+    /// <see cref="JaarplanGeneratieParameters"/> for why the schooljaar remains their single source of truth.
+    /// </param>
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     /// <returns>A success result carrying the reviewable plan, or an explicit failure with nothing persisted.</returns>
     /// <exception cref="SchoolcontentNietGevondenFout">The class does not exist.</exception>
     public async Task<JaarplanGeneratieResultaat> GenereerAsync(
         Guid klasId,
+        JaarplanGeneratieParameters? parameters = null,
         CancellationToken cancellationToken = default)
     {
+        parameters ??= JaarplanGeneratieParameters.Geen;
+
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
 
         // The grid comes from the seam. Nothing here knows how long a period is, or that periods exist at all
@@ -85,7 +93,7 @@ public sealed class JaarplanGeneratieService
         var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau);
         var themas = await _opslag.LaadThemasAsync(cancellationToken);
 
-        var request = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas);
+        var request = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas, parameters);
         var completion = await _aiClient.CompleteAsync(request, cancellationToken);
         var parse = JaarplanGeneratieResponseParser.Parse(completion);
 
@@ -111,10 +119,31 @@ public sealed class JaarplanGeneratieService
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var blokStarts = blokken.Select(b => b.Start).ToHashSet();
 
+        // Resolve each blocking vast moment to the block that CONTAINS its date (FR-5.4). A date is resolved against
+        // the grid rather than supplied as a block key, so a teacher never has to know where a boundary falls; and a
+        // date in a vakantie or outside the year belongs to no block at all, which is reported rather than ignored —
+        // a teacher who blocked a period and saw nothing refused would otherwise assume it had been honoured.
+        var geblokkeerdeBlokken = new Dictionary<DateOnly, string>();
+        var onplaatsbareMomenten = new List<string>();
+        foreach (var moment in parameters.VasteMomenten.Where(m => m.BlokkeertPlaatsing))
+        {
+            var blok = blokken.FirstOrDefault(b => moment.Datum >= b.Start && moment.Datum <= b.Eind);
+            if (blok is null)
+            {
+                onplaatsbareMomenten.Add($"{moment.Naam} @ {Datum(moment.Datum)}");
+                continue;
+            }
+
+            // Two blocking moments in one period is not an error; the first name is kept for the report because one
+            // reason is enough to explain a refusal and listing both would say the period was refused twice.
+            geblokkeerdeBlokken.TryAdd(blok.Start, moment.Naam);
+        }
+
         var onbekendeThemas = new List<string>();
         var onbekendeBlokken = new List<string>();
         var duplicaten = new List<string>();
         var afgewezen = new List<string>();
+        var geweigerdDoorVastMoment = new List<string>();
         var nieuw = 0;
 
         foreach (var suggestie in parse.Plaatsingen)
@@ -128,6 +157,19 @@ public sealed class JaarplanGeneratieService
             if (!blokStarts.Contains(suggestie.BlokStart))
             {
                 onbekendeBlokken.Add(Datum(suggestie.BlokStart));
+                continue;
+            }
+
+            // The enforced half of FR-5.4. The prompt already asked the model to leave this period alone; this is
+            // what makes the parameter more than a request. Skipping reuses the mechanism the service already applies
+            // to unknown thema's and dates, so a refused placement is dropped and reported rather than moved
+            // somewhere the teacher never chose — relocating it would be the same defect ADR-0020 forbids for stale
+            // placements. The report names the moment, because "one thema was dropped" without saying which
+            // instruction dropped it is not actionable.
+            if (geblokkeerdeBlokken.TryGetValue(suggestie.BlokStart, out var blokkerendMoment))
+            {
+                geweigerdDoorVastMoment.Add(
+                    $"{thema.Naam} @ {Datum(suggestie.BlokStart)} ({blokkerendMoment})");
                 continue;
             }
 
@@ -175,6 +217,23 @@ public sealed class JaarplanGeneratieService
             themas.ToDictionary(t => t.Id),
             schooljaar);
 
+        // What became of the teacher's parameters (FR-5.4). Measured over the whole plan on the same reasoning as the
+        // spreading report, and — like it — carrying no verdict and triggering no retry (Art. IV.1). The enforced
+        // half is handed in because only this method knows what it refused; the advisory half is measured against the
+        // plan that came back.
+        var parameterRapport = parameters.IsLeeg
+            ? ParameterRapport.Geen
+            : ParameterRapport.Meet(
+                parameters,
+                jaarplan.Plaatsingen.Where(p => p.BlokNiveau == GeneratieNiveau),
+                themas.ToDictionary(t => t.Id),
+                blokken.OrderBy(b => b.Start).FirstOrDefault(),
+                themas.Select(t => t.Naam).ToHashSet(StringComparer.OrdinalIgnoreCase)) with
+            {
+                GeweigerdDoorVastMoment = geweigerdDoorVastMoment,
+                OnplaatsbareVasteMomenten = onplaatsbareMomenten,
+            };
+
         return JaarplanGeneratieResultaat.Geslaagd(
             Projecteer(klas, schooljaar, blokken, themas, jaarplan),
             nieuw,
@@ -184,7 +243,8 @@ public sealed class JaarplanGeneratieService
             onbekendeBlokken,
             duplicaten,
             afgewezen,
-            spreiding);
+            spreiding,
+            parameterRapport);
     }
 
     /// <summary>
