@@ -1,12 +1,24 @@
+import { useDroppable } from "@dnd-kit/core";
+
 import { t } from "../../i18n";
 import { Themakaart } from "./Themakaart";
-import { formatteerPeriode, formatteerWeken, geplandeIn, isTeVol } from "./kalenderFormat";
+import {
+  VOORLOPIGE_TE_VOL_DREMPEL,
+  formatteerPeriode,
+  formatteerWeken,
+  geplandeIn,
+  isTeVol,
+} from "./kalenderFormat";
 import type { Planningsblok, Themaplaatsing } from "./types";
 
 /** One column of the board. Fixed width, so every period is equally readable. */
 export interface PeriodekolomProps {
   blok: Planningsblok;
   plaatsingen: Themaplaatsing[];
+  /** The class whose plan this is, threaded to the cards' edit actions. */
+  klasId: string;
+  /** Every period of the year, so a card's panel can offer them as move targets. */
+  blokken: readonly Planningsblok[];
 }
 
 /**
@@ -22,19 +34,34 @@ export interface PeriodekolomProps {
  * - *Stretching.* Flex `items-stretch` sized every column to the tallest, so one period with three thema's
  *   left its six neighbours as tall empty troughs. The board uses `items-start`.
  *
- * The column is deliberately not a drop target yet: dragging is **E3-07**, which also owns the confirmation
- * protecting an accepted or locked placement. The empty well is shaped to be that target when it arrives.
+ * **It is the drop target (E3-07).** While a card is over it the column fills with the petrol wash and says
+ * "Hierheen verplaatsen" in words, because a colour change alone carries nothing (Art. XII, WCAG 2.2 AA).
+ *
+ * **And it answers "is there room here?" during the gesture, not after the drop.** A period that the incoming
+ * thema would tip over the te-vol threshold says so while the card hovers it. That is the one place this screen
+ * spends any boldness: a teacher rearranging a year is asking exactly that question, and every other tool makes
+ * them drop first and read the consequence afterwards. The threshold is still the provisional one from review
+ * question C, so the warning is phrased as a consequence rather than a refusal — nothing is blocked.
  */
-export function Periodekolom({ blok, plaatsingen }: PeriodekolomProps) {
+export function Periodekolom({ blok, plaatsingen, klasId, blokken }: PeriodekolomProps) {
   const gepland = geplandeIn(plaatsingen);
   const teVol = isTeVol(plaatsingen);
+
+  const { setNodeRef, isOver, active } = useDroppable({ id: blok.start, data: { blok } });
+
+  // Only meaningful while something is being dragged, and only for a card coming from *elsewhere*: a thema
+  // dropped back into its own period changes nothing, so warning about it would be noise.
+  const sleependeKaart = active?.data.current?.plaatsing as Themaplaatsing | undefined;
+  const komtVanElders = Boolean(sleependeKaart) && sleependeKaart!.blokStart !== blok.start;
+  const isDoelwit = isOver && komtVanElders;
+  const wordtTeVol = isDoelwit && gepland.length + 1 >= VOORLOPIGE_TE_VOL_DREMPEL;
 
   return (
     <li className="flex w-72 shrink-0 flex-col">
       <div
         className={[
           "rounded-t-lg border border-b-0 px-3.5 py-3",
-          teVol ? "border-attentie bg-attentie-zacht" : "border-border bg-card",
+          teVol || wordtTeVol ? "border-attentie bg-attentie-zacht" : "border-border bg-card",
         ].join(" ")}
       >
         <div className="flex items-baseline justify-between gap-2">
@@ -57,17 +84,27 @@ export function Periodekolom({ blok, plaatsingen }: PeriodekolomProps) {
             <span aria-hidden="true">▲</span> {t("kalender.teVol", { aantal: gepland.length })}
           </p>
         )}
+
+        {/* The consequence of the drop the teacher is about to make, stated before they make it. Only when it
+            is not already flagged, so the column does not say the same thing twice. */}
+        {wordtTeVol && !teVol && (
+          <p className="mt-2 text-xs font-semibold text-attentie-ink">
+            <span aria-hidden="true">▲</span> {t("kalender.wordtTeVol")}
+          </p>
+        )}
       </div>
 
       <div
+        ref={setNodeRef}
         className={[
-          "flex flex-1 flex-col gap-2 rounded-b-lg border border-t-0 bg-paper/70 p-2.5",
-          teVol ? "border-attentie" : "border-border",
+          "flex flex-1 flex-col gap-2 rounded-b-lg border border-t-0 p-2.5 transition-colors duration-150",
+          isDoelwit ? "bg-petrol-wash" : "bg-paper/70",
+          teVol || wordtTeVol ? "border-attentie" : isDoelwit ? "border-petrol" : "border-border",
         ].join(" ")}
       >
         {plaatsingen.length === 0 ? (
           // A recessed dashed well rather than a line of italic text: it reads as "there is room here",
-          // which is what an empty period means, and it is where E3-07's drop target will land.
+          // which is what an empty period means, and it is the drop target's resting state.
           <p className="flex min-h-[5rem] items-center justify-center rounded-md border border-dashed border-border bg-paper-diep/50 px-3 text-center text-xs text-ink-zacht">
             {t("kalender.legeperiode")}
           </p>
@@ -75,10 +112,18 @@ export function Periodekolom({ blok, plaatsingen }: PeriodekolomProps) {
           <ul className="flex flex-col gap-2">
             {plaatsingen.map((plaatsing) => (
               <li key={plaatsing.id}>
-                <Themakaart plaatsing={plaatsing} />
+                <Themakaart plaatsing={plaatsing} klasId={klasId} blokken={blokken} />
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Words, not just a colour wash: the fill says "something is happening here", the sentence says what.
+            Rendered last so it reads as the landing place, below the cards already in the period. */}
+        {isDoelwit && (
+          <p className="rounded-md border border-dashed border-petrol bg-card/80 px-3 py-2 text-center text-xs font-semibold text-petrol">
+            {t("kalender.hierheen")}
+          </p>
         )}
       </div>
     </li>

@@ -639,6 +639,285 @@ public sealed class JaarplanGeneratieServiceTests
             () => service.VerwijderPlaatsingAsync(klas.Id, Guid.NewGuid()));
     }
 
+    /// <summary>
+    /// The E3-07 move (FR-6.2): the placement lands on the target block's <b>start date</b>, becomes
+    /// <c>manueel</c> because the position is now the teacher's, and loses the AI motivation that argued for the
+    /// period it left. Persisted immediately (FR-6.5) — one commit, no save button.
+    /// </summary>
+    [Fact]
+    public async Task Een_plaatsing_verplaatsen_bewaart_de_nieuwe_blokstart_als_manueel_zonder_ai_motivatie()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+        await service.GenereerAsync(klas.Id);
+
+        var voor = Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+        Assert.Equal("Voorgesteld", voor.Status);
+        Assert.Equal("past hier", voor.AiMotivatie);
+
+        var na = Assert.Single(
+            (await service.VerplaatsPlaatsingAsync(klas.Id, voor.Id, blokken[2].Start)).Plaatsingen);
+
+        // The new key is the target block's start date, and the derived period is projected alongside it.
+        Assert.Equal(blokken[2].Start, na.BlokStart);
+        Assert.Equal(blokken[2].Eind, na.BlokEind);
+        Assert.Equal(blokken[2].Ordinaal, na.BlokOrdinaal);
+        Assert.False(na.IsVervallen);
+
+        // The teacher placed it, so the plan says so — and no longer credits the model for the position.
+        Assert.Equal("Manueel", na.Status);
+        Assert.Null(na.AiMotivatie);
+
+        // The tier is untouched: dragging along the board repositions, it does not re-tier.
+        Assert.Equal("Themaperiode", na.BlokNiveau);
+
+        // One commit for the generation, one for the move.
+        Assert.Equal(2, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// A target date that starts no block is <b>refused</b>, never snapped to the nearest period. Same rule the
+    /// generation path applies to a model-supplied date, for the same reason: a thema in a period nobody chose is the
+    /// silent relocation ADR-0020 and the directie ruling of 2026-07-28 forbid.
+    /// </summary>
+    [Fact]
+    public async Task Verplaatsen_naar_een_datum_die_geen_blokstart_is_wordt_geweigerd_niet_bijgeschoven()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+        await service.GenereerAsync(klas.Id);
+        var plaatsing = Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+
+        // One day past a real boundary: the nearest block is obvious, which is exactly why refusing matters.
+        var netNaastEenGrens = blokken[1].Start.AddDays(1);
+
+        await Assert.ThrowsAsync<OngeldigeVerplaatsingFout>(
+            () => service.VerplaatsPlaatsingAsync(klas.Id, plaatsing.Id, netNaastEenGrens));
+
+        // Nothing moved and nothing was written.
+        var na = Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+        Assert.Equal(blokken[0].Start, na.BlokStart);
+        Assert.Equal("Voorgesteld", na.Status);
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// <b>The re-placement route the directie ruling requires.</b> A placement whose stored date stopped being a
+    /// period boundary is stale; the application never guesses a period for it, but the teacher can give it one
+    /// through the same move. Nothing validates where the placement currently sits, only where it is going.
+    /// </summary>
+    [Fact]
+    public async Task Een_vervallen_plaatsing_kan_naar_een_echte_periode_verplaatst_worden()
+    {
+        var origineel = TestSchooljaar.MetVakanties();
+        var origineleBlokken = Blokken(origineel);
+
+        var gewijzigd = new Schooljaar("2026-2027", origineel.Start, origineel.Eind);
+        gewijzigd.VoegSluitingToe(new Schoolsluiting("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
+        gewijzigd.VoegSluitingToe(new Schoolsluiting("Kerstvakantie", new DateOnly(2026, 12, 14), new DateOnly(2026, 12, 27)));
+        gewijzigd.VoegSluitingToe(new Schoolsluiting("Krokusvakantie", new DateOnly(2027, 2, 15), new DateOnly(2027, 2, 21)));
+        gewijzigd.VoegSluitingToe(new Schoolsluiting("Paasvakantie", new DateOnly(2027, 4, 5), new DateOnly(2027, 4, 18)));
+        var nieuweBlokken = Blokken(gewijzigd);
+
+        var verdwenen = origineleBlokken.First(o => nieuweBlokken.All(n => n.Start != o.Start));
+
+        var klas = gewijzigd.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var herfst = Herfst();
+        var jaarplan = new Jaarplan(klas.Id);
+        var plaatsing = jaarplan.VoegPlaatsingToe(
+            herfst.Id, Planningsblokniveau.Themaperiode, verdwenen.Start, KoppelingStatus.Aanvaard, "voor de wijziging");
+
+        var opslag = new FakeJaarplanOpslag(klas, gewijzigd, [herfst], jaarplan);
+        var service = new JaarplanGeneratieService(new FakeAiClient(), Indeling, opslag);
+
+        // It reads as stale first: the plan reports it, and no period was invented for it.
+        Assert.True(Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen).IsVervallen);
+
+        var na = Assert.Single(
+            (await service.VerplaatsPlaatsingAsync(klas.Id, plaatsing.Id, nieuweBlokken[3].Start)).Plaatsingen);
+
+        Assert.False(na.IsVervallen);
+        Assert.Equal(nieuweBlokken[3].Start, na.BlokStart);
+        Assert.Equal(nieuweBlokken[3].Ordinaal, na.BlokOrdinaal);
+        Assert.Equal("Manueel", na.Status);
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// Dropping a card back where it started changes nothing — and in particular does <b>not</b> convert a standing
+    /// AI proposal into a manual placement or discard its motivation. A no-op gesture must not silently cost the
+    /// teacher the model's reasoning.
+    /// </summary>
+    [Fact]
+    public async Task Verplaatsen_naar_dezelfde_periode_wijzigt_niets()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+        await service.GenereerAsync(klas.Id);
+        var voor = Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+
+        var na = Assert.Single(
+            (await service.VerplaatsPlaatsingAsync(klas.Id, voor.Id, blokken[0].Start)).Plaatsingen);
+
+        Assert.Equal(blokken[0].Start, na.BlokStart);
+        Assert.Equal("Voorgesteld", na.Status);
+        Assert.Equal("past hier", na.AiMotivatie);
+
+        // Only the generation committed; the no-op wrote nothing.
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// A block holds several thema's (Art. IX.3), so only the same thema twice in the same block is refused. The
+    /// service catches it and reports it in Dutch, rather than letting the aggregate's English programmer-error
+    /// exception escape to a teacher.
+    /// </summary>
+    [Fact]
+    public async Task Een_thema_naar_een_periode_verplaatsen_waar_het_al_staat_wordt_geweigerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var herfst = Herfst();
+
+        var jaarplan = new Jaarplan(klas.Id);
+        var eerste = jaarplan.VoegPlaatsingToe(
+            herfst.Id, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Voorgesteld, "eerste");
+        jaarplan.VoegPlaatsingToe(
+            herfst.Id, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Voorgesteld, "tweede");
+
+        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [herfst], jaarplan);
+        var service = new JaarplanGeneratieService(new FakeAiClient(), Indeling, opslag);
+
+        await Assert.ThrowsAsync<OngeldigeVerplaatsingFout>(
+            () => service.VerplaatsPlaatsingAsync(klas.Id, eerste.Id, blokken[1].Start));
+
+        Assert.Equal(blokken[0].Start, eerste.BlokStart);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// <b>A move survives the next generation run.</b> The status becomes <c>manueel</c>, so the placement is no
+    /// longer <c>IsVervangbaar</c> and regeneration may not discard it (Art. IV.1, Art. IX.3). Without this, a
+    /// teacher could drag a thema into place and have the next run quietly put it back.
+    /// </summary>
+    [Fact]
+    public async Task Een_verplaatste_plaatsing_overleeft_een_hergeneratie()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var antwoord = Antwoord(("Herfst", blokken[0].Start));
+        var (service, opslag, _, klas, _, _) = Opzet(antwoord, schooljaar);
+        await service.GenereerAsync(klas.Id);
+
+        var voorgesteld = Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+        await service.VerplaatsPlaatsingAsync(klas.Id, voorgesteld.Id, blokken[2].Start);
+
+        // The model proposes the ORIGINAL period again; the teacher's move must stand.
+        var opnieuw = await new JaarplanGeneratieService(new FakeAiClient(antwoord), Indeling, opslag)
+            .GenereerAsync(klas.Id);
+
+        var verplaatst = Assert.Single(opnieuw.Jaarplan!.Plaatsingen, p => p.Status == "Manueel");
+        Assert.Equal(blokken[2].Start, verplaatst.BlokStart);
+        Assert.Equal(1, opnieuw.AantalBehouden);
+
+        // The run may still add the thema in the period it wanted — that is a new proposal alongside the teacher's
+        // placement, not a relocation of it. What matters is that the moved one did not budge.
+        Assert.DoesNotContain(opnieuw.Jaarplan!.Plaatsingen, p => p.Id == verplaatst.Id && p.Status != "Manueel");
+    }
+
+    /// <summary>
+    /// <b>A rejected placement is not moved, because moving it would grant dekking it must not have.</b>
+    /// <para>
+    /// This is the only status transition in the move path with an Art. V.1 consequence: under the binding reading in
+    /// <c>backlog/E5-dekking-export.md</c> only <c>aanvaard</c>/<c>manueel</c> placements count as *placed*, so
+    /// converting a rejection to <c>manueel</c> would flip the thema from "not taught" to "taught" in the figure the
+    /// onderwijsinspectie is shown — as a side effect of a drag, with no teacher decision. Found by the E3-07
+    /// antagonist audit: the story built an explicit, explained control for reversing a rejection and then let a drag
+    /// do the same thing silently.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_geweigerde_plaatsing_verplaatsen_wordt_geweigerd_en_verandert_geen_dekking()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var herfst = Herfst();
+
+        var jaarplan = new Jaarplan(klas.Id);
+        var geweigerd = jaarplan.VoegPlaatsingToe(
+            herfst.Id, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Geweigerd, "afgewezen");
+
+        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [herfst], jaarplan);
+        var service = new JaarplanGeneratieService(new FakeAiClient(), Indeling, opslag);
+
+        await Assert.ThrowsAsync<OngeldigeVerplaatsingFout>(
+            () => service.VerplaatsPlaatsingAsync(klas.Id, geweigerd.Id, blokken[1].Start));
+
+        // Nothing moved, the rejection stands, and nothing was written.
+        Assert.Equal(blokken[0].Start, geweigerd.BlokStart);
+        Assert.Equal(KoppelingStatus.Geweigerd, geweigerd.Status);
+        Assert.False(geweigerd.IsGepland);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+
+        // Refused even for a drop back onto its own period, so the gesture is never taught as available. Without
+        // this ordering the no-op branch would answer 200 and the card would look draggable.
+        await Assert.ThrowsAsync<OngeldigeVerplaatsingFout>(
+            () => service.VerplaatsPlaatsingAsync(klas.Id, geweigerd.Id, blokken[0].Start));
+
+        // The explicit route out is still open: the teacher reverses the rejection, and *then* it can move.
+        await service.WijzigPlaatsingStatusAsync(klas.Id, geweigerd.Id, KoppelingStatus.Manueel);
+        var na = Assert.Single(
+            (await service.VerplaatsPlaatsingAsync(klas.Id, geweigerd.Id, blokken[1].Start)).Plaatsingen);
+        Assert.Equal(blokken[1].Start, na.BlokStart);
+        Assert.Equal("Manueel", na.Status);
+    }
+
+    /// <summary>
+    /// A locked placement can still be moved by the teacher, and stays locked. Art. IX.3 scopes <c>vergrendeld</c> to
+    /// "excluded from <i>regeneration</i>" — it is not a latch against its own owner, and clearing it as a side effect
+    /// of a drag would silently expose the thema to the next run.
+    /// </summary>
+    [Fact]
+    public async Task Een_vergrendelde_plaatsing_kan_verplaatst_worden_en_blijft_vergrendeld()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var herfst = Herfst();
+
+        var jaarplan = new Jaarplan(klas.Id);
+        var plaatsing = jaarplan.VoegPlaatsingToe(
+            herfst.Id, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Aanvaard, "beslist");
+        plaatsing.StelVergrendelingIn(true);
+
+        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [herfst], jaarplan);
+        var service = new JaarplanGeneratieService(new FakeAiClient(), Indeling, opslag);
+
+        var na = Assert.Single(
+            (await service.VerplaatsPlaatsingAsync(klas.Id, plaatsing.Id, blokken[1].Start)).Plaatsingen);
+
+        Assert.Equal(blokken[1].Start, na.BlokStart);
+        Assert.True(na.Vergrendeld);
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Een_onbekende_plaatsing_verplaatsen_geeft_een_nietgevonden_fout()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+        await service.GenereerAsync(klas.Id);
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => service.VerplaatsPlaatsingAsync(klas.Id, Guid.NewGuid(), blokken[1].Start));
+    }
+
     [Fact]
     public void Service_verwerpt_null_afhankelijkheden()
     {

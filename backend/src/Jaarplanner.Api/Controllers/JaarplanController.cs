@@ -44,6 +44,13 @@ public sealed class JaarplanController : ControllerBase
     public sealed record VergrendelingWijziging(bool Vergrendeld);
 
     /// <summary>
+    /// Body for moving one placement to another period (E3-07): the <b>start date</b> of the target planningsblok.
+    /// Never an ordinal — the ordinal is a display position that shifts when the school edits its vakanties
+    /// (ADR-0020 §3), so accepting one here would reintroduce exactly the silent relocation the date key prevents.
+    /// </summary>
+    public sealed record BlokWijziging(DateOnly BlokStart);
+
+    /// <summary>
     /// The class's current jaarplan proposal (FR-5.1, Art. IV.2): every placement with its planningsblok, status,
     /// motivation and lock. A class that has not been generated for yet yields an empty plan, not a 404.
     /// </summary>
@@ -121,6 +128,44 @@ public sealed class JaarplanController : ControllerBase
         [FromBody] VergrendelingWijziging wijziging,
         CancellationToken cancellationToken) =>
         Ok(await _service.WijzigVergrendelingAsync(klasId, plaatsingId, wijziging.Vergrendeld, cancellationToken));
+
+    /// <summary>
+    /// Moves a thema to another period (E3-07, FR-6.2) and persists it immediately (FR-6.5) — the endpoint behind
+    /// dragging a card across the kalender, and the re-placement route for a stale placement.
+    /// <para>
+    /// The body carries the target block's <b>start date</b>. Exact response contract, because an earlier revision of
+    /// this comment got it wrong in the direction that makes the API look stricter than it is:
+    /// <list type="bullet">
+    /// <item><b>400</b> — the date starts no current block (refused, never snapped to the nearest period, which is
+    /// what the stale-placement ruling of 2026-07-28 forbids);</item>
+    /// <item><b>400</b> — <i>another</i> placement of the same thema already sits in the target period;</item>
+    /// <item><b>400</b> — the placement is <c>geweigerd</c> (reverse the rejection first, see below);</item>
+    /// <item><b>200, unchanged</b> — the target is the period the placement is <i>already</i> in. A no-op, not an
+    /// error: dropping a card back where it started is a normal gesture and must not cost a standing proposal its
+    /// status and motivation.</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// A successful move sets the placement to <c>manueel</c> and drops its AI motivation: the position is now the
+    /// teacher's, so attributing it to the model would misreport who decided (Art. IV.3), and E4-02 already rules
+    /// that overriding an AI proposal moves it to <c>manueel</c>. Side effect the teacher wants: a moved placement is
+    /// no longer replaceable, so the next generation run cannot undo the move. <b>Not reversible</b> — moving it back
+    /// restores the date only — so the UI discloses the consequence before the move rather than after.
+    /// </para>
+    /// <para>
+    /// <b>A <c>geweigerd</c> placement is refused rather than converted.</b> It is the only transition here that
+    /// changes <i>dekking</i>: a rejected placement teaches nothing and a manual one does (Art. V.1), so a drag that
+    /// silently reversed a rejection would move a thema from "not taught" to "taught" in an inspectie-facing figure.
+    /// Reversing a rejection stays an explicit teacher decision via the status PUT.
+    /// </para>
+    /// </summary>
+    [HttpPut("plaatsingen/{plaatsingId:guid}/blok")]
+    public async Task<ActionResult<JaarplanWeergave>> VerplaatsPlaatsing(
+        Guid klasId,
+        Guid plaatsingId,
+        [FromBody] BlokWijziging wijziging,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.VerplaatsPlaatsingAsync(klasId, plaatsingId, wijziging.BlokStart, cancellationToken));
 
     /// <summary>
     /// Removes a thema from a period (FR-7), whatever the placement's status or lock — an explicit teacher action is

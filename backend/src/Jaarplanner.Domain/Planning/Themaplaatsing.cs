@@ -127,6 +127,58 @@ public sealed class Themaplaatsing
     /// <summary>Locks or unlocks the placement against (re)generation (Art. IX.3).</summary>
     public void StelVergrendelingIn(bool vergrendeld) => Vergrendeld = vergrendeld;
 
+    /// <summary>
+    /// Moves this thema to the block starting on <paramref name="blokStart"/> — the teacher dragging it to
+    /// another period (E3-07, FR-6.2/FR-7).
+    /// <para>
+    /// <b>The new key is a start date, like the old one</b> (ADR-0020 §3). <see cref="BlokNiveau"/> is deliberately
+    /// left alone: the tier is not something a teacher picks by dragging along the board, and re-tiering a placement
+    /// is a different operation from repositioning it in the year.
+    /// </para>
+    /// <para>
+    /// <b>Moving makes this the teacher's placement, so the status becomes <see cref="KoppelingStatus.Manueel"/>.</b>
+    /// This is the rule E4-02 states (*"anything proposed by AI can be manually overwritten; status moves to
+    /// manueel"*), reached early because a drag is exactly that override. It also has a consequence the teacher
+    /// wants: <see cref="IsVervangbaar"/> turns false, so the next generation run cannot quietly undo a move they
+    /// made by hand.
+    /// </para>
+    /// <para>
+    /// <b>And the AI motivation is cleared, deliberately losing it.</b> <see cref="AiMotivatie"/> is documented as
+    /// the model's reason for placing this thema <i>here</i>; once "here" is the teacher's choice, keeping the text
+    /// would attribute their decision to the model and render a justification for a period the thema has left. That
+    /// is the inverse of what Art. IV.3 asks the motivation to do. The existing contract already says
+    /// "null for a purely manual placement", and after a move that is what this is. The lost reasoning is the cost:
+    /// it argued for a placement the teacher overruled.
+    /// </para>
+    /// <para>
+    /// <b>A move is therefore NOT reversible, and the UI must say so.</b> An earlier revision of this type and of
+    /// <c>VerplaatsPlaatsingAsync</c> claimed a move was safe to leave unconfirmed because the teacher could "drag it
+    /// back". Dragging back restores <see cref="BlokStart"/> and <b>nothing else</b>: the motivation stays null
+    /// forever, and an <see cref="KoppelingStatus.Aanvaard"/> decision is gone. In a codebase with no soft delete and
+    /// no audit trail that makes a move a small unrecoverable edit, not a free one — which is why the picker
+    /// discloses the consequence before it happens (found by the E3-07 antagonist audit; the same worklog asserted
+    /// both "destroyed, not archived" and "reversible" two decisions apart).
+    /// </para>
+    /// <para>
+    /// <b>A <see cref="KoppelingStatus.Geweigerd"/> placement is not moved through here.</b> The caller refuses it,
+    /// because this method would convert a rejection into <see cref="KoppelingStatus.Manueel"/> — the one status
+    /// transition in the feature with a <i>dekking</i> consequence (Art. V.1: a rejected placement teaches nothing,
+    /// a manual one does). Reversing a rejection is a decision the teacher takes explicitly, through the control
+    /// that explains it, never as a side effect of a drag.
+    /// </para>
+    /// <para>
+    /// A <i>stale</i> placement is moved through this same method, which is the whole re-placement route: nothing
+    /// here requires the current <see cref="BlokStart"/> to still be a block boundary. Validating that the
+    /// <b>target</b> is one belongs to the service, which is the only layer holding the derived grid.
+    /// </para>
+    /// </summary>
+    public void VerplaatsNaar(DateOnly blokStart)
+    {
+        BlokStart = blokStart;
+        Status = KoppelingStatus.Manueel;
+        AiMotivatie = null;
+    }
+
     private static KoppelingStatus RequireStatus(KoppelingStatus status) =>
         Enum.IsDefined(status)
             ? status
