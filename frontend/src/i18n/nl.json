@@ -75,7 +75,7 @@
     "vervangenPlaceholder": "bv. NAT-K3-02",
     "vervangenActie": "Vervangen",
     "vervangenAria": "Leerplandoel {code} vervangen",
-    "vervangenMislukt": "Vervangen lukte niet. Controleer of de code bestaat in de geladen leerplandoelen en nog niet aan dit thema gekoppeld is.",
+    "vervangenMislukt": "Vervangen lukte niet. Controleer of de code bestaat in de geladen leerplandoelen, of ze nog niet aan dit thema gekoppeld is, en of ze exact geschreven is zoals in Op.stap.",
     "vervangenOnbeschikbaar": "Vervangen is nu niet beschikbaar. Meld dit aan de beheerder van de tool."
   },
   "kalender": {

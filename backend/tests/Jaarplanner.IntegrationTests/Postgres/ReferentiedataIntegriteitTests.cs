@@ -206,7 +206,7 @@ public sealed class ReferentiedataIntegriteitTests : IAsyncLifetime
     /// The <c>Codes</c> dimension matches case-insensitively against a real database too, and returns the
     /// row carrying the curriculum's <b>own</b> casing.
     /// <para>
-    /// This is the path <c>DoelMatchingService.ZoekLeerdoelAsync</c> uses to resolve the FR-4.3
+    /// This is the path <c>DoelMatchingService.ZoekIngetypteLeerdoelAsync</c> uses to resolve the FR-4.3
     /// substitution a teacher types by hand. Without the SQL <c>lower()</c> the teacher would be told
     /// <i>"'nat-k3-01' zit niet in de geladen Op.stap-leerplandoelen"</i> about a code that does exist —
     /// a false statement about the curriculum (Art. III.5). What is stored stays <c>NAT-K3-01</c>.

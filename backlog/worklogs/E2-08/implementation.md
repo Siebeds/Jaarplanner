@@ -772,3 +772,161 @@ and tests. To exercise the new Postgres tests:
 `JAARPLANNER_TEST_POSTGRES=... dotnet test --filter "FullyQualifiedName~ReferentiedataIntegriteitTests"`.
 Browser steps are unchanged from round 1, except step 7's refusal copy and the run report's unknown-code
 line now read as quoted above.
+
+---
+
+## Fix round 3 — make the invariant structural, correct the index note's reason, give the refusal a way out
+
+Three items, each recommended by a gate after round 2 was verified closed by both. Nothing else was touched.
+
+### Finding 1 — the refusal invariant is now structural, not argued
+
+(Antagonist's recommendation; the test-runner rated it unreachable today and would have accepted a comment.)
+
+Round 2's comment claimed "only `VervangSuggestieDoelAsync` can reach the refusal — `WijzigSuggestieStatusAsync`
+resolves an already-persisted canonical code, which always has the exact hit." Both gates confirmed the claim is
+true today. It is still the wrong kind of guarantee: it is a statement about the *catalogue's contents*, not an
+invariant of the *method*, and the consequence if it ever failed is ugly out of proportion to its likelihood —
+`WijzigSuggestieStatusAsync` calls `BewaarAsync` **before** it resolves the code for the read view, so a throw
+there hands the teacher a 400 with substitution copy ("wijzigen mislukt") about a status change that is
+already persisted.
+
+Fixed by splitting the one lookup into **two methods**, so the rule is in the signature:
+
+- `ZoekIngetypteLeerdoelAsync(code, ct)` — the code a **teacher typed**. Lenient (exact hit wins; otherwise the
+  case-insensitive match must be unique) and **may** refuse an ambiguous one. Safe to refuse: it runs before
+  anything is written. Called only from `VervangSuggestieDoelAsync`.
+- `ZoekGekoppeldLeerdoelAsync(code, ct)` — the code a **stored link already carries**. Exact hit or `null`, and
+  it contains **no throw at all**. Called only from `WijzigSuggestieStatusAsync`. `MapSuggestie` already handles
+  `null` by design (code shown, official text omitted), so an unresolvable code degrades the read view instead
+  of failing a committed write.
+- `HaalOpCodeAsync(code, ct)` — the shared one-line targeted read through `ILeerdoelCatalogus`.
+
+Chosen over a `bool strikt` / `bool menselijkeInvoer` parameter because a call site reading
+`ZoekGekoppeldLeerdoelAsync(...)` states the rule without the reader having to know which way the flag points,
+and because a flag keeps the throw physically present on both paths — the split removes it from one. The
+canonicity argument is still recorded, but demoted: it is now an observation about today's writers rather than
+the thing the code depends on.
+
+**Test:** `DoelsuggestieStatusTests.Een_onoplosbare_code_doet_de_beslissing_niet_mislukken` builds the exact
+catalogue the substitution path refuses — canonical `NAT-K3-01` deleted, `nat-k3-01` and `Nat-K3-01` co-existing
+— and asserts the decision still lands (`Aanvaard`, one `BewaarAsync`), the code is not bound to either variant,
+and `Tekst`/`Doelsoort` come back null. **Mutation-verified:** re-pointing the status path at
+`ZoekIngetypteLeerdoelAsync` fails exactly this test with
+`OngeldigeDoelsubstitutieFout: Meerdere leerplandoelen komen overeen met 'NAT-K3-01' ...` — i.e. the test fails if
+and only if the refusal becomes reachable from the status path. Mutation reverted.
+
+Stale `ZoekLeerdoelAsync` references updated at all four sites that named it (`DoelMatchingService`'s "Case
+policy" block, which gained a third bullet; `SchoolcontentBeheerService.VereisLeerplandoelAsync`;
+`ReferentiedataIntegriteitTests`; and the `Aanpassen_kiest_de_exacte_code...` comment, which no longer claims to
+be what keeps the status path working — it isn't, any more).
+
+### Finding 2 — the declined-index note gave a reason its own precedent contradicts
+
+Round 2's note said the two existing `UNIQUE lower(...)` indexes differ because they "enforce uniqueness ... a
+correctness obligation" while "here the only benefit would be speed". That is wrong, and the same commit proved
+it wrong: `KlasNaamCaseInsensitiefUniek`'s own summary gives its reason as *"the school-content import resolves a
+class by name, so two names differing only in case would make that resolution arbitrary"* — verbatim the hazard
+the new `ZoekIngetypteLeerdoelAsync` guard exists to prevent. A reader of the note alone would conclude no
+correctness issue exists on `lower("Code")`. One does.
+
+Rewritten to the decisive reason instead: **a `UNIQUE INDEX ... (lower("Code"))` would be the wrong instrument
+here.** Klas and schooljaar names are the school's own data, so the schema may forbid a collision outright.
+Leerplandoelen are **decreed reference data the tool must accept as given (Art. III.1)** — a unique constraint on
+folded codes would make the Op.stap import **reject official rows**, the tool overruling the curriculum. So the
+same obligation is met at **runtime** (the ambiguity refusal), and a *non-unique* performance index stays
+available if measurement ever asks for it. Comment-only, as instructed: no index, no migration.
+
+### Finding 3 — the refusal copy named two checks that pass and omitted the one that helps
+
+`matching.vervangenMislukt` told the teacher to check that the code exists and is not already linked. In the
+ambiguity case **both of those pass**, so the teacher verifies two things that are fine and is never told the one
+action that resolves it. The server message does say it, but the frontend deliberately never echoes
+`ProblemDetails` (Art. II.3), so it is unreachable.
+
+Extended the existing string — no new key, no behaviour change, no API contract change:
+
+> "Vervangen lukte niet. Controleer of de code bestaat in de geladen leerplandoelen, of ze nog niet aan dit thema
+> gekoppeld is, en of ze exact geschreven is zoals in Op.stap."
+
+True for all five refusal reasons: **unknown** (clause 1), **already-linked** (clause 2), **unchanged** — the
+suggestion's own code is by definition already linked to this thema (clause 2), **ambiguous casing** (clause 3),
+and **blank** (the button is disabled on an empty field; the sentence stays a correct instruction either way).
+
+`DoelsuggestieLijst.test.tsx` now asserts the **literal Dutch** as well as `t(...)`: comparing the render to the
+very template it renders would have passed for any wording, including one that omits a check. The comment in
+`DoelsuggestieLijst.tsx` explaining the 400 branch now names all four server-side refusals and states why this
+single string has to carry every check.
+
+### Files changed
+
+| File | Why |
+|---|---|
+| `backend/src/Jaarplanner.Application/AiMatching/DoelMatchingService.cs` | Split `ZoekLeerdoelAsync` into `ZoekIngetypteLeerdoelAsync` (may refuse) + `ZoekGekoppeldLeerdoelAsync` (cannot) + shared `HaalOpCodeAsync`; "Case policy" gained the third bullet. |
+| `backend/src/Jaarplanner.Infrastructure/AiAuthoring/EfLeerdoelCatalogus.cs` | Declined-index note rewritten to the decreed-data reason (comment only). |
+| `backend/src/Jaarplanner.Infrastructure/SchoolcontentBeheer/SchoolcontentBeheerService.cs` | Stale cross-reference to the renamed method. |
+| `backend/tests/Jaarplanner.UnitTests/Ai/DoelsuggestieStatusTests.cs` | New test pinning that the status path cannot refuse; `Opzet` takes an optional catalogue. |
+| `backend/tests/Jaarplanner.UnitTests/Ai/DoelMatchingServiceTests.cs` | Comment no longer claims the exact-hit rule is what protects the status path. |
+| `backend/tests/Jaarplanner.IntegrationTests/Postgres/ReferentiedataIntegriteitTests.cs` | Stale cross-reference to the renamed method. |
+| `frontend/src/i18n/nl.json` | `vervangenMislukt` gained the casing clause. |
+| `frontend/src/features/matching/DoelsuggestieLijst.tsx` | Comment names all four refusals and why the copy must carry every check. |
+| `frontend/src/features/matching/DoelsuggestieLijst.test.tsx` | Asserts the literal Dutch, not only the template. |
+
+### Gates — round 3
+
+```
+$ dotnet build
+Build succeeded. 0 Warning(s) 0 Error(s)
+
+$ dotnet format --verify-no-changes
+(no output, exit 0)
+
+$ dotnet test                      # no JAARPLANNER_TEST_POSTGRES
+Passed! - Failed: 0, Passed: 51,  Skipped: 38, Total: 89  - Jaarplanner.IntegrationTests.dll
+Passed! - Failed: 0, Passed: 446, Skipped:  0, Total: 446 - Jaarplanner.UnitTests.dll
+
+$ JAARPLANNER_TEST_POSTGRES="Host=127.0.0.1;Port=5432;Database=postgres;Username=jaarplanner;Password=jaarplanner_local;SSL Mode=Disable" dotnet test
+Passed! - Failed: 0, Passed: 446, Skipped: 0, Total: 446 - Jaarplanner.UnitTests.dll
+Passed! - Failed: 0, Passed: 89,  Skipped: 0, Total: 89  - Jaarplanner.IntegrationTests.dll
+
+$ corepack pnpm lint
+$ eslint . --max-warnings 0 && tsc --noEmit      (clean)
+
+$ corepack pnpm test
+ Test Files  7 passed (7)
+      Tests  53 passed (53)
+
+$ corepack pnpm build
+✓ 112 modules transformed. ✓ built in 9.26s
+```
+
+Unit **445 → 446** (the one new test). Integration unchanged at **89** (38 skipped without the variable, 0 with).
+Frontend unchanged at **53** (an assertion added to an existing test). No migration, no schema change.
+`select ... from pg_database where datname like 'jp_test_%'` returns `(none)`: the server is back at zero.
+
+### Not fixed, with the reason
+
+- **No index, no migration** — instructed, and finding 2's own conclusion: on decreed data the constraint would
+  be wrong, not merely unnecessary.
+- **`Password=jaarplanner_local` left in this worklog** — instructed. The project owner has sanctioned in-repo
+  local/CI test-database credentials as a deliberate exception; the orchestrator is recording it as a
+  constitution amendment per Art. XI.1. Scrubbing it here would hide the exception rather than govern it.
+- **The AI-response path stays ordinal** — instructed and correct (Art. III.5): a model re-casing a decreed code
+  is altering identity, not making a typo.
+- **`SchoolcontentBeheerService`'s exact match, `PostgresTestDatabase`, provenance column, candidate cap,
+  `AzureAI` status codes, checkbox / progress table** — all explicitly out of scope for this round.
+
+### For the test-runner
+
+Nothing new to click; no UI behaviour changed. The delta is one refactor with an unchanged observable contract
+(both lookups behave identically on every input that occurs today — the split only decides what happens in a
+case that cannot arise, and the new unit test is the only way to observe it), plus one string.
+
+- Unit: `dotnet test --filter "FullyQualifiedName~DoelsuggestieStatusTests"` — the new test is
+  `Een_onoplosbare_code_doet_de_beslissing_niet_mislukken`. Mutation to re-check it: point the
+  `ZoekGekoppeldLeerdoelAsync` call in `WijzigSuggestieStatusAsync` at `ZoekIngetypteLeerdoelAsync`; only that
+  test must fail.
+- Frontend: `DoelsuggestieLijst.test.tsx > renders local Dutch copy when a substitution is refused` now pins the
+  literal sentence, including the third clause.
+- Browser steps are unchanged from round 1, except step 7's refusal notice now ends
+  "... en of ze exact geschreven is zoals in Op.stap."

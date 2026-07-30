@@ -21,7 +21,8 @@ public sealed class DoelsuggestieStatusTests
         new Leerplandoel("NAT-K3-01", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
     ];
 
-    private static (DoelMatchingService service, FakeDoelMatchOpslag opslag, DoelKoppeling suggestie) Opzet()
+    private static (DoelMatchingService service, FakeDoelMatchOpslag opslag, DoelKoppeling suggestie) Opzet(
+        IReadOnlyList<Leerplandoel>? leerdoelen = null)
     {
         var thema = new Thema("Herfst", duurWeken: 4);
         var suggestie = thema.VoegDoelsuggestieToe(
@@ -30,7 +31,7 @@ public sealed class DoelsuggestieStatusTests
         var service = new DoelMatchingService(
             new FakeAiClient(cannedContent: "{\"suggesties\":[]}"),
             opslag,
-            new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
+            new FakeLeerdoelCatalogus(leerdoelen ?? EenLeerdoelenSet()));
         return (service, opslag, suggestie);
     }
 
@@ -107,5 +108,34 @@ public sealed class DoelsuggestieStatusTests
 
         Assert.Equal("herkent bomen.", weergave.Tekst);
         Assert.Equal(Doelsoort.Minimumdoel, weergave.Doelsoort);
+    }
+
+    [Fact]
+    public async Task Een_onoplosbare_code_doet_de_beslissing_niet_mislukken()
+    {
+        // The status path persists the decision BEFORE it resolves the code to enrich the read view, so it must
+        // not be able to fail at that point: a refusal there would answer a succeeded operation with a 400, and
+        // the teacher would read "wijzigen mislukt" about a status change that is already stored.
+        //
+        // The guarantee is structural, not incidental: the path calls `ZoekGekoppeldLeerdoelAsync`, which has no
+        // throw in it — the ambiguity refusal lives only in `ZoekIngetypteLeerdoelAsync`, on the substitution
+        // path, where nothing has been written yet. This catalogue is the exact set that path refuses: the
+        // canonical `NAT-K3-01` is gone and two case-variants remain. The decision must still land, with the
+        // official text simply absent (which `MapSuggestie` renders by design, code shown).
+        var (service, opslag, suggestie) = Opzet(leerdoelen:
+        [
+            new Leerplandoel("nat-k3-01", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9", tekst: "een doel."),
+            new Leerplandoel("Nat-K3-01", Doelsoort.Verdieping, "K3", "Natuur", "Levende natuur", "9", tekst: "een ander doel."),
+        ]);
+
+        var weergave = await service.WijzigSuggestieStatusAsync(ThemaId, suggestie.Id, KoppelingStatus.Aanvaard);
+
+        Assert.Equal(KoppelingStatus.Aanvaard, suggestie.Status);
+        Assert.Equal("Aanvaard", weergave.Status);
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+        // Never bound to one of the two variants either — that would be guessing at goal identity (Art. III.5).
+        Assert.Equal("NAT-K3-01", weergave.LeerplandoelCode);
+        Assert.Null(weergave.Tekst);
+        Assert.Null(weergave.Doelsoort);
     }
 }

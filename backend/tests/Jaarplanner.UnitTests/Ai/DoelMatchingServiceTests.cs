@@ -411,8 +411,8 @@ public sealed class DoelMatchingServiceTests
     public async Task Aanpassen_kiest_de_exacte_code_als_die_bestaat_naast_een_andere_schrijfwijze()
     {
         // The other half of the rule above: an exact hit is never ambiguous, so it wins outright instead of
-        // being refused. This is also what keeps WijzigSuggestieStatusAsync working — it resolves an
-        // already-persisted canonical code, which always has an exact match.
+        // being refused. (The status path's safety no longer rides on this: it uses a lookup that cannot refuse
+        // at all — see `DoelsuggestieStatusTests.Een_onoplosbare_code_doet_de_beslissing_niet_mislukken`.)
         var thema = EenThema();
         var suggestie = thema.VoegDoelsuggestieToe(
             new DoelKoppeling("REK-L1-01", KoppelingStatus.Voorgesteld, "motivatie"));

@@ -251,6 +251,15 @@ describe("DoelsuggestieLijst", () => {
     );
 
     const melding = await screen.findByRole("alert");
+    // Asserted as the literal Dutch, not as `t("matching.vervangenMislukt")`: comparing the render to the very
+    // template it renders would pass for any wording at all, including one that omits a check. The server never
+    // gets echoed (Art. II.3), so this one string is the teacher's whole route out — and it must name all three
+    // things they can act on, the casing included (a mis-cased code that matches two goals is refused while
+    // both other checks pass).
+    expect(melding).toHaveTextContent(
+      "Vervangen lukte niet. Controleer of de code bestaat in de geladen leerplandoelen, " +
+        "of ze nog niet aan dit thema gekoppeld is, en of ze exact geschreven is zoals in Op.stap.",
+    );
     expect(melding).toHaveTextContent(t("matching.vervangenMislukt"));
     // The row is unchanged: nothing is applied client-side (Art. IV.1).
     expect(screen.getByText("NAT-K3-01")).toBeInTheDocument();

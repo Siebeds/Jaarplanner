@@ -20,19 +20,24 @@ namespace Jaarplanner.Infrastructure.AiAuthoring;
 /// ASCII, so invariant-vs-current culture cannot bite here.
 /// </para>
 /// <para>
-/// <b>No functional index backs the code filter, deliberately.</b> <c>lower("Code") = ANY(...)</c>
-/// cannot use the primary-key index on <c>leerplandoelen."Code"</c>, so the code lookup is a sequential
-/// scan — and this project's two other case-insensitive lookups each did get a
-/// <c>lower(...)</c> index in a dedicated migration (<c>KlasNaamCaseInsensitiefUniek</c>,
-/// <c>SchooljaarNaamCaseInsensitiefUniek</c>). This one departs on purpose, so the difference is not read
-/// as an oversight: those two indexes exist to <b>enforce uniqueness</b> case-insensitively (they are
-/// <c>UNIQUE</c> indexes closing a real race), which is a correctness obligation. Here the only benefit
-/// would be speed, and the table is Op.stap-sized — 13 disciplines' goals, thousands of rows at most,
-/// scanned once per substitution on a read path a teacher triggers by hand. Adding
-/// <c>CREATE INDEX ... ON leerplandoelen (lower("Code"))</c> is a one-line migration if measurement ever
-/// says otherwise; inventing it now would be an unmeasured index on the project's most read-only table.
-/// The same reasoning covers <c>JaarFase</c> and <c>DisciplineNummer</c>, neither of which is indexed
-/// case-sensitively either.
+/// <b>No functional index backs the code filter, deliberately — and no <c>UNIQUE</c> one ever may.</b>
+/// <c>lower("Code") = ANY(...)</c> cannot use the primary-key index on <c>leerplandoelen."Code"</c>, so the
+/// code lookup is a sequential scan, while this project's two other case-insensitive lookups each did get a
+/// <c>UNIQUE INDEX ... (lower(...))</c> in a dedicated migration (<c>KlasNaamCaseInsensitiefUniek</c>,
+/// <c>SchooljaarNaamCaseInsensitiefUniek</c>). The difference is not that those close a correctness gap and
+/// this would only buy speed — the hazard is the same one in all three places (a lookup by a
+/// human-typed value that two case-variant rows would make arbitrary). The difference is <b>who owns the
+/// data</b>: klas and schooljaar names are the school's own, so the schema may forbid a collision outright,
+/// whereas leerplandoelen are <b>decreed reference data the tool must accept as given</b> (Art. III.1).
+/// A unique constraint on <c>lower("Code")</c> would therefore make the Op.stap import <b>reject official
+/// rows</b> — the tool overruling the curriculum, which is exactly backwards. So the same obligation is met
+/// at <b>runtime</b> instead: <c>DoelMatchingService.ZoekIngetypteLeerdoelAsync</c> prefers an exact hit and
+/// refuses an ambiguous case-insensitive one rather than binding to whichever row sorted first. A
+/// <i>non-unique</i> <c>CREATE INDEX ... ON leerplandoelen (lower("Code"))</c> stays available as a pure
+/// performance measure if it is ever needed, but it is not needed today: the table is Op.stap-sized
+/// (13 disciplines' goals, thousands of rows at most) and is scanned once per substitution, on a read path a
+/// teacher triggers by hand. The same reasoning covers <c>JaarFase</c> and <c>DisciplineNummer</c>, neither
+/// of which is indexed case-sensitively either.
 /// </para>
 /// </summary>
 public sealed class EfLeerdoelCatalogus : ILeerdoelCatalogus

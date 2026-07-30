@@ -81,9 +81,11 @@ export function DoelsuggestieLijst({ themaId }: DoelsuggestieLijstProps) {
           {t("matching.wijzigenMislukt")}
         </p>
       )}
-      {/* A refused substitution is the teacher's to fix (an unknown or already-linked code → 400), so it gets
-          actionable copy; any other status means the tool is unavailable. The server's own message is not
-          shown — the branch is on the status alone (Art. II.3). */}
+      {/* A refused substitution is the teacher's to fix (an unknown, already-linked, unchanged or
+          ambiguously-cased code → 400), so it gets actionable copy; any other status means the tool is
+          unavailable. The server's own message is not shown — the branch is on the status alone (Art. II.3),
+          which means this one string has to name every check the teacher can make, casing included: a check the
+          copy omits is a way out the teacher never gets told about. */}
       {vervang.isError && (
         <p role="alert" className="mb-2 text-suggestie-geweigerd">
           {vervang.error instanceof ApiError && vervang.error.status === 400

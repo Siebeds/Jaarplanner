@@ -39,10 +39,15 @@ namespace Jaarplanner.Application.AiMatching;
 /// <c>NAT-K3-01</c> has altered curriculum identity; case-folding that away would let the AI decide what
 /// counts as the same goal. The answer is skipped and reported, never repaired.</item>
 /// <item><b>Lenient (ordinal-ignore-case) where a human types the code</b> —
-/// <see cref="VervangSuggestieDoelAsync"/> via <c>ZoekLeerdoelAsync</c>, matching the
+/// <see cref="VervangSuggestieDoelAsync"/> via <c>ZoekIngetypteLeerdoelAsync</c>, matching the
 /// <see cref="ILeerdoelCatalogus"/> contract. A teacher typing <c>nat-k3-01</c> into a free-text field is
 /// naming a goal, not redefining one, and refusing it would tell them a code they can see does not exist.
 /// The <b>canonical</b> <c>doel.Code</c> is what gets stored either way.</item>
+/// <item><b>Strict, and never refusing, where the code comes back off a stored link</b> —
+/// <see cref="WijzigSuggestieStatusAsync"/> via <c>ZoekGekoppeldLeerdoelAsync</c>. Two methods rather than one
+/// with a flag, so which lookup a caller picks is what decides whether an ambiguous code can be refused:
+/// the status path has already persisted the teacher's decision by the time it needs the goal's text, so it
+/// must not be able to fail there.</item>
 /// </list>
 /// Consequence worth naming: the same string can be skipped on the AI path and accepted one field below on
 /// the substitution path. That is intended, and the run report's copy is worded so it does not claim the
@@ -127,7 +132,7 @@ public sealed class DoelMatchingService
         // Indexed rather than a bare HashSet so a persisted suggestion can be enriched with the goal's own
         // text/doelsoort for the review row (FR-4.2) without a second query.
         //
-        // `Ordinal` here is deliberate and is NOT the same policy as `ZoekLeerdoelAsync` below — see
+        // `Ordinal` here is deliberate and is NOT the same policy as `ZoekIngetypteLeerdoelAsync` below — see
         // "Case policy" on this class. A model that returns `nat-k3-01` for `NAT-K3-01` has altered a decreed
         // identifier, and accepting the alteration would let the AI reshape curriculum identity (Art. III.5).
         // The answer is skipped and named in the run report, not silently repaired.
@@ -241,7 +246,9 @@ public sealed class DoelMatchingService
         koppeling.WijzigStatus(status);
         await _opslag.BewaarAsync(cancellationToken);
 
-        return MapSuggestie(koppeling, await ZoekLeerdoelAsync(koppeling.LeerplandoelCode, cancellationToken));
+        // `ZoekGekoppeld…` and not `ZoekIngetypte…`: the decision is already committed one line up, so this
+        // lookup is not allowed to fail the request. It resolves to null at worst — see the note on that method.
+        return MapSuggestie(koppeling, await ZoekGekoppeldLeerdoelAsync(koppeling.LeerplandoelCode, cancellationToken));
     }
 
     /// <summary>
@@ -284,7 +291,7 @@ public sealed class DoelMatchingService
             ?? throw new DoelsuggestieNietGevondenFout($"Doelsuggestie {suggestieId} bestaat niet op thema {themaId}.");
 
         // Read-only curriculum lookup: a link may only ever point at a real Op.stap code (Art. III.5).
-        var doel = await ZoekLeerdoelAsync(code, cancellationToken)
+        var doel = await ZoekIngetypteLeerdoelAsync(code, cancellationToken)
             ?? throw new OngeldigeDoelsubstitutieFout(
                 $"Leerplandoel '{code}' zit niet in de geladen Op.stap-leerplandoelen.");
 
@@ -306,25 +313,24 @@ public sealed class DoelMatchingService
         return MapSuggestie(koppeling, doel);
     }
 
-    // Resolves one human-typed code through the read-only curriculum seam. Uses the code dimension of
-    // LeerdoelSelectie so this is a targeted read rather than loading the whole curriculum to answer
-    // "does this code exist?".
-    //
-    // Case-insensitive on purpose — the lenient half of the "Case policy" on this class. An Ordinal check here
-    // would throw away a row the catalogus just returned and tell the teacher the code "zit niet in de geladen
-    // Op.stap-leerplandoelen" when it does. What gets stored is always the curriculum's own `doel.Code`, so the
-    // link still carries the canonical Op.stap code (Art. III.5).
+    // ── Two code lookups, and deliberately two *methods* rather than one with a flag: which method a caller
+    // reaches for is what decides whether an ambiguous code may be refused, so the rule lives in the signature
+    // instead of in a comment a later edit can drift away from. Only the "ingetypte" lookup can throw.
+
+    // The code a TEACHER typed (VervangSuggestieDoelAsync) — the lenient half of the "Case policy" on this
+    // class. An Ordinal-only check here would throw away a row the catalogus just returned and tell the teacher
+    // the code "zit niet in de geladen Op.stap-leerplandoelen" when it does. What gets stored is always the
+    // curriculum's own `doel.Code`, so the link still carries the canonical Op.stap code (Art. III.5).
     //
     // `Leerplandoel.Code` is a case-SENSITIVE primary key, so `NAT-K3-01` and `nat-k3-01` could legally coexist
     // as two distinct goals. There is no evidence Op.stap does that, but if it ever did, silently binding the
     // link to whichever row sorted first would be the tool guessing at goal identity — the one thing Art. III.5
     // forbids. So: an exact (ordinal) hit wins outright; otherwise the case-insensitive match must be unique,
-    // and an ambiguous one is refused with a message rather than resolved by luck. Only
-    // VervangSuggestieDoelAsync can reach the refusal — WijzigSuggestieStatusAsync resolves an already-persisted
-    // canonical code, which always has the exact hit.
-    private async Task<Leerplandoel?> ZoekLeerdoelAsync(string code, CancellationToken cancellationToken)
+    // and an ambiguous one is refused with a message rather than resolved by luck. Refusing is safe *here*
+    // because this method runs before anything is written.
+    private async Task<Leerplandoel?> ZoekIngetypteLeerdoelAsync(string code, CancellationToken cancellationToken)
     {
-        var doelen = await _catalogus.HaalLeerdoelenAsync(new LeerdoelSelectie { Codes = [code] }, cancellationToken);
+        var doelen = await HaalOpCodeAsync(code, cancellationToken);
 
         var exact = doelen.FirstOrDefault(d => string.Equals(d.Code, code, StringComparison.Ordinal));
         if (exact is not null)
@@ -346,6 +352,28 @@ public sealed class DoelMatchingService
 
         return kandidaten.Count == 1 ? kandidaten[0] : null;
     }
+
+    // The code a LINK already carries (WijzigSuggestieStatusAsync). Exact hit or nothing — and this method
+    // cannot throw, which is the whole reason it exists as a separate one. The status path commits the teacher's
+    // decision (`BewaarAsync`) *before* it resolves the code to enrich the read view, so a refusal raised here
+    // would answer a succeeded operation with a 400 carrying substitution copy: the teacher would read
+    // "wijzigen mislukt" about a status change that is already persisted. Unresolvable therefore resolves to
+    // `null`, which `MapSuggestie` renders by design (code shown, official text omitted).
+    //
+    // Exact-only is also the honest match for this input: a persisted code is canonical by construction —
+    // `MatchThemaAsync` stores only exact hits from the candidate set, and `VervangLeerplandoel` stores the
+    // catalogus' own `doel.Code`. But that is a property of today's writers, not of this method, so the method
+    // no longer depends on it: if the canonical row is ever deleted or re-cased, this returns null instead of
+    // guessing at identity (Art. III.5) or refusing too late to matter.
+    private async Task<Leerplandoel?> ZoekGekoppeldLeerdoelAsync(string code, CancellationToken cancellationToken) =>
+        (await HaalOpCodeAsync(code, cancellationToken))
+            .FirstOrDefault(d => string.Equals(d.Code, code, StringComparison.Ordinal));
+
+    // Uses the code dimension of LeerdoelSelectie so both lookups are a targeted read rather than loading the
+    // whole curriculum to answer "does this code exist?". The seam itself filters case-insensitively
+    // (ILeerdoelCatalogus contract), so the case decision belongs to the callers above, not here.
+    private Task<IReadOnlyList<Leerplandoel>> HaalOpCodeAsync(string code, CancellationToken cancellationToken) =>
+        _catalogus.HaalLeerdoelenAsync(new LeerdoelSelectie { Codes = [code] }, cancellationToken);
 
     // The read view. `doel` carries the official text + doelsoort so the teacher judges the goal itself and not
     // an opaque code (FR-4.2); it is null only when the code cannot be resolved, which is shown, never hidden.
