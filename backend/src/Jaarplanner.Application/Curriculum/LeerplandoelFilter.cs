@@ -15,8 +15,18 @@ namespace Jaarplanner.Application.Curriculum;
 /// <para>
 /// <b><see cref="Domein"/> and <see cref="Subdomein"/> are one composite dimension.</b> Subdomein names are
 /// not globally unique (Art. VII.0 — Muzische vorming repeats <i>Bouwstenen</i> under Muziek/Beeld/Drama/…),
-/// so a subdomein filter without its domein would silently mix unrelated goals. The query treats a
-/// subdomein as a narrowing of the domein next to it; the UI offers them grouped for the same reason.
+/// so a subdomein filter without its domein mixes unrelated goals and produces a total that means nothing.
+/// <b>A <see cref="Subdomein"/> without a <see cref="Domein"/> is therefore refused at the edge</b>
+/// (<c>LeerplandoelenController</c> answers 400), the same way a bad <see cref="Doelsoort"/> is: the
+/// alternative is a number on a teacher's screen that silently sums two different things.
+/// </para>
+/// <para>
+/// <i>Corrected 2026-07-31 (antagonist finding 2).</i> This paragraph previously claimed the query "treats a
+/// subdomein as a narrowing of the domein next to it". It never did: the EF adapter applies
+/// <see cref="Subdomein"/> as an independent predicate, and nothing rejected a bare one, so
+/// <c>?subdomein=Bouwstenen</c> returned Muziek's and Beeld's rows under one total while only the frontend
+/// dropped it. The guard the comment described now exists, at the layer that can enforce it for every caller
+/// rather than for one client.
 /// </para>
 /// </summary>
 /// <param name="Zoekterm">Free text matched case-insensitively against the code <b>and</b> the goal text.</param>

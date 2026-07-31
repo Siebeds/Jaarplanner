@@ -31,6 +31,24 @@ namespace Jaarplanner.Api.Controllers;
 [Route("api/leerplandoelen")]
 public sealed class LeerplandoelenController : ControllerBase
 {
+    /// <summary>
+    /// The one place the link-visibility decision is taken (E1-16, Art. XIV seam).
+    /// <para>
+    /// <b>This value records the present no-authentication reality; it is not a ruling on FR-10.2</b>
+    /// ("teacher visibility: school-wide / per graad / narrower", still open). There is no authenticated user
+    /// (E6-01, gated by E7-11), so the API cannot know which klas the reader teaches, and narrowing to "your
+    /// klas" would narrow to no klas at all: a doel used by one class's activiteit would be reported as used
+    /// nowhere, which is a false statement a teacher would act on. Every class-scoped row therefore names its
+    /// klas instead, so nothing reads as school-wide.
+    /// </para>
+    /// <para>
+    /// When the role matrix lands (E6-02), this constant becomes the place the decision is applied: change the
+    /// value, or bind it from configuration the way <c>Opstap:DisciplineSelectie</c> / ADR-0019 isolates the
+    /// disciplines-first choice. Nothing else in the query has to move.
+    /// </para>
+    /// </summary>
+    private const Koppelingzichtbaarheid Zichtbaarheid = Koppelingzichtbaarheid.Alles;
+
     private readonly ILeerplandoelenQuery _query;
 
     public LeerplandoelenController(ILeerplandoelenQuery query) => _query = query;
@@ -60,23 +78,127 @@ public sealed class LeerplandoelenController : ControllerBase
         [FromQuery] int overslaan = 0,
         [FromQuery] int aantal = LeerplandoelFilter.StandaardPaginaGrootte)
     {
+        if (!ProbeerFilter(zoek, discipline, domein, subdomein, doelsoort, jaarFase, overslaan, aantal,
+                out var filter, out var fout))
+        {
+            return BadRequest(fout);
+        }
+
+        return Ok(await _query.ZoekAsync(filter!, cancellationToken));
+    }
+
+    /// <summary>
+    /// The filter vocabulary, derived from the loaded rows (E1-16 clause 2), plus the unfiltered total.
+    /// <para>
+    /// It accepts the <b>same filter parameters</b> as the list, and they scope the <b>counts</b> only: each
+    /// dimension is counted under the rest of the filter, so a number states what picking that option would
+    /// actually yield, while the option sets stay put. Before this, picking Discipline = Wiskunde still offered
+    /// "Natuur (3)" and delivered nothing (antagonist finding 12). The paging parameters are accepted and
+    /// ignored, since facets are aggregates; they are still validated, so one bad request does not behave
+    /// differently on two endpoints.
+    /// </para>
+    /// <para>
+    /// <c>totaalAantalDoelen</c> stays <b>unfiltered</b>: it is what lets the UI distinguish "no curriculum
+    /// imported yet" from "your filters exclude everything", two states that must not be collapsed.
+    /// </para>
+    /// </summary>
+    [HttpGet("facetten")]
+    public async Task<ActionResult<LeerplandoelFacettenWeergave>> Facetten(
+        CancellationToken cancellationToken,
+        [FromQuery] string? zoek = null,
+        [FromQuery] string? discipline = null,
+        [FromQuery] string? domein = null,
+        [FromQuery] string? subdomein = null,
+        [FromQuery] string? doelsoort = null,
+        [FromQuery] string? jaarFase = null,
+        [FromQuery] int overslaan = 0,
+        [FromQuery] int aantal = LeerplandoelFilter.StandaardPaginaGrootte)
+    {
+        if (!ProbeerFilter(zoek, discipline, domein, subdomein, doelsoort, jaarFase, overslaan, aantal,
+                out var filter, out var fout))
+        {
+            return BadRequest(fout);
+        }
+
+        return Ok(await _query.HaalFacettenAsync(filter!, cancellationToken));
+    }
+
+    /// <summary>
+    /// One leerplandoel in full (E1-16 clause 3): every imported field, its concordance, and the school
+    /// content that links to it with each link's status and, for a class-scoped link, its klas. A code no
+    /// leerplandoel carries is a <b>404</b>, so a stale or mistyped deep link gets an honest answer rather than
+    /// an empty detail pane.
+    /// <para>
+    /// The link visibility is passed explicitly from <see cref="Zichtbaarheid"/> — the single place that
+    /// decision is taken. Read its documentation before changing it: it records today's absence of
+    /// authentication and is not an answer to FR-10.2.
+    /// </para>
+    /// </summary>
+    [HttpGet("{code}")]
+    public async Task<ActionResult<LeerplandoelDetailWeergave>> Detail(
+        string code,
+        CancellationToken cancellationToken)
+    {
+        var doel = await _query.HaalDetailAsync(code, Zichtbaarheid, cancellationToken);
+
+        return doel is null ? NotFound() : Ok(doel);
+    }
+
+    /// <summary>
+    /// Validates and binds the query string into a <see cref="LeerplandoelFilter"/>, or explains why not so the
+    /// caller can answer 400. Shared by both read endpoints, so the two cannot drift into accepting different
+    /// input.
+    /// <para>
+    /// The <b>subdomein-without-domein</b> refusal is the load-bearing one. Art. VII.0 makes
+    /// <c>(domein, subdomein)</c> the grouping key precisely because subdomein names are not globally unique:
+    /// Muzische vorming repeats <i>Bouwstenen</i> under Muziek, Beeld, Drama and Dans, so a bare
+    /// <c>?subdomein=Bouwstenen</c> silently sums four unrelated sets into one total. Rejecting it here rather
+    /// than dropping it in one client is what makes the contract true for every caller; the frontend also
+    /// omits it, but a guard that lives only in a client is not a guard.
+    /// </para>
+    /// </summary>
+    private static bool ProbeerFilter(
+        string? zoek,
+        string? discipline,
+        string? domein,
+        string? subdomein,
+        string? doelsoort,
+        string? jaarFase,
+        int overslaan,
+        int aantal,
+        out LeerplandoelFilter? filter,
+        out string? fout)
+    {
+        filter = null;
+        fout = null;
+
         if (overslaan < 0)
         {
-            return BadRequest($"'overslaan' cannot be negative (was {overslaan}).");
+            fout = $"'overslaan' cannot be negative (was {overslaan}).";
+            return false;
         }
 
         if (aantal < 1 || aantal > LeerplandoelFilter.MaxPaginaGrootte)
         {
-            return BadRequest(
-                $"'aantal' must be between 1 and {LeerplandoelFilter.MaxPaginaGrootte} (was {aantal}).");
+            fout = $"'aantal' must be between 1 and {LeerplandoelFilter.MaxPaginaGrootte} (was {aantal}).";
+            return false;
         }
 
         if (!ProbeerDoelsoort(doelsoort, out var gekozenDoelsoort))
         {
-            return BadRequest($"'{doelsoort}' is not a known doelsoort.");
+            fout = $"'{doelsoort}' is not a known doelsoort.";
+            return false;
         }
 
-        var filter = new LeerplandoelFilter(
+        if (!string.IsNullOrWhiteSpace(subdomein) && string.IsNullOrWhiteSpace(domein))
+        {
+            fout =
+                "'subdomein' requires 'domein': subdomein names are not globally unique (Art. VII.0), " +
+                "so a subdomein on its own would match rows from unrelated domeinen.";
+            return false;
+        }
+
+        filter = new LeerplandoelFilter(
             zoek,
             discipline,
             domein,
@@ -86,31 +208,7 @@ public sealed class LeerplandoelenController : ControllerBase
             overslaan,
             aantal);
 
-        return Ok(await _query.ZoekAsync(filter, cancellationToken));
-    }
-
-    /// <summary>
-    /// The filter vocabulary, derived from the loaded rows (E1-16 clause 2), plus the unfiltered total. The
-    /// total is what lets the UI distinguish "no curriculum imported yet" from "your filters exclude
-    /// everything" — two states that must not be collapsed into one message.
-    /// </summary>
-    [HttpGet("facetten")]
-    public async Task<ActionResult<LeerplandoelFacettenWeergave>> Facetten(CancellationToken cancellationToken) =>
-        Ok(await _query.HaalFacettenAsync(cancellationToken));
-
-    /// <summary>
-    /// One leerplandoel in full (E1-16 clause 3): every imported field, its concordance, and the school
-    /// content that links to it with each link's status. A code no leerplandoel carries is a <b>404</b>, so a
-    /// stale or mistyped deep link gets an honest answer rather than an empty detail pane.
-    /// </summary>
-    [HttpGet("{code}")]
-    public async Task<ActionResult<LeerplandoelDetailWeergave>> Detail(
-        string code,
-        CancellationToken cancellationToken)
-    {
-        var doel = await _query.HaalDetailAsync(code, cancellationToken);
-
-        return doel is null ? NotFound() : Ok(doel);
+        return true;
     }
 
     /// <summary>

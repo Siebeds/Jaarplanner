@@ -30,22 +30,37 @@ public interface ILeerplandoelenQuery
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// One leerplandoel in full — every imported field, its discipline name, its concordance (and the
-    /// decreed minimumdoel when E1-12 has loaded one) and every school-content link with its status.
-    /// Returns null when no leerplandoel carries <paramref name="code"/>, so the caller can answer a
-    /// deep link to an unknown code honestly rather than showing an empty detail. Matching is
-    /// case-insensitive: the code arrives from a URL a teacher may have typed or copied.
+    /// One leerplandoel in full — every imported field, its discipline name, its concordance and the
+    /// school-content links <paramref name="zichtbaarheid"/> permits, each with its status and, when the link
+    /// is class-scoped, its klas. Returns null when no leerplandoel carries <paramref name="code"/>, so the
+    /// caller can answer a deep link to an unknown code honestly rather than showing an empty detail. Matching
+    /// is case-insensitive: the code arrives from a URL a teacher may have typed or copied.
     /// </summary>
+    /// <param name="zichtbaarheid">
+    /// Which link layers may be surfaced. <b>Required rather than defaulted on purpose:</b> Art. IX.2 scopes
+    /// subdoelen and activiteit links per klas and FR-10.2 is an open Art. XIV decision, so a caller must
+    /// state its choice instead of inheriting one silently. See <see cref="Koppelingzichtbaarheid"/>.
+    /// </param>
     Task<LeerplandoelDetailWeergave?> HaalDetailAsync(
         string code,
+        Koppelingzichtbaarheid zichtbaarheid,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// The filter vocabulary, derived from the loaded rows rather than from any compiled-in list — see
     /// <see cref="LeerplandoelFacettenWeergave"/> for why that is a constraint and not a preference.
-    /// Also carries the unfiltered total, which is what distinguishes "nothing imported" from "filtered
-    /// to nothing".
+    /// <para>
+    /// <paramref name="filter"/> scopes the <b>counts</b>, never the option sets: each dimension is counted
+    /// under the rest of the filter, so a number states what picking that option would actually yield, while
+    /// the list of options stays put. Pass a default filter for the unscoped vocabulary. The paging fields of
+    /// <paramref name="filter"/> are ignored; facets are aggregates.
+    /// </para>
+    /// <para>
+    /// <see cref="LeerplandoelFacettenWeergave.TotaalAantalDoelen"/> stays unfiltered regardless, because it
+    /// is what distinguishes "nothing imported" from "filtered to nothing".
+    /// </para>
     /// </summary>
     Task<LeerplandoelFacettenWeergave> HaalFacettenAsync(
+        LeerplandoelFilter filter,
         CancellationToken cancellationToken = default);
 }

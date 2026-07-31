@@ -48,13 +48,25 @@ public sealed record LeerplandoelenPagina(
     int Aantal);
 
 /// <summary>
-/// The decreed minimumdoel a leerplandoel is concorded to (Art. IX.1), when the row exists.
+/// The decreed minimumdoel a leerplandoel is concorded to (Art. IX.1).
 /// <para>
-/// <b>It usually does not yet.</b> The per-discipline goal Excel carries the concordance <i>key</i> but no
-/// decreed omschrijving (Art. VII.1), so <c>minimumdoelen</c> stays empty until <b>E1-12</b> imports the
-/// decreed source. The detail therefore shows the ref with an honest note rather than an empty section:
-/// null here means "not loaded", never "not concorded" — that distinction is
-/// <see cref="LeerplandoelDetailWeergave.MinimumdoelRef"/>'s job.
+/// <b>Today a non-null <see cref="LeerplandoelDetailWeergave.MinimumdoelRef"/> always brings this object with
+/// it, and cannot fail to.</b> <c>leerplandoelen.MinimumdoelRef</c> is a <c>Restrict</c> FK to
+/// <c>minimumdoelen.Ref</c>, so a goal naming a ref whose row does not exist cannot be committed at all
+/// (SQLSTATE 23503) — which is exactly why <b>no</b> MD-concorded goal can be imported until <b>E1-12</b>
+/// supplies the decreed source, and why the whole table is empty rather than partially populated.
+/// </para>
+/// <para>
+/// The two fields stay separate anyway, and the frontend renders a third branch for "ref present, omschrijving
+/// not loaded". That branch is <b>unreachable while the FK stands</b> and is pinned only by
+/// <c>Doeldetail.test.tsx</c> ("keeps the ref and says the decreed text is not loaded"). It exists because
+/// relaxing that FK is a plausible resolution of the E1-03/E1-12 blockage, and on that day this server code
+/// would run in production for the first time. Do not read the branch as describing today's data.
+/// </para>
+/// <para>
+/// <i>Corrected 2026-07-31 (antagonist finding 13).</i> This doc previously read as though the detail already
+/// shows unloaded refs ("it usually does not yet ... the detail therefore shows the ref with an honest note"),
+/// which describes a row the schema forbids.
 /// </para>
 /// </summary>
 public sealed record MinimumdoelWeergave(
@@ -63,19 +75,29 @@ public sealed record MinimumdoelWeergave(
     string Nr,
     string Omschrijving);
 
-/// <summary>Which layer of school content a link to a leerplandoel comes from (Art. IX.2).</summary>
+/// <summary>
+/// Which layer of school content a link to a leerplandoel comes from (Art. IX.2).
+/// <para>
+/// The scope is <b>not</b> uniform across these four, and the difference is load-bearing:
+/// <see cref="Themadoel"/> and <see cref="Doelsuggestie"/> are school-wide, while <see cref="Subdoel"/> and
+/// <see cref="Activiteit"/> belong to <b>one klas and one leeftijd</b>. A reader who cannot tell them apart
+/// would take another class's planning for a school-wide fact, which is why a class-scoped link always
+/// carries <see cref="DoelKoppelingWeergave.KlasNaam"/> and why
+/// <see cref="Koppelingzichtbaarheid"/> exists.
+/// </para>
+/// </summary>
 public enum KoppelingHerkomst
 {
-    /// <summary>One of a thema's 2–3 school-wide overarching themadoelen.</summary>
+    /// <summary>One of a thema's 2–3 school-wide overarching themadoelen. School-scoped.</summary>
     Themadoel = 0,
 
-    /// <summary>A thema-level AI match suggestion awaiting or carrying a teacher decision (E2-04).</summary>
+    /// <summary>A thema-level AI match suggestion awaiting or carrying a teacher decision (E2-04). School-scoped.</summary>
     Doelsuggestie = 1,
 
-    /// <summary>A class/age-scoped subdoel, per (subthema × leeftijd).</summary>
+    /// <summary>A subdoel, per (subthema × leeftijd). <b>Class/age-scoped.</b></summary>
     Subdoel = 2,
 
-    /// <summary>A class/age-scoped activiteit's goal link.</summary>
+    /// <summary>An activiteit's goal link. <b>Class/age-scoped</b> (it inherits its subthema's scope).</summary>
     Activiteit = 3,
 }
 
@@ -90,14 +112,28 @@ public enum KoppelingHerkomst
 /// reader can tell the two apart.
 /// </para>
 /// </summary>
-/// <param name="Herkomst">Which content layer the link lives in.</param>
+/// <para>
+/// <b><see cref="KlasNaam"/> is what keeps a class-scoped link from posing as a school-wide one.</b> A subdoel
+/// or an activiteit belongs to one klas and one leeftijd (Art. IX.2); rendering it next to a themadoel with no
+/// distinction would tell a teacher that "this doel is used in thema Herfst" when what is true is "L3 uses it
+/// in Herfst". It is null exactly when the layer is school-scoped, so the two cannot be confused by omission
+/// either.
+/// </para>
+/// </summary>
+/// <param name="Herkomst">Which content layer the link lives in, and therefore its scope.</param>
 /// <param name="ThemaNaam">The owning thema's name (every link resolves to exactly one thema).</param>
 /// <param name="Onderdeel">The subthema or activiteit name for a class/age-scoped link; null at thema level.</param>
+/// <param name="KlasNaam">
+/// The klas a class/age-scoped link belongs to (Art. IX.2); null for the school-wide layers. Null is also
+/// possible in principle for a class-scoped row whose klas row has gone, which the <c>Restrict</c> FK on
+/// <c>subthemas.KlasId</c> prevents; the frontend still degrades to naming no klas rather than crashing.
+/// </param>
 /// <param name="Status">The persisted link status (Art. IV.2).</param>
 public sealed record DoelKoppelingWeergave(
     KoppelingHerkomst Herkomst,
     string ThemaNaam,
     string? Onderdeel,
+    string? KlasNaam,
     KoppelingStatus Status);
 
 /// <summary>
@@ -128,25 +164,36 @@ public sealed record LeerplandoelDetailWeergave(
     bool NietMeerInOpstap,
     IReadOnlyList<DoelKoppelingWeergave> Koppelingen);
 
-/// <summary>One discipline that actually carries loaded leerplandoelen, with how many.</summary>
+/// <summary>
+/// One discipline that carries loaded leerplandoelen, with how many the <b>rest of the active filter</b>
+/// leaves in it (see <see cref="LeerplandoelFacettenWeergave"/> for what "the rest" means).
+/// </summary>
 /// <param name="Nummer">The discipline number ("1", "9.2") — the stable key (Art. VII.0).</param>
-/// <param name="Naam">The discipline name, or null when no <c>disciplines</c> row matches the goals' number.</param>
-/// <param name="Aantal">How many loaded leerplandoelen belong to it.</param>
+/// <param name="Naam">
+/// The discipline name. <b>Not null in practice:</b> <c>leerplandoelen.DisciplineNummer</c> is required with a
+/// <c>Restrict</c> FK to <c>disciplines.Nummer</c>, so a goal whose discipline has no row cannot be committed.
+/// It stays nullable because the query resolves the name through a defensive left join rather than an inner
+/// one, so a schema change can never silently drop goals from this list; a consumer must still handle null,
+/// and falls back to the number, which is the stable key anyway.
+/// </param>
+/// <param name="Aantal">How many leerplandoelen this discipline would yield under the rest of the filter.</param>
 public sealed record DisciplineFacet(string Nummer, string? Naam, int Aantal);
 
-/// <summary>One subdomein within a domein, with how many leerplandoelen it holds.</summary>
+/// <summary>One subdomein within a domein, and how many goals it would yield under the rest of the filter.</summary>
 public sealed record SubdomeinFacet(string Subdomein, int Aantal);
 
 /// <summary>
 /// One domein with its subdomeinen nested inside it. The nesting <b>is</b> the Art. VII.0 grouping rule
 /// made structural: a subdomein cannot be offered as a filter without the domein that disambiguates it.
+/// <see cref="Aantal"/> is always the sum of <see cref="Subdomeinen"/>'s counts, so the tree cannot drift
+/// from its leaves.
 /// </summary>
 public sealed record DomeinFacet(string Domein, int Aantal, IReadOnlyList<SubdomeinFacet> Subdomeinen);
 
-/// <summary>One doelsoort that occurs in the loaded data, with how many leerplandoelen carry it.</summary>
+/// <summary>One doelsoort that occurs in the loaded data, and its count under the rest of the filter.</summary>
 public sealed record DoelsoortFacet(Doelsoort Doelsoort, int Aantal);
 
-/// <summary>One jaar/fase code that occurs in the loaded data, with how many leerplandoelen carry it.</summary>
+/// <summary>One jaar/fase code that occurs in the loaded data, and its count under the rest of the filter.</summary>
 public sealed record JaarFaseFacet(string JaarFase, int Aantal);
 
 /// <summary>
@@ -159,12 +206,25 @@ public sealed record JaarFaseFacet(string JaarFase, int Aantal);
 /// else.
 /// </para>
 /// <para>
-/// <see cref="TotaalAantalDoelen"/> exists to tell two empty states apart, which the E1-07 audit found
-/// collapsed one layer up: "nothing is imported yet" (the likely state today, and beheerderswerk) is a
-/// different message from "your filters exclude everything" (offer to clear them). A filtered count of
-/// zero cannot distinguish them on its own.
+/// <b>The option sets are stable; the counts are scoped to the active filter.</b> Which options exist comes
+/// from the whole curriculum, so a select never loses entries while a teacher is using it. Each count is
+/// computed under <i>the rest of</i> the filter, meaning every dimension except the one being counted, so a
+/// number answers "how many would I get if I picked this?" and a zero is reported as <c>0</c> rather than
+/// hidden. Before this, picking Discipline = Wiskunde still offered <i>Natuur (3)</i>, a control stating a
+/// positive number and delivering nothing (antagonist finding 12). Whether a zero-count option should
+/// disappear entirely is a directie question and is deliberately <b>not</b> answered here.
+/// </para>
+/// <para>
+/// <see cref="TotaalAantalDoelen"/> is the one figure that stays <b>unfiltered</b>, because its job is to tell
+/// two empty states apart, which the E1-07 audit found collapsed one layer up: "nothing is imported yet" (the
+/// likely state today, and beheerderswerk) is a different message from "your filters exclude everything"
+/// (offer to clear them). A filtered count of zero cannot distinguish them on its own, so scoping this one to
+/// the filter would break the distinction it exists to make.
 /// </para>
 /// </summary>
+/// <param name="TotaalAantalDoelen">
+/// How many leerplandoelen are loaded in total, <b>ignoring the filter</b>. Zero means nothing is imported.
+/// </param>
 public sealed record LeerplandoelFacettenWeergave(
     int TotaalAantalDoelen,
     IReadOnlyList<DisciplineFacet> Disciplines,

@@ -43,6 +43,18 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
     private const string DisciplineWiskunde = "2";
 
     /// <summary>
+    /// Discipline numbers whose ordering an ordinal sort gets wrong. "10" sorts before "2" ordinally, and
+    /// "9.1"/"9.2" are the Art. VII.0 nested split, so seeding all four makes the ordering test real rather
+    /// than theoretical.
+    /// </summary>
+    private const string DisciplineFrans = "10";
+    private const string DisciplineLevensstijl = "9.1";
+    private const string DisciplineLerenLeren = "9.2";
+
+    /// <summary>The klas that owns the seeded class/age-scoped school content (Art. IX.2).</summary>
+    private const string KlasNaam = "K3 doelenregister";
+
+    /// <summary>
     /// Mirrors the API's own serialisation (Program.cs adds a <see cref="JsonStringEnumConverter"/>), so the
     /// enums travel as names and the tests read the same wire form the frontend does. Deserialising into the
     /// real Application records rather than into hand-written string DTOs is deliberate: it means a rename or
@@ -212,17 +224,14 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
 
     /// <summary>
     /// The taxonomy filter is the composite <c>(domein, subdomein)</c> (Art. VII.0). The seed repeats the
-    /// subdomein name "Bouwstenen" under two different domeinen precisely so a subdomein-only filter would
-    /// mix them: filtering on the pair must return one domein's goals, and the count proves the other
+    /// subdomein name "Bouwstenen" under two different domeinen precisely so an unqualified subdomein filter
+    /// would mix them: filtering on the pair returns one domein's goals, and the count proves the other
     /// domein's identically-named subdomein was not swept in.
     /// </summary>
     [PostgresFact]
-    public async Task Subdomein_filtert_alleen_binnen_zijn_domein()
+    public async Task Subdomein_filtert_binnen_zijn_domein()
     {
         var client = _factory.CreateClient();
-
-        var alleenSubdomein = await Haal(client, "/api/leerplandoelen?subdomein=Bouwstenen");
-        Assert.Equal(2, alleenSubdomein.Totaal);
 
         var muziek = await Haal(client, "/api/leerplandoelen?domein=Muziek&subdomein=Bouwstenen");
         Assert.Equal(1, muziek.Totaal);
@@ -231,6 +240,38 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         var beeld = await Haal(client, "/api/leerplandoelen?domein=Beeld&subdomein=Bouwstenen");
         Assert.Equal(1, beeld.Totaal);
         Assert.Equal("BEE-L2-01", beeld.Regels[0].Code);
+    }
+
+    /// <summary>
+    /// A <c>subdomein</c> without a <c>domein</c> is a <b>400</b>, on both read endpoints.
+    /// <para>
+    /// This test previously existed under the name
+    /// <c>Subdomein_filtert_alleen_binnen_zijn_domein</c> while its first assertion proved the exact opposite:
+    /// it asserted that a bare <c>?subdomein=Bouwstenen</c> returns <b>2</b>, i.e. Muziek's and Beeld's rows
+    /// summed into one meaningless total. A test whose name contradicts its body is worse than no test, and it
+    /// sat next to two comments claiming the server narrowed a subdomein by its domein, which it did not
+    /// (antagonist finding 2). The guard now exists at the edge, where it holds for every caller rather than
+    /// for the one client that happened to drop the parameter.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Subdomein_zonder_domein_geeft_400()
+    {
+        var client = _factory.CreateClient();
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            (await client.GetAsync("/api/leerplandoelen?subdomein=Bouwstenen")).StatusCode);
+
+        // Same refusal on the facets endpoint, so one bad request cannot behave differently on the two.
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            (await client.GetAsync("/api/leerplandoelen/facetten?subdomein=Bouwstenen")).StatusCode);
+
+        // A blank subdomein is "no filter", not a bad request: an empty select renders as an empty parameter.
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync("/api/leerplandoelen?subdomein=")).StatusCode);
     }
 
     /// <summary>Discipline, doelsoort and jaar/fase each narrow the register, and they combine.</summary>
@@ -299,6 +340,87 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         Assert.Contains(facetten.JaarFasen, j => j.JaarFase == "K3");
     }
 
+    /// <summary>
+    /// The facet <b>counts</b> are scoped to the active filter while the <b>option sets</b> stay put, and a
+    /// zero is reported as zero rather than hidden (antagonist finding 12).
+    /// <para>
+    /// Before this, choosing Discipline = Wiskunde still offered "Natuur (3)": a control stating a positive
+    /// number and delivering nothing. Each count is computed under <i>the rest of</i> the filter, so it answers
+    /// "how many would I get if I picked this?" — which is the only reading under which the number is true.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Facetaantallen_volgen_het_filter_terwijl_de_opties_blijven_staan()
+    {
+        var client = _factory.CreateClient();
+
+        var ongefilterd = await Facetten(client, "/api/leerplandoelen/facetten");
+        var gefilterd = await Facetten(client, $"/api/leerplandoelen/facetten?discipline={DisciplineWiskunde}");
+
+        // The option sets are identical: nothing disappears from a select while a teacher is using it.
+        Assert.Equal(
+            ongefilterd.Domeinen.Select(d => d.Domein),
+            gefilterd.Domeinen.Select(d => d.Domein));
+        Assert.Equal(
+            ongefilterd.Disciplines.Select(d => d.Nummer),
+            gefilterd.Disciplines.Select(d => d.Nummer));
+        Assert.Equal(
+            ongefilterd.JaarFasen.Select(j => j.JaarFase),
+            gefilterd.JaarFasen.Select(j => j.JaarFase));
+
+        // Natuur holds only Nederlands-discipline goals in this seed, so under discipline=2 it must read 0,
+        // and it must still be offered.
+        var natuur = Assert.Single(gefilterd.Domeinen, d => d.Domein == "Natuur");
+        Assert.Equal(0, natuur.Aantal);
+        Assert.All(natuur.Subdomeinen, s => Assert.Equal(0, s.Aantal));
+
+        // Getallen is Wiskunde's, so it keeps a positive count.
+        Assert.True(Assert.Single(gefilterd.Domeinen, d => d.Domein == "Getallen").Aantal > 0);
+
+        // The discipline dimension is counted WITHOUT its own selection, so every discipline still reports what
+        // choosing it would yield rather than 0 for all but the chosen one.
+        Assert.All(gefilterd.Disciplines, d => Assert.Equal(
+            ongefilterd.Disciplines.Single(o => o.Nummer == d.Nummer).Aantal,
+            d.Aantal));
+
+        // The sum-of-leaves invariant survives scoping.
+        Assert.All(gefilterd.Domeinen, d => Assert.Equal(d.Aantal, d.Subdomeinen.Sum(s => s.Aantal)));
+
+        // And the unfiltered total is untouched, because it is what tells "nothing imported" from "filtered to
+        // nothing" apart.
+        Assert.Equal(ongefilterd.TotaalAantalDoelen, gefilterd.TotaalAantalDoelen);
+
+        // A count that reaches zero everywhere still leaves every option in place.
+        var niets = await Facetten(client, "/api/leerplandoelen/facetten?zoek=ditbestaatabsoluutniet");
+        Assert.Equal(ongefilterd.Domeinen.Count, niets.Domeinen.Count);
+        Assert.All(niets.Domeinen, d => Assert.Equal(0, d.Aantal));
+        Assert.Equal(ongefilterd.TotaalAantalDoelen, niets.TotaalAantalDoelen);
+    }
+
+    /// <summary>
+    /// Discipline numbers are ordered <b>numerically per dot-separated segment</b>, so a full Op.stap import
+    /// reads 1, 2, 3, … 9.1, 9.2, 9.3, 10, 11 rather than the ordinal 1, 10, 11, 2, 3 (antagonist finding 5).
+    /// The seed covers the case that matters: it contains both "1" and "10", which ordinal sorting puts
+    /// adjacent and wrong.
+    /// </summary>
+    [PostgresFact]
+    public async Task Disciplines_staan_op_nummer_niet_alfabetisch()
+    {
+        var client = _factory.CreateClient();
+
+        var facetten = await Facetten(client, "/api/leerplandoelen/facetten");
+        var nummers = facetten.Disciplines.Select(d => d.Nummer).ToList();
+
+        Assert.Contains("1", nummers);
+        Assert.Contains("10", nummers);
+        Assert.Contains("9.2", nummers);
+
+        // "2" before "10", and "9.2" before "10": both are what an ordinal sort gets wrong.
+        Assert.True(nummers.IndexOf("2") < nummers.IndexOf("10"));
+        Assert.True(nummers.IndexOf("9.2") < nummers.IndexOf("10"));
+        Assert.True(nummers.IndexOf("9.1") < nummers.IndexOf("9.2"));
+    }
+
     // ── clause 3: one doel in full ───────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -353,6 +475,41 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         var activiteit = Assert.Single(doel.Koppelingen, k => k.Herkomst == KoppelingHerkomst.Activiteit);
         Assert.Equal("Bladeren zoeken", activiteit.Onderdeel);
         Assert.Equal(KoppelingStatus.Geweigerd, activiteit.Status);
+
+        // A class/age-scoped link NAMES ITS KLAS, and a school-wide one has none (Art. IX.2, antagonist
+        // finding 3). Without this, one class's planning reads as a school-wide fact.
+        Assert.Equal(KlasNaam, subdoel.KlasNaam);
+        Assert.Equal(KlasNaam, activiteit.KlasNaam);
+        Assert.Null(themadoel.KlasNaam);
+        Assert.Null(suggestie.KlasNaam);
+    }
+
+    /// <summary>
+    /// The <see cref="Koppelingzichtbaarheid"/> seam actually gates the class/age-scoped layers (antagonist
+    /// finding 3). Driven at the query rather than over HTTP, because the controller deliberately has exactly
+    /// one call site with one value: the point of the seam is that the decision lives there, so the test that it
+    /// works has to reach past it.
+    /// <para>
+    /// This is <b>not</b> an assertion about what the app should show. FR-10.2 is an open Art. XIV decision;
+    /// this only proves that the narrowing exists and is one argument away, so resolving that decision does not
+    /// require rewriting the query.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Zichtbaarheidsseam_houdt_klasgebonden_koppelingen_achter()
+    {
+        await using var context = _db.MaakContext();
+        var query = new LeerplandoelenQuery(context);
+
+        var alles = await query.HaalDetailAsync("NAT-K3-01", Koppelingzichtbaarheid.Alles);
+        Assert.Equal(4, alles!.Koppelingen.Count);
+
+        var schoolbreed = await query.HaalDetailAsync("NAT-K3-01", Koppelingzichtbaarheid.AlleenSchoolbreed);
+        Assert.Equal(2, schoolbreed!.Koppelingen.Count);
+        Assert.All(schoolbreed.Koppelingen, k => Assert.True(
+            k.Herkomst is KoppelingHerkomst.Themadoel or KoppelingHerkomst.Doelsuggestie,
+            $"{k.Herkomst} is class/age-scoped and must not survive AlleenSchoolbreed"));
+        Assert.All(schoolbreed.Koppelingen, k => Assert.Null(k.KlasNaam));
     }
 
     /// <summary>
@@ -532,6 +689,13 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         return pagina!;
     }
 
+    private static async Task<LeerplandoelFacettenWeergave> Facetten(HttpClient client, string pad)
+    {
+        var facetten = await client.GetFromJsonAsync<LeerplandoelFacettenWeergave>(pad, JsonOpties);
+        Assert.NotNull(facetten);
+        return facetten!;
+    }
+
     private async Task<int> AantalInDatabaseAsync()
     {
         await using var context = _db.MaakContext();
@@ -640,6 +804,33 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
                 disciplineNummer: DisciplineNederlands,
                 tekst: "De leerling herkent lijn en vlak in een beeld."),
 
+            // Three more disciplines, purely so the ordering test has the cases an ordinal sort gets wrong:
+            // "10" versus "2", and the 9.x nested split (Art. VII.0).
+            new(
+                code: "FRA-L5-01",
+                doelsoort: Doelsoort.Gemeenschappelijk,
+                jaarFase: "L5",
+                domein: "Frans",
+                subdomein: "Woordenschat",
+                disciplineNummer: DisciplineFrans,
+                tekst: "De leerling begroet iemand in het Frans."),
+            new(
+                code: "GEZ-L1-01",
+                doelsoort: Doelsoort.Gemeenschappelijk,
+                jaarFase: "L1",
+                domein: "Levensstijl",
+                subdomein: "Voeding",
+                disciplineNummer: DisciplineLevensstijl,
+                tekst: "De leerling kiest een gezond tussendoortje."),
+            new(
+                code: "LER-L1-01",
+                doelsoort: Doelsoort.Gemeenschappelijk,
+                jaarFase: "L1",
+                domein: "Leren leren",
+                subdomein: "Plannen",
+                disciplineNummer: DisciplineLerenLeren,
+                tekst: "De leerling plant een korte taak."),
+
             // Flagged by the re-import as gone from Op.stap while still in use.
             new(
                 code: "VERVALLEN-1",
@@ -700,7 +891,7 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
             new DateOnly(2027, 6, 30));
         context.Schooljaren.Add(schooljaar);
 
-        var klas = new Klas(schooljaar.Id, "K3 doelenregister", 0);
+        var klas = new Klas(schooljaar.Id, KlasNaam, 0);
         context.Klassen.Add(klas);
 
         var thema = new Thema("Herfst", 5);

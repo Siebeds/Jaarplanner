@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Domain.Curriculum;
 using Microsoft.EntityFrameworkCore;
@@ -86,6 +87,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
     /// <inheritdoc />
     public async Task<LeerplandoelDetailWeergave?> HaalDetailAsync(
         string code,
+        Koppelingzichtbaarheid zichtbaarheid,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -95,10 +97,17 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
 
         var genormaliseerd = code.Trim().ToLower();
 
-        // The discipline name and the concorded minimumdoel are joined in the same statement rather than
-        // fetched afterwards: both are optional, and a null must mean "no such row" rather than "we did not
-        // look". `disciplines` is seeded reference data, but a goal whose discipline number has no row is
-        // possible (Art. III.1 forbids inventing one), so the join is a left join.
+        // The discipline name and the concorded minimumdoel are resolved in the same statement rather than
+        // fetched afterwards, so a null means "no such row" instead of "we did not look".
+        //
+        // Both are LEFT joins, and neither null is reachable today: `DisciplineNummer` is required with a
+        // Restrict FK to `disciplines.Nummer`, and `MinimumdoelRef` is a Restrict FK to `minimumdoelen.Ref`,
+        // so a goal naming a discipline or a minimumdoel that has no row cannot be committed at all. (An
+        // earlier revision of this comment claimed an unknown discipline number "is possible"; it is not, and
+        // that was the mirror image of the minimumdoel branch this story flagged correctly.) The joins stay
+        // left rather than inner because an inner join would silently DROP such a goal from the register if a
+        // schema change ever made it possible, and losing a curriculum row is worse than showing one with a
+        // missing name.
         var doel = await _context.Leerplandoelen
             .AsNoTracking()
             .Where(l => l.Code.ToLower() == genormaliseerd)
@@ -121,7 +130,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
             return null;
         }
 
-        var koppelingen = await HaalKoppelingenAsync(doel.Doel.Code, cancellationToken);
+        var koppelingen = await HaalKoppelingenAsync(doel.Doel.Code, zichtbaarheid, cancellationToken);
 
         return new LeerplandoelDetailWeergave(
             doel.Doel.Code,
@@ -144,77 +153,149 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
 
     /// <inheritdoc />
     public async Task<LeerplandoelFacettenWeergave> HaalFacettenAsync(
+        LeerplandoelFilter filter,
         CancellationToken cancellationToken = default)
     {
-        // Grouped in the database, one statement per dimension: four bounded aggregates rather than
-        // materialising the curriculum to count it in memory.
-        var disciplines = await _context.Leerplandoelen
-            .AsNoTracking()
-            .GroupBy(l => l.DisciplineNummer)
-            .Select(g => new
-            {
-                Nummer = g.Key,
-                Aantal = g.Count(),
-            })
-            .ToListAsync(cancellationToken);
+        ArgumentNullException.ThrowIfNull(filter);
+
+        // Two aggregates per dimension: the OPTION SET from the whole curriculum, and the COUNT under the rest
+        // of the filter. Keeping them apart is the point of this shape (antagonist finding 12):
+        //
+        //   * options from all rows  -> a select never loses entries while a teacher is using it, so the
+        //     control does not shift under the pointer;
+        //   * counts under "the rest of the filter" (every dimension except the one being counted) -> a number
+        //     answers "how many would I get if I picked this?", which is the only reading under which it is
+        //     true. Counting under the WHOLE filter instead would show the chosen option with its count and
+        //     every sibling at 0, which is technically true and useless.
+        //
+        // A zero-count option is returned as 0 rather than dropped; whether it should disappear entirely is a
+        // directie question and is not decided here.
+        //
+        // All of these are grouped aggregates, so the statement count is fixed (nine) and independent of how
+        // many leerplandoelen exist. Deliberately not one giant query: nine bounded aggregates are readable,
+        // and this endpoint is hit once per filter change on a read-only reference table.
+        var disciplineOpties = await AlleWaardenAsync(l => l.DisciplineNummer, cancellationToken);
+        var disciplineAantallen = await AantallenAsync(
+            ZonderDimensie(filter, Facetdimensie.Discipline), l => l.DisciplineNummer, cancellationToken);
 
         var disciplineNamen = await _context.Disciplines
             .AsNoTracking()
             .Select(d => new { d.Nummer, d.Naam })
+            .ToDictionaryAsync(d => d.Nummer, d => d.Naam, cancellationToken);
+
+        // The taxonomy is one dimension, grouped by the composite (domein, subdomein) key (Art. VII.0). Its
+        // counts exclude BOTH domein and subdomein, so a domein's number says what choosing it would yield,
+        // and a subdomein's number is already restricted to its own domein by the grouping itself.
+        var taxonomieOpties = await _context.Leerplandoelen
+            .AsNoTracking()
+            .Select(l => new { l.Domein, l.Subdomein })
+            .Distinct()
             .ToListAsync(cancellationToken);
 
-        var taxonomie = await _context.Leerplandoelen
-            .AsNoTracking()
+        var taxonomieAantallen = await Gefilterd(ZonderDimensie(filter, Facetdimensie.Taxonomie))
             .GroupBy(l => new { l.Domein, l.Subdomein })
-            .Select(g => new
-            {
-                g.Key.Domein,
-                g.Key.Subdomein,
-                Aantal = g.Count(),
-            })
+            .Select(g => new { g.Key.Domein, g.Key.Subdomein, Aantal = g.Count() })
             .ToListAsync(cancellationToken);
 
-        var doelsoorten = await _context.Leerplandoelen
-            .AsNoTracking()
-            .GroupBy(l => l.Doelsoort)
-            .Select(g => new { Doelsoort = g.Key, Aantal = g.Count() })
-            .ToListAsync(cancellationToken);
+        var taxonomieTelling = taxonomieAantallen.ToDictionary(
+            t => (t.Domein, t.Subdomein),
+            t => t.Aantal);
 
-        var jaarFasen = await _context.Leerplandoelen
-            .AsNoTracking()
-            .GroupBy(l => l.JaarFase)
-            .Select(g => new { JaarFase = g.Key, Aantal = g.Count() })
-            .ToListAsync(cancellationToken);
+        var doelsoortOpties = await AlleWaardenAsync(l => l.Doelsoort, cancellationToken);
+        var doelsoortAantallen = await AantallenAsync(
+            ZonderDimensie(filter, Facetdimensie.Doelsoort), l => l.Doelsoort, cancellationToken);
 
-        var totaal = doelsoorten.Sum(d => d.Aantal);
+        var jaarFaseOpties = await AlleWaardenAsync(l => l.JaarFase, cancellationToken);
+        var jaarFaseAantallen = await AantallenAsync(
+            ZonderDimensie(filter, Facetdimensie.JaarFase), l => l.JaarFase, cancellationToken);
+
+        // Deliberately UNFILTERED: this figure's only job is to tell "nothing imported" from "filtered to
+        // nothing", and scoping it to the filter would destroy that distinction.
+        var totaal = await _context.Leerplandoelen.AsNoTracking().CountAsync(cancellationToken);
 
         return new LeerplandoelFacettenWeergave(
             totaal,
-            [.. disciplines
-                .Select(d => new DisciplineFacet(
-                    d.Nummer,
-                    disciplineNamen.FirstOrDefault(n => n.Nummer == d.Nummer)?.Naam,
-                    d.Aantal))
-                // Discipline numbers are strings with a 9.x split, so an ordinal sort is the only ordering
-                // that is stable without assuming the numbering scheme (Art. VII.0).
-                .OrderBy(d => d.Nummer, StringComparer.Ordinal)],
-            [.. taxonomie
+            [.. disciplineOpties
+                .Select(nummer => new DisciplineFacet(
+                    nummer,
+                    disciplineNamen.GetValueOrDefault(nummer),
+                    disciplineAantallen.GetValueOrDefault(nummer)))
+                .OrderBy(d => d.Nummer, DisciplinenummerVergelijker.Instantie)],
+            [.. taxonomieOpties
                 .GroupBy(t => t.Domein)
-                .Select(g => new DomeinFacet(
-                    g.Key,
-                    g.Sum(t => t.Aantal),
-                    [.. g.Select(t => new SubdomeinFacet(t.Subdomein, t.Aantal))
-                        .OrderBy(s => s.Subdomein, StringComparer.CurrentCulture)]))
+                .Select(g =>
+                {
+                    var subdomeinen = g
+                        .Select(t => new SubdomeinFacet(
+                            t.Subdomein,
+                            taxonomieTelling.GetValueOrDefault((t.Domein, t.Subdomein))))
+                        .OrderBy(s => s.Subdomein, StringComparer.CurrentCulture)
+                        .ToList();
+
+                    // The domein count is the sum of its own subdomeinen, so the tree can never disagree with
+                    // its leaves (a Postgres test asserts exactly that).
+                    return new DomeinFacet(g.Key, subdomeinen.Sum(s => s.Aantal), subdomeinen);
+                })
                 .OrderBy(d => d.Domein, StringComparer.CurrentCulture)],
-            [.. doelsoorten
-                .Select(d => new DoelsoortFacet(d.Doelsoort, d.Aantal))
+            [.. doelsoortOpties
+                .Select(soort => new DoelsoortFacet(soort, doelsoortAantallen.GetValueOrDefault(soort)))
                 // Enum order, which is the official MD/G/+/P/S/A order of Art. VII.1 — not alphabetical,
                 // which would put the decreed minimumdoelen in the middle of the list.
                 .OrderBy(d => d.Doelsoort)],
-            [.. jaarFasen
-                .Select(j => new JaarFaseFacet(j.JaarFase, j.Aantal))
+            [.. jaarFaseOpties
+                .Select(fase => new JaarFaseFacet(fase, jaarFaseAantallen.GetValueOrDefault(fase)))
                 .OrderBy(j => j.JaarFase, StringComparer.Ordinal)]);
     }
+
+    /// <summary>The dimensions a facet count is computed "without", so each number answers its own question.</summary>
+    private enum Facetdimensie
+    {
+        Discipline,
+        Taxonomie,
+        Doelsoort,
+        JaarFase,
+    }
+
+    /// <summary>
+    /// The filter minus one dimension. <see cref="Facetdimensie.Taxonomie"/> drops <c>Domein</c> and
+    /// <c>Subdomein</c> together, because Art. VII.0 makes them one composite dimension: dropping only the
+    /// subdomein would count a domein's options against its own domein filter and return that domein's total
+    /// for each of them.
+    /// </summary>
+    private static LeerplandoelFilter ZonderDimensie(LeerplandoelFilter filter, Facetdimensie dimensie) =>
+        dimensie switch
+        {
+            Facetdimensie.Discipline => filter with { Discipline = null },
+            Facetdimensie.Taxonomie => filter with { Domein = null, Subdomein = null },
+            Facetdimensie.Doelsoort => filter with { Doelsoort = null },
+            Facetdimensie.JaarFase => filter with { JaarFase = null },
+            _ => filter,
+        };
+
+    /// <summary>
+    /// Every distinct value of one column across the <b>whole</b> curriculum: the stable option set, so a
+    /// filter control never loses entries as it is used.
+    /// </summary>
+    private Task<List<TWaarde>> AlleWaardenAsync<TWaarde>(
+        Expression<Func<Leerplandoel, TWaarde>> kolom,
+        CancellationToken cancellationToken) =>
+        _context.Leerplandoelen
+            .AsNoTracking()
+            .Select(kolom)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+    /// <summary>How many rows each value of one column has under the given filter. Values absent from the
+    /// result are genuinely zero, which is why callers read it with <c>GetValueOrDefault</c>.</summary>
+    private async Task<Dictionary<TWaarde, int>> AantallenAsync<TWaarde>(
+        LeerplandoelFilter filter,
+        Expression<Func<Leerplandoel, TWaarde>> kolom,
+        CancellationToken cancellationToken)
+        where TWaarde : notnull =>
+        await Gefilterd(filter)
+            .GroupBy(kolom)
+            .Select(g => new { Waarde = g.Key, Aantal = g.Count() })
+            .ToDictionaryAsync(g => g.Waarde, g => g.Aantal, cancellationToken);
 
     /// <summary>
     /// Applies the filter dimensions. Each is skipped when absent, so the predicate a default filter
@@ -273,10 +354,14 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
     /// </summary>
     private async Task<List<DoelKoppelingWeergave>> HaalKoppelingenAsync(
         string code,
+        Koppelingzichtbaarheid zichtbaarheid,
         CancellationToken cancellationToken)
     {
         // Every link is reached through Themas, because the thema name is what a teacher recognises and
         // each link layer hangs off a thema (directly, or via a subthema).
+        //
+        // The two school-scoped layers (Art. IX.2) are always read: they belong to the school, not to a klas,
+        // so no visibility question arises for them.
         var themadoelen = await _context.Themas
             .AsNoTracking()
             .SelectMany(t => t.Themadoelen
@@ -284,6 +369,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                 .Select(td => new DoelKoppelingWeergave(
                     KoppelingHerkomst.Themadoel,
                     t.Naam,
+                    null,
                     null,
                     td.Koppeling.Status)))
             .ToListAsync(cancellationToken);
@@ -296,33 +382,56 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                     KoppelingHerkomst.Doelsuggestie,
                     t.Naam,
                     null,
+                    null,
                     k.Status)))
             .ToListAsync(cancellationToken);
 
-        var subdoelen = await _context.Themas
-            .AsNoTracking()
-            .SelectMany(t => t.Subthemas
-                .SelectMany(st => st.Subdoelen
-                    .Where(sd => sd.Koppeling.LeerplandoelCode == code)
-                    .Select(sd => new DoelKoppelingWeergave(
-                        KoppelingHerkomst.Subdoel,
-                        t.Naam,
-                        st.Naam,
-                        sd.Koppeling.Status))))
-            .ToListAsync(cancellationToken);
+        List<DoelKoppelingWeergave> subdoelen = [];
+        List<DoelKoppelingWeergave> activiteiten = [];
 
-        var activiteiten = await _context.Themas
-            .AsNoTracking()
-            .SelectMany(t => t.Subthemas
-                .SelectMany(st => st.Activiteiten
-                    .SelectMany(a => a.Doelkoppelingen
-                        .Where(k => k.LeerplandoelCode == code)
-                        .Select(k => new DoelKoppelingWeergave(
-                            KoppelingHerkomst.Activiteit,
+        // The class/age-scoped layers are gated by the seam, and each row NAMES ITS KLAS. Both halves matter:
+        // withholding them entirely would report a doel used by one class's activiteit as used nowhere (a
+        // false statement a teacher would act on), while showing them unlabelled would let one class's
+        // planning read as a school-wide fact. See Koppelingzichtbaarheid for the open FR-10.2 decision this
+        // isolates rather than answers.
+        if (zichtbaarheid == Koppelingzichtbaarheid.Alles)
+        {
+            subdoelen = await _context.Themas
+                .AsNoTracking()
+                .SelectMany(t => t.Subthemas
+                    .SelectMany(st => st.Subdoelen
+                        .Where(sd => sd.Koppeling.LeerplandoelCode == code)
+                        .Select(sd => new DoelKoppelingWeergave(
+                            KoppelingHerkomst.Subdoel,
                             t.Naam,
-                            a.Naam,
-                            k.Status)))))
-            .ToListAsync(cancellationToken);
+                            st.Naam,
+                            // A correlated subquery rather than a navigation: Subthema carries only KlasId, and
+                            // adding a navigation property to the domain for a read view would change the
+                            // aggregate to serve a screen.
+                            _context.Klassen
+                                .Where(kl => kl.Id == st.KlasId)
+                                .Select(kl => kl.Naam)
+                                .FirstOrDefault(),
+                            sd.Koppeling.Status))))
+                .ToListAsync(cancellationToken);
+
+            activiteiten = await _context.Themas
+                .AsNoTracking()
+                .SelectMany(t => t.Subthemas
+                    .SelectMany(st => st.Activiteiten
+                        .SelectMany(a => a.Doelkoppelingen
+                            .Where(k => k.LeerplandoelCode == code)
+                            .Select(k => new DoelKoppelingWeergave(
+                                KoppelingHerkomst.Activiteit,
+                                t.Naam,
+                                a.Naam,
+                                _context.Klassen
+                                    .Where(kl => kl.Id == st.KlasId)
+                                    .Select(kl => kl.Naam)
+                                    .FirstOrDefault(),
+                                k.Status)))))
+                .ToListAsync(cancellationToken);
+        }
 
         return
         [
@@ -332,6 +441,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                 .Concat(activiteiten)
                 .OrderBy(k => k.ThemaNaam, StringComparer.CurrentCulture)
                 .ThenBy(k => k.Herkomst)
+                .ThenBy(k => k.KlasNaam, StringComparer.CurrentCulture)
                 .ThenBy(k => k.Onderdeel, StringComparer.CurrentCulture),
         ];
     }
