@@ -142,7 +142,13 @@ Observed at **1440px** and at **exactly 390px**, both tiers, switched both ways:
 - 7 columns headed `Periode N` at the coarse tier; **19** headed `Subthemaperiode N` with `Hoort bij themaperiode
   N` at the fine tier (the real 2026-2027 grid). Board `aria-label` flips between *"Themaperiodes van het
   schooljaar"* and *"Subthemaperiodes van het schooljaar"*.
-- **No horizontal page overflow at either width or tier:** `scrollWidth === clientWidth` (1440/1440, 390/390).
+- ~~**No horizontal overflow at either width or tier:** `scrollWidth === clientWidth` (1440/1440, 390/390).~~
+  **CORRECTED in fix round 1 (finding 9): that sentence measured the wrong element.** What holds is that the
+  **document** does not overflow — `documentElement.scrollWidth === clientWidth`, re-measured as 1425/1425 and 390/390.
+  The **board** does overflow, by design: it is an `overflow-x-auto` ribbon, and at the fine tier the `<ol>` measures
+  `scrollWidth 5800` against `clientWidth 1384`/`358`. Sideways scrolling *is* the board's mechanism, so a claim that it
+  does not scroll would have been a claim that the fine tier is broken. The product was right; the measurement was
+  pointed at the wrong node.
 - The card carries the grip (`⠿`) at the coarse tier and **not** at the fine one. With the `Aanpassen` panel open:
   coarse → `["Aanpassen sluiten", "Verplaatsen", "Uit deze periode halen"]` with 1 `<select>`; fine →
   `["Aanpassen sluiten", "Uit deze periode halen"]` with **0** selects.
@@ -161,11 +167,17 @@ both states):
 | Selected option, white on `petrol` (12px, 600) | **8.90:1** | 4.5:1 |
 | Selected option's **fill** vs the page | **8.90:1** | 3:1 (SC 1.4.11) |
 | Unselected option, `ink` on `card` (12px, 500) | **15.42:1** | 4.5:1 |
-| Track **border** (`--input`) vs the page | **3.40:1** | 3:1 (SC 1.4.11) |
+| Track **border** (`--input`) vs the page | ~~3.40:1~~ **3.21:1** | 3:1 (SC 1.4.11) |
 | Visible group label *Weergave* (12px, 600) | **14.55:1** | 4.5:1 |
 
 The track's own fill measures 1.06:1 against the page (white on warm off-white), which is exactly why the border
 is the carrier and why `border-input` rather than `border-border` was used.
+
+> **Corrected in fix round 1 (finding 9):** the border figure above was the one measured **on a card**
+> (`border-input` on `bg-card`, 3.40:1). Where this control actually sits it is on **paper**, and there it measures
+> **3.21:1** — still over SC 1.4.11's 3:1, but the quoted number was not the number for this control. The component's
+> own comment documented both values and the worklog took the friendlier one, which is the failure mode this repo has
+> recorded before: a measurement reported from the wrong context reads as a measurement that was not retaken.
 
 ### Self-check vs the acceptance criteria
 
@@ -216,3 +228,209 @@ it must be clicked):
   the fine view is where the question stops being abstract.
 - **Sub-column width** is kept at `w-72`, like a coarse column, so the card is the same object at both tiers; the
   cost is a ~5x wider scroll. Recorded as a choice; narrowing would need a second card layout.
+
+---
+
+## Fix round 1 — the antagonist's 3 MAJOR + 6 MINOR + 2 QUESTION on `a1a75d9`
+
+Gate results going in: **test-runner PASS** (196/12, lint, build, backend untouched, real-browser axe clean at
+coarse-1440 / fine-1440 / fine-390); **antagonist VIOLATIONS FOUND**. Everything below is per finding, and it says
+what was reproduced, what was not, and what was narrowed.
+
+**Gates coming out.** `corepack pnpm lint` exit 0 · `corepack pnpm vitest run` **200 passed / 12 files, 0 failed,
+0 skipped** (196 → 200: four new tests) · **zero** `act(` / `stderr` / `console.error` lines in the run · `corepack
+pnpm build` exit 0, built in 2.88s · `git diff --stat -- backend/` **empty**, so `dotnet test` / `dotnet format` did
+not run and are not claimed.
+
+**Browser evidence.** Playwright MCP is again unavailable here, so Chrome was driven over CDP as before. **My ports,
+claimed in the coordination channel first:** API `5386`, fault proxy `5396`, Vite `5376` (proxying to 5396), CDP
+`9334`. A parallel session holds 5407/5307 and 5373/5183; nothing here touched those. Every measurement below comes
+from `http://localhost:5376` against the real API on 5386 and real PostgreSQL, and the app under it was read back out
+of the page rather than assumed.
+
+One environment note worth keeping, because it cost twenty minutes: `dotnet run --no-launch-profile` **does not load
+user-secrets**, because with no launch profile there is no `ASPNETCORE_ENVIRONMENT` and that provider is
+Development-only. The API then starts, answers, and 500s every query with *"The ConnectionString property has not
+been initialized"*, which reads exactly like a broken database. `ASPNETCORE_ENVIRONMENT=Development` is required.
+
+### 1. [MAJOR] The fine tier relabelled a stranded kept startthema as a valid one — fixed, reproduced first
+
+**Reproduced in the browser before fixing**, with the real API and the demo class's own **kept** setting
+(`{blokStart: 2026-11-09, themaNaam: "Licht en donker"}`, i.e. themaperiode 3). There is no write endpoint for the
+vakantiestructuur and no `psql` on this machine, so the beheerder's edit was produced where it actually reaches the
+client: a small proxy in front of the API rewrites the coarse `/rooster` response so that block's start moves one day
+(`2026-11-09` to `2026-11-10`). That is precisely what a vakantie edit does to a stored preference. With round 1's code:
+
+| step | tier | trigger summary | stranded region |
+|---|---|---|---|
+| A (unshifted) | Themaperiodes | `(1 startthema)` | no |
+| B (shifted) | Themaperiodes | `(1 zonder themaperiode)` | **yes** |
+| C, D (shifted) | Subthemaperiodes | **`(1 startthema)`** | no |
+| E (shifted) | Themaperiodes | `(1 zonder themaperiode)` | yes |
+
+C/D against B/E is the finding, in the product, with *Jaarplan genereren* enabled throughout. After the fix the same
+script reads `(1 zonder themaperiode)` at **every** step B to E, with the loud region still only at the coarse tier.
+
+**The fix takes the first option the brief offered: resolve the check against the generation-tier grid regardless of
+the view.** `Jaarplankalender` now runs a second `usePlanningsrooster(schooljaarId, GENERATIEBLOKNIVEAU)` and hands
+*that* grid to the parameter form; the board keeps its own. It is not a second request in the normal path (the board
+opens at that tier, so the observer shares the first response's cache entry and stays subscribed when the board zooms
+away) and it is not a second grid on screen, because nothing renders from it except the form's own period rows, which
+name themaperiodes by definition. The form gained one prop, `weergaveNiveau`, and the two questions are now separate:
+`isGeneratieNiveau` ("are these blocks the periods a setting names?") governs every *claim*, and
+`toontGeneratieNiveau` ("is the board showing them?") governs only *presentation*. Conflating those two was the bug.
+
+The stranded rows and the loud region stay withheld at the fine tier, which is E3-04's obligation 1 and which the
+audit explicitly blessed. What no longer changes with the view is the count: identical state now yields an identical
+summary at both tiers, so the summary degrades to the *true* clause rather than to silence, which matters, because
+silence here would have fallen through to `(niets ingesteld)` — the one thing this form is documented never to say.
+
+**Test:** *"does not relabel a stranded kept startthema as a valid one at the finer tier"*
+(`Generatieparameters.test.tsx`), with a stranded fixture: the missing precondition that made test 7's
+`queryByRole("region", …)` vacuous. Mutation check: reverting the two props to the board's grid fails it with
+`expected '1 startthema' to be '1 zonder themaperiode'`, i.e. the exact string the antagonist predicted.
+
+### 2. [MAJOR] A failed fine-tier `/rooster` fetch destroyed the whole screen — fixed, reproduced first
+
+**Reproduced in the browser**, as instructed, by serving a 500 for `?niveau=Subthemaperiode`. It is real, and worse
+than reading the code suggests:
+
+| | before pressing *Subthemaperiodes* | after (round 1 code) |
+|---|---|---|
+| zoom control | present | **gone** |
+| board columns | 7 | **0** |
+| thema cards | 6 | **0** |
+| *Jaarplan genereren* | present | **gone** |
+| visible text | 2359 chars | **525 chars** |
+| retry | n/a | **none** |
+
+So one press replaced a year plan with one sentence and nothing to click. The library gate is what the antagonist
+said it was: `placeholderData: keepPreviousData` applies while `status === 'pending'`, and an errored query is not
+pending, so the placeholder is dropped.
+
+**The fix keeps a way forward, and prefers degrading to failing.** When the chosen tier errors, the generation tier's
+already-cached grid stands in, so the plan, the board, the generation card and the control all stay; the failure is
+one line beside the control that caused it, with its own *Opnieuw proberen*. The pressed option deliberately stays the
+one the teacher chose: forcing it back to the tier on screen would make pressing it again a no-op, since React skips a
+`setState` to the same value, which is this project's banned "control that does nothing". Only when there is genuinely
+nothing to draw (a failed **first** load) does the notice take the page, and even then it keeps the zoom control and
+the retry. `roosterHerstelGeprobeerd` mirrors E3-04's fix round 4: `refetch()` on an errored query holding no data
+resets `status` to `pending`, so keying the notice on `isError` alone would unmount the only live control for the
+length of the retry.
+
+After the fix, in the browser: control present, *Subthemaperiodes* still pressed, 7 coarse columns, all 6 cards, the
+generate button, 2538 chars of text, and a working retry that recovers to 19 fine columns once the fault is switched
+off. Neither sentence says *"herlaad de pagina"* (the E3-04 audit's rejected next step); they name a retry, the other
+tier, and the beheerder. The button is a **sibling** of the `role="alert"`, asserted in the browser
+(`alert.contains(button) === false`) and in the test.
+
+**Measured with alpha composited, at 1440 and at exactly 390:** notice text `5.18:1` (14px/500, floor 4.5:1), retry
+label `15.42:1`, retry **border** `6.48:1` (floor 3:1; the border matters because `variant="outline"` puts `bg-card`
+on the wash, so the fill carries nothing). Document overflow 1425/1425 and 390/390 in the failure state.
+
+**Tests:** *"keeps the plan and a way forward when the chosen tier fails to load"* and *"offers a retry and the other
+tier when the first grid fetch fails, and recovers on the retry"*. Mutation check: dropping the fallback fails the
+first with `Unable to find … De weergave die je koos, kon niet geladen worden`.
+
+### 3. [MINOR] `conceptUitleg` promised moving on a tier that offers none — fixed by dropping the enumeration
+
+It now reads *"Dit scherm is een eerste werkende versie voor de bespreking met directie en leerkrachten. Wat je hier
+aanpast, wordt bewaard. Wat je op deze weergave kan doen, staat boven het jaarplan."* Tier-awareness was the other
+option; enumerating affordances in a banner is what created the contradiction, and the two sentences that *do* state
+the affordances (`sleepUitleg` / `fijnUitleg`) already sit directly above the board and already follow the tier. This
+also honours the standing "explanatory prose is the first thing to cut" rule rather than adding a second variant.
+
+### 4. [MINOR] `anderNiveau`'s second sentence was false after an unsent edit — fixed
+
+Now: *"Startthema's horen bij de themaperiodes. Zet de weergave hierboven op “Themaperiodes” om ze te bekijken en in
+te stellen. Wat nu ingesteld staat, gaat mee met de volgende generatie, en die generatie bewaart het ook."* It claims
+nothing about the stored set being unchanged, states what actually travels (the current settings, edit included) and
+that a run saves them. The existing agreement test still binds: the message must contain the option label and the
+group label.
+
+### 5. [MINOR] Two ordinal spaces on the delete confirmation — fixed in copy, no component change
+
+`plaatsing.blokOrdinaal` is the **themaperiode** ordinal at both tiers, so the sentence only had to say which object
+the number belongs to: *"“{thema}” uit themaperiode {ordinaal} halen? Dat kan je niet ongedaan maken."* A card in
+*Subthemaperiode 9* is now asked about *themaperiode 3*, and the two numbers can no longer read as one object.
+`uitPeriodeHalen` became *"Uit de themaperiode halen"*: one string for both tiers, with no "deze", which removes the
+ambiguity without branching and without touching the panel's structure (a parallel session is adding a lock control in
+that same panel, so leaving its shape alone was deliberate).
+
+### 6. [MINOR] Three names for one object — fixed: the coarse block is a "themaperiode" everywhere
+
+`kalender.periode` and `parameters.periodeLabel` were *"Periode {ordinaal}"* while the control's option said
+*"Themaperiodes"* and the fine column said *"Hoort bij themaperiode {ordinaal}"*. One word now, applied through the
+catalogue rather than only where the audit pointed: the column heading, the row label, `periodeKeuze`,
+`verplaatsKies`, `verplaatsMislukt`, `uitPeriodeHalen`, `verwijderVraag`, `weigeringUitleg`, `herplaatsKies`,
+`herplaatsAnderNiveau`, `dekkingOnbekend`, the three drag announcements, the `herzien*` trio, every `vervallen*` and
+`rapport*` string that named a period, the `moment*` questions, and the `spreiding*` lines (E3-02's, but they count
+themaperiodes and would otherwise have become the fourth name).
+
+**Deliberately left:** `kalender.teVol`, `teVolUitleg` and `wordtTeVol` still say "periode". They are three of the
+nine places E3-09 owns by the owner's te-vol ruling and are being rewritten wholesale there; editing them here would
+have put this story's hand into another story's rewrite. Recorded rather than silently skipped.
+
+### 7. [MINOR, owner ruling] The ADR deviation is now recorded in the ADRs — written
+
+An amendment section on `docs/adr/0014-frontend-state-and-dnd.md` and an amended (struck through, not deleted)
+follow-up bullet on `docs/adr/0021-frontend-routing-and-url-selection.md`. Both state the ruling (component state
+stays), the reason (a module-scoped store outlives the component, carries one class's grain into the next and leaks
+between tests), and the two things the brief required be honest: that it **also covers E3-07's drag state**, which
+contradicted a one-day-old ADR-0021 and was never ratified nor noticed by any audit including E3-07's own; and that
+the zoom therefore **does not survive a reload and is not shareable**, an accepted consequence rather than an
+oversight, with the `?niveau=` mirror named as the follow-up that would fix it. The code comment now points at the
+amendment instead of at this worklog.
+
+### 8. [MINOR] `herplaatsAnderNiveau` had no test — pinned
+
+*"tells a stale placement's panel where re-placing works, and keeps the notice non-dismissible"*: a stale fixture, the
+coarse tier asserted as the premise (picker present, `herplaatsKies`), then the fine tier with no picker,
+`herplaatsAnderNiveau` shown, `herplaatsKies` absent, the message asserted to contain the other view's own button
+label, and `TeHerzien`'s **full** control set pinned so a close/dismiss/later affordance would fail it. Mutation
+check: making `herplaatsKies` unconditional fails it.
+
+### 9. Worklog numbers — both corrected above, in place
+
+The overflow sentence and the border ratio are struck through where they were written, each with a line saying what
+was wrong: the first measured the board (an `overflow-x-auto` ribbon, `scrollWidth 5800`) where it should have
+measured the document (1425/1425, 390/390); the second quoted `border-input` **on a card** (3.40:1) for a control that
+sits on **paper** (3.21:1, still above the 3:1 floor). Both re-measured in this round's browser pass.
+
+### 10. [QUESTION] Sibling sub-columns claimed "Nog niets gepland" — fixed, copy only
+
+A sub-column belonging to a themaperiode that **does** hold a thema now says *"Deel van een ingeplande themaperiode"*;
+a sub-column of a genuinely empty themaperiode keeps *"Nog niets gepland"*. No new data: `Jaarplankalender` already
+walks the grid to build `gevuldeOrdinalen`, so it now also collects `gevuldeOuderOrdinalen` from `ouderOrdinaal`, and
+`Periodekolom` takes one boolean. `fijnUitleg` lost its own version of the same false claim (*"de andere delen van die
+periode blijven leeg"*) and now says the tool does not record which weeks the thema covers, so those columns show no
+card. Verified in the browser on the real 19-column grid: **8** columns read the new sentence, **6** the old one, 5
+hold cards. Contrast of the new line `5.56:1` (12px/400). Mutation check: hard-coding `legeperiode` fails the "draws a
+thema once" test, which now asserts 3 and 3 on its fixture.
+
+### 11. [QUESTION] The withheld move affordance — not re-opened; the comment now carries the right argument
+
+The affordances stay removed, and all four comments (`Periodekolom.kanVerplaatsen`, `Themakaart.kanVerplaatsen`, the
+`doelen` computation, and the derivation in `Jaarplankalender`) now lead with the semantic reason: **7 of the 19 fine
+columns are accepted targets**, because each parent's first sub-block starts on the parent's own start date, and that
+is exactly why the control would be wrong. A drop there moves the thema into the *whole* themaperiode while the
+teacher aimed at a fortnight, so it would be honest about the request and dishonest about the effect. The endpoint
+argument is recorded as the weaker, partly-false one it is.
+
+### Nothing declined, one thing narrowed
+
+No finding is disputed. The only narrowing is finding 6's scope (the three te-vol strings left to E3-09, above), and
+the one thing this round deliberately did **not** touch is the card's `Aanpassen` panel structure, because a parallel
+session is adding a lock control inside it; withholding the picker needed no restructuring.
+
+### Still open after this round
+
+- **The zoom is not deep-linkable.** Ruled acceptable by the owner; the `?niveau=` mirror is now named as a follow-up
+  on ADR-0021 rather than living only in this worklog.
+- **E3-09's te-vol rewrite** still owns `VOORLOPIGE_TE_VOL_DREMPEL`, the three "periode"-worded te-vol strings, and
+  the three code comments that call the threshold provisional. Left as instructed.
+- **A thema spanning two periods** (E3-10 review question B) is still unanswered, and now visibly so at the fine tier;
+  the new sub-column sentence states the limitation instead of implying an extent.
+- **A merge-order dependency, not a code one:** a parallel session (E4-06) is changing `Themakaart.tsx`,
+  `Jaarplankalender.test.tsx` and `nl.json` on its own branch. Declared in the coordination channel; the proposal on
+  the record is that E4-06 merges first and this branch rebases onto it.

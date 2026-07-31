@@ -680,7 +680,7 @@ describe("Generatieparameters — a kept setting whose period is gone (E3-04)", 
     const knop = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
     const samenvatting = () => /\(([^)]*)\)/.exec(knop.textContent ?? "")?.[1] ?? "";
 
-    await waitFor(() => expect(samenvatting()).toBe("1 zonder periode"));
+    await waitFor(() => expect(samenvatting()).toBe("1 zonder themaperiode"));
     expect(samenvatting()).not.toContain("startthema");
   });
 
@@ -751,7 +751,7 @@ describe("Generatieparameters — the grid it may read (E3-04)", () => {
     await waitFor(() => expect(samenvatting()).toBe("1 startthema"));
 
     // NOT called stranded: at this tier the form cannot tell, so it claims nothing either way.
-    expect(samenvatting()).not.toContain("zonder periode");
+    expect(samenvatting()).not.toContain("zonder themaperiode");
     expect(
       screen.queryByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
     ).toBeNull();
@@ -877,6 +877,67 @@ describe("Generatieparameters — across a zoom switch (E3-08, FR-6.3)", () => {
       gewensteStartthemas: [{ blokStart: "2026-11-09", themaNaam: "Water" }],
       vasteMomenten: [{ naam: "Schoolfeest", datum: "2026-09-15", blokkeertPlaatsing: true }],
     });
+  });
+
+  /**
+   * Fix round 1, finding 1: **a stranded kept startthema must not be relabelled as a valid one by zooming in.**
+   *
+   * The stranded check ran against whatever grid the board was showing, so at the fine tier it could not run at all and
+   * the entry fell out of `vervallenStarts` — which is the set `aantalStartthemas` *excludes*. Identical state and an
+   * identical POST body therefore read `(1 zonder themaperiode)` at the coarse tier and `(1 startthema)` at the fine
+   * one, with generation enabled: a teacher whose kept preference had been orphaned by a vakantie edit zoomed in, was
+   * told one startthema was set, generated, and found out only from the run's own `vervallenStartthemas`.
+   *
+   * Note the existing "keeps an unsent edit" test's `queryByRole("region", …)` cannot catch this: its fixture has no
+   * stranded setting, so the assertion passes vacuously. This one has one.
+   */
+  it("does not relabel a stranded kept startthema as a valid one at the finer tier", async () => {
+    const posts = stubFetch(resultaat(leegRapport), {
+      fijnRooster,
+      instellingen: {
+        // 5 October is not the start of any themaperiode in `rooster`: the beheerder moved the vakantie after this was
+        // saved. It is still sent, and still the teacher's to resolve (directie 2026-07-28).
+        gewensteStartthemas: [{ blokStart: "2026-10-05", themaNaam: "Water" }],
+        vasteMomenten: [],
+      },
+    });
+    renderKalender();
+
+    const trigger = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
+    const samenvatting = () => /\(([^)]*)\)/.exec(trigger.textContent ?? "")?.[1] ?? "";
+
+    await waitFor(() => expect(samenvatting()).toBe("1 zonder themaperiode"));
+    // The loud notice is here at the tier whose periods it talks about.
+    expect(
+      screen.getByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(zoom("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // THE regression: the summary is a statement about the settings, so it may not change with the view. It certainly
+    // may not turn a setting the run will discard into one it will honour.
+    expect(samenvatting()).toBe("1 zonder themaperiode");
+    expect(samenvatting()).not.toContain("startthema");
+
+    // The rows and the resolve-it-here notice are withheld (E3-04 obligation 1: those periods are not on screen), and
+    // the panel says where to deal with it instead. Hiding the ROWS was licensed; upgrading the claim was not.
+    expect(
+      screen.queryByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
+    ).toBeNull();
+    fireEvent.click(trigger);
+    const startthemas = screen.getByRole("group", { name: t("parameters.startthemasTitel") });
+    expect(within(startthemas).getByText(t("parameters.anderNiveau"))).toBeInTheDocument();
+
+    // And generating from here still sends the stranded setting untouched, which is what makes the summary the only
+    // thing a teacher could have been misled by.
+    await genereer();
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0]!).gewensteStartthemas).toEqual([
+      { blokStart: "2026-10-05", themaNaam: "Water" },
+    ]);
   });
 
   it("names the control in the copy that tells a teacher where to set a startthema", async () => {

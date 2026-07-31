@@ -50,10 +50,16 @@ export interface ThemakaartProps {
   /**
    * Whether moving is possible on the board this card is on (E3-08).
    *
-   * False at the subthemaperiode zoom, where the server refuses a target that is not a themaperiode start — so the
-   * grip and the period picker are **absent** rather than present-and-failing. Everything else on the card stays:
-   * taking a thema out of its period and reversing a rejection are unaffected by the tier, since neither names a
-   * block. See {@link PeriodekolomProps.kanVerplaatsen} for the endpoint's own rule.
+   * False at the subthemaperiode zoom, so the grip and the period picker are **absent** rather than
+   * present-and-failing. The reason is not that the server refuses those dates — a third of them it accepts, because
+   * each parent's first sub-block starts on the parent's own start date. It is that a drop on one of those moves the
+   * thema into the **whole** themaperiode while the teacher aimed at a fortnight: the affordance would be honest about
+   * the request and dishonest about the effect. See {@link PeriodekolomProps.kanVerplaatsen} for the full argument.
+   *
+   * Everything else on the card stays: taking a thema out of its themaperiode and reversing a rejection are unaffected
+   * by the tier, since neither names a block. The delete confirmation names the **themaperiode** and its ordinal
+   * explicitly, which is what keeps it unambiguous here — `blokOrdinaal` is the coarse ordinal, so at this tier a card
+   * sitting in *Subthemaperiode 9* must not be asked about "periode 3" as if the column and the object were one thing.
    */
   kanVerplaatsen: boolean;
 }
@@ -215,9 +221,10 @@ function Bewerkpaneel({
   // A rejected placement offers none: the server refuses the move (it would silently grant dekking), so the
   // picker is replaced by the instruction to reverse the rejection first.
   //
-  // Nor does the fine zoom offer any (E3-08): `blokken` would be subthemaperiodes, and the server refuses every one
-  // of them that is not also a themaperiode start. Where E3-06's rule asks for visible text, the board carries it
-  // once above itself rather than repeating a disabled control per card.
+  // Nor does the fine zoom offer any (E3-08): `blokken` would be subthemaperiodes, and offering them would ask the
+  // teacher to pick a fortnight while the plan can only record the themaperiode that contains it (the ones the server
+  // *does* accept are precisely the parents' first sub-blocks). Where E3-06's rule asks for visible text, the board
+  // carries it once above itself rather than repeating a disabled control per card.
   const isGeweigerd = plaatsing.status === "Geweigerd";
   const doelen =
     isGeweigerd || !kanVerplaatsen

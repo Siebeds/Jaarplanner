@@ -24,14 +24,28 @@ export interface PeriodekolomProps {
   /**
    * Whether a thema can be moved onto this board at all (E3-08).
    *
-   * False at the fine tier, and that is a **correctness** requirement rather than a preference:
-   * `VerplaatsPlaatsingAsync` derives its candidate blocks at the generation tier and requires the target to match
-   * the placement's own `BlokNiveau`, so a subthemaperiode start that is not also a themaperiode start is refused
-   * with *"… is geen begin van een periode in dit schooljaar."* Rather than a grip and a picker that fail on most
-   * columns, there are none, and the board says once in visible text where moving does work (the E3-06 rule: an
-   * unavailable destination is stated, not hidden in a tooltip).
+   * False at the fine tier, and **the reason is what a drop would mean, not what the endpoint would answer.** The
+   * endpoint argument is the weaker one and only two thirds true: `VerplaatsPlaatsingAsync` resolves a target against
+   * the generation tier's blocks, so most subthemaperiode starts are refused with *"… is geen begin van een periode in
+   * dit schooljaar."* — but each parent's **first** sub-block starts on the parent's own start date, so 7 of a real
+   * year's 19 fine columns are perfectly valid targets. Those 7 are exactly why the affordance is withheld: a drop
+   * there moves the thema into the **whole** themaperiode, so the control would be honest about the request and
+   * dishonest about the effect. A teacher aiming at a fortnight would record five weeks and see nothing say so.
+   *
+   * Hence no grip and no picker rather than a disabled one per column, with the board saying once in visible text
+   * where moving does work (the E3-06 rule: an unavailable destination is stated, not hidden in a tooltip).
    */
   kanVerplaatsen: boolean;
+  /**
+   * Whether the **themaperiode this column belongs to** holds a thema (E3-08 fix round 1).
+   *
+   * Always false at the coarse tier, where a column *is* its own themaperiode and its own placements are the whole
+   * truth. At the fine tier it decides which of two things an empty well says, and the distinction is not cosmetic:
+   * a sub-column of a filled themaperiode is a fortnight in which the class **is** teaching that thema, so
+   * "Nog niets gepland" there is false about the plan. What the tool genuinely does not know is which weeks of the
+   * parent the thema occupies, and that is a different sentence.
+   */
+  ouderIsIngepland: boolean;
 }
 
 /**
@@ -52,8 +66,14 @@ export interface PeriodekolomProps {
  * *themaperiode* start (ADR-0020 §3) and nothing in the model records which weeks inside that period a thema
  * occupies, so the card is rendered **once**, in the sub-block whose start equals the placement's `blokStart` — the
  * parent's first one. It is not repeated across the parent's other sub-blocks and no "runs through here"
- * continuation is drawn, because both would assert an extent the data does not contain. The parent's other columns
- * are therefore legitimately empty, and the board says why once above itself rather than in every column.
+ * continuation is drawn, because both would assert an extent the data does not contain. The board says why once above
+ * itself rather than in every column.
+ *
+ * **What those sibling columns are empty *of* is a card, not a plan** ({@link PeriodekolomProps.ouderIsIngepland}).
+ * They carried "Nog niets gepland" in round 1, and that is false about a class that is teaching its parent's thema
+ * that fortnight: the picture was honest about the data and misleading about the plan. A sibling of a filled
+ * themaperiode now says it belongs to one, which also keeps it distinguishable from a genuinely empty period's
+ * sub-column.
  *
  * **It is the drop target (E3-07).** While a card is over it the column fills with the petrol wash and says
  * "Hierheen verplaatsen" in words, because a colour change alone carries nothing (Art. XII, WCAG 2.2 AA).
@@ -71,6 +91,7 @@ export function Periodekolom({
   blokken,
   niveau,
   kanVerplaatsen,
+  ouderIsIngepland,
 }: PeriodekolomProps) {
   const gepland = geplandeIn(plaatsingen);
   const teVol = isTeVol(plaatsingen);
@@ -152,8 +173,11 @@ export function Periodekolom({
         {plaatsingen.length === 0 ? (
           // A recessed dashed well rather than a line of italic text: it reads as "there is room here",
           // which is what an empty period means, and it is the drop target's resting state.
+          //
+          // Two sentences, one per case (see `ouderIsIngepland`). "Nog niets gepland" is a claim about the plan, so it
+          // is only made where it is true; inside a filled themaperiode the well states what this fortnight is part of.
           <p className="flex min-h-[5rem] items-center justify-center rounded-md border border-dashed border-border bg-paper-diep/50 px-3 text-center text-xs text-ink-zacht">
-            {t("kalender.legeperiode")}
+            {t(ouderIsIngepland ? "kalender.subperiodeIngepland" : "kalender.legeperiode")}
           </p>
         ) : (
           <ul className="flex flex-col gap-2">

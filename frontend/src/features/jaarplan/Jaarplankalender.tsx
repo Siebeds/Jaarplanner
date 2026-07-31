@@ -74,12 +74,12 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
 
   // The zoom level (E3-08, FR-6.3).
   //
-  // Plain component state, deliberately. ADR-0014 lists "view zoom" among the things Zustand owns, and ADR-0021
-  // repeats it — but the value has exactly ONE reader tree, rooted here, which already owns the fetch and passes the
-  // resulting grid down as props. A module-scoped store would add a second home for a value with a single owner, and
-  // it would outlive this component: it would carry one class's chosen grain into the next class and leak between
-  // tests. E3-07 made the same call for drag state, which ADR-0014 names in the same sentence, and shipped it
-  // audited. Recorded as a deliberate deviation rather than an oversight; see the worklog.
+  // Plain component state, and **ratified as such**: ADR-0014 and ADR-0021 both listed "view zoom" among the things
+  // Zustand owns, and both carry an amendment of 2026-07-31 (owner ruling on the E3-08 audit) recording that the zoom
+  // and E3-07's drag state stay here. The value has exactly ONE reader tree, rooted in this component, which already
+  // owns the fetch and passes the resulting grid down as props. A module-scoped store would add a second home for a
+  // value with a single owner and would outlive the component: it would carry one class's chosen grain into the next
+  // class and leak between tests. The accepted cost is that the tier does not survive a reload and is not shareable.
   //
   // The initial value is the coarse tier, matching `/rooster`'s own default. Written as the literal rather than as
   // GENERATIEBLOKNIVEAU because they are two different decisions that happen to name the same tier: one is "which
@@ -87,8 +87,30 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   const [niveau, setNiveau] = useState<Planningsblokniveau>("Themaperiode");
 
   const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId, niveau);
+
+  // The GENERATION tier's grid, fetched independently of the zoom (E3-08 fix round 1, antagonist finding 1).
+  //
+  // A kept generation setting keys on a *themaperiode* start (ADR-0020 §3), so "does this setting still name a period
+  // that exists?" is a statement about that tier and must not change with the tier the board happens to show. Read off
+  // the displayed grid it did: at the fine zoom the check could not run, so a stranded kept startthema stopped being
+  // counted as stranded and started being counted as a **valid** one. Same state, same request body, two different
+  // claims on the trigger.
+  //
+  // Not a second network round trip in the normal case, and not a second grid on screen either. The board opens at
+  // this tier, so this observer shares that first response's cache entry, and it stays subscribed when the board zooms
+  // away. Nothing is rendered from it except the parameter form's own rows, which name themaperiodes by definition.
+  const generatieRooster = usePlanningsrooster(jaarplan.data?.schooljaarId, GENERATIEBLOKNIVEAU);
+
   const generatie = useGenereerJaarplan(klasId);
   const verplaats = useVerplaatsPlaatsing(klasId);
+
+  // Whether the teacher has pressed *Opnieuw proberen* on a failed grid fetch.
+  //
+  // Needed because `refetch()` on an errored query holding **no** data puts TanStack back to `pending` rather than to
+  // "errored and fetching": its fetch reducer resets `status` whenever `data === undefined`. Keying the notice on
+  // `isError` alone therefore unmounts it — and with it the only way forward — for the whole retry. That is the exact
+  // defect E3-04's fix round 4 recorded for the settings load; the same shape, so the same remedy.
+  const [roosterHerstelGeprobeerd, setRoosterHerstelGeprobeerd] = useState(false);
 
   // The class's KEPT pre-generation settings (E3-04 persistence half), and the teacher's edits on top of them.
   //
@@ -138,25 +160,66 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
     return <Melding soort="rustig">{t("kalender.geenKlas")}</Melding>;
   }
 
-  // Errors are checked BEFORE pending, and the order is load-bearing rather than stylistic. `rooster` is
-  // chained behind the schooljaarId the jaarplan returns, so while that id is unknown the rooster query is
-  // *disabled* — and a disabled TanStack Query v5 query reports `isPending === true`, not idle. With the
-  // pending guard first, a failed jaarplan fetch never reached its error branch: the screen showed
-  // "Jaarplan laden…" forever and `kalender.fout` was dead code.
+  // The jaarplan's error is checked BEFORE its pending state, and the order is load-bearing rather than stylistic.
+  // `rooster` is chained behind the schooljaarId the jaarplan returns, so while that id is unknown the rooster query is
+  // *disabled* — and a disabled TanStack Query v5 query reports `isPending === true`, not idle. With a combined pending
+  // guard first, a failed jaarplan fetch never reached its error branch: the screen showed "Jaarplan laden…" forever
+  // and `kalender.fout` was dead code.
   if (jaarplan.isError) {
     return <Melding soort="fout">{t("kalender.fout")}</Melding>;
   }
 
-  if (rooster.isError) {
-    return <Melding soort="fout">{t("kalender.roosterFout")}</Melding>;
-  }
-
-  if (jaarplan.isPending || rooster.isPending) {
+  if (jaarplan.isPending) {
     return <Melding soort="rustig">{t("kalender.laden")}</Melding>;
   }
 
   const plan = jaarplan.data;
-  const grid = rooster.data;
+
+  // **A failed grid fetch no longer takes the screen down with it** (E3-08 fix round 1, antagonist finding 2).
+  //
+  // `placeholderData: keepPreviousData` is gated on `status === 'pending'`, so the moment the newly-keyed fine-tier
+  // query *errors* the placeholder is dropped and `rooster.data` is undefined again. The old early return then replaced
+  // the spine, the board, the plan, the generation card **and the zoom control itself** with one sentence: the teacher
+  // pressed a button and their year plan vanished, with nothing left to press. Before this story that state was
+  // reachable only on first load, where there was nothing on screen to lose.
+  //
+  // So the failure degrades instead: the generation tier's grid (already cached, since the board opens at it) keeps the
+  // whole screen standing at that grain, and the failure is one line beside the control that caused it. Only when there
+  // is genuinely nothing to draw does it take the page, and even then it keeps the control and a retry. The rule is
+  // E3-04 fix round 4's: a screen that refuses everything must still carry one live control.
+  const terugvalGrid = niveau === GENERATIEBLOKNIVEAU ? undefined : generatieRooster.data;
+  const grid = rooster.data ?? terugvalGrid;
+
+  // "The tier the teacher asked for could not be derived." Stays true through the teacher's own retry — see
+  // `roosterHerstelGeprobeerd`. `rooster.data` is checked rather than `isSuccess` so a retry that has already landed
+  // clears it.
+  const roosterOnbekend =
+    rooster.isError || (roosterHerstelGeprobeerd && rooster.data === undefined && rooster.isFetching);
+
+  function probeerRoosterOpnieuw() {
+    setRoosterHerstelGeprobeerd(true);
+    void rooster.refetch();
+  }
+
+  if (grid === undefined) {
+    // Nothing to draw at all: the first load failed, so there is no cached generation grid to stand on. The zoom
+    // control comes along, because the other tier is a second thing to try and not merely decoration.
+    if (roosterOnbekend) {
+      return (
+        <div className="flex flex-col gap-3">
+          <Weergaveschakelaar niveau={niveau} onKies={setNiveau} bezig={false} />
+          <Roosterfout
+            terugval={false}
+            bezig={rooster.isFetching}
+            onOpnieuw={probeerRoosterOpnieuw}
+          />
+        </div>
+      );
+    }
+
+    return <Melding soort="rustig">{t("kalender.laden")}</Melding>;
+  }
+
   const segmenten = bouwRibbon(grid.blokken, grid.onderbrekingen);
 
   // The tier the board is ACTUALLY drawing, read off the answer (`grid.niveau`) rather than off the request
@@ -167,11 +230,17 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
 
   // Whether a thema can be moved on this board.
   //
-  // Compared against the generation tier rather than against a bare "Themaperiode", because that is *why* it is
-  // true: `VerplaatsPlaatsingAsync` derives its candidate blocks at `GeneratieNiveau` and requires them to match the
-  // placement's own `BlokNiveau`, so the only board whose columns the server accepts as a move target is the one
-  // showing that tier. Derived from the server's own string, so an unrecognised tier disables moving rather than
-  // offering a control that 400s.
+  // Compared against the generation tier rather than against a bare "Themaperiode", because a placement keys on that
+  // tier's block starts (ADR-0020 §3) and `VerplaatsPlaatsingAsync` resolves a target against the same tier. Derived
+  // from the server's own string, so an unrecognised tier disables moving rather than offering a control that 400s.
+  //
+  // **The reason the affordance is withheld at the fine tier is semantic, not API-shaped.** It would be easy to read
+  // this as "the server refuses those dates", and that is only two thirds true: each parent's *first* sub-block starts
+  // on the parent's own start date, so 7 of the 19 fine columns of a real year genuinely ARE accepted targets. That
+  // makes the affordance worse rather than better. A drop on sub-block 1 moves the thema into the **whole**
+  // themaperiode, so the control would be honest about the request and dishonest about the effect: the teacher aimed at
+  // a fortnight and the plan records five weeks. The remaining columns would 400 on top of that. Both halves point the
+  // same way, but this one is the argument.
   const kanVerplaatsen = grid.niveau === GENERATIEBLOKNIVEAU;
 
   // Placements pointing at a date that is no longer a period boundary. Collected FIRST and always
@@ -180,12 +249,23 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
 
   // Derived once and shared with the spine, so the strip and the cards can never disagree about which
   // period is full or over-full.
+  //
+  // `gevuldeOuderOrdinalen` is the third set and only means anything at the fine tier: which **themaperiodes** hold a
+  // thema, by parent ordinal. It exists because a sub-column's own emptiness says nothing about the plan — the class is
+  // teaching its parent's thema that fortnight, the tool simply does not record which weeks of the parent the thema
+  // occupies. Without it, two of the three sub-columns of a filled 5-week themaperiode read "Nog niets gepland", which
+  // is false about the plan while being true about the column (antagonist finding 10).
   const gevuldeOrdinalen = new Set<number>();
+  const gevuldeOuderOrdinalen = new Set<number>();
   const teVolleOrdinalen = new Set<number>();
   for (const blok of grid.blokken) {
     const inBlok = plaatsingenIn(plan.plaatsingen, blok);
     if (geplandeIn(inBlok).length > 0) {
       gevuldeOrdinalen.add(blok.ordinaal);
+
+      if (blok.ouderOrdinaal !== null) {
+        gevuldeOuderOrdinalen.add(blok.ouderOrdinaal);
+      }
     }
     if (isTeVol(inBlok)) {
       teVolleOrdinalen.add(blok.ordinaal);
@@ -306,6 +386,19 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
               bezig={rooster.isPlaceholderData}
             />
 
+            {/* The chosen tier failed, and the board below is the generation tier's instead. Said here, beside the
+                control that caused it and above the strip that is not what was asked for, rather than as a full-screen
+                replacement. The pressed option stays the one the teacher chose: forcing it back to the tier on screen
+                would make pressing it again a no-op (React skips a setState to the same value), i.e. a control that
+                does nothing — so the way back out is the explicit retry, or the other option. */}
+            {roosterOnbekend && (
+              <Roosterfout
+                terugval
+                bezig={rooster.isFetching}
+                onOpnieuw={probeerRoosterOpnieuw}
+              />
+            )}
+
             <Jaarspine
               segmenten={segmenten}
               gevuldeOrdinalen={gevuldeOrdinalen}
@@ -340,13 +433,18 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
               loads what was last used and generating saves the new state. It is given the derived grid because each
               preference names a period, and because a kept preference whose period no longer exists has to be
               spotted against the current grid and said out loud.
-              The grid's own `niveau` travels with it: a kept setting keys on the GENERATION tier's block starts, and
-              handing over the tier the board happens to show would silently mislabel every setting once E3-08's zoom
-              fetches Subthemaperiode. */}
+              **It is given the GENERATION tier's grid, never the board's**, because that is the tier a kept setting
+              keys on: handing over whatever the zoom happens to show made the stranded check a function of the view,
+              so the same stored setting was reported as stranded at one tier and as valid at the other (fix round 1,
+              finding 1). `niveau` still travels with the blocks and is still checked, so a server that answers another
+              tier for a generation-tier request degrades to "cannot tell" rather than to a guess.
+              `weergaveNiveau` is the separate question of what the *board* shows, which is what decides whether the
+              period rows are offered here or the teacher is pointed at the other view (E3-04 obligation 1). */}
           <Generatieparametersformulier
             klasId={klasId}
-            blokken={grid.blokken}
-            niveau={grid.niveau}
+            blokken={generatieRooster.data?.blokken ?? []}
+            niveau={generatieRooster.data?.niveau ?? ""}
+            weergaveNiveau={bordNiveau}
             onWijzig={setWijziging}
             // The SAME gate as the button, not just `generatie.isPending`. Gating only the button left the fields live
             // behind a primary action that could never fire, and an edit made there would post a body that *replaces*
@@ -447,6 +545,10 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                     blokken={grid.blokken}
                     niveau={bordNiveau}
                     kanVerplaatsen={kanVerplaatsen}
+                    ouderIsIngepland={
+                      segment.blok.ouderOrdinaal !== null &&
+                      gevuldeOuderOrdinalen.has(segment.blok.ouderOrdinaal)
+                    }
                   />
                 ) : (
                   <Vakantiegat
@@ -487,6 +589,56 @@ function Melding({ soort, children }: { soort: "rustig" | "fout"; children: Reac
     >
       {children}
     </p>
+  );
+}
+
+/**
+ * A period grid that could not be derived, with the two things the old one-liner lacked: what it costs, and a way out.
+ *
+ * **`terugval` distinguishes the two failures, because they cost a teacher different things.** With a cached generation
+ * grid to stand on, nothing is lost: the plan is still on screen at the coarse grain and only the chosen *view* failed.
+ * Without one, the screen has nothing to draw at all. One notice, two sentences, so the copy can state the actual
+ * consequence instead of a generic "kon niet geladen worden".
+ *
+ * **Neither sentence says "herlaad de pagina".** The E3-04 audit rejected that outright: the query client has already
+ * retried three times with backoff before this appears, so "try what just failed, but by hand" is not a next step. The
+ * steps offered are a real refetch, the other tier, and (if it keeps failing) the beheerder.
+ *
+ * **The `alert` is the sentence, not the box.** The button is a *sibling* of the live region rather than a child of it —
+ * the same separation `TeHerzien` and the settings notice use. A live region wrapping a control re-announces its whole
+ * contents on every interaction, and pressing this one changes its own label.
+ */
+function Roosterfout({
+  terugval,
+  bezig,
+  onOpnieuw,
+}: {
+  terugval: boolean;
+  bezig: boolean;
+  onOpnieuw: () => void;
+}) {
+  return (
+    <div className="rounded-md bg-suggestie-geweigerd/10 px-3.5 py-2.5">
+      <p
+        role="alert"
+        className="max-w-3xl text-sm font-medium leading-snug text-suggestie-geweigerd"
+      >
+        {terugval ? t("kalender.roosterFoutWeergave") : t("kalender.roosterFout")}
+      </p>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={bezig}
+        onClick={onOpnieuw}
+        // `border-suggestie-geweigerd` rather than the default `border-input`, for the reason the settings notice
+        // records: `variant="outline"` puts `bg-card` on this panel's `suggestie-geweigerd/10` wash, so the fill carries
+        // no contrast of its own and the border is the only thing delineating the control (SC 1.4.11 wants 3:1 for it).
+        // Same hue the panel already spends, so no second chrome accent (Art. XII).
+        className="mt-2 h-7 border-suggestie-geweigerd bg-card text-xs"
+      >
+        {bezig ? t("kalender.roosterOpnieuwBezig") : t("kalender.roosterOpnieuw")}
+      </Button>
+    </div>
   );
 }
 
