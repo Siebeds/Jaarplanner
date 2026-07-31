@@ -99,3 +99,107 @@ All seven `Detail` strings read as natural, non-technical Dutch appropriate for 
 - Live-host raw JSON captured for: preview, commit, double-preview-writes-nothing, re-import diff, idempotent re-run, the MD 409, unknown-discipline 400 and 409, wrong-discipline 409, empty-file skip, non-xlsx 400, missing-disciplinenummer 400, thema/themadoel survival, and `/openapi/v1.json`.
 - Workbooks were generated to the Art. VII.1 A-M layout (A=Doelsoort, B=LfMD, C=nrMD, E=Code, F=Jaar/fase, G=Domein, H=Subdomein, J=Leerplandoel).
 - Cleanup: both verification hosts (ports 5231 and 5232) terminated, and `jp_e115_verify` dropped. No parallel agent's database, port or dev server was touched.
+
+---
+
+# E1-15 — Test report (round 2, after fix round 1)
+
+**Verdict:** PASS
+**Mode:** unit/integration (xUnit over HTTP against real PostgreSQL 17) + a manual API run against a real `dotnet run` host
+**Commit:** `cd426cf`, on top of the `57a21b1` that passed round 1
+**Method:** reviewed the `57a21b1..cd426cf` delta rather than starting over, then re-ran all three gates and re-executed the round-1 manual evidence that the delta could have invalidated.
+
+## Gates (re-run, actual counts)
+
+| Command | Result | vs claimed |
+| --- | --- | --- |
+| `dotnet build` | **Build succeeded. 0 Warning(s), 0 Error(s)** | matches |
+| `dotnet test --no-build` with the Postgres env var | **472 unit passed, 112 integration passed, 0 failed, 0 skipped** | matches exactly (round 1: 468 + 110) |
+| `dotnet format --verify-no-changes` | clean, exit 0 | matches |
+
+## The five high-risk claims
+
+### 1. The sanctioned importer is no longer untouched: honest, and the table is accurate
+
+Round 1's Art. III.1/III.4 evidence rested on the importer's `git diff` being empty. That is no longer true, and the worklog says so plainly and first, which is the right way to report it. I checked the changed/not-changed table line by line against the diff:
+
+- **Changed, as stated:** a preflight (`ControleerVoorwaardenAsync`) before any diffing; a `try/catch` around its own `SaveChangesAsync` translating a SQLSTATE into a typed fault; two Dutch `opmerkingen` notices reworded.
+- **Not changed, as stated, and confirmed in the diff:** the diff computation (`toegevoegd`/`gewijzigd`/`ongewijzigd`/`verdwenen`/`verdwenenMaarGekoppeld`), the flag-and-keep default, the review-flag handling, the out-of-scope guard, the empty-file guard and the discipline-selection seam. The preflight is invoked **after** both guards and returns immediately when `inkomend.Count == 0`, so neither guard lost precedence.
+- Every edit is a refusal or a diagnostic *around* the write, not a change to the write. **The table is honest.**
+
+**Art. III.4 re-verified, not assumed.** `Verdwenen_maar_gekoppeld_doel_wordt_gemarkeerd_en_de_koppeling_blijft` still asserts the koppeling status (`Assert.Equal("Manueel", ...)`, line 175) and still passes; the integration test file is **additions-only**, with no deleted or modified line anywhere in it. Reproduced by hand at `cd426cf`: koppeling id `2f599080...` survived a re-import that dropped `WIS-1`, still `Manueel`, with `verdwenenMaarGekoppeld:[{"code":"WIS-1","aantalKoppelingen":1}]` and `verdwenen:["WIS-2"]`. Identical to round 1.
+
+**A previously-succeeding file still imports exactly the same rows.** The same `v1.xlsx` I used at `57a21b1` returned a **byte-identical** body: `"toegevoegd":["WIS-1","WIS-2"] ... "vereistReview":false,"toegepast":true`.
+
+### 2. The new preflight: verified on a loaded table, and my defect is fixed at the root
+
+- **My round-1 defect is gone.** A commit with `disciplineNummer=99` against a table that **already holds those codes** now returns `400 "'99' is geen Op.stap-discipline. Gebruik het officiele disciplinenummer..."`: the useful message, and no longer the misleading "andere discipline" 409. Fixed at the root (the discipline is checked first) rather than patched at the catch site. The wording is byte-identical to what I tested at `57a21b1`.
+- **A test now covers the loaded-table case.** `Onbekend_disciplinenummer_geeft_400_ook_als_de_codes_al_geladen_zijn` uploads `WIS-1` first, then re-uploads under `99`, and asserts both `400` **and** `Assert.DoesNotContain("andere discipline", detail)`. That negative assertion is what stops the regression, and the old empty-table test is retained alongside it.
+- **Preview/commit parity verified live.** For the missing-minimumdoel case and the wrong-discipline case, the preview and the commit returned the **same status and character-identical `detail`**. Pinned by `Voorbeeld_weigert_precies_wat_de_definitieve_import_weigert`, which asserts detail equality and that nothing was written.
+- Verified independently that no refusal wrote anything: after all six refusal calls, re-importing `v1.xlsx` reported `ongewijzigd:["WIS-1","WIS-2"]` and `isLeeg:true`, and the empty-file notice counted exactly *"De 2 bestaande doelen"*.
+
+### 3. The "15 modified unit tests": not one assertion was changed
+
+This was the item most likely to hide a weakened test, so I checked it mechanically rather than by reading prose. **The delta for both unit-test files contains no deleted or modified line at all: it is additions-only.**
+
+- `OpstapImportServiceTests`: `[Fact]` count 11 -> 15 (+4 new preflight tests). The only change to existing material is the **fixture constructor**, which now seeds one `Discipline` row.
+- `OpstapImportDisciplineSelectieTests`: `[Fact]` count 10 -> 10 (**unchanged**). Only the constructor changed, seeding two `Discipline` rows.
+
+So no assertion was relaxed, removed, or edited to match new behaviour, and no expectation was re-baselined. The change makes the EF in-memory fixture *more* faithful to real PostgreSQL, which has always required a discipline row via the `Restrict` FK and which the in-memory provider silently ignores: the same fidelity gap `PostgresTestDatabase` exists for. It strengthens rather than weakens.
+The obvious failure mode of such a preflight is also guarded: `A_loaded_minimumdoel_makes_the_concordance_importable` asserts a *positive* outcome, so "MD rows are refused" cannot silently degrade into "MD rows are never importable".
+
+### 4. The `Probleemtitels` consolidation: safe, a pure literal-to-constant substitution
+
+All four converted call sites (`SchoolcontentImportController`, `AiMatchingExceptionHandler`, `PlanningExceptionHandler`, `SchoolcontentExceptionHandler`) change only `Title = "Ongeldige aanvraag"` to `Title = Probleemtitels.OngeldigeAanvraag` (and `"Niet gevonden"` to `Probleemtitels.NietGevonden`). The constant values are character-identical to the literals they replace, so **no other controller's response changed shape or wording**. The suites covering those call sites pass inside the green 472 + 112 run.
+
+### 5. `Npgsql` absent from the Api layer: substantively true, the claim is literally imprecise
+
+The grep does **not** return nothing: it returns **5 lines, every one of them a comment** (four prose mentions plus one comment containing `UseNpgsql`). Filtering comments out leaves **zero** matches; there is no `using Npgsql` and no `using Microsoft.EntityFrameworkCore` anywhere in the Api; and the controller's three `DbUpdateException` catches and three SQLSTATE predicates are gone. The substance holds (the Api names no EF Core or Npgsql type) while the wording of the claim does not. Worth correcting only so a future reader who runs the grep is not alarmed.
+
+**Statuses and titles a caller sees are unchanged; two `Detail` messages were deliberately reworded.** Compared against what I captured at `57a21b1`:
+
+| Case | Status | Title | Detail |
+| --- | --- | --- | --- |
+| Unknown discipline | 400, unchanged | `Ongeldige aanvraag`, unchanged | **identical wording** |
+| Missing minimumdoelen (E1-12) | 409, unchanged | `Import niet doorgevoerd`, unchanged | **reworded**: now names the refs (`...: 4-12`) |
+| Code in another discipline | 409, unchanged | `Import niet doorgevoerd`, unchanged | **reworded**: names each code with its current discipline (`WIS-1 (discipline 2)`) and adds the ratified-policy sentence |
+
+Both rewordings are improvements (more actionable, offenders named, truncated after five) and both are **disclosed in the worklog**, which says the messages "got better" rather than claiming they were unchanged. No test was pinned to the old wording. I record it because the brief asked for wording to be verified unchanged: it is not, by design and with disclosure.
+
+**One genuine, minor shape change the worklog does not mention.** The two refusal responses now come from `IProblemDetailsService` via the exception handler instead of `Conflict(new ProblemDetails ...)` in the controller, so they gained `type` and `traceId` fields. Controller-raised validation 400s still return only `{detail, status, title}`. Both envelopes are RFC 7807-valid and the addition is purely additive, but the import endpoints now answer two slightly different error envelopes depending on which layer refused. Harmless for a client that reads `detail`; worth E1-13 knowing.
+
+## The judgment call on FR-2.5: which state serves the review step better?
+
+I tested both states, so this is a view rather than a pass/fail.
+
+**The new behaviour is better, and I would not trade back.** FR-2.5's preview exists so a reviewer can decide whether to commit. At `57a21b1` a preview of a real Op.stap file returned `200` with a populated `diff.toegevoegd` and `vereistReview:false`: an answer that reads as "this is ready, go ahead" for a file the very next call rejected outright. That is not merely less information, it is **information pointing the wrong way**, and E1-13 clause 6 would have rendered it as a green light. The parity property (the preview refuses exactly what the commit refuses) is what makes a two-step flow trustworthy at all; without it the first step is decorative.
+
+**Is the 409 still actionable for a directie member? Yes.** It names the blocking refs (`4-12`), states the cause in plain Dutch, gives the next action (*"Laad eerst de decretale minimumdoelen in."*) and reassures that nothing changed. A non-technical reader learns what is wrong, what to do, and that they have broken nothing. That is more actionable than a list of codes that would have been added.
+
+**The cost is real and correctly stated.** While E1-12 is open, a preview cannot tell a directie member *how much* a real file would add, so it cannot be used to size an import or sanity-check a downloaded file. The implementer states this plainly instead of presenting a pure win, which is the right disclosure. Two things limit it: the loss is confined to files carrying MD concordance (non-concorded files still preview fully, as I verified), and it disappears when E1-12 lands.
+
+**My one reservation.** The 409 does not distinguish "your file is bad" from "the system is not ready yet", and it is the latter. Rendered raw by E1-13, a directie member could reasonably conclude the file they just downloaded from Katholiek Onderwijs Vlaanderen is broken. That is an E1-13 presentation concern, not a reason to hold E1-15, but it should be carried forward.
+
+## What no longer holds from my round-1 report
+
+Stated explicitly, since round 1 leaned on some of it as evidence:
+
+1. **"The sanctioned importer is genuinely unchanged, not merely claimed to be"** is no longer true. `OpstapImportService` gained the preflight, a SQLSTATE translation and two reworded notices. My Art. III.1/III.4 conclusions still hold, but they now rest on reading the delta and re-running the behaviour rather than on an empty diff.
+2. **Defect 1 (the masked unknown-discipline 400)** is **fixed and regression-tested**. Closed.
+3. **The `[info]` em dash in the empty-file notice** is **fixed**. Both notices were rewritten rather than merely de-dashed; I confirmed live that the empty-file notice now contains no em dash.
+4. **The `[info]` `vereistReview` never clears** is still true, deliberately not fixed here, and filed on E1-13 clause 6. Re-observed at `cd426cf`.
+5. **"Thin controller / Art. VIII-clean"**: round 1 repeated the implementer's framing. The fix round corrects it. The controller injects Infrastructure-resident ports, which the layering forbids; this is now stated in the controller's own doc comment and filed as **E7-13** with its blast radius. The honest position is that the Api names no EF/Npgsql type but is not fully Art. VIII-clean.
+
+## Residual observations (none blocking)
+
+- The worklog says "the **24** pre-existing Op.stap unit tests still pass unmodified except for their fixtures" while the same section says the preflight broke **15**; the two files hold 21 pre-existing facts between them. The numbers are loose. The substance (no assertion edited) is what I verified, and it holds.
+- The dual error-envelope shape noted under claim 5.
+- `CLAUDE.md` still says "ADR-0001...0020" while 0021 and now 0022 exist. The implementer flagged it and deliberately did not edit the project's instruction file. Agreed: that is the owner's call, and the staleness pre-dates this story.
+
+## Verdict
+
+**PASS.** All five acceptance criteria still hold, verified against the new code rather than inherited from round 1. My round-1 defect is fixed at the root and pinned by a test carrying a negative assertion. No test was weakened: both unit-test files are additions-only. The consolidation touched four files outside the story without changing any response. The gates reproduce exactly (472 + 112, 0 failed, 0 skipped). The FR-2.5 trade-off is a net improvement, and it is disclosed rather than sold.
+
+The **E1-12 judgment from round 1 stands unchanged**: the trigger works, but a real Op.stap file still cannot land, so **FR-2.1 is not satisfied, E1 is not complete and M1 is not reached.** The fix round makes that limitation *more* visible, because the preview now reports it too.
+
+Cleanup: verification host on port 5241 terminated and the throwaway database `jp_e115_r2` dropped. No parallel agent's port, database or dev server was touched.

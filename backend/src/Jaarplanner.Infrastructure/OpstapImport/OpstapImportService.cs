@@ -287,6 +287,10 @@ public sealed class OpstapImportService : IOpstapImportService
                 // the same typed fault so the Api never sees an Npgsql or EF type (Art. VIII); anything
                 // this does not recognise keeps bubbling up, because a failed curriculum write must stay
                 // loud rather than be disguised as a known case.
+                //
+                // The DbUpdateException travels along as the inner exception (set by VertaalIntegriteitsfout),
+                // so the SQLSTATE, constraint name and table survive into the log. Discarding it here would
+                // throw away the only useful artefact in the one situation that produces this path.
                 throw fout;
             }
         }
@@ -330,10 +334,7 @@ public sealed class OpstapImportService : IOpstapImportService
             .AnyAsync(d => d.Nummer == disciplineNummer, cancellationToken);
         if (!disciplineBestaat)
         {
-            throw new OpstapImportFout(
-                OpstapImportFoutSoort.OnbekendeDiscipline,
-                $"'{disciplineNummer}' is geen Op.stap-discipline. Gebruik het officiële disciplinenummer, " +
-                "bijvoorbeeld 1 voor Nederlands en communicatie of 9.2 voor Leren leren.");
+            throw OpstapImportFout.OnbekendeDiscipline(disciplineNummer);
         }
 
         // 2. No incoming code may already belong to another discipline. Refuse and inform the uploader:
@@ -343,18 +344,14 @@ public sealed class OpstapImportService : IOpstapImportService
         var codes = inkomend.Keys.ToList();
         var elders = await _context.Leerplandoelen
             .Where(l => codes.Contains(l.Code) && l.DisciplineNummer != disciplineNummer)
-            .Select(l => new { l.Code, l.DisciplineNummer })
             .OrderBy(l => l.Code)
-            .Take(MaxGenoemdeVoorbeelden + 1)
+            // One more than the notice will name, which is all it takes to know the list was truncated.
+            .Take(OpstapImportFout.MaxGenoemdeVoorbeelden + 1)
+            .Select(l => new DoelInAndereDiscipline(l.Code, l.DisciplineNummer))
             .ToListAsync(cancellationToken);
         if (elders.Count > 0)
         {
-            var voorbeelden = Opsomming(elders.Select(l => $"{l.Code} (discipline {l.DisciplineNummer})"));
-            throw new OpstapImportFout(
-                OpstapImportFoutSoort.CodeInAndereDiscipline,
-                $"Deze codes staan al bij een andere discipline: {voorbeelden}. Controleer of dit bestand " +
-                $"bij discipline {disciplineNummer} hoort. Er is niets gewijzigd. Verhuist een doel echt " +
-                "naar een andere discipline, dan moet iemand dat eerst bevestigen.");
+            throw OpstapImportFout.CodeInAndereDiscipline(disciplineNummer, elders);
         }
 
         // 3. Every concordance key must resolve to a loaded Minimumdoel: MinimumdoelRef is a Restrict FK, and
@@ -376,30 +373,9 @@ public sealed class OpstapImportService : IOpstapImportService
             var ontbrekend = refs.Except(gekend, StringComparer.Ordinal).OrderBy(r => r, StringComparer.Ordinal).ToList();
             if (ontbrekend.Count > 0)
             {
-                var voorbeelden = Opsomming(ontbrekend.Take(MaxGenoemdeVoorbeelden + 1));
-                throw new OpstapImportFout(
-                    OpstapImportFoutSoort.OntbrekendeMinimumdoelen,
-                    $"Deze leerplandoelen verwijzen naar minimumdoelen die nog niet ingeladen zijn: " +
-                    $"{voorbeelden}. Laad eerst de decretale minimumdoelen in. Er is niets gewijzigd aan de " +
-                    "doelen die al in de toepassing staan.");
+                throw OpstapImportFout.OntbrekendeMinimumdoelen(ontbrekend);
             }
         }
-    }
-
-    /// <summary>How many offending values a refusal names before it says "en nog meer".</summary>
-    private const int MaxGenoemdeVoorbeelden = 5;
-
-    /// <summary>
-    /// Formats up to <see cref="MaxGenoemdeVoorbeelden"/> values as a readable Dutch list; a longer list is
-    /// truncated rather than dumping thousands of codes into one message.
-    /// </summary>
-    private static string Opsomming(IEnumerable<string> waarden)
-    {
-        var lijst = waarden.ToList();
-
-        return lijst.Count > MaxGenoemdeVoorbeelden
-            ? string.Join(", ", lijst.Take(MaxGenoemdeVoorbeelden)) + " en nog meer"
-            : string.Join(", ", lijst);
     }
 
     /// <summary>
@@ -407,6 +383,14 @@ public sealed class OpstapImportService : IOpstapImportService
     /// <c>null</c> when it is not one of the known cases (which must then keep bubbling up). This is the one
     /// place that reads a SQLSTATE for the import path, and it lives in Infrastructure with the DbContext,
     /// not in the Api (Art. VIII).
+    /// <para>
+    /// It knows the constraint that broke but not <i>which</i> refs or codes offended, so it calls the same
+    /// <see cref="OpstapImportFout"/> factories as the preflight with an empty detail list: the wording has
+    /// exactly one source per case, and the only difference between the two paths is that this one names no
+    /// examples (Art. II.3 clause 3). The <see cref="DbUpdateException"/> travels as the inner exception,
+    /// because this path is only reachable through a concurrency anomaly and the SQLSTATE is then the only
+    /// artefact worth logging.
+    /// </para>
     /// </summary>
     private static OpstapImportFout? VertaalIntegriteitsfout(DbUpdateException ex, string disciplineNummer)
     {
@@ -420,21 +404,11 @@ public sealed class OpstapImportService : IOpstapImportService
         return (fout.SqlState, constraint) switch
         {
             ("23503", var c) when c.Contains("minimumdoel", StringComparison.OrdinalIgnoreCase) =>
-                new OpstapImportFout(
-                    OpstapImportFoutSoort.OntbrekendeMinimumdoelen,
-                    "Deze leerplandoelen verwijzen naar minimumdoelen die nog niet ingeladen zijn. " +
-                    "Laad eerst de decretale minimumdoelen in. Er is niets gewijzigd aan de doelen die al " +
-                    "in de toepassing staan."),
+                OpstapImportFout.OntbrekendeMinimumdoelen([], ex),
             ("23503", var c) when c.Contains("discipline", StringComparison.OrdinalIgnoreCase) =>
-                new OpstapImportFout(
-                    OpstapImportFoutSoort.OnbekendeDiscipline,
-                    $"'{disciplineNummer}' is geen Op.stap-discipline. Gebruik het officiële " +
-                    "disciplinenummer, bijvoorbeeld 1 voor Nederlands en communicatie of 9.2 voor Leren leren."),
+                OpstapImportFout.OnbekendeDiscipline(disciplineNummer, ex),
             ("23505", var c) when c.Contains("leerplandoelen", StringComparison.OrdinalIgnoreCase) =>
-                new OpstapImportFout(
-                    OpstapImportFoutSoort.CodeInAndereDiscipline,
-                    "Een of meer codes uit dit bestand staan al bij een andere discipline. Controleer of " +
-                    $"dit bestand bij discipline {disciplineNummer} hoort. Er is niets gewijzigd."),
+                OpstapImportFout.CodeInAndereDiscipline(disciplineNummer, [], ex),
             _ => null,
         };
     }

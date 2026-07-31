@@ -5,9 +5,11 @@ namespace Jaarplanner.Api.Infrastructure;
 /// <para>
 /// <b>Why this exists (E1-15 audit).</b> These titles are **user-facing Dutch** (Art. II.3), and by
 /// 2026-07-31 the same literal <c>"Ongeldige aanvraag"</c> was defined independently in five files: three
-/// exception handlers and two import controllers. Five definitions of one sentence is precisely the drift
-/// Art. II.3 exists to stop: the day one of them is reworded, the API answers two different Dutch titles
-/// for the same class of fault. Adding a sixth was not defensible, so they are shared from here instead.
+/// exception handlers and two import controllers. Four of those predated E1-15 and <b>the fifth was
+/// E1-15's own</b>, which is the honest way to put it: this story did not inherit a bad situation, it
+/// joined one. Five definitions of one sentence is precisely the drift Art. II.3 exists to stop, because
+/// the day one of them is reworded the API answers two different Dutch titles for the same class of
+/// fault. So they are shared from here instead.
 /// </para>
 /// <para>
 /// Keep this list short. It is for titles that classify a fault, not for per-fault detail: the

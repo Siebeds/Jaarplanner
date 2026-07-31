@@ -282,7 +282,10 @@ did not change in `OpstapImportService`:
 
 Both edits are refusals and diagnostics around the write, not changes to it. The coordinator's caveat was "if
 you cannot do it without altering what the importer imports, stop and report" — that did not happen, and the
-24 pre-existing Op.stap unit tests still pass unmodified except for their fixtures (below).
+**21** pre-existing Op.stap unit tests still pass unmodified except for their fixtures (below). *That figure was "24"
+until the fix-round-2 check; counted at `b44c869` the two files hold 11 (`OpstapImportServiceTests`) + 10
+(`OpstapImportDisciplineSelectieTests`) = 21, and they now hold 25. Of the 21, **15** failed when the preflight
+landed, which is the other number this worklog quotes.*
 
 ### MAJOR 1 — Npgsql SQLSTATE translation in the `Api` layer → moved to Infrastructure
 
@@ -462,3 +465,92 @@ POST /api/opstap-import            (header-only workbook)      → 200 overgesla
 ```
 
 The last line is the rewritten Art. II.5 notice, read back from the wire rather than from the source.
+
+## Fix round 2 — 4 MINOR findings, finished by the orchestrator
+
+**Round 2 was implemented in two halves.** The implementer wrote the two code fixes and their tests and then
+stopped mid-round on an API spend limit, before running the gates or touching the records. The orchestrator
+finished it: it verified the two code fixes, ran the gates, and made the four record corrections. Recorded
+because "who wrote this" matters when a later reader weighs how independently a fix was checked, and because
+one of the corrections below is about exactly that kind of provenance claim.
+
+### MINOR 1 — one Dutch message source per `OpstapImportFoutSoort` (Art. II.3 clause 3)
+
+Fix round 1 consolidated five copies of one *title* and, in the same commit, created three duplicated
+*details* one layer down: each fault case was worded once in the new preflight and again in
+`VertaalIntegriteitsfout`. The second copy of each pair is unreachable without a concurrent writer, so no
+behavioural test could compare them: rewording the reachable copy would have left the race path answering
+the old sentence, and nothing would have failed.
+
+Now the wording lives in `OpstapImportFout`, one static factory per case
+(`OnbekendeDiscipline` / `OntbrekendeMinimumdoelen` / `CodeInAndereDiscipline`). Both call sites use them; the
+only difference the two paths may produce is whether the offending refs or codes are named, because the
+preflight knows them and the SQLSTATE translator does not. `MaxGenoemdeVoorbeelden` moved onto the fault with
+the formatting, so the preflight's `Take(Max + 1)` reads the same constant the message truncates on.
+
+`OpstapImportFoutTests` (**new**, 5 facts) pins it at the only level where the divergence is observable: it
+compares the two renderings of each factory directly and asserts they differ *only* by the inserted examples.
+It deliberately duplicates no Dutch, so it cannot rot into a copy of the copy it exists to prevent.
+
+### MINOR 2 — the operator diagnostic survives the throw (Art. II.3, operator half)
+
+`OpstapImportFout` gained an `innerException` parameter and `VertaalIntegriteitsfout` passes the
+`DbUpdateException`, so the SQLSTATE, the constraint name and the table reach the log. That path is only
+reachable through a genuine concurrency anomaly, which is precisely the case where the original exception is
+the only useful artefact. A test asserts the inner exception is kept on all three factories, **and** that the
+preflight does not invent one.
+
+### MINOR 3 — two wrong numbers in E7-13
+
+`E7-niet-functioneel.md` said E1-15 took injected Infrastructure ports "from 1 to 3". Verified by grep rather
+than recalled: `SchoolcontentImportController` already injects three (`ISchoolcontentParser`,
+`ISchoolcontentImportService`, `ISchoolcontentTemplateGenerator`), so the figure is **3 to 5**. The paragraph
+carried the wrong number beside the right five-port list, which is how a miscount survives a reading. The
+correction matters beyond arithmetic: E7-13's own "check whether the other two school-content ports have the
+same problem" line was implicitly answered *no* by counting them out, and the answer is **yes**.
+
+`Probleemtitels.cs` and the Art. II.3 entry both said E1-15 "nearly made it six". Verified against git:
+**4** files carried `"Ongeldige aanvraag"` at `b44c869`, **5** at `57a21b1`, and the fifth was this story's own
+controller. E1-15 made it five; there was never a sixth. Both places now say so, and the class comment states
+plainly that this story joined the drift rather than inheriting it.
+
+### MINOR 4 — the Art. II.3 log line, restated with its history
+
+The entry said "7 `ProblemDetails.Detail` strings in `OpstapImportController`". Counted at the end of the story
+instead of the end of its first round: **4** details in the controller (the request validations), **3** refusal
+messages in `OpstapImportFout`, and **1** new title in `Probleemtitels` — **8 authored across three files**,
+plus the 2 pre-existing notices this story exposed and rewrote. The running total is corrected to match.
+
+The entry now also records *where those 3 refusals moved and why*, because the churn is the transferable part:
+controller → preflight (duplicated) → one factory per case. A count taken after round 1 would have said 7 in
+one file; mid-round-1 it was 10 in two. Both were briefly true, which is why a figure in that entry needs the
+commit it was counted at.
+
+### Carried to E1-13 rather than fixed here
+
+Two observations from the test-runner, added to E1-13 clause 6's note:
+
+- **Two error envelopes on one endpoint.** The integrity refusals travel through `IProblemDetailsService` and
+  so carry `type` and `traceId`; the controller's own 400s answer `{detail, status, title}`. Additive and
+  RFC-valid, so not a defect, but a parser assuming one shape will trip on the other.
+- **The 409 does not distinguish "your file is wrong" from "the application is not ready yet"**, and while
+  E1-12 is open it is nearly always the second. Rendered raw, a directie member concludes the file they just
+  downloaded from Op.stap is broken, and re-downloads it. That is presentation, so it belongs to E1-13, but it
+  is a real trap and it is now written where that story's author will meet it.
+
+### Gates (re-run by the orchestrator, actual output)
+
+| Command | Result |
+| --- | --- |
+| `dotnet build` | Build succeeded, 0 warnings, 0 errors |
+| `JAARPLANNER_TEST_POSTGRES=… dotnet test` | **477 unit + 112 integration passed, 0 failed, 0 skipped** (round 1: 472 + 112; +5 unit from `OpstapImportFoutTests`) |
+| `dotnet format --verify-no-changes` | clean, exit 0 |
+
+No frontend file was touched in any round, so the `pnpm` gates do not apply.
+
+**The three refusal messages a caller receives are unchanged in wording** on the reachable path: the preflight's
+sentences moved into the factories verbatim. The unreachable race-path copies did change, in the direction of
+consistency: they now share the reachable path's second sentence instead of carrying an abbreviated variant.
+`Voorbeeld_weigert_precies_wat_de_definitieve_import_weigert` and
+`Onbekend_disciplinenummer_geeft_400_ook_als_de_codes_al_geladen_zijn`, including its
+`DoesNotContain("andere discipline")` assertion, both still pass.
