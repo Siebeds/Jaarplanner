@@ -748,28 +748,36 @@ describe("Generatieparameters — the grid it may read (E3-04)", () => {
 
     const knop = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
     const samenvatting = () => /\(([^)]*)\)/.exec(knop.textContent ?? "")?.[1] ?? "";
-    await waitFor(() => expect(samenvatting()).toBe("1 startthema"));
 
-    // NOT called stranded: at this tier the form cannot tell, so it claims nothing either way.
+    // **It counts nothing at all** (fix round 2, MAJOR-A). Round 1 read "1 startthema" here, which happens to be true
+    // for this fixture's valid preference and would have been false for a stranded one — the form cannot tell either
+    // way without the generation tier's grid, and a count it cannot check is a claim it may not make. It says so
+    // instead, and the run is refused rather than offered.
+    await waitFor(() => expect(samenvatting()).toBe("themaperiodes onbekend"));
+    expect(samenvatting()).not.toContain("startthema");
     expect(samenvatting()).not.toContain("zonder themaperiode");
     expect(
       screen.queryByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
     ).toBeNull();
+    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeDisabled();
 
-    // And it offers no period rows built from the wrong tier's dates: it says where to set them instead.
+    // And it offers no period rows built from the wrong tier's dates. The sentence is the one for *this* cause: the
+    // grid could not be read. Not `anderNiveau`, which would tell a teacher to switch to a view they are looking at
+    // (fix round 2, MINOR-F), and not the fetch-failure one, since the request succeeded.
     fireEvent.click(knop);
     const startthemas = await screen.findByRole("group", {
       name: t("parameters.startthemasTitel"),
     });
-    expect(within(startthemas).getByText(t("parameters.anderNiveau"))).toBeInTheDocument();
+    expect(within(startthemas).getByText(t("parameters.periodesNietGelezen"))).toBeInTheDocument();
+    expect(within(startthemas).queryByText(t("parameters.anderNiveau"))).toBeNull();
+    expect(within(startthemas).queryByText(t("parameters.periodesNietGeladen"))).toBeNull();
     expect(within(startthemas).queryByRole("combobox")).toBeNull();
 
-    // The kept setting itself is untouched and still sent, exactly as stored.
+    // Pressing the refused button sends nothing: the refusal is the disabled attribute AND the absence of a path
+    // around it. (That the stored settings survive an untouched form is pinned by the first test in this file; here
+    // there is no run to inspect, which is the point.)
     fireEvent.click(screen.getByRole("button", { name: t("kalender.genereer") }));
-    await waitFor(() => expect(posts).toHaveLength(1));
-    expect(JSON.parse(posts[0]!).gewensteStartthemas).toEqual([
-      { blokStart: "2026-11-09", themaNaam: "Water" },
-    ]);
+    expect(posts).toHaveLength(0);
   });
 });
 

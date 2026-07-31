@@ -176,6 +176,13 @@ export function Periodekolom({
           //
           // Two sentences, one per case (see `ouderIsIngepland`). "Nog niets gepland" is a claim about the plan, so it
           // is only made where it is true; inside a filled themaperiode the well states what this fortnight is part of.
+          //
+          // The second sentence states **membership, not settledness** (fix round 2, MINOR-C). It read "Deel van een
+          // ingeplande themaperiode", and `geplandeIn` excludes only `Geweigerd` — so a themaperiode holding one
+          // unreviewed `Voorgesteld` proposal called itself *ingepland* in these columns, which hold no card and
+          // therefore no status chip to qualify it. It was the first full sentence in the product asserting a settled
+          // plan where Art. IV says nothing is final until a teacher says so. The key keeps its name; the claim does
+          // not. (`Geweigerd`-only parents still correctly read "Nog niets gepland" — that path is untouched.)
           <p className="flex min-h-[5rem] items-center justify-center rounded-md border border-dashed border-border bg-paper-diep/50 px-3 text-center text-xs text-ink-zacht">
             {t(ouderIsIngepland ? "kalender.subperiodeIngepland" : "kalender.legeperiode")}
           </p>

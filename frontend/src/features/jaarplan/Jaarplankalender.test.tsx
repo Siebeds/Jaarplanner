@@ -5,7 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "../../i18n";
 import { Jaarplankalender } from "./Jaarplankalender";
-import type { Generatieresultaat, Jaarplan, Planningsrooster } from "./types";
+import type {
+  Generatieparameters,
+  Generatieresultaat,
+  Jaarplan,
+  Planningsrooster,
+} from "./types";
 
 /**
  * Pins E3-06's acceptance criterion — "a generated plan renders per block" (FR-6.1) — and the two
@@ -128,14 +133,25 @@ function periodes() {
   return screen.getByRole("list", { name: t("kalender.ribbonLabel") });
 }
 
+/**
+ * Renders the screen with its own query client.
+ *
+ * The client is **returned** so a test can drive TanStack directly. One state this screen has to get right is only
+ * reachable that way: a query that is `isError` while still holding data, which is what an errored *background*
+ * refetch produces (`refetchQueries` on a key whose fetch then fails). Nothing in the component tree can be clicked
+ * to reach it.
+ */
 function renderKalender() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <Jaarplankalender klasId={KLAS_ID} />
-    </QueryClientProvider>,
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <Jaarplankalender klasId={KLAS_ID} />
+      </QueryClientProvider>,
+    ),
+    queryClient,
+  };
 }
 
 afterEach(() => {
@@ -877,7 +893,21 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
    * failed-fetch tests below reproduce a broken tier without touching anything else on the screen. A function rather
    * than a flag, so a test can let a retry succeed.
    */
-  function stubZoom(jaarplan: Jaarplan, faalRooster?: (url: string) => boolean) {
+  function stubZoom(
+    jaarplan: Jaarplan,
+    faalRooster?: (url: string) => boolean,
+    /**
+     * The class's KEPT generation settings. Defaults to none; a test that needs the summary to say something about a
+     * stored preference passes one, which is the only way to reach the claim MAJOR-A was about.
+     */
+    instellingen: Generatieparameters = { gewensteStartthemas: [], vasteMomenten: [] },
+    /**
+     * What a request that is *not* `?niveau=Subthemaperiode` answers with. Overridable so one test can make the server
+     * answer a tier this app does not know: `Planningsrooster.niveau` is a plain `string` on purpose (it is what the
+     * server said, not what this app hopes), and the degrade for an unrecognised value is a real branch.
+     */
+    grofRooster: Planningsrooster = rooster,
+  ) {
     const roosterUrls: string[] = [];
 
     vi.stubGlobal(
@@ -890,10 +920,7 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
         }
         // Routed before /jaarplan, whose URL it extends. See the note on the stub at the top of this file.
         if (url.includes("/jaarplan/parameters")) {
-          return new Response(
-            JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }),
-            { status: 200 },
-          );
+          return new Response(JSON.stringify(instellingen), { status: 200 });
         }
         if (url.includes("/rooster")) {
           roosterUrls.push(url);
@@ -903,7 +930,7 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
           }
 
           return new Response(
-            JSON.stringify(url.includes("niveau=Subthemaperiode") ? fijnRooster : rooster),
+            JSON.stringify(url.includes("niveau=Subthemaperiode") ? fijnRooster : grofRooster),
             { status: 200 },
           );
         }
@@ -1147,6 +1174,146 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     // data puts TanStack back to `pending`, which is why the notice is not keyed on `isError` alone.
     await waitFor(() => expect(screen.getByText("Water")).toBeInTheDocument());
     expect(screen.queryByText(t("kalender.roosterFout"))).toBeNull();
+  });
+
+  /**
+   * Fix round 2, MAJOR-A: **the GENERATION tier's grid can fail on its own, and then the screen may not state the
+   * settings as if it had one.**
+   *
+   * Round 1 moved the stranded check onto a second `/rooster` query so it would stop depending on the zoom. What it did
+   * not do is read that query's failure: `blokken={generatieRooster.data?.blokken ?? []}` and `niveau={… ?? ""}` turned
+   * "the grid is missing" into the same silent tier mismatch as "the server answered another tier", `vervallen` emptied,
+   * and `aantalStartthemas` counted the stranded entry as valid again — the exact claim finding 1 was about, with
+   * generation still enabled and nothing on screen saying a grid was missing.
+   *
+   * The route is the one the new copy recommends: `kalender.roosterFout` ends "kies hierboven de andere weergave", so a
+   * failed first load of the coarse tier sends the teacher to the fine one, which is where the lie lived. Hence the
+   * asymmetric fault — only `niveau=Themaperiode` fails — which neither of the round-1 failure tests exercises.
+   */
+  it("refuses to state the settings, and to generate, when the generation tier's grid is the one that failed", async () => {
+    stubZoom(
+      maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]),
+      (url) => url.includes("niveau=Themaperiode"),
+      // Stranded on purpose: 5 October is not the start of any themaperiode in `rooster`. At the coarse tier this reads
+      // "(1 zonder themaperiode)"; the defect was that it read "(1 startthema)" here.
+      { gewensteStartthemas: [{ blokStart: "2026-10-05", themaNaam: "Water" }], vasteMomenten: [] },
+    );
+    renderKalender();
+
+    // The coarse tier is where the app opens, and it fails: the full-page notice, with the control kept.
+    expect(await screen.findByText(t("kalender.roosterFout"))).toBeInTheDocument();
+    // The page identity survives the failure (fix round 2): a teacher who pressed something is not left on a screen
+    // that no longer says which class it is about.
+    expect(screen.getByRole("heading", { name: t("kalender.titel") })).toBeInTheDocument();
+    expect(screen.getByText(/L3 derde leerjaar/)).toBeInTheDocument();
+
+    // Now do exactly what that notice suggests.
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // The plan is back on screen, which is the point of the fallback — and the settings are NOT claimed.
+    expect(within(bord()).getByText("Water")).toBeInTheDocument();
+    const trigger = screen.getByRole("button", { name: new RegExp(t("parameters.titel")) });
+    // The SUMMARY, not the whole trigger: the label itself is "Vooraf instellen: startthema's en vaste momenten", so a
+    // document-wide check for "startthema" would pass for the wrong reason.
+    const samenvatting = () => /\(([^)]*)\)/.exec(trigger.textContent ?? "")?.[1] ?? "";
+    expect(samenvatting()).toBe("themaperiodes onbekend");
+    expect(samenvatting()).not.toContain("startthema");
+
+    // THE regression, stated as the run: a teacher cannot consent to a run whose parameters the screen cannot state.
+    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeDisabled();
+
+    // And the state is visible, with the one control that can end it. Not silent, and not a tooltip.
+    expect(screen.getByText(t("kalender.generatieRoosterFout"))).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: t("kalender.roosterOpnieuw") }).length,
+    ).toBeGreaterThan(0);
+
+    // The panel says which of the two reasons it is, and does NOT send the teacher to the view that is failing —
+    // `anderNiveau` would be a loop between a view that lies and a view that refuses.
+    fireEvent.click(trigger);
+    const startthemas = screen.getByRole("group", { name: t("parameters.startthemasTitel") });
+    expect(within(startthemas).getByText(t("parameters.periodesNietGeladen"))).toBeInTheDocument();
+    expect(within(startthemas).queryByText(t("parameters.anderNiveau"))).toBeNull();
+    expect(within(startthemas).queryByRole("combobox")).toBeNull();
+  });
+
+  /**
+   * Fix round 2, MINOR-F: **the degrade for a tier this app cannot recognise may not instruct.**
+   *
+   * `bordNiveau` falls back to the coarse labels for an unrecognised `grid.niveau` — the columns have to be called
+   * something — while `kanVerplaatsen` demands strict equality. So the board said "Verplaatsen doe je in de weergave
+   * Themaperiodes" while labelling itself as being on Themaperiodes: an instruction impossible to follow, pointing at
+   * the view you are looking at. Not reachable from today's API, which is exactly why it needs a test rather than an
+   * argument.
+   */
+  it("says nothing was changed, rather than where to go, when the tier is one it cannot recognise", async () => {
+    stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, undefined, {
+      ...rooster,
+      niveau: "Kwartaal",
+    });
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    expect(screen.getByText(t("kalender.roosterNiveauOnbekend"))).toBeInTheDocument();
+    // Neither of the two sentences that name a view to switch to.
+    expect(screen.queryByText(t("kalender.fijnUitleg"))).toBeNull();
+    expect(screen.queryByText(t("kalender.sleepUitleg"))).toBeNull();
+    // And moving is genuinely withheld, not merely described as unavailable.
+    expect(within(screen.getByText("Water").closest("article")!).queryByText("⠿")).toBeNull();
+  });
+
+  /**
+   * Fix round 2, MAJOR-B: **an errored background refetch keeps its data, so the notice must not claim the other tier
+   * is on screen.**
+   *
+   * Verified in `@tanstack/query-core` 5.101.2 (`build/modern/query.js`): the error action sets `status: "error"` while
+   * leaving `data` in place ("flag existing data as invalidated if we get a background error"). The app builds its
+   * client with no overrides, so `staleTime: 0` + `refetchOnWindowFocus` reaches this on any alt-tab during an API
+   * blip. Round 1 passed `terugval` as a hard-coded `true` wherever the board rendered, so the alert announced
+   * "Je ziet nog de themaperiodes" over nineteen subthemaperiode columns: both clauses false, and a regression in
+   * honesty on the version that merely blanked the screen.
+   */
+  it("does not claim the other tier is showing when a refresh of the current one failed", async () => {
+    let faal = false;
+    stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), () => faal);
+    const { queryClient } = renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // The fine tier now holds data. Refetching it while the fault is armed is the state no click can reach: the query
+    // goes to `isError` and keeps its data. The key mirrors `roosterKey` in `useJaarplan.ts`, which is module-private
+    // there (and that file is being changed by a parallel story, so it is deliberately not exported for this).
+    faal = true;
+    void queryClient.refetchQueries({
+      queryKey: ["planningsrooster", SCHOOLJAAR_ID, "Subthemaperiode"],
+    });
+
+    const melding = await screen.findByText(t("kalender.roosterVerversenMislukt"));
+
+    // Nothing was lost: the tier the teacher chose is still drawn, with its cards. So nothing may say otherwise.
+    expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument();
+    expect(within(bord()).getByText("Water")).toBeInTheDocument();
+    // The two sentences that name the OTHER tier, or claim there is nothing to draw, are absent.
+    expect(screen.queryByText(t("kalender.roosterFoutWeergave"))).toBeNull();
+    expect(screen.queryByText(t("kalender.roosterFout"))).toBeNull();
+
+    // Quiet: a failed refresh that cost nothing does not interrupt a screen reader mid-task. It keeps the retry,
+    // because a grid that could not be refreshed is exactly what hides a beheerder's vakantie edit (E3-04).
+    expect(melding).not.toHaveAttribute("role", "alert");
+    expect(screen.queryAllByRole("alert")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: t("kalender.roosterOpnieuw") })).toBeInTheDocument();
+
+    // And the generation tier's grid is untouched, so the run is not refused: this failure cost the teacher nothing,
+    // which is the whole reason it gets a different sentence.
+    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeEnabled();
   });
 
   /**

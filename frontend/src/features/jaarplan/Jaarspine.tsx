@@ -55,8 +55,13 @@ export function Jaarspine({
   return (
     <figure className="border-b border-border pb-4">
       {/* The heading earns no visual weight here — the strip explains itself — but a screen-reader user
-          still needs to know what this row of bars is. */}
-      <figcaption className="sr-only">{t("spine.titel")}</figcaption>
+          still needs to know what this row of bars is.
+          It names the tier (E3-08 fix round 2, MINOR-5): "het schooljaar in periodes" was the fourth name for an
+          object whose columns and ordinals say "themaperiode" or "subthemaperiode", and it is the FIRST thing a
+          screen-reader user hears about this strip, immediately before ordinals that use the other word. */}
+      <figcaption className="sr-only">
+        {t(niveau === "Subthemaperiode" ? "spine.titelFijn" : "spine.titel")}
+      </figcaption>
 
       <div className="flex items-end gap-1" role="presentation">
         {segmenten.map((segment) => {

@@ -434,3 +434,256 @@ session is adding a lock control inside it; withholding the picker needed no res
 - **A merge-order dependency, not a code one:** a parallel session (E4-06) is changing `Themakaart.tsx`,
   `Jaarplankalender.test.tsx` and `nl.json` on its own branch. Declared in the coordination channel; the proposal on
   the record is that E4-06 merges first and this branch rebases onto it.
+
+---
+
+## Fix round 2 — the two MAJORs my own fix round introduced (`364c3b5` → this commit)
+
+Both gates ran on `364c3b5`: test-runner **FAIL**, antagonist **VIOLATIONS FOUND** (2 MAJOR, 4 MINOR, 1 QUESTION), and
+**both MAJORs were new, written by round 1 in a hurry to answer an audit**. The two gates found MAJOR-A independently,
+one by reading the code and one by driving the screen. Nine of the eleven round-1 items were confirmed genuinely fixed,
+so this round is narrow: two defects of my own making, four small ones, one comment, and one deliberate keep.
+
+**Discipline this round, since that is what went wrong last round.** Every MAJOR was **reproduced in a real browser on
+`364c3b5` before any code was touched**, then re-measured after. Every number below was measured this round. Every new
+branch has a test, and four mutation checks are listed rather than claimed.
+
+**Environment.** Ports claimed in the coordination channel first: API `5441`, fault proxy `5443`, Vite `5442` (proxying
+`/api` to 5443), CDP `9441`. Nothing touched 5407/5307, 5373/5183, 5421-5423/9421 or 5431/5432/9431. Real API with
+`ASPNETCORE_ENVIRONMENT=Development` + `Demo__Seed=true`, real PostgreSQL 17, klas `L3 derde leerjaar (demo)`,
+schooljaar 2026-2027. The proxy can 500 **one** `?niveau=` selectively and be armed or disarmed over its own
+`/__fault?niveau=` endpoint without a reload, which is what makes the asymmetric states reachable at all.
+
+*Demo data, declared in the channel and restored.* To make MAJOR-A maximally damning I stored a **stranded** startthema
+for the demo class (`2026-10-05` / `Licht en donker`, not the start of any themaperiode) through
+`POST /jaarplan/generatie`, which persists the parameters before the AI call fails on the missing key (E2-09). Restored
+afterwards to the verifier's value, confirmed by GET:
+`{"gewensteStartthemas":[{"blokStart":"2026-11-09","themaNaam":"Licht en donker"}],"vasteMomenten":[]}`. All six
+placements unchanged (`Ik en mijn klas`/1, `Herfst en oogst`/2, `Water`/3, `Lente en groei`/3, `Verkeer`/4 Manueel,
+`Zomer en vakantie`/6 Manueel).
+
+### 1. [MAJOR-A, found by both gates] A failed generation-tier `/rooster` re-created finding 1 — fixed
+
+**Reproduced first, on `364c3b5`.** Fault armed for `?niveau=Themaperiode` only, so the generation tier fails and the
+fine tier does not: the asymmetry neither round-1 test covers. Read off the page:
+
+| step | board | trigger summary | *Jaarplan genereren* | `role="alert"` on screen |
+|---|---|---|---|---|
+| 1. first load (coarse fails) | nothing | — | absent | 1 (the full-page notice) |
+| 2. press **Subthemaperiodes** | 23 columns, 6 cards | **`(1 startthema)`** | **enabled** | **0** |
+
+Step 2 is the finding, in the product: `(1 startthema)` for a stored `2026-10-05` that the server would report as
+`vervallenStartthemas`, generation offered, and **nothing anywhere on screen saying a grid was missing**. The route into
+it is the one my own new copy recommends, since `kalender.roosterFout` ends *"kies hierboven de andere weergave"*.
+
+**Fix: the E3-04 rule, applied to the periods as well as to the settings.** A run whose parameters the screen cannot
+state is a run nobody can consent to. "The generation tier's grid is absent, errored, or came back at another tier" now
+joins `instellingenOnbekend` in the gate that disables generation **and** the form, and the form gained a state that
+says the periods could not be derived instead of counting as if they had been.
+
+- One derivation in one place: `periodestaat: "bekend" | "nietGeladen" | "nietGelezen"` in `Jaarplankalender`, passed to
+  the form, **replacing** the old `niveau: string` prop. That prop was the defect's shape: two very different
+  situations (no grid; a mistiered grid) arrived as the same silent `false`, and neither disabled anything.
+- The summary says `(themaperiodes onbekend)` rather than a count. Deliberately the whole summary, including the
+  period-independent vaste momenten: generation is refused in this state, and half a summary invites reading the
+  missing half as zero.
+- The panel says which of the two causes it is (`parameters.periodesNietGeladen` / `periodesNietGelezen`), and
+  **`parameters.anderNiveau` is used for neither** — as the brief required, since there is no working view to send the
+  teacher to. That was the loop: a view that lies and a view that refuses.
+- The state carries its own retry (`kalender.generatieRoosterFout`, beside the button it disabled). Only the
+  `nietGeladen` cause gets one: `nietGelezen` means the request *succeeded* and the answer was unusable, so a retry
+  would be a control that does nothing.
+- **The false invariant comment is gone.** `Generatieparametersformulier.tsx` asserted the mismatch was "now false only
+  when the *server* answered another tier", which stopped holding the moment the fetch itself could fail. It is a
+  caller-supplied state now, so this file has no invariant left to get wrong.
+
+**After the fix, same script, same fault:** step 2 reads board 23 columns / 6 cards (the plan is not lost), summary
+`(themaperiodes onbekend)`, *Jaarplan genereren* **disabled**, one alert naming the missing themaperiodes, with a
+retry. Pressing that retry with the fault disarmed: notice gone, generation enabled, summary `(1 zonder themaperiode)`
+— round 1's fix still holding, and the stranded setting correctly named as stranded at the fine tier.
+
+**Tests.** *"refuses to state the settings, and to generate, when the generation tier's grid is the one that failed"*:
+the asymmetric fault as a one-line `faalRooster` variant, plus a stranded stored setting (`stubZoom` gained an optional
+`instellingen` argument, defaulting to none). It asserts the summary, the disabled run, the visible notice, the retry,
+the panel's cause-specific sentence and the **absence** of `anderNiveau`. Two mutation checks, both run: dropping
+`|| periodesOnbekend` from the button fails it on `toBeDisabled()`; dropping the summary branch fails it — and the
+`Generatieparameters` mismatch test with it — with `expected '1 startthema' to be 'themaperiodes onbekend'`, which is
+round 1's lie verbatim.
+
+### 2. [MAJOR-B] The fallback notice claimed the wrong tier after a failed background refetch — fixed
+
+**Reproduced first, on `364c3b5`, by a real pointer sequence rather than a synthetic event.** With the fine tier already
+cached, switching away and back refetches it in the background (`staleTime: 0`), so arming the fault at that moment
+lands the 500 on a query that keeps its data: the same state an alt-tab produces. Read off the page: board `aria-label`
+**"Subthemaperiodes van het schooljaar"**, 23 columns, 6 cards, and a `role="alert"` reading *"De weergave die je koos,
+kon niet geladen worden. Je ziet nog de themaperiodes…"*. Both clauses false, exactly as the auditor derived from
+`query-core@5.101.2`. Note for anyone reproducing it: the alert appears only after TanStack's three retries with
+backoff, about 7 s, so a measurement at 3 s sees a healthy screen and would conclude the bug is not there.
+
+**Fix: `terugval` is derived, not passed.** The notice takes a `soort` of four states — `geenGrid`, `terugval`,
+`verversen`, `generatie` — computed from `rooster.data === undefined` rather than from `isError`, because data survives
+an errored refetch. The new `verversen` sentence (`kalender.roosterVerversenMislukt`) is true and **quiet**: no
+`role="alert"`, no red wash, because a refresh that cost the teacher nothing should not interrupt a screen reader
+mid-task. It keeps the retry, because a grid that could not be refreshed is exactly what hides a beheerder's vakantie
+edit (E3-04).
+
+**After the fix, same sequence:** board still `"Subthemaperiodes van het schooljaar"` with its 6 cards, **0**
+`role="alert"` elements, the visible sentence *"Deze weergave kon net niet vernieuwd worden. Je ziet nog wat eerder werd
+opgehaald, en er is niets gewijzigd aan je jaarplan…"*, generation untouched and enabled. Real-browser axe on that
+state: **0 violations**, 27 passes.
+
+**Test.** *"does not claim the other tier is showing when a refresh of the current one failed"* — the one state no click
+can reach in jsdom, so `renderKalender` now **returns its query client** and the test refetches the fine key while the
+stub is failing. It asserts that data survived, that the two tier-naming sentences are absent, that
+`queryAllByRole("alert")` is **empty**, that the retry is present, and that generation stays enabled. Mutation check:
+forcing `soort` back to `terugval` whenever errored fails it with *"Unable to find … Deze weergave kon net niet
+vernieuwd worden"*.
+
+### 3. [MINOR-C] "Deel van een ingeplande themaperiode" called an unreviewed proposal *ingepland* — fixed, copy only
+
+Now *"Deel van een themaperiode waarin al een thema staat"*: membership, with no claim that anything is settled, and
+true whether the parent holds one `Voorgesteld` proposal or three `Aanvaard` ones. The `Geweigerd`-only parent still
+reads *"Nog niets gepland"*, untouched as instructed. The catalogue key keeps its name (`subperiodeIngepland`, a
+technical identifier) and `Periodekolom`'s comment records why the sentence no longer matches it. Contrast re-measured
+in place: **5.56:1** (12px/400), styling unchanged.
+
+### 4. [MINOR-F] The unrecognised-tier degrade told the teacher to switch to the view they were on — fixed
+
+Two strings, two new sentences, and the guess is now confined to labels:
+
+- the board's line becomes `kalender.roosterNiveauOnbekend` (*"De tool kon deze weergave van het schooljaar niet lezen,
+  dus thema's verplaatsen kan hier niet. Er is niets gewijzigd aan je jaarplan…"*) instead of `fijnUitleg`;
+- the parameter panel gets `parameters.periodesNietGelezen` instead of `anderNiveau` (see item 1).
+
+`bordNiveau` still falls back to the coarse labels — the columns have to be *called* something — but a new
+`bordNiveauOnbekend` flag keeps that fallback out of every **instruction**, which is the actual defect.
+
+**Test.** *"says nothing was changed, rather than where to go, when the tier is one it cannot recognise"*: `stubZoom`
+gained an optional `grofRooster` and the test serves `niveau: "Kwartaal"`, which type-checks because
+`Planningsrooster.niveau` is deliberately a plain `string` — it is what the server said. Mutation check: restoring the
+two-way ternary fails it with *"Unable to find … De tool kon deze weergave van het schooljaar niet lezen"*.
+
+*Declined, with the reason.* The **third** string in that degrade, `kalender.herplaatsAnderNiveau` inside a stale card's
+panel, is left alone: it is not in the finding, it needs a new prop through `Themakaart`, and E4-06 is adding a lock
+control in that component's panel this hour. Recorded in the open list rather than fixed blind.
+
+### 5. [MINOR] "One word per tier" — completed, and swept this time rather than asserted
+
+The audit named three survivors plus my new `roosterFout` as a fourth name. All four are gone, and I ran the sweep the
+round-1 completeness claim should have had: every leaf of `nl.json`, every `periode` not preceded by `thema`.
+
+- `kalender.leegRooster` → *"Dit schooljaar heeft nog geen themaperiodes."* True at both tiers, because the fine tier
+  subdivides the coarse one: a year with no themaperiode has no subthemaperiode either.
+- `kalender.genereerUitleg` → *"…over de themaperiodes voor…"*.
+- `kalender.indelingUitleg` → themaperiode-worded. **This key is rendered nowhere** (`grep` finds no call site); fixed
+  anyway so it cannot be reintroduced already wrong.
+- `kalender.roosterFout` loses *"periode-indeling"*: it says *"De weergave van dit schooljaar…"*, the word the control
+  itself uses, because that notice can be about **either** tier and so must name neither.
+- **`spine.titel`, which the audit did not name and the sweep found.** *"Het schooljaar in periodes…"* was the first
+  thing a screen-reader user heard about the strip, immediately before ordinals saying "subthemaperiode". Split into
+  `spine.titel` / `spine.titelFijn`, selected by the tier the spine already receives.
+
+**What the sweep leaves, deliberately, and this is now the whole list:** `kalender.teVolUitleg` and `wordtTeVol` (plus
+`teVol`, which contains no bare "periode" but belongs to the trio) — the three declared in round 1, owned by E3-09's
+te-vol rewrite; and `kalender.periodeKeuze`'s `{periode}` **placeholder**, which is filled with a date range, not a
+name, and never renders the word.
+
+### 6. [QUESTION-G] The per-focus cost of the second `/rooster` — comment corrected, no `staleTime` added
+
+As instructed. The comment claimed "not a second network round trip in the normal case"; it now says what is true: one
+request at mount (shared cache entry at the coarse tier), and **two** grid derivations per window focus at the fine
+tier, because `staleTime: 0` + `refetchOnWindowFocus` refetch both keys. Accepted rather than fixed, with the reason on
+the record: E3-04 depends on this query refetching on focus to notice a beheerder's vakantie edit, which is what makes a
+stranded placement visible at all.
+
+### 7. The page header in the first-load failure state — **kept, deliberately**
+
+The gate left this one to me and I kept it. `Kalenderkop` is extracted and rendered in the failure branch too, so the
+title, the class and the school year survive a state that has no board, and `<section aria-labelledby="kalender-titel">`
+gets its accessible name back with them. Two lines of markup against a teacher's orientation is not a trade worth
+making. The **concept banner is deliberately not** repeated there: it describes what you can do on the board, so it
+would promise something that is not on screen. Verified: `koppen` goes from `["H1: Jaarplanner"]` to
+`["H1: Jaarplanner", "H2: Jaarplan"]` at 1440 **and** at 390, and the MAJOR-A test asserts both the heading and the
+class name in that branch. Real-browser axe on it: **0 violations**, 25 passes.
+
+*Not fixed, as instructed:* the empty well's dashed border at 1.25:1. Pre-existing token; E7-10 owns it.
+
+### 8. [MINOR-E, record only] E3-08 does ship a per-column te-vol mark at the fine tier
+
+No code, by the audit's own allowance, but named in the open list below so E3-09 inherits an obligation rather than a
+surprise.
+
+### Measurements, all taken this round, alpha composited
+
+| what | context | value | floor |
+|---|---|---|---|
+| `roosterVerversenMislukt` (quiet notice) | `text-ink` on the composited `bg-paper` panel, 14px/400 | **14.55:1** | 4.5 |
+| its retry label | 12px/600 | **15.42:1** | 4.5 |
+| its retry **border** (`border-input`) | 1px, `bg-card` over that panel | **3.21:1** | 3.0 |
+| `generatieRoosterFout` (alert) | `text-suggestie-geweigerd` on the `/10` wash over `bg-card`, 14px/500 | **5.48:1** | 4.5 |
+| its retry **border** (`border-suggestie-geweigerd`) | 1px | **5.48:1** | 3.0 |
+| `parameters.periodesNietGeladen` | 12px/400 on card | **6.08:1** | 4.5 |
+| `(themaperiodes onbekend)` summary | 14px/400 | **6.08:1** | 4.5 |
+| `subperiodeIngepland`, reworded | 12px/400 in the well | **5.56:1** | 4.5 |
+| the node `roosterNiveauOnbekend` renders in | measured as `fijnUitleg`: same node, same classes | **5.73:1** | 4.5 |
+
+The last row is stated precisely on purpose: I could not make the real API answer an unrecognised tier, so I measured
+the element the sentence swaps into (`max-w-4xl text-xs leading-snug text-ink-zacht`, class list read off the page).
+The branch is a string swap in that node and changes no colour.
+
+**390px** (`Emulation.setDeviceMetricsOverride`, `innerWidth === 390`): no document overflow in either new state
+(`scrollWidth 390 / clientWidth 390`), header present, generation disabled, one alert.
+
+**Real-browser axe** (axe-core 4.10.2, wcag2a/2aa/21a/21aa/22aa): first-load failure state **0 violations / 25 passes**;
+generation-grid notice **0 / 27**; quiet refresh notice **0 / 27**.
+
+**Screenshots**, ten in `backlog/worklogs/E3-08/`, each bound to a state read out of the DOM in the same run, and
+**md5-distinct** (`md5sum r2-*.png | sort | uniq -w32 -D` prints nothing — the check the E1-13 verifier's collided set
+taught this repo to run before citing images):
+
+| file | the claim it carries |
+|---|---|
+| `r2-major-a-voor-1-eerste-laadfout.png` | round 1: the failure state with no title and no class, shell `h1` only |
+| `r2-major-a-voor-2-de-leugen.png` | **round 1's defect:** 19 fine columns, `(1 startthema)`, generate enabled, no notice |
+| `r2-major-a-na-1-eerste-laadfout-met-kop.png` | the same failure with the header kept (item 7) |
+| `r2-major-a-na-2-geweigerd-en-benoemd.png` | after: plan intact, `(themaperiodes onbekend)`, generate disabled, notice + retry |
+| `r2-major-a-na-3-herstel-na-retry.png` | the retry recovers, and the setting is named `(1 zonder themaperiode)` |
+| `r2-major-b-voor-verkeerde-tier-in-alert.png` | **round 1's defect:** subthemaperiode board under "Je ziet nog de themaperiodes" |
+| `r2-major-b-na-stille-ware-melding.png` | after: quiet true sentence, no `alert`, board and generation untouched |
+| `r2-390-eerste-laadfout.png` | the failure state at exactly 390px, header present, no overflow |
+| `r2-390-generatiemelding.png` | the refusal at 390px |
+| `r2-paneelzin-en-samenvatting.png` | the open panel: cause-specific sentence, no rows, no `anderNiveau` |
+
+### Gates
+
+`corepack pnpm lint` exit 0 · `corepack pnpm exec vitest run` **203 passed / 12 files, 0 failed, 0 skipped** (200 → 203,
+three new tests), **zero** `act(` or warning lines in the run · `corepack pnpm build` exit 0 · `tsc --noEmit` clean ·
+`git diff --stat 0de4851..HEAD -- backend/` **empty**, so `dotnet test` / `dotnet format` did not run and are not
+claimed.
+
+### One test assertion changed, and why it is not a weakening
+
+`Generatieparameters.test.tsx` → *"does not read another tier's periods as the periods a kept setting names"* asserted
+`(1 startthema)` and then that generating **sent** the kept setting. Its fixture serves a `Subthemaperiode` grid to
+*every* `/rooster` request, so it is the `nietGelezen` state — where a count is precisely what the form cannot check.
+The assertion pinned the behaviour MAJOR-A calls the defect. It now asserts `(themaperiodes onbekend)`, the refused run,
+that pressing the refused button posts nothing, and the cause-specific sentence with `anderNiveau` **and** the
+fetch-failure sentence both absent. Strictly more is pinned than before. That the stored settings survive an untouched
+form is still pinned, by the first test in that file.
+
+### Still open after this round
+
+- **E3-09 inherits a live defect, named on purpose** (MINOR-E): at the fine tier every placement lands in its parent's
+  **first** sub-block, so that column renders `▲ Te vol: 3 thema's` with the attentie border while its siblings say they
+  belong to a themaperiode that holds a thema — the misreading the owner's te-vol ruling forbids. `teVolleOrdinalen`
+  also carries **sub-block** ordinals into `Jaarspine`. The ruling (te vol at the themaperiode tier only, one summary
+  line at the fine tier, whole weeks with the available side rounded up) is what fixes it; E3-08 ships it unfixed.
+- **`kalender.herplaatsAnderNiveau`** still names "de weergave Themaperiodes" in the unrecognised-tier degrade (item 4,
+  declined with a reason). It needs a prop through `Themakaart`, which a parallel session holds.
+- **The three te-vol strings** still say "periode" (item 5); E3-09 owns them.
+- **The zoom is not deep-linkable**; `?niveau=` is recorded as a follow-up on ADR-0021.
+- **A thema spanning two periods** (E3-10 question B) is still unanswered.
+- **The empty well's dashed border at 1.25:1** belongs to E7-10.
+- **Merge order:** unchanged. E4-06 is still in `Themakaart.tsx`, `Jaarplankalender.test.tsx`, `useJaarplan.ts` and
+  `api.ts`, and holds `nl.json`. This round touched none of the first four and declared the fifth. `Bewerkpaneel`'s DOM
+  is untouched, so E4-06's lock control still has room.

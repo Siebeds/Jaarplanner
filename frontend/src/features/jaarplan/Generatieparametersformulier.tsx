@@ -47,33 +47,46 @@ import type { Generatieparameters, Planningsblok, VastMoment } from "./types";
  * vast moment the teacher never saw. So the whole form takes the same gate ({@link
  * GeneratieparametersformulierProps.disabled}) and the failure notice carries the one control that can end the state.
  */
+/**
+ * Whether the **themaperiodes a kept setting names** are known, and if not, why not (E3-08 fix round 2).
+ *
+ * Every claim this form makes about the kept settings — the counts in the collapsed summary, the stranded partition,
+ * the rows offered for editing — rests on having the *generation* tier's grid. Round 1 expressed that as a bare
+ * `niveau` string and let this component infer, so two very different situations both arrived as a silent mismatch: a
+ * grid that had failed to load, and one the server answered at another tier. Neither disabled anything, and the
+ * summary went on counting a stranded startthema as a valid one (MAJOR-A). An explicit state makes the two visible,
+ * gives each its own sentence, and lets the caller gate the run on the same value it passes here.
+ *
+ * - `bekend` — the generation tier's grid is in hand; every claim below is checkable.
+ * - `nietGeladen` — its fetch failed (or has not landed). A retry exists, and lives next to the generate button.
+ * - `nietGelezen` — the request succeeded and came back at a tier this app does not recognise. A retry would not help.
+ */
+export type Periodestaat = "bekend" | "nietGeladen" | "nietGelezen";
+
 export interface GeneratieparametersformulierProps {
   /** The class whose kept settings are loaded and saved. */
   klasId: string;
   /**
    * The **generation tier's** derived grid, so each row can name the themaperiode it targets and a stranded setting can
-   * be spotted. Never the board's grid: see `niveau`, and the note on the call site in {@link Jaarplankalender}.
-   */
-  blokken: readonly Planningsblok[];
-  /**
-   * Which **tier** `blokken` belongs to (the `/rooster` response's own `niveau`).
+   * be spotted. Never the board's grid: see `periodestaat`, and the note on the call site in {@link Jaarplankalender}.
    *
-   * A kept setting keys on the *generation* tier's block start dates ({@link GENERATIEBLOKNIVEAU}), so blocks of any
-   * other tier are not the periods these settings speak about: reading them as such would flag every kept preference
-   * as stranded and offer rows the server would report as vervallen. Passed in and checked rather than assumed,
-   * because a server that answers a different tier than the one requested must degrade rather than mislead.
+   * Only read when `periodestaat === "bekend"`. A kept setting keys on the generation tier's block start dates, so
+   * blocks of any other tier are not the periods these settings speak about: reading them as such would flag every
+   * kept preference as stranded and offer rows the server would report as vervallen.
    *
-   * **This is no longer the tier on screen** (fix round 1, finding 1). The caller now hands over the generation tier's
-   * grid whatever the zoom shows, because whether a stored setting still names an existing period is a fact about that
-   * tier and must not change with the view: read off the board's grid, the check went silent at the fine zoom and a
-   * stranded preference was promoted to a valid one in the summary. What the board shows is {@link
+   * **This is no longer the tier on screen** (fix round 1, finding 1). The caller hands over the generation tier's grid
+   * whatever the zoom shows, because whether a stored setting still names an existing period is a fact about that tier
+   * and must not change with the view: read off the board's grid, the check went silent at the fine zoom and a stranded
+   * preference was promoted to a valid one in the summary. What the board shows is {@link
    * GeneratieparametersformulierProps.weergaveNiveau}, and it decides presentation only.
    */
-  niveau: string;
+  blokken: readonly Planningsblok[];
+  /** Whether `blokken` can be trusted as the themaperiodes a kept setting names. See {@link Periodestaat}. */
+  periodestaat: Periodestaat;
   /**
    * Which tier the **board** is drawing (E3-08).
    *
-   * Separate from `niveau` on purpose: this one may not decide anything the teacher is *told* about their settings, only
+   * Separate from `periodestaat` on purpose: this one may not decide anything the teacher is *told* about their settings, only
    * where they are edited. At the fine zoom the period rows are withheld and `parameters.anderNiveau` points at the
    * other view instead (E3-04's obligation 1), because a row is an instruction to change something and this view is not
    * where those periods are shown. The counts, the stranded partition and the request body are identical either way.
@@ -87,7 +100,7 @@ export interface GeneratieparametersformulierProps {
    */
   onWijzig: (parameters: Generatieparameters) => void;
   /**
-   * No editing: a run is in flight, **or the kept settings are unknown**.
+   * No editing: a run is in flight, **or the kept settings are unknown**, **or their periods are**.
    *
    * The second case must be the *same* gate the kalender puts on its generate button, and it is passed in rather than
    * recomputed here so the two can never disagree. Two reasons, and the first is a safety argument:
@@ -124,7 +137,7 @@ const MAX_MOMENTNAAM = 200;
 export function Generatieparametersformulier({
   klasId,
   blokken,
-  niveau,
+  periodestaat,
   weergaveNiveau,
   onWijzig,
   disabled,
@@ -157,11 +170,12 @@ export function Generatieparametersformulier({
   // in flight. Not `isFetching` on its own: that is also true of the very first load, which is not a failure.
   const instellingenOnbekend = instellingen.isError || (herstelGeprobeerd && instellingen.isPending);
 
-  // Only the GENERATION tier's blocks are the periods a kept setting keys on (see the `niveau` prop). At any other
-  // tier this form knows the settings but not which periods they name, so it says that instead of guessing. With the
-  // caller handing over that tier's grid regardless of the zoom, this is now false only when the *server* answered
-  // another tier for a generation-tier request.
-  const isGeneratieNiveau = niveau === GENERATIEBLOKNIVEAU;
+  // "This form knows which themaperiodes the kept settings name." False in two ways, each with its own sentence and
+  // both gating the run (see {@link Periodestaat}). Round 1's version of this line asserted in a comment that it was
+  // "now false only when the *server* answered another tier", which was untrue the moment the generation-tier fetch
+  // itself could fail while the board showed the other tier — and an invariant comment that does not hold is how
+  // MAJOR-A stayed invisible. It is a caller-supplied state now, so this file no longer has an invariant to get wrong.
+  const isGeneratieNiveau = periodestaat === "bekend";
 
   // Whether the BOARD is at that tier, which is a question about presentation and nothing else: the rows are offered
   // here only where those periods are the ones on screen (E3-04 obligation 1). Deliberately not folded into
@@ -275,7 +289,7 @@ export function Generatieparametersformulier({
   // same fact one layer up, and persistence is what made it reachable. The setting stays in the request, so reverting
   // the vakantie edit restores it, and the run's report says the same thing.
   // Computed only against the generation tier's grid: without it this form cannot tell a stranded setting from a
-  // perfectly good one, and claiming either would be a guess (see `niveau`). It is deliberately **not** conditioned on
+  // perfectly good one, and claiming either would be a guess (see `periodestaat`). It is deliberately **not** conditioned on
   // the zoom: the partition below counts on it, and a count that changes with the view is the defect this replaces.
   const vervallen = isGeneratieNiveau
     ? Object.entries(startthemas)
@@ -353,11 +367,20 @@ export function Generatieparametersformulier({
         .join(", ")})`
     : t("parameters.samenvattingLeeg");
 
+  // **And when the periods are unknown it says that, instead of counting** (fix round 2, MAJOR-A). Without the
+  // generation tier's grid the clauses above cannot partition the kept startthema's into "will be honoured" and
+  // "points at a period that no longer exists" — the whole difference between them is that grid. Round 1 let the
+  // partition collapse silently, so a stranded setting was reported as `(1 startthema)`: a positive claim about a
+  // preference the run would discard, on the one line a teacher sees while the panel is closed. The counts of the
+  // period-independent settings (vaste momenten) go with it, because generation is refused in this state anyway and
+  // half a summary invites reading the missing half as zero.
   const samenvatting = instellingen.isError
     ? t("parameters.samenvattingOnbekend")
     : instellingen.isPending
       ? t("parameters.samenvattingLaden")
-      : samenvattingIngesteld;
+      : !isGeneratieNiveau
+        ? t("parameters.samenvattingPeriodesOnbekend")
+        : samenvattingIngesteld;
 
   return (
     <div className="mt-4 border-t border-border pt-4">
@@ -504,12 +527,27 @@ export function Generatieparametersformulier({
               {t("parameters.startthemasTitel")}
             </legend>
 
-            {!isGeneratieNiveau || !toontGeneratieNiveau ? (
-              // Either the kalender is showing another tier (so these periods are not the ones on screen, and a row
-              // here would be an instruction about something the teacher cannot see), or the server answered another
-              // tier than the one asked for (so these blocks are not the periods a kept setting names at all, and rows
-              // built from them would carry dates the server refuses). One sentence covers both: it points at the view
-              // where the themaperiodes are, and states what happens to the current settings meanwhile.
+            {/* Three reasons the rows can be absent, and round 1 answered all three with one sentence that only fits
+                the first (fix round 2, MAJOR-A and MINOR-F). `anderNiveau` says "zet de weergave op Themaperiodes",
+                which is a real next step when the grid is fine and the *board* is elsewhere — and an impossible one
+                when the themaperiodes are what could not be had. Sending a teacher to the view that is failing is the
+                loop the audit described: a view that lies and a view that refuses. */}
+            {periodestaat === "nietGeladen" ? (
+              // The generation tier's grid could not be fetched. The retry for it sits above this panel, next to the
+              // generate button it also disabled.
+              <p className="text-xs leading-snug text-ink-zacht">
+                {t("parameters.periodesNietGeladen")}
+              </p>
+            ) : periodestaat === "nietGelezen" ? (
+              // It arrived at a tier this app does not recognise, so these blocks are not the periods a kept setting
+              // names and rows built from them would carry dates the server refuses. Nothing to retry.
+              <p className="text-xs leading-snug text-ink-zacht">
+                {t("parameters.periodesNietGelezen")}
+              </p>
+            ) : !toontGeneratieNiveau ? (
+              // The grid is fine; the kalender is simply showing another tier, so a row here would be an instruction
+              // about periods the teacher cannot see. It points at the view where they are, and states what happens to
+              // the current settings meanwhile.
               <p className="text-xs leading-snug text-ink-zacht">{t("parameters.anderNiveau")}</p>
             ) : blokken.length === 0 ? (
               <p className="text-xs text-ink-zacht">{t("parameters.geenPeriodes")}</p>
