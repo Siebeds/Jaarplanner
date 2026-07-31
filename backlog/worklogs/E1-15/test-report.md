@@ -203,3 +203,106 @@ Stated explicitly, since round 1 leaned on some of it as evidence:
 The **E1-12 judgment from round 1 stands unchanged**: the trigger works, but a real Op.stap file still cannot land, so **FR-2.1 is not satisfied, E1 is not complete and M1 is not reached.** The fix round makes that limitation *more* visible, because the preview now reports it too.
 
 Cleanup: verification host on port 5241 terminated and the throwaway database `jp_e115_r2` dropped. No parallel agent's port, database or dev server was touched.
+
+---
+
+# E1-15 — Test report (round 3, final verification on the merged branch)
+
+**Verdict:** PASS
+**Mode:** unit/integration + a manual API run against a real `dotnet run` host, plus frontend gates for the merged state
+**Tree:** `C:\source\Jaarplanner`, branch `feature/e1-curriculum-content` at **`a6941fc`** ("Merge E1-15: the Op.stap import trigger"), which contains E1-15 fix round 2 (`43a38eb`) and E1-16 (`f0330ed`).
+**Scope:** narrow, per the brief: gates on the merged tree, round 2's two code fixes, the runtime-only projection question, and the E1-15/E1-16 merge interaction.
+
+## Gates on the merged tree (exit codes captured directly, not through a pipe)
+
+| Command | Exit | Result |
+| --- | --- | --- |
+| `dotnet build` | **0** | **Build succeeded. 0 Warning(s), 0 Error(s)** |
+| `dotnet test --no-build` with `JAARPLANNER_TEST_POSTGRES` | **0** | **484 unit + 133 integration passed, 0 failed, 0 skipped** |
+| `dotnet format --verify-no-changes` | **0** | clean |
+| `corepack pnpm lint` (frontend) | **0** | `eslint . --max-warnings 0 && tsc --noEmit`, clean |
+| `corepack pnpm test` (frontend) | **0** | **12 test files, 174 tests passed** |
+| E1-15's own suite, filtered | **0** | **33 unit + 18 integration passed, 0 skipped** |
+
+These are my numbers, measured independently. They agree with the coordinator's reported build result. The `0 skipped` on the integration assembly is the important part: it confirms the Postgres-backed tests actually ran rather than skipping.
+
+## The file-lock incident, and the transferable lesson
+
+My first `dotnet build` in the main tree failed with **6 errors**, all `MSB3027`/`MSB3021` **file-copy** failures: a leftover `Jaarplanner.Api.exe` (PID 64584, listening on **5184**) from the parallel E1-16 session held `Jaarplanner.Application.dll`, `Jaarplanner.Domain.dll` and `Jaarplanner.Infrastructure.dll` in the main tree's `bin`. I identified the process, confirmed it was not mine (my ports were 5231/5232/5241/5251) and **did not kill it**, since a parallel agent is active in this repo.
+
+To make progress without touching another agent's process, I first proved the main tree was exactly `a6941fc` with **no uncommitted tracked changes and no relevant untracked files**, then verified that same commit in my own throwaway `git worktree`, which has its own `bin`/`obj` and no contention. It built with **0 warnings, 0 errors** and gave **484 + 133, 0 skipped**. After the coordinator stopped the stale host I re-ran everything **in the main tree itself** and got byte-identical counts, so the worktree detour changed nothing about the result; both runs are reported above as one.
+
+Two things worth recording because they generalise:
+
+1. **A leftover dev host silently degrades a full-suite run to unit tests only, while still printing "Passed!".** The copy into `Api/bin` fails, so the integration test project never builds, and `dotnet test` then reports only the unit assembly, in green. The defence is to assert on the *shape* of the run, not just its colour: I checked that **both** assemblies appear in the output and that `Skipped` is 0. Had I only read "Passed!", a unit-only run would have looked like a full one.
+2. **`dotnet build 2>&1 | tail` hides the failure.** A shell pipeline reports the exit status of the *last* command in the pipe, so `... | tail` and `... | grep` return 0 even when the gate failed. My earlier rounds used exactly that idiom. For this round I redirected each gate to a file and captured `$?` **before** filtering, which is why the 6 errors were visible as errors rather than as a truncated tail. Any gate whose result is quoted as evidence should be measured this way.
+
+## Round 2's two code fixes (which I had not previously seen)
+
+### One Dutch message source per `OpstapImportFoutSoort` — verified, and the reachable Dutch is unchanged
+
+The three refusals now come from static factories (`OpstapImportFout.OnbekendeDiscipline` / `.OntbrekendeMinimumdoelen` / `.CodeInAndereDiscipline`); `MaxGenoemdeVoorbeelden` and the truncation helper moved onto the fault, and both call sites (the preflight, which knows the offenders, and `VertaalIntegriteitsfout`, which knows only the constraint) now call the same factory, the latter with an empty detail list.
+
+I verified the claim by composing the factory output by hand from the source and then **against live responses**. All three reachable messages are **character-identical** to what I captured at `cd426cf`:
+
+- `400` / `Ongeldige aanvraag` / *"'99' is geen Op.stap-discipline. Gebruik het officiële disciplinenummer, bijvoorbeeld 1 voor Nederlands en communicatie of 9.2 voor Leren leren."*
+- `409` / `Import niet doorgevoerd` / *"Deze codes staan al bij een andere discipline: WIS-1 (discipline 2), WIS-2 (discipline 2). Controleer of dit bestand bij discipline 3 hoort. Er is niets gewijzigd. Verhuist een doel echt naar een andere discipline, dan moet iemand dat eerst bevestigen."*
+- `409` / `Import niet doorgevoerd` / *"Deze leerplandoelen verwijzen naar minimumdoelen die nog niet ingeladen zijn: 4-12. Laad eerst de decretale minimumdoelen in. Er is niets gewijzigd aan de doelen die al in de toepassing staan."*
+
+Statuses and titles are unchanged too. **One deliberate change on the unreachable path**, which I note for completeness because it is a wording change even if no user can reach it: the `SaveChanges` race path for `CodeInAndereDiscipline` now *gains* the trailing sentence *"Verhuist een doel echt naar een andere discipline, dan moet iemand dat eerst bevestigen."*, because it shares the factory. That is the point of the fix (one source per case), and it makes the two paths consistent rather than divergent.
+
+The five pins the brief named all pass, run individually:
+
+- `OpstapImportFoutTests.Onbekende_discipline_leest_identiek_uit_beide_paden` — passed
+- `OpstapImportFoutTests.Ontbrekende_minimumdoelen_verschilt_alleen_in_de_genoemde_verwijzingen` — passed
+- `OpstapImportFoutTests.Code_in_andere_discipline_deelt_de_staart_tussen_beide_paden` — passed
+- `OpstapImportFoutTests.Een_lange_lijst_wordt_afgekapt` — passed
+- `OpstapImportFoutTests.De_oorspronkelijke_databasefout_blijft_bewaard` — passed
+
+And my own four substring pins plus the parity pin, which are what actually guard the wording:
+
+- `Doel_met_concordantie_naar_een_onbekend_minimumdoel_geeft_409_en_wijzigt_niets` (`Contains("minimumdoelen")`) — passed
+- `Zelfde_code_onder_een_andere_discipline_geeft_409_en_wijzigt_niets` (`Contains("andere discipline")`) — passed
+- `Onbekend_disciplinenummer_geeft_400` (`Contains("99")`) — passed
+- `Onbekend_disciplinenummer_geeft_400_ook_als_de_codes_al_geladen_zijn` (`Contains("is geen Op.stap-discipline")` **and** `DoesNotContain("andere discipline")`) — passed
+- `Voorbeeld_weigert_precies_wat_de_definitieve_import_weigert` (preview/commit `detail` equality) — passed
+
+**Preview/commit parity re-confirmed live**, not only by test: for both 409 cases the preview and the commit returned the same status and a character-identical `detail`.
+
+### The `DbUpdateException` kept as inner exception — verified
+
+`OpstapImportFout` gained an optional `innerException` passed to `base(melding, innerException)`, and all three `VertaalIntegriteitsfout` branches now pass `ex`. So the SQLSTATE, constraint name and table survive into the log on the one path that is only reachable through a concurrency anomaly. Pinned by `De_oorspronkelijke_databasefout_blijft_bewaard`, which passes.
+
+## The line that could only fail against a real server — it translates
+
+`ControleerVoorwaardenAsync` now projects `new DoelInAndereDiscipline(l.Code, l.DisciplineNummer)` **after** `OrderBy` and `Take`, i.e. a constructor projection into a `readonly record struct` over a subquery. Whether Npgsql translates that is a runtime question that compilation cannot answer, and the EF in-memory provider would not answer honestly either.
+
+**It translates.** Two independent pieces of evidence:
+
+1. Both `[PostgresFact]` tests that cover it pass against real PostgreSQL: `Zelfde_code_onder_een_andere_discipline_geeft_409_en_wijzigt_niets` and `Voorbeeld_weigert_precies_wat_de_definitieve_import_weigert`. A translation failure would surface as an `InvalidOperationException` and therefore a 500, failing both.
+2. **Live against a real host**, the refusal returned the projected values correctly and in order: *"Deze codes staan al bij een andere discipline: **WIS-1 (discipline 2), WIS-2 (discipline 2)**."* Those pairs can only come from the projection materialising, so the query ran server-side and hydrated the struct.
+
+## The merge interaction with E1-16 — clean
+
+**No literal title was reintroduced.** `grep` for `"Ongeldige aanvraag"`, `"Niet gevonden"` and `"Import niet doorgevoerd"` across `backend/src/Jaarplanner.Api` matches only the three `const` definitions in `Probleemtitels.cs` plus one doc-comment mention. All five call sites read the constants.
+
+**E1-16's endpoints answer exactly what they did before, because they never used those titles.** `LeerplandoelenController` sets no `Title` at all: its validation failure is `BadRequest(fout)` returning a bare string, and its not-found is a bare `NotFound()`. Verified live on the merged build:
+
+- `GET /api/leerplandoelen?aantal=5` -> `200`, body keyed `{aantal, overslaan, regels, totaal}`
+- `GET /api/leerplandoelen?aantal=99999` -> `400`, body is the plain string `'aantal' must be between 1 and 200 (was 99999).`
+- `GET /api/leerplandoelen/GEEN-BESTAANDE-CODE` -> `404` with ASP.NET's default `"title":"Not Found"`
+- `GET /api/leerplandoelen/facetten` -> `200`
+
+None of those shapes is one E1-15 defines or changed, so **nothing in E1-16 depends on a shape E1-15 altered**. The new `OpstapImportExceptionHandler` cannot intercept E1-16's responses either: it returns `false` for anything that is not an `OpstapImportFout`, and E1-16 raises none.
+
+**A genuine end-to-end check across the two stories, which the merge makes possible for the first time.** I imported two leerplandoelen through E1-15's trigger and then read them back through E1-16's register: `totaal: 2`, and the rows returned E1-15's imported content intact (`WIS-1 | Gemeenschappelijk | Getallen | "De leerling telt tot 20."`, `WIS-2 | ... | "De leerling splitst tot 10."`). E1-15 writes and E1-16 reads the same rows correctly in the merged state.
+
+**One observation that belongs to E1-16, not to E1-15.** Its 400 returns an **English** bare string (`'aantal' must be between 1 and 200 (was 99999).`) and its 404 returns the framework's English `"Not Found"` title, both reaching a user-facing surface. That is an Art. II.3 question for E1-16, which is already held at `[~]`; I record it only so the merged state is described accurately. It is not an E1-15 defect, it is not caused by the `Probleemtitels` consolidation, and I did not change it.
+
+## Verdict
+
+**PASS.** All five acceptance criteria continue to hold on the merged branch, verified against the merged code rather than inherited from either earlier round. Round 2's two fixes do what they claim: the Dutch has one source per fault and the reachable wording is character-for-character unchanged (confirmed live against three real responses), and the `DbUpdateException` survives as inner exception. The constructor projection that only a real server could reject **translates**, proven both by the two `[PostgresFact]` tests and by the projected values appearing in a live refusal. The merge interaction is clean: no literal reintroduced, E1-16's responses unchanged, and E1-15's writes readable through E1-16's register. All six gates pass with exit code 0, with both test assemblies present and **0 skipped**.
+
+The **E1-12 judgment stands unchanged from rounds 1 and 2**: the trigger works and is now reachable, but a real Op.stap file still cannot commit while no `Minimumdoel` row can exist, so **FR-2.1 is not satisfied, E1 is not complete and M1 is not reached.** Nothing in fix round 2 or the merge changes that, and the preview now reports the blocker rather than hiding it.
+
+Cleanup: my host on port 5251 terminated, throwaway database `jp_e115_final` dropped, and my temporary verification worktree removed (`git worktree list` confirms only the pre-existing worktrees remain). The parallel session's host on 5184 was identified but deliberately left alone; the coordinator stopped it.
