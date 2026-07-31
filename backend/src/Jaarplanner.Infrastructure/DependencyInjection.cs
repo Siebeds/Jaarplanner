@@ -68,6 +68,12 @@ public static class DependencyInjection
         // the list tracks the current link state. Pure read over read-only reference data (Art. III.1).
         services.AddScoped<IOngekoppeldeDoelenQuery, OngekoppeldeDoelenQuery>();
 
+        // The Op.stap leerplandoel register behind the Doelen screen (E1-16, FR-2.4): filter, search, page
+        // and open one doel. A pure read over read-only reference data (Art. III.1) — the interface has no
+        // write method, so registering it grants no mutation path. Filtering/paging run in the database
+        // because after a full import this is thousands of rows.
+        services.AddScoped<ILeerplandoelenQuery, LeerplandoelenQuery>();
+
         // Discipline-selection seam (E1-06, Art. XIV "Disciplines first"): which disciplines the
         // Op.stap import path may process is DATA-DRIVEN, never compiled in. The in-scope set is bound
         // from the `Opstap:DisciplineSelectie` configuration section (appsettings / env / user-secrets

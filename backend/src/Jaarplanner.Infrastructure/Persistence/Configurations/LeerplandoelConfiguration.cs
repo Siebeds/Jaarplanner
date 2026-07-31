@@ -63,6 +63,19 @@ public sealed class LeerplandoelConfiguration : IEntityTypeConfiguration<Leerpla
             .OnDelete(DeleteBehavior.Restrict);
 
         // Optional concordance to a minimumdoel (Art. IX.1): nullable FK on the shared ref key.
+        //
+        // CARRY THIS FORWARD IF YOU RELAX IT (E1-16, 2026-07-31). Because this is `Restrict`, a leerplandoel
+        // naming a ref with no `minimumdoelen` row cannot be committed (SQLSTATE 23503) — which is why no
+        // MD-concorded goal can be imported until E1-12 supplies the decreed source, and why relaxing this FK
+        // (or making the ref a plain column) is a plausible resolution of the E1-03/E1-12 blockage.
+        //
+        // On that day, a read branch that has never run in production becomes reachable: the Doelen detail
+        // renders "ref present, decreed omschrijving not loaded" (`doelen.minimumdoelNietIngeladen`). It is
+        // covered ONLY by the frontend test
+        // `frontend/src/features/doelen/Doeldetail.test.tsx` -> "keeps the ref and says the decreed text is not
+        // loaded, which is not the same as not concorded", because the state cannot be created in a Postgres
+        // fixture while this constraint stands. Whoever relaxes it should add the server-side test that then
+        // becomes possible, rather than discovering the branch in production.
         builder.HasOne<Minimumdoel>()
             .WithMany()
             .HasForeignKey(l => l.MinimumdoelRef)
