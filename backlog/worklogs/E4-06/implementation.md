@@ -31,7 +31,7 @@ obligation on the server half, exactly as claimed.
 | `frontend/src/features/jaarplan/api.ts` | `wijzigPlaatsingVergrendeling` — the missing call. Header comment now says four editing calls, not three. |
 | `frontend/src/features/jaarplan/useJaarplan.ts` | `useWijzigVergrendeling` — its own mutation, so the lock's in-flight state is its own state. |
 | `frontend/src/features/jaarplan/Themakaart.tsx` | The lock/unlock control in the "Aanpassen" panel, plus the honest statement where no control is offered. |
-| `frontend/src/i18n/nl.json` | Six new `kalender.*` keys. No em dashes, no counted strings, so no plural obligation. |
+| `frontend/src/i18n/nl.json` | **Seven** new `kalender.*` keys (*corrected in fix round 1: this line and the self-check below both said six; `nl.json:133-139` held seven*). No em dashes, no counted strings, so no plural obligation. |
 | `frontend/src/features/jaarplan/Jaarplankalender.test.tsx` | Four new tests, plus the lock control added as a premise to the existing axe pass. |
 | `backend/tests/.../Postgres/JaarplanPersistentieTests.cs` | The real-PostgreSQL proof, plus three private helpers and a stub AI client. |
 | `backend/src/.../JaarplanGeneratieService.cs` | **Doc comment only, no behaviour change** — records why `WijzigVergrendelingAsync` guards nothing on status. |
@@ -41,12 +41,19 @@ obligation on the server half, exactly as claimed.
 `IsVervangbaar` is `Status == Voorgesteld && !Vergrendeld`. **An `Aanvaard`, `Manueel` or `Geweigerd` placement
 therefore already survives a regeneration with no lock at all.** Consequences, resolved:
 
-**Decision: the lock control is offered only where it changes something observable, i.e. on a `Voorgesteld`
+**Decision: the lock control is offered only where it changes an outcome, i.e. on a `Voorgesteld`
 placement — and additionally on any already-locked placement, so it can always be undone.**
+
+> *Narrowed in fix round 1.* This section originally said "changes something **observable**", and repeated that
+> phrase in `JaarplanGeneratieService.cs`, `api.ts` and `Themakaart.tsx`. It is false as an absolute: locking a
+> decided placement **does** show the "Vast" badge and **does** change the panel's sentence. What it cannot change
+> is whether a regeneration replaces the placement, or whether the thema counts as placed for the dekking. Since
+> the absolute claim is the load-bearing justification for hiding the control, it is corrected in all four places
+> rather than left as shorthand.
 
 Reasoning, including the argument I rejected:
 
-1. Offering "Vastzetten" on an `Aanvaard` placement is a switch with no observable effect: regeneration already
+1. Offering "Vastzetten" on an `Aanvaard` placement is a switch with no effect on any outcome: regeneration already
    skips it, `moetBevestigen` (`status !== "Voorgesteld" || vergrendeld`) is already true so the delete already
    confirms, and `MenselijkBeslotenPlaatsingen` already contains it. That is the E3-06
    control-that-does-nothing in a new coat.
@@ -196,7 +203,7 @@ remedy without apologising.
 | Criterion | Met? | Evidence |
 |---|---|---|
 | 1. Lock and unlock from the kalender, persists across reload, keyboard-operable, visible focus, not drag-dependent | **yes** | Browser: keyboard-only Tab→Enter round trip against the real API; badge survives a full reload from PostgreSQL; focus ring 6.92:1; the control is in the non-drag panel, the E3-07 precedent |
-| 2. Label or icon not colour alone; honest copy; all strings in `nl.json`; no em dashes | **yes** | 🔒 **plus** the word "Vast"; the truth-telling decision is documented above and pinned by test 2; six keys added to `nl.json`; the catalogue-wide em-dash guard passes |
+| 2. Label or icon not colour alone; honest copy; all strings in `nl.json`; no em dashes | **yes** | 🔒 **plus** the word "Vast"; the truth-telling decision is documented above and pinned by test 2; seven keys added to `nl.json` (*corrected in fix round 1: said six*); the catalogue-wide em-dash guard passes |
 | 3. Proven at integration level against real PostgreSQL that a locked placement survives full regeneration while an unlocked `Voorgesteld` one is replaced | **yes** | `Een_vergrendeld_voorstel_overleeft_een_volledige_hergeneratie`, 153/153 integration tests, 0 skipped. No equivalent existed; the two near-misses are analysed above |
 | 4. Frontend tests cover the lock/unlock round trip and the error path | **yes** | Four new tests, 191/191 passing |
 | 5. Partial regeneration is E4-05 and is not claimed | **honoured** | Nothing was built for it; the new test's doc comment says so explicitly. `GenereerAsync` still takes no period scope |
@@ -248,3 +255,217 @@ remedy without apologising.
 None. Nothing here keys on planningsblok granularity (the E3-05 seam supplies the grid), on graadklas/menggroep
 handling, or on the school-wide-vs-per-class scoping question. `vergrendeld` is a property of a placement, which
 is already per klas.
+
+---
+
+## Fix round 1 — the copy now branches on the pair, and the delete trigger has its own weight
+
+The antagonist returned **VIOLATIONS FOUND** (3 MAJOR, 5 MINOR) on `889471d`, plus two owner rulings of
+2026-07-31. Every finding is addressed below, numbered as the orchestrator numbered them. **Nothing was
+disputed** — one finding (5) turned out to be worse than described, and my own fix for (7) was wrong on the
+first attempt and was caught in the browser.
+
+### 1 (MAJOR) — `vergrendelUitlegVast` was false on every locked non-`Voorgesteld` placement
+
+The section decided *whether* to render on `(status, vergrendeld)` but *which sentence* on `vergrendeld` alone.
+So a locked `Manueel` card read *"Dit thema staat vast, dus een hergeneratie laat het staan"* — asserting the
+lock as the reason it survives, which `IsVervangbaar` (`Voorgesteld && !Vergrendeld`) contradicts — and invited a
+"Losmaken" that cannot make the thema replaceable.
+
+**Fixed** by making the sentence a function of the whole state, in one place: `Themakaart.tsx`'s `slotUitleg`
+branches on `(isVervallen, isVoorstel, vergrendeld)`. A new key `vergrendelUitlegBeslistVast` says both halves the
+audit required: the lock is redundant, **and** unlocking will not free the thema.
+
+**Pinned** by `it.each(["Aanvaard","Manueel","Geweigerd"])` in `Jaarplankalender.test.tsx`, which asserts the
+rendered Dutch (and that each of the other three sentences is *absent*), not just the request body. The round-1
+test stood in exactly this state and asserted only `verzoeken[0].body`.
+
+### 2 (MAJOR, owner ruling) — "blijft staan" is not "telt mee voor de dekking"
+
+New key `vergrendelDekking`, rendered under **both** `Voorgesteld` branches: *"Vastzetten gaat over de planning,
+niet over de dekking: dit thema telt pas mee voor de dekking zodra het aanvaard is."*
+
+Phrased as a **condition, not an instruction**, deliberately: this screen has no accept control, and per the
+owner's ruling building one is E4-01/E4-02's obligation, not this story's. So the copy states the fact without
+pointing at a button that does not exist. **No accept button was built.** Not shown on a decided card (the
+question is settled there) and not on a rejected one (where it would be wrong about what the teacher decided).
+
+### 3 (MAJOR) — the regeneration claim is now scoped to the path that exists
+
+All four lock sentences say **"een hergeneratie van het hele jaarplan"**. E4-05 adds a second discard path and
+E4-07's preserve/overwrite rule is recorded as *"confirm with directie"*, so an unqualified "een hergeneratie" was
+a promise about unwritten code. A test asserts the qualifier is present in all four strings, so a later edit that
+drops it fails rather than quietly re-widening the claim.
+
+*Reported to the orchestrator for E4-05/E4-07 (not written into the backlog here): both strings must be
+re-verified once the preservation rule is settled.*
+
+### 4 (MINOR) — the comment now says what the rejection copy actually says
+
+`kalender.weigeringUitleg` explains the reversal only; it says nothing about regeneration. The comment claimed it
+explained "that the rejection stands". Rewritten to state the omission as a deliberate choice with its reason,
+and to record that *whether the rejection copy should mention regeneration is an owner question*, reported rather
+than decided.
+
+### 5 (MINOR) — a stale card gets no lock nudge at all
+
+Worse than described: a locked stale card also rendered *"Maak het los als de AI het opnieuw mag voorstellen"*,
+which is false there. Now:
+
+- stale **and unlocked** → no lock section, no `vergrendelNietNodig`. The single remedy is the period picker, and
+  the panel already says so at the top (`herplaatsKies`).
+- stale **and locked** → the control stays (otherwise the lock is stranded) with a new key
+  `vergrendelUitlegVervallen`, which points at choosing a period and offers only to remove the lock.
+
+Two tests, one per branch, and the state was looked at in a browser at both widths.
+
+### 6 (MINOR) — `vergrendelMislukt` no longer guarantees anything
+
+`MuteerPlaatsingAsync` commits before it derives the grid and projects, so a 500 from that tail leaves the lock
+persisted. Dropped *"Er is niets gewijzigd aan je jaarplan"* and replaced it with a reload, as the 404 branch
+does: *"Herlaad de pagina om te zien wat er nu in je jaarplan staat. Blijft dit terugkomen, meld het dan aan de
+beheerder van de tool."*
+
+### 7 (MINOR) — success is announced, and my first fix for it was wrong
+
+A `role="status"` sr-only region reports the **persisted** state by name: *"«Water» staat nu vast."* /
+*"«Water» staat niet meer vast."* (`aria-pressed` stays rejected: beside a label that flips it announces
+backwards.)
+
+**The first attempt put the region inside the lock section, and it was silent in the case that matters most.**
+Unlocking a decided placement removes that whole section, so the region unmounted in the same render that should
+have announced. Caught in the browser (`aankondiging: []`), not by the test I had just written. Moved to panel
+level; a second test now drives exactly that transition and asserts both that the section is gone and that the
+announcement is there.
+
+### 8 (MINOR, owner ruling) — the destructive trigger has its own weight
+
+New `destructiveOutline` Button variant: `border-attentie-ink bg-card text-attentie-ink`, used by "Uit deze
+periode halen" / "Uit het jaarplan halen".
+
+Why this resolution rather than the alternatives:
+
+- **Not extending the confirmation** to an unlocked proposal. That one-click rule is *ratified* (E3-07, from the
+  E3-01 audit) on the grounds that a run can re-propose it, and `VerwijderVervangbarePlaatsingen()` really does
+  delete it before the suggestion loop, so the premise holds. Overturning a ratified rule is not a fix round's to
+  do; making the control legible is.
+- **No new hue** (Art. XII): it is the same `attentie-ink` the `destructive` confirm button already uses, so the
+  delete family speaks one colour from trigger to confirmation. Lighter than `destructive`, because it is not yet
+  the point of no return and must not be mistaken for the confirm button it leads to.
+- **Not colour alone:** a solid dark border against the neutral button's pale `input` token is a *luminance*
+  difference (9.24:1 vs 3.16:1 against the same well), which survives monochrome, and the labels differ.
+
+A test asserts the two buttons no longer share a class list, so a refactor back to `outline` fails.
+
+### 9 (MINOR) — the records that did not survive counting
+
+Corrected in place above, marked as corrections: the key count (six → **seven**, and twelve after this round) and
+the "changes nothing observable" claim, narrowed to "changes no regeneration outcome and no dekking" in all four
+places (`JaarplanGeneratieService.cs`, `api.ts`, `Themakaart.tsx`, this worklog).
+
+### The exact copy now rendered, per state
+
+| `status` | `vergrendeld` | `isVervallen` | Control | Sentence(s) |
+|---|---|---|---|---|
+| Voorgesteld | no | no | **Vastzetten** | `vergrendelUitlegVrij` + `vergrendelDekking` |
+| Voorgesteld | yes | no | **Losmaken** | `vergrendelUitlegVast` + `vergrendelDekking` |
+| Aanvaard / Manueel | no | no | none | `vergrendelNietNodig` |
+| Aanvaard / Manueel / Geweigerd | yes | no | **Losmaken** | `vergrendelUitlegBeslistVast` |
+| Geweigerd | no | no | none | none (the weigering section stands alone) |
+| any | no | **yes** | none | none (only `herplaatsKies`, the one remedy) |
+| any | yes | **yes** | **Losmaken** | `vergrendelUitlegVervallen` |
+
+### Files changed in this round
+
+| File | Why |
+|---|---|
+| `frontend/src/i18n/nl.json` | 5 new keys (`vergrendelDekking`, `vergrendelUitlegBeslistVast`, `vergrendelUitlegVervallen`, `vergrendelVastgezet`, `vergrendelLosgemaakt`); 4 existing lock strings requalified; `vergrendelMislukt` rewritten. **12 `kalender.*` keys for this story in total.** |
+| `frontend/src/features/jaarplan/Themakaart.tsx` | `slotUitleg` (the pair, in one place), the `isVervallen` suppression, the dekking sentence, the panel-level live region, `destructiveOutline` on the delete trigger, and three comments corrected. |
+| `frontend/src/components/ui/button.tsx` | The `destructiveOutline` variant, with its reasoning and measured contrast beside the other variants. |
+| `frontend/src/features/jaarplan/api.ts` | The "nothing observable" claim narrowed. |
+| `backend/src/.../JaarplanGeneratieService.cs` | **Doc comment only, again no behaviour change** — same narrowing, plus why it is narrowed. |
+| `frontend/src/features/jaarplan/Jaarplankalender.test.tsx` | 9 new tests (200 total, was 191). |
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| `dotnet format --verify-no-changes` | ✓ clean |
+| `dotnet test` (unit) | ✓ **496 passed, 0 failed, 0 skipped** |
+| `dotnet test` (integration, real Postgres) | ✓ **153 passed, 0 failed, 0 skipped** |
+| `corepack pnpm lint` | ✓ eslint `--max-warnings 0` + `tsc --noEmit` clean |
+| `corepack pnpm test` | ✓ **200 passed** in 12 files (191 before this round) |
+| `corepack pnpm build` | ✓ built; `.border-attentie-ink` and `hover:bg-attentie-zacht` verified present in `dist/assets/*.css`, so the new variant is not a class that generates no CSS |
+
+**One honest note on the integration run.** The first `dotnet test` over the whole solution reported
+**7 failed / 146 passed**, every failure an Npgsql connect timeout inside `PostgresTestDatabase.MaakAsync`. Not
+this story's code and not flaky tests: two other agents were running an API and a Vite server out of other
+worktrees at the time (`e3-08-zoom`, `agent-a8b6127bb7255ef99`), and 15 stray `jp_test_*` databases were still on
+the server. Re-run on its own, the integration project is **153/153, 0 skipped**. Recorded because a reader of
+the log would otherwise see a red run with no explanation.
+
+### Browser pass — real API, real PostgreSQL, 1440px and exactly 390px
+
+Playwright MCP is down, so headless Chrome driven over **CDP from Bash** (Node 24's global `WebSocket`, no deps),
+which is what let this round *interact* rather than only screenshot. `Emulation.setDeviceMetricsOverride` gives an
+exactly 390px viewport, so the `--window-size` clamp near 504px never applies. Own ports (API **5407**, Vite
+**5307**) and a throwaway `jaarplanner_e406b` database, migrated from the real migrations and dropped afterwards.
+
+**Seven placements, covering every row of the table above** — including the two states round 1 never looked at:
+
+- `Manueel` **+ locked** (Verkeer) and `Aanvaard` **+ locked, stale** (Op reis, stored on 2027-04-10, inside the
+  Paasvakantie so no block starts there), plus a stale unlocked proposal (Feesten in december).
+- Every card rendered the sentence its state maps to and no other. Verified by reading the DOM per card, not by
+  eye alone; then looked at, at both widths.
+
+**Keyboard only, no pointer:** focus the "Losmaken" on the locked `Manueel` card, `Input.dispatchKeyEvent` Enter →
+the PUT fires, the badge goes, the panel flips to `vergrendelNietNodig`, the live region says *"«Verkeer» staat
+niet meer vast."*, and a **full reload** shows the unlock read back from PostgreSQL. Same round trip in the other
+direction on the `Voorgesteld` card (*"«Water» staat nu vast."*).
+
+**Composited contrast, every alpha layer flattened, measured in the browser:**
+
+| Element | Colour | Against | Ratio | Needs |
+|---|---|---|---|---|
+| `vergrendelDekking` (new), 12px/400 `text-ink-zacht` | `rgb(83,101,110)` | `rgb(248,247,244)` panel well | **5.66:1** | 4.5 |
+| `vergrendelUitlegBeslistVast` (new), same token | `rgb(83,101,110)` | `rgb(248,247,244)` | **5.66:1** | 4.5 |
+| `vergrendelUitlegVervallen` (new), same token | `rgb(83,101,110)` | `rgb(248,247,244)` | **5.66:1** | 4.5 |
+| **`destructiveOutline` label**, 14px/600 | `rgb(103,54,20)` | `rgb(255,255,255)` button fill | **9.24:1** | 4.5 |
+| **`destructiveOutline` border** (SC 1.4.11) | `rgb(103,54,20)` | `rgb(248,247,244)` | **9.24:1** | 3.0 |
+| `destructiveOutline` label on hover | `rgb(103,54,20)` | `rgb(254,248,236)` = `attentie-zacht` | **9.39:1** | 4.5 |
+| neutral `outline` border beside it (unchanged) | `rgb(150,138,115)` | `rgb(248,247,244)` | **3.16:1** | 3.0 |
+| focus ring token on the panel well | petrol `rgb(22,81,90)` | `rgb(248,247,244)` | **8.29:1** | 3.0 |
+
+**390px:** viewport exactly 390. At rest `documentElement.scrollWidth === 390`, and **no element outside a
+designated scroll region exceeds the viewport** in any state (checked by walking every node and its ancestors for
+`overflow-x: auto|scroll`). Both buttons 220×36 with 23px between them.
+
+*One pre-existing oddity, deliberately not "fixed" here.* Opening the edit panel of the **rejected** card in
+period 3 makes `documentElement.scrollWidth` read 690 while `body.scrollWidth` stays 390 and **zero** laid-out
+elements sit outside a scroll region. It is not this story's: the card it happens on has no lock section at all,
+and the cards that do have one (Wonen, Herfst en oogst) keep it at 390. Reported to the orchestrator rather than
+chased, because a fix would be inside E3-06/E3-07's ribbon.
+
+### `frontend-design` skill
+
+Re-invoked for this round. It drove three decisions: the dekking sentence is a **separate paragraph** rather than
+a longer first sentence (one idea per line, and it is the same fact in two states, so duplicating the string
+would have invited them to drift); the `destructiveOutline` variant reuses `attentie-ink` instead of introducing
+a chrome accent; and no heading was added to the lock section, again, even though it now holds two sentences.
+
+### Deliberately left
+
+- **`IsVervangbaar` untouched** and **no status guard on `WijzigVergrendelingAsync`**, as instructed. The
+  permissiveness is now documented as a decision with its reason.
+- **No accept control** on the kalender (owner ruling: E4-01/E4-02).
+- Round 1's finding 2 (the `Een_verplaatste_plaatsing_overleeft_een_hergeneratie` precedent living in the unit
+  suite, not the integration one) still stands as a note for whoever edits the story text.
+
+### Open questions for the orchestrator / owner
+
+1. **Should `kalender.weigeringUitleg` say that a rejection survives a regeneration?** Today it explains only how
+   to reverse the rejection. Adding it would be true; it would also put a third sentence on a card whose one open
+   decision is the reversal. Owner question, reported not decided (finding 4).
+2. **`vergrendelUitlegVast` and `vergrendelNietNodig` must be re-verified when E4-07's preserve/overwrite rule is
+   settled**, and again when E4-05 lands its second discard path (finding 3).
+3. The 390px `documentElement.scrollWidth` observation above, for E3-06/E3-07.

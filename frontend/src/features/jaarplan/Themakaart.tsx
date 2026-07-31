@@ -47,6 +47,11 @@ import {
  * lives in the "Aanpassen" panel; what is deliberately *not* implied here is that only a locked thema survives a
  * regeneration. It does not: anything the teacher accepted, adjusted or rejected survives too, and the panel says
  * so rather than leaving the badge's absence to be read as "this one is disposable".
+ *
+ * **Nor does the lock make a thema count.** Only `aanvaard`/`manueel` placements count as placed for the dekking,
+ * so a locked `voorgesteld` thema is safe from the AI and worth nothing to an onderwijsinspectie. The panel draws
+ * that distinction in words (owner ruling, 2026-07-31); the accept control that resolves it is **E4-01/E4-02's**,
+ * deliberately not built here, so the copy states the condition rather than pointing at a button.
  */
 export interface ThemakaartProps {
   plaatsing: Themaplaatsing;
@@ -235,32 +240,90 @@ function Bewerkpaneel({
   const moetBevestigen = plaatsing.status !== "Voorgesteld" || plaatsing.vergrendeld;
 
   /**
-   * Whether locking this placement would change anything a teacher can observe (E4-06, FR-8.4).
+   * Whether locking this placement would change a regeneration outcome (E4-06, FR-8.4).
    *
    * The server discards exactly the placements that are `Voorgesteld && !vergrendeld`
    * (`Themaplaatsing.IsVervangbaar`), so **an accepted, manual or rejected placement already survives a
-   * regeneration without any lock.** Offering "Vastzetten" there would be a switch with no observable effect, which
-   * is the control-that-does-nothing this project banned after E3-06, in a new coat.
+   * regeneration without any lock.** Offering "Vastzetten" there would be a switch that changes no regeneration
+   * outcome and no dekking, which is the control-that-does-nothing this project banned after E3-06, in a new coat.
+   *
+   * *Precisely: it is not observably inert.* Locking a decided placement does show the "Vast" badge and does change
+   * the sentence in this panel. What it cannot change is whether a run replaces the placement, or whether the thema
+   * counts as placed. Recorded exactly because an earlier revision of this comment claimed it changed "nothing
+   * observable", and that absolute claim is the load-bearing justification for hiding the control.
    *
    * It is not merely inert *today* either: no transition anywhere returns a placement **to** `Voorgesteld` (the
    * status endpoint refuses that status, and a run only ever inserts new placements), so a lock set on a decided
    * placement could never become load-bearing later. That is what rules out keeping the control visible as a
    * "durable intent".
    */
-  const slotDoetIets = plaatsing.status === "Voorgesteld";
+  const isVoorstel = plaatsing.status === "Voorgesteld";
 
-  // Already locked, whatever the status: the control stays, because a state a teacher produced and cannot undo is
-  // worse than an inert one. Reachable in practice — lock a proposal, then accept it.
-  const toonSlot = slotDoetIets || plaatsing.vergrendeld;
+  /**
+   * Whether the lock section appears at all, and with a control or only a sentence.
+   *
+   * Three axes, not two, because the audit of build round 1 found the section deciding *whether* to render on
+   * `(status, vergrendeld)` while deciding *which sentence* on `vergrendeld` alone — so a locked `Manueel` card
+   * read "een hergeneratie laat het staan **omdat** het vast staat" and invited a "Losmaken" that changes no
+   * outcome. Every combination now gets copy that is true of it, and {@link slotUitleg} is the single place the
+   * pairing is decided.
+   *
+   * **A stale placement gets no lock nudge** (`isVervallen`). Its own remedy is re-placement, stated at the top of
+   * this panel: locking one instead pins the card at a date that is no longer a period boundary, so the "dekking
+   * onbetrouwbaar" state would survive every regeneration where before it was self-healing. An *already* locked
+   * stale card keeps the control, so the lock stays undoable, but the sentence points at the period rather than at
+   * the lock.
+   */
+  const toonSlot = plaatsing.isVervallen
+    ? plaatsing.vergrendeld
+    : isVoorstel || plaatsing.vergrendeld;
 
   // And where there is no control, the fact is stated instead, because the inverse silence is the more damaging
   // lie: an accepted thema with no "Vast" badge otherwise looks discardable, which invites pointless locking.
-  // Not for a rejected one — the panel already explains that the rejection stands and how to reverse it, and
-  // "a hergeneratie laat dit staan" beside that is true and useless.
-  const toonSlotOverbodig = !toonSlot && !isGeweigerd;
+  //
+  // Two exceptions. A **stale** card: see above, one remedy only. And a **rejected** one, which is a deliberate
+  // omission rather than a duplicate: `kalender.weigeringUitleg` says the thema is rejected and how to reverse
+  // that, and says nothing about regeneration, so nothing here repeats. Adding "een hergeneratie laat dit staan"
+  // beside it would be true and would pull attention off the one decision that card is waiting for. *Whether the
+  // rejection copy should itself state that a rejection survives a regeneration is an owner question, reported
+  // with this fix round, not decided here.*
+  const toonSlotOverbodig = !toonSlot && !isGeweigerd && !plaatsing.isVervallen;
+
+  /** The one sentence that is true of this exact `(status, vergrendeld, isVervallen)` state. */
+  const slotUitleg = plaatsing.isVervallen
+    ? t("kalender.vergrendelUitlegVervallen")
+    : !isVoorstel
+      ? // Locked, but the teacher already decided: the lock is redundant AND unlocking will not make the thema
+        // replaceable, because `IsVervangbaar` needs `Voorgesteld`. Both halves have to be said, or the teacher
+        // clicks "Losmaken" expecting the AI to reconsider and nothing happens.
+        t("kalender.vergrendelUitlegBeslistVast")
+      : plaatsing.vergrendeld
+        ? t("kalender.vergrendelUitlegVast")
+        : t("kalender.vergrendelUitlegVrij");
 
   return (
     <div id={id} className="mt-2.5 flex flex-col gap-3 rounded-md bg-paper-diep/60 p-2.5">
+      {/* Success announced, not only failure (WCAG 2.2 SC 4.1.3). The failure paths have `role="alert"`; before
+          this round a *successful* lock was silent to a screen reader, which got a label that flipped and a badge
+          appearing somewhere above with no announcement. `aria-pressed` was rejected on purpose (beside a label
+          that flips it announces backwards: "Losmaken, ingedrukt"), which left nothing in its place.
+
+          **Deliberately at panel level, outside the lock section.** The first version of this fix sat inside that
+          section and was silent in the one case that matters most: unlocking a decided placement removes the whole
+          section (the sentence becomes "Vastzetten hoeft hier niet"), so the region unmounted in the same render
+          that would have announced. Caught in the browser, not by a test — the announcement was simply absent.
+
+          Keyed on the persisted `plaatsing.vergrendeld`, so it reports what the server stored rather than what was
+          requested. It alternates on every toggle, so the text always changes and the region always fires;
+          `isPending` empties it first, which is the change that lets a repeat announce. */}
+      <p role="status" className="sr-only">
+        {vergrendeling.isSuccess
+          ? plaatsing.vergrendeld
+            ? t("kalender.vergrendelVastgezet", { thema: plaatsing.themaNaam })
+            : t("kalender.vergrendelLosgemaakt", { thema: plaatsing.themaNaam })
+          : ""}
+      </p>
+
       {plaatsing.isVervallen && (
         <p className="text-xs leading-snug text-attentie-ink">{t("kalender.herplaatsKies")}</p>
       )}
@@ -339,11 +402,16 @@ function Bewerkpaneel({
         <div className="flex flex-col gap-1.5 border-t border-border pt-2.5">
           {toonSlot ? (
             <>
-              <p className="text-xs leading-snug text-ink-zacht">
-                {plaatsing.vergrendeld
-                  ? t("kalender.vergrendelUitlegVast")
-                  : t("kalender.vergrendelUitlegVrij")}
-              </p>
+              <p className="text-xs leading-snug text-ink-zacht">{slotUitleg}</p>
+              {/* The distinction the kalender otherwise never draws, and the reason the nudge above is safe to
+                  ship (owner ruling, 2026-07-31). Locking keeps a thema in its period; only `aanvaard` or
+                  `manueel` makes it count as placed for the dekking (the binding reading in E5), and a locked
+                  `voorgesteld` placement counts for nothing there. Stated as the condition rather than as an
+                  instruction, because this screen has no accept control yet: that affordance is E4-01/E4-02's,
+                  deliberately not built here. Only on a proposal, where "aanvaard" is still ahead of the teacher. */}
+              {isVoorstel && !plaatsing.isVervallen && (
+                <p className="text-xs leading-snug text-ink-zacht">{t("kalender.vergrendelDekking")}</p>
+              )}
               {/* A toggle whose **label** changes, deliberately without `aria-pressed`: the two together are
                   announced as "Losmaken, ingedrukt", which reads as the opposite of the state it is in. The card
                   face carries the state as a badge (icon AND the word "Vast", never colour alone — Art. XII).
@@ -379,6 +447,8 @@ function Bewerkpaneel({
                     : t("kalender.vergrendelMislukt")}
                 </Foutmelding>
               )}
+              {/* The success announcement is at panel level, not here: see the note on the `role="status"` region
+                  at the top of this panel for why it cannot live inside this section. */}
             </>
           ) : (
             <p className="text-xs leading-snug text-ink-zacht">{t("kalender.vergrendelNietNodig")}</p>
@@ -446,10 +516,14 @@ function Bewerkpaneel({
             </div>
           </>
         ) : (
+          /* `destructiveOutline`, not `outline`: this is the one control in the panel that cannot be undone, and
+             on the newly common card (an unlocked proposal) it fires the DELETE on a single click. It used to be
+             visually identical to the reversible buttons stacked directly above it, separated at 390px by a
+             hairline. See the variant's own note for the reasoning and the measured contrast. */
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="destructiveOutline"
             disabled={bezig}
             onClick={() => {
               if (moetBevestigen) {

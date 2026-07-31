@@ -125,9 +125,13 @@ export function wijzigPlaatsingStatus(
  * **The flag only changes an outcome for a `Voorgesteld` placement.** The server discards exactly the placements
  * that are `Status === Voorgesteld && !Vergrendeld`, so an accepted, manual or rejected placement already survives a
  * run with no lock at all. The endpoint accepts the call for any status anyway, and deliberately so (see
- * `JaarplanGeneratieService.WijzigVergrendelingAsync`); it is `Themakaart` that only offers it where it does
- * something, because a switch with no observable effect is the control-that-does-nothing this project banned after
+ * `JaarplanGeneratieService.WijzigVergrendelingAsync`); it is `Themakaart` that only offers it where it changes an
+ * outcome, because a switch that changes no outcome is the control-that-does-nothing this project banned after
  * E3-06.
+ *
+ * *Stated as "no outcome", not "nothing observable":* locking a decided placement does show the "Vast" badge and does
+ * change the sentence in the edit panel. What it cannot change is whether a regeneration replaces the placement, or
+ * whether the thema counts as placed for the dekking.
  *
  * Answers with the whole updated plan, like the other three edits, so the board re-renders from one response.
  */

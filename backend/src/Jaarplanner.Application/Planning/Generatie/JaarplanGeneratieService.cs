@@ -443,11 +443,18 @@ public sealed class JaarplanGeneratieService
     /// <b>But the lock is only load-bearing for a <c>voorgesteld</c> placement</b>, because
     /// <see cref="Themaplaatsing.IsVervangbaar"/> is <c>Status == Voorgesteld &amp;&amp; !Vergrendeld</c>: anything a
     /// human has decided on already survives a run without any lock. Locking an <c>aanvaard</c> placement therefore
-    /// changes nothing observable, and — since no transition anywhere returns a placement <i>to</i> <c>voorgesteld</c>
-    /// (<see cref="WijzigPlaatsingStatusAsync"/> refuses that status outright, and a run only ever inserts new rows) —
-    /// it can never become load-bearing later either. Not offering that call is the <b>caller's</b> job, and the
-    /// kalender does exactly that: it shows the lock control where it does something, and states the fact where it
-    /// would not. Keeping the rule in one place, on <c>IsVervangbaar</c>, is why this method stays permissive.
+    /// changes <b>no regeneration outcome and no dekking</b>, and — since no transition anywhere returns a placement
+    /// <i>to</i> <c>voorgesteld</c> (<see cref="WijzigPlaatsingStatusAsync"/> refuses that status outright, and a run
+    /// only ever inserts new rows) — it can never become load-bearing later either. Not offering that call is the
+    /// <b>caller's</b> job, and the kalender does exactly that: it shows the lock control where it changes an outcome,
+    /// and states the fact where it would not. Keeping the rule in one place, on <c>IsVervangbaar</c>, is why this
+    /// method stays permissive.
+    /// </para>
+    /// <para>
+    /// <i>Narrowed deliberately, from an earlier "changes nothing observable"</i> (E4-06 fix round 1). It does change
+    /// something a teacher sees: the "Vast" badge appears and the edit panel's sentence changes. Only the outcomes are
+    /// unaffected, and since the absolute version of this claim is what justifies hiding the control, overstating it
+    /// here would make the UI decision look better founded than it is.
     /// </para>
     /// </summary>
     /// <exception cref="SchoolcontentNietGevondenFout">The class or the placement does not exist.</exception>
