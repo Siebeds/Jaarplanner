@@ -111,3 +111,176 @@ types is established precedent here; requests were not. Left as-is.
 - **Where does a schoolfeest live** — `Schoolsluiting(VrijeDag)` on the schooljaar (beheerder, FR-12.1) or a transient
   `VastMoment` (leerkracht, FR-5.4)? The code states a boundary; the school has not agreed one.
 - **The open-day vs calendar-day prompt gap** above.
+
+---
+
+# Persistence half (E3-04, 2026-07-31)
+
+**Branch:** `story/E3-04-persistentie`, based on `main` (`b44c869`).
+**Ref:** FR-5.4, FR-8, Art. II.2/II.3 (as amended `e420648`), Art. IV.1/IV.2/IV.5/IV.6, Art. IX.3, Art. X, Art. XII,
+ADR-0020 §3.
+
+The owner ruled on 2026-07-30 that the generation settings must be **kept**. This is that ruling, in the four parts it
+names: an entity + table + migration, a form that loads what was saved, a generation path that reads the saved settings
+when it is handed none, and the copy correction the ruling made mandatory.
+
+## What was built
+
+| Layer | Change |
+| --- | --- |
+| Domain | `Generatieparameters` aggregate + owned `BewaardStartthema` / `BewaardVastMoment` |
+| Infrastructure | `GeneratieparametersConfiguration`, `DbSet`, `EfJaarplanOpslag` load/add, migration `20260730191341_GeneratieparametersPerKlasEnSchooljaar` |
+| Application | `JaarplanGeneratieParameters` re-keyed + `Van` / `NaarBewaard` / `Genormaliseerde*`; `IJaarplanOpslag` +2 members; `GenereerAsync` persist-or-read; `HaalParametersAsync`; `ParameterRapport.VervallenStartthemas` |
+| Api | `GET …/jaarplan/parameters` |
+| Frontend | `useGeneratieparameters`, `haalGeneratieparameters`, form rewrite (loads settings, date-keyed rows, stranded-setting notice), a `Parameteroverzicht` line, `nl.json` |
+
+## (a) Scoping: the key is `(KlasId, SchooljaarId)`, and the school-year half is load-bearing
+
+The ruling says "per klas", and `KlasId` **alone would in fact be safe today**. It is worth being precise about why I did
+not use it: `Klas.SchooljaarId` is immutable — no mutator exists, `Wijzig` touches only naam and leerjaar, and the type's
+own doc says moving a class between years is a copy operation (E8-03), not a rename. So a klas cannot carry its settings
+into a new year.
+
+But that safety is borrowed from a **neighbouring aggregate's** invariant, expressed in a doc comment and in the absence
+of a setter. Everything stored here is a **date**: a schoolfeest on 2026-09-15 and a block starting 2026-09-01 mean
+nothing in 2027-2028, and loading them into next year's form would put a stale constraint in front of a teacher as if
+they had set it. The brief asked for a key that makes that **impossible**, not unlikely, so the school year is part of
+the key *and* part of the lookup predicate. A row written for another year is then not merely ignored: it is a different
+row, and the query finds nothing rather than last year's dates. Pinned twice — against the fake
+(`Bewaarde_parameters_van_een_ander_schooljaar_worden_niet_gelezen`) and against real Postgres
+(`Parameters_van_twee_schooljaren_staan_naast_elkaar_en_worden_niet_verward`).
+
+Cost: one column, one FK (`Restrict`, mirroring `SchooljaarConfiguration`'s treatment of `Klas`) and one composite
+unique index. Cheap enough that "it is safe because another class has no setter" was not worth relying on.
+
+## (b) Keying: storage **and** the request key on `blokStart`
+
+Storage keys on the block's start date, as the brief required. I also **aligned the request contract**, which the
+backlog framed as an open judgement call, for the reason it gave: there is exactly one consumer, the app has no deployed
+users, and keeping two keying schemes means writing a position↔date mapping at the boundary, which is where the bug
+would live. `gewensteStartthemas` is now `{ blokStart, themaNaam }[]`.
+
+The backlog's prediction held exactly. Every awkward part of the form existed only to survive the ordinal, and all of it
+is gone:
+
+- the **growing list** (show the filled rows plus one) — every period is now an independent live row;
+- the **clear-cascade** that wiped later periods, and the copy explaining it (`startthemasWisUitleg`, deleted);
+- the **"a gap must be unexpressible"** rule — a gap is now simply "no preference for that period";
+- `startthemasAlleGevuld`, which only meant anything for a contiguous prefix.
+
+Normalisation moved with the key: de-duplication is now per **block** (one period opens with one thema, enforced by the
+aggregate *and* by a unique index) rather than per **name**. The same thema in two different periods is now expressible
+and is deliberately allowed — it is a plan a teacher may genuinely want, and it is not contradictory.
+
+## The stale `blokStart`, surfaced in both places
+
+A stored `blokStart` stops being a block start when a beheerder edits the vakantiedata. The brief asked for one visible
+treatment; there are two, because they answer different questions and both were cheap:
+
+1. **In the form, before a run, outside the collapse.** A named notice ("Water, bewaard voor de periode vanaf 5 okt")
+   with a **Weghalen** button per entry. Outside the collapse because the setting is still being sent, and inside a
+   panel that is closed by default it would be invisible — the exact defect UI audit round 2 finding 1 recorded.
+2. **In `ParameterRapport.VervallenStartthemas`**, so a run through any client says the same thing and the server never
+   silently drops an entry it cannot use.
+
+The setting is **kept and still sent**, not dropped: reverting the vakantie edit restores it, and the teacher resolves it
+explicitly. Nothing guesses a neighbouring period — directie's ruling of 2026-07-28 for placements, applied to the
+parameter that persistence made durable enough to hit it. The prompt skips it, because telling the model to use a date
+that starts no block would contradict the system prompt's own "use only these blocks" rule. Six tests cover it: two
+backend unit, one backend over HTTP, three frontend.
+
+## Order: validate → persist → model
+
+`GenereerAsync` commits the settings **before** the AI call and before the plan is touched. Model binding rejects a
+malformed body first (a vast moment without `blokkeertPlaatsing` is still a 400 and stores nothing), so a failed
+generation costs the teacher nothing they typed. Not hypothetical: this environment has no `AzureAI:ApiKey`, so the
+client throwing *is* the common path. Pinned by `Een_mislukte_generatie_verliest_de_ingevulde_parameters_niet`, which
+also asserts the plan stayed untouched (Art. IV.5).
+
+**No separate "Bewaren" button**, per the ruling. That makes "a body" and "no body" mean different things, deliberately:
+a body **replaces** the kept settings, no body **uses** them. An explicitly empty body is therefore the only way to clear
+them, and it is what the form sends when a teacher empties a field. The form reports only *edits*; the kalender falls
+back to the settings it loaded, so an untouched form sends exactly what was saved, and a form still loading sends no body
+at all (which makes the server use the saved settings anyway, never an accidental wipe). An earlier draft pushed the
+loaded settings upward from an effect; it worked but produced React `act()` warnings in a neighbouring test file, and the
+fallback is simpler.
+
+## Regeneration (point 3): the seam E4 inherits
+
+E4's regeneration UI is not built and was not built here. What is owed is that the persisted parameters are what the
+**generation path** reads, and they are: `GenereerAsync(klasId)` with no parameters loads them. A period marked bezet
+stays bezet on the next run, and E4-04/E4-05 get the behaviour by calling the service rather than by adding it.
+`Een_tweede_run_zonder_body_honoreert_de_bewaarde_parameters` is the load-bearing test; the HTTP test asserts the same
+over the wire, including that an empty body then clears the settings again.
+
+## A real defect found on the way, and it was not this story's
+
+**A new `Themaplaatsing` added to an already-persisted `Jaarplan` was tracked as `Modified`, not `Added`.** EF's default
+for a Guid key is `ValueGenerated.OnAdd`, and when `DetectChanges` finds an untracked entity in a **loaded** parent's
+collection it decides Added-vs-Modified from whether the key is already set. `Themaplaatsing.Id` is assigned in the
+constructor, so `SaveChanges` issued an UPDATE for a row that does not exist:
+`DbUpdateConcurrencyException: Attempted to update or delete an entity that does not exist in the store`.
+
+**That is any second generation run that adds a thema** — the ordinary FR-8 case, and the second time a teacher presses
+the button. It was invisible because every green path so far either created the plan and its placements in one
+`SaveChanges`, or regenerated with an answer that added nothing (empty, refused or duplicate). No browser session caught
+it either, because generation 500s here without an API key.
+
+Fixed with `ValueGeneratedNever()` on the owned-collection keys: `themaplaatsingen`, both new tables, and
+`schoolsluitingen` as hardening (same shape, unreachable today because a schooljaar is created with its closures in one
+call, and E6-03 still owns editing them). Metadata only — `dotnet ef migrations has-pending-model-changes` reports no
+schema diff for the existing tables. Regression tests:
+`JaarplanPersistentieTests.Een_plaatsing_toevoegen_aan_een_bestaand_plan_slaagt` and
+`GeneratieparametersPersistentieTests.Een_moment_vervangen_door_een_ander_slaagt_op_een_bestaande_rij`.
+
+Fixed rather than filed, on this story's own precedent for the Postgres FORCE-drop flake: I could not demonstrate
+E3-04's headline criterion without it. **`DoelKoppeling`'s owned collections are unaffected** — they have no explicit
+key, so EF's shadow int key is unset on a new instance and the state resolves correctly.
+
+*How it was found is the reusable part.* The first version of the HTTP test discarded the status code of two of its four
+POSTs. One of them was already returning 500. The failure surfaced two requests later and looked mysterious for twenty
+minutes. Every POST in that test now asserts its status, which is the same lesson E3-07 recorded about asserting the
+premise rather than trusting it.
+
+## Copy (point 4)
+
+`parameters.uitleg` said *"Deze instellingen gelden voor deze generatie: genereer je later opnieuw, vul ze dan opnieuw
+in"* — true before this commit and false after it. It now says the settings stay saved for this class, and that removing
+something and generating again is how you clear it. Changed in the same commit as the persistence, as the ruling
+required. Nine keys added, two deleted, no em dashes (guarded catalogue-wide by the existing test).
+
+**No Art. II.3 log entry is owed:** every new user-facing string is authored by the frontend and lives in `nl.json`. The
+one new backend message (`Vervang`'s duplicate-block guard) is an English `ArgumentException` for a programmer error the
+application layer already prevents, which is what Art. II.2 asks for.
+
+Plurals: three new counts (`samenvattingVervallen*`, `vervallenTitel*`, `rapportVervallen*`) all route through `tAantal`
+with real singular copy, and the **singular** is the case the tests assert. This project has shipped *"1 thema's"* four
+times.
+
+## Gates (real numbers, run from Bash)
+
+- `dotnet format --verify-no-changes` — **exit 0**. `dotnet build` — **0 warnings, 0 errors**.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (`Host=127.0.0.1`, `SSL Mode=Disable`, native Postgres 17):
+  **475 unit + 109 integration passed, 0 failed, 0 skipped.**
+- `corepack pnpm install` (this worktree needed its own), `corepack pnpm lint` — **exit 0**; `corepack pnpm test` —
+  **122 passed / 9 files, 0 failed**, and **0 React `act()` warnings**; `corepack pnpm build` — **exit 0**.
+  *(One earlier `pnpm build` invocation died with exit `3221225794` = `STATUS_DLL_INIT_FAILED`, a Windows
+  process-launch failure under load rather than a compile error. Clean on re-run; recorded so nobody re-debugs it.)*
+- The migration is applied to a scratch database by the `[PostgresFact]` fixtures, which migrate from the real
+  migrations, and the round-trip is asserted against **real PostgreSQL** rather than the in-memory provider: eight new
+  `GeneratieparametersPersistentieTests` covering the round-trip, the `date` mapping, the absence of any ordinal column,
+  both unique indexes, both FKs, replace-deletes-rows, replace-with-a-different-row, the klas cascade and the column
+  length.
+
+## Deliberately left undone
+
+- **A `gewenst startthema` is still advisory.** The ruling says persistence weakens the old argument and then says not to
+  act on it in the same change. Not acted on.
+- **No live AI round-trip.** The same residual E3-01/E3-02/E3-04 already record: no `AzureAI:ApiKey` here, so generation
+  returns 500 and the UI correctly says *"nu niet beschikbaar"*. End-to-end enforcement is covered over HTTP with a stub
+  client.
+- **Not opened in a browser.** The gates are green and the flow is asserted over HTTP through the real DI container, but
+  CLAUDE.md's *"look at it before claiming it works"* has **not** been satisfied for the new stranded-setting notice or
+  for the all-periods row list at ~390px. This is the one gap in this entry and the test-runner should close it.
+- **The open-day vs calendar-day prompt gap** (this story's existing clause) is untouched.
+- **E4's regeneration UI** is not built, by instruction.
