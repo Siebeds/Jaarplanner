@@ -119,7 +119,7 @@
 
 ### FR-2 — Doelen doorzoeken (added 2026-07-29)
 
-- [ ] **E1-16 — Doelen-UI: doorzoeken, filteren en één doel inspecteren** — *added 2026-07-29: the nav has a "Doelen" item and no story owned the screen behind it*
+- [~] **E1-16 — Doelen-UI: doorzoeken, filteren en één doel inspecteren** — *added 2026-07-29: the nav has a "Doelen" item and no story owned the screen behind it; **claimed 2026-07-31** on `feature/e1-curriculum-content`*
   The teacher-facing screen for the imported curriculum: browse and search all `Leerplandoel`s (and, once **E1-12** lands, the `Minimumdoel`s), filter by discipline / domein / subdomein / doelsoort / jaarFase, and open **one doel** to read its full text, voorbeelden, toelichting, woordenschat and its concordance to a minimumdoel.
   *Why this story exists:* found the way E0-10 and E2-08 were found. The information architecture in [`docs/ux/ui-ux-approach.md` §3](../docs/ux/ui-ux-approach.md) lists **Doelen** as the first primary destination — *"browse/filter Op.stap leerplandoelen + minimumdoelen (read-only)"* — and **no story in E0–E8 owned it.** The neighbours only look like they cover it and do not: **E2-06** lists solely the *ongekoppelde* doelen (FR-4.4), **E5-03** filters by doelsoort inside the *coverage* view (FR-9.2), and **E1-03/E1-04** import the data without giving anyone a way to read it. So the app can hold the entire Op.stap curriculum and a teacher cannot look up a single doel. E0-10 shipped the nav item pointing at a placeholder, which is honest but leaves the destination unbuilt.
   *Done when:* a teacher can, on screen —
