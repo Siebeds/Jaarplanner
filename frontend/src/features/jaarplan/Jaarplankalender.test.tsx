@@ -832,3 +832,261 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
     expect(within(kaart("Water")).getByText("Water")).toBeInTheDocument();
   });
 });
+
+/**
+ * E3-08: switching the zoom between the two ratified tiers (FR-6.3, Art. IX.3).
+ *
+ * What is pinned here is not "a toggle toggles". It is the four things the finer tier could easily get wrong, each
+ * of which would misinform a teacher about their own plan:
+ * 1. **one grid, one truth** — the tier is a `/rooster` argument, and the spine, the board's accessible name and
+ *    every column heading come from that single answer, so the two views on this screen cannot disagree about which
+ *    period an ordinal means;
+ * 2. **the tiers are cached apart** — without the tier in the query key they share one entry, and a switch renders
+ *    the other grain's blocks for a moment;
+ * 3. **a thema is drawn once, where the data says it is** — a placement keys on a *themaperiode* start and nothing
+ *    records which weeks inside it the thema occupies, so it appears in the parent's first sub-block only and the
+ *    parent's other sub-blocks are honestly empty;
+ * 4. **a healthy plan is not declared stale** — the coincidence that a themaperiode and its first subthemaperiode
+ *    share a start date is what keeps the non-dismissible "Te herzien" panel shut here, and a coincidence is exactly
+ *    the kind of thing to assert rather than to reason about.
+ */
+describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
+  /**
+   * The same two themaperiodes, subdivided the way `GeconfigureerdePlanningsblokIndeling` subdivides them: each
+   * coarse block is split into `round(dagen / 14)` near-equal parts, so **the first part of a parent starts on the
+   * parent's own start date**. That property is what test 4 rests on, so the fixture has to have it.
+   */
+  const fijnRooster: Planningsrooster = {
+    ...rooster,
+    niveau: "Subthemaperiode",
+    blokken: [
+      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-16", ouderOrdinaal: 1, aantalOpenDagen: 16 },
+      { ordinaal: 2, start: "2026-09-17", eind: "2026-10-02", ouderOrdinaal: 1, aantalOpenDagen: 16 },
+      { ordinaal: 3, start: "2026-10-03", eind: "2026-10-17", ouderOrdinaal: 1, aantalOpenDagen: 15 },
+      { ordinaal: 4, start: "2026-10-18", eind: "2026-11-01", ouderOrdinaal: 1, aantalOpenDagen: 15 },
+      { ordinaal: 5, start: "2026-11-09", eind: "2026-11-22", ouderOrdinaal: 2, aantalOpenDagen: 14 },
+      { ordinaal: 6, start: "2026-11-23", eind: "2026-12-06", ouderOrdinaal: 2, aantalOpenDagen: 14 },
+      { ordinaal: 7, start: "2026-12-07", eind: "2026-12-20", ouderOrdinaal: 2, aantalOpenDagen: 14 },
+    ],
+  };
+
+  /** Serves the grid the request asks for, and records every rooster URL so the *request* can be asserted too. */
+  function stubZoom(jaarplan: Jaarplan) {
+    const roosterUrls: string[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+        }
+        // Routed before /jaarplan, whose URL it extends. See the note on the stub at the top of this file.
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(
+            JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }),
+            { status: 200 },
+          );
+        }
+        if (url.includes("/rooster")) {
+          roosterUrls.push(url);
+
+          return new Response(
+            JSON.stringify(url.includes("niveau=Subthemaperiode") ? fijnRooster : rooster),
+            { status: 200 },
+          );
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(jaarplan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    return roosterUrls;
+  }
+
+  const knop = (sleutel: "kalender.weergaveGrof" | "kalender.weergaveFijn") =>
+    within(screen.getByRole("group", { name: t("kalender.weergaveLabel") })).getByRole("button", {
+      name: t(sleutel),
+    });
+
+  /** The board at whichever tier it is currently drawing. */
+  const bord = () =>
+    screen.getByRole("list", {
+      name: new RegExp(`^(${t("kalender.ribbonLabel")}|${t("kalender.ribbonLabelFijn")})$`),
+    });
+
+  it("asks the API for the chosen tier and draws the whole screen from that one answer", async () => {
+    const roosterUrls = stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    // The tier is sent explicitly on the FIRST request too, rather than left to the endpoint's default. That
+    // default is what once made the parameter form correct by coincidence.
+    expect(roosterUrls).toHaveLength(1);
+    expect(roosterUrls[0]).toContain("niveau=Themaperiode");
+
+    // Three carriers of state, so it never rests on colour (Art. XII): pressed, weight, fill. Only the first is
+    // assertable in jsdom; the fill is measured in a browser and recorded in the worklog.
+    expect(knop("kalender.weergaveGrof")).toHaveAttribute("aria-pressed", "true");
+    expect(knop("kalender.weergaveFijn")).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(knop("kalender.weergaveFijn"));
+
+    await waitFor(() => expect(roosterUrls).toHaveLength(2));
+    expect(roosterUrls[1]).toContain("niveau=Subthemaperiode");
+
+    // The board's accessible NAME follows the tier. Hard-coded to the coarse one, it told a screen-reader user they
+    // were in a list of themaperiodes while every column in it was a subthemaperiode.
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("list", { name: t("kalender.ribbonLabel") })).toBeNull();
+
+    // Every column says which themaperiode it belongs to, from `ouderOrdinaal`.
+    expect(within(bord()).getByText(t("kalender.subperiode", { ordinaal: 1 }))).toBeInTheDocument();
+    expect(
+      within(bord()).getAllByText(t("kalender.binnenThemaperiode", { ordinaal: 1 })),
+    ).toHaveLength(4);
+    expect(within(bord()).queryByText(t("kalender.periode", { ordinaal: 1 }))).toBeNull();
+
+    // The spine zooms with the board rather than staying pinned to the year: its sr-only ordinals name the tier on
+    // screen. Two views with two ordinal spaces is the defect the E3-02/E3-06 review had to fix twice.
+    expect(
+      screen.getByText(`${t("kalender.subperiode", { ordinaal: 7 })}:`, { exact: false }),
+    ).toBeInTheDocument();
+
+    expect(knop("kalender.weergaveFijn")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("caches the two tiers apart, so switching back is instant and never shows the wrong grain", async () => {
+    const roosterUrls = stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    fireEvent.click(knop("kalender.weergaveGrof"));
+
+    // Asserted with NO await: the coarse grid must already be on screen the moment the click is handled, because it
+    // is still in the cache under its own key. Keyed on the school year alone, the two tiers share one entry and the
+    // fine grid would be what is rendered here — under the coarse label, which is the flicker of stale data of the
+    // wrong grain this key change exists to prevent.
+    expect(screen.getByRole("list", { name: t("kalender.ribbonLabel") })).toBeInTheDocument();
+    expect(within(bord()).getByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    expect(within(bord()).queryByText(t("kalender.binnenThemaperiode", { ordinaal: 1 }))).toBeNull();
+
+    // And no full-screen loading line at any point: the whole subtree tearing down is what would drop the teacher's
+    // unsent parameter edits (pinned from the form's side in Generatieparameters.test.tsx).
+    expect(screen.queryByText(t("kalender.laden"))).toBeNull();
+
+    // The finer grid was derived ONCE. Going back to the coarse tier does not throw it away, so a teacher toggling
+    // between the two is not re-deriving the whole year on every press.
+    expect(roosterUrls.filter((url) => url.includes("niveau=Subthemaperiode"))).toHaveLength(1);
+  });
+
+  it("draws a thema once, at the start of its themaperiode, and leaves the rest of that period empty", async () => {
+    stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // Once, not four times across its parent's sub-blocks, and with no "runs through here" continuation: which weeks
+    // inside a themaperiode a thema occupies is not modelled anywhere, so drawing it twice would assert an extent the
+    // data does not contain.
+    expect(within(bord()).getAllByText("Water")).toHaveLength(1);
+    expect(
+      within(bord())
+        .getByText("Water")
+        .closest("li")!
+        .parentElement!.closest("li")!,
+    ).toHaveTextContent(t("kalender.subperiode", { ordinaal: 1 }));
+
+    // Six of the seven sub-columns are legitimately empty, and the reason is stated ONCE above the board.
+    expect(within(bord()).getAllByText(t("kalender.legeperiode"))).toHaveLength(6);
+    expect(screen.getAllByText(t("kalender.fijnUitleg"))).toHaveLength(1);
+  });
+
+  it("does not declare a healthy plan te herzien at the finer tier", async () => {
+    // The placement keys on themaperiode 1's start. At the fine tier that date is also the start of the parent's
+    // FIRST sub-block, so it still resolves — but that is a coincidence of the nesting rather than a guarantee, and
+    // if it ever stopped holding, this screen would tell a teacher their whole plan was stale in a notice the
+    // directie ruling of 2026-07-28 makes non-dismissible. Hence an assertion rather than an argument.
+    stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    expect(
+      screen.queryByRole("region", { name: t("kalender.herzienTitelEnkelvoud") }),
+    ).toBeNull();
+    expect(screen.queryByRole("region", { name: new RegExp(t("kalender.herzienUitleg")) })).toBeNull();
+    // The card is on the board, not in a notice.
+    expect(within(bord()).getByText("Water")).toBeInTheDocument();
+  });
+
+  it("offers no move affordance at the finer tier, and says in visible text where moving works", async () => {
+    stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    const kaartVan = () => screen.getByText("Water").closest("article") as HTMLElement;
+
+    // The premise: at the coarse tier the grip IS there, so its absence below means something.
+    expect(within(kaartVan()).queryByText("⠿")).not.toBeNull();
+
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // No grip. `VerplaatsPlaatsingAsync` resolves a target against the GENERATION tier's blocks, so a
+    // subthemaperiode start that is not also a themaperiode start is always a 400.
+    expect(within(kaartVan()).queryByText("⠿")).toBeNull();
+
+    // And no period picker in the panel. Absent, not disabled with a tooltip: the sentence above the board says
+    // where moving works (the E3-06 rule), and the rest of the panel still works.
+    fireEvent.click(
+      within(kaartVan()).getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Water" }) }),
+    );
+    expect(within(kaartVan()).queryByLabelText(t("kalender.verplaatsNaar"))).toBeNull();
+    expect(
+      within(kaartVan()).getByRole("button", { name: t("kalender.uitPeriodeHalen") }),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText(t("kalender.fijnUitleg"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.sleepUitleg"))).toBeNull();
+  });
+
+  it("has no axe violations at the finer tier", async () => {
+    stubZoom(
+      maakJaarplan([
+        maakPlaatsing({ id: "a", themaNaam: "Water", doelcodes: ["A-1", "A-2"] }),
+        maakPlaatsing({ id: "b", themaNaam: "Wonen", status: "Aanvaard", vergrendeld: true }),
+      ]),
+    );
+    const { container } = renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});

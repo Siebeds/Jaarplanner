@@ -113,6 +113,13 @@ function stubFetch(
     instellingenHerstel?: () => Generatieparameters | "hangt" | null;
     /** Overrides the grid, so a test can hand the form another tier's periods (E3-08's zoom). */
     rooster?: Planningsrooster;
+    /**
+     * Served when the request asks for `?niveau=Subthemaperiode` (E3-08).
+     *
+     * Present so a test can drive the **real** zoom control rather than pre-loading the form with another tier's
+     * grid: the tier is a request argument, and the property under test is what survives the switch.
+     */
+    fijnRooster?: Planningsrooster;
   } = {},
 ) {
   const {
@@ -120,6 +127,7 @@ function stubFetch(
     instellingen = geenInstellingen,
     instellingenHerstel,
     rooster: grid = rooster,
+    fijnRooster,
   } = opties;
   const posts: (string | undefined)[] = [];
 
@@ -159,7 +167,10 @@ function stubFetch(
         );
       }
       if (url.includes("/rooster")) {
-        return new Response(JSON.stringify(grid), { status: 200 });
+        const antwoord =
+          fijnRooster && url.includes("niveau=Subthemaperiode") ? fijnRooster : grid;
+
+        return new Response(JSON.stringify(antwoord), { status: 200 });
       }
       if (url.includes("/jaarplan")) {
         return new Response(JSON.stringify(leegPlan), { status: 200 });
@@ -759,6 +770,135 @@ describe("Generatieparameters — the grid it may read (E3-04)", () => {
     expect(JSON.parse(posts[0]!).gewensteStartthemas).toEqual([
       { blokStart: "2026-11-09", themaNaam: "Water" },
     ]);
+  });
+});
+
+/**
+ * The two obligations E3-04 left to E3-08, now that the other tier is actually reachable.
+ *
+ * The `anderNiveau` branch had never executed in a browser: `/rooster` always answered `Themaperiode`, so the test
+ * above had to *hand* the form another tier's grid to reach it. Here the real control does the switching, which is
+ * what makes these assertions about the product rather than about a fixture.
+ *
+ * The sharpest of them is the first. The kalender holds the teacher's unsent parameter edit in its own state, and the
+ * form holds the fields it was typed into. A switch that tore the screen down and rebuilt it would keep the parent's
+ * edit and reload the form's fields from the server — the display/request desync E3-04's fix round 4 closed for a
+ * failed settings load, re-created by a zoom control.
+ */
+describe("Generatieparameters — across a zoom switch (E3-08, FR-6.3)", () => {
+  /** Subthemaperiodes nested in the two themaperiodes above, each parent's first part sharing its start date. */
+  const fijnRooster: Planningsrooster = {
+    ...rooster,
+    niveau: "Subthemaperiode",
+    blokken: [
+      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-16", ouderOrdinaal: 1, aantalOpenDagen: 16 },
+      { ordinaal: 2, start: "2026-09-17", eind: "2026-10-02", ouderOrdinaal: 1, aantalOpenDagen: 16 },
+      { ordinaal: 3, start: "2026-11-09", eind: "2026-11-22", ouderOrdinaal: 2, aantalOpenDagen: 14 },
+      { ordinaal: 4, start: "2026-11-23", eind: "2026-12-20", ouderOrdinaal: 2, aantalOpenDagen: 28 },
+    ],
+  };
+
+  const zoom = (sleutel: "kalender.weergaveGrof" | "kalender.weergaveFijn") =>
+    within(screen.getByRole("group", { name: t("kalender.weergaveLabel") })).getByRole("button", {
+      name: t(sleutel),
+    });
+
+  it("keeps an unsent edit through a switch to the finer tier and back, and still sends it", async () => {
+    const posts = stubFetch(resultaat(leegRapport), { fijnRooster });
+    renderKalender();
+
+    // Type an edit and do NOT generate. This is the state the switch must not touch.
+    await openForm();
+    await waitFor(() => expect(periodeKeuze(1)).toBeInTheDocument());
+    fireEvent.change(periodeKeuze(1), { target: { value: "Herfst" } });
+
+    const trigger = screen.getByRole("button", { name: new RegExp(t("parameters.titel")) });
+    await waitFor(() => expect(trigger.textContent).toContain("1 startthema"));
+
+    fireEvent.click(zoom("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // Obligation 1: at the fine tier the form renders no period rows and makes no stranded claim, because it cannot
+    // tell which periods these blocks are. The panel is still OPEN, which is only possible if it was never remounted.
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const startthemas = screen.getByRole("group", { name: t("parameters.startthemasTitel") });
+    expect(within(startthemas).getByText(t("parameters.anderNiveau"))).toBeInTheDocument();
+    expect(within(startthemas).queryByRole("combobox")).toBeNull();
+    expect(
+      screen.queryByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
+    ).toBeNull();
+    // The summary still counts the edit: it is not "lost while another tier is shown".
+    expect(trigger.textContent).toContain("1 startthema");
+
+    fireEvent.click(zoom("kalender.weergaveGrof"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabel") })).toBeInTheDocument(),
+    );
+
+    // Back at the generation tier the row is there again with the teacher's own choice still in it, not reloaded from
+    // the server's older copy.
+    expect(periodeKeuze(1)).toHaveValue("Herfst");
+    expect(periodeKeuze(2)).toHaveValue("");
+
+    await genereer();
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0]!)).toEqual({
+      gewensteStartthemas: [{ blokStart: "2026-09-01", themaNaam: "Herfst" }],
+      vasteMomenten: [],
+    });
+  });
+
+  it("sends the kept settings unchanged while the finer tier is showing", async () => {
+    const posts = stubFetch(resultaat(leegRapport), {
+      fijnRooster,
+      instellingen: {
+        // Valid at the generation tier: themaperiode 2's start date.
+        gewensteStartthemas: [{ blokStart: "2026-11-09", themaNaam: "Water" }],
+        vasteMomenten: [{ naam: "Schoolfeest", datum: "2026-09-15", blokkeertPlaatsing: true }],
+      },
+    });
+    renderKalender();
+
+    const trigger = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
+    await waitFor(() => expect(trigger.textContent).toContain("1 startthema"));
+
+    fireEvent.click(zoom("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // Generating from the fine view is still allowed, and it must not quietly change what is stored: the run is at the
+    // generation tier whatever the board happens to be showing.
+    await genereer();
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0]!)).toEqual({
+      gewensteStartthemas: [{ blokStart: "2026-11-09", themaNaam: "Water" }],
+      vasteMomenten: [{ naam: "Schoolfeest", datum: "2026-09-15", blokkeertPlaatsing: true }],
+    });
+  });
+
+  it("names the control in the copy that tells a teacher where to set a startthema", async () => {
+    // Obligation 2. The copy used to name a control that did not exist ("zet de kalender terug op het hele jaar"), then
+    // described a state instead ("zolang de kalender het hele schooljaar toont") — which is subtly false, because BOTH
+    // tiers show the whole school year. It now names the control and the tier, so this asserts the agreement rather
+    // than the sentence: the words in the message have to be the words on the buttons.
+    stubFetch(resultaat(leegRapport), { fijnRooster });
+    renderKalender();
+
+    await openForm();
+    fireEvent.click(zoom("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    const bericht = t("parameters.anderNiveau");
+    expect(screen.getByText(bericht)).toBeInTheDocument();
+    expect(bericht).toContain(t("kalender.weergaveGrof"));
+    expect(bericht).toContain(t("kalender.weergaveLabel").toLowerCase());
+    // And it no longer claims the finer view is not the whole school year.
+    expect(bericht).not.toContain("hele schooljaar");
   });
 });
 

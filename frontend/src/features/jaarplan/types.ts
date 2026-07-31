@@ -23,13 +23,36 @@ export interface Planningsblok {
 }
 
 /**
+ * The two tiers the calendar can be viewed at (E3-08, FR-6.3).
+ *
+ * Mirrors the backend `Planningsblokniveau` enum, whose names are what `?niveau=` accepts and what
+ * `Planningsrooster.niveau` returns. **Deliberately a tier, never a calendar unit** — there is no `Maand` member
+ * here for the same reason the domain enum has none and guards it with a test (Art. IX.3, ADR-0013): the grain is
+ * the school's ratified themaperiode/subthemaperiode pair, and a month would compile in an assumption Art. XIV
+ * still leaves open.
+ *
+ * `Planningsrooster.niveau` stays a plain `string`, because it is what the server said rather than what this app
+ * asked for; the comparison that matters goes through {@link GENERATIEBLOKNIVEAU}.
+ */
+export type Planningsblokniveau = "Themaperiode" | "Subthemaperiode";
+
+/**
  * The tier a generated thema is placed on, and therefore the tier a **kept generation setting** keys on.
  *
  * Mirrors `JaarplanGeneratieService.GeneratieNiveau` (`Planningsblokniveau.Themaperiode`) and exists because the
  * pairing used to be silent: `/rooster` happens to default to this tier, so handing the board's blocks to the
- * parameter form was correct by coincidence. The moment E3-08's zoom fetches `Subthemaperiode`, blocks of the wrong
- * tier would flag every kept preference as "zonder periode" and offer rows whose dates the server reports as
- * `vervallenStartthemas`. Comparing against this constant makes that a checked condition instead of an assumption.
+ * parameter form was correct by coincidence. **E3-08 made it reachable:** the zoom now does fetch
+ * `Subthemaperiode`, and blocks of that tier would flag every kept preference as "zonder periode" and offer rows
+ * whose dates the server reports as `vervallenStartthemas`. Comparing against this constant makes that a checked
+ * condition instead of an assumption.
+ *
+ * It is also what decides whether a **move** is possible on the board at all: `VerplaatsPlaatsingAsync` derives its
+ * candidate blocks at this same tier, so a target date that is not a themaperiode start is a 400 (see
+ * {@link Themaplaatsing.blokNiveau} and the note in `Periodekolom`).
+ *
+ * Kept as a bare string literal on purpose: a backend test reads this declaration and compares it against
+ * `JaarplanGeneratieService.GeneratieNiveau`, so moving the tier fails a test instead of silently degrading the
+ * form to "another tier" forever. Do not add a type annotation here.
  */
 export const GENERATIEBLOKNIVEAU = "Themaperiode";
 

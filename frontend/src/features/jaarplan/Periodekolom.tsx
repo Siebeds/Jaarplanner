@@ -9,7 +9,7 @@ import {
   geplandeIn,
   isTeVol,
 } from "./kalenderFormat";
-import type { Planningsblok, Themaplaatsing } from "./types";
+import type { Planningsblok, Planningsblokniveau, Themaplaatsing } from "./types";
 
 /** One column of the board. Fixed width, so every period is equally readable. */
 export interface PeriodekolomProps {
@@ -19,6 +19,19 @@ export interface PeriodekolomProps {
   klasId: string;
   /** Every period of the year, so a card's panel can offer them as move targets. */
   blokken: readonly Planningsblok[];
+  /** The tier this column belongs to (E3-08), which decides what it is called and what it says about its parent. */
+  niveau: Planningsblokniveau;
+  /**
+   * Whether a thema can be moved onto this board at all (E3-08).
+   *
+   * False at the fine tier, and that is a **correctness** requirement rather than a preference:
+   * `VerplaatsPlaatsingAsync` derives its candidate blocks at the generation tier and requires the target to match
+   * the placement's own `BlokNiveau`, so a subthemaperiode start that is not also a themaperiode start is refused
+   * with *"… is geen begin van een periode in dit schooljaar."* Rather than a grip and a picker that fail on most
+   * columns, there are none, and the board says once in visible text where moving does work (the E3-06 rule: an
+   * unavailable destination is stated, not hidden in a tooltip).
+   */
+  kanVerplaatsen: boolean;
 }
 
 /**
@@ -34,6 +47,14 @@ export interface PeriodekolomProps {
  * - *Stretching.* Flex `items-stretch` sized every column to the tallest, so one period with three thema's
  *   left its six neighbours as tall empty troughs. The board uses `items-start`.
  *
+ * **At the fine tier it is a subthemaperiode and says which themaperiode it belongs to (E3-08).** Everything else
+ * about the column is identical, deliberately: same width, same card, same empty well. A `Themaplaatsing` keys on a
+ * *themaperiode* start (ADR-0020 §3) and nothing in the model records which weeks inside that period a thema
+ * occupies, so the card is rendered **once**, in the sub-block whose start equals the placement's `blokStart` — the
+ * parent's first one. It is not repeated across the parent's other sub-blocks and no "runs through here"
+ * continuation is drawn, because both would assert an extent the data does not contain. The parent's other columns
+ * are therefore legitimately empty, and the board says why once above itself rather than in every column.
+ *
  * **It is the drop target (E3-07).** While a card is over it the column fills with the petrol wash and says
  * "Hierheen verplaatsen" in words, because a colour change alone carries nothing (Art. XII, WCAG 2.2 AA).
  *
@@ -43,11 +64,24 @@ export interface PeriodekolomProps {
  * them drop first and read the consequence afterwards. The threshold is still the provisional one from review
  * question C, so the warning is phrased as a consequence rather than a refusal — nothing is blocked.
  */
-export function Periodekolom({ blok, plaatsingen, klasId, blokken }: PeriodekolomProps) {
+export function Periodekolom({
+  blok,
+  plaatsingen,
+  klasId,
+  blokken,
+  niveau,
+  kanVerplaatsen,
+}: PeriodekolomProps) {
   const gepland = geplandeIn(plaatsingen);
   const teVol = isTeVol(plaatsingen);
 
-  const { setNodeRef, isOver, active } = useDroppable({ id: blok.start, data: { blok } });
+  // Disabled rather than absent at the fine tier: hooks cannot be conditional, and dnd-kit's own `disabled` is the
+  // supported way to say "this is not a landing place". Nothing is draggable there either, so this is belt and braces.
+  const { setNodeRef, isOver, active } = useDroppable({
+    id: blok.start,
+    data: { blok },
+    disabled: !kanVerplaatsen,
+  });
 
   // Only meaningful while something is being dragged, and only for a card coming from *elsewhere*: a thema
   // dropped back into its own period changes nothing, so warning about it would be noise.
@@ -66,7 +100,10 @@ export function Periodekolom({ blok, plaatsingen, klasId, blokken }: Periodekolo
       >
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="text-sm font-bold text-ink">
-            {t("kalender.periode", { ordinaal: blok.ordinaal })}
+            {t(
+              niveau === "Subthemaperiode" ? "kalender.subperiode" : "kalender.periode",
+              { ordinaal: blok.ordinaal },
+            )}
           </h3>
           <span className="shrink-0 text-xs font-medium text-ink-zacht" data-cijfers>
             {t("kalender.weken", { weken: formatteerWeken(blok.aantalOpenDagen) })}
@@ -75,6 +112,16 @@ export function Periodekolom({ blok, plaatsingen, klasId, blokken }: Periodekolo
         <p className="mt-0.5 text-xs text-ink-zacht">
           <time dateTime={blok.start}>{formatteerPeriode(blok.start, blok.eind)}</time>
         </p>
+
+        {/* Which themaperiode this column is part of, straight from the server's `ouderOrdinaal` — the field exists
+            for exactly this. It is the fact that makes the fine view readable: a thema sits at the start of its
+            themaperiode, so without naming the parent, the neighbouring empty columns look like a plan with holes
+            in it rather than the inside of one period. Guarded on null so a coarse block never grows a stray line. */}
+        {niveau === "Subthemaperiode" && blok.ouderOrdinaal !== null && (
+          <p className="mt-1 text-xs font-medium text-petrol">
+            {t("kalender.binnenThemaperiode", { ordinaal: blok.ouderOrdinaal })}
+          </p>
+        )}
 
         {teVol && (
           // Icon AND word, never colour alone (Art. XII, FR-6.4). The *explanation* of what "te vol" means
@@ -112,7 +159,12 @@ export function Periodekolom({ blok, plaatsingen, klasId, blokken }: Periodekolo
           <ul className="flex flex-col gap-2">
             {plaatsingen.map((plaatsing) => (
               <li key={plaatsing.id}>
-                <Themakaart plaatsing={plaatsing} klasId={klasId} blokken={blokken} />
+                <Themakaart
+                  plaatsing={plaatsing}
+                  klasId={klasId}
+                  blokken={blokken}
+                  kanVerplaatsen={kanVerplaatsen}
+                />
               </li>
             ))}
           </ul>

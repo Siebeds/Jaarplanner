@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   genereerJaarplan,
@@ -9,7 +9,12 @@ import {
   verwijderPlaatsing,
   wijzigPlaatsingStatus,
 } from "./api";
-import type { Generatieparameters, Jaarplan, Plaatsingstatus } from "./types";
+import type {
+  Generatieparameters,
+  Jaarplan,
+  Plaatsingstatus,
+  Planningsblokniveau,
+} from "./types";
 
 /** Query key for one class's jaarplan. */
 const jaarplanKey = (klasId: string) => ["jaarplan", klasId] as const;
@@ -20,8 +25,17 @@ export const themanamenKey = ["themanamen"] as const;
 /** Query key for one class's kept pre-generation settings (E3-04). */
 export const generatieparametersKey = (klasId: string) => ["generatieparameters", klasId] as const;
 
-/** Query key for one school year's derived block grid. */
-const roosterKey = (schooljaarId: string) => ["planningsrooster", schooljaarId] as const;
+/**
+ * Query key for one school year's derived block grid, **per tier** (E3-08).
+ *
+ * The tier is part of the key because it is part of the answer: `/rooster?niveau=…` re-derives the whole grid, so
+ * the two tiers are two different responses. Keyed on the school year alone, they would share one cache entry and
+ * overwrite each other: switching the zoom would render the *other* grain's blocks for a moment, and switching back
+ * would always refetch instead of being instant. Which is also how the story's own criterion is met — "level
+ * switching works without losing state" is exactly both tiers staying cached.
+ */
+const roosterKey = (schooljaarId: string, niveau: Planningsblokniveau) =>
+  ["planningsrooster", schooljaarId, niveau] as const;
 
 /** Loads a class's jaarplan; disabled until a class id is present. */
 export function useJaarplan(klasId: string) {
@@ -33,18 +47,29 @@ export function useJaarplan(klasId: string) {
 }
 
 /**
- * Loads the school year's block grid.
+ * Loads the school year's block grid at one tier (E3-08, FR-6.3).
  *
  * The school year id comes from the jaarplan response rather than being asked of the caller, so this
  * query is chained behind it and stays disabled until that id is known. The grid is **derived**
  * server-side on every read, so it always reflects the current vakantiestructuur — which is exactly
  * why a placement can turn out stale (`isVervallen`) rather than the two views quietly disagreeing.
+ *
+ * **`keepPreviousData` is load-bearing, not a nicety.** The kalender returns a single "Jaarplan laden…" line while
+ * this query is pending, so a tier switch with no placeholder would tear the whole screen down and back up — which
+ * unmounts `Generatieparametersformulier` and therefore drops the teacher's unsent parameter edits, exactly the
+ * state the story says must survive a switch. With the previous grid held on screen for the one request, nothing
+ * unmounts; the board simply changes grain when the answer lands. The first load has no previous data, so it still
+ * shows the loading line.
  */
-export function usePlanningsrooster(schooljaarId: string | undefined) {
+export function usePlanningsrooster(
+  schooljaarId: string | undefined,
+  niveau: Planningsblokniveau,
+) {
   return useQuery({
-    queryKey: roosterKey(schooljaarId ?? ""),
-    queryFn: () => haalRooster(schooljaarId!),
+    queryKey: roosterKey(schooljaarId ?? "", niveau),
+    queryFn: () => haalRooster(schooljaarId!, niveau),
     enabled: Boolean(schooljaarId),
+    placeholderData: keepPreviousData,
   });
 }
 

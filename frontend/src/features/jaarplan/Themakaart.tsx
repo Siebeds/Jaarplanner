@@ -47,9 +47,18 @@ export interface ThemakaartProps {
   klasId: string;
   /** Every period of the year, so the panel can offer them as move targets. */
   blokken: readonly Planningsblok[];
+  /**
+   * Whether moving is possible on the board this card is on (E3-08).
+   *
+   * False at the subthemaperiode zoom, where the server refuses a target that is not a themaperiode start — so the
+   * grip and the period picker are **absent** rather than present-and-failing. Everything else on the card stays:
+   * taking a thema out of its period and reversing a rejection are unaffected by the tier, since neither names a
+   * block. See {@link PeriodekolomProps.kanVerplaatsen} for the endpoint's own rule.
+   */
+  kanVerplaatsen: boolean;
 }
 
-export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
+export function Themakaart({ plaatsing, klasId, blokken, kanVerplaatsen }: ThemakaartProps) {
   const [paneelOpen, setPaneelOpen] = useState(false);
   const paneelId = useId();
 
@@ -57,7 +66,9 @@ export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
   // the one transition here that changes dekking (Art. V.1) — the server refuses it, and offering a grip that
   // always fails would be a control that does nothing. Reversing a rejection stays the explained, explicit
   // decision in the panel below.
-  const kanSlepen = plaatsing.status !== "Geweigerd";
+  //
+  // Nor is anything draggable on a board whose columns the server will not accept as a target (E3-08).
+  const kanSlepen = kanVerplaatsen && plaatsing.status !== "Geweigerd";
 
   const { listeners, setNodeRef, isDragging } = useDraggable({
     id: plaatsing.id,
@@ -157,6 +168,7 @@ export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
             plaatsing={plaatsing}
             klasId={klasId}
             blokken={blokken}
+            kanVerplaatsen={kanVerplaatsen}
             onKlaar={() => setPaneelOpen(false)}
           />
         )}
@@ -178,12 +190,14 @@ function Bewerkpaneel({
   plaatsing,
   klasId,
   blokken,
+  kanVerplaatsen,
   onKlaar,
 }: {
   id: string;
   plaatsing: Themaplaatsing;
   klasId: string;
   blokken: readonly Planningsblok[];
+  kanVerplaatsen: boolean;
   onKlaar: () => void;
 }) {
   const [doelBlok, setDoelBlok] = useState("");
@@ -200,10 +214,15 @@ function Bewerkpaneel({
   //
   // A rejected placement offers none: the server refuses the move (it would silently grant dekking), so the
   // picker is replaced by the instruction to reverse the rejection first.
+  //
+  // Nor does the fine zoom offer any (E3-08): `blokken` would be subthemaperiodes, and the server refuses every one
+  // of them that is not also a themaperiode start. Where E3-06's rule asks for visible text, the board carries it
+  // once above itself rather than repeating a disabled control per card.
   const isGeweigerd = plaatsing.status === "Geweigerd";
-  const doelen = isGeweigerd
-    ? []
-    : blokken.filter((blok) => blok.start !== plaatsing.blokStart);
+  const doelen =
+    isGeweigerd || !kanVerplaatsen
+      ? []
+      : blokken.filter((blok) => blok.start !== plaatsing.blokStart);
 
   /**
    * Whether removing this placement must be confirmed.
@@ -217,8 +236,13 @@ function Bewerkpaneel({
 
   return (
     <div id={id} className="mt-2.5 flex flex-col gap-3 rounded-md bg-paper-diep/60 p-2.5">
+      {/* A stale placement's instruction has to match what the panel actually offers. At the fine zoom there is no
+          picker to point at, so pointing at one would be the "control that does nothing" defect turned inside out:
+          copy that does nothing. It names the view where re-placing works instead. */}
       {plaatsing.isVervallen && (
-        <p className="text-xs leading-snug text-attentie-ink">{t("kalender.herplaatsKies")}</p>
+        <p className="text-xs leading-snug text-attentie-ink">
+          {kanVerplaatsen ? t("kalender.herplaatsKies") : t("kalender.herplaatsAnderNiveau")}
+        </p>
       )}
 
       {isGeweigerd && (

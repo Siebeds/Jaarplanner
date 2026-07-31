@@ -19,6 +19,7 @@ import { Periodekolom, Vakantiegat } from "./Periodekolom";
 import { Generatieparametersformulier } from "./Generatieparametersformulier";
 import { Spreidingsoverzicht } from "./Spreidingsoverzicht";
 import { Sleepkaart, Themakaart } from "./Themakaart";
+import { Weergaveschakelaar } from "./Weergaveschakelaar";
 import {
   bepaalVerplaatsing,
   bouwRibbon,
@@ -28,7 +29,13 @@ import {
   plaatsingenIn,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
-import type { Generatieparameters, Planningsblok, Themaplaatsing } from "./types";
+import { GENERATIEBLOKNIVEAU } from "./types";
+import type {
+  Generatieparameters,
+  Planningsblok,
+  Planningsblokniveau,
+  Themaplaatsing,
+} from "./types";
 import {
   useGeneratieparameters,
   useGenereerJaarplan,
@@ -49,8 +56,14 @@ import {
  *
  * **Thema's move between periods by dragging (E3-07, FR-6.2), and by a period picker on each card.** Two routes
  * on purpose: WCAG 2.2's SC 2.5.7 requires a single-pointer alternative to every dragging movement, and the
- * picker is also the route that works on touch and by keyboard. The zoom toggle (E3-08) and the
- * ongeplande-doelen tray (E3-09) are still absent rather than faked.
+ * picker is also the route that works on touch and by keyboard.
+ *
+ * **The grain is switchable (E3-08, FR-6.3), and one tier drives everything.** {@link Weergaveschakelaar} chooses a
+ * `Planningsblokniveau`, that tier is the `/rooster` argument, and the spine, the board and the parameter form all
+ * read the one answer. Neither tier is "the year" and the other "a period": both show the whole school year, at the
+ * ratified themaperiode or subthemaperiode grain (directie 2026-07-14, Art. IX.3) — no calendar unit is named
+ * anywhere, which is what Art. XIV still leaves open. The ongeplande-doelen tray (E3-09) is still absent rather
+ * than faked.
  */
 export interface JaarplankalenderProps {
   klasId: string;
@@ -58,7 +71,22 @@ export interface JaarplankalenderProps {
 
 export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   const jaarplan = useJaarplan(klasId);
-  const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId);
+
+  // The zoom level (E3-08, FR-6.3).
+  //
+  // Plain component state, deliberately. ADR-0014 lists "view zoom" among the things Zustand owns, and ADR-0021
+  // repeats it — but the value has exactly ONE reader tree, rooted here, which already owns the fetch and passes the
+  // resulting grid down as props. A module-scoped store would add a second home for a value with a single owner, and
+  // it would outlive this component: it would carry one class's chosen grain into the next class and leak between
+  // tests. E3-07 made the same call for drag state, which ADR-0014 names in the same sentence, and shipped it
+  // audited. Recorded as a deliberate deviation rather than an oversight; see the worklog.
+  //
+  // The initial value is the coarse tier, matching `/rooster`'s own default. Written as the literal rather than as
+  // GENERATIEBLOKNIVEAU because they are two different decisions that happen to name the same tier: one is "which
+  // grain does a teacher see first", the other is "which grain does a placement key on".
+  const [niveau, setNiveau] = useState<Planningsblokniveau>("Themaperiode");
+
+  const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId, niveau);
   const generatie = useGenereerJaarplan(klasId);
   const verplaats = useVerplaatsPlaatsing(klasId);
 
@@ -130,6 +158,21 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   const plan = jaarplan.data;
   const grid = rooster.data;
   const segmenten = bouwRibbon(grid.blokken, grid.onderbrekingen);
+
+  // The tier the board is ACTUALLY drawing, read off the answer (`grid.niveau`) rather than off the request
+  // (`niveau`). During the one request a switch takes, the previous grid is still on screen, so reading the request
+  // would label and enable it as the tier it is not yet.
+  const bordNiveau: Planningsblokniveau =
+    grid.niveau === "Subthemaperiode" ? "Subthemaperiode" : "Themaperiode";
+
+  // Whether a thema can be moved on this board.
+  //
+  // Compared against the generation tier rather than against a bare "Themaperiode", because that is *why* it is
+  // true: `VerplaatsPlaatsingAsync` derives its candidate blocks at `GeneratieNiveau` and requires them to match the
+  // placement's own `BlokNiveau`, so the only board whose columns the server accepts as a move target is the one
+  // showing that tier. Derived from the server's own string, so an unrecognised tier disables moving rather than
+  // offering a control that 400s.
+  const kanVerplaatsen = grid.niveau === GENERATIEBLOKNIVEAU;
 
   // Placements pointing at a date that is no longer a period boundary. Collected FIRST and always
   // rendered: never silently relocated, never dropped (directie 2026-07-28).
@@ -236,17 +279,40 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
         onDragCancel={() => setSleepKaart(null)}
       >
         {vervallen.length > 0 && (
-          <TeHerzien plaatsingen={vervallen} klasId={klasId} blokken={grid.blokken} />
+          <TeHerzien
+            plaatsingen={vervallen}
+            klasId={klasId}
+            blokken={grid.blokken}
+            kanVerplaatsen={kanVerplaatsen}
+          />
         )}
 
         {grid.blokken.length === 0 ? (
           <Melding soort="rustig">{t("kalender.leegRooster")}</Melding>
         ) : (
-          <Jaarspine
-            segmenten={segmenten}
-            gevuldeOrdinalen={gevuldeOrdinalen}
-            teVolleOrdinalen={teVolleOrdinalen}
-          />
+          <div className="flex flex-col gap-3">
+            {/* Directly above the strip it reshapes, and above the board below that. Not in the page header, which
+                carries identity (title, klas, schooljaar), and not inside the generation card, which is a different
+                task and reads the tier from here anyway.
+
+                Only rendered when there is a grid to reshape: with zero blocks the switch would be a control that
+                does nothing. Safe in both directions, because the fine tier subdivides the coarse one (ADR-0020) —
+                a year with no themaperiode has no subthemaperiode either, so this can never hide the way back. */}
+            <Weergaveschakelaar
+              niveau={niveau}
+              onKies={setNiveau}
+              // The requested tier is not the tier on screen yet. `isPlaceholderData` is exactly that state: the
+              // previous grid is being shown while the chosen one is in flight.
+              bezig={rooster.isPlaceholderData}
+            />
+
+            <Jaarspine
+              segmenten={segmenten}
+              gevuldeOrdinalen={gevuldeOrdinalen}
+              teVolleOrdinalen={teVolleOrdinalen}
+              niveau={bordNiveau}
+            />
+          </div>
         )}
 
         {/* Generation (FR-5.1) with its spreading report (E3-02, FR-5.2). It only ever ADDS proposals — it
@@ -320,8 +386,16 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
         {grid.blokken.length > 0 && (
           <div className="flex flex-col gap-3">
             {/* How to move a thema, said ONCE above the board rather than on every card. Names both routes,
-                because the drag is undiscoverable on its own and unusable on a touch screen. */}
-            <p className="text-xs leading-snug text-ink-zacht">{t("kalender.sleepUitleg")}</p>
+                because the drag is undiscoverable on its own and unusable on a touch screen.
+                At the fine tier it is replaced rather than supplemented: there is no grip and no picker there, so
+                the sentence would describe controls that are absent. Its replacement carries the two facts that
+                view owes a teacher — why a thema sits in only one part of its period, and where moving does work
+                (visible text, not a tooltip, per the E3-06 rule). */}
+            {/* `max-w-4xl` found by looking at it: the fine tier's sentence is twice as long as the coarse one and
+                ran the full 1350px of a desktop viewport as a single line, which is past any readable measure. */}
+            <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
+              {kanVerplaatsen ? t("kalender.sleepUitleg") : t("kalender.fijnUitleg")}
+            </p>
 
             {/* Said ONCE, above the board, instead of repeated inside every flagged column. The disclosure is
                 still visible text rather than a tooltip (E3-06) — it just is not printed seven times. */}
@@ -353,7 +427,14 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
               // ("Aanpassen"), so this is no longer the only way in — but it is still the only way to scroll
               // the year sideways without a pointer.
               className="subtle-scrollbar -mx-1 flex items-start gap-2 overflow-x-auto px-1 pb-3"
-              aria-label={t("kalender.ribbonLabel")}
+              // The board's accessible name follows the tier. Hard-coded to the coarse one it became a lie at the
+              // fine one: a screen-reader user would be told they were in a list of themaperiodes while every column
+              // in it was a subthemaperiode.
+              aria-label={
+                bordNiveau === "Subthemaperiode"
+                  ? t("kalender.ribbonLabelFijn")
+                  : t("kalender.ribbonLabel")
+              }
               tabIndex={0}
             >
               {segmenten.map((segment) =>
@@ -364,6 +445,8 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                     plaatsingen={plaatsingenIn(plan.plaatsingen, segment.blok)}
                     klasId={klasId}
                     blokken={grid.blokken}
+                    niveau={bordNiveau}
+                    kanVerplaatsen={kanVerplaatsen}
                   />
                 ) : (
                   <Vakantiegat
@@ -433,10 +516,21 @@ function TeHerzien({
   plaatsingen,
   klasId,
   blokken,
+  kanVerplaatsen,
 }: {
   plaatsingen: ReturnType<typeof vervallenPlaatsingen>;
   klasId: string;
   blokken: readonly Planningsblok[];
+  /**
+   * Whether these cards can be given a period from here (E3-08).
+   *
+   * False at the fine zoom, where `blokken` are subthemaperiodes and the server refuses all but the ones that
+   * coincide with a themaperiode start. The notice stays exactly as non-dismissible as it was — nothing is hidden,
+   * nothing gains a "later" — but the card says where re-placing works instead of offering a picker that mostly
+   * fails. The alternative, fetching the coarse grid alongside the fine one just for this panel, would put two
+   * grids on one screen, which is the defect decision 1 of this story's design exists to avoid.
+   */
+  kanVerplaatsen: boolean;
 }) {
   const titelId = useId();
   const titel = tAantal(
@@ -468,7 +562,12 @@ function TeHerzien({
       <ul className="mt-4 grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {plaatsingen.map((plaatsing) => (
           <li key={plaatsing.id}>
-            <Themakaart plaatsing={plaatsing} klasId={klasId} blokken={blokken} />
+            <Themakaart
+              plaatsing={plaatsing}
+              klasId={klasId}
+              blokken={blokken}
+              kanVerplaatsen={kanVerplaatsen}
+            />
             <p className="mt-1 text-xs font-medium text-attentie-ink" data-cijfers>
               {t("kalender.herzienDatum", { datum: formatteerDatum(plaatsing.blokStart) })}
             </p>
