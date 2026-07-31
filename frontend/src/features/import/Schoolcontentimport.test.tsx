@@ -51,6 +51,14 @@ function renderImport(opties: ImportFakeOpties = {}) {
   return fake;
 }
 
+/**
+ * The school-content section. The page holds a second importer below it, so anything whose copy is shared
+ * between the two is queried inside this container rather than on the whole document.
+ */
+function sectie() {
+  return screen.getByRole("region", { name: t("import.schoolcontent.titel") });
+}
+
 /** The file field of the school-content section. */
 function bestandsveld() {
   return screen.getByLabelText(t("import.schoolcontent.bestandLabel")) as HTMLInputElement;
@@ -116,10 +124,11 @@ describe("Import screen — the sjabloon and the upload (clause 1)", () => {
   it("names the chosen file back, so the reader can see which one is about to go", () => {
     renderImport();
 
-    expect(screen.getByText(t("import.geenBestandGekozen"))).toBeInTheDocument();
+    // Scoped to this section: the Op.stap importer below has its own picker with the same placeholder line.
+    expect(within(sectie()).getByText(t("import.geenBestandGekozen"))).toBeInTheDocument();
     kiesBestand("herfst.xlsx");
     expect(
-      screen.getByText(t("import.bestandGekozen", { naam: "herfst.xlsx" })),
+      within(sectie()).getByText(t("import.bestandGekozen", { naam: "herfst.xlsx" })),
     ).toBeInTheDocument();
   });
 });

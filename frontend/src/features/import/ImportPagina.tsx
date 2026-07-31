@@ -1,4 +1,5 @@
 import { t } from "../../i18n";
+import { Opstapimport } from "./Opstapimport";
 import { Schoolcontentimport } from "./Schoolcontentimport";
 
 /**
@@ -24,6 +25,7 @@ export function ImportPagina() {
       </header>
 
       <Schoolcontentimport />
+      <Opstapimport />
     </section>
   );
 }

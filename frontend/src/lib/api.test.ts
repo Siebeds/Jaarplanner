@@ -18,11 +18,14 @@ import { ApiError, apiFetch } from "./api";
 /**
  * Captures the `RequestInit` the client hands to `fetch`, so the headers can be asserted.
  *
- * The parameters are declared (and `_`-prefixed) rather than omitted: `vi.fn(async () => …)` types the mock as
- * taking no arguments, and `mock.calls[0][1]` then does not typecheck at all.
+ * The signature is given as a **type argument** rather than through declared parameters: inferred from
+ * `async () => antwoord` the mock takes no arguments and `mock.calls[0][1]` does not typecheck, while declaring
+ * the parameters to fix that leaves two unused ones for lint to reject.
  */
 function stubFetch(antwoord: Response) {
-  const fetchFake = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => antwoord);
+  const fetchFake = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+    async () => antwoord,
+  );
   vi.stubGlobal("fetch", fetchFake);
   return fetchFake;
 }
