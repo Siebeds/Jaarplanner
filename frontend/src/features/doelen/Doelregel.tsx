@@ -40,24 +40,24 @@ export function Doelregel({ doel, isGekozen }: { doel: DoelRegel; isGekozen: boo
           isGekozen ? "bg-petrol-wash" : "hover:bg-muted",
         ].join(" ")}
       >
+        {/* The identifiers travel together on one line, at every width. Jaar/fase had a line of its own at
+            phone width, which made a row four lines tall and fitted seven doelen on a screen; it belongs
+            beside the code, because a teacher reads "NAT-K3-01, MD, K3" as one label. */}
         <span className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-sm font-semibold text-ink" data-cijfers>
             {doel.code}
           </span>
           <DoelsoortBadge doelsoort={soort} />
+          <span className="text-xs font-medium text-ink-zacht">{doel.jaarFase}</span>
+          {doel.nietMeerInOpstap ? (
+            // Text, not a colour and not a tooltip: a state a teacher must act on says so out loud (E3-06).
+            <span className="rounded-full bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-semibold text-attentie-ink">
+              {t("doelen.vervallenMarkering")}
+            </span>
+          ) : null}
         </span>
 
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
-          <span className="shrink-0 text-xs font-medium text-ink-zacht">{doel.jaarFase}</span>
-          <span className="truncate text-sm text-ink">{doel.tekst}</span>
-        </span>
-
-        {doel.nietMeerInOpstap ? (
-          // Text, not a colour or a tooltip: an unbuilt/expired state says so out loud (E3-06).
-          <span className="shrink-0 rounded-full bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-semibold text-attentie-ink">
-            {t("doelen.vervallenMarkering")}
-          </span>
-        ) : null}
+        <span className="min-w-0 flex-1 truncate text-sm text-ink">{doel.tekst}</span>
 
         <span className="shrink-0 text-xs text-ink-zacht">
           {t("ongekoppeld.domeinKop", { domein: doel.domein, subdomein: doel.subdomein })}

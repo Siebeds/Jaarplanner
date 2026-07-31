@@ -309,6 +309,31 @@ describe("Doelen register — filters (clause 2)", () => {
     expect(within(await lijst()).getAllByRole("listitem")).toHaveLength(DOELEN.length);
   });
 
+  it("accepts the official Op.stap short code in a hand-written link, not just the wire name", async () => {
+    // Found by opening the app: `?doelsoort=MD` was silently dropped, so the register showed everything
+    // while the URL claimed a filter. "MD" is what a teacher reads in Op.stap (Art. VII.1) and the API
+    // accepts it, so the UI has no business refusing it.
+    const fake = renderApp("/doelen?doelsoort=MD");
+    await lijst();
+
+    expect(screen.getByLabelText(t("doelen.doelsoortLabel"))).toHaveValue("Minimumdoel");
+    expect(
+      screen.getByText(t("doelen.chipDoelsoort", { waarde: t("doelsoort.md") })),
+    ).toBeInTheDocument();
+    // Normalised to one spelling on the wire, so the server is never asked twice in two dialects.
+    expect(new URLSearchParams(laatsteLijstUrl(fake.urls)!.split("?")[1]).get("doelsoort")).toBe(
+      "Minimumdoel",
+    );
+  });
+
+  it("ignores a doelsoort that is neither spelling, rather than sending it on", async () => {
+    const fake = renderApp("/doelen?doelsoort=bestaatniet");
+    await lijst();
+
+    expect(new URLSearchParams(laatsteLijstUrl(fake.urls)!.split("?")[1]).get("doelsoort")).toBeNull();
+    expect(within(await lijst()).getAllByRole("listitem")).toHaveLength(DOELEN.length);
+  });
+
   it("restores a filtered view from the URL, so a filtered register is shareable", async () => {
     renderApp("/doelen?domein=Natuur&doelsoort=Minimumdoel");
     await lijst();

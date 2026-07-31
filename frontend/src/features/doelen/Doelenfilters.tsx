@@ -38,10 +38,21 @@ export function Doelenfilters({
     <div className="rounded-lg border border-border bg-card p-3 shadow-card sm:p-4">
       <Zoekveld waarde={filter.zoek ?? ""} onZoek={(zoek) => onWijzig({ ...filter, zoek })} />
 
+      {/*
+        Five tracks at xl, so the five selects sit on one row: a 4-column grid left "Jaar of fase" alone on a
+        second row, which read as a stray control rather than as part of the set. Two columns at phone width
+        rather than one, because a single column made the filter panel taller than the viewport and pushed
+        every doel below the fold: on a naslagwerk the data has to dominate, and the chrome was winning.
+
+        `min-w-0` on each cell is load-bearing, not tidying. A `1fr` track is `minmax(auto, 1fr)`, and a
+        `<select>`'s min-content width is its widest option, so a long option ("Nederlands en communicatie
+        (50)") would stretch its track and push the grid past the viewport. That is the same blowout that
+        stretched a period column to 600px of white in E3-06.
+      */}
       <div
         role="group"
         aria-label={t("doelen.filtersLabel")}
-        className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3 xl:grid-cols-5"
       >
         <Keuze
           id={`${id}-discipline`}
@@ -167,7 +178,7 @@ function Zoekveld({ waarde, onZoek }: { waarde: string; onZoek: (zoek: string | 
       }}
       className="flex flex-col gap-2 sm:flex-row sm:items-end"
     >
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <label htmlFor={id} className="block text-xs font-semibold text-ink-zacht">
           {t("doelen.zoekLabel")}
         </label>
@@ -209,8 +220,8 @@ function Keuze({
   legeOptie?: string;
 }) {
   return (
-    <div>
-      <label htmlFor={id} className="block text-xs font-semibold text-ink-zacht">
+    <div className="min-w-0">
+      <label htmlFor={id} className="block truncate text-xs font-semibold text-ink-zacht">
         {label}
       </label>
       <select
@@ -218,7 +229,8 @@ function Keuze({
         value={waarde}
         disabled={isUitgeschakeld}
         onChange={(event) => onKies(event.target.value)}
-        className="mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-ink disabled:bg-muted disabled:text-ink-zacht"
+        // `w-full` plus the cell's `min-w-0` is what keeps a long option from widening the grid track.
+        className="mt-1 w-full min-w-0 rounded-md border border-input bg-card px-3 py-2 text-sm text-ink disabled:bg-muted disabled:text-ink-zacht"
       >
         <option value="">{legeOptie ?? t("doelen.alleOptie")}</option>
         {opties.map((optie) => (

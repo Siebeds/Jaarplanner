@@ -1,5 +1,6 @@
 import type { Doelsoort, DoelsoortNaam } from "../../components/doelsoort";
 import { doelsoortBadgeSoort } from "../../components/doelsoort";
+import { t } from "../../i18n";
 import type { Doelenfilter } from "./types";
 
 /**
@@ -18,10 +19,30 @@ const FILTERSLEUTELS = ["zoek", "discipline", "domein", "subdomein", "doelsoort"
 /** The doelsoort values the API accepts, so an unknown one in a stale link is dropped instead of sent on. */
 const DOELSOORTEN = Object.keys(doelsoortBadgeSoort) as DoelsoortNaam[];
 
+/**
+ * Both spellings of a doelsoort, folded to lower case, resolving to the wire form the API is sent.
+ *
+ * The UI writes the wire name ("Minimumdoel"), but the **official Op.stap short code** ("MD", "+") is what a
+ * teacher reads in the curriculum and might type into a URL by hand, and the API accepts it. Reading only the
+ * wire form meant `?doelsoort=MD` was silently dropped: the register then showed everything while the URL
+ * claimed a filter. Found by opening the app, not by a test.
+ *
+ * The codes are read from the catalogue rather than copied: `doelsoortAfkorting` already holds them, because
+ * the abbreviation a badge shows *is* the official code (Art. VII.1). A fourth copy of that table (after the
+ * domain enum, the backend's `DoelsoortCodes` and the catalogue) is one more place to forget when Op.stap adds
+ * a doelsoort.
+ */
+const DOELSOORT_PER_SPELLING: Record<string, DoelsoortNaam> = Object.fromEntries(
+  DOELSOORTEN.flatMap((naam) => [
+    [naam.toLowerCase(), naam],
+    [t(`doelsoortAfkorting.${doelsoortBadgeSoort[naam]}`).toLowerCase(), naam],
+  ]),
+);
+
 /** Reads the filter out of the URL, ignoring blank and unrecognised values. */
 export function leesFilter(params: URLSearchParams): Doelenfilter {
   const waarde = (sleutel: string) => params.get(sleutel)?.trim() || undefined;
-  const doelsoort = waarde("doelsoort");
+  const doelsoort = waarde("doelsoort")?.toLowerCase();
 
   return {
     zoek: waarde("zoek"),
@@ -31,7 +52,8 @@ export function leesFilter(params: URLSearchParams): Doelenfilter {
     // so a link carrying only the subdomein would silently mix goals from unrelated domeinen. Dropped rather
     // than sent, which is the same rule the server applies from the other side.
     subdomein: waarde("domein") ? waarde("subdomein") : undefined,
-    doelsoort: DOELSOORTEN.find((soort) => soort === doelsoort),
+    // Normalised to the wire form, so the select shows the right option and the request carries one spelling.
+    doelsoort: doelsoort ? DOELSOORT_PER_SPELLING[doelsoort] : undefined,
     jaarFase: waarde("jaarFase"),
   };
 }

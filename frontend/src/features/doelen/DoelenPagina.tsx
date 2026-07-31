@@ -67,8 +67,16 @@ export function DoelenPagina() {
         </p>
       ) : null}
 
+      {/*
+        Hidden at phone width while a doel is open, because there the detail REPLACES the list: the filters
+        would be controls acting on something the teacher cannot see, and they pushed ~330px of chrome above
+        the doel being read. From `lg` up the list sits beside the detail, so they stay. Found by opening the
+        app at 390px, not by a test.
+      */}
       {facetten.data ? (
-        <Doelenfilters filter={filter} facetten={facetten.data} onWijzig={wijzigFilter} />
+        <div className={gekozenCode ? "hidden lg:block" : ""}>
+          <Doelenfilters filter={filter} facetten={facetten.data} onWijzig={wijzigFilter} />
+        </div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start">
