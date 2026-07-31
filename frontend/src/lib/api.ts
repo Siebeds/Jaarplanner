@@ -8,6 +8,22 @@
 const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "";
 
 /**
+ * The absolute URL of an API path, for the cases that must **not** go through {@link apiFetch}.
+ *
+ * There is exactly one today: the import template download (`GET …/sjabloon`), which answers a binary
+ * `.xlsx` with a `Content-Disposition` filename. That belongs in a plain `<a href download>` — the browser
+ * then streams it straight to disk with the server's own filename, shows its own progress, and needs no
+ * JavaScript at all. Fetching it into a blob and synthesising a click would replace all of that with code,
+ * and would put a memory copy of the file in the tab for no gain.
+ *
+ * It exists so a caller building such a link does not re-read `VITE_API_BASE_URL` itself, which is how a
+ * split-origin deployment ends up with one link pointing at the wrong host.
+ */
+export function apiUrl(path: string): string {
+  return `${BASE_URL}${path}`;
+}
+
+/**
  * An HTTP error carrying the status code so callers/UI can branch without parsing messages.
  *
  * It also carries the response body's `detail`/`title` when there were any. Those two fields are **not** a

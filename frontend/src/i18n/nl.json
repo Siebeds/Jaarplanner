@@ -21,7 +21,6 @@
     "titel": "Dit onderdeel is nog niet beschikbaar",
     "uitleg": "Dit deel van de tool is nog in opbouw. Het staat al in het menu zodat je ziet wat er komt. Op deze pagina werkt nog niets.",
     "dekking": "Hier komt het dekkingsoverzicht: hoeveel van je doelen gedekt zijn, welke doelen nog ontbreken, en het bewijs dat je aan de inspectie kan voorleggen.",
-    "import": "Hier laad je straks je thema's en activiteiten in via een Excel-bestand, en vernieuw je de Op.stap-doelen.",
     "beheer": "Hier beheert de directie straks de schooljaren, de klassen, de leerkrachten en hun rechten."
   },
   "selectie": {
@@ -57,6 +56,90 @@
     "aanvaard": "Aanvaard",
     "geweigerd": "Geweigerd",
     "manueel": "Manueel"
+  },
+  "koppelingNiveau": {
+    "themadoel": "themadoel",
+    "subdoel": "subdoel",
+    "activiteit": "activiteit"
+  },
+  "import": {
+    "titel": "Inlezen uit Excel",
+    "uitleg": "Hier laad je de thema's en activiteiten van de school in. Daaronder staat het inlezen van de Op.stap-doelen: dat is werk voor de beheerder.",
+    "geenBestandGekozen": "Nog geen bestand gekozen.",
+    "bestandGekozen": "Gekozen bestand: {naam}",
+    "onbeschikbaar": "Het inlezen is nu niet beschikbaar. Er is niets gewijzigd. Blijft dit misgaan, meld het dan aan wie de tool beheert.",
+    "rij": "rij {nummer}",
+    "bestandNiveau": "hele bestand",
+    "kolom": "kolom {kolom}",
+    "nogMeer": "En nog {aantal} andere.",
+    "nogMeerEnkelvoud": "En nog 1 andere.",
+    "problemenTitel": "{aantal} problemen in het bestand",
+    "problemenTitelEnkelvoud": "1 probleem in het bestand",
+    "problemenUitleg": "Deze rijen konden niet gelezen worden en gaan niet mee. De rijen die wel kloppen, gaan gewoon door.",
+    "telling": "{aantal} {soort}",
+    "niveauLeeg": "niets in dit bestand",
+    "diffTitelToevoegen": "Wat dit bestand toevoegt",
+    "diffTitelToevoegenGedaan": "Wat er toegevoegd is",
+    "diffTitelBijwerken": "Wat dit bestand toevoegt en bijwerkt",
+    "diffTitelBijwerkenGedaan": "Wat er toegevoegd en bijgewerkt is",
+    "diffOvergeslagen": "Uit dit bestand wordt niets ingelezen.",
+    "diffOvergeslagenGedaan": "Uit dit bestand is niets ingelezen.",
+    "diffOngewijzigd": "Dit bestand verandert niets aan wat er al staat.",
+    "subthemaContext": "in {thema}, klas {klas}, leeftijd {leeftijd}",
+    "activiteitContext": "in {thema} · {subthema}",
+    "niveau": {
+      "themas": "Thema's",
+      "subthemas": "Subthema's",
+      "activiteiten": "Activiteiten"
+    },
+    "soort": {
+      "toegevoegd": "toegevoegd",
+      "bijgewerkt": "bijgewerkt",
+      "ongewijzigd": "ongewijzigd"
+    },
+    "verdict": {
+      "groepLabel": "Uitkomst van dit bestand",
+      "gelezen": "Bestand gelezen:",
+      "gelezenGoed": "Alle rijen zijn zonder problemen gelezen.",
+      "gelezenFout": "{aantal} problemen gevonden. Hieronder staat waar.",
+      "gelezenFoutEnkelvoud": "1 probleem gevonden. Hieronder staat waar.",
+      "volledig": "Inhoud volledig:",
+      "volledigGoedVoorbeeld": "Alles uit dit bestand kan overgenomen worden.",
+      "volledigGoedGedaan": "Alles uit dit bestand is overgenomen.",
+      "volledigVerliesVoorbeeld": "{aantal} stukken inhoud kunnen niet overgenomen worden. Hieronder staat wat.",
+      "volledigVerliesVoorbeeldEnkelvoud": "1 stuk inhoud kan niet overgenomen worden. Hieronder staat wat.",
+      "volledigVerliesGedaan": "{aantal} stukken inhoud zijn niet overgenomen. Hieronder staat wat.",
+      "volledigVerliesGedaanEnkelvoud": "1 stuk inhoud is niet overgenomen. Hieronder staat wat.",
+      "volledigDoorProblemenVoorbeeld": "Wat niet gelezen kan worden, wordt ook niet overgenomen.",
+      "volledigDoorProblemenGedaan": "Wat niet gelezen kon worden, is ook niet overgenomen."
+    },
+    "bedreigd": {
+      "titel": "{aantal} koppelingen die jij zelf beslist hebt, staan niet meer in dit bestand",
+      "titelEnkelvoud": "1 koppeling die jij zelf beslist hebt, staat niet meer in dit bestand",
+      "uitleg": "Ze blijven staan zolang je hieronder niets aanduidt. De tool gooit een beslissing van een leerkracht nooit vanzelf weg.",
+      "verwijder": "Verwijder deze {aantal} koppelingen bij het doorvoeren. Dat kan je niet ongedaan maken.",
+      "verwijderEnkelvoud": "Verwijder deze koppeling bij het doorvoeren. Dat kan je niet ongedaan maken."
+    },
+    "schoolcontent": {
+      "titel": "Thema's en activiteiten",
+      "uitleg": "Eén rij per activiteit, met het thema en het subthema erbij. De tool zet die rijen weer om in thema's, subthema's en activiteiten.",
+      "sjabloon": "Sjabloon downloaden",
+      "sjabloonUitleg": "Zo zie je welke kolommen er verwacht worden, met één voorbeeldrij erin. Houd de volgorde van de kolommen zoals ze staat.",
+      "bestandLabel": "Kies je Excel-bestand (.xlsx)",
+      "modusLabel": "Wat moet er gebeuren met inhoud die al bestaat?",
+      "modusToevoegen": "Alleen toevoegen wat nieuw is. Wat al bestaat, blijft precies zoals het is.",
+      "modusBijwerken": "Toevoegen wat nieuw is, en bestaande thema's, subthema's en activiteiten bijwerken met dit bestand.",
+      "nakijken": "Bestand nakijken",
+      "nakijkenBezig": "Bezig met nakijken…",
+      "nakijkenUitleg": "Nakijken verandert nog niets. Je ziet eerst wat er zou gebeuren.",
+      "doorvoeren": "Import doorvoeren",
+      "doorvoerenBezig": "Bezig met inlezen…",
+      "doorvoerenUitleg": "Doorvoeren past bovenstaande wijzigingen toe. Dat kan je niet ongedaan maken.",
+      "doorgevoerd": "De import is doorgevoerd.",
+      "foutBestandOnbekend": "Dit bestand kon niet gelezen worden. Kies een .xlsx-bestand dat op het sjabloon gebaseerd is.",
+      "opmerkingenTitel": "{aantal} stukken inhoud gaan niet mee",
+      "opmerkingenTitelEnkelvoud": "1 stuk inhoud gaat niet mee"
+    }
   },
   "matching": {
     "titel": "AI-doelsuggesties",

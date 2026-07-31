@@ -79,10 +79,18 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
   {
     pad: "/import",
     labelKey: "navigatie.import",
-    isGebouwd: false,
+    isGebouwd: true,
     magBeheerder: true,
-    binnenkortKey: "binnenkort.import",
-    story: "E1-13 (schoolcontent) + E1-15 (Op.stap trigger)",
+    // Read as precisely as the note on `isGebouwd` asks. **E1-13** built both halves of this destination: the
+    // teacher-facing school-content import (upload, sjabloon, preview, per-row problems, add vs bijwerken) and
+    // the directie-facing Op.stap review flow over E1-15's trigger. What is NOT here is a real Op.stap import
+    // of real data: a per-discipline file refuses with a 409 until **E1-12** loads the decreed minimumdoelen,
+    // which is blocked on a source file from directie. The screen says that in visible text rather than
+    // letting a refusal read as a broken download (the screen's own copy is where that lives, not here).
+    //
+    // `magBeheerder` stays true and is still enforced nowhere: the API is unauthenticated (E6-01/E6-02, gated
+    // by E7-11), so the page states which section is beheerderswerk instead of pretending to gate it.
+    story: "E1-13 (both flows); E1-12 unblocks importing real Op.stap data",
   },
   {
     pad: "/beheer",

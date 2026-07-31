@@ -15,9 +15,14 @@ import { ApiError, apiFetch } from "./api";
  * shape ships.
  */
 
-/** Captures the `RequestInit` the client hands to `fetch`, so the headers can be asserted. */
+/**
+ * Captures the `RequestInit` the client hands to `fetch`, so the headers can be asserted.
+ *
+ * The parameters are declared (and `_`-prefixed) rather than omitted: `vi.fn(async () => …)` types the mock as
+ * taking no arguments, and `mock.calls[0][1]` then does not typecheck at all.
+ */
 function stubFetch(antwoord: Response) {
-  const fetchFake = vi.fn(async () => antwoord);
+  const fetchFake = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => antwoord);
   vi.stubGlobal("fetch", fetchFake);
   return fetchFake;
 }
@@ -35,7 +40,7 @@ describe("apiFetch — the request headers", () => {
 
     await apiFetch("/api/schoolcontent-import/voorbeeld", { method: "POST", body: formulier });
 
-    const init = fetchFake.mock.calls[0][1] as RequestInit;
+    const init = fetchFake.mock.calls[0][1]!;
     const headers = init.headers as Record<string, string>;
     expect(headers).not.toHaveProperty("Content-Type");
   });
@@ -48,7 +53,7 @@ describe("apiFetch — the request headers", () => {
       body: JSON.stringify({ selectie: null }),
     });
 
-    const init = fetchFake.mock.calls[0][1] as RequestInit;
+    const init = fetchFake.mock.calls[0][1]!;
     expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
   });
 
@@ -59,7 +64,7 @@ describe("apiFetch — the request headers", () => {
 
     await apiFetch("/api/leerplandoelen");
 
-    const init = fetchFake.mock.calls[0][1] as RequestInit;
+    const init = fetchFake.mock.calls[0][1]!;
     expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
   });
 });
