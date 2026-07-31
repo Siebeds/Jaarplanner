@@ -20,7 +20,7 @@ Full requirements live in [`docs/Functionele_Analyse_Jaarplanner.md`](docs/Funct
 
 **E1 is not complete** and **M1 is *not* reached**, for two independent reasons: E1-03/E1-04 are reopened and blocked on **E1-12** (decreed-minimumdoelen import), which needs the source file from directie — until then no `Minimumdoel` row can exist and minimumdoel-level coverage, the level the onderwijsinspectie tests, returns nothing; and **E1 still has no UI of its own** — tracked as E1-13 (import flow), E1-14 (beheer screens) and E1-16 (the Doelen screen the nav points at).
 
-**E0 reopened** for **E0-10**, the app shell no story owned (routing, navigatie, klas/schooljaar-keuze, plus a UI redesign). It is merged to `main` but still `[~]`: its gates have not run. Within **E3** (M3), E3-01, E3-02, E3-05 and E3-10 are done; **E3-06** is `[~]` awaiting the directie/teacher review that closes it; E3-03 is blocked on E5. **E3-07** (drag-and-drop) **is done** — built and audited 2026-07-30, verified in a browser against PostgreSQL; the owner **waived** the teacher review for it, so it did not wait on E3-06. **E3-04** is being built in a parallel worktree.
+**E0 reopened** for **E0-10**, the app shell no story owned (routing, navigatie, klas/schooljaar-keuze, plus a UI redesign). It is merged to `main` but still `[~]`: its gates have not run. Within **E3** (M3), E3-01, E3-02, E3-05 and E3-10 are done; **E3-06** is `[~]` awaiting the directie/teacher review that closes it; E3-03 is blocked on E5. **E3-07** (drag-and-drop) **is done** — built and audited 2026-07-30, verified in a browser against PostgreSQL; the owner **waived** the teacher review for it, so it did not wait on E3-06. **E3-04's persistence half is merged** (PR #18): the generation settings are kept per klas × schooljaar, which is what the owner's 2026-07-30 ruling required and what E4's regeneration will inherit. It stays `[~]` for one reason only, and it is not a code reason: the browser pass over the last fix round did not run, because both gate agents died on an org spend limit.
 
 > **Deliberately no story counts here.** They lived in this paragraph and drifted twice in one day — corrected, then re-falsified by the next commit. [`backlog/README.md`](backlog/README.md) holds the live numbers; a figure you have to remember to sync is a figure that will be wrong.
 
@@ -117,6 +117,7 @@ Database / EF Core:
 - **Thema** — id, naam, subthema's[], activiteiten[].
 - **DoelKoppeling** (formerly **ThemaDoel**, see Art. IX.2) — link school-content↔Leerplandoel with `status` (voorgesteld/aanvaard/geweigerd/manueel) and `aiMotivatie`.
 - **Jaarplan** — klasId; per **planningsblok** a list of thema's, with a `vergrendeld` flag per thema (excluded from regeneration). Planningsblok granularity is **ratified (directie 2026-07-14)**: two-tier default = themaperiode (4–6 wk) + subthemaperiode (~2 wk), configurable behind the E3-05 seam — still never hard-assume months; see [`CONSTITUTION.md` Art. IX.3](CONSTITUTION.md#article-ix--core-data-model-functional).
+- **Generatieparameters** — the pre-generation parameters (FR-5.4), **kept per (klas, schooljaar)** so (her)generatie honours them; startthema's key on the block's `blokStart`, never an ordinal. See [`CONSTITUTION.md` Art. IX.3](CONSTITUTION.md#article-ix--core-data-model-functional).
 - **Dekking** is computed, not stored: a leerplandoel is *gedekt* when linked (status aanvaard/manueel) to a thema placed in the plan; a minimumdoel is *gedekt* when ≥1 concorded leerplandoel is gedekt.
 
 ## Op.stap Excel → model mapping
@@ -151,6 +152,7 @@ One Excel file per discipline. Hidden columns may be empty. **Keep this mapping 
 - **Jaar/fase** — JK, K2, K3 (kleuter) and L1–L6 (lager); minimumdoelen anchor at mijlpalen K3/L4/L6.
 - **Thema / subthema / activiteit** — the school's own content building blocks.
 - **Jaarplan / planningsblok** — the year plan per class / a time slot (ratified two-tier default: themaperiode 4–6 wk + subthemaperiode ~2 wk, configurable behind a seam — do not assume months).
+- **Startthema / vast moment** — the two pre-generation parameters (FR-5.4): a *preference* for which thema opens a period, and a committed day **inside** a period that may block placement. A closure (vakantie, vrije dag) is a `Schoolsluiting` on the schooljaar, never a vast moment.
 - **Dekking** — coverage; **gap-analyse** — the missing-goals overview.
 - **Graadklas / menggroep** — combined-grade class; a planning edge case to support.
 
