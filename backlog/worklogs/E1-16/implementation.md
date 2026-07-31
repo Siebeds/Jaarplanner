@@ -59,6 +59,15 @@ Frontend, all new under `frontend/src/features/doelen/` unless noted:
    1K/2K/3K or JK/K2/K3 are all unresolved, and each of them *is* one of these lists. A compiled-in enum
    would answer all three silently and then disagree with the database. `(domein, subdomein)` is nested
    structurally, and a subdomein arriving without its domein is dropped rather than sent (Art. VII.0).
+   > **Amended after the audit — this sentence was true of the frontend only.** Two code comments
+   > (`LeerplandoelFilter.cs`, `doelenfilter.ts`) extended the claim to the server, where nothing enforced it:
+   > `?subdomein=Bouwstenen` summed unrelated domeinen into one total, because `Subdomein` was applied as an
+   > independent predicate. The frontend guard was real and tested, and it was the *only* guard. Worse, the
+   > integration test covering it was named `Subdomein_filtert_alleen_binnen_zijn_domein` while its first
+   > assertion proved the opposite, so a reader scanning test names got the wrong picture. Fixed in fix round 1
+   > by making the comments true rather than by softening them: the controller now returns **400** for a
+   > subdomein without a domein, and the test is renamed and split. Recorded because "a comment asserting a
+   > guard that does not exist" is this repo's named failure mode and this was its third instance.
 5. **Selection in the path, filters in the query string** (ADR-0021), so a doel is deep-linkable and a
    filtered register is shareable. Filters are written with `replace` so filtering does not bury the exit
    from the screen in history.
@@ -100,8 +109,8 @@ would have said nothing about this class.
 **Frontend, 47 tests** (159 total across 11 files). The fetch fake filters, sorts and pages *server-side*,
 so a screen that narrowed a local copy would fail rather than pass; the filter tests assert the **request
 carried the filter**, not merely that the visible rows changed. Covered: the row's five fields and the
-doelsoort abbreviation; read-only stated exactly once; **every count through `tAantal`, with the singular
-case pinned** (the "1 doelen" bug has shipped here four times); the review marker as visible text with no
+doelsoort abbreviation; read-only stated exactly once; ~~**every count through `tAantal`, with the singular
+case pinned**~~ (the "1 doelen" bug has shipped here four times); the review marker as visible text with no
 `title`; a bounded page request, "meer laden" appending, and the action disappearing on the last page; each
 of the five filters plus search; subdomein disabled until a domein is chosen; a subdomein-only link dropped;
 chips removable individually and all at once; **the three empty states each asserted to exclude the other
@@ -109,6 +118,20 @@ two's copy**; the nested route, Back, and filters preserved when a doel opens; t
 handling, all three concordance states, all four link layers with their statuses; and one test that walks
 **every control on the screen** and fails on anything not read-side, including `contenteditable` and a form
 with an `action`.
+
+> **The struck claim above was false, and the way it was false is the point.** The test-runner found that the
+> paging button rendered `doelen.meerLaden` ("Volgende {aantal} doelen laden") with **no singular counterpart**,
+> so any filter whose total ends on one leftover row said *"Volgende 1 doelen laden"*. Four of the five count
+> strings did go through `tAantal`; the fifth did not, and the read-only control-walk waved it through because
+> it matched on `naam.startsWith("Volgende")`. That makes this the **fifth** time this bug has shipped in this
+> repo, and the second time inside a commit whose own log announced fixing it.
+> The lesson is not "check the strings". Each of the previous four fixes was applied to the instance that had
+> been noticed, which is why a fifth was available to find. Fix round 1 therefore adds
+> `frontend/src/i18n/catalogus.test.ts`: a catalogue-wide guard that fails on **any** `{aantal}` string with no
+> singular counterpart, whether or not anyone writes a test for the screen that renders it. Its exemption list
+> carries a checkable reason per entry, and a second test keeps that list from rotting. It immediately surfaced
+> a coupling nobody had written down: `kalender.teVol` is only grammatical because
+> `VOORLOPIGE_TE_VOL_DREMPEL` is 3, so whoever lowers that constant inherits the singular.
 
 ### Gates — real output
 
@@ -252,9 +275,64 @@ All pass. The measurement pages used for this were temporary and are deleted; th
   than only here.
 - **E1-15 remains the missing Op.stap import trigger.** The "nothing imported yet" empty state therefore
   says loading Op.stap is beheerderswerk and links to nothing, because there is nothing to link to.
-- **Facets are unfiltered**, i.e. the option counts describe the whole curriculum rather than the current
-  filter. Deliberate: cascading counts would make the filter list shift as it is used. Worth a directie
-  opinion if teachers find it confusing.
+- ~~**Facets are unfiltered**~~ — **changed in fix round 1, because "worth a directie opinion" undersold it.**
+  The audit showed the problem was not the counts alone: the *option sets* did not narrow either, so a teacher
+  picking Discipline = Wiskunde was still offered *Natuur (3)*, and choosing it returned nothing. A control
+  stating a positive number and delivering zero rows is not a matter of taste. The orchestrator ruled: **scope
+  the counts to the active filter, keep the option sets stable, and render a zero as `(0)` rather than hiding
+  the option.** Now no number lies and no keuzelijst shifts under a teacher's hand mid-task.
+  *Still open for directie:* whether a zero-count option should disappear entirely rather than show `(0)`.
 - **No authorisation.** Like every other screen today, this one is unauthenticated (E6-01/E7-11). It is a
   pure read of decreed reference data, so there is nothing to leak beyond the curriculum itself, but it is
   not role-scoped either.
+
+---
+
+## Fix round 1 (2026-07-31) — both gates came back red
+
+`test-runner` returned **FAIL** on one defect; `antagonist` returned **VIOLATIONS FOUND** (3 MAJOR, 7 MINOR,
+2 QUESTION). All 13 were addressed. Where a finding offered two remedies the orchestrator chose, and the
+choice is recorded next to the fix rather than left implicit:
+
+| # | Finding | Outcome |
+|---|---|---|
+| 1 | MAJOR: the register told a teacher the curriculum was never imported, briefly on every cold visit and permanently after a facets error | `Curriculumstaat` is now three-valued (`onbekend`/`leeg`/`gevuld`) derived from the query status; the "nothing imported" claim needs a **resolved** zero. Ordering pinned by a test that asserts the copy is absent on a pending first render |
+| 2 | MAJOR: two comments asserted a server `(domein, subdomein)` guard that did not exist | **Ruling: make the comments true.** The controller now 400s a subdomein without a domein (Art. VII.0); the mis-named test is renamed and split |
+| 3 | MAJOR: class/age-scoped Subdoel and Activiteit links published school-wide with no seam (Art. IX.2, open FR-10.2) | **Ruling: keep the information, add the seam, make the scope visible.** `Koppelingzichtbaarheid` is passed explicitly from one place in the controller; every row now states *hele school* or names its klas. Narrowing was rejected: a doel used only through one klas's activiteit would have read as used nowhere |
+| 4 | FAIL: the paging count bypassed `tAantal` ("Volgende 1 doelen laden") | Fixed, **and closed as a class**: `i18n/catalogus.test.ts` now fails on any `{aantal}` string with no singular, with a checkable reason per exemption and a second test keeping that list honest |
+| 5 | MINOR: discipline order was ordinal, so a full import reads 1, 10, 11, 2 | Sorted on numeric dot-separated segments; the false "only stable ordering" comment corrected |
+| 6 | MINOR: the row `aria-label` overrode the accessible name, hiding doelsoort, jaar/fase and the review flag from screen readers | Row-level label removed; the name comes from the contents. The Art. XII redundancy now exists in the accessibility tree too, not only visually |
+| 7 | MINOR: `cluster` rendered as a fourth ordeningskader level | Its own labelled field, using the `clusterLabel` key that had shipped dead |
+| 8 | MINOR: "Gebruikt in thema's" counted `voorgesteld`/`geweigerd` as usage (Art. V.1) | Neutral heading *"Waar dit doel voorkomt"*, and the line now says outright that only *Aanvaard* and *Manueel* count for dekking |
+| 9 | MINOR: three dead `nl.json` keys, one making an assertion vacuous | Two deleted, `clusterLabel` used per finding 7, and a guard added so a dead `doelen.*` key fails the suite |
+| 10 | MINOR: a comment claimed an unknown discipline number was possible; the FK forbids it | Comments corrected; the defensive left join kept |
+| 11 | MINOR: the axe check did not await the filters it claimed to cover | Awaits both regions, like its neighbour |
+| 12 | QUESTION: unfiltered facets offered combinations labelled positive that returned nothing | **Ruling: scoped counts, stable options, `(0)` shown.** See the amended note above |
+| 13 | QUESTION: the `Restrict` FK is the only thing standing behind an untested read branch | One-line note added at the FK, naming the test that would have to grow teeth if the constraint is ever relaxed |
+
+### Who verified what, after the fix round
+
+The implementer was cut off twice by API stalls and finally by an **org spend limit**, mid browser check, so
+the orchestrator finished and re-verified. Stated precisely, because "the gates are green" means different
+things depending on who ran them:
+
+- **Re-run by the orchestrator, on the fixed tree:** `dotnet format --verify-no-changes` clean;
+  **475 unit + 115 integration, 0 failed, 0 skipped** against real PostgreSQL; `corepack pnpm lint` clean;
+  **174 frontend tests / 12 files**; `corepack pnpm build` clean.
+- **Read and confirmed in the code by the orchestrator:** findings 1, 2, 3, 4, 6, 7, 8 (the rest by diff).
+- **Browser check re-done by the orchestrator** on API :5286 / Vite :5275 against the live database, at
+  1440px and at exactly 390px: register, detail, a doel with all four link layers, and a doel with a
+  concordance. `?subdomein=Bouwstenen` returns **400** live. At 390px `scrollWidth == clientWidth == 390`
+  and nothing renders outside the viewport. Contrast measured with alpha composited: body text 15.42, muted
+  labels 6.08, the six doelsoort badges **5.08 to 7.46**, the status badges on the row surface this round
+  changed from `bg-paper` to `bg-card` **4.70 (Geweigerd) to 7.35 (Manueel)**. The 4.70 is a pass against
+  4.5 and is a pre-existing E2 badge variant, not authored here.
+- **NOT re-run, and this is why the story is not `[x]`:** neither independent gate saw the fixed code. The
+  `test-runner` never ran a browser pass at all (the Playwright MCP server was down for the whole story), and
+  the `antagonist` audited only the pre-fix tree. This project's record is explicit that the independent pass
+  catches what a self-review misses, **including in the fixes written to address its own earlier findings** —
+  so a self-verified fix round is exactly the case the rule was written for. Both gates must re-run before
+  this story closes.
+- *Also unverified:* the "no curriculum imported" state still cannot be reached in a browser while the dev
+  database holds rows; it rests on a frontend test. The 288 fabricated `-CHK-` rows are still in the local
+  dev database (removal SQL above); nothing about them is in the repo.

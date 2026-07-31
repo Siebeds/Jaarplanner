@@ -287,18 +287,24 @@ function Koppelingen({ koppelingen }: { koppelingen: DoelKoppelingWeergave[] }) 
                 // hold both a themadoel and a suggestion), so the index is part of the key by necessity: the
                 // list is server-ordered and never reordered here.
                 key={`${koppeling.herkomst}-${koppeling.themaNaam}-${koppeling.onderdeel ?? ""}-${koppeling.klasNaam ?? ""}-${index}`}
-                className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-paper px-3 py-2"
+                // Two columns rather than one wrapping row. The row WAS a single `flex-wrap` with the badge on
+                // `ml-auto`, and adding the scope label pushed the content past one line, so the badge dropped
+                // onto a second line on its own and the list read as ragged. Found by looking at it, not by a
+                // test: the badge belongs at the end of the row it describes.
+                className="flex items-start justify-between gap-3 rounded-md border border-border bg-card px-3 py-2"
               >
-                <span className="text-sm font-medium text-ink">{koppeling.themaNaam}</span>
-                {koppeling.onderdeel ? (
-                  <span className="text-sm text-ink-zacht">{koppeling.onderdeel}</span>
-                ) : null}
-                <span className="text-xs text-ink-zacht">{t(HERKOMST_LABEL[koppeling.herkomst])}</span>
-                {/* The scope, always stated. Keyed on the HERKOMST rather than on whether a klas name arrived:
-                    a class-scoped link with no resolvable klas must not fall through to "hele school", which
-                    would be exactly the false school-wide reading this label exists to prevent. */}
-                <span className="text-xs text-ink-zacht">{schaallabel(koppeling)}</span>
-                <Badge variant={statusVariant(koppeling.status)} className="ml-auto">
+                <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-sm font-medium text-ink">{koppeling.themaNaam}</span>
+                  {koppeling.onderdeel ? (
+                    <span className="text-sm text-ink-zacht">{koppeling.onderdeel}</span>
+                  ) : null}
+                  <span className="text-xs text-ink-zacht">{t(HERKOMST_LABEL[koppeling.herkomst])}</span>
+                  {/* The scope, always stated. Keyed on the HERKOMST rather than on whether a klas name arrived:
+                      a class-scoped link with no resolvable klas must not fall through to "hele school", which
+                      would be exactly the false school-wide reading this label exists to prevent. */}
+                  <span className="text-xs text-ink-zacht">{schaallabel(koppeling)}</span>
+                </span>
+                <Badge variant={statusVariant(koppeling.status)} className="shrink-0">
                   {t(`suggestieStatus.${statusVariant(koppeling.status)}`)}
                 </Badge>
               </li>
