@@ -42,7 +42,7 @@ public sealed class PlanningExceptionHandler : IExceptionHandler
             ProblemDetails = new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,
-                Title = "Ongeldige aanvraag",
+                Title = Probleemtitels.OngeldigeAanvraag,
                 Detail = exception.Message,
             },
         });

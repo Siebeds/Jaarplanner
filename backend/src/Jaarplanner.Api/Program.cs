@@ -34,9 +34,22 @@ builder.Services.AddExceptionHandler<SchoolcontentExceptionHandler>();
 // returns false for anything that is not its own (Art. VIII — keep controllers thin).
 builder.Services.AddExceptionHandler<AiMatchingExceptionHandler>();
 
+// Op.stap import exception handler (E1-15): maps the curriculum-integrity refusals — an unknown
+// discipline (400), and the two 409s: minimumdoelen that are not loaded yet (E1-12) and a code that
+// already belongs to another discipline. The translation from a PostgreSQL SQLSTATE to a typed fault
+// happens in Infrastructure, next to the DbContext, so the controller names no EF/Npgsql type (Art. VIII).
+builder.Services.AddExceptionHandler<OpstapImportExceptionHandler>();
+
 // Planning exception handler (E3-01): maps the one planning-specific fault — a teacher asking to set a jaarplan
 // placement back to `voorgesteld` (Art. IV.1/IV.2) — to a 400. Planning not-found reuses the school-content 404.
 builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
+
+// The single authorisation seam for curriculum reference-data administration (E1-15, Art. VI.1,
+// ADR-0011 §2): one named policy that the Op.stap import endpoints — and E1-12's decreed-minimumdoelen
+// import when it lands — authorise against. It currently authorises everyone, because the API has no
+// authentication scheme and no role matrix yet (E6-01/E6-02, and E7-11 as a deployment gate). See
+// CurriculumbeheerAutorisatie for what changes when the role matrix arrives.
+builder.Services.AddCurriculumbeheerAutorisatie();
 
 // Data access + database health check live in Infrastructure (Art. VIII — keep Api thin).
 // This registers AppDbContext (UseNpgsql, connection string from configuration) and a
@@ -69,6 +82,13 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
 {
     Predicate = registration => registration.Tags.Contains("ready"),
 });
+
+// Enforces the [Authorize] metadata on the endpoints that carry it (today: the curriculum import,
+// E1-15). Called explicitly rather than relied on implicitly: an endpoint carrying authorisation
+// metadata with no authorisation middleware in the pipeline throws at request time, so the seam must
+// be visibly wired here. No UseAuthentication() yet — there is no scheme to authenticate against
+// until E6-01, and the policy is written not to require one.
+app.UseAuthorization();
 
 app.MapControllers();
 

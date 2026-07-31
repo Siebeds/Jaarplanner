@@ -41,6 +41,15 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// input is not a curriculum change (Art. III.4).
 /// </para>
 /// <para>
+/// <b>Integrity preflight (E1-15).</b> Before any diffing, the service checks the three preconditions
+/// that the database would otherwise refuse at <c>SaveChanges</c>: the discipline must be one of the
+/// seeded official ones, no incoming <c>code</c> may already belong to another discipline, and every
+/// concordance key must resolve to a loaded <c>Minimumdoel</c>. Each failure raises an
+/// <see cref="OpstapImportFout"/>. Two reasons it lives here rather than at the caller: the checks need
+/// the database, and running them <b>before</b> the write means the <i>preview</i> refuses exactly what
+/// the commit refuses (FR-2.5). It changes nothing about <i>which</i> rows an importable file imports.
+/// </para>
+/// <para>
 /// <b>Discipline-selection seam (E1-06, Art. XIV "Disciplines first").</b> Before touching any data
 /// the service asks the injected <see cref="IDisciplineSelectie"/> whether the parse result's
 /// discipline is in scope for import. The answer is <b>data-driven</b> (configuration/data), never a
@@ -110,6 +119,9 @@ public sealed class OpstapImportService : IOpstapImportService
         // not (yet) opted to import is not a curriculum change.
         if (!_disciplineSelectie.IsInScope(disciplineNummer))
         {
+            // The notice is Dutch because the person running the import acts on it (Art. II.3). It names
+            // no configuration key on purpose: widening the selection is an operator action, and the key
+            // to change is `Opstap:DisciplineSelectie` (documented here, for the operator, in English).
             var buitenScope = new OpstapHerimportDiff(
                 disciplineNummer,
                 toegevoegd: [],
@@ -120,9 +132,9 @@ public sealed class OpstapImportService : IOpstapImportService
                 overgeslagen: true,
                 opmerkingen:
                 [
-                    $"Discipline {disciplineNummer} valt buiten de geconfigureerde importselectie " +
-                    $"({_disciplineSelectie.Omschrijving}) — niets ingelezen of gewijzigd. " +
-                    "Pas de configuratie 'Opstap:DisciplineSelectie' aan om deze discipline op te nemen.",
+                    $"Discipline {disciplineNummer} valt buiten de ingestelde importselectie " +
+                    $"({_disciplineSelectie.Omschrijving}). Er is niets ingelezen of gewijzigd. " +
+                    "Neem deze discipline op in de importselectie als ze toch mee moet.",
                 ]);
 
             return new OpstapImportResultaat(buitenScope, toegepast: false);
@@ -156,13 +168,17 @@ public sealed class OpstapImportService : IOpstapImportService
                 overgeslagen: true,
                 opmerkingen:
                 [
-                    $"Geen geldige leerplandoelen ingelezen voor discipline {disciplineNummer} — " +
-                    $"niets toegepast. De {bestaand.Count} bestaande doelen blijven ongewijzigd " +
-                    "(bestand mogelijk leeg, onvolledig of verkeerd).",
+                    $"Er zijn geen geldige leerplandoelen ingelezen voor discipline {disciplineNummer}, " +
+                    $"dus is er niets toegepast. De {bestaand.Count} bestaande doelen blijven ongewijzigd. " +
+                    "Mogelijk is het bestand leeg, onvolledig of hoort het bij een andere discipline.",
                 ]);
 
             return new OpstapImportResultaat(notice, toegepast: false);
         }
+
+        // Integrity preflight (E1-15): refuse what the database would refuse, and refuse it identically on
+        // the preview path, so an FR-2.5 review never green-lights an import that cannot land.
+        await ControleerVoorwaardenAsync(disciplineNummer, inkomend, cancellationToken);
 
         var toegevoegd = new List<string>();
         var gewijzigd = new List<LeerplandoelWijziging>();
@@ -259,7 +275,24 @@ public sealed class OpstapImportService : IOpstapImportService
 
         if (toepassen)
         {
-            await _context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException ex) when (VertaalIntegriteitsfout(ex, disciplineNummer) is { } fout)
+            {
+                // Belt and braces behind the preflight above (E1-15). The preflight answers the same three
+                // questions before anything is written, so reaching here means the state changed under us
+                // (a concurrent import, or a row inserted between the check and the commit). Translated to
+                // the same typed fault so the Api never sees an Npgsql or EF type (Art. VIII); anything
+                // this does not recognise keeps bubbling up, because a failed curriculum write must stay
+                // loud rather than be disguised as a known case.
+                //
+                // The DbUpdateException travels along as the inner exception (set by VertaalIntegriteitsfout),
+                // so the SQLSTATE, constraint name and table survive into the log. Discarding it here would
+                // throw away the only useful artefact in the one situation that produces this path.
+                throw fout;
+            }
         }
 
         var diff = new OpstapHerimportDiff(
@@ -271,6 +304,113 @@ public sealed class OpstapImportService : IOpstapImportService
             verdwenenMaarGekoppeld);
 
         return new OpstapImportResultaat(diff, toepassen);
+    }
+
+    /// <summary>
+    /// The integrity preflight (E1-15): the three preconditions the database enforces, checked <b>before</b>
+    /// anything is written so a preview refuses exactly what a commit refuses (FR-2.5). Each failure raises
+    /// an <see cref="OpstapImportFout"/> with a Dutch explanation for whoever runs the import; none of them
+    /// changes which rows an importable file imports.
+    /// <para>
+    /// Order matters: the discipline is checked first, because a mistyped discipline number can also trip
+    /// the "code already loaded elsewhere" check and the advice for that case would then be useless
+    /// (found by the E1-15 test-runner: on a loaded database the primary-key violation reached
+    /// <c>SaveChanges</c> before the discipline foreign key, so the wrong message won).
+    /// </para>
+    /// </summary>
+    private async Task ControleerVoorwaardenAsync(
+        string disciplineNummer,
+        IReadOnlyDictionary<string, Leerplandoel> inkomend,
+        CancellationToken cancellationToken)
+    {
+        if (inkomend.Count == 0)
+        {
+            return;
+        }
+
+        // 1. The discipline must be one of the official, seeded Op.stap disciplines (Art. VII.0). Answered
+        //    by the taxonomy table, so no discipline list is compiled in here either.
+        var disciplineBestaat = await _context.Disciplines
+            .AnyAsync(d => d.Nummer == disciplineNummer, cancellationToken);
+        if (!disciplineBestaat)
+        {
+            throw OpstapImportFout.OnbekendeDiscipline(disciplineNummer);
+        }
+
+        // 2. No incoming code may already belong to another discipline. Refuse and inform the uploader:
+        //    ratified policy (owner, 2026-07-31; see the RESOLVED entry in backlog/README.md). The code is
+        //    the stable identity (Art. III.5), so moving one between disciplines is a curriculum change a
+        //    human confirms, not something an upload decides.
+        var codes = inkomend.Keys.ToList();
+        var elders = await _context.Leerplandoelen
+            .Where(l => codes.Contains(l.Code) && l.DisciplineNummer != disciplineNummer)
+            .OrderBy(l => l.Code)
+            // One more than the notice will name, which is all it takes to know the list was truncated.
+            .Take(OpstapImportFout.MaxGenoemdeVoorbeelden + 1)
+            .Select(l => new DoelInAndereDiscipline(l.Code, l.DisciplineNummer))
+            .ToListAsync(cancellationToken);
+        if (elders.Count > 0)
+        {
+            throw OpstapImportFout.CodeInAndereDiscipline(disciplineNummer, elders);
+        }
+
+        // 3. Every concordance key must resolve to a loaded Minimumdoel: MinimumdoelRef is a Restrict FK, and
+        //    nothing can insert a Minimumdoel until the decreed source lands (E1-12), so an MD-concorded row
+        //    cannot be persisted. Because the import commits in one transaction, one such row blocks the
+        //    whole file — which is exactly why the reviewer must hear it on the preview.
+        var refs = inkomend.Values
+            .Select(l => l.MinimumdoelRef)
+            .Where(r => r is not null)
+            .Select(r => r!)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (refs.Count > 0)
+        {
+            var gekend = await _context.Minimumdoelen
+                .Where(m => refs.Contains(m.Ref))
+                .Select(m => m.Ref)
+                .ToListAsync(cancellationToken);
+            var ontbrekend = refs.Except(gekend, StringComparer.Ordinal).OrderBy(r => r, StringComparer.Ordinal).ToList();
+            if (ontbrekend.Count > 0)
+            {
+                throw OpstapImportFout.OntbrekendeMinimumdoelen(ontbrekend);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Translates a PostgreSQL integrity violation into the typed <see cref="OpstapImportFout"/>, or returns
+    /// <c>null</c> when it is not one of the known cases (which must then keep bubbling up). This is the one
+    /// place that reads a SQLSTATE for the import path, and it lives in Infrastructure with the DbContext,
+    /// not in the Api (Art. VIII).
+    /// <para>
+    /// It knows the constraint that broke but not <i>which</i> refs or codes offended, so it calls the same
+    /// <see cref="OpstapImportFout"/> factories as the preflight with an empty detail list: the wording has
+    /// exactly one source per case, and the only difference between the two paths is that this one names no
+    /// examples (Art. II.3 clause 3). The <see cref="DbUpdateException"/> travels as the inner exception,
+    /// because this path is only reachable through a concurrency anomaly and the SQLSTATE is then the only
+    /// artefact worth logging.
+    /// </para>
+    /// </summary>
+    private static OpstapImportFout? VertaalIntegriteitsfout(DbUpdateException ex, string disciplineNummer)
+    {
+        if (ex.InnerException is not Npgsql.PostgresException fout)
+        {
+            return null;
+        }
+
+        var constraint = fout.ConstraintName ?? string.Empty;
+
+        return (fout.SqlState, constraint) switch
+        {
+            ("23503", var c) when c.Contains("minimumdoel", StringComparison.OrdinalIgnoreCase) =>
+                OpstapImportFout.OntbrekendeMinimumdoelen([], ex),
+            ("23503", var c) when c.Contains("discipline", StringComparison.OrdinalIgnoreCase) =>
+                OpstapImportFout.OnbekendeDiscipline(disciplineNummer, ex),
+            ("23505", var c) when c.Contains("leerplandoelen", StringComparison.OrdinalIgnoreCase) =>
+                OpstapImportFout.CodeInAndereDiscipline(disciplineNummer, [], ex),
+            _ => null,
+        };
     }
 
     /// <summary>
