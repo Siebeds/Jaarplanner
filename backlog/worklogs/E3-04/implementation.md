@@ -234,8 +234,16 @@ schema diff for the existing tables. Regression tests:
 `GeneratieparametersPersistentieTests.Een_moment_vervangen_door_een_ander_slaagt_op_een_bestaande_rij`.
 
 Fixed rather than filed, on this story's own precedent for the Postgres FORCE-drop flake: I could not demonstrate
-E3-04's headline criterion without it. **`DoelKoppeling`'s owned collections are unaffected** — they have no explicit
-key, so EF's shadow int key is unset on a new instance and the state resolves correctly.
+E3-04's headline criterion without it. **`DoelKoppeling`'s owned collections are unaffected**, and the mechanism matters
+more than the verdict, so here it is corrected (audit round 1, finding 7): they have no explicit key, so EF's discovered
+key is a **shadow `Guid`** — `ValueGeneratedOnAdd`, exactly like `Themaplaatsing.Id` — *not* the shadow `int` this
+paragraph first claimed. What makes them safe is not the type but that the property is a **shadow** one: a new
+`DoelKoppeling` has no `Id` to assign in its constructor, so the shadow value is `Guid.Empty` when `DetectChanges` looks,
+`IsKeySet` is false, and the entity resolves as `Added`. The stated rule is therefore *"a constructor-assigned key plus
+`OnAdd` is the dangerous combination"*, not *"an int key is safe"* — which would have given the wrong answer for the next
+type someone checks. Verified against the model snapshot
+(`AppDbContextModelSnapshot`: `b1.Property<Guid>("Id").ValueGeneratedOnAdd()` on `activiteiten_Doelkoppelingen`,
+`themas_Doelsuggesties` and their siblings).
 
 *How it was found is the reusable part.* The first version of the HTTP test discarded the status code of two of its four
 POSTs. One of them was already returning 500. The failure surfaced two requests later and looked mysterious for twenty
@@ -284,3 +292,165 @@ times.
   for the all-periods row list at ~390px. This is the one gap in this entry and the test-runner should close it.
 - **The open-day vs calendar-day prompt gap** (this story's existing clause) is untouched.
 - **E4's regeneration UI** is not built, by instruction.
+
+## Fix round 1 (2026-07-31) — the collapsed screen, the request contract, and the race
+
+Test-runner: **PASS** on every acceptance criterion, including a 390px browser pass with contrast pixel-sampled in real
+Edge. Antagonist: **VIOLATIONS FOUND** — 1 MAJOR, 7 MINOR, 2 QUESTION. Two items were owner decisions and out of scope;
+one of those (the concurrent-run 500) was then ruled **in** scope mid-round and is item 10 below. The
+`ValueGeneratedNever()` fix was verified independently by the antagonist against the real `AppDbContext` (with the line:
+`Added` and a clean save; without it: `Modified` and `DbUpdateConcurrencyException`) and via `IMigrationsModelDiffer` to
+produce no schema diff either way. Kept.
+
+### 1. MAJOR — a failed settings load asserted the opposite of what would happen
+
+`GET …/jaarplan/parameters` failing left `instellingen.data` undefined, so the trigger read **"(niets ingesteld)"**
+while `genereerJaarplan` sent **no body** — and by this story's own contract a bodyless run applies the *stored*
+settings. A teacher with a saved blocking vast moment therefore read the exact inverse of what the run would do, with
+the explanation (`parameters.instellingenFout`) rendered only inside a panel that is closed by default. The same
+mitigation placement that hid finding 1 of UI audit round 2, and it contradicted this file's own rule three paragraphs
+up: *"a stranded setting must be visible without opening anything, since it is being sent."*
+
+Three changes, and the third is the one I would defend hardest:
+
+1. **The summary distinguishes *unknown* from *absent*.** `(instellingen laden…)` while pending,
+   `(instellingen niet geladen)` on error. It never falls through to `(niets ingesteld)`, which is a claim about the run
+   and must therefore be true about the run.
+2. **The failure is stated outside the collapse**, as a `role="alert"` (inert text, so no live region wraps a control).
+   The in-panel copy is gone rather than duplicated.
+3. **Generation is refused until the settings are known** — the kalender disables the button while
+   `isPending || isError`. Offered as optional by the finding; taken, because a run whose parameters the screen cannot
+   state is a run a teacher cannot consent to, and FR-5.4's one *enforced* parameter (a blocking vast moment) changes
+   the outcome silently. The cost is one request's worth of a disabled button in the normal case, with the summary
+   saying why; the alternative is a screen that invites a run it cannot describe. The error copy now names the
+   consequence and the remedy ("Herlaad de pagina").
+
+**Pinned by two tests that never open the disclosure** (`…failed to load, while collapsed` and `…still loading`), each
+asserting the summary, the visible notice, the disabled button *and* that `posts` stays empty. The old test called
+`openForm()` first, which is exactly why it could not see this. `genereer()` in the suite now waits for the button to be
+enabled, so no test can assert an empty `posts` array for the wrong reason.
+
+### 2. The summary counted a stranded preference twice
+
+`aantalStartthemas` counted every non-empty entry *and* `vervallen.length` added its own clause, so one kept preference
+for a vanished period read *"(1 startthema, 1 zonder periode)"*. Stranded entries are now excluded from
+`aantalStartthemas`, so the clauses partition the set. Pinned: with only a stranded setting the summary is
+`(1 zonder periode)` and contains no "startthema" at all.
+
+### 3. The stranded notice, and where I disagree with the finding's premise
+
+Now a labelled `role="region"` with an sr-only `role="status"` carrying the count sentence, non-dismissible (no close
+control anywhere in it). **Not** a `role="alert"`, which is what the finding asked for on the grounds that its E3-06
+sibling is one: that premise is stale. `TeHerzien` was changed *away* from `role="alert"` in E3-07, precisely because it
+gained interactive controls, and a live region wrapping controls re-announces its whole contents on every interaction —
+which would swallow the nested delete confirmation. My notice holds a **Weghalen** button per entry, so it is in the
+same position. Matching the sibling therefore means region + status, and that is what it does. The test pins the full
+control set, so a dismiss affordance added later as a button *or* a link fails it.
+
+### 4. Two contract holes
+
+**An omitted array wiped the kept list.** `GewensteStartthemas` and `VasteMomenten` are now `[JsonRequired]`. A body
+*replaces* the settings, so an omitted array was indistinguishable from `[]` and deleted durable teacher input with no
+report entry — the identical argument that made `BlokkeertPlaatsing` required one level down. Posting **no body** is
+still a first-class case meaning "use what is stored"; the requirement is on the shape of a body that *is* sent, and the
+new test asserts both halves. Four existing integration tests relied on the loose behaviour and now send both arrays
+explicitly — including the one that used to clear a preference by omission, where the clearing is now written down.
+
+**Two preferences for one period were silently de-duplicated.** `GenormaliseerdeStartthemas` dropped `groep.First()`'s
+losers, so a fully resolvable instruction vanished with nothing in the report, and with persistence it vanished for
+good. The de-duplication is gone; the shape is a **400** via `IValidatableObject` on the request type. Chose 400 over a
+report entry deliberately: a report tells a teacher *after* the second preference has already been deleted, while a
+400 stores nothing at all, and the form (state keyed on the period) cannot produce this shape, so no real user is
+refused. The message is **English**, matching the framework's own `[JsonRequired]` failures it joins in `ModelState` and
+the 422 parser diagnostic beside it: it describes a malformed request no teacher can produce or act on (Art. II.2), so
+**no Art. II.3 log entry is owed**. The domain's `ArgumentException` stays as the loud backstop for a caller that skips
+the boundary — loud is the point, since the previous behaviour was silence.
+
+### 5. Backlog drift, fixed in the place a reader consults
+
+`backlog/E3-jaarplan-kalender.md` still described the **positional** contract, the growing rows and the clear-cascade as
+current, still said persistence "is not built yet", and still listed the positional question as open. All rewritten: the
+five clauses of the owner's ruling are marked done (four) or deliberately-not (one), the positional open item is
+**closed** with the decision and its reasoning, and a compact "persistence half + audit round 3" block records what
+changed. The E3-01 entry now carries the `DbUpdateConcurrencyException` defect its aggregate shipped, with the gate
+lesson attached: a suite whose second-save path is never exercised reports green on a feature that fails on second use.
+The story checkbox and `backlog/README.md`'s progress table are untouched, as instructed.
+
+### 6. A comment that claimed a guarantee the code did not give
+
+`BewaarParametersAsync` said a class that never uses parameters carries no row, while the form posts `{[], []}` on every
+run once its query resolves. Fixed in the code rather than in the comment: an empty submission for a class with no row
+now writes **no row** and returns `Geen`. Nothing is lost, because no row and an empty row read back identically. Pinned
+by `Een_lege_inzending_maakt_geen_parameterrij_aan`.
+
+### 7. The `DoelKoppeling` mechanism, corrected above
+
+The shadow key is a **`Guid`** with `ValueGeneratedOnAdd`, not an int. The conclusion was right for a different reason:
+what makes it safe is that the property is a **shadow** one, so a new instance leaves it `Guid.Empty`, `IsKeySet` is
+false and the state resolves as `Added`. The reusable rule is *"a constructor-assigned key plus `OnAdd` is the dangerous
+combination"*, not *"an int key is safe"*. Corrected in place, with the model-snapshot evidence.
+
+### 8. The stranded check was coupled to whichever tier the kalender showed
+
+`vervallen` compared kept `blokStart`s against the `blokken` prop, i.e. `grid.blokken`, while the server always keys on
+`GeneratieNiveau = Themaperiode`. They agreed only because `/rooster` defaults to that tier: the moment E3-08's zoom
+fetches `Subthemaperiode`, **every** kept preference would be flagged *"zonder periode"* and every offered row would
+carry a date the server reports as `VervallenStartthemas`.
+
+The form now takes `niveau` and compares against an exported `GENERATIEBLOKNIVEAU` mirroring the backend constant. At
+any other tier it renders neither period rows nor a stranded claim — it cannot tell, so it claims nothing — and says
+where startthema's are set instead (`parameters.anderNiveau`). The kept settings are still sent unchanged. Pinned by a
+test that hands the kalender a `Subthemaperiode` grid, **before** E3-08 lands.
+
+*Considered and rejected:* having the form fetch the generation-tier grid itself. It is more correct (the stranded
+signal would survive a zoom) but needs a second query with its own pending/error states and two more copy keys, for a
+state no user can reach today. The checked-tier version is what the finding asked for at a fraction of the surface, and
+E3-08 can upgrade it with the reasoning written down here.
+
+### 9. 390px
+
+The disclosure trigger is `flex-wrap` with the label and the summary as separate items, so three summary clauses wrap to
+their own line instead of forming two narrow three-line columns beside each other.
+
+### 10. The concurrent-run 500 (added to scope mid-round by the owner)
+
+Two runs starting together both found no settings row, both inserted one, and the loser got a raw Postgres `23505` out of
+`SaveChanges` — a 500 with an English detail on an ordinary second press.
+
+**Resolved by using the winner's row, not by a 400.** `SchooljaarBeheerService` turns its analogous race into a Dutch
+400 because there the loser's intent is *contradictory* (that name is taken). Here it is fully **satisfiable**: the run
+asked for these settings to be kept, and the row it needs now exists, so it writes its own settings into it — last write
+wins, exactly as two runs a second apart already behave. Refusing would tell a teacher their parameters were invalid
+because of somebody else's timing. **Consequence: no new Dutch fault message, so no Art. II.3 log entry is owed** (and
+none was owed for the round's other work either — structured records the UI formats do not trigger it).
+
+Mechanically: `IJaarplanOpslag.VoegGeneratieparametersToe` became `ProbeerGeneratieparametersToeTeVoegenAsync`, which
+inserts, commits, and returns `false` on a unique-key violation *scoped by constraint name* — detaching the losing owner
+**and both owned collections** so the caller's reload runs on a usable context. Recognising a `23505` is a storage
+concern; deciding what to do about it is the service's, which keeps EF Core out of the Application layer (Art. VIII,
+Art. IV.6). Two tests: a service-level unit test with the fake simulating the lost race, and
+`Een_geweigerde_gelijktijdige_insert_laat_de_context_bruikbaar` against **real Postgres**, since the whole mechanism is
+the database's.
+
+### Gates (fix round, real numbers, run from Bash)
+
+- `dotnet format --verify-no-changes` — **exit 0**. `dotnet build` — **0 warnings, 0 errors**.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (`Host=127.0.0.1`, `SSL Mode=Disable`, native Postgres 17):
+  **478 unit + 112 integration passed, 0 failed, 0 skipped** (was 475 + 109).
+- `corepack pnpm lint` — **exit 0**; `corepack pnpm test` — **125 passed / 9 files, 0 failed**, 0 React `act()`
+  warnings (was 122); `corepack pnpm build` — **exit 0**.
+- *Note on the connection string:* the password is `jaarplanner_local` locally (`jaarplanner_ci` on CI, per
+  `.github/workflows/ci.yml`). Getting it wrong fails **50 tests with `28P01`**, which looks like a regression and is
+  not; recorded so the next run does not re-diagnose it.
+
+### Not done, by instruction
+
+- **`Generatieparameters` in Art. IX.3 and the three glossary terms in Art. XII** — the owner has decided they *will* be
+  added, as a separate amendment commit after E3-04 lands (Art. XI.1). `CONSTITUTION.md` untouched here.
+- **Enforcing `gewenste startthema's`** — still deferred by the ruling.
+- **The open-day vs calendar-day prompt gap**, the missing `[Authorize]` (E7), the duplicated `/**` in `api.ts` and the
+  demo `Klas.Naam` em dash — all pre-existing and left alone.
+- **Not re-opened in a browser this round.** The test-runner's 390px + contrast pass covered the pre-fix screen; the
+  trigger's wrap, the new alert outside the collapse and the two new summary strings are unlooked-at, and the notice
+  changed from a plain `div` to `region` + `status`. Structure and copy are pinned by tests and axe is green, but the
+  *look* of the three changed surfaces still needs one real pass, which is the test-runner's to do.
