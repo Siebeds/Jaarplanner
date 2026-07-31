@@ -157,13 +157,34 @@ hit it: a new migration, a changed API contract, a rename, a merge into an epic 
 
 ## 4. Release, always
 
+**Use this helper. Never hand-roll the `rm`.** `rm -f` succeeds on a path that does not exist,
+so a mistyped filename releases nothing and tells you it worked — and then you post a
+`RELEASE` for a claim you still hold. That happened on the first day this protocol existed:
+`file-CLAUDE.md` was released as `claims/file-CLAUDE.md` instead of `claims/file-CLAUDE.md.md`,
+the chat recorded the release, and the lock stayed. The helper verifies instead of assuming,
+and it refuses to delete a claim that is not yours, so the rule is enforced rather than merely
+written down.
+
 ```bash
 release() {  # release <resource> <session>
   COORD=/c/source/Jaarplanner/.claude/coordination
-  rm -f "$COORD/claims/$1.md"
+  f="$COORD/claims/$1.md"
+  [ -e "$f" ] || { echo "NOTHING TO RELEASE: $1 is not claimed (check the name with: ls $COORD/claims)"; return 1; }
+  o=$(sed -n 's/^owner: //p' "$f" | head -1)
+  [ "$o" = "$2" ] || { echo "REFUSED: $1 belongs to $o, not $2. Only the technical lead breaks a stale claim."; return 1; }
+  rm -- "$f" || return 1
   printf '%s | %s | %s | RELEASE | gave back %s\n' "$(date '+%Y-%m-%d %H:%M')" "$2" "$2" "$1" >> "$COORD/groepschat.md"
+  echo "RELEASED: $1"
+}
+
+mine() {  # mine <session> — what am I still holding?
+  COORD=/c/source/Jaarplanner/.claude/coordination
+  grep -l "^owner: $1\$" "$COORD"/claims/*.md 2>/dev/null | while read -r f; do basename "$f" .md; done
 }
 ```
+
+**Before you post `LEAVE`, run `mine <session>` and confirm it prints nothing.** An honest
+`RELEASE` line is worth less than an empty `mine`, because only the second is evidence.
 
 Release a file claim **as soon as you stop editing that file**, not when the story ends.
 Holding `file-frontend-src-i18n-nl.json` for three hours because you might come back to it
