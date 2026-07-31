@@ -68,7 +68,8 @@ exercise it. **I ran it end to end against real PostgreSQL and the links were de
 `vergeetUitkomst()` resets `beslissingenVerwijderen`, but `kijkNa()` does not, and `voerDoor()` sends
 `beslissingenVerwijderen` ungated by the current diff (`Schoolcontentimport.tsx:99`).
 
-**Repro** (`N1-finding6-stille-vernietiging.png`, `M2-finding6-optin-blijft.png`):
+**Repro** (`P3-finding6-gewapend-zonder-controle.png` is step 4, the state that matters; also
+`M2-finding6-optin-blijft.png`):
 
 ```
 0. thema "TR Bedreigd" has themadoelen DEMO-L3-05=Aanvaard, DEMO-L3-06=Aanvaard
@@ -206,12 +207,14 @@ Measured rather than assumed, at 390px on the fullest state of both flows:
 
 Screenshots in `backlog/worklogs/E1-13/`: `A1-schoon-voorbeeld.png` and `A2-schoon-doorgevoerd.png` (the
 tense flip), `B1-stille-drop.png` (**clause 3**), `C1-rijproblemen.png` (**clause 2**),
-`D1-modus-flip-verouderd.png` (staleness), `E1-bedreigd-1440.png` and
-`F1-bedreigd-niet-getikt-doorgevoerd.png` (**clause 5** happy path), `G1-opstap-409.png` (**the 409**),
+`D1-modus-flip-verouderd.png` (staleness), `E1-bedreigd-1440.png`,
+`P1-optin-getikt-voor-doorvoeren.png` and `P2-optin-niet-getikt-voor-doorvoeren.png` (**clause 5** happy
+path, both directions), `G1-opstap-409.png` (**the 409**),
 `G3-opstap-review.png` (**clause 6**), `G5-opstap-400.png`, `H1-een-probleem.png` (singular),
 `H3-400-detail.png`, `H4-opstap-reword.png` (**`vereistReview` not keyed on**), `I1-foutenvelop.png`,
-`K-390-vol.png` (390px), plus the three defect reproductions `L1-finding1-schoolcontent.png`,
-`M1-finding1-opstap.png` and `N1-finding6-stille-vernietiging.png`.
+`K-390-vol.png` (390px), plus the defect reproductions `L1-finding1-schoolcontent.png`,
+`M1-finding1-opstap.png`, `M2-finding6-optin-blijft.png` and
+`P3-finding6-gewapend-zonder-controle.png`.
 
 Database evidence for clause 5, both directions, on real PostgreSQL:
 
@@ -243,3 +246,50 @@ round, not a waiver. Both fixes are small: `commit.reset()` in `kijkNa` on both 
 diff-gating `beslissingenVerwijderen`. Each needs a test that pins the *behaviour* rather than the code
 path: preview, commit, preview again shows the **fresh** preview; and a commit sends `false` whenever no
 threatened-decisions control is on screen.
+
+---
+
+## Correction (round 1, appended after the coordinator caught it) — a flaw in my own evidence
+
+**What was wrong.** Three of my screenshots were byte-identical (md5 `7ab239bd…`):
+`E3-bedreigd-doorgevoerd.png`, `F1-bedreigd-niet-getikt-doorgevoerd.png` and
+`N1-finding6-stille-vernietiging.png`. They were named as three different states, including the state
+illustrating my headline MAJOR. Caught by the coordinator, not by me, and committed openly as `1c0196b`.
+
+**Why they collided, which is the part worth keeping.** They were not mislabelled captures or a harness
+fault: all three were honest images of the same moment, and that moment cannot distinguish the three
+states. All three shots were taken **after** the commit, on the same file in the same modus. After a
+commit, `Bedreigdebeslissingen` is not rendered at all — it lives only in the `!toegepast` branch
+(`Schoolcontentimport.tsx:238-247`) — so the discard control is absent from *every* post-commit screen,
+whether it was ticked, unticked, or armed-but-invisible. The diff panel is identical too ("1 ongewijzigd"
+×3). **I photographed the wrong moment three times.** The discriminating state is always *pre*-commit.
+Proof that this is the real cause and not a guess: the retaken post-commit image
+`P4-na-doorvoeren-gemeenschappelijk.png` is **byte-identical to the old collided image** (same md5), on a
+fresh browser session, a fresh database seed and a different opt-in setting.
+
+**Retaken on unfixed `HEAD` `1c0196b`** (I confirmed `git diff c236a68..HEAD -- frontend/src backend/src`
+is empty, so this is still the behaviour I tested), because once the fix lands the pre-fix behaviour cannot
+be photographed. Each image is now bound to a verified database outcome rather than to a filename:
+
+| Image | State it shows | Verified outcome |
+| --- | --- | --- |
+| `P1-optin-getikt-voor-doorvoeren.png` | opt-in **visible and ticked**, before *doorvoeren*: panel present, 1 control, `checked = [true]` | committing then gave `(none)` — the two links destroyed, exactly as the label promised |
+| `P2-optin-niet-getikt-voor-doorvoeren.png` | opt-in **visible and unticked**, before *doorvoeren*: panel present, 1 control, `checked = [false]` | committing then left `DEMO-L3-05=Aanvaard, DEMO-L3-06=Manueel` **intact** |
+| `P3-finding6-gewapend-zonder-controle.png` | **defect 2, step 4**: panel **gone**, **0** opt-in controls on screen, both verdicts green, "1 ongewijzigd" ×3, *Import doorvoeren* offered — while the flag is still armed | committing then gave `(none)`: two `Aanvaard` decisions destroyed with nothing on screen about them |
+| `P4-na-doorvoeren-gemeenschappelijk.png` | the post-commit panel, which is **the same in all three flows** by design | this is the single image the old three were all showing |
+
+The three misleading filenames are deleted rather than kept as identical copies under wrong names, and
+every screenshot in this directory is now unique (checked by md5).
+
+**What this does and does not change.** No verdict, no clause and no defect changes: the FAIL, both MAJORs
+and every PASS stand. `P3` is a genuine improvement on what I had, because the state defect 2 actually
+turns on — a destructive flag armed with no control representing it — was the one state I had never
+photographed at all. The standing evidence for defect 2 was, and remains, the database transition
+`DEMO-L3-05=Aanvaard, DEMO-L3-06=Aanvaard` → `(none)`, which is stronger than any screenshot, plus the
+antagonist reaching the same defect independently by reading the code.
+
+**The lesson, in the terms this repo already uses.** This is the E3-04 audit's finding 6 in a new place:
+"I looked at it" is only evidence if the artefact shows what the sentence claims. My failure mode was
+specific and repeatable — I captured the *end* of each flow because that is where a run naturally stops,
+when the state under test lived one step earlier. **Screenshot the state that carries the claim, not the
+state the script ends in**, and md5 a set of screenshots before citing them as distinct.
