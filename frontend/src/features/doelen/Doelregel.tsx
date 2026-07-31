@@ -20,6 +20,13 @@ import type { DoelRegel } from "./types";
  *
  * **No edit affordance** (Art. III.1). The whole row is one link to the read-only detail, and there is
  * nothing else to press.
+ *
+ * **The link has no `aria-label`, deliberately.** It had one ("Leerplandoel X openen"), and an `aria-label` on
+ * a link *overrides* the name computed from its subtree: a screen-reader user therefore heard the code and
+ * nothing else. No doelsoort, no jaar/fase, no goal text, and crucially not the `nakijken` flag, which made the
+ * Art. XII colour-plus-label redundancy visual only (antagonist finding 6). The accessible name now comes from
+ * the row's own contents, so every signal a sighted reader gets is in it. `toHaveTextContent` cannot see this
+ * distinction, which is why the test asserts on the accessible name instead.
  */
 export function Doelregel({ doel, isGekozen }: { doel: DoelRegel; isGekozen: boolean }) {
   const location = useLocation();
@@ -31,7 +38,6 @@ export function Doelregel({ doel, isGekozen }: { doel: DoelRegel; isGekozen: boo
         // The search is carried along so opening a doel keeps the filters (and the klas selection) in the
         // URL: sharing the resulting link shares the same filtered view (ADR-0021).
         to={{ pathname: `/doelen/${encodeURIComponent(doel.code)}`, search: location.search }}
-        aria-label={t("doelen.openDoel", { code: doel.code })}
         aria-current={isGekozen ? "true" : undefined}
         className={[
           "flex flex-col gap-1 border-l-4 border-b border-b-border/70 py-2.5 pl-3 pr-3",

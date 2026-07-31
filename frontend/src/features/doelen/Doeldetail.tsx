@@ -96,6 +96,10 @@ export function Doeldetail() {
 
       <Plaats doel={data} />
 
+      {/* Its own field, not a fourth level on the taxonomy line: `cluster` lives in the goal Excel and not in
+          the ordeningskader (Art. VII.0). Absent when Op.stap left the column empty. */}
+      <Veld labelKey="doelen.clusterLabel" waarde={data.cluster} />
+
       <Veld
         labelKey="doelen.voorbeeldenLabel"
         waarde={data.voorbeelden}
@@ -158,17 +162,16 @@ function Herzieningsvlag() {
 }
 
 /**
- * Where the doel sits in Op.stap: `discipline · domein · subdomein`, with the cluster only when it exists.
- * Cluster is nullable and lives in the goal Excel rather than the ordeningskader (Art. VII.0), so a label
- * with no value would be a claim about the curriculum that Op.stap does not make.
+ * Where the doel sits in Op.stap: `discipline · domein · subdomein`, and **only** those three.
+ *
+ * That is the entire ordeningskader (Art. VII.0), and the article's first rule is that Op.stap exposes *two
+ * distinct structures* which must not be conflated. `cluster` belongs to the per-discipline goal Excel, not to
+ * the ordeningskader, so appending it to this chain rendered it as a fourth taxonomy level directly under a
+ * docstring saying it is not one (antagonist finding 7). It now gets its own labelled field, which is also how
+ * a reader can tell that a doel without one is not missing a level.
  */
 function Plaats({ doel }: { doel: Doel }) {
-  const delen = [
-    doel.disciplineNaam ?? doel.disciplineNummer,
-    doel.domein,
-    doel.subdomein,
-    ...(doel.cluster ? [doel.cluster] : []),
-  ];
+  const delen = [doel.disciplineNaam ?? doel.disciplineNummer, doel.domein, doel.subdomein];
 
   return (
     <div>
@@ -247,11 +250,17 @@ function Concordantie({ doel }: { doel: Doel }) {
 }
 
 /**
- * Which thema's link to this doel, and what the teacher decided about each link (Art. IV.2).
+ * Where this doel occurs in the school's own content, and what the teacher decided about each occurrence
+ * (Art. IV.2).
  *
- * Every status is listed, `Voorgesteld` and `Geweigerd` included: the question here is "where is this doel
- * used?", which is a wider question than coverage (Art. V counts only aanvaard/manueel). The status badge is
- * what keeps the two readable apart, so it is never omitted.
+ * **The heading asks a neutral question on purpose.** It read "Gebruikt in thema's" over a list that includes
+ * `Voorgesteld` and `Geweigerd` links, which counts an open AI suggestion and an explicitly *rejected* one as
+ * usage and nudges a teacher toward a coverage conclusion Art. V.1 does not support: only `aanvaard` and
+ * `manueel` make a leerplandoel gedekt (antagonist finding 8). Listing every status is right, because the
+ * question is "where does this appear?"; calling it usage was not.
+ *
+ * **Each row states its scope.** A subdoel or activiteit belongs to one klas (Art. IX.2), so it names that
+ * klas; the school-wide layers say so instead. Without that, one class's planning reads as a school-wide fact.
  */
 function Koppelingen({ koppelingen }: { koppelingen: DoelKoppelingWeergave[] }) {
   return (
@@ -277,7 +286,7 @@ function Koppelingen({ koppelingen }: { koppelingen: DoelKoppelingWeergave[] }) 
                 // Two links of the same herkomst can point from the same thema at the same doel (a thema may
                 // hold both a themadoel and a suggestion), so the index is part of the key by necessity: the
                 // list is server-ordered and never reordered here.
-                key={`${koppeling.herkomst}-${koppeling.themaNaam}-${koppeling.onderdeel ?? ""}-${index}`}
+                key={`${koppeling.herkomst}-${koppeling.themaNaam}-${koppeling.onderdeel ?? ""}-${koppeling.klasNaam ?? ""}-${index}`}
                 className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-paper px-3 py-2"
               >
                 <span className="text-sm font-medium text-ink">{koppeling.themaNaam}</span>
@@ -285,6 +294,10 @@ function Koppelingen({ koppelingen }: { koppelingen: DoelKoppelingWeergave[] }) 
                   <span className="text-sm text-ink-zacht">{koppeling.onderdeel}</span>
                 ) : null}
                 <span className="text-xs text-ink-zacht">{t(HERKOMST_LABEL[koppeling.herkomst])}</span>
+                {/* The scope, always stated. Keyed on the HERKOMST rather than on whether a klas name arrived:
+                    a class-scoped link with no resolvable klas must not fall through to "hele school", which
+                    would be exactly the false school-wide reading this label exists to prevent. */}
+                <span className="text-xs text-ink-zacht">{schaallabel(koppeling)}</span>
                 <Badge variant={statusVariant(koppeling.status)} className="ml-auto">
                   {t(`suggestieStatus.${statusVariant(koppeling.status)}`)}
                 </Badge>
@@ -300,4 +313,27 @@ function Koppelingen({ koppelingen }: { koppelingen: DoelKoppelingWeergave[] }) 
 /** The status token/catalogue key for a `KoppelingStatus` as the API names it (PascalCase on the wire). */
 function statusVariant(status: DoelKoppelingWeergave["status"]) {
   return status.toLowerCase() as "voorgesteld" | "aanvaard" | "geweigerd" | "manueel";
+}
+
+/** Which link layers are school-wide (Art. IX.2). The other two belong to one klas and one leeftijd. */
+const SCHOOLBREDE_HERKOMSTEN: ReadonlySet<KoppelingHerkomst> = new Set<KoppelingHerkomst>([
+  "Themadoel",
+  "Doelsuggestie",
+]);
+
+/**
+ * The scope of one link, in words.
+ *
+ * Driven by the herkomst, because that is what *defines* the scope (Art. IX.2); the klas name only fills it in.
+ * A class-scoped link whose klas could not be resolved therefore says "klas onbekend" rather than silently
+ * reading as school-wide, which is the misreading this label exists to prevent.
+ */
+function schaallabel(koppeling: DoelKoppelingWeergave): string {
+  if (SCHOOLBREDE_HERKOMSTEN.has(koppeling.herkomst)) {
+    return t("doelen.koppelingSchoolbreed");
+  }
+
+  return koppeling.klasNaam
+    ? t("doelen.koppelingKlas", { klas: koppeling.klasNaam })
+    : t("doelen.koppelingKlasOnbekend");
 }

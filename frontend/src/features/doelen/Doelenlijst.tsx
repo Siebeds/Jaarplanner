@@ -5,44 +5,58 @@ import { PAGINA_GROOTTE, useDoelen } from "./useDoelen";
 import type { Doelenfilter } from "./types";
 
 /**
+ * Whether the database holds any leerplandoel at all, which is a **three-valued** question and not a boolean.
+ *
+ * It is derived from the facets query's status, because "we have not asked yet" and "we asked and the answer is
+ * zero" are different facts and a boolean cannot hold both. Collapsing them is what made the register claim, on
+ * every cold visit and permanently after a facets error, that the curriculum had never been imported
+ * (antagonist finding 1).
+ */
+export type Curriculumstaat = "onbekend" | "leeg" | "gevuld";
+
+/**
  * The register itself (E1-16 clause 1): a dense, server-paged list of leerplandoelen.
  *
  * **Volume is a server concern.** Rows arrive 50 at a time and "meer laden" fetches the *next* 50; nothing
  * here filters or sorts a local copy of the curriculum.
  *
- * **Three empty states, and collapsing any two of them is a defect.** This is the E1-07 audit finding one
- * layer up, so it is stated here rather than left to the reader:
+ * **Four states, and collapsing any two of them is a defect.** The story's brief named three; the audit found
+ * the fourth by observing that the first was being shown *before the question had been asked*:
  *
- * 1. *No curriculum imported at all* (`heeftCurriculum === false`). The likely state today, and it is
- *    **beheerderswerk**, so the message says so plainly. It deliberately links to no control: the Op.stap
+ * 0. *We do not know yet* (`curriculum === "onbekend"`, i.e. the facets query is pending or failed). Shows the
+ *    loading line, or the error alert. This state used to render as "nothing is imported", so a teacher opening
+ *    `/doelen` was told for a moment that the school had never loaded Op.stap, and told it permanently if the
+ *    facets request failed. That is the worst of the four to get wrong: it sends someone to the beheerder over
+ *    a request that simply had not come back.
+ * 1. *No curriculum imported at all* (`"leeg"`). Only on a **resolved** total of zero. It is
+ *    **beheerderswerk**, so the message says so plainly, and it deliberately links to no control: the Op.stap
  *    import trigger is **E1-15** and is not built, and a button that goes nowhere teaches a review the wrong
  *    thing (E3-06).
  * 2. *The filters exclude everything.* A different sentence, and it offers "wis alle filters", which is the
  *    action that actually helps. Telling this teacher that nothing is imported would send them to the
  *    beheerder over a filter they set themselves.
- * 3. *An unknown code in the URL* is the third, and it lives on the detail pane, not here.
+ * 3. *An unknown code in the URL* lives on the detail pane, not here.
  */
 export function Doelenlijst({
   filter,
-  heeftCurriculum,
+  curriculum,
   gekozenCode,
   onWisFilters,
 }: {
   filter: Doelenfilter;
-  /** Whether the database holds any leerplandoel at all, from the facets' unfiltered total. */
-  heeftCurriculum: boolean;
+  /**
+   * Whether the database holds any leerplandoel at all, as far as we currently know. Three-valued on purpose:
+   * see {@link Curriculumstaat}.
+   */
+  curriculum: Curriculumstaat;
   gekozenCode: string | undefined;
   onWisFilters: () => void;
 }) {
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useDoelen(filter);
+  const { data, isPending, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useDoelen(filter);
 
-  if (!heeftCurriculum) {
-    return (
-      <Leegstaat titel={t("doelen.geenCurriculumTitel")} uitleg={t("doelen.geenCurriculumUitleg")} />
-    );
-  }
-
-  if (isLoading) {
+  // The list's OWN query decides loading and failure. It is asked first, and deliberately not gated on the
+  // facets: if the facets fail while the page of rows arrives, the honest thing is to show the rows.
+  if (isPending) {
     return (
       <p role="status" className="px-1 py-6 text-sm text-ink-zacht">
         {t("doelen.laden")}
@@ -65,6 +79,16 @@ export function Doelenlijst({
   const totaal = data?.pages[0]?.totaal ?? 0;
 
   if (totaal === 0) {
+    // "Nothing is imported" requires a RESOLVED zero from the facets. While that answer is unknown (pending, or
+    // the request failed) the register does not know which of the two empty states it is in, and it says the
+    // neutral one: claiming the school never loaded Op.stap on the strength of a request that had not come back
+    // is the defect this ordering exists to prevent (antagonist finding 1).
+    if (curriculum === "leeg") {
+      return (
+        <Leegstaat titel={t("doelen.geenCurriculumTitel")} uitleg={t("doelen.geenCurriculumUitleg")} />
+      );
+    }
+
     return (
       <Leegstaat
         titel={t("doelen.geenResultaatTitel")}
@@ -112,7 +136,16 @@ export function Doelenlijst({
         >
           {isFetchingNextPage
             ? t("doelen.meerLadenBezig")
-            : t("doelen.meerLaden", { aantal: Math.min(PAGINA_GROOTTE, totaal - regels.length) })}
+            : // Through `tAantal`, like every other count. It was not, and any filter whose total satisfies
+              // `totaal % 50 == 1` therefore ended on "Volgende 1 doelen laden" (test-runner FAIL, and the
+              // FIFTH time this exact bug has shipped in this repo). `nlAantalKeys` in the test suite now
+              // fails on any future `{aantal}` string that has no singular sibling, so the class is closed
+              // rather than this one instance.
+              tAantal(
+                Math.min(PAGINA_GROOTTE, totaal - regels.length),
+                "doelen.meerLadenEnkelvoud",
+                "doelen.meerLaden",
+              )}
         </button>
       ) : null}
     </div>

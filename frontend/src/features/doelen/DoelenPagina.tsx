@@ -3,7 +3,7 @@ import { Outlet, useMatch, useNavigate, useSearchParams } from "react-router-dom
 
 import { t } from "../../i18n";
 import { Doelenfilters } from "./Doelenfilters";
-import { Doelenlijst } from "./Doelenlijst";
+import { Doelenlijst, type Curriculumstaat } from "./Doelenlijst";
 import { leesFilter, schrijfFilter } from "./doelenfilter";
 import { useDoelenFacetten } from "./useDoelen";
 import type { Doelenfilter } from "./types";
@@ -34,7 +34,23 @@ export function DoelenPagina() {
   // `useMatch` rather than `useParams`, because the parameter belongs to the child route: this asks the
   // question directly instead of relying on what a parent does or does not see of its child's match.
   const gekozenCode = useMatch("/doelen/:code")?.params.code;
-  const facetten = useDoelenFacetten();
+  const facetten = useDoelenFacetten(filter);
+
+  /**
+   * Whether the school has any curriculum loaded, as a **three-valued** answer.
+   *
+   * Derived from the query's status rather than from `(totaal ?? 0) > 0`, because that expression cannot tell
+   * "we have not asked yet" from "the answer is zero". It read `false` while the request was in flight and
+   * `false` forever after a failure, so every cold visit to `/doelen` first painted "Er zijn nog geen doelen van
+   * Op.stap ingeladen ... vraag het aan wie de tool beheert", and a facets error showed that permanently next
+   * to the error alert (antagonist finding 1). Both are false statements about the school's data, and the
+   * second sends a teacher to the beheerder over a request that merely failed.
+   */
+  const curriculum: Curriculumstaat = facetten.data
+    ? facetten.data.totaalAantalDoelen > 0
+      ? "gevuld"
+      : "leeg"
+    : "onbekend";
 
   function wijzigFilter(volgende: Doelenfilter) {
     const params = schrijfFilter(searchParams, volgende);
@@ -85,7 +101,7 @@ export function DoelenPagina() {
         <div className={gekozenCode ? "hidden lg:block" : ""}>
           <Doelenlijst
             filter={filter}
-            heeftCurriculum={(facetten.data?.totaalAantalDoelen ?? 0) > 0}
+            curriculum={curriculum}
             gekozenCode={gekozenCode}
             onWisFilters={() => wijzigFilter({})}
           />

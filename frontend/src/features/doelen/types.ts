@@ -46,20 +46,30 @@ export interface MinimumdoelWeergave {
   omschrijving: string;
 }
 
-/** Which layer of school content a link to this doel lives in (Art. IX.2). */
+/**
+ * Which layer of school content a link to this doel lives in (Art. IX.2).
+ *
+ * The scope differs across them and that difference is load-bearing: `Themadoel` and `Doelsuggestie` are
+ * school-wide, while `Subdoel` and `Activiteit` belong to **one klas and one leeftijd**.
+ */
 export type KoppelingHerkomst = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit";
 
 /**
  * One link between this doel and a piece of school content, with the teacher's decision on it (Art. IV.2).
  * Every status is reported, including `Voorgesteld` and `Geweigerd` — wider than the Art. V coverage
- * definition, because the question this screen answers is "which thema's mention this doel, and what was
- * decided?".
+ * definition, because the question this screen answers is "where does this doel appear?" rather than "is it
+ * covered?". Only `Aanvaard` and `Manueel` make a doel gedekt, which is why the status is never omitted.
  */
 export interface DoelKoppelingWeergave {
   herkomst: KoppelingHerkomst;
   themaNaam: string;
   /** The subthema or activiteit name for a class/age-scoped link; null at thema level. */
   onderdeel: string | null;
+  /**
+   * The klas a class/age-scoped link belongs to (Art. IX.2); null for the school-wide layers. It is what stops
+   * one class's subdoel from reading as something the whole school does.
+   */
+  klasNaam: string | null;
   status: SuggestieStatus;
 }
 
@@ -121,8 +131,13 @@ export interface JaarFaseFacet {
  * disciplines are in scope, whether `leergebied`/Wereldoriëntatie is surfaced, and whether jaar/fase reads
  * 1K/2K/3K or JK/K2/K3). A list compiled into the UI would answer all three silently.
  *
- * `totaalAantalDoelen` is the unfiltered count, and it is what separates "nothing is imported yet" from
- * "your filters exclude everything" — two empty states that must never share a message.
+ * **The option sets are stable; the counts follow the active filter.** Each count is computed under the rest of
+ * the filter, so a number means "pick this and you get this many", and a zero is sent as `0` rather than
+ * omitted. Previously a count described the whole curriculum, so with Discipline = Wiskunde chosen the register
+ * still offered "Natuur (3)" and delivered nothing.
+ *
+ * `totaalAantalDoelen` is the one **unfiltered** figure, and it is what separates "nothing is imported yet"
+ * from "your filters exclude everything" — two empty states that must never share a message.
  */
 export interface DoelenFacetten {
   totaalAantalDoelen: number;

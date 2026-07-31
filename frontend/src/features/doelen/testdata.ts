@@ -121,10 +121,29 @@ export const DETAIL_VOLLEDIG: DoelDetail = {
   },
   nietMeerInOpstap: false,
   koppelingen: [
-    { herkomst: "Themadoel", themaNaam: "Herfst", onderdeel: null, status: "Manueel" },
-    { herkomst: "Doelsuggestie", themaNaam: "Herfst", onderdeel: null, status: "Voorgesteld" },
-    { herkomst: "Subdoel", themaNaam: "Herfst", onderdeel: "Bladeren", status: "Aanvaard" },
-    { herkomst: "Activiteit", themaNaam: "Herfst", onderdeel: "Bladeren zoeken", status: "Geweigerd" },
+    // The two school-wide layers carry no klas; the two class/age-scoped ones name theirs (Art. IX.2).
+    { herkomst: "Themadoel", themaNaam: "Herfst", onderdeel: null, klasNaam: null, status: "Manueel" },
+    {
+      herkomst: "Doelsuggestie",
+      themaNaam: "Herfst",
+      onderdeel: null,
+      klasNaam: null,
+      status: "Voorgesteld",
+    },
+    {
+      herkomst: "Subdoel",
+      themaNaam: "Herfst",
+      onderdeel: "Bladeren",
+      klasNaam: "L3 derde leerjaar",
+      status: "Aanvaard",
+    },
+    {
+      herkomst: "Activiteit",
+      themaNaam: "Herfst",
+      onderdeel: "Bladeren zoeken",
+      klasNaam: "K3 groen",
+      status: "Geweigerd",
+    },
   ],
 };
 
@@ -211,16 +230,103 @@ export interface FakeOpties {
  */
 export function maakDoelenFetchFake(opties: FakeOpties = {}) {
   const alles = opties.doelen ?? DOELEN;
-  const facetten = opties.facetten ?? { ...FACETTEN, totaalAantalDoelen: alles.length };
   const paginaGrootte = opties.paginaGrootte ?? 50;
   const urls: string[] = [];
+
+  /** The filter as the API reads it off a query string. */
+  function leesFilterUitUrl(params: URLSearchParams) {
+    return {
+      zoek: params.get("zoek")?.toLowerCase() ?? undefined,
+      discipline: params.get("discipline") ?? undefined,
+      domein: params.get("domein") ?? undefined,
+      subdomein: params.get("subdomein") ?? undefined,
+      doelsoort: params.get("doelsoort") ?? undefined,
+      jaarFase: params.get("jaarFase") ?? undefined,
+    };
+  }
+
+  type Filterwaarden = ReturnType<typeof leesFilterUitUrl>;
+
+  /** Applies the filter, ordered (domein, subdomein, code) exactly as the endpoint does. */
+  function pasFilterToe(f: Filterwaarden) {
+    return alles
+      .filter((doel) =>
+        f.zoek
+          ? doel.code.toLowerCase().includes(f.zoek) || doel.tekst.toLowerCase().includes(f.zoek)
+          : true,
+      )
+      .filter((doel) => (f.discipline ? DISCIPLINE_PER_CODE[doel.code] === f.discipline : true))
+      .filter((doel) => (f.domein ? doel.domein === f.domein : true))
+      .filter((doel) => (f.subdomein ? doel.subdomein === f.subdomein : true))
+      .filter((doel) => (f.doelsoort ? doel.doelsoort === f.doelsoort : true))
+      .filter((doel) => (f.jaarFase ? doel.jaarFase === f.jaarFase : true))
+      .sort(
+        (a, b) =>
+          a.domein.localeCompare(b.domein) ||
+          a.subdomein.localeCompare(b.subdomein) ||
+          a.code.localeCompare(b.code),
+      );
+  }
+
+  /**
+   * Facets the way the server builds them: **option sets from the whole curriculum, counts under the rest of
+   * the filter**. The fake mirrors that rule rather than returning a fixed object, so a test can prove a
+   * zero-count option still appears and reads "(0)" — which is the behaviour antagonist finding 12 asked for,
+   * and a fixed fixture could not show either way.
+   */
+  function bouwFacetten(params: URLSearchParams): DoelenFacetten {
+    const basis = opties.facetten ?? FACETTEN;
+    const filter = leesFilterUitUrl(params);
+    const zonder = (weg: Partial<Filterwaarden>) => pasFilterToe({ ...filter, ...weg });
+
+    const perDiscipline = zonder({ discipline: undefined });
+    const perTaxonomie = zonder({ domein: undefined, subdomein: undefined });
+    const perDoelsoort = zonder({ doelsoort: undefined });
+    const perJaarFase = zonder({ jaarFase: undefined });
+
+    return {
+      // Deliberately the UNFILTERED total, like the server: it is what tells "nothing imported" from
+      // "filtered to nothing" apart.
+      totaalAantalDoelen: opties.facetten?.totaalAantalDoelen ?? alles.length,
+      disciplines: basis.disciplines.map((d) => ({
+        ...d,
+        aantal: perDiscipline.filter((doel) => DISCIPLINE_PER_CODE[doel.code] === d.nummer).length,
+      })),
+      domeinen: basis.domeinen.map((d) => {
+        const subdomeinen = d.subdomeinen.map((s) => ({
+          ...s,
+          aantal: perTaxonomie.filter(
+            (doel) => doel.domein === d.domein && doel.subdomein === s.subdomein,
+          ).length,
+        }));
+        return {
+          ...d,
+          aantal: subdomeinen.reduce((som, s) => som + s.aantal, 0),
+          subdomeinen,
+        };
+      }),
+      doelsoorten: basis.doelsoorten.map((d) => ({
+        ...d,
+        aantal: perDoelsoort.filter((doel) => doel.doelsoort === d.doelsoort).length,
+      })),
+      jaarFasen: basis.jaarFasen.map((j) => ({
+        ...j,
+        aantal: perJaarFase.filter((doel) => doel.jaarFase === j.jaarFase).length,
+      })),
+    };
+  }
 
   const fetchFake = async (input: RequestInfo | URL) => {
     const url = new URL(String(input), "http://localhost");
     urls.push(url.pathname + url.search);
 
     if (url.pathname === "/api/leerplandoelen/facetten") {
-      return new Response(JSON.stringify(facetten), { status: 200 });
+      // The API refuses a subdomein without its domein (Art. VII.0); the fake refuses it too, so a client that
+      // sent one would fail these tests instead of quietly getting a wide answer.
+      if (url.searchParams.get("subdomein") && !url.searchParams.get("domein")) {
+        return new Response("subdomein requires domein", { status: 400 });
+      }
+      return new Response(JSON.stringify(bouwFacetten(url.searchParams)), { status: 200 });
     }
 
     if (url.pathname.startsWith("/api/leerplandoelen/")) {
@@ -232,34 +338,13 @@ export function maakDoelenFetchFake(opties: FakeOpties = {}) {
     }
 
     if (url.pathname === "/api/leerplandoelen") {
-      const zoek = url.searchParams.get("zoek")?.toLowerCase();
-      const discipline = url.searchParams.get("discipline");
-      const domein = url.searchParams.get("domein");
-      const subdomein = url.searchParams.get("subdomein");
-      const doelsoort = url.searchParams.get("doelsoort");
-      const jaarFase = url.searchParams.get("jaarFase");
+      if (url.searchParams.get("subdomein") && !url.searchParams.get("domein")) {
+        return new Response("subdomein requires domein", { status: 400 });
+      }
+
       const overslaan = Number(url.searchParams.get("overslaan") ?? "0");
       const aantal = Number(url.searchParams.get("aantal") ?? String(paginaGrootte));
-
-      const gevonden = alles
-        .filter((doel) =>
-          zoek
-            ? doel.code.toLowerCase().includes(zoek) || doel.tekst.toLowerCase().includes(zoek)
-            : true,
-        )
-        .filter((doel) => (discipline ? DISCIPLINE_PER_CODE[doel.code] === discipline : true))
-        .filter((doel) => (domein ? doel.domein === domein : true))
-        .filter((doel) => (subdomein ? doel.subdomein === subdomein : true))
-        .filter((doel) => (doelsoort ? doel.doelsoort === doelsoort : true))
-        .filter((doel) => (jaarFase ? doel.jaarFase === jaarFase : true))
-        // The server orders (domein, subdomein, code); the fake does the same so a paging test that walks
-        // pages is comparing the same sequence the real endpoint would give it.
-        .sort(
-          (a, b) =>
-            a.domein.localeCompare(b.domein) ||
-            a.subdomein.localeCompare(b.subdomein) ||
-            a.code.localeCompare(b.code),
-        );
+      const gevonden = pasFilterToe(leesFilterUitUrl(url.searchParams));
 
       return new Response(
         JSON.stringify({

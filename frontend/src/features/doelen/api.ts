@@ -15,33 +15,51 @@ import type { DoelDetail, DoelenFacetten, DoelenPagina, Doelenfilter } from "./t
 /** The page size the register asks for. Matches the server's default; stated here so the UI can page. */
 export const PAGINA_GROOTTE = 50;
 
-/** Turns the active filter into a query string, dropping empty values so the URL stays readable. */
-function filterNaarQuery(filter: Doelenfilter, overslaan: number): string {
+/**
+ * Turns the active filter into a query string, dropping empty values so the URL stays readable.
+ *
+ * A `subdomein` is only sent together with its `domein`. That is not politeness: subdomein names are not
+ * globally unique (Art. VII.0), and the API now **refuses** a bare one with a 400 rather than silently summing
+ * unrelated domeinen, so sending it alone would turn a stale link into an error instead of a wide result.
+ */
+function filterNaarQuery(filter: Doelenfilter): URLSearchParams {
   const params = new URLSearchParams();
 
   if (filter.zoek) params.set("zoek", filter.zoek);
   if (filter.discipline) params.set("discipline", filter.discipline);
   if (filter.domein) params.set("domein", filter.domein);
-  if (filter.subdomein) params.set("subdomein", filter.subdomein);
+  if (filter.domein && filter.subdomein) params.set("subdomein", filter.subdomein);
   if (filter.doelsoort) params.set("doelsoort", filter.doelsoort);
   if (filter.jaarFase) params.set("jaarFase", filter.jaarFase);
-  params.set("aantal", String(PAGINA_GROOTTE));
-  if (overslaan > 0) params.set("overslaan", String(overslaan));
 
-  return params.toString();
+  return params;
 }
 
 /** One page of leerplandoelen matching the filter, with the total the filter matches. */
 export function haalDoelen(filter: Doelenfilter, overslaan: number): Promise<DoelenPagina> {
-  return apiFetch<DoelenPagina>(`/api/leerplandoelen?${filterNaarQuery(filter, overslaan)}`);
+  const params = filterNaarQuery(filter);
+  params.set("aantal", String(PAGINA_GROOTTE));
+  if (overslaan > 0) params.set("overslaan", String(overslaan));
+
+  return apiFetch<DoelenPagina>(`/api/leerplandoelen?${params.toString()}`);
 }
 
 /**
- * The filter vocabulary, derived from the loaded rows, plus the unfiltered total. The total is not
- * decoration: it is what tells "nothing imported" apart from "filtered to nothing".
+ * The filter vocabulary plus the unfiltered total.
+ *
+ * The filter is sent along because it scopes the **counts**: each option reports what picking it would yield
+ * under the rest of the filter, so a select can no longer offer "Natuur (3)" while delivering nothing. The
+ * option sets themselves stay stable, so nothing disappears mid-use, and `totaalAantalDoelen` stays unfiltered
+ * because it is what tells "nothing imported" apart from "filtered to nothing".
  */
-export function haalDoelenFacetten(): Promise<DoelenFacetten> {
-  return apiFetch<DoelenFacetten>("/api/leerplandoelen/facetten");
+export function haalDoelenFacetten(filter: Doelenfilter): Promise<DoelenFacetten> {
+  const params = filterNaarQuery(filter);
+
+  return apiFetch<DoelenFacetten>(
+    params.size > 0
+      ? `/api/leerplandoelen/facetten?${params.toString()}`
+      : "/api/leerplandoelen/facetten",
+  );
 }
 
 /**

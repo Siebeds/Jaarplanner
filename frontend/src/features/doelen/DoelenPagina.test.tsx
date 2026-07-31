@@ -65,7 +65,7 @@ describe("Doelen register — the row list (clause 1)", () => {
     expect(rijen).toHaveLength(DOELEN.length);
 
     const eerste = within(await lijst()).getByRole("link", {
-      name: t("doelen.openDoel", { code: "NAT-K3-01" }),
+      name: /NAT-K3-01/,
     });
     expect(eerste).toHaveTextContent("NAT-K3-01");
     expect(eerste).toHaveTextContent("K3");
@@ -110,17 +110,44 @@ describe("Doelen register — the row list (clause 1)", () => {
     renderApp();
 
     const rij = within(await lijst()).getByRole("link", {
-      name: t("doelen.openDoel", { code: "VERVALLEN-1" }),
+      name: /VERVALLEN-1/,
     });
     expect(rij).toHaveTextContent(t("doelen.vervallenMarkering"));
     expect(rij).not.toHaveAttribute("title");
   });
+
+  /**
+   * The row's ACCESSIBLE NAME carries every signal a sighted reader gets.
+   *
+   * The row used to carry `aria-label="Leerplandoel X openen"`, and an `aria-label` on a link overrides the
+   * name computed from its subtree: a screen-reader user therefore heard the code and nothing else, so the
+   * Art. XII colour-plus-label redundancy was visual only, and the `nakijken` review flag was inaudible
+   * (antagonist finding 6). Asserted on the accessible name rather than with `toHaveTextContent`, which cannot
+   * see the difference and passed throughout.
+   */
+  it("puts the doelsoort, jaar/fase, text and review flag in the row's accessible name", async () => {
+    renderApp();
+
+    const gewoon = within(await lijst()).getByRole("link", { name: /NAT-K3-01/ });
+    // The badge exposes the full Dutch doelsoort label as its accessible name, so that is what a screen
+    // reader hears rather than the bare abbreviation.
+    expect(gewoon).toHaveAccessibleName(expect.stringContaining(t("doelsoort.md")) as unknown as string);
+    expect(gewoon).toHaveAccessibleName(expect.stringContaining("K3") as unknown as string);
+    expect(gewoon).toHaveAccessibleName(
+      expect.stringContaining("De kleuter observeert planten") as unknown as string,
+    );
+
+    const vervallen = within(await lijst()).getByRole("link", { name: /VERVALLEN-1/ });
+    expect(vervallen).toHaveAccessibleName(
+      expect.stringContaining(t("doelen.vervallenMarkering")) as unknown as string,
+    );
+  });
 });
 
 describe("Doelen register — paging (clause 1, at volume)", () => {
-  /** 120 rows, so the page size and the "meer laden" action both have real work to do. */
-  function veelDoelen(): DoelRegel[] {
-    return Array.from({ length: 120 }, (_, i) => ({
+  /** `hoeveel` bulk rows, so the page size and the "meer laden" action have real work to do. */
+  function veelDoelen(hoeveel = 120): DoelRegel[] {
+    return Array.from({ length: hoeveel }, (_, i) => ({
       code: `VOL-${String(i).padStart(4, "0")}`,
       doelsoort: "Gemeenschappelijk" as const,
       jaarFase: "L1",
@@ -160,6 +187,34 @@ describe("Doelen register — paging (clause 1, at volume)", () => {
     await lijst();
 
     expect(screen.queryByRole("button", { name: /laden/i })).toBeNull();
+  });
+
+  /**
+   * The 51-row case: exactly one row left to load, so the paging button's count is 1.
+   *
+   * This is the test-runner's blocking finding, and the case the suite missed because every paging test used
+   * `{ aantal: 50 }`. The button rendered `doelen.meerLaden` straight from the catalogue, giving **"Volgende 1
+   * doelen laden"** — the fifth time this exact plural bug has shipped in this repo, twice inside a commit that
+   * announced fixing it. `tAantal` exists so a new call site cannot reintroduce it; this one had bypassed it.
+   */
+  it("uses a singular sentence when exactly one doel is left to load", async () => {
+    renderApp("/doelen", { doelen: veelDoelen(51), paginaGrootte: 50 });
+    await lijst();
+
+    expect(
+      screen.getByRole("button", { name: t("doelen.meerLadenEnkelvoud") }),
+    ).toBeInTheDocument();
+    // And the ungrammatical form is nowhere on the screen.
+    expect(screen.queryByText(t("doelen.meerLaden", { aantal: 1 }))).toBeNull();
+  });
+
+  it("uses the plural sentence when more than one doel is left", async () => {
+    renderApp("/doelen", { doelen: veelDoelen(53), paginaGrootte: 50 });
+    await lijst();
+
+    expect(
+      screen.getByRole("button", { name: t("doelen.meerLaden", { aantal: 3 }) }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -428,7 +483,7 @@ describe("Doelen register — opening one doel (clause 3)", () => {
     renderApp();
 
     fireEvent.click(
-      within(await lijst()).getByRole("link", { name: t("doelen.openDoel", { code: "NAT-K3-01" }) }),
+      within(await lijst()).getByRole("link", { name: /NAT-K3-01/ }),
     );
 
     await waitFor(() => expect(window.location.pathname).toBe("/doelen/NAT-K3-01"));
@@ -441,7 +496,7 @@ describe("Doelen register — opening one doel (clause 3)", () => {
     renderApp();
 
     fireEvent.click(
-      within(await lijst()).getByRole("link", { name: t("doelen.openDoel", { code: "NAT-K3-01" }) }),
+      within(await lijst()).getByRole("link", { name: /NAT-K3-01/ }),
     );
     await waitFor(() => expect(window.location.pathname).toBe("/doelen/NAT-K3-01"));
 
@@ -455,7 +510,7 @@ describe("Doelen register — opening one doel (clause 3)", () => {
     await lijst();
 
     fireEvent.click(
-      within(await lijst()).getByRole("link", { name: t("doelen.openDoel", { code: "NAT-K3-01" }) }),
+      within(await lijst()).getByRole("link", { name: /NAT-K3-01/ }),
     );
 
     await waitFor(() => expect(window.location.pathname).toBe("/doelen/NAT-K3-01"));
