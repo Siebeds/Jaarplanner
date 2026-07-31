@@ -103,6 +103,14 @@ Database / EF Core:
 
 > pnpm and the exact project names are conventions — once chosen, stay consistent.
 
+Coordination between parallel sessions (see the working agreement above; protocol in [`.claude/skills/groepschat/SKILL.md`](.claude/skills/groepschat/SKILL.md)):
+- `/groepschat` — **at the start of every working session.** Announce yourself, read the room, claim what you will touch.
+- `/technical-lead` — turn *this* session into the standing coordinator. Use a second window for it.
+- `/loop 20m /technical-lead` — unattended watching. Keep each sweep cheap (chat tail + claims + `git worktree list` first); a full sweep every 20 minutes just re-derives an unchanged answer.
+- Spawn the **`technical-lead`** agent for a one-off board sweep from inside a session that is busy building.
+
+> **Nobody has to remember these.** The `groepschat` bullet in the working agreements is the standing instruction, and the skill descriptions carry their own triggers, so **an agent invokes them without being asked** — proactively offer a lead sweep when several worktrees are live rather than waiting for the owner to think of it. This block exists so the owner can look the commands up, not as the mechanism that makes them happen.
+
 ## Architecture
 - **Frontend:** SPA over a REST/JSON API. Organise by feature (`jaarplan`, `doelen`, `themas`, `dekking`). The **kalender + drag-and-drop** and the **dekkingsoverzicht** are the two anchor screens.
 - **Backend:** pragmatic layered API — `Domain` (entities, invariants, Dutch ubiquitous language) ← `Application` (use cases, AI orchestration, mapping) ← `Infrastructure` (EF Core, Excel import, Azure AI). `Api` is thin. This is a small app — favour clarity over ceremony; don't over-engineer.
