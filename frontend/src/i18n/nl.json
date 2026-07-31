@@ -207,7 +207,7 @@
   "parameters": {
     "titel": "Vooraf instellen: startthema's en vaste momenten",
     "samenvattingLeeg": "(niets ingesteld)",
-    "uitleg": "Je kan de AI vooraf richting geven. Alles hier is optioneel: laat je het leeg, dan verdeelt de AI de thema's zelf. Deze instellingen gelden voor deze generatie: genereer je later opnieuw, vul ze dan opnieuw in. Vakanties hoef je niet in te vullen, die staan al bij het schooljaar en de periodes zijn erop gebouwd.",
+    "uitleg": "Je kan de AI vooraf richting geven. Alles hier is optioneel: laat je het leeg, dan verdeelt de AI de thema's zelf. Wat je hier instelt, blijft bewaard voor deze klas: genereer je later opnieuw, dan gelden deze instellingen weer. Wil je iets niet meer, haal het dan hier weg en genereer opnieuw. Vakanties hoef je niet in te vullen, die staan al bij het schooljaar en de periodes zijn erop gebouwd.",
     "startthemasTitel": "Startthema's",
     "periodeLabel": "Periode {ordinaal}",
     "geenVoorkeur": "Geen voorkeur",
@@ -244,7 +244,6 @@
     "rapportGeweigerdRegel": "{thema} was voorgesteld voor de periode vanaf {datum}, maar die periode is bezet door {moment}.",
     "rapportGeweigerdMotivatie": "De AI schreef erbij: {motivatie}",
     "rapportGeweigerdWatNu": "Deze thema's zijn niet ingepland. Geef ze zelf een periode, of genereer opnieuw zonder die periode te blokkeren.",
-    "startthemasAlleGevuld": "Elke periode heeft een startthema.",
     "samenvattingStartthemaEnkelvoud": "{aantal} startthema",
     "samenvattingStartthema": "{aantal} startthema's",
     "samenvattingMomentEnkelvoud": "{aantal} vast moment",
@@ -253,6 +252,16 @@
     "rapportOnbekendEnkelvoud": "Dit thema kent de school niet: {themas}.",
     "samenvattingOnvolledigEnkelvoud": "{aantal} nog onvolledig",
     "samenvattingOnvolledig": "{aantal} nog onvolledig",
-    "startthemasWisUitleg": "Zet je een periode terug op “Geen voorkeur”, dan vervallen ook de periodes daarna."
+    "instellingenFout": "Je bewaarde instellingen konden niet geladen worden. Herlaad de pagina voor je genereert, anders weet je niet wat er meegaat.",
+    "samenvattingVervallenEnkelvoud": "{aantal} zonder periode",
+    "samenvattingVervallen": "{aantal} zonder periode",
+    "vervallenTitelEnkelvoud": "Een bewaard startthema hoort bij een periode die niet meer bestaat",
+    "vervallenTitel": "Bewaarde startthema's horen bij periodes die niet meer bestaan",
+    "vervallenRegel": "{thema}, bewaard voor de periode vanaf {datum}",
+    "vervallenUitleg": "De vakantiedata zijn aangepast, dus die periode begint niet meer op die dag. De AI krijgt deze vraag niet te zien. Kies het thema opnieuw bij een periode hieronder, of haal het weg.",
+    "vervallenVerwijder": "Weghalen",
+    "rapportVervallenEnkelvoud": "Dit bewaarde startthema hoort bij een periode die niet meer bestaat, dus er is niets mee gevraagd: {themas}.",
+    "rapportVervallen": "Deze bewaarde startthema's horen bij periodes die niet meer bestaan, dus er is niets mee gevraagd: {themas}.",
+    "rapportVervallenItem": "{thema} (periode vanaf {datum})"
   }
 }

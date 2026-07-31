@@ -1,4 +1,5 @@
-﻿using Jaarplanner.Application.Planning;
+﻿using Jaarplanner.Application.Ai;
+using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Domain.Planning;
@@ -1065,7 +1066,10 @@ public sealed class JaarplanGeneratieServiceTests
 
         await service.GenereerAsync(
             klas.Id,
-            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water"] });
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Water")],
+            });
 
         var prompt = client.LaatsteRequest!.UserPrompt;
         Assert.Contains("Wat de leerkracht vooraf vraagt", prompt);
@@ -1095,7 +1099,10 @@ public sealed class JaarplanGeneratieServiceTests
 
         var resultaat = await service.GenereerAsync(
             klas.Id,
-            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water"] });
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Water")],
+            });
 
         Assert.True(resultaat.IsGeslaagd);
         Assert.Equal(2, resultaat.AantalNieuw);     // the plan stands in full
@@ -1119,7 +1126,10 @@ public sealed class JaarplanGeneratieServiceTests
 
         var resultaat = await service.GenereerAsync(
             klas.Id,
-            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water"] });
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Water")],
+            });
 
         var rapport = resultaat.Parameters!;
         Assert.Equal(["Water"], rapport.GehonoreerdeStartthemas);
@@ -1141,7 +1151,10 @@ public sealed class JaarplanGeneratieServiceTests
 
         var resultaat = await service.GenereerAsync(
             klas.Id,
-            new JaarplanGeneratieParameters { GewensteStartthemas = ["Ruimtevaart"] });
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Ruimtevaart")],
+            });
 
         var rapport = resultaat.Parameters!;
         Assert.Equal(["Ruimtevaart"], rapport.OnbekendeStartthemas);
@@ -1170,7 +1183,10 @@ public sealed class JaarplanGeneratieServiceTests
         // re-proposal, but it must not be reported as honouring the request.
         var resultaat = await service.GenereerAsync(
             klas.Id,
-            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water"] });
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Water")],
+            });
 
         var rapport = resultaat.Parameters!;
         Assert.Equal(["Water"], rapport.NietGehonoreerdeStartthemas);
@@ -1222,7 +1238,7 @@ public sealed class JaarplanGeneratieServiceTests
             klas.Id,
             new JaarplanGeneratieParameters
             {
-                GewensteStartthemas = ["Water"],
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Water")],
                 VasteMomenten = [new VastMoment("Schoolfeest", blokken[0].Start.AddDays(1), BlokkeertPlaatsing: true)],
             });
 
@@ -1250,7 +1266,14 @@ public sealed class JaarplanGeneratieServiceTests
 
         var resultaat = await service.GenereerAsync(
             klas.Id,
-            new JaarplanGeneratieParameters { GewensteStartthemas = ["Water", "Herfst"] });
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas =
+                [
+                    new Startthemakeuze(blokken[0].Start, "Water"),
+                    new Startthemakeuze(blokken[1].Start, "Herfst"),
+                ],
+            });
 
         // Each request names its OWN block in the prompt.
         var prompt = client.LaatsteRequest!.UserPrompt;
@@ -1294,20 +1317,279 @@ public sealed class JaarplanGeneratieServiceTests
     }
 
     /// <summary>
-    /// Blank and duplicate start thema names are normalised away, so a form that posts an empty row cannot make
-    /// the prompt ask for "" and cannot make the report list the same thema twice.
+    /// Blank start thema names are normalised away and a period gets at most one thema, so a form that posts an empty
+    /// row cannot make the prompt ask for "" and two rows for the same period cannot both reach the model.
+    /// <para>
+    /// The same thema in <b>two different</b> periods survives, unlike under the old positional contract, which
+    /// de-duplicated by name. It is expressible now that the key is a date, and it is not contradictory: a teacher may
+    /// genuinely want a thema repeated later in the year.
+    /// </para>
     /// </summary>
     [Fact]
     public void Startthemas_worden_genormaliseerd()
     {
+        var eerste = new DateOnly(2026, 9, 1);
+        var tweede = new DateOnly(2026, 11, 9);
+
         var parameters = new JaarplanGeneratieParameters
         {
-            GewensteStartthemas = ["Water", "  ", "water", "", "  Herfst  "],
+            GewensteStartthemas =
+            [
+                new Startthemakeuze(tweede, "  Herfst  "),
+                new Startthemakeuze(eerste, "Water"),
+                new Startthemakeuze(eerste, "Ruimtevaart"),   // same period twice: the first wins
+                new Startthemakeuze(eerste, "  "),
+            ],
         };
 
-        Assert.Equal(["Water", "Herfst"], parameters.GenormaliseerdeStartthemas());
+        // Ordered by the block they target, so the prompt and the report read the year front to back.
+        Assert.Equal(
+            [new Startthemakeuze(eerste, "Water"), new Startthemakeuze(tweede, "Herfst")],
+            parameters.GenormaliseerdeStartthemas());
+
         Assert.False(parameters.IsLeeg);
         Assert.True(new JaarplanGeneratieParameters().IsLeeg);
         Assert.True(JaarplanGeneratieParameters.Geen.IsLeeg);
+
+        // A row with only a name typed is not an instruction and must not become one.
+        Assert.True(
+            new JaarplanGeneratieParameters { VasteMomenten = [new VastMoment("  ", eerste, true)] }.IsLeeg);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // E3-04, persistence half (owner ruling 2026-07-30): the settings are KEPT.
+    //
+    // Three properties carry the ruling, and each has its own test below:
+    //   * a run that posts parameters SAVES them;
+    //   * a run that posts none READS them — which is what makes FR-8/E4 regeneration honour a blocked period;
+    //   * saving happens BEFORE the model is called, so a failed generation does not cost the teacher their input.
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// <b>The load-bearing test of the ruling.</b> A blocking vast moment is supplied once, and the <i>next</i> run
+    /// supplies nothing at all: the period stays bezet. Before persistence the second run re-placed the thema, which is
+    /// exactly the behaviour the owner ruled against.
+    /// </summary>
+    [Fact]
+    public async Task Een_tweede_run_zonder_body_honoreert_de_bewaarde_parameters()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, _) = Opzet(
+            Antwoord(("Herfst", blokken[0].Start), ("Water", blokken[1].Start)), schooljaar);
+
+        var eerste = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten = [new VastMoment("Schoolfeest", blokken[0].Start.AddDays(3), true)],
+            });
+        Assert.Equal(1, eerste.AantalNieuw);
+
+        // Regeneration, with no parameters in the call at all — the shape E4-04/E4-05 will use.
+        var tweede = await service.GenereerAsync(klas.Id);
+
+        Assert.True(tweede.IsGeslaagd);
+        Assert.Equal(1, tweede.AantalNieuw);
+        Assert.DoesNotContain(tweede.Jaarplan!.Plaatsingen, p => p.BlokStart == blokken[0].Start);
+
+        var geweigerd = Assert.Single(tweede.Parameters!.GeweigerdDoorVastMoment);
+        Assert.Equal("Schoolfeest", geweigerd.MomentNaam);
+
+        // And it really is stored, not merely remembered inside one service instance.
+        var bewaard = Assert.Single(opslag.Generatieparameters!.VasteMomenten);
+        Assert.Equal("Schoolfeest", bewaard.Naam);
+        Assert.True(bewaard.BlokkeertPlaatsing);
+    }
+
+    /// <summary>
+    /// The settings are committed <b>before</b> the AI call, so a generation that fails afterwards leaves them saved.
+    /// This is not hypothetical: this environment has no <c>AzureAI:ApiKey</c>, so the client throwing is the common
+    /// case, and a teacher who lost a filled-in form to it would simply not use the feature.
+    /// </summary>
+    [Fact]
+    public async Task Een_mislukte_generatie_verliest_de_ingevulde_parameters_niet()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var klas = schooljaar.VoegKlasToe("L4 vierde leerjaar", leerjaar: 4);
+        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [Herfst(), Water()]);
+        var service = new JaarplanGeneratieService(new StukkeAiClient(), Indeling, opslag);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Water")],
+                VasteMomenten = [new VastMoment("Sportdag", blokken[1].Start.AddDays(1), false)],
+            }));
+
+        // Saved despite the failure, and saved on the stable key.
+        var bewaard = opslag.Generatieparameters;
+        Assert.NotNull(bewaard);
+        var startthema = Assert.Single(bewaard!.Startthemas);
+        Assert.Equal(blokken[0].Start, startthema.BlokStart);
+        Assert.Equal("Water", startthema.ThemaNaam);
+        Assert.Single(bewaard.VasteMomenten);
+
+        // The plan itself is untouched: nothing was persisted for it (Art. IV.5).
+        Assert.Null(opslag.Jaarplan);
+    }
+
+    /// <summary>
+    /// An explicitly <b>empty</b> body clears the kept settings. There is deliberately no separate "Bewaren" control,
+    /// so this is the only way to clear them: a merge would leave a teacher who removed a vast moment with it still
+    /// blocking the next run.
+    /// </summary>
+    [Fact]
+    public async Task Een_leeg_verzoek_wist_de_bewaarde_parameters()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+
+        await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten = [new VastMoment("Schoolfeest", blokken[0].Start.AddDays(3), true)],
+            });
+        Assert.Single(opslag.Generatieparameters!.VasteMomenten);
+
+        var leeg = await service.GenereerAsync(klas.Id, new JaarplanGeneratieParameters());
+
+        Assert.Empty(opslag.Generatieparameters!.VasteMomenten);
+        Assert.True(opslag.Generatieparameters!.IsLeeg);
+
+        // And the run itself is back to an unparameterised one: the thema lands in the period again.
+        Assert.Equal(1, leeg.AantalNieuw);
+        Assert.Same(ParameterRapport.Geen, leeg.Parameters);
+
+        // A following run with no body reads the cleared settings, so nothing is blocked any more either.
+        var daarna = await service.GenereerAsync(klas.Id);
+        Assert.Empty(daarna.Parameters!.GeweigerdDoorVastMoment);
+    }
+
+    /// <summary>The read path the form loads: the kept settings, or the empty set for a class that has none.</summary>
+    [Fact]
+    public async Task De_bewaarde_parameters_zijn_uitleesbaar_en_leeg_is_geen_fout()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+
+        // Nothing kept yet: the empty set, not a not-found. "No settings" is the normal state.
+        Assert.Same(JaarplanGeneratieParameters.Geen, await service.HaalParametersAsync(klas.Id));
+
+        await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[1].Start, "Water")],
+                VasteMomenten = [new VastMoment("Schoolfeest", blokken[0].Start.AddDays(3), true)],
+            });
+
+        var gelezen = await service.HaalParametersAsync(klas.Id);
+        Assert.Equal(
+            [new Startthemakeuze(blokken[1].Start, "Water")], gelezen.GewensteStartthemas);
+        Assert.Equal(
+            [new VastMoment("Schoolfeest", blokken[0].Start.AddDays(3), true)], gelezen.VasteMomenten);
+    }
+
+    /// <summary>
+    /// A kept setting from another <b>school year</b> is never read. The dates stored here are only meaningful inside
+    /// one year, so this is the leak the (klas, schooljaar) key exists to make impossible: a schoolfeest on 2026-09-15
+    /// loaded into 2027-2028's form would put a stale constraint in front of a teacher as if they had set it.
+    /// </summary>
+    [Fact]
+    public async Task Bewaarde_parameters_van_een_ander_schooljaar_worden_niet_gelezen()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var klas = schooljaar.VoegKlasToe("L5 vijfde leerjaar", leerjaar: 5);
+
+        // Settings written for the same klas but a DIFFERENT school year — the shape a rollover (E8-03) would leave.
+        var vorigJaar = new Generatieparameters(klas.Id, Guid.NewGuid());
+        vorigJaar.Vervang(
+            [new BewaardStartthema(blokken[0].Start, "Water")],
+            [new BewaardVastMoment("Schoolfeest van vorig jaar", blokken[0].Start.AddDays(3), true)]);
+
+        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [Herfst(), Water()]);
+        opslag.VoegGeneratieparametersToe(vorigJaar);
+        var client = new FakeAiClient(Antwoord(("Herfst", blokken[0].Start)));
+        var service = new JaarplanGeneratieService(client, Indeling, opslag);
+
+        Assert.Same(JaarplanGeneratieParameters.Geen, await service.HaalParametersAsync(klas.Id));
+
+        // And the stale blocking moment does not silently refuse a placement in this year either.
+        var resultaat = await service.GenereerAsync(klas.Id);
+        Assert.Equal(1, resultaat.AantalNieuw);
+        Assert.Empty(resultaat.Parameters!.GeweigerdDoorVastMoment);
+        Assert.DoesNotContain("vorig jaar", client.LaatsteRequest!.UserPrompt);
+    }
+
+    /// <summary>
+    /// A kept start thema whose block start is no longer a period boundary — a beheerder edited the vakantiedata — is
+    /// <b>reported</b>, kept, and asked of nobody. Never dropped and never moved to a neighbouring period, which is the
+    /// ruling directie made for placements on 2026-07-28, applied to the parameter that now survives long enough to hit
+    /// it.
+    /// </summary>
+    [Fact]
+    public async Task Een_startthema_op_een_verdwenen_periodegrens_wordt_gemeld_niet_verplaatst()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, client, klas, _, _) = Opzet(
+            Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+
+        // A date inside the year that starts no block: the day after the first block begins.
+        var geenBlokgrens = blokken[0].Start.AddDays(1);
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(geenBlokgrens, "Water")],
+            });
+
+        var rapport = resultaat.Parameters!;
+        var vervallen = Assert.Single(rapport.VervallenStartthemas);
+        Assert.Equal("Water", vervallen.ThemaNaam);
+        Assert.Equal(geenBlokgrens, vervallen.BlokStart);
+        Assert.True(rapport.HeeftAandachtspunten);
+
+        // Not silently re-filed as something else, and not blamed on the model.
+        Assert.Empty(rapport.NietGehonoreerdeStartthemas);
+        Assert.Empty(rapport.TegenstrijdigeStartthemas);
+        Assert.Empty(rapport.OnbekendeStartthemas);
+
+        // The model is not told to use a date that starts no block, which the system prompt forbids anyway.
+        Assert.DoesNotContain(
+            $"\"Water\" in het blok met startdatum {geenBlokgrens:yyyy-MM-dd}", client.LaatsteRequest!.UserPrompt);
+
+        // But the setting SURVIVES: reverting the vakantie edit must restore it, so it is not thrown away.
+        Assert.Equal(geenBlokgrens, Assert.Single(opslag.Generatieparameters!.Startthemas).BlokStart);
+    }
+
+    /// <summary>
+    /// One period opens with one thema, held by the aggregate and not only by the application's normalisation — the
+    /// database index above it enforces the same thing.
+    /// </summary>
+    [Fact]
+    public void Twee_startthemas_voor_dezelfde_periode_worden_geweigerd_door_het_aggregaat()
+    {
+        var parameters = new Generatieparameters(Guid.NewGuid(), Guid.NewGuid());
+        var blok = new DateOnly(2026, 9, 1);
+
+        Assert.Throws<ArgumentException>(() => parameters.Vervang(
+            [new BewaardStartthema(blok, "Water"), new BewaardStartthema(blok, "Herfst")],
+            []));
+    }
+
+    /// <summary>An AI client that always fails, for the "a failed run keeps the parameters" test.</summary>
+    private sealed class StukkeAiClient : IAiClient
+    {
+        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("AzureAI:ApiKey is not configured.");
     }
 }

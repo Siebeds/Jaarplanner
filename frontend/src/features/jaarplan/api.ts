@@ -46,12 +46,26 @@ export function genereerJaarplan(
   klasId: string,
   parameters?: Generatieparameters,
 ): Promise<Generatieresultaat> {
-  // No parameters means no body at all, not an empty object: the server treats both identically, and sending
-  // nothing keeps a plain run byte-for-byte the request it always was.
+  // A body REPLACES the class's kept settings; no body USES them (E3-04 persistence half, owner ruling 2026-07-30).
+  // The two are therefore no longer interchangeable, and the difference is what makes clearing possible: an
+  // explicitly empty object wipes the settings, where omitting the body would silently reuse them. The form always
+  // sends its current state once it has loaded, so `undefined` here means "the form has nothing to say yet" — a run
+  // fired before the settings arrived still honours what is stored, which is the right answer either way.
   return apiFetch<Generatieresultaat>(`/api/klassen/${klasId}/jaarplan/generatie`, {
     method: "POST",
     ...(parameters ? { body: JSON.stringify(parameters) } : {}),
   });
+}
+
+/**
+ * The class's **kept** pre-generation settings (E3-04, FR-5.4) — what the form shows instead of starting empty.
+ *
+ * A class that has never saved any answers with empty lists rather than a 404, so "nothing set" is a normal state and
+ * not an error the form has to render. Entries are returned **as stored**: a preference whose period no longer exists
+ * comes back unchanged, because dropping it here would hide from the teacher that a setting of theirs was stranded.
+ */
+export function haalGeneratieparameters(klasId: string): Promise<Generatieparameters> {
+  return apiFetch<Generatieparameters>(`/api/klassen/${klasId}/jaarplan/parameters`);
 }
 
 /**

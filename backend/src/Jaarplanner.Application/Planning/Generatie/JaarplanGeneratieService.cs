@@ -39,6 +39,12 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// leaves accepted/rejected/manual and locked ones exactly where they are. E4 extends this to a single period; the
 /// rule lives here because a generator that overwrote a locked thema would make the flag decorative.
 /// </para>
+/// <para>
+/// <b>Regeneration also honours the class's kept pre-generation parameters</b> (E3-04, FR-5.4/FR-8, owner ruling
+/// 2026-07-30). A run that is handed no parameters reads the stored ones, so a period the teacher marked as bezet stays
+/// bezet on the next run instead of quietly getting a thema back. That behaviour lives here, on the single generation
+/// path, precisely so E4-04/E4-05 inherit it rather than having to add it.
+/// </para>
 /// </summary>
 public sealed class JaarplanGeneratieService
 {
@@ -72,9 +78,18 @@ public sealed class JaarplanGeneratieService
     /// </summary>
     /// <param name="klasId">The class to generate for.</param>
     /// <param name="parameters">
-    /// What the teacher asked for before the run (FR-5.4) — gewenste startthema's and vaste momenten. <c>null</c> or
-    /// empty generates exactly as before. Vakanties are deliberately not accepted here; see
-    /// <see cref="JaarplanGeneratieParameters"/> for why the schooljaar remains their single source of truth.
+    /// What the teacher asked for before the run (FR-5.4) — gewenste startthema's and vaste momenten.
+    /// <para>
+    /// <b>Supplying a value <i>replaces</i> the class's kept settings; supplying <c>null</c> <i>reads</i> them.</b>
+    /// That is what makes an FR-8/E4 regeneration honour a period the teacher marked as bezet instead of quietly
+    /// giving it a thema back (owner ruling, 2026-07-30): the generation path is the only path, so E4 inherits the
+    /// behaviour rather than having to bolt it on. An explicitly <b>empty</b> value therefore clears the settings,
+    /// which is the only way to clear them given there is deliberately no separate "Bewaren" control.
+    /// </para>
+    /// <para>
+    /// Vakanties are deliberately not accepted here; see <see cref="JaarplanGeneratieParameters"/> for why the
+    /// schooljaar remains their single source of truth.
+    /// </para>
     /// </param>
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     /// <returns>A success result carrying the reviewable plan, or an explicit failure with nothing persisted.</returns>
@@ -84,9 +99,16 @@ public sealed class JaarplanGeneratieService
         JaarplanGeneratieParameters? parameters = null,
         CancellationToken cancellationToken = default)
     {
-        parameters ??= JaarplanGeneratieParameters.Geen;
-
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
+
+        // Validate, then PERSIST, then call the model — in that order, and the order is the requirement.
+        // Model binding has already rejected a malformed body (a vast moment without `blokkeertPlaatsing` is a 400), so
+        // nothing invalid is stored; and because the settings are committed before the AI call, a failed generation
+        // cannot cost the teacher the input they just typed. This environment has no AzureAI:ApiKey, so that failure is
+        // the common case rather than a hypothetical one.
+        parameters = parameters is null
+            ? await LaadBewaardeParametersAsync(klasId, schooljaar.Id, cancellationToken)
+            : await BewaarParametersAsync(klasId, schooljaar.Id, parameters, cancellationToken);
 
         // The grid comes from the seam. Nothing here knows how long a period is, or that periods exist at all
         // beyond "the seam returned these" (Art. IX.3 — never assume months).
@@ -130,7 +152,7 @@ public sealed class JaarplanGeneratieService
         var geblokkeerdeBlokken = new Dictionary<DateOnly, string>();
         var toegepasteMomenten = new List<VastMomentUitkomst>();
         var onplaatsbareMomenten = new List<VastMomentUitkomst>();
-        foreach (var moment in parameters.VasteMomenten.OrderBy(m => m.Datum).ThenBy(m => m.Naam, StringComparer.Ordinal))
+        foreach (var moment in parameters.GenormaliseerdeVasteMomenten())
         {
             var blok = blokken.FirstOrDefault(b => moment.Datum >= b.Start && moment.Datum <= b.Eind);
             if (blok is null)
@@ -242,7 +264,7 @@ public sealed class JaarplanGeneratieService
                 parameters,
                 jaarplan.Plaatsingen.Where(p => p.BlokNiveau == GeneratieNiveau),
                 themas.ToDictionary(t => t.Id),
-                blokken,
+                blokStarts,
                 themas.Select(t => t.Naam).ToHashSet(StringComparer.OrdinalIgnoreCase),
                 geblokkeerdeBlokken.Keys.ToHashSet()) with
             {
@@ -262,6 +284,72 @@ public sealed class JaarplanGeneratieService
             afgewezen,
             spreiding,
             parameterRapport);
+    }
+
+    /// <summary>
+    /// The class's kept pre-generation settings (E3-04, FR-5.4) — what the form loads so a teacher sees the settings
+    /// they last used instead of an empty form every time (owner ruling, 2026-07-30).
+    /// <para>
+    /// A class with nothing kept yields <see cref="JaarplanGeneratieParameters.Geen"/> rather than a not-found: "no
+    /// settings" is a real and common answer, and a 404 would make the form treat a normal state as a failure.
+    /// </para>
+    /// <para>
+    /// <b>Not filtered against the current grid.</b> A kept start thema whose block start no longer exists is returned
+    /// as it was stored, so the caller can say so; filtering here would be the silent drop the stale-placement ruling
+    /// of 2026-07-28 forbids one layer up.
+    /// </para>
+    /// </summary>
+    /// <exception cref="SchoolcontentNietGevondenFout">The class does not exist.</exception>
+    public async Task<JaarplanGeneratieParameters> HaalParametersAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default)
+    {
+        var (_, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
+
+        return await LaadBewaardeParametersAsync(klasId, schooljaar.Id, cancellationToken);
+    }
+
+    /// <summary>
+    /// The kept settings of this class in this school year, or <see cref="JaarplanGeneratieParameters.Geen"/>.
+    /// </summary>
+    private async Task<JaarplanGeneratieParameters> LaadBewaardeParametersAsync(
+        Guid klasId,
+        Guid schooljaarId,
+        CancellationToken cancellationToken)
+    {
+        var bewaard = await _opslag.LaadGeneratieparametersAsync(klasId, schooljaarId, cancellationToken);
+
+        return bewaard is null ? JaarplanGeneratieParameters.Geen : JaarplanGeneratieParameters.Van(bewaard);
+    }
+
+    /// <summary>
+    /// Stores what the teacher just submitted as the class's kept settings and returns the normalised set the run will
+    /// use, so the prompt, the enforcement and the report all read exactly what was persisted.
+    /// <para>
+    /// Committed on its own, <b>before</b> the AI call and before the plan is touched: a generation that then fails
+    /// leaves the settings saved (the teacher does not retype them) and the plan untouched (Art. IV.5).
+    /// </para>
+    /// </summary>
+    private async Task<JaarplanGeneratieParameters> BewaarParametersAsync(
+        Guid klasId,
+        Guid schooljaarId,
+        JaarplanGeneratieParameters parameters,
+        CancellationToken cancellationToken)
+    {
+        var (startthemas, vasteMomenten) = parameters.NaarBewaard();
+
+        var bewaard = await _opslag.LaadGeneratieparametersAsync(klasId, schooljaarId, cancellationToken);
+        if (bewaard is null)
+        {
+            // Created lazily on the first parameterised run, so a class that never uses parameters carries no row.
+            bewaard = new Generatieparameters(klasId, schooljaarId);
+            _opslag.VoegGeneratieparametersToe(bewaard);
+        }
+
+        bewaard.Vervang(startthemas, vasteMomenten);
+        await _opslag.BewaarAsync(cancellationToken);
+
+        return JaarplanGeneratieParameters.Van(bewaard);
     }
 
     /// <summary>

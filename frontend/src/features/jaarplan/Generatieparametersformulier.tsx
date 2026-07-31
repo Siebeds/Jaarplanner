@@ -1,41 +1,51 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "../../components/ui/button";
 import { t, tAantal } from "../../i18n";
 import { haalThemanamen } from "./api";
-import { formatteerPeriode } from "./kalenderFormat";
-import { themanamenKey } from "./useJaarplan";
+import { formatteerDatum, formatteerPeriode } from "./kalenderFormat";
+import { themanamenKey, useGeneratieparameters } from "./useJaarplan";
 import type { Generatieparameters, Planningsblok, VastMoment } from "./types";
 
 /**
- * What the teacher sets before a generation run (E3-04, FR-5.4): which thema opens which period, and which dates
- * the school has already committed.
+ * What the teacher sets before a generation run (E3-04, FR-5.4): which thema opens which period, and which dates the
+ * school has already committed.
  *
- * **Collapsed by default, and that is the main design decision.** A teacher generates a year plan once or twice a
- * year, so a permanently-open two-list form would be the largest object on the anchor screen for a task almost
- * nobody is doing right now — against *overzichtelijk*, and against the rule that the data dominates. Generating
- * without parameters stays a single click; the form is one disclosure away and its summary says whether anything
- * is set, so it is never a surprise that a run used them.
+ * **The settings are kept** (owner ruling, 2026-07-30). The form loads what was last used, the teacher adjusts, and
+ * generating saves the new state. There is deliberately **no separate "Bewaren" button**: the settings persist as part
+ * of the generation call, so one control covers one intention, and the saved settings can never disagree with the plan
+ * that was generated from them. Clearing a field and generating is how you clear a setting.
  *
- * **Startthema's are rendered as one row per period, not as a list of names.** The server contract is positional:
- * the i-th name targets the i-th block. A bare reorderable list would leave that meaning invisible and let a
- * teacher believe they had expressed a set of preferences. Showing "Periode 1 · 1 sep – 1 okt → [thema]" makes the
- * position *be* the label, and it is the reason this form needs the derived grid rather than only the thema names.
+ * **Collapsed by default, and that is still the main design decision.** A teacher generates a year plan once or twice a
+ * year, so a permanently-open two-list form would be the largest object on the anchor screen for a task almost nobody
+ * is doing right now. The summary in the trigger says what is set, so a parameterised run is never a surprise, and
+ * that matters more now that the settings survive: a run can use settings the teacher entered months ago.
  *
- * **The thema comes from a picker.** The server reports a name the school does not own as `onbekendeStartthemas`;
- * the cheapest way to make that case unreachable is to make mistyping impossible. A full thema-beheer screen is
- * still E1-14 — this needs only the names.
+ * **One row per period, each naming its own period, and gaps are allowed.** The wire contract keys a preference on the
+ * period's **start date** (see {@link Startthemakeuze}), not on its position in the array, so "a preference for period
+ * 3 only" is expressible and means exactly that. Everything the earlier positional version needed is therefore gone:
+ * the growing list, the clear-cascade that wiped later periods, and the rule that a gap had to be inexpressible.
+ *
+ * **The thema comes from a picker.** The server reports a name the school does not own as `onbekendeStartthemas`; the
+ * cheapest way to make that case rare is to make mistyping impossible. A full thema-beheer screen is still E1-14.
  *
  * **"Mag er een thema bij?" has no pre-selected answer**, mirroring the server, which rejects a vast moment whose
- * `blokkeertPlaatsing` is missing. Defaulting it to "yes" would produce a run identical to one with no parameters
- * at all: a control that silently does nothing, which is the one thing this project's own rule forbids outright.
+ * `blokkeertPlaatsing` is missing. Defaulting it to "yes" would produce a run identical to one with no parameters at
+ * all: a control that silently does nothing, which is the one thing this project's own rule forbids outright.
  */
 export interface GeneratieparametersformulierProps {
-  /** The derived grid, so each startthema row can name the period it targets. */
+  /** The class whose kept settings are loaded and saved. */
+  klasId: string;
+  /** The derived grid, so each row can name the period it targets and a stranded setting can be spotted. */
   blokken: readonly Planningsblok[];
-  /** Raised on every edit; the kalender holds the value and sends it with the run. */
-  onWijzig: (parameters: Generatieparameters | undefined) => void;
+  /**
+   * Raised on every **edit**, never on load. The kalender falls back to the kept settings it loaded itself while this
+   * has not fired, so an untouched form sends exactly what was saved and a form still loading sends no body at all
+   * (which makes the server use the saved settings too). Reporting on load instead would have pushed parent state from
+   * an effect for no gain.
+   */
+  onWijzig: (parameters: Generatieparameters) => void;
   /** Disabled while a run is in flight, so parameters cannot change under a request. */
   disabled: boolean;
 }
@@ -49,43 +59,65 @@ interface MomentInvoer {
 
 const LEEG_MOMENT: MomentInvoer = { naam: "", datum: "", blokkeertPlaatsing: null };
 
+/** Matches the `Naam` column the server stores, so the only UI that writes here cannot overflow it. */
+const MAX_MOMENTNAAM = 200;
+
 export function Generatieparametersformulier({
+  klasId,
   blokken,
   onWijzig,
   disabled,
 }: GeneratieparametersformulierProps) {
-  // Startthema keyed by the block's **start date**, never by its position.
-  //
-  // The wire contract is positional (the i-th name targets the i-th block), but keying local state that way made
-  // the form desync from the grid: `blokken` is refetched on window focus, so a beheerder editing the
-  // vakantiestructuur could shrink the year while this state still held a choice for a period that no longer
-  // exists. That extra name was then sent, and the server filed it under `TegenstrijdigeStartthemas` — telling the
-  // teacher they had marked the period as bezet themselves, which they had not. Keying on the same stable date the
-  // rest of the system uses (ADR-0020 §3) means a vanished block's choice stops being rendered and stops being
-  // sent, together.
+  // Keyed by the period's **start date**, which is now also the wire key and the stored key. Keying on position was
+  // the earlier defect: `blokken` refetches on window focus, so a beheerder shrinking the year left a choice for a
+  // period that no longer existed, and it was still sent (ADR-0020 §3).
   const [startthemas, setStartthemas] = useState<Record<string, string>>({});
   const [momenten, setMomenten] = useState<MomentInvoer[]>([]);
   const [open, setOpen] = useState(false);
   const paneelId = useId();
 
-  // Gated on `open`: the collapse is supposed to save the teacher attention, and fetching the thema list on
-  // every load of the anchor screen for a panel almost nobody opens would have saved pixels and no bytes.
+  const instellingen = useGeneratieparameters(klasId);
+
+  // Gated on `open`: the collapse is supposed to save the teacher attention, and fetching the thema list on every
+  // load of the anchor screen for a panel almost nobody opens would have saved pixels and no bytes.
   const themas = useQuery({
     queryKey: themanamenKey,
     queryFn: haalThemanamen,
     enabled: open,
   });
 
-  // The grid in wire order. Every position below is derived from this one list, so the rendered rows and the
-  // request can never disagree about which period is which.
+  // The grid in date order. Rows and request both derive from this one list.
   const geordendeBlokken = [...blokken].sort((a, b) => a.start.localeCompare(b.start));
 
-  function meld(
-    nieuweStartthemas: Record<string, string>,
-    nieuweMomenten: MomentInvoer[],
-  ) {
-    // Only fully-answered moments are sent. A half-filled row is not an instruction yet, and sending it would
-    // earn a 400 that the teacher would read as the tool being broken rather than as a row they had not finished.
+  // Load the kept settings into the form once they arrive.
+  //
+  // Keyed on the query's own data identity, so a refetch that returns the same object does not clobber an edit in
+  // progress; and NOT gated on the grid, because a setting whose period has since vanished must still be loaded —
+  // that is precisely the one the teacher has to be told about.
+  const geladen = instellingen.data;
+  useEffect(() => {
+    if (!geladen) {
+      return;
+    }
+
+    const uitStartthemas: Record<string, string> = {};
+    for (const keuze of geladen.gewensteStartthemas) {
+      uitStartthemas[keuze.blokStart] = keuze.themaNaam;
+    }
+
+    setStartthemas(uitStartthemas);
+    setMomenten(
+      geladen.vasteMomenten.map((moment) => ({
+        naam: moment.naam,
+        datum: moment.datum,
+        blokkeertPlaatsing: moment.blokkeertPlaatsing,
+      })),
+    );
+  }, [geladen]);
+
+  function meld(nieuweStartthemas: Record<string, string>, nieuweMomenten: MomentInvoer[]) {
+    // Only fully-answered moments are sent. A half-filled row is not an instruction yet, and sending it would earn a
+    // 400 that the teacher would read as the tool being broken rather than as a row they had not finished.
     const vasteMomenten: VastMoment[] = nieuweMomenten
       .filter(
         (moment): moment is MomentInvoer & { blokkeertPlaatsing: boolean } =>
@@ -99,35 +131,24 @@ export function Generatieparametersformulier({
         blokkeertPlaatsing: moment.blokkeertPlaatsing,
       }));
 
-    // Flattened to positions only here, at the boundary, walking the CURRENT grid in order. Contiguous from
-    // period 1, because the server reads position as the target block: a gap would shift every later choice one
-    // period earlier, so a teacher who set only period 3 must not have it read as period 1.
-    const gewensteStartthemas: string[] = [];
-    for (const blok of geordendeBlokken) {
-      const keuze = nieuweStartthemas[blok.start];
-      if (!keuze) {
-        break;
-      }
-      gewensteStartthemas.push(keuze);
-    }
+    // Every entry carries its own period, so no flattening and no gap rule. Ordered by date for a stable request.
+    const gewensteStartthemas = Object.entries(nieuweStartthemas)
+      .filter(([, themaNaam]) => themaNaam.length > 0)
+      .map(([blokStart, themaNaam]) => ({ blokStart, themaNaam }))
+      .sort((a, b) => a.blokStart.localeCompare(b.blokStart));
 
-    const leeg = gewensteStartthemas.length === 0 && vasteMomenten.length === 0;
-    onWijzig(leeg ? undefined : { gewensteStartthemas, vasteMomenten });
+    // Always an object, never `undefined`: an empty one is how a teacher clears the kept settings, where omitting the
+    // body would instead make the server reuse them.
+    onWijzig({ gewensteStartthemas, vasteMomenten });
   }
 
-  function kiesStartthema(index: number, naam: string) {
+  function kiesStartthema(blokStart: string, naam: string) {
     const volgende = { ...startthemas };
 
     if (naam) {
-      volgende[geordendeBlokken[index].start] = naam;
+      volgende[blokStart] = naam;
     } else {
-      // Clearing a period clears the ones after it too. The server reads position as the target block, so a
-      // cleared row in the middle would truncate the list and silently drop every later choice from the request
-      // while still showing it on screen. Taking them away visibly is the honest version of the same rule, and
-      // the row above the pickers warns before you do it.
-      for (const later of geordendeBlokken.slice(index)) {
-        delete volgende[later.start];
-      }
+      delete volgende[blokStart];
     }
 
     setStartthemas(volgende);
@@ -153,23 +174,33 @@ export function Generatieparametersformulier({
     meld(startthemas, volgende);
   }
 
+  // A kept preference whose period no longer exists: the beheerder edited the vakantiedata after it was saved, so its
+  // start date is not a period boundary any more.
+  //
+  // Surfaced here rather than swallowed, and NOT removed on the teacher's behalf. Directie ruled on 2026-07-28 that a
+  // placement pointing at a vanished period is flagged loudly and never silently relocated; a kept parameter is the
+  // same fact one layer up, and persistence is what made it reachable. The setting stays in the request, so reverting
+  // the vakantie edit restores it, and the run's report says the same thing.
+  const vervallen = Object.entries(startthemas)
+    .filter(([blokStart]) => !geordendeBlokken.some((blok) => blok.start === blokStart))
+    .map(([blokStart, themaNaam]) => ({ blokStart, themaNaam }))
+    .sort((a, b) => a.blokStart.localeCompare(b.blokStart));
+
   // Counted from what WILL BE SENT, never from what has been typed.
   //
   // The first version counted any moment with a name and a date, ignoring the blocking question. So a teacher who
-  // left that unanswered, collapsed the panel and generated saw "(1 vast moment)" while the run sent nothing and
-  // the report said nothing — the summary asserting an instruction was set when it was not. That is the same
-  // "indistinguishable from *your instruction was honoured*" defect the backend audit raised, one layer up, and it
-  // falsified this component's own justification for being collapsible.
+  // left that unanswered, collapsed the panel and generated saw "(1 vast moment)" while the run sent nothing and the
+  // report said nothing — the summary asserting an instruction was set when it was not.
   const isVolledig = (moment: MomentInvoer) =>
     moment.naam.trim().length > 0 && moment.datum.length > 0 && moment.blokkeertPlaatsing !== null;
   const isBegonnen = (moment: MomentInvoer) =>
     moment.naam.trim().length > 0 || moment.datum.length > 0 || moment.blokkeertPlaatsing !== null;
 
-  const aantalStartthemas = geordendeBlokken.filter((blok) => startthemas[blok.start]).length;
+  const aantalStartthemas = Object.values(startthemas).filter((naam) => naam.length > 0).length;
   const aantalMomenten = momenten.filter(isVolledig).length;
 
-  // Begun but not finished, so not sent. Named separately in the summary because the warning that explains it
-  // lives inside the panel, and the panel is closed by default — which is exactly how the defect above hid.
+  // Begun but not finished, so not sent. Named separately in the summary because the warning that explains it lives
+  // inside the panel, and the panel is closed by default — which is exactly how the defect above hid.
   const aantalOnvolledig = momenten.filter(
     (moment) => isBegonnen(moment) && !isVolledig(moment),
   ).length;
@@ -196,33 +227,16 @@ export function Generatieparametersformulier({
             "parameters.samenvattingOnvolledigEnkelvoud",
             "parameters.samenvattingOnvolledig",
           ),
+        vervallen.length > 0 &&
+          tAantal(
+            vervallen.length,
+            "parameters.samenvattingVervallenEnkelvoud",
+            "parameters.samenvattingVervallen",
+          ),
       ]
         .filter(Boolean)
         .join(", ")})`
     : t("parameters.samenvattingLeeg");
-
-  // The first period without a choice. Everything after it is unreachable, because the server reads position as
-  // the target block and a gap would shift every later choice one period earlier.
-  const eersteOpenIndex = (() => {
-    for (let i = 0; i < geordendeBlokken.length; i++) {
-      if (!startthemas[geordendeBlokken[i].start]) {
-        return i;
-      }
-    }
-    return geordendeBlokken.length;
-  })();
-
-  // Show the chosen rows plus ONE open row, and grow as the teacher fills them.
-  //
-  // Rendering all seven periods was the first version, and looking at it settled the question: six disabled
-  // selects stacked under one live one is a column of dead controls for a task where a teacher realistically
-  // names one or two thema's, and a disabled control reads as broken rather than as not-yet-reachable. Growing
-  // the list also makes the top-to-bottom rule self-evident, so the sentence explaining it could go — prose is
-  // the first thing to cut.
-  const zichtbareRijen = geordendeBlokken.slice(
-    0,
-    Math.min(eersteOpenIndex + 1, geordendeBlokken.length),
-  );
 
   return (
     <div className="mt-4 border-t border-border pt-4">
@@ -237,20 +251,66 @@ export function Generatieparametersformulier({
           {open ? "▾" : "▸"}
         </span>
         {t("parameters.titel")}
-        {/* The summary is the reason a collapsed form is safe: a teacher can tell a parameterised run from a
-            plain one without opening anything.
-            Built from `tAantal` and with the zero parts omitted, not from one interpolated sentence. The first
-            version printed "1 startthema's, 1 vaste momenten" — wrong Dutch for the commonest count, and the
-            third time this project has shipped that exact plural bug. A count in user-facing copy goes through
-            the helper. */}
+        {/* The summary is the reason a collapsed form is safe: a teacher can tell a parameterised run from a plain
+            one without opening anything. It matters more now that the settings are kept, because the run may use
+            something entered long ago. Built from `tAantal` with the zero parts omitted, not from one interpolated
+            sentence: the first version printed "1 startthema's", which is the plural bug this project has shipped
+            four times. */}
         <span className="font-normal text-ink-zacht">{samenvatting}</span>
       </button>
 
+      {/* Outside the collapse: a stranded setting must be visible without opening anything, since it is being sent
+          and the teacher is the only one who can resolve it. */}
+      {vervallen.length > 0 && (
+        <div className="mt-3 rounded-md border border-attentie bg-attentie-zacht p-3">
+          <p className="text-xs font-semibold text-attentie-ink">
+            <span aria-hidden="true">▲</span>{" "}
+            {tAantal(
+              vervallen.length,
+              "parameters.vervallenTitelEnkelvoud",
+              "parameters.vervallenTitel",
+            )}
+          </p>
+          <ul className="mt-1.5 flex flex-col gap-1.5">
+            {vervallen.map((keuze) => (
+              <li
+                key={keuze.blokStart}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink"
+              >
+                <span>
+                  {t("parameters.vervallenRegel", {
+                    thema: keuze.themaNaam,
+                    datum: formatteerDatum(keuze.blokStart),
+                  })}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={disabled}
+                  onClick={() => kiesStartthema(keuze.blokStart, "")}
+                  className="h-7 text-xs"
+                >
+                  {t("parameters.vervallenVerwijder")}
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-xs text-attentie-ink">{t("parameters.vervallenUitleg")}</p>
+        </div>
+      )}
+
       {open && (
         <div id={paneelId} className="mt-4 flex flex-col gap-6">
-          <p className="text-xs leading-snug text-ink-zacht">
-            {t("parameters.uitleg")}
-          </p>
+          <p className="text-xs leading-snug text-ink-zacht">{t("parameters.uitleg")}</p>
+
+          {/* The settings themselves failed to load. Said out loud rather than shown as an empty form, because an
+              empty form here reads as "nothing is set" and a teacher would then generate and unknowingly keep
+              whatever the server still has. */}
+          {instellingen.isError && (
+            <p role="alert" className="text-xs font-medium text-suggestie-geweigerd">
+              {t("parameters.instellingenFout")}
+            </p>
+          )}
 
           {/* ---- Startthema's, one row per period ---- */}
           <fieldset className="flex flex-col gap-2" disabled={disabled}>
@@ -269,46 +329,35 @@ export function Generatieparametersformulier({
             ) : themas.data.length === 0 ? (
               <p className="text-xs text-ink-zacht">{t("parameters.geenThemas")}</p>
             ) : (
-              <>
-                {zichtbareRijen.map((blok, index) => (
-                  <label
-                    key={blok.start}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
-                  >
-                    <span className="min-w-[9.5rem] text-ink">
-                      {t("parameters.periodeLabel", { ordinaal: blok.ordinaal })}{" "}
-                      <span className="text-ink-zacht">
-                        {formatteerPeriode(blok.start, blok.eind)}
-                      </span>
+              // Every period, every row live and independent. The earlier version showed one row that grew, because
+              // the positional contract made a gap unexpressible; with a date key a gap simply means "no
+              // preference", so there is nothing left to prevent and no disabled control to explain.
+              geordendeBlokken.map((blok) => (
+                <label
+                  key={blok.start}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+                >
+                  <span className="min-w-[9.5rem] text-ink">
+                    {t("parameters.periodeLabel", { ordinaal: blok.ordinaal })}{" "}
+                    <span className="text-ink-zacht">
+                      {formatteerPeriode(blok.start, blok.eind)}
                     </span>
-                    <select
-                      value={startthemas[blok.start] ?? ""}
-                      disabled={disabled}
-                      onChange={(event) => kiesStartthema(index, event.target.value)}
-                      className="h-9 min-w-[12rem] rounded-md border border-input bg-card px-2 text-xs text-ink disabled:cursor-not-allowed disabled:text-ink-zacht"
-                    >
-                      <option value="">{t("parameters.geenVoorkeur")}</option>
-                      {themas.data.map((thema) => (
-                        <option key={thema.id} value={thema.naam}>
-                          {thema.naam}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-
-                {/* The clear-cascade is stated BEFORE it can happen. It removes up to N-1 choices on a single
-                    change event with no undo, and a consequence a teacher only discovers by triggering it is not
-                    a consequence they consented to. Shown only once there is something to lose. */}
-                {aantalStartthemas > 1 && (
-                  <p className="text-xs text-ink-zacht">{t("parameters.startthemasWisUitleg")}</p>
-                )}
-
-                {/* Only worth saying once every period is named; until then the growing list says it. */}
-                {eersteOpenIndex >= geordendeBlokken.length && (
-                  <p className="text-xs text-ink-zacht">{t("parameters.startthemasAlleGevuld")}</p>
-                )}
-              </>
+                  </span>
+                  <select
+                    value={startthemas[blok.start] ?? ""}
+                    disabled={disabled}
+                    onChange={(event) => kiesStartthema(blok.start, event.target.value)}
+                    className="h-9 min-w-[12rem] rounded-md border border-input bg-card px-2 text-xs text-ink disabled:cursor-not-allowed disabled:text-ink-zacht"
+                  >
+                    <option value="">{t("parameters.geenVoorkeur")}</option>
+                    {themas.data.map((thema) => (
+                      <option key={thema.id} value={thema.naam}>
+                        {thema.naam}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))
             )}
           </fieldset>
 
@@ -331,6 +380,7 @@ export function Generatieparametersformulier({
                     <input
                       type="text"
                       value={moment.naam}
+                      maxLength={MAX_MOMENTNAAM}
                       onChange={(event) => wijzigMoment(index, { naam: event.target.value })}
                       placeholder={t("parameters.momentNaamVoorbeeld")}
                       className="h-9 w-48 rounded-md border border-input bg-card px-2 text-xs text-ink placeholder:text-ink-zacht"
@@ -357,8 +407,8 @@ export function Generatieparametersformulier({
                   </Button>
                 </div>
 
-                {/* No pre-selected answer, deliberately: see the component docstring. Radios rather than a
-                    checkbox precisely because a checkbox has a default and this question must not. */}
+                {/* No pre-selected answer, deliberately: see the component docstring. Radios rather than a checkbox
+                    precisely because a checkbox has a default and this question must not. */}
                 <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <legend className="text-xs text-ink">{t("parameters.momentBlokkeert")}</legend>
                   <label className="flex items-center gap-1.5 text-xs text-ink">
@@ -382,8 +432,8 @@ export function Generatieparametersformulier({
                 </fieldset>
 
                 {/* Stated in visible text, not left to a silently-dropped row: an unanswered question means this
-                    moment is not sent at all, and a teacher who typed a name and a date would otherwise have
-                    every reason to think it was. */}
+                    moment is not sent at all, and a teacher who typed a name and a date would otherwise have every
+                    reason to think it was. */}
                 {moment.blokkeertPlaatsing === null &&
                   moment.naam.trim().length > 0 &&
                   moment.datum.length > 0 && (

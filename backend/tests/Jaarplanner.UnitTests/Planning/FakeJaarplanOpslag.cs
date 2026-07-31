@@ -15,6 +15,7 @@ internal sealed class FakeJaarplanOpslag : IJaarplanOpslag
     private readonly Schooljaar? _schooljaar;
     private readonly List<Thema> _themas;
     private Jaarplan? _jaarplan;
+    private Generatieparameters? _parameters;
 
     public FakeJaarplanOpslag(Klas? klas, Schooljaar? schooljaar, IEnumerable<Thema>? themas = null, Jaarplan? jaarplan = null)
     {
@@ -30,6 +31,9 @@ internal sealed class FakeJaarplanOpslag : IJaarplanOpslag
     /// <summary>The plan as it stands in the store — what a reload would return.</summary>
     public Jaarplan? Jaarplan => _jaarplan;
 
+    /// <summary>The kept pre-generation settings as they stand in the store (E3-04), or null when none were saved.</summary>
+    public Generatieparameters? Generatieparameters => _parameters;
+
     public Task<(Klas Klas, Schooljaar Schooljaar)?> LaadKlasMetSchooljaarAsync(
         Guid klasId,
         CancellationToken cancellationToken = default) =>
@@ -41,6 +45,18 @@ internal sealed class FakeJaarplanOpslag : IJaarplanOpslag
         Task.FromResult(_jaarplan?.KlasId == klasId ? _jaarplan : null);
 
     public void VoegJaarplanToe(Jaarplan jaarplan) => _jaarplan = jaarplan;
+
+    // Keyed on BOTH ids, exactly like the EF implementation: a fake that ignored the school year would hide the very
+    // leak the pair key exists to prevent (a date from another year loaded into this one's form).
+    public Task<Generatieparameters?> LaadGeneratieparametersAsync(
+        Guid klasId,
+        Guid schooljaarId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(_parameters?.KlasId == klasId && _parameters.SchooljaarId == schooljaarId
+            ? _parameters
+            : null);
+
+    public void VoegGeneratieparametersToe(Generatieparameters parameters) => _parameters = parameters;
 
     public Task<IReadOnlyList<Thema>> LaadThemasAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Thema>>(_themas);

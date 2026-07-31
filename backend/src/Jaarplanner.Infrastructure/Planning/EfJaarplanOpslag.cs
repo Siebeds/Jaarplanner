@@ -54,6 +54,26 @@ public sealed class EfJaarplanOpslag : IJaarplanOpslag
 
     /// <inheritdoc />
     /// <remarks>
+    /// Tracked, so a <c>Vervang</c> on the loaded aggregate persists on <see cref="BewaarAsync"/>. Both owned
+    /// collections load with their owner. The school year is part of the predicate rather than an assertion afterwards:
+    /// a row written for another year must not be read at all, since every value in it is a date.
+    /// </remarks>
+    public Task<Generatieparameters?> LaadGeneratieparametersAsync(
+        Guid klasId,
+        Guid schooljaarId,
+        CancellationToken cancellationToken = default) =>
+        _context.Generatieparameters
+            .FirstOrDefaultAsync(p => p.KlasId == klasId && p.SchooljaarId == schooljaarId, cancellationToken);
+
+    /// <inheritdoc />
+    public void VoegGeneratieparametersToe(Generatieparameters parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        _context.Generatieparameters.Add(parameters);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
     /// Themadoelen + doelsuggesties are needed to describe a thema's goals in the prompt and the read view (only
     /// <c>aanvaard</c>/<c>manueel</c> count — Art. V.1). Subthema's are deliberately not loaded: E3-01 places thema's
     /// on the coarse tier, and pulling the whole class/age subtree would be a large read for no consumer.

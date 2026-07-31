@@ -147,6 +147,129 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
     }
 
     /// <summary>
+    /// <b>The reachability test for E3-04's persistence half</b> (owner ruling 2026-07-30): the settings a teacher
+    /// posts are kept, readable back over <c>GET …/jaarplan/parameters</c>, and honoured by a <i>later</i> run that
+    /// posts nothing at all — which is how an FR-8/E4 regeneration inherits a blocked period.
+    /// <para>
+    /// Driven over HTTP rather than only through the service, because the story is a wire-contract change as well as a
+    /// schema change: the startthema entry now carries its own <c>blokStart</c> instead of relying on array position.
+    /// A service-level test would pass with a controller that never bound the new shape.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Bewaarde_parameters_zijn_uitleesbaar_en_gelden_bij_een_volgende_run()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+        _factory.AiAntwoord =
+            $"{{\"plaatsingen\":[{{\"blokStart\":\"{blokStart:yyyy-MM-dd}\",\"thema\":\"Herfst\"," +
+            "\"motivatie\":\"seizoen past bij het begin van het schooljaar\"}]}";
+
+        // Nothing kept yet: 200 with empty lists, never a 404 — "no settings" is the normal state.
+        var leeg = await client.GetFromJsonAsync<ParametersDto>($"/api/klassen/{klasId}/jaarplan/parameters");
+        Assert.Empty(leeg!.GewensteStartthemas);
+        Assert.Empty(leeg.VasteMomenten);
+
+        var eerste = await client.PostAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/generatie",
+            new
+            {
+                gewensteStartthemas = new[]
+                {
+                    new { blokStart = blokStart.ToString("yyyy-MM-dd"), themaNaam = "Herfst" },
+                },
+                vasteMomenten = new[]
+                {
+                    new { naam = "Schoolfeest", datum = blokStart.ToString("yyyy-MM-dd"), blokkeertPlaatsing = false },
+                },
+            });
+        Assert.Equal(HttpStatusCode.OK, eerste.StatusCode);
+
+        // The startthema was honoured, which is only true if the controller bound `blokStart` rather than a position.
+        var eersteResultaat = await eerste.Content.ReadFromJsonAsync<GeneratieDto>();
+        Assert.Equal(["Herfst"], eersteResultaat!.Parameters!.GehonoreerdeStartthemas);
+
+        // Read back through a fresh GET: persisted, and keyed on the block's start date.
+        var bewaard = await client.GetFromJsonAsync<ParametersDto>($"/api/klassen/{klasId}/jaarplan/parameters");
+        var keuze = Assert.Single(bewaard!.GewensteStartthemas);
+        Assert.Equal(blokStart, keuze.BlokStart);
+        Assert.Equal("Herfst", keuze.ThemaNaam);
+        var moment = Assert.Single(bewaard.VasteMomenten);
+        Assert.Equal("Schoolfeest", moment.Naam);
+        Assert.False(moment.BlokkeertPlaatsing);
+
+        // Now block that period and regenerate WITHOUT a body: the stored constraint must still apply.
+        //
+        // The status of this POST is asserted, like every other one here. An earlier draft discarded it, and it was
+        // returning 500 from a defect this test was written to catch: replacing an owned collection whose key EF
+        // generated. The failure surfaced two requests later, and the unasserted call is the reason it looked mysterious.
+        var blokkeer = await client.PostAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/generatie",
+            new
+            {
+                vasteMomenten = new[]
+                {
+                    new { naam = "Schoolfeest", datum = blokStart.ToString("yyyy-MM-dd"), blokkeertPlaatsing = true },
+                },
+            });
+        Assert.Equal(HttpStatusCode.OK, blokkeer.StatusCode);
+
+        var hergeneratie = await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        Assert.Equal(HttpStatusCode.OK, hergeneratie.StatusCode);
+        var resultaat = await hergeneratie.Content.ReadFromJsonAsync<GeneratieDto>();
+
+        // The period the teacher marked as bezet stayed bezet, on a run that said nothing about it.
+        Assert.Equal(0, resultaat!.AantalNieuw);
+        var geweigerd = Assert.Single(resultaat.Parameters!.GeweigerdDoorVastMoment);
+        Assert.Equal("Schoolfeest", geweigerd.MomentNaam);
+
+        // Posting an explicitly empty body clears the settings, which is the only way to clear them.
+        var gewist = await client.PostAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/generatie",
+            new { gewensteStartthemas = Array.Empty<object>(), vasteMomenten = Array.Empty<object>() });
+        Assert.Equal(HttpStatusCode.OK, gewist.StatusCode);
+
+        var na = await client.GetFromJsonAsync<ParametersDto>($"/api/klassen/{klasId}/jaarplan/parameters");
+        Assert.Empty(na!.GewensteStartthemas);
+        Assert.Empty(na.VasteMomenten);
+    }
+
+    /// <summary>
+    /// A kept start thema whose <c>blokStart</c> is no longer a period boundary is <b>reported</b> over the wire, not
+    /// dropped and not moved to a neighbouring period — the ruling directie made for stale placements on 2026-07-28,
+    /// applied to the parameter that now survives long enough to hit it.
+    /// </summary>
+    [Fact]
+    public async Task Een_startthema_op_een_verdwenen_periodegrens_wordt_gerapporteerd()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+        var geenBlokgrens = blokStart.AddDays(1);
+
+        var generatie = await client.PostAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/generatie",
+            new
+            {
+                gewensteStartthemas = new[]
+                {
+                    new { blokStart = geenBlokgrens.ToString("yyyy-MM-dd"), themaNaam = "Herfst" },
+                },
+            });
+
+        Assert.Equal(HttpStatusCode.OK, generatie.StatusCode);
+        var resultaat = await generatie.Content.ReadFromJsonAsync<GeneratieDto>();
+
+        var vervallen = Assert.Single(resultaat!.Parameters!.VervallenStartthemas);
+        Assert.Equal("Herfst", vervallen.ThemaNaam);
+        Assert.Equal(geenBlokgrens, vervallen.BlokStart);
+        Assert.True(resultaat.Parameters!.HeeftAandachtspunten);
+
+        // Kept, so reverting the vakantie edit restores it.
+        var bewaard = await client.GetFromJsonAsync<ParametersDto>($"/api/klassen/{klasId}/jaarplan/parameters");
+        Assert.Equal(geenBlokgrens, Assert.Single(bewaard!.GewensteStartthemas).BlokStart);
+    }
+
+    /// <summary>
     /// An invalid AI response yields 422 with a diagnostic and leaves the plan untouched — no partial application
     /// (Art. IV.5). 422 rather than 500: nothing is broken, the model answered badly.
     /// </summary>
@@ -489,7 +612,23 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
     private sealed record ParameterRapportDto(
         IReadOnlyList<GeweigerdePlaatsingDto> GeweigerdDoorVastMoment,
         IReadOnlyList<string> TegenstrijdigeStartthemas,
-        bool HeeftAandachtspunten);
+        bool HeeftAandachtspunten)
+    {
+        /// <summary>Start thema's the model placed where they were asked for.</summary>
+        public IReadOnlyList<string> GehonoreerdeStartthemas { get; init; } = [];
+
+        /// <summary>Kept start thema's whose period no longer exists (E3-04 persistence half).</summary>
+        public IReadOnlyList<StartthemakeuzeDto> VervallenStartthemas { get; init; } = [];
+    }
+
+    /// <summary>The class's kept pre-generation settings, as <c>GET …/jaarplan/parameters</c> returns them.</summary>
+    private sealed record ParametersDto(
+        IReadOnlyList<StartthemakeuzeDto> GewensteStartthemas,
+        IReadOnlyList<VastMomentDto> VasteMomenten);
+
+    private sealed record StartthemakeuzeDto(DateOnly BlokStart, string ThemaNaam);
+
+    private sealed record VastMomentDto(string Naam, DateOnly Datum, bool BlokkeertPlaatsing);
 
     private sealed record GeweigerdePlaatsingDto(
         string ThemaNaam,

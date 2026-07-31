@@ -55,6 +55,13 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<Jaarplan> Jaarplannen => Set<Jaarplan>();
 
+    /// <summary>
+    /// The pre-generation settings each class keeps between runs (E3-04, FR-5.4). Scoped by
+    /// <c>(KlasId, SchooljaarId)</c> because every value in them is a date, so a row must never be read for a
+    /// different school year than the one it was written for.
+    /// </summary>
+    public DbSet<Generatieparameters> Generatieparameters => Set<Generatieparameters>();
+
     /// <summary>The school's thema's — school-scoped autonomous content (Art. IX.2).</summary>
     public DbSet<Thema> Themas => Set<Thema>();
 

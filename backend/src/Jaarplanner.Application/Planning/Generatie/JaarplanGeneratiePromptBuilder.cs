@@ -160,20 +160,24 @@ public static class JaarplanGeneratiePromptBuilder
         Line(sb, "# Wat de leerkracht vooraf vraagt");
         Line(sb, string.Empty);
 
-        // One line per requested thema, each naming its OWN block. An earlier revision joined them into a single
-        // sentence naming one block, which told the model to put several 4–6 week thema's in one themaperiode —
-        // contradicting the system prompt's "use as many different blocks as possible" and its own fit rule.
-        var startthemas = parameters.GenormaliseerdeStartthemas();
-        var geordend = blokken.OrderBy(b => b.Start).ToList();
-        for (var i = 0; i < startthemas.Count && i < geordend.Count; i++)
+        // One line per requested thema, each naming its OWN block by START DATE. Two earlier revisions are worth
+        // remembering: the first joined every name into a single sentence naming one block, which told the model to put
+        // several 4–6 week thema's in one themaperiode; the second made the request positional, so the target block was
+        // an ordinal in different clothing (ADR-0020 §3). The entry now carries the date itself.
+        //
+        // A requested block start that is not among the blocks handed in is SKIPPED here rather than printed: telling
+        // the model to use a date that starts no block would contradict the system prompt's own "use only these
+        // blocks" rule. It is not lost — ParameterRapport.VervallenStartthemas reports it, and the setting stays kept.
+        var blokStarts = blokken.Select(b => b.Start).ToHashSet();
+        foreach (var keuze in parameters.GenormaliseerdeStartthemas().Where(k => blokStarts.Contains(k.BlokStart)))
         {
             Line(
                 sb,
-                $"- Plaats het thema \"{startthemas[i]}\" in het blok met startdatum " +
-                $"{Datum(geordend[i].Start)}.");
+                $"- Plaats het thema \"{keuze.ThemaNaam}\" in het blok met startdatum " +
+                $"{Datum(keuze.BlokStart)}.");
         }
 
-        foreach (var moment in parameters.VasteMomenten.OrderBy(m => m.Datum).ThenBy(m => m.Naam, StringComparer.Ordinal))
+        foreach (var moment in parameters.GenormaliseerdeVasteMomenten())
         {
             if (moment.BlokkeertPlaatsing)
             {

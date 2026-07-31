@@ -30,6 +30,7 @@ import {
 } from "./kalenderFormat";
 import type { Generatieparameters, Planningsblok, Themaplaatsing } from "./types";
 import {
+  useGeneratieparameters,
   useGenereerJaarplan,
   useJaarplan,
   usePlanningsrooster,
@@ -61,8 +62,18 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   const generatie = useGenereerJaarplan(klasId);
   const verplaats = useVerplaatsPlaatsing(klasId);
 
-  // Held here rather than inside the form so the run reads the current value at click time (E3-04).
-  const [parameters, setParameters] = useState<Generatieparameters | undefined>(undefined);
+  // The class's KEPT pre-generation settings (E3-04 persistence half), and the teacher's edits on top of them.
+  //
+  // Two values rather than one, because "the teacher changed nothing" and "the teacher cleared everything" must send
+  // different requests: the saved settings, and an empty set. The form reports only edits, so `wijziging` stays
+  // undefined until one happens and the run falls back to what was loaded. Both are undefined only while the settings
+  // are still loading (or failed to load), and then no body is sent at all — which makes the server use the saved
+  // settings, so a run in that window can never wipe them.
+  //
+  // Same query key as the form's own, so TanStack serves both from one request.
+  const instellingen = useGeneratieparameters(klasId);
+  const [wijziging, setWijziging] = useState<Generatieparameters | undefined>(undefined);
+  const parameters = wijziging ?? instellingen.data;
 
   // The card currently under the cursor, kept only so the DragOverlay can render a copy of it.
   const [sleepKaart, setSleepKaart] = useState<Themaplaatsing | null>(null);
@@ -242,11 +253,14 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
           </div>
 
           {/* Pre-generation parameters (E3-04, FR-5.4), collapsed by default so the one-click run stays one click.
-              It is given the derived grid because a startthema targets a PERIOD by position, and a row that names
-              the period it applies to is the only way that positional contract is visible to a teacher. */}
+              The settings are KEPT per class (owner ruling 2026-07-30), which is why the form takes the klas id: it
+              loads what was last used and generating saves the new state. It is given the derived grid because each
+              preference names a period, and because a kept preference whose period no longer exists has to be
+              spotted against the current grid and said out loud. */}
           <Generatieparametersformulier
+            klasId={klasId}
             blokken={grid.blokken}
-            onWijzig={setParameters}
+            onWijzig={setWijziging}
             disabled={generatie.isPending}
           />
 

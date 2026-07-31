@@ -11,10 +11,10 @@ namespace Jaarplanner.Api.Controllers;
 /// <b>This is the story's invocation surface, and it is the point.</b> Three consecutive audits on this project
 /// found "done" features nobody could reach — the E2 matching service is still called from nothing but its own
 /// unit tests, which is why M2 was withdrawn. Plan generation therefore ships with the trigger in the same change
-/// as the service: <c>POST …/jaarplan/generatie</c> generates, <c>GET …/jaarplan</c> reviews, the two PUTs let the
-/// teacher decide and lock, and <c>DELETE …/jaarplan/plaatsingen/{id}</c> removes a placement outright. A
-/// teacher-facing screen is E3-06's job, so today this is reachable by an API client and not yet from a browser —
-/// stated plainly rather than implied.
+/// as the service: <c>POST …/jaarplan/generatie</c> generates, <c>GET …/jaarplan</c> reviews,
+/// <c>GET …/jaarplan/parameters</c> reads the class's kept pre-generation settings, the three PUTs let the teacher
+/// decide, lock and move, and <c>DELETE …/jaarplan/plaatsingen/{id}</c> removes a placement outright. The kalender
+/// (E3-06/E3-07) reaches all of them from a browser.
 /// </para>
 /// <para>
 /// <b>The DELETE is listed deliberately.</b> It is the only destructive member here, it ignores status and lock by
@@ -81,10 +81,20 @@ public sealed class JaarplanController : ControllerBase
     /// </summary>
     /// <param name="klasId">The class to generate for.</param>
     /// <param name="parameters">
-    /// Optional pre-generation parameters (FR-5.4, E3-04): gewenste startthema's and vaste momenten. The body may be
-    /// omitted entirely — a plain POST generates exactly as it did before this story, which keeps the existing
-    /// callers (and the E3-02 kalender button) working unchanged. Vakanties are deliberately not accepted: they are
-    /// schooljaar data and the derived grid already honours them.
+    /// Optional pre-generation parameters (FR-5.4, E3-04): gewenste startthema's and vaste momenten. Vakanties are
+    /// deliberately not accepted: they are schooljaar data and the derived grid already honours them.
+    /// <para>
+    /// <b>A body <i>replaces</i> the class's kept settings; no body <i>uses</i> them</b> (owner ruling, 2026-07-30, and
+    /// see <c>GET …/jaarplan/parameters</c>). So a plain POST is no longer "generate as if no parameters existed": it is
+    /// "generate with the settings this class last saved", which is what makes an FR-8/E4 regeneration keep a blocked
+    /// period blocked. For a class that has never saved any, it is byte-for-byte the run it always was. An explicitly
+    /// empty body clears the settings, which is the only way to clear them, since the settings are saved as part of this
+    /// call and there is deliberately no separate "Bewaren" control.
+    /// </para>
+    /// <para>
+    /// The settings are committed <b>before</b> the model is called, so a failed generation does not cost the teacher
+    /// the input they just typed. A malformed body is a 400 and stores nothing.
+    /// </para>
     /// </param>
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     [HttpPost("generatie")]
@@ -104,6 +114,32 @@ public sealed class JaarplanController : ControllerBase
                 Detail = resultaat.Fout,
             });
     }
+
+    /// <summary>
+    /// The class's <b>kept</b> pre-generation settings (E3-04, FR-5.4) — what the form loads so a teacher sees the
+    /// settings they last used instead of starting empty every time (owner ruling, 2026-07-30).
+    /// <para>
+    /// A class with nothing kept answers <c>200</c> with empty lists, never a 404: "no settings" is the normal state
+    /// before the first parameterised run, and a 404 would make a form treat it as a failure.
+    /// </para>
+    /// <para>
+    /// <b>There is no PUT beside this GET, deliberately.</b> The settings are saved as part of
+    /// <c>POST …/jaarplan/generatie</c>, so the flow is: open the form, see the last settings, adjust, generate. A
+    /// separate "Bewaren" button would be a second control for one intention, and would let the saved settings and the
+    /// generated plan disagree about what was asked for.
+    /// </para>
+    /// <para>
+    /// <b>A kept start thema whose period no longer exists is returned as stored.</b> The response is not filtered
+    /// against the current grid: the caller compares it with the derived blocks and says so, because silently dropping
+    /// a stranded setting is what the stale-placement ruling of 2026-07-28 forbids one layer up. A run reports the same
+    /// fact as <c>ParameterRapport.VervallenStartthemas</c>.
+    /// </para>
+    /// </summary>
+    [HttpGet("parameters")]
+    public async Task<ActionResult<JaarplanGeneratieParameters>> Parameters(
+        Guid klasId,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.HaalParametersAsync(klasId, cancellationToken));
 
     /// <summary>
     /// Records the teacher's decision on one generated placement (Art. IV.1/IV.2): accept, reject or adjust
