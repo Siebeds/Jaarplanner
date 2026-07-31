@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Text.Json.Serialization;
 using Jaarplanner.Domain.Planning;
 
@@ -50,8 +52,16 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// inherits a blocked period rather than having to bolt it on. See <see cref="Generatieparameters"/> for the scoping
 /// and keying reasoning.
 /// </para>
+/// <para>
+/// <b>Both lists are <c>[JsonRequired]</c>, and persistence is what made that necessary.</b> A body replaces the kept
+/// settings wholesale, so an <i>omitted</i> array is indistinguishable from an empty one and would permanently delete
+/// durable teacher input with nothing in the report to say so. That is the identical argument that made
+/// <see cref="VastMoment.BlokkeertPlaatsing"/> required one level down: when two readings of a request differ in what
+/// they destroy, the caller says which it means. Posting <b>no body at all</b> is still a first-class case and still
+/// means "use what is stored" — the requirement is on the shape of a body that <i>is</i> sent.
+/// </para>
 /// </summary>
-public sealed record JaarplanGeneratieParameters
+public sealed record JaarplanGeneratieParameters : IValidatableObject
 {
     /// <summary>The no-parameters case — what <c>GenereerAsync</c> uses when nothing is supplied or kept.</summary>
     public static readonly JaarplanGeneratieParameters Geen = new();
@@ -72,7 +82,11 @@ public sealed record JaarplanGeneratieParameters
     /// </para>
     /// <b>Advisory</b>: carried into the prompt, and the report says whether each landed where it was asked for. A name
     /// the school does not own is reported, never invented (Art. IV.4).
+    /// <para>
+    /// <b>Required in the JSON</b> — see the type documentation: an omitted array would silently wipe the kept list.
+    /// </para>
     /// </summary>
+    [JsonRequired]
     public IReadOnlyList<Startthemakeuze> GewensteStartthemas { get; init; } = [];
 
     /// <summary>
@@ -85,7 +99,12 @@ public sealed record JaarplanGeneratieParameters
     /// (ADR-0020 §5). Putting one here instead would be the very second-source-of-truth this type's own reasoning
     /// rejects for vakanties. That a <b>schoolfeest</b> belongs here was ratified by the owner on 2026-07-30.
     /// </para>
+    /// <para>
+    /// <b>Required in the JSON</b>, on the same reasoning as <see cref="GewensteStartthemas"/>: omitting it would clear
+    /// every kept vast moment, including a blocking one, with no report entry.
+    /// </para>
     /// </summary>
+    [JsonRequired]
     public IReadOnlyList<VastMoment> VasteMomenten { get; init; } = [];
 
     /// <summary>True when the teacher supplied nothing, so the prompt can omit the section entirely.</summary>
@@ -108,24 +127,61 @@ public sealed record JaarplanGeneratieParameters
     }
 
     /// <summary>
-    /// The start-thema preferences with blanks dropped, names trimmed and <b>at most one per block</b>, ordered by
-    /// the block they target.
+    /// The start-thema preferences with blanks dropped and names trimmed, ordered by the block they target.
     /// <para>
-    /// De-duplicating on <c>BlokStart</c> is what the domain requires (one period opens with one thema); the same
-    /// thema asked for in two different periods is left alone, because it is expressible now that the contract is
-    /// keyed on dates and it is not contradictory — a thema running 4–6 weeks in two separate periods is a plan a
-    /// teacher may genuinely want. Normalising here rather than in the prompt builder keeps the builder pure and
-    /// keeps the report measuring the same list the model saw.
+    /// <b>Nothing is de-duplicated here any more, deliberately (2026-07-31).</b> An earlier revision kept
+    /// <c>groep.First()</c> per <c>BlokStart</c>, which silently threw away a fully resolvable instruction: the domain
+    /// throws on two preferences for one period and the unique index refuses them, so the drop existed only to stop the
+    /// aggregate throwing — an unreported contradiction, and the same defect this story's own audit found twice
+    /// (<c>ToegepasteVasteMomenten</c>, <c>GeweigerdDoorVastMoment</c>). It is now refused at the boundary instead: see
+    /// <see cref="Validate"/>. The same thema asked for in two <i>different</i> periods is still left alone, because it
+    /// is not contradictory — a thema running 4–6 weeks in two separate periods is a plan a teacher may genuinely want.
+    /// </para>
+    /// <para>
+    /// Normalising here rather than in the prompt builder keeps the builder pure and keeps the report measuring the same
+    /// list the model saw.
     /// </para>
     /// </summary>
     public IReadOnlyList<Startthemakeuze> GenormaliseerdeStartthemas() =>
         GewensteStartthemas
             .Where(keuze => keuze is not null && !string.IsNullOrWhiteSpace(keuze.ThemaNaam))
             .Select(keuze => new Startthemakeuze(keuze.BlokStart, keuze.ThemaNaam.Trim()))
-            .GroupBy(keuze => keuze.BlokStart)
-            .Select(groep => groep.First())
             .OrderBy(keuze => keuze.BlokStart)
             .ToList();
+
+    /// <summary>
+    /// Request-shape validation, run by <c>[ApiController]</c> on the bound body so a contradictory request is a
+    /// <b>400</b> rather than a silently-thinned parameter set.
+    /// <para>
+    /// One rule: <b>two preferences may not target the same period.</b> One period opens with one thema
+    /// (<see cref="Generatieparameters.Vervang"/>, plus a unique index), so a body naming two is not additive and not
+    /// resolvable — and since a body <i>replaces</i> the kept settings, quietly keeping the first would delete the
+    /// second for good. Refusing costs a real user nothing: the form keys its own state on the period, so it cannot
+    /// produce this shape at all.
+    /// </para>
+    /// <para>
+    /// <b>The message is English on purpose</b>, like the 422 parser diagnostic beside it and like the framework's own
+    /// <c>[JsonRequired]</c> failures it joins in <c>ModelState</c>. It describes a malformed request no teacher can
+    /// produce or act on (Art. II.2); the teacher-facing sentence for a failed run lives in <c>nl.json</c>, keyed on the
+    /// status.
+    /// </para>
+    /// </summary>
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        var dubbel = GenormaliseerdeStartthemas()
+            .GroupBy(keuze => keuze.BlokStart)
+            .Where(groep => groep.Count() > 1)
+            .Select(groep => groep.Key.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+            .ToList();
+
+        if (dubbel.Count > 0)
+        {
+            yield return new ValidationResult(
+                "Two or more 'gewensteStartthemas' entries target the same block start date " +
+                $"({string.Join(", ", dubbel)}). One period opens with one thema, so send at most one entry per date.",
+                [nameof(GewensteStartthemas)]);
+        }
+    }
 
     /// <summary>
     /// The vaste momenten with blank names dropped and names trimmed, in the order the service and the report read
@@ -139,7 +195,15 @@ public sealed record JaarplanGeneratieParameters
             .ThenBy(moment => moment.Naam, StringComparer.Ordinal)
             .ToList();
 
-    /// <summary>The normalised parameters as the domain entities a class keeps between runs.</summary>
+    /// <summary>
+    /// The normalised parameters as the domain entities a class keeps between runs.
+    /// <para>
+    /// Two preferences for one period reach <see cref="Generatieparameters.Vervang"/> and throw there, loudly, as the
+    /// programmer error they are: every HTTP caller is already refused by <see cref="Validate"/>, so a set that gets
+    /// this far was built in code that skipped the boundary. Loud is the point — the previous behaviour was to drop one
+    /// silently.
+    /// </para>
+    /// </summary>
     public (IReadOnlyList<BewaardStartthema> Startthemas, IReadOnlyList<BewaardVastMoment> VasteMomenten) NaarBewaard() =>
         (GenormaliseerdeStartthemas()
                 .Select(keuze => new BewaardStartthema(keuze.BlokStart, keuze.ThemaNaam))

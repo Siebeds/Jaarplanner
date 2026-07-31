@@ -6,6 +6,7 @@ import { t, tAantal } from "../../i18n";
 import { haalThemanamen } from "./api";
 import { formatteerDatum, formatteerPeriode } from "./kalenderFormat";
 import { themanamenKey, useGeneratieparameters } from "./useJaarplan";
+import { GENERATIEBLOKNIVEAU } from "./types";
 import type { Generatieparameters, Planningsblok, VastMoment } from "./types";
 
 /**
@@ -33,12 +34,27 @@ import type { Generatieparameters, Planningsblok, VastMoment } from "./types";
  * **"Mag er een thema bij?" has no pre-selected answer**, mirroring the server, which rejects a vast moment whose
  * `blokkeertPlaatsing` is missing. Defaulting it to "yes" would produce a run identical to one with no parameters at
  * all: a control that silently does nothing, which is the one thing this project's own rule forbids outright.
+ *
+ * **Settings that failed to load are never summarised as "niets ingesteld".** The summary is the only thing a teacher
+ * sees while the panel is closed, and a run with no body falls back to whatever the server has stored, so claiming
+ * "nothing is set" about it can be the exact opposite of what is about to happen. While the settings are unknown the
+ * summary says so, the failure is stated **outside** the collapse, and the kalender refuses to generate until they
+ * arrive. That is the same rule the stranded notice already follows, applied to the case that produced it.
  */
 export interface GeneratieparametersformulierProps {
   /** The class whose kept settings are loaded and saved. */
   klasId: string;
   /** The derived grid, so each row can name the period it targets and a stranded setting can be spotted. */
   blokken: readonly Planningsblok[];
+  /**
+   * Which **tier** `blokken` belongs to (the `/rooster` response's own `niveau`).
+   *
+   * A kept setting keys on the *generation* tier's block start dates ({@link GENERATIEBLOKNIVEAU}), so blocks of any
+   * other tier are not the periods these settings speak about: reading them as such would flag every kept preference
+   * as stranded and offer rows the server would report as vervallen. Passed in and checked rather than assumed,
+   * because today the two agree only because `/rooster` defaults to that tier.
+   */
+  niveau: string;
   /**
    * Raised on every **edit**, never on load. The kalender falls back to the kept settings it loaded itself while this
    * has not fired, so an untouched form sends exactly what was saved and a form still loading sends no body at all
@@ -65,6 +81,7 @@ const MAX_MOMENTNAAM = 200;
 export function Generatieparametersformulier({
   klasId,
   blokken,
+  niveau,
   onWijzig,
   disabled,
 }: GeneratieparametersformulierProps) {
@@ -75,8 +92,13 @@ export function Generatieparametersformulier({
   const [momenten, setMomenten] = useState<MomentInvoer[]>([]);
   const [open, setOpen] = useState(false);
   const paneelId = useId();
+  const vervallenTitelId = useId();
 
   const instellingen = useGeneratieparameters(klasId);
+
+  // Only the GENERATION tier's blocks are the periods a kept setting keys on (see the `niveau` prop). At any other
+  // tier this form knows the settings but not which periods they name, so it says that instead of guessing.
+  const isGeneratieNiveau = niveau === GENERATIEBLOKNIVEAU;
 
   // Gated on `open`: the collapse is supposed to save the teacher attention, and fetching the thema list on every
   // load of the anchor screen for a panel almost nobody opens would have saved pixels and no bytes.
@@ -86,8 +108,11 @@ export function Generatieparametersformulier({
     enabled: open,
   });
 
-  // The grid in date order. Rows and request both derive from this one list.
-  const geordendeBlokken = [...blokken].sort((a, b) => a.start.localeCompare(b.start));
+  // The grid in date order, and empty when it is not the generation tier's grid. Rows and the stranded check both
+  // derive from this one list, so a tier mismatch cannot produce either.
+  const geordendeBlokken = isGeneratieNiveau
+    ? [...blokken].sort((a, b) => a.start.localeCompare(b.start))
+    : [];
 
   // Load the kept settings into the form once they arrive.
   //
@@ -181,10 +206,15 @@ export function Generatieparametersformulier({
   // placement pointing at a vanished period is flagged loudly and never silently relocated; a kept parameter is the
   // same fact one layer up, and persistence is what made it reachable. The setting stays in the request, so reverting
   // the vakantie edit restores it, and the run's report says the same thing.
-  const vervallen = Object.entries(startthemas)
-    .filter(([blokStart]) => !geordendeBlokken.some((blok) => blok.start === blokStart))
-    .map(([blokStart, themaNaam]) => ({ blokStart, themaNaam }))
-    .sort((a, b) => a.blokStart.localeCompare(b.blokStart));
+  // Computed only against the generation tier's grid: at another tier this form cannot tell a stranded setting from a
+  // perfectly good one, and claiming either would be a guess (see `niveau`).
+  const vervallen = isGeneratieNiveau
+    ? Object.entries(startthemas)
+        .filter(([blokStart]) => !geordendeBlokken.some((blok) => blok.start === blokStart))
+        .map(([blokStart, themaNaam]) => ({ blokStart, themaNaam }))
+        .sort((a, b) => a.blokStart.localeCompare(b.blokStart))
+    : [];
+  const vervallenStarts = new Set(vervallen.map((keuze) => keuze.blokStart));
 
   // Counted from what WILL BE SENT, never from what has been typed.
   //
@@ -196,7 +226,12 @@ export function Generatieparametersformulier({
   const isBegonnen = (moment: MomentInvoer) =>
     moment.naam.trim().length > 0 || moment.datum.length > 0 || moment.blokkeertPlaatsing !== null;
 
-  const aantalStartthemas = Object.values(startthemas).filter((naam) => naam.length > 0).length;
+  // Stranded preferences are excluded here, because they get their own clause below. Counting them in both made one
+  // kept setting read as "(1 startthema, 1 zonder periode)" — two settings where there is one. The clauses partition
+  // the set; they do not overlap.
+  const aantalStartthemas = Object.entries(startthemas).filter(
+    ([blokStart, naam]) => naam.length > 0 && !vervallenStarts.has(blokStart),
+  ).length;
   const aantalMomenten = momenten.filter(isVolledig).length;
 
   // Begun but not finished, so not sent. Named separately in the summary because the warning that explains it lives
@@ -205,9 +240,14 @@ export function Generatieparametersformulier({
     (moment) => isBegonnen(moment) && !isVolledig(moment),
   ).length;
 
-  const ietsIngesteld = aantalStartthemas > 0 || aantalMomenten > 0 || aantalOnvolledig > 0;
+  const ietsIngesteld =
+    aantalStartthemas > 0 || aantalMomenten > 0 || aantalOnvolledig > 0 || vervallen.length > 0;
 
-  const samenvatting = ietsIngesteld
+  // While the kept settings are unknown the summary says exactly that. It must never fall through to
+  // "(niets ingesteld)": a run then sends no body, the server applies whatever it has stored, and a teacher with a
+  // saved blocking vast moment would have read the opposite of what happened. This is the collapsed screen's only
+  // statement about the run, so it is the one that has to be true.
+  const samenvattingIngesteld = ietsIngesteld
     ? `(${[
         aantalStartthemas > 0 &&
           tAantal(
@@ -238,6 +278,12 @@ export function Generatieparametersformulier({
         .join(", ")})`
     : t("parameters.samenvattingLeeg");
 
+  const samenvatting = instellingen.isError
+    ? t("parameters.samenvattingOnbekend")
+    : instellingen.isPending
+      ? t("parameters.samenvattingLaden")
+      : samenvattingIngesteld;
+
   return (
     <div className="mt-4 border-t border-border pt-4">
       <button
@@ -245,12 +291,14 @@ export function Generatieparametersformulier({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-controls={paneelId}
-        className="flex items-center gap-2 rounded-md text-sm font-semibold text-ink hover:text-petrol focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-petrol"
+        // `flex-wrap` with the summary as its own flex item: at ~390px three summary clauses beside a wrapping label
+        // produced two narrow three-line columns side by side. Wrapping puts the summary on its own line instead.
+        className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-md text-left text-sm font-semibold text-ink hover:text-petrol focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-petrol"
       >
         <span aria-hidden="true" className="text-xs text-ink-zacht">
           {open ? "▾" : "▸"}
         </span>
-        {t("parameters.titel")}
+        <span>{t("parameters.titel")}</span>
         {/* The summary is the reason a collapsed form is safe: a teacher can tell a parameterised run from a plain
             one without opening anything. It matters more now that the settings are kept, because the run may use
             something entered long ago. Built from `tAantal` with the zero parts omitted, not from one interpolated
@@ -259,11 +307,39 @@ export function Generatieparametersformulier({
         <span className="font-normal text-ink-zacht">{samenvatting}</span>
       </button>
 
-      {/* Outside the collapse: a stranded setting must be visible without opening anything, since it is being sent
-          and the teacher is the only one who can resolve it. */}
+      {/* Outside the collapse, for the reason the stranded notice below is: this decides what the next run does, and a
+          panel that is closed by default cannot carry that. It used to live inside the panel, where a teacher read
+          "(niets ingesteld)" on the trigger while the server still held a blocking vast moment the run would apply.
+          `role="alert"` and inert text, so unlike the stranded notice there is no live region nesting a control. */}
+      {instellingen.isError && (
+        <p
+          role="alert"
+          className="mt-3 rounded-md bg-suggestie-geweigerd/10 px-3 py-2.5 text-xs font-medium leading-snug text-suggestie-geweigerd"
+        >
+          {t("parameters.instellingenFout")}
+        </p>
+      )}
+
+      {/* Also outside the collapse: a stranded setting must be visible without opening anything, since it is being sent
+          and the teacher is the only one who can resolve it.
+          **A labelled region with one small `status` line, not one big `alert`** — the same treatment its sibling
+          `TeHerzien` was changed to in E3-07, and for the same reason: it holds a button per entry, and a live region
+          wrapping controls re-announces its whole contents on every interaction. Non-dismissible either way: there is
+          no close control anywhere in it (directie 2026-07-28). */}
       {vervallen.length > 0 && (
-        <div className="mt-3 rounded-md border border-attentie bg-attentie-zacht p-3">
-          <p className="text-xs font-semibold text-attentie-ink">
+        <div
+          role="region"
+          aria-labelledby={vervallenTitelId}
+          className="mt-3 rounded-md border border-attentie bg-attentie-zacht p-3"
+        >
+          <p role="status" className="sr-only">
+            {tAantal(
+              vervallen.length,
+              "parameters.vervallenTitelEnkelvoud",
+              "parameters.vervallenTitel",
+            )}
+          </p>
+          <p id={vervallenTitelId} className="text-xs font-semibold text-attentie-ink">
             <span aria-hidden="true">▲</span>{" "}
             {tAantal(
               vervallen.length,
@@ -303,22 +379,17 @@ export function Generatieparametersformulier({
         <div id={paneelId} className="mt-4 flex flex-col gap-6">
           <p className="text-xs leading-snug text-ink-zacht">{t("parameters.uitleg")}</p>
 
-          {/* The settings themselves failed to load. Said out loud rather than shown as an empty form, because an
-              empty form here reads as "nothing is set" and a teacher would then generate and unknowingly keep
-              whatever the server still has. */}
-          {instellingen.isError && (
-            <p role="alert" className="text-xs font-medium text-suggestie-geweigerd">
-              {t("parameters.instellingenFout")}
-            </p>
-          )}
-
           {/* ---- Startthema's, one row per period ---- */}
           <fieldset className="flex flex-col gap-2" disabled={disabled}>
             <legend className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
               {t("parameters.startthemasTitel")}
             </legend>
 
-            {blokken.length === 0 ? (
+            {!isGeneratieNiveau ? (
+              // The kalender is showing another tier, so these blocks are not the periods a kept setting names. Said
+              // out loud, because rows built from them would carry dates the server refuses.
+              <p className="text-xs leading-snug text-ink-zacht">{t("parameters.anderNiveau")}</p>
+            ) : blokken.length === 0 ? (
               <p className="text-xs text-ink-zacht">{t("parameters.geenPeriodes")}</p>
             ) : themas.isPending ? (
               <p className="text-xs text-ink-zacht">{t("parameters.themasLaden")}</p>

@@ -93,9 +93,19 @@ function resultaat(parameters: Parameterrapport | null): Generatieresultaat {
  */
 function stubFetch(
   generatie: Generatieresultaat,
-  opties: { themas?: string[]; instellingen?: Generatieparameters | "fout" } = {},
+  opties: {
+    themas?: string[];
+    /** `"fout"` fails the settings GET; `"hangt"` never answers it, which is the pending state. */
+    instellingen?: Generatieparameters | "fout" | "hangt";
+    /** Overrides the grid, so a test can hand the form another tier's periods (E3-08's zoom). */
+    rooster?: Planningsrooster;
+  } = {},
 ) {
-  const { themas = ["Herfst", "Water"], instellingen = geenInstellingen } = opties;
+  const {
+    themas = ["Herfst", "Water"],
+    instellingen = geenInstellingen,
+    rooster: grid = rooster,
+  } = opties;
   const posts: (string | undefined)[] = [];
 
   vi.stubGlobal(
@@ -108,6 +118,12 @@ function stubFetch(
         return new Response(JSON.stringify(generatie), { status: 200 });
       }
       if (url.includes("/jaarplan/parameters")) {
+        if (instellingen === "hangt") {
+          // Never resolves: the query stays pending, which is the transient state the collapsed summary used to
+          // describe as "(niets ingesteld)".
+          return new Promise<Response>(() => {});
+        }
+
         return instellingen === "fout"
           ? new Response("nope", { status: 500 })
           : new Response(JSON.stringify(instellingen), { status: 200 });
@@ -119,7 +135,7 @@ function stubFetch(
         );
       }
       if (url.includes("/rooster")) {
-        return new Response(JSON.stringify(rooster), { status: 200 });
+        return new Response(JSON.stringify(grid), { status: 200 });
       }
       if (url.includes("/jaarplan")) {
         return new Response(JSON.stringify(leegPlan), { status: 200 });
@@ -149,8 +165,17 @@ async function openForm() {
   return knop;
 }
 
-function genereer() {
-  fireEvent.click(screen.getByRole("button", { name: t("kalender.genereer") }));
+/**
+ * Presses "Jaarplan genereren".
+ *
+ * It waits for the button to be **enabled**, because generation is now refused while the kept settings are unknown: a
+ * helper that clicked regardless would silently do nothing and leave a test asserting an empty `posts` array for the
+ * wrong reason.
+ */
+async function genereer() {
+  const knop = screen.getByRole("button", { name: t("kalender.genereer") });
+  await waitFor(() => expect(knop).toBeEnabled());
+  fireEvent.click(knop);
 }
 
 /** The startthema select for one period, addressed by the period label the row carries. */
@@ -188,7 +213,7 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     const knop = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
     await waitFor(() => expect(knop.textContent).toContain("1 startthema"));
 
-    genereer();
+    await genereer();
 
     await waitFor(() => expect(posts).toHaveLength(1));
     // The run carries the KEPT settings. Before persistence this sent no body at all; now sending the loaded state is
@@ -219,14 +244,49 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     expect(screen.getByRole("radio", { name: t("parameters.momentGeenThema") })).toBeChecked();
   });
 
-  it("says so when the kept settings cannot be loaded, instead of showing an empty form", async () => {
-    stubFetch(resultaat(leegRapport), { instellingen: "fout" });
+  /**
+   * The MAJOR both gates found, and the reason this test **never opens the disclosure**.
+   *
+   * With the settings GET failing, `instellingen.data` is undefined, so the trigger read *"(niets ingesteld)"* while
+   * `genereerJaarplan` sent no body at all — and by this story's own contract a bodyless run applies whatever the
+   * server has stored. A teacher with a saved blocking vast moment therefore read the exact opposite of what was about
+   * to happen. The mitigation had been placed *inside* the collapse, which is where the first version of this defect
+   * hid; the previous version of this test called `openForm()` first, which is why it could not catch it.
+   */
+  it("does not claim nothing is set when the kept settings failed to load, while collapsed", async () => {
+    const posts = stubFetch(resultaat(leegRapport), { instellingen: "fout" });
     renderKalender();
-    await openForm();
 
-    // An empty form would read as "nothing is set", and the teacher would then generate while the server still
-    // applies settings the screen never mentioned.
+    const knop = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
+    expect(knop).toHaveAttribute("aria-expanded", "false");
+
+    // Stated without opening anything.
     expect(await screen.findByText(t("parameters.instellingenFout"))).toBeInTheDocument();
+
+    // And the summary says the settings are unknown rather than absent.
+    await waitFor(() => expect(knop.textContent).toContain(t("parameters.samenvattingOnbekend")));
+    expect(knop.textContent).not.toContain(t("parameters.samenvattingLeeg"));
+
+    // The run is refused, not sent blind: pressing generate posts nothing at all.
+    const genereerKnop = screen.getByRole("button", { name: t("kalender.genereer") });
+    expect(genereerKnop).toBeDisabled();
+    fireEvent.click(genereerKnop);
+    await waitFor(() => expect(posts).toEqual([]));
+  });
+
+  // The same false summary showed transiently while the query was in flight, and a fast click still sent no body.
+  it("does not claim nothing is set while the kept settings are still loading", async () => {
+    const posts = stubFetch(resultaat(leegRapport), { instellingen: "hangt" });
+    renderKalender();
+
+    const knop = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
+    await waitFor(() => expect(knop.textContent).toContain(t("parameters.samenvattingLaden")));
+    expect(knop.textContent).not.toContain(t("parameters.samenvattingLeeg"));
+
+    const genereerKnop = screen.getByRole("button", { name: t("kalender.genereer") });
+    expect(genereerKnop).toBeDisabled();
+    fireEvent.click(genereerKnop);
+    await waitFor(() => expect(posts).toEqual([]));
   });
 
   it("clears a kept setting when the teacher empties it and generates", async () => {
@@ -242,7 +302,7 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     await waitFor(() => expect(periodeKeuze(1)).toHaveValue("Herfst"));
     fireEvent.change(periodeKeuze(1), { target: { value: "" } });
 
-    genereer();
+    await genereer();
     await waitFor(() => expect(posts).toHaveLength(1));
     // An explicitly empty set, not an omitted body: this is the only way to clear kept settings, since there is no
     // separate "Bewaren" control and an omitted body means "use what is stored".
@@ -312,7 +372,7 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     await waitFor(() => expect(periodeKeuze(2)).toBeInTheDocument());
     fireEvent.change(periodeKeuze(2), { target: { value: "Water" } });
 
-    genereer();
+    await genereer();
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(JSON.parse(posts[0]!)).toEqual({
       gewensteStartthemas: [{ blokStart: "2026-11-09", themaNaam: "Water" }],
@@ -334,7 +394,7 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     fireEvent.change(periodeKeuze(1), { target: { value: "" } });
 
     expect(periodeKeuze(2)).toHaveValue("Water");
-    genereer();
+    await genereer();
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(JSON.parse(posts[0]!).gewensteStartthemas).toEqual([
       { blokStart: "2026-11-09", themaNaam: "Water" },
@@ -357,7 +417,7 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     // Named and dated but unanswered: the screen must not let this look like an instruction that was taken.
     expect(screen.getByText(new RegExp(t("parameters.momentOnbeslist")))).toBeInTheDocument();
 
-    genereer();
+    await genereer();
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(JSON.parse(posts[0]!).vasteMomenten).toEqual([]);
 
@@ -365,7 +425,7 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     fireEvent.click(screen.getByRole("radio", { name: t("parameters.momentGeenThema") }));
     expect(screen.queryByText(new RegExp(t("parameters.momentOnbeslist")))).toBeNull();
 
-    genereer();
+    await genereer();
     await waitFor(() => expect(posts).toHaveLength(2));
     expect(JSON.parse(posts[1]!).vasteMomenten).toEqual([
       { naam: "Schoolfeest", datum: "2026-09-15", blokkeertPlaatsing: true },
@@ -439,23 +499,52 @@ describe("Generatieparameters — a kept setting whose period is gone (E3-04)", 
     await screen.findByRole("button", { name: t("kalender.genereer") });
 
     // Visible WITHOUT opening the panel: it is being sent, and the teacher is the only one who can resolve it.
+    //
+    // A labelled `region` carrying an sr-only `status`, which is the treatment its sibling `TeHerzien` was changed to
+    // in E3-07: it holds a "Weghalen" button per entry, and a live region wrapping controls re-announces its whole
+    // contents on every interaction. Non-dismissible either way, asserted below.
+    const melding = await screen.findByRole("region", {
+      name: t("parameters.vervallenTitelEnkelvoud"),
+    });
+    expect(within(melding).getByRole("status")).toHaveTextContent(
+      t("parameters.vervallenTitelEnkelvoud"),
+    );
     expect(
-      await screen.findByText(t("parameters.vervallenTitelEnkelvoud")),
+      within(melding).getByText(t("parameters.vervallenRegel", { thema: "Water", datum: "5 okt" })),
     ).toBeInTheDocument();
+
+    // The only control in it is the resolution the notice offers. A dismiss, close or "later" affordance added as a
+    // button or a link changes this set and fails (directie 2026-07-28: "fix later" is not on offer).
     expect(
-      screen.getByText(t("parameters.vervallenRegel", { thema: "Water", datum: "5 okt" })),
-    ).toBeInTheDocument();
+      within(melding)
+        .getAllByRole("button")
+        .map((control) => control.textContent),
+    ).toEqual([t("parameters.vervallenVerwijder")]);
+    expect(within(melding).queryByRole("link")).toBeNull();
 
     // Never the server's ISO date.
     expect(screen.queryByText(/2026-10-05/)).toBeNull();
 
     // Kept in the request rather than quietly dropped: reverting the vakantie edit restores it, and the run's report
     // repeats the same fact (directie 2026-07-28 — never silently drop, never silently move).
-    genereer();
+    await genereer();
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(JSON.parse(posts[0]!).gewensteStartthemas).toEqual([
       { blokStart: "2026-10-05", themaNaam: "Water" },
     ]);
+  });
+
+  // The summary counted a stranded preference twice: `aantalStartthemas` included it AND `vervallen.length` added its
+  // own clause, so one kept setting read as "(1 startthema, 1 zonder periode)" — two settings where there is one.
+  it("counts a stranded preference once, in the clause that explains it", async () => {
+    stubFetch(resultaat(leegRapport), { instellingen: gestrand });
+    renderKalender();
+
+    const knop = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
+    const samenvatting = () => /\(([^)]*)\)/.exec(knop.textContent ?? "")?.[1] ?? "";
+
+    await waitFor(() => expect(samenvatting()).toBe("1 zonder periode"));
+    expect(samenvatting()).not.toContain("startthema");
   });
 
   it("is never assigned to a neighbouring period by the form", async () => {
@@ -479,12 +568,71 @@ describe("Generatieparameters — a kept setting whose period is gone (E3-04)", 
     );
 
     await waitFor(() =>
-      expect(screen.queryByText(t("parameters.vervallenTitelEnkelvoud"))).toBeNull(),
+      expect(
+        screen.queryByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
+      ).toBeNull(),
     );
 
-    genereer();
+    await genereer();
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(JSON.parse(posts[0]!).gewensteStartthemas).toEqual([]);
+  });
+});
+
+/**
+ * The tier coupling, pinned **before** E3-08 lands rather than after.
+ *
+ * A kept setting keys on the *generation* tier's block start dates (`JaarplanGeneratieService.GeneratieNiveau =
+ * Themaperiode`). The form used to read whatever grid the kalender handed it, which agreed only because `/rooster`
+ * defaults to that tier: the moment E3-08's zoom fetches `Subthemaperiode`, every kept preference would be flagged
+ * *"zonder periode"* and every offered row would carry a date the server reports as `vervallenStartthemas`. Nothing
+ * asserted the tier, so nothing would have failed.
+ */
+describe("Generatieparameters — the grid it may read (E3-04)", () => {
+  const subthemarooster: Planningsrooster = {
+    ...rooster,
+    niveau: "Subthemaperiode",
+    blokken: [
+      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-14", ouderOrdinaal: 1, aantalOpenDagen: 10 },
+      { ordinaal: 2, start: "2026-09-15", eind: "2026-09-28", ouderOrdinaal: 1, aantalOpenDagen: 10 },
+    ],
+  };
+
+  it("does not read another tier's periods as the periods a kept setting names", async () => {
+    const posts = stubFetch(resultaat(leegRapport), {
+      rooster: subthemarooster,
+      instellingen: {
+        // Perfectly valid at the generation tier: it is the second themaperiode's start date.
+        gewensteStartthemas: [{ blokStart: "2026-11-09", themaNaam: "Water" }],
+        vasteMomenten: [],
+      },
+    });
+    renderKalender();
+
+    const knop = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
+    const samenvatting = () => /\(([^)]*)\)/.exec(knop.textContent ?? "")?.[1] ?? "";
+    await waitFor(() => expect(samenvatting()).toBe("1 startthema"));
+
+    // NOT called stranded: at this tier the form cannot tell, so it claims nothing either way.
+    expect(samenvatting()).not.toContain("zonder periode");
+    expect(
+      screen.queryByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
+    ).toBeNull();
+
+    // And it offers no period rows built from the wrong tier's dates: it says where to set them instead.
+    fireEvent.click(knop);
+    const startthemas = await screen.findByRole("group", {
+      name: t("parameters.startthemasTitel"),
+    });
+    expect(within(startthemas).getByText(t("parameters.anderNiveau"))).toBeInTheDocument();
+    expect(within(startthemas).queryByRole("combobox")).toBeNull();
+
+    // The kept setting itself is untouched and still sent, exactly as stored.
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.genereer") }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0]!).gewensteStartthemas).toEqual([
+      { blokStart: "2026-11-09", themaNaam: "Water" },
+    ]);
   });
 });
 
@@ -506,7 +654,7 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
     );
     renderKalender();
     await screen.findByRole("button", { name: t("kalender.genereer") });
-    genereer();
+    await genereer();
 
     const regel = await screen.findByText(
       t("parameters.rapportGeweigerdRegel", {
@@ -541,7 +689,7 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
     );
     renderKalender();
     await screen.findByRole("button", { name: t("kalender.genereer") });
-    genereer();
+    await genereer();
 
     // The conflict copy tells them to change one of their two settings...
     expect(
@@ -568,7 +716,7 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
     );
     renderKalender();
     await screen.findByRole("button", { name: t("kalender.genereer") });
-    genereer();
+    await genereer();
 
     expect(
       await screen.findByText(
@@ -590,7 +738,7 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
     stubFetch(resultaat(null));
     renderKalender();
     await screen.findByRole("button", { name: t("kalender.genereer") });
-    genereer();
+    await genereer();
 
     await waitFor(() =>
       expect(screen.getByText(new RegExp(t("kalender.genereerGeluktEnkelvoud", { aantal: 1 })))).toBeInTheDocument(),
@@ -605,7 +753,7 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
     stubFetch(resultaat(leegRapport));
     renderKalender();
     await screen.findByRole("button", { name: t("kalender.genereer") });
-    genereer();
+    await genereer();
 
     await waitFor(() =>
       expect(
@@ -621,7 +769,7 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
     );
     renderKalender();
     await screen.findByRole("button", { name: t("kalender.genereer") });
-    genereer();
+    await genereer();
 
     // This line was the one report entry with no singular sibling, so one unknown thema read
     // "Deze thema's kent de school niet" - the fourth instance of a plural bug this project keeps shipping.
@@ -652,7 +800,7 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
     const { container } = renderKalender();
     await openForm();
     fireEvent.click(await screen.findByRole("button", { name: t("parameters.momentToevoegen") }));
-    genereer();
+    await genereer();
     await screen.findByText(t("parameters.rapportTitel"));
 
     // Structure only: jsdom cannot evaluate colour, so this says nothing about contrast (the E3-06 lesson).

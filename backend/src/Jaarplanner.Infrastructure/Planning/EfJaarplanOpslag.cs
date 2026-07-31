@@ -66,11 +66,51 @@ public sealed class EfJaarplanOpslag : IJaarplanOpslag
             .FirstOrDefaultAsync(p => p.KlasId == klasId && p.SchooljaarId == schooljaarId, cancellationToken);
 
     /// <inheritdoc />
-    public void VoegGeneratieparametersToe(Generatieparameters parameters)
+    /// <remarks>
+    /// The unique index on <c>(KlasId, SchooljaarId)</c> is the arbiter, not a pre-check: the service's load-or-create
+    /// cannot cover two simultaneous POSTs, and before this the loser got a raw <c>23505</c> surfacing as a 500 with an
+    /// English detail. The same shape <c>SchooljaarBeheerService</c> catches for a duplicate school-year name.
+    /// </remarks>
+    public async Task<bool> ProbeerGeneratieparametersToeTeVoegenAsync(
+        Generatieparameters parameters,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(parameters);
+
         _context.Generatieparameters.Add(parameters);
+
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return true;
+        }
+        catch (DbUpdateException ex) when (IsUniekeSleutelSchending(ex))
+        {
+            // Detach the losing insert AND its owned rows, so the caller's reload runs on a usable context. Listed
+            // explicitly rather than relying on a detach cascading from the owner: an owned entry left in `Added` would
+            // be retried on the next SaveChanges, against a parent row that was never written.
+            var mislukt = _context.ChangeTracker.Entries()
+                .Where(entry => entry.State == EntityState.Added)
+                .Where(entry => entry.Entity is Generatieparameters or BewaardStartthema or BewaardVastMoment)
+                .ToList();
+
+            foreach (var entry in mislukt)
+            {
+                entry.State = EntityState.Detached;
+            }
+
+            return false;
+        }
     }
+
+    /// <summary>
+    /// True for a unique-key violation on the kept settings themselves — the concurrent-insert race. Scoped by
+    /// constraint name so a violation on some other table cannot be mistaken for it and swallowed.
+    /// </summary>
+    private static bool IsUniekeSleutelSchending(DbUpdateException ex) =>
+        ex.InnerException is Npgsql.PostgresException { SqlState: "23505" } pg &&
+        pg.ConstraintName?.Contains("generatieparameters", StringComparison.OrdinalIgnoreCase) == true;
 
     /// <inheritdoc />
     /// <remarks>

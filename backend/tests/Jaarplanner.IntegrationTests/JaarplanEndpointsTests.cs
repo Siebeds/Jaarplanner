@@ -98,6 +98,9 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             $"/api/klassen/{klasId}/jaarplan/generatie",
             new
             {
+                // Both arrays are sent, because both are [JsonRequired]: omitting one would be a request to CLEAR it,
+                // and the contract refuses to guess which of the two readings a caller meant.
+                gewensteStartthemas = Array.Empty<object>(),
                 vasteMomenten = new[]
                 {
                     new { naam = "Schoolfeest", datum = blokStart.ToString("yyyy-MM-dd"), blokkeertPlaatsing = true },
@@ -140,10 +143,89 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             $"/api/klassen/{klasId}/jaarplan/generatie",
             new
             {
+                // `gewensteStartthemas` is present, so the 400 is provably about the missing blocking answer and not
+                // about the other required array.
+                gewensteStartthemas = Array.Empty<object>(),
                 vasteMomenten = new[] { new { naam = "Schoolfeest", datum = blokStart.ToString("yyyy-MM-dd") } },
             });
 
         Assert.Equal(HttpStatusCode.BadRequest, generatie.StatusCode);
+    }
+
+    /// <summary>
+    /// <b>An omitted array is a 400 and wipes nothing.</b> A body <i>replaces</i> the kept settings, so omitting
+    /// <c>gewensteStartthemas</c> is indistinguishable from sending <c>[]</c> — and under the loose contract it
+    /// permanently deleted durable teacher input with no report entry. Both arrays are <c>[JsonRequired]</c> for exactly
+    /// the reason <c>blokkeertPlaatsing</c> is: when two readings differ in what they destroy, the caller says which.
+    /// <para>
+    /// Posting <b>no body at all</b> stays a first-class case and still means "use what is stored"; the requirement is on
+    /// the shape of a body that is sent. Both halves are asserted here.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_body_zonder_gewensteStartthemas_is_een_400_en_wist_de_bewaarde_lijst_niet()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+
+        var bewaren = await client.PostAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/generatie",
+            new
+            {
+                gewensteStartthemas = new[]
+                {
+                    new { blokStart = blokStart.ToString("yyyy-MM-dd"), themaNaam = "Herfst" },
+                },
+                vasteMomenten = Array.Empty<object>(),
+            });
+        Assert.Equal(HttpStatusCode.OK, bewaren.StatusCode);
+
+        // A body that mentions only the other list. Under the old contract this silently cleared the preference above.
+        var partieel = await client.PostAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/generatie",
+            new { vasteMomenten = Array.Empty<object>() });
+        Assert.Equal(HttpStatusCode.BadRequest, partieel.StatusCode);
+
+        var bewaard = await client.GetFromJsonAsync<ParametersDto>($"/api/klassen/{klasId}/jaarplan/parameters");
+        Assert.Equal("Herfst", Assert.Single(bewaard!.GewensteStartthemas).ThemaNaam);
+
+        // No body at all is still fine, and still uses the stored settings rather than clearing them.
+        var zonderBody = await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        Assert.Equal(HttpStatusCode.OK, zonderBody.StatusCode);
+
+        var na = await client.GetFromJsonAsync<ParametersDto>($"/api/klassen/{klasId}/jaarplan/parameters");
+        Assert.Equal("Herfst", Assert.Single(na!.GewensteStartthemas).ThemaNaam);
+    }
+
+    /// <summary>
+    /// <b>Two preferences for one period are a 400, not a silently thinned set.</b> The previous contract kept the first
+    /// and dropped the second with nothing in the report to say so — and since a body replaces the kept settings, the
+    /// dropped one was deleted for good. The form cannot produce this shape (its state is keyed on the period), so
+    /// refusing costs a real user nothing.
+    /// </summary>
+    [Fact]
+    public async Task Twee_startthemas_voor_dezelfde_periode_zijn_een_400_en_bewaren_niets()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+
+        var generatie = await client.PostAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/generatie",
+            new
+            {
+                gewensteStartthemas = new[]
+                {
+                    new { blokStart = blokStart.ToString("yyyy-MM-dd"), themaNaam = "Herfst" },
+                    new { blokStart = blokStart.ToString("yyyy-MM-dd"), themaNaam = "Water" },
+                },
+                vasteMomenten = Array.Empty<object>(),
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, generatie.StatusCode);
+
+        // Refused before anything was written: no half-stored preference for the teacher to discover later.
+        var bewaard = await client.GetFromJsonAsync<ParametersDto>($"/api/klassen/{klasId}/jaarplan/parameters");
+        Assert.Empty(bewaard!.GewensteStartthemas);
     }
 
     /// <summary>
@@ -207,6 +289,9 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             $"/api/klassen/{klasId}/jaarplan/generatie",
             new
             {
+                // The startthema is cleared EXPLICITLY. Under the loose contract omitting the array did the same thing
+                // silently, which is the ambiguity [JsonRequired] removes: this body now says what it means.
+                gewensteStartthemas = Array.Empty<object>(),
                 vasteMomenten = new[]
                 {
                     new { naam = "Schoolfeest", datum = blokStart.ToString("yyyy-MM-dd"), blokkeertPlaatsing = true },
@@ -254,6 +339,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
                 {
                     new { blokStart = geenBlokgrens.ToString("yyyy-MM-dd"), themaNaam = "Herfst" },
                 },
+                vasteMomenten = Array.Empty<object>(),
             });
 
         Assert.Equal(HttpStatusCode.OK, generatie.StatusCode);

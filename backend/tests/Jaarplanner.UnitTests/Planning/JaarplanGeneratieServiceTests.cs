@@ -1,4 +1,5 @@
-﻿using Jaarplanner.Application.Ai;
+﻿using System.ComponentModel.DataAnnotations;
+using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
@@ -1317,8 +1318,15 @@ public sealed class JaarplanGeneratieServiceTests
     }
 
     /// <summary>
-    /// Blank start thema names are normalised away and a period gets at most one thema, so a form that posts an empty
-    /// row cannot make the prompt ask for "" and two rows for the same period cannot both reach the model.
+    /// Blank start thema names are normalised away and names are trimmed, so a form that posts an empty row cannot make
+    /// the prompt ask for "".
+    /// <para>
+    /// <b>Nothing is de-duplicated here any more.</b> Two rows for one period used to be thinned to
+    /// <c>groep.First()</c>, silently discarding a resolvable instruction and — since a body replaces the kept settings
+    /// — deleting it for good. That shape is a 400 now
+    /// (<see cref="Twee_startthemas_voor_dezelfde_periode_zijn_een_ongeldig_verzoek"/>), so normalisation no longer has
+    /// to make a choice nobody asked it to make.
+    /// </para>
     /// <para>
     /// The same thema in <b>two different</b> periods survives, unlike under the old positional contract, which
     /// de-duplicated by name. It is expressible now that the key is a date, and it is not contradictory: a teacher may
@@ -1337,7 +1345,6 @@ public sealed class JaarplanGeneratieServiceTests
             [
                 new Startthemakeuze(tweede, "  Herfst  "),
                 new Startthemakeuze(eerste, "Water"),
-                new Startthemakeuze(eerste, "Ruimtevaart"),   // same period twice: the first wins
                 new Startthemakeuze(eerste, "  "),
             ],
         };
@@ -1515,7 +1522,7 @@ public sealed class JaarplanGeneratieServiceTests
             [new BewaardVastMoment("Schoolfeest van vorig jaar", blokken[0].Start.AddDays(3), true)]);
 
         var opslag = new FakeJaarplanOpslag(klas, schooljaar, [Herfst(), Water()]);
-        opslag.VoegGeneratieparametersToe(vorigJaar);
+        await opslag.ProbeerGeneratieparametersToeTeVoegenAsync(vorigJaar);
         var client = new FakeAiClient(Antwoord(("Herfst", blokken[0].Start)));
         var service = new JaarplanGeneratieService(client, Indeling, opslag);
 
@@ -1584,6 +1591,103 @@ public sealed class JaarplanGeneratieServiceTests
         Assert.Throws<ArgumentException>(() => parameters.Vervang(
             [new BewaardStartthema(blok, "Water"), new BewaardStartthema(blok, "Herfst")],
             []));
+    }
+
+    /// <summary>
+    /// <b>Two preferences for one period are refused at the boundary, not thinned silently.</b> An earlier revision
+    /// de-duplicated them inside <c>GenormaliseerdeStartthemas</c> with <c>groep.First()</c>, so one fully resolvable
+    /// instruction disappeared with no report entry — and, now that a body replaces the kept settings, was deleted for
+    /// good. The validation runs on the bound request body, so this asserts the same method <c>[ApiController]</c> calls.
+    /// </summary>
+    [Fact]
+    public void Twee_startthemas_voor_dezelfde_periode_zijn_een_ongeldig_verzoek()
+    {
+        var blok = new DateOnly(2026, 9, 1);
+        var parameters = new JaarplanGeneratieParameters
+        {
+            GewensteStartthemas = [new Startthemakeuze(blok, "Water"), new Startthemakeuze(blok, "Herfst")],
+        };
+
+        var fout = Assert.Single(parameters.Validate(new ValidationContext(parameters)));
+        Assert.Contains("2026-09-01", fout.ErrorMessage);
+        Assert.Equal([nameof(JaarplanGeneratieParameters.GewensteStartthemas)], fout.MemberNames);
+
+        // And neither entry is dropped on the way through: the set stays as sent, so nothing is lost quietly.
+        Assert.Equal(2, parameters.GenormaliseerdeStartthemas().Count);
+
+        // The same thema in two DIFFERENT periods stays valid — it is a plan a teacher may genuinely want.
+        var tweePeriodes = new JaarplanGeneratieParameters
+        {
+            GewensteStartthemas =
+            [
+                new Startthemakeuze(blok, "Water"),
+                new Startthemakeuze(blok.AddDays(40), "Water"),
+            ],
+        };
+        Assert.Empty(tweePeriodes.Validate(new ValidationContext(tweePeriodes)));
+    }
+
+    /// <summary>
+    /// A class with nothing kept that submits nothing gets <b>no settings row</b>. The form posts a body on every run
+    /// once its query resolves, and for such a class that body is <c>{[], []}</c>, so without this every class would
+    /// carry an empty row after its first generation — which the code comment here used to deny.
+    /// </summary>
+    [Fact]
+    public async Task Een_lege_inzending_maakt_geen_parameterrij_aan()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(klas.Id, new JaarplanGeneratieParameters());
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Null(opslag.Generatieparameters);
+        Assert.Same(ParameterRapport.Geen, resultaat.Parameters);
+
+        // Reading it back is still the normal empty answer, so nothing is lost by not writing the row.
+        Assert.Same(JaarplanGeneratieParameters.Geen, await service.HaalParametersAsync(klas.Id));
+    }
+
+    /// <summary>
+    /// <b>Two runs starting together do not 500.</b> Both find no settings row, both create one, and the
+    /// <c>(KlasId, SchooljaarId)</c> unique index refuses the second — which used to surface as a raw <c>23505</c> in a
+    /// 500 with an English detail. The loser's intent is satisfiable, so it takes the winner's row and writes its own
+    /// settings into it: last write wins, exactly as two runs a second apart already behave.
+    /// </summary>
+    [Fact]
+    public async Task Een_gelijktijdige_run_verliest_de_race_zonder_fout()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[0].Start)), schooljaar);
+
+        // The row a concurrent run inserted first, with ITS parameters in it.
+        var winnaar = new Generatieparameters(klas.Id, schooljaar.Id);
+        winnaar.Vervang([new BewaardStartthema(blokken[1].Start, "Herfst")], []);
+        opslag.GelijktijdigeWinnaar = winnaar;
+
+        var resultaat = await service.GenereerAsync(
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Water")],
+                VasteMomenten = [new VastMoment("Sportdag", blokken[1].Start.AddDays(1), false)],
+            });
+
+        Assert.True(resultaat.IsGeslaagd);
+
+        // One row, holding what the losing run asked for — and its vast moment too, so nothing it sent was dropped.
+        var bewaard = opslag.Generatieparameters!;
+        var startthema = Assert.Single(bewaard.Startthemas);
+        Assert.Equal(blokken[0].Start, startthema.BlokStart);
+        Assert.Equal("Water", startthema.ThemaNaam);
+        Assert.Equal("Sportdag", Assert.Single(bewaard.VasteMomenten).Naam);
+
+        // And the run itself used those parameters rather than the winner's.
+        Assert.Equal(
+            [new Startthemakeuze(blokken[0].Start, "Water")],
+            (await service.HaalParametersAsync(klas.Id)).GewensteStartthemas);
     }
 
     /// <summary>An AI client that always fails, for the "a failed run keeps the parameters" test.</summary>

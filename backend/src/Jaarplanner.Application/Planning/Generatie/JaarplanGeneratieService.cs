@@ -102,10 +102,11 @@ public sealed class JaarplanGeneratieService
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
 
         // Validate, then PERSIST, then call the model — in that order, and the order is the requirement.
-        // Model binding has already rejected a malformed body (a vast moment without `blokkeertPlaatsing` is a 400), so
-        // nothing invalid is stored; and because the settings are committed before the AI call, a failed generation
-        // cannot cost the teacher the input they just typed. This environment has no AzureAI:ApiKey, so that failure is
-        // the common case rather than a hypothetical one.
+        // Model binding has already rejected a malformed body — a vast moment without `blokkeertPlaatsing`, a missing
+        // `gewensteStartthemas`/`vasteMomenten` array, or two preferences for one period are each a 400 — so nothing
+        // invalid and nothing ambiguous is stored; and because the settings are committed before the AI call, a failed
+        // generation cannot cost the teacher the input they just typed. This environment has no AzureAI:ApiKey, so that
+        // failure is the common case rather than a hypothetical one.
         parameters = parameters is null
             ? await LaadBewaardeParametersAsync(klasId, schooljaar.Id, cancellationToken)
             : await BewaarParametersAsync(klasId, schooljaar.Id, parameters, cancellationToken);
@@ -329,6 +330,13 @@ public sealed class JaarplanGeneratieService
     /// Committed on its own, <b>before</b> the AI call and before the plan is touched: a generation that then fails
     /// leaves the settings saved (the teacher does not retype them) and the plan untouched (Art. IV.5).
     /// </para>
+    /// <para>
+    /// <b>An empty submission for a class with no row writes no row.</b> The form posts a body on every run once its
+    /// query resolves, and for a class with nothing set that body is <c>{[], []}</c> — so without this every class would
+    /// get an empty settings row on its first generation, which an earlier version of this comment claimed did not
+    /// happen. Nothing is lost by skipping it: no row and an empty row read back identically as
+    /// <see cref="JaarplanGeneratieParameters.Geen"/>.
+    /// </para>
     /// </summary>
     private async Task<JaarplanGeneratieParameters> BewaarParametersAsync(
         Guid klasId,
@@ -341,9 +349,31 @@ public sealed class JaarplanGeneratieService
         var bewaard = await _opslag.LaadGeneratieparametersAsync(klasId, schooljaarId, cancellationToken);
         if (bewaard is null)
         {
-            // Created lazily on the first parameterised run, so a class that never uses parameters carries no row.
-            bewaard = new Generatieparameters(klasId, schooljaarId);
-            _opslag.VoegGeneratieparametersToe(bewaard);
+            // Nothing kept and nothing submitted: no row, and no write at all.
+            if (startthemas.Count == 0 && vasteMomenten.Count == 0)
+            {
+                return JaarplanGeneratieParameters.Geen;
+            }
+
+            // Created lazily on the first run that actually sets something.
+            var nieuw = new Generatieparameters(klasId, schooljaarId);
+            nieuw.Vervang(startthemas, vasteMomenten);
+
+            if (await _opslag.ProbeerGeneratieparametersToeTeVoegenAsync(nieuw, cancellationToken))
+            {
+                return JaarplanGeneratieParameters.Van(nieuw);
+            }
+
+            // A concurrent run created the row between the load above and that insert, and the unique index refused
+            // this one. Resolved by taking the winner's row rather than by refusing the request: unlike the duplicate
+            // school-year name that SchooljaarBeheerService turns into a 400, this loser's intent is fully satisfiable
+            // — it asked for these settings to be kept, and the row it needs now exists. So it writes its own settings
+            // into that row: last write wins, exactly as two runs a second apart already behave. Refusing instead would
+            // tell a teacher their parameters were invalid because of somebody else's timing.
+            bewaard = await _opslag.LaadGeneratieparametersAsync(klasId, schooljaarId, cancellationToken)
+                ?? throw new InvalidOperationException(
+                    $"Insert of the kept settings for klas {klasId} in schooljaar {schooljaarId} was refused as a " +
+                    "duplicate, but no existing row could be loaded.");
         }
 
         bewaard.Vervang(startthemas, vasteMomenten);

@@ -75,6 +75,13 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   const [wijziging, setWijziging] = useState<Generatieparameters | undefined>(undefined);
   const parameters = wijziging ?? instellingen.data;
 
+  // **Generation waits until the kept settings are known**, and that is a deliberate refusal rather than a spinner.
+  // With them unknown the run sends no body, so the server applies whatever it has stored — while the collapsed form
+  // could only have said "(niets ingesteld)" about it. A teacher cannot consent to a run whose parameters the screen
+  // is unable to state, so the button is disabled and the form says why in visible text (its summary while loading,
+  // an alert outside the collapse when the load failed). The window is one request long in the normal case.
+  const instellingenOnbekend = instellingen.isPending || instellingen.isError;
+
   // The card currently under the cursor, kept only so the DragOverlay can render a copy of it.
   const [sleepKaart, setSleepKaart] = useState<Themaplaatsing | null>(null);
 
@@ -242,7 +249,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             <Button
               type="button"
               onClick={() => generatie.mutate(parameters)}
-              disabled={generatie.isPending}
+              disabled={generatie.isPending || instellingenOnbekend}
               className="w-full sm:w-auto"
             >
               {generatie.isPending ? t("kalender.genereerBezig") : t("kalender.genereer")}
@@ -256,10 +263,14 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
               The settings are KEPT per class (owner ruling 2026-07-30), which is why the form takes the klas id: it
               loads what was last used and generating saves the new state. It is given the derived grid because each
               preference names a period, and because a kept preference whose period no longer exists has to be
-              spotted against the current grid and said out loud. */}
+              spotted against the current grid and said out loud.
+              The grid's own `niveau` travels with it: a kept setting keys on the GENERATION tier's block starts, and
+              handing over the tier the board happens to show would silently mislabel every setting once E3-08's zoom
+              fetches Subthemaperiode. */}
           <Generatieparametersformulier
             klasId={klasId}
             blokken={grid.blokken}
+            niveau={grid.niveau}
             onWijzig={setWijziging}
             disabled={generatie.isPending}
           />

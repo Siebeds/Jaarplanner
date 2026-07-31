@@ -22,6 +22,17 @@ export interface Planningsblok {
   aantalOpenDagen: number;
 }
 
+/**
+ * The tier a generated thema is placed on, and therefore the tier a **kept generation setting** keys on.
+ *
+ * Mirrors `JaarplanGeneratieService.GeneratieNiveau` (`Planningsblokniveau.Themaperiode`) and exists because the
+ * pairing used to be silent: `/rooster` happens to default to this tier, so handing the board's blocks to the
+ * parameter form was correct by coincidence. The moment E3-08's zoom fetches `Subthemaperiode`, blocks of the wrong
+ * tier would flag every kept preference as "zonder periode" and offer rows whose dates the server reports as
+ * `vervallenStartthemas`. Comparing against this constant makes that a checked condition instead of an assumption.
+ */
+export const GENERATIEBLOKNIVEAU = "Themaperiode";
+
 /** A vakantie: a literal gap between two blocks in the ribbon. */
 export interface Planningsonderbreking {
   naam: string;

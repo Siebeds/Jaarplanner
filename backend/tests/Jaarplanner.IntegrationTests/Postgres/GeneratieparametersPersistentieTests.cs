@@ -1,4 +1,5 @@
 using Jaarplanner.Domain.Planning;
+using Jaarplanner.Infrastructure.Planning;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
@@ -150,6 +151,60 @@ public sealed class GeneratieparametersPersistentieTests : IAsyncLifetime
 
             var ex = await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
             Assert.Equal("23505", Assert.IsType<Npgsql.PostgresException>(ex.InnerException).SqlState);
+        }
+    }
+
+    /// <summary>
+    /// <b>And the storage port recovers from that refusal instead of letting it become a 500.</b> Two generation runs
+    /// starting together both find no row and both insert one; the loser used to get a raw <c>23505</c> out of
+    /// <c>SaveChanges</c>, surfacing as a 500 with an English detail on an ordinary second press.
+    /// <para>
+    /// Asserted against real Postgres because the whole mechanism is the database's: the index raises it, and what has to
+    /// work afterwards is that the losing insert (owner <i>and</i> both owned collections) is detached so the same context
+    /// can still load the winner's row and write to it.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_geweigerde_gelijktijdige_insert_laat_de_context_bruikbaar()
+    {
+        var (klasId, schooljaarId, blokStart) = await SeedAsync();
+
+        // The run that got there first.
+        await using (var context = _db.MaakContext())
+        {
+            var winnaar = new Generatieparameters(klasId, schooljaarId);
+            winnaar.Vervang([new BewaardStartthema(blokStart, "Herfst")], []);
+            context.Generatieparameters.Add(winnaar);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var opslag = new EfJaarplanOpslag(context);
+
+            // The loser: its own row, with its own owned children, refused by the unique index.
+            var verloren = new Generatieparameters(klasId, schooljaarId);
+            verloren.Vervang(
+                [new BewaardStartthema(blokStart, "Water")],
+                [new BewaardVastMoment("Sportdag", blokStart.AddDays(2), blokkeertPlaatsing: false)]);
+
+            Assert.False(await opslag.ProbeerGeneratieparametersToeTeVoegenAsync(verloren));
+
+            // The context survived it: the winner's row loads, and the loser's settings can be written into it.
+            var bestaand = await opslag.LaadGeneratieparametersAsync(klasId, schooljaarId);
+            Assert.NotNull(bestaand);
+            bestaand!.Vervang(
+                [new BewaardStartthema(blokStart, "Water")],
+                [new BewaardVastMoment("Sportdag", blokStart.AddDays(2), blokkeertPlaatsing: false)]);
+            await opslag.BewaarAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // One row, holding what the losing run asked for: last write wins, as two runs a second apart behave.
+            var enige = await context.Generatieparameters.SingleAsync();
+            Assert.Equal("Water", Assert.Single(enige.Startthemas).ThemaNaam);
+            Assert.Equal("Sportdag", Assert.Single(enige.VasteMomenten).Naam);
         }
     }
 

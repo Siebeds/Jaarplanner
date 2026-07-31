@@ -207,6 +207,8 @@
   "parameters": {
     "titel": "Vooraf instellen: startthema's en vaste momenten",
     "samenvattingLeeg": "(niets ingesteld)",
+    "samenvattingLaden": "(instellingen laden…)",
+    "samenvattingOnbekend": "(instellingen niet geladen)",
     "uitleg": "Je kan de AI vooraf richting geven. Alles hier is optioneel: laat je het leeg, dan verdeelt de AI de thema's zelf. Wat je hier instelt, blijft bewaard voor deze klas: genereer je later opnieuw, dan gelden deze instellingen weer. Wil je iets niet meer, haal het dan hier weg en genereer opnieuw. Vakanties hoef je niet in te vullen, die staan al bij het schooljaar en de periodes zijn erop gebouwd.",
     "startthemasTitel": "Startthema's",
     "periodeLabel": "Periode {ordinaal}",
@@ -252,7 +254,8 @@
     "rapportOnbekendEnkelvoud": "Dit thema kent de school niet: {themas}.",
     "samenvattingOnvolledigEnkelvoud": "{aantal} nog onvolledig",
     "samenvattingOnvolledig": "{aantal} nog onvolledig",
-    "instellingenFout": "Je bewaarde instellingen konden niet geladen worden. Herlaad de pagina voor je genereert, anders weet je niet wat er meegaat.",
+    "instellingenFout": "Je bewaarde instellingen konden niet geladen worden. Zolang dat zo is, kan je niet genereren: je zou niet weten welke instellingen meegaan. Herlaad de pagina en probeer opnieuw.",
+    "anderNiveau": "Startthema's horen bij de periodes van het jaaroverzicht. Zet de kalender terug op het hele jaar om ze in te stellen.",
     "samenvattingVervallenEnkelvoud": "{aantal} zonder periode",
     "samenvattingVervallen": "{aantal} zonder periode",
     "vervallenTitelEnkelvoud": "Een bewaard startthema hoort bij een periode die niet meer bestaat",

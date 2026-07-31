@@ -56,7 +56,30 @@ internal sealed class FakeJaarplanOpslag : IJaarplanOpslag
             ? _parameters
             : null);
 
-    public void VoegGeneratieparametersToe(Generatieparameters parameters) => _parameters = parameters;
+    /// <summary>
+    /// Set by a test to simulate a concurrent generation run that inserted the settings row <b>first</b>: the next
+    /// insert attempt is refused (as the unique index refuses it) and this row is what the losing run then loads.
+    /// </summary>
+    public Generatieparameters? GelijktijdigeWinnaar { get; set; }
+
+    public Task<bool> ProbeerGeneratieparametersToeTeVoegenAsync(
+        Generatieparameters parameters,
+        CancellationToken cancellationToken = default)
+    {
+        AantalKeerBewaard++;
+
+        if (GelijktijdigeWinnaar is not null)
+        {
+            _parameters = GelijktijdigeWinnaar;
+            GelijktijdigeWinnaar = null;
+
+            return Task.FromResult(false);
+        }
+
+        _parameters = parameters;
+
+        return Task.FromResult(true);
+    }
 
     public Task<IReadOnlyList<Thema>> LaadThemasAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Thema>>(_themas);
