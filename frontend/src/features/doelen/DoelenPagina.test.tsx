@@ -578,6 +578,68 @@ describe("Doelen register — the four empty states (clause 1/2/3, plus the unkn
     expect(screen.queryByText(t("doelen.geenCurriculumUitleg"))).toBeNull();
   });
 
+  /**
+   * **A filtered register must never render without a visible filter** (antagonist, round 2).
+   *
+   * The realistic case is a shared link like `/doelen?domein=Natuur` on a moment the facets request fails. The
+   * filter panel used to render only `if (facetten.data)`, so the teacher saw rows, an error alert, and no chip,
+   * no "wis alle filters" and a count line reading "N van N doelen getoond" for a view that was silently
+   * narrowed. The only escape was the URL bar. The list's own clear action does not help: it appears solely in
+   * the zero-result branch, and this view has results.
+   */
+  it("keeps the active filters visible and clearable when the option lists fail to load", async () => {
+    const fake = maakDoelenFetchFake();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = new URL(String(input), "http://localhost");
+        if (url.pathname === "/api/leerplandoelen/facetten") {
+          return new Response("kapot", { status: 500 });
+        }
+        return fake.fetchFake(input);
+      }),
+    );
+
+    window.history.pushState({}, "", "/doelen?domein=Natuur");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+
+    // The chip names the filter that is narrowing the view...
+    expect(await screen.findByText(t("doelen.chipDomein", { waarde: "Natuur" }))).toBeInTheDocument();
+    // ...there is a way out that is not the URL bar...
+    expect(screen.getByRole("button", { name: t("doelen.wisAlles") })).toBeInTheDocument();
+    // ...the missing half says it is missing, rather than leaving a teacher to wonder...
+    expect(screen.getByText(t("doelen.keuzelijstenOnbeschikbaar"))).toBeInTheDocument();
+    // ...searching still works, since it needs no facets at all...
+    expect(screen.getByLabelText(t("doelen.zoekLabel"))).toBeInTheDocument();
+    // ...and the selects, which genuinely cannot be populated, are gone rather than empty.
+    expect(screen.queryByLabelText(t("doelen.disciplineLabel"))).toBeNull();
+  });
+
+  /**
+   * The chip must name the discipline, not its number. The select offers "Nederlands en communicatie (50)"
+   * while the chip read "Discipline: 1", and its remove-label read `Filter "Discipline: 1" verwijderen`. For a
+   * teacher, "9.2" identifies nothing, and the name was already in the facets.
+   */
+  it("names the discipline in its chip rather than showing its number", async () => {
+    renderApp("/doelen?discipline=1");
+
+    const naam = FACETTEN.disciplines.find((d) => d.nummer === "1")!.naam!;
+    expect(await screen.findByText(t("doelen.chipDiscipline", { waarde: naam }))).toBeInTheDocument();
+    expect(screen.queryByText(t("doelen.chipDiscipline", { waarde: "1" }))).toBeNull();
+    expect(
+      screen.getByRole("button", {
+        name: t("doelen.chipVerwijder", { waarde: t("doelen.chipDiscipline", { waarde: naam }) }),
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("says the curriculum is not loaded, and that loading it is beheerderswerk", async () => {
     renderApp("/doelen", {
       doelen: [],

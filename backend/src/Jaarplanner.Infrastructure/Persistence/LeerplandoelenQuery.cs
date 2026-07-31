@@ -171,9 +171,15 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
         // A zero-count option is returned as 0 rather than dropped; whether it should disappear entirely is a
         // directie question and is not decided here.
         //
-        // All of these are grouped aggregates, so the statement count is fixed (nine) and independent of how
-        // many leerplandoelen exist. Deliberately not one giant query: nine bounded aggregates are readable,
-        // and this endpoint is hit once per filter change on a read-only reference table.
+        // The statement count is FIXED and independent of how many leerplandoelen exist, which is the property
+        // that matters on a table meant to hold the whole curriculum. It is **ten** round trips: five option
+        // sets, four count aggregates and the unfiltered total. Deliberately not one giant query: ten bounded
+        // statements are readable, and this endpoint is hit once per filter change on read-only reference data.
+        //
+        // An earlier revision of this comment said "nine" and called them all grouped aggregates; three are
+        // Distinct() projections, one is a plain Count and one is a dictionary over Disciplines. The number is
+        // now pinned by `Facetten_zijn_een_vast_aantal_statements` rather than asserted here, because a figure
+        // in a comment is a figure that drifts (this one already had).
         var disciplineOpties = await AlleWaardenAsync(l => l.DisciplineNummer, cancellationToken);
         var disciplineAantallen = await AantallenAsync(
             ZonderDimensie(filter, Facetdimensie.Discipline), l => l.DisciplineNummer, cancellationToken);

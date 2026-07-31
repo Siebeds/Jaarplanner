@@ -1,3 +1,4 @@
+using Jaarplanner.Api.Infrastructure;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Domain.Curriculum;
 using Microsoft.AspNetCore.Mvc;
@@ -81,7 +82,7 @@ public sealed class LeerplandoelenController : ControllerBase
         if (!ProbeerFilter(zoek, discipline, domein, subdomein, doelsoort, jaarFase, overslaan, aantal,
                 out var filter, out var fout))
         {
-            return BadRequest(fout);
+            return BadRequest(Probleem(fout!));
         }
 
         return Ok(await _query.ZoekAsync(filter!, cancellationToken));
@@ -117,7 +118,7 @@ public sealed class LeerplandoelenController : ControllerBase
         if (!ProbeerFilter(zoek, discipline, domein, subdomein, doelsoort, jaarFase, overslaan, aantal,
                 out var filter, out var fout))
         {
-            return BadRequest(fout);
+            return BadRequest(Probleem(fout!));
         }
 
         return Ok(await _query.HaalFacettenAsync(filter!, cancellationToken));
@@ -247,4 +248,24 @@ public sealed class LeerplandoelenController : ControllerBase
 
         return false;
     }
+
+    /// <summary>
+    /// A rejected query string as <see cref="ProblemDetails"/>, the same envelope every other controller and
+    /// exception handler on this surface answers with.
+    /// <para>
+    /// It used to be a bare <c>string</c> body. No teacher ever read either form (<c>lib/api.ts</c> throws its
+    /// own <c>ApiError</c> and never echoes a server body, so the screen shows its own Dutch copy), but a
+    /// second envelope on one API means the next consumer has to parse both: <b>E1-13</b> renders import
+    /// diagnostics and would have hit a bare string here and <c>ProblemDetails</c> everywhere else. The detail
+    /// stays English on purpose: a malformed query string is an operator diagnostic, not something a teacher
+    /// can act on (Art. II.3 as amended 2026-07-30).
+    /// </para>
+    /// </summary>
+    private static ProblemDetails Probleem(string detail) =>
+        new()
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = Probleemtitels.OngeldigeAanvraag,
+            Detail = detail,
+        };
 }

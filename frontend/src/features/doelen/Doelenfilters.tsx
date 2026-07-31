@@ -20,6 +20,13 @@ import type { DoelenFacetten, Doelenfilter, DoelsoortNaam } from "./types";
  *
  * **The active filters render as removable chips with one "wis alles", and there is no prose explaining the
  * filters.** A select whose label is above it does not need a sentence telling a teacher what a select is.
+ *
+ * **`facetten` is optional, and that is the whole point of the degraded mode.** The option lists need the
+ * server; searching, seeing which filters are active and clearing them do not. When the facets request fails
+ * while a filter is active — the realistic case being a shared link like `/doelen?domein=Natuur` — the panel
+ * used to disappear entirely, so a teacher saw a narrowed register with no chip, no "wis alle filters" and a
+ * count line reading "2 van 2 doelen getoond" for a view they could only escape through the URL bar
+ * (antagonist finding, round 2). Now the search field and the chips stay and the missing half says so.
  */
 export function Doelenfilters({
   filter,
@@ -27,16 +34,23 @@ export function Doelenfilters({
   onWijzig,
 }: {
   filter: Doelenfilter;
-  facetten: DoelenFacetten;
+  /** Absent when the facets request failed: the selects are then omitted, everything else keeps working. */
+  facetten?: DoelenFacetten;
   onWijzig: (filter: Doelenfilter) => void;
 }) {
   const id = useId();
   const dimensies = actieveDimensies(filter);
-  const gekozenDomein = facetten.domeinen.find((d) => d.domein === filter.domein);
+  const gekozenDomein = facetten?.domeinen.find((d) => d.domein === filter.domein);
 
   return (
     <div className="rounded-lg border border-border bg-card p-3 shadow-card sm:p-4">
       <Zoekveld waarde={filter.zoek ?? ""} onZoek={(zoek) => onWijzig({ ...filter, zoek })} />
+
+      {facetten ? null : (
+        <p role="status" className="mt-3 text-xs text-ink-zacht">
+          {t("doelen.keuzelijstenOnbeschikbaar")}
+        </p>
+      )}
 
       {/*
         Five tracks at xl, so the five selects sit on one row: a 4-column grid left "Jaar of fase" alone on a
@@ -49,6 +63,7 @@ export function Doelenfilters({
         (50)") would stretch its track and push the grid past the viewport. That is the same blowout that
         stretched a period column to 600px of white in E3-06.
       */}
+      {facetten ? (
       <div
         role="group"
         aria-label={t("doelen.filtersLabel")}
@@ -122,6 +137,7 @@ export function Doelenfilters({
           }))}
         />
       </div>
+      ) : null}
 
       {dimensies.length > 0 ? (
         <ul className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
@@ -130,10 +146,10 @@ export function Doelenfilters({
               <button
                 type="button"
                 onClick={() => onWijzig(zonderDimensie(filter, dimensie))}
-                aria-label={t("doelen.chipVerwijder", { waarde: chipTekst(filter, dimensie) })}
+                aria-label={t("doelen.chipVerwijder", { waarde: chipTekst(filter, dimensie, facetten) })}
                 className="inline-flex items-center gap-1.5 rounded-full bg-petrol-wash px-2.5 py-1 text-xs font-medium text-petrol transition-colors duration-150 ease-uit hover:bg-petrol hover:text-petrol-foreground"
               >
-                {chipTekst(filter, dimensie)}
+                {chipTekst(filter, dimensie, facetten)}
                 <span aria-hidden="true">&times;</span>
               </button>
             </li>
@@ -243,15 +259,30 @@ function Keuze({
   );
 }
 
-/** The chip's own text per dimension, so a chip says which filter it is and not just its value. */
-function chipTekst(filter: Doelenfilter, dimensie: keyof Doelenfilter): string {
+/**
+ * The chip's own text per dimension, so a chip says which filter it is and not just its value.
+ *
+ * **The discipline chip names the discipline, not its number.** The select offers "Nederlands en communicatie
+ * (50)" while the chip used to read "Discipline: 1", and its remove-label read `Filter "Discipline: 1"
+ * verwijderen`: for a teacher, "9.2" identifies nothing. The name is already in the facets, so the number was a
+ * choice rather than a constraint. It falls back to the number when the facets are absent (the degraded mode
+ * above) or when a discipline has no `disciplines` row, which is the same fallback the select makes and for the
+ * same reason: Art. III.1 forbids inventing a name.
+ */
+function chipTekst(
+  filter: Doelenfilter,
+  dimensie: keyof Doelenfilter,
+  facetten?: DoelenFacetten,
+): string {
   const waarde = filter[dimensie] ?? "";
 
   switch (dimensie) {
     case "zoek":
       return t("doelen.chipZoek", { waarde });
     case "discipline":
-      return t("doelen.chipDiscipline", { waarde });
+      return t("doelen.chipDiscipline", {
+        waarde: facetten?.disciplines.find((d) => d.nummer === waarde)?.naam ?? waarde,
+      });
     case "domein":
       return t("doelen.chipDomein", { waarde });
     case "subdomein":

@@ -89,11 +89,18 @@ export function DoelenPagina() {
         the doel being read. From `lg` up the list sits beside the detail, so they stay. Found by opening the
         app at 390px, not by a test.
       */}
-      {facetten.data ? (
+      {/*
+        Rendered on success AND on failure, with only the pending state left blank so nothing flashes a
+        "could not load" line at a request that is simply in flight. On failure the panel keeps the search
+        field, the chips and "wis alle filters" and states that the option lists are missing: the pane used to
+        vanish, which on a shared link like `/doelen?domein=Natuur` left a narrowed register with no visible
+        filter and no way out but the URL bar.
+      */}
+      {facetten.isPending ? null : (
         <div className={gekozenCode ? "hidden lg:block" : ""}>
           <Doelenfilters filter={filter} facetten={facetten.data} onWijzig={wijzigFilter} />
         </div>
-      ) : null}
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start">
         {/* At ~390px the detail replaces the list rather than sitting under it: two stacked panes on a phone
