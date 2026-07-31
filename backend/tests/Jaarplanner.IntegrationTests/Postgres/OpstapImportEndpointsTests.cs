@@ -293,6 +293,74 @@ public sealed class OpstapImportEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// The same, on a database that <b>already holds these codes</b> — the case the E1-15 test-runner found.
+    /// <para>
+    /// While the refusals were decided by the database at <c>SaveChanges</c>, the primary-key violation fired
+    /// before the discipline foreign key, so a mistyped discipline number was answered "these codes belong to
+    /// another discipline. Check whether this file belongs to discipline 99" — advice that cannot help, about
+    /// a discipline that does not exist. The preflight now checks the discipline first, so the useful message
+    /// wins. The previous test passes on an empty table either way, which is exactly why it missed this.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Onbekend_disciplinenummer_geeft_400_ook_als_de_codes_al_geladen_zijn()
+    {
+        await Upload(Werkboek(Rij("WIS-1")));
+
+        var response = await Verstuur(
+            _factory.CreateClient(), "/api/opstap-import", Werkboek(Rij("WIS-1")), disciplineNummer: "99");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var detail = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString()!;
+        Assert.Contains("is geen Op.stap-discipline", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("andere discipline", detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>The preview refuses exactly what the commit refuses (FR-2.5).</b> All three curriculum-integrity
+    /// refusals are decided before anything is written, so `voorbeeld` answers the same status and the same
+    /// Dutch explanation as the commit does.
+    /// <para>
+    /// This is the property the first round of this story lacked: the refusals fired on <c>SaveChanges</c>,
+    /// which a preview never calls, so a preview of a real Op.stap file returned <c>200</c> with a populated
+    /// <c>diff.toegevoegd</c> while the commit answered <c>409</c>. A review step that green-lights an import
+    /// which cannot land is the opposite of a review step, and E1-13 clause 6 would have inherited it.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Voorbeeld_weigert_precies_wat_de_definitieve_import_weigert()
+    {
+        var client = _factory.CreateClient();
+        await Upload(Werkboek(Rij("WIS-1")), client: client);
+
+        // 1. An unknown discipline: 400 on both paths.
+        var mdVoorbeeld = await Verstuur(client, "/api/opstap-import/voorbeeld", Werkboek(Rij("WIS-9")), "99");
+        Assert.Equal(HttpStatusCode.BadRequest, mdVoorbeeld.StatusCode);
+
+        // 2. A concordance to a minimumdoel that cannot exist yet (E1-12): 409 on both paths.
+        var concordantie = Werkboek(Rij("WIS-2", doelsoort: "MD", leeftijdMd: "4-", nummerMd: "12"));
+        var concordantieVoorbeeld = await Verstuur(client, "/api/opstap-import/voorbeeld", concordantie, Discipline);
+        var concordantieCommit = await Verstuur(client, "/api/opstap-import", concordantie, Discipline);
+        Assert.Equal(HttpStatusCode.Conflict, concordantieVoorbeeld.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, concordantieCommit.StatusCode);
+        Assert.Equal(await Detail(concordantieVoorbeeld), await Detail(concordantieCommit));
+
+        // 3. A code that already belongs to another discipline: 409 on both paths.
+        var verkeerdeDiscipline = Werkboek(Rij("WIS-1"));
+        var verkeerdVoorbeeld = await Verstuur(client, "/api/opstap-import/voorbeeld", verkeerdeDiscipline, "3");
+        var verkeerdCommit = await Verstuur(client, "/api/opstap-import", verkeerdeDiscipline, "3");
+        Assert.Equal(HttpStatusCode.Conflict, verkeerdVoorbeeld.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, verkeerdCommit.StatusCode);
+        Assert.Equal(await Detail(verkeerdVoorbeeld), await Detail(verkeerdCommit));
+
+        // And none of the six calls changed anything.
+        await using var context = _db.MaakContext();
+        var doel = await context.Leerplandoelen.SingleAsync();
+        Assert.Equal("WIS-1", doel.Code);
+        Assert.Equal(Discipline, doel.DisciplineNummer);
+    }
+
+    /// <summary>
     /// A file uploaded under the <b>wrong</b> discipline number, whose codes are already loaded under
     /// another one, is refused with a 409 instead of a 500 — and changes nothing.
     /// <para>
@@ -372,6 +440,9 @@ public sealed class OpstapImportEndpointsTests : IAsyncLifetime
 
         return await client.PostAsync(url, inhoud);
     }
+
+    private static async Task<string> Detail(HttpResponseMessage response) =>
+        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString()!;
 
     private static string[] Codes(JsonElement array) =>
         array.EnumerateArray().Select(c => c.GetString()!).OrderBy(c => c, StringComparer.Ordinal).ToArray();

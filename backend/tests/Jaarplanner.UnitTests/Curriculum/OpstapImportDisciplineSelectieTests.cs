@@ -25,6 +25,16 @@ public sealed class OpstapImportDisciplineSelectieTests : IDisposable
             .UseInMemoryDatabase($"selectie_{Guid.NewGuid():N}")
             .Options;
         _context = new AppDbContext(options);
+
+        // The disciplines these tests import into. A real database always has the official taxonomy (the
+        // migrations seed all 13 rows), and since E1-15 the import path checks that the stated discipline is
+        // one of them — which the required Restrict FK has always enforced on PostgreSQL and which the
+        // in-memory provider silently ignores. Seeding here keeps the fixture honest about the state it
+        // claims to represent; it says nothing about the selection seam these tests exercise.
+        _context.Disciplines.AddRange(
+            new Discipline("1", "Nederlands en communicatie"),
+            new Discipline("2", "Wiskunde"));
+        _context.SaveChanges();
     }
 
     private static Leerplandoel Doel(string code, string disciplineNummer) =>

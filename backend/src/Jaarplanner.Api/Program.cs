@@ -34,6 +34,12 @@ builder.Services.AddExceptionHandler<SchoolcontentExceptionHandler>();
 // returns false for anything that is not its own (Art. VIII — keep controllers thin).
 builder.Services.AddExceptionHandler<AiMatchingExceptionHandler>();
 
+// Op.stap import exception handler (E1-15): maps the curriculum-integrity refusals — an unknown
+// discipline (400), and the two 409s: minimumdoelen that are not loaded yet (E1-12) and a code that
+// already belongs to another discipline. The translation from a PostgreSQL SQLSTATE to a typed fault
+// happens in Infrastructure, next to the DbContext, so the controller names no EF/Npgsql type (Art. VIII).
+builder.Services.AddExceptionHandler<OpstapImportExceptionHandler>();
+
 // Planning exception handler (E3-01): maps the one planning-specific fault — a teacher asking to set a jaarplan
 // placement back to `voorgesteld` (Art. IV.1/IV.2) — to a 400. Planning not-found reuses the school-content 404.
 builder.Services.AddExceptionHandler<PlanningExceptionHandler>();

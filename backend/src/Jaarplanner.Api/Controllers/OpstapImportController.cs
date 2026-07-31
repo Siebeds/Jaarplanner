@@ -3,12 +3,11 @@ using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// Thin REST controller (Art. VIII) that <b>triggers</b> the Op.stap curriculum import: an initial
+/// REST controller that <b>triggers</b> the Op.stap curriculum import: an initial
 /// import and a re-import per discipline, returning the reviewable <see cref="OpstapHerimportDiff"/>
 /// (E1-15 — FR-2.1, FR-2.5).
 /// <para>
@@ -23,8 +22,11 @@ namespace Jaarplanner.Api.Controllers;
 /// <para>
 /// <b>The two-step flow (FR-2.5).</b> <c>POST voorbeeld</c> parses and diffs and writes <b>nothing</b>;
 /// the reviewer reads what would be added, changed, or has disappeared from Op.stap while still being
-/// linked by teacher content, and only then calls <c>POST</c> to commit. Both paths run the same
-/// logic, so the commit matches the preview for the same file and discipline.
+/// linked by teacher content, and only then calls <c>POST</c> to commit. Both paths run the same logic,
+/// so the commit matches the preview for the same file and discipline — <b>including the refusals</b>: the
+/// three curriculum-integrity checks run before any write, so a preview never green-lights an import that
+/// the commit would reject. That property was missing in the first round of this story (the refusals fired
+/// on <c>SaveChanges</c>, which a preview never reaches) and it made the review step actively misleading.
 /// </para>
 /// <para>
 /// <b>What this controller must never do (Art. III.1/III.4).</b> It only parses and delegates. The
@@ -35,8 +37,18 @@ namespace Jaarplanner.Api.Controllers;
 /// </para>
 /// <para>
 /// <b>Authorisation.</b> Behind the single <see cref="CurriculumbeheerAutorisatie.Beleid"/> policy
-/// (Art. VI.1, ADR-0011 §2), which today authorises everyone because the API has no authenticated user
-/// at all. See that class for what E6-02 changes.
+/// (Art. VI.1, ADR-0011 §2, ADR-0022), which today authorises everyone because the API has no
+/// authenticated user at all. See that class for what E6-02 changes.
+/// </para>
+/// <para>
+/// <b>Layering, stated honestly (Art. VIII).</b> This controller only binds, delegates and returns, and
+/// it names no EF Core or Npgsql type. It is <b>not</b> fully Art. VIII-clean, and the reason is filed:
+/// <c>IOpstapParser</c>, <c>IOpstapImportService</c> and <c>OpstapRijProbleem</c> are Application-shaped
+/// ports and DTOs that physically live in <c>Jaarplanner.Infrastructure</c>, so an Api controller
+/// consuming them takes a dependency the layering forbids. That is <b>E7-13</b>, which owns moving the
+/// import ports to <c>Application</c>; this story deliberately did not do it (it would drag the
+/// school-content parser along and doubles the size of a story already at its boundary) and instead
+/// recorded its blast radius there. Do not "fix" the layering here without reading E7-13 first.
 /// </para>
 /// </summary>
 [ApiController]
@@ -159,59 +171,13 @@ public sealed class OpstapImportController : ControllerBase
             }
         }
 
-        OpstapImportResultaat resultaat;
-        try
-        {
-            resultaat = await _importService.ImporteerAsync(parseResultaat, toepassen, cancellationToken);
-        }
-        catch (DbUpdateException ex) when (OntbrekendeMinimumdoelen(ex))
-        {
-            // The E1-12 gap, reached honestly rather than as a 500. `Leerplandoel.MinimumdoelRef` is a
-            // Restrict FK on `minimumdoelen.Ref` and NOTHING in the codebase can insert a Minimumdoel yet
-            // (the per-discipline goal Excel carries no decreed `omschrijving` — Art. VII.1), so a real
-            // Op.stap file's MD-concorded rows cannot commit. Pinned since E1-04 by
-            // `ReferentiedataIntegriteitTests.Leerplandoel_met_concordantie_zonder_minimumdoel_wordt_geweigerd`;
-            // this maps it to an answer the caller can act on. Not "fixed" here: the fix is E1-12's decreed
-            // import, and inventing minimumdoel rows from the goal file would fabricate decreed content
-            // (Art. III.1). The whole import is one SaveChanges, so the failure leaves the curriculum
-            // exactly as it was.
-            return Conflict(new ProblemDetails
-            {
-                Status = StatusCodes.Status409Conflict,
-                Title = "Import niet doorgevoerd",
-                Detail =
-                    "Deze leerplandoelen verwijzen naar minimumdoelen die nog niet ingeladen zijn, dus ze " +
-                    "kunnen nog niet bewaard worden. Laad eerst de decretale minimumdoelen in. " +
-                    "Er is niets gewijzigd aan de doelen die al in de toepassing staan.",
-            });
-        }
-        catch (DbUpdateException ex) when (OnbekendeDiscipline(ex))
-        {
-            // A discipline number that is not in the official Op.stap list (Art. VII.0), answered by the
-            // database's own seeded taxonomy rather than by a list compiled in here.
-            return BadRequest(Probleem(
-                $"'{invoer.DisciplineNummer}' is geen Op.stap-discipline. " +
-                "Gebruik het officiële disciplinenummer, bijvoorbeeld 1 voor Nederlands en communicatie " +
-                "of 9.2 voor Leren leren."));
-        }
-        catch (DbUpdateException ex) when (CodeBestaatAlElders(ex))
-        {
-            // Found by running this trigger by hand, which is the only way it could be found: the import
-            // scopes its diff to ONE discipline, so a code already loaded under a DIFFERENT discipline is
-            // invisible to the diff and reaches the database as an insert on an existing primary key. The
-            // realistic cause is a file uploaded under the wrong discipline number, and the realistic fix
-            // is for the uploader to correct that, so it is answered rather than left as a 500. The
-            // curriculum is unchanged: the import is a single SaveChanges.
-            return Conflict(new ProblemDetails
-            {
-                Status = StatusCodes.Status409Conflict,
-                Title = "Import niet doorgevoerd",
-                Detail =
-                    "Een of meer codes uit dit bestand bestaan al onder een andere discipline. " +
-                    $"Controleer of dit bestand bij discipline {invoer.DisciplineNummer} hoort. " +
-                    "Er is niets gewijzigd aan de doelen die al in de toepassing staan.",
-            });
-        }
+        // Curriculum-integrity refusals (unknown discipline, missing minimumdoelen, a code that belongs to
+        // another discipline) surface as an `OpstapImportFout` from the import path and are mapped to
+        // 400/409 by OpstapImportExceptionHandler (Program.cs) — the same idiom as the three handlers that
+        // preceded it. Nothing here reads an EF Core or Npgsql type: the SQLSTATE lives with the DbContext
+        // (Art. VIII). Those refusals fire on BOTH paths, before anything is written, so a preview refuses
+        // exactly what a commit refuses.
+        var resultaat = await _importService.ImporteerAsync(parseResultaat, toepassen, cancellationToken);
 
         return Ok(new OpstapImportAntwoord(
             IsBestandGeldig: parseResultaat.IsSchoon,
@@ -221,43 +187,11 @@ public sealed class OpstapImportController : ControllerBase
             resultaat.Toegepast));
     }
 
-    /// <summary>
-    /// True when the write failed on the concordance FK (<c>leerplandoelen.MinimumdoelRef</c> →
-    /// <c>minimumdoelen.Ref</c>), i.e. the E1-12 gap. Matched on the FK constraint name so a different
-    /// integrity failure is <b>not</b> disguised as this one: anything unrecognised keeps bubbling up as
-    /// a 500, because a curriculum write that fails for an unknown reason must stay loud.
-    /// </summary>
-    private static bool OntbrekendeMinimumdoelen(DbUpdateException ex) =>
-        IsForeignKeyBreuk(ex, "minimumdoel");
-
-    /// <summary>True when the write failed on the discipline FK (an unknown discipline number).</summary>
-    private static bool OnbekendeDiscipline(DbUpdateException ex) =>
-        IsForeignKeyBreuk(ex, "discipline");
-
-    /// <summary>
-    /// True when the write failed on the leerplandoel primary key (SQLSTATE 23505 on
-    /// <c>PK_leerplandoelen</c>): the file carries a code that is already loaded under another discipline.
-    /// </summary>
-    private static bool CodeBestaatAlElders(DbUpdateException ex) =>
-        ex.InnerException is Npgsql.PostgresException { SqlState: "23505" } fout &&
-        fout.ConstraintName?.Contains("leerplandoelen", StringComparison.OrdinalIgnoreCase) == true;
-
-    /// <summary>
-    /// True when the inner fault is a PostgreSQL foreign-key violation (SQLSTATE 23503) whose constraint
-    /// name mentions <paramref name="tabelFragment"/>. Provider-specific by necessity: the constraint
-    /// name is the only thing that says <i>which</i> reference was missing, and the two cases need
-    /// different answers. The same SQLSTATE-plus-constraint reading is already used in
-    /// <c>KlasBeheerService</c> / <c>SchooljaarBeheerService</c> (for 23505).
-    /// </summary>
-    private static bool IsForeignKeyBreuk(DbUpdateException ex, string tabelFragment) =>
-        ex.InnerException is Npgsql.PostgresException { SqlState: "23503" } fout &&
-        fout.ConstraintName?.Contains(tabelFragment, StringComparison.OrdinalIgnoreCase) == true;
-
     private static ProblemDetails Probleem(string detail) =>
         new()
         {
             Status = StatusCodes.Status400BadRequest,
-            Title = "Ongeldige aanvraag",
+            Title = Probleemtitels.OngeldigeAanvraag,
             Detail = detail,
         };
 

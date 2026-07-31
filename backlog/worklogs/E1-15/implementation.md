@@ -4,8 +4,18 @@
 
 - **FR / Article:** FR-2.1, FR-2.5 · Art. III.1 (curriculum read-only), Art. III.4 (jaarplannen/links untouched
   + review report), Art. VI.1 + ADR-0011 §2 (authorisation seam), Art. VII.0/VII.1 (taxonomy + A–M mapping),
-  Art. VIII (thin Api), Art. II.3 as amended 2026-07-30, Art. X (gates), Art. XIV (disciplines first, and
-  "who may import?").
+  Art. VIII (layering — **partially, with a filed exception: see the correction below and fix-round finding
+  2**), Art. II.3 as amended 2026-07-30, Art. X (gates), Art. XIV (disciplines first, and "who may import?").
+
+> **Correction, made in fix round 1: this round's "thin REST controller (Art. VIII)" claim was unqualified and
+> should not have been.** The controller does only bind/delegate/return, but it constructor-injects
+> `IOpstapParser` and `IOpstapImportService` and puts `OpstapRijProbleem` on the wire — three
+> Application-shaped things that physically live in `Jaarplanner.Infrastructure`, so an `Api` controller
+> consuming them takes a dependency the layering forbids. That is **E7-13**, which was already open for the
+> school-content importer and which this story enlarged from one injected Infrastructure port to three. Fix
+> round 1 records the blast radius there and states the exception in the controller's own doc comment. Citing
+> Art. VIII as satisfied while adding to a filed Art. VIII defect is the kind of claim this worklog exists to
+> prevent.
 
 ### What was built
 
@@ -151,8 +161,12 @@ POST /api/opstap-import            (WIS-1 reworded, WIS-2 removed)
         "verdwenen":["WIS-2"],"vereistReview":true,"toegepast":true
 POST /api/opstap-import            (an MD row with concordance 4-12)
  → 409 "Deze leerplandoelen verwijzen naar minimumdoelen die nog niet ingeladen zijn…"
-POST /api/opstap-import            (discipline 99)
+POST /api/opstap-import            (discipline 99, with a code NOT yet loaded)
  → 400 "'99' is geen Op.stap-discipline…"
+   [CORRECTED in fix round 1: this line was only conditionally true. With the codes ALREADY loaded, the
+    primary-key violation reached the database first and the answer was a 409 about "another discipline",
+    i.e. advice about a discipline that does not exist. Found by the test-runner; the discipline is now
+    checked before anything else, so the 400 wins either way.]
 POST /api/opstap-import            (WIS-1 again, but as discipline 3)
  → 409 "Een of meer codes uit dit bestand bestaan al onder een andere discipline…"
 GET  /openapi/v1.json → paths include /api/opstap-import and /api/opstap-import/voorbeeld
@@ -162,7 +176,9 @@ GET  /openapi/v1.json → paths include /api/opstap-import and /api/opstap-impor
 
 1. **`IOpstapParser` was not DI-registered** (see above). Fixed here, because without it the trigger cannot exist.
 
-2. **A wrong-discipline upload was a 500, and it is now a 409.** Found only by driving the endpoint by hand: the
+2. **A wrong-discipline upload was a 500, and it is now a 409.** *(Fix round 1 moved this check up front and
+   ratified the behaviour; see finding 2 in the fix round for what changed and the owner ruling.)* Found only
+   by driving the endpoint by hand: the
    import diffs *within* one discipline, so a `code` that already exists under a **different** discipline is not
    "ongewijzigd" to it, it is an insert on an existing primary key (SQLSTATE 23505 on `PK_leerplandoelen`).
    Uploading Wiskunde's file under discipline 3 is an ordinary operator slip, so it is answered with a Dutch
@@ -182,10 +198,13 @@ GET  /openapi/v1.json → paths include /api/opstap-import and /api/opstap-impor
    here: fabricating minimumdoel rows from the goal file would invent decreed content (Art. III.1).
 
 4. **The FR-4.1 candidate-set warning recorded in the story now applies for real.** With a runnable
-   per-discipline import, `LeerdoelSelectie.Alles` means the matching prompt grows with the curriculum. Nothing
-   was changed here (deciding which goals are withheld from the model is pedagogical), but the condition the
-   note was waiting for has arrived: the levers are the generation endpoint's optional `selectie` and the
-   panel's filters. Flagged for the orchestrator/owner, not silently absorbed.
+   per-discipline import, `LeerdoelSelectie.Alles` means the matching prompt grows with the curriculum.
+   Nothing changed here (deciding which goals are withheld from the model is pedagogical). **Ruled by the
+   owner on 2026-07-31: the default stays uncapped.** Re-filed where the next author meets it, per the ruling,
+   and this entry is now only a pointer: **E1-15's own backlog entry**, **E2-08 item 2** in
+   `backlog/E2-ai-matching.md` (the levers and what not to do later), and **E7-11** in
+   `backlog/E7-niet-functioneel.md` (authentication is the only remaining mitigation on a billable anonymous
+   endpoint).
 
 ### What was deliberately not built
 
@@ -236,6 +255,210 @@ GET  /openapi/v1.json → paths include /api/opstap-import and /api/opstap-impor
    land, anyone who can reach the API can refresh curriculum reference data. Same exposure as every other
    write endpoint in the app (E7-11), and now on reference data too.
 2. **Disciplines first** (Art. XIV): untouched; the trigger consults the config seam.
-3. **A code moving between disciplines** (finding 2): refused today; no ratified policy.
+3. **A code moving between disciplines** (finding 2): refused today; no ratified policy. *(Ruled by the owner
+   2026-07-31 — see fix round 1.)*
 4. **E1-12 remains the gate on FR-2.1 being genuinely satisfied** (finding 3) — the trigger exists, and a real
    Op.stap file still cannot land until the decreed minimumdoelen do.
+
+---
+
+## Fix round 1 — 3 MAJOR, 4 MINOR, 1 test-runner defect, 2 owner rulings
+
+Test-runner verdict on round 1 was **PASS**; the antagonist returned **VIOLATIONS FOUND** with none of the
+findings disputing *what* was built. Everything below was addressed; nothing is disputed.
+
+### The one thing a later reader must know first
+
+**Round 1's headline property "the sanctioned importer is untouched" no longer holds, deliberately and on
+instruction.** The test-runner verified it by showing `git diff main…HEAD -- …/OpstapImport …/Application` was
+empty. Two findings (MAJOR 1, MINOR 5) required exactly that file to change, so here is precisely what did and
+did not change in `OpstapImportService`:
+
+| Changed | Not changed |
+| --- | --- |
+| Added a **preflight** that refuses three curriculum-integrity failures before any diffing. | Which rows an importable file imports, in any case that previously succeeded. |
+| Wrapped its own `SaveChangesAsync` to translate a PostgreSQL SQLSTATE into a typed fault. | The diff computation, the flag-and-keep default, the empty-file guard, the discipline-selection seam, the review flag handling, the disappeared/linked classification. |
+| Reworded **two** Dutch `opmerkingen` notices (em dashes, Art. II.5). | Every existing unit test's expectation about the diff. |
+
+Both edits are refusals and diagnostics around the write, not changes to it. The coordinator's caveat was "if
+you cannot do it without altering what the importer imports, stop and report" — that did not happen, and the
+24 pre-existing Op.stap unit tests still pass unmodified except for their fixtures (below).
+
+### MAJOR 1 — Npgsql SQLSTATE translation in the `Api` layer → moved to Infrastructure
+
+**Accepted without reservation, including the part about the misleading comment.** The precedent I cited
+(`KlasBeheerService`/`SchooljaarBeheerService`) is in *Infrastructure*, so quoting it to justify an *Api*
+placement was an argument that did not support its conclusion. What changed:
+
+- `Jaarplanner.Application/Curriculum/Import/OpstapImportFout.cs` (**new**) — a typed fault with an
+  `OpstapImportFoutSoort` (`OnbekendeDiscipline` / `OntbrekendeMinimumdoelen` / `CodeInAndereDiscipline`) and
+  a Dutch message for whoever runs the import.
+- `OpstapImportService.VertaalIntegriteitsfout` — the single place that reads a SQLSTATE for this path, next
+  to the `DbContext`. Anything it does not recognise keeps bubbling up as a 500, because a curriculum write
+  that fails for an unknown reason must stay loud.
+- `Jaarplanner.Api/Infrastructure/OpstapImportExceptionHandler.cs` (**new**, registered in `Program.cs`) —
+  maps the fault to 400 (unknown discipline: a bad request) or 409 (the loaded curriculum refuses it).
+- The controller's three `catch (DbUpdateException …)` blocks and its three SQLSTATE predicates are **gone**.
+  `grep -rn "Npgsql" backend/src/Jaarplanner.Api --include=*.cs` now returns **nothing**, and the `using
+  Microsoft.EntityFrameworkCore;` is removed too.
+
+### MAJOR 2 — the controller injects Infrastructure ports → documented, not moved
+
+Took the documenting option as instructed. (a) `backlog/E7-niet-functioneel.md`, E7-13 now carries a
+**blast-radius paragraph**: this story took injected Infrastructure ports in `Api` controllers from **1 to 3**
+(`IOpstapParser`, `IOpstapImportService`) and added a **second** Infrastructure DTO to the wire
+(`OpstapRijProbleem`, next to `SchoolcontentRijProbleem`), so the move now spans five ports plus two DTOs; it
+also records *why* E1-15 did not do it, and notes a cheaper adjacent win (the Api already depends on
+`Application.Curriculum.Import` for the fault type, so moving `OpstapRijProbleem` there is a rename plus a
+`using`). (b) The worklog's unqualified Art. VIII claim is corrected at the top of this file, and (c) the
+controller's own doc comment now states the exception rather than opening with "Thin REST controller
+(Art. VIII)". A reader who greps for the claim finds the caveat next to it.
+
+### MAJOR 3 — E7-11's register updated for two anonymous mutating endpoints
+
+Added both routes to E7-11's enumeration in the form E2-08 and E3-01 used, with the new dimension spelled
+out: these are the **first anonymous writes to decreed reference data**, i.e. to the rows Art. V's coverage
+proof is computed from, where every previous anonymous route touched school content or planning. The concrete
+scenario is stated as the audit put it (a well-formed single-row file clears the "no valid rows" guard and
+flags every other goal in that discipline; official `tekst`/`toelichting` can be rewritten), plus the 20 MB
+anonymous ClosedXML parsing surface. It also records what *does* exist, so the entry is not read as "E1-15
+shipped no authorisation at all": one named policy, no-op by design, one line for E6-02 to bind.
+
+### MINOR 4 — em dashes in the two `opmerkingen` this story made reachable
+
+Accepted, and the finding's framing is the useful part: my "no em dashes in any of the new strings" was true
+and measured the wrong thing. Both notices in `OpstapImportService` were rewritten, not merely de-dashed:
+
+- Out of scope: *"Discipline 2 valt buiten de ingestelde importselectie (…). Er is niets ingelezen of
+  gewijzigd. Neem deze discipline op in de importselectie als ze toch mee moet."* The configuration key
+  `Opstap:DisciplineSelectie` is **out** of the Dutch sentence (it mixed the two Art. II.3 audiences) and now
+  lives in an English code comment for the operator.
+- Empty/implausible file: *"Er zijn geen geldige leerplandoelen ingelezen voor discipline 2, dus is er niets
+  toegepast. De 2 bestaande doelen blijven ongewijzigd. Mogelijk is het bestand leeg, onvolledig of hoort het
+  bij een andere discipline."* Verified verbatim against a running host (below).
+
+No test asserted these substrings (both only assert `NotEmpty`), so nothing was pinned to the old wording.
+
+### MINOR 5 + the test-runner defect — the preview now refuses what the commit refuses
+
+The real fix, not the doc-comment fallback. `ControleerVoorwaardenAsync` runs **before any diffing**, on both
+paths, and checks in this order: (1) the discipline exists in the seeded taxonomy; (2) no incoming `code`
+already belongs to another discipline; (3) every concordance key resolves to a loaded `Minimumdoel`. The
+order is the test-runner's defect fixed at the root: a mistyped discipline number used to trip the
+primary-key violation first, so the answer was *"these codes belong to another discipline. Check whether this
+file belongs to discipline 99"* — advice about a discipline that does not exist.
+
+The messages also got better because the checks now run in a place that knows the data: they name the
+offending refs (`… : 4-12`) and codes with their current discipline (`WIS-1 (discipline 2)`), truncating after
+five.
+
+**A cost worth stating plainly:** while E1-12 is open, a preview of a real Op.stap file no longer shows what
+the file *would* add — it returns 409. Round 1 showed a full diff, which was more informative and wrong. I
+consider the trade correct (a review step that green-lights an impossible import is worse than none) and it
+disappears when E1-12 lands, but it is a real loss of information and not a pure win.
+
+Tests: 4 new unit tests (all three refusals asserted with `toepassen: false`, plus a positive test that a
+**loaded** minimumdoel makes the concordance importable, so the refusal cannot degrade into "MD rows are never
+importable") and 2 new integration tests
+(`Voorbeeld_weigert_precies_wat_de_definitieve_import_weigert`, which asserts the preview and the commit
+return the **same status and the same Dutch detail** for two of the cases, and
+`Onbekend_disciplinenummer_geeft_400_ook_als_de_codes_al_geladen_zijn`, which is the test-runner's scenario
+and which additionally asserts the answer does **not** mention "andere discipline").
+
+**One consequence I did not foresee, and it is the interesting one.** The preflight broke **15 pre-existing
+Op.stap unit tests** — because the EF **in-memory** fixtures seed no `Discipline` rows, so the new "does this
+discipline exist?" check failed for all of them. On a real PostgreSQL those fixtures were never valid: the
+required `Restrict` FK has always demanded a discipline row, and in-memory silently ignores it. Fixed by
+seeding the disciplines those two fixtures import into, with a comment saying why. So the preflight made the
+in-memory suite behave like the real database, which is the same class of defect
+`ReferentiedataIntegriteitTests` was written for; it is worth knowing that a chunk of the Op.stap unit suite
+had been asserting against a state PostgreSQL would refuse.
+
+### MINOR 6 — the Art. II.3 log line
+
+Extended in `backlog/README.md`: it now records the **2 pre-existing Dutch `opmerkingen` this story made
+reachable for the first time** (with the running total updated to "7 authored and 2 exposed"), and states the
+generalisable lesson — *"did I add a Dutch string?" is the wrong question; "did I make one visible?" is the
+right one*, because a story that only adds a caller can fail Art. II.5 without touching a literal. On the
+duplicated title I took the **share** option rather than the document option: `"Ongeldige aanvraag"` was
+defined independently in **five** files and E1-15 nearly made it six, so the titles now come from
+`Api/Infrastructure/Probleemtitels.cs` and the other four call sites were converted. `Detail` text stays
+where the fault is raised, since only there is the row number, discipline or offending code known.
+
+### MINOR 7 — recorded as an ADR
+
+[`docs/adr/0022-curriculum-administration-authorisation-seam.md`](../../../docs/adr/0022-curriculum-administration-authorisation-seam.md),
+**Accepted**, complementing ADR-0011 and superseding nothing (I checked how 0020 refines 0013 and followed the
+"complement, do not rewrite" pattern; ADR-0011's §2 stands verbatim). It records the policy name, its
+deliberate no-op body and why it is not `RequireAuthenticatedUser()`, the one-endpoint-per-import-source
+decision with its reasoning, the typed-fault mapping, four rejected alternatives, and — as an explicit
+negative consequence — that *a policy authorising everyone can be mistaken for protection*. It carries the
+note for E1-12's author that `CurriculumbeheerAutorisatieTests` filters on the `api/opstap-import` prefix and
+will **not** catch a new route that forgets the attribute. ADR index row, traceability-matrix row and the
+"open decisions referenced by ADRs" paragraph updated (0022 is now the example of what a seam does *not* buy).
+
+*Not changed:* `CLAUDE.md` still says "ADR-0001…0020", which was already stale before this story (0021
+exists). Left alone deliberately: it is the project's instruction file, and a two-character edit to it is not
+mine to make on an agent's say-so. Flagged for the orchestrator.
+
+### Owner ruling 1 — a code moving between disciplines
+
+Recorded as **RESOLVED (owner 2026-07-31)** in the open-decisions section of `backlog/README.md`, in the form
+the other resolved entries use: the behaviour (refuse the whole file, name the offending codes and their
+current discipline, change nothing), the reasoning (the code is the decreed identity, Art. III.5; the app is
+not entitled to move it, Art. III.1; refusing is the non-destructive option, Art. III.4), and the note that
+*the behaviour existed before the ruling, which is precisely why it needed one*. Referenced from the code at
+the point of refusal (`ControleerVoorwaardenAsync`, and on `OpstapImportFoutSoort.CodeInAndereDiscipline`).
+The message stayed accurate after the check moved up front — and got better, because it now names which
+discipline each code currently belongs to.
+
+### Owner ruling 2 — the uncapped FR-4.1 candidate set
+
+No code change, per the ruling. Re-filed in the two places the next author will meet it: **E2-08 item 2** in
+`backlog/E2-ai-matching.md` (the condition it was waiting for has arrived; treat `selectie` as the per-run
+lever; do not add a cap later on cost grounds without asking again) and **E7-11** (the mitigation is not a cap,
+it is authentication, which raises that gate's priority rather than the matching story's). E1-15's own backlog
+entry now marks its "weigh a narrower default" clause **discharged**. The worklog entry is a pointer.
+
+### Carried over, not mine to fix — `vereistReview` never clears
+
+Filed on **E1-13 clause 6** in `backlog/E1-curriculum-content.md`, where it will bite: `vereistReview` is true
+whenever `Verdwenen`/`VerdwenenMaarGekoppeld` is non-empty, and a flag-and-keep row is absent from every later
+file, so every subsequent re-import of that discipline keeps reporting it. Rendered naively that is a
+permanent, undismissable "te herzien" banner — the E3-09 mistake in another flow. The importer was **not**
+touched for it. The same entry now also hands E1-13 the endpoint's contract, the English-`reden` warning, and
+the "branch on the status, not on `isError`" lesson from E3-07.
+
+### Gates (fix round 1)
+
+| Command | Result |
+| --- | --- |
+| `dotnet build` | **Build succeeded. 0 Warning(s), 0 Error(s)** |
+| `JAARPLANNER_TEST_POSTGRES=… dotnet test` | **472 unit passed, 112 integration passed, 0 failed, 0 skipped** (round 1: 468 + 110; +4 unit, +2 integration) |
+| `dotnet format --verify-no-changes` | clean (`dotnet format` applied once, then verified) |
+
+No frontend file was touched in this round either, so no `pnpm` gates.
+
+### Re-verified by hand after the refactor (real host, Production environment, own port + own throwaway database)
+
+Round 1's manual evidence was invalidated by these changes, so it was redone on `http://127.0.0.1:5188`
+against `jaarplanner_e115b` (migrated, then dropped; `ASPNETCORE_ENVIRONMENT=Production`, which also proves
+the seam and the handler are not Development-only):
+
+```
+POST /api/opstap-import            (2 rows, discipline 2)      → 200 toegevoegd:["WIS-1","WIS-2"] toegepast:true
+POST /api/opstap-import/voorbeeld  (MD row, concordance 4-12)  → 409 "…minimumdoelen die nog niet ingeladen zijn: 4-12…"
+POST /api/opstap-import            (same MD file)              → 409 identical detail   ← preview == commit
+POST /api/opstap-import            (discipline 99, codes ALREADY loaded)
+                                                              → 400 "'99' is geen Op.stap-discipline…"   ← the test-runner's defect, fixed
+POST /api/opstap-import            (the discipline-2 file, as discipline 3)
+                                                              → 409 "Deze codes staan al bij een andere discipline:
+                                                                     WIS-1 (discipline 2), WIS-2 (discipline 2)…"
+POST /api/opstap-import/voorbeeld  (same, as discipline 3)     → 409
+POST /api/opstap-import            (header-only workbook)      → 200 overgeslagen:true, isVolledigVerwerkt:false,
+                                                                 opmerkingen:["Er zijn geen geldige leerplandoelen
+                                                                 ingelezen voor discipline 2, dus is er niets toegepast.
+                                                                 De 2 bestaande doelen blijven ongewijzigd. …"]
+```
+
+The last line is the rewritten Art. II.5 notice, read back from the wire rather than from the source.

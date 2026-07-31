@@ -35,6 +35,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0019](0019-discipline-selection-config-seam.md) | Discipline-selection config seam for an open decision (Art. XIV; data-driven, not compiled in) | Accepted |
 | [0020](0020-planningsblok-derivation-rules.md) | Planningsblok derivation rules — even distribution, nested tiers, identity = (niveau, start), lengths per deployment (refines 0013) | Accepted |
 | [0021](0021-frontend-routing-and-url-selection.md) | Frontend routing (`react-router-dom`, declarative) and the URL as the single source of truth for the klas/schooljaar selection | Accepted |
+| [0022](0022-curriculum-administration-authorisation-seam.md) | Curriculum-administration authorisation seam (one named policy `Curriculumbeheer`, a documented no-op until E6-02) and one endpoint per import source (complements 0011) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -62,7 +63,8 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0019 | Art. XIV, III, VII.0, VIII, II | E1-06 | FR-2 |
 | 0020 | Art. IX.3, XIV, XI.2/XI.3 | E3-05, E3-01, E3-07, E3-08, E6-03 | FR-5.1, FR-6.1/6.2/6.3 |
 | 0021 | Art. VIII, II.3, XII, IX.3 | E0-10; enables E1-13/14/15, E2-08, E5-02, E6-03/04 | FR-6, FR-9, FR-10/§3.2; NFR-2/7 |
+| 0022 | Art. VI.1/VI.5, XIV, VIII, III.1/III.4, II.3 | E1-15; E1-12, E6-01/02, E7-11, E7-13 | FR-2.1/2.5, FR-10/§3.2; NFR-5 |
 
 ## Open decisions referenced by ADRs
 
-Where an ADR depends on an unresolved [Art. XIV](../../CONSTITUTION.md#article-xiv--open-decisions-awaiting-directie) decision, it documents the **seam** rather than presupposing an answer. The clearest examples are [ADR-0013 (planningsblok)](0013-planningsblok-abstraction.md) and [ADR-0019 (discipline selection)](0019-discipline-selection-config-seam.md).
+Where an ADR depends on an unresolved [Art. XIV](../../CONSTITUTION.md#article-xiv--open-decisions-awaiting-directie) decision, it documents the **seam** rather than presupposing an answer. The clearest examples are [ADR-0013 (planningsblok)](0013-planningsblok-abstraction.md) and [ADR-0019 (discipline selection)](0019-discipline-selection-config-seam.md), and now [ADR-0022 (who may administer curriculum data)](0022-curriculum-administration-authorisation-seam.md) — whose seam is deliberately a **no-op** until E6-02 binds it, which is the case to read if you want to know what a seam does *not* buy you.

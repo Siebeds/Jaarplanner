@@ -45,7 +45,9 @@ public sealed class AiMatchingExceptionHandler : IExceptionHandler
             ProblemDetails = new ProblemDetails
             {
                 Status = status.Value,
-                Title = status.Value == StatusCodes.Status404NotFound ? "Niet gevonden" : "Ongeldige aanvraag",
+                Title = status.Value == StatusCodes.Status404NotFound
+                    ? Probleemtitels.NietGevonden
+                    : Probleemtitels.OngeldigeAanvraag,
                 Detail = exception.Message,
             },
         });
