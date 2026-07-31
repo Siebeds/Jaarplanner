@@ -74,14 +74,14 @@ export function DoelenPagina() {
         <p className="mt-1 text-sm text-ink-zacht">{t("doelen.leesAlleen")}</p>
       </header>
 
-      {facetten.isError ? (
-        <p
-          role="alert"
-          className="rounded-md bg-suggestie-geweigerd/10 px-3.5 py-2.5 text-sm font-medium text-suggestie-geweigerd"
-        >
-          {t("doelen.fout")}
-        </p>
-      ) : null}
+      {/*
+        No page-level alert for a facets failure. `doelen.fout` reads "De doelen konden niet geladen worden",
+        which is a **false statement** when the register is showing its rows and only the option lists failed —
+        and it appeared one element above the panel's own line saying it was the keuzelijsten that failed: two
+        messages for one fault, the louder one untrue. The fault is now reported once, in the panel, where the
+        missing controls are. A genuine list failure still has its own alert inside `Doelenlijst`, which is the
+        component that knows about it.
+      */}
 
       {/*
         Hidden at phone width while a doel is open, because there the detail REPLACES the list: the filters

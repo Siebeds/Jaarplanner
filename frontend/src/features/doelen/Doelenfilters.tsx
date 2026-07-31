@@ -46,8 +46,16 @@ export function Doelenfilters({
     <div className="rounded-lg border border-border bg-card p-3 shadow-card sm:p-4">
       <Zoekveld waarde={filter.zoek ?? ""} onZoek={(zoek) => onWijzig({ ...filter, zoek })} />
 
+      {/*
+        The attentie language, not muted grey: this is the only report of the fault now that the page-level
+        alert is gone, and a grey line under a search box reads as a hint rather than as "a part of this screen
+        is missing". `attentie-ink` on `attentie-zacht` measures 9.37:1 (E3-04 measured it in a browser).
+      */}
       {facetten ? null : (
-        <p role="status" className="mt-3 text-xs text-ink-zacht">
+        <p
+          role="status"
+          className="mt-3 rounded-md bg-attentie-zacht px-3 py-2 text-xs font-medium text-attentie-ink"
+        >
           {t("doelen.keuzelijstenOnbeschikbaar")}
         </p>
       )}
@@ -64,79 +72,79 @@ export function Doelenfilters({
         stretched a period column to 600px of white in E3-06.
       */}
       {facetten ? (
-      <div
-        role="group"
-        aria-label={t("doelen.filtersLabel")}
-        className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3 xl:grid-cols-5"
-      >
-        <Keuze
-          id={`${id}-discipline`}
-          label={t("doelen.disciplineLabel")}
-          waarde={filter.discipline ?? ""}
-          onKies={(discipline) => onWijzig({ ...filter, discipline: discipline || undefined })}
-          opties={facetten.disciplines.map((d) => ({
-            waarde: d.nummer,
-            // A discipline whose `disciplines` row is missing still has to be selectable, so it falls back to
-            // its number rather than vanishing from the filter (Art. III.1: we do not invent a name).
-            label: t("doelen.optieMetAantal", { naam: d.naam ?? d.nummer, aantal: d.aantal }),
-          }))}
-        />
+        <div
+          role="group"
+          aria-label={t("doelen.filtersLabel")}
+          className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-3 xl:grid-cols-5"
+        >
+          <Keuze
+            id={`${id}-discipline`}
+            label={t("doelen.disciplineLabel")}
+            waarde={filter.discipline ?? ""}
+            onKies={(discipline) => onWijzig({ ...filter, discipline: discipline || undefined })}
+            opties={facetten.disciplines.map((d) => ({
+              waarde: d.nummer,
+              // A discipline whose `disciplines` row is missing still has to be selectable, so it falls back to
+              // its number rather than vanishing from the filter (Art. III.1: we do not invent a name).
+              label: t("doelen.optieMetAantal", { naam: d.naam ?? d.nummer, aantal: d.aantal }),
+            }))}
+          />
 
-        <Keuze
-          id={`${id}-domein`}
-          label={t("doelen.domeinLabel")}
-          waarde={filter.domein ?? ""}
-          onKies={(domein) =>
-            // Changing the domein drops the subdomein: the old one almost certainly does not exist under the
-            // new domein, and if a name happens to repeat it would mean something different (Art. VII.0).
-            onWijzig({ ...filter, domein: domein || undefined, subdomein: undefined })
-          }
-          opties={facetten.domeinen.map((d) => ({
-            waarde: d.domein,
-            label: t("doelen.optieMetAantal", { naam: d.domein, aantal: d.aantal }),
-          }))}
-        />
+          <Keuze
+            id={`${id}-domein`}
+            label={t("doelen.domeinLabel")}
+            waarde={filter.domein ?? ""}
+            onKies={(domein) =>
+              // Changing the domein drops the subdomein: the old one almost certainly does not exist under the
+              // new domein, and if a name happens to repeat it would mean something different (Art. VII.0).
+              onWijzig({ ...filter, domein: domein || undefined, subdomein: undefined })
+            }
+            opties={facetten.domeinen.map((d) => ({
+              waarde: d.domein,
+              label: t("doelen.optieMetAantal", { naam: d.domein, aantal: d.aantal }),
+            }))}
+          />
 
-        <Keuze
-          id={`${id}-subdomein`}
-          label={t("doelen.subdomeinLabel")}
-          waarde={filter.subdomein ?? ""}
-          onKies={(subdomein) => onWijzig({ ...filter, subdomein: subdomein || undefined })}
-          isUitgeschakeld={!gekozenDomein}
-          legeOptie={gekozenDomein ? t("doelen.alleOptie") : t("doelen.eerstDomein")}
-          opties={(gekozenDomein?.subdomeinen ?? []).map((s) => ({
-            waarde: s.subdomein,
-            label: t("doelen.optieMetAantal", { naam: s.subdomein, aantal: s.aantal }),
-          }))}
-        />
+          <Keuze
+            id={`${id}-subdomein`}
+            label={t("doelen.subdomeinLabel")}
+            waarde={filter.subdomein ?? ""}
+            onKies={(subdomein) => onWijzig({ ...filter, subdomein: subdomein || undefined })}
+            isUitgeschakeld={!gekozenDomein}
+            legeOptie={gekozenDomein ? t("doelen.alleOptie") : t("doelen.eerstDomein")}
+            opties={(gekozenDomein?.subdomeinen ?? []).map((s) => ({
+              waarde: s.subdomein,
+              label: t("doelen.optieMetAantal", { naam: s.subdomein, aantal: s.aantal }),
+            }))}
+          />
 
-        <Keuze
-          id={`${id}-doelsoort`}
-          label={t("doelen.doelsoortLabel")}
-          waarde={filter.doelsoort ?? ""}
-          onKies={(waarde) =>
-            onWijzig({ ...filter, doelsoort: (waarde || undefined) as DoelsoortNaam | undefined })
-          }
-          opties={facetten.doelsoorten.map((d) => ({
-            waarde: d.doelsoort,
-            label: t("doelen.optieMetAantal", {
-              naam: t(`doelsoort.${badgeKey(d.doelsoort)}`),
-              aantal: d.aantal,
-            }),
-          }))}
-        />
+          <Keuze
+            id={`${id}-doelsoort`}
+            label={t("doelen.doelsoortLabel")}
+            waarde={filter.doelsoort ?? ""}
+            onKies={(waarde) =>
+              onWijzig({ ...filter, doelsoort: (waarde || undefined) as DoelsoortNaam | undefined })
+            }
+            opties={facetten.doelsoorten.map((d) => ({
+              waarde: d.doelsoort,
+              label: t("doelen.optieMetAantal", {
+                naam: t(`doelsoort.${badgeKey(d.doelsoort)}`),
+                aantal: d.aantal,
+              }),
+            }))}
+          />
 
-        <Keuze
-          id={`${id}-jaarfase`}
-          label={t("doelen.jaarFaseLabel")}
-          waarde={filter.jaarFase ?? ""}
-          onKies={(jaarFase) => onWijzig({ ...filter, jaarFase: jaarFase || undefined })}
-          opties={facetten.jaarFasen.map((j) => ({
-            waarde: j.jaarFase,
-            label: t("doelen.optieMetAantal", { naam: j.jaarFase, aantal: j.aantal }),
-          }))}
-        />
-      </div>
+          <Keuze
+            id={`${id}-jaarfase`}
+            label={t("doelen.jaarFaseLabel")}
+            waarde={filter.jaarFase ?? ""}
+            onKies={(jaarFase) => onWijzig({ ...filter, jaarFase: jaarFase || undefined })}
+            opties={facetten.jaarFasen.map((j) => ({
+              waarde: j.jaarFase,
+              label: t("doelen.optieMetAantal", { naam: j.jaarFase, aantal: j.aantal }),
+            }))}
+          />
+        </div>
       ) : null}
 
       {dimensies.length > 0 ? (

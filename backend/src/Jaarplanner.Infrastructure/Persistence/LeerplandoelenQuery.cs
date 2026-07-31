@@ -172,14 +172,19 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
         // directie question and is not decided here.
         //
         // The statement count is FIXED and independent of how many leerplandoelen exist, which is the property
-        // that matters on a table meant to hold the whole curriculum. It is **ten** round trips: five option
-        // sets, four count aggregates and the unfiltered total. Deliberately not one giant query: ten bounded
+        // that matters on a table meant to hold the whole curriculum. Deliberately not one giant query: bounded
         // statements are readable, and this endpoint is hit once per filter change on read-only reference data.
         //
-        // An earlier revision of this comment said "nine" and called them all grouped aggregates; three are
-        // Distinct() projections, one is a plain Count and one is a dictionary over Disciplines. The number is
-        // now pinned by `Facetten_zijn_een_vast_aantal_statements` rather than asserted here, because a figure
-        // in a comment is a figure that drifts (this one already had).
+        // It is **ten** round trips: four option sets (discipline, taxonomie, doelsoort, jaarFase), four grouped
+        // count aggregates, one name lookup over `Disciplines`, and the unfiltered total. By shape: four
+        // Distinct() projections, four GroupBy aggregates, one dictionary and one Count.
+        //
+        // The number is pinned by `Facetten_zijn_een_vast_aantal_statements`, not by this comment, because a
+        // figure in a comment drifts — and this one drifted twice. It first said "nine … all grouped
+        // aggregates". The correction said "ten: five option sets … three Distinct() projections", which was
+        // right about the total and wrong about the composition in both halves: the fifth "option set" is the
+        // discipline-name lookup, and there are four Distinct() projections, not three. Twice is the argument
+        // for the test.
         var disciplineOpties = await AlleWaardenAsync(l => l.DisciplineNummer, cancellationToken);
         var disciplineAantallen = await AantallenAsync(
             ZonderDimensie(filter, Facetdimensie.Discipline), l => l.DisciplineNummer, cancellationToken);

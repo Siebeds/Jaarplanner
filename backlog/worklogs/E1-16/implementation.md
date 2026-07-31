@@ -388,3 +388,49 @@ attempts a delete that the FK refuses.
 own test and its own gate rather than a drive-by edit inside an E1-16 branch. Filed in E1-15's backlog entry and
 reported to the owner. The root cause is worth naming: **two places define which layers hold a `DoelKoppeling`**,
 and the newer one is more complete. One definition, used by both, is the actual fix.
+
+> **Corrected in round 3, and the shape of the error is the lesson.** This analysis claimed three consequences
+> and **one was false**: `vereistReview` does *not* stay `false`, because it ORs `Verdwenen.Count > 0` and the
+> mis-bucketed code lands in `verdwenen`; nor is the row-level flag lost, since `ZetReviewVlag(…, true)` runs in
+> both branches, so the *nakijken* marker does appear. What holds is the other two: the report never discloses
+> that a disappeared goal is **still referenced** by a suggestion, and the opt-in purge really does hit the FK.
+> The false one was the loudest. Written while filing a finding *about* record accuracy, which is precisely when
+> it is easiest to overstate. Now owned by **E1-17** rather than living in a closed story's prose.
+
+---
+
+## Round 3 (2026-07-31): the fix round was itself audited, and five new MINORs came back
+
+A third pass over `08acb8c` alone, because this repo's record is that a fix answering an audit finding can carry
+its own defect. It confirmed the seven round-2 findings **genuinely and completely fixed**, and reproduced the
+orchestrator's mutation checks independently in a scratchpad copy rather than trusting them: reverting both fixes
+fails exactly the two new tests, and reverting either one fails exactly its own.
+
+Five new MINORs, all fixed here, **nothing waived**:
+
+1. **The corrected statement-count comment was still wrong, in the same way.** It said "five option sets, four
+   count aggregates and the unfiltered total" and "three `Distinct()` projections"; it is four option sets plus a
+   discipline-*name lookup*, and four `Distinct()` projections. The total (ten) was right and is test-pinned, so
+   the harm was bounded, but a comment written to fix an inaccurate decomposition shipped another one. **Twice is
+   the argument for the test**, and that is now what the comment says.
+2. **The page told the teacher the doelen could not be loaded while showing them.** `doelen.fout` is shared by
+   the list failure and the facets failure, so a facets-only failure rendered *"De doelen konden niet geladen
+   worden"* one element above the accurate line saying the *keuzelijsten* had failed: two messages for one fault,
+   the louder one false. And a test asserted both facts in the same body, so it pinned the contradiction. The
+   page-level alert is gone; the fault is reported once, in the panel, in the attentie language (9.37:1), where
+   the missing controls are. A genuine list failure still has its own alert inside `Doelenlijst`.
+3. **The filed E1-15 analysis overstated its consequence** (see the correction above).
+4. **The filed defect had no owner:** E1-15 stayed `[x]`, no story existed, the README row was unchanged, so the
+   work lived only inside a closed story's prose where nothing would ever surface it as next. Now **E1-17**, with
+   the README row and totals updated. E1-15's checkbox deliberately stays `[x]`: its criteria are met, and
+   pretending the whole story regressed would be as inaccurate as leaving the defect unowned.
+5. **A misleading indent** on the new `{facetten ? (` wrapper, which no gate can catch (there is no Prettier
+   here). Re-indented.
+
+*Not fixed, recorded:* the audit hit a **timing flake** on its first `pnpm test` run — one test timed out in the
+`lijst()` helper's default 1 000 ms `findBy` under load, and the second run was 189/189. Pre-existing, in a helper
+this story did not touch, but this story does add two tests to the heaviest file. If it recurs, raise the helper's
+timeout rather than re-running the suite: this repo has already paid twice for a gate that could not be trusted.
+
+*Final gates on `fix/e1-16-audit-2`:* `dotnet format` clean, **496 unit + 153 integration against real
+PostgreSQL, 0 failed, 0 skipped**, **189 frontend tests / 12 files**, lint and build clean.
