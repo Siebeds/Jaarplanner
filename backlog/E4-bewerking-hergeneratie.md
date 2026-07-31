@@ -31,9 +31,11 @@
   Regenerate one block/period without touching the rest.
   *Done when:* only the chosen period changes. Ref: FR-8.2.
 
-- [ ] **E4-06 — Vergrendelde blokken excluded from regeneration**
+- [~] **E4-06 — Vergrendelde blokken excluded from regeneration** — *claimed 2026-07-31 by the orchestrator; built on `story/E4-06-vergrendeling` off `main` (`0de4851`), first story of `feature/e4-bewerking-hergeneratie`*
   A `vergrendeld` thema/block is preserved across (re)generation.
   *Done when:* locked content survives both full and partial regeneration. Ref: FR-8.4, Art. IX.3.
+  > **Pre-flight finding (orchestrator, 2026-07-31): the server half is built and the story is a *user-surface* story.** `Themaplaatsing.Vergrendeld`, `Themaplaatsing.IsVervangbaar`, `Jaarplan.VerwijderVervangbarePlaatsingen()`, `JaarplanGeneratieService.WijzigVergrendelingAsync` and `PUT /api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/vergrendeling` all exist, and `GenereerAsync` already discards only replaceable placements. What does **not** exist is any way for a teacher to set the flag: `frontend/src/features/jaarplan/api.ts` never calls that endpoint, yet `Themakaart.tsx` (lines 111 and 401) renders a *"Vast / Blijft staan bij hergenereren"* badge. So today the badge is unreachable state and FR-8.4 has no invocation surface, which is the E2-08 / E1-15 / E0-10 pattern for the fourth time and a breach of the E3-06 rule (never ship a control, or a state, a user cannot produce). This story owns the lock/unlock affordance plus proof that a locked placement survives regeneration; it must **verify** the server half rather than assume it.
+  > *Scope boundary:* "partial regeneration" in the *Done when* is **E4-05**, which does not exist (`GenereerAsync` takes no period scope). This story proves preservation across the **full** regeneration path that exists, and E4-05 inherits the obligation to prove it for its own path. Do not mark the partial half proven.
 
 - [ ] **E4-07 — Pre-apply diff + cancel; manual-edit preservation rule**
   Before applying a (re)generation, show what will change with a cancel option; define and honor how manual edits are preserved.
