@@ -365,12 +365,20 @@ places (`JaarplanGeneratieService.cs`, `api.ts`, `Themakaart.tsx`, this worklog)
 
 ### The exact copy now rendered, per state
 
+> **Corrected in fix round 2.** The row `Aanvaard / Manueel / Geweigerd | yes | no → vergrendelUitlegBeslistVast`
+> tabulated the behaviour the comment eight lines above it in `Themakaart.tsx` forbids: it routed a **rejected**
+> locked card to *"Je hebt dit thema zelf beslist, dus … het blijft staan"*, which describes the opposite decision
+> to a weigering. The round-2 audit raised it as a MAJOR and it is fixed; the authoritative table is the one at the
+> end of the **Fix round 2** section below, which lists all sixteen combinations as read out of a real browser.
+> This one is left in place, marked, rather than silently corrected, because it is the record of what round 1
+> actually shipped.
+
 | `status` | `vergrendeld` | `isVervallen` | Control | Sentence(s) |
 |---|---|---|---|---|
 | Voorgesteld | no | no | **Vastzetten** | `vergrendelUitlegVrij` + `vergrendelDekking` |
 | Voorgesteld | yes | no | **Losmaken** | `vergrendelUitlegVast` + `vergrendelDekking` |
 | Aanvaard / Manueel | no | no | none | `vergrendelNietNodig` |
-| Aanvaard / Manueel / Geweigerd | yes | no | **Losmaken** | `vergrendelUitlegBeslistVast` |
+| Aanvaard / Manueel / ~~Geweigerd~~ | yes | no | **Losmaken** | `vergrendelUitlegBeslistVast` (**wrong for `Geweigerd`, fixed in round 2**) |
 | Geweigerd | no | no | none | none (the weigering section stands alone) |
 | any | no | **yes** | none | none (only `herplaatsKies`, the one remedy) |
 | any | yes | **yes** | **Losmaken** | `vergrendelUitlegVervallen` |
@@ -411,7 +419,13 @@ which is what let this round *interact* rather than only screenshot. `Emulation.
 exactly 390px viewport, so the `--window-size` clamp near 504px never applies. Own ports (API **5407**, Vite
 **5307**) and a throwaway `jaarplanner_e406b` database, migrated from the real migrations and dropped afterwards.
 
-**Seven placements, covering every row of the table above** — including the two states round 1 never looked at:
+**Seven placements** — including the two states round 1 never looked at:
+
+> **Correction (fix round 2).** This paragraph originally claimed the seven covered *"every row of the table
+> above"*. They did not. The seven included a `Geweigerd` **unlocked** card and no `Geweigerd` **locked** one,
+> which is precisely the row the round-2 audit found broken: an unlooked-at state was reported as looked at.
+> Round 2 renders and reads **all sixteen** `(status × vergrendeld × isVervallen)` combinations in one page; the
+> table at the end of that section is the evidence.
 
 - `Manueel` **+ locked** (Verkeer) and `Aanvaard` **+ locked, stale** (Op reis, stored on 2027-04-10, inside the
   Paasvakantie so no block starts there), plus a stale unlocked proposal (Feesten in december).
@@ -430,8 +444,8 @@ direction on the `Voorgesteld` card (*"«Water» staat nu vast."*).
 | `vergrendelDekking` (new), 12px/400 `text-ink-zacht` | `rgb(83,101,110)` | `rgb(248,247,244)` panel well | **5.66:1** | 4.5 |
 | `vergrendelUitlegBeslistVast` (new), same token | `rgb(83,101,110)` | `rgb(248,247,244)` | **5.66:1** | 4.5 |
 | `vergrendelUitlegVervallen` (new), same token | `rgb(83,101,110)` | `rgb(248,247,244)` | **5.66:1** | 4.5 |
-| **`destructiveOutline` label**, 14px/600 | `rgb(103,54,20)` | `rgb(255,255,255)` button fill | **9.24:1** | 4.5 |
-| **`destructiveOutline` border** (SC 1.4.11) | `rgb(103,54,20)` | `rgb(248,247,244)` | **9.24:1** | 3.0 |
+| **`destructiveOutline` label**, 14px/600 | `rgb(103,54,20)` | `rgb(255,255,255)` button fill | ~~9.24:1~~ → **9.93:1** | 4.5 |
+| **`destructiveOutline` border** (SC 1.4.11) | `rgb(103,54,20)` | flattened well, `rgb(247.8,246.6,244.2)` | **9.24:1** | 3.0 |
 | `destructiveOutline` label on hover | `rgb(103,54,20)` | `rgb(254,248,236)` = `attentie-zacht` | **9.39:1** | 4.5 |
 | neutral `outline` border beside it (unchanged) | `rgb(150,138,115)` | `rgb(248,247,244)` | **3.16:1** | 3.0 |
 | focus ring token on the panel well | petrol `rgb(22,81,90)` | `rgb(248,247,244)` | **8.29:1** | 3.0 |
@@ -466,6 +480,230 @@ a chrome accent; and no heading was added to the lock section, again, even thoug
 1. **Should `kalender.weigeringUitleg` say that a rejection survives a regeneration?** Today it explains only how
    to reverse the rejection. Adding it would be true; it would also put a third sentence on a card whose one open
    decision is the reversal. Owner question, reported not decided (finding 4).
+   > **Answered (owner, 2026-07-31): yes, say it.** Built in fix round 2, and it is what closes that round's MAJOR
+   > at its root: see round 2, item 1/2.
 2. **`vergrendelUitlegVast` and `vergrendelNietNodig` must be re-verified when E4-07's preserve/overwrite rule is
    settled**, and again when E4-05 lands its second discard path (finding 3).
 3. The 390px `documentElement.scrollWidth` observation above, for E3-06/E3-07.
+
+## Fix round 2 — the rejected card gets the sentence that is true about a rejection
+
+Round-2 gates on `ec65209`: **test-runner PASS** on all five criteria (it verified the whole
+`(status, vergrendeld, isVervallen)` matrix in a browser and proved `vergrendelUitlegBeslistVast` with its own
+scratch `[PostgresFact]` rather than by reading `IsVervangbaar`); **antagonist: 1 MAJOR + 4 MINOR**, with 8 of its
+previous 9 findings verified closed. Nothing the test-runner pinned was touched.
+
+**FR / Article:** FR-8.4 · Art. IV.2 (a human decision is the human's to change), Art. II.3 (all copy in
+`nl.json`), Art. XII + WCAG 2.2 AA (contrast measured in a browser, never colour alone), Art. V.1 (dekking counts
+`aanvaard`/`manueel`), the E3-06 rule (never ship a control that does nothing).
+
+### 1 + 2 (MAJOR, plus an owner ruling) — `Geweigerd × vergrendeld` said the opposite of what the teacher decided
+
+`slotUitleg` branched `!isVoorstel → vergrendelUitlegBeslistVast`, so a **rejected and locked** card opened with
+*"Je hebt dit thema zelf beslist, dus een hergeneratie van het hele jaarplan laat het staan…"*. What the teacher
+decided about that thema was **no**. The second half is factually true, which is exactly what made it a
+true-looking sentence about the opposite decision, and the panel then read: *"Draai eerst de weigering terug"* →
+*"je hebt dit beslist, het blijft staan"* → *"dit thema is geweigerd"*. `Themakaart.tsx`'s own comment forbade
+this: `toonSlotOverbodig` excludes `isGeweigerd` precisely so a rejected card is not also told "a regeneration
+leaves this standing", and the sibling branch did the excluded thing with a worse opening clause.
+
+Fixed **at the root, per the owner's ruling**, not by patching the sentence:
+
+1. **`kalender.weigeringUitleg` now states that a weigering survives a regeneration.** That is the fact a teacher
+   cannot otherwise know, and *"ik heb dit geweigerd"* leads them to expect the opposite. It is true of the code:
+   `IsVervangbaar` is `Voorgesteld && !Vergrendeld`, so a rejected placement is never discarded by a run, and
+   `GenereerAsync` files a re-proposal of the same thema at the same `BlokStart` under `afgewezen` rather than
+   inserting it again (`JaarplanGeneratieService.cs:217-231`). The new copy says all three parts in two sentences:
+   it stays, it is not re-proposed *there*, and the card only goes when the teacher removes it.
+   > *"Een weigering blijft gelden zolang jij ze niet terugdraait: een hergeneratie van het hele jaarplan laat ze
+   > staan en stelt dit thema hier niet opnieuw voor, dus de kaart verdwijnt alleen als je ze zelf uit het
+   > jaarplan haalt. Terugdraaien kan wel: het thema komt dan als jouw eigen keuze in deze periode."*
+   >
+   > "hier" is deliberate and load-bearing: the idempotence is per `(thema, niveau, blokStart)`, so the AI *may*
+   > still propose the same thema in a **different** period. An unqualified "de AI stelt dit thema niet opnieuw
+   > voor" would have been the same class of over-promise as the unscoped "bij hergenereren".
+2. **A new sentence for the locked rejected card**, which no longer repeats the regeneration fact (it is stated
+   once, in the weigering section, which always renders for a rejected card):
+   > `kalender.vergrendelUitlegGeweigerdVast` — *"Bij een geweigerd thema voegt vastzetten niets toe: de weigering
+   > zelf houdt dit thema al buiten bereik van de AI. Losmaken haalt alleen het label “Vast” weg, de weigering
+   > blijft."*
+3. **`isGeweigerd` is now tested first in `slotUitleg`, ahead of `isVervallen`.** That also takes the stale
+   rejected card off `vergrendelUitlegVervallen` (see item 4).
+4. **"Losmaken" stays** on both, so a lock is always undoable. Verified over the API and in a browser by keyboard.
+
+Reachability, stated honestly: **not** reachable from today's UI (`wijzigPlaatsingStatus` is only ever called with
+`"Manueel"`, `Themakaart.tsx:468`), reachable over the API now, and two clicks away the moment E4-01/E4-02 ship a
+reject control. That is why it was fixed rather than deferred.
+
+### 3 (owner ruling) — the dekking condition is now the teacher's own decision, not a status this screen cannot set
+
+`vergrendelDekking` said a thema *"telt pas mee voor de dekking zodra het **aanvaard** is"*. E5's binding reading
+counts **`Aanvaard` and `Manueel`** (`backlog/E5-dekking-export.md:15`), and "Verplaatsen" **on this very card**
+turns a `Voorgesteld` placement into `Manueel` (`Themaplaatsing.VerplaatsNaar`). So the sentence named the one
+status this screen cannot set while omitting the route it does offer. Per the owner's ruling it is now phrased as
+the teacher's own decision, which covers both statuses, stays satisfiable today, and discloses no unbuilt work:
+
+> *"Vastzetten gaat over de planning, niet over de dekking: dit thema telt pas mee voor de dekking zodra jij dit
+> voorstel zelf overneemt."*
+
+Still **one** sentence, because the card already carries three lines of explanation. "Overnemen" is the verb this
+app already uses for both counting routes: `matching.manueelUitleg` says *"Manueel overnemen … Voor de dekking
+telt dat even zwaar als Aanvaarden"*. It deliberately does **not** say "zelf beslist": a **weigering** is also the
+teacher's own decision and does *not* count, so "beslist" would have been the same kind of near-truth this round
+is fixing. The sentence only ever renders on a `Voorgesteld` placement anyway.
+
+### 4 (MINOR) — the re-placement instruction is said once again, and never where there is no picker
+
+`vergrendelUitlegVervallen` instructed *"kies eerst een periode voor dit thema"* while `kalender.herplaatsKies`
+says the same thing at the top of the same panel. Worse, in the `isVervallen && vergrendeld && Geweigerd` state
+the period picker is **suppressed** (`doelen = isGeweigerd ? [] : …`) and dragging is off, so the instruction
+pointed at an affordance that is not there. Both halves fixed:
+
+- The instruction is **gone** from `vergrendelUitlegVervallen`. It now reads *"Dit thema staat vast, maar het staat
+  in geen enkele periode. Daar helpt vastzetten niet tegen. Wil je het slot weg, dan kan je het losmaken."* The
+  remedy is stated once, above, by the key that owns it.
+- The key no longer renders on a rejected stale card at all (item 1, point 3), which gets the weigering sentence.
+- A **catalogue-wide guard** (`i18n/catalogus.test.ts`) now fails if any `kalender.vergrendel*` value contains the
+  imperative "kies", so the instruction cannot be duplicated back in by a future string.
+
+*Pre-existing, not mine, reported for filing against E3-07:* `kalender.herplaatsKies` has the identical defect in
+that state. On a stale **rejected** card it tells the teacher to *"kies hieronder een periode … of versleep de
+kaart"*, and the very next paragraph says *"Dit thema is geweigerd, dus je kan het niet verplaatsen"* — two
+sentences that contradict each other, with no picker and no grip on the card. Photographed at 390px this round.
+
+### 5 (MINOR) — the contrast figures: measured myself, and now stated identically everywhere
+
+Three records disagreed about one pair (9.74 / 9.24 / 9.07) and a fourth, twenty-four lines up in the same file,
+said 9.93. Re-measured in a real browser, compositing every alpha layer, and the disagreement has a cause worth
+recording rather than just a winner:
+
+| Element | Foreground | Measured against | Ratio | Needs |
+|---|---|---|---|---|
+| `destructiveOutline` **label** 14px/600 | `attentie-ink` `rgb(103,54,20)`, L = 0.055724 | its own `bg-card` fill, `rgb(255,255,255)` | **9.93:1** | 4.5 |
+| `destructiveOutline` **border** (SC 1.4.11) | same | panel well: `bg-paper-diep/60` flattened over that white card | **9.24:1** | 3.0 |
+| `destructiveOutline` label on **hover** | same | `attentie-zacht` `rgb(254,248,236)` | **9.39:1** | 4.5 |
+| neutral `outline` border beside it (unchanged) | `input` token `rgb(150,138,115)` | same well | **3.16:1** | 3.0 |
+| `vergrendelDekking` / `vergrendelUitlegGeweigerdVast` / `vergrendelUitlegVervallen` / `weigeringUitleg`, 12px/400 | `text-ink-zacht` `rgb(83,101,110)` | same well | **5.66:1** | 4.5 |
+| `weigeringEerstTerugdraaien` / `herplaatsKies`, 12px/400 | `attentie-ink` `rgb(103,54,20)` | same well | **9.24:1** | 4.5 |
+
+**Why 9.24 and not 9.27.** The well is `rgba(243,241,237,0.6)` over white = `rgb(247.8, 246.6, 244.2)`,
+L = 0.927409. `getComputedStyle` and every devtools readout *display* that as `rgb(248,247,244)`, whose L is
+0.930096; compositing from the rounded value gives 9.27:1, from the exact one 9.24:1. Both are arithmetically
+correct on their own input, which is how three records of one pair drifted. The figures above are the measured
+ones, from the exact composite, and `button.tsx` now states the same numbers **with the backdrop named** — a
+figure without its backdrop is what made the earlier records uncheckable. The antagonist's 9.07 is not
+reproducible: its own quoted luminances yield 9.27. Every wrong figure understated, so nothing was ever passing on
+a failing number.
+
+### 6 (MINOR) — the fifth unqualified regeneration claim, and a guard aimed at the class
+
+`kalender.vergrendeldUitleg` — the `title` on the "Vast" badge — still read *"Blijft staan bij hergenereren"*. True
+today, and the one string of the family the audit had not quoted, so round 1's four qualifications missed it. It
+now reads *"Blijft staan bij een hergeneratie van het hele jaarplan"*.
+
+The guard is no longer four literal assertions. `i18n/catalogus.test.ts` now **iterates every**
+`kalender.vergrendel*` value, and any that mentions "hergener" must contain "hele jaarplan"; it also fails if the
+family stops matching at all, so it cannot go quiet. That is the pattern `catalogus.test.ts` exists for, in its own
+words: *each previous fix was applied to the one instance that had been noticed.* The two rendered-copy assertions
+in `Jaarplankalender.test.tsx` stay (a passing guard is not worth moving) and point at the class-wide one.
+
+### 7 — the two records that would have been cited as evidence
+
+Both corrected in place, above, marked as corrections rather than rewritten: the round-1 state table (which
+tabulated the very behaviour the code comment forbade) and the *"Seven placements, covering every row of the table
+above"* claim (they covered a `Geweigerd` **unlocked** card and no locked one, i.e. exactly the defective row).
+
+### Files changed in this round
+
+| File | Why |
+|---|---|
+| `frontend/src/i18n/nl.json` | 1 new key (`vergrendelUitlegGeweigerdVast`); `weigeringUitleg`, `vergrendelDekking`, `vergrendelUitlegVervallen` and `vergrendeldUitleg` rewritten. **13 `kalender.*` keys for this story in total.** |
+| `frontend/src/features/jaarplan/Themakaart.tsx` | `slotUitleg` tests `isGeweigerd` first; three comments corrected to what is now built (the class note on the dekking condition, the `toonSlotOverbodig` note, the `isVervallen` note). |
+| `frontend/src/components/ui/button.tsx` | The `destructiveOutline` contrast figures, re-measured, each with its backdrop named. No style change. |
+| `frontend/src/features/jaarplan/Jaarplankalender.test.tsx` | `it.each` narrowed to Aanvaard/Manueel; a new 2-case `it.each` for `Geweigerd × vergrendeld × (placed, stale)`; the four literal "hele jaarplan" assertions reduced to the two this test renders. |
+| `frontend/src/i18n/catalogus.test.ts` | Two catalogue-wide guards over the whole `kalender.vergrendel*` family: the qualified-regeneration one and the no-duplicated-instruction one. |
+| `backlog/worklogs/E4-06/implementation.md` | This section, plus the two corrections of item 7. |
+
+**No backend change this round.** No behaviour changed, so `IsVervangbaar`, the status guard question and the
+integration test are exactly as the test-runner verified them.
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| `dotnet format --verify-no-changes` | ✓ clean (no output) |
+| `dotnet test` unit, `JAARPLANNER_TEST_POSTGRES` set | ✓ **496 passed, 0 failed, 0 skipped** |
+| `dotnet test` integration, real PostgreSQL 17 | ✓ **153 passed, 0 failed, 0 skipped** |
+| `corepack pnpm lint` | ✓ eslint `--max-warnings 0` + `tsc --noEmit` clean |
+| `corepack pnpm test` | ✓ **203 passed** in 12 files (200 before this round) |
+| `corepack pnpm build` | ✓ built, 38.18 kB CSS |
+
+### Browser pass — real API, real PostgreSQL, all sixteen states in one page
+
+Headless Chrome over **CDP from Bash** again (Playwright MCP still down). Own ports (API **5408**, Vite **5308**),
+throwaway `jaarplanner_e406c` migrated from the real migrations. **Sixteen** placements this time, seeded by SQL so
+every combination exists: one thema per status (Water = Voorgesteld, Wonen = Aanvaard, Herfst en oogst = Manueel,
+Verkeer = Geweigerd), each placed twice in real periods (unlocked, locked) and twice on dates inside the
+Paasvakantie 2027-04-08/10, where no derived block starts, so `isVervallen` is true. Every panel opened at once and
+the rendered `<p>` text read back per card, then mapped to its `nl.json` key. **All sixteen printed the key its
+state maps to and no other:**
+
+| `status` | `vergrendeld` | `isVervallen` | Picker | Buttons | Rendered sentences, in DOM order |
+|---|---|---|---|---|---|
+| Voorgesteld | no | no | yes | Verplaatsen + **Vastzetten** + Uit deze periode halen | `verplaatsGevolg`, `vergrendelUitlegVrij`, `vergrendelDekking` |
+| Voorgesteld | **yes** | no | yes | Verplaatsen + **Losmaken** + Uit deze periode halen | `verplaatsGevolg`, `vergrendelUitlegVast`, `vergrendelDekking` |
+| Voorgesteld | no | **yes** | yes | Verplaatsen + Uit het jaarplan halen | `herplaatsKies`, `verplaatsGevolg` |
+| Voorgesteld | **yes** | **yes** | yes | Verplaatsen + **Losmaken** + Uit het jaarplan halen | `herplaatsKies`, `verplaatsGevolg`, `vergrendelUitlegVervallen` |
+| Aanvaard | no | no | yes | Verplaatsen + Uit deze periode halen | `verplaatsGevolg`, `vergrendelNietNodig` |
+| Aanvaard | **yes** | no | yes | Verplaatsen + **Losmaken** + Uit deze periode halen | `verplaatsGevolg`, `vergrendelUitlegBeslistVast` |
+| Aanvaard | no | **yes** | yes | Verplaatsen + Uit het jaarplan halen | `herplaatsKies`, `verplaatsGevolg` |
+| Aanvaard | **yes** | **yes** | yes | Verplaatsen + **Losmaken** + Uit het jaarplan halen | `herplaatsKies`, `verplaatsGevolg`, `vergrendelUitlegVervallen` |
+| Manueel | no | no | yes | Verplaatsen + Uit deze periode halen | `vergrendelNietNodig` |
+| Manueel | **yes** | no | yes | Verplaatsen + **Losmaken** + Uit deze periode halen | `vergrendelUitlegBeslistVast` |
+| Manueel | no | **yes** | yes | Verplaatsen + Uit het jaarplan halen | `herplaatsKies` |
+| Manueel | **yes** | **yes** | yes | Verplaatsen + **Losmaken** + Uit het jaarplan halen | `herplaatsKies`, `vergrendelUitlegVervallen` |
+| Geweigerd | no | no | **no** | Weigering terugdraaien + Uit deze periode halen | `weigeringEerstTerugdraaien`, `weigeringUitleg` |
+| **Geweigerd** | **yes** | no | **no** | **Losmaken** + Weigering terugdraaien + Uit deze periode halen | `weigeringEerstTerugdraaien`, **`vergrendelUitlegGeweigerdVast`**, `weigeringUitleg` |
+| Geweigerd | no | **yes** | **no** | Weigering terugdraaien + Uit het jaarplan halen | `herplaatsKies`, `weigeringEerstTerugdraaien`, `weigeringUitleg` |
+| **Geweigerd** | **yes** | **yes** | **no** | **Losmaken** + Weigering terugdraaien + Uit het jaarplan halen | `herplaatsKies`, `weigeringEerstTerugdraaien`, **`vergrendelUitlegGeweigerdVast`**, `weigeringUitleg` |
+
+(`vergrendelDekking` appears on exactly the two `Voorgesteld && !isVervallen` rows, which is the rule. A card with
+an `aiMotivatie` also shows `motivatieLabel`, omitted from the table as it is not lock copy. `verplaatsGevolg`
+appears only where the move has something to lose, per E3-07.)
+
+**The two rows in bold are the ones round 1 never rendered**, and they are the fix. Both were also driven, not
+only read: on the locked rejected `Verkeer` card, **keyboard only** (`Input.dispatchKeyEvent` Enter on a focused
+"Losmaken", no pointer) the PUT fires, the badge goes, the live region announces *"«Verkeer» staat niet meer
+vast."*, the lock section disappears (correct: an unlocked rejected card is offered no lock, by design), and a
+**full reload** shows the unlock read back from PostgreSQL. Re-locked over the API and re-verified.
+
+**390px:** `Emulation.setDeviceMetricsOverride` **before** the first navigation and `mobile: false` — with
+`mobile: true` Chrome reports `window.innerWidth === 1560` for a 390 layout, which would have made every
+measurement here a lie. Confirmed `innerWidth === 390`, `body.scrollWidth === 390`, and **zero** elements outside a
+designated scroll region (walking every node's ancestors for `overflow-x: auto|scroll`). Buttons 220–268 × 36.
+`window.scrollTo(600, 0)` leaves `scrollX === 0` in every state, so there is no horizontal page scroll: the
+`documentElement.scrollWidth` reading of 2006 with all sixteen panels open is the ribbon's scroll region being
+counted, the same pre-existing artefact round 1 saw at 690 with one panel. Screenshots taken at 1440 and at exactly
+390 of both bold rows.
+
+### Deliberately not touched (as instructed)
+
+`IsVervangbaar`; the status guard on `WijzigVergrendelingAsync`; the `role="status"` live region; the
+`destructiveOutline` **design** (only its stated figures were wrong); the integration test; the four qualified
+sentences (`vergrendelUitlegVrij`, `vergrendelUitlegVast`, `vergrendelNietNodig`, `vergrendelUitlegBeslistVast`);
+and `backlog/E4-bewerking-hergeneratie.md`, which the orchestrator owns.
+
+### Nothing disputed
+
+All five findings are accepted and fixed. One correction to a *number* in a finding, not to the finding: the
+border ratio is **9.24:1** against the exact composite (9.27:1 if you round the well first), not 9.07:1.
+
+### Still open for the orchestrator / owner
+
+1. **`kalender.herplaatsKies` on a stale rejected card** — pre-existing E3-07 defect, described under item 4. Not
+   fixed here on instruction; file against E3-07.
+2. `vergrendelUitlegVast`, `vergrendelNietNodig`, `vergrendelUitlegBeslistVast`, `vergrendeldUitleg` and the new
+   `weigeringUitleg` all promise something about "een hergeneratie van het hele jaarplan". **E4-05's second discard
+   path and E4-07's preserve/overwrite rule must re-verify all five**, and the catalogue guard will point at them.
+3. `Geweigerd` remains unreachable from the UI (nothing here sets it). The moment E4-01/E4-02 add a reject control,
+   the two bold rows above become two clicks away, and the copy is already in place for them.

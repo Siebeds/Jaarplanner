@@ -889,7 +889,7 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
     expect(verzoeken[0].body).toEqual({ vergrendeld: false });
   });
 
-  it.each([["Aanvaard"] as const, ["Manueel"] as const, ["Geweigerd"] as const])(
+  it.each([["Aanvaard"] as const, ["Manueel"] as const])(
     "tells a %s AND locked card that the lock is redundant and that losmaken will not free it",
     async (status) => {
       // **The false-claim finding of the round-1 audit.** The section decided *whether* to render on
@@ -917,12 +917,66 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
       expect(paneel.queryByText(t("kalender.vergrendelUitlegVrij"))).toBeNull();
       expect(paneel.queryByText(t("kalender.vergrendelNietNodig"))).toBeNull();
 
-      // No dekking sentence here: "telt pas mee zodra het aanvaard is" is a statement about a proposal, and on a
-      // rejected card it would be actively wrong about what the teacher decided.
+      // No dekking sentence here: "telt pas mee zodra jij dit voorstel zelf overneemt" is a statement about a
+      // proposal, and this placement is not one any more.
       expect(paneel.queryByText(t("kalender.vergrendelDekking"))).toBeNull();
 
       // And the control is still there, so the lock stays undoable.
       expect(paneel.getByRole("button", { name: t("kalender.ontgrendelen") })).toBeInTheDocument();
+
+      // Not the rejected card's sentence: that one says the *weigering* is doing the work, which would be false
+      // about a thema the teacher accepted or moved.
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegGeweigerdVast"))).toBeNull();
+    },
+  );
+
+  it.each([[false], [true]])(
+    "tells a REJECTED and locked card that the weigering does the work, not the lock (isVervallen=%s)",
+    async (isVervallen) => {
+      // **The MAJOR of the round-2 audit.** A rejected + locked card fell into the `!isVoorstel` branch and got
+      // `vergrendelUitlegBeslistVast`, which opens "Je hebt dit thema zelf beslist, dus … het blijft staan" — and
+      // what the teacher decided about this thema was *no*. The second half of that sentence is true, which is
+      // exactly what made it a true-looking sentence about the opposite decision. When stale it got
+      // `vergrendelUitlegVervallen` instead, whose "kies eerst een periode" pointed at a picker that is
+      // suppressed for a rejected card.
+      //
+      // Not reachable from the UI today (nothing here sets `Geweigerd`; `wijzigPlaatsingStatus` only ever sends
+      // `Manueel`), reachable over the API now, and two clicks away the moment E4-01/E4-02 ship a reject control.
+      const plan = maakJaarplan([
+        maakPlaatsing({
+          id: "p1",
+          themaNaam: "Water",
+          status: "Geweigerd",
+          vergrendeld: true,
+          ...(isVervallen ? { blokEind: null, blokOrdinaal: null, isVervallen: true } : {}),
+        }),
+      ]);
+      const verzoeken = stubBewerking(plan);
+      renderKalender();
+
+      await screen.findByText("Water");
+      fireEvent.click(aanpassen("Water"));
+
+      const paneel = within(kaart("Water"));
+
+      expect(paneel.getByText(t("kalender.vergrendelUitlegGeweigerdVast"))).toBeInTheDocument();
+      // None of the four sentences that describe a different decision, in either the stale or the placed case.
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegBeslistVast"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegVervallen"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegVast"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelNietNodig"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelDekking"))).toBeNull();
+
+      // The regeneration fact for a rejected placement is stated once, in the weigering section, and the lock
+      // sentence does not repeat it (owner ruling, 2026-07-31).
+      expect(paneel.getByText(t("kalender.weigeringUitleg"))).toBeInTheDocument();
+      expect(t("kalender.weigeringUitleg")).toContain("hergeneratie van het hele jaarplan");
+      expect(t("kalender.vergrendelUitlegGeweigerdVast")).not.toContain("hergener");
+
+      // A lock must always be undoable, whatever the status.
+      fireEvent.click(paneel.getByRole("button", { name: t("kalender.ontgrendelen") }));
+      await waitFor(() => expect(verzoeken).toHaveLength(1));
+      expect(verzoeken[0].body).toEqual({ vergrendeld: false });
     },
   );
 
@@ -950,10 +1004,13 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
     // And the claim about regeneration is scoped to the path that exists. E4-05 adds a second discard path and
     // E4-07's preserve/overwrite rule is still an open directie question, so an unqualified "een hergeneratie"
     // would be a promise about code nobody has written.
+    //
+    // These are the two sentences *this* test renders. The **class** is pinned in `i18n/catalogus.test.ts`, over
+    // every `kalender.vergrendel*` value that mentions a hergeneratie: round 1 qualified the four sentences the
+    // audit had quoted and left `vergrendeldUitleg` ("Blijft staan bij hergenereren", the badge's own tooltip)
+    // unqualified, which is the same fix-the-noticed-instance pattern `catalogus.test.ts` was written against.
     expect(t("kalender.vergrendelUitlegVrij")).toContain("hele jaarplan");
     expect(t("kalender.vergrendelUitlegVast")).toContain("hele jaarplan");
-    expect(t("kalender.vergrendelNietNodig")).toContain("hele jaarplan");
-    expect(t("kalender.vergrendelUitlegBeslistVast")).toContain("hele jaarplan");
   });
 
   it("offers no lock nudge on a STALE card, because re-placement is the only remedy", async () => {

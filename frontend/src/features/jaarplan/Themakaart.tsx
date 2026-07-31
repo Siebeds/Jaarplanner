@@ -51,7 +51,10 @@ import {
  * **Nor does the lock make a thema count.** Only `aanvaard`/`manueel` placements count as placed for the dekking,
  * so a locked `voorgesteld` thema is safe from the AI and worth nothing to an onderwijsinspectie. The panel draws
  * that distinction in words (owner ruling, 2026-07-31); the accept control that resolves it is **E4-01/E4-02's**,
- * deliberately not built here, so the copy states the condition rather than pointing at a button.
+ * deliberately not built here, so the copy states the condition rather than pointing at a button. The condition is
+ * phrased as *the teacher taking the proposal over* rather than as the status `aanvaard`: both `aanvaard` and
+ * `manueel` count (the binding reading in E5), and "Verplaatsen" on this very card is the route to `manueel`, so
+ * naming only `aanvaard` would name the one status this screen cannot set while omitting the one it can.
  */
 export interface ThemakaartProps {
   plaatsing: Themaplaatsing;
@@ -271,8 +274,9 @@ function Bewerkpaneel({
    * **A stale placement gets no lock nudge** (`isVervallen`). Its own remedy is re-placement, stated at the top of
    * this panel: locking one instead pins the card at a date that is no longer a period boundary, so the "dekking
    * onbetrouwbaar" state would survive every regeneration where before it was self-healing. An *already* locked
-   * stale card keeps the control, so the lock stays undoable, but the sentence points at the period rather than at
-   * the lock.
+   * stale card keeps the control, so the lock stays undoable, and its sentence says only that the lock is not the
+   * remedy. It deliberately does **not** repeat *"kies een periode"*: `kalender.herplaatsKies` already stands at
+   * the top of this panel, and on a stale **rejected** card that instruction has no picker to point at.
    */
   const toonSlot = plaatsing.isVervallen
     ? plaatsing.vergrendeld
@@ -282,24 +286,33 @@ function Bewerkpaneel({
   // lie: an accepted thema with no "Vast" badge otherwise looks discardable, which invites pointless locking.
   //
   // Two exceptions. A **stale** card: see above, one remedy only. And a **rejected** one, which is a deliberate
-  // omission rather than a duplicate: `kalender.weigeringUitleg` says the thema is rejected and how to reverse
-  // that, and says nothing about regeneration, so nothing here repeats. Adding "een hergeneratie laat dit staan"
-  // beside it would be true and would pull attention off the one decision that card is waiting for. *Whether the
-  // rejection copy should itself state that a rejection survives a regeneration is an owner question, reported
-  // with this fix round, not decided here.*
+  // omission rather than a duplicate: `kalender.weigeringUitleg` now carries the regeneration fact for a rejected
+  // placement (owner ruling, 2026-07-31), so repeating it here would pull attention off the one decision that
+  // card is waiting for.
   const toonSlotOverbodig = !toonSlot && !isGeweigerd && !plaatsing.isVervallen;
 
-  /** The one sentence that is true of this exact `(status, vergrendeld, isVervallen)` state. */
-  const slotUitleg = plaatsing.isVervallen
-    ? t("kalender.vergrendelUitlegVervallen")
-    : !isVoorstel
-      ? // Locked, but the teacher already decided: the lock is redundant AND unlocking will not make the thema
-        // replaceable, because `IsVervangbaar` needs `Voorgesteld`. Both halves have to be said, or the teacher
-        // clicks "Losmaken" expecting the AI to reconsider and nothing happens.
-        t("kalender.vergrendelUitlegBeslistVast")
-      : plaatsing.vergrendeld
-        ? t("kalender.vergrendelUitlegVast")
-        : t("kalender.vergrendelUitlegVrij");
+  /**
+   * The one sentence that is true of this exact `(status, vergrendeld, isVervallen)` state.
+   *
+   * **`isGeweigerd` is tested first, ahead of `isVervallen`**, and that order is the round-2 fix. A rejected card
+   * only reaches this branch while locked (it is never `Voorgesteld`), and both of the sentences it used to get
+   * were wrong for it: `vergrendelUitlegBeslistVast` opens with "Je hebt dit thema zelf beslist, dus … het blijft
+   * staan", which describes the *opposite* decision to a weigering, and `vergrendelUitlegVervallen` pointed at a
+   * period picker that is suppressed for a rejected card (`doelen` is empty above). What is true instead is that
+   * the **weigering** is what keeps the thema out of the AI's reach and the lock adds nothing to it.
+   */
+  const slotUitleg = isGeweigerd
+    ? t("kalender.vergrendelUitlegGeweigerdVast")
+    : plaatsing.isVervallen
+      ? t("kalender.vergrendelUitlegVervallen")
+      : !isVoorstel
+        ? // Locked, but the teacher already decided: the lock is redundant AND unlocking will not make the thema
+          // replaceable, because `IsVervangbaar` needs `Voorgesteld`. Both halves have to be said, or the teacher
+          // clicks "Losmaken" expecting the AI to reconsider and nothing happens.
+          t("kalender.vergrendelUitlegBeslistVast")
+        : plaatsing.vergrendeld
+          ? t("kalender.vergrendelUitlegVast")
+          : t("kalender.vergrendelUitlegVrij");
 
   return (
     <div id={id} className="mt-2.5 flex flex-col gap-3 rounded-md bg-paper-diep/60 p-2.5">
@@ -406,9 +419,11 @@ function Bewerkpaneel({
               {/* The distinction the kalender otherwise never draws, and the reason the nudge above is safe to
                   ship (owner ruling, 2026-07-31). Locking keeps a thema in its period; only `aanvaard` or
                   `manueel` makes it count as placed for the dekking (the binding reading in E5), and a locked
-                  `voorgesteld` placement counts for nothing there. Stated as the condition rather than as an
-                  instruction, because this screen has no accept control yet: that affordance is E4-01/E4-02's,
-                  deliberately not built here. Only on a proposal, where "aanvaard" is still ahead of the teacher. */}
+                  `voorgesteld` placement counts for nothing there. The condition is worded as the teacher taking
+                  the proposal over, which is what covers **both** counting statuses and stays satisfiable on this
+                  screen today: "Verplaatsen" above sets `Manueel`. Stated as a condition rather than as an
+                  instruction, because the accept control is E4-01/E4-02's and is deliberately not built here.
+                  Only on a proposal, where that decision is still ahead of the teacher. */}
               {isVoorstel && !plaatsing.isVervallen && (
                 <p className="text-xs leading-snug text-ink-zacht">{t("kalender.vergrendelDekking")}</p>
               )}

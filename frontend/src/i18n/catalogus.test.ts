@@ -98,6 +98,54 @@ describe("nl.json — counts always have a singular form", () => {
   });
 });
 
+/**
+ * Every string the kalender uses to talk about the lock, i.e. `kalender.vergrendel*` and `kalender.vergrendeld*`.
+ * Collected by prefix rather than listed, which is the whole point of the two guards below.
+ */
+const SLOTTEKSTEN = [...CATALOGUS].filter(([sleutel]) => sleutel.startsWith("kalender.vergrendel"));
+
+describe("nl.json — the lock copy makes no unscoped promise about regeneration", () => {
+  /**
+   * E4-06 promises that a locked thema survives *a regeneration*. Only one regeneration path exists today
+   * (`JaarplanGeneratieService`, which discards exactly `Voorgesteld && !vergrendeld`). **E4-05** adds a second
+   * discard path and **E4-07's** preserve/overwrite rule is still an open directie question, so an unqualified
+   * "bij hergenereren" is a promise about code nobody has written.
+   *
+   * Aimed at the class on purpose. The E4-06 round-1 fix qualified the four sentences the audit had quoted and
+   * left `vergrendeldUitleg` — "Blijft staan bij hergenereren", the tooltip on the "Vast" badge — untouched,
+   * which is exactly the pattern this file's header describes: *each previous fix was applied to the one instance
+   * that had been noticed.*
+   */
+  it("qualifies every lock string that mentions a hergeneratie", () => {
+    const gevonden = SLOTTEKSTEN.filter(([, waarde]) => waarde.includes("hergener"));
+
+    // If the phrasing ever changes so that none match, the guard has gone quiet and must be revisited.
+    expect(gevonden.length).toBeGreaterThan(0);
+
+    for (const [sleutel, waarde] of gevonden) {
+      expect(waarde, `${sleutel} promises a hergeneratie without saying which one`).toContain(
+        "hele jaarplan",
+      );
+    }
+  });
+
+  /**
+   * The re-placement instruction belongs to `kalender.herplaatsKies` alone (E3-07's), which stands at the top of
+   * the same panel. E4-06 round 1 added a second copy of it inside `vergrendelUitlegVervallen`, and on a card
+   * that is stale **and** rejected the period picker is suppressed, so the instruction pointed at an affordance
+   * that is not there — the E3-06 rule.
+   */
+  it("leaves the 'choose a period' instruction to kalender.herplaatsKies alone", () => {
+    expect(CATALOGUS.get("kalender.herplaatsKies")).toContain("Kies");
+
+    for (const [sleutel, waarde] of SLOTTEKSTEN) {
+      expect(waarde.toLowerCase(), `${sleutel} repeats the re-placement instruction`).not.toMatch(
+        /\bkies\b/,
+      );
+    }
+  });
+});
+
 describe("nl.json — no dead keys under doelen", () => {
   /**
    * Three keys shipped unused in E1-16 (`taxonomieLabel`, `sluiten`, `clusterLabel`), and one of them,

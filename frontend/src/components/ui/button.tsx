@@ -59,11 +59,22 @@ const buttonVariants = cva(
         // Same `attentie-ink` as `destructive`, deliberately **no new hue**: Art. XII spends six on doelsoort plus
         // more on suggestiestatus and dekking, so chrome is petrol plus one attention hue. Lighter than
         // `destructive` because it is not yet the point of no return, and it must not look like the confirm button
-        // it leads to. Composited and measured in a browser, not jsdom: label `rgb(103,54,20)` on the `bg-card`
-        // white = 9.74:1 (needs 4.5); the border against the panel well `paper-diep/60` over card,
-        // `rgb(248,247,244)`, = 9.07:1 (SC 1.4.11 needs 3). It is also **not colour alone** (Art. XII): the border
-        // is a solid dark rule where the neutral `outline` sits on the pale `input` token, a luminance difference
-        // that survives monochrome, and the label says what it does.
+        // it leads to.
+        //
+        // Composited and measured in a browser, not jsdom. `attentie-ink` is `rgb(103,54,20)`, L = 0.055724:
+        //   • **label** on this button's own `bg-card` fill, `rgb(255,255,255)` → **9.93:1** (SC 1.4.3 needs 4.5);
+        //   • **border** against the panel well, i.e. `bg-paper-diep/60` flattened over that same white card →
+        //     **9.24:1** (SC 1.4.11 needs 3);
+        //   • label on the hover fill `attentie-zacht` `rgb(254,248,236)` → **9.39:1**.
+        // The well is `rgb(247.8,246.6,244.2)` before rounding (L = 0.927409); `getComputedStyle` and every
+        // devtools panel *display* it as `rgb(248,247,244)`, and compositing from that rounded value gives 9.27:1
+        // instead. Both numbers are arithmetically correct on their own input, which is how three records of this
+        // one pair ended up disagreeing (9.74 / 9.24 / 9.07, all wrong for what they were labelling). The figures
+        // above are the measured ones, from the exact composite, so state the backdrop whenever you cite them.
+        //
+        // It is also **not colour alone** (Art. XII): the border is a solid dark rule where the neutral `outline`
+        // sits on the pale `input` token (`rgb(150,138,115)`, 3.16:1 against the same well), a luminance
+        // difference that survives monochrome, and the label says what it does.
         destructiveOutline:
           "border border-attentie-ink bg-card text-attentie-ink shadow-card hover:bg-attentie-zacht",
       },
