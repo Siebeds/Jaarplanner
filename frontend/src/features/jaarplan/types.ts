@@ -22,6 +22,17 @@ export interface Planningsblok {
   aantalOpenDagen: number;
 }
 
+/**
+ * The tier a generated thema is placed on, and therefore the tier a **kept generation setting** keys on.
+ *
+ * Mirrors `JaarplanGeneratieService.GeneratieNiveau` (`Planningsblokniveau.Themaperiode`) and exists because the
+ * pairing used to be silent: `/rooster` happens to default to this tier, so handing the board's blocks to the
+ * parameter form was correct by coincidence. The moment E3-08's zoom fetches `Subthemaperiode`, blocks of the wrong
+ * tier would flag every kept preference as "zonder periode" and offer rows whose dates the server reports as
+ * `vervallenStartthemas`. Comparing against this constant makes that a checked condition instead of an assumption.
+ */
+export const GENERATIEBLOKNIVEAU = "Themaperiode";
+
 /** A vakantie: a literal gap between two blocks in the ribbon. */
 export interface Planningsonderbreking {
   naam: string;
@@ -124,19 +135,32 @@ export interface Generatieresultaat {
 }
 
 /**
- * What the teacher sets before a run (E3-04, FR-5.4).
+ * What the teacher sets before a run (E3-04, FR-5.4), and what the class **keeps** between runs since the owner's
+ * ruling of 2026-07-30: the same shape is posted with a generation and returned by `GET …/jaarplan/parameters`.
  *
  * **Vakanties are deliberately absent.** They are schooljaar data (FR-12.1, the beheerder) and the planning grid
  * is derived from them, so a block can never span one. Offering them here would be a second place to enter the
  * school calendar.
  */
 export interface Generatieparameters {
-  /**
-   * Thema names, **one per period from the start of the year**: index 0 is the first period, index 1 the second.
-   * The position *is* the period, which is why the form renders a row per period rather than a bare list.
-   */
-  gewensteStartthemas: string[];
+  /** One entry per period the teacher has a preference for. Order is irrelevant: each names its own period. */
+  gewensteStartthemas: Startthemakeuze[];
   vasteMomenten: VastMoment[];
+}
+
+/**
+ * One start-thema preference: the thema a given period should open with.
+ *
+ * **Keyed on `blokStart`, not on array position.** The contract was positional until 2026-07-30 (the i-th name
+ * targeted the i-th period), which is an ordinal in different clothing and which ADR-0020 §3 rules out as a block
+ * key. Storing an ordinal would have been worse still, since it survives exactly the vakantie edits that invalidate
+ * it. Everything awkward about this form existed only to survive the positional contract: the growing list, the
+ * clear-cascade, and the rule that a gap had to be inexpressible. A gap is now just "no preference".
+ */
+export interface Startthemakeuze {
+  /** The target period's start date, the same stable key a placement and a move use. */
+  blokStart: string;
+  themaNaam: string;
 }
 
 /**
@@ -182,6 +206,11 @@ export interface Parameterrapport {
   gehonoreerdeStartthemas: string[];
   nietGehonoreerdeStartthemas: string[];
   tegenstrijdigeStartthemas: string[];
+  /**
+   * Kept preferences whose period no longer exists, because the vakantiedata changed after they were saved. Never
+   * dropped and never moved to a neighbouring period (directie 2026-07-28); the form says so too, before a run.
+   */
+  vervallenStartthemas: Startthemakeuze[];
   geweigerdDoorVastMoment: GeweigerdePlaatsing[];
   toegepasteVasteMomenten: VastMomentUitkomst[];
   onplaatsbareVasteMomenten: VastMomentUitkomst[];

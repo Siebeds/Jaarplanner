@@ -30,6 +30,7 @@ export function Parameteroverzicht({ rapport }: ParameteroverzichtProps) {
     nietGehonoreerdeStartthemas,
     tegenstrijdigeStartthemas,
     onbekendeStartthemas,
+    vervallenStartthemas,
     geweigerdDoorVastMoment,
     toegepasteVasteMomenten,
     onplaatsbareVasteMomenten,
@@ -44,6 +45,7 @@ export function Parameteroverzicht({ rapport }: ParameteroverzichtProps) {
     nietGehonoreerdeStartthemas.length === 0 &&
     tegenstrijdigeStartthemas.length === 0 &&
     onbekendeStartthemas.length === 0 &&
+    vervallenStartthemas.length === 0 &&
     geweigerdDoorVastMoment.length === 0 &&
     toegepasteVasteMomenten.length === 0 &&
     onplaatsbareVasteMomenten.length === 0;
@@ -109,6 +111,31 @@ export function Parameteroverzicht({ rapport }: ParameteroverzichtProps) {
               "parameters.rapportOnbekendEnkelvoud",
               "parameters.rapportOnbekend",
               { themas: onbekendeStartthemas.join(", ") },
+            )}
+          </li>
+        )}
+
+        {/* A kept preference whose period no longer exists: the vakantiedata changed after it was saved. Reported
+            here as well as in the form, because the two answer different questions — the form says "this setting is
+            stranded", this says "that is why nothing was asked of the AI for it". Never dropped and never moved to a
+            neighbouring period (directie 2026-07-28). */}
+        {vervallenStartthemas.length > 0 && (
+          <li className="font-medium text-attentie-ink">
+            <span aria-hidden="true">▲</span>{" "}
+            {tAantal(
+              vervallenStartthemas.length,
+              "parameters.rapportVervallenEnkelvoud",
+              "parameters.rapportVervallen",
+              {
+                themas: vervallenStartthemas
+                  .map((keuze) =>
+                    t("parameters.rapportVervallenItem", {
+                      thema: keuze.themaNaam,
+                      datum: formatteerDatum(keuze.blokStart),
+                    }),
+                  )
+                  .join(" · "),
+              },
             )}
           </li>
         )}

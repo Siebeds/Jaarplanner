@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   genereerJaarplan,
+  haalGeneratieparameters,
   haalJaarplan,
   haalRooster,
   verplaatsPlaatsing,
@@ -15,6 +16,9 @@ const jaarplanKey = (klasId: string) => ["jaarplan", klasId] as const;
 
 /** Query key for the thema names the startthema pickers offer (E3-04). Named here with its siblings. */
 export const themanamenKey = ["themanamen"] as const;
+
+/** Query key for one class's kept pre-generation settings (E3-04). */
+export const generatieparametersKey = (klasId: string) => ["generatieparameters", klasId] as const;
 
 /** Query key for one school year's derived block grid. */
 const roosterKey = (schooljaarId: string) => ["planningsrooster", schooljaarId] as const;
@@ -45,6 +49,26 @@ export function usePlanningsrooster(schooljaarId: string | undefined) {
 }
 
 /**
+ * Loads the class's kept pre-generation settings (E3-04, FR-5.4), so the form shows what was last used.
+ *
+ * **Not gated on the panel being open**, unlike the thema picker. The settings are sent with every run and their
+ * count appears in the collapsed summary, so a teacher who never opens the panel still needs them loaded: without
+ * this they would generate with settings the screen had not mentioned.
+ *
+ * **`staleTime: Infinity` on purpose.** Nothing but this screen writes these settings, and the mutation below
+ * refreshes them, so a refetch on window focus could only overwrite the teacher's half-finished edits with the
+ * server's older copy.
+ */
+export function useGeneratieparameters(klasId: string) {
+  return useQuery({
+    queryKey: generatieparametersKey(klasId),
+    queryFn: () => haalGeneratieparameters(klasId),
+    enabled: klasId.length > 0,
+    staleTime: Infinity,
+  });
+}
+
+/**
  * Triggers a generation run for a class (FR-5.1) and refreshes the plan from the server on success.
  *
  * The mutation's own `data` carries the run report — how many placements were added, what was skipped, and the
@@ -59,8 +83,15 @@ export function useGenereerJaarplan(klasId: string) {
     // The parameters are passed at mutate() time rather than captured here, so the form's current value is what
     // gets sent and a stale closure cannot generate with the previous run's settings (E3-04, FR-5.4).
     mutationFn: (parameters?: Generatieparameters) => genereerJaarplan(klasId, parameters),
-    onSuccess: () => {
+    onSuccess: (_resultaat, parameters) => {
       void queryClient.invalidateQueries({ queryKey: jaarplanKey(klasId) });
+
+      // The run also SAVED the settings (E3-04 persistence half), so the cached copy is now the stale one. Written
+      // rather than invalidated: an invalidation would refetch and could land on the teacher's next keystroke,
+      // resetting a field they had already started editing.
+      if (parameters) {
+        queryClient.setQueryData(generatieparametersKey(klasId), parameters);
+      }
     },
   });
 }

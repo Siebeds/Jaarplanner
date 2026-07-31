@@ -65,6 +65,8 @@ public sealed class TestSeedPastInHetSchemaTests
     [InlineData("containment")]
     [InlineData("beheer")]
     [InlineData("import")]
+    [InlineData("genparams")]
+    [InlineData("volgend")]
     [InlineData("")]
     [InlineData("een-belachelijk-lange-prefix-die-alleen-al-te-lang-is")]
     public void Een_unieke_naam_past_altijd_in_de_kolom(string prefix)

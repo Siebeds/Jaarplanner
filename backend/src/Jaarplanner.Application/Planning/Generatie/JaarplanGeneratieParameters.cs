@@ -1,10 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Text.Json.Serialization;
 using Jaarplanner.Domain.Planning;
 
 namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
-/// What the teacher supplies <b>before</b> generation runs (FR-5.4).
+/// What the teacher supplies <b>before</b> generation runs (FR-5.4) — the run's parameter set, either posted with the
+/// request or loaded from the class's kept settings (<see cref="Generatieparameters"/>).
 /// <para>
 /// <b>FR-5.4's three examples are examples.</b> It reads *"De leerkracht kan parameters meegeven vóór generatie
 /// (**bv.** vakanties, vaste momenten, gewenste startthema's)"* — `bv.` is *bijvoorbeeld*, so the list is
@@ -32,9 +35,10 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// <b>The two parameters that do live here are different in kind, and the difference is the design.</b> A
 /// <see cref="GewensteStartthemas"/> entry is a <i>preference</i>: it reaches the prompt and
 /// <see cref="ParameterRapport"/> reports whether the model complied. A <see cref="VastMoment"/> that blocks is a
-/// <i>constraint</i>: the service refuses placements landing in its period. Enforcing the preference would mean the
-/// tool placing a thema no model proposed, leaving its provenance unstatable — <c>voorgesteld</c> would be false and
-/// <c>manueel</c> survives regeneration, stranding a parameter the teacher had since changed.
+/// <i>constraint</i>: the service refuses placements landing in its period. Persistence (2026-07-30) weakens the
+/// original argument for leaving the preference advisory — it was that <c>manueel</c> survives regeneration and would
+/// strand a parameter the teacher had since changed — but acting on that is a separate decision about whether the
+/// tool places a thema no model proposed, and it is deliberately <b>not</b> taken in the same change.
 /// </para>
 /// <para>
 /// <b>Nothing here is a quality judgement.</b> E3-02 deliberately refused to let the tool veto a bad spread, because
@@ -43,31 +47,47 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// (Art. IV.1). Every resulting placement is still <c>voorgesteld</c> and still reviewable.
 /// </para>
 /// <para>
-/// <b>Not persisted, deliberately visible as a gap.</b> Nothing stores these parameters, so a blocking vast moment is
-/// a one-shot: an E4/FR-8 regeneration will re-place a thema in the blocked period unless the teacher fills the form
-/// again. Whether parameters should be remembered per klas is a real decision that nobody has taken, and it is
-/// recorded as an open question on the E3-04 story rather than answered by default here.
+/// <b>Persisted per (klas, schooljaar) since 2026-07-30.</b> A run that posts a body <b>replaces</b> the class's kept
+/// settings before the model is called; a run that posts none <b>reads</b> them, which is how an FR-8/E4 regeneration
+/// inherits a blocked period rather than having to bolt it on. See <see cref="Generatieparameters"/> for the scoping
+/// and keying reasoning.
+/// </para>
+/// <para>
+/// <b>Both lists are <c>[JsonRequired]</c>, and persistence is what made that necessary.</b> A body replaces the kept
+/// settings wholesale, so an <i>omitted</i> array is indistinguishable from an empty one and would permanently delete
+/// durable teacher input with nothing in the report to say so. That is the identical argument that made
+/// <see cref="VastMoment.BlokkeertPlaatsing"/> required one level down: when two readings of a request differ in what
+/// they destroy, the caller says which it means. Posting <b>no body at all</b> is still a first-class case and still
+/// means "use what is stored" — the requirement is on the shape of a body that <i>is</i> sent.
 /// </para>
 /// </summary>
-public sealed record JaarplanGeneratieParameters
+public sealed record JaarplanGeneratieParameters : IValidatableObject
 {
-    /// <summary>The no-parameters case — what <c>GenereerAsync</c> uses when a caller supplies nothing.</summary>
+    /// <summary>The no-parameters case — what <c>GenereerAsync</c> uses when nothing is supplied or kept.</summary>
     public static readonly JaarplanGeneratieParameters Geen = new();
 
     /// <summary>
-    /// Thema names the teacher wants the year to open with, <b>one per planningsblok from the start of the year</b>:
-    /// the first name targets the first block, the second the second, and so on.
+    /// The thema the teacher wants each period to open with, each naming <b>the block it targets by start date</b>.
     /// <para>
-    /// <b>The order is load-bearing, not decorative.</b> An earlier revision joined the whole list into one sentence
-    /// naming a single block, which instructed the model to put several thema's in one period — contradicting the
-    /// system prompt's own "use as many different blocks as possible" and the fit rule, since a thema runs 4–6 weeks
-    /// and that <i>is</i> a themaperiode. It also made the report guarantee a "not honoured" entry for any teacher who
-    /// named two thema's. Positional mapping is what makes a plural list mean something.
+    /// <b>Keyed on <c>blokStart</c>, not on array position, and that is a deliberate change of contract
+    /// (2026-07-30).</b> The first version was positional: the i-th name targeted the i-th block. ADR-0020 §3 says in
+    /// terms that an ordinal is not a stable key, which is why <see cref="ParameterRapport"/> already keyed a block by
+    /// its start date and why the form had to re-key its own state on <c>blokStart</c> after a shrinking school year
+    /// desynced it. Persisting an ordinal would have been strictly worse than sending one, since it survives exactly
+    /// the schooljaar edits that invalidate it — and keeping storage on dates while the request stayed positional
+    /// would have meant a position↔date mapping at the boundary, which is where the bug would live. Everything
+    /// awkward about the old form existed only to survive the positional contract: the growing list, the
+    /// clear-cascade, and the rule that a gap had to be inexpressible. A gap is now simply "no preference for that
+    /// period".
     /// </para>
     /// <b>Advisory</b>: carried into the prompt, and the report says whether each landed where it was asked for. A name
     /// the school does not own is reported, never invented (Art. IV.4).
+    /// <para>
+    /// <b>Required in the JSON</b> — see the type documentation: an omitted array would silently wipe the kept list.
+    /// </para>
     /// </summary>
-    public IReadOnlyList<string> GewensteStartthemas { get; init; } = [];
+    [JsonRequired]
+    public IReadOnlyList<Startthemakeuze> GewensteStartthemas { get; init; } = [];
 
     /// <summary>
     /// Dates the school has already committed <b>inside</b> a teaching period (FR-5.4 "vaste momenten") — a
@@ -77,28 +97,133 @@ public sealed record JaarplanGeneratieParameters
     /// Hemelvaart, Pinkstermaandag or a pedagogische studiedag — is a <c>Schoolsluiting</c> on the
     /// <see cref="Schooljaar"/>, entered by the beheerder under FR-12.1 and classified by <c>Sluitingssoort</c>
     /// (ADR-0020 §5). Putting one here instead would be the very second-source-of-truth this type's own reasoning
-    /// rejects for vakanties. An earlier revision listed "pedagogische studiedag" as an example here, which
-    /// contradicted ADR-0020 §5 outright; the boundary is now stated as a rule so a UI cannot offer two forms for one
-    /// fact.
+    /// rejects for vakanties. That a <b>schoolfeest</b> belongs here was ratified by the owner on 2026-07-30.
+    /// </para>
+    /// <para>
+    /// <b>Required in the JSON</b>, on the same reasoning as <see cref="GewensteStartthemas"/>: omitting it would clear
+    /// every kept vast moment, including a blocking one, with no report entry.
     /// </para>
     /// </summary>
+    [JsonRequired]
     public IReadOnlyList<VastMoment> VasteMomenten { get; init; } = [];
 
     /// <summary>True when the teacher supplied nothing, so the prompt can omit the section entirely.</summary>
-    public bool IsLeeg => GenormaliseerdeStartthemas().Count == 0 && VasteMomenten.Count == 0;
+    public bool IsLeeg => GenormaliseerdeStartthemas().Count == 0 && GenormaliseerdeVasteMomenten().Count == 0;
+
+    /// <summary>The run parameters held in a class's kept settings, mapped onto this type.</summary>
+    public static JaarplanGeneratieParameters Van(Generatieparameters bewaard)
+    {
+        ArgumentNullException.ThrowIfNull(bewaard);
+
+        return new JaarplanGeneratieParameters
+        {
+            GewensteStartthemas = bewaard.Startthemas
+                .Select(s => new Startthemakeuze(s.BlokStart, s.ThemaNaam))
+                .ToList(),
+            VasteMomenten = bewaard.VasteMomenten
+                .Select(m => new VastMoment(m.Naam, m.Datum, m.BlokkeertPlaatsing))
+                .ToList(),
+        };
+    }
 
     /// <summary>
-    /// The startthema names with blanks dropped and duplicates removed, <b>order preserved</b> because the position is
-    /// the block it targets. Normalising here rather than in the prompt builder keeps the builder pure and keeps the
-    /// report measuring the same list the model saw.
+    /// The start-thema preferences with blanks dropped and names trimmed, ordered by the block they target.
+    /// <para>
+    /// <b>Nothing is de-duplicated here any more, deliberately (2026-07-31).</b> An earlier revision kept
+    /// <c>groep.First()</c> per <c>BlokStart</c>, which silently threw away a fully resolvable instruction: the domain
+    /// throws on two preferences for one period and the unique index refuses them, so the drop existed only to stop the
+    /// aggregate throwing — an unreported contradiction, and the same defect this story's own audit found twice
+    /// (<c>ToegepasteVasteMomenten</c>, <c>GeweigerdDoorVastMoment</c>). It is now refused at the boundary instead: see
+    /// <see cref="Validate"/>. The same thema asked for in two <i>different</i> periods is still left alone, because it
+    /// is not contradictory — a thema running 4–6 weeks in two separate periods is a plan a teacher may genuinely want.
+    /// </para>
+    /// <para>
+    /// Normalising here rather than in the prompt builder keeps the builder pure and keeps the report measuring the same
+    /// list the model saw.
+    /// </para>
     /// </summary>
-    public IReadOnlyList<string> GenormaliseerdeStartthemas() =>
+    public IReadOnlyList<Startthemakeuze> GenormaliseerdeStartthemas() =>
         GewensteStartthemas
-            .Where(naam => !string.IsNullOrWhiteSpace(naam))
-            .Select(naam => naam.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(keuze => keuze is not null && !string.IsNullOrWhiteSpace(keuze.ThemaNaam))
+            .Select(keuze => new Startthemakeuze(keuze.BlokStart, keuze.ThemaNaam.Trim()))
+            .OrderBy(keuze => keuze.BlokStart)
             .ToList();
+
+    /// <summary>
+    /// Request-shape validation, run by <c>[ApiController]</c> on the bound body so a contradictory request is a
+    /// <b>400</b> rather than a silently-thinned parameter set.
+    /// <para>
+    /// One rule: <b>two preferences may not target the same period.</b> One period opens with one thema
+    /// (<see cref="Generatieparameters.Vervang"/>, plus a unique index), so a body naming two is not additive and not
+    /// resolvable — and since a body <i>replaces</i> the kept settings, quietly keeping the first would delete the
+    /// second for good. Refusing costs a real user nothing: the form keys its own state on the period, so it cannot
+    /// produce this shape at all.
+    /// </para>
+    /// <para>
+    /// <b>The message is English on purpose</b>, like the 422 parser diagnostic beside it and like the framework's own
+    /// <c>[JsonRequired]</c> failures it joins in <c>ModelState</c>. It describes a malformed request no teacher can
+    /// produce or act on (Art. II.2); the teacher-facing sentence for a failed run lives in <c>nl.json</c>, keyed on the
+    /// status.
+    /// </para>
+    /// </summary>
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        var dubbel = GenormaliseerdeStartthemas()
+            .GroupBy(keuze => keuze.BlokStart)
+            .Where(groep => groep.Count() > 1)
+            .Select(groep => groep.Key.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+            .ToList();
+
+        if (dubbel.Count > 0)
+        {
+            yield return new ValidationResult(
+                "Two or more 'gewensteStartthemas' entries target the same block start date " +
+                $"({string.Join(", ", dubbel)}). One period opens with one thema, so send at most one entry per date.",
+                [nameof(GewensteStartthemas)]);
+        }
+    }
+
+    /// <summary>
+    /// The vaste momenten with blank names dropped and names trimmed, in the order the service and the report read
+    /// them. A form that posts a half-filled row must not make the prompt ask about "".
+    /// </summary>
+    public IReadOnlyList<VastMoment> GenormaliseerdeVasteMomenten() =>
+        VasteMomenten
+            .Where(moment => moment is not null && !string.IsNullOrWhiteSpace(moment.Naam))
+            .Select(moment => new VastMoment(moment.Naam.Trim(), moment.Datum, moment.BlokkeertPlaatsing))
+            .OrderBy(moment => moment.Datum)
+            .ThenBy(moment => moment.Naam, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
+    /// The normalised parameters as the domain entities a class keeps between runs.
+    /// <para>
+    /// Two preferences for one period reach <see cref="Generatieparameters.Vervang"/> and throw there, loudly, as the
+    /// programmer error they are: every HTTP caller is already refused by <see cref="Validate"/>, so a set that gets
+    /// this far was built in code that skipped the boundary. Loud is the point — the previous behaviour was to drop one
+    /// silently.
+    /// </para>
+    /// </summary>
+    public (IReadOnlyList<BewaardStartthema> Startthemas, IReadOnlyList<BewaardVastMoment> VasteMomenten) NaarBewaard() =>
+        (GenormaliseerdeStartthemas()
+                .Select(keuze => new BewaardStartthema(keuze.BlokStart, keuze.ThemaNaam))
+                .ToList(),
+            GenormaliseerdeVasteMomenten()
+                .Select(moment => new BewaardVastMoment(moment.Naam, moment.Datum, moment.BlokkeertPlaatsing))
+                .ToList());
 }
+
+/// <summary>
+/// One start-thema preference on the wire: the thema the teacher wants the block starting on
+/// <paramref name="BlokStart"/> to open with.
+/// </summary>
+/// <param name="BlokStart">
+/// The target block's <b>start date</b> — the same stable key every other block reference in the system uses
+/// (ADR-0020 §3, <c>PUT …/plaatsingen/{id}/blok</c>, <see cref="GeweigerdePlaatsing"/>). A date that starts no
+/// current block is <b>reported</b>, not snapped to a neighbour and not dropped.
+/// </param>
+/// <param name="ThemaNaam">The thema name, resolved against the school's own thema's (Art. IV.4).</param>
+public sealed record Startthemakeuze(DateOnly BlokStart, string ThemaNaam);
 
 /// <summary>
 /// One date the school has already committed inside a teaching period, supplied by the teacher before generation

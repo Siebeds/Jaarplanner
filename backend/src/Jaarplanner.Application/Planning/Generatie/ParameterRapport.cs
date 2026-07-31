@@ -18,9 +18,10 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// <c>nl.json</c> and formats the date itself.
 /// </para>
 /// <para>
-/// <b>Four outcomes are kept apart because a teacher acts differently on each:</b> the model declined a request
+/// <b>Five outcomes are kept apart because a teacher acts differently on each:</b> the model declined a request
 /// (<see cref="NietGehonoreerdeStartthemas"/>); the teacher's own two instructions contradicted each other
-/// (<see cref="TegenstrijdigeStartthemas"/>); the tool refused a placement (<see cref="GeweigerdDoorVastMoment"/>); or
+/// (<see cref="TegenstrijdigeStartthemas"/>); a kept setting points at a period that no longer exists
+/// (<see cref="VervallenStartthemas"/>); the tool refused a placement (<see cref="GeweigerdDoorVastMoment"/>); or
 /// an instruction could not be applied at all (<see cref="OnplaatsbareVasteMomenten"/>). Collapsing them into
 /// "parameters honoured: yes/no" would hide which happened.
 /// </para>
@@ -30,6 +31,7 @@ public sealed record ParameterRapport
     private static readonly IReadOnlyList<string> LeegTekst = [];
     private static readonly IReadOnlyList<GeweigerdePlaatsing> LeegGeweigerd = [];
     private static readonly IReadOnlyList<VastMomentUitkomst> LeegMomenten = [];
+    private static readonly IReadOnlyList<Startthemakeuze> LeegKeuzes = [];
 
     /// <summary>The report for a run where the teacher supplied no parameters.</summary>
     public static readonly ParameterRapport Geen = new();
@@ -63,6 +65,20 @@ public sealed record ParameterRapport
     /// </para>
     /// </summary>
     public IReadOnlyList<string> TegenstrijdigeStartthemas { get; init; } = LeegTekst;
+
+    /// <summary>
+    /// Start thema's whose target period <b>no longer exists</b>: the stored <c>blokStart</c> is not the start date of
+    /// any currently derived block, because a beheerder edited the vakantiedata after the setting was kept.
+    /// <para>
+    /// <b>Reported rather than dropped or moved, on the ruling that already governs this exact situation.</b> Directie
+    /// decided on 2026-07-28 that a placement whose stored date stops being a period boundary is never silently
+    /// relocated and never hidden; a kept <i>parameter</i> is the same fact one layer up, and now that parameters are
+    /// persisted (2026-07-30) it is reachable in the same way. So the setting survives — a reverted vakantie edit
+    /// restores it — the prompt asks nothing about it, and both the form and this report name it. The entry carries the
+    /// stored date as well as the thema so the UI can say which setting is stranded.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Startthemakeuze> VervallenStartthemas { get; init; } = LeegKeuzes;
 
     /// <summary>
     /// Placements the service <b>refused</b> because a blocking vast moment holds their period — the enforced half of
@@ -99,6 +115,7 @@ public sealed record ParameterRapport
         OnbekendeStartthemas.Count > 0
         || NietGehonoreerdeStartthemas.Count > 0
         || TegenstrijdigeStartthemas.Count > 0
+        || VervallenStartthemas.Count > 0
         || GeweigerdDoorVastMoment.Count > 0
         || OnplaatsbareVasteMomenten.Count > 0;
 
@@ -109,7 +126,10 @@ public sealed record ParameterRapport
     /// <param name="parameters">What the teacher asked for.</param>
     /// <param name="plaatsingen">The resulting plan's placements on the generation tier.</param>
     /// <param name="themaPerId">Thema lookup, for turning a placement back into a name.</param>
-    /// <param name="blokken">The year's blocks in order; the i-th requested start thema targets the i-th of these.</param>
+    /// <param name="blokStarts">
+    /// The start dates of the currently derived blocks. A requested block start that is not among them targets a period
+    /// that no longer exists, which is reported as <see cref="VervallenStartthemas"/> rather than dropped or moved.
+    /// </param>
     /// <param name="themaNamen">The names the school owns, for separating a typo from a declined request.</param>
     /// <param name="geblokkeerdeBlokken">
     /// Block start dates a blocking vast moment holds, so a start thema the tool itself refused is reported as a
@@ -119,14 +139,14 @@ public sealed record ParameterRapport
         JaarplanGeneratieParameters parameters,
         IEnumerable<Themaplaatsing> plaatsingen,
         IReadOnlyDictionary<Guid, Thema> themaPerId,
-        IReadOnlyList<Planningsblok> blokken,
+        IReadOnlySet<DateOnly> blokStarts,
         IReadOnlySet<string> themaNamen,
         IReadOnlySet<DateOnly> geblokkeerdeBlokken)
     {
         ArgumentNullException.ThrowIfNull(parameters);
         ArgumentNullException.ThrowIfNull(plaatsingen);
         ArgumentNullException.ThrowIfNull(themaPerId);
-        ArgumentNullException.ThrowIfNull(blokken);
+        ArgumentNullException.ThrowIfNull(blokStarts);
         ArgumentNullException.ThrowIfNull(themaNamen);
         ArgumentNullException.ThrowIfNull(geblokkeerdeBlokken);
 
@@ -139,52 +159,48 @@ public sealed record ParameterRapport
         // Only placements that are actually planned count. A rejected placement survives regeneration (see
         // JaarplanGeneratieResultaat.Afgewezen) but nothing is taught because of it, so crediting a start thema on the
         // strength of one the teacher threw out would be the defect the E3-02 code review found in the spreading
-        // report. Keyed by (block start, thema name) because the request is positional.
+        // report. Keyed by (block start, thema name), which is exactly the shape a request entry now has.
         var geplandPerBlok = plaatsingen
             .Where(p => p.IsGepland)
             .Select(p => (p.BlokStart, Naam: themaPerId.TryGetValue(p.ThemaId, out var thema) ? thema.Naam : null))
             .Where(x => x.Naam is not null)
             .ToHashSet();
 
-        var geordendeBlokken = blokken.OrderBy(b => b.Start).ToList();
-
         var onbekend = new List<string>();
         var gehonoreerd = new List<string>();
         var niet = new List<string>();
         var tegenstrijdig = new List<string>();
+        var vervallen = new List<Startthemakeuze>();
 
-        for (var i = 0; i < gevraagd.Count; i++)
+        foreach (var keuze in gevraagd)
         {
-            var naam = gevraagd[i];
-
-            if (!themaNamen.Contains(naam))
+            if (!themaNamen.Contains(keuze.ThemaNaam))
             {
-                onbekend.Add(naam);
+                onbekend.Add(keuze.ThemaNaam);
                 continue;
             }
 
-            // Asked for more start thema's than the year has blocks: not answerable, and not the model's fault.
-            if (i >= geordendeBlokken.Count)
+            // The period the setting names is gone: the school edited its vakanties and this date is no longer a block
+            // boundary. Not the model's fault and not a conflict the teacher created, so it gets its own list.
+            if (!blokStarts.Contains(keuze.BlokStart))
             {
-                tegenstrijdig.Add(naam);
+                vervallen.Add(keuze);
                 continue;
             }
-
-            var doelBlok = geordendeBlokken[i].Start;
 
             // The teacher blocked the very period they asked this thema to occupy. The tool refused it, so this is a
             // conflict between two of their own inputs, never model non-compliance.
-            if (geblokkeerdeBlokken.Contains(doelBlok))
+            if (geblokkeerdeBlokken.Contains(keuze.BlokStart))
             {
-                tegenstrijdig.Add(naam);
+                tegenstrijdig.Add(keuze.ThemaNaam);
             }
-            else if (geplandPerBlok.Contains((doelBlok, naam)))
+            else if (geplandPerBlok.Contains((keuze.BlokStart, keuze.ThemaNaam)))
             {
-                gehonoreerd.Add(naam);
+                gehonoreerd.Add(keuze.ThemaNaam);
             }
             else
             {
-                niet.Add(naam);
+                niet.Add(keuze.ThemaNaam);
             }
         }
 
@@ -194,6 +210,7 @@ public sealed record ParameterRapport
             GehonoreerdeStartthemas = gehonoreerd,
             NietGehonoreerdeStartthemas = niet,
             TegenstrijdigeStartthemas = tegenstrijdig,
+            VervallenStartthemas = vervallen,
         };
     }
 }

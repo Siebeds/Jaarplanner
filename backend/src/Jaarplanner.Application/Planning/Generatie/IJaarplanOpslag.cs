@@ -31,6 +31,37 @@ public interface IJaarplanOpslag
     void VoegJaarplanToe(Jaarplan jaarplan);
 
     /// <summary>
+    /// Loads the class's kept pre-generation settings (E3-04, FR-5.4), tracked so a replacement persists on
+    /// <see cref="BewaarAsync"/>. Returns <c>null</c> when the class has none yet; the caller creates one via
+    /// <see cref="ProbeerGeneratieparametersToeTeVoegenAsync"/>.
+    /// <para>
+    /// <b>Both ids are required, and that is the scoping decision rather than an implementation detail.</b> Every value
+    /// in these settings is a date, so a row must never be read for a school year other than the one it was written
+    /// for — see <see cref="Generatieparameters"/> for why the pair is the key.
+    /// </para>
+    /// </summary>
+    Task<Generatieparameters?> LaadGeneratieparametersAsync(
+        Guid klasId,
+        Guid schooljaarId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Inserts freshly created settings (the lazy "one row per klas+schooljaar") and commits them, reporting whether the
+    /// insert <b>won</b>.
+    /// <para>
+    /// <b>Returns <c>false</c> when a concurrent run inserted the row first</b>, in which case this insert is discarded
+    /// and the store is left usable so the caller can load the winner's row and apply its own settings to it. The race
+    /// is real rather than theoretical: two generation runs starting together both find no row, both create one, and the
+    /// <c>(KlasId, SchooljaarId)</c> unique index refuses the second. Handled behind this seam because recognising the
+    /// collision is a storage concern (it is a Postgres <c>23505</c>), while deciding what to do about it is the
+    /// service's.
+    /// </para>
+    /// </summary>
+    Task<bool> ProbeerGeneratieparametersToeTeVoegenAsync(
+        Generatieparameters parameters,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The school's thema's (school-scoped, Art. IX.2) with the goal links needed to describe them — the only
     /// content generation may place, and the set an AI-returned thema name is resolved against.
     /// </summary>

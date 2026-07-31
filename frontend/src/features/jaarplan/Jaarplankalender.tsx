@@ -30,6 +30,7 @@ import {
 } from "./kalenderFormat";
 import type { Generatieparameters, Planningsblok, Themaplaatsing } from "./types";
 import {
+  useGeneratieparameters,
   useGenereerJaarplan,
   useJaarplan,
   usePlanningsrooster,
@@ -61,8 +62,35 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   const generatie = useGenereerJaarplan(klasId);
   const verplaats = useVerplaatsPlaatsing(klasId);
 
-  // Held here rather than inside the form so the run reads the current value at click time (E3-04).
-  const [parameters, setParameters] = useState<Generatieparameters | undefined>(undefined);
+  // The class's KEPT pre-generation settings (E3-04 persistence half), and the teacher's edits on top of them.
+  //
+  // Two values rather than one, because "the teacher changed nothing" and "the teacher cleared everything" must send
+  // different requests: the saved settings, and an empty set. The form reports only edits, so `wijziging` stays
+  // undefined until one happens and the run falls back to what was loaded. Both are undefined only while the settings
+  // are still loading (or failed to load), and then no body is sent at all — which makes the server use the saved
+  // settings, so a run in that window can never wipe them.
+  //
+  // **`wijziging` belongs to ONE class, and nothing in here enforces that** — the caller does, by keying this
+  // component on the class id ({@link JaarplanPagina}). The klas selector sits above the router outlet on the same
+  // route, so without that key switching class would leave A's edit sitting on top of B's loaded settings and the
+  // next run would post A's parameters for B, replacing B's stored settings. The invariant this file can state is
+  // narrower than "closed by construction": *while this component instance lives, `wijziging` and `instellingen`
+  // describe the same class.*
+  //
+  // Same query key as the form's own, so TanStack serves both from one request.
+  const instellingen = useGeneratieparameters(klasId);
+  const [wijziging, setWijziging] = useState<Generatieparameters | undefined>(undefined);
+  const parameters = wijziging ?? instellingen.data;
+
+  // **Generation waits until the kept settings are known**, and that is a deliberate refusal rather than a spinner.
+  // With them unknown the run sends no body, so the server applies whatever it has stored — while the collapsed form
+  // could only have said "(niets ingesteld)" about it. A teacher cannot consent to a run whose parameters the screen
+  // is unable to state, so the button is disabled and the form says why in visible text (its summary while loading,
+  // an alert outside the collapse when the load failed). The window is one request long in the normal case.
+  //
+  // The SAME flag gates the form's fields (see the prop below): editing is not merely useless while the settings are
+  // unknown, it is unsafe, because a submitted body replaces them wholesale.
+  const instellingenOnbekend = instellingen.isPending || instellingen.isError;
 
   // The card currently under the cursor, kept only so the DragOverlay can render a copy of it.
   const [sleepKaart, setSleepKaart] = useState<Themaplaatsing | null>(null);
@@ -231,7 +259,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             <Button
               type="button"
               onClick={() => generatie.mutate(parameters)}
-              disabled={generatie.isPending}
+              disabled={generatie.isPending || instellingenOnbekend}
               className="w-full sm:w-auto"
             >
               {generatie.isPending ? t("kalender.genereerBezig") : t("kalender.genereer")}
@@ -242,12 +270,30 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
           </div>
 
           {/* Pre-generation parameters (E3-04, FR-5.4), collapsed by default so the one-click run stays one click.
-              It is given the derived grid because a startthema targets a PERIOD by position, and a row that names
-              the period it applies to is the only way that positional contract is visible to a teacher. */}
+              The settings are KEPT per class (owner ruling 2026-07-30), which is why the form takes the klas id: it
+              loads what was last used and generating saves the new state. It is given the derived grid because each
+              preference names a period, and because a kept preference whose period no longer exists has to be
+              spotted against the current grid and said out loud.
+              The grid's own `niveau` travels with it: a kept setting keys on the GENERATION tier's block starts, and
+              handing over the tier the board happens to show would silently mislabel every setting once E3-08's zoom
+              fetches Subthemaperiode. */}
           <Generatieparametersformulier
+            klasId={klasId}
             blokken={grid.blokken}
-            onWijzig={setParameters}
-            disabled={generatie.isPending}
+            niveau={grid.niveau}
+            onWijzig={setWijziging}
+            // The SAME gate as the button, not just `generatie.isPending`. Gating only the button left the fields live
+            // behind a primary action that could never fire, and an edit made there would post a body that *replaces*
+            // the kept settings: a teacher who set one startthema in a form that had failed to load would silently
+            // delete a stored blocking vast moment they never saw. It also keeps `wijziging` and the form's own rows
+            // in step across a retry: an errored query is stale, so a refetch that succeeded would reload the fields
+            // while `wijziging` still held the earlier edit, and the run would post what the screen no longer showed.
+            //
+            // It does NOT cover a change of class, and never could: this gate closes only while the settings are
+            // *unknown*, whereas a class switch desyncs precisely once the new class's settings are known (and with
+            // `staleTime: Infinity` a previously-visited class is cached, so there is no window at all). That case is
+            // closed one level up, by remounting on the class id — see the note on `wijziging`.
+            disabled={generatie.isPending || instellingenOnbekend}
           />
 
           {/* The 422 body is an English operator diagnostic (a model parse failure a teacher cannot act on),

@@ -95,6 +95,16 @@ function stubFetch(jaarplan: Jaarplan, generatie?: Generatieresultaat | number) 
       if (url.includes("/api/themas")) {
         return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
       }
+      // The form's KEPT settings (E3-04 persistence half). Unlike the thema query this one is NOT gated on the panel
+      // being open, because the settings are sent with every run — so it fires on every render of this screen and must
+      // be routed BEFORE the plain /jaarplan branch, which its URL extends. Leaving it to fall through returned a
+      // Jaarplan where the form expected settings, and the form then threw inside an effect.
+      if (url.includes("/jaarplan/parameters")) {
+        return new Response(
+          JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }),
+          { status: 200 },
+        );
+      }
       if (url.includes("/rooster")) {
         return new Response(JSON.stringify(rooster), { status: 200 });
       }
@@ -467,6 +477,16 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
           return new Response(JSON.stringify(naPlan), { status: 200 });
         }
 
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+        }
+        // Routed before /jaarplan, whose URL it extends. See the note in the stub above.
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(
+            JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }),
+            { status: 200 },
+          );
+        }
         if (url.includes("/rooster")) {
           return new Response(JSON.stringify(rooster), { status: 200 });
         }

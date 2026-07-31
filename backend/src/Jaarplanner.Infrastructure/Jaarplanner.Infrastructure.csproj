@@ -5,6 +5,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- So a unit test can assert that a hand-written table-name constant still matches the EF mapping it mirrors
+         (EfJaarplanOpslag.ParametersTabel). Exposing the constant publicly would put a persistence detail on the
+         port's surface; the alternative, leaving the two literals unbound, is what the E3-04 audit objected to. -->
+    <InternalsVisibleTo Include="Jaarplanner.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Excel parsing for the Op.stap import (Art. VIII — ClosedXML/MIT; EPPlus is forbidden). -->
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <!-- EF Core + Npgsql provider (transitively brings Microsoft.EntityFrameworkCore 10). -->

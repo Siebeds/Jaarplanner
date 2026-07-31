@@ -66,6 +66,20 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
             plaatsing.WithOwner().HasForeignKey(p => p.JaarplanId);
             plaatsing.HasKey(p => p.Id);
 
+            // ValueGeneratedNever, and this line fixes a real defect rather than tidying metadata (found while building
+            // E3-04's persistence half, 2026-07-30). EF's default for a Guid key is `OnAdd`, and when DetectChanges finds
+            // an untracked entity in a LOADED parent's collection it decides Added-vs-Modified from whether the key is
+            // already set. `Themaplaatsing.Id` is assigned in the constructor, so it is set — so a brand-new placement
+            // added to an EXISTING jaarplan was tracked as **Modified**, and SaveChanges tried to UPDATE a row that does
+            // not exist: `DbUpdateConcurrencyException: Attempted to update or delete an entity that does not exist in
+            // the store`.
+            //
+            // It went unnoticed because no test and no browser session ever added a placement to a plan that was already
+            // persisted: every green path either created the plan and its placements in one SaveChanges, or regenerated
+            // with an empty/refused AI answer. E3-04's own criterion — a SECOND run honouring the kept parameters — is
+            // the first flow that does it, which is how this surfaced.
+            plaatsing.Property(p => p.Id).ValueGeneratedNever();
+
             plaatsing.Property(p => p.ThemaId).IsRequired();
 
             // The stable key (ADR-0020 §3): DateOnly → PostgreSQL `date`.

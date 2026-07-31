@@ -130,6 +130,58 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// <b>A placement added to an ALREADY PERSISTED plan is inserted, not "updated".</b> This pins a real defect found
+    /// on 2026-07-30 while building E3-04's persistence half: <c>Themaplaatsing.Id</c> is assigned in the constructor,
+    /// and EF's default <c>OnAdd</c> value generation on a Guid key makes <c>DetectChanges</c> read "the key is already
+    /// set" as "this row already exists". A brand-new placement on a loaded <see cref="Jaarplan"/> was therefore tracked
+    /// as <c>Modified</c>, and <c>SaveChanges</c> issued an UPDATE for a row that did not exist:
+    /// <c>DbUpdateConcurrencyException: Attempted to update or delete an entity that does not exist in the store</c>. The
+    /// key is now <c>ValueGeneratedNever</c>.
+    /// <para>
+    /// <b>Why it was invisible.</b> Every green path so far either created the plan and its placements in one
+    /// <c>SaveChanges</c>, or regenerated with an AI answer that added nothing (empty, refused or duplicate). A second
+    /// generation run that actually adds a thema — the ordinary FR-8 case, and the case E3-04's kept parameters exist
+    /// for — was never exercised. That is the whole lesson: the flow nobody tested was not an edge case, it was the
+    /// second time a teacher presses the button.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_plaatsing_toevoegen_aan_een_bestaand_plan_slaagt()
+    {
+        var (klasId, themaId, blokStart) = await SeedAsync();
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = new Jaarplan(klasId);
+            jaarplan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "eerste run");
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // The second run: the plan already exists in the database and gains a placement.
+            var jaarplan = await context.Jaarplannen.SingleAsync();
+            jaarplan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Themaperiode, blokStart.AddDays(70), KoppelingStatus.Voorgesteld, "tweede run");
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = await context.Jaarplannen.SingleAsync();
+            Assert.Equal(2, jaarplan.Plaatsingen.Count);
+            Assert.Contains(jaarplan.Plaatsingen, p => p.AiMotivatie == "tweede run");
+
+            var aantal = await context.Database
+                .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
+                .SingleAsync();
+            Assert.Equal(2, aantal);
+        }
+    }
+
     /// <summary>Art. IX.3: a Klas "has one Jaarplan" — enforced by the database, not merely by the service.</summary>
     [PostgresFact]
     public async Task Een_klas_heeft_ten_hoogste_een_jaarplan()

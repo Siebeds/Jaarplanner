@@ -128,15 +128,22 @@ function jaarplan(eigen: Themaplaatsing[]): Jaarplan {
 }
 
 /**
- * Serves the two GETs the kalender makes, from the fixture. Stubbing `fetch` keeps the component, its
+ * Serves the GETs the kalender makes, from the fixture. Stubbing `fetch` keeps the component, its
  * TanStack Query chain and its nl.json copy completely untouched — the story shows the real screen, not a
  * hand-drawn imitation of it.
+ *
+ * The parameter form's kept settings (E3-04) are served empty: the story is about the ribbon, and a story that
+ * showed saved settings would need its own fixture. Routed before the plan, whose URL theirs extends.
  */
 function metGestubdeApi(plan: Jaarplan) {
   return function Decorator(Story: () => JSX.Element) {
     window.fetch = (async (input: RequestInfo | URL) => {
       const url = String(input);
-      const body = url.includes("/rooster") ? rooster : plan;
+      const body = url.includes("/rooster")
+        ? rooster
+        : url.includes("/jaarplan/parameters")
+          ? { gewensteStartthemas: [], vasteMomenten: [] }
+          : plan;
 
       return new Response(JSON.stringify(body), {
         status: 200,
