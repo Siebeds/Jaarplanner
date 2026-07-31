@@ -52,6 +52,19 @@ function laatsteLijstUrl(urls: string[]) {
   return [...urls].reverse().find((url) => url.startsWith("/api/leerplandoelen?"));
 }
 
+/** A token no user-facing copy contains, so a filled placeholder can be located unambiguously. */
+const GAT = "@@GAT@@";
+
+/**
+ * Turns a catalogue template into an **anchored** regex, so a name is matched as a whole rather than by a
+ * prefix. Used by the read-only control walk: a `startsWith` bucket is exactly how a stray control slips past
+ * an allowlist, and it is how the bypassed `tAantal` on the paging button went unnoticed.
+ */
+function uitCatalogus(gevuld: string): RegExp {
+  const delen = gevuld.split(GAT).map((deel) => deel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(`^${delen.join(".+")}$`);
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   window.history.pushState({}, "", "/");
@@ -431,9 +444,140 @@ describe("Doelen register — filters (clause 2)", () => {
 
     expect(screen.queryByRole("button", { name: t("doelen.wisAlles") })).toBeNull();
   });
+
+  /**
+   * Option counts follow the active filter, so no control states a positive number and then delivers nothing.
+   *
+   * With Discipline = Wiskunde chosen, the only Wiskunde doel in the fixture is VERVALLEN-1 (domein Natuur /
+   * Niet-levend), so every other domein must read 0 while still being offered. That is the ruling on antagonist
+   * finding 12: scope the counts, keep the options, render a zero as "(0)".
+   */
+  it("scopes the option counts to the active filter and sends the filter to the server", async () => {
+    const fake = renderApp(`/doelen?discipline=2`);
+    await lijst();
+
+    const domein = screen.getByLabelText(t("doelen.domeinLabel"));
+    expect(
+      within(domein).getByRole("option", {
+        name: t("doelen.optieMetAantal", { naam: "Muziek", aantal: 0 }),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(domein).getByRole("option", {
+        name: t("doelen.optieMetAantal", { naam: "Natuur", aantal: 1 }),
+      }),
+    ).toBeInTheDocument();
+
+    // The counts come from the server, not from arithmetic in the browser.
+    const facettenUrl = [...fake.urls].reverse().find((url) => url.includes("/facetten"));
+    expect(new URLSearchParams(facettenUrl!.split("?")[1]).get("discipline")).toBe("2");
+  });
+
+  it("keeps a zero-count option selectable rather than hiding it", async () => {
+    // Whether a zero-count option should disappear entirely is an open directie question; today it stays, so a
+    // teacher can still choose it and see the honest empty result rather than wondering where it went.
+    renderApp(`/doelen?discipline=2`);
+    await lijst();
+
+    const domein = screen.getByLabelText(t("doelen.domeinLabel"));
+    expect(within(domein).getAllByRole("option")).toHaveLength(FACETTEN.domeinen.length + 1);
+  });
 });
 
-describe("Doelen register — the three empty states (clause 1/2/3)", () => {
+describe("Doelen register — the four empty states (clause 1/2/3, plus the unknown one)", () => {
+  /**
+   * **The fourth state: we have not asked yet.**
+   *
+   * `heeftCurriculum` was `(facetten.data?.totaalAantalDoelen ?? 0) > 0`, checked *before* the loading branch,
+   * so on every cold visit the register's first paint said "Er zijn nog geen doelen van Op.stap ingeladen ...
+   * vraag het aan wie de tool beheert" (antagonist finding 1). Every existing test walked past it, because
+   * `await findByText` resolves after the query settles; this one asserts on the FIRST render, before any await.
+   */
+  it("never claims the curriculum is missing before the question has been answered", () => {
+    renderApp("/doelen", { doelen: [], facetten: { ...FACETTEN, totaalAantalDoelen: 0 } });
+
+    // Synchronous: nothing has resolved yet. The honest answer at this instant is "laden", not a claim about
+    // what the school has ever imported.
+    expect(screen.queryByText(t("doelen.geenCurriculumTitel"))).toBeNull();
+    expect(screen.queryByText(t("doelen.geenCurriculumUitleg"))).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent(t("doelen.laden"));
+  });
+
+  /**
+   * A facets failure must not turn into "nothing is imported" either, which is what it did permanently: the
+   * boolean read false for a failed query exactly as it did for an empty one, so the register showed the
+   * beheerder message next to the error alert for as long as the page stayed open.
+   */
+  it("reports a facets failure as a failure, not as an unimported curriculum", async () => {
+    const fake = maakDoelenFetchFake();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = new URL(String(input), "http://localhost");
+        if (url.pathname === "/api/leerplandoelen/facetten") {
+          return new Response("kapot", { status: 500 });
+        }
+        return fake.fetchFake(input);
+      }),
+    );
+
+    window.history.pushState({}, "", "/doelen");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(t("doelen.fout"));
+    expect(screen.queryByText(t("doelen.geenCurriculumTitel"))).toBeNull();
+    // And the rows that DID load are still shown: a failed facets request is no reason to hide the register.
+    expect(within(await lijst()).getAllByRole("listitem")).toHaveLength(DOELEN.length);
+  });
+
+  /**
+   * **The combination that needs the three-valued type, not just the branch order.**
+   *
+   * Facets fail *and* the filtered list is empty. Under the old boolean, `(undefined ?? 0) > 0` is false, so the
+   * register concluded "leeg" from a request that had **errored** and told the teacher the school had never
+   * imported Op.stap. The ordering fix alone does not catch this: the list query has resolved, so nothing is
+   * pending, and the count really is zero. Only distinguishing "we do not know" from "we know it is zero" does.
+   *
+   * Written after checking: with the ordering fixed but the boolean restored, every other test in this file
+   * still passed. A fix whose test survives reverting it is not pinned.
+   */
+  it("does not conclude the curriculum is empty from a facets request that failed", async () => {
+    const fake = maakDoelenFetchFake();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = new URL(String(input), "http://localhost");
+        if (url.pathname === "/api/leerplandoelen/facetten") {
+          return new Response("kapot", { status: 500 });
+        }
+        return fake.fetchFake(input);
+      }),
+    );
+
+    // A search term nothing matches, so the list legitimately resolves to zero rows.
+    window.history.pushState({}, "", "/doelen?zoek=bestaatabsoluutniet");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+
+    // The neutral message, because the register genuinely cannot tell which empty state it is in.
+    expect(await screen.findByText(t("doelen.geenResultaatTitel"))).toBeInTheDocument();
+    expect(screen.queryByText(t("doelen.geenCurriculumTitel"))).toBeNull();
+    expect(screen.queryByText(t("doelen.geenCurriculumUitleg"))).toBeNull();
+  });
+
   it("says the curriculum is not loaded, and that loading it is beheerderswerk", async () => {
     renderApp("/doelen", {
       doelen: [],
@@ -559,17 +703,27 @@ describe("Doelen register — read-only (clause 4)", () => {
     expect(hoofdinhoud.querySelectorAll("[contenteditable]")).toHaveLength(0);
 
     // Every button on the screen is one of the read-side actions, by accessible name.
+    //
+    // The allowlist is built from the CATALOGUE, matched whole. It used to accept anything whose name began
+    // with "Volgende", which the test-runner rightly called out as too loose: an unrelated control starting
+    // with that word would have slipped through, and it also let the plural bug hide behind the bucket
+    // (`meerLaden` was rendered without `tAantal` and this loop waved it past).
     const toegestaan = new Set([
       t("doelen.zoeken"),
       t("doelen.wisAlles"),
       t("doelen.terugNaarLijst"),
+      t("doelen.meerLadenBezig"),
+      t("doelen.meerLadenEnkelvoud"),
     ]);
+    const patronen = [
+      uitCatalogus(t("doelen.meerLaden", { aantal: GAT })),
+      uitCatalogus(t("doelen.chipVerwijder", { waarde: GAT })),
+    ];
+
     for (const knop of within(hoofdinhoud).queryAllByRole("button")) {
       const naam = knop.getAttribute("aria-label") ?? knop.textContent?.trim() ?? "";
-      const isFilterChip = naam.startsWith(t("doelen.chipVerwijder", { waarde: "" }).slice(0, 8));
-      const isMeerLaden = naam.startsWith("Volgende") || naam === t("doelen.meerLadenBezig");
       expect(
-        toegestaan.has(naam) || isFilterChip || isMeerLaden,
+        toegestaan.has(naam) || patronen.some((patroon) => patroon.test(naam)),
         `unexpected control on a read-only screen: "${naam}"`,
       ).toBe(true);
     }
@@ -586,7 +740,12 @@ describe("Doelen register — read-only (clause 4)", () => {
     // lesson from the two WCAG failures this repo shipped behind a green axe run. The palette is measured in
     // a real browser; see the worklog.
     renderApp("/doelen/NAT-K3-01");
+    // BOTH regions awaited, like the read-only walk above. Awaiting only the detail ran axe over a screen whose
+    // filters had not rendered, so the five selects and the search form this test claims to cover were simply
+    // not there (antagonist finding 11) — and the un-awaited render was also one of the act() warnings.
     await screen.findByRole("region", { name: t("doelen.detailLabel") });
+    await screen.findByLabelText(t("doelen.zoekLabel"));
+    await lijst();
 
     expect(await axe(document.getElementById("hoofdinhoud")!)).toHaveNoViolations();
   });
