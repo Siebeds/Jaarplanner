@@ -11,10 +11,12 @@ import { Schoolcontentimport } from "./Schoolcontentimport";
  * school's own content vs decreed reference data), so they need a visible boundary; but FR-2.5's review notice
  * must not be hidden behind a tab nobody opened, and at ~390px a stack is the honest layout anyway.
  *
- * **The audience is stated in words, not enforced.** Functional analysis §3.2 makes import directie-only and
- * `routes.ts` already records that as `magBeheerder`, but the API is unauthenticated today (E6-01/E6-02, gated
- * by E7-11), so a client-side gate here would be security theatre over an open endpoint. Saying which section
- * is beheerderswerk is honest; pretending to enforce it is not.
+ * **The audience differs per section, and §3.2 says so.** *Thema's/activiteiten invoeren* is for Beheerder
+ * **and** Leerkracht (FR-1.1); *Leerdoelen inladen/vernieuwen* is Beheerder only. So the route is not
+ * directie-only (`routes.ts` → `magBeheerder: false`) and the beheerder marking lives on the Op.stap section
+ * (`OPSTAP_SECTIE_ALLEEN_BEHEERDER`). Nothing is enforced anywhere yet: the API is unauthenticated today
+ * (E6-01/E6-02, gated by E7-11), so a client-side gate here would be security theatre over an open endpoint.
+ * Saying which section is beheerderswerk is honest; pretending to enforce it is not.
  */
 export function ImportPagina() {
   return (

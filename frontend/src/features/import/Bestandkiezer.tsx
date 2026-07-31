@@ -15,10 +15,23 @@ import { t } from "../../i18n";
  * announces its own accessible name, and the browser's own file dialog is the one the reader knows. Hiding it
  * behind a `<button>` means re-implementing all three and getting one of them wrong.
  *
- * **The chosen filename is stated in our own text**, below the control, because the native control's own
- * rendering of it is browser-dependent, truncates without a title, and is not something a test can read
- * reliably. `accept` filters the dialog; it does not validate, so the server's own `.xlsx` check stays the
- * only guarantee (a renamed file reaches it either way).
+ * **The chosen filename appears twice on purpose, and the lower line is the one to keep.** The native control
+ * renders it too, so a reader sees "Bestand kiezen | herfst.xlsx" and then "Gekozen bestand: herfst.xlsx" below
+ * it, which looks like exactly the repeated prose this project's design rule says to cut first. It is not:
+ * - everything inside the control is **the browser's** rendering. Its button label is UA copy in the UA's own
+ *   locale, verified in E1-13's browser check by diffing the same page under `--lang=en-US` and `--lang=nl-BE`
+ *   (it reads "Choose File" on an `en-US` browser), and it truncates a long name with no `title`. So the only
+ *   Dutch, complete statement of which file is about to be uploaded is ours;
+ * - it is also the only one a test or a screen reader can rely on: the filename inside the control is not
+ *   exposed as text content.
+ *
+ * **Do not "tidy" it away.** Cutting the lower line leaves a Dutch screen whose only statement of the chosen
+ * file is an English-labelled, truncating, unreadable-by-test browser widget. Cutting the *control's* rendering
+ * instead means hiding the input behind a custom button, which re-implements labelling, keyboard reach and the
+ * file dialog to save one line of text.
+ *
+ * `accept` filters the dialog; it does not validate, so the server's own `.xlsx` check stays the only guarantee
+ * (a renamed file reaches it either way).
  */
 export function Bestandkiezer({
   label,

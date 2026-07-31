@@ -12,8 +12,10 @@ import {
   MET_BEDREIGDE_BESLISSINGEN,
   MET_PROBLEMEN,
   MET_RIJPROBLEEM_ZONDER_VERLIES,
+  NIETS_GEWIJZIGD,
   SCHOON,
   VEEL_ONGEWIJZIGD,
+  ZONDER_BEDREIGDE_BESLISSINGEN,
   alsDoorgevoerd,
   maakBestand,
   maakImportFetchFake,
@@ -487,6 +489,126 @@ describe("Import screen — a preview is never stale (the E3-04/E1-16 defect in 
   });
 });
 
+describe("Import screen — the outcome on screen belongs to the most recent run", () => {
+  it("shows the fresh preview after a commit, not the commit that came before it", async () => {
+    // The defect: `commit.data ?? voorbeeld.data` with no `commit.reset()`, so once an import had happened the
+    // commit panel won forever while the form stayed enabled. Pressing *Bestand nakijken* fired a real preview
+    // whose answer was discarded, and a reader who re-checked was shown a past-tense success. Reproduced in a
+    // browser on both importers.
+    //
+    // The second preview answers "nothing would change", which is what the server really says for a file that
+    // is already imported: the fixture is chosen so the fresh answer is distinguishable from the stale one.
+    const fake = renderImport({ voorbeeld: SCHOON, voorbeeldHerhaald: NIETS_GEWIJZIGD });
+
+    kiesBestand();
+    fireEvent.click(nakijkknop());
+    await verdicten();
+    fireEvent.click(doorvoerknop());
+    await screen.findByText(t("import.schoolcontent.doorgevoerd"));
+
+    // Same file, same modus: exactly the state the defect was reachable from.
+    expect(nakijkknop()).toBeEnabled();
+    fireEvent.click(nakijkknop());
+
+    expect(await screen.findByText(t("import.diffOngewijzigd"))).toBeInTheDocument();
+    // The commit's own panel is gone: it described a run that is no longer the one on screen.
+    expect(screen.queryByText(t("import.schoolcontent.doorgevoerd"))).toBeNull();
+    expect(screen.queryByText(t("import.verdict.volledigGoedGedaan"))).toBeNull();
+    expect(screen.getByText(t("import.verdict.volledigGoedVoorbeeld"))).toBeInTheDocument();
+    // And the fresh preview can be committed, which the stale panel made impossible.
+    expect(doorvoerknop()).toBeInTheDocument();
+
+    expect(fake.verzoeken.map((v) => v.pad)).toEqual([
+      "/api/schoolcontent-import/voorbeeld",
+      "/api/schoolcontent-import",
+      "/api/schoolcontent-import/voorbeeld",
+    ]);
+  });
+});
+
+describe("Import screen — the discard flag never outlives the list it counted (Art. IV.2)", () => {
+  it("unticks the opt-in when a new check starts, so it is never pre-set for a run nobody ticked", async () => {
+    const fake = renderImport({ voorbeeld: MET_BEDREIGDE_BESLISSINGEN });
+
+    kiesBestand();
+    fireEvent.click(screen.getByRole("radio", { name: t("import.schoolcontent.modusBijwerken") }));
+    fireEvent.click(nakijkknop());
+    await verdicten();
+
+    const label = tAantal(4, "import.bedreigd.verwijderEnkelvoud", "import.bedreigd.verwijder");
+    fireEvent.click(screen.getByRole("checkbox", { name: label }));
+    expect(screen.getByRole("checkbox", { name: label })).toBeChecked();
+
+    // Same file, same modus, a new check. `vergeetUitkomst` reset the flag on a changed input but not here, so
+    // a destructive choice survived into a run it was never made for: a silent default even single-user.
+    fireEvent.click(nakijkknop());
+    await verdicten();
+    expect(screen.getByRole("checkbox", { name: label })).not.toBeChecked();
+
+    fireEvent.click(doorvoerknop());
+    await screen.findByText(t("import.schoolcontent.doorgevoerd"));
+    expect(fake.verzoeken.at(-1)!.beslissingenVerwijderen).toBe("false");
+  });
+
+  it("sends false when the threatened set emptied between two checks, with no control on screen", async () => {
+    // The case the test-runner destroyed real data with, and the one the existing staleness test did not cover:
+    // it only exercised the file-change path. Here the file and the modus never change; another session removed
+    // the links (FR-10 makes this app explicitly multi-user), so the second preview reports nothing threatened,
+    // the panel unmounts, and the flag would have been sent with no count, warning or control anywhere.
+    const fake = renderImport({
+      voorbeeld: MET_BEDREIGDE_BESLISSINGEN,
+      voorbeeldHerhaald: ZONDER_BEDREIGDE_BESLISSINGEN,
+    });
+
+    kiesBestand();
+    fireEvent.click(screen.getByRole("radio", { name: t("import.schoolcontent.modusBijwerken") }));
+    fireEvent.click(nakijkknop());
+    await verdicten();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: tAantal(4, "import.bedreigd.verwijderEnkelvoud", "import.bedreigd.verwijder"),
+      }),
+    );
+
+    fireEvent.click(nakijkknop());
+    await screen.findByText(t("import.diffOngewijzigd"));
+
+    // Nothing on screen represents the flag any more.
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(
+      screen.queryByRole("heading", {
+        name: tAantal(4, "import.bedreigd.titelEnkelvoud", "import.bedreigd.titel"),
+      }),
+    ).toBeNull();
+
+    fireEvent.click(doorvoerknop());
+    await screen.findByText(t("import.schoolcontent.doorgevoerd"));
+
+    // Gated on the diff actually on screen, not only on the reset: either half alone leaves the hole open.
+    expect(fake.verzoeken.at(-1)!.beslissingenVerwijderen).toBe("false");
+  });
+});
+
+describe("Import screen — no commit control for a file that imports nothing (the E3-06 rule)", () => {
+  it("says there is nothing to commit instead of offering a button that writes nothing", async () => {
+    // `MET_PROBLEMEN` is `overgeslagen`: no usable rows, so a commit would write nothing and then answer
+    // "De import is doorgevoerd." A control that does nothing, honestly labelled, is still a control that
+    // does nothing.
+    renderImport({ voorbeeld: MET_PROBLEMEN });
+
+    kiesBestand();
+    fireEvent.click(nakijkknop());
+    await verdicten();
+
+    expect(screen.getByText(t("import.diffOvergeslagen"))).toBeInTheDocument();
+    expect(screen.getByText(t("import.schoolcontent.nietsDoorTeVoeren"))).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("import.schoolcontent.doorvoeren") }),
+    ).toBeNull();
+  });
+});
+
 describe("Import screen — failures (Art. II.3)", () => {
   it("shows the server's Dutch reason for a 400, which is the only place it exists", async () => {
     renderImport({
@@ -509,8 +631,11 @@ describe("Import screen — failures (Art. II.3)", () => {
   });
 
   it("falls back to its own copy when a 400 carries no usable body", async () => {
-    // A proxy can replace any body, and `GET /api/leerplandoelen` already answers a bare English string
-    // somewhere else in this API. Neither may reach a teacher as a sentence.
+    // A proxy or a dev-server can replace any body: a 502 arrives as an HTML page, a dropped connection as
+    // nothing at all. Whatever the endpoint's own contract promises, an English operator string must not reach
+    // a teacher as a sentence. (An earlier version of this comment cited `GET /api/leerplandoelen` answering a
+    // bare English string. E1-16's fix round 2 made that endpoint answer ProblemDetails, and the claim went
+    // stale through the merge that brought it onto this branch, not through an edit here.)
     renderImport({ voorbeeld: new Response("Bad Request", { status: 400 }) });
 
     kiesBestand();
@@ -532,6 +657,23 @@ describe("Import screen — failures (Art. II.3)", () => {
     // Branching on the status, never on `isError` alone: telling a teacher to check their file for a server
     // fault sends them into a fix they cannot make.
     expect(screen.queryByText(t("import.schoolcontent.foutBestandOnbekend"))).toBeNull();
+  });
+
+  it("does not claim nothing changed when the failure happened on the commit", async () => {
+    // The preview's copy asserts "Er is niets gewijzigd", which is knowable there and a guess on the commit: a
+    // 502 after the save, or a 200 whose body cannot be parsed, both land here *after* the write. With the
+    // Art. IV.2 opt-in ticked that sentence would report "nothing changed" over deleted teacher decisions.
+    renderImport({ commit: new Response("", { status: 502 }) });
+
+    kiesBestand();
+    fireEvent.click(nakijkknop());
+    await verdicten();
+    fireEvent.click(doorvoerknop());
+
+    expect(
+      await screen.findByText(t("import.onbeschikbaarNaDoorvoeren")),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(t("import.onbeschikbaar"))).toBeNull();
   });
 });
 

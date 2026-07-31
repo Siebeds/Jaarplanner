@@ -6,14 +6,19 @@ import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../../App";
+import { NAVIGATIE } from "../../app/routes";
 import { t, tAantal } from "../../i18n";
+import { OPSTAP_SECTIE_ALLEEN_BEHEERDER } from "./Opstapimport";
 import {
   OPSTAP_MET_RIJPROBLEMEN,
+  OPSTAP_OVERGESLAGEN,
   OPSTAP_SCHOON,
   OPSTAP_TE_HERZIEN,
   maakBestand,
   maakImportFetchFake,
+  opstapCodeInAndereDiscipline,
   opstapOnbekendeDiscipline,
+  opstapOnbekendeWeigering,
   opstapOntbrekendeMinimumdoelen,
   type ImportFakeOpties,
 } from "./testdata";
@@ -86,6 +91,25 @@ describe("Op.stap import — the section and its audience", () => {
     // Stated, not enforced: the API is unauthenticated (E7-11 owns that), so a client-side gate would be
     // theatre. The words are the honest option.
     expect(within(sectie()).getByText(t("import.opstap.publiek"))).toBeInTheDocument();
+  });
+
+  it("marks the beheerder audience on this section and not on the whole route", () => {
+    // FA §3.2 has two rows with two audiences: Op.stap doelen = Beheerder, thema's/activiteiten = Beheerder AND
+    // Leerkracht (FR-1.1). One flag on `/import` cannot say both, and it said "directie only", which is the
+    // answer E6-02 would have filtered the nav by — hiding the school-content import from the teachers who are
+    // entitled to it. So the route is open to both roles and the marking lives on the section.
+    const importRoute = NAVIGATIE.find((bestemming) => bestemming.pad === "/import")!;
+    expect(importRoute.magBeheerder).toBe(false);
+    expect(OPSTAP_SECTIE_ALLEEN_BEHEERDER).toBe(true);
+  });
+
+  it("states the E1-12 prerequisite before the reader spends an upload on it", () => {
+    // Every real per-discipline file refuses with a 409 while the decreed minimumdoelen have no source, so a
+    // beheerder used to learn this by filling in a discipline number, uploading and failing. The 409 panel is
+    // the reactive half and stays; this is the disclosure `routes.ts` had been claiming existed.
+    renderImport();
+
+    expect(within(sectie()).getByText(t("import.opstap.voorwaarde"))).toBeInTheDocument();
   });
 
   it("needs both a discipline number and a file before it can check anything", () => {
@@ -246,20 +270,49 @@ describe("Op.stap import — the English row diagnostics stay English (Art. II.3
 });
 
 describe("Op.stap import — a refusal is a system state, not a broken download (trap 1)", () => {
-  it("frames a 409 as something the application is missing, apart from the row problems", async () => {
+  it("frames the E1-12 refusal as something the application is missing, apart from the row problems", async () => {
     renderImport({ opstapVoorbeeld: opstapOntbrekendeMinimumdoelen() });
 
     vulInEnKijkNa();
 
     expect(await screen.findByText(t("import.opstap.geweigerdTitel"))).toBeInTheDocument();
     // The sentence that stops a directie member re-downloading a file that is fine.
-    expect(screen.getByText(t("import.opstap.geweigerdUitleg"))).toBeInTheDocument();
+    expect(screen.getByText(t("import.opstap.geweigerdSysteemUitleg"))).toBeInTheDocument();
     // The server's Dutch detail, because only it knows which refs are missing and it names the next step.
     expect(screen.getByText(/Laad eerst de decretale minimumdoelen in/)).toBeInTheDocument();
 
     // Not rendered as a row-level fault, and no report claiming an outcome.
     expect(screen.queryByRole("list", { name: t("import.verdict.groepLabel") })).toBeNull();
     expect(screen.queryByRole("button", { name: t("import.opstap.doorvoeren") })).toBeNull();
+  });
+
+  it("does not tell the reader to wait for the tool when the file is the wrong discipline", async () => {
+    // The two 409s have opposite owners of the fix, and the screen used to apply the system-state frame to
+    // both. Printed above the server's own "Controleer of dit bestand bij discipline 1 hoort", the frame said
+    // the toepassing could not read the file yet: two contradictory sentences, and a directie member sent off
+    // to wait for a change that was never coming. Keyed on the RFC 7807 `type` now, not on Dutch prose.
+    renderImport({ opstapVoorbeeld: opstapCodeInAndereDiscipline() });
+
+    vulInEnKijkNa();
+
+    expect(await screen.findByText(t("import.opstap.geweigerdTitel"))).toBeInTheDocument();
+    expect(screen.getByText(t("import.opstap.geweigerdDisciplineUitleg"))).toBeInTheDocument();
+    expect(screen.queryByText(t("import.opstap.geweigerdSysteemUitleg"))).toBeNull();
+    // The server's detail still carries the specific codes and the step, because only it knows them.
+    expect(screen.getByText(/Controleer of dit bestand bij discipline 1 hoort/)).toBeInTheDocument();
+  });
+
+  it("claims nothing specific for a 409 it cannot classify", async () => {
+    // `IProblemDetailsService` fills `type` in from the status code when the server set nothing, so a refusal
+    // added without a discriminator arrives looking exactly like this. Defaulting into either specific frame
+    // would print a confident sentence about a cause nobody established.
+    renderImport({ opstapVoorbeeld: opstapOnbekendeWeigering() });
+
+    vulInEnKijkNa();
+
+    expect(await screen.findByText(t("import.opstap.geweigerdAlgemeenUitleg"))).toBeInTheDocument();
+    expect(screen.queryByText(t("import.opstap.geweigerdSysteemUitleg"))).toBeNull();
+    expect(screen.queryByText(t("import.opstap.geweigerdDisciplineUitleg"))).toBeNull();
   });
 
   it("survives a 409 whose body carried no reason", async () => {
@@ -269,6 +322,8 @@ describe("Op.stap import — a refusal is a system state, not a broken download 
 
     expect(await screen.findByText(t("import.opstap.geweigerdTitel"))).toBeInTheDocument();
     expect(screen.getByText(t("import.opstap.geweigerdZonderReden"))).toBeInTheDocument();
+    // No body means no discriminator either: the frame that asserts least.
+    expect(screen.getByText(t("import.opstap.geweigerdAlgemeenUitleg"))).toBeInTheDocument();
   });
 
   it("treats a 400 as the uploader's own request to fix, in the ordinary alert", async () => {
@@ -289,6 +344,62 @@ describe("Op.stap import — a refusal is a system state, not a broken download 
     expect(await screen.findByText(t("import.onbeschikbaar"))).toBeInTheDocument();
     expect(screen.queryByText(t("import.opstap.geweigerdTitel"))).toBeNull();
     expect(screen.queryByText("boom")).toBeNull();
+  });
+
+  it("does not claim nothing changed when the failure happened on the commit", async () => {
+    renderImport({ opstapCommit: new Response("", { status: 504 }) });
+
+    vulInEnKijkNa();
+    await screen.findByRole("list", { name: t("import.verdict.groepLabel") });
+    fireEvent.click(screen.getByRole("button", { name: t("import.opstap.doorvoeren") }));
+
+    expect(await screen.findByText(t("import.onbeschikbaarNaDoorvoeren"))).toBeInTheDocument();
+    expect(screen.queryByText(t("import.onbeschikbaar"))).toBeNull();
+  });
+});
+
+describe("Op.stap import — the report on screen belongs to the most recent run", () => {
+  it("shows the fresh review report after an import, not the previous commit's panel", async () => {
+    // Clause 6 fails on this: the discarded answer *is* the FR-2.5 review report. `commit.data` won by fixed
+    // precedence and was never cleared, so re-checking after an import fired a real preview and then rendered
+    // the previous commit. Reproduced in a browser on this half too.
+    const fake = renderImport({
+      opstapVoorbeeld: OPSTAP_SCHOON,
+      opstapVoorbeeldHerhaald: OPSTAP_TE_HERZIEN,
+    });
+
+    vulInEnKijkNa();
+    await screen.findByRole("list", { name: t("import.verdict.groepLabel") });
+    fireEvent.click(screen.getByRole("button", { name: t("import.opstap.doorvoeren") }));
+    await screen.findByText(t("import.opstap.doorgevoerd"));
+
+    fireEvent.click(nakijkknop());
+
+    // The fresh run's review report, which the second fixture has and the first does not.
+    const titel = tAantal(2, "import.opstap.verdwenenTitelEnkelvoud", "import.opstap.verdwenenTitel");
+    expect(await screen.findByRole("heading", { name: titel })).toBeInTheDocument();
+    expect(screen.queryByText(t("import.opstap.doorgevoerd"))).toBeNull();
+    expect(screen.getByRole("button", { name: t("import.opstap.doorvoeren") })).toBeInTheDocument();
+
+    expect(fake.verzoeken.map((v) => v.pad)).toEqual([
+      "/api/opstap-import/voorbeeld",
+      "/api/opstap-import",
+      "/api/opstap-import/voorbeeld",
+    ]);
+  });
+
+  it("offers no import control for a run that reads nothing (the E3-06 rule)", async () => {
+    // A discipline outside the configured import selection (E1-06) reads nothing at all, so "Doelen inlezen"
+    // would write nothing and then answer "De doelen zijn ingelezen."
+    renderImport({ opstapVoorbeeld: OPSTAP_OVERGESLAGEN });
+
+    vulInEnKijkNa();
+    await screen.findByRole("list", { name: t("import.verdict.groepLabel") });
+
+    expect(screen.getByText(t("import.opstap.nietsInTeLezen"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("import.opstap.doorvoeren") })).toBeNull();
+    // The opmerking says which of the two reasons it is; the screen does not guess.
+    expect(screen.getByText(/buiten de ingestelde importselectie/)).toBeInTheDocument();
   });
 });
 

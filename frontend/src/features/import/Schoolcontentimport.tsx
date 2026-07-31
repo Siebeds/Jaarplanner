@@ -55,12 +55,47 @@ export function Schoolcontentimport() {
 
   const bezig = voorbeeld.isPending || commit.isPending;
 
+  // The committed result wins over the preview: it is what actually happened. `kijkNa` clears the commit
+  // first, so this precedence only ever chooses between a commit and the preview it came from.
+  const uitkomst: SchoolcontentImportAntwoord | undefined = commit.data ?? voorbeeld.data;
+  const fout = commit.error ?? voorbeeld.error;
+
   /**
-   * Forget the outcome, because the inputs it described have changed.
+   * The threatened decisions **currently on screen** (Art. IV.2).
    *
-   * Dropping it beats keeping it: a preview belongs to one file in one mode, and a screen that shows last
-   * file's diff above a button that would import this file is asserting something it cannot know. The opt-in
-   * resets too, since it counts a list of threatened decisions that no longer exists.
+   * One value feeds both the panel and the wire, so the destructive flag cannot travel while nothing on screen
+   * represents it. Resetting the checkbox in `kijkNa` alone would not be enough: the reader ticks the box, the
+   * threatened set becomes empty between two runs (a second tab, another teacher; FR-10 makes this app
+   * explicitly multi-user), the panel unmounts, and a flag ticked for a list that no longer exists would still
+   * be sent. The test-runner destroyed two `Aanvaard` themadoelen exactly that way. Both halves are needed:
+   * either one alone leaves the hole open.
+   */
+  const bedreigdeBeslissingen: readonly BedreigdeBeslissing[] =
+    uitkomst && !uitkomst.toegepast ? uitkomst.diff.bedreigdeBeslissingen : [];
+  const magVerwijderen = beslissingenVerwijderen && bedreigdeBeslissingen.length > 0;
+
+  /**
+   * Nothing in this file would be read, so a commit would write nothing (the E3-06 rule: never ship a control
+   * that does nothing). The server sets `overgeslagen` when it found no usable rows at all; a file that is
+   * merely *unchanged* is a different thing and stays committable, because re-importing an unchanged file is a
+   * legitimate no-op the diff already describes in words.
+   */
+  const nietsDoorTeVoeren = uitkomst?.diff.overgeslagen === true;
+
+  /**
+   * Forget the outcome on screen, because it no longer describes what the reader is looking at.
+   *
+   * Dropping it beats keeping it: an outcome belongs to one file in one mode in one run, and a screen that
+   * shows last file's diff above a button that would import this file is asserting something it cannot know.
+   * The opt-in resets too, since it counts a list of threatened decisions that no longer exists.
+   *
+   * **Called on a new run as well as on a changed input**, which is the fix for the defect this component
+   * shipped with: `commit.data` used to win over `voorbeeld.data` by fixed precedence and was never cleared,
+   * so after an import the form stayed enabled, *Bestand nakijken* fired a real preview, and the answer was
+   * discarded in favour of the previous commit's past-tense panel. Choosing "drop everything when a run
+   * starts" over "compare which mutation answered last" is deliberate: the invariant becomes *at most one
+   * run's outcome is ever on screen, and it is the run the reader last asked for*, held in one function,
+   * rather than a precedence rule every future reader has to re-derive correctly.
    */
   function vergeetUitkomst() {
     voorbeeld.reset();
@@ -85,6 +120,9 @@ export function Schoolcontentimport() {
       return;
     }
 
+    // A new run starts from nothing on screen, including after a commit: see `vergeetUitkomst`.
+    vergeetUitkomst();
+
     // The preview always reads the file non-destructively, whatever the checkbox below says. With the flag on,
     // the server discards the threatened links instead of reporting them, so `bedreigdeBeslissingen` would come
     // back empty and the preview could no longer state what is at stake. See `SchoolcontentInvoer`.
@@ -96,14 +134,8 @@ export function Schoolcontentimport() {
       return;
     }
 
-    commit.mutate({ bestand, modus, menselijkeBeslissingenVerwijderen: beslissingenVerwijderen });
+    commit.mutate({ bestand, modus, menselijkeBeslissingenVerwijderen: magVerwijderen });
   }
-
-  // The committed result wins over the preview: it is what actually happened. Before a commit the preview is
-  // the outcome on screen; there is never a moment where both are shown, which is what would let a reader take
-  // a preview's numbers for a commit's.
-  const uitkomst: SchoolcontentImportAntwoord | undefined = commit.data ?? voorbeeld.data;
-  const fout = commit.error ?? voorbeeld.error;
 
   return (
     <section
@@ -194,6 +226,13 @@ export function Schoolcontentimport() {
         anything else is the tool being broken, and telling a teacher to check their file for that would send
         them into a fix they cannot make. The fallback exists because a `detail` can always be absent: a proxy
         can replace any body (see `apiFetch`).
+
+        **The copy differs by path, because "er is niets gewijzigd" is only knowable on one of them.** On a
+        preview it is trivially true. On a commit it is a guess: a 200 whose body cannot be parsed (which
+        `apiFetch` raises as a `SyntaxError`, not an `ApiError`), a gateway 502/504 arriving after the save, or a
+        dropped connection all land here *after* the write happened. With the Art. IV.2 opt-in ticked that
+        sentence would tell a teacher nothing changed while their aanvaard/manueel decisions had just been
+        discarded. A 400 keeps one string for both paths, because request validation runs before any write.
       */}
       {fout ? (
         <p
@@ -202,7 +241,7 @@ export function Schoolcontentimport() {
         >
           {fout instanceof ApiError && fout.status === 400
             ? (fout.detail ?? t("import.schoolcontent.foutBestandOnbekend"))
-            : t("import.onbeschikbaar")}
+            : t(commit.error ? "import.onbeschikbaarNaDoorvoeren" : "import.onbeschikbaar")}
         </p>
       ) : null}
 
@@ -235,11 +274,18 @@ export function Schoolcontentimport() {
             <p className="rounded-md bg-petrol-wash px-3.5 py-2.5 text-sm font-semibold text-petrol">
               {t("import.schoolcontent.doorgevoerd")}
             </p>
+          ) : nietsDoorTeVoeren ? (
+            // No commit control at all: this file yielded no usable rows, so importing it would write nothing.
+            // Offering the button anyway is a control that does nothing (the E3-06 rule), and the "Import
+            // doorvoeren / De import is doorgevoerd" pair would then report a successful import of nothing.
+            <p className="text-sm leading-snug text-ink-zacht">
+              {t("import.schoolcontent.nietsDoorTeVoeren")}
+            </p>
           ) : (
             <>
-              {uitkomst.diff.bedreigdeBeslissingen.length > 0 ? (
+              {bedreigdeBeslissingen.length > 0 ? (
                 <Bedreigdebeslissingen
-                  beslissingen={uitkomst.diff.bedreigdeBeslissingen}
+                  beslissingen={bedreigdeBeslissingen}
                   verwijderen={beslissingenVerwijderen}
                   onWijzig={setBeslissingenVerwijderen}
                   disabled={bezig}

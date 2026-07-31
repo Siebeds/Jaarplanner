@@ -93,14 +93,15 @@ describe("apiFetch — what an error carries", () => {
     expect((fout as ApiError).title).toBe("Ongeldige aanvraag");
   });
 
-  it("carries detail from the other envelope on the same endpoint, the one with type and traceId", async () => {
+  it("carries detail and type from the other envelope on the same endpoint, the one with traceId", async () => {
     // E1-15's integrity refusals travel through IProblemDetailsService, so they add fields the controller's
     // own 400s do not. Additive and RFC-valid; a parser keyed on an exact shape would miss exactly this one,
-    // which is the 409 that matters most to render.
+    // which is the 409 that matters most to render. `type` is the discriminator the Op.stap screen branches
+    // its framing copy on, since the two 409s share a status and a title.
     stubFetch(
       new Response(
         JSON.stringify({
-          type: "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+          type: "urn:jaarplanner:opstap-import:ontbrekende-minimumdoelen",
           title: "Import niet doorgevoerd",
           status: 409,
           detail: "Deze leerplandoelen verwijzen naar minimumdoelen die nog niet ingeladen zijn: K-1.",
@@ -114,12 +115,33 @@ describe("apiFetch — what an error carries", () => {
 
     expect(fout.status).toBe(409);
     expect(fout.detail).toContain("minimumdoelen die nog niet ingeladen zijn");
+    expect(fout.type).toBe("urn:jaarplanner:opstap-import:ontbrekende-minimumdoelen");
   });
 
-  it("survives a bare English string body without a detail, as GET /api/leerplandoelen answers", async () => {
+  it("leaves type undefined when the body has none, so no caller can mistake absence for a match", async () => {
+    stubFetch(
+      new Response(JSON.stringify({ detail: "Er is geen bestand meegestuurd.", status: 400 }), {
+        status: 400,
+      }),
+    );
+
+    const fout = (await apiFetch("/api/opstap-import").catch((e: unknown) => e)) as ApiError;
+
+    expect(fout.detail).toBe("Er is geen bestand meegestuurd.");
+    expect(fout.type).toBeUndefined();
+  });
+
+  it("survives a body that is a bare string rather than a ProblemDetails", async () => {
+    // Envelope (3): not every non-2xx body is a ProblemDetails. A proxy answers HTML, a dropped connection
+    // answers nothing, and a plain-text body reaches here as unparseable JSON.
+    //
+    // This test used to name `GET /api/leerplandoelen` as the endpoint that answered exactly this. It did,
+    // when E1-13 branched; **E1-16's fix round 2 changed it** to a real ProblemDetails and the claim went stale
+    // through the merge that brought that onto this branch. The shape is still real, so the test stays; the
+    // false attribution does not.
     stubFetch(new Response("Filtering by subdomein requires a domein.", { status: 400 }));
 
-    const fout = (await apiFetch("/api/leerplandoelen?subdomein=x").catch((e: unknown) => e)) as ApiError;
+    const fout = (await apiFetch("/api/iets?subdomein=x").catch((e: unknown) => e)) as ApiError;
 
     expect(fout.status).toBe(400);
     // Deliberately absent: an English operator diagnostic must not become a teacher's sentence just because

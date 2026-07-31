@@ -27,6 +27,26 @@ import type {
  */
 export const SJABLOON_URL = apiUrl("/api/schoolcontent-import/sjabloon");
 
+/**
+ * Which Op.stap refusal a 409 is, read from the response's RFC 7807 `type`.
+ *
+ * **Why the wire needs this at all.** The endpoint answers 409 for two refusals whose *owners are opposite*:
+ * the decreed minimumdoelen are not loaded (nothing the uploader can do; E1-12 has to land first) and the
+ * file's codes already belong to another discipline (the uploader corrects the discipline number or picks the
+ * other file). They share a status and a Dutch `title`, so before this the screen framed both as a system
+ * state and printed that frame directly above the server's own "check whether this file belongs to discipline
+ * N". Two contradictory sentences, and the reader sent off to wait.
+ *
+ * Mirrors `backend/src/Jaarplanner.Api/Infrastructure/Probleemsoorten.cs`; there is no generated contract
+ * between the two, so a rename on either side is a breaking change on both. Match, never default: a `type`
+ * that is neither of these means "we could not tell", because `IProblemDetailsService` fills the field in from
+ * the status code whenever the server set nothing.
+ */
+export const OPSTAP_WEIGERINGSOORT = {
+  ontbrekendeMinimumdoelen: "urn:jaarplanner:opstap-import:ontbrekende-minimumdoelen",
+  codeInAndereDiscipline: "urn:jaarplanner:opstap-import:code-in-andere-discipline",
+} as const;
+
 /** What a school-content upload sends. `bestand` is the teacher's filled-in `.xlsx`. */
 export interface SchoolcontentInvoer {
   bestand: File;

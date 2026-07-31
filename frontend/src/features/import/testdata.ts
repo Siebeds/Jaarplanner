@@ -186,6 +186,33 @@ export const MET_BEDREIGDE_BESLISSINGEN: SchoolcontentImportAntwoord = {
   toegepast: false,
 };
 
+/**
+ * The **same** `Bijwerken` preview with nothing left to threaten: the concurrent-change case.
+ *
+ * Reached by re-checking the same file after another session (a second tab, another teacher; FR-10) removed the
+ * links. The threatened panel unmounts, so an opt-in ticked for the previous run has nothing on screen
+ * representing it, and the commit must not send it.
+ */
+export const ZONDER_BEDREIGDE_BESLISSINGEN: SchoolcontentImportAntwoord = {
+  ...MET_BEDREIGDE_BESLISSINGEN,
+  diff: leegDiff({ modus: "Bijwerken", themas: [{ naam: "Herfst", soort: "Ongewijzigd" }] }),
+};
+
+/**
+ * A file that would change nothing: what the server really answers for a re-check of an already-imported file
+ * (the test-runner saw `toegepast: false, themas: ["TR Schoon:Ongewijzigd"]`).
+ *
+ * Distinguishable from a commit's answer on screen, which is what makes it usable as the *second* preview when
+ * proving that a re-check after an import shows the fresh run rather than the previous commit's panel.
+ */
+export const NIETS_GEWIJZIGD: SchoolcontentImportAntwoord = {
+  isBestandGeldig: true,
+  isVolledigVerwerkt: true,
+  problemen: [],
+  diff: leegDiff({ themas: [{ naam: "Herfst", soort: "Ongewijzigd" }] }),
+  toegepast: false,
+};
+
 /** 40 unchanged thema's and 1 added: the "Ongewijzigd is the majority" case. */
 export const VEEL_ONGEWIJZIGD: SchoolcontentImportAntwoord = {
   isBestandGeldig: true,
@@ -229,10 +256,21 @@ export type Antwoordkeuze<T> = T | Response | "hangt";
 export interface ImportFakeOpties {
   /** The school-content preview answer, a `Response` to fail with, or `"hangt"`. */
   voorbeeld?: Antwoordkeuze<SchoolcontentImportAntwoord>;
+  /**
+   * The answer to the **second and later** school-content previews, when it must differ from the first.
+   *
+   * Two things need it and nothing else can express them: a re-check after a commit has to be shown to render
+   * the *fresh* answer rather than the previous commit's panel, and the Art. IV.2 concurrent-change case needs
+   * the threatened set to become empty between two runs of the same file. A single fixed answer per endpoint
+   * cannot distinguish "the new preview is on screen" from "the old one still is".
+   */
+  voorbeeldHerhaald?: Antwoordkeuze<SchoolcontentImportAntwoord>;
   /** The school-content commit answer. Defaults to the preview answer with `toegepast: true`. */
   commit?: Antwoordkeuze<SchoolcontentImportAntwoord>;
   /** The Op.stap preview answer, a `Response` to fail with, or `"hangt"`. */
   opstapVoorbeeld?: Antwoordkeuze<OpstapImportAntwoord>;
+  /** The answer to the second and later Op.stap previews. Same purpose as {@link voorbeeldHerhaald}. */
+  opstapVoorbeeldHerhaald?: Antwoordkeuze<OpstapImportAntwoord>;
   /** The Op.stap commit answer. Defaults to the preview answer with `toegepast: true`. */
   opstapCommit?: Antwoordkeuze<OpstapImportAntwoord>;
 }
@@ -245,6 +283,10 @@ export interface ImportFakeOpties {
  */
 export function maakImportFetchFake(opties: ImportFakeOpties = {}) {
   const verzoeken: Verzoek[] = [];
+
+  // How many previews each importer has answered, so `voorbeeldHerhaald` can serve the second onwards.
+  let voorbeeldenGeteld = 0;
+  let opstapVoorbeeldenGeteld = 0;
 
   function antwoordVan(waarde: unknown): Response | Promise<Response> {
     if (waarde === "hangt") {
@@ -290,7 +332,10 @@ export function maakImportFetchFake(opties: ImportFakeOpties = {}) {
     }
 
     if (url.pathname === "/api/schoolcontent-import/voorbeeld") {
-      return antwoordVan(opties.voorbeeld ?? SCHOON);
+      voorbeeldenGeteld += 1;
+      const vervolg = voorbeeldenGeteld > 1 ? opties.voorbeeldHerhaald : undefined;
+
+      return antwoordVan(vervolg ?? opties.voorbeeld ?? SCHOON);
     }
 
     if (url.pathname === "/api/schoolcontent-import") {
@@ -298,7 +343,10 @@ export function maakImportFetchFake(opties: ImportFakeOpties = {}) {
     }
 
     if (url.pathname === "/api/opstap-import/voorbeeld") {
-      return antwoordVan(opties.opstapVoorbeeld ?? OPSTAP_SCHOON);
+      opstapVoorbeeldenGeteld += 1;
+      const vervolg = opstapVoorbeeldenGeteld > 1 ? opties.opstapVoorbeeldHerhaald : undefined;
+
+      return antwoordVan(vervolg ?? opties.opstapVoorbeeld ?? OPSTAP_SCHOON);
     }
 
     if (url.pathname === "/api/opstap-import") {
@@ -380,11 +428,18 @@ export const OPSTAP_MET_RIJPROBLEMEN: OpstapImportAntwoord = {
   toegepast: false,
 };
 
-/** The E1-12 refusal: the decreed minimumdoelen are not loaded, so the file cannot land at all. */
+/**
+ * The E1-12 refusal: the decreed minimumdoelen are not loaded, so the file cannot land at all.
+ *
+ * The `type` is the real URN the handler writes (`Probleemsoorten.OpstapOntbrekendeMinimumdoelen`), which is how
+ * the screen tells this 409 from the wrong-discipline one below. Both are pinned end to end by
+ * `De_twee_409_weigeringen_zijn_van_elkaar_te_onderscheiden` in the integration suite, so these fixtures cannot
+ * quietly describe a shape the server does not produce.
+ */
 export function opstapOntbrekendeMinimumdoelen(): Response {
   return new Response(
     JSON.stringify({
-      type: "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+      type: "urn:jaarplanner:opstap-import:ontbrekende-minimumdoelen",
       title: "Import niet doorgevoerd",
       status: 409,
       detail:
@@ -395,6 +450,71 @@ export function opstapOntbrekendeMinimumdoelen(): Response {
     { status: 409 },
   );
 }
+
+/**
+ * The **other** 409: the file's codes are already loaded under another discipline.
+ *
+ * Same status, same `title`, opposite owner of the fix. The `detail` is the server's own, and it is about the
+ * uploaded file rather than about the state of the application, which is why the framing sentence above it may
+ * not be the "the toepassing cannot read this yet" one.
+ */
+export function opstapCodeInAndereDiscipline(): Response {
+  return new Response(
+    JSON.stringify({
+      type: "urn:jaarplanner:opstap-import:code-in-andere-discipline",
+      title: "Import niet doorgevoerd",
+      status: 409,
+      detail:
+        "Deze codes staan al bij een andere discipline: WIS-1 (discipline 2). Controleer of dit bestand bij " +
+        "discipline 1 hoort. Er is niets gewijzigd. Verhuist een doel echt naar een andere discipline, dan " +
+        "moet iemand dat eerst bevestigen.",
+      traceId: "00-test-02",
+    }),
+    { status: 409 },
+  );
+}
+
+/**
+ * A 409 whose `type` is the framework's status-derived URI: a refusal the screen cannot classify.
+ *
+ * Not hypothetical. `IProblemDetailsService` fills `type` in from the status code whenever the server set
+ * nothing, so a refusal a future story adds without a discriminator arrives exactly like this, and so does a
+ * body a proxy replaced. It must get copy that claims nothing rather than defaulting into one of the two.
+ */
+export function opstapOnbekendeWeigering(): Response {
+  return new Response(
+    JSON.stringify({
+      type: "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+      title: "Import niet doorgevoerd",
+      status: 409,
+      detail: "De inlezing is geweigerd.",
+    }),
+    { status: 409 },
+  );
+}
+
+/** An Op.stap run in which nothing is read at all: the discipline is outside the import selection (E1-06). */
+export const OPSTAP_OVERGESLAGEN: OpstapImportAntwoord = {
+  isBestandGeldig: true,
+  isVolledigVerwerkt: false,
+  problemen: [],
+  diff: {
+    disciplineNummer: "1",
+    toegevoegd: [],
+    gewijzigd: [],
+    ongewijzigd: [],
+    verdwenen: [],
+    verdwenenMaarGekoppeld: [],
+    overgeslagen: true,
+    opmerkingen: [
+      "Discipline 1 valt buiten de ingestelde importselectie (alleen 2). Er is niets ingelezen of gewijzigd. " +
+        "Neem deze discipline op in de importselectie als ze toch mee moet.",
+    ],
+    isLeeg: true,
+    vereistReview: true,
+  },
+  toegepast: false,
+};
 
 /** The 400 for a discipline number Op.stap does not have. */
 export function opstapOnbekendeDiscipline(): Response {

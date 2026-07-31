@@ -42,6 +42,15 @@ export class ApiError extends Error {
     public readonly detail?: string,
     /** The body's `title`, under the same conditions as {@link detail}. */
     public readonly title?: string,
+    /**
+     * The body's RFC 7807 `type`: **which** fault of this status code it is, machine-readably.
+     *
+     * Present on every response written through `IProblemDetailsService`, which fills it in from the status
+     * code when the server set nothing — so a `type` is not evidence that the server discriminated anything.
+     * Compare it against a known URI (see `features/import/api.ts` → `OPSTAP_WEIGERINGSOORT`) and treat
+     * "no match" as "we could not tell", never as a default case.
+     */
+    public readonly type?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -49,7 +58,7 @@ export class ApiError extends Error {
 }
 
 /**
- * Pulls `detail`/`title` off an error response, tolerating every envelope this API actually produces.
+ * Pulls `detail`/`title`/`type` off an error response, tolerating every envelope this API actually produces.
  *
  * There are three, and a parser that assumes one trips over the others:
  * 1. **RFC 7807 through `IProblemDetailsService`** — the four exception handlers, E1-15's
@@ -57,14 +66,22 @@ export class ApiError extends Error {
  * 2. **A controller's own `ProblemDetails`** — `{detail, status, title}` and nothing else. Additive versus
  *    (1) and RFC-valid, so both are correct and both occur on the *same* endpoint (`api/opstap-import`
  *    answers (2) for its request validations and (1) for its integrity refusals).
- * 3. **Neither.** `GET /api/leerplandoelen` answers a validation failure with a **bare English string**
- *    rather than a ProblemDetails (found by E1-15's test-runner, filed on E1-16); a 500 behind a proxy can
- *    return HTML, and a dropped connection returns nothing.
+ * 3. **No ProblemDetails at all**, and this one is not hypothetical: a 502/504 from a proxy or a dev-server
+ *    is an **HTML page**, a dropped connection is an **empty body**, and a body can be valid JSON that is not
+ *    an object (a quoted string, `null`). Nothing in the transport can promise otherwise, whatever any given
+ *    endpoint's contract says.
+ *    > *An earlier version of this list cited `GET /api/leerplandoelen` answering a bare English string as the
+ *    > worked example. That was true when E1-13 branched and **E1-16's fix round 2 changed it** to a real
+ *    > `ProblemDetails`; the claim then went stale through a **merge**, not through an edit, which is the case
+ *    > nobody re-reads. Worth generalising: a comment about another endpoint's behaviour is exactly what to
+ *    > re-check when main is pulled into a branch.*
  *
  * Every step is therefore guarded and the failure mode is always "we learned nothing", never a throw: an
  * error path that can itself throw turns a 409 the UI knows how to explain into an unhandled rejection.
  */
-async function leesFoutinhoud(response: Response): Promise<{ detail?: string; title?: string }> {
+async function leesFoutinhoud(
+  response: Response,
+): Promise<{ detail?: string; title?: string; type?: string }> {
   let tekst: string;
   try {
     tekst = await response.text();
@@ -95,7 +112,11 @@ async function leesFoutinhoud(response: Response): Promise<{ detail?: string; ti
   const tekstveld = (waarde: unknown) =>
     typeof waarde === "string" && waarde.trim().length > 0 ? waarde : undefined;
 
-  return { detail: tekstveld(inhoud.detail), title: tekstveld(inhoud.title) };
+  return {
+    detail: tekstveld(inhoud.detail),
+    title: tekstveld(inhoud.title),
+    type: tekstveld(inhoud.type),
+  };
 }
 
 /**
@@ -134,13 +155,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
-    const { detail, title } = await leesFoutinhoud(response);
+    const { detail, title, type } = await leesFoutinhoud(response);
 
     throw new ApiError(
       response.status,
       `Request to ${path} failed with ${response.status}`,
       detail,
       title,
+      type,
     );
   }
 
