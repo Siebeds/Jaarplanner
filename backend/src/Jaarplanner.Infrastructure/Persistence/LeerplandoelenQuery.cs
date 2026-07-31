@@ -171,9 +171,20 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
         // A zero-count option is returned as 0 rather than dropped; whether it should disappear entirely is a
         // directie question and is not decided here.
         //
-        // All of these are grouped aggregates, so the statement count is fixed (nine) and independent of how
-        // many leerplandoelen exist. Deliberately not one giant query: nine bounded aggregates are readable,
-        // and this endpoint is hit once per filter change on a read-only reference table.
+        // The statement count is FIXED and independent of how many leerplandoelen exist, which is the property
+        // that matters on a table meant to hold the whole curriculum. Deliberately not one giant query: bounded
+        // statements are readable, and this endpoint is hit once per filter change on read-only reference data.
+        //
+        // It is **ten** round trips: four option sets (discipline, taxonomie, doelsoort, jaarFase), four grouped
+        // count aggregates, one name lookup over `Disciplines`, and the unfiltered total. By shape: four
+        // Distinct() projections, four GroupBy aggregates, one dictionary and one Count.
+        //
+        // The number is pinned by `Facetten_zijn_een_vast_aantal_statements`, not by this comment, because a
+        // figure in a comment drifts — and this one drifted twice. It first said "nine … all grouped
+        // aggregates". The correction said "ten: five option sets … three Distinct() projections", which was
+        // right about the total and wrong about the composition in both halves: the fifth "option set" is the
+        // discipline-name lookup, and there are four Distinct() projections, not three. Twice is the argument
+        // for the test.
         var disciplineOpties = await AlleWaardenAsync(l => l.DisciplineNummer, cancellationToken);
         var disciplineAantallen = await AantallenAsync(
             ZonderDimensie(filter, Facetdimensie.Discipline), l => l.DisciplineNummer, cancellationToken);

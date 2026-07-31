@@ -55,10 +55,16 @@ export function haalDoelen(filter: Doelenfilter, overslaan: number): Promise<Doe
 export function haalDoelenFacetten(filter: Doelenfilter): Promise<DoelenFacetten> {
   const params = filterNaarQuery(filter);
 
+  // `params.toString()`, never `params.size`: `size` is Chrome 113 / Safari 17 / Firefox 112, and where it is
+  // undefined `undefined > 0` is false, so the facets would be fetched UNFILTERED and every count would go back
+  // to describing the whole curriculum. That is the "Natuur (3) that delivers nothing" defect this function
+  // exists to prevent, reintroduced silently on an older browser: no test can see it (Node has `size`) and
+  // `tsc` accepts it, so it would surface only as a teacher's complaint. This repo documents no browser
+  // baseline (E7-07), so the version-floor-free form is the only safe one.
+  const query = params.toString();
+
   return apiFetch<DoelenFacetten>(
-    params.size > 0
-      ? `/api/leerplandoelen/facetten?${params.toString()}`
-      : "/api/leerplandoelen/facetten",
+    query.length > 0 ? `/api/leerplandoelen/facetten?${query}` : "/api/leerplandoelen/facetten",
   );
 }
 
