@@ -104,8 +104,17 @@ public sealed class EfJaarplanOpslag : IJaarplanOpslag
         }
     }
 
-    /// <summary>The settings row's own table, the only one whose <c>23505</c> is the race this port recovers from.</summary>
-    private const string ParametersTabel = "generatieparameters";
+    /// <summary>
+    /// The settings row's own table, the only one whose <c>23505</c> is the race this port recovers from.
+    /// <para>
+    /// It duplicates <c>GeneratieparametersConfiguration.ToTable(...)</c>, and that duplication is asserted rather than
+    /// trusted: <c>GeneratieparametersTabelnaamTests</c> compares it to the built model's own table name. Both halves
+    /// are one language and one assembly apart, so the check costs a line — and the failure mode of leaving them
+    /// unbound is the same one this method's own doc comment rejects for the index name: a rename would fail
+    /// *silently*, into exactly the 500 the recovery exists to prevent.
+    /// </para>
+    /// </summary>
+    internal const string ParametersTabel = "generatieparameters";
 
     /// <summary>
     /// True for a unique-key violation on the kept settings row itself — the concurrent-insert race.

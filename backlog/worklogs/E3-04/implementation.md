@@ -624,3 +624,155 @@ goes `[x]`); enforcing `gewenste startthema's`; the open-day vs calendar-day pro
 **Not looked at in a browser this round either.** Three visual surfaces changed: the trigger's inner flex at 390px, the
 retry button's contrast on the red-tinted notice, and the disabled state of seven period rows plus the moment fields.
 Tests and axe are green, and axe says nothing about colour.
+
+---
+
+## Fix round 3 — the state that outlives its class, and three smaller things
+
+**Findings addressed:** antagonist MAJOR (pending edit survives a class switch), test-runner MAJOR (retry button
+boundary 2,86:1 vs SC 1.4.11's 3:1), test-runner MINOR (`isFetching` unreachable, its copy dead, a gap where the
+button was), antagonist MINOR (two fields with no disabled styling), antagonist MINOR (table-name constant unbound),
+plus the two documentation slips. **Ref:** FR-5.4, Art. IV.2, Art. IV.5, Art. XII, WCAG 2.2 SC 1.4.11, ADR-0021.
+
+### 1. MAJOR — one class's edit could be posted as another class's parameters
+
+Upheld in full, and the audit is right that this is worse than a wrong run: a generation body **replaces** the kept
+settings wholesale, so the misdirected run also deletes the target class's stored settings. Reproduced in a test
+before fixing, and the failing output is the finding verbatim: with klas B selected, the POST went to B's URL
+carrying `{ blokStart: 2026-09-01, themaNaam: "Herfst" }` — A's edit — and an empty `vasteMomenten`, so B's stored
+blocking *Oudercontact* was gone.
+
+**Fix:** `<Jaarplankalender key={klasId} klasId={klasId} />` in `JaarplanPagina.tsx`. One line, and it is the right
+line rather than the cheap one: the state that must not outlive the class is spread over two components (`wijziging`
+in the kalender, `startthemas`/`momenten`/`open` in the form), and remounting the subtree retires all of it at once.
+Resetting each by hand would leave the next piece of per-class state in this subtree to remember on its own.
+
+It also closes the second limb: while B's settings are pending, the form no longer shows A's selections under B's
+heading, because the rows are gone with the instance.
+
+**The wording was wrong in four places and is corrected in three of them** (the fourth, a round-2 commit message, is
+immutable — this entry is its correction of record):
+
+- `Jaarplankalender.tsx`, the note on `wijziging`: now states the invariant that actually holds, *"while this
+  component instance lives, `wijziging` and `instellingen` describe the same class"*, and names the caller's `key`
+  as what enforces it.
+- `Jaarplankalender.tsx`, the note on the `disabled` prop: now says explicitly that the gate does **not** cover a
+  class change and cannot, since it closes only while the settings are *unknown* while the desync begins once they
+  are known (and with `staleTime: Infinity` a revisited class is cached, so there is no window at all).
+- `Generatieparametersformulier.tsx`, the `disabled` docstring: same correction, one paragraph.
+- This worklog's round-2 *"closed by construction"* claim: **withdrawn.** It was true of the door the gate covers and
+  false of the door beside it.
+
+### 2. MAJOR — the retry button's boundary, measured
+
+Accepted, and re-derived independently before changing anything rather than taking the number on trust. Composing
+`suggestie-geweigerd/10` over the panel's `bg-card` gives `rgb(248, 233, 233)`; against that:
+
+| | ratio | |
+|---|---|---|
+| panel wash vs the button's own `bg-card` fill | **1,18:1** | the fill delineates nothing |
+| `border-input` (the `outline` variant's default) vs the wash | **2,87:1** | fails the 3:1 floor |
+| `border-suggestie-geweigerd` vs the wash | **5,47:1** | ✓ |
+| `border-suggestie-geweigerd` vs the button's fill | **6,47:1** | ✓ (the inner boundary too) |
+
+My 2,87 sits between the test-runner's two in-browser routes (2,858 and 2,874), which is the agreement I wanted before
+editing. **Fix:** `border-suggestie-geweigerd` on the button. It reuses the hue the panel already spends, so no second
+chrome accent enters (Art. XII), and `pnpm build` shows the utility really is generated
+(`.border-suggestie-geweigerd{border-color:hsl(var(--suggestie-geweigerd)…)}` in `dist`), which is the check this repo
+has been bitten by twice.
+
+### 3. MINOR — `isFetching` was unreachable, and pressing retry left a hole
+
+Confirmed from TanStack's own reducer, not just from the observation: the `fetch` action spreads
+`fetchState(data, options)`, and that helper sets `error: null, status: 'pending'` **whenever `data === undefined`**.
+So a refetch of an errored query with no data leaves `isError` false for the whole fetch, the
+`{instellingen.isError && …}` block unmounts, and the in-flight branch it contained could never render.
+
+**Fix:** the notice's visibility no longer depends on `isError` alone. A `herstelGeprobeerd` flag records that the
+teacher pressed the button on this instance, and the block renders while `isError || (herstelGeprobeerd &&
+isPending)`. The button keeps its `isFetching` guard — that guard was never *wrong*, it was unobservable — and now
+that the block survives the retry, `parameters.instellingenOpnieuwBezig` is live copy instead of dead copy. So the
+double-press is prevented by a disabled button the teacher can see, and the gap is gone.
+
+`herstelGeprobeerd` is deliberately never reset: it is only ever read alongside `isPending`, which stops being true
+the moment any load succeeds. An effect watching `isFetching` to clear it would be more machinery for the same
+behaviour.
+
+### 4. MINOR — two fields that looked live while dead
+
+`momentNaam` and `momentDatum` carry `bg-card text-ink`, and an author-set background and colour override the UA's
+disabled rendering, so fieldset-disabled fields kept looking editable. They now carry the same
+`disabled:cursor-not-allowed disabled:text-ink-zacht` the startthema select has. Agreed on the escalation the finding
+names: this was cosmetic while `disabled` meant "a run is in flight for three seconds", and is not while it also
+means "the settings failed to load", a state a teacher can sit in.
+
+### 5. MINOR — the table-name constant is now bound
+
+Accepted, and the finding is right that my own round-2 argument cuts this way: I rejected the index name because a
+rename would fail *silently* into the 500 the recovery prevents, and the table name I chose instead has the same
+failure mode. `GeneratieparametersTabelnaamTests` asserts `EfJaarplanOpslag.ParametersTabel ==
+Model.FindEntityType(typeof(Generatieparameters)).GetTableName()`. No database: building the model opens no
+connection. The constant went from `private` to `internal` with an `InternalsVisibleTo` for the unit-test assembly,
+which is cheaper than putting a persistence detail on the port's public surface; the ceremony is two lines.
+
+### 6. Evidence and the two documentation slips
+
+- **The test-runner's eight round-3 PNGs are committed** (`docs/ux/wireframes/e3-04-r3-*.png`).
+- **The pending-state test now asserts what the worklog claimed it did.** It asserted only `periodeKeuze(1)`; it now
+  also asserts `periodeKeuze(2)` and the disabled *Vast moment toevoegen*, matching its errored-state sibling. Fixed
+  the test rather than the prose, because the prose described the stronger assertion worth having.
+- **Declared drift, not fixed:** `e3-04-fix-instellingenfout.png` (round 2) shows the superseded *"Herlaad de
+  pagina"* copy with no retry button. It is left in place because the round-2 test report links to it twice and a
+  dangling link is worse than a dated screenshot; **it is not evidence of what ships.** Three of the round-3 PNGs
+  (`e3-04-r3-retry-knop-dpr3.png`, `e3-04-r3-390-fout.png`, `e3-04-r3-gegate-collapsed.png`) predate fixes 2 and 3
+  and are now dated too: the button's border colour and its in-flight state both changed. **No artefact in the repo
+  depicts the shipped failure state.** I cannot produce one — I have no browser — so this is handed to the
+  test-runner as the one thing this round leaves open.
+
+### Tests added
+
+- `Generatieparameters.test.tsx` → *"does not send one class's pending edit as another class's parameters"*. Renders
+  the **real `JaarplanPagina`** under a `MemoryRouter`, with a stand-in for the shell's klas selector as a *sibling
+  above it* — mirroring where the selector really sits (ADR-0021). A test that keyed the kalender itself would pass
+  without the fix, which is the trap worth naming: the fix lives on the page, so the page is what the test must
+  render. Verified to fail on the pre-fix code with exactly the finding's symptom.
+- `Generatieparameters.test.tsx` → *"keeps the retry on screen and says it is running while it is in flight"*. Uses a
+  settings GET that never resolves, because a retry that lands immediately cannot show this either way. Verified to
+  fail on the pre-fix code: `findByRole` for the *bezig* button times out, because the block had unmounted.
+- `GeneratieparametersTabelnaamTests.Recovery_constant_matches_the_mapped_table` (xUnit).
+- Strengthened: *"does not claim nothing is set while the kept settings are still loading"* now asserts both selects
+  and the add button.
+
+### Files changed
+
+- `frontend/src/features/jaarplan/JaarplanPagina.tsx` — the `key`, with the reason it is load-bearing.
+- `frontend/src/features/jaarplan/Jaarplankalender.tsx` — two corrected comments; no behaviour change.
+- `frontend/src/features/jaarplan/Generatieparametersformulier.tsx` — retry visibility across the refetch, the border
+  token, `disabled:` variants on the two moment fields, corrected docstring.
+- `frontend/src/features/jaarplan/Generatieparameters.test.tsx` — two new tests, one strengthened, `"hangt"` added to
+  the retry stub.
+- `backend/src/Jaarplanner.Infrastructure/Planning/EfJaarplanOpslag.cs` — constant `private` → `internal`, doc note.
+- `backend/src/Jaarplanner.Infrastructure/Jaarplanner.Infrastructure.csproj` — `InternalsVisibleTo`.
+- `backend/tests/Jaarplanner.UnitTests/Planning/GeneratieparametersTabelnaamTests.cs` — new.
+- `docs/ux/wireframes/e3-04-r3-*.png` — the test-runner's eight round-3 shots, committed.
+
+### Gates (fix round 3, real numbers, run from Bash)
+
+- `dotnet format --verify-no-changes` — **exit 0**. `dotnet build` — **0 warnings, 0 errors**.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (`Host=127.0.0.1`, `SSL Mode=Disable`, user `jaarplanner`):
+  **480 unit + 113 integration passed, 0 failed, 0 skipped** (was 479 + 113: +1 table-name binding).
+- `corepack pnpm lint` — **exit 0**; `corepack pnpm test` — **129 passed / 9 files, 0 failed** (was 127);
+  `corepack pnpm build` — **exit 0**.
+
+### Nothing disputed this round
+
+All six findings were accepted as stated. The one thing I could not do is re-shoot the failure state; see §6.
+
+### Still not done, by instruction (unchanged)
+
+`CONSTITUTION.md` untouched; enforcing `gewenste startthema's`; the open-day vs calendar-day prompt gap; `[Authorize]`;
+the two accepted residuals (the jaarplan concurrency race, and last-write-wins not reporting a replacement).
+
+**Not looked at in a browser.** Two visual surfaces changed: the retry button's border colour and its in-flight state.
+The contrast is arithmetic I re-derived and it agrees with the test-runner's two in-browser routes to within 0,02, but
+arithmetic is not a look.

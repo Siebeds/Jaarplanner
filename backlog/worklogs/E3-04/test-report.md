@@ -532,3 +532,260 @@ this story. Recorded again only so nobody thinks the browser pass missed it.
 `"naam":"L3 derde leerjaar (demo)"`, fixed on `main` by the `amendment/taal-en-emdash` merge that this branch is based
 on. Only the open Art. II.3 question about rendering server-generated strings to a user survives, and it is still not
 this story's.
+
+---
+---
+
+# E3-04 (persistence half) — Test report (round 3, fix round 2 verification)
+
+**Verdict:** **FAIL** — on one defect, and only one. All four acceptance criteria still PASS, the MAJOR from
+round 2 is genuinely and completely closed, both round-2 MINORs are closed, and nothing regressed. The blocking
+item is the contrast of the **new** *Opnieuw proberen* button: `border-input` on the tinted refusal panel measures
+**2,86:1**, below the 3:1 floor of SC 1.4.11, measured twice by independent routes. It is a one-token fix.
+**Mode:** both (xUnit unit + integration against real PostgreSQL, Vitest, and a Playwright browser pass with route
+interception and pixel-level colour sampling)
+**Branch:** `story/E3-04-persistentie` @ `52b8aca` (rounds 1 and 2 verified `90035ec` and `c381be2`)
+**Environment:** native PostgreSQL 17 on `127.0.0.1:5432`, database `jaarplanner_e304` **dropped and recreated**
+from the real migrations, API on **:5384** (`Demo__Seed=true`), Vite on **:5373**. No `AzureAI:ApiKey`, so every
+generation 500s by design. Klas `bef416f3...`, schooljaar `f252457b...` (2026-2027, seven themaperiodes).
+
+## Gates, reproduced exactly as claimed
+
+| Gate | Claimed | Measured |
+| --- | --- | --- |
+| `dotnet test` unit | 479 / 0 failed / 0 skipped | **479 passed, 0 failed, 0 skipped** (2 s) |
+| `dotnet test` integration | 113 / 0 failed / 0 skipped | **113 passed, 0 failed, 0 skipped** (45 s) |
+| `corepack pnpm test` | 127 / 9 files | **127 passed, 9 files**, 0 failed, no act() warnings |
+| `corepack pnpm lint` | | exit 0 (`eslint . --max-warnings 0 && tsc --noEmit`) |
+| `corepack pnpm build` | | exit 0, 2,43 s |
+| `dotnet format --verify-no-changes` | | exit 0 |
+
+**0 skipped in both suites**, so the Postgres-backed tests really ran. *Recorded because it wasted a run:* the
+first integration attempt reported 51 failures, all `NpgsqlConnector.Authenticate`. That was **my** connection
+string, not the branch: `Username=postgres` instead of the `Username=jaarplanner` that `docs/dev-setup-secrets.md`
+documents. Corrected, 113 passed. An environment fault, not a product one, retried once and green.
+
+---
+
+## 1. The 390 px chevron (round-2 MINOR-2) — PASS
+
+Real Edge at 390x844, DPR 2, `isMobile`, measured rather than eyeballed. Worst case driven deliberately: a stored
+valid startthema **plus** a stranded one **plus** a vast moment, so the summary is the three-clause
+`(1 startthema, 1 vast moment, 1 zonder periode)` that produced the round-1 and round-2 findings.
+
+| What the fix had to do | Measured |
+| --- | --- |
+| Arrow beside the **first line** of the label, not above it | glyph `x=37 y=630 w=11 h=16`; label `x=56 y=627 w=297 h=40` (two lines). Same line: the glyph's box sits inside the label's first line box |
+| One flex item, non-wrapping | the wrapper is `flex-wrap: nowrap`, `min-width: 0px`, and the glyph is `flex-shrink: 0` |
+| Still **one** button, one tab stop | one `<button>`, `tabIndex 0`, reached on **Tab 10**; the whole 316x62 box is the hit target |
+| Summary still on its own line | `(1 startthema, 1 vast moment, 1 zonder periode)` at `x=37 y=669 w=305 h=20`, one line |
+| No overflow | `documentElement.scrollWidth == clientWidth == body.scrollWidth == 390` in **five** states: collapsed, open, three-clause summary, settings-failing collapsed, settings-failing open |
+
+Round 1's shape (glyph alone at `y=627`, label starting at `y=645`) is gone. Evidence:
+`docs/ux/wireframes/e3-04-r3-390-chevron.png`, `e3-04-r3-390-drie-clausules.png`, `e3-04-r3-390-fout.png`.
+
+*Pre-existing, not this delta:* the elements extending past 390 px are the kalender's own period columns
+(`LI.flex w-72 shrink-0`, `right=604`), which live in a horizontally scrollable strip. The document itself does not
+overflow.
+
+## 2. The disabled form in the intercepted state (the MAJOR's fix) — PASS
+
+Real Edge, DPR 2, with **only** `GET .../jaarplan/parameters` intercepted and forced to 500, against the live API
+holding real stored settings.
+
+| What the fix had to do | Measured |
+| --- | --- |
+| All **seven** period selects inert | 7 rows rendered, `:disabled` **true** for all seven, each still showing `Geen voorkeur` |
+| *Vast moment toevoegen* inert | `:disabled` **true** |
+| Both fieldsets carry the gate | `Startthema's disabled=true`, `Vaste momenten disabled=true` |
+| *Opnieuw proberen* still works | `:disabled` **false**, and pressing it refetches (see section 3) |
+| Nothing else in `main` is live | the only enabled controls are the disclosure trigger, *Opnieuw proberen*, and the seven per-card `Aanpassen` buttons (E3-07's, pre-existing) |
+| Generate refuses | `:disabled` true, and a click posts nothing |
+
+Evidence: `docs/ux/wireframes/e3-04-r3-gegate-collapsed.png`, `e3-04-r3-gegate-formulier.png`.
+
+**The two vast-moment fields and the radios cannot be observed in that state, and that is the fix working, not a
+gap.** `momenten` starts empty when the load fails, and the only control that could add a row is itself disabled,
+so no row can exist. Stated rather than glossed, and then pinned through the *other* value of the same `disabled`
+prop, with a stored moment loaded and a run in flight (`POST .../generatie` left unanswered):
+
+| Control | `:disabled` |
+| --- | --- |
+| all 7 period selects (`Water` on period 2) | true |
+| *Wat is het?* = `Schoolfeest` | true |
+| *Wanneer?* = `2026-09-15` | true |
+| radio *Ja, gewoon inplannen* | true |
+| radio *Nee, die periode is bezet* (checked) | true |
+| *Verwijderen* on the moment card | true |
+| *Vast moment toevoegen* | true |
+
+Checked with `element.matches(':disabled')`, not `element.disabled`: the moment fields and the radios carry no
+`disabled` attribute of their own and inherit it from the ancestor `<fieldset disabled>`, which the property does
+not reflect and the pseudo-class does. The inner radio fieldset has no `disabled` attribute of its own
+(`disabled=false`) and its radios are inert anyway, which is the HTML rule working.
+Evidence: `docs/ux/wireframes/e3-04-r3-fieldset-gate-moment.png`.
+
+**The gate also holds for the whole duration of a retry**, which is the window a partial fix would have opened:
+sampled at +500/+1500/+2500 ms into an in-flight refetch, the summary reads `(instellingen laden...)`, all seven
+selects and *Vast moment toevoegen* are still inert, generate is still disabled, and a forced click on generate
+posted **nothing**.
+
+## 3. The retry is load-bearing, not decoration — PASS
+
+The implementer's own warning was the right one to chase: the first version of its test passed *without* a retry.
+In the browser, the failure does **not** self-heal.
+
+| Step | Measured |
+| --- | --- |
+| Settings GET fails; count the calls | 4 (initial + the query client's three retries), then the alert appears |
+| Make the server healthy again and **touch nothing** for 6 s | alert still visible, trigger still `(instellingen niet geladen)`, all 7 selects still inert, **0** additional GETs |
+| Press *Opnieuw proberen* | exactly **one** GET (4 to 5) |
+| After it | zero `[role=alert]`, trigger reads `(1 startthema, 1 vast moment)`, `Water` on period 2, `Schoolfeest` / `2026-09-15` / *Nee, die periode is bezet* **checked**, every field and *Vast moment toevoegen* enabled again, generate **enabled** |
+| Generate | one POST, body `{"gewensteStartthemas":[{"blokStart":"2026-10-02","themaNaam":"Water"}],"vasteMomenten":[{"naam":"Schoolfeest","datum":"2026-09-15","blokkeertPlaatsing":true}],"isLeeg":false}` |
+
+So the state ends only when the teacher acts, and pressing the button ends it completely. `staleTime: Infinity`
+plus "an errored query has no data, so it is stale" is exactly the shape that let the Vitest version self-heal on
+mount; the browser closes that gap, because no second observer mounts here.
+Evidence: `docs/ux/wireframes/e3-04-r3-na-retry.png`.
+
+## 4. The live region does not wrap a control, and the button is not gated by the state it resolves — PASS
+
+| Claim | Measured |
+| --- | --- |
+| Exactly one `[role=alert]` | 1, a `<P>`, visible with the panel **collapsed** (`aria-expanded="false"`) |
+| It contains no controls | `controlsInside = 0` |
+| The retry button is a **sibling**, not a child | `retryInsideAlert = false`, `retrySiblingOfAlert = true` (same parent `div`) |
+| No live region anywhere wraps a control | `liveRegionsWrappingControls = 0`, checked over `[role=alert]`, `[role=status]` and `[aria-live]` |
+| Not disabled by the settings being unknown | `:disabled = false` in the settled error state; keyboard-reachable on **Tab 11**, right after the trigger |
+| Copy no longer prescribes a reload, and escalates | *"Je bewaarde instellingen konden niet geladen worden. De tool weet nu niet welke instellingen zouden meegaan, dus je kan hier niets instellen en ook niet genereren. Blijft het misgaan, meld het dan aan de beheerder van de tool."* No *herlaad*, and the beheerder sentence its sibling has |
+
+## 5. No regression on what rounds 1 and 2 passed — PASS
+
+| Criterion | Measured |
+| --- | --- |
+| The reload that is the whole story | clean load, panel closed: trigger reads `(1 startthema, 1 vast moment)`; opened: 7 live independent rows, `Water` on `Periode 2 (2 okt - 1 nov)`, periods 1 and 3 to 7 `Geen voorkeur`, `Schoolfeest` / `2026-09-15` / *Nee, die periode is bezet* checked. Zero alerts |
+| `blokStart` read off the wire | untouched form plus generate posts `{"gewensteStartthemas":[{"blokStart":"2026-10-02","themaNaam":"Water"}],...}`, keyed on the date and never an ordinal |
+| Stranded notice | with `2026-10-05` stored (no period starts there): `role="region"`, `aria-labelledby` **resolves** to *"Een bewaard startthema hoort bij een periode die niet meer bestaat"*, sr-only `role="status"` (`position: absolute; width: 1px`), one entry *"Herfst en oogst, bewaard voor de periode vanaf 5 okt"*, **one** control (*Weghalen*) and no dismiss, visible with the panel closed, at 1440 px **and** at 390 px |
+| Summary counts partition, no double count | `(1 startthema, 1 vast moment, 1 zonder periode)` for one valid plus one stranded plus one moment: three facts, three clauses, singular throughout |
+| Contract edges, live API on :5384 | duplicate `blokStart` gives **400**; body without `gewensteStartthemas` **400**; without `vasteMomenten` **400**; old positional `["Water"]` **400**; **no body at all gives 500**, so it passed validation and reached the missing AI key, which is "use what is stored". Store re-read after all five refusals: intact |
+
+## 6. Contrast of the new retry button — **FAIL**, and this is the blocking defect
+
+Measured twice by independent routes that agree, so the alpha is genuinely composited rather than assumed.
+
+1. **CSS walk:** the panel's own background is `rgba(184, 30, 30, 0.1)`; the first opaque ancestor is the card's
+   `rgb(255, 255, 255)`. Composited it is `rgb(247.9, 232.5, 232.5)`. The button's own fill is opaque
+   `rgb(255, 255, 255)` (`bg-card` overrides the `outline` variant's fill), border `rgb(150, 138, 115)` at 1 px.
+2. **Real pixels:** element screenshot at **DPR 3** (495x144 device px), decoded into an in-page canvas and read as
+   scanlines across the top and left borders. Panel fill `rgb(247,232,232)`, border `rgb(150,138,115)`, button fill
+   `rgb(255,255,255)`. The rendered values match the composited prediction to sub-pixel rounding. The `shadow-card`
+   ring only *lightens* toward the button (`rgb(249,237,237)` immediately outside the border), so it contributes
+   nothing.
+
+| What | Colour | Adjacent | Ratio | Needs |
+| --- | --- | --- | --- | --- |
+| Button boundary vs the tinted panel **outside** it | `rgb(150,138,115)` | `rgb(247,232,232)` | **2,86:1** | 3:1 (SC 1.4.11) |
+| Button boundary vs its own fill **inside** | `rgb(150,138,115)` | `rgb(255,255,255)` | 3,40:1 | 3:1 |
+| Button fill vs the tinted panel | `rgb(255,255,255)` | `rgb(247,232,232)` | 1,19:1 | cannot delineate |
+| Label *Opnieuw proberen* (12 px, weight 600) | `rgb(21,39,46)` | `rgb(255,255,255)` | 15,42:1 | 4,5:1 OK |
+| Alert text on the tinted panel (12 px, weight 500) | `rgb(184,30,30)` | `rgb(247,232,232)` | 5,48:1 | 4,5:1 OK |
+
+**Why this is a fail and not a quibble.** The ratio function used here reproduces round 1's own figures exactly
+(`text-ink` on white = 15,42; `border-input` on `#fef8ec` = 3,21), so the numbers are directly comparable. Round 1
+measured the *sibling* outline button (*Weghalen*) the same way, boundary against the surface it sits on, and
+recorded **3,21:1 against a stated need of 3:1**. Rounds 1 and 2 both signed that standard. This new button is the
+same token on a darker surface and lands at **2,86:1**, below the floor by the identical measurement. Passing it now
+would contradict the report it is being appended to, and the button's fill contributes 1,19:1, so nothing else
+delineates the control against the page.
+
+**It also matters more here than anywhere else on the screen:** this is the *only* live control in a state where the
+form, the generate button and every field are deliberately refused. A teacher who cannot find it has no way out of
+the state at all.
+
+**One-token fixes, measured against the same two neighbours:**
+
+| Candidate | vs tinted panel | vs button fill |
+| --- | --- | --- |
+| `border-input` (current) | 2,86 | 3,40 |
+| `border-suggestie-geweigerd` `rgb(184,30,30)` | **5,45** | 6,48 |
+| `border-ink-zacht` `rgb(83,101,110)` | **5,11** | 6,08 |
+| `border-ink` `rgb(21,39,46)` | 12,97 | 15,42 |
+
+`border-suggestie-geweigerd` is the same hue the panel and its alert text already use, so it introduces no new
+chrome accent (Art. XII). Never colour alone is satisfied either way: the control carries the text label
+*Opnieuw proberen*.
+
+Evidence: `docs/ux/wireframes/e3-04-r3-retry-knop-dpr3.png`, the button at DPR 3, the pixels that were sampled.
+
+---
+
+## Commands run (round 3)
+
+| Command | Result |
+| --- | --- |
+| `git log --oneline` | `52b8aca` on `c00bd32` on `c8b9be1`; round 2 verified `c381be2` |
+| `DROP DATABASE ... WITH (FORCE)`, `CREATE`, `dotnet ef database update` | migration chain applied to a fresh `jaarplanner_e304`, `Done.` |
+| `dotnet test` unit and integration with `JAARPLANNER_TEST_POSTGRES` | **479** plus **113** passed, 0 failed, **0 skipped** |
+| `dotnet format --verify-no-changes` | exit 0 |
+| `corepack pnpm install` / `test` / `lint` / `build` | up to date / **127 passed, 9 files** / exit 0 / exit 0 |
+| API :5384 with `Demo__Seed=true`, Vite :5373 | `/health` 200, one klas seeded, `/rooster` gives 7 themaperiodes |
+| five `curl` contract cases plus a store re-read | 400 / 400 / 400 / 400 / 500, store intact |
+| Playwright plus real Edge, settings GET forced to 500 | trigger `(instellingen niet geladen)`, one visible `role="alert"` with the panel collapsed, 7 selects and toevoegen inert, retry enabled and a sibling of the alert |
+| Playwright, server healed with no user action for 6 s | 0 refetches, the state persists; the click produces exactly 1 |
+| Playwright, `POST /generatie` left unanswered with a stored moment | moment name, date, both radios, *Verwijderen* and *Vast moment toevoegen* all `:disabled` through the ancestor fieldset |
+| Playwright, DPR 3 element screenshot plus in-page canvas scanlines | border `rgb(150,138,115)`, panel `rgb(247,232,232)`, fill `rgb(255,255,255)`, so **2,86:1** |
+| Playwright at 390x844, five states | `scrollWidth == clientWidth == 390` in all five; glyph beside the label's first line |
+| Playwright, stranded setting at 1440 and 390 | region plus sr-only status, one control, correct singular, no overflow |
+
+Console over the whole session: only the expected 500s (the intercepted settings GET and the AI-less generation)
+plus Vite's HMR chatter. No React warnings and no other errors.
+
+## Evidence (round 3)
+
+- `docs/ux/wireframes/e3-04-r3-gegate-collapsed.png`: the gated screen, panel collapsed, alert plus *Opnieuw proberen*, generate greyed out
+- `docs/ux/wireframes/e3-04-r3-gegate-formulier.png`: the panel open with all seven rows and *Vast moment toevoegen* inert
+- `docs/ux/wireframes/e3-04-r3-fieldset-gate-moment.png`: the same gate with a vast-moment row present
+- `docs/ux/wireframes/e3-04-r3-na-retry.png`: after pressing retry, the notice gone, the settings loaded, generating possible
+- `docs/ux/wireframes/e3-04-r3-retry-knop-dpr3.png`: the retry button at DPR 3, the sampled pixels
+- `docs/ux/wireframes/e3-04-r3-390-chevron.png`: the chevron beside the first line
+- `docs/ux/wireframes/e3-04-r3-390-drie-clausules.png`, `e3-04-r3-390-fout.png`: 390x844
+
+---
+
+## Defects (round 3)
+
+### [MAJOR, blocking] The new *Opnieuw proberen* button's boundary is 2,86:1 against the panel it sits on (SC 1.4.11)
+
+`Generatieparametersformulier.tsx` around line 358: `variant="outline"` (border `border-input` =
+`rgb(150,138,115)`) with `className="... bg-card ..."` on a `bg-suggestie-geweigerd/10` panel that composites to
+`rgb(247,232,232)`.
+
+**Repro:** intercept `GET /api/klassen/{id}/jaarplan/parameters` and return 500, load `/jaarplan`, wait about 7 s
+for the query client to exhaust its retries, then sample the button's border against the panel with the alpha
+composited (a CSS walk up to the first opaque ancestor, or a DPR-3 element screenshot read through a canvas).
+**Expected** at least 3:1. **Actual** 2,86:1 (real pixels 2,858; CSS walk 2,874). The fill contributes 1,19:1, so
+the boundary is the only delineation and it is below the floor. The identical token on `attentie-zacht` measured
+3,21:1 in round 1 and was recorded as passing against a stated need of 3:1, so this is the same measurement failing.
+**Fix:** one token. `border-suggestie-geweigerd` gives 5,45:1 and reuses the hue already on the panel;
+`border-ink-zacht` gives 5,11:1. No other change needed, and the text label already satisfies "never colour alone".
+
+### [MINOR] `parameters.instellingenOpnieuwBezig` can never render, and `disabled={instellingen.isFetching}` can never be true
+
+Measured, not inferred: `refetch()` on an errored query with no data puts TanStack back into `pending`, so
+`instellingen.isError` goes **false** the moment the retry starts and the whole `{instellingen.isError && ...}`
+block, alert and button together, unmounts for the duration. Sampled at +400 ms through +5600 ms of a deliberately
+slow retry: the button is **absent**, not disabled, and the label never becomes *"Opnieuw proberen, even geduld"*.
+So the comment's stated mechanism ("`isFetching` covers the in-flight retry ... so it cannot be pressed twice into
+two racing refetches") is not what prevents the double press; unmounting is. No test covers the string either.
+
+Not a functional defect: the gate holds throughout, the summary honestly reads `(instellingen laden...)`, and a
+second press is impossible. But it leaves dead copy in `nl.json`, a code comment describing a mechanism that never
+fires, and a small wrinkle worth a decision: pressing the button makes it **disappear** for up to about 10 s (one
+attempt plus three internal retries) rather than saying *even geduld*. Either render the busy label from a state
+that can actually be true, or drop the string and the `disabled` prop and say in the comment what really prevents
+the double press.
+
+### [OBSERVED, unchanged] Art. II.3 server-generated strings
+
+`GET /api/klassen` returns `"naam":"L3 derde leerjaar (demo)"` and the header prints it verbatim. The em dash is
+still gone. Only the open Art. II.3 question survives, and it is not this story's.

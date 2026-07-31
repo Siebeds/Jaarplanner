@@ -1,10 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { axe } from "jest-axe";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { KLAS_PARAM, useSelectie } from "../../app/useSelectie";
 import { t } from "../../i18n";
 import nl from "../../i18n/nl.json";
+import { JaarplanPagina } from "./JaarplanPagina";
 import { Jaarplankalender } from "./Jaarplankalender";
 import type {
   Generatieparameters,
@@ -98,16 +101,16 @@ function stubFetch(
     /** `"fout"` fails the settings GET; `"hangt"` never answers it, which is the pending state. */
     instellingen?: Generatieparameters | "fout" | "hangt";
     /**
-     * With `instellingen: "fout"`, consulted on **every** settings GET: return settings to make that call succeed, or
-     * `null` to keep failing. A test owns the switch, so it can keep the failure state up until it presses
-     * "Opnieuw proberen".
+     * With `instellingen: "fout"`, consulted on **every** settings GET: return settings to make that call succeed,
+     * `null` to keep failing, or `"hangt"` to leave that one call in flight forever — which is how a test observes the
+     * retry while it is running rather than only after it has landed.
      *
      * A "second call succeeds" version of this was wrong and worth recording: the kalender and the form share one query
      * key but mount at different times (the form only exists once the plan and the grid have resolved), and an errored
      * query is **stale**, so the form's own observer refetches on mount. The failure therefore heals itself on call two
      * without anybody pressing anything, which would have made a retry test pass without a retry.
      */
-    instellingenHerstel?: () => Generatieparameters | null;
+    instellingenHerstel?: () => Generatieparameters | "hangt" | null;
     /** Overrides the grid, so a test can hand the form another tier's periods (E3-08's zoom). */
     rooster?: Planningsrooster;
   } = {},
@@ -137,6 +140,10 @@ function stubFetch(
         }
         if (instellingen === "fout") {
           const herstel = instellingenHerstel?.() ?? null;
+
+          if (herstel === "hangt") {
+            return new Promise<Response>(() => {});
+          }
 
           return herstel === null
             ? new Response("nope", { status: 500 })
@@ -352,6 +359,40 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeEnabled();
   });
 
+  /**
+   * The retry says it is running, instead of vanishing.
+   *
+   * `refetch()` on an errored query that holds no data returns TanStack to `pending`: the `fetch` reducer clears
+   * `status` and `error` whenever `data === undefined`. Keying the notice on `isError` alone therefore unmounted the
+   * whole block the instant the button was pressed — up to ten seconds of nothing where the only live control on the
+   * screen had been — and made its own `isFetching` guard unreachable, so the copy for it was dead too. Pinned with a
+   * call that never resolves, because a retry that lands immediately cannot show this either way.
+   */
+  it("keeps the retry on screen and says it is running while it is in flight", async () => {
+    let hangt = false;
+    stubFetch(resultaat(leegRapport), {
+      instellingen: "fout",
+      instellingenHerstel: () => (hangt ? "hangt" : null),
+    });
+    renderKalender();
+
+    await screen.findByText(t("parameters.instellingenFout"));
+    hangt = true;
+    fireEvent.click(screen.getByRole("button", { name: t("parameters.instellingenOpnieuw") }));
+
+    // Present, not absent: the notice and its control survive the state change that used to unmount them.
+    const bezig = await screen.findByRole("button", {
+      name: t("parameters.instellingenOpnieuwBezig"),
+    });
+    expect(bezig).toBeDisabled();
+    expect(screen.getByText(t("parameters.instellingenFout"))).toBeInTheDocument();
+
+    // And the settings are still unknown, so the run stays refused and the form stays gated.
+    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeDisabled();
+    await openForm();
+    await waitFor(() => expect(periodeKeuze(1)).toBeDisabled());
+  });
+
   // The same false summary showed transiently while the query was in flight, and a fast click still sent no body.
   it("does not claim nothing is set while the kept settings are still loading", async () => {
     const posts = stubFetch(resultaat(leegRapport), { instellingen: "hangt" });
@@ -366,9 +407,12 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     fireEvent.click(genereerKnop);
     await waitFor(() => expect(posts).toEqual([]));
 
-    // The fields are gated on the same flag, so nothing can be typed into a form whose settings have not arrived.
+    // The fields are gated on the same flag, so nothing can be typed into a form whose settings have not arrived —
+    // a period select per row, and the one control that would add a new row.
     await openForm();
     await waitFor(() => expect(periodeKeuze(1)).toBeDisabled());
+    expect(periodeKeuze(2)).toBeDisabled();
+    expect(screen.getByRole("button", { name: t("parameters.momentToevoegen") })).toBeDisabled();
   });
 
   it("clears a kept setting when the teacher empties it and generates", async () => {
@@ -887,6 +931,124 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
 
     // Structure only: jsdom cannot evaluate colour, so this says nothing about contrast (the E3-06 lesson).
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+/**
+ * Switching class, which is the second way a pending edit reaches the wrong run (fix round 3).
+ *
+ * The kalender keeps the teacher's unsaved parameter edit in component state, and the klas selector lives in the
+ * shell **above** the router outlet on the same route — so switching class changes a prop and remounts nothing. Class
+ * A's edit would then sit on top of class B's loaded settings, and because a generation body *replaces* the kept
+ * settings wholesale, one run would overwrite B's stored settings with A's: a blocking vast moment nobody ever saw,
+ * deleted. The gate on unknown settings cannot help, because the desync begins the moment B's settings are *known*.
+ *
+ * So this renders the real {@link JaarplanPagina} under a router, with a stand-in for the shell's selector as a
+ * SIBLING above it: the fix is the `key` on that page, and a test that keyed the component itself would pass without
+ * it. Every other test in this file uses one class throughout, which is why none of them could catch this.
+ */
+describe("Generatieparameters — switching class (E3-04)", () => {
+  const KLAS_B = "33333333-3333-3333-3333-333333333333";
+
+  const instellingenA: Generatieparameters = { gewensteStartthemas: [], vasteMomenten: [] };
+  const instellingenB: Generatieparameters = {
+    gewensteStartthemas: [{ blokStart: "2026-11-09", themaNaam: "Water" }],
+    vasteMomenten: [{ naam: "Oudercontact", datum: "2026-12-01", blokkeertPlaatsing: true }],
+  };
+
+  /** Per-class stub: the URL carries the class id, so every response and every captured POST is attributable. */
+  function stubKlassen(instellingen: Record<string, Generatieparameters>) {
+    const posts: { klasId: string; body: string | undefined }[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const klasId = /\/api\/klassen\/([^/]+)\//.exec(url)?.[1] ?? "";
+
+        if (init?.method === "POST" && url.includes("/generatie")) {
+          posts.push({ klasId, body: init.body === undefined ? undefined : String(init.body) });
+          return new Response(JSON.stringify(resultaat(leegRapport)), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify(instellingen[klasId]), { status: 200 });
+        }
+        if (url.includes("/api/themas")) {
+          return new Response(
+            JSON.stringify([
+              { id: "t0", naam: "Herfst" },
+              { id: "t1", naam: "Water" },
+            ]),
+            { status: 200 },
+          );
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify({ ...leegPlan, klasId }), { status: 200 });
+        }
+
+        throw new Error(`onverwachte fetch: ${url}`);
+      }),
+    );
+
+    return posts;
+  }
+
+  /** Stands in for the shell's klas selector: a sibling above the page, on the same route (ADR-0021). */
+  function Klaskiezer({ naar }: { naar: string }) {
+    const { kiesKlas } = useSelectie();
+
+    return (
+      <button type="button" onClick={() => kiesKlas(naar)}>
+        wissel van klas
+      </button>
+    );
+  }
+
+  it("does not send one class's pending edit as another class's parameters", async () => {
+    const posts = stubKlassen({ [KLAS_ID]: instellingenA, [KLAS_B]: instellingenB });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/jaarplan?${KLAS_PARAM}=${KLAS_ID}`]}>
+          <Klaskiezer naar={KLAS_B} />
+          <JaarplanPagina />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    // Under class A: set a startthema and do NOT generate. This edit belongs to A and to nothing else.
+    await openForm();
+    await waitFor(() => expect(periodeKeuze(1)).toBeInTheDocument());
+    fireEvent.change(periodeKeuze(1), { target: { value: "Herfst" } });
+
+    const trigger = screen.getByRole("button", { name: new RegExp(t("parameters.titel")) });
+    await waitFor(() => expect(trigger.textContent).toContain("1 startthema"));
+
+    // Two clicks in the header is all it takes.
+    fireEvent.click(screen.getByRole("button", { name: "wissel van klas" }));
+
+    // B's settings arrive: one startthema and one vast moment, which is what the screen now describes.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: new RegExp(t("parameters.titel")) }).textContent,
+      ).toContain("1 vast moment"),
+    );
+    // The panel is closed again, because the subtree was remounted rather than re-rendered with a new prop.
+    expect(
+      screen.getByRole("button", { name: new RegExp(t("parameters.titel")) }),
+    ).toHaveAttribute("aria-expanded", "false");
+
+    await genereer();
+
+    // The run is B's, and its body is B's kept settings — not A's "Herfst" in period 1, which would have replaced
+    // B's stored settings wholesale and deleted the blocking Oudercontact.
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].klasId).toBe(KLAS_B);
+    expect(JSON.parse(posts[0].body!)).toEqual(instellingenB);
   });
 });
 

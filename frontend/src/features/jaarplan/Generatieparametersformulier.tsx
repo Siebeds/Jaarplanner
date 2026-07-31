@@ -81,6 +81,10 @@ export interface GeneratieparametersformulierProps {
    *    the screen would show the loaded settings and the run would post the typed ones. With editing gated until the
    *    settings are known, no edit can exist for the effect to clobber.
    *
+   * **This gate says nothing about a change of class.** It closes only while the settings are unknown, and a class
+   * switch desyncs the parent's pending edit from the loaded settings exactly when they *are* known. That is closed by
+   * the page remounting this subtree on the class id, not here.
+   *
    * The one control that stays live while the settings are unknown is the alert's own *Opnieuw proberen*, because a
    * failure state with no way forward is what left the earlier version telling teachers to reload the page.
    */
@@ -116,6 +120,23 @@ export function Generatieparametersformulier({
   const vervallenTitelId = useId();
 
   const instellingen = useGeneratieparameters(klasId);
+
+  // Whether the teacher has pressed *Opnieuw proberen* on this instance.
+  //
+  // It exists because `refetch()` on an errored query that holds **no data** puts TanStack back to `pending` rather
+  // than to "errored and fetching": its `fetch` reducer resets `status` and `error` whenever `data === undefined`. So
+  // `isError` goes false the instant the retry starts, and keying the notice on `isError` alone unmounted it for the
+  // whole fetch — up to ten seconds with the client's own retries and backoff — leaving a gap where the only live
+  // control on the screen had been. It also made the button's `isFetching` guard unobservable: the state it described
+  // could not be reached while its own button was rendered.
+  //
+  // Never reset, and it does not need to be: it is only ever read together with `isPending`, which stops being true
+  // as soon as any load succeeds.
+  const [herstelGeprobeerd, setHerstelGeprobeerd] = useState(false);
+
+  // "The kept settings are unknown, and the teacher is entitled to a way out." Failed, or a retry of a failure still
+  // in flight. Not `isFetching` on its own: that is also true of the very first load, which is not a failure.
+  const instellingenOnbekend = instellingen.isError || (herstelGeprobeerd && instellingen.isPending);
 
   // Only the GENERATION tier's blocks are the periods a kept setting keys on (see the `niveau` prop). At any other
   // tier this form knows the settings but not which periods they name, so it says that instead of guessing.
@@ -347,7 +368,7 @@ export function Generatieparametersformulier({
           **The `alert` is the sentence, not the box.** The button is a sibling of the live region rather than a child
           of it, the same separation `TeHerzien` and the stranded notice below use: a live region wrapping a control
           re-announces its whole contents on every interaction, and pressing retry changes the button's own label. */}
-      {instellingen.isError && (
+      {instellingenOnbekend && (
         <div className="mt-3 rounded-md bg-suggestie-geweigerd/10 px-3 py-2.5">
           <p
             role="alert"
@@ -359,11 +380,20 @@ export function Generatieparametersformulier({
             type="button"
             variant="outline"
             // NOT gated on `disabled`: that prop is (among other things) "the settings are unknown", which is exactly
-            // the state this button exists to leave. `isFetching` covers the in-flight retry, including its own
-            // internal retries, so it cannot be pressed twice into two racing refetches.
+            // the state this button exists to leave. Gated on the fetch being in flight instead, so it cannot be
+            // pressed twice into two racing refetches — and now that the notice survives the retry (see
+            // `herstelGeprobeerd`), that in-flight state is something a teacher can actually see.
             disabled={instellingen.isFetching}
-            onClick={() => void instellingen.refetch()}
-            className="mt-2 h-7 bg-card text-xs"
+            onClick={() => {
+              setHerstelGeprobeerd(true);
+              void instellingen.refetch();
+            }}
+            // `border-suggestie-geweigerd` is not decoration. `variant="outline"` puts `bg-card` on the panel's
+            // `suggestie-geweigerd/10` wash, and that fill carries 1.19:1 — so the border is the only thing
+            // delineating the control, and SC 1.4.11 wants 3:1 for it. The default `border-input` measured 2.86:1
+            // here. This token measures 5.45:1 and reuses the hue the panel already spends, so it adds no second
+            // chrome accent (Art. XII).
+            className="mt-2 h-7 border-suggestie-geweigerd bg-card text-xs"
           >
             {instellingen.isFetching
               ? t("parameters.instellingenOpnieuwBezig")
@@ -498,6 +528,11 @@ export function Generatieparametersformulier({
                 className="flex flex-col gap-2 rounded-md border border-border bg-paper p-3"
               >
                 <div className="flex flex-wrap items-end gap-3">
+                  {/* The `disabled:` variants are not cosmetic. These two are gated by the enclosing fieldset, but an
+                      author-set `background-color` and `color` override the UA's own disabled rendering, so without
+                      them a dead field looks exactly like a live one. That was tolerable while `disabled` only meant
+                      "a run is in flight" for a few seconds; it now also means "the kept settings failed to load", a
+                      state a teacher can sit in and type at. Same treatment as the startthema select above. */}
                   <label className="flex flex-col gap-1 text-xs">
                     <span className="text-ink">{t("parameters.momentNaam")}</span>
                     <input
@@ -506,7 +541,7 @@ export function Generatieparametersformulier({
                       maxLength={MAX_MOMENTNAAM}
                       onChange={(event) => wijzigMoment(index, { naam: event.target.value })}
                       placeholder={t("parameters.momentNaamVoorbeeld")}
-                      className="h-9 w-48 rounded-md border border-input bg-card px-2 text-xs text-ink placeholder:text-ink-zacht"
+                      className="h-9 w-48 rounded-md border border-input bg-card px-2 text-xs text-ink placeholder:text-ink-zacht disabled:cursor-not-allowed disabled:text-ink-zacht"
                     />
                   </label>
 
@@ -516,7 +551,7 @@ export function Generatieparametersformulier({
                       type="date"
                       value={moment.datum}
                       onChange={(event) => wijzigMoment(index, { datum: event.target.value })}
-                      className="h-9 rounded-md border border-input bg-card px-2 text-xs text-ink"
+                      className="h-9 rounded-md border border-input bg-card px-2 text-xs text-ink disabled:cursor-not-allowed disabled:text-ink-zacht"
                     />
                   </label>
 
