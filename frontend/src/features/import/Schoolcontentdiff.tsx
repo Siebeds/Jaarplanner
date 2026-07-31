@@ -85,7 +85,12 @@ export function Schoolcontentdiff({
 
       {/* A skipped import and an import that changes nothing are different facts, and both need saying out
           loud: the first means the file was unusable, the second means the file matches what is already
-          there. Left implicit, both render as three lines of zeros that read like a bug. */}
+          there. Left implicit, both render as three lines of zeros that read like a bug.
+
+          `diffOngewijzigd` names the three content levels rather than saying "niets aan wat er al staat",
+          because `isLeeg` is computed from those three only. Seen in the browser beside a non-empty
+          `bedreigdeBeslissingen`, the broader sentence read as "nothing at all will change" while two teacher
+          decisions were at stake one panel below. */}
       {diff.overgeslagen ? (
         <p className="mt-1.5 text-sm font-medium text-attentie-ink">
           {t(toegepast ? "import.diffOvergeslagenGedaan" : "import.diffOvergeslagen")}

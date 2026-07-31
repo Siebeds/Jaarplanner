@@ -84,7 +84,7 @@
     "diffTitelBijwerkenGedaan": "Wat er toegevoegd en bijgewerkt is",
     "diffOvergeslagen": "Uit dit bestand wordt niets ingelezen.",
     "diffOvergeslagenGedaan": "Uit dit bestand is niets ingelezen.",
-    "diffOngewijzigd": "Dit bestand verandert niets aan wat er al staat.",
+    "diffOngewijzigd": "Dit bestand verandert niets aan de thema's, subthema's en activiteiten die er al staan.",
     "subthemaContext": "in {thema}, klas {klas}, leeftijd {leeftijd}",
     "activiteitContext": "in {thema} · {subthema}",
     "niveau": {

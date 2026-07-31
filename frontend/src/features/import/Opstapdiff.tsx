@@ -177,8 +177,13 @@ export function Verdwenen({ diff }: { diff: OpstapHerimportDiff }) {
       </p>
 
       <ul className="mt-2.5 flex flex-col gap-1">
-        {/* The still-linked ones first: they are the ones a human has to decide about, because school content
-            points at them (Art. IV.2). The others are only informative. */}
+        {/*
+          The still-linked ones first, and **all** of them, however many there are. This is the one list on the
+          screen that is deliberately not bounded: each entry is a goal some teacher's content points at, so it
+          is a decision waiting for a human (Art. IV.2), and truncating it would hide work rather than noise. A
+          real re-import produced 14 of these against the development database, so the case is not theoretical.
+          The unlinked ones below are informational and are bounded like everything else.
+        */}
         {diff.verdwenenMaarGekoppeld.map((doel) => (
           <li key={doel.code} className="flex flex-wrap items-baseline gap-x-2 text-sm">
             <span className="font-mono text-xs font-semibold text-ink" data-cijfers>
@@ -193,7 +198,7 @@ export function Verdwenen({ diff }: { diff: OpstapHerimportDiff }) {
             </span>
           </li>
         ))}
-        {diff.verdwenen.map((code) => (
+        {diff.verdwenen.slice(0, MAX_REGELS).map((code) => (
           <li key={code} className="flex flex-wrap items-baseline gap-x-2 text-sm">
             <span className="font-mono text-xs font-semibold text-ink" data-cijfers>
               {code}
@@ -202,6 +207,12 @@ export function Verdwenen({ diff }: { diff: OpstapHerimportDiff }) {
           </li>
         ))}
       </ul>
+
+      {diff.verdwenen.length > MAX_REGELS ? (
+        <p className="mt-2 text-xs text-attentie-ink">
+          {tAantal(diff.verdwenen.length - MAX_REGELS, "import.nogMeerEnkelvoud", "import.nogMeer")}
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -108,7 +108,19 @@ export function Opstapimport() {
         {t("import.opstap.uitleg")}
       </p>
 
-      <form onSubmit={kijkNa} className="mt-4 flex flex-col gap-4 border-t border-border pt-4">
+      {/*
+        The form sits in its own `bg-card` block rather than directly on the section's recessed surface, and the
+        reason is a measurement rather than taste. `--input` is documented (in `index.css`) as 3.40:1 on card and
+        3.21:1 on paper, with an explicit instruction to measure both surfaces before changing it. On
+        `paper-diep` it measures **3.01:1** in a real browser: it clears SC 1.4.11's 3:1 floor for a control
+        boundary by one hundredth, which is the "too thin to cite as evidence later" case E7-10 recorded. Putting
+        the controls back on card keeps the pairing that was actually measured, and the section stays visibly
+        quieter than the school-content card above it through its recessed background and the absence of a shadow.
+      */}
+      <form
+        onSubmit={kijkNa}
+        className="mt-4 flex flex-col gap-4 rounded-md border border-border bg-card p-3.5"
+      >
         <div>
           <label htmlFor={disciplineId} className="block text-sm font-semibold text-ink">
             {t("import.opstap.disciplineLabel")}
