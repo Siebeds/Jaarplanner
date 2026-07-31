@@ -97,6 +97,17 @@ function stubFetch(
     themas?: string[];
     /** `"fout"` fails the settings GET; `"hangt"` never answers it, which is the pending state. */
     instellingen?: Generatieparameters | "fout" | "hangt";
+    /**
+     * With `instellingen: "fout"`, consulted on **every** settings GET: return settings to make that call succeed, or
+     * `null` to keep failing. A test owns the switch, so it can keep the failure state up until it presses
+     * "Opnieuw proberen".
+     *
+     * A "second call succeeds" version of this was wrong and worth recording: the kalender and the form share one query
+     * key but mount at different times (the form only exists once the plan and the grid have resolved), and an errored
+     * query is **stale**, so the form's own observer refetches on mount. The failure therefore heals itself on call two
+     * without anybody pressing anything, which would have made a retry test pass without a retry.
+     */
+    instellingenHerstel?: () => Generatieparameters | null;
     /** Overrides the grid, so a test can hand the form another tier's periods (E3-08's zoom). */
     rooster?: Planningsrooster;
   } = {},
@@ -104,6 +115,7 @@ function stubFetch(
   const {
     themas = ["Herfst", "Water"],
     instellingen = geenInstellingen,
+    instellingenHerstel,
     rooster: grid = rooster,
   } = opties;
   const posts: (string | undefined)[] = [];
@@ -123,10 +135,15 @@ function stubFetch(
           // describe as "(niets ingesteld)".
           return new Promise<Response>(() => {});
         }
+        if (instellingen === "fout") {
+          const herstel = instellingenHerstel?.() ?? null;
 
-        return instellingen === "fout"
-          ? new Response("nope", { status: 500 })
-          : new Response(JSON.stringify(instellingen), { status: 200 });
+          return herstel === null
+            ? new Response("nope", { status: 500 })
+            : new Response(JSON.stringify(herstel), { status: 200 });
+        }
+
+        return new Response(JSON.stringify(instellingen), { status: 200 });
       }
       if (url.includes("/api/themas")) {
         return new Response(
@@ -274,6 +291,67 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     await waitFor(() => expect(posts).toEqual([]));
   });
 
+  /**
+   * The refusal gates the **form**, not only the button.
+   *
+   * With the settings unknown a live field is not merely useless behind an action that cannot fire: submitting a body
+   * *replaces* the kept settings, so setting one startthema in a form that failed to load would silently delete a
+   * stored blocking vast moment the teacher never saw.
+   */
+  it("refuses edits too while the kept settings are unknown, not just the run", async () => {
+    stubFetch(resultaat(leegRapport), { instellingen: "fout" });
+    renderKalender();
+
+    await screen.findByText(t("parameters.instellingenFout"));
+    await openForm();
+
+    await waitFor(() => expect(periodeKeuze(1)).toBeDisabled());
+    expect(periodeKeuze(2)).toBeDisabled();
+    expect(screen.getByRole("button", { name: t("parameters.momentToevoegen") })).toBeDisabled();
+  });
+
+  /**
+   * And the failure state has a way forward.
+   *
+   * The copy used to say *"herlaad de pagina en probeer opnieuw"*, which is what the query client's own three retries
+   * had already done before this notice could appear, and it lacked the escalation sentence its sibling
+   * `kalender.genereerOnbeschikbaar` ends with. Both are asserted here, so the copy cannot drift back.
+   */
+  it("offers a retry out of the failure instead of prescribing a reload", async () => {
+    let hersteld = false;
+    let pogingen = 0;
+    stubFetch(resultaat(leegRapport), {
+      instellingen: "fout",
+      instellingenHerstel: () => {
+        pogingen += 1;
+
+        return hersteld
+          ? { gewensteStartthemas: [{ blokStart: "2026-11-09", themaNaam: "Water" }], vasteMomenten: [] }
+          : null;
+      },
+    });
+    renderKalender();
+
+    await screen.findByText(t("parameters.instellingenFout"));
+    expect(t("parameters.instellingenFout")).not.toMatch(/herlaad/i);
+    expect(t("parameters.instellingenFout")).toMatch(/beheerder/i);
+
+    // The server recovers, and only the click may notice: `pogingen` proves the fetch came from the button and not
+    // from an automatic refetch that happened to land after the switch was flipped.
+    const voorDeKlik = pogingen;
+    hersteld = true;
+    fireEvent.click(screen.getByRole("button", { name: t("parameters.instellingenOpnieuw") }));
+
+    // The notice goes, the kept setting arrives, and generating is possible again — so the button is the way out of the
+    // state and not a second dead control.
+    await waitFor(() => expect(screen.queryByText(t("parameters.instellingenFout"))).toBeNull());
+    expect(pogingen).toBeGreaterThan(voorDeKlik);
+
+    const knop = screen.getByRole("button", { name: new RegExp(t("parameters.titel")) });
+    await waitFor(() => expect(knop.textContent).toContain("1 startthema"));
+    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeEnabled();
+  });
+
   // The same false summary showed transiently while the query was in flight, and a fast click still sent no body.
   it("does not claim nothing is set while the kept settings are still loading", async () => {
     const posts = stubFetch(resultaat(leegRapport), { instellingen: "hangt" });
@@ -287,6 +365,10 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     expect(genereerKnop).toBeDisabled();
     fireEvent.click(genereerKnop);
     await waitFor(() => expect(posts).toEqual([]));
+
+    // The fields are gated on the same flag, so nothing can be typed into a form whose settings have not arrived.
+    await openForm();
+    await waitFor(() => expect(periodeKeuze(1)).toBeDisabled());
   });
 
   it("clears a kept setting when the teacher empties it and generates", async () => {

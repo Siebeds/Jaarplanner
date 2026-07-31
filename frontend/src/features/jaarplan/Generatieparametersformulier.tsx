@@ -40,6 +40,12 @@ import type { Generatieparameters, Planningsblok, VastMoment } from "./types";
  * "nothing is set" about it can be the exact opposite of what is about to happen. While the settings are unknown the
  * summary says so, the failure is stated **outside** the collapse, and the kalender refuses to generate until they
  * arrive. That is the same rule the stranded notice already follows, applied to the case that produced it.
+ *
+ * **While the settings are unknown the form refuses edits too, and offers a retry instead.** Gating only the generate
+ * button left every field live behind a primary action that could never fire, and worse: setting one startthema in a
+ * form that failed to load would post a body that *replaces* the kept settings, silently deleting a stored blocking
+ * vast moment the teacher never saw. So the whole form takes the same gate ({@link
+ * GeneratieparametersformulierProps.disabled}) and the failure notice carries the one control that can end the state.
  */
 export interface GeneratieparametersformulierProps {
   /** The class whose kept settings are loaded and saved. */
@@ -62,7 +68,22 @@ export interface GeneratieparametersformulierProps {
    * an effect for no gain.
    */
   onWijzig: (parameters: Generatieparameters) => void;
-  /** Disabled while a run is in flight, so parameters cannot change under a request. */
+  /**
+   * No editing: a run is in flight, **or the kept settings are unknown**.
+   *
+   * The second case must be the *same* gate the kalender puts on its generate button, and it is passed in rather than
+   * recomputed here so the two can never disagree. Two reasons, and the first is a safety argument:
+   * 1. **A body replaces the kept settings wholesale.** A teacher looking at an empty form whose settings failed to
+   *    load, who sets one startthema, would silently delete a stored blocking vast moment they never saw. So an
+   *    editable form here would be worse than a disabled one, not better.
+   * 2. **An errored query is stale, so `refetchOnWindowFocus` retries it.** If that retry succeeded, the load effect
+   *    below would overwrite whatever had been typed while `onWijzig` had already reported the old edit to the parent:
+   *    the screen would show the loaded settings and the run would post the typed ones. With editing gated until the
+   *    settings are known, no edit can exist for the effect to clobber.
+   *
+   * The one control that stays live while the settings are unknown is the alert's own *Opnieuw proberen*, because a
+   * failure state with no way forward is what left the earlier version telling teachers to reload the page.
+   */
   disabled: boolean;
 }
 
@@ -295,10 +316,16 @@ export function Generatieparametersformulier({
         // produced two narrow three-line columns side by side. Wrapping puts the summary on its own line instead.
         className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-md text-left text-sm font-semibold text-ink hover:text-petrol focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-petrol"
       >
-        <span aria-hidden="true" className="text-xs text-ink-zacht">
-          {open ? "▾" : "▸"}
+        {/* Chevron and label are ONE flex item, non-wrapping, so the glyph cannot end up alone on a line above the
+            text it belongs to. That is what happened at 390px once the outer row wrapped: the label is long enough to
+            be pushed to the next line on its own, leaving the arrow floating above it. `min-w-0` lets the label wrap
+            inside this wrapper instead, and `shrink-0` keeps the glyph beside its first line. */}
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span aria-hidden="true" className="shrink-0 text-xs text-ink-zacht">
+            {open ? "▾" : "▸"}
+          </span>
+          <span>{t("parameters.titel")}</span>
         </span>
-        <span>{t("parameters.titel")}</span>
         {/* The summary is the reason a collapsed form is safe: a teacher can tell a parameterised run from a plain
             one without opening anything. It matters more now that the settings are kept, because the run may use
             something entered long ago. Built from `tAantal` with the zero parts omitted, not from one interpolated
@@ -310,14 +337,39 @@ export function Generatieparametersformulier({
       {/* Outside the collapse, for the reason the stranded notice below is: this decides what the next run does, and a
           panel that is closed by default cannot carry that. It used to live inside the panel, where a teacher read
           "(niets ingesteld)" on the trigger while the server still held a blocking vast moment the run would apply.
-          `role="alert"` and inert text, so unlike the stranded notice there is no live region nesting a control. */}
+
+          **It carries the only live control on a screen that otherwise refuses everything.** Without it the failure
+          state had no way forward at all: the copy said "herlaad de pagina en probeer opnieuw", which is what
+          TanStack's own three retries had already done before this notice appeared. So the remedy it prescribed was
+          the one already exhausted, and the escalation sentence its sibling (`kalender.genereerOnbeschikbaar`) ends
+          with was missing. Now: retry the query, and tell the teacher who to tell if it keeps failing.
+
+          **The `alert` is the sentence, not the box.** The button is a sibling of the live region rather than a child
+          of it, the same separation `TeHerzien` and the stranded notice below use: a live region wrapping a control
+          re-announces its whole contents on every interaction, and pressing retry changes the button's own label. */}
       {instellingen.isError && (
-        <p
-          role="alert"
-          className="mt-3 rounded-md bg-suggestie-geweigerd/10 px-3 py-2.5 text-xs font-medium leading-snug text-suggestie-geweigerd"
-        >
-          {t("parameters.instellingenFout")}
-        </p>
+        <div className="mt-3 rounded-md bg-suggestie-geweigerd/10 px-3 py-2.5">
+          <p
+            role="alert"
+            className="text-xs font-medium leading-snug text-suggestie-geweigerd"
+          >
+            {t("parameters.instellingenFout")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            // NOT gated on `disabled`: that prop is (among other things) "the settings are unknown", which is exactly
+            // the state this button exists to leave. `isFetching` covers the in-flight retry, including its own
+            // internal retries, so it cannot be pressed twice into two racing refetches.
+            disabled={instellingen.isFetching}
+            onClick={() => void instellingen.refetch()}
+            className="mt-2 h-7 bg-card text-xs"
+          >
+            {instellingen.isFetching
+              ? t("parameters.instellingenOpnieuwBezig")
+              : t("parameters.instellingenOpnieuw")}
+          </Button>
+        </div>
       )}
 
       {/* Also outside the collapse: a stranded setting must be visible without opening anything, since it is being sent

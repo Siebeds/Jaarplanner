@@ -104,13 +104,31 @@ public sealed class EfJaarplanOpslag : IJaarplanOpslag
         }
     }
 
+    /// <summary>The settings row's own table, the only one whose <c>23505</c> is the race this port recovers from.</summary>
+    private const string ParametersTabel = "generatieparameters";
+
     /// <summary>
-    /// True for a unique-key violation on the kept settings themselves — the concurrent-insert race. Scoped by
-    /// constraint name so a violation on some other table cannot be mistaken for it and swallowed.
+    /// True for a unique-key violation on the kept settings row itself — the concurrent-insert race.
+    /// <para>
+    /// <b>Scoped by the table, matched exactly.</b> The first version tested
+    /// <c>ConstraintName.Contains("generatieparameters")</c>, which also matches
+    /// <c>IX_startthemavoorkeuren_GeneratieparametersId_BlokStart</c> and
+    /// <c>IX_vastemomenten_GeneratieparametersId_Datum</c> — two other tables, because their FK column is
+    /// <c>GeneratieparametersId</c>. A violation on either would have been reported as the lost race, the caller's
+    /// reload would have found no row, and the request would have 500'd blaming a duplicate settings row that never
+    /// existed. It was unreachable (<c>Generatieparameters.Vervang</c> refuses a duplicate <c>BlokStart</c> before any
+    /// insert can be attempted), but the comment claimed a scoping the substring did not give.
+    /// </para>
+    /// <para>
+    /// The table rather than the index name on purpose: a <c>23505</c> on this table can only be the
+    /// <c>(KlasId, SchooljaarId)</c> index or the primary key, and the key is a client-generated <c>Guid</c>. Naming the
+    /// index would tie the recovery to an EF-generated identifier that a rename would silently break, and the failure
+    /// mode of that would be the 500 this method exists to prevent.
+    /// </para>
     /// </summary>
     private static bool IsUniekeSleutelSchending(DbUpdateException ex) =>
         ex.InnerException is Npgsql.PostgresException { SqlState: "23505" } pg &&
-        pg.ConstraintName?.Contains("generatieparameters", StringComparison.OrdinalIgnoreCase) == true;
+        string.Equals(pg.TableName, ParametersTabel, StringComparison.Ordinal);
 
     /// <inheritdoc />
     /// <remarks>

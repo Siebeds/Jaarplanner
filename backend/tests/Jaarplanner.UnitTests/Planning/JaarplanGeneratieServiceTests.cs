@@ -1650,13 +1650,23 @@ public sealed class JaarplanGeneratieServiceTests
     }
 
     /// <summary>
-    /// <b>Two runs starting together do not 500.</b> Both find no settings row, both create one, and the
-    /// <c>(KlasId, SchooljaarId)</c> unique index refuses the second — which used to surface as a raw <c>23505</c> in a
-    /// 500 with an English detail. The loser's intent is satisfiable, so it takes the winner's row and writes its own
-    /// settings into it: last write wins, exactly as two runs a second apart already behave.
+    /// <b>Two runs starting together do not 500 <i>on the settings row</i></b> — and the scope of that claim is
+    /// deliberate. Both find no settings row, both create one, and the <c>(KlasId, SchooljaarId)</c> unique index refuses
+    /// the second, which used to surface as a raw <c>23505</c> in a 500 with an English detail. The loser's intent is
+    /// satisfiable, so it takes the winner's row and writes its own settings into it: last write wins, exactly as two
+    /// runs a second apart already behave.
+    /// <para>
+    /// <b>The wider class is NOT closed, and pretending otherwise is what the name of this test used to do.</b>
+    /// <c>LaadOfMaakJaarplanAsync</c> does the identical unguarded load-or-create for <see cref="Jaarplan"/>, which also
+    /// carries a unique index on <c>KlasId</c> and whose <c>BewaarAsync</c> catches nothing — so two simultaneous
+    /// first-ever runs for one class still fail one step later, and two simultaneous regenerations can still lose the
+    /// <c>VerwijderVervangbarePlaatsingen</c> delete. Recorded as a known residual in the E3-04 backlog entry rather than
+    /// fixed here, because the resolution is a different one (the loser's plan write is not "last write wins" in any
+    /// obvious sense) and it belongs to E3-01's aggregate.
+    /// </para>
     /// </summary>
     [Fact]
-    public async Task Een_gelijktijdige_run_verliest_de_race_zonder_fout()
+    public async Task Een_gelijktijdige_run_verliest_de_parameterrace_zonder_fout()
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
@@ -1688,6 +1698,61 @@ public sealed class JaarplanGeneratieServiceTests
         Assert.Equal(
             [new Startthemakeuze(blokken[0].Start, "Water")],
             (await service.HaalParametersAsync(klas.Id)).GewensteStartthemas);
+    }
+
+    /// <summary>
+    /// <b>The frontend's <c>GENERATIEBLOKNIVEAU</c> is the same tier as <see cref="JaarplanGeneratieService.GeneratieNiveau"/>,
+    /// and this test is the only thing that binds them.</b>
+    /// <para>
+    /// The constant is duplicated across the wire: the parameter form compares the grid's <c>niveau</c> against its own
+    /// copy, and the two halves were coupled by a doc comment. Move generation to another tier and, with nothing
+    /// asserting the pair, the form degrades <i>silently and permanently</i> to its "another tier" branch: startthema's
+    /// become unsettable and no test fails. <c>PlanningsroosterEndpointTests</c> does not cover this — it pins the
+    /// <i>rooster</i> default, which is a different decision that merely happens to agree today.
+    /// </para>
+    /// <para>
+    /// Reading the TypeScript is the point: an assertion on the C# value alone would pass while the halves disagreed.
+    /// The failure message names the file to change, because whoever moves the tier has to move both.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void De_frontendconstante_voor_het_generatieniveau_volgt_de_backend()
+    {
+        var repoRoot = VindRepoRoot();
+        Assert.True(
+            repoRoot is not null,
+            $"repository root not found above {AppContext.BaseDirectory}; expected a directory holding both " +
+            "backend/src and frontend/src");
+
+        var typesPad = Path.Combine(repoRoot!, "frontend", "src", "features", "jaarplan", "types.ts");
+        Assert.True(File.Exists(typesPad), $"{typesPad} does not exist");
+
+        var match = System.Text.RegularExpressions.Regex.Match(
+            File.ReadAllText(typesPad),
+            """GENERATIEBLOKNIVEAU\s*=\s*"(?<niveau>[^"]+)"\s*;""");
+        Assert.True(match.Success, $"GENERATIEBLOKNIVEAU is not declared as a string literal in {typesPad}");
+
+        Assert.Equal(
+            JaarplanGeneratieService.GeneratieNiveau.ToString(),
+            match.Groups["niveau"].Value);
+    }
+
+    /// <summary>
+    /// Walks up from the test assembly to the repository root, identified by holding both source trees. Walked rather
+    /// than assumed as a fixed number of <c>..</c> segments, which breaks on a different target framework or output path.
+    /// </summary>
+    private static string? VindRepoRoot()
+    {
+        for (var map = new DirectoryInfo(AppContext.BaseDirectory); map is not null; map = map.Parent)
+        {
+            if (Directory.Exists(Path.Combine(map.FullName, "backend", "src")) &&
+                Directory.Exists(Path.Combine(map.FullName, "frontend", "src")))
+            {
+                return map.FullName;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>An AI client that always fails, for the "a failed run keeps the parameters" test.</summary>

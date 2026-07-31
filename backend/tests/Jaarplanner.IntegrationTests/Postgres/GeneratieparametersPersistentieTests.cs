@@ -1,4 +1,9 @@
+using Jaarplanner.Application.Ai;
+using Jaarplanner.Application.Planning;
+using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Domain.Planning;
+using Jaarplanner.Domain.Schoolcontent;
+using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.Planning;
 using Microsoft.EntityFrameworkCore;
 
@@ -206,6 +211,139 @@ public sealed class GeneratieparametersPersistentieTests : IAsyncLifetime
             Assert.Equal("Water", Assert.Single(enige.Startthemas).ThemaNaam);
             Assert.Equal("Sportdag", Assert.Single(enige.VasteMomenten).Naam);
         }
+    }
+
+    /// <summary>
+    /// <b>The composition: the service's loser branch running on the real <see cref="EfJaarplanOpslag"/> against real
+    /// Postgres.</b>
+    /// <para>
+    /// The two tests around it each cover one half and never meet: the unit test drives
+    /// <c>JaarplanGeneratieService.BewaarParametersAsync</c> against a fake that models no EF at all, and
+    /// <see cref="Een_geweigerde_gelijktijdige_insert_laat_de_context_bruikbaar"/> exercises the real EF sequence but
+    /// <i>reproduces</i> the service's four calls in test code instead of calling it. So the combination had never
+    /// executed, which is exactly the gap this repository has paid for twice (a green suite whose second-save path was
+    /// never run).
+    /// </para>
+    /// <para>
+    /// <b>How the race is made deterministic:</b> a decorator delegates every call to the real port, and on the first
+    /// <c>LaadGeneratieparametersAsync</c> that returns <c>null</c> it inserts the winner's row through a <i>separate</i>
+    /// context. That is precisely the interleaving the race needs, and nothing about the code under test is faked: the
+    /// insert below hits the real unique index, <c>IsUniekeSleutelSchending</c> reads a real <c>23505</c> (so this test
+    /// also fails if that predicate ever stops matching the settings table), the detach runs on a real change tracker,
+    /// and the reload plus <c>Vervang</c> writes real rows.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task De_service_overleeft_de_verloren_race_op_de_echte_opslag()
+    {
+        var (klasId, schooljaarId, blokStart) = await SeedAsync();
+
+        await using var context = _db.MaakContext();
+        var echteOpslag = new EfJaarplanOpslag(context);
+        var winnaar = new Generatieparameters(klasId, schooljaarId);
+        winnaar.Vervang([new BewaardStartthema(blokStart, "Herfst")], []);
+
+        var opslag = new GelijktijdigeRunOpslag(echteOpslag, winnaar, () => _db.MaakContext());
+        var service = new JaarplanGeneratieService(
+            new LeegAntwoordAiClient(),
+            new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
+            opslag);
+
+        // The full generation call, i.e. the production path: validate, persist the settings, then the model.
+        var resultaat = await service.GenereerAsync(
+            klasId,
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokStart, "Water")],
+                VasteMomenten = [new VastMoment("Sportdag", blokStart.AddDays(2), false)],
+            });
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.True(opslag.WinnaarIsGeschreven, "the concurrent run never got its row in, so no race was exercised");
+
+        await using (var opnieuw = _db.MaakContext())
+        {
+            // One row, holding what the LOSING run asked for: last write wins, exactly as two runs a second apart
+            // behave. Nothing it sent was dropped, including its vast moment.
+            var enige = await opnieuw.Generatieparameters.SingleAsync();
+            var startthema = Assert.Single(enige.Startthemas);
+            Assert.Equal(blokStart, startthema.BlokStart);
+            Assert.Equal("Water", startthema.ThemaNaam);
+            Assert.Equal("Sportdag", Assert.Single(enige.VasteMomenten).Naam);
+        }
+    }
+
+    /// <summary>
+    /// The real port, with one concurrent run spliced into the race window: the first
+    /// <see cref="LaadGeneratieparametersAsync"/> that finds nothing inserts the winner's row on another connection
+    /// before answering <c>null</c>. Everything else delegates.
+    /// </summary>
+    private sealed class GelijktijdigeRunOpslag : IJaarplanOpslag
+    {
+        private readonly IJaarplanOpslag _binnen;
+        private readonly Generatieparameters _winnaar;
+        private readonly Func<AppDbContext> _andereVerbinding;
+
+        public GelijktijdigeRunOpslag(
+            IJaarplanOpslag binnen,
+            Generatieparameters winnaar,
+            Func<AppDbContext> andereVerbinding)
+        {
+            _binnen = binnen;
+            _winnaar = winnaar;
+            _andereVerbinding = andereVerbinding;
+        }
+
+        /// <summary>True once the concurrent run's row is committed, so the test can prove the race really happened.</summary>
+        public bool WinnaarIsGeschreven { get; private set; }
+
+        public Task<(Klas Klas, Schooljaar Schooljaar)?> LaadKlasMetSchooljaarAsync(
+            Guid klasId,
+            CancellationToken cancellationToken = default) =>
+            _binnen.LaadKlasMetSchooljaarAsync(klasId, cancellationToken);
+
+        public Task<Jaarplan?> LaadJaarplanAsync(Guid klasId, CancellationToken cancellationToken = default) =>
+            _binnen.LaadJaarplanAsync(klasId, cancellationToken);
+
+        public void VoegJaarplanToe(Jaarplan jaarplan) => _binnen.VoegJaarplanToe(jaarplan);
+
+        public async Task<Generatieparameters?> LaadGeneratieparametersAsync(
+            Guid klasId,
+            Guid schooljaarId,
+            CancellationToken cancellationToken = default)
+        {
+            var geladen = await _binnen.LaadGeneratieparametersAsync(klasId, schooljaarId, cancellationToken);
+
+            if (geladen is null && !WinnaarIsGeschreven)
+            {
+                // The other run commits between this load and the caller's insert. Its own context, because that is
+                // what a second request has.
+                await using var ander = _andereVerbinding();
+                ander.Generatieparameters.Add(_winnaar);
+                await ander.SaveChangesAsync(cancellationToken);
+                WinnaarIsGeschreven = true;
+            }
+
+            return geladen;
+        }
+
+        public Task<bool> ProbeerGeneratieparametersToeTeVoegenAsync(
+            Generatieparameters parameters,
+            CancellationToken cancellationToken = default) =>
+            _binnen.ProbeerGeneratieparametersToeTeVoegenAsync(parameters, cancellationToken);
+
+        public Task<IReadOnlyList<Thema>> LaadThemasAsync(CancellationToken cancellationToken = default) =>
+            _binnen.LaadThemasAsync(cancellationToken);
+
+        public Task BewaarAsync(CancellationToken cancellationToken = default) =>
+            _binnen.BewaarAsync(cancellationToken);
+    }
+
+    /// <summary>An AI client that answers with an empty, valid plan: this test is about the settings, not the plan.</summary>
+    private sealed class LeegAntwoordAiClient : IAiClient
+    {
+        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new AiCompletion { Content = """{"plaatsingen":[]}""" });
     }
 
     /// <summary>

@@ -80,6 +80,9 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // could only have said "(niets ingesteld)" about it. A teacher cannot consent to a run whose parameters the screen
   // is unable to state, so the button is disabled and the form says why in visible text (its summary while loading,
   // an alert outside the collapse when the load failed). The window is one request long in the normal case.
+  //
+  // The SAME flag gates the form's fields (see the prop below): editing is not merely useless while the settings are
+  // unknown, it is unsafe, because a submitted body replaces them wholesale.
   const instellingenOnbekend = instellingen.isPending || instellingen.isError;
 
   // The card currently under the cursor, kept only so the DragOverlay can render a copy of it.
@@ -272,7 +275,13 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             blokken={grid.blokken}
             niveau={grid.niveau}
             onWijzig={setWijziging}
-            disabled={generatie.isPending}
+            // The SAME gate as the button, not just `generatie.isPending`. Gating only the button left the fields live
+            // behind a primary action that could never fire, and an edit made there would post a body that *replaces*
+            // the kept settings: a teacher who set one startthema in a form that had failed to load would silently
+            // delete a stored blocking vast moment they never saw. It also closes a desync, since an errored query is
+            // stale and refetches on window focus: a retry that succeeded would reload the form's fields while
+            // `wijziging` still held the earlier edit, so the run would post what the screen no longer showed.
+            disabled={generatie.isPending || instellingenOnbekend}
           />
 
           {/* The 422 body is an English operator diagnostic (a model parse failure a teacher cannot act on),
