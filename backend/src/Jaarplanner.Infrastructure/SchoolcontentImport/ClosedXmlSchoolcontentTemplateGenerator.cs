@@ -40,7 +40,10 @@ public sealed class ClosedXmlSchoolcontentTemplateGenerator : ISchoolcontentTemp
             [SchoolcontentKolom.Themadoelen] = "NC-1.1; NC-1.2",
             [SchoolcontentKolom.SubthemaNaam] = "Bladeren",
             [SchoolcontentKolom.SubthemaDuurWeken] = "2",
-            [SchoolcontentKolom.SubthemaKlas] = "K3 — derde kleuterklas",
+            // No em dash (Art. II.5): this value is copied out of the template into a cell that has to match
+            // a stored `Klas.Naam`, so it becomes product data rather than a caption. E1-13 is the story that
+            // makes this file downloadable from a screen, which is what brought it inside the rule.
+            [SchoolcontentKolom.SubthemaKlas] = "K3 derde kleuterklas",
             [SchoolcontentKolom.SubthemaLeeftijd] = "5-6",
             [SchoolcontentKolom.SubthemaProbleemstelling] = "Waarom vallen de bladeren in de herfst?",
             [SchoolcontentKolom.SubthemaOnderzoeksvraag] = "Welke bomen verliezen hun bladeren?",

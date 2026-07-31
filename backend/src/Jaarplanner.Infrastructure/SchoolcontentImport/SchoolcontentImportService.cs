@@ -60,7 +60,12 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                 activiteiten: [],
                 bedreigdeBeslissingen: [],
                 overgeslagen: true,
-                opmerkingen: ["Geen geldige rijen ingelezen — niets geïmporteerd (bestand mogelijk leeg, onvolledig of verkeerd)."]);
+                // Rewritten without an em dash (Art. II.5) now that E1-13 puts this notice on a screen. The
+                // sentence was split rather than having the character deleted, which the rule requires.
+                opmerkingen: [
+                    "Er zijn geen bruikbare rijen ingelezen, dus er is niets geïmporteerd. " +
+                    "Het bestand is misschien leeg of onvolledig, of het is niet het juiste bestand."
+                ]);
             return new SchoolcontentImportResultaat(notice, toegepast: false);
         }
 
@@ -220,10 +225,17 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         // the file is imported; the curriculum is never touched (Art. III).
         if (codeControle.Onbekend.Count > 0)
         {
+            // No em dash (Art. II.5) and no "(s)" plural dodge, both of which E1-13 would have put on a
+            // teacher's screen. Dutch inflects the noun and the verb, so the count picks the sentence; the
+            // frontend cannot do it here because only this layer knows the codes.
+            var aantal = codeControle.Onbekend.Count;
+            var opsomming = string.Join(", ", codeControle.Onbekend);
             opmerkingen.Add(
-                $"{codeControle.Onbekend.Count} onbekende leerplandoelcode(s) overgeslagen — deze bestaan " +
-                "niet in de ingelezen Op.stap-doelen: " + string.Join(", ", codeControle.Onbekend) +
-                ". Controleer de codes of importeer eerst de betreffende discipline.");
+                (aantal == 1
+                    ? "1 leerplandoelcode uit dit bestand is overgeslagen. Deze code staat niet in de "
+                    : $"{aantal} leerplandoelcodes uit dit bestand zijn overgeslagen. Deze codes staan niet in de ") +
+                $"ingelezen Op.stap-doelen: {opsomming}. " +
+                "Controleer de codes, of laad eerst de discipline in waar ze bij horen.");
         }
 
         return new SchoolcontentImportDiff(
@@ -264,9 +276,15 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
 
             if (!klasPerNaam.TryGetValue(sleutel.Klas, out var klas))
             {
+                // A subthema is class-scoped (Art. IX.2), so an unresolvable klas means the row cannot be
+                // placed at all. The Dutch says what happened and what to do; the article reference lives
+                // here in the comment, because a teacher cannot act on "Art. IX.2" (Art. II.3) — the same
+                // audience mixing E1-15 fixed in the Op.stap importer's out-of-scope notice. No em dash
+                // either (Art. II.5): E1-13 renders this string.
                 opmerkingen.Add(
-                    $"Subthema '{sleutel.Naam}' verwijst naar onbekende klas '{sleutel.Klas}' — overgeslagen " +
-                    "(een subthema is klas-gebonden, Art. IX.2).");
+                    $"Subthema '{sleutel.Naam}' verwijst naar de klas '{sleutel.Klas}', die niet bestaat. " +
+                    "Het subthema is daarom overgeslagen. Maak die klas eerst aan, of pas de naam in het " +
+                    "bestand aan.");
                 continue;
             }
 
