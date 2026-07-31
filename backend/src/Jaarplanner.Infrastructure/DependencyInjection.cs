@@ -84,9 +84,19 @@ public static class DependencyInjection
             configuration.GetSection(DisciplineSelectieOptions.SectionName));
         services.AddSingleton<IDisciplineSelectie, GeconfigureerdeDisciplineSelectie>();
 
+        // The Op.stap per-discipline goal Excel parser (E1-03), reading columns A–M exclusively through
+        // the single-source OpstapKolom mapping (Art. III.3 / VII.1). A pure parser/mapper with no
+        // persistence, so it is stateless and singleton-safe — same as its school-content sibling below.
+        //
+        // It was NOT registered until E1-15, which is part of the same unreachability defect: the import
+        // service had no caller, and the parser its caller would need had no registration either.
+        services.AddSingleton<IOpstapParser, ClosedXmlOpstapParser>();
+
         // The single sanctioned writer of official Op.stap reference data: non-destructive,
         // idempotent (re-)import with a reviewable diff (E1-05, Art. III.4 / IV.2 / FR-2.5). It
         // consults the discipline-selection seam (E1-06) to decide which disciplines it processes.
+        // Reachable since E1-15 through OpstapImportController — POST /api/opstap-import(/voorbeeld) —
+        // rather than only from its own unit tests, which was the whole defect E1-15 exists to fix.
         services.AddScoped<IOpstapImportService, OpstapImportService>();
 
         // The school-content (thema/subthema/activiteit) Excel parser/validator: validates

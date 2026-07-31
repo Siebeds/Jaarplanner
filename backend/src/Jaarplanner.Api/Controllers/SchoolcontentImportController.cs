@@ -1,3 +1,4 @@
+using Jaarplanner.Api.Infrastructure;
 using Jaarplanner.Application.Schoolcontent.Import;
 using Jaarplanner.Infrastructure.SchoolcontentImport;
 using Microsoft.AspNetCore.Mvc;
@@ -157,7 +158,7 @@ public sealed class SchoolcontentImportController : ControllerBase
         new()
         {
             Status = StatusCodes.Status400BadRequest,
-            Title = "Ongeldige aanvraag",
+            Title = Probleemtitels.OngeldigeAanvraag,
             Detail = detail,
         };
 

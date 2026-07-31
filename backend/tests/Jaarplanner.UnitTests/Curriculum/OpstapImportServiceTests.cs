@@ -36,6 +36,15 @@ public sealed class OpstapImportServiceTests : IDisposable
             .UseInMemoryDatabase($"import_{Guid.NewGuid():N}")
             .Options;
         _context = new AppDbContext(options);
+
+        // The discipline these tests import into. A real database always has the official taxonomy (the
+        // migrations seed all 13 rows), and since E1-15 the import path checks that the stated discipline is
+        // one of them — which the required Restrict FK has always enforced on PostgreSQL and which the
+        // in-memory provider silently ignores. Seeding it keeps the fixture honest about the state it claims
+        // to represent.
+        _context.Disciplines.Add(new Discipline(Discipline, "Wiskunde"));
+        _context.SaveChanges();
+
         _service = new OpstapImportService(_context, AlleInScope);
     }
 
@@ -239,6 +248,72 @@ public sealed class OpstapImportServiceTests : IDisposable
 
         var lp2 = await _context.Leerplandoelen.SingleAsync(l => l.Code == "LP-2");
         Assert.False(lp2.NietMeerInOpstap);
+    }
+
+    // --- Integrity preflight (E1-15): the refusals fire on the PREVIEW path too. ---
+    //
+    // These three exist because the first round of E1-15 let them fire on SaveChanges, which a preview never
+    // reaches: a preview then answered "here is what would be added" for a file the commit refused outright.
+    // An FR-2.5 review step that green-lights an impossible import is worse than none, so each case is
+    // asserted with `toepassen: false`.
+
+    [Fact]
+    public async Task Preview_refuses_an_unknown_discipline_before_writing_anything()
+    {
+        var parse = new OpstapParseResult(
+            "99",
+            [new Leerplandoel("LP-1", Doelsoort.Gemeenschappelijk, "L1", "Getallen", "Getalbegrip", "99", tekst: "tekst")],
+            []);
+
+        var fout = await Assert.ThrowsAsync<OpstapImportFout>(
+            () => _service.ImporteerAsync(parse, toepassen: false));
+
+        Assert.Equal(OpstapImportFoutSoort.OnbekendeDiscipline, fout.Soort);
+        Assert.Contains("99", fout.Message, StringComparison.Ordinal);
+        Assert.Empty(await _context.Leerplandoelen.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Preview_refuses_a_code_that_already_belongs_to_another_discipline()
+    {
+        // LP-1 is loaded under discipline 3; the file claims it for discipline 2.
+        _context.Disciplines.Add(new Discipline("3", "Wetenschap en techniek"));
+        _context.Leerplandoelen.Add(new Leerplandoel(
+            "LP-1", Doelsoort.Gemeenschappelijk, "L1", "Natuur", "Levende natuur", "3", tekst: "tekst"));
+        await _context.SaveChangesAsync();
+
+        var fout = await Assert.ThrowsAsync<OpstapImportFout>(
+            () => _service.ImporteerAsync(Parse(Doel("LP-1")), toepassen: false));
+
+        Assert.Equal(OpstapImportFoutSoort.CodeInAndereDiscipline, fout.Soort);
+        Assert.Contains("LP-1", fout.Message, StringComparison.Ordinal);
+        // The row that was already there is untouched, and still belongs to discipline 3.
+        var doel = await _context.Leerplandoelen.SingleAsync();
+        Assert.Equal("3", doel.DisciplineNummer);
+    }
+
+    [Fact]
+    public async Task Preview_refuses_a_concordance_to_a_minimumdoel_that_is_not_loaded()
+    {
+        var fout = await Assert.ThrowsAsync<OpstapImportFout>(
+            () => _service.ImporteerAsync(Parse(Doel("LP-1", minimumdoelRef: "4-12")), toepassen: false));
+
+        Assert.Equal(OpstapImportFoutSoort.OntbrekendeMinimumdoelen, fout.Soort);
+        Assert.Contains("4-12", fout.Message, StringComparison.Ordinal);
+        Assert.Empty(await _context.Leerplandoelen.ToListAsync());
+    }
+
+    [Fact]
+    public async Task A_loaded_minimumdoel_makes_the_concordance_importable()
+    {
+        _context.Minimumdoelen.Add(new Minimumdoel("4-12", "4-", "12", "De leerling meet lengtes."));
+        await _context.SaveChangesAsync();
+
+        var result = await _service.ImporteerAsync(
+            Parse(Doel("LP-1", minimumdoelRef: "4-12")), toepassen: true);
+
+        Assert.Equal(["LP-1"], result.Diff.Toegevoegd.ToArray());
+        Assert.Equal("4-12", (await _context.Leerplandoelen.SingleAsync()).MinimumdoelRef);
     }
 
     private async Task LinkThemadoelAsync(string leerplandoelCode, KoppelingStatus status)
