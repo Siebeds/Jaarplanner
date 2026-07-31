@@ -484,6 +484,14 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
     /// minimum of 2 is enforced nowhere in the codebase, so an under-anchored thema imports silently.
     /// Whether 2 is an invariant or a pedagogical guideline is an open question for directie.
     /// </para>
+    /// <para>
+    /// <b>The notice is written for a teacher (Art. II.3), and the article reference lives here in the
+    /// comment rather than in it.</b> The cap is Art. IX.2's; a reader who can act on this sentence cannot act
+    /// on that string, and the fix is theirs: the codes that fit are the <i>first</i> ones in the file's
+    /// <c>Themadoelen</c> cell (<c>Take(ruimte)</c> below), so the sentence says to put the anchoring ones
+    /// first. E1-13's audit found this notice still carrying "(Art. IX.2)" after its three siblings had been
+    /// rewritten, which is the selective-fix pattern this repo keeps recording.
+    /// </para>
     /// </summary>
     private static (IReadOnlyList<string> ToeTeVoegen, string? Opmerking) PasThemadoelCapToe(
         string themaNaam,
@@ -497,10 +505,18 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         }
 
         var genegeerd = nieuweCodes.Skip(ruimte).ToList();
+
+        // Dutch inflects the noun and the verb, so the count picks the sentence. No "(s)" dodge: the frontend
+        // cannot rescue it either, because only this layer knows the codes.
+        var overgeslagen = genegeerd.Count == 1
+            ? $"1 themadoel is daarom overgeslagen: {genegeerd[0]}."
+            : $"{genegeerd.Count} themadoelen zijn daarom overgeslagen: {string.Join(", ", genegeerd)}.";
+
         var opmerking =
-            $"Thema '{themaNaam}' zou {reedsAanwezig + nieuweCodes.Count} themadoelen krijgen; " +
-            $"een thema wordt door ten hoogste {Thema.MaxThemadoelen} themadoelen geankerd (Art. IX.2). " +
-            $"{genegeerd.Count} genegeerd: {string.Join(", ", genegeerd)}.";
+            $"Thema '{themaNaam}' zou {reedsAanwezig + nieuweCodes.Count} themadoelen krijgen, en een thema " +
+            $"kan er hoogstens {Thema.MaxThemadoelen} hebben. {overgeslagen} " +
+            "Zet in het bestand de themadoelen die dit thema het best samenvatten vooraan in de kolom " +
+            "Themadoelen.";
 
         return (nieuweCodes.Take(ruimte).ToList(), opmerking);
     }

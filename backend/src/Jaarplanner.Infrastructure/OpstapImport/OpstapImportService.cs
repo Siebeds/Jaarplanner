@@ -158,6 +158,12 @@ public sealed class OpstapImportService : IOpstapImportService
         // delete nothing — and surface a notice. (A genuinely first, empty import is simply a no-op.)
         if (inkomend.Count == 0 && bestaand.Count > 0)
         {
+            // Dutch inflects, so the count picks the sentence: "De 1 bestaande doelen blijven" is the plural
+            // bug this repo has shipped five times, and E1-13 renders this notice on a screen (Art. II.3).
+            var behouden = bestaand.Count == 1
+                ? "Het bestaande doel blijft ongewijzigd."
+                : $"De {bestaand.Count} bestaande doelen blijven ongewijzigd.";
+
             var notice = new OpstapHerimportDiff(
                 disciplineNummer,
                 toegevoegd: [],
@@ -169,7 +175,7 @@ public sealed class OpstapImportService : IOpstapImportService
                 opmerkingen:
                 [
                     $"Er zijn geen geldige leerplandoelen ingelezen voor discipline {disciplineNummer}, " +
-                    $"dus is er niets toegepast. De {bestaand.Count} bestaande doelen blijven ongewijzigd. " +
+                    $"dus is er niets toegepast. {behouden} " +
                     "Mogelijk is het bestand leeg, onvolledig of hoort het bij een andere discipline.",
                 ]);
 

@@ -1,5 +1,6 @@
 using Jaarplanner.Application.Schoolcontent.Import;
 using Jaarplanner.Domain.Curriculum;
+using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.SchoolcontentImport;
 using Microsoft.EntityFrameworkCore;
@@ -18,9 +19,19 @@ namespace Jaarplanner.UnitTests.Schoolcontent;
 /// visible?"</i>, and a story that only adds a caller can breach Art. II.5 without touching a literal.
 /// </para>
 /// <para>
-/// Scoped to the three reachable notices on purpose. A repo-wide literal scan would have to tell product
-/// copy from code comments and XML docs, where English typography is correct, and a guard that has to be
-/// weakened to pass teaches nothing.
+/// <b>There are four reachable notices, not three (E1-13 fix round 1, antagonist MAJOR 4).</b> The first round
+/// of this file said three, and the fourth <c>PasThemadoelCapToe</c> notice was the one still carrying
+/// "(Art. IX.2)" into a teacher's sentence: the rule was articulated and an instance in the same file was
+/// missed. So the guard below is no longer applied notice by notice.
+/// <see cref="Elke_opmerking_van_een_run_is_leesbaar_voor_een_leerkracht"/> drives <b>one</b> import that trips
+/// three of the four sources at once and asserts the predicates over <i>every</i> opmerking the diff carries,
+/// so a notice added to that path in future is covered without anyone remembering to add a test. The empty-file
+/// notice needs its own test because it short-circuits before any other source can run.
+/// </para>
+/// <para>
+/// Still scoped to this service rather than to a repo-wide literal scan: such a scan would have to tell product
+/// copy from code comments and XML docs, where English typography and article references are correct, and a
+/// guard that has to be weakened to pass teaches nothing.
 /// </para>
 /// </summary>
 public sealed class SchoolcontentImportOpmerkingenTests
@@ -109,6 +120,95 @@ public sealed class SchoolcontentImportOpmerkingenTests
         Assert.Contains("L6 bestaat niet", opmerking, StringComparison.Ordinal);
         Assert.Contains("overgeslagen", opmerking, StringComparison.Ordinal);
         Assert.Contains("Maak die klas eerst aan", opmerking, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The <see cref="Thema.MaxThemadoelen"/> cap, reported to a teacher rather than to a constitution reader.
+    /// <para>
+    /// Both grammatical forms, because Dutch inflects and the server composes this one. The theory also pins
+    /// <b>which</b> codes are dropped: the cap keeps the first ones in the cell, which is what makes the
+    /// notice's advice ("put the anchoring ones first") true rather than merely soothing.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(4, 1)]
+    [InlineData(5, 2)]
+    public async Task Themadoelcap_wordt_leesbaar_gemeld_met_de_codes_die_wegvallen(int aantalCodes, int genegeerd)
+    {
+        var codes = Enumerable.Range(1, aantalCodes).Select(i => $"NAT-K3-{i:00}").ToArray();
+
+        await using var context = MaakContext();
+        await SeedAsync(context, codes);
+
+        var parseResultaat = Parse(new SchoolcontentWorkbookBuilder()
+            .MetHeader()
+            .MetRij(themadoelen: string.Join(";", codes))
+            .Bouw());
+
+        var resultaat = await new SchoolcontentImportService(context).ImporteerAsync(
+            parseResultaat, SchoolcontentImportOpties.Toevoegen, toepassen: true);
+
+        var opmerking = Assert.Single(resultaat.Diff.Opmerkingen);
+        AssertLeesbaarVoorEenLeerkracht(opmerking);
+
+        if (genegeerd == 1)
+        {
+            Assert.Contains("1 themadoel is daarom overgeslagen", opmerking, StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.Contains($"{genegeerd} themadoelen zijn daarom overgeslagen", opmerking, StringComparison.Ordinal);
+        }
+
+        // The dropped codes are named, the kept ones are not paraded as dropped, and the reader is told what
+        // to change in their own file.
+        foreach (var code in codes.Skip(Thema.MaxThemadoelen))
+        {
+            Assert.Contains(code, opmerking, StringComparison.Ordinal);
+        }
+
+        Assert.DoesNotContain(codes[0], opmerking, StringComparison.Ordinal);
+        Assert.Contains("vooraan in de kolom Themadoelen", opmerking, StringComparison.Ordinal);
+
+        var thema = await context.Themas.Include(t => t.Themadoelen).SingleAsync();
+        Assert.Equal(
+            codes.Take(Thema.MaxThemadoelen),
+            thema.Themadoelen.Select(td => td.Koppeling.LeerplandoelCode));
+    }
+
+    /// <summary>
+    /// <b>The guard that grows by itself.</b> One import trips three of the four notice sources at once, and
+    /// every opmerking it produces has to pass the predicates — not the three someone remembered to name.
+    /// <para>
+    /// This is the shape the first round was missing. It asserted each notice it had rewritten, so the fourth
+    /// notice in the same file was neither rewritten nor asserted, and the story recorded "three reachable
+    /// notices" as a fact. A future fifth source on this path fails here without any new test.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Elke_opmerking_van_een_run_is_leesbaar_voor_een_leerkracht()
+    {
+        var codes = Enumerable.Range(1, 4).Select(i => $"NAT-K3-{i:00}").ToArray();
+
+        await using var context = MaakContext();
+        await SeedAsync(context, codes);
+
+        // Four valid themadoel codes (the cap notice), one typo (the unknown-code notice) and a klas that does
+        // not exist (the unknown-klas notice). The thema layer is processed before the subthema is skipped, so
+        // all three fire in the same run.
+        var parseResultaat = Parse(new SchoolcontentWorkbookBuilder()
+            .MetHeader()
+            .MetRij(themadoelen: $"{string.Join(";", codes)};TYPO-1", klas: "L6 bestaat niet")
+            .Bouw());
+
+        var resultaat = await new SchoolcontentImportService(context).ImporteerAsync(
+            parseResultaat, SchoolcontentImportOpties.Toevoegen, toepassen: true);
+
+        Assert.Equal(3, resultaat.Diff.Opmerkingen.Count);
+        foreach (var opmerking in resultaat.Diff.Opmerkingen)
+        {
+            AssertLeesbaarVoorEenLeerkracht(opmerking);
+        }
     }
 
     private static SchoolcontentParseResult Parse(MemoryStream stroom)
