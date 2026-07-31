@@ -9,10 +9,10 @@ import type {
 } from "./types";
 
 /**
- * The kalender's API calls (E3-06 read, E3-04 parameters, E3-07 edit). Thin wrappers over {@link apiFetch};
- * caching is TanStack Query's job (see useJaarplan).
+ * The kalender's API calls (E3-06 read, E3-04 parameters, E3-07 edit, E4-06 vergrendeling). Thin wrappers over
+ * {@link apiFetch}; caching is TanStack Query's job (see useJaarplan).
  *
- * The three editing calls all return the **whole updated plan** rather than the changed placement, matching
+ * The four editing calls all return the **whole updated plan** rather than the changed placement, matching
  * the endpoints: one response re-renders the board, so a drop never leaves the screen briefly disagreeing
  * with the server about where a thema is.
  */
@@ -117,6 +117,29 @@ export function wijzigPlaatsingStatus(
     method: "PUT",
     body: JSON.stringify({ status }),
   });
+}
+
+/**
+ * Locks or unlocks one placement against (re)generation (E4-06, FR-8.4, Art. IX.3).
+ *
+ * **The flag only changes an outcome for a `Voorgesteld` placement.** The server discards exactly the placements
+ * that are `Status === Voorgesteld && !Vergrendeld`, so an accepted, manual or rejected placement already survives a
+ * run with no lock at all. The endpoint accepts the call for any status anyway, and deliberately so (see
+ * `JaarplanGeneratieService.WijzigVergrendelingAsync`); it is `Themakaart` that only offers it where it does
+ * something, because a switch with no observable effect is the control-that-does-nothing this project banned after
+ * E3-06.
+ *
+ * Answers with the whole updated plan, like the other three edits, so the board re-renders from one response.
+ */
+export function wijzigPlaatsingVergrendeling(
+  klasId: string,
+  plaatsingId: string,
+  vergrendeld: boolean,
+): Promise<Jaarplan> {
+  return apiFetch<Jaarplan>(
+    `/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/vergrendeling`,
+    { method: "PUT", body: JSON.stringify({ vergrendeld }) },
+  );
 }
 
 /**

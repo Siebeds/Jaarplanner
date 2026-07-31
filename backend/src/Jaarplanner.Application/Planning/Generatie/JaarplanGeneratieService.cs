@@ -428,8 +428,27 @@ public sealed class JaarplanGeneratieService
     }
 
     /// <summary>
-    /// Locks or unlocks a placement against (re)generation (Art. IX.3 <c>vergrendeld</c>). Consumed by E4's
-    /// regeneration, and already honoured by <see cref="GenereerAsync"/>.
+    /// Locks or unlocks a placement against (re)generation (Art. IX.3 <c>vergrendeld</c>). Honoured by
+    /// <see cref="GenereerAsync"/> today; E4-05's per-period regeneration inherits it.
+    /// <para>
+    /// <b>Deliberately unguarded on status, unlike <see cref="VerplaatsPlaatsingAsync"/>.</b> Any placement may be
+    /// locked, including an <c>aanvaard</c>, <c>manueel</c> or <c>geweigerd</c> one. Two reasons, recorded because
+    /// the asymmetry with the move path looks like an oversight and is not (E4-06, 2026-07-31). First, setting the
+    /// flag changes no other state and no <i>dekking</i>: the move path refuses a rejection only because moving it
+    /// would convert it to <c>manueel</c>, which flips a thema from "not taught" to "taught" in an inspectie-facing
+    /// figure (Art. V.1), and nothing here does anything of the sort. Second, a guard here would be a new domain rule
+    /// invented to tidy a UI, which is not this layer's to add.
+    /// </para>
+    /// <para>
+    /// <b>But the lock is only load-bearing for a <c>voorgesteld</c> placement</b>, because
+    /// <see cref="Themaplaatsing.IsVervangbaar"/> is <c>Status == Voorgesteld &amp;&amp; !Vergrendeld</c>: anything a
+    /// human has decided on already survives a run without any lock. Locking an <c>aanvaard</c> placement therefore
+    /// changes nothing observable, and — since no transition anywhere returns a placement <i>to</i> <c>voorgesteld</c>
+    /// (<see cref="WijzigPlaatsingStatusAsync"/> refuses that status outright, and a run only ever inserts new rows) —
+    /// it can never become load-bearing later either. Not offering that call is the <b>caller's</b> job, and the
+    /// kalender does exactly that: it shows the lock control where it does something, and states the fact where it
+    /// would not. Keeping the rule in one place, on <c>IsVervangbaar</c>, is why this method stays permissive.
+    /// </para>
     /// </summary>
     /// <exception cref="SchoolcontentNietGevondenFout">The class or the placement does not exist.</exception>
     public Task<JaarplanWeergave> WijzigVergrendelingAsync(

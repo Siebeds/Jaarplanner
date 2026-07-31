@@ -11,6 +11,7 @@ import {
   useVerplaatsPlaatsing,
   useVerwijderPlaatsing,
   useWijzigPlaatsingStatus,
+  useWijzigVergrendeling,
 } from "./useJaarplan";
 
 /**
@@ -40,6 +41,12 @@ import {
  * **The count says *gekoppeld*, never *gedekt*.** Under Art. V.1 a doel is only *gedekt* once its thema is
  * placed in the plan, so for a **stale** placement the count proves nothing about coverage and the card says
  * so instead of printing a number.
+ *
+ * **The "Vast" badge finally has a switch behind it (E4-06, FR-8.4).** It shipped with E3-06 rendering a flag no
+ * teacher could set, so the state was unreachable and FR-8.4 had no invocation surface. The lock/unlock control
+ * lives in the "Aanpassen" panel; what is deliberately *not* implied here is that only a locked thema survives a
+ * regeneration. It does not: anything the teacher accepted, adjusted or rejected survives too, and the panel says
+ * so rather than leaving the badge's absence to be read as "this one is disposable".
  */
 export interface ThemakaartProps {
   plaatsing: Themaplaatsing;
@@ -166,12 +173,19 @@ export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
 }
 
 /**
- * The accessible route: move this thema to another period, take it out of its period, or reverse a rejection.
+ * The accessible route: lock this thema against regeneration, move it to another period, take it out of its
+ * period, or reverse a rejection.
  *
  * **The delete confirmation replaces the button that triggers it, rather than opening a modal.** Two reasons.
  * It cannot be missed or mis-dismissed, because the control it guards is gone while the question stands. And
  * `components/ui/` holds a button and a badge — no dialog — so a modal would mean a new Radix dependency, a
  * focus trap and a `jsdom` shim for a question that fits in the space the button occupied.
+ *
+ * **Why the lock lives here and not on the card face** (E4-06). The card fights for a 288px column and already
+ * carries a name, a status chip, a goal count and a clamped motivation. Every other placement edit is behind this
+ * one disclosure, so a second route from the card face would be a second idiom for the same kind of decision. It
+ * is also what makes the lock keyboard-operable and independent of dragging (WCAG 2.2 SC 2.5.7), the precedent
+ * E3-07 set with its period picker.
  */
 function Bewerkpaneel({
   id,
@@ -192,8 +206,13 @@ function Bewerkpaneel({
   const verplaats = useVerplaatsPlaatsing(klasId);
   const verwijder = useVerwijderPlaatsing(klasId);
   const statuswijziging = useWijzigPlaatsingStatus(klasId);
+  const vergrendeling = useWijzigVergrendeling(klasId);
 
-  const bezig = verplaats.isPending || verwijder.isPending || statuswijziging.isPending;
+  const bezig =
+    verplaats.isPending ||
+    verwijder.isPending ||
+    statuswijziging.isPending ||
+    vergrendeling.isPending;
 
   // A stale placement sits in no period, so every period is a candidate. Otherwise the period it is already in
   // is left out: the server treats that move as a no-op, and offering it invites a click that does nothing.
@@ -214,6 +233,31 @@ function Bewerkpaneel({
    * thema and the period.
    */
   const moetBevestigen = plaatsing.status !== "Voorgesteld" || plaatsing.vergrendeld;
+
+  /**
+   * Whether locking this placement would change anything a teacher can observe (E4-06, FR-8.4).
+   *
+   * The server discards exactly the placements that are `Voorgesteld && !vergrendeld`
+   * (`Themaplaatsing.IsVervangbaar`), so **an accepted, manual or rejected placement already survives a
+   * regeneration without any lock.** Offering "Vastzetten" there would be a switch with no observable effect, which
+   * is the control-that-does-nothing this project banned after E3-06, in a new coat.
+   *
+   * It is not merely inert *today* either: no transition anywhere returns a placement **to** `Voorgesteld` (the
+   * status endpoint refuses that status, and a run only ever inserts new placements), so a lock set on a decided
+   * placement could never become load-bearing later. That is what rules out keeping the control visible as a
+   * "durable intent".
+   */
+  const slotDoetIets = plaatsing.status === "Voorgesteld";
+
+  // Already locked, whatever the status: the control stays, because a state a teacher produced and cannot undo is
+  // worse than an inert one. Reachable in practice — lock a proposal, then accept it.
+  const toonSlot = slotDoetIets || plaatsing.vergrendeld;
+
+  // And where there is no control, the fact is stated instead, because the inverse silence is the more damaging
+  // lie: an accepted thema with no "Vast" badge otherwise looks discardable, which invites pointless locking.
+  // Not for a rejected one — the panel already explains that the rejection stands and how to reverse it, and
+  // "a hergeneratie laat dit staan" beside that is true and useless.
+  const toonSlotOverbodig = !toonSlot && !isGeweigerd;
 
   return (
     <div id={id} className="mt-2.5 flex flex-col gap-3 rounded-md bg-paper-diep/60 p-2.5">
@@ -284,6 +328,60 @@ function Bewerkpaneel({
                 ? t("kalender.verplaatsMislukt")
                 : t("kalender.verplaatsOnbeschikbaar")}
             </Foutmelding>
+          )}
+        </div>
+      )}
+
+      {/* Deliberately headingless: every sibling section in this panel is one sentence plus one button, and a
+          heading here would be the only structural device on the card that labels rather than acts. The two
+          sentences below are self-contained, so a label would only repeat them. */}
+      {(toonSlot || toonSlotOverbodig) && (
+        <div className="flex flex-col gap-1.5 border-t border-border pt-2.5">
+          {toonSlot ? (
+            <>
+              <p className="text-xs leading-snug text-ink-zacht">
+                {plaatsing.vergrendeld
+                  ? t("kalender.vergrendelUitlegVast")
+                  : t("kalender.vergrendelUitlegVrij")}
+              </p>
+              {/* A toggle whose **label** changes, deliberately without `aria-pressed`: the two together are
+                  announced as "Losmaken, ingedrukt", which reads as the opposite of the state it is in. The card
+                  face carries the state as a badge (icon AND the word "Vast", never colour alone — Art. XII).
+
+                  Its own `isPending` drives its own label. `bezig` disables every control in the panel while any
+                  request is in flight, but only this one may claim to be busy. */}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={bezig}
+                onClick={() =>
+                  vergrendeling.mutate({
+                    plaatsingId: plaatsing.id,
+                    vergrendeld: !plaatsing.vergrendeld,
+                  })
+                }
+              >
+                {vergrendeling.isPending
+                  ? t("kalender.bezig")
+                  : plaatsing.vergrendeld
+                    ? t("kalender.ontgrendelen")
+                    : t("kalender.vergrendelen")}
+              </Button>
+              {/* 404 means the card is stale in this browser and reloading fixes it; anything else means the tool
+                  is broken, and telling a teacher to reload would send them round a loop that cannot succeed.
+                  Branched on the status rather than on `isError`, per the E3-07 precedent and Art. II.3: the
+                  server's own string never reaches the teacher. */}
+              {vergrendeling.isError && (
+                <Foutmelding>
+                  {vergrendeling.error instanceof ApiError && vergrendeling.error.status === 404
+                    ? t("kalender.vergrendelVerdwenen")
+                    : t("kalender.vergrendelMislukt")}
+                </Foutmelding>
+              )}
+            </>
+          ) : (
+            <p className="text-xs leading-snug text-ink-zacht">{t("kalender.vergrendelNietNodig")}</p>
           )}
         </div>
       )}

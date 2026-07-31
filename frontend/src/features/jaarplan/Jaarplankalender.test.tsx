@@ -804,8 +804,117 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
     expect(
       within(kaart("Wonen")).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
     ).toBeInTheDocument();
+    // E4-06's control is in the tree too: "Water" is locked, so the panel offers "Losmaken".
+    expect(
+      within(kaart("Water")).getByRole("button", { name: t("kalender.ontgrendelen") }),
+    ).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("locks an AI proposal and unlocks it again, keying the request on the placement", async () => {
+    // E4-06 / FR-8.4. Before this the `vergrendeld` flag could only ever be false in a real app: `api.ts` never
+    // called the endpoint, so the "Vast" badge was unreachable state and the story had no invocation surface.
+    const vrij = maakPlaatsing({ id: "p1", themaNaam: "Water" });
+    const vast = maakPlaatsing({ id: "p1", themaNaam: "Water", vergrendeld: true });
+
+    const verzoeken = stubBewerking(maakJaarplan([vrij]), maakJaarplan([vast]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    // Not locked yet, so the card carries no badge and the panel offers the lock.
+    expect(within(kaart("Water")).queryByText(t("kalender.vergrendeld"))).toBeNull();
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.vergrendelen") }));
+
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].method).toBe("PUT");
+    expect(verzoeken[0].url).toMatch(/\/jaarplan\/plaatsingen\/p1\/vergrendeling$/);
+    expect(verzoeken[0].body).toEqual({ vergrendeld: true });
+
+    // The board re-renders from the server's returned plan, so the state a teacher sees is the persisted one and
+    // never an optimistic guess: the badge appears and the control becomes its own inverse.
+    expect(await within(kaart("Water")).findByText(t("kalender.vergrendeld"))).toBeInTheDocument();
+    const losmaken = within(kaart("Water")).getByRole("button", { name: t("kalender.ontgrendelen") });
+    expect(within(kaart("Water")).queryByRole("button", { name: t("kalender.vergrendelen") })).toBeNull();
+
+    // And back: the round trip is what makes the state producible AND undoable, so no teacher can strand a card.
+    fireEvent.click(losmaken);
+    await waitFor(() => expect(verzoeken).toHaveLength(2));
+    expect(verzoeken[1].body).toEqual({ vergrendeld: false });
+  });
+
+  it("does not offer a lock on a placement that already survives a regeneration", async () => {
+    // **The design decision of this story.** `IsVervangbaar` is `Voorgesteld && !vergrendeld`, so an accepted or
+    // manual placement survives a run with no lock at all — a "Vastzetten" button there would change nothing
+    // observable, which is the E3-06 control-that-does-nothing in a new coat. The compensating obligation is that
+    // the panel must then SAY the thema survives, because the inverse silence is the worse lie: an accepted card
+    // with no "Vast" badge otherwise reads as disposable and invites pointless locking.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+      maakPlaatsing({ id: "p2", themaNaam: "Wonen", status: "Manueel", aiMotivatie: null }),
+    ]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    for (const thema of ["Water", "Wonen"]) {
+      fireEvent.click(aanpassen(thema));
+      expect(
+        within(kaart(thema)).queryByRole("button", { name: t("kalender.vergrendelen") }),
+      ).toBeNull();
+      expect(within(kaart(thema)).getByText(t("kalender.vergrendelNietNodig"))).toBeInTheDocument();
+    }
+
+    // Nothing was sent: this is an absence of a control, not a control that quietly fails.
+    expect(verzoeken).toHaveLength(0);
+  });
+
+  it("still lets a locked placement be unlocked after it has been accepted", async () => {
+    // Reachable in practice: lock a proposal, then accept it. If the control were gated purely on `Voorgesteld`
+    // the lock would become permanent, and a state a teacher produced and cannot undo is worse than an inert one.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard", vergrendeld: true }),
+    ]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.ontgrendelen") }));
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].body).toEqual({ vergrendeld: false });
+  });
+
+  it("tells a stale card apart from a broken tool when the lock fails", async () => {
+    // Branched on `ApiError.status`, not on `isError` (the E3-07 precedent and its audit finding). A 404 means this
+    // browser is looking at a card that is gone, which reloading fixes; a 500 means the tool is broken, and telling
+    // the teacher to reload would send them round a loop that cannot succeed. Art. II.3: the server's own string
+    // never reaches them either way.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+
+    stubBewerking(plan, plan, 404);
+    const eerste = renderKalender();
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.vergrendelen") }));
+
+    expect(await screen.findByText(t("kalender.vergrendelVerdwenen"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.vergrendelMislukt"))).toBeNull();
+    expect(screen.queryByText(/geen periodegrens/)).toBeNull();
+    eerste.unmount();
+
+    stubBewerking(plan, plan, 500);
+    renderKalender();
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.vergrendelen") }));
+
+    expect(await screen.findByText(t("kalender.vergrendelMislukt"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.vergrendelVerdwenen"))).toBeNull();
   });
 
   it("reports a refused move in Dutch and never echoes the backend message", async () => {
