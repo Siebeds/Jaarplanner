@@ -74,14 +74,14 @@ export function DoelenPagina() {
         <p className="mt-1 text-sm text-ink-zacht">{t("doelen.leesAlleen")}</p>
       </header>
 
-      {facetten.isError ? (
-        <p
-          role="alert"
-          className="rounded-md bg-suggestie-geweigerd/10 px-3.5 py-2.5 text-sm font-medium text-suggestie-geweigerd"
-        >
-          {t("doelen.fout")}
-        </p>
-      ) : null}
+      {/*
+        No page-level alert for a facets failure. `doelen.fout` reads "De doelen konden niet geladen worden",
+        which is a **false statement** when the register is showing its rows and only the option lists failed —
+        and it appeared one element above the panel's own line saying it was the keuzelijsten that failed: two
+        messages for one fault, the louder one untrue. The fault is now reported once, in the panel, where the
+        missing controls are. A genuine list failure still has its own alert inside `Doelenlijst`, which is the
+        component that knows about it.
+      */}
 
       {/*
         Hidden at phone width while a doel is open, because there the detail REPLACES the list: the filters
@@ -89,11 +89,18 @@ export function DoelenPagina() {
         the doel being read. From `lg` up the list sits beside the detail, so they stay. Found by opening the
         app at 390px, not by a test.
       */}
-      {facetten.data ? (
+      {/*
+        Rendered on success AND on failure, with only the pending state left blank so nothing flashes a
+        "could not load" line at a request that is simply in flight. On failure the panel keeps the search
+        field, the chips and "wis alle filters" and states that the option lists are missing: the pane used to
+        vanish, which on a shared link like `/doelen?domein=Natuur` left a narrowed register with no visible
+        filter and no way out but the URL bar.
+      */}
+      {facetten.isPending ? null : (
         <div className={gekozenCode ? "hidden lg:block" : ""}>
           <Doelenfilters filter={filter} facetten={facetten.data} onWijzig={wijzigFilter} />
         </div>
-      ) : null}
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start">
         {/* At ~390px the detail replaces the list rather than sitting under it: two stacked panes on a phone
