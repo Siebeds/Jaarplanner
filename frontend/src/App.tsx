@@ -4,6 +4,8 @@ import { AppShell } from "./app/AppShell";
 import { BinnenkortPagina } from "./app/BinnenkortPagina";
 import { NietGevondenPagina } from "./app/NietGevondenPagina";
 import { JAARPLAN_PAD } from "./app/routes";
+import { Doeldetail } from "./features/doelen/Doeldetail";
+import { DOEL_DETAIL_PAD, DoelenPagina } from "./features/doelen/DoelenPagina";
 import { DoelsuggestieReview } from "./features/matching/DoelsuggestieReview";
 import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
 
@@ -13,9 +15,10 @@ import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
  * `/` redirects to the jaarplan — the kalender is an anchor screen (Art. VIII) and the most complete thing
  * here, so it is the honest landing page. The redirect `replace`s so Back does not bounce off it.
  *
- * The four `BinnenkortPagina` routes exist so the §3 information architecture is visible and clickable
+ * The remaining `BinnenkortPagina` routes exist so the §3 information architecture is visible and clickable
  * without pretending to work; the nav marks them "nog niet beschikbaar". Keep these paths in step with
- * `app/routes.ts`, which is what the navigation renders from.
+ * `app/routes.ts`, which is what the navigation renders from. **E1-16** replaced `/doelen`'s placeholder with
+ * the real register, so `routes.ts` flips that entry to `isGebouwd`.
  *
  * `DoelsuggestieReview` is mounted at `/themas` because reviewing a thema's AI-suggested goals is where it
  * belongs in the IA. It still asks for a thema-id by hand: replacing that with a real thema list is
@@ -34,7 +37,12 @@ function App() {
           <Route index element={<Navigate to={JAARPLAN_PAD} replace />} />
           <Route path={JAARPLAN_PAD} element={<JaarplanPagina />} />
           <Route path="/themas" element={<DoelsuggestieReview />} />
-          <Route path="/doelen" element={<BinnenkortPagina uitlegKey="binnenkort.doelen" />} />
+          {/* The detail is a NESTED route, not a sibling: `/doelen/:code` renders inside the register's
+              right-hand pane, which is what makes one doel deep-linkable while the list and its filters stay
+              where they are (E1-16, ADR-0021). */}
+          <Route path="/doelen" element={<DoelenPagina />}>
+            <Route path={DOEL_DETAIL_PAD} element={<Doeldetail />} />
+          </Route>
           <Route path="/dekking" element={<BinnenkortPagina uitlegKey="binnenkort.dekking" />} />
           <Route path="/import" element={<BinnenkortPagina uitlegKey="binnenkort.import" />} />
           <Route path="/beheer" element={<BinnenkortPagina uitlegKey="binnenkort.beheer" />} />

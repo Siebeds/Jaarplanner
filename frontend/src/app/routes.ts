@@ -45,10 +45,14 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
   {
     pad: "/doelen",
     labelKey: "navigatie.doelen",
-    isGebouwd: false,
+    isGebouwd: true,
     magBeheerder: false,
-    binnenkortKey: "binnenkort.doelen",
-    story: "E1-13/E1-14 surface the imported goals; no story owns a browse screen yet",
+    // Read it as precisely as the note on `isGebouwd` asks: E1-16 built the leerplandoel register (browse,
+    // search, filter, one doel in full, read-only). The "+ minimumdoelen" half of §3 is NOT here, and cannot
+    // be: no `Minimumdoel` row can exist until E1-12 imports the decreed source, which is blocked on a file
+    // from directie. The concordance a doel carries is shown on its detail with an honest line; no empty
+    // minimumdoel destination is built, because a control that renders nothing is banned (E3-06).
+    story: "E1-16 (register); E1-12 unblocks the minimumdoel half",
   },
   {
     pad: "/themas",

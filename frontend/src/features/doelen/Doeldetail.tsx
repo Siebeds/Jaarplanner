@@ -1,0 +1,303 @@
+import { Link, useLocation, useParams } from "react-router-dom";
+
+import { Badge } from "../../components/ui/badge";
+import { DoelsoortBadge } from "../../components/DoelsoortBadge";
+import { doelsoortBadgeSoort } from "../../components/doelsoort";
+import { t, tAantal, type TranslationKey } from "../../i18n";
+import { ApiError } from "../../lib/api";
+import { useDoelDetail } from "./useDoelen";
+import type { DoelDetail as Doel, DoelKoppelingWeergave, KoppelingHerkomst } from "./types";
+
+/** The catalogue key per link layer, so the herkomst reads as Dutch and not as an enum name. */
+const HERKOMST_LABEL: Record<KoppelingHerkomst, TranslationKey> = {
+  Themadoel: "doelen.herkomstThemadoel",
+  Doelsuggestie: "doelen.herkomstDoelsuggestie",
+  Subdoel: "doelen.herkomstSubdoel",
+  Activiteit: "doelen.herkomstActiviteit",
+};
+
+/**
+ * One doel, read in full (E1-16 clause 3). Its own nested route (`/doelen/:code`), so it is deep-linkable and
+ * the browser Back button works (ADR-0021).
+ *
+ * **Read-only, visibly** (Art. III.1, clause 4): there is not one control here that changes anything. The
+ * only interactive elements are the "terug naar de lijst" link, which exists because at ~390px this pane
+ * *replaces* the list and a teacher needs a way back that is not the browser chrome.
+ *
+ * **A field that is empty is absent, not blank.** Op.stap leaves columns empty, and a "Toelichting" heading
+ * with nothing under it tells a teacher the tool lost something.
+ *
+ * **No "Minimumdoelen" destination.** §3's information architecture promises minimumdoelen too, and no
+ * `Minimumdoel` row can exist until **E1-12** imports the decreed source (it is blocked on a file from
+ * directie). So the concordance is shown here with an honest line, and no tab, screen or button is built
+ * that would render nothing.
+ */
+export function Doeldetail() {
+  const { code } = useParams<{ code: string }>();
+  const location = useLocation();
+  const { data, isLoading, isError, error } = useDoelDetail(code);
+
+  const terug = (
+    <Link
+      to={{ pathname: "/doelen", search: location.search }}
+      className="inline-flex items-center gap-1 text-sm font-semibold text-petrol underline decoration-border underline-offset-2 lg:hidden"
+    >
+      {t("doelen.terugNaarLijst")}
+    </Link>
+  );
+
+  if (isLoading) {
+    return (
+      <Paneel>
+        {terug}
+        <p role="status" className="text-sm text-ink-zacht">
+          {t("doelen.detailLaden")}
+        </p>
+      </Paneel>
+    );
+  }
+
+  // The third empty state (E1-16): a deep link to a code that does not exist. A 404 is a specific, honest
+  // answer and must not be shown as a generic load failure, nor as an empty pane.
+  if (isError && error instanceof ApiError && error.status === 404) {
+    return (
+      <Paneel>
+        {terug}
+        <h3 className="text-base font-bold text-ink">{t("doelen.onbekendTitel")}</h3>
+        <p className="text-sm leading-relaxed text-ink-zacht">
+          {t("doelen.onbekendUitleg", { code: code ?? "" })}
+        </p>
+      </Paneel>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <Paneel>
+        {terug}
+        <p
+          role="alert"
+          className="rounded-md bg-suggestie-geweigerd/10 px-3.5 py-2.5 text-sm font-medium text-suggestie-geweigerd"
+        >
+          {t("doelen.detailFout")}
+        </p>
+      </Paneel>
+    );
+  }
+
+  return (
+    <Paneel>
+      {terug}
+      <Kop doel={data} />
+
+      {data.nietMeerInOpstap ? <Herzieningsvlag /> : null}
+
+      <p className="text-[0.9375rem] leading-relaxed text-ink">{data.tekst}</p>
+
+      <Plaats doel={data} />
+
+      <Veld
+        labelKey="doelen.voorbeeldenLabel"
+        waarde={data.voorbeelden}
+        uitlegKey="doelen.voorbeeldenUitleg"
+      />
+      <Veld labelKey="doelen.toelichtingLabel" waarde={data.toelichting} />
+      <Veld
+        labelKey="doelen.woordenschatLabel"
+        waarde={data.woordenschat}
+        uitlegKey="doelen.woordenschatUitleg"
+      />
+
+      <Concordantie doel={data} />
+      <Koppelingen koppelingen={data.koppelingen} />
+    </Paneel>
+  );
+}
+
+function Paneel({ children }: { children: React.ReactNode }) {
+  return (
+    <section
+      aria-label={t("doelen.detailLabel")}
+      className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-card sm:p-5"
+    >
+      {children}
+    </section>
+  );
+}
+
+/** The code, the doelsoort with its full Dutch label, and the jaar/fase. */
+function Kop({ doel }: { doel: Doel }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <h3 className="font-mono text-base font-semibold text-ink" data-cijfers>
+        {doel.code}
+      </h3>
+      <DoelsoortBadge doelsoort={doelsoortBadgeSoort[doel.doelsoort]} />
+      {/* The abbreviation on the badge is not enough on a detail: the full label is spelled out, because
+          "P" means nothing to a teacher who has not memorised the six Op.stap doelsoorten. */}
+      <span className="text-sm text-ink-zacht">{t(`doelsoort.${doelsoortBadgeSoort[doel.doelsoort]}`)}</span>
+      <span className="text-sm text-ink-zacht">
+        {t("doelen.jaarFaseLabel")}: {doel.jaarFase}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The review flag, in the attention language (Art. III.4 / IV.2): this doel disappeared from Op.stap while
+ * school content still links to it. It is the tool's own signal, not decreed content, which is why it reads
+ * as something to look at rather than as an error.
+ */
+function Herzieningsvlag() {
+  return (
+    <div className="rounded-md border border-attentie/30 bg-attentie-zacht px-3.5 py-3">
+      <p className="text-sm font-semibold text-attentie-ink">{t("doelen.vervallenTitel")}</p>
+      <p className="mt-1 text-sm leading-relaxed text-attentie-ink">{t("doelen.vervallenUitleg")}</p>
+    </div>
+  );
+}
+
+/**
+ * Where the doel sits in Op.stap: `discipline · domein · subdomein`, with the cluster only when it exists.
+ * Cluster is nullable and lives in the goal Excel rather than the ordeningskader (Art. VII.0), so a label
+ * with no value would be a claim about the curriculum that Op.stap does not make.
+ */
+function Plaats({ doel }: { doel: Doel }) {
+  const delen = [
+    doel.disciplineNaam ?? doel.disciplineNummer,
+    doel.domein,
+    doel.subdomein,
+    ...(doel.cluster ? [doel.cluster] : []),
+  ];
+
+  return (
+    <div>
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-zacht">
+        {t("doelen.plaatsLabel")}
+      </h4>
+      <p className="mt-1 text-sm text-ink">{delen.join(" · ")}</p>
+    </div>
+  );
+}
+
+/** One optional Op.stap field. Renders nothing at all when the source left the column empty. */
+function Veld({
+  labelKey,
+  waarde,
+  uitlegKey,
+}: {
+  labelKey: TranslationKey;
+  waarde: string | null;
+  uitlegKey?: TranslationKey;
+}) {
+  if (!waarde) {
+    return null;
+  }
+
+  return (
+    <div>
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-zacht">{t(labelKey)}</h4>
+      <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink">{waarde}</p>
+      {uitlegKey ? <p className="mt-1 text-xs text-ink-zacht">{t(uitlegKey)}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * The concordance to a decreed minimumdoel, in three honest states.
+ *
+ * The middle one is why this component exists: a doel can carry a concordance *key* while the decreed
+ * omschrijving is not loaded, because the per-discipline goal Excel has no omschrijving column (Art. VII.1)
+ * and the separate decreed import is **E1-12**, blocked on a source file from directie. Saying "geen
+ * minimumdoel" there would be false, and showing an empty section would look like a bug.
+ */
+function Concordantie({ doel }: { doel: Doel }) {
+  return (
+    <div>
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-zacht">
+        {t("doelen.minimumdoelLabel")}
+      </h4>
+
+      {doel.minimumdoelRef === null ? (
+        <p className="mt-1 text-sm text-ink-zacht">{t("doelen.minimumdoelGeen")}</p>
+      ) : (
+        <div className="mt-1">
+          <p className="text-sm text-ink" data-cijfers>
+            {t("doelen.minimumdoelRef", { ref: doel.minimumdoelRef })}
+          </p>
+          {doel.minimumdoel ? (
+            <>
+              <p className="mt-1 text-sm leading-relaxed text-ink">{doel.minimumdoel.omschrijving}</p>
+              <p className="mt-1 text-xs text-ink-zacht">
+                {t("doelen.minimumdoelLeeftijd", {
+                  leeftijd: doel.minimumdoel.leeftijd,
+                  nr: doel.minimumdoel.nr,
+                })}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-sm leading-relaxed text-ink-zacht">
+              {t("doelen.minimumdoelNietIngeladen")}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Which thema's link to this doel, and what the teacher decided about each link (Art. IV.2).
+ *
+ * Every status is listed, `Voorgesteld` and `Geweigerd` included: the question here is "where is this doel
+ * used?", which is a wider question than coverage (Art. V counts only aanvaard/manueel). The status badge is
+ * what keeps the two readable apart, so it is never omitted.
+ */
+function Koppelingen({ koppelingen }: { koppelingen: DoelKoppelingWeergave[] }) {
+  return (
+    <div>
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-zacht">
+        {t("doelen.koppelingenLabel")}
+      </h4>
+
+      {koppelingen.length === 0 ? (
+        <p className="mt-1 text-sm text-ink-zacht">{t("doelen.koppelingenGeen")}</p>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-ink-zacht" data-cijfers>
+            {tAantal(
+              koppelingen.length,
+              "doelen.koppelingenAantalEnkelvoud",
+              "doelen.koppelingenAantal",
+            )}
+          </p>
+          <ul className="mt-2 flex flex-col gap-2">
+            {koppelingen.map((koppeling, index) => (
+              <li
+                // Two links of the same herkomst can point from the same thema at the same doel (a thema may
+                // hold both a themadoel and a suggestion), so the index is part of the key by necessity: the
+                // list is server-ordered and never reordered here.
+                key={`${koppeling.herkomst}-${koppeling.themaNaam}-${koppeling.onderdeel ?? ""}-${index}`}
+                className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-paper px-3 py-2"
+              >
+                <span className="text-sm font-medium text-ink">{koppeling.themaNaam}</span>
+                {koppeling.onderdeel ? (
+                  <span className="text-sm text-ink-zacht">{koppeling.onderdeel}</span>
+                ) : null}
+                <span className="text-xs text-ink-zacht">{t(HERKOMST_LABEL[koppeling.herkomst])}</span>
+                <Badge variant={statusVariant(koppeling.status)} className="ml-auto">
+                  {t(`suggestieStatus.${statusVariant(koppeling.status)}`)}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** The status token/catalogue key for a `KoppelingStatus` as the API names it (PascalCase on the wire). */
+function statusVariant(status: DoelKoppelingWeergave["status"]) {
+  return status.toLowerCase() as "voorgesteld" | "aanvaard" | "geweigerd" | "manueel";
+}
