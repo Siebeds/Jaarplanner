@@ -454,3 +454,173 @@ the database's.
   trigger's wrap, the new alert outside the collapse and the two new summary strings are unlooked-at, and the notice
   changed from a plain `div` to `region` + `status`. Structure and copy are pinned by tests and axe is green, but the
   *look* of the three changed surfaces still needs one real pass, which is the test-runner's to do.
+
+## Fix round 2 (2026-07-31) — the refusal gates the form, and the failure state gets a way out
+
+Test-runner: **PASS** — 478 unit + 112 integration / 0 skipped and 125 frontend reproduced exactly, plus a browser pass
+in real Edge with route interception that confirmed the MAJOR fix, measured the new alert's composited contrast at
+**5,45:1** and drove the tier guard. Antagonist: **VIOLATIONS FOUND** — 1 MAJOR, 5 MINOR, 3 QUESTION, with eight of its
+ten round-1 findings closed.
+
+**Round 1's disputed finding was withdrawn by both gates, so the record should say *wrong*, not *waived*.** The claim
+that the stranded notice should be `role="alert"` because its E3-07 sibling is one was stale, exactly as argued:
+`git log -S` shows `TeHerzien` was an alert through E3-07's own commit `c484315` and moved to region + sr-only status in
+`57a4c5e`, the commit addressing E3-07's audit, for the reason given (it gained controls, and a live region wrapping
+controls re-announces everything on every interaction). The test-runner confirmed it independently on `main` @ `b44c869`
+and checked the behaviour. Nothing changed here; item 3 of round 1 stands as written.
+
+### 1. MAJOR — the refusal gated the button but not the form, and a successful retry desynced the screen
+
+Both limbs, one fix. The form now receives `generatie.isPending || instellingenOnbekend` instead of
+`generatie.isPending`, so every fieldset, select, input, radio and button inside it is dead while the kept settings are
+unknown.
+
+- **Limb 1 (controls that do nothing):** with the GET failing a teacher could open the panel, set a startthema for any
+  of the seven periods and answer the blocking question, behind a primary action that could never fire.
+- **Limb 2 (the desync), and this is why the gate is the *right* shape rather than merely the cheap one:** an errored
+  TanStack query is stale, so it refetches. If a retry succeeded, the effect keyed on `[geladen]` overwrote the typed
+  state **without** calling `meld`, so the parent's `wijziging` still held the old edit: the screen showed the loaded
+  settings and the run would have posted the ones it no longer displayed. That is round-2 finding 7 again. With editing
+  gated until the settings are known, **no edit can exist for the effect to clobber**, so the desync is closed by
+  construction rather than by a second effect.
+- **The alternative was refused on the antagonist's own reasoning, and it is a safety argument rather than a taste
+  one:** a body *replaces* the kept settings wholesale, so a teacher looking at an empty form whose settings failed to
+  load who sets one startthema would silently delete a stored blocking vast moment they never saw. An editable form in
+  that state is worse than a disabled one.
+
+Pinned by `refuses edits too while the kept settings are unknown, not just the run` (error) and an addition to
+`…still loading` (pending), each asserting a disabled select per period and a disabled *Vast moment toevoegen*.
+
+**A mechanism found while writing the retry test, worth recording because it falsified my first attempt.** The kalender
+and the form share one query key but mount at *different* times, since the form only exists once the plan and the grid
+have resolved. An errored query is stale, so the form's own observer refetches on mount — the failure therefore heals
+itself on call two with nobody pressing anything, and a "second call succeeds" stub made a retry test pass without a
+retry. The stub now takes a switch the test owns, and the test proves the fetch came from the click (`pogingen`
+increases across it).
+
+### 2. The failure state had no way forward, which is what actually answers the availability objection
+
+The test-runner enumerated every control on the screen and found no retry and no escalation. Two specifics:
+
+- The copy said *"Herlaad de pagina en probeer opnieuw"* — which `QueryClient` had **already done three times** before
+  the notice could appear (~7 s in). It prescribed the one remedy already exhausted.
+- The sibling generation failure ends with *"Meld dit aan de beheerder van de tool."* and this one did not.
+
+Now: an **"Opnieuw proberen"** button calling `instellingen.refetch()`, labelled *"Opnieuw proberen, even geduld"* while
+`isFetching`; and copy that states the consequence (nothing can be set and nothing generated, because the tool cannot
+say which settings would travel) and ends with the escalation sentence. No reload instruction at all, and the test
+asserts both the absence of *"herlaad"* and the presence of *"beheerder"* so the copy cannot drift back.
+
+**The button is a *sibling* of the `role="alert"`, not a child of it.** Same separation `TeHerzien` and the stranded
+notice use: a live region wrapping a control re-announces its whole contents on every interaction, and pressing retry
+changes the button's own label. So the alert stays the sentence, and the control sits beside it. It is also deliberately
+**not** gated on `disabled` — that prop means (among other things) "the settings are unknown", which is the state this
+button exists to leave; `isFetching` covers the in-flight retry instead.
+
+*For the test-runner:* the retry button is `variant="outline"` on `bg-suggestie-geweigerd/10`, i.e. a border token over
+a tinted background this combination has not been measured on. The precedent is the stranded notice's *Weghalen* on
+`bg-attentie-zacht`, but precedent is not a measurement.
+
+### 3. `IsUniekeSleutelSchending` claimed a scoping the substring did not give
+
+`Contains("generatieparameters", OrdinalIgnoreCase)` also matches `IX_startthemavoorkeuren_GeneratieparametersId_BlokStart`
+and `IX_vastemomenten_GeneratieparametersId_Datum`, because both child tables' FK column is `GeneratieparametersId`. Had
+either fired, a child-table `23505` would have been reported as the lost race, the reload would have found no row, and
+the request would have 500'd blaming a duplicate settings row that never existed. Unreachable today
+(`Generatieparameters.Vervang` refuses a duplicate `BlokStart` before any insert), so this is robustness plus a false
+comment.
+
+Now `string.Equals(pg.TableName, "generatieparameters", Ordinal)`. **The table rather than the index name on purpose:** a
+`23505` on that table can only be the `(KlasId, SchooljaarId)` index or the primary key, and the key is a
+client-generated `Guid`; naming the index would tie the recovery to an EF-generated identifier whose rename would fail
+*silently*, and the failure mode of that is the 500 this method exists to prevent. The new composed test (item 5)
+exercises the real predicate against a real `23505`, so a mismatch now fails a test rather than a request.
+
+### 4. "Two runs starting together do not 500" was overclaimed
+
+Narrowed everywhere it was asserted: the test is now `Een_gelijktijdige_run_verliest_de_parameterrace_zonder_fout`, and
+its docstring plus the backlog bullet scope the claim to the **settings row**.
+`JaarplanGeneratieService.LaadOfMaakJaarplanAsync` does the identical unguarded load-or-create for `Jaarplan`,
+`JaarplanConfiguration` has a unique index on `KlasId`, and `BewaarAsync` catches nothing — so two simultaneous
+first-ever runs for one class still 500 one step later, and two simultaneous regenerations can still lose the
+`VerwijderVervangbarePlaatsingen` delete. **Filed as a known residual** in the E3-04 backlog entry, attributed to
+E3-01's aggregate, and not fixed here: the resolution is genuinely different, since a plan write is not "last write
+wins" in any obvious sense.
+
+### 5. The race recovery was asserted in two halves that never met
+
+True, and the composition is cheap enough to have no excuse. New `[PostgresFact]`
+`De_service_overleeft_de_verloren_race_op_de_echte_opslag`: the **real** `JaarplanGeneratieService` on the **real**
+`EfJaarplanOpslag` against **real Postgres**, calling `GenereerAsync` (so `BewaarParametersAsync` is invoked rather than
+reproduced). The race is made deterministic by a decorator that delegates every call and, on the first
+`LaadGeneratieparametersAsync` that returns `null`, commits the winner's row through a *separate* context — precisely
+the interleaving the race needs, with nothing about the code under test faked. It asserts `WinnaarIsGeschreven`, so a
+version of this test that quietly stopped racing fails instead of passing.
+
+What that now covers end to end: the insert hits the real unique index, `IsUniekeSleutelSchending` reads a real `23505`,
+the detach runs on a real change tracker, the reload finds the winner's row, and `Vervang` writes the loser's settings
+into it. The two old tests stay: the unit test is the fast statement of the *decision*, the EF test the statement of the
+*mechanism*.
+
+### 6. The generation tier was duplicated across the wire with nothing binding the halves
+
+`types.ts`'s `GENERATIEBLOKNIVEAU` and `JaarplanGeneratieService.GeneratieNiveau` were coupled by a doc comment, and
+`PlanningsroosterEndpointTests` pins the *rooster* default, a different decision that merely agrees today. Move
+generation to another tier and the form degrades to `parameters.anderNiveau` permanently, startthema's become
+unsettable, and no test fails.
+
+Bound by `De_frontendconstante_voor_het_generatieniveau_volgt_de_backend`, which **reads**
+`frontend/src/features/jaarplan/types.ts` and compares the literal against `GeneratieNiveau.ToString()`. Reading the
+TypeScript is the point: an assertion on the C# value alone would pass while the halves disagreed. The repo root is
+found by walking up from `AppContext.BaseDirectory` until a directory holds both source trees, so it survives a
+different target framework or output path, and the failure message names the file to change. *Considered and rejected:*
+stating the tier in a server response — a wire field plus a type plus a mapping, for a value that changes at most once,
+when a nine-line test binds the same pair.
+
+Chose the backend for the test because the frontend cannot cheaply read a file: `@types/node` is not resolvable from
+`frontend/node_modules/@types`, so importing `node:fs` fails `tsc --noEmit`, and a `?raw` import needs a `vite/client`
+types entry the app tsconfig deliberately does not carry.
+
+*Related (test-runner):* `parameters.anderNiveau` promised *"zet de kalender terug op het hele jaar"* while no zoom
+control exists until E3-08. Softened to *"Je kan ze instellen zolang de kalender het hele schooljaar toont"*, which
+describes the state instead of naming a control, and the obligation is recorded on **E3-08** in the backlog so its
+control label and this sentence land together.
+
+### 7. `IValidatableObject` widens a recorded waiver — widened, as ruled
+
+Per the adjudication: the waiver in the backlog now covers the validation as well as the binding, with the reasoning
+(no framework dependency is added, the behaviour is proven over HTTP, and moving the contract to a nested Api record is
+a bigger change than the thing being waived). Recorded as a **choice**, not an oversight. No code change.
+
+### 8. 390px: the orphaned chevron
+
+`flex-wrap` on the trigger let the long label become its own flex item and wrap to the next line, leaving the glyph
+alone above it. Chevron and label are now **one** non-wrapping inner flex item (`min-w-0` on the wrapper so the label
+still wraps inside it, `shrink-0` on the glyph), so the arrow cannot separate from the text it belongs to. Still one
+button and one tab stop.
+
+### 9. Recorded as decisions rather than fixed
+
+- **Last write wins** is ratified design and byte-for-byte the semantics of two runs a second apart. The residual worth
+  naming, and now named in the backlog: the **winning** run generates from settings the database no longer holds by the
+  time it finishes, and neither run's `ParameterRapport` says a concurrent run replaced them. Nobody is shown a lie;
+  nobody is shown the fact either.
+- **The test-runner's eight evidence PNGs** (`docs/ux/wireframes/e3-04-fix-*.png`) are committed, with its report, in
+  `c8b9be1`.
+
+### Gates (fix round 2, real numbers, run from Bash)
+
+- `dotnet format --verify-no-changes` — **exit 0**. `dotnet build` — **0 warnings, 0 errors**.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (`Host=127.0.0.1`, `SSL Mode=Disable`, native Postgres 17):
+  **479 unit + 113 integration passed, 0 failed, 0 skipped** (was 478 + 112: +1 tier binding, +1 composed race).
+- `corepack pnpm lint` — **exit 0**; `corepack pnpm test` — **127 passed / 9 files, 0 failed** (was 125);
+  `corepack pnpm build` — **exit 0**.
+
+### Not done, by instruction (unchanged from round 1)
+
+`CONSTITUTION.md` untouched (the Art. IX.3 / Art. XII amendment is a separate commit the owner lands before the story
+goes `[x]`); enforcing `gewenste startthema's`; the open-day vs calendar-day prompt gap; `[Authorize]`.
+
+**Not looked at in a browser this round either.** Three visual surfaces changed: the trigger's inner flex at 390px, the
+retry button's contrast on the red-tinted notice, and the disabled state of seven period rows plus the moment fields.
+Tests and axe are green, and axe says nothing about colour.
