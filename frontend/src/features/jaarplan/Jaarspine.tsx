@@ -1,6 +1,6 @@
-import { t } from "../../i18n";
+import { t, type TranslationKey } from "../../i18n";
 import type { Ribbonsegment } from "./kalenderFormat";
-import { formatteerDatum } from "./kalenderFormat";
+import { PERIODELABEL, formatteerDatum } from "./kalenderFormat";
 import type { Planningsblokniveau } from "./types";
 
 /**
@@ -44,13 +44,26 @@ export interface JaarspineProps {
   niveau: Planningsblokniveau;
 }
 
+/**
+ * The strip's own title per tier (E3-08 fix round 4, MINOR-4b).
+ *
+ * A `Record` rather than a ternary for the reason its siblings are: this sentence is the **first** thing a
+ * screen-reader user hears about the strip, so a tier added later inheriting *"in themaperiodes"* would contradict
+ * every ordinal underneath it before anyone noticed. The ordinal itself comes from the shared
+ * {@link PERIODELABEL}, which the board column reads too.
+ */
+const SPINETITEL: Record<Planningsblokniveau, TranslationKey> = {
+  Themaperiode: "spine.titel",
+  Subthemaperiode: "spine.titelFijn",
+};
+
 export function Jaarspine({
   segmenten,
   gevuldeOrdinalen,
   teVolleOrdinalen,
   niveau,
 }: JaarspineProps) {
-  const periodeSleutel = niveau === "Subthemaperiode" ? "kalender.subperiode" : "kalender.periode";
+  const periodeSleutel = PERIODELABEL[niveau];
 
   return (
     <figure className="border-b border-border pb-4">
@@ -59,9 +72,7 @@ export function Jaarspine({
           It names the tier (E3-08 fix round 2, MINOR-5): "het schooljaar in periodes" was the fourth name for an
           object whose columns and ordinals say "themaperiode" or "subthemaperiode", and it is the FIRST thing a
           screen-reader user hears about this strip, immediately before ordinals that use the other word. */}
-      <figcaption className="sr-only">
-        {t(niveau === "Subthemaperiode" ? "spine.titelFijn" : "spine.titel")}
-      </figcaption>
+      <figcaption className="sr-only">{t(SPINETITEL[niveau])}</figcaption>
 
       <div className="flex items-end gap-1" role="presentation">
         {segmenten.map((segment) => {

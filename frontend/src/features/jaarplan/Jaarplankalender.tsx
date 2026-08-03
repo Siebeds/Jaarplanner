@@ -29,7 +29,7 @@ import {
   plaatsingenIn,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
-import { GENERATIEBLOKNIVEAU } from "./types";
+import { GENERATIEBLOKNIVEAU, leesNiveau } from "./types";
 import type {
   Generatieparameters,
   Planningsblok,
@@ -280,12 +280,16 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // An unrecognised answer falls back to the coarse labels, and that fallback is a *presentation* default, never a
   // claim: the columns have to be called something. What it may not do is drive an instruction, which is what round 1
   // let it do (fix round 2, MINOR-F): moving demands strict equality with the generation tier, so an unrecognised tier
-  // both told the teacher to switch to "Themaperiodes" and labelled itself as being on it. Hence this separate flag,
-  // and the third `Verplaatsstaat` below that carries its own sentences.
-  const bordNiveauOnbekend =
-    grid.niveau !== "Themaperiode" && grid.niveau !== "Subthemaperiode";
-  const bordNiveau: Planningsblokniveau =
-    grid.niveau === "Subthemaperiode" ? "Subthemaperiode" : "Themaperiode";
+  // both told the teacher to switch to "Themaperiodes" and labelled itself as being on it. Hence the third
+  // `Verplaatsstaat` below, which carries its own sentences.
+  //
+  // Read through `leesNiveau` since fix round 4 (MINOR-4b) rather than by comparing against two literals here: the
+  // tiers now exist as data, so a third one is a compile error where the tiers are declared instead of a silent detour
+  // into the degrade below. `null` *is* the "unrecognised" flag, so there is no separate boolean to keep in step with
+  // it: two derivations of one fact is how a refusal and its explanation drifted apart three rounds running.
+  // See {@link Planningsblokniveau}.
+  const gelezenNiveau = leesNiveau(grid.niveau);
+  const bordNiveau: Planningsblokniveau = gelezenNiveau ?? "Themaperiode";
 
   // Whether a thema can be moved on this board, and if not, why not (see {@link Verplaatsstaat}).
   //
@@ -305,11 +309,19 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // themaperiode, so the control would be honest about the request and dishonest about the effect: the teacher aimed at
   // a fortnight and the plan records five weeks. The remaining columns would 400 on top of that. Both halves point the
   // same way, but this one is the argument.
-  const verplaatsstaat: Verplaatsstaat = bordNiveauOnbekend
-    ? "niveauOnbekend"
-    : grid.niveau === GENERATIEBLOKNIVEAU
-      ? "kan"
-      : "anderNiveau";
+  //
+  // **Table-driven for the tiers this app recognises** (fix round 4, MINOR-4b). The `=== GENERATIEBLOKNIVEAU` test
+  // stays a real comparison, because that is the coupling that makes `kan` true (a placement keys on that tier's block
+  // starts, ADR-0020 §3) and it must keep following the constant if the constant ever moves. Every *other* recognised
+  // tier goes through {@link ANDERNIVEAUSTAAT}, whose key type is the union minus that one tier — so a third
+  // `Planningsblokniveau` is a missing-property error here and somebody has to decide what that board offers, instead
+  // of it quietly inheriting `anderNiveau` (or, before this round, `niveauOnbekend`).
+  const verplaatsstaat: Verplaatsstaat =
+    gelezenNiveau === null
+      ? "niveauOnbekend"
+      : gelezenNiveau === GENERATIEBLOKNIVEAU
+        ? "kan"
+        : ANDERNIVEAUSTAAT[gelezenNiveau];
 
   // Placements pointing at a date that is no longer a period boundary. Collected FIRST and always
   // rendered: never silently relocated, never dropped (directie 2026-07-28).
@@ -424,7 +436,17 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
 
                 Only rendered when there is a grid to reshape: with zero blocks the switch would be a control that
                 does nothing. Safe in both directions, because the fine tier subdivides the coarse one (ADR-0020) —
-                a year with no themaperiode has no subthemaperiode either, so this can never hide the way back. */}
+                a year with no themaperiode has no subthemaperiode either, so this can never hide the way back.
+
+                **That argument covers the switch and nothing else, and the branch withholds more than the switch**
+                (named in fix round 4, MINOR-7; it was left implicit before). A zero-block grid also swallows the
+                `Roosterfout` notice two blocks below and, further down, the board's own re-placement sentence
+                (`BORDUITLEG`), because all three sit inside a `blokken.length > 0` branch. So a *failed* fetch of a
+                year that happens to have no periods says only "Dit schooljaar heeft nog geen themaperiodes", which is
+                a statement about the year rather than about the failure, and offers no retry. The fix is to hoist the
+                control and the notices above this fork; it is **not** done here because this round changed no render
+                structure. Filed in this story's worklog (round-3 open list, MINOR-3) and handed to **E3-09** in the
+                groepschat. Unreachable from the product today: nothing can empty a periodestructuur until E6-03. */}
             <Weergaveschakelaar
               niveau={niveau}
               onKies={setNiveau}
@@ -614,14 +636,10 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
               // ("Aanpassen"), so this is no longer the only way in — but it is still the only way to scroll
               // the year sideways without a pointer.
               className="subtle-scrollbar -mx-1 flex items-start gap-2 overflow-x-auto px-1 pb-3"
-              // The board's accessible name follows the tier. Hard-coded to the coarse one it became a lie at the
-              // fine one: a screen-reader user would be told they were in a list of themaperiodes while every column
-              // in it was a subthemaperiode.
-              aria-label={
-                bordNiveau === "Subthemaperiode"
-                  ? t("kalender.ribbonLabelFijn")
-                  : t("kalender.ribbonLabel")
-              }
+              // The board's accessible name follows the tier, paired by {@link RIBBONLABEL} rather than by a ternary
+              // (fix round 4): hard-coded to the coarse one it became a lie at the fine one, and a ternary would make
+              // the same lie the default for any tier added later.
+              aria-label={t(RIBBONLABEL[bordNiveau])}
               tabIndex={0}
             >
               {segmenten.map((segment) =>
@@ -737,6 +755,33 @@ const BORDUITLEG: Record<Verplaatsstaat, TranslationKey> = {
   kan: "kalender.sleepUitleg",
   anderNiveau: "kalender.fijnUitleg",
   niveauOnbekend: "kalender.roosterNiveauOnbekend",
+};
+
+/**
+ * What a board at a **recognised** tier other than the generation tier offers (E3-08 fix round 4, MINOR-4b).
+ *
+ * Keyed on the union *minus* the generation tier, which is the whole point: the `kan` case stays a live comparison
+ * against {@link GENERATIEBLOKNIVEAU} (see the derivation), and every other tier this app can draw has to be given an
+ * answer here by hand. Today that is one entry. Add a third `Planningsblokniveau` and this object fails to compile
+ * until someone decides whether a thema can be moved on that board — which is exactly the decision that used to be
+ * made silently, and wrongly, by falling through into `niveauOnbekend`.
+ */
+const ANDERNIVEAUSTAAT: Record<Exclude<Planningsblokniveau, typeof GENERATIEBLOKNIVEAU>, Verplaatsstaat> = {
+  // The finer grain subdivides the generation tier, so moving is possible; it just is not possible *here*.
+  Subthemaperiode: "anderNiveau",
+};
+
+/**
+ * The board's accessible name per tier (E3-08 fix round 4, MINOR-4b).
+ *
+ * A `Record` for the same reason as its neighbours: hard-coded to the coarse label this became a lie at the fine tier
+ * (a screen-reader user was told they were in a list of themaperiodes while every column was a subthemaperiode), and a
+ * ternary would have re-created that lie for any tier added later. `bordNiveau` falls back to the coarse tier for an
+ * *unrecognised* answer, which is a presentation default the board's own sentence contradicts in words.
+ */
+const RIBBONLABEL: Record<Planningsblokniveau, TranslationKey> = {
+  Themaperiode: "kalender.ribbonLabel",
+  Subthemaperiode: "kalender.ribbonLabelFijn",
 };
 
 /**

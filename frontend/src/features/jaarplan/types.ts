@@ -32,9 +32,58 @@ export interface Planningsblok {
  * still leaves open.
  *
  * `Planningsrooster.niveau` stays a plain `string`, because it is what the server said rather than what this app
- * asked for; the comparison that matters goes through {@link GENERATIEBLOKNIVEAU}.
+ * asked for; the string is turned into one of these members by {@link leesNiveau}, and the comparison that decides
+ * whether a placement can be moved goes through {@link GENERATIEBLOKNIVEAU}.
  */
 export type Planningsblokniveau = "Themaperiode" | "Subthemaperiode";
+
+/**
+ * The tiers as **data**, so the compiler can count them (E3-08 fix round 4, antagonist MINOR-4b).
+ *
+ * The union above was the only statement of "which tiers exist", and every place that had to *act* on a tier spelled
+ * the two literals out again: two comparisons in `Jaarplankalender`, the option list in `Weergaveschakelaar`, a
+ * ternary per tier-specific sentence. So **adding a third `Planningsblokniveau` errored nowhere.** A valid new
+ * cadence would have fallen through every one of those comparisons into the unrecognised-tier degrade, where a
+ * teacher reads *"De tool kon deze weergave van het schooljaar niet lezen … Meld dit aan de beheerder van de tool"*
+ * about a tier the tool was in fact asked to draw. `satisfies Record<Planningsblokniveau, …>` moves that failure to
+ * the one place it belongs: a missing-property error in front of the developer who adds the tier.
+ *
+ * The values carry nothing. The **keys** are the content, and their insertion order (defined for string keys in JS)
+ * is the coarse-to-fine order the zoom control offers: a teacher zooms *in* from the year, not out from a fortnight.
+ *
+ * *What this does not buy, stated because Art. XIV's resolved promise is broader than the code:* the block unit is
+ * "configurable without a code change" for the **backend** grain (`Planning:Blokindeling`, the E3-05 seam), and it
+ * stays that. A new *tier* was never configuration on this side, and after this round it is a compile error rather
+ * than a false sentence on a teacher's screen. The failure mode changed; the promise did not.
+ */
+const NIVEAUTABEL = {
+  Themaperiode: null,
+  Subthemaperiode: null,
+} satisfies Record<Planningsblokniveau, null>;
+
+/**
+ * Every tier this app can draw, coarse first. Derived from {@link NIVEAUTABEL}, never hand-listed, so it cannot
+ * disagree with the union: `satisfies` rejects a missing key (TS1360) **and** an unknown one (TS2353), both checked by
+ * mutation rather than assumed.
+ *
+ * The one assertion in this file, and it is sound for that reason: `Object.keys` is typed `string[]` with no way to
+ * narrow it, while the object it reads has exactly the union's keys by the check above. Written as an ordered list
+ * rather than as a second literal, because a hand-written array of union members is *not* checked for completeness —
+ * a two-element array satisfies `readonly Planningsblokniveau[]` however many members the union grows to, which is the
+ * defect this whole seam exists to remove.
+ */
+export const PLANNINGSBLOKNIVEAUS = Object.keys(NIVEAUTABEL) as readonly Planningsblokniveau[];
+
+/**
+ * The server's own `niveau` string as a tier this app can draw, or `null` when it is one this app does not know.
+ *
+ * A lookup rather than a pair of `===` comparisons, and a `find` rather than `in`: `"constructor" in NIVEAUTABEL` is
+ * `true` through the prototype chain, which would let an unrecognised answer pass as a tier. `null` for "not one of
+ * ours" is the state the board renders its own copy for; it is deliberately not widened to the union.
+ */
+export function leesNiveau(niveau: string): Planningsblokniveau | null {
+  return PLANNINGSBLOKNIVEAUS.find((kandidaat) => kandidaat === niveau) ?? null;
+}
 
 /**
  * The tier a generated thema is placed on, and therefore the tier a **kept generation setting** keys on.

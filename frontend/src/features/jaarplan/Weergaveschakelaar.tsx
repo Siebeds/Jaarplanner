@@ -1,6 +1,7 @@
 import { useId } from "react";
 
 import { t, type TranslationKey } from "../../i18n";
+import { PLANNINGSBLOKNIVEAUS } from "./types";
 import type { Planningsblokniveau } from "./types";
 
 /**
@@ -40,11 +41,18 @@ export interface WeergaveschakelaarProps {
   bezig: boolean;
 }
 
-/** The two tiers, coarse first: a teacher zooms *in* from the year, not out from a fortnight. */
-const NIVEAUS: readonly { niveau: Planningsblokniveau; label: TranslationKey }[] = [
-  { niveau: "Themaperiode", label: "kalender.weergaveGrof" },
-  { niveau: "Subthemaperiode", label: "kalender.weergaveFijn" },
-];
+/**
+ * The label per tier, and therefore which tiers this control offers at all (E3-08 fix round 4, MINOR-4b).
+ *
+ * It was a hand-written array, which is why **adding a third `Planningsblokniveau` errored nowhere**: the new tier
+ * simply had no button, so it was a grain the app could be in and could not be chosen or left. A `Record` keyed on the
+ * union refuses to compile until it has a label, and the order comes from {@link PLANNINGSBLOKNIVEAUS} — coarse first,
+ * because a teacher zooms *in* from the year rather than out from a fortnight.
+ */
+const NIVEAULABEL: Record<Planningsblokniveau, TranslationKey> = {
+  Themaperiode: "kalender.weergaveGrof",
+  Subthemaperiode: "kalender.weergaveFijn",
+};
 
 export function Weergaveschakelaar({ niveau, onKies, bezig }: WeergaveschakelaarProps) {
   const labelId = useId();
@@ -66,15 +74,15 @@ export function Weergaveschakelaar({ niveau, onKies, bezig }: Weergaveschakelaar
         // thing that says "these two belong together and one of them is on", so SC 1.4.11's 3:1 applies to it.
         className="inline-flex rounded-md border border-input bg-card p-0.5"
       >
-        {NIVEAUS.map((optie) => {
-          const gekozen = optie.niveau === niveau;
+        {PLANNINGSBLOKNIVEAUS.map((optie) => {
+          const gekozen = optie === niveau;
 
           return (
             <button
-              key={optie.niveau}
+              key={optie}
               type="button"
               aria-pressed={gekozen}
-              onClick={() => onKies(optie.niveau)}
+              onClick={() => onKies(optie)}
               className={[
                 "rounded px-3 py-1 text-xs transition-colors duration-150",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
@@ -83,7 +91,7 @@ export function Weergaveschakelaar({ niveau, onKies, bezig }: Weergaveschakelaar
                   : "font-medium text-ink hover:bg-petrol-wash hover:text-petrol",
               ].join(" ")}
             >
-              {t(optie.label)}
+              {t(NIVEAULABEL[optie])}
             </button>
           );
         })}

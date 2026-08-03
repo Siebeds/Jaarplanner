@@ -1381,6 +1381,12 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
       screen.getByText(`${t("kalender.subperiode", { ordinaal: 7 })}:`, { exact: false }),
     ).toBeInTheDocument();
 
+    // And so does the strip's own title, which is the FIRST thing a screen-reader user hears about it. Pinned in fix
+    // round 4: the round-2 fix that made this sentence tier-specific was measured in a browser and never asserted, so
+    // swapping the two keys left the whole suite green. Found by mutating the table this round introduced.
+    expect(screen.getByText(t("spine.titelFijn"))).toBeInTheDocument();
+    expect(screen.queryByText(t("spine.titel"))).toBeNull();
+
     expect(knop("kalender.weergaveFijn")).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -1403,6 +1409,9 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     expect(screen.getByRole("list", { name: t("kalender.ribbonLabel") })).toBeInTheDocument();
     expect(within(bord()).getByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
     expect(within(bord()).queryByText(t("kalender.binnenThemaperiode", { ordinaal: 1 }))).toBeNull();
+    // The strip's title comes back with it (fix round 4), so neither tier's copy can be left behind by the other's.
+    expect(screen.getByText(t("spine.titel"))).toBeInTheDocument();
+    expect(screen.queryByText(t("spine.titelFijn"))).toBeNull();
 
     // And no full-screen loading line at any point: the whole subtree tearing down is what would drop the teacher's
     // unsent parameter edits (pinned from the form's side in Generatieparameters.test.tsx).
@@ -1855,6 +1864,72 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     expect(
       within(kaart()).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Fix round 4, the owner's ruling on QUESTION-A: **both steps of the remedy are named, at both tiers.**
+   *
+   * The remedy on a stale rejected card is two moves — reverse the rejection, *then* give the thema a themaperiode —
+   * and round 3 named only the first, leaving *"eerst"* to imply the rest. The defence was that naming the second step
+   * requires naming a view, which would make the sentence tier-dependent again. The audit disproved it: a clause that
+   * says what becomes possible, without saying where, is true at every tier, and the *where* is already carried once
+   * above the board by `sleepUitleg` / `fijnUitleg` rather than repeated per card.
+   *
+   * **Asserted against the sentence's content, not only through `t()`.** A `getByText(t("…"))` check follows `nl.json`
+   * wherever it goes, so deleting the clause would leave the round-3 assertions green while the card went back to
+   * naming one step of two. The regex is what makes this a pin.
+   */
+  it("names the second step of the remedy on a rejected stale card, at either tier", async () => {
+    const tweedeStap = /daarna[^.]*themaperiode/i;
+
+    stubZoom(
+      maakJaarplan([
+        maakPlaatsing({
+          id: "p9",
+          themaNaam: "Zomer en vakantie",
+          blokStart: "2026-12-01",
+          blokEind: null,
+          blokOrdinaal: null,
+          isVervallen: true,
+          status: "Geweigerd",
+          aiMotivatie: null,
+        }),
+      ]),
+    );
+    renderKalender();
+
+    const kaart = () => screen.getByText("Zomer en vakantie").closest("article") as HTMLElement;
+    const paneel = () =>
+      fireEvent.click(
+        within(kaart()).getByRole("button", {
+          name: t("kalender.aanpassenLabel", { thema: "Zomer en vakantie" }),
+        }),
+      );
+
+    // The catalogue itself: one string carrying both steps, and naming neither view, so it cannot become the
+    // cross-view instruction that round 3 had to remove.
+    expect(t("kalender.weigeringEerstTerugdraaien")).toMatch(tweedeStap);
+    expect(t("kalender.weigeringEerstTerugdraaien")).not.toContain(t("kalender.weergaveGrof"));
+    expect(t("kalender.weigeringEerstTerugdraaien")).not.toContain(t("kalender.weergaveFijn"));
+
+    await screen.findByRole("region", { name: t("kalender.herzienTitelEnkelvoud") });
+    paneel();
+    expect(within(kaart()).getByText(tweedeStap)).toBeInTheDocument();
+    paneel();
+
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+    paneel();
+
+    // Same sentence at the finer grain: it names no block, so the tier cannot make it false. What is still absent is
+    // any re-placement instruction (the round-3 fix) — the second step is stated as what follows the reversal, not as
+    // a control this panel offers now.
+    expect(within(kaart()).getByText(tweedeStap)).toBeInTheDocument();
+    expect(within(kaart()).queryByText(t("kalender.herplaatsAnderNiveau"))).toBeNull();
+    expect(within(kaart()).queryByText(t("kalender.herplaatsKies"))).toBeNull();
+    expect(within(kaart()).queryByLabelText(t("kalender.verplaatsNaar"))).toBeNull();
   });
 
   /**

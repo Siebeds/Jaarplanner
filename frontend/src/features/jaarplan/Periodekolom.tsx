@@ -3,6 +3,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { t } from "../../i18n";
 import { Themakaart, type Verplaatsstaat } from "./Themakaart";
 import {
+  PERIODELABEL,
   VOORLOPIGE_TE_VOL_DREMPEL,
   formatteerPeriode,
   formatteerWeken,
@@ -122,10 +123,9 @@ export function Periodekolom({
       >
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="text-sm font-bold text-ink">
-            {t(
-              niveau === "Subthemaperiode" ? "kalender.subperiode" : "kalender.periode",
-              { ordinaal: blok.ordinaal },
-            )}
+            {/* Paired by {@link PERIODELABEL} rather than by a ternary (fix round 4), so this heading and the strip's
+                sr-only ordinal above it cannot come to call one block by two names. */}
+            {t(PERIODELABEL[niveau], { ordinaal: blok.ordinaal })}
           </h3>
           <span className="shrink-0 text-xs font-medium text-ink-zacht" data-cijfers>
             {t("kalender.weken", { weken: formatteerWeken(blok.aantalOpenDagen) })}

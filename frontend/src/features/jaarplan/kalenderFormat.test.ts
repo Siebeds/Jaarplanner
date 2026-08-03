@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  PERIODELABEL,
   bepaalVerplaatsing,
   bouwRibbon,
   formatteerDatum,
@@ -9,6 +10,7 @@ import {
   plaatsingenIn,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
+import { PLANNINGSBLOKNIVEAUS, leesNiveau } from "./types";
 import type { Planningsblok, Planningsonderbreking, Themaplaatsing } from "./types";
 
 /**
@@ -200,5 +202,43 @@ describe("bepaalVerplaatsing (E3-07 — what a drop does)", () => {
         "2026-11-09",
       ),
     ).toBe("2026-11-09");
+  });
+});
+
+/**
+ * The tier seam (E3-08 fix round 4, antagonist MINOR-4b). Tested here rather than in a file of its own: `types.ts`
+ * is otherwise wire types with no behaviour, and this is the feature's home for helpers that can be checked without
+ * rendering. What the compiler now guarantees — that a third `Planningsblokniveau` cannot be added without deciding
+ * what every tier-dependent table says about it — is by definition not testable at runtime; what *is* testable is that
+ * this reader accepts exactly the tiers the union declares and nothing else.
+ */
+describe("leesNiveau", () => {
+  it("reads back every tier the app declares", () => {
+    // Non-vacuity: the loop below proves nothing over an empty list, and the list is derived rather than written out.
+    expect(PLANNINGSBLOKNIVEAUS.length).toBeGreaterThan(1);
+
+    for (const niveau of PLANNINGSBLOKNIVEAUS) {
+      expect(leesNiveau(niveau)).toBe(niveau);
+    }
+  });
+
+  it("refuses a tier it does not know, including one borrowed from Object's prototype", () => {
+    // The `Kwartaal` case is the one the browser pass had to fake with a rewriting proxy, because the controller 400s
+    // on an unknown `?niveau=`. It must land on null, which is what routes the board to its own copy.
+    expect(leesNiveau("Kwartaal")).toBeNull();
+    expect(leesNiveau("")).toBeNull();
+    // `"constructor" in tabel` is true through the prototype chain, so a membership test written that way would let
+    // this pass as a tier and label the board after it.
+    expect(leesNiveau("constructor")).toBeNull();
+    expect(leesNiveau("toString")).toBeNull();
+  });
+
+  it("names one block per tier, and never the same word twice", () => {
+    // The strip's sr-only ordinal and the board column's heading read this one table (`PERIODELABEL`), so they cannot
+    // come to call one block by two names — the defect the E3-02/E3-06 review repaired twice.
+    const labels = PLANNINGSBLOKNIVEAUS.map((niveau) => PERIODELABEL[niveau]);
+
+    expect(labels).toHaveLength(PLANNINGSBLOKNIVEAUS.length);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 });
