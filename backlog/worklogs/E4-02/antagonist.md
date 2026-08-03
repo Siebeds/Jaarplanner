@@ -1,6 +1,6 @@
 # E4-02 — antagonist verdicts
 
-Three rounds, all **VIOLATIONS FOUND**, all against the constitution rather than against taste.
+Four rounds, all **VIOLATIONS FOUND**, all against the constitution rather than against taste.
 Recorded here because the worklog carried the counts and not the findings, and because round 2's
 own MINOR was that this file did not exist while `E4-06/antagonist.md` does (Art. X.7).
 
@@ -9,6 +9,7 @@ own MINOR was that this file did not exist while `E4-06/antagonist.md` does (Art
 | 1 | `3795c16` + the `57b79c0` merge resolutions | VIOLATIONS FOUND | 3 MAJOR, 7 MINOR, 2 QUESTION |
 | 2 | `cd6e3e0` (fix round 1) | VIOLATIONS FOUND | 3 MAJOR, 8 MINOR |
 | 3 | `447fe0a` (fix round 2) | VIOLATIONS FOUND | 2 MAJOR, 6 MINOR, 1 QUESTION |
+| 4 | `c6b0dde` (fix round 3) | VIOLATIONS FOUND | 2 MAJOR, 3 MINOR, 2 QUESTION |
 
 > **This header is on its second correction, and the reason belongs at the top of the file.** It said
 > "Two rounds" while round 3 was already written below it — the same partial-substitution mistake round 3
@@ -81,7 +82,9 @@ introduced two defects and left one hand-off stale.
    defect is E4-02's**: before this story that state took a rejection *plus* a vakantie edit, and now
    "Weigeren" sits on the stale card with `beslisVervallen` recommending it, so the false promise became
    the advertised destination. *Fixed:* split into `weigeringUitlegVervallen`, and the existing E3-07 test
-   that had been **pinning the defect** for the stale case is parameterised over the split.
+   that had been **pinning the defect** for the stale case is parameterised over the split. *(Round 4: that
+   test is **E4-06's** (`81b4ed9`), living in E3-07's `describe` block — `git log -S`. Rounds 2 and 3 both
+   credited it to E3-07.)*
 3. **The board still tells the teacher the dekking is unreliable in the state the new button resolves.**
    `herzienUitleg` ends *"Zolang dit openstaat is de dekking van dit jaarplan onbetrouwbaar"*, and
    `vervallenPlaatsingen` filters on staleness with no status filter, so after the weigering the card stays
@@ -173,10 +176,9 @@ about layout, colour or control state moved.
 - **`backlog/README.md` L31** says *"E4-01/E4-02 must build the accept affordance"* as a standing
   obligation. It is discharged. The **lead holds that file's claim**, so it is escalated in the
   groepschat as a false statement rather than a stale count, and it needs one line from whoever holds it.
-- **`backlog/README.md` L125** says the kalender "now explains the grain from `nl.json`". Falsified by
-  `kalender.indelingUitleg` being dead (zero references). The open **Art. II.3** entry cites that repair as
-  evidence, so the citation is currently false. Filed against **E3-06**, which introduced the string; the
-  `README.md` half needs the claim-holder.
+- ~~**`backlog/README.md` L125**~~ — **retracted (round 4).** The claim that it is falsified by a dead
+  `kalender.indelingUitleg` was itself false: the key does not exist (E3-08 deleted it in this story's own
+  merge) and that README line had already been corrected the same day. See `implementation.md` finding 1.
 - **The Art. XIV ruling round 3 surfaced:** does a **rejected stale** placement leave the dekking figure
   trustworthy? `DekkingService` says yes and calls its own narrowing "a judgement call, not an owner
   ruling"; the directie ruling of 2026-07-28 says no. E4-02 made that state routine, so the conflict is now
@@ -185,3 +187,58 @@ about layout, colour or control state moved.
 - **SC 2.5.8 and SC 2.5.3** are filed under **E7-10** (they were not, when the story first claimed they
   were). Both are app-wide patterns; E4-02's own two buttons measure 106×36 and 91×36.
 - **E3-07** owes more after this story, not less, and that is now written in **E3-07's own entry**.
+
+---
+
+## Round 4 — my own filing was false, and the rule that earns is the auditor's
+
+Round 4 found **no defect in what the screen does, for the second round running.** Both MAJORs were in
+prose *round 3 wrote*, and one of them had been written into another story's file.
+
+1. **The `kalender.indelingUitleg` filing was false at `HEAD`.** Re-derived myself rather than taken on
+   trust: `grep -c indelingUitleg frontend/src/i18n/nl.json` → **0**. The key existed when this story
+   branched (`git show 3795c16:…/nl.json | grep -c` → 1) and was gone after **this story's own merge**
+   (`57b79c0` → 0), because **E3-08 deleted it** as a dead key — and `backlog/README.md`'s Art. II.3
+   citation had been corrected the same day to say precisely that. So the observation was true when I made
+   it, pre-merge, and I re-asserted it **twice afterwards without re-deriving it**, once into **E3-06's own
+   entry**, creating a work item nobody could do and telling the next reader that a governing
+   open-decision record was false when it was not. Retracted in all four places, with the `grep` beside
+   the retraction.
+2. **Widening the catalogue family filter disabled the family's rename canary, and I called it "free".**
+   The per-string assertion was indeed unaffected — but with one combined list, `length > 0` is satisfied
+   by *whichever* family survives, so renaming every `vergrendel*` key away **and** restoring the exact
+   unscoped promise E4-06's round-1 fix had missed left the guard green. That canary has caught that rename
+   before; its own comment records the incident. Fixed by asserting non-vacuity **per family**
+   (`SLOTTEKSTEN` + `WEIGERINGTEKSTEN`, unioned only for the per-string loop), and verified by running the
+   auditor's own mutation plus its mirror: both now fail. The correct sentence is *the per-string assertion
+   is free; the canary has to be per-family.*
+
+**Three MINORs**, all the same shape: `git log -S` shows the test that "was pinning the defect" is
+**E4-06's** (`81b4ed9`), not E3-07's — so the hand-off written to fix a mis-routing mis-routed the credit,
+inside the entry of the story it was informing; the guard still called itself "the lock copy" in its
+constant, `describe` and both `it` names while covering two families; and this worklog's own header still
+listed two commits after three fix rounds, in the commit that had corrected exactly that in the epic entry
+next to it. The second guard's rationale is also extended to the weigering family, because E3-08 removed
+the re-placement line from rejected cards at both tiers and this story made a stale rejected card routine,
+so the same E3-06 rule applies one family across.
+
+### The rule this story earns, and it is the auditor's, not mine
+
+> **Re-derive every claim about the repo against `HEAD` at the moment you commit it, and write the command
+> beside it.**
+
+One `grep -c`, one `git log -S`, one mutation run. Each of round 4's three verifiable findings would have
+cost a single command. This story spent four rounds writing prose about verifying claims and did not apply
+it to its own prose; the fix is not a fifth round, it is that line.
+
+*A second observation, recorded because it is uncomfortable and true:* every round after the second found
+defects **only in text this story had added**. More explanation is not free — each paragraph is a new claim
+that can rot, and three of the four documentation defects came from **partial in-place substitution**,
+editing the clause I had noticed and leaving the sentence around it.
+
+### Gates after fix round 4
+
+**314 frontend tests** (15 files), lint clean, build clean. **Two mutations, two caught:** the auditor's
+surviving MU-E (family renamed away plus the unscoped promise restored) and its mirror on the weigering
+family. No browser re-run: this round changed one test file's structure, two comments and five
+documentation files, and no user-facing string.

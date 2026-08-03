@@ -2,7 +2,9 @@
 
 **Story:** E4-02 (FR-7.1, Art. IV.1/IV.2). **Branch:** `story/E4-02-aanvaarden`,
 off `origin/main` `8231dd2`, merged up to `fcb517f` before finishing.
-**Commits:** `3795c16` (the story), `57b79c0` (the merge).
+**Commits:** `3795c16` (story), `57b79c0` (merge of `origin/main`), `cd6e3e0` / `447fe0a` / `c6b0dde`
+(fix rounds 1-3), plus fix round 4. *Kept current because round 4 found this line stale while the epic
+entry next to it had been corrected in the same commit: a count in a heading is a claim.*
 
 ---
 
@@ -177,10 +179,17 @@ half was dropped, because that is only true on the tier where moving works.
 
 ## Findings that are not this story's
 
-1. **`kalender.indelingUitleg` is dead** — zero references in `frontend/src`. It is the string the
-   E3-06 audit introduced *to replace* a server-generated Dutch label (cited as the fix in the Art. II.3
-   entry in `backlog/README.md`), so the kalender explains its period grain to nobody. The dead-key
-   guard in `catalogus.test.ts` is scoped to `doelen.*`, so nothing catches it. **Reported, not fixed.**
+1. ~~**`kalender.indelingUitleg` is dead**~~ — **RETRACTED, and the retraction is the more useful finding
+   (round-4 audit).** The key **does not exist**: `grep -c indelingUitleg frontend/src/i18n/nl.json` → 0. It
+   existed when this story branched (`git show 3795c16:…/nl.json | grep -c` → 1) and was gone after **this
+   story's own merge** (`57b79c0` → 0): E3-08 deleted it as a dead key, and `backlog/README.md`'s Art. II.3
+   citation had already been corrected the same day to say exactly that. The grain is explained by
+   `spine.titel` / `spine.titelFijn` (`Jaarspine.tsx`) and, at the fine tier, by `kalender.fijnUitleg`.
+   **The observation was true when I made it, pre-merge, and I re-asserted it twice afterwards without
+   re-deriving it** — once into **E3-06's own entry**, creating a work item nobody could do. Nothing
+   survives of it except one narrower question, which I am *not* filing because I have not measured it:
+   whether a sighted teacher at the coarse tier gets the grain from anything other than an `sr-only`
+   caption.
 2. **SC 2.5.8 Target Size:** the "Aanpassen" disclosure measures **61×16 CSS px** and "Aanpassen
    sluiten" 102×16, against a 24×24 minimum. Styled as an underlined text link, so the inline exception
    is arguable but weak for a standalone control. Predates this story (E3-06/E3-07); my own buttons are
@@ -355,7 +364,9 @@ true. It also contradicted `weigeringEerstTerugdraaien` a few lines above on the
 vakantie edit by the school. Now "Weigeren" is on the stale card and `beslisVervallen` recommends it, so
 the false promise became the advertised destination. Split into `weigeringUitlegVervallen`.
 
-*The part worth keeping:* **an existing E3-07 test was pinning the defect.** It asserted `weigeringUitleg`
+*The part worth keeping:* **an existing test was pinning the defect** — E4-06's (`81b4ed9`), living inside
+this file's `describe("… (E3-07)")` block, which is why round 3 mis-credited it to E3-07 and round 4 caught
+that with `git log -S`. It asserted `weigeringUitleg`
 for the stale case, so it failed the moment the split landed. It is now parameterised over `isVervallen`,
 asserts the *other* variant is absent, and both variants keep the `"hier"` scoping E4-06 made load-bearing.
 A test that fails when you fix something is worth more than one that passes.
@@ -438,8 +449,13 @@ Round 3 found **no defect in what the screen does.** Its two MAJORs are that two
 **Six MINORs**, and five of them are one rule applied inconsistently inside one commit:
 
 - **`kalender.weigering*` was never in the catalogue family guard**, which polices exactly the
-  hergeneratie claim both its members make. This story added the second member. The prefix now covers it,
-  free of charge (both values already satisfy the assertion), and a third variant can no longer escape.
+  hergeneratie claim both its members make. This story added the second member. The prefix now covers it and a
+  third variant can no longer escape. **"Free of charge" was wrong, and round 4 proved it by mutation:**
+  widening the filter cannot weaken the per-string assertion, but it *did* disable the family's
+  **non-vacuity canary** — renaming every `vergrendel*` key away and restoring the unscoped lock promise left
+  `catalogus.test.ts` green, because `SLOTTEKSTEN.length > 0` was satisfied by the weigering family alone.
+  That canary has caught a real incident before (its own comment records it). Fixed by asserting non-vacuity
+  **per family**. The correct sentence is: the per-string assertion is free, the canary needs to be per-family.
 - **The epic entry's own status line still said "Awaiting the antagonist audit"** after two audits and two
   fix rounds, and its `*Verification:*` line still carried the misleading mutation sentence and a
   superseded test count — corrected in the worklog, left in the backlog. *"Fixed where noticed, left where
@@ -475,3 +491,58 @@ now fails **twice**, once at the hand-written assertion and once at the widened 
 **No browser re-run.** Fix round 3 changed one string's *assertions*, one test-file prefix, five
 documentation files and two comments. The only user-visible text touched is unchanged in content; nothing
 about layout, colour or control state moved.
+
+---
+
+## Round 4 — my own filing was false, and the rule that earns is the auditor's
+
+Round 4 found **no defect in what the screen does, for the second round running.** Both MAJORs were in
+prose *round 3 wrote*, and one of them had been written into another story's file.
+
+1. **The `kalender.indelingUitleg` filing was false at `HEAD`.** Re-derived myself rather than taken on
+   trust: `grep -c indelingUitleg frontend/src/i18n/nl.json` → **0**. The key existed when this story
+   branched (`git show 3795c16:…/nl.json | grep -c` → 1) and was gone after **this story's own merge**
+   (`57b79c0` → 0), because **E3-08 deleted it** as a dead key — and `backlog/README.md`'s Art. II.3
+   citation had been corrected the same day to say precisely that. So the observation was true when I made
+   it, pre-merge, and I re-asserted it **twice afterwards without re-deriving it**, once into **E3-06's own
+   entry**, creating a work item nobody could do and telling the next reader that a governing
+   open-decision record was false when it was not. Retracted in all four places, with the `grep` beside
+   the retraction.
+2. **Widening the catalogue family filter disabled the family's rename canary, and I called it "free".**
+   The per-string assertion was indeed unaffected — but with one combined list, `length > 0` is satisfied
+   by *whichever* family survives, so renaming every `vergrendel*` key away **and** restoring the exact
+   unscoped promise E4-06's round-1 fix had missed left the guard green. That canary has caught that rename
+   before; its own comment records the incident. Fixed by asserting non-vacuity **per family**
+   (`SLOTTEKSTEN` + `WEIGERINGTEKSTEN`, unioned only for the per-string loop), and verified by running the
+   auditor's own mutation plus its mirror: both now fail. The correct sentence is *the per-string assertion
+   is free; the canary has to be per-family.*
+
+**Three MINORs**, all the same shape: `git log -S` shows the test that "was pinning the defect" is
+**E4-06's** (`81b4ed9`), not E3-07's — so the hand-off written to fix a mis-routing mis-routed the credit,
+inside the entry of the story it was informing; the guard still called itself "the lock copy" in its
+constant, `describe` and both `it` names while covering two families; and this worklog's own header still
+listed two commits after three fix rounds, in the commit that had corrected exactly that in the epic entry
+next to it. The second guard's rationale is also extended to the weigering family, because E3-08 removed
+the re-placement line from rejected cards at both tiers and this story made a stale rejected card routine,
+so the same E3-06 rule applies one family across.
+
+### The rule this story earns, and it is the auditor's, not mine
+
+> **Re-derive every claim about the repo against `HEAD` at the moment you commit it, and write the command
+> beside it.**
+
+One `grep -c`, one `git log -S`, one mutation run. Each of round 4's three verifiable findings would have
+cost a single command. This story spent four rounds writing prose about verifying claims and did not apply
+it to its own prose; the fix is not a fifth round, it is that line.
+
+*A second observation, recorded because it is uncomfortable and true:* every round after the second found
+defects **only in text this story had added**. More explanation is not free — each paragraph is a new claim
+that can rot, and three of the four documentation defects came from **partial in-place substitution**,
+editing the clause I had noticed and leaving the sentence around it.
+
+### Gates after fix round 4
+
+**314 frontend tests** (15 files), lint clean, build clean. **Two mutations, two caught:** the auditor's
+surviving MU-E (family renamed away plus the unscoped promise restored) and its mirror on the weigering
+family. No browser re-run: this round changed one test file's structure, two comments and five
+documentation files, and no user-facing string.
