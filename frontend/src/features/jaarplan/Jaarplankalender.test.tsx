@@ -1450,6 +1450,22 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     expect(within(bord()).getAllByText(t("kalender.subperiodeIngepland"))).toHaveLength(3);
     expect(within(bord()).getAllByText(t("kalender.legeperiode"))).toHaveLength(3);
     expect(screen.getAllByText(t("kalender.fijnUitleg"))).toHaveLength(1);
+
+    // The two counts above are SYMMETRIC (3 and 3), so on their own they survive swapping the two keys — which is
+    // precisely the defect finding 10 was about, returning. So each sentence is also tied to a column: a sibling of
+    // the FILLED themaperiode must carry the membership sentence, and a column of the genuinely empty themaperiode 2
+    // must carry "Nog niets gepland". Added at landing after the round-5 audit found this pair surviving the same
+    // mutation `SPINETITEL` had just been fixed for — the counts were a measurement of quantity, not of meaning.
+    const kolom = (ordinaal: number) =>
+      within(bord()).getByText(t("kalender.subperiode", { ordinaal })).closest("li")!;
+
+    // The fixture nests sub-columns 1-4 under themaperiode 1 and 5-7 under themaperiode 2, and "Water" sits in
+    // sub-column 1. So 2 is a sibling of a FILLED period and 5 belongs to the genuinely empty one.
+    expect(kolom(2)).toHaveTextContent(t("kalender.subperiodeIngepland"));
+    expect(kolom(2)).not.toHaveTextContent(t("kalender.legeperiode"));
+
+    expect(kolom(5)).toHaveTextContent(t("kalender.legeperiode"));
+    expect(kolom(5)).not.toHaveTextContent(t("kalender.subperiodeIngepland"));
   });
 
   it("does not declare a healthy plan te herzien at the finer tier", async () => {
@@ -1977,6 +1993,57 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     // Not a view name in sight: the app does not know which of its two views these columns belong to.
     expect(t("kalender.herplaatsNiveauOnbekend")).not.toContain(t("kalender.weergaveGrof"));
     expect(t("kalender.herplaatsNiveauOnbekend")).not.toContain(t("kalender.weergaveFijn"));
+  });
+
+  /**
+   * The combination nothing had looked at, added at landing after the round-5 audit named it.
+   *
+   * The second-step clause was gated at the coarse and fine tiers, and the unrecognised-tier degrade was gated with a
+   * **`Manueel`** card. So `Geweigerd × stale × niveauOnbekend` — the state in which the clause is least obviously
+   * defensible, because the board above it says the tool cannot read this view at all — had no test, and the browser
+   * pass that did visit it ran on `56f647e`, *before* the clause existed. The audit's judgement was that the clause is
+   * honest-but-unqualified there (it states what becomes possible after the reversal and promises no control), and that
+   * the missing pin was the actual gap. This is that pin.
+   */
+  it("still names the second step on a rejected stale card when the tier is unrecognisable", async () => {
+    stubZoom(
+      maakJaarplan([
+        maakPlaatsing({
+          id: "p10",
+          themaNaam: "Zomer en vakantie",
+          blokStart: "2026-12-01",
+          blokEind: null,
+          blokOrdinaal: null,
+          isVervallen: true,
+          status: "Geweigerd",
+          aiMotivatie: null,
+        }),
+      ]),
+      undefined,
+      undefined,
+      { ...rooster, niveau: "Kwartaal" },
+    );
+    renderKalender();
+
+    const kaart = () => screen.getByText("Zomer en vakantie").closest("article") as HTMLElement;
+
+    await screen.findByRole("region", { name: t("kalender.herzienTitelEnkelvoud") });
+    fireEvent.click(
+      within(kaart()).getByRole("button", {
+        name: t("kalender.aanpassenLabel", { thema: "Zomer en vakantie" }),
+      }),
+    );
+
+    // The remedy still states both of its steps, and the remedy control is still here.
+    expect(within(kaart()).getByText(/daarna[^.]*themaperiode/i)).toBeInTheDocument();
+    expect(within(kaart()).getByRole("button", { name: t("kalender.weigeringTerugdraaien") })).toBeInTheDocument();
+
+    // And a rejected card still gets NONE of the three re-placement sentences, this tier included — the rejection
+    // withholds them, not the tier, which is the whole point of fix round 3.
+    expect(within(kaart()).queryByText(t("kalender.herplaatsNiveauOnbekend"))).toBeNull();
+    expect(within(kaart()).queryByText(t("kalender.herplaatsAnderNiveau"))).toBeNull();
+    expect(within(kaart()).queryByText(t("kalender.herplaatsKies"))).toBeNull();
+    expect(within(kaart()).queryByLabelText(t("kalender.verplaatsNaar"))).toBeNull();
   });
 
   /**
