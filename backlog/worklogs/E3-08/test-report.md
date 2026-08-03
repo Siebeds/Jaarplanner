@@ -222,3 +222,130 @@ alert text 5.18:1 · retry border 6.48:1 against its own fill and 5.18:1 against
 - **[Observation, not this story's]** the empty well's dashed border measures 1.25:1 against its own fill, and
   at the coarse tier that well is a drop target. Pre-existing token → E7-10. Also: the first-load failure state
   drops the page `<h1>` with the klas/schooljaar header, which costs orientation.
+
+---
+
+# E3-08 — Test report, round 3 (`4e8f6eb`)
+
+> Persisted late by the orchestrator, together with the round-3 antagonist verdict. The round-4 audit filed the
+> omission as MINOR-3: fix round 3 was written against a relayed summary of the findings rather than against the
+> reports, which is the asymmetry the independent pass exists to prevent.
+
+**Verdict: PASS**, on every criterion of the story. Mode: Vitest plus mutation testing plus a real
+headless-Chrome pass against the API and PostgreSQL. Ports 5451/5452/5453/9451, claimed and released, `mine`
+empty afterwards.
+
+**The new MAJOR of round 2 is fixed, verified with the verifier's own fixture rather than the implementer's.**
+Stored startthema `2026-09-14` (inside themaperiode 1 but not its start), then faulted **only**
+`?niveau=Themaperiode`. The route is the one the copy recommends: the coarse first load fails, the full-page
+notice keeps the zoom control, pressing *Subthemaperiodes* brings the plan back at the fine tier with the
+generation grid still gone. The summary then reads exactly `(themaperiodes onbekend)` — not `(1 startthema)`,
+not `(1 zonder themaperiode)`; generate is `disabled`; exactly **one** `role="alert"` naming the cause; both
+fieldsets disabled; one retry beside the button it disabled; clicking generate posts nothing. After the retry:
+`(1 zonder themaperiode)` and generate re-enabled.
+
+**The third state nobody had named composes correctly.** `bekend` + `instellingenOnbekend`: generate disabled,
+summary `(instellingen niet geladen)`, one alert, board intact — the wider unknown correctly takes precedence.
+Both faults together: **two** alerts, one per cause, two retries, neither cause swallowed. A mid-flight snapshot
+caught the honest intermediate (`(instellingen laden…)` with the button already disabled), because the gate uses
+`isPending || isError` and so closes during the retry window too.
+
+**The false alert on an errored background refetch is fixed, and the 3-second trap is real.** A probe at ~3s
+showed a healthy screen with 0 alerts — it would have "proved" the bug absent. The proxy log shows why: four
+attempts at +0, +1, +3 and +7 seconds before `status` flips. After 10s: the quiet sentence is present, the
+element has `role: null` with no ancestor role and no `aria-live`, the retry is a sibling, and the board's
+`aria-label` and the notice agree about the tier. Generation stays enabled, which is right: this failure cost
+nothing.
+
+**MINOR-C proved by a decisive count rather than by reading code:** with themaperiode 6's sole placement set to
+`Geweigerd` in the database, the counts moved **8 → 6** membership sentences and **6 → 8** *"Nog niets gepland"* —
+exactly the two sub-columns of that parent flipping back to the truthful claim.
+
+**MINOR-F:** reached by rewriting `"niveau"` to `"Kwartaal"` in the response. `roosterNiveauOnbekend` renders,
+`fijnUitleg` and `sleepUitleg` are both absent so nothing instructs the teacher to switch to the view they are
+on, 0 drag grips, generate disabled, and **no retry is offered** — correct, since the request succeeded.
+
+**MINOR 5, the sweep:** walked every string *value* in `nl.json` in Node (not a grep over keys, which would have
+false-positived on `legeperiode`), stripping `themaperiode`/`subthemaperiode` first. Exactly three survivors, all
+declared: `teVolUitleg`, `wordtTeVol`, and `periodeKeuze`'s date-range placeholder. The claimed fifth instance is
+real: `spine.titel` is now tier-specific, and the sr-only figcaption reads *"Het schooljaar in themaperiodes"* /
+*"… in subthemaperiodes"* — the first thing a screen-reader user hears about the strip, no longer contradicting
+the ordinals under it.
+
+**Gates, all reproduced:** `vitest` 203/203 in 12 files with no `act(`/`warn`/`skip`/`stderr` lines, `lint` 0,
+`tsc --noEmit` 0, `build` 0 in 6.95s, backend diff empty. Real-browser axe **0 violations on five states**
+including both failure states, `color-contrast` `incomplete` in all of them, which is why it was measured by
+hand. Three mutations, each applied and reverted **inside the same Bash invocation** so a mid-run death could not
+leave the tree dirty (the E4-06 lesson); all three bite, two reproducing round 1's `'1 startthema'` verbatim.
+
+**Contrast, composited:** `generatieRoosterFout` text **5.48:1**, quiet retry border **3.21:1** against its
+backdrop (3.40:1 against its own fill), loud retry border 6.48:1, `roosterVerversenMislukt` 14.55:1,
+`roosterNiveauOnbekend` 5.73:1, the parameter notices 6.08:1, `subperiodeIngepland` 5.56:1.
+
+**The cross-story determination that changed the landing plan:** E3-08 makes E3-07's stale-rejected-card defect
+**worse at the fine tier**. State created by direct DB write (`BlokStart 2027-04-20` off a boundary + `Status
+Geweigerd`). Coarse: the two contradicting sentences, no picker, no grip — **but the corrective control is on the
+same screen**, so a teacher resolves it in place. Fine: `herplaatsAnderNiveau`, *a string this story added*,
+converts that local contradiction into a **cross-view instruction that will not be kept**, because it is the
+rejection and not the tier that withholds the picker; it also drops the mention of dragging, leaving one
+instruction that is false. Control case verified: fine + stale + `Manueel` → the sentence is correct and helpful.
+So the fault is specifically the `Geweigerd × stale × fine` intersection. *→ The owner ruled it be fixed in
+E3-08, which became fix round 3.*
+
+**Observations, not defects:** a failed *background* refetch of the generation-tier grid is silent (no false claim
+is made, which is the point, but the stale-grid risk that earned the board tier its `verversen` sentence has no
+equivalent); at the unrecognised tier the board's `aria-label` still names a tier the app admits it cannot read;
+`roosterNiveauOnbekend` carries no `role="alert"`, defensibly; and pre-existing from E3-04, the panel renders 7
+disabled startthema rows reading *"Geen voorkeur"* while the stored settings are unknown.
+
+**Demo data** mutated, declared in two `TOUCH` posts, restored and verified by `GET` **and** `psql`: the
+generatieparameters row and all six `themaplaatsingen`. No AI run happened at any point — `user-secrets` holds
+only the connection string, so every generation POST 500'd *after* persisting parameters and *before* touching the
+plan.
+
+---
+
+# E3-08 — Test report, round 4 (the merged tree, `56f647e`) — final verification
+
+> **Persisted by the fix-round-4 implementer, not by the verifier, and that is why this section is shorter than its
+> three predecessors.** The round-4 test-runner left its verdict as a `GATE` post in the groepschat (2026-08-03 14:39)
+> plus a `TOUCH` and an `INFO`, and its session ended before the prose report reached this file. What follows is that
+> post, condensed, with nothing added to its findings. The full original wording is in
+> `.claude/coordination/groepschat.md` at that timestamp — which is gitignored live state, so this is the durable copy.
+
+**Verdict: PASS on all 9 assignment items**, measured independently on the merged tree in a real browser against the
+real API and PostgreSQL rather than inherited from the implementer. Ports 5491/5492/5493/9491, claimed and released.
+
+What it measured, in its own summary:
+
+- **All three `Verplaatsstaat` states**, the last (`niveauOnbekend`) through a proxy that rewrites `/rooster`'s `niveau`
+  to `Kwartaal`, because the controller 400s on an unknown `?niveau=`.
+- `Geweigerd` x stale gets **no** re-placement sentence at the coarse, fine **or** unrecognised tier, and keeps
+  `weigeringEerstTerugdraaien` plus its *Weigering terugdraaien* button.
+- The `Manueel` x stale **control** keeps `herplaatsKies` and a 7-themaperiode picker at the coarse tier and the honest
+  cross-view sentence at the fine one, **and the named view really does hold the picker**.
+- `niveauOnbekend` names **no** view.
+- **MINOR-1 confirmed in-browser:** the generate button disabled **and** `generatieRoosterNiveauOnbekend` rendered
+  **and** zero *Opnieuw proberen* buttons anywhere on the page.
+- `indelingUitleg` gone, zero call sites, not resurrected by the merge. `nl.json`: 0 keys lost from either parent, 0
+  invented; `weigeringUitleg` = main's sentence + *themaperiode*; `vergrendelUitlegVervallen` carries the Art. II.4 fix;
+  `teVolUitleg` / `wordtTeVol` untouched.
+- **Merge fidelity:** `Bewerkpaneel`'s comments-stripped diff against main is **only** the `verplaatsstaat` prop, the
+  doelen guard and the one `herplaats` paragraph's condition/content. E4-06's `role="status"` region, `slotUitleg` and
+  the lock/weigering/delete sections are byte-identical, and E4-06's lock was re-verified end to end (badge matched on
+  the exact `🔒 Vast` sequence rather than a substring that also matches *Vastzetten*).
+- **axe** 0 violations at 3 states; contrast measured with alpha compositing at 9.24:1 and 5.66:1. **390px** via CDP
+  device metrics: `documentElement.scrollWidth` 390, no document overflow. No server-authored string in the DOM
+  (`blokindeling` absent). Console clean, all API calls 200.
+- **Demo data restored and verified** by DB query **and** `GET`, byte-identical to the recorded baseline — which was
+  itself byte-identical to round 3's and the merge round's records, so both earlier restores were honest.
+
+**Its two flagged non-defects:** the two uncommitted worklog files in this worktree were not its own (they were the
+orchestrator's round-3 records; committed with fix round 4), and it agreed the merge need not chase `origin/main`'s
+`efecf73`, whose three commits touch only `CLAUDE.md`, `assets/` and `backlog/README.md`.
+
+> **One correction to the verifier's own closing caveat, recorded here rather than by editing its words.** It closed by
+> saying an independent antagonist pass over `ae14b0b` / `0363ccf` / `56f647e` *"has still not run"*. It **had** run, in
+> parallel with it: that is the round-4 verdict in `antagonist.md` (0 CRITICAL / 0 MAJOR, 7 MINOR, 2 QUESTION). Neither
+> agent could see the other. Worth keeping as the general lesson about gating in parallel: **each may reason about the
+> other's absence and be wrong**, so a claim that a sibling gate did not run needs the board checked, not inferred.

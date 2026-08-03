@@ -739,6 +739,13 @@ between them, which is precisely the collapse round 2 removed from the periods (
 has not been given its own sentence**. The card's own status is deliberately *not* folded into the union: a rejection is
 a fact about the card, not about the board, and folding the two together is what produced the defect.
 
+> **Scoped in fix round 4 (antagonist MINOR-4a), because the sentence above reads wider than it is.** What the two
+> `Record`s buy is exhaustiveness over the **board axis**: every board state has copy. The panel has **four** cases,
+> not three — `isGeweigerd` sits outside the union behind a hand-written `&& !isGeweigerd` — so a fifth state would
+> force somebody to write a sentence and force nobody to decide whether the rejection suppression still applies to it.
+> The design reason for keeping status out of the union stands; the *claim* about what the compiler now refuses does
+> not, unless it says which axis. Corrected here and in the type's own doc rather than deleted.
+
 ### 2. [MINOR-2, second half] The unrecognised-tier degrade told every card to switch to the view it was on — fixed
 
 The surviving third instance of round 2's MINOR-F. In that degrade `verplaatsstaat` is `niveauOnbekend` for **any**
@@ -985,6 +992,11 @@ The `Verplaatsstaat` union and its **two exhaustive `Record`s** survive intact. 
 preserving: the compiler still refuses a fourth board state that has no sentence of its own, which is the defect
 class round 3 was written against.
 
+> **Scoped in fix round 4 (antagonist MINOR-4a).** "A fourth board state" is the honest reading and the one to keep:
+> the guarantee is over `Verplaatsstaat`, i.e. the board, and **not** over the panel's four cases, because the rejected
+> case is a hand-written `&& !isGeweigerd` outside the union. It also said nothing about the **tier→state** direction,
+> which turned out to be the gap worth fixing (MINOR-4b, below).
+
 ### Conflict 2 — `frontend/src/i18n/nl.json`
 
 One textual conflict, on `kalender.weigeringUitleg`, which both sides rewrote for different reasons: main gave it
@@ -1117,3 +1129,207 @@ merged frontend drove the real API against real PostgreSQL through every path ab
   tree; nothing here verifies the rest of E3-07, and its checkbox is untouched.
 - **The merge is committed on `story/E3-08-zoomniveaus` and NOT pushed.** Whoever merges it onward will also pick up
   main's `efecf73` (three doc/asset commits) for free.
+
+---
+
+## Fix round 4 (final) — two owner rulings, five comment/copy findings, one type mapping
+
+Committed on top of the merge (`56f647e`). **Both gates had already run on the merged tree**: the test-runner PASS on
+all nine items, measured in a real browser against the real API and PostgreSQL, and the antagonist round 4 with
+**0 CRITICAL / 0 MAJOR** and its own statement that *none of the seven MINORs is a code-correctness defect*. So this
+round is deliberately **not** a behavioural round: copy, comments, one type mapping and the two rulings the owner made
+on the audit. Nothing about which sentence renders in which state changed, with one exception the owner ordered (the
+second-step clause) and one shortening (MINOR-6).
+
+`origin/main` has moved again, to **`8231dd2`** (E5-01's dekkingsberekening, PR #22), and this branch deliberately did
+not chase it: per the brief the orchestrator picks main up at landing. The backend check below uses the three-dot form
+for exactly that reason.
+
+### Ruling 1 — the second step of the remedy is named
+
+`kalender.weigeringEerstTerugdraaien` gains one clause: *"Daarna kan je het thema een andere themaperiode geven."*
+The owner's wording, used verbatim, because the audit had already shown it is the version that names **no view** and is
+therefore true in all four combinations of (stale, non-stale) x (coarse, fine). Round 3's defence — that a second
+sentence must name a view and would be tier-dependent — is recorded as disproved rather than quietly dropped.
+
+The *where* is still carried **once above the board** (`sleepUitleg` / `fijnUitleg`), not per card, which is the
+CLAUDE.md rule this round also enforces elsewhere (MINOR-6). No em dash; three short sentences on a card, which is the
+most a card should carry.
+
+**One honest caveat.** At the unrecognised-tier degrade the clause is also rendered, and there the reversal makes the
+thema movable *in principle* while this board can offer nothing. It states what follows the reversal rather than
+promising a control here, the board's own notice says the view could not be read, and that state is unreachable from
+today's API (the controller 400s on an unknown `?niveau=`). Recorded because it is the one combination the audit's
+four-way argument did not cover.
+
+### Ruling 2 — the tier→state mapping is exhaustive, in six places
+
+This is antagonist **MINOR-4b** and the one code change of the round. `Planningsrooster.niveau` is deliberately a
+`string`, and the two tiers were hard-coded literals wherever anything acted on them, so **adding a third
+`Planningsblokniveau` errored nowhere**: a valid new cadence fell through every comparison into `niveauOnbekend`, where
+a teacher reads *"De tool kon deze weergave van het schooljaar niet lezen … Meld dit aan de beheerder van de tool"*
+about a tier the tool had itself requested.
+
+The seam is one `satisfies`-checked table in `types.ts` (`NIVEAUTABEL`), from which `PLANNINGSBLOKNIVEAUS` (ordered,
+coarse first) and `leesNiveau(niveau: string): Planningsblokniveau | null` are derived. `leesNiveau` uses `find` rather
+than `in`, because `"constructor" in tabel` is `true` through the prototype chain and would let an unrecognised answer
+pass as a tier.
+
+| place | before | after |
+|---|---|---|
+| `Jaarplankalender.bordNiveau` / `bordNiveauOnbekend` | two `!==` literals, plus a second boolean derived from them | `leesNiveau`, whose `null` **is** the unrecognised flag (one derivation, not two that must agree) |
+| `Jaarplankalender.verplaatsstaat` | ternary ending in `"anderNiveau"` | `ANDERNIVEAUSTAAT`, keyed `Exclude<Planningsblokniveau, typeof GENERATIEBLOKNIVEAU>` — the `kan` case stays a **live** comparison against that constant, so the ADR-0020 section 3 coupling still follows it |
+| the board's `aria-label` | `=== "Subthemaperiode" ? … : …` | `RIBBONLABEL` |
+| `Jaarspine`'s sr-only title | ternary | `SPINETITEL` |
+| `Jaarspine` + `Periodekolom`'s ordinal word | the same ternary in **two** files | one shared `PERIODELABEL` in `kalenderFormat.ts` |
+| `Weergaveschakelaar`'s option list | hand-written array (a third tier would have had **no button**) | `NIVEAULABEL` + `PLANNINGSBLOKNIVEAUS` |
+
+**Proven by mutation, not by reading**: adding `| "Kwartaal"` to the union produces **six** compile errors (TS2741 x5 +
+TS1360 on the `satisfies`), applied and reverted inside one command. Left alone deliberately: `Jaarspine`'s
+`hidden … sm:inline` class ternary (layout, not a claim) and `Periodekolom`'s `niveau === "Subthemaperiode" &&
+blok.ouderOrdinaal !== null` (a third tier would *omit* the parent line rather than assert a false one) — and
+`Generatieparametersformulier`'s `weergaveNiveau === GENERATIEBLOKNIVEAU`, whose `anderNiveau` copy stays true for any
+non-generation tier.
+
+**The consequence, recorded rather than amended away** (the owner declined a constitution reword): Art. XIV's resolved
+promise that the block unit is configurable *"without a code change"* stays **literally broader than the frontend
+delivers** — a new *tier* was never configuration on this side. What changed is the failure mode: a compile error in
+front of the developer who adds the tier, instead of a false "the tool cannot read your school year" in front of a
+teacher.
+
+### The five remaining MINORs
+
+| # | finding | what changed |
+|---|---|---|
+| MINOR-1 | `catalogus.test.ts:157-161` still justified its guard with *"the re-placement instruction belongs to `herplaatsKies` alone, which stands at the top of the same panel"* — false twice over since round 3 | comment rewritten to the true, and stronger, reason (at the fine tier a repeat would **contradict** the line above; on a rejected card it would claim a picker the panel does not have), with the fixed-here/left-there pattern named. **The guard is unchanged**; the test title now says what it does |
+| MINOR-4a | the exhaustiveness claim read as covering the panel | scoped to the **board axis** in `Verplaatsstaat`'s doc, in `HERPLAATSUITLEG`'s doc, and in the two worklog passages (`:738`, `:984-986`) |
+| MINOR-6 | `kalender.herplaatsNiveauOnbekend`'s 2nd and 3rd sentences were **byte-identical** to `roosterNiveauOnbekend`'s, which renders once above the board | shortened to the clause that is local to the card: *"In deze weergave kan je geen themaperiode voor dit thema kiezen."* The diagnosis and the beheerder instruction stay with the notice that carries them once. `generatieRoosterNiveauOnbekend` is **not** touched: it is about a different fetch and can be the only notice on screen |
+| MINOR-7 | the zero-block comment explained why hiding the *switch* is safe and said nothing about what else that branch swallows | now names the `Roosterfout` notice **and** the board's `BORDUITLEG` sentence, says the fix is to hoist them above the fork, and says where it is filed (this worklog's round-3 open list, handed to E3-09; unreachable until E6-03) |
+| test-runner obs. 1 | `ae14b0b` put `Verplaatsstaat` + its TSDoc **between** `Themakaart`'s 40-line doc and the declaration, so tooling attached the union's doc to `Themakaart` and the class doc hung on nothing | the class doc moved down against `export function Themakaart`; the union and its doc now stand first. No code moved |
+
+### One thing this round found on its own: `pnpm lint` does not type-check
+
+While proving ruling 2 bites, the mutation produced **no** errors under `pnpm lint`. The cause is not the fix:
+`frontend/tsconfig.json` is solution-style (`files: []` + `references`), and **bare `tsc --noEmit` on such a config
+checks nothing** — verified with a deliberate `const x: number = "nope"`, which `tsc --noEmit` accepts (exit 0) and
+`tsc -b` rejects (TS2322). The real type gate is therefore **`pnpm build`** (`tsc -b && vite build`), which is where the
+six errors above appear.
+
+**Not fixed here, deliberately:** changing `"lint"` to `tsc -b` touches a shared script every session and story runs,
+and it is a repo-level call. Posted to the groepschat as an `INFO` so nobody else reports a type check they did not run.
+It does not weaken ruling 2: the developer who adds a tier meets the errors in their IDE (which reads the project
+references) and in `pnpm build`.
+
+### Files changed
+
+| file | why |
+|---|---|
+| `frontend/src/i18n/nl.json` | ruling 1's clause on `weigeringEerstTerugdraaien`; `herplaatsNiveauOnbekend` shortened (MINOR-6) |
+| `frontend/src/features/jaarplan/types.ts` | the tier seam: `NIVEAUTABEL`, `PLANNINGSBLOKNIVEAUS`, `leesNiveau` |
+| `frontend/src/features/jaarplan/Jaarplankalender.tsx` | reads the seam; `ANDERNIVEAUSTAAT`; `RIBBONLABEL`; the zero-block comment (MINOR-7) |
+| `frontend/src/features/jaarplan/Jaarspine.tsx` | `SPINETITEL`, and the shared `PERIODELABEL` |
+| `frontend/src/features/jaarplan/Periodekolom.tsx` | the shared `PERIODELABEL` |
+| `frontend/src/features/jaarplan/Weergaveschakelaar.tsx` | `NIVEAULABEL` + the derived option order |
+| `frontend/src/features/jaarplan/kalenderFormat.ts` | `PERIODELABEL`, the one word per tier both views read |
+| `frontend/src/features/jaarplan/Themakaart.tsx` | the class doc moved back against its declaration; the scoping paragraphs; the ruling-1 comment |
+| `frontend/src/i18n/catalogus.test.ts` | MINOR-1: the guard's justification made true, and the title with it |
+| `frontend/src/features/jaarplan/Jaarplankalender.test.tsx` | the ruling-1 test at both tiers; two spine-title assertions |
+| `frontend/src/features/jaarplan/kalenderFormat.test.ts` | `leesNiveau` and `PERIODELABEL` |
+| `backlog/worklogs/E3-08/antagonist.md`, `test-report.md` | the orchestrator's uncommitted round-3/round-4 records, committed; the round-4 test report persisted with one correction |
+
+### Tests added (4 new, 228 total)
+
+| test | what it pins |
+|---|---|
+| *names the second step of the remedy on a rejected stale card, at either tier* | the clause is in the catalogue, names **neither** view, and renders on the card at coarse **and** fine, while all three re-placement sentences and the picker stay absent. Asserted against the sentence's content by regex, because a `getByText(t("…"))` check follows `nl.json` wherever it goes |
+| *leesNiveau — reads back every tier the app declares* | round-trips every member of the derived list, with a non-vacuity guard |
+| *leesNiveau — refuses a tier it does not know, including one borrowed from Object's prototype* | `Kwartaal`, `""`, **`constructor`**, `toString` → `null` |
+| *leesNiveau — names one block per tier, and never the same word twice* | `PERIODELABEL` is total over the tiers and injective |
+| *(existing, +4 assertions)* | the spine's sr-only title follows the tier at both tiers. **It had never been asserted** — the round-2 fix that made it tier-specific was measured in a browser only, so swapping the two keys left the whole suite green. Found by mutating this round's own table |
+
+**Mutation checks, seven, each applied and reverted inside one Bash invocation:**
+
+| mutation | result |
+|---|---|
+| union gains `"Kwartaal"` | **6 compile errors** under `tsc -b` (the point of ruling 2) |
+| drop the second-step clause from `nl.json` | **1 test fails** — the new one, and only it |
+| swap `PERIODELABEL`'s two keys | **4 tests fail** |
+| swap `RIBBONLABEL`'s two keys | **15 tests fail** |
+| swap `SPINETITEL`'s two keys | **0 fail before the new assertions, 2 after** (recorded as found, not smoothed over) |
+| swap `NIVEAULABEL`'s two keys | **13 tests fail** |
+| `ANDERNIVEAUSTAAT.Subthemaperiode → "kan"` | **4 tests fail** |
+
+### Browser pass, for ruling 1
+
+The only item that needed one; ruling 2 and the five MINORs are compile-time or copy, covered by the suite plus these
+screenshots. Ports **5511 / 5512 / 9511**, claimed and released (all three verified free afterwards; the stale 9511
+socket for the dead PID cleared itself). Headless Chrome over CDP against the real API and real PostgreSQL. `dotnet run
+--no-launch-profile` needs **`ASPNETCORE_ENVIRONMENT=Development`** or user-secrets are not loaded and every request
+500s on an empty connection string — worth writing down, because it fails as if the database were down.
+
+**Demo data**, declared in the groepschat **before** the write: `fc89b501` *Zomer en vakantie* `2027-04-19 / Manueel`
+to `2027-04-20 / Geweigerd`, the only state that shows this sentence and one nothing in the UI can set. The recorded
+baseline was **byte-identical to round 3's, the merge round's and the final-verification round's**, which is further
+independent evidence that every earlier restore was honest.
+
+| state | what the card actually reads | picker | grip |
+|---|---|---|---|
+| `Geweigerd` x stale, **coarse** | *"Dit thema is geweigerd, dus je kan het niet verplaatsen. Draai hieronder eerst de weigering terug. **Daarna kan je het thema een andere themaperiode geven.**"* + `weigeringUitleg` + the **Weigering terugdraaien** button | 0 | 0 |
+| `Geweigerd` x stale, **fine** | **identical, verbatim**; none of the three re-placement sentences | 0 | 0 |
+| 390px (an exactly-390px same-origin iframe; its own scrollbar leaves 375 of layout) | the three sentences wrapping, panel open, `scrollWidth` 375, **no overflow** | 0 | 0 |
+
+Also confirmed in the browser, because this round rewrote the code behind them: the board's `aria-label` and the spine's
+sr-only title follow the tier through the real switch (*"Themaperiodes van het schooljaar"* / *"Het schooljaar in
+themaperiodes…"* to *"Subthemaperiodes van het schooljaar"* / *"… in subthemaperiodes…"*), which is the `RIBBONLABEL` /
+`SPINETITEL` conversion working against a real `/rooster` answer rather than a fixture.
+
+**Restored and verified twice** (psql **and** `GET /api/klassen/{id}/jaarplan`): 6 placements, `isVervallen` 0,
+`Geweigerd` 0, `vergrendeld` 0, `fc89b501` back at `2027-04-19 / Manueel`, kept startthema still
+`2026-11-09 / Licht en donker`.
+
+**Screenshots** (three, `fix4-*.png`): `fix4-grof-geweigerd-vervallen.png`, `fix4-fijn-geweigerd-vervallen.png`,
+`fix4-390-geweigerd-vervallen.png`.
+
+### Gates
+
+Run **alone** in this worktree under the `suite-e3-08-zoom` mutex, claimed before vitest and released after.
+
+| gate | result |
+|---|---|
+| `corepack pnpm lint` | **exit 0**, no output (and see the caveat above about what its `tsc --noEmit` does not do) |
+| `corepack pnpm vitest run` | **228 passed / 228, 12 files**, 0 failed, 0 skipped, 35.7s |
+| `corepack pnpm build` | **exit 0**, `tsc -b` clean, built in 8.64s |
+
+**Backend untouched, by the three-dot check the brief requires:** `git diff --stat origin/main...HEAD -- backend/` is
+**empty**, so E3-08 contributes no backend change. The two-dot form is now non-empty and says nothing about this story:
+`origin/main` has since merged E5-01's dekking work. `dotnet test` was therefore not run, stated as a conclusion.
+
+### Self-check against this round's assignment
+
+| item | met? | evidence |
+|---|---|---|
+| Ruling 1 — the second step named, one clause, `nl.json`, no em dash, pinned at both tiers | yes | new test + browser at both tiers; the caveat about the unrecognised tier is recorded above rather than hidden |
+| Ruling 2 — `Record`/`satisfies` so a third tier is a compile error | yes | six errors under `tsc -b`, by mutation; consequence for Art. XIV recorded, not amended |
+| 3. MINOR-1 — the falsified premise's second instance | yes | `catalogus.test.ts` comment + title; guard unchanged |
+| 4. MINOR-4a — scope the claim, do not restate it | yes | `Verplaatsstaat`, `HERPLAATSUITLEG`, worklog `:738` and `:984-986` |
+| 5. MINOR-6 — stop repeating two sentences | yes | `herplaatsNiveauOnbekend` is one clause; the notice keeps the diagnosis |
+| 6. MINOR-7 — name what else the branch withholds, and where it is filed | yes | the comment names the `Roosterfout` **and** `BORDUITLEG`, the hoist fix, E3-09 and E6-03 |
+| 7. the orphaned doc comment | yes | `Themakaart`'s doc sits against its declaration again |
+| housekeeping — the two uncommitted worklog files | yes | committed with this round |
+| housekeeping — the stale "antagonist has still not run" sentence | yes | corrected where the round-4 report is persisted, **without editing the verifier's words** |
+| not a fifth behavioural round | yes | one clause added, one string shortened, everything else comments/types; the 224 tests that existed before still pass unchanged |
+
+### Still open after this round
+
+- Everything on the earlier open lists that this round did not touch: **the zero-block branch** (now named in the code,
+  fix handed to E3-09), **generation offered on a year with zero themaperiodes** (E3-04's, `periodestaat` its natural
+  home), **the generation-tier grid's silent stale state**, and E3-09's inherited **MINOR-E** plus the two bare-*periode*
+  te-vol strings.
+- **Antagonist MINOR-2 and MINOR-5 are the orchestrator's, not mine:** `backlog/README.md`'s Art. II.3 record still
+  cites the deleted `kalender.indelingUitleg`, and E3-07's reopened entry still calls the fix shape an open guess. Both
+  are backlog files this round was told not to touch (and `file-backlog-README.md` was claimed by another session).
+- **`pnpm lint` type-checks nothing** (above). Needs a repo-level decision.
+- **E5-01's `kalenderFormat.ts:174` finding** (`vervallenPlaatsingen` filters `isVervallen` with no status filter, so a
+  stale **rejected** card counts toward the non-dismissible aandacht notice while the dekking payload calls that same
+  card resolved) is **untouched here**: it is a behavioural change, and this round was explicitly not a behavioural one.
+  Left where E5-01 routed it, and named here so it is not lost.

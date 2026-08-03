@@ -264,3 +264,126 @@ QUESTION-9's Geweigerd case; QUESTION-10's four comments now leading with the se
 `teVol`/`teVolUitleg`/`wordtTeVol` narrowing is a **recorded** carve-out, not a silent one. `Themakaart`'s
 `Bewerkpaneel` DOM shape is unchanged, so E4-06's lock control still has room. `backlog/README.md` is confirmed
 still stale and still blocks landing.
+
+---
+
+# E3-08 — Antagonist verdict, round 3 (`364c3b5..4e8f6eb`)
+
+> **Persisted late, and the lateness was itself a finding.** The round-4 audit recorded as MINOR-3 that this
+> verdict existed only as relayed prose in the fix brief and as the implementer's paraphrase in
+> `implementation.md`. That is exactly the asymmetry the independent pass exists to prevent: fix round 3 was
+> written against the orchestrator's summary of the findings rather than against the findings. Recorded here
+> after the fact, with the gap admitted rather than smoothed over.
+
+**Verdict: VIOLATIONS FOUND — 0 CRITICAL, 0 MAJOR, 5 MINOR, 2 QUESTION.** The headline: **this round did not
+repeat the pattern.** The auditor tried to falsify both round-2 MAJOR fixes by construction and could not.
+
+**Why MAJOR-A's fix holds.** `periodestaat` is derived in exactly one place and every consumer reads that one
+value: the button, the form's `disabled`, the form's `isGeneratieNiveau`, the summary, and the three-way panel
+branch with `bekend` as the fall-through. Checked specifically against `instellingenOnbekend`, because two gates
+on one control is where "each assumed the other was off" lives: they are **independent derivations that each
+disable on their own**, and their explanations do not race.
+
+**Why MAJOR-B's fix holds.** `verversen` requires `rooster.data !== undefined`; TanStack drops
+`placeholderData` on `status: "error"`, so that data can never be the other tier's placeholder, and the notice's
+deictic *"Deze weergave"* cannot name a tier the board is not showing. `geenGrid` requires the early-return
+branch, so it can never render over a drawn board. `terugval` and the new `generatie` notice are **mutually
+exclusive**, so two loud alerts cannot mount together.
+
+**Findings:**
+- **MINOR-1** — `periodestaat === "nietGelezen"` disables the primary action with **no statement anywhere on
+  screen** that it is refused: the notice renders only for `nietGeladen` while the gate covers both. Nil
+  reachability from today's API (the controller 400s on an unknown `niveau`), so a defensive branch — but *the
+  third round in a row that a refusal and its explanation were wired on different conditions.*
+- **MINOR-2** — `kalender.herplaatsAnderNiveau` is false on a stale **rejected** card (the picker is withheld in
+  the named view too) and false for **any** card in the unrecognised-tier degrade. The decline reason ("session
+  E4-06 holds `Themakaart.tsx`") is a **scheduling fact, not a waiver**; Art. X.7 reserves waivers to the owner.
+  *→ Ruled by the owner: fix it here. Became fix round 3's headline change.*
+- **MINOR-3** — `Weergaveschakelaar` and the `Roosterfout` notices both sit inside the `blokken.length > 0`
+  branch, so a **zero-block grid swallows every notice and the control**, leaving only *"Dit schooljaar heeft nog
+  geen themaperiodes."* with no way back to the other tier.
+- **MINOR-4** — `kalender.indelingUitleg` is a **dead key** (0 call sites), the residue of E3-06's reverted
+  server-string render, reworded rather than removed.
+- **MINOR-5** — `backlog/README.md` still stale; a landing gate the orchestrator owns.
+- **QUESTION-A** — **two of six full suite runs failed the two MAJOR-A regression tests with round 1's error
+  string verbatim**, then ten passed. The auditor proved that string is *unreachable* in the audited source
+  (`(1 startthema)` needs `vervallen.length === 0` **and** `samenvatting === samenvattingIngesteld`, which
+  require opposite values of `isGeneratieNiveau`), and its own run showed `setup 49.85s` / `environment 190.38s`.
+  It could not reproduce it, so it recorded it rather than waving it through. *→ The orchestrator then ran the
+  suite **3× alone: 203/203 each**, 25-33s, environment 85-106s. Most likely cause: two gate agents running
+  vitest concurrently in one worktree on one `node_modules/.vite` — an orchestration fault, not a product one.
+  Never reproduced, so it stands as evidenced but unproven.*
+- **QUESTION-B** — a schooljaar with **zero** themaperiodes passes both gates, so *Jaarplan genereren* is offered
+  on a year with nowhere to place anything. Pre-existing (E3-04); `periodestaat` is now its natural home.
+
+**Also confirmed clean:** MINOR-C's membership wording is true for a `Voorgesteld`-only parent, and the
+`Geweigerd`-only path still says nothing is planned (`geplandeIn` filters `Geweigerd` *before*
+`gevuldeOuderOrdinalen` is built); the "one word per tier" sweep is complete, re-run independently over all 332
+leaves, with `spine.titel` confirmed a genuine fifth instance; MINOR-E is recorded in **two** places, the
+worklog open list *and* E3-09's own ruling, which explicitly forbids "a mark inherited by up to nineteen
+columns".
+
+---
+
+# E3-08 — Antagonist verdict, round 4 (fix round 3 + the merge resolution, `56f647e`)
+
+**Verdict: VIOLATIONS FOUND — 0 CRITICAL, 0 MAJOR, 7 MINOR, 2 QUESTION.** In the auditor's own words: *"None of
+them is a code-correctness defect. The behaviour shipped in fix round 3 and preserved by the merge is, as far as
+I can falsify it, correct, and the cross-story determination the owner cares about holds."*
+
+**The four claims it was asked to judge:**
+1. **The exhaustiveness claim is literally true but narrower than it reads.** Both
+   `Record<Verplaatsstaat, TranslationKey>`s are genuinely exhaustive: the union is closed, nothing widens it at
+   the call site (no `as Verplaatsstaat`, no `string` index), and a fourth member is a TS2741 on both. Two
+   caveats in MINOR-4.
+2. **MINOR-1 is genuinely one condition, not two that agree.** `periodesOnbekend` both disables the button and
+   renders the notice; the branch inside the notice only picks the cause. The `nietGelezen` variant renders with
+   no retry, and a test asserts no retry button exists anywhere on that screen.
+3. **The corrected `toonSlot` comment is true** — all five of its assertions checked against the merged code.
+4. **The backend reasoning is sound**, verified independently rather than taken: a zero-byte backend delta
+   against `origin/main`, so `dotnet test` here would re-verify `61457bc` rather than this change.
+
+**Findings, none of them a correctness defect:**
+- **MINOR-1** — the merge corrected the falsified premise in `Themakaart.tsx` and **left the second instance** in
+  `catalogus.test.ts`, whose comment still says the re-placement instruction *"stands at the top of the same
+  panel"*. Fixed in the instance that was noticed, left in the one that was not: *verbatim the pattern that
+  file's own header decries.* The guard itself is still correct; only its justification lies.
+- **MINOR-2** — deleting `kalender.indelingUitleg` falsified `backlog/README.md`'s Art. II.3 record, which cites
+  that key as the thing carrying the grain explanation. The substantive claim survives (`spine.titel` /
+  `spine.titelFijn` carry it, still from `nl.json`, still no server string), so a broken citation rather than a
+  broken principle — but inside the record of an Art. II.3 near-miss.
+- **MINOR-3** — **the round-3 verdicts were never persisted.** Answered by this file.
+- **MINOR-4** — the exhaustiveness bought protects **state→copy**, not **tier→state**. (a) The panel has four
+  cases and only three are in the union: `isGeweigerd` sits outside it behind a hand-written `&& !isGeweigerd`,
+  so a fifth state would force a *sentence* but force nobody to decide whether the rejection suppression still
+  applies. (b) `Planningsrooster.niveau` is deliberately `string` and the two tiers are hard-coded literals in
+  three places, so **adding a third tier errors nowhere**: a valid new cadence routes into `niveauOnbekend`, and
+  teachers read *"De tool kon deze weergave van het schooljaar niet lezen … Meld dit aan de beheerder"*. That
+  collides with Art. XIV's resolved promise that the unit is configurable *"without a code change"*.
+  *→ Owner ruled: make the mapping exhaustive in code. Consequence recorded rather than amended away: the Art.
+  XIV promise stays literally broader than the frontend delivers, but the failure moves from a teacher being
+  told the tool is broken to a compile error in front of the developer who added the tier.*
+- **MINOR-5** — E3-07's reopened entry still calls the fix shape an open guess while this tree has shipped
+  exactly that shape, verified in a browser and pinned by a test, with no pointer to it. *Refusing to flip a
+  checkbox is not the same as leaving the entry factually wrong.*
+- **MINOR-6** — in the unrecognised-tier degrade, two of three sentences are byte-identical between the board
+  notice and each stale card's panel, with a third near-copy on the generation card. Weakest finding;
+  unreachable from today's API.
+- **MINOR-7** — the comment justifying the zero-block branch explains why hiding the *switch* is safe and says
+  nothing about the `Roosterfout` two blocks below, which is also swallowed.
+- **QUESTION-A** — the two-step remedy names only its first step, and the defence that the second *cannot* be
+  named is not airtight: *"Daarna kan je het thema een andere themaperiode geven"* names no view and is true in
+  all four combinations of (stale, non-stale) × (coarse, fine). *→ Owner ruled: add the second-step clause.*
+  The auditor's determination on the cross-story question: **the measurement is sound, not a fixture artefact**
+  (two independent methods agree, and a non-stale rejected card is unaffected because the sentence was always
+  gated on `isVervallen`); **coverage honesty is preserved** (the card stays in the non-dismissible `TeHerzien`
+  region, whose copy still says the dekking is unreliable); and **a teacher can complete the task from what is
+  on screen** — the remedy is the right one, not merely the quiet one.
+- **QUESTION-B** — the merge's two liberties on `nl.json` were **this story's business and both are declared**:
+  E3-08 is the change that makes two kinds of period visible at once, so a bare "periode" landing in the same
+  catalogue on the same screen is a second name for one thing created *by this merge*. No finding.
+
+**Deliberately not run:** vitest, because a test-runner held the worktree — the mutex working as intended. The
+auditor relied on the implementer's alone-run figure and cross-checked it for consistency (12 files, 221 `it(` /
+`test(` declarations plus two 2-row `it.each` blocks = 224), stating plainly that this is a consistency check and
+not verification. `lint` was run: exit 0.
