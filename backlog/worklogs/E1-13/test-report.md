@@ -293,3 +293,261 @@ antagonist reaching the same defect independently by reading the code.
 specific and repeatable — I captured the *end* of each flow because that is where a run naturally stops,
 when the state under test lived one step earlier. **Screenshot the state that carries the claim, not the
 state the script ends in**, and md5 a set of screenshots before citing them as distinct.
+
+---
+
+# E1-13 — Test report (round 2)
+
+**Verdict:** FAIL
+**Mode:** both — unit/integration/lint/build gates **plus** a real browser pass (headless Chrome over CDP) against a real API and PostgreSQL 17
+**Tree tested:** worktree `.claude/worktrees/agent-a8b6127bb7255ef99`, branch `story/E1-13`, head **`672bdab`**.
+`origin/main` is contained in the branch and has not moved.
+
+> **All six *Done when* clauses are met, and the two defects from round 1 are genuinely fixed** — each
+> re-driven with my own repro, and with a positive control, so a fix that merely disabled the feature would
+> have been caught. I also independently reproduced all three of the fix round's own claims the brief asked
+> me to distrust, including the guard calibration, which lands on exactly the numbers I derived from scratch.
+>
+> **The FAIL is a different, and worse, defect that I found while driving the screen.** Against real
+> PostgreSQL, **any import commit that adds a new subthema or a new activiteit to a thema that already exists
+> answers 500.** Only a wholly-new thema, created in the same run, commits. That is the ordinary FR-1 path
+> from the second import onward, it is reachable from this screen in three clicks, and no test sees it
+> because the import unit tests run on the EF **InMemory** provider. It is **not this story's regression**:
+> E1-13's entire footprint on `SchoolcontentImportService` versus `origin/main` is product copy, so the
+> defect is pre-existing on `main`. I am still calling FAIL rather than PASS-with-a-note, because clause 4's
+> "review the preview before committing" and clause 5's add-versus-update choice both terminate in a commit a
+> teacher cannot complete, and the screen's own honest report of it ("Het doorvoeren is misgelopen") is what
+> a reviewer would meet on their second ever import. See defect 1 for the minimal repro.
+
+## Verdict per *Done when* clause
+
+| # | Clause | Verdict | How I know (round 2, my own evidence) |
+| --- | --- | --- | --- |
+| 1 | download the sjabloon (FR-1.5) and upload a filled `.xlsx` (FR-1.1) | **PASS** | Clicked the on-screen link in Chrome: `Browser.downloadWillBegin` fired with the server's own filename `jaarplanner-schoolcontent-sjabloon.xlsx` for `/api/schoolcontent-import/sjabloon`. This headless profile then cancels the write (`downloadProgress: inProgress x4 -> canceled`), so I have no bytes on disk this round; the same URL fetched directly answers **200, 7033 bytes**, `content-disposition: attachment; filename=jaarplanner-schoolcontent-sjabloon.xlsx`. Round 1 got the bytes on disk, and the fix round changed `Bestandkiezer.tsx` and the sjabloon link **by docstring only**, which I verified in the diff. **Every fixture in this round was built with `openpyxl` from that served file** and uploaded through the screen with `DOM.setFileInputFiles`, so the FR-1.5 to FR-1.1 round trip is exercised, not assumed. `S1-aankomst.png` |
+| 2 | read the per-row problems (row number + offending column) and the opmerkingen for dropped content (FR-1.2) | **PASS** | Heading **"3 problemen in het bestand"**, and on screen `rij 3 . kolom Klas`, `rij 4 . kolom Thema duur (weken)`, `rij 4 . kolom Type`, all four substrings probed in the live DOM. Kept in a block separate from the loss block. `T4-rijproblemen.png` |
+| 3 | `isBestandGeldig` and `isVolledigVerwerkt` as two distinct statements, never one "OK" | **PASS** | The case the criterion exists for: a file that parses cleanly and drops a typo'd goal code renders **"Bestand gelezen: Alle rijen zijn zonder problemen gelezen."** *and* the separate warning **"1 stuk inhoud gaat niet mee"** / "kan niet overgenomen worden". Two verdicts, two registers, warning not success. `T5-stille-drop.png` |
+| 4 | review the preview *before* committing (FR-1.3) | **PASS** on the criterion; see defect 1 for the 500 that ends the flow | Round 1's defect 1 is closed on **both** halves, re-driven by me. School content: the preview gives "Wat dit bestand toevoegt" plus a commit control; the commit gives "Wat er toegevoegd is" / "De import is doorgevoerd" and **no** commit control; pressing *Bestand nakijken* again on the same file and modus drops the past-tense panel entirely and shows the **fresh** answer ("Dit bestand verandert niets...", "1 ongewijzigd" three times), committable again. `T1`, `T2`, `T3`. |
+| 5 | choose add versus update/overwrite (FR-1.4), warned before an overwrite discards teacher-set `DoelKoppeling` statuses (Art. IV.2), never a silent default | **PASS** | Round 1's defect 2 is closed, verified three ways including a positive control, with the wire read by a route the fix round could not use. Detail below. |
+| 6 | read the Op.stap re-import review notice (FR-2.5) from `OpstapHerimportDiff` | **PASS** | The FR-2.5 report renders and survives a re-check. After *Doelen inlezen* ("Wat er veranderd is aan de doelen van discipline 7" / "De doelen zijn ingelezen"), pressing *Op.stap-bestand nakijken* again shows the **fresh** report and offers the import control again: the discarded-report defect is gone (`V2` to `V3`). The notice itself, driven with a file that drops a loaded goal: **"Nazicht bij deze inlezing: 1 doel staat niet meer in dit bestand"**, "Deze doelen zijn niet verwijderd: ze blijven bewaard en gemarkeerd, zodat de jaarplannen intact blijven", `TR7-4`, "geen verwijzingen uit de schoolinhoud". Singular correct throughout. `W1-fr25-review.png` |
+
+## Clause 5 in full — the round-1 repro, plus the control that makes it mean something
+
+Run against real PostgreSQL on a thema created **through this screen**, because on a pre-existing thema the
+commit cannot complete at all (defect 1). The statuses are `Manueel`, which `IsMenselijkeBeslissing` treats
+identically to `Aanvaard`; they were set through `POST /api/themas/{id}/themadoelen`, which the beheer service
+records as `Manueel` by design.
+
+**A — the round-1 repro verbatim, including the concurrent removal at step 3.**
+
+```
+STEP 0  TR Bedreigd: DEMO-L3-05=Manueel, DEMO-L3-06=Manueel
+STEP 1  Bijwerken + g-bedreigd-herimport.xlsx, Bestand nakijken
+        -> "2 koppelingen die jij zelf beslist hebt, staan niet meer in dit bestand"
+        -> 1 checkbox, checked = false                                   U1
+STEP 2  the reader ticks it                       checked = true         U2
+STEP 3  a concurrent session removes both links (DELETE .../themadoelen/{id} -> 204, 204)
+        -> themadoelen: (none)
+STEP 4  Bestand nakijken again (same file, same modus)
+        -> panel GONE, opt-in controls on screen: 0, flag: []            U3
+STEP 5  the links exist again (POST .../themadoelen -> 200, 200)
+STEP 6  Import doorvoeren -> "De import is doorgevoerd", no alert        U4
+OUTCOME DEMO-L3-01=Voorgesteld, DEMO-L3-05=Manueel, DEMO-L3-06=Manueel
+        i.e. BOTH teacher decisions SURVIVED. The unfixed build produced (none).
+WIRE    voorbeeld  menselijkeBeslissingenVerwijderen=false
+        voorbeeld  menselijkeBeslissingenVerwijderen=false
+        commit     menselijkeBeslissingenVerwijderen=false
+```
+
+**How I read the wire, since the brief asked.** Not in-page. I intercepted with **`Fetch.enable` at the
+request stage** and read `Fetch.requestPaused`'s `request.postData`, then parsed the multipart part named
+`menselijkeBeslissingenVerwijderen` out of the raw body. That is the byte stream the browser was about to
+send, independent of any page state, and it is a different route from the one the fix round used. The fix
+round is right that `Network.requestWillBeSent` does not inline a multipart body; `Fetch.requestPaused` does.
+
+**B — the single-user case, no concurrent change.** Tick the box, then press *Bestand nakijken* again with the
+panel still on screen: the checkbox comes back **unchecked** (`U5` is byte-identical to `U1`, which is exactly
+the claim), the commit sends `false`, and both links survive. Round 1's "even without step 3" complaint is
+answered.
+
+**C — the positive control, which is the reason A and B mean anything.** Tick the box and commit straight
+away: the wire carries **`menselijkeBeslissingenVerwijderen=true`** and the outcome is `DEMO-L3-01=Voorgesteld`
+only, both `Manueel` decisions discarded, exactly as the label ("Verwijder deze 2 koppelingen bij het
+doorvoeren. Dat kan je niet ongedaan maken.") promises. **A fix that had simply stopped sending the flag would
+have passed A and B and failed C.** `U6`.
+
+## The three claims the brief told me not to take on trust
+
+**1. The 409 discriminator: confirmed, and the third frame is reachable and honest.**
+Both real refusals driven through the screen, and both `type` URIs also read straight off the wire with
+`curl`: same `title`, different `type`.
+
+| Refusal | `type` | Frame on screen | Server `detail` under it |
+| --- | --- | --- | --- |
+| MD row, minimumdoel not loaded | `urn:jaarplanner:opstap-import:ontbrekende-minimumdoelen` | "...**De toepassing kan dit bestand nog niet inlezen**, en hieronder staat waarom en wat er eerst moet gebeuren." | "...verwijzen naar minimumdoelen die nog niet ingeladen zijn: 4-99. **Laad eerst de decretale minimumdoelen in.**" |
+| same file, wrong discipline | `urn:jaarplanner:opstap-import:code-in-andere-discipline` | "...maar over het bestand als geheel: **het hoort mogelijk bij een ander disciplinenummer dan je opgaf**." | "Deze codes staan al bij een andere discipline: TR7-4 (discipline 7). **Controleer of dit bestand bij discipline 3 hoort.**" |
+| unclassifiable (injected) | absent, or the framework's `rfc9110#section-15.5.10` | "...het bestand is als geheel geweigerd en **er is niets gewijzigd**." | whatever `detail` there is, else "De reden is niet doorgegeven." |
+
+Each frame now names the owner of the fix, and round 1's contradiction is gone: `V4`, `V5`, `V6`, `W3`.
+A 400 still takes the **ordinary** alert rather than a refusal frame (`V7`): "'999' is geen Op.stap-discipline...".
+The neutral frame **is reachable and says nothing false**. I drove it twice, once with the framework's own
+status-derived `type` and once with **no `type` at all**, which is the likelier real case: this API's
+controller-built 400s carry no `type` (`{title, status, detail}` only). The fix round's stated premise also
+holds where the framework writes the body: a real 500 from this API answers
+`"type": "https://tools.ietf.org/html/rfc9110#section-15.6.1"`. Two honest limits. On today's server **no real
+409 lands on the neutral frame**, because all three `OpstapImportFoutSoort` members are mapped and the new
+exhaustiveness test keeps that true, so the branch is defensive and only a replaced body reaches it. And the
+duplicated "Er is niets gewijzigd" the fix round says it removed is indeed gone: only the generic frame states
+it, and each specific frame leaves it to the server's `detail`.
+
+**2. The copy guard: the calibration claim holds, and I re-derived its numbers independently.**
+I wrote my own sweep from scratch, a C# literal tokenizer that skips `//`, `///`, `/* */` and char literals,
+handles verbatim/interpolated/raw strings and filters to prose, over the same eleven files on the two import
+render paths, plus every `nl.json` leaf, against no em dash / no `Art.` / no `(s)`.
+
+| Tree | backend prose literals | `nl.json` leaves | findings |
+| --- | --- | --- | --- |
+| `672bdab` (fixed) | **73** across 11 files | **431** | **0** |
+| `bc4c880` (unfixed) | 69 across 11 files | 425 | **1**, and only 1: `SchoolcontentImportService.cs:502`, "...themadoelen geankerd (Art. IX.2)." |
+
+**73 and 431 are exactly the fix round's figures, arrived at independently.** I then took the *fixed* xUnit
+guard and ran it against the **unfixed** source in a detached worktree at `bc4c880`
+(`.claude/worktrees/e113-calib`, since removed): **3 failed / 4 passed**, all three failures being
+`Assert.DoesNotContain("Art.")` inside `AssertLeesbaarVoorEenLeerkracht`, on the exact string
+"...geankerd (Art. IX.2). 1 genegee...", and one of the three coming from
+`Elke_opmerking_van_een_run_is_leesbaar_voor_een_leerkracht`, the "grows by itself" test. At `672bdab` the
+whole suite is green. **The guard bites, for the stated reason, and it is the sweep-over-every-opmerking shape
+that bites rather than a per-notice assertion.** I did not leave a working tree dirty to prove it (the E4-06
+lesson).
+
+**3. The removed commit control: both directions checked, and the distinction is the right one.**
+
+| File | On screen | Commit control |
+| --- | --- | --- |
+| `e-alles-fout.xlsx`, whose only row is rejected, so `diff.overgeslagen` | "7 problemen in het bestand", "Uit dit bestand wordt niets ingelezen", **"Er is niets om door te voeren. Hierboven staat waarom..."** | **none** (`T6`) |
+| `a-schoon.xlsx` re-checked after it was already imported: parses fine, changes nothing | "Bestand gelezen", "Inhoud volledig", "Dit bestand verandert niets aan de thema's... die er al staan", "1 ongewijzigd" three times | **offered** (`T7`) |
+
+So the gate really is `overgeslagen` and not `isLeeg`: a legitimate idempotent re-import keeps its button, and
+a file that would write nothing loses it. That is the E3-06 rule applied in the right place.
+
+## Defects
+
+### [MAJOR] 1. Against real PostgreSQL, an import commit that adds a subthema or an activiteit to an existing thema returns 500
+
+**Not introduced by this story.** `git diff --stat origin/main..672bdab -- backend/src` is six files: the new
+`Probleemsoorten.cs` plus `Type =` on the Op.stap 409 handler, and product copy in `OpstapImportService`,
+`SchoolcontentImportService`, `SchoolcontentRijProbleem` and the template generator. Nothing touches EF or the
+Thema/Subthema/Activiteit graph. The defect is pre-existing on `main` and belongs to the import service
+(E1-07/E1-08), not to this screen. It is filed here because this screen is the first thing that can reach it,
+and because it terminates clauses 4 and 5.
+
+**Minimal repro, on a freshly created and migrated database (`e113iso`) with the demo seed and nothing else:**
+
+```
+1. POST /api/themas  {"naam":"TR Beheer","duurWeken":4}                      -> 201
+2. POST /api/schoolcontent-import  (modus=Toevoegen, i.e. the commit endpoint)
+   one row: Thema "TR Beheer", Subthema "Beheer sub", Klas "L3 derde leerjaar (demo)",
+            Activiteit "Beheer act", Type uitstap
+   -> 500  {"type":"...rfc9110#section-15.6.1","title":"An error occurred while processing your request."}
+```
+
+Server log: `Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException: The database operation was expected to
+affect 1 row(s), but actually affected 0 row(s)` at `SchoolcontentImportService.ImporteerAsync` line 119
+(`SaveChangesAsync`). The batch it fails on contains `UPDATE activiteiten ... WHERE "Id" = @p5;` and
+`UPDATE subthemas ... WHERE "Id" = @p13;`, i.e. **an UPDATE for rows the run is creating**, which is why 0 rows
+are affected.
+
+What I established about its shape, by probing rather than guessing:
+
+| Case | Result |
+| --- | --- |
+| new thema + new subthema + new activiteit, all in one run | **200** |
+| existing thema (demo-seeded), add a subthema + activiteit, `Toevoegen` | **500** |
+| existing thema (demo-seeded), add a subthema + activiteit, `Bijwerken` | **500** |
+| existing thema created via `POST /api/themas`, add a subthema + activiteit | **500** |
+| existing thema created by an earlier import, add a *new* subthema | **500** |
+| existing thema created by an earlier import, add only a *new* activiteit | **500** |
+| existing thema, file changes nothing (`isLeeg`) | **200** |
+| **every** preview (`/voorbeeld`) in all of the above | **200**, and the diff is correct |
+
+So it is not demo data and not the `Bijwerken` path: **the importer can create content and can no-op, but it
+cannot grow existing content.** From the second import of a school year onward that is the normal case.
+
+**Why no test catches it.** The 13 `toepassen: true` import unit tests run on `UseInMemoryDatabase(...)`
+(`SchoolcontentImportOpmerkingenTests.cs:224`), and the EF InMemory provider does not do the relational
+rows-affected check Npgsql raises here. The integration suite never posts a second import that adds a child to
+an existing thema. 505 + 155 green is therefore fully consistent with this being broken.
+
+**Expected:** the commit succeeds and the added subthema/activiteit are persisted.
+**Actual:** 500, nothing written, and the screen says "Het doorvoeren is misgelopen. We kunnen niet zien of er
+al iets gewijzigd is...". The copy is right, incidentally: that string is `import.onbeschikbaarNaDoorvoeren`,
+the fix round's MINOR 6, and this is the first time it has been seen on screen against a real failure rather
+than in a test (`T11`, `T12`).
+
+### [MINOR] 2. Not a defect, recorded so it is not rediscovered: two screenshot pairs are byte-identical, deliberately
+
+`md5sum *.png | sort | uniq -w32 -D` reports two collisions, and in both cases **the identity is the evidence**
+rather than a mislabelling. Round 1's mistake was the opposite: three names, one state.
+
+- `T3-hercheck-na-doorvoeren.png` equals `T7-ongewijzigd-toch-doorvoerbaar.png`. The re-check after a commit
+  renders exactly the screen a fresh preview of that same unchanged file renders. That is the strongest
+  available statement that no trace of the commit panel survives.
+- `U1-bedreigd-niet-getikt.png` equals `U5-tweede-check-ontikt.png`. After ticking and re-checking, the screen
+  returns exactly to the unticked state. That is the claim.
+
+Both files are kept, under both names, with this note.
+
+## Commands run — my own numbers
+
+| Command | Result | Fix round claimed |
+| --- | --- | --- |
+| `dotnet test` (unit) with `JAARPLANNER_TEST_POSTGRES` | **505 passed / 0 failed / 0 skipped** | 505, agrees |
+| `dotnet test` (integration), same env | **155 passed / 0 failed / 0 skipped** | 155, agrees |
+| `corepack pnpm test` | **256 passed / 15 files**, 0 failed | 256, agrees |
+| `corepack pnpm lint` | clean, exit 0 | clean, agrees |
+| `corepack pnpm build` | clean, built in 5.36s | clean, agrees |
+| `dotnet format --verify-no-changes` | clean, exit 0 | clean, agrees |
+| the fixed copy guard against `bc4c880` | **3 failed / 4 passed**, all on `Art.` | "exactly the one finding", agrees |
+| my own copy sweep, `672bdab` / `bc4c880` | 73 + 431 -> **0** / 69 + 425 -> **1** | 73 + 431, one finding, agrees |
+
+**No disagreement with any figure the fix round reported.** I also did not see the 6-failure integration flake
+in this round's run; combined with round 1 and the fix round that is seven runs and one occurrence, so the
+worklog's "unreproduced observation" framing is the right one.
+
+## Browser pass
+
+Headless Chrome 151 over the DevTools Protocol from Node 24 (raw global `WebSocket`; no Playwright MCP this
+session and no puppeteer in the repo). API on `127.0.0.1:5421`, Vite on `localhost:5422` proxying to it, CDP on
+`9441`, all three claimed in `.claude/coordination/claims/` in the `owner:/taken:/why:` shape and released
+afterwards. **Dedicated databases** `e113ver` and `e113iso`, each created and migrated from scratch and both
+dropped at the end, so no parallel session's data was read or written. Real uploads via
+`DOM.setFileInputFiles`; the React-controlled discipline field via `Input.insertText`; error shapes via
+`Fetch.fulfillRequest`; request bodies via `Fetch.requestPaused`; the narrow check via
+`Emulation.setDeviceMetricsOverride` rather than `--window-size`, which clamps at about 504px here. Waits are
+polls on page state, never fixed sleeps.
+
+Measured, on the fullest state of the page (the Art. IV.2 panel open **and** the FR-2.5 review notice open):
+
+- **Text contrast**, alpha-composited up the full ancestor chain, `aria-hidden` and `sr-only` excluded:
+  **63 text nodes, 0 below AA at 1440px and 0 below AA at 390px.** Lowest **5.39:1** (`text-ink-zacht` on
+  `paper-diep`), the same figure round 1 and the fix round each measured independently. Next: 5.73, 5.75.
+  The fix round's new copy is comfortably clear.
+- **390px:** `scrollWidth === clientWidth === 390` and **0 elements in `main`** extending past the viewport, on
+  both halves and on the combined fullest state. `W2`, `W4`, `X-390-volle-staat`.
+- **Zero console errors** across every run in this round.
+
+32 screenshots in `backlog/worklogs/E1-13/round-2/`, md5-checked (two intended identities, see defect 2).
+
+## What must happen next
+
+1. **Defect 1 goes to the import service, not to this screen.** It is `main`'s, it is reachable in three
+   clicks, and it needs both the fix in `SchoolcontentImportService`'s handling of children added to an
+   already-tracked thema, and an **integration** test on real PostgreSQL that imports twice and adds a subthema
+   the second time. A unit test on the InMemory provider cannot fail here, so it must not be the test that
+   closes it.
+2. **Nothing else is outstanding on E1-13's own six clauses.** If the owner prefers, the story can be closed on
+   its criteria with defect 1 filed as its own story against E1-07/E1-08, and E1-13 re-verified after that
+   lands. I am not making that call: my verdict is on the flow as a teacher meets it, and today the flow ends
+   in a 500.
+3. **One thing stayed unverified for want of the environment:** I could not produce a gateway failure *after* a
+   successful save, so `import.onbeschikbaarNaDoorvoeren` was only seen on a failure *before* the write
+   (defect 1's 500 exercised it, which is closer than a test but still not the post-write case).
