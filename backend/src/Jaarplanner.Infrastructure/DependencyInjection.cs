@@ -3,6 +3,7 @@ using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
+using Jaarplanner.Application.Dekking;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Planning.Generatie;
@@ -11,6 +12,7 @@ using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
+using Jaarplanner.Infrastructure.Dekking;
 using Jaarplanner.Infrastructure.Demo;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
@@ -188,6 +190,18 @@ public static class DependencyInjection
         // through JaarplanController — POST /api/klassen/{klasId}/jaarplan/generatie — rather than only from tests.
         services.AddScoped<IJaarplanOpslag, EfJaarplanOpslag>();
         services.AddScoped<JaarplanGeneratieService>();
+
+        // The read half of the jaarplan, registered as its own seam (E5-01). Resolved from the SAME scoped
+        // JaarplanGeneratieService instance rather than as a second one, so a request that both reads the plan and
+        // computes dekking sees one DbContext and one projection — two instances could answer differently about
+        // staleness within a single request, which is exactly the disagreement IJaarplanLezer exists to prevent.
+        services.AddScoped<IJaarplanLezer>(sp => sp.GetRequiredService<JaarplanGeneratieService>());
+
+        // Coverage computation (E5-01, FR-9.1, Art. V.1). Computed on read, never stored: there is no dekking
+        // table to register, no cache and no invalidation. The service depends only on IJaarplanLezer and this
+        // port, so the highest-risk logic in the system (Art. V.6) is unit-tested with no database.
+        services.AddScoped<IDekkingOpslag, EfDekkingOpslag>();
+        services.AddScoped<DekkingService>();
 
         // Demo data for the E3-06 review session, OPT-IN ONLY. The flag is checked HERE rather than only
         // inside the service, so an environment that does not ask for it never registers a hosted service
