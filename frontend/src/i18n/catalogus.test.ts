@@ -116,7 +116,25 @@ describe("nl.json — the lock copy makes no unscoped promise about regeneration
    * which is exactly the pattern this file's header describes: *each previous fix was applied to the one instance
    * that had been noticed.*
    */
+  /**
+   * **Known blind spot, recorded rather than left implicit (E4-06 round-2 audit).** This guard triggers on the
+   * word `hergener`, so a sentence that makes a scope claim *without* that word is structurally invisible to it.
+   * `vergrendelUitlegGeweigerdVast` is exactly that case: it says the weigering keeps the thema out of the AI's
+   * reach and deliberately avoids the word, because the weigering section already carries the qualified claim.
+   * Its scoping is therefore pinned by the rendered-copy assertion in `Jaarplankalender.test.tsx` instead, which
+   * checks it says **"hier"** — idempotence is per `(thema, niveau, blokStart)`, so the AI may still propose the
+   * thema in another period.
+   *
+   * The lesson worth keeping: a guard keyed on a phrase, plus a sibling that states the same fact while avoiding
+   * that phrase, is a guard that cannot see the newest member of the class it was written for. If a future lock
+   * string makes a scope claim, either give it the word or add it to that rendered-copy assertion.
+   */
   it("qualifies every lock string that mentions a hergeneratie", () => {
+    // Non-vacuity first: the family itself must be non-empty, or every loop in this file passes by iterating
+    // nothing. Proven the hard way — a stalled agent renamed the family to `slotvergrendel*` and only this
+    // assertion noticed.
+    expect(SLOTTEKSTEN.length).toBeGreaterThan(0);
+
     const gevonden = SLOTTEKSTEN.filter(([, waarde]) => waarde.includes("hergener"));
 
     // If the phrasing ever changes so that none match, the guard has gone quiet and must be revisited.
@@ -136,6 +154,9 @@ describe("nl.json — the lock copy makes no unscoped promise about regeneration
    * that is not there — the E3-06 rule.
    */
   it("leaves the 'choose a period' instruction to kalender.herplaatsKies alone", () => {
+    // Same non-vacuity guard as above, for the same reason: this assertion is a bare loop over SLOTTEKSTEN, so
+    // an empty family would satisfy it forever.
+    expect(SLOTTEKSTEN.length).toBeGreaterThan(0);
     expect(CATALOGUS.get("kalender.herplaatsKies")).toContain("Kies");
 
     for (const [sleutel, waarde] of SLOTTEKSTEN) {

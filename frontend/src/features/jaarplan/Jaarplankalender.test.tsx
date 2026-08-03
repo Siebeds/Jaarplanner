@@ -917,8 +917,8 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
       expect(paneel.queryByText(t("kalender.vergrendelUitlegVrij"))).toBeNull();
       expect(paneel.queryByText(t("kalender.vergrendelNietNodig"))).toBeNull();
 
-      // No dekking sentence here: "telt pas mee zodra jij dit voorstel zelf overneemt" is a statement about a
-      // proposal, and this placement is not one any more.
+      // No dekking sentence here: it says this thema "staat nog als AI-voorstel", and this placement is not one
+      // any more.
       expect(paneel.queryByText(t("kalender.vergrendelDekking"))).toBeNull();
 
       // And the control is still there, so the lock stays undoable.

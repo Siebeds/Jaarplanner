@@ -352,9 +352,16 @@ function Bewerkpaneel({
           <label htmlFor={`${id}-periode`} className="text-xs font-semibold text-ink">
             {t("kalender.verplaatsNaar")}
           </label>
-          {/* `border-ink-zacht` rather than the `input` token: that token measures 1.42:1 against paper and a
-              form control's boundary needs 3:1 (SC 1.4.11). The app-wide fix is E7-10; this control does not
-              wait for it. */}
+          {/* `border-ink-zacht` rather than the `input` token, for margin rather than out of necessity: at
+              6.08:1 the boundary is comfortably past SC 1.4.11's 3:1 on a control that carries the whole
+              non-drag re-placement route.
+              *Corrected 2026-08-03 (E4-06 round-2 audit).* This comment used to justify the choice with "that
+              token measures 1.42:1 against paper … the app-wide fix is E7-10", and both halves are stale:
+              `index.css` records 1.42:1 as the **superseded** value `40 14% 84%`, `--input` is now
+              `40 14% 52%` (3,21:1 on paper / 3,40:1 on card, and 3,16:1 against this panel's well), and E7-10's
+              token half landed with E3-04. So the file asserted a WCAG failure that no longer exists and
+              deferred to a fix already made. Left as a correction rather than deleted, because a stale contrast
+              figure surviving in the very file a story rewrote is the pattern worth remembering. */}
           <select
             id={`${id}-periode`}
             value={doelBlok}
