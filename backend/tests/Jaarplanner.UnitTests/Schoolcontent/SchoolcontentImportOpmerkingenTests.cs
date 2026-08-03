@@ -189,14 +189,17 @@ public sealed class SchoolcontentImportOpmerkingenTests
     }
 
     /// <summary>
-    /// The same cap, reached from the <b>reconcile</b> path, where the column-order advice above is false.
+    /// The same cap, reached from the <b>reconcile</b> path with the slots held by <b>preserved decisions</b>,
+    /// where the column-order advice above is false.
     /// <para>
     /// Here two of the three slots are held by links kept from the database — the teacher-set decisions Art. IV.2
     /// preserves — so reordering the file's <c>Themadoelen</c> cell can only decide which <b>one</b> of the three
-    /// incoming codes lands, and the blocker is two slots the file does not control. The round-1 notice said
+    /// incoming codes lands, and the blocker is two slots the file cannot dislodge. The round-1 notice said
     /// "put the anchoring ones first" here too, which is advice a reader cannot act on (E1-13 round-2 audit,
-    /// MINOR 2). This pins the two levers that do work: remove a themadoel on the thema itself, or opt in to
-    /// discarding links the file no longer carries.
+    /// MINOR 2). This is the <b>only</b> case in which the discard opt-in is offered, because it is the only case
+    /// in which it can change the outcome. Its sibling
+    /// <see cref="Themadoelcap_wijst_naar_het_bestand_als_het_bestand_zelf_de_plaatsen_bezet"/> covers the case
+    /// where it cannot, which round 2 shipped this same sentence into (round-3 audit, MAJOR 1).
     /// </para>
     /// </summary>
     [Fact]
@@ -234,8 +237,23 @@ public sealed class SchoolcontentImportOpmerkingenTests
         Assert.Contains("2 themadoelen die er al staan", opmerking, StringComparison.Ordinal);
         Assert.Contains("3 nieuwe codes", opmerking, StringComparison.Ordinal);
         Assert.Contains("2 themadoelen zijn daarom overgeslagen", opmerking, StringComparison.Ordinal);
-        Assert.Contains("haal eerst een themadoel weg bij het thema zelf", opmerking, StringComparison.Ordinal);
+        Assert.Contains(
+            "2 plaatsen zijn bezet door koppelingen waar iemand zelf al over beslist heeft",
+            opmerking,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("vooraan in de kolom", opmerking, StringComparison.Ordinal);
+
+        // The discard opt-in is offered here, and only here, together with the fact that it is global over the
+        // run. Arming it really does free these slots: the two Manueel links are absent from the file.
+        Assert.Contains("mogen verdwijnen", opmerking, StringComparison.Ordinal);
+        Assert.Contains("geldt voor het hele bestand", opmerking, StringComparison.Ordinal);
+
+        // No slot here is held by a code the file carries, so the cheap "shorten the cell" lever is not offered.
+        Assert.DoesNotContain("Wat er nog bezet is", opmerking, StringComparison.Ordinal);
+
+        // And the advice it does not give any more: no screen offers removing a themadoel on the thema itself
+        // (E1-14 is unbuilt), so pointing a teacher at it is the E3-06 rule in sentence form.
+        Assert.DoesNotContain("bij het thema zelf", opmerking, StringComparison.Ordinal);
 
         // And the preserved decisions really are still there, which is what makes the sentence true.
         var thema = await context.Themas.Include(t => t.Themadoelen).SingleAsync();
@@ -273,6 +291,147 @@ public sealed class SchoolcontentImportOpmerkingenTests
         AssertLeesbaarVoorEenLeerkracht(opmerking);
         Assert.Contains("1 themadoel dat er al staat", opmerking, StringComparison.Ordinal);
         Assert.DoesNotContain("1 themadoelen", opmerking, StringComparison.Ordinal);
+
+        // The second interpolated count inflects too, and it is in the sentence round 3 rewrote.
+        Assert.Contains(
+            "1 plaats is bezet door een koppeling waar iemand zelf al over beslist heeft",
+            opmerking,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("1 plaatsen", opmerking, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>The case round 2 shipped a falsehood into, and the one that fires most often (round-3 audit, MAJOR 1).</b>
+    /// <para>
+    /// The import creates themadoelen as <c>voorgesteld</c>, so a <i>second import of the same file</i> meets
+    /// retained links that <b>are</b> in the file. Round 2's notice then told the teacher "de bezette plaatsen kan
+    /// dit bestand niet vrijmaken", offered a screen that does not exist, and offered the global discard opt-in,
+    /// which cannot raise the cap here at all while deleting teacher decisions across every other thema in the
+    /// run. All three were wrong. Both of round 2's tests covered only the <c>manueel</c>-and-absent case, where
+    /// the sentence was true, which is exactly why the defect shipped.
+    /// </para>
+    /// <para>
+    /// So this test does two things: it pins the notice, and then it <b>carries out the advice the notice gives</b>
+    /// and checks the outcome the old sentence denied. That second half is the part a copy assertion cannot fake.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Themadoelcap_wijst_naar_het_bestand_als_het_bestand_zelf_de_plaatsen_bezet()
+    {
+        string[] alle = ["NAT-K3-01", "NAT-K3-02", "NAT-K3-03", "NAT-K3-04"];
+
+        await using var context = MaakContext();
+        await SeedAsync(context, alle);
+
+        // What a first import of this file leaves behind: voorgesteld links, and the file still carries them.
+        var bestaand = new Thema("Herfst", duurWeken: 5);
+        bestaand.VoegThemadoelToe(new DoelKoppeling(alle[0], KoppelingStatus.Voorgesteld));
+        bestaand.VoegThemadoelToe(new DoelKoppeling(alle[1], KoppelingStatus.Voorgesteld));
+        context.Themas.Add(bestaand);
+        await context.SaveChangesAsync();
+
+        var resultaat = await new SchoolcontentImportService(context).ImporteerAsync(
+            Parse(new SchoolcontentWorkbookBuilder()
+                .MetHeader()
+                .MetRij(themadoelen: string.Join(";", alle))
+                .Bouw()),
+            SchoolcontentImportOpties.Bijwerken,
+            toepassen: true);
+
+        var opmerking = Assert.Single(resultaat.Diff.Opmerkingen);
+        AssertLeesbaarVoorEenLeerkracht(opmerking);
+
+        // The count is the number of codes in the file's own cell, because that is all this thema will hold.
+        Assert.Contains("zou 4 themadoelen krijgen", opmerking, StringComparison.Ordinal);
+        Assert.Contains("1 themadoel is daarom overgeslagen: NAT-K3-04", opmerking, StringComparison.Ordinal);
+        Assert.Contains(
+            "haal in de kolom Themadoelen codes weg tot er 3 overblijven",
+            opmerking,
+            StringComparison.Ordinal);
+
+        // The three things it must NOT say here: the falsehood, the screen that does not exist, and the global
+        // opt-in that cannot free a single slot in this case.
+        Assert.DoesNotContain("niet vrijmaken", opmerking, StringComparison.Ordinal);
+        Assert.DoesNotContain("bij het thema zelf", opmerking, StringComparison.Ordinal);
+        Assert.DoesNotContain("mogen verdwijnen", opmerking, StringComparison.Ordinal);
+
+        // Column order is not the fix either: NAT-K3-01 and -02 keep their slots wherever they sit in the cell.
+        Assert.DoesNotContain("vooraan in de kolom", opmerking, StringComparison.Ordinal);
+
+        var naEerste = await context.Themas.Include(t => t.Themadoelen).SingleAsync();
+        Assert.Equal(
+            ["NAT-K3-01", "NAT-K3-02", "NAT-K3-03"],
+            naEerste.Themadoelen.Select(td => td.Koppeling.LeerplandoelCode).Order(StringComparer.Ordinal));
+
+        // Now do what the notice says: leave 3 codes in the cell. If the advice is true the slot is freed, the
+        // dropped code lands, and there is no cap notice at all. Round 2's sentence claimed this was impossible.
+        var tweede = await new SchoolcontentImportService(context).ImporteerAsync(
+            Parse(new SchoolcontentWorkbookBuilder()
+                .MetHeader()
+                .MetRij(themadoelen: string.Join(";", alle.Skip(1)))
+                .Bouw()),
+            SchoolcontentImportOpties.Bijwerken,
+            toepassen: true);
+
+        Assert.Empty(tweede.Diff.Opmerkingen);
+
+        var naTweede = await context.Themas.Include(t => t.Themadoelen).SingleAsync();
+        Assert.Equal(
+            ["NAT-K3-02", "NAT-K3-03", "NAT-K3-04"],
+            naTweede.Themadoelen.Select(td => td.Koppeling.LeerplandoelCode).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// One slot held by a preserved decision, one by a code the file carries: both levers exist, so the notice
+    /// names both, cheapest first in effect and the global one with its blast radius attached.
+    /// <para>
+    /// This is the case the composed sentence is easiest to get wrong in, and neither of the other two reaches it.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Themadoelcap_noemt_beide_hefbomen_als_het_bestand_er_een_van_de_plaatsen_bezet()
+    {
+        const string Beslist = "NAT-K3-90";
+        string[] inBestand = ["NAT-K3-01", "NAT-K3-02", "NAT-K3-03", "NAT-K3-04"];
+
+        await using var context = MaakContext();
+        await SeedAsync(context, [Beslist, .. inBestand]);
+
+        var bestaand = new Thema("Herfst", duurWeken: 5);
+        bestaand.VoegThemadoelToe(new DoelKoppeling(Beslist, KoppelingStatus.Aanvaard));
+        bestaand.VoegThemadoelToe(new DoelKoppeling(inBestand[0], KoppelingStatus.Voorgesteld));
+        context.Themas.Add(bestaand);
+        await context.SaveChangesAsync();
+
+        var resultaat = await new SchoolcontentImportService(context).ImporteerAsync(
+            Parse(new SchoolcontentWorkbookBuilder()
+                .MetHeader()
+                .MetRij(themadoelen: string.Join(";", inBestand))
+                .Bouw()),
+            SchoolcontentImportOpties.Bijwerken,
+            toepassen: true);
+
+        var opmerking = Assert.Single(resultaat.Diff.Opmerkingen);
+        AssertLeesbaarVoorEenLeerkracht(opmerking);
+
+        Assert.Contains("2 themadoelen die er al staan", opmerking, StringComparison.Ordinal);
+        Assert.Contains(
+            "1 plaats is bezet door een koppeling waar iemand zelf al over beslist heeft",
+            opmerking,
+            StringComparison.Ordinal);
+        Assert.Contains("mogen verdwijnen", opmerking, StringComparison.Ordinal);
+        Assert.Contains("geldt voor het hele bestand", opmerking, StringComparison.Ordinal);
+        Assert.Contains(
+            "Wat er nog bezet is, komt uit dit bestand zelf",
+            opmerking,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("bij het thema zelf", opmerking, StringComparison.Ordinal);
+
+        // The Aanvaard link is preserved (Art. IV.2), which is what makes the first lever the only one for it.
+        var thema = await context.Themas.Include(t => t.Themadoelen).SingleAsync();
+        Assert.Equal(
+            ["NAT-K3-01", "NAT-K3-02", Beslist],
+            thema.Themadoelen.Select(td => td.Koppeling.LeerplandoelCode).Order(StringComparer.Ordinal));
     }
 
     /// <summary>

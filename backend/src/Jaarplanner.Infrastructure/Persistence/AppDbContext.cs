@@ -95,13 +95,27 @@ public class AppDbContext : DbContext
         // It cost three separate diagnoses to get here, each fixing only what it happened to meet: E3-04 fixed
         // Themaplaatsing, and KlasBeheerService/SchoolcontentBeheerService/SchoolcontentImportService each
         // worked around it with an explicit `_context.X.Add(child)` (which forces Added). What none of them
-        // fixed was the collection with no such workaround: adding a Subthema or an Activiteit to an existing
-        // thema, i.e. the ordinary school-content re-import, answered 500 from the second import onward
-        // (found by E1-13's round-2 browser pass; `AggregaatGroeiTests` now covers every collection).
+        // fixed was the collection with no such workaround ON THE IMPORT PATH: `SchoolcontentImportService`
+        // adds Themadoelen and Subdoelen explicitly but not Subthemas or Activiteiten, so adding a Subthema or
+        // an Activiteit to an existing thema — the ordinary school-content re-import — answered 500 from the
+        // second import onward (found by E1-13's round-2 browser pass; `AggregaatGroeiTests` now covers every
+        // collection). Note the qualifier: the beheer endpoints reach those same two collections through
+        // `SchoolcontentBeheerService`, which *does* carry the workaround (`Subthemas.Add`, `Activiteiten.Add`),
+        // so `POST /themas/{id}/subthemas` was never broken. An earlier version of this comment said the two
+        // collections had no such line at all, which would have sent the next reader looking in the wrong file
+        // (E1-13 round-3 audit, MINOR 2).
         //
         // Two reasons this is a model-wide rule rather than a line per configuration: the statement is true of
         // the whole model, not of the entities that happened to break; and a new child collection would
         // otherwise reintroduce the defect and, on the in-memory provider, no test would notice.
+        //
+        // THE PRECONDITION IS THE OTHER HALF OF THIS RULE, and it inverts the failure mode: a Guid-keyed entity
+        // whose constructor does *not* assign its key now inserts Guid.Empty in silence, and the second row of
+        // that type violates the primary key. A new entity must therefore assign its own key. That is no longer
+        // only an instruction: `GuidSleutelConventieTests` reads the finalised model and fails on a Guid key
+        // that is store-generated or that a freshly constructed instance leaves empty. Reading the *finalised*
+        // model is deliberate, because this loop is the last statement in the method and a configuration added
+        // below it would override the rule without any other signal.
         //
         // Metadata only. Npgsql generates a `uuid` key client-side rather than with a database default, so no
         // column, default or constraint changes — verified with `dotnet ef migrations has-pending-model-changes`
