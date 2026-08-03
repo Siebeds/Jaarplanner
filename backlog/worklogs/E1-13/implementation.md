@@ -516,3 +516,206 @@ against dirty local data, and the raw .NET row diagnostic. One is now **closed**
 "the 409 cannot be told apart structurally", is answered by `Probleemsoorten`. One is **surfaced for the owner**
 rather than decided here: MAJOR 5 is fixed the way the orchestrator ruled, but whether the *whole* import screen
 should be directie-only is a change to FA §3.2 and belongs in the functional analysis, not in a nav flag.
+
+---
+
+## Fix round 2 — the EF growth defect (swept, not patched) and four MINOR findings
+
+Inputs: `antagonist-round-2.md` (VIOLATIONS FOUND, MINOR only; all eight round-1 findings verified closed) and
+`test-report.md` round 2 (FAIL on one defect older than this story). Head at start `e47277c`, commit `4c1fcc3`.
+
+### 1. The blocking defect: an import commit that grows an existing thema answered 500
+
+**The diagnosis was right, and the scope of it was not.** The brief named `subthemas` and `activiteiten`. I wrote
+the sweep first, as a test per child collection on real PostgreSQL, and ran it against the unfixed model:
+**five collections were broken, not two.**
+
+| Child collection | Shape | Before | After |
+| --- | --- | --- | --- |
+| `Thema.Themadoelen` | `HasMany`, single Guid PK | **FAIL** | pass |
+| `Thema.Subthemas` | `HasMany`, single Guid PK | **FAIL** | pass |
+| `Subthema.Subdoelen` | `HasMany`, single Guid PK | **FAIL** | pass |
+| `Subthema.Activiteiten` | `HasMany`, single Guid PK | **FAIL** | pass |
+| `Schooljaar._klassen` | `HasMany`, single Guid PK | **FAIL** | pass |
+| `Thema.Doelsuggesties` | `OwnsMany`, composite key `(ThemaId, Id)` | pass | pass |
+| `Activiteit.Doelkoppelingen` | `OwnsMany`, composite key | pass | pass |
+| `Jaarplan._plaatsingen` | `OwnsMany`, single Guid PK, fixed by E3-04 | pass | pass |
+| `Schooljaar._sluitingen` | `OwnsMany`, single Guid PK, already `Never` | pass | pass |
+
+So the rule is sharper than "child or owned collection": it is **a single-property `Guid` primary key that the
+constructor assigns**. A composite owned key was never affected, which is why E2-04's AI doelsuggesties always
+worked and nobody suspected the class was wider. Three of the five failures were invisible in production because
+`KlasBeheerService`, `SchoolcontentBeheerService` (x3) and `SchoolcontentImportService` (x2) each work around it
+with an explicit `_context.X.Add(child)`. The two collections with **no** such line, `Subthema` and `Activiteit`,
+are exactly the ones a teacher met as a 500.
+
+**Fixed model-wide** in `AppDbContext.OnModelCreating`: every `Guid` key in the model is `ValueGenerated.Never`.
+One rule rather than nine lines, because the statement is true of the whole model and because a *new* child
+collection would otherwise reintroduce the defect with no test to notice (in-memory has no rows-affected check).
+
+**Metadata only, and I checked rather than assumed.** `dotnet ef migrations has-pending-model-changes` returns
+"No changes have been made to the model since the last migration." And on a database migrated from scratch with
+the fix in place, every affected `Id` column is still `uuid`, `NOT NULL`, **no default**: a query over
+`information_schema.columns` for the six affected tables returns an empty `column_default` for each.
+**No migration, no schema diff, no data-model change.**
+
+The two workaround comments that claimed to be load-bearing (`KlasBeheerService:79`,
+`SchoolcontentBeheerService:227`) now say what they actually are. The `Add` calls stay: correct, free, and they
+state intent at the call site.
+
+### 2. The tests, which are the deliverable
+
+- **`backend/tests/Jaarplanner.IntegrationTests/Postgres/AggregaatGroeiTests.cs`** — new, 9 tests, real
+  PostgreSQL, one per child collection including the four that already worked. Deliberately at `DbContext` level:
+  the subject is the mapping, and going through a service would let an explicit `Add` hide the defect. Reproduces
+  5 failures against the unfixed model, all 9 green after.
+- **`SchoolcontentImportEndpointsTests.Tweede_import_laat_een_bestaand_thema_groeien`** — new, over HTTP, a
+  `[PostgresTheory]` over `Toevoegen` and `Bijwerken`. First file creates; second file adds an activiteit to the
+  existing subthema *and* a wholly new subthema; both must be readable back from `GET /api/themas`. This is the
+  end-to-end version of the teacher's second import.
+- **`PostgresTheoryAttribute`** — new, the `[Theory]` counterpart of `PostgresFactAttribute`.
+
+**On whether the in-memory provider should host a `toepassen: true` test at all.** My conclusion: keep the 13
+where they are, and treat it as a boundary rather than a bug. What those tests assert is *classification* — which
+diff entries, which opmerkingen, which statuses are preserved — and in-memory is an honest, fast host for that.
+What it can never assert is a *persistence* guarantee, and the lesson is that every such guarantee needs a
+Postgres test, which is what the two above now provide. Moving all 13 would make them skip on a machine without a
+database (the failure mode `PostgresTestDatabase`'s own docstring warns about) and add minutes to the suite.
+Recorded where the next author will meet it: the blind spot is now written into
+`AssertLeesbaarVoorEenLeerkracht`'s doc comment and into this file.
+
+One thing I changed on my own evidence: `AggregaatGroeiTests` first took a database per test, and the full
+solution run failed once in `Bestaand_schooljaar_krijgt_een_klas` while the class passed alone three times. Nine
+`CREATE DATABASE` + migrate + drop cycles is the contention `PostgresTestDatabase.DisposeAsync` already documents
+as producing intermittent `55006`. It now shares one database per class (each test seeds guid-named rows), which
+also took the class from 21s to 5s. The full solution then ran clean.
+
+### 3. The four MINOR findings
+
+**MINOR 1 — the neutral 409 frame asserted a data state.** `import.opstap.geweigerdAlgemeenUitleg` loses "en er
+is niets gewijzigd". A commit-path variant was the alternative; I chose deletion because both real refusals roll
+back and already say it in their own server `detail`, so a second key would buy a sentence for a state no code
+path produces. The comment that defended it as "what a 409 always guarantees" is corrected: 409 guarantees
+nothing of the kind. A new assertion reads the **rendered panel** (`getByRole("alert").textContent`), not the
+key, so restoring the clause fails a test even after a rename.
+
+**MINOR 2 — the cap notice's advice held only on the create path.** `PasThemadoelCapToe` now composes two
+sentences. From `reedsAanwezig: 0` it still says to put the anchoring codes first in the column, which is a fix
+the reader can carry out. From the reconcile path it says what is actually blocking: "Thema 'Water' houdt 2
+themadoelen die er al staan, en dit bestand brengt 3 nieuwe codes aan. ... De bezette plaatsen kan dit bestand
+niet vrijmaken: haal eerst een themadoel weg bij het thema zelf, of duid bij het doorvoeren aan dat koppelingen
+die niet meer in het bestand staan mogen verdwijnen." Both counts inflect, so there are two tests, one per form.
+The doc comment no longer claims the column-order advice holds at both call sites, and it names `reedsAanwezig`.
+
+**MINOR 3 — the guard's blind spot, and the file with no guard.** (a) `AssertLeesbaarVoorEenLeerkracht`'s doc
+comment now states that its three predicates cannot catch a wrong inflection, names the exact sentence that
+escaped them, and says a composed notice needs a case per grammatical form. (b) New
+**`OpstapImportOpmerkingenTests`**: the same three predicates over every opmerking on that path, a theory over all
+three grammatical forms of the composed notice, the out-of-scope notice, and a sweep test that a future notice
+fails without anyone adding a case.
+
+**MINOR 4 — the guard was one-sided.** Fixed on the **server**, not in the component: `OpstapImportService`'s
+empty-input guard drops `&& bestaand.Count > 0`, so absence of input is a skip whether or not rows exist. The
+truthful place to say "nothing was read" is the code that read it, and the frontend guard keys on `overgeslagen`,
+so it now covers the case without an edit. The composed notice grows a third, **zero** form ("Er staan nog geen
+doelen voor deze discipline, dus er verandert ook niets."), because "Het bestaande doel blijft ongewijzigd" would
+have been a claim about a row that does not exist. Two tests, plus a browser check.
+
+### 4. The two owner rulings, made consistent in code
+
+- **FA section 3.2 stands.** `routes.ts` and `Opstapimport.tsx` no longer hedge about which reading is right: both
+  record the 2026-08-03 ruling, and say that one directie-only import destination would be a change to the FA.
+- **A lost `verdwenen` report is an accepted cost.** One paragraph at each clearing site (`Opstapimport.tsx`
+  `vergeetUitkomst`, `Schoolcontentimport.tsx` `vergeetUitkomst`) records that the loss was weighed and chosen,
+  and tells the next reader not to "fix" it with a recency rule.
+
+`import.opstap.voorwaarde` is untouched, per the brief: E1-12 owns its removal now.
+
+### 5. Gates, measured on `4c1fcc3`
+
+| Command | Result | Baseline to beat |
+| --- | --- | --- |
+| `dotnet format --verify-no-changes` | clean, exit 0 | clean |
+| `dotnet test` (unit) | **513 passed / 0 failed / 0 skipped** | 505 (+8: 3 schoolcontent copy, 5 Op.stap copy) |
+| `dotnet test` (integration) | **166 passed / 0 failed / 0 skipped** | 155 (+11: 9 growth, 2 theory cases) |
+| `corepack pnpm test` | **256 passed / 15 files** | 256 (net 0: one assertion added to an existing test) |
+| `corepack pnpm lint` | clean, exit 0 | clean |
+| `corepack pnpm build` | clean, built in 10.69s | clean |
+| `dotnet ef migrations has-pending-model-changes` | no changes | n/a |
+
+The full-solution run that failed once is described in section 2 and no longer reproduces after the fixture
+change; the last three runs (`AggregaatGroeiTests` alone, the integration assembly alone, the whole solution)
+were clean.
+
+### 6. Browser pass — headless Chrome over CDP, real API, real PostgreSQL
+
+Own dedicated database `e113fix2` (created, migrated, seeded with `Demo__Seed=true`, **dropped** afterwards).
+Ports **5481** (api), **5482** (vite), **9481** (CDP), all claimed in `.claude/coordination/claims/` in the
+`owner:/taken:/why:` shape and released. Uploads through the screen with `DOM.setFileInputFiles`, from fixtures
+built with `openpyxl` **from the sjabloon the server serves**. Never a dev server in the foreground.
+
+**Before and after, on the same two files.** The "before" run is the fix neutralised in `AppDbContext` and the API
+rebuilt; the source was restored in the next command and verified (a grep for the temporary marker returns 0).
+
+| | file 1 (creates the thema) | file 2 (grows it) | database afterwards |
+| --- | --- | --- | --- |
+| **before** | "De import is doorgevoerd." | **"Het doorvoeren is misgelopen. We kunnen niet zien of er al iets gewijzigd is..."** plus one console 500 | `Bladeren: [Bladeren rapen]` only. Nothing added. |
+| **after** | "De import is doorgevoerd." | **"De import is doorgevoerd."** plus "Inhoud volledig: Alles uit dit bestand is overgenomen." and **zero console errors** | `Bladeren: [Bladeren persen, Bladeren rapen]`, `Noten: [Noten kraken]` |
+
+Read back through `GET /api/themas` rather than off the screen, because the defect was in the write.
+
+**MINOR 4 in the browser:** discipline 7 (nothing loaded) plus a header-only workbook gives the warning verdict
+"1 opmerking bij dit bestand", the zero-form notice, "Uit dit bestand wordt niets ingelezen.", "Er is niets om in
+te lezen. Hierboven staat waarom.", and the button list is `["Bestand nakijken","Op.stap-bestand nakijken"]`:
+**no "Doelen inlezen"**. Zero console errors.
+
+**390px:** `scrollWidth === clientWidth === 390` and **0 elements in `main`** past the viewport, on both the
+before and the after run, via `Emulation.setDeviceMetricsOverride` (`--window-size` clamps at about 504px here).
+
+**Evidence, `fix-2/`, 11 screenshots, md5-checked.** Two pairs are byte-identical **by design, and the identity is
+the claim**: `voor-1b == na-1b` (creating a thema renders identically before and after, so the fix changed nothing
+about the path that already worked) and `voor-2a == na-2a` (the *preview* of the second file was always correct;
+only the commit differed). The other nine are distinct. Two honesty notes: `voor-2b`/`na-2b` were captured with
+`captureBeyondViewport`, which draws the sticky header twice and partly overlays the alert, so the text dumps in
+this section are the primary evidence and the images are corroboration; and the file-name label reads as a full
+path in one shot because `setFileInputFiles` was given an absolute path, which is the pre-existing browser-chrome
+label question already logged in round 1.
+
+**What I did not get on screen:** MINOR 2's reconcile-path sentence. Chrome wedged twice on that run and I chose
+not to spend a fourth restart on it. Instead I drove it over **real HTTP against real PostgreSQL** and read the
+exact rendered string back (`POST /api/schoolcontent-import/voorbeeld`, modus `Bijwerken`, on demo thema "Water"
+with its two `Manueel` themadoelen): the sentence above appears verbatim, with `bedreigdeBeslissingen`
+`[(DEMO-L3-08, Manueel), (DEMO-L3-07, Manueel)]` beside it, which is exactly the situation it describes. The
+notice's *rendering* is proven on screen by the MINOR-4 shot, which renders the sibling notice through the same
+component. Stated here rather than left to look green.
+
+### 7. Self-check against the round-2 findings
+
+| Finding | Met? | Evidence |
+| --- | --- | --- |
+| Blocking 500 | yes | `AggregaatGroeiTests` (5 failures to 9 green), the HTTP theory, and the before/after browser pass with the database read back |
+| Sweep, not a patch | yes | 9 collections checked and reported, 5 fixed, 4 confirmed already sound; the fix is one model-wide rule |
+| Metadata only? | yes, stated explicitly | `has-pending-model-changes` clean plus `information_schema` shows no column default. No migration. |
+| MINOR 1 | yes | clause deleted; comment corrected; assertion on the rendered alert |
+| MINOR 2 | yes | two-sentence notice, comment names `reedsAanwezig`, two tests, observed over HTTP |
+| MINOR 3 | yes | helper doc comment states the blind spot; `OpstapImportOpmerkingenTests` covers both notices and every form |
+| MINOR 4 | yes | server condition widened; third grammatical form; xUnit plus browser |
+| MINOR 5 | left alone | E1-12 owns it (per the brief) |
+| Owner ruling 1 | yes | `routes.ts` plus `Opstapimport.tsx` state the ruling |
+| Owner ruling 2 | yes | one paragraph at each clearing site |
+
+### 8. Open / for whoever comes next
+
+- **This defect class is worth a repo-wide habit, not just a fixed model.** The rule now lives in one place, but
+  the *reason* it survived four days is that a `toepassen`-style test on the in-memory provider cannot fail on
+  it. Any story that writes a row should read `AggregaatGroeiTests`' docstring before trusting a green suite.
+- **`AggregaatGroeiTests` covers today's collections.** A new child collection needs a case there; nothing forces
+  that automatically, and I could not think of an assertion that would.
+- **Not this story, unchanged:** `DemoDataSeeder.cs:239` still authors an em dash into `Leerplandoel.Tekst`.
+- **A protocol slip of mine, recorded rather than hidden:** while stopping my own API I ran a `taskkill` filtered
+  on `IMAGENAME eq dotnet.exe`, which is broader than my own process. E3-08's API and Vite both still answered
+  immediately afterwards and no damage is evident, but it was declared in the groepschat at the time and every
+  later kill was by PID. Worth knowing because `dotnet.exe` is the launcher process for every parallel session's
+  `dotnet run`.
+- **Art. XIV:** nothing new opened. The durable-acknowledgement question is now also the resolution path for the
+  audit's QUESTION 6, which the owner has ruled on for this story's purposes.
