@@ -397,3 +397,65 @@ rejected panel alone). Machine-readable matrices: `m2-1440.json` and `m2-390.jso
 - **Process note for whoever runs the next round:** I stalled the watchdog once. The cause was not a foreground
   server, since everything here was backgrounded and polled, but a long uninterrupted stretch of local
   test-mutation work. Poll with short commands even when nothing long-lived is running.
+
+---
+
+# E4-06 — Test report (round 4, the landing commit `01b1613`)
+
+**Verdict: PASS.** Mode: both — xUnit unit + real-PostgreSQL integration, Vitest, guard-mutation testing, and headless Chrome at 1440px and exactly 390px against a running API and PostgreSQL 17.
+
+> **Written into the repo by the orchestrator, from the test-runner's returned report.** The round-4 gate ran under harness instructions that forbade it writing report `.md` files, so it returned its findings as text and offered them for verbatim appending rather than dropping them. The earlier sections of this file are its own and untouched. Nothing here is an orchestrator judgement; where the gate declined to claim something, that is preserved below.
+
+## Gate numbers, all four re-derived independently of the orchestrator's run
+
+| command | result | vs the orchestrator's figures |
+| --- | --- | --- |
+| `corepack pnpm lint` | exit 0, no output | match |
+| `corepack pnpm test` | **205 passed / 12 files**, 0 failed | match |
+| `corepack pnpm build` | exit 0, CSS **38.18 kB** | match |
+| `dotnet test` (`JAARPLANNER_TEST_POSTGRES` set) | **496 unit + 154 integration**, 0 failed, **0 skipped** | match |
+| `dotnet format --verify-no-changes` | exit 0 | extra |
+
+Counts moved from the `origin/main` merge (E1-16 + E3-04), not from this story: integration 153 → 154, Vitest 203 → 205.
+
+## Criteria
+
+| # | Criterion | Result |
+| --- | --- | --- |
+| 1 | Lock/unlock from the kalender, persists, keyboard-operable, not drag-dependent | **PASS** — keyboard only on the merged tree: Tab to `Vastzetten`, Enter, `PUT …/vergrendeling` → 200, PostgreSQL read-back `Water\|Voorgesteld\|2026-09-01\|t` from a seeded `false`. Focus ring petrol `rgb(22,81,90)` 4px over a 2px inner ring, **8.29:1** against the composited well |
+| 2 | Label/icon never colour alone, copy in `nl.json`, no em dashes, no server string | **PASS** — exactly **8** badges across 16 cards, matching the 8 seeded `vergrendeld=true` rows, each `🔒 Vast` with the glyph `aria-hidden`. Every `<p>` in all 16 panels mapped back to a catalogue key; the only unmapped strings are the 12 AI motivations (stored data) and 16 empty live regions |
+| 3 | Locked placement survives full regeneration vs unlocked `Voorgesteld` replaced | **PASS (carried forward)** — no backend change in `81b4ed9..01b1613` outside the merge; integration suite green at 154 |
+| 4 | Frontend tests cover round trip and error path | **PASS** |
+| 5 | Partial regeneration (E4-05) not claimed | **PASS** — all four lock sentences still say "het hele jaarplan", and the family guard enforces it |
+
+## The two reworded sentences, read out of the DOM
+
+Sixteen placements seeded into a throwaway `jp_e406_r4` from the real migrations; the API confirmed all **16 distinct** `(status, vergrendeld, isVervallen)` triples before the browser ran.
+
+- **`vergrendelDekking`: exactly 2 occurrences**, on the two `Voorgesteld && !isVervallen` cards, absent from the other 14.
+- **`vergrendelUitlegGeweigerdVast`: exactly 2 occurrences**, on the two `Geweigerd × vergrendeld` cards, absent from the other 14 including all four wrong siblings, and **carrying the new "hier"**. On screen it sits directly above `weigeringUitleg`, which already says *"stelt dit thema hier niet opnieuw voor"*: the two siblings finally scope the same claim the same way, which was the point of the fix.
+
+Both fixes do what they were written for. `matching.manueel` is still the button *"Manueel overnemen"*, and the new dekking sentence contains no form of "overneem", so the verb collision is gone. It also drops the "telt pas mee zodra…" construction, which resolves a round-3 advisory: it now states a fact rather than a promise.
+
+**390px:** the longer sentence wraps to 4 clean lines, `scrollWidth 220 === clientWidth 220`, height 66px. `body.scrollWidth === 390`; `scrollTo(600,0)` leaves `scrollX === 0`; **0** visible elements overflow their own box; of 209 elements sitting right of the viewport, **0** are outside a designated `overflow-x` region. `documentElement.scrollWidth` is 390 with one panel open and 2006 with all 16, which is the ribbon's scroll region. Contrast composited: `text-ink-zacht` `rgb(83,101,110)` on the well `rgb(247.8,246.6,244.2)` = **5.66:1**, unchanged since only the words changed.
+
+## Guards after the merge, mutation-tested
+
+| mutation | result |
+| --- | --- |
+| control | 5 passed |
+| drop "hele jaarplan" from `vergrendeldUitleg` | **FAILS**, naming the key |
+| rename the whole `kalender.vergrendel*` family | **both** guards FAIL on non-vacuity |
+| reintroduce "kies" into `vergrendelUitlegVervallen` | **FAILS**, naming the key |
+
+**No false firing on E1-16.** The merge added exactly one catalogue key, `doelen.keuzelijstenOnbeschikbaar`; `SLOTTEKSTEN` is prefix-filtered to `kalender.vergrendel*` so it cannot see `doelen.*`, and E1-16's own dead-key guard sits in the same file and is green.
+
+## Two record corrections, and one thing the gate declined to re-prove
+
+- **Round 3's focus-ring figure (`rgba(22,81,90,0.98) 0 0 0 3.93px`) is a transition artifact.** The Button base carries `transition-[…,box-shadow,…] duration-150`, so reading `box-shadow` immediately after Tab catches it mid-animation — which on one reading looked like a *missing* ring. Settled after settle and by cropping pixels: `rgb(22,81,90)` at 4px, 8.29:1. Flagged so a future round does not file it as a defect.
+- **The success announcement was not re-proven in this round.** The gate's `MutationObserver` attached to the page-level "Te herzien" `role="status"` rather than the panel's, so it observed the wrong region and explicitly declined to claim a fresh pass. Round 3's evidence stands on unchanged code, and the closing audit verified the region's logic by reading it.
+- **The pre-existing E3-07 defect is still reproducible** (not this delta): a stale *rejected* card renders `herplaatsKies` while the panel has **zero** `<select>` elements. Owner ruled on 2026-08-03 that this reopens E3-07.
+
+## Housekeeping
+
+No product code changed by the gate. Three `nl.json` mutations applied, run and restored; `git diff HEAD` empty at `01b1613`. No branch switch, no push, primary tree never entered. Ports released, API/Vite/Chrome stopped, `jp_e406_r4` dropped. Processes belonging to the `e3-08-zoom` and `agent-a8b6127bb7255ef99` worktrees were identified first and deliberately left alone.
