@@ -284,9 +284,25 @@ public static class JaarplanGeneratiePromptBuilder
     }
 
     /// <summary>
-    /// The leerplandoel codes a thema actually carries: its themadoelen and its accepted/manual goal links
-    /// (status <c>aanvaard</c> or <c>manueel</c> — the same rule dekking uses, Art. V.1), ordered and
-    /// de-duplicated. Shared with the read view so the prompt and the API report the same set.
+    /// The leerplandoel codes a thema carries <b>on the thema itself</b>: its themadoelen and its accepted/manual
+    /// thema-level goal links (status <c>aanvaard</c> or <c>manueel</c>, Art. V.1), ordered and de-duplicated.
+    /// Shared with the read view so the prompt and the API report the same set.
+    /// <para>
+    /// <b>This is a subset of what dekking counts, and the difference is deliberate rather than a bug (E5-01,
+    /// 2026-08-03).</b> An earlier revision of this comment called it "the same rule dekking uses". That was true
+    /// when no coverage computation existed and is now false: <c>DekkingService</c> counts <b>four</b> link layers,
+    /// adding the <c>Subdoel</c> and <c>Activiteit</c> links that hang off a <c>Subthema</c>. It can, because it
+    /// computes for <i>one klas</i> and a subthema is scoped per klas and leeftijd (Art. IX.2). This method cannot:
+    /// it has only a <see cref="Thema"/>, which is school-wide, so including those layers here would attribute one
+    /// class's activiteiten to every class that places the thema, and it would feed the generation prompt goals
+    /// belonging to a different class.
+    /// </para>
+    /// <para>
+    /// The visible consequence is that a calendar card may list fewer codes than dekking credits to that thema.
+    /// Making the two identical would mean giving this method a klas, i.e. a per-class prompt and a per-class card,
+    /// which is a scope question for E4/E5 and not something to settle in a comment. Stated here so the next reader
+    /// does not "fix" the discrepancy by widening whichever side they happen to be looking at.
+    /// </para>
     /// </summary>
     public static IReadOnlyList<string> ThemaDoelcodes(Thema thema)
     {
