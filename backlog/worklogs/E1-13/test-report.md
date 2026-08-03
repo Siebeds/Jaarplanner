@@ -805,3 +805,276 @@ both modi), `r3-sc-minor2.png` (MINOR 2 on screen at last), `r3-op-minor4-leeg-f
 **One sentence, plainly:** the *neutral* 409 frame (`geweigerdAlgemeenUitleg`) was never rendered in my browser,
 because every real 409 I could trigger on this data renders the system or discipline variant instead, so that one
 string rests on the Vitest assertion over the rendered panel rather than on a screenshot.
+
+---
+
+# E1-13 — Test report (round 4)
+
+**Verdict:** PASS
+**Mode:** both — the backend/frontend suites re-measured on this tree **plus** an independent browser pass
+(headless Chrome over CDP, ports 5491/5492/9491, own scratch database `e113r4`, dropped afterwards)
+**Tree tested:** worktree `.claude/worktrees/agent-a8b6127bb7255ef99`, branch `story/E1-13`, head **`7fba804`**.
+**Scope:** deliberately narrow, per the round-4 brief. The six clauses were established in round 3; this round
+verifies the **one changed behaviour** (fix round 3's three cap notices), the **one guard claim**
+(`GuidSleutelConventieTests`), and a **regression sweep**. It does not re-derive the full clause matrix.
+
+> **Everything the implementer claimed for this round reproduces, including the part it flagged against itself.**
+> The three notices render as described, the advice the old sentence denied really does work when carried out on
+> screen, all four mutations fail for the named reason, and every published number is confirmed to the unit. The
+> one judgement the brief reserved for the browser — whether *"2 plaatsen bezet"* beside a panel titled *"1
+> koppeling"* reads as a contradiction — comes back **not a contradiction, but unexplained**, which is a MINOR
+> copy observation and not a failure of any acceptance criterion. Details and the case where it gets worse are in
+> section 1c.
+
+---
+
+## 1. The changed copy — the three cap notices, driven on screen
+
+Setup, all through the product rather than by hand: `Demo__Seed=true` on a fresh migrated database, which gives
+seven demo thema's each holding **two `Manueel` themadoelen** plus `DEMO-L3-01…14` as leerplandoelen.
+
+### 1a. All slots held by the file's own codes — PASS, and the advice works
+
+Three imports through the screen. Each `Themadoelen` cell is quoted; every sentence below is read off the
+rendered DOM, not out of a payload.
+
+| Step | File | Modus | On screen | `GET /api/themas` after |
+| --- | --- | --- | --- | --- |
+| 1 | `Herfstwandeling`, cell `DEMO-L3-01; -02; -03` | Toevoegen | "Alles uit dit bestand is overgenomen", no opmerking | `01:Voorgesteld, 02:Voorgesteld, 03:Voorgesteld` |
+| 2 | same thema, cell `01; -02; -03; -04` | Bijwerken | the notice under test (below) | unchanged: `01, 02, 03` |
+| 3 | same thema, cell `02; -03; -04` | Bijwerken | **no cap notice at all**, "Alles uit dit bestand is overgenomen" | **`02:Voorgesteld, 03:Voorgesteld, 04:Voorgesteld`** |
+
+Step 2, verbatim from the screen (`round-4/A2-voorbeeld.png`, and byte-for-byte the same after committing in
+`round-4/A2-doorgevoerd.png`, so preview == commit holds for this branch too):
+
+> Thema 'Herfstwandeling' zou 4 themadoelen krijgen, en een thema kan er hoogstens 3 hebben. 1 themadoel is
+> daarom overgeslagen: DEMO-L3-04. Alles wat dit thema aan themadoelen heeft, komt uit dit bestand: haal in de
+> kolom Themadoelen codes weg tot er 3 overblijven.
+
+- **The falsehood is gone:** no "niet vrijmaken".
+- **The dead-end advice is gone:** no "bij het thema zelf" — nothing points at the unbuilt E1-14 screen.
+- **The discard opt-in is not mentioned** (no "mogen verdwijnen") **and not rendered**: the
+  `bedreigdeBeslissingen` panel is absent from the DOM in this state, so there is no checkbox to arm. Correct —
+  the three retained links are `Voorgesteld`, so Art. IV.2 has nothing to protect here.
+- **Step 3 is the part that matters.** I did what the notice says, in the browser, and the slot the round-2
+  sentence said this file could not free **was freed**: `DEMO-L3-01` left, `DEMO-L3-04` landed, and the notice
+  disappeared. The MAJOR is closed against behaviour, not against a string.
+
+Note `DEMO-L3-01` was dropped in step 3 **without** a threatened-decisions warning, which is right: it was
+`Voorgesteld`, not a human decision, so Art. IV.2 does not cover it and the file is its only author.
+
+### 1b. A preserved decision holds a slot — PASS, and the blast radius is true, not just stated
+
+Demo thema `Water` (`DEMO-L3-07:Manueel`, `DEMO-L3-08:Manueel`), file cell `DEMO-L3-05; -06; -07`, modus
+Bijwerken (`round-4/B-voorbeeld.png`):
+
+> Thema 'Water' houdt 2 themadoelen die er al staan, en dit bestand brengt 2 nieuwe codes aan. Samen is dat meer
+> dan de 3 themadoelen die een thema kan hebben. 1 themadoel is daarom overgeslagen: DEMO-L3-06. **2 plaatsen
+> zijn bezet door koppelingen waar iemand zelf al over beslist heeft, en die kan dit bestand niet vrijmaken. Wil
+> je die toch vrijgeven, duid dan bij het doorvoeren aan dat koppelingen die niet meer in het bestand staan mogen
+> verdwijnen, en zorg dat die codes niet in de kolom Themadoelen staan. Die keuze geldt voor het hele bestand,
+> ook bij andere thema's en subthema's.**
+
+The opt-in is named, and its blast radius is named with it. **I then proved the blast radius rather than reading
+it.** A two-row file (`Water` cell `05; -06; -07` and `Licht en donker` cell `05`) previews one panel listing
+**two** threatened `Manueel` links in **two different thema's** under a single checkbox
+(`round-4/D-blastradius.png`, `round-4/E-optin-getikt.png`):
+
+```
+DEMO-L3-08  Water            themadoel  Manueel
+DEMO-L3-06  Licht en donker  themadoel  Manueel
+[x] Verwijder deze 2 koppelingen bij het doorvoeren. Dat kan je niet ongedaan maken.
+```
+
+Ticked and committed (`round-4/E-optin-doorgevoerd.png`), against real PostgreSQL:
+
+| Thema | Before | After |
+| --- | --- | --- |
+| `Water` | `07:Manueel, 08:Manueel` | `05:Voorgesteld, 06:Voorgesteld, 07:Manueel` |
+| `Licht en donker` | `05:Manueel, 06:Manueel` | `05:Manueel` |
+
+So the sentence is accurate in both halves: the opt-in **does** free the slot (the cap notice is gone and
+"Alles uit dit bestand is overgenomen"), and it **does** reach a thema the notice never named. A copy claim about
+a destructive flag, verified as behaviour.
+
+**One observation on the remedy, not a defect.** Ticking the box *alone* was sufficient here: `DEMO-L3-07` is in
+the file, so it survives as a file-held link and stops occupying a decision slot. The notice's second
+instruction ("en zorg dat die codes niet in de kolom Themadoelen staan") is therefore over-complete in this
+case, and a teacher who follows it literally would additionally lose the `DEMO-L3-07` decision they did not need
+to lose. It is not false — it is the general form, and it is offered only under "Wil je die toch vrijgeven" — but
+it asks for more than the case needs.
+
+### 1c. The two numbers side by side — the judgement the brief asked for
+
+**Not a contradiction. Under-explained, and in one shape actively misleading.** Reading `round-4/B-voorbeeld.png`
+as a teacher would:
+
+- The two numbers are **not adjacent**. The cap notice ("2 plaatsen zijn bezet") sits in the amber
+  *"1 stuk inhoud gaat niet mee"* block; the *"1 koppeling die jij zelf beslist hebt"* panel sits below the whole
+  *"Wat dit bestand toevoegt en bijwerkt"* diff, roughly 300 px further down at 1440. They are not scanned as a
+  pair, which is most of why this reads acceptably.
+- They also make **different claims under different headings**: *occupied and undislodgeable* versus *absent from
+  this file*. A careful reader can reconcile them, and nothing on screen is false.
+- **But nothing on screen closes the gap either.** The notice tells the reader to arm the opt-in to free
+  **2** places; the control it points at is labelled with **1**. `DEMO-L3-07` — the second occupied slot, and the
+  reason the counts differ — is named nowhere in either block. A teacher who follows the pointer and counts is
+  left with unexplained arithmetic and no way to find the missing item.
+- **The worse shape, which I hit by accident and which nobody has flagged:** in the two-thema file the notice
+  says "2 plaatsen" for `Water` and the panel says "2 koppelingen" — **the numbers now agree while still meaning
+  different things**, and one of the two listed links is in a different thema. In the same screenshot the string
+  `DEMO-L3-06` appears in both blocks meaning two unrelated things: the incoming code skipped in `Water`, and the
+  deleted `Manueel` decision on `Licht en donker`. Coincidental agreement is harder to catch than disagreement.
+
+**Verdict on this point: MINOR, not blocking.** No *Done when* clause requires the two blocks to reconcile
+themselves, clause 5's warning is accurate and complete on its own terms (it lists exactly the links this file
+threatens, unticked), and clause 2 only requires the opmerkingen to be *shown*. I am filing it as a copy
+observation for whoever owns the notice, with the note that the honest fix is probably naming the undislodgeable
+code in the notice rather than shortening the sentence.
+
+### 1d. The create path — PASS, unchanged
+
+New thema `Sterrenkijken`, cell `DEMO-L3-11; -12; -13; -14` (`round-4/C-voorbeeld.png`):
+
+> Thema 'Sterrenkijken' zou 4 themadoelen krijgen, en een thema kan er hoogstens 3 hebben. 1 themadoel is daarom
+> overgeslagen: DEMO-L3-14. Zet in het bestand de themadoelen die dit thema het best samenvatten vooraan in de
+> kolom Themadoelen.
+
+Column-order advice, which is correct here and only here. Incidental confirmation that the split keys on **who
+holds the slots** and not on the modus radio: this run was in *Bijwerken*, and it still took the create-path
+branch because nothing was retained.
+
+### 1e. The mixed case — limitation confirmed, not worked around
+
+I could not reach `bezetDoorBeslissing > 0` **and** `bezetDoorBestand > 0` through the product either. To do it a
+thema must already hold a `Manueel`/`Aanvaard` link *and* a link the file carries, with a fourth code incoming;
+the import writes new themadoelen as `Voorgesteld`, the cap refuses a fourth, and there is no thema-beheer screen
+to promote a link by hand (E1-14 is unbuilt, and `POST/DELETE /api/themas/{id}/themadoelen` is not what "on
+screen" means). So the implementer's statement is accurate: that branch rests on
+`Themadoelcap_noemt_beide_hefbomen_als_het_bestand_er_een_van_de_plaatsen_bezet` in xUnit. I read that test and
+it does assert the composed sentence including both levers and the blast radius. **Confirmed as a limitation,
+declared rather than papered over.**
+
+---
+
+## 2. The guard claim — all four mutations verified, each reverted
+
+Mutated in place, ran the named test, reverted with `git checkout --`, and confirmed the file's md5 returned to
+its baseline after each one. `git status --porcelain` was empty before and after all four.
+
+| # | Mutation | Expected | Observed |
+| --- | --- | --- | --- |
+| 1 | `if (bezetDoorBeslissing == 0)` to `if (false && …)` (the new branch never taken) | the new cap test fails | `Themadoelcap_wijst_naar_het_bestand_als_het_bestand_zelf_de_plaatsen_bezet` **FAIL**: `Assert.Contains() Failure … String: "Thema 'Herfst' houdt 2 themadoelen die er"··· Not found: "zou 4 themadoelen krijgen"` — it falls through to the preserved-decision sentence, exactly the round-2 defect |
+| 2 | delete the `ValueGenerated.Never` loop | guard fails naming all 11 keys | `Geen_enkele_Guid_sleutel_wordt_door_de_database_gegenereerd` **FAIL**, naming **11**: `Generatieparameters.Id, Jaarplan.Id, Klas.Id, Schooljaar.Id, Activiteit.Id, Activiteit.Doelkoppelingen#DoelKoppeling.Id, Subdoel.Id, Subthema.Id, Thema.Id, Thema.Doelsuggesties#DoelKoppeling.Id, Themadoel.Id` |
+| 3 | drop `= Guid.NewGuid()` from `Themadoel.Id` | the precondition test fails | `Elke_Guid_sleutel_wordt_door_de_constructor_gezet` **FAIL**: *"…Give the property a '= Guid.NewGuid()' initialiser: **Themadoel.Id**"* |
+| 4 | add `modelBuilder.Entity<Thema>().Property(t => t.Id).ValueGeneratedOnAdd()` **below** the loop | guard fails on `Thema.Id = OnAdd` | **FAIL**: *"…Check whether a configuration was added below the ValueGenerated.Never loop in OnModelCreating: **Thema.Id = OnAdd**"* |
+
+**Mutation 4 is the one that mattered and it holds.** Reading the *finalised* model, not the builder, is what
+makes the ordering hazard a guard instead of a comment: a configuration appended after the loop is caught, and
+the failure message names the loop so the next author does not have to re-derive the Added-versus-Modified story.
+Mutation 2 also proves the assertion is not vacuous, and the test carries its own `Assert.NotEmpty` against the
+model ever losing its Guid keys.
+
+One thing I checked because the numbers looked odd: mutation 2 reports `Generatieparameters.Id`, `Jaarplan.Id` and
+`Schooljaar.Id` as `OnAdd`, while the board records `ValueGeneratedNever()` in those three configurations. No
+contradiction — those four explicit calls sit on the **owned child** keys (`Startthema`, `VastMoment`,
+`Themaplaatsing`, `Schoolsluiting`), never on the aggregate roots' own ids. The loop is what covers the roots.
+
+---
+
+## 3. Regression sweep — every published number confirmed
+
+Measured by me on `7fba804`, not copied from the implementer's table.
+
+| Command | Result | Implementer's figure |
+| --- | --- | --- |
+| `dotnet format --verify-no-changes` | exit **0**, no output | clean — **matches** |
+| `dotnet test` unit | **517 passed / 0 failed / 0 skipped** (4 s) | 517/0/0 — **matches** |
+| `dotnet test` integration, `JAARPLANNER_TEST_POSTGRES` | **167 passed / 0 failed / 0 skipped** (4 m 21 s) | 167/0/0 — **matches** |
+| `corepack pnpm test` (alone under the suite mutex) | **272 passed / 272, 15 files, 0 failed 0 skipped** | 272 / 15 files — **matches** |
+| `corepack pnpm lint` | exit **0** | clean — **matches** |
+| `corepack pnpm build` | exit **0**, built in 6.07 s | clean — **matches** |
+
+Zero skipped tests in both backend assemblies, so nothing hid behind an absent database. No test run this round
+returned more than one failure, so the full-log rule never had to fire; every run's log was captured to file
+regardless, and no output was passed through `tail` before the pass/fail line was read.
+
+### Clause spot-checks (a smoke pass, not the matrix)
+
+| Clause | Spot-check | Result |
+| --- | --- | --- |
+| 2 — per-row problems | file with a bad duur, an unknown type and a missing thema | **3 problemen in het bestand**: `rij 2 · kolom Thema duur (weken)` / *"moet een positief geheel getal zijn (gevonden: 'veel')"*, `rij 3 · kolom Type` / *"Onbekend activiteittype 'toneelstuk'"*, `rij 4 · kolom Thema` / *"Verplicht veld 'Thema' ontbreekt"*. Row number **and** column on every line. `round-4/H-rijproblemen.png` |
+| 3 — the two verdicts stay distinct | same file, which also drops an unknown goal code | **✕ "Bestand gelezen: 3 problemen gevonden"** *and* **▲ "Inhoud volledig: 1 stuk inhoud kan niet overgenomen worden"** — two items, two glyphs, two registers, and the dropped code reported separately as an opmerking, never collapsed into one "OK" |
+| 4 — stale-preview guard | preview, then flip the modus radio; preview again, then change the file | Both times the outcome is **dropped outright** and *"Import doorvoeren"* leaves the DOM (buttons go from 3 to 2). `round-4/G-verouderd-na-modusflip.png` |
+| 5 — Art. IV.2 opt-in | four states | Absent from the DOM when nothing is threatened (cases 1a, 1d, row-problems file); rendered **unticked** when something is (`checked: false`); **ticking it and then changing an input resets it to unticked** and unmounts the panel; a fresh preview brings it back unticked. `round-4/K-optin-getikt.png`, `round-4/K-optin-gereset.png` |
+| 6 — Op.stap review notice | discipline 1 re-import that drops two goals which school content still links | **▲ "Nazicht bij deze inlezing: 2 doelen staan niet meer in dit bestand"**, listing `DEMO-L3-13` and `DEMO-L3-14`, each with *"1 verwijzing uit de schoolinhoud"*. `round-4/F-opstap-review.png`. The unconditional `import.opstap.voorwaarde` notice is still on screen and still true on this data (no `Minimumdoel` row exists), as E1-12 records |
+| Phone width | `Emulation.setDeviceMetricsOverride(390 × 844)`, verified `innerWidth === 390` | `scrollWidth === clientWidth === 390`, **0** elements in `main` past the viewport, the whole flow legible. `round-4/I-390px.png` |
+
+**Zero console errors** across every run. The only non-`debug`/`info` console line all round was one
+`net::ERR_UPLOAD_FILE_CHANGED`, caused by me overwriting a fixture on disk while the file input still held the
+old handle — a defect in my method, not in the product, and it went away on a fresh filename.
+
+One out-of-scope observation while at 390px, **not** this story's screen: the app-shell nav is
+`overflow-x: auto` with `scrollWidth 570` against `clientWidth 362`, so the item carrying
+`aria-current="page"` (*Import*) sits off-screen and a reader cannot see which section they are in without
+scrolling the nav. E0-10 chrome, pre-existing, filed here only because I saw it.
+
+---
+
+## Commands run
+
+- `dotnet format --verify-no-changes` → exit 0
+- `dotnet test tests/Jaarplanner.UnitTests` → 517/0/0
+- `dotnet test tests/Jaarplanner.IntegrationTests` (with `JAARPLANNER_TEST_POSTGRES`) → 167/0/0
+- `dotnet test --filter FullyQualifiedName~SchoolcontentImportOpmerkingenTests` → 11 tests; 10 passed / 1 failed under mutation 1
+- `dotnet test --filter FullyQualifiedName~GuidSleutelConventieTests` → 2 tests; 1 passed / 1 failed under mutations 2, 3 and 4
+- `corepack pnpm test` → 272/272 in 15 files · `corepack pnpm lint` → 0 · `corepack pnpm build` → 0
+- `dotnet ef database update` against scratch `e113r4` → `Done.`
+- `dotnet run --project src/Jaarplanner.Api --no-launch-profile` on 5492, `pnpm dev --port 5491`, headless Chrome CDP on 9491
+
+## Evidence
+
+**17 screenshots in `backlog/worklogs/E1-13/round-4/`**, `md5sum … | uniq -w32 -D` → empty, so all 17 are
+distinct. They are mine, captured 17:15–17:28 today. *Not mine and not cited:* the shared scratchpad also holds
+`R1…R13` (round 3's verification, 20:36) and `r3-*` (the implementer's, 16:21); I left both alone.
+
+## Defects
+
+**None blocking.** Two observations for whoever picks up the copy, neither tied to an unmet criterion:
+
+- [MINOR] **The cap notice's occupied count and the threatened-decisions panel cannot be reconciled from the
+  screen.** "2 plaatsen zijn bezet" points the reader at a control labelled "1 koppeling", and the code that
+  explains the difference (`DEMO-L3-07`, occupied *and* in the file) is named in neither block. Worse when the
+  counts coincide: a two-thema file renders "2 plaatsen" beside "2 koppelingen" where one of the two is in
+  another thema, and the same code string means two different things in the two blocks. Repro: seed a thema with
+  two `Manueel` themadoelen, import a file whose cell carries one of them plus two new codes. Expected: a reader
+  can tell which slots the notice counts. Actual: they cannot.
+- [MINOR] **The preserved-decision remedy asks for more than the case needs.** "…en zorg dat die codes niet in de
+  kolom Themadoelen staan" is unnecessary for an occupied link that *is* in the file (ticking the opt-in alone
+  frees it, proven in 1b), and a teacher who follows it literally destroys a decision that would have survived.
+
+## Housekeeping
+
+- **Tree left with exactly two additions, both of them mine to make:** this report, and the 17 PNGs in
+  `backlog/worklogs/E1-13/round-4/`. No source file differs from `7fba804` — the four mutations were reverted and
+  md5-verified against their baselines, and `git status --porcelain` was empty at that point. The orchestrator
+  holds `branch-story-E1-13` and does the committing.
+- Scratch database `e113r4` **dropped** (`SELECT datname … WHERE datname='e113r4'` returns nothing).
+- Ports 5491/5492/9491 released; claims `port-5491`, `port-5492`, `port-9491`, `db-e113r4` and
+  `suite-agent-a8b6127bb7255ef99` released, with `mine` printing nothing.
+- **Kills were PID-scoped and the command lines were captured first.** 15 PIDs killed in two batches, every one
+  resolved to my own worktree path, my own `--port 5491`, or my own `--remote-debugging-port=9491`. Recorded in
+  `sessions/E1-13-test-r4.md` beside their ports. **A `Jaarplanner.Api.exe` belonging to the `e3-08-zoom`
+  worktree (PID 23032, `--urls http://127.0.0.1:5501`) was running throughout and was left untouched** — which is
+  the point of killing by PID: with 102 `chrome.exe` and another session's API on the machine, an image-name match
+  would have taken both.
+- One method error of mine, disclosed: my first API launch bound **5184** instead of 5492, because
+  `launchSettings.json`'s `applicationUrl` beats `ASPNETCORE_URLS`. 5184 was not a port I had claimed. I killed
+  the three PIDs (41944/62292/28972) after capturing their command lines, confirmed no other `Jaarplanner.Api`
+  existed at that moment, and relaunched with `--no-launch-profile`. **`--launch-profile ""` does not suppress the
+  profile; `--no-launch-profile` does** — worth knowing for the next browser pass.
+
+## What stayed unverified
+
+**One sentence, plainly:** the mixed-lever notice (`bezetDoorBeslissing > 0` **and** `bezetDoorBestand > 0`) was
+not rendered in a browser, because no product surface can put a thema into that state while E1-14 is unbuilt, so
+that one branch rests on its xUnit test rather than on a screenshot.
