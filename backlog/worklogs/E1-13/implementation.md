@@ -545,9 +545,17 @@ the sweep first, as a test per child collection on real PostgreSQL, and ran it a
 So the rule is sharper than "child or owned collection": it is **a single-property `Guid` primary key that the
 constructor assigns**. A composite owned key was never affected, which is why E2-04's AI doelsuggesties always
 worked and nobody suspected the class was wider. Three of the five failures were invisible in production because
-`KlasBeheerService`, `SchoolcontentBeheerService` (x3) and `SchoolcontentImportService` (x2) each work around it
-with an explicit `_context.X.Add(child)`. The two collections with **no** such line, `Subthema` and `Activiteit`,
-are exactly the ones a teacher met as a 500.
+`KlasBeheerService`, `SchoolcontentBeheerService` and `SchoolcontentImportService` each work around it with an
+explicit `_context.X.Add(child)`. **Counted properly (corrected in fix round 3, audit MINOR 4):**
+`SchoolcontentBeheerService` has **four** such child-collection calls, at `:232` (Themadoelen), `:268` (Subthemas),
+`:321` (Subdoelen) and `:353` (Activiteiten) — a fifth `.Add`, `Themas.Add` at `:58`, is a root add rather than a
+workaround. `SchoolcontentImportService` has two, `Themadoelen:485` and `Subdoelen:668`.
+
+The two collections with no such line **on the import path**, `Subthema` and `Activiteit`, are exactly the ones a
+teacher met as a 500. **That qualifier is load-bearing and round 2 omitted it** (audit MINOR 2): both collections
+*do* carry the workaround in `SchoolcontentBeheerService`, so `POST /themas/{id}/subthemas` was never broken. As
+originally written, the sentence would have sent the next reader hunting the defect in the wrong file, or let them
+conclude the beheer endpoints were untested.
 
 **Fixed model-wide** in `AppDbContext.OnModelCreating`: every `Guid` key in the model is `ValueGenerated.Never`.
 One rule rather than nine lines, because the statement is true of the whole model and because a *new* child
@@ -555,9 +563,17 @@ collection would otherwise reintroduce the defect with no test to notice (in-mem
 
 **Metadata only, and I checked rather than assumed.** `dotnet ef migrations has-pending-model-changes` returns
 "No changes have been made to the model since the last migration." And on a database migrated from scratch with
-the fix in place, every affected `Id` column is still `uuid`, `NOT NULL`, **no default**: a query over
-`information_schema.columns` for the six affected tables returns an empty `column_default` for each.
-**No migration, no schema diff, no data-model change.**
+the fix in place, every affected `Id` column is still `uuid`, `NOT NULL`, **no default**.
+
+**The count in that sentence was wrong and is now measured (fix round 3, audit MINOR 4).** It read "the six
+affected tables", which matched neither the five broken collections named in the table above nor the number of Guid
+keys the rule touches. Re-measured on a database migrated from scratch on the current head: the query over
+`information_schema.columns` joined to the primary-key constraints returns **17 `uuid` primary-key columns across
+15 tables**, every one `NOT NULL` with `column_default` empty. On the model side, **19** Guid properties take part
+in a key; the loop actually changes **11** of them (proven by deleting it and reading the failure, which names all
+eleven), **4** were already explicitly `ValueGeneratedNever()` in configurations
+(`Themaplaatsing`, `Schoolsluiting`, `BewaardStartthema`, `BewaardVastMoment`) and the remaining 4 are FK key parts
+of owned types, which are never store-generated. **No migration, no schema diff, no data-model change.**
 
 The two workaround comments that claimed to be load-bearing (`KlasBeheerService:79`,
 `SchoolcontentBeheerService:227`) now say what they actually are. The `Add` calls stay: correct, free, and they
@@ -643,6 +659,12 @@ have been a claim about a row that does not exist. Two tests, plus a browser che
 | `corepack pnpm build` | clean, built in 10.69s | clean |
 | `dotnet ef migrations has-pending-model-changes` | no changes | n/a |
 
+**Every figure above predates the `origin/main` merge (`00dc903`) that follows it in the history, and no line in
+this file recorded the merged tree.** Corrected here (audit MINOR 4); the numbers were right, the record was stale.
+The round-3 antagonist measured the merged tree at **513 unit / 167 integration / 272 frontend (15 files)** with
+format, lint and build clean, and fix round 3's own run reproduces that with its four new tests on top: see the
+fix-round-3 gate table below.
+
 The full-solution run that failed once is described in section 2 and no longer reproduces after the fixture
 change; the last three runs (`AggregaatGroeiTests` alone, the integration assembly alone, the whole solution)
 were clean.
@@ -719,3 +741,215 @@ component. Stated here rather than left to look green.
   `dotnet run`.
 - **Art. XIV:** nothing new opened. The durable-acknowledgement question is now also the resolution path for the
   audit's QUESTION 6, which the owner has ruled on for this story's purposes.
+
+## Fix round 3 (final) — the cap notice lied where it fires most often, plus four pieces of record-keeping
+
+Inputs: `antagonist-round-3.md` (**1 MAJOR, 5 MINOR, 1 QUESTION**; all six round-2 findings verified closed) and
+`test-report.md` round 3 (**PASS** on all six clauses). Head at start `b92201d`, code commit `06437b5`.
+
+The MAJOR was created **by round 2's own fix**, inside the sentence written to close round 2's MINOR 2. That is the
+transferable lesson of this story and it is worth stating before the details: *a fix round is where the next defect
+lives.* Round 2 closed six findings and shipped a seventh.
+
+### 1. The MAJOR: a false sentence, and its two remedies were wrong (one destructively)
+
+The reconcile-path cap notice ended unconditionally with *"De bezette plaatsen kan dit bestand niet vrijmaken: haal
+eerst een themadoel weg bij het thema zelf, of duid bij het doorvoeren aan dat koppelingen die niet meer in het
+bestand staan mogen verdwijnen."* Three things were wrong with it in the case where it fires most often:
+
+- **The claim is false.** The import creates themadoelen as `Voorgesteld`, so a *second import of the same file*
+  meets retained links that **are** in the file. Editing the `Themadoelen` cell frees the slot. The auditor
+  reproduced both halves; so did I, in a browser (section 4).
+- **"Haal eerst een themadoel weg bij het thema zelf" points at a screen that does not exist.**
+  `DELETE /api/themas/{id}/themadoelen/{id}` exists, but `frontend/src/features` holds only `doelen`, `import`,
+  `jaarplan`, `matching`. E1-14 is unbuilt. That is the E3-06 rule in sentence form.
+- **The opt-in it recommends cannot help there, and it is globally destructive.**
+  `MenselijkeBeslissingenVerwijderen` only deletes links **absent** from the file, so with no such retained link it
+  raises the cap by zero, while deleting `aanvaard`/`manueel` links across every thema and subthema in the run. It
+  is the same flag whose stale state destroyed two `Aanvaard` links in this story's round 1.
+
+**The split now keys on who holds the slot, not on the call site — and not on "is it in the file" either.** The
+audit proposed the in-file/absent discriminator; I did not use it, because it is wrong one level deeper. A retained
+**human decision whose code IS in the file** also cannot be dislodged by editing the cell: removing the code just
+moves it into the kept-and-warned branch, where it still occupies a slot. So the real predicate is *can this file
+dislodge the link*, which is `IsMenselijkeBeslissing(status) && !MenselijkeBeslissingenVerwijderen` — deliberately
+the same expression the removal loop uses, so the two can never disagree about which links survive.
+`ReconcileThemadoelen` therefore hands `PasThemadoelCapToe` two counts, `bezetDoorBestand` and
+`bezetDoorBeslissing`, and there are three notices:
+
+| Case | What it says | Why that is true |
+| --- | --- | --- |
+| both 0 (create path, and reconcile when everything was dropped) | unchanged: put the anchoring codes first in the column | the codes that fit are `Take(ruimte)` of the cell, so order decides |
+| only `bezetDoorBestand` | "Alles wat dit thema aan themadoelen heeft, komt uit dit bestand: haal in de kolom Themadoelen codes weg tot er 3 overblijven" | the whole thema is the file's doing, so the count is the number of codes in its cell. Column *order* is deliberately **not** offered: a code already in the database keeps its slot wherever it sits |
+| `bezetDoorBeslissing` above 0 | "N plaatsen zijn bezet door koppelingen waar iemand zelf al over beslist heeft, en die kan dit bestand niet vrijmaken", then the opt-in **with its blast radius** ("Die keuze geldt voor het hele bestand, ook bij andere thema's en subthema's"), plus the cheap lever when `bezetDoorBestand` is also above 0 | only here can the opt-in change the outcome. The remedy names both steps (arm the flag *and* keep the code out of the cell), which is what makes it true for an in-file decision as well |
+
+Wording note: "koppelingen waar iemand zelf al over beslist heeft" rather than "aanvaard", because
+`IsMenselijkeBeslissing` also covers `geweigerd`, and a geweigerd link occupies a slot just as much.
+
+### 2. Tests, including the one whose absence let this ship
+
+Both of round 2's tests covered only `KoppelingStatus.Manueel` with codes **absent** from the file, the one case
+where the old sentence was true. The reachable case had no test at all, and the test-runner's PASS spot-checked
+that same true case, which is why its verdict did not contradict the audit.
+
+- **`Themadoelcap_wijst_naar_het_bestand_als_het_bestand_zelf_de_plaatsen_bezet`** — the missing case. It pins the
+  notice *and then carries the advice out*: a second import with three codes in the cell, asserting the slot is
+  freed, `Assert.Empty(Diff.Opmerkingen)`, and the thema ending on `02, 03, 04`. That second half is the part a
+  copy assertion cannot fake, and it is the exact outcome round 2's sentence denied. It also asserts the three
+  things the notice must **not** say here: `niet vrijmaken`, `bij het thema zelf`, `mogen verdwijnen`.
+- **`Themadoelcap_noemt_beide_hefbomen_als_het_bestand_er_een_van_de_plaatsen_bezet`** — the mixed case (one
+  `Aanvaard` absent from the file, one `Voorgesteld` in it), which neither other test reaches and which the
+  composed sentence is easiest to get wrong in.
+- Both existing reconcile tests keep their grammatical forms and gain the second inflected count
+  (`1 plaats is bezet` / `N plaatsen zijn bezet`, with `DoesNotContain("1 plaatsen")`), plus a negative assertion
+  on `bij het thema zelf` so the deleted advice cannot come back.
+
+**Falsification, because a test nobody broke is a test nobody trusts.** Four mutations, each applied and reverted
+in the worktree, with `git status` clean afterwards:
+
+| Mutation | Expected failure | Observed |
+| --- | --- | --- |
+| `if (bezetDoorBeslissing == 0)` to `< 0` (the new branch never taken) | the new test | `Themadoelcap_wijst_naar_het_bestand...` FAIL: got "houdt 2 themadoelen die er…" where "zou 4 themadoelen krijgen" belongs |
+| delete the `ValueGenerated.Never` loop | `Geen_enkele_Guid_sleutel_wordt_door_de_database_gegenereerd` | FAIL, naming all **11** affected keys |
+| drop `= Guid.NewGuid()` from `Themadoel.Id` | `Elke_Guid_sleutel_wordt_door_de_constructor_gezet` | FAIL: "… Give the property a '= Guid.NewGuid()' initialiser: Themadoel.Id" |
+| add `Entity<Thema>().Property(t => t.Id).ValueGeneratedOnAdd()` **below** the loop | the store-generated test | FAIL: "Thema.Id = OnAdd" — so the ordering hazard is guarded, not merely documented |
+
+### 3. The four record-keeping items
+
+**MINOR 2 — the comment asserted something the code did not do (third time on this story).** `AppDbContext.cs`
+now says the missing workaround was missing **on the import path**, names which two collections
+`SchoolcontentImportService` does add explicitly (`Themadoelen`, `Subdoelen`), states that
+`SchoolcontentBeheerService` *does* carry it for `Subthemas`/`Activiteiten` so `POST /themas/{id}/subthemas` was
+never broken, and says why the difference matters to the next reader. The same sentence is corrected in section 1
+of the fix-round-2 notes above rather than deleted.
+
+**MINOR 3 — the blanket rule's precondition is now guarded.** New
+`backend/tests/Jaarplanner.UnitTests/Persistence/GuidSleutelConventieTests.cs`, two tests over the **finalised**
+model built against Npgsql (model building opens no connection):
+
+- no Guid key anywhere is store-generated — which is also the guard for "a configuration added below the loop",
+  since the finalised model reflects the last word (mutation 4 proves it);
+- every non-FK Guid key is non-empty on a freshly constructed instance. Reflection over
+  `Activator.CreateInstance(clrType, nonPublic: true)` is safe here because every entity in this codebase has a
+  private parameterless EF constructor and a property initialiser runs in it too, so the value read is exactly the
+  one a new entity starts life with. A shadow Guid key would fail with a message saying why.
+
+Both failure messages name the offending keys and the fix, so the next author does not have to re-derive the
+Added-versus-Modified story. The comment in `AppDbContext` states the precondition explicitly as well.
+
+**MINOR 4 — the two wrong counts and the missing post-merge line.** Corrected in place above, and re-measured
+rather than patched: 17 uuid primary-key columns in 15 tables with no default; 19 Guid key properties in the model
+of which the loop changes 11; four explicit `ValueGeneratedNever()` configurations; and
+`SchoolcontentBeheerService` has four child-collection `.Add` sites, not three. The gate table below is the record
+for the merged tree.
+
+**QUESTION 7 — one line on the backlog.** `backlog/E1-curriculum-content.md`, under E1-13: the empty-input guard
+now fires on `inkomend.Count == 0` irrespective of existing rows, so E1-05's old condition
+(`&& bestaand.Count > 0`) is no longer its specification. The E1-05 entry itself is untouched, as are all
+checkboxes and `backlog/README.md`.
+
+**Not mine this round, per the brief:** MINOR 5 (the two unreproduced multi-failure integration runs) and MINOR 6
+(the pre-existing `Art. IX.2` / em-dash leak in `SchoolcontentBeheerService`, for E1-14) are the orchestrator's to
+file. The stale `.ValueGeneratedOnAdd()` lines in the model snapshot are left alone: proven inert, and they ride
+along on the next scaffold.
+
+### 4. Browser pass — the new sentence on screen, in the case that was wrong
+
+Own database `e113r3` (created, migrated, seeded `Demo__Seed=true`, **dropped** afterwards). Ports **5481** (api),
+**5482** (vite), **9481** (CDP), each claimed **separately** in `.claude/coordination/claims/` in the
+`owner:/taken:/why:` shape and released. Headless Chrome over CDP, no Playwright. The API and `pnpm dev` both in
+the background, never in the foreground.
+
+**A — the case round 2 lied about.** Seeded exactly the shape the audit describes, through the screen rather than
+by hand: import a file with `DEMO-L3-01;02;03` (modus Toevoegen), which leaves three **`Voorgesteld`** themadoelen
+that the file itself carries — confirmed through `GET /api/themas`:
+`Herfstwandeling | 01:Voorgesteld, 02:Voorgesteld, 03:Voorgesteld`. Then re-import the same file plus
+`DEMO-L3-04`, modus Bijwerken. On screen, verbatim:
+
+> Thema 'Herfstwandeling' zou 4 themadoelen krijgen, en een thema kan er hoogstens 3 hebben. 1 themadoel is daarom
+> overgeslagen: DEMO-L3-04. Alles wat dit thema aan themadoelen heeft, komt uit dit bestand: haal in de kolom
+> Themadoelen codes weg tot er 3 overblijven.
+
+No "niet vrijmaken", no "bij het thema zelf", no opt-in offered. Zero console errors. The verdict panel reads
+"Inhoud volledig: 1 stuk inhoud kan niet overgenomen worden."
+
+**Then I did what the notice says, in the browser.** Third file, three codes (`02;03;04`), modus Bijwerken:
+the cap notice is **gone**, the panel reads "Alles uit dit bestand is overgenomen", and `GET /api/themas` returns
+`02:Voorgesteld, 03:Voorgesteld, 04:Voorgesteld`. The slot round 2's sentence said this file could not free was
+freed by editing the file. That is the MAJOR reproduced and closed on screen, not in a test.
+
+**B — the preserved-decision branch, on demo thema "Water"** (two `Manueel` themadoelen, `DEMO-L3-07` and `-08`),
+file carrying `05;06;07`:
+
+> Thema 'Water' houdt 2 themadoelen die er al staan, en dit bestand brengt 2 nieuwe codes aan. Samen is dat meer
+> dan de 3 themadoelen die een thema kan hebben. 1 themadoel is daarom overgeslagen: DEMO-L3-06. 2 plaatsen zijn
+> bezet door koppelingen waar iemand zelf al over beslist heeft, en die kan dit bestand niet vrijmaken. Wil je die
+> toch vrijgeven, duid dan bij het doorvoeren aan dat koppelingen die niet meer in het bestand staan mogen
+> verdwijnen, en zorg dat die codes niet in de kolom Themadoelen staan. Die keuze geldt voor het hele bestand, ook
+> bij andere thema's en subthema's.
+
+**Worth knowing, because an auditor will spot it:** the notice says **2** occupied slots while the
+`bedreigdeBeslissingen` panel beside it lists **1** (`DEMO-L3-08`). Both are right and they measure different
+things: `DEMO-L3-07` is a `Manueel` decision that *is* in the file, so it is not threatened, but it also cannot be
+dislodged by editing the cell. This is exactly the sub-case the audit's proposed in-file/absent discriminator would
+have got wrong, and it is why the remedy names both steps.
+
+**390px:** the notice renders, `scrollWidth === clientWidth === 390`, and **0** elements in `main` past the
+viewport, via `Emulation.setDeviceMetricsOverride`. (In that shot the skipped code reads `DEMO-L3-01` rather than
+`-04`, because by then the A-sequence had already left the thema on `02;03;04`. Same branch, same sentence.)
+
+**Evidence:** `fix-3/impl-r3/`, 8 screenshots. **Not mine and left untouched:** 13 files `R1`…`R13` were already
+sitting untracked in `fix-3/` when I arrived, presumably from the round-3 verification pass. I did not commit them,
+because they are not my evidence to vouch for; the orchestrator may want to.
+
+**Mixed case not on screen.** With no thema-beheer UI there is no way to put a thema into the both-levers state
+through the product, and the API refuses a fourth themadoel by design. `Themadoelcap_noemt_beide_hefbomen...`
+covers it in xUnit. Stated rather than left to look green.
+
+### 5. Gates, measured on this tree (code commit `06437b5`)
+
+| Command | Result | Round-3 baseline |
+| --- | --- | --- |
+| `dotnet build` | 0 warnings, 0 errors | clean |
+| `dotnet format --verify-no-changes` | clean, exit 0 | clean |
+| `dotnet test` (unit) | **517 passed / 0 failed / 0 skipped** | 513 (+4: 2 cap-notice cases, 2 model-key guards) |
+| `dotnet test` (integration, `JAARPLANNER_TEST_POSTGRES`) | **167 passed / 0 failed / 0 skipped** | 167 (unchanged) |
+| `corepack pnpm test` | **272 passed / 15 files** | 272 (unchanged; no frontend file touched) |
+| `corepack pnpm lint` | clean, exit 0 | clean |
+| `corepack pnpm build` | clean, built in 4.78s | clean |
+
+Vitest ran alone under the `suite-agent-a8b6127bb7255ef99` mutex, taken before and released after.
+On `pnpm lint`: per E3-08's finding of 2026-08-03, `tsc --noEmit` type-checks **zero** files in this
+solution-style config, so the green lint above proves ESLint only and `pnpm build` (`tsc -b`) is the real type
+gate. Both were run.
+
+### 6. Self-check against the round-3 findings
+
+| Finding | Met? | Evidence |
+| --- | --- | --- |
+| MAJOR 1 | yes | three-way split on who holds the slot; falsehood, dead-end advice and useless opt-in all gone; the missing test added and mutation-proven; reproduced and closed **in a browser**, including carrying the advice out |
+| MINOR 2 | yes | `AppDbContext` comment qualified with "on the import path" and with what `SchoolcontentBeheerService` does carry; same sentence corrected in this file |
+| MINOR 3 | yes | `GuidSleutelConventieTests` (2 tests, finalised model), 3 of the 4 mutations target it, comment states the precondition and the ordering hazard |
+| MINOR 4 | yes | both counts re-measured, not patched; post-merge gate table above |
+| MINOR 5 | not mine | orchestrator files it (per the brief) |
+| MINOR 6 | not mine | orchestrator files it against E1-14; `SchoolcontentBeheerService`'s copy untouched |
+| QUESTION 7 | yes | one line on the E1-13 backlog entry; E1-05's entry, all checkboxes and `README.md` untouched |
+
+### 7. Open / for whoever comes next
+
+- **The audit's proposed discriminator was not quite right, and I said so rather than implementing it literally.**
+  "Is the retained link in the file" would have shipped a smaller version of the same falsehood for an in-file
+  `aanvaard` link. If that reasoning is wrong, the place to look is `bezetDoorBeslissing` in
+  `ReconcileThemadoelen`.
+- **Notice length.** The preserved-decision branch is now four sentences. That is more prose than this project
+  likes, and every clause is there because a shorter version was false or hid a destructive option. If a designer
+  wants it shorter, the honest way is to give the teacher the missing screen (E1-14), not to trim the sentence.
+- **A protocol slip of mine, disclosed rather than repaired quietly (the second on this story).** Tearing down my
+  API I ran a PowerShell kill query whose second clause was `Name -eq 'Jaarplanner.Api.exe'`, i.e. any Jaarplanner
+  API on the machine rather than only mine. It matched 7 PIDs and killed 3 before the rest were already gone as
+  their children. I believe all 7 were mine (nothing named `Jaarplanner.Api` survived, and E3-08 had posted
+  `LEAVE` with its ports free three hours earlier) but I **cannot prove it**, because I did not capture the command
+  lines before killing. Declared in the groepschat at the time. Same class as round 2's `taskkill /IM dotnet.exe`
+  on this very story, which is the point: the fix is to resolve your own PIDs *first* and kill only those.
+- **Art. XIV:** nothing new opened. `Minimumdoel`-level dekking still waits on E1-12, and this story still does
+  not close FR-2.1.
