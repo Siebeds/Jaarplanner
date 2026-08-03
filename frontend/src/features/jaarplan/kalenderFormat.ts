@@ -3,7 +3,25 @@
  * arithmetic the picture rests on can be tested without rendering anything.
  */
 
-import type { Planningsblok, Planningsonderbreking, Themaplaatsing } from "./types";
+import type { TranslationKey } from "../../i18n";
+import type { Planningsblok, Planningsblokniveau, Themaplaatsing, Planningsonderbreking } from "./types";
+
+/**
+ * The word for one block at each tier (E3-08 fix round 4, MINOR-4b).
+ *
+ * **Shared rather than duplicated**, because the two places that need it are the proportional strip's sr-only ordinal
+ * and the board column's own heading, and one block being called two things across those two views is the exact defect
+ * the E3-02/E3-06 review had to repair twice. A `Record` rather than a ternary per call site: a third
+ * `Planningsblokniveau` then fails to compile here instead of silently inheriting *"Themaperiode {n}"* and naming a
+ * block after a tier it does not belong to.
+ *
+ * It lives in this module — otherwise free of copy — for want of a better shared home: both consumers already import
+ * from here, and only the *type* of a translation key is imported, so nothing about this file's testability changes.
+ */
+export const PERIODELABEL: Record<Planningsblokniveau, TranslationKey> = {
+  Themaperiode: "kalender.periode",
+  Subthemaperiode: "kalender.subperiode",
+};
 
 /** Dutch day+month, e.g. "1 sep". The trailing period Intl adds to abbreviated months is dropped. */
 const dagMaand = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short" });

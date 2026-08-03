@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { t } from "../../i18n";
+import { t, type TranslationKey } from "../../i18n";
 import { ApiError } from "../../lib/api";
 import { formatteerDatum, formatteerPeriode } from "./kalenderFormat";
 import type { Planningsblok, Themaplaatsing } from "./types";
@@ -15,7 +15,64 @@ import {
 } from "./useJaarplan";
 
 /**
+ * Whether this board can give a thema another themaperiode, and if not, why not (E3-08 fix round 3).
+ *
+ * A plain boolean for three rounds, and the collapse is what the owner ruled on: `false` meant both *"the board shows
+ * subthemaperiodes, so pick a period in the themaperiode view"* and *"the tool could not read this board's tier at
+ * all"*. The sentence written for the first was therefore shown for the second, where it names the view the teacher is
+ * already looking at. Same shape as `Periodestaat` and for the same reason: **one derived state per cause, each with
+ * its own sentence**, so a state cannot silently borrow copy written about another.
+ *
+ * - `kan` — this board's columns are the tier a placement keys on, so the grip and the period picker are offered.
+ * - `anderNiveau` — the board shows the finer tier. Moving works, in the themaperiode view; nothing is broken.
+ * - `niveauOnbekend` — the server answered a tier this app does not recognise. Moving is withheld and **no view may be
+ *   promised**, because there is no view this app knows these columns belong to.
+ *
+ * What it deliberately does *not* encode is the placement's own status. A rejected placement cannot be moved at either
+ * tier (the server refuses it, since a move would silently grant dekking), and that is a fact about the card rather
+ * than about the board — so it is read off `plaatsing.status` where it is needed, not folded in here. Folding the two
+ * together is what produced the defect: a rejected card at the fine tier was sent to a view that withholds the picker
+ * from it as well.
+ *
+ * **What that costs, scoped precisely (fix round 4, MINOR-4a).** The exhaustiveness the two `Record`s below buy is
+ * over the **board axis only**. The panel has four cases, not three: `isGeweigerd` sits outside this union behind a
+ * hand-written `&& !isGeweigerd`, so adding a member here forces someone to write a *sentence* but forces nobody to
+ * decide whether the rejection suppression still applies to it. Keeping status out of the union is still the right
+ * call — see the paragraph above — but the compiler's guarantee stops at "every board state has copy", and it is
+ * worth saying so rather than letting "exhaustive" be read as "every case of this panel".
+ */
+export type Verplaatsstaat = "kan" | "anderNiveau" | "niveauOnbekend";
+
+export interface ThemakaartProps {
+  plaatsing: Themaplaatsing;
+  /** The class whose plan this is — the edits post against it. */
+  klasId: string;
+  /** Every period of the year, so the panel can offer them as move targets. */
+  blokken: readonly Planningsblok[];
+  /**
+   * Whether moving is possible on the board this card is on, and if not, why not (E3-08). See {@link Verplaatsstaat}.
+   *
+   * Not `kan` at the subthemaperiode zoom, so the grip and the period picker are **absent** rather than
+   * present-and-failing. The reason is not that the server refuses those dates — a third of them it accepts, because
+   * each parent's first sub-block starts on the parent's own start date. It is that a drop on one of those moves the
+   * thema into the **whole** themaperiode while the teacher aimed at a fortnight: the affordance would be honest about
+   * the request and dishonest about the effect. See {@link PeriodekolomProps.verplaatsstaat} for the full argument.
+   *
+   * Everything else on the card stays: taking a thema out of its themaperiode and reversing a rejection are unaffected
+   * by the tier, since neither names a block. The delete confirmation names the **themaperiode** and its ordinal
+   * explicitly, which is what keeps it unambiguous here — `blokOrdinaal` is the coarse ordinal, so at this tier a card
+   * sitting in *Subthemaperiode 9* must not be asked about "periode 3" as if the column and the object were one thing.
+   */
+  verplaatsstaat: Verplaatsstaat;
+}
+
+/**
  * One thema on the board (E3-06 card, E3-07 interaction).
+ *
+ * *Moved back down against its declaration in fix round 4.* Round 3 inserted `Verplaatsstaat` and its own TSDoc
+ * **between** this comment and the function it describes, so two block comments stood in a row and tooling attached
+ * the last one: hovering `Themakaart` showed the union's doc and this one hung on nothing. Cosmetic, but a story that
+ * spent four rounds on comments being true can hardly ship one that is unreachable.
  *
  * **Compact by design.** On a board the card competes for a 288px column, and the first version put the
  * thema name, a status chip, a goal count and a full motivation paragraph in every one — seven of those on
@@ -56,15 +113,7 @@ import {
  * `manueel` count (the binding reading in E5), and "Verplaatsen" on this very card is the route to `manueel`, so
  * naming only `aanvaard` would name the one status this screen cannot set while omitting the one it can.
  */
-export interface ThemakaartProps {
-  plaatsing: Themaplaatsing;
-  /** The class whose plan this is — the edits post against it. */
-  klasId: string;
-  /** Every period of the year, so the panel can offer them as move targets. */
-  blokken: readonly Planningsblok[];
-}
-
-export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
+export function Themakaart({ plaatsing, klasId, blokken, verplaatsstaat }: ThemakaartProps) {
   const [paneelOpen, setPaneelOpen] = useState(false);
   const paneelId = useId();
 
@@ -72,7 +121,9 @@ export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
   // the one transition here that changes dekking (Art. V.1) — the server refuses it, and offering a grip that
   // always fails would be a control that does nothing. Reversing a rejection stays the explained, explicit
   // decision in the panel below.
-  const kanSlepen = plaatsing.status !== "Geweigerd";
+  //
+  // Nor is anything draggable on a board whose columns the server will not accept as a target (E3-08).
+  const kanSlepen = verplaatsstaat === "kan" && plaatsing.status !== "Geweigerd";
 
   const { listeners, setNodeRef, isDragging } = useDraggable({
     id: plaatsing.id,
@@ -172,6 +223,7 @@ export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
             plaatsing={plaatsing}
             klasId={klasId}
             blokken={blokken}
+            verplaatsstaat={verplaatsstaat}
             onKlaar={() => setPaneelOpen(false)}
           />
         )}
@@ -181,8 +233,26 @@ export function Themakaart({ plaatsing, klasId, blokken }: ThemakaartProps) {
 }
 
 /**
- * The accessible route: lock this thema against regeneration, move it to another period, take it out of its
- * period, or reverse a rejection.
+ * How a **stale** placement is re-placed, one sentence per board state, for a card that is not rejected.
+ *
+ * A `Record` rather than a chain of ternaries so the compiler owns the pairing: a fourth {@link Verplaatsstaat} cannot
+ * be added without deciding what it tells a teacher, which is exactly what went wrong when two causes shared one
+ * sentence. `niveauOnbekend` names no view on purpose — this app does not know which of its two views those columns
+ * belong to, so *"kan in de weergave Themaperiodes"* could be pointing at the view the teacher is on.
+ *
+ * **The guarantee is one axis wide** (fix round 4, MINOR-4a): it covers the board, not the panel. The rejection case
+ * is not in this table at all — it is the `!isGeweigerd` on the paragraph below — so a new member gets a sentence
+ * without anyone being made to decide whether a rejected card should be told it. See {@link Verplaatsstaat}.
+ */
+const HERPLAATSUITLEG: Record<Verplaatsstaat, TranslationKey> = {
+  kan: "kalender.herplaatsKies",
+  anderNiveau: "kalender.herplaatsAnderNiveau",
+  niveauOnbekend: "kalender.herplaatsNiveauOnbekend",
+};
+
+/**
+ * The accessible route: lock this thema against regeneration, move it to another themaperiode, take it out of its
+ * themaperiode, or reverse a rejection.
  *
  * **The delete confirmation replaces the button that triggers it, rather than opening a modal.** Two reasons.
  * It cannot be missed or mis-dismissed, because the control it guards is gone while the question stands. And
@@ -200,12 +270,14 @@ function Bewerkpaneel({
   plaatsing,
   klasId,
   blokken,
+  verplaatsstaat,
   onKlaar,
 }: {
   id: string;
   plaatsing: Themaplaatsing;
   klasId: string;
   blokken: readonly Planningsblok[];
+  verplaatsstaat: Verplaatsstaat;
   onKlaar: () => void;
 }) {
   const [doelBlok, setDoelBlok] = useState("");
@@ -227,10 +299,16 @@ function Bewerkpaneel({
   //
   // A rejected placement offers none: the server refuses the move (it would silently grant dekking), so the
   // picker is replaced by the instruction to reverse the rejection first.
+  //
+  // Nor does the fine zoom offer any (E3-08): `blokken` would be subthemaperiodes, and offering them would ask the
+  // teacher to pick a fortnight while the plan can only record the themaperiode that contains it (the ones the server
+  // *does* accept are precisely the parents' first sub-blocks). Where E3-06's rule asks for visible text, the board
+  // carries it once above itself rather than repeating a disabled control per card.
   const isGeweigerd = plaatsing.status === "Geweigerd";
-  const doelen = isGeweigerd
-    ? []
-    : blokken.filter((blok) => blok.start !== plaatsing.blokStart);
+  const doelen =
+    isGeweigerd || verplaatsstaat !== "kan"
+      ? []
+      : blokken.filter((blok) => blok.start !== plaatsing.blokStart);
 
   /**
    * Whether removing this placement must be confirmed.
@@ -272,11 +350,21 @@ function Bewerkpaneel({
    * pairing is decided.
    *
    * **A stale placement gets no lock nudge** (`isVervallen`). Its own remedy is re-placement, stated at the top of
-   * this panel: locking one instead pins the card at a date that is no longer a period boundary, so the "dekking
-   * onbetrouwbaar" state would survive every regeneration where before it was self-healing. An *already* locked
-   * stale card keeps the control, so the lock stays undoable, and its sentence says only that the lock is not the
-   * remedy. It deliberately does **not** repeat *"kies een periode"*: `kalender.herplaatsKies` already stands at
-   * the top of this panel, and on a stale **rejected** card that instruction has no picker to point at.
+   * this panel: locking one instead pins the card at a date that is no longer a themaperiode boundary, so the
+   * "dekking onbetrouwbaar" state would survive every regeneration where before it was self-healing. An *already*
+   * locked stale card keeps the control, so the lock stays undoable, and its sentence says only that the lock is not
+   * the remedy.
+   *
+   * **Why that sentence still names no remedy of its own — premise corrected in the E3-08 merge.** It used to be
+   * justified by "`kalender.herplaatsKies` already stands at the top of this panel, and on a stale **rejected** card
+   * that instruction has no picker to point at". Both halves are now false. The line at the top is one of *three*
+   * ({@link HERPLAATSUITLEG}) and only the coarse tier gets `herplaatsKies`; at the subthemaperiode zoom it is
+   * `herplaatsAnderNiveau`, which sends the teacher to the other view. Repeating *"kies een periode"* here would
+   * therefore **contradict** the line above it at the fine tier rather than merely duplicate it. And a stale rejected
+   * card no longer gets any re-placement instruction at either tier (E3-08 fix round 3, owner ruling); it also never
+   * reaches this sentence, because {@link slotUitleg} tests `isGeweigerd` first and hands it
+   * `vergrendelUitlegGeweigerdVast`, whose remedy is the *Weigering terugdraaien* button directly below. Silence
+   * about re-placement here is still the right call, now for a reason that holds at both tiers.
    */
   const toonSlot = plaatsing.isVervallen
     ? plaatsing.vergrendeld
@@ -337,8 +425,29 @@ function Bewerkpaneel({
           : ""}
       </p>
 
-      {plaatsing.isVervallen && (
-        <p className="text-xs leading-snug text-attentie-ink">{t("kalender.herplaatsKies")}</p>
+      {/* A stale placement's instruction has to match what the panel actually offers, and there are now four cases
+          rather than two (E3-08 fix round 3, owner ruling).
+
+          **A rejected card gets no re-placement instruction at all.** Its picker is withheld by the *rejection*, not
+          by the tier, so at every tier both sentences would be false: `herplaatsKies` points at a picker that is not
+          in this panel (E3-07's own defect, which E4-06 filed), and `herplaatsAnderNiveau` is worse, because it sends
+          the teacher to another view where the picker is withheld for the same reason. Nothing is lost by staying
+          silent: `weigeringEerstTerugdraaien` below says why moving is refused, and its *Weigering terugdraaien*
+          button sits under it at both tiers, so the corrective control is on the same screen as the sentence. Once the
+          rejection is reversed the placement is `Manueel` and this instruction returns.
+
+          **And the sentence below now names that second step** (fix round 4, owner ruling on QUESTION-A). The remedy
+          on a stale rejected card is two moves — reverse the rejection, then give the thema a themaperiode — and
+          round 3 named only the first, leaving *"eerst"* to imply the rest. The defence was that a second sentence
+          would have to name a view and would therefore be tier-dependent; that was disproved: *"Daarna kan je het
+          thema een andere themaperiode geven"* names no view, and the *where* is carried once above the board by
+          `fijnUitleg` / `sleepUitleg` rather than per card.
+
+          The other three are the board's three states, paired one-to-one by {@link HERPLAATSUITLEG} rather than by a
+          ternary: the unrecognised-tier degrade may not name a view either, since this app does not know which view
+          those columns belong to. */}
+      {plaatsing.isVervallen && !isGeweigerd && (
+        <p className="text-xs leading-snug text-attentie-ink">{t(HERPLAATSUITLEG[verplaatsstaat])}</p>
       )}
 
       {isGeweigerd && (

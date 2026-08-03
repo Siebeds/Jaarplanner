@@ -160,12 +160,24 @@ describe("nl.json — the lock copy makes no unscoped promise about regeneration
   });
 
   /**
-   * The re-placement instruction belongs to `kalender.herplaatsKies` alone (E3-07's), which stands at the top of
-   * the same panel. E4-06 round 1 added a second copy of it inside `vergrendelUitlegVervallen`, and on a card
-   * that is stale **and** rejected the period picker is suppressed, so the instruction pointed at an affordance
-   * that is not there — the E3-06 rule.
+   * The lock copy may not instruct a teacher to *choose a period*. E4-06 round 1 put a second copy of that
+   * instruction inside `vergrendelUitlegVervallen`, and on a card that is stale **and** rejected the period picker is
+   * suppressed, so the instruction pointed at an affordance that is not there — the E3-06 rule.
+   *
+   * **Premise corrected in E3-08 fix round 4 (antagonist MINOR-1).** This comment used to justify the guard with
+   * *"the instruction belongs to `kalender.herplaatsKies` alone, which stands at the top of the same panel"*, and
+   * E3-08 made both halves false. The line at the top of that panel is now one of **three**, paired to the board's
+   * state by `HERPLAATSUITLEG`, of which only the coarse tier gets `herplaatsKies`; and on a stale **rejected** card
+   * no re-placement line renders at all. So the guard's real reason is stronger than "do not duplicate": in the three
+   * states the lock copy can co-occur with, repeating *"kies een periode"* would **contradict** the line above it at
+   * the fine tier, **claim a picker that is not in the panel** on a rejected card, or duplicate it at the coarse tier.
+   *
+   * *Recorded rather than quietly rewritten,* because the merge that falsified this premise corrected it in
+   * `Themakaart.tsx` and left this instance untouched — fixed where it was noticed, left where it was not, which is
+   * verbatim the pattern this file's own header decries. **The guard itself was and is correct; only its
+   * justification lied.**
    */
-  it("leaves the 'choose a period' instruction to kalender.herplaatsKies alone", () => {
+  it("keeps the 'choose a period' instruction out of the lock copy", () => {
     // Same non-vacuity guard as above, for the same reason: this assertion is a bare loop over SLOTTEKSTEN, so
     // an empty family would satisfy it forever.
     expect(SLOTTEKSTEN.length).toBeGreaterThan(0);
