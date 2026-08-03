@@ -2564,6 +2564,19 @@ describe("Jaarplankalender — aanvaarden en weigeren (E4-02, FR-7.1)", () => {
     // AI may still propose this thema elsewhere, and both variants must keep saying "hier".
     expect(t("kalender.weigeringUitlegVervallen")).toContain("hier");
     expect(t("kalender.weigeringUitlegVervallen")).toContain("hergeneratie van het hele jaarplan");
+
+    // **The property this split exists for, asserted on the content rather than on which key renders where.**
+    // Everything above is either a `t(key)`-versus-`t(key)` check (which variant is on which card) or a property
+    // INHERITED from E4-06, so re-introducing the false promise into this string left the whole suite green when the
+    // round-3 auditor tried it. Third round running that a fix's defining property turned out to be unfalsifiable,
+    // so it is pinned negatively AND positively: the sentence must not promise the card a period it does not have,
+    // and it must say it has none. Both halves matter — a rewrite that merely drops the phrase would satisfy the
+    // first line alone while telling the teacher nothing.
+    expect(t("kalender.weigeringUitlegVervallen")).not.toContain("in deze themaperiode");
+    expect(t("kalender.weigeringUitlegVervallen")).toContain("geen periode");
+    // And the variant for a card that DOES have its period still makes exactly that promise, so this pair cannot be
+    // satisfied by flattening the two strings into one cautious sentence.
+    expect(t("kalender.weigeringUitleg")).toContain("in deze themaperiode");
   });
 
   it("keeps the E4-06 wording for a rejected card that still has its period", async () => {

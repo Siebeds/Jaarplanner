@@ -104,10 +104,23 @@ describe("nl.json — counts always have a singular form", () => {
 });
 
 /**
- * Every string the kalender uses to talk about the lock, i.e. `kalender.vergrendel*` and `kalender.vergrendeld*`.
+ * Every string the kalender uses to talk about surviving a (re)generation: `kalender.vergrendel*` /
+ * `kalender.vergrendeld*` (the lock, E4-06) and `kalender.weigering*` (the rejection, E4-06 + E4-02).
  * Collected by prefix rather than listed, which is the whole point of the two guards below.
+ *
+ * **`kalender.weigering*` was added by E4-02 (round-3 audit), and it should have been in scope from the start.**
+ * `weigeringUitleg` makes exactly the claim these guards police — "een hergeneratie van het hele jaarplan laat ze
+ * staan" — and was covered only by two hand-written `toContain` lines in `Jaarplankalender.test.tsx`. E4-02 then
+ * added a **second** member of that family, `weigeringUitlegVervallen`, making the same claim; a third variant
+ * would have escaped the guard and, unless someone remembered, every test. Both current members already satisfy
+ * the assertion, so widening the prefix cost nothing and closed the gap the file's own header warns about: *each
+ * previous fix was applied to the one instance that had been noticed.* E4-05/E4-07 are scheduled to re-read these
+ * strings, which is precisely when an unguarded family gets a new member.
  */
-const SLOTTEKSTEN = [...CATALOGUS].filter(([sleutel]) => sleutel.startsWith("kalender.vergrendel"));
+const SLOTTEKSTEN = [...CATALOGUS].filter(
+  ([sleutel]) =>
+    sleutel.startsWith("kalender.vergrendel") || sleutel.startsWith("kalender.weigering"),
+);
 
 describe("nl.json — the lock copy makes no unscoped promise about regeneration", () => {
   /**

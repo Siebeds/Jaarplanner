@@ -197,10 +197,19 @@ half was dropped, because that is only true on the tier where moving works.
    the API reports `isBetrouwbaar: true, onopgeloste: 0`. E5-01 already filed that divergence against **E5-02**
    (see [E5-dekking-export.md](../../E5-dekking-export.md)); what changed is that it is no longer a corner case but
    **the advertised remedy**. No teacher can see the contradiction today, because no dekkingsoverzicht exists.
-4. **A teacher CAN now directly create a stale *rejected* card, and an earlier revision of this finding said
-   the opposite** (the combination E3-07 is reopened
-   over), because the stale card offers no decision. It remains reachable the other way round: reject
-   first, then the school edits its vakantiedata. This story does not close E3-07.
+4. **A teacher can now directly create a stale *rejected* card**, which is the combination **E3-07 is
+   reopened over**. One press of "Weigeren" on a stale proposal produces it, and `kalender.beslisVervallen`
+   recommends that press. The indirect route still exists too (reject a placed card, then the school edits
+   its vakantiedata), so the state has gone from *hard to reach* to *routine*. **This story does not close
+   E3-07; it enlarges what E3-07 owes**, and E4-02 fixed only the one instance it created itself
+   (`kalender.weigeringUitlegVervallen`).
+   > *Rewritten three times, and the third rewrite is the finding (antagonist round 3).* It first said the
+   > opposite. Fix round 2 corrected the headline **and left the old sentence's reason clause attached**, so
+   > it read "a teacher CAN now … because the stale card offers no decision" — a claim and its own negation
+   > in one sentence, produced inside the fix for exactly that class, in the item that fix had singled out as
+   > "the one that mattered". **The mechanism worth naming: I edited the clause I had noticed and left the
+   > grammar around it.** A partial in-place substitution reads as fixed to whoever wrote it and as nonsense
+   > to whoever reads it next. Rewrite the whole sentence, or do not touch it.
 
 ## For the next story
 
@@ -401,3 +410,68 @@ from the screen.
 
 **Not re-verified:** contrast and 390px layout, untouched by both fix rounds (no token, variant or layout
 change; the two new paragraphs use `text-ink-zacht`, already measured on this card).
+
+---
+
+## Round 3 — two MAJORs, both small edits, both about evidence rather than behaviour
+
+Round 3 found **no defect in what the screen does.** Its two MAJORs are that two fixes were not
+*provable*, and one of them was not even *coherent*. That is the more uncomfortable kind of finding.
+
+1. **The correction to round 2's MAJOR-1 was self-contradicting.** I rewrote the headline of finding 4
+   and left the old sentence's reason clause attached, so it read *"a teacher CAN now directly create a
+   stale rejected card … because the stale card offers no decision"* — a claim and its own negation, in
+   one sentence, **inside the fix for exactly that class**, in the item that fix had singled out as "the
+   one that mattered". Fourth consecutive round of this project's dominant defect class.
+   **The mechanism, which is the transferable part:** I edited the clause I had noticed and left the
+   grammar around it. A partial in-place substitution reads as fixed to whoever wrote it and as nonsense
+   to whoever reads it next. *Rewrite the whole sentence, or do not touch it.* Now rewritten whole.
+2. **The MAJOR-2 fix was pinned structurally, not semantically.** Every assertion added for
+   `weigeringUitlegVervallen` was either a `t(key)`-versus-`t(key)` tautology (which variant renders on
+   which card) or a property **inherited from E4-06** (`"hier"`, `"hele jaarplan"`). The property the
+   split existed to create — *does not promise the card a period* — was asserted **nowhere**, and the
+   auditor put the false promise back with all 314 tests green. **Third round running that a fix's
+   defining property turned out to be unfalsifiable.** Now pinned negatively *and* positively, plus a
+   pin on the placed variant still making the promise, so the pair cannot be satisfied by flattening the
+   two strings into one cautious sentence.
+
+**Six MINORs**, and five of them are one rule applied inconsistently inside one commit:
+
+- **`kalender.weigering*` was never in the catalogue family guard**, which polices exactly the
+  hergeneratie claim both its members make. This story added the second member. The prefix now covers it,
+  free of charge (both values already satisfy the assertion), and a third variant can no longer escape.
+- **The epic entry's own status line still said "Awaiting the antagonist audit"** after two audits and two
+  fix rounds, and its `*Verification:*` line still carried the misleading mutation sentence and a
+  superseded test count — corrected in the worklog, left in the backlog. *"Fixed where noticed, left where
+  not"* is the pattern round 2 graded MAJOR, recurring one file over.
+- **Three of four hand-offs named a destination instead of writing in it** — the very rule this story had
+  just enforced on itself for E7-10. Now written **into** their destinations: the E3-07 entry says this
+  story enlarged what it owes and why; **E5-02** carries the divergence, the ruling it needs and the
+  instruction not to fix it by rewording the true half; and `kalender.indelingUitleg` being dead is filed
+  against **E3-06**, whose story introduced it, together with the fact that it falsifies a sentence the
+  open Art. II.3 entry cites as evidence.
+- **Two state gaps are now recorded as choices** rather than left implicit: the split branches on the
+  server's `isVervallen` while the "Te herzien" notice uses a wider client-side predicate (deliberate:
+  the copy stays aligned with the figure rather than with the notice), and `beslisUitleg` can render above
+  a board whose only outstanding decision sits in the notice (deliberate: suppressing it would leave a
+  decision unexplained, which is the defect the gate exists to prevent).
+
+**One QUESTION, and it is the owner's.** Round 3 rejected my framing of MAJOR-3 as "copy E5-02 owns". The
+directie ruling of 2026-07-28 says the figure is onbetrouwbaar *while any placement is unresolved*;
+`DekkingService` narrows that to exclude rejected placements and **its own comment calls this "a judgement
+call, not an owner ruling"**. So `herzienUitleg` is faithful to the ruling and the *service* is the
+divergence — meaning the sentence that looks wrong is the true one. Filing that as a copy task is how a
+rule conflict gets resolved by rewording the correct half. It belongs in the **Art. XIV** list, which
+lives in `backlog/README.md`, which this session cannot edit; escalated in the groepschat and written into
+E5-02 instead.
+
+### Gates after fix round 3
+
+**314 frontend tests** (15 files), lint clean, build clean. **Four mutations, four caught**, including the
+auditor's own survivor (MU13, the false promise restored), the half-fix that merely deletes the phrase
+without saying anything, flattening both variants into one, and an unscoped hergeneratie promise — which
+now fails **twice**, once at the hand-written assertion and once at the widened family guard.
+
+**No browser re-run.** Fix round 3 changed one string's *assertions*, one test-file prefix, five
+documentation files and two comments. The only user-visible text touched is unchanged in content; nothing
+about layout, colour or control state moved.

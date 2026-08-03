@@ -1,13 +1,20 @@
 # E4-02 — antagonist verdicts
 
-Two rounds, both **VIOLATIONS FOUND**, both against the constitution rather than against taste.
+Three rounds, all **VIOLATIONS FOUND**, all against the constitution rather than against taste.
 Recorded here because the worklog carried the counts and not the findings, and because round 2's
 own MINOR was that this file did not exist while `E4-06/antagonist.md` does (Art. X.7).
 
 | Round | Commit audited | Verdict | Findings |
 | --- | --- | --- | --- |
 | 1 | `3795c16` + the `57b79c0` merge resolutions | VIOLATIONS FOUND | 3 MAJOR, 7 MINOR, 2 QUESTION |
-| 2 | `cd6e3e0` (fix round 1) | VIOLATIONS FOUND | 3 MAJOR, 8 MINOR, 0 QUESTION |
+| 2 | `cd6e3e0` (fix round 1) | VIOLATIONS FOUND | 3 MAJOR, 8 MINOR |
+| 3 | `447fe0a` (fix round 2) | VIOLATIONS FOUND | 2 MAJOR, 6 MINOR, 1 QUESTION |
+
+> **This header is on its second correction, and the reason belongs at the top of the file.** It said
+> "Two rounds" while round 3 was already written below it — the same partial-substitution mistake round 3
+> graded MAJOR, in the file that records that finding. **A count in a heading is a claim, and a heading is
+> the last thing anyone re-reads.** If a fourth round runs, this table and this sentence are what to change
+> first, before writing the round up.
 
 ---
 
@@ -96,11 +103,85 @@ unaccounted for; and `beslisUitleg` still rendered on a board with nothing left 
 **Two mutations were the auditor's own, not from my table**, and both landed on the axis the fix round
 widened. That is the argument for an independent pass in one line.
 
+## Round 3 — two MAJORs, both small edits, both about evidence rather than behaviour
+
+Round 3 found **no defect in what the screen does.** Its two MAJORs are that two fixes were not
+*provable*, and one of them was not even *coherent*. That is the more uncomfortable kind of finding.
+
+1. **The correction to round 2's MAJOR-1 was self-contradicting.** I rewrote the headline of finding 4
+   and left the old sentence's reason clause attached, so it read *"a teacher CAN now directly create a
+   stale rejected card … because the stale card offers no decision"* — a claim and its own negation, in
+   one sentence, **inside the fix for exactly that class**, in the item that fix had singled out as "the
+   one that mattered". Fourth consecutive round of this project's dominant defect class.
+   **The mechanism, which is the transferable part:** I edited the clause I had noticed and left the
+   grammar around it. A partial in-place substitution reads as fixed to whoever wrote it and as nonsense
+   to whoever reads it next. *Rewrite the whole sentence, or do not touch it.* Now rewritten whole.
+2. **The MAJOR-2 fix was pinned structurally, not semantically.** Every assertion added for
+   `weigeringUitlegVervallen` was either a `t(key)`-versus-`t(key)` tautology (which variant renders on
+   which card) or a property **inherited from E4-06** (`"hier"`, `"hele jaarplan"`). The property the
+   split existed to create — *does not promise the card a period* — was asserted **nowhere**, and the
+   auditor put the false promise back with all 314 tests green. **Third round running that a fix's
+   defining property turned out to be unfalsifiable.** Now pinned negatively *and* positively, plus a
+   pin on the placed variant still making the promise, so the pair cannot be satisfied by flattening the
+   two strings into one cautious sentence.
+
+**Six MINORs**, and five of them are one rule applied inconsistently inside one commit:
+
+- **`kalender.weigering*` was never in the catalogue family guard**, which polices exactly the
+  hergeneratie claim both its members make. This story added the second member. The prefix now covers it,
+  free of charge (both values already satisfy the assertion), and a third variant can no longer escape.
+- **The epic entry's own status line still said "Awaiting the antagonist audit"** after two audits and two
+  fix rounds, and its `*Verification:*` line still carried the misleading mutation sentence and a
+  superseded test count — corrected in the worklog, left in the backlog. *"Fixed where noticed, left where
+  not"* is the pattern round 2 graded MAJOR, recurring one file over.
+- **Three of four hand-offs named a destination instead of writing in it** — the very rule this story had
+  just enforced on itself for E7-10. Now written **into** their destinations: the E3-07 entry says this
+  story enlarged what it owes and why; **E5-02** carries the divergence, the ruling it needs and the
+  instruction not to fix it by rewording the true half; and `kalender.indelingUitleg` being dead is filed
+  against **E3-06**, whose story introduced it, together with the fact that it falsifies a sentence the
+  open Art. II.3 entry cites as evidence.
+- **Two state gaps are now recorded as choices** rather than left implicit: the split branches on the
+  server's `isVervallen` while the "Te herzien" notice uses a wider client-side predicate (deliberate:
+  the copy stays aligned with the figure rather than with the notice), and `beslisUitleg` can render above
+  a board whose only outstanding decision sits in the notice (deliberate: suppressing it would leave a
+  decision unexplained, which is the defect the gate exists to prevent).
+
+**One QUESTION, and it is the owner's.** Round 3 rejected my framing of MAJOR-3 as "copy E5-02 owns". The
+directie ruling of 2026-07-28 says the figure is onbetrouwbaar *while any placement is unresolved*;
+`DekkingService` narrows that to exclude rejected placements and **its own comment calls this "a judgement
+call, not an owner ruling"**. So `herzienUitleg` is faithful to the ruling and the *service* is the
+divergence — meaning the sentence that looks wrong is the true one. Filing that as a copy task is how a
+rule conflict gets resolved by rewording the correct half. It belongs in the **Art. XIV** list, which
+lives in `backlog/README.md`, which this session cannot edit; escalated in the groepschat and written into
+E5-02 instead.
+
+### Gates after fix round 3
+
+**314 frontend tests** (15 files), lint clean, build clean. **Four mutations, four caught**, including the
+auditor's own survivor (MU13, the false promise restored), the half-fix that merely deletes the phrase
+without saying anything, flattening both variants into one, and an unscoped hergeneratie promise — which
+now fails **twice**, once at the hand-written assertion and once at the widened family guard.
+
+**No browser re-run.** Fix round 3 changed one string's *assertions*, one test-file prefix, five
+documentation files and two comments. The only user-visible text touched is unchanged in content; nothing
+about layout, colour or control state moved.
+
+---
+
 ## What is still open
 
 - **`backlog/README.md` L31** says *"E4-01/E4-02 must build the accept affordance"* as a standing
   obligation. It is discharged. The **lead holds that file's claim**, so it is escalated in the
   groepschat as a false statement rather than a stale count, and it needs one line from whoever holds it.
-- **SC 2.5.8 and SC 2.5.3** are now filed under **E7-10** (they were not, when the story claimed they
+- **`backlog/README.md` L125** says the kalender "now explains the grain from `nl.json`". Falsified by
+  `kalender.indelingUitleg` being dead (zero references). The open **Art. II.3** entry cites that repair as
+  evidence, so the citation is currently false. Filed against **E3-06**, which introduced the string; the
+  `README.md` half needs the claim-holder.
+- **The Art. XIV ruling round 3 surfaced:** does a **rejected stale** placement leave the dekking figure
+  trustworthy? `DekkingService` says yes and calls its own narrowing "a judgement call, not an owner
+  ruling"; the directie ruling of 2026-07-28 says no. E4-02 made that state routine, so the conflict is now
+  reachable. Written into **E5-02** with the instruction not to resolve it by rewording the true half;
+  it belongs in the Art. XIV list, which lives in the file this session cannot edit.
+- **SC 2.5.8 and SC 2.5.3** are filed under **E7-10** (they were not, when the story first claimed they
   were). Both are app-wide patterns; E4-02's own two buttons measure 106×36 and 91×36.
-- **E3-07** owes more after this story, not less. See the E4-02 entry.
+- **E3-07** owes more after this story, not less, and that is now written in **E3-07's own entry**.

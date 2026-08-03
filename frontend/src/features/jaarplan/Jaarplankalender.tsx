@@ -624,7 +624,15 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 **Gated on a decision actually being outstanding** (re-audit, fix round 2). The design empties the
                 board as the teacher works, so on a fully decided plan this sentence described controls that were
                 nowhere on screen: the same defect as the stale card it was already fixed for, one level up. The
-                file's own precedent is `teVolUitleg` below, which is gated the same way on the state it describes. */}
+                file's own precedent is `teVolUitleg` below, which is gated the same way on the state it describes.
+
+                *Two residues, stated so they are choices rather than oversights (round-3 audit).* When the only
+                outstanding proposal is **stale**, this renders in the board section while the decision itself sits
+                on a card in the "Te herzien" notice above — the sentence is true about the plan and points at no
+                card on the board. Suppressing it instead would be worse: the teacher would then have a decision to
+                make and no explanation of what it does, which is the defect this gate exists to prevent. And with
+                a zero-block grid the whole branch is skipped, so a decision in the notice would be unexplained;
+                that is pre-existing, unreachable until E6-03, and already filed to E3-09. */}
             {openBeslissingen > 0 && (
               <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
                 {t("kalender.beslisUitleg")}

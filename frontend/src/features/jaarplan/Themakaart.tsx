@@ -771,7 +771,18 @@ function Bewerkpaneel({
 
               Before this story that state took a rejection *plus* a vakantie edit by the school. Now "Weigeren"
               sits on the stale card and `beslisVervallen` recommends it, so the false promise became the
-              advertised destination. That is why the split is this story's and not E5-02's. */}
+              advertised destination. That is why the split is this story's and not E5-02's.
+
+              **One gap the split does not close, recorded rather than left implicit (round-3 audit).** This
+              branches on the server's `isVervallen`, while `kalenderFormat.vervallenPlaatsingen` puts a card in
+              the "Te herzien" notice on the wider `isVervallen || !starts.has(blokStart)` — a deliberate client
+              fallback for the two views disagreeing. On a card caught only by that fallback, this renders
+              `weigeringUitleg`, i.e. the sentence above, on a card that is in no period. Left on the server flag
+              on purpose: it is the one the *server* also uses to derive dekking, so the copy stays aligned with
+              the figure rather than with the notice, and the divergence is a transient race between two
+              independently refetching queries rather than a steady state. Widening this branch would align it
+              with the notice and mis-align it with `DekkingService`, which is the worse trade while E5-02's
+              ruling on that divergence is still open. */}
           <p className="text-xs leading-snug text-ink-zacht">
             {plaatsing.isVervallen
               ? t("kalender.weigeringUitlegVervallen")
