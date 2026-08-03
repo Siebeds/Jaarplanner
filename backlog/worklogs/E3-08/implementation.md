@@ -687,3 +687,248 @@ form is still pinned, by the first test in that file.
 - **Merge order:** unchanged. E4-06 is still in `Themakaart.tsx`, `Jaarplankalender.test.tsx`, `useJaarplan.ts` and
   `api.ts`, and holds `nl.json`. This round touched none of the first four and declared the fifth. `Bewerkpaneel`'s DOM
   is untouched, so E4-06's lock control still has room.
+
+---
+
+## Fix round 3 — the cross-story regression this story's own string caused (`4e8f6eb` → `ae14b0b`)
+
+**FR / Article:** FR-6.3 (zoomniveaus) · Art. II.3 (all copy in `nl.json`) · Art. IV.1/IV.5 (advisory AI, and never
+claim a change that did not happen) · Art. V.2 (a stale placement stays visible until a human resolves it) ·
+Art. XII / WCAG 2.2 AA (never colour alone, contrast measured in a browser) · Art. IX.3 (two ratified tiers, no calendar
+unit assumed).
+
+**Why there is a fourth build round at all.** The 3-round cap was exceeded on the owner's explicit permission, for one
+reason: the false sentence is `kalender.herplaatsAnderNiveau`, a string **this story added**, so the regression is this
+story's to repair rather than E3-07's or a waiver's. The coarse-tier half stays with E3-07, which the owner reopened.
+
+Round-3 gate results on `4e8f6eb`: test-runner **PASS** on every criterion of the story; antagonist **VIOLATIONS FOUND,
+0 CRITICAL / 0 MAJOR** (5 MINOR, 2 QUESTION). Note for the record: **neither round-3 verdict is on disk** in
+`backlog/worklogs/E3-08/` — `antagonist.md` ends at round 2 and `test-report.md` at round 1 — so this round worked from
+the findings as relayed in the fix brief, exactly as round 2 had to. The 18 `r3-*.png` files the test-runner left
+untracked are committed with this change.
+
+### 1. [owner-ruled] A geweigerd card was sent to a view that cannot help it — fixed, reproduced in a browser first
+
+**The defect.** `Bewerkpaneel` chose the stale-placement instruction on the **tier** alone:
+
+```tsx
+{plaatsing.isVervallen && (
+  <p …>{kanVerplaatsen ? t("kalender.herplaatsKies") : t("kalender.herplaatsAnderNiveau")}</p>
+)}
+```
+
+while the picker it points at is withheld by the **rejection**, two lines above:
+`isGeweigerd || !kanVerplaatsen ? [] : …`. So for `Geweigerd × stale × fine tier` the card read *"Een themaperiode
+kiezen voor dit thema kan in de weergave “Themaperiodes”."* and that view withholds the picker from it as well. A local
+contradiction (E3-07's, where both sentences at least sit on one screen beside the corrective control) became a
+**cross-view instruction that cannot be kept**, with the mention of dragging dropped, so the single remaining
+instruction was false.
+
+**The fix.** A rejected card gets **no re-placement instruction at either tier**. Nothing is lost, and that is the
+argument rather than an assumption: `kalender.weigeringEerstTerugdraaien` says why moving is refused, and its *Weigering
+terugdraaien* button sits under it **at both tiers** (neither names a block, so the tier cannot take them away —
+asserted, not reasoned about). Reversing the rejection makes the placement `Manueel`, and the instruction returns.
+As a side effect the coarse-tier contradiction E4-06 filed also disappears, because the same condition covers it; the
+rest of E3-07's version (its own picker) is untouched and still E3-07's.
+
+**The prop that made this possible is no longer a boolean.** `kanVerplaatsen` carried two causes with one sentence
+between them, which is precisely the collapse round 2 removed from the periods (`Periodestaat`). It is now
+`Verplaatsstaat = "kan" | "anderNiveau" | "niveauOnbekend"`, exported from `Themakaart.tsx`, derived once in
+`Jaarplankalender` and threaded through `Periodekolom` and `TeHerzien`. Copy is paired to it by two `Record`s
+(`BORDUITLEG` for the board sentence, `HERPLAATSUITLEG` for the card's), so **the compiler refuses a fourth state that
+has not been given its own sentence**. The card's own status is deliberately *not* folded into the union: a rejection is
+a fact about the card, not about the board, and folding the two together is what produced the defect.
+
+### 2. [MINOR-2, second half] The unrecognised-tier degrade told every card to switch to the view it was on — fixed
+
+The surviving third instance of round 2's MINOR-F. In that degrade `verplaatsstaat` is `niveauOnbekend` for **any**
+card, while `bordNiveau` falls back to labelling the board *Themaperiodes* — so `herplaatsAnderNiveau` named the view
+the teacher was already looking at. It now has its own key, `kalender.herplaatsNiveauOnbekend`, which **names no view at
+all**: this app does not know which of its two views those columns belong to, so *"probeer de andere weergave"* would be
+a new guess dressed as help. Pinned by a test that also asserts the string contains neither view name.
+
+### 3. [MINOR-1] A refusal with no statement that anything was refused — fixed by wiring both on one condition
+
+`periodesOnbekend` disabled *Jaarplan genereren* for **both** causes while the `Roosterfout soort="generatie"` notice
+rendered for `nietGeladen` only. In `nietGelezen` the traces were the collapsed summary and, behind a disclosure that is
+closed by default, `parameters.periodesNietGelezen` — which, unlike its two siblings, never mentions the run. Beneath the
+dead button sat `kalender.genereerUitleg`, a promise about what generating does.
+
+The notice now renders on `periodesOnbekend`, the same expression that disables the button, with a branch inside it for
+which cause. **The `nietGelezen` variant carries no retry**, and that absence is a statement: the request *succeeded* and
+answered something unreadable, so a retry is the step already exhausted — the E3-04 ruling that produced this component.
+`Roosterfout`'s `onOpnieuw` is therefore optional, documented as the only case allowed to render without a button.
+
+Third round running in which a refusal and its explanation sat on different conditions. They sit on one now.
+
+### 4. [MINOR-4] `kalender.indelingUitleg` deleted
+
+Zero call sites (`grep -rn indelingUitleg src/` returns only the catalogue line), residue of E3-06's reverted
+server-string render. Deleted rather than guarded, as the brief preferred: extending `catalogus.test.ts`'s dead-key guard
+from `doelen.*` to `kalender.*` is the larger change and this key had no defender.
+
+### Files changed
+
+| file | why |
+|---|---|
+| `frontend/src/features/jaarplan/Themakaart.tsx` | the `Verplaatsstaat` type; the rejected card gets no re-placement sentence; `HERPLAATSUITLEG` pairs the other three states to copy |
+| `frontend/src/features/jaarplan/Periodekolom.tsx` | prop follows the union; the droppable is disabled off `!== "kan"` |
+| `frontend/src/features/jaarplan/Jaarplankalender.tsx` | derives `verplaatsstaat`; `BORDUITLEG`; the refusal notice on both causes; `Roosterfout` may render without a retry |
+| `frontend/src/i18n/nl.json` | +`kalender.herplaatsNiveauOnbekend`, +`kalender.generatieRoosterNiveauOnbekend`, −`kalender.indelingUitleg` |
+| `frontend/src/features/jaarplan/Jaarplankalender.test.tsx` | three new tests, two new assertions on the unrecognised-tier test |
+
+`Bewerkpaneel`'s DOM is **unchanged**, as it has been all story: one paragraph is conditional where it was
+unconditional, nothing is added, moved or renested. E4-06's lock control still has its room.
+
+### Tests added (3 new, 206 total)
+
+| test | what it pins |
+|---|---|
+| *never promises a REJECTED stale card a period picker, at either tier* | at both tiers: no picker, and none of the three re-placement sentences; the rejection sentence **and** its *Weigering terugdraaien* button present in both, which is what makes the silence safe |
+| *does not name a view for a stale card when the tier is one it cannot recognise* | the new sentence appears, the two view-naming ones do not, and the string contains neither view's own button label |
+| *keeps pointing a re-placeable stale card at the view where the picker really is* | the **control case** (`Manueel × stale × fine`): the sentence survives, and pressing the option it names really does produce a picker with all 7 themaperiodes. Guards against "fixing" the two above by suppressing the sentence everywhere |
+| *(existing)* *says nothing was changed … tier it cannot recognise* | now also asserts `toBeDisabled()` on the generate button, the refusal notice, and **no** retry button anywhere. It drove that exact path and asserted nothing about the button |
+
+**Mutation checks, four, each applied and restored in one command** (the round-2 discipline):
+
+| mutation | result |
+|---|---|
+| drop `!isGeweigerd` from the stale sentence | *never promises a REJECTED stale card…* **fails** |
+| `HERPLAATSUITLEG.niveauOnbekend → herplaatsAnderNiveau` | *does not name a view…* **fails** |
+| notice back to `periodestaat === "nietGeladen"` | *says nothing was changed…* **fails**, on the new notice assertion |
+| `HERPLAATSUITLEG.anderNiveau → herplaatsNiveauOnbekend` | **two** tests fail, the control case among them |
+
+### Browser check, before and after, against the real API and PostgreSQL
+
+Environment (all four ports claimed and released, session `E3-08`): api **5461**, a rewriting proxy **5463**, vite
+**5462**, CDP **9461**. The proxy exists for one reason: the controller **400s on an unknown `?niveau=`**, so the
+unrecognised-tier states cannot be reached from a healthy API at all. It rewrites `"niveau":"Themaperiode"` to
+`"niveau":"Kwartaal"` in the `/rooster` answer for a chosen tier, and nothing else.
+
+**Demo data**, declared in the groepschat before the write and restored after (recorded by DB query *and* verified by
+GET): `fc89b501` *Zomer en vakantie* `2027-04-19 / Manueel` → `2027-04-20 / Geweigerd` (nothing in the UI sets
+`Geweigerd`), and `dddc1c97` *Verkeer* `2027-01-04` → `2027-01-05`, which gives a **non-rejected** stale card as the
+control. Both back, all six placements unchanged, kept startthema still `2026-11-09 / Licht en donker`.
+
+**Before** (`git checkout 4e8f6eb --` the three components and `nl.json`, so this is the shipped code, not a mutation):
+
+| state | what the screen said |
+|---|---|
+| `Geweigerd × stale`, coarse | `herplaatsKies` **and** `weigeringEerstTerugdraaien`, `picker: false` — E3-07's contradiction |
+| `Geweigerd × stale`, **fine** | *"Een themaperiode kiezen voor dit thema kan in de weergave “Themaperiodes”."*, `picker: false` — **the regression**, and the picker is absent in the named view too |
+| unrecognised tier, `Manueel × stale` | `herplaatsAnderNiveau: true` on a board labelled *"Themaperiodes van het schooljaar"* — MINOR-2's third instance, on a card with no rejection to blame |
+| unrecognised tier, generation | `genereerDisabled: true`, `alerts: []`, `retryKnoppen: 0`, no notice — **MINOR-1**: the primary action refused with nothing on screen saying so |
+
+**After** (same tree as the commit, `git status` clean):
+
+| state | what the screen says |
+|---|---|
+| `Geweigerd × stale`, coarse | only `weigeringEerstTerugdraaien` + *Weigering terugdraaien*; no `herplaatsKies` |
+| `Geweigerd × stale`, **fine** | the same, and **none** of the three re-placement sentences |
+| unrecognised tier, `Manueel × stale` | `herplaatsNiveauOnbekend: true`, the other two false |
+| unrecognised tier, generation | `genereerDisabled: true`, **exactly one** `role="alert"` carrying `generatieRoosterNiveauOnbekend`, `retryKnoppen: 0` |
+| control, `Manueel × stale`, fine → coarse | `herplaatsAnderNiveau` at the fine tier; at the coarse tier the picker with **7** themaperiodes and `herplaatsKies` — the promise is keepable |
+
+**Contrast, measured in the browser with alpha composited** (nearest opaque backdrop, walked up and composited):
+
+| what | context | value | floor |
+|---|---|---|---|
+| `kalender.herplaatsNiveauOnbekend` (new) | `text-attentie-ink` on the panel's `bg-paper-diep/60` over card, 12px/400 | **9.24:1** | 4.5 |
+| `kalender.generatieRoosterNiveauOnbekend` (new) | `text-suggestie-geweigerd` on the `/10` wash over card, 14px/500 | **5.48:1** | 4.5 |
+| `kalender.roosterNiveauOnbekend` (existing, re-measured) | 12px/400 | **5.73:1** | 4.5 |
+
+No new colour pair was introduced: both new strings render in nodes whose classes already existed, and the round-2
+measurement of the same notice (5.48:1) reproduces exactly. Neither state carries colour alone — each has a full
+sentence, and the refusal also has the disabled button beside it.
+
+**390px** (an exactly-390px iframe, not `--window-size`, which headless Chrome clamps to ~504px): `innerWidth 390`,
+`documentElement.scrollWidth 390`, **no document overflow**, one alert, panel open and wrapping.
+**Real-browser axe** (wcag2a/2aa/21a/21aa/22aa): unrecognised tier with the panel open **0 violations / 27 passes**;
+healthy fine tier with the rejected card's panel open **0 / 27**.
+
+**Screenshots**, twelve, `md5sum fix3-*.png | sort | uniq -w32 -D` prints nothing (12 files, 12 hashes):
+
+| file | the claim it carries |
+|---|---|
+| `fix3-voor-1-grof-geweigerd-vervallen.png` | before, coarse: the two contradicting sentences, no picker |
+| `fix3-voor-2-fijn-de-onhoudbare-belofte.png` | **before, fine: the regression, verbatim** |
+| `fix3-voor-3-onbekend-niveau-geweigerd.png` | before, unrecognised tier, rejected card |
+| `fix3-voor-4-onbekend-niveau-manueel-geen-melding.png` | before: MINOR-2's third instance **and** MINOR-1 in one screen |
+| `fix3-na-1-grof-geweigerd-vervallen.png` | after, coarse: one true sentence and its control |
+| `fix3-na-2-fijn-alleen-de-ware-zin.png` | **after, fine: the false instruction is gone** |
+| `fix3-na-3-onbekend-niveau-geweigerd.png` | after: rejected card silent about re-placing, refusal notice present |
+| `fix3-na-4-onbekend-niveau-manueel-met-melding.png` | after: the new card sentence **and** the new refusal notice |
+| `fix3-na-5-controle-grof-picker-aanwezig.png` | the control case at the coarse tier: 7 themaperiodes in the picker |
+| `fix3-na-6-controle-fijn-verwijst-nog-steeds.png` | the control case at the fine tier: the sentence survives |
+| `fix3-na-7-390-kaartzin.png` | 390px, both stale cards, no overflow |
+| `fix3-na-8-390-generatiemelding.png` | 390px, the refusal beside the dead button |
+
+The scratch 390px page lived in `frontend/public/` and was **deleted before committing** (it is not in the diff).
+
+### Gates
+
+`corepack pnpm lint` exit 0 (`eslint . --max-warnings 0 && tsc --noEmit`) · `corepack pnpm vitest run` **206 passed /
+12 files, 0 failed, 0 skipped**, and `grep -ciE "act\(|Warning: |stderr"` over the full log → **0** ·
+`corepack pnpm build` exit 0 · `git diff --stat 0de4851..HEAD -- backend/` **empty**, so `dotnet test` / `dotnet format`
+did not run and are not claimed. The suite was run **alone** in this worktree, never beside another agent's run.
+
+### Self-check against the fix brief
+
+| item | met? | evidence |
+|---|---|---|
+| the owner-ruled fix, conditioned on the rejection as well as the tier | yes | browser before/after above; test 1; mutation 1 bites |
+| a rejected card promised a picker in **no** view | yes | both tiers asserted in test 1 and measured in the browser |
+| the unrecognised-tier state gets **its own** sentence | yes | test 2; mutation 2 bites; `fix3-na-4` |
+| three outcomes rather than two, pinned per state | yes | `Verplaatsstaat` + two exhaustive `Record`s; three tests |
+| MINOR-1: refusal and explanation on one condition, `toBeDisabled()` asserted | yes | notice on `periodesOnbekend`; the existing test now asserts disabled, the notice and no retry |
+| MINOR-4: dead key deleted | yes | `nl.json` diff |
+| `Bewerkpaneel`'s DOM not reshaped | yes | one paragraph made conditional; no node added, moved or renested |
+| backend untouched | yes | empty backend diff |
+| the test-runner's 18 PNGs committed | yes | `r3-*.png` in `ae14b0b` |
+
+### Recorded, not fixed (as the brief instructed)
+
+- **MINOR-3 — a zero-block grid swallows the switch and every notice.** `Weergaveschakelaar` and the `Roosterfout`
+  notices both sit inside the `grid.blokken.length > 0` branch, so a year with **no** periods shows
+  *"Dit schooljaar heeft nog geen themaperiodes."* and no way back to the other tier. **The fix is to hoist the control
+  and the notices out of that branch**, above the `blokken.length === 0` fork. Not done here because it changes render
+  structure, which this round deliberately did not. Not reachable today: nothing in the product can empty a
+  periodestructuur until **E6-03**.
+- **QUESTION-B — generation is offered on a school year with zero themaperiodes** (pre-existing, **E3-04**). Both gates
+  pass: `instellingenOnbekend` is false and `periodestaat` is `bekend`, because an *empty* grid at the right tier is a
+  perfectly readable answer. **`periodestaat` is its natural home** — a fourth state, or a `bekend`-plus-empty check,
+  next to the two that already gate the run.
+- **The test-runner's observation 1 — a failed background refetch of the *generation-tier* grid is silent at the fine
+  tier.** `periodestaat` derives from `data === undefined`, and TanStack keeps data on an errored refetch, so no false
+  claim is made (which is the point). But the stale-grid risk that earned the *board* tier its `verversen` sentence has
+  no equivalent here: a beheerder's vakantie edit can go unnoticed for the settings while it is announced for the board.
+  No notice added this round.
+- **The order inside the generation card**: button → `genereerUitleg` → refusal. The refusal is now always present, but
+  it comes *after* the sentence describing what generating does. Left as it is because the `nietGeladen` case already
+  ships that order and reordering touches the card's render structure; worth one look in review.
+
+### QUESTION-A, settled as far as it can be — an unproven hypothesis, written as one
+
+The antagonist saw **2 of 6** full suite runs fail the two regression tests with round 1's error string **verbatim**,
+then 10 pass; it also proved that string is **unreachable** in the audited source. The orchestrator then ran the suite
+**3× alone in this worktree: 203/203 each time**, 25–33s, environment 85–106s against the contended run's 190s. This
+round's runs (206/206, ~31s, environment ~110s) are consistent with that.
+
+**Most likely cause: two gate agents running vitest concurrently in the same worktree, sharing `node_modules/.vite`,**
+which can serve a stale module graph and looks exactly like an old defect resurfacing. **The failure was never
+reproduced, so this is evidenced but unproven.** What *is* proven: the failing string cannot be produced by this source,
+and 13 runs pass against the 2 that fell during parallel gating. Operational consequence, already posted to the
+groepschat: if you gate in parallel, give one agent the suite or give them separate worktrees.
+
+### Still open after this round
+
+- Everything in round 2's list still stands, **except** the `herplaatsAnderNiveau` entry, which this round closed.
+- **MINOR-3** (the zero-block grid) and **QUESTION-B** (generation on a year with no periods), above.
+- **The generation-tier grid's silent stale state** (observation 1), above.
+- **E3-09 still inherits MINOR-E** (the per-column te-vol mark at the fine tier) and the three te-vol strings.
+- **Merge order, unchanged and now urgent:** E4-06 **is on `origin/main`** as of 12:42 today (`61457bc`), and it
+  rewrote `Themakaart.tsx` heavily — including a lock section in `Bewerkpaneel` whose own comment says
+  `kalender.herplaatsKies` *"already stands at the top of this panel"* and that on a stale **rejected** card it has no
+  picker to point at. That sentence no longer renders for a rejected card, so **whoever rebases must re-read E4-06's
+  `slotUitleg` comment against this change** (the behaviour it describes is what this round fixed; the comment's premise
+  is now stale). This branch was **not** merged, rebased or pushed, per the brief.
