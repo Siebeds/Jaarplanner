@@ -8,6 +8,7 @@ import {
   verplaatsPlaatsing,
   verwijderPlaatsing,
   wijzigPlaatsingStatus,
+  wijzigPlaatsingVergrendeling,
 } from "./api";
 import type {
   Generatieparameters,
@@ -122,7 +123,8 @@ export function useGenereerJaarplan(klasId: string) {
 }
 
 /**
- * The three E3-07 edits, all sharing one rule: **the server's returned plan replaces the cached one.**
+ * The four placement edits (three from E3-07, the lock from E4-06), all sharing one rule: **the server's returned
+ * plan replaces the cached one.**
  *
  * Each endpoint answers with the whole updated jaarplan, so the cache is written directly rather than
  * invalidated-and-refetched. That matters for a drag: an invalidation leaves a render in which the card has
@@ -154,6 +156,22 @@ export function useVerplaatsPlaatsing(klasId: string) {
 /** Takes one thema out of its period (FR-7). Unrecoverable, so the UI confirms first. */
 export function useVerwijderPlaatsing(klasId: string) {
   return usePlanMutatie(klasId, (plaatsingId: string) => verwijderPlaatsing(klasId, plaatsingId));
+}
+
+/**
+ * Locks or unlocks one placement against (re)generation (E4-06, FR-8.4, Art. IX.3).
+ *
+ * Its own mutation rather than a flag on the status one, because the two are different decisions with different
+ * consequences: a status change records what the teacher thinks of the proposal, while the lock only says whether a
+ * later run may replace it. Sharing a hook would also share `isPending`, so a card would report "Bezig…" on the wrong
+ * control — E1-16's worst finding was exactly one boolean standing in for several distinct states.
+ */
+export function useWijzigVergrendeling(klasId: string) {
+  return usePlanMutatie(
+    klasId,
+    ({ plaatsingId, vergrendeld }: { plaatsingId: string; vergrendeld: boolean }) =>
+      wijzigPlaatsingVergrendeling(klasId, plaatsingId, vergrendeld),
+  );
 }
 
 /** Records a teacher decision on one placement; E3-07 uses it to reverse a rejection (Art. IV.2). */

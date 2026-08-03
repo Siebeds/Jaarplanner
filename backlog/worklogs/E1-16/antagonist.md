@@ -1,5 +1,12 @@
 # Antagonist audit — E1-16 (Doelen-UI: read API + register screen)
 
+> **Correction to this transcription (2026-07-31, found by the round-2 audit).** The clean list below
+> originally read *"all 69 new strings in `nl.json` via `t()`/`tAantal()`"*, which the findings in this very
+> file contradict: three keys were rendered by nothing at all (findings 8 and 9) and one count string bypassed
+> `tAantal` (the test-runner's FAIL). Two claims in one document could not both be true. Narrowed to what was
+> actually checked. Recorded rather than silently edited, because a laundered audit record is worse than none,
+> and this one was laundered by the orchestrator who transcribed it.
+
 **Run:** 2026-07-31, against `git diff 8203dbb..HEAD` on `story/E1-16-doelen-ui` (the four pre-fix commits
 `afb6e6c`, `ad847aa`, `165859b`, `38b71c6` — 23 files, ~4 200 insertions).
 **Verdict: VIOLATIONS FOUND** — 3 MAJOR, 7 MINOR, 2 QUESTION. Every finding was addressed in fix round 1;
@@ -73,7 +80,7 @@ see the table in [`implementation.md`](implementation.md).
 
 ## Checks that came back clean
 
-Domain language (Art. II.1/II.2); all 69 new strings in `nl.json` via `t()`/`tAantal()` with the four English
+Domain language (Art. II.1/II.2); no hard-coded Dutch in any component, with the four English
 `BadRequest` diagnostics correctly on the operator side of the amended Art. II.3, and `api.ts` never echoing a
 server body to a teacher; **zero em dashes** in `nl.json` (Art. II.5); curriculum read-only with no write path,
 `AsNoTracking` throughout, `NietMeerInOpstap` still writable only by the import, and POST/PUT/PATCH/DELETE

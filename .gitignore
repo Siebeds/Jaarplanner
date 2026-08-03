@@ -1,6 +1,15 @@
 # Transient agent worktrees (created by the build orchestrator)
 .claude/worktrees/
 
+# Live coordination state for parallel sessions (the groepschat: chat log, claims, session
+# files, BOARD.md). See .claude/skills/groepschat/SKILL.md, which IS tracked — the protocol is
+# project convention, the state is not. Deliberately ignored for two reasons: a chat log
+# committed across 8 concurrent branches would conflict on every append, and the durable record
+# already has homes (backlog/, backlog/worklogs/<story>/, docs/adr/). Always reach it by the
+# absolute path C:\source\Jaarplanner\.claude\coordination — worktrees sit below it, so a
+# relative path would give each worktree a private copy and coordinate nothing.
+.claude/coordination/
+
 # Local secrets / environment — never commit real credentials (Art. VI.4)
 .env
 .env.local

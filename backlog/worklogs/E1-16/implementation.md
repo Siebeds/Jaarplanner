@@ -186,8 +186,13 @@ What the browser showed, and what it found that 157 green tests had not:
    min-content width is its widest option, so a long discipline name could push the grid past the viewport.
    `min-w-0` per cell. Same defect shape as E3-06's 600px-wide period column.
 3. **390px layout.** One-column filters were taller than the phone viewport and pushed every doel below the
-   fold; a row spent a whole line on the jaar/fase. Two-column filters, jaar/fase on the code line: **9**
-   doelen visible instead of 6. The filters are now hidden at phone width while a doel is open, because
+   fold; a row spent a whole line on the jaar/fase. Two-column filters, jaar/fase on the code line: ~~**9**
+   doelen visible instead of 6~~ — **corrected 2026-07-31: the independent browser pass measured ~2.5 rows
+   above the fold at 390px, not 9.** The layout change is real and so is the direction (denser filters, denser
+   rows, more register per screen), but the figure was counted in a 390px-wide *iframe* 1 500px tall, which is
+   not a phone viewport: it counted rows that were rendered, not rows a teacher can see without scrolling. A
+   number quoted as evidence has to be measured the way the claim is worded. The filters are now hidden at
+   phone width while a doel is open, because
    there the detail replaces the list and they would act on something invisible; after that the whole doel
    fits on one phone screen.
 4. **Desktop:** 4 columns left "Jaar of fase" orphaned on a second row; now 5 at `xl`.
@@ -336,3 +341,96 @@ things depending on who ran them:
 - *Also unverified:* the "no curriculum imported" state still cannot be reached in a browser while the dev
   database holds rows; it rests on a frontend test. The 288 fabricated `-CHK-` rows are still in the local
   dev database (removal SQL above); nothing about them is in the repo.
+
+---
+
+## Round 2 (2026-07-31): both gates re-ran, and the fix round held
+
+The spend limit was lifted, so the two gates the section above says were missing have now run on the fixed code.
+
+- **`test-runner`: PASS**, and it did the **browser pass that had been missing all story**: with no Playwright
+  MCP server it drove Edge through the `playwright-core` in the local npx cache. Eight screenshots are committed
+  as `docs/ux/wireframes/e1-16-r2-*.png`. It confirmed the contrast figures that had rested on one pair of eyes,
+  reproduced the original 51-row plural repro (button now reads *"Laatste doel laden"*), proved the plural guard
+  fails under three separate mutations, and drove the empty-state fix with the facets forced to 500. It also ran
+  the **E1-15 × E1-16 combination** nobody had: fresh database → import → the register reads it back → a
+  re-import minus three rows → the *nakijken* marker visible on the row. Full detail in `test-report.md`.
+- **`antagonist`: VIOLATIONS FOUND (6 MINOR, 1 QUESTION), and the sentence that matters most:** *"no previously
+  reported finding is falsely claimed as fixed."* All three MAJORs, both QUESTIONs and the FAIL were verified
+  fixed in the code rather than read from this worklog.
+
+### The seven round-2 findings, all fixed here
+
+| Finding | Fix |
+|---|---|
+| `params.size > 0` gates the facets query, and `size` is Chrome 113 / Safari 17 / Firefox 112. Where it is undefined the facets are fetched **unfiltered**, silently restoring the "Natuur (3) that delivers nothing" defect an earlier round had already fixed | `params.toString().length > 0`, with the version floor and the failure mode written down. **The one the audit said not to waive**, and rightly: no test can see it (Node has `size`) and `tsc` accepts it, so it would surface only as a teacher's complaint |
+| A facets failure with a filter active rendered a narrowed register with **no chip, no "wis alle filters" and no visible filter at all** — the escape was the URL bar | `Doelenfilters` now takes `facetten` as optional and degrades: search field, chips and clear stay, the selects are omitted, and `doelen.keuzelijstenOnbeschikbaar` says which half is missing. Pinned by a test that fails without it |
+| The discipline chip read *"Discipline: 1"* while the select read *"Nederlands en communicatie (50)"*; for a teacher, "9.2" identifies nothing | The chip resolves the name from the facets, falling back to the number exactly where the select does (no `disciplines` row, or the degraded mode above). Pinned |
+| The facets comment claimed a measured-sounding "nine" statements; the method awaits **ten**, and three are `Distinct()` projections rather than grouped aggregates | Comment corrected, and the count is now **pinned by `Facetten_zijn_een_vast_aantal_statements`** rather than asserted in prose, because nothing was stopping it drifting again |
+| The paragraph explaining why `KlasNaam` stops a class-scoped link posing as school-wide sat **outside** its own `<summary>` (a stray close tag), so the rationale for the MAJOR-3 fix would not render in IntelliSense. `dotnet build`'s 0 warnings proved nothing: doc generation is off | Tags repaired |
+| Validation failures answered a **bare string** where every other endpoint and handler on this surface answers `ProblemDetails`. No teacher reads either form, but E1-13 would have had to parse two envelopes | `ProblemDetails` via the same `Probleemtitels.OngeldigeAanvraag` shape the sibling controllers use; the detail stays English as an operator diagnostic (Art. II.3 as amended) |
+| This worklog and the transcribed audit each carried an overstatement | Both corrected in place, marked, with the reason kept. See the strike-through at the 390px figure and the note at the top of `antagonist.md` |
+
+### Found while checking, and it is not E1-16's: E1-15 counts one link layer too few
+
+`OpstapImportService.KoppelingAantallenAsync` unions **three** layers (Themadoel, Subdoel, Activiteit) and omits
+`Thema.Doelsuggesties`, which shares the same `DoelKoppeling` mapping and the same `Restrict` FK. E1-16's detail
+counts **four**, which is what exposed it: the two stories disagree about the same doel (3 versus 4 links).
+
+Why it matters, in E1-15's own terms: that count is what decides whether a disappeared leerplandoel is treated as
+*still referenced by teacher content*. A doel referenced **only** by a thema-level AI suggestion counts as 0, so
+it is reported under `verdwenen` instead of `verdwenenMaarGekoppeld`, and `vereistReview` can stay false. The
+teacher is then **not told** that a suggestion they are about to accept points at a goal that has left Op.stap,
+which is precisely what Art. III.4's review report exists to say. With the opt-in purge enabled the same path
+attempts a delete that the FK refuses.
+
+**Not fixed here, deliberately.** It is another story's code, that story closed hours ago, and the fix needs its
+own test and its own gate rather than a drive-by edit inside an E1-16 branch. Filed in E1-15's backlog entry and
+reported to the owner. The root cause is worth naming: **two places define which layers hold a `DoelKoppeling`**,
+and the newer one is more complete. One definition, used by both, is the actual fix.
+
+> **Corrected in round 3, and the shape of the error is the lesson.** This analysis claimed three consequences
+> and **one was false**: `vereistReview` does *not* stay `false`, because it ORs `Verdwenen.Count > 0` and the
+> mis-bucketed code lands in `verdwenen`; nor is the row-level flag lost, since `ZetReviewVlag(…, true)` runs in
+> both branches, so the *nakijken* marker does appear. What holds is the other two: the report never discloses
+> that a disappeared goal is **still referenced** by a suggestion, and the opt-in purge really does hit the FK.
+> The false one was the loudest. Written while filing a finding *about* record accuracy, which is precisely when
+> it is easiest to overstate. Now owned by **E1-17** rather than living in a closed story's prose.
+
+---
+
+## Round 3 (2026-07-31): the fix round was itself audited, and five new MINORs came back
+
+A third pass over `08acb8c` alone, because this repo's record is that a fix answering an audit finding can carry
+its own defect. It confirmed the seven round-2 findings **genuinely and completely fixed**, and reproduced the
+orchestrator's mutation checks independently in a scratchpad copy rather than trusting them: reverting both fixes
+fails exactly the two new tests, and reverting either one fails exactly its own.
+
+Five new MINORs, all fixed here, **nothing waived**:
+
+1. **The corrected statement-count comment was still wrong, in the same way.** It said "five option sets, four
+   count aggregates and the unfiltered total" and "three `Distinct()` projections"; it is four option sets plus a
+   discipline-*name lookup*, and four `Distinct()` projections. The total (ten) was right and is test-pinned, so
+   the harm was bounded, but a comment written to fix an inaccurate decomposition shipped another one. **Twice is
+   the argument for the test**, and that is now what the comment says.
+2. **The page told the teacher the doelen could not be loaded while showing them.** `doelen.fout` is shared by
+   the list failure and the facets failure, so a facets-only failure rendered *"De doelen konden niet geladen
+   worden"* one element above the accurate line saying the *keuzelijsten* had failed: two messages for one fault,
+   the louder one false. And a test asserted both facts in the same body, so it pinned the contradiction. The
+   page-level alert is gone; the fault is reported once, in the panel, in the attentie language (9.37:1), where
+   the missing controls are. A genuine list failure still has its own alert inside `Doelenlijst`.
+3. **The filed E1-15 analysis overstated its consequence** (see the correction above).
+4. **The filed defect had no owner:** E1-15 stayed `[x]`, no story existed, the README row was unchanged, so the
+   work lived only inside a closed story's prose where nothing would ever surface it as next. Now **E1-17**, with
+   the README row and totals updated. E1-15's checkbox deliberately stays `[x]`: its criteria are met, and
+   pretending the whole story regressed would be as inaccurate as leaving the defect unowned.
+5. **A misleading indent** on the new `{facetten ? (` wrapper, which no gate can catch (there is no Prettier
+   here). Re-indented.
+
+*Not fixed, recorded:* the audit hit a **timing flake** on its first `pnpm test` run — one test timed out in the
+`lijst()` helper's default 1 000 ms `findBy` under load, and the second run was 189/189. Pre-existing, in a helper
+this story did not touch, but this story does add two tests to the heaviest file. If it recurs, raise the helper's
+timeout rather than re-running the suite: this repo has already paid twice for a gate that could not be trusted.
+
+*Final gates on `fix/e1-16-audit-2`:* `dotnet format` clean, **496 unit + 153 integration against real
+PostgreSQL, 0 failed, 0 skipped**, **189 frontend tests / 12 files**, lint and build clean.

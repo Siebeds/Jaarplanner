@@ -177,6 +177,39 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         Assert.Equal(statementsKlein, statementsGroot);
     }
 
+    /// <summary>
+    /// The facets endpoint issues a <b>fixed</b> number of statements, whatever the curriculum's size — the
+    /// property that matters on a table meant to hold every Op.stap goal, since this is fetched on every
+    /// filter change.
+    /// <para>
+    /// Added 2026-07-31 after an audit found the count documented in a comment as "nine" while the method
+    /// awaited ten round trips. The point is not the number: it is that nothing was pinning it, so it could
+    /// drift again the moment a facet was added. Asserting equality across two filters of very different
+    /// sizes is what proves independence from the row count; the absolute value catches a new round trip.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Facetten_zijn_een_vast_aantal_statements()
+    {
+        var teller = new CommandTeller();
+        await using var context = MaakGeteldeContext(teller);
+        var query = new LeerplandoelenQuery(context);
+
+        teller.Aantal = 0;
+        var klein = await query.HaalFacettenAsync(new LeerplandoelFilter(Zoekterm: "seizoenen"));
+        var statementsKlein = teller.Aantal;
+
+        teller.Aantal = 0;
+        var groot = await query.HaalFacettenAsync(new LeerplandoelFilter());
+        var statementsGroot = teller.Aantal;
+
+        Assert.True(
+            klein.TotaalAantalDoelen == groot.TotaalAantalDoelen,
+            "the unfiltered total must stay unfiltered — it is what tells 'nothing imported' from 'filtered to nothing'");
+        Assert.Equal(10, statementsKlein);
+        Assert.Equal(statementsKlein, statementsGroot);
+    }
+
     // ── clause 2: search and filters ─────────────────────────────────────────────────────────────────
 
     /// <summary>

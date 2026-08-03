@@ -932,3 +932,188 @@ groepschat: if you gate in parallel, give one agent the suite or give them separ
   picker to point at. That sentence no longer renders for a rejected card, so **whoever rebases must re-read E4-06's
   `slotUitleg` comment against this change** (the behaviour it describes is what this round fixed; the comment's premise
   is now stale). This branch was **not** merged, rebased or pushed, per the brief.
+
+---
+
+## Merge round — `origin/main` (`61457bc`, 28 commits) into `story/E3-08-zoomniveaus`
+
+Not a build round: no new behaviour is intended here. The point is that the gates that matter are the ones on the
+tree that **lands**, not on this branch as it stood (the E1-15 precedent, and the test-runner asked for it
+explicitly). Merge base `0de4851`; second parent `61457bc`. **Not pushed.** No backlog checkbox touched, and
+`backlog/README.md` deliberately untouched: main already carries E4-06's own bookkeeping.
+
+### What landed on main while E3-08 was being built
+
+E4-06 closed (the vergrendeling switch, FR-8.4) and **rewrote `Themakaart.tsx`** around a `slotUitleg` derivation.
+The owner also **reopened E3-07 to `[~]`** for the stale-rejected-card defect. Everything auto-merged except two
+files, both of them the ones this worklog predicted would conflict.
+
+> **Main moved again mid-merge, and this merge deliberately did not follow it.** The technical lead posted at 13:18
+> that `main` went `61457bc` to `efecf73` (three commits, owner-authorised, **not pushed**) and advised merging onto
+> `efecf73`. `git merge` was already in progress with `MERGE_HEAD = 61457bc`, so aborting to re-target would have
+> thrown away a resolved semantic conflict to gain nothing: the lead's own `--stat` shows those three commits touch
+> only `CLAUDE.md`, `assets/` and `backlog/README.md`. No source, no tests, no `nl.json`. They cannot change a
+> conflict resolution or a gate number here, and whoever merges E3-08 picks them up for free. Recorded so this is
+> not read as a missed merge.
+
+### Conflict 1 — `frontend/src/features/jaarplan/Themakaart.tsx` (semantic, not just textual)
+
+Two hunks, and the second is the interesting one.
+
+**Hunk A, the `Bewerkpaneel` doc comment.** Both sides rewrote its opening sentence. Main's is a strict superset:
+it adds the lock to the list of things the panel does. Resolution: **keep main's sentence** (with *periode* changed
+to *themaperiode*, see conflict 2) and keep **this branch's `HERPLAATSUITLEG` block** immediately above it. Nothing
+was chosen over anything; the two edits were to adjacent concerns that a line-based merge could not see apart.
+
+**Hunk B, the top of the panel's JSX.** Main added a panel-level `role="status"` `sr-only` paragraph that announces
+a *successful* lock (WCAG 2.2 SC 4.1.3), and rendered `kalender.herplaatsKies` **unconditionally** for a stale card.
+Round 3 of this story replaced that unconditional line with `HERPLAATSUITLEG[verplaatsstaat]` gated on
+`!isGeweigerd`. Both intents are kept: the announcement paragraph is preserved verbatim, and the re-placement line
+below it is this branch's three-state version. `Bewerkpaneel`'s DOM is otherwise unchanged, as it has been all story.
+
+**The comment whose premise the merge falsified.** E4-06's `toonSlot` doc comment justified saying nothing about
+re-placement with: *"`kalender.herplaatsKies` already stands at the top of this panel, and on a stale **rejected**
+card that instruction has no picker to point at."* After this merge **both halves are false**: the line at the top
+is one of *three*, and only the coarse tier gets `herplaatsKies`; and a rejected card gets no re-placement line at
+all. Per this repo's rule, applied twice already in this story, the comment was **corrected rather than deleted or
+replaced with a vaguer one** — it now names what is actually the case, including *why the conclusion still holds*:
+repeating *"kies een periode"* there would **contradict** the line above it at the fine tier rather than merely
+duplicate it, and a rejected card never reaches that sentence anyway because `slotUitleg` tests `isGeweigerd` first
+and hands it `vergrendelUitlegGeweigerdVast`, whose remedy button sits directly below.
+
+The `Verplaatsstaat` union and its **two exhaustive `Record`s** survive intact. That is the property worth
+preserving: the compiler still refuses a fourth board state that has no sentence of its own, which is the defect
+class round 3 was written against.
+
+### Conflict 2 — `frontend/src/i18n/nl.json`
+
+One textual conflict, on `kalender.weigeringUitleg`, which both sides rewrote for different reasons: main gave it
+E4-06's regeneration fact (owner ruling, 2026-07-31), this branch changed *periode* to *themaperiode*. Resolution:
+**main's full sentence with this branch's terminology**. Neither edit is dropped.
+
+- `kalender.indelingUitleg` **stays deleted**. It was dead before this story and main did not resurrect it.
+- **Art. II.4, the synonym check.** The auto-merged part of main's hunk brought in
+  `kalender.vergrendelUitlegVervallen` reading *"het staat in geen enkele **periode**"*. This story renamed that
+  concept to *themaperiode* everywhere precisely so the fine tier is not ambiguous, so E4-06's new string landed as
+  a **second name for one thing** in the same catalogue. Art. II.4 says extend the glossary rather than invent
+  synonyms, so the one word was changed and E4-06's sentence is otherwise untouched. This is a merge-integration
+  fix, not a copy rewrite.
+- **Left alone, deliberately:** `kalender.teVolUitleg` and `kalender.wordtTeVol` still say bare *periode*. Both are
+  pre-existing base strings that **neither side of this merge touched**, and they belong to E3-09, which already
+  owns the te-vol copy (recorded as MINOR-E above). Changing them inside a merge commit would be scope creep.
+
+After resolution: `nl.json` parses, 110 `kalender` keys.
+
+### The question nobody was allowed to assume: does E3-07's defect survive the merge?
+
+**Answer: it is gone at both tiers.** Determined **empirically in a browser on the merged tree**, not reasoned from
+the diff.
+
+E3-07 was reopened because on a stale **rejected** card the panel read *"Kies hieronder een themaperiode … of
+versleep de kaart"* and, one paragraph later, *"Dit thema is geweigerd, dus je kan het niet verplaatsen"*, with no
+picker and no grip. Round 3 removed the re-placement instruction for a rejected card **at both tiers**, which is the
+coarse-tier half of that defect, so the merged tree had to be measured rather than argued about.
+
+**Environment** (ports claimed and released, session `E3-08`): api **5471**, vite **5472**, CDP **9471**. **No
+rewriting proxy this time** — unlike round 3, both tiers are reachable from a healthy API through the
+Weergaveschakelaar, so nothing had to be faked. Headless Chrome over CDP (this repo has no Playwright), against the
+real API and real PostgreSQL. `ASPNETCORE_URLS` alone is **not** enough to move the API's port:
+`launchSettings.json` wins, so `--no-launch-profile --urls` is required (the first attempt silently bound 5184).
+
+**Demo data**, declared in the groepschat before the write and restored after: `fc89b501` *Zomer en vakantie*
+`2027-04-19 / Manueel` to `2027-04-20 / Geweigerd` (nothing in the UI sets `Geweigerd`), and `dddc1c97` *Verkeer*
+`2027-01-04` to `2027-01-05`, `Manueel`, which is the **non-rejected control**. The recorded baseline was
+byte-identical to round 3's, which is evidence that round 3's restore was honest.
+
+| state | what a teacher actually reads | picker | grip |
+|---|---|---|---|
+| `Geweigerd` x stale, **coarse** | *"Dit thema is geweigerd, dus je kan het niet verplaatsen. Draai hieronder eerst de weigering terug."* + `weigeringUitleg`, then the **Weigering terugdraaien** button | none | none |
+| `Geweigerd` x stale, **fine** | **identical**, verbatim: none of the three re-placement sentences | none | none |
+| control `Manueel` x stale, coarse | `herplaatsKies` + a picker listing **7** themaperiodes + the grip glyph | yes | yes |
+| control `Manueel` x stale, fine | *"Een themaperiode kiezen voor dit thema kan in de weergave “Themaperiodes”."* | none | none |
+
+So the contradiction is gone: the only sentence left on a rejected card is the one that is true, and the control it
+points at (*Draai hieronder eerst de weigering terug* leads to **Weigering terugdraaien**) is on the same screen at
+both tiers. The control card proves the suppression is scoped to the rejection rather than blanket: `herplaatsKies`
+and the picker still appear where they can be honoured, and the promise the fine tier makes is keepable, because the
+named view really does hold the picker.
+
+**One observation, not a defect.** The remedy on a rejected stale card is two steps (reverse the rejection, *then*
+choose a themaperiode) and only the first is named, carried by *"eerst"*. That is round 3's deliberate design and it
+reads correctly; it is recorded because it is the kind of thing a reviewer will ask about.
+
+**What this does NOT do.** It does not close E3-07, and **E3-07's checkbox was not touched**. A side effect is not a
+verified story: this measured one reopened symptom on one screen, not E3-07's own acceptance criteria, and the
+ruling on the owner's own story is the owner's. The evidence is offered; the decision is not taken.
+
+**Also verified in the browser, because this merge rewrote the JSX that carries it:** E4-06's lock switch still
+works end to end on the merged tree. *Vastzetten* flips the sentence to `vergrendelUitlegVast`, the persisted flag
+comes back from the API, and the `role="status"` region from main's conflict hunk fires with *"“Ik en mijn klas”
+staat nu vast."*; *Losmaken* returns it. Set and undone through the UI, so the check left no residue of its own.
+(The screenshot probe's crude `textContent.includes('Vast')` also matches the word *Vastzetten*, so **no claim is
+made here about the "Vast" badge** — the button-label flip, the sentence flip and the announcement are the evidence.)
+
+**390px** (an exactly-390px iframe, since headless `--window-size` clamps to ~504px): `innerWidth 390`,
+`documentElement.scrollWidth 390`, **no document overflow**, panel open and wrapping, still no picker. The parent
+frame must be **same origin** as the iframe or `contentDocument` is `null` — an `about:blank` parent has an opaque
+origin, which is worth writing down because it fails as if the app were broken.
+
+**Restored, verified twice:** by DB query *and* by `GET /api/klassen/{id}/jaarplan` (6 placements, `isVervallen` 0,
+`Geweigerd` 0, `vergrendeld` 0, all six dates and statuses back at baseline). Kept startthema still
+`2026-11-09 / Licht en donker`. All ports verified free by `netstat`.
+
+**Screenshots** (six, `md5sum merge-*.png | sort | uniq -w32 -D` prints nothing):
+
+| file | the claim it carries |
+|---|---|
+| `merge-1-grof-geweigerd-vervallen.png` | **coarse: E3-07's contradiction is gone**, one true sentence and its button |
+| `merge-2-fijn-geweigerd-vervallen.png` | **fine: identical, no re-placement sentence at all** |
+| `merge-3-controle-grof-picker-aanwezig.png` | control: the picker with 7 themaperiodes, and the grip |
+| `merge-4-controle-fijn-verwijst-naar-grof.png` | control: the fine tier's promise, which the coarse tier keeps |
+| `merge-5-390-geweigerd.png` | 390px, no overflow |
+| `merge-6-e4-06-slot-werkt-na-merge.png` | E4-06's lock still works after the JSX rewrite |
+
+### Gates, on the merged tree
+
+Run **alone** in this worktree (two concurrent vitest runs on one `node_modules/.vite` cost this story an
+unexplained QUESTION earlier; nobody else was in the worktree).
+
+| gate | result |
+|---|---|
+| `corepack pnpm lint` (`eslint . --max-warnings 0 && tsc --noEmit`) | **exit 0**, no output |
+| `corepack pnpm vitest run` | **224 passed / 224, 12 files**, 0 failed, 0 skipped |
+| `corepack pnpm build` | **exit 0**, built in 4.54s |
+
+**The vitest delta is +18 on the pre-merge 206/206, and all 18 came from main.** Accounted for exactly, none of it
+from this resolution:
+
+| file | delta | source |
+|---|---|---|
+| `Jaarplankalender.test.tsx` | **+14** (10 plain, plus two new 2-row `it.each` blocks at lines 908 and 949) | E4-06 |
+| `DoelenPagina.test.tsx` | **+2** | E1-16 |
+| `i18n/catalogus.test.ts` | **+2** (E4-06's `kalender.vergrendel*` hergeneratie family guard) | E4-06 |
+
+**Backend: the old no-change check is now invalid, and this is the replacement.** `git diff --stat 0de4851..HEAD --
+backend/` was the check up to round 3; after the merge it is non-empty for a reason that has nothing to do with
+E3-08, because main's 28 commits contain backend work. Two checks were used instead, both empty:
+
+- `git diff --stat origin/main...HEAD -- backend/` (**three dots**, merge base `0de4851`): empty. **E3-08 itself
+  contributes no backend change**, which is what this story has claimed since round 1.
+- `git diff --stat origin/main -- backend/` against the merged working tree: empty. **The merged tree's backend is
+  byte-identical to `origin/main`'s**, and likewise for `global.json`, `*.sln` and `docker-compose.yml`.
+
+**`dotnet test` was therefore not run, and that is a stated conclusion rather than an omission.** With a zero-byte
+backend delta against `origin/main`, a run here would re-verify `61457bc`, whose backend gates E4-06 already passed
+(496 unit + 154 integration). The backend *was* exercised, in the way that actually matters for this merge: the
+merged frontend drove the real API against real PostgreSQL through every path above, including two writes
+(vergrendeling set and undone) that persisted and read back.
+
+### Still open after the merge
+
+- Everything in round 3's open list still stands: **MINOR-3**, **QUESTION-B**, the generation-tier grid's silent
+  stale state, and E3-09's inherited **MINOR-E** plus the three te-vol strings (two of which are the bare-*periode*
+  strings named above).
+- **E3-07's status is the owner's call.** The evidence above says its reopened symptom is gone at both tiers on this
+  tree; nothing here verifies the rest of E3-07, and its checkbox is untouched.
+- **The merge is committed on `story/E3-08-zoomniveaus` and NOT pushed.** Whoever merges it onward will also pick up
+  main's `efecf73` (three doc/asset commits) for free.
