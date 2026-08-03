@@ -902,9 +902,17 @@ viewport, via `Emulation.setDeviceMetricsOverride`. (In that shot the skipped co
 sitting untracked in `fix-3/` when I arrived, presumably from the round-3 verification pass. I did not commit them,
 because they are not my evidence to vouch for; the orchestrator may want to.
 
-**Mixed case not on screen.** With no thema-beheer UI there is no way to put a thema into the both-levers state
-through the product, and the API refuses a fourth themadoel by design. `Themadoelcap_noemt_beide_hefbomen...`
-covers it in xUnit. Stated rather than left to look green.
+**Mixed case not on screen — and the reason given here was wrong. Corrected 2026-08-03 by the round-4 audit.**
+This section claimed there was "no way to put a thema into the both-levers state through the product". That is
+false, and the auditor reached the state with the import screen alone: `DemoDataSeeder` gives every demo thema
+two `Manueel` themadoelen, so importing this round's own B-file **twice** in Bijwerken yields
+`(bezetDoorBestand=1, bezetDoorBeslissing=2)` and the mixed notice renders. So the branch this round called the
+easiest one to get wrong was **one extra click** away from a browser pass that had already loaded that exact file
+and thema.
+What stays true: the state is covered in xUnit by `Themadoelcap_noemt_beide_hefbomen...`, so the behaviour is
+proven and only this record was wrong. The lesson is narrower and more useful than "no UI exists": **when a case
+looks unreachable, try repeating the action you just performed.** A second identical import is not an exotic
+input; it is what a teacher does after fixing one row.
 
 ### 5. Gates, measured on this tree (code commit `06437b5`)
 
