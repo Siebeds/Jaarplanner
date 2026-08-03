@@ -1,6 +1,10 @@
+using Jaarplanner.Application.Ai;
+using Jaarplanner.Application.Planning;
+using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
+using Jaarplanner.Infrastructure.Planning;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
@@ -179,6 +183,107 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
                 .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
                 .SingleAsync();
             Assert.Equal(2, aantal);
+        }
+    }
+
+    /// <summary>
+    /// <b>E4-06 / FR-8.4, on the real stack: a locked placement survives a full regeneration while an unlocked
+    /// proposal beside it is replaced.</b>
+    /// <para>
+    /// The unit suite already pins the rule in <c>JaarplanGeneratieServiceTests.Hergeneratie_behoudt_vergrendelde_en_besliste_plaatsingen</c>,
+    /// against a fake storage port that models no EF at all, and <c>JaarplanEndpointsTests.Beslissing_en_vergrendeling_overleven_een_herlaad</c>
+    /// drives the endpoints over the in-memory provider. Neither proves this. The fake keeps the aggregate in a field,
+    /// so "the placement survived" cannot fail there; and the endpoint test locks a placement it has <i>also</i> accepted
+    /// and then regenerates with an <b>empty</b> AI answer, so <see cref="Themaplaatsing.Vergrendeld"/> is not the
+    /// variable under test in either direction: the placement would have survived on its status alone, and nothing was
+    /// proposed that could have displaced it.
+    /// </para>
+    /// <para>
+    /// So this test isolates the flag. Both placements are <c>Voorgesteld</c> and differ <b>only</b> in the lock, and the
+    /// model answers with a real plan, so the run genuinely discards one of the two. And it runs against real Postgres
+    /// because the discard is a removal from an <i>owned collection</i>: the in-memory provider can accept that with no
+    /// DELETE ever reaching a table, which is the exact class of defect this file exists for. Asserted on the rows, not
+    /// only on the aggregate.
+    /// </para>
+    /// <para>
+    /// <b>Full regeneration only.</b> Per-period regeneration is E4-05 and does not exist — <c>GenereerAsync</c> takes no
+    /// period scope — so nothing here claims the partial half of FR-8.4.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_vergrendeld_voorstel_overleeft_een_volledige_hergeneratie()
+    {
+        var (klasId, vastThemaId, losThemaId, losThemaNaam) = await SeedTweeThemasAsync();
+        var blokken = Blokken(await LaadSchooljaarAsync(klasId));
+        Guid vastId;
+        Guid losId;
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = new Jaarplan(klasId);
+
+            // The two differ in ONE bit. Same status, same tier, both AI proposals.
+            var vast = jaarplan.VoegPlaatsingToe(
+                vastThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Voorgesteld, "vastgezet");
+            vast.StelVergrendelingIn(true);
+
+            var los = jaarplan.VoegPlaatsingToe(
+                losThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Voorgesteld, "los voorstel");
+
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+            vastId = vast.Id;
+            losId = los.Id;
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // The production service on the production storage port; only the model is stubbed (Art. IV.6). It proposes
+            // the loose thema in a THIRD period, so the run has something to place and something to discard.
+            var service = new JaarplanGeneratieService(
+                new VastAntwoordAiClient(
+                    $$"""
+                    {"plaatsingen":[{"blokStart":"{{blokken[2].Start:yyyy-MM-dd}}","thema":"{{losThemaNaam}}","motivatie":"nieuw voorstel"}]}
+                    """),
+                new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
+                new EfJaarplanOpslag(context));
+
+            var resultaat = await service.GenereerAsync(klasId);
+
+            Assert.True(resultaat.IsGeslaagd);
+            Assert.Equal(1, resultaat.AantalNieuw);
+
+            // Exactly one placement was kept, and exactly one was thrown away — the lock is the only reason either way.
+            Assert.Equal(1, resultaat.AantalBehouden);
+            Assert.Equal(1, resultaat.AantalVervangen);
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
+
+            // The locked one is untouched: same id, same period, still locked, still carrying its motivation.
+            var vast = jaarplan.VindPlaatsing(vastId);
+            Assert.NotNull(vast);
+            Assert.Equal(blokken[0].Start, vast!.BlokStart);
+            Assert.True(vast.Vergrendeld);
+            Assert.Equal(KoppelingStatus.Voorgesteld, vast.Status);
+            Assert.Equal("vastgezet", vast.AiMotivatie);
+
+            // The unlocked twin is gone, and gone from the TABLE — an owned element dropped from its parent's backing
+            // list is exactly what the in-memory provider can appear to accept without issuing a DELETE.
+            Assert.Null(jaarplan.VindPlaatsing(losId));
+            var overlevendeIds = await context.Database
+                .SqlQueryRaw<Guid>("""SELECT "Id" AS "Value" FROM themaplaatsingen""")
+                .ToListAsync();
+            Assert.Contains(vastId, overlevendeIds);
+            Assert.DoesNotContain(losId, overlevendeIds);
+
+            // And the run's own proposal landed, as an unlocked `voorgesteld` one (Art. IV.1/IV.2).
+            var nieuw = Assert.Single(jaarplan.Plaatsingen, p => p.Id != vastId);
+            Assert.Equal(blokken[2].Start, nieuw.BlokStart);
+            Assert.False(nieuw.Vergrendeld);
+            Assert.Equal(KoppelingStatus.Voorgesteld, nieuw.Status);
         }
     }
 
@@ -467,5 +572,54 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         await context.SaveChangesAsync();
 
         return (klas.Id, thema.Id, schooljaar.Start);
+    }
+
+    /// <summary>
+    /// Seeds a school year, a class inside it and <b>two</b> thema's, and returns the loose one's <i>name</i> as well as
+    /// its id: the generation contract keys a proposal on the thema name (never an id, which no model can know), so the
+    /// stubbed answer below has to speak that name. Names carry a guid because thema names are unique school-wide.
+    /// </summary>
+    private async Task<(Guid KlasId, Guid VastThemaId, Guid LosThemaId, string LosThemaNaam)> SeedTweeThemasAsync()
+    {
+        await using var context = _db.MaakContext();
+
+        var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("slot"));
+        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", leerjaar: 3);
+        context.Schooljaren.Add(schooljaar);
+
+        var vast = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);
+        var los = new Thema($"Water-{Guid.NewGuid():N}", duurWeken: 4);
+        context.Themas.AddRange(vast, los);
+
+        await context.SaveChangesAsync();
+
+        return (klas.Id, vast.Id, los.Id, los.Naam);
+    }
+
+    /// <summary>Reloads the class's school year with its closures, so the derived grid matches what the service sees.</summary>
+    private async Task<Schooljaar> LaadSchooljaarAsync(Guid klasId)
+    {
+        await using var context = _db.MaakContext();
+        var klas = await context.Klassen.SingleAsync(k => k.Id == klasId);
+
+        return await context.Schooljaren
+            .Include("_sluitingen")
+            .SingleAsync(s => s.Id == klas.SchooljaarId);
+    }
+
+    /// <summary>The same configured grid seam the API resolves, so the test never hard-codes a period boundary.</summary>
+    private static IReadOnlyList<Planningsblok> Blokken(Schooljaar schooljaar) =>
+        new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions())
+            .Blokken(schooljaar, Planningsblokniveau.Themaperiode);
+
+    /// <summary>A model stand-in that always answers the same canned completion: no network (Art. IV.6).</summary>
+    private sealed class VastAntwoordAiClient : IAiClient
+    {
+        private readonly string _antwoord;
+
+        public VastAntwoordAiClient(string antwoord) => _antwoord = antwoord;
+
+        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new AiCompletion { Content = _antwoord });
     }
 }
