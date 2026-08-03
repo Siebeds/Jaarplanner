@@ -11,6 +11,9 @@
 - [ ] **E4-01 — Immediate persistence + live coverage reflection**
   Every manual change (move/add/remove) saves immediately and is reflected in the dekkingsoverzicht.
   *Done when:* a drag or edit updates persistence and coverage without a manual save. Ref: FR-6.5, FR-7.
+  > **The coverage half is no longer blocked (2026-08-03, E5-01 closed), and it turns out to be mostly already satisfied.** It was recorded as "de facto blocked on E5, which is not built at all". Dekking now exists and is **computed on every read** with no cache and no invalidation step (Art. V.1), which is precisely what "reflected without a manual save" requires: a drag persists, and the next dekking read already accounts for it. There is nothing to wire up and no recalculation to trigger. **What is left for this story is to prove it end to end** — move a placement, then assert the coverage figure changed — and to decide what "reflected in the dekkingsoverzicht" means while **no dekkingsoverzicht screen exists** (E5-02/E5-03). Do not mark the screen half done on the strength of the API.
+  > *One interaction worth knowing about:* a drag sets the placement to `manueel` (`Themaplaatsing.VerplaatsNaar`), and `manueel` **counts** for dekking. So dragging a `voorgesteld` thema raises the coverage figure as a side effect of the move. That is correct under Art. V.1 and it is also a real behaviour a teacher will notice, so it belongs in whatever copy this story or E4-02 writes.
+  > *And the standing obligation from E4-06 still stands:* this story and E4-02 must build the **accept affordance**. Until one exists, a teacher cannot move a placement off `voorgesteld` except by dragging it, which means the only route to any dekking at all is a drag.
 
 - [ ] **E4-02 — Override any AI suggestion**
   Anything proposed by AI can be manually overwritten; status moves to `manueel`.

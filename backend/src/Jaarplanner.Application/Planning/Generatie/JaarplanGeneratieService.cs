@@ -46,7 +46,7 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// path, precisely so E4-04/E4-05 inherit it rather than having to add it.
 /// </para>
 /// </summary>
-public sealed class JaarplanGeneratieService
+public sealed class JaarplanGeneratieService : IJaarplanLezer
 {
     /// <summary>
     /// The tier a generated thema is placed on. A thema runs 4–6 weeks (Art. IX.2/IX.3), which is exactly the
