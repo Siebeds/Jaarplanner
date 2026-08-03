@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ClosedXML.Excel;
+using Jaarplanner.Api.Infrastructure;
+using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -389,6 +391,67 @@ public sealed class OpstapImportEndpointsTests : IAsyncLifetime
         Assert.Equal("De leerling telt tot 20.", doel.Tekst);
     }
 
+    /// <summary>
+    /// <b>The two 409s can be told apart on the wire (E1-13 fix round 1).</b> They share a status and a
+    /// <c>title</c>, so a screen keying on either has to frame both the same way, and E1-13 did: it printed
+    /// "the application cannot read this file yet" two lines above the server's own "check whether this file
+    /// belongs to discipline N". One of those two sentences is always wrong.
+    /// <para>
+    /// Asserted over HTTP rather than on the handler, because what matters is that the discriminator survives
+    /// <c>IProblemDetailsService</c> — which fills <c>type</c> in from the status code when nobody set it, and
+    /// would silently give both refusals the same RFC URI.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task De_twee_409_weigeringen_zijn_van_elkaar_te_onderscheiden()
+    {
+        var client = _factory.CreateClient();
+        await Upload(Werkboek(Rij("WIS-1")), client: client);
+
+        var ontbrekend = await Verstuur(
+            client,
+            "/api/opstap-import/voorbeeld",
+            Werkboek(Rij("WIS-2", doelsoort: "MD", leeftijdMd: "4-", nummerMd: "12")),
+            Discipline);
+        var andereDiscipline = await Verstuur(
+            client, "/api/opstap-import/voorbeeld", Werkboek(Rij("WIS-1")), disciplineNummer: "3");
+
+        Assert.Equal(HttpStatusCode.Conflict, ontbrekend.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, andereDiscipline.StatusCode);
+
+        // One read per response: the body is a stream and reading it twice throws.
+        var ontbrekendProbleem = await ontbrekend.Content.ReadFromJsonAsync<JsonElement>();
+        var andereProbleem = await andereDiscipline.Content.ReadFromJsonAsync<JsonElement>();
+
+        // Same title, different type. The title is user-facing Dutch, so it is deliberately NOT the
+        // discriminator: branching a screen on Dutch prose is what this fix exists to avoid.
+        Assert.Equal(
+            ontbrekendProbleem.GetProperty("title").GetString(),
+            andereProbleem.GetProperty("title").GetString());
+        Assert.Equal(
+            Probleemsoorten.OpstapOntbrekendeMinimumdoelen,
+            ontbrekendProbleem.GetProperty("type").GetString());
+        Assert.Equal(
+            Probleemsoorten.OpstapCodeInAndereDiscipline,
+            andereProbleem.GetProperty("type").GetString());
+    }
+
+    /// <summary>
+    /// Every refusal carries a discriminator, so a new <see cref="OpstapImportFoutSoort"/> member fails here
+    /// rather than silently falling back to the framework's status-derived URI on a screen that then shows the
+    /// frame claiming nothing.
+    /// </summary>
+    [Fact]
+    public void Elke_weigeringssoort_heeft_een_eigen_type_uri()
+    {
+        var uris = Enum.GetValues<OpstapImportFoutSoort>()
+            .Select(Probleemsoorten.VoorOpstapImport)
+            .ToList();
+
+        Assert.DoesNotContain(null, uris);
+        Assert.Equal(uris.Count, uris.Distinct(StringComparer.Ordinal).Count());
+    }
+
     [PostgresFact]
     public async Task Zonder_disciplinenummer_geeft_400()
     {
@@ -443,6 +506,7 @@ public sealed class OpstapImportEndpointsTests : IAsyncLifetime
 
     private static async Task<string> Detail(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString()!;
+
 
     private static string[] Codes(JsonElement array) =>
         array.EnumerateArray().Select(c => c.GetString()!).OrderBy(c => c, StringComparer.Ordinal).ToArray();

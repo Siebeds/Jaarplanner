@@ -6,6 +6,7 @@ import { NietGevondenPagina } from "./app/NietGevondenPagina";
 import { JAARPLAN_PAD } from "./app/routes";
 import { Doeldetail } from "./features/doelen/Doeldetail";
 import { DOEL_DETAIL_PAD, DoelenPagina } from "./features/doelen/DoelenPagina";
+import { ImportPagina } from "./features/import/ImportPagina";
 import { DoelsuggestieReview } from "./features/matching/DoelsuggestieReview";
 import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
 
@@ -18,7 +19,7 @@ import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
  * The remaining `BinnenkortPagina` routes exist so the §3 information architecture is visible and clickable
  * without pretending to work; the nav marks them "nog niet beschikbaar". Keep these paths in step with
  * `app/routes.ts`, which is what the navigation renders from. **E1-16** replaced `/doelen`'s placeholder with
- * the real register, so `routes.ts` flips that entry to `isGebouwd`.
+ * the real register and **E1-13** replaced `/import`'s, so `routes.ts` flips both entries to `isGebouwd`.
  *
  * `DoelsuggestieReview` is mounted at `/themas` because reviewing a thema's AI-suggested goals is where it
  * belongs in the IA. It still asks for a thema-id by hand: replacing that with a real thema list is
@@ -44,7 +45,7 @@ function App() {
             <Route path={DOEL_DETAIL_PAD} element={<Doeldetail />} />
           </Route>
           <Route path="/dekking" element={<BinnenkortPagina uitlegKey="binnenkort.dekking" />} />
-          <Route path="/import" element={<BinnenkortPagina uitlegKey="binnenkort.import" />} />
+          <Route path="/import" element={<ImportPagina />} />
           <Route path="/beheer" element={<BinnenkortPagina uitlegKey="binnenkort.beheer" />} />
           <Route path="*" element={<NietGevondenPagina />} />
         </Route>

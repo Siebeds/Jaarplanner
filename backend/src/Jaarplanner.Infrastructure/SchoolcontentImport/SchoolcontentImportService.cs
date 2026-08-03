@@ -60,7 +60,12 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                 activiteiten: [],
                 bedreigdeBeslissingen: [],
                 overgeslagen: true,
-                opmerkingen: ["Geen geldige rijen ingelezen — niets geïmporteerd (bestand mogelijk leeg, onvolledig of verkeerd)."]);
+                // Rewritten without an em dash (Art. II.5) now that E1-13 puts this notice on a screen. The
+                // sentence was split rather than having the character deleted, which the rule requires.
+                opmerkingen: [
+                    "Er zijn geen bruikbare rijen ingelezen, dus er is niets geïmporteerd. " +
+                    "Het bestand is misschien leeg of onvolledig, of het is niet het juiste bestand."
+                ]);
             return new SchoolcontentImportResultaat(notice, toegepast: false);
         }
 
@@ -185,7 +190,8 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                 // 500 instead of reporting (in the spirit of ADR-0006 §4). Running it in both passes —
                 // not only under `toepassen` — keeps the documented "preview == commit" guarantee true.
                 var alleCodes = VerzamelThemadoelCodes(themaGroep, codeControle);
-                var (codes, capOpmerking) = PasThemadoelCapToe(themaNaam, reedsAanwezig: 0, alleCodes);
+                var (codes, capOpmerking) = PasThemadoelCapToe(
+                    themaNaam, bezetDoorBestand: 0, bezetDoorBeslissing: 0, alleCodes);
                 if (capOpmerking is not null)
                 {
                     opmerkingen.Add(capOpmerking);
@@ -220,10 +226,17 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         // the file is imported; the curriculum is never touched (Art. III).
         if (codeControle.Onbekend.Count > 0)
         {
+            // No em dash (Art. II.5) and no "(s)" plural dodge, both of which E1-13 would have put on a
+            // teacher's screen. Dutch inflects the noun and the verb, so the count picks the sentence; the
+            // frontend cannot do it here because only this layer knows the codes.
+            var aantal = codeControle.Onbekend.Count;
+            var opsomming = string.Join(", ", codeControle.Onbekend);
             opmerkingen.Add(
-                $"{codeControle.Onbekend.Count} onbekende leerplandoelcode(s) overgeslagen — deze bestaan " +
-                "niet in de ingelezen Op.stap-doelen: " + string.Join(", ", codeControle.Onbekend) +
-                ". Controleer de codes of importeer eerst de betreffende discipline.");
+                (aantal == 1
+                    ? "1 leerplandoelcode uit dit bestand is overgeslagen. Deze code staat niet in de "
+                    : $"{aantal} leerplandoelcodes uit dit bestand zijn overgeslagen. Deze codes staan niet in de ") +
+                $"ingelezen Op.stap-doelen: {opsomming}. " +
+                "Controleer de codes, of laad eerst de discipline in waar ze bij horen.");
         }
 
         return new SchoolcontentImportDiff(
@@ -264,9 +277,15 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
 
             if (!klasPerNaam.TryGetValue(sleutel.Klas, out var klas))
             {
+                // A subthema is class-scoped (Art. IX.2), so an unresolvable klas means the row cannot be
+                // placed at all. The Dutch says what happened and what to do; the article reference lives
+                // here in the comment, because a teacher cannot act on "Art. IX.2" (Art. II.3) — the same
+                // audience mixing E1-15 fixed in the Op.stap importer's out-of-scope notice. No em dash
+                // either (Art. II.5): E1-13 renders this string.
                 opmerkingen.Add(
-                    $"Subthema '{sleutel.Naam}' verwijst naar onbekende klas '{sleutel.Klas}' — overgeslagen " +
-                    "(een subthema is klas-gebonden, Art. IX.2).");
+                    $"Subthema '{sleutel.Naam}' verwijst naar de klas '{sleutel.Klas}', die niet bestaat. " +
+                    "Het subthema is daarom overgeslagen. Maak die klas eerst aan, of pas de naam in het " +
+                    "bestand aan.");
                 continue;
             }
 
@@ -426,17 +445,33 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
             }
         }
 
-        // How many themadoelen this thema will hold after the removals above — computed from the
+        // Which themadoelen this thema will still hold after the removals above — computed from the
         // *predicate*, never from thema.Themadoelen.Count, which the removal loop only mutates when
         // `toepassen` is true. Counting the mutated collection made preview and commit walk different
         // arithmetic: preview kept the stale links and added nothing, while commit removed them first,
         // took three codes and dropped the rest in silence.
-        var behouden = thema.Themadoelen.Count(td =>
-            inkomendeSet.Contains(td.Koppeling.LeerplandoelCode) ||
-            (IsMenselijkeBeslissing(td.Koppeling.Status) && !opties.MenselijkeBeslissingenVerwijderen));
+        var behoudenKoppelingen = thema.Themadoelen
+            .Select(td => td.Koppeling)
+            .Where(k =>
+                inkomendeSet.Contains(k.LeerplandoelCode) ||
+                (IsMenselijkeBeslissing(k.Status) && !opties.MenselijkeBeslissingenVerwijderen))
+            .ToList();
+
+        // Split by *who can free the slot*, because that is what the cap notice's advice hangs on
+        // (E1-13 round-3 audit, MAJOR 1). A retained human decision that this run is preserving cannot be
+        // dislodged by editing the file: removing its code from the cell only moves it into the
+        // "kept and warned" branch above, where it still occupies a slot. Every other retained link is one
+        // the file carries and the run would drop if the file stopped carrying it, so shortening the
+        // `Themadoelen` cell really does free that slot. Note the predicate is deliberately the same
+        // `IsMenselijkeBeslissing(...) && !MenselijkeBeslissingenVerwijderen` used by the removal loop, so the
+        // two can never disagree about which links survive.
+        var bezetDoorBeslissing = behoudenKoppelingen.Count(k =>
+            IsMenselijkeBeslissing(k.Status) && !opties.MenselijkeBeslissingenVerwijderen);
+        var bezetDoorBestand = behoudenKoppelingen.Count - bezetDoorBeslissing;
 
         var nieuweCodes = inkomendeCodes.Where(c => !bestaandeCodes.Contains(c)).ToList();
-        var (toeTeVoegen, capOpmerking) = PasThemadoelCapToe(thema.Naam, behouden, nieuweCodes);
+        var (toeTeVoegen, capOpmerking) = PasThemadoelCapToe(
+            thema.Naam, bezetDoorBestand, bezetDoorBeslissing, nieuweCodes);
         if (capOpmerking is not null)
         {
             opmerkingen.Add(capOpmerking);
@@ -466,25 +501,114 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
     /// minimum of 2 is enforced nowhere in the codebase, so an under-anchored thema imports silently.
     /// Whether 2 is an invariant or a pedagogical guideline is an open question for directie.
     /// </para>
+    /// <para>
+    /// <b>The notice is written for a teacher (Art. II.3), and the article reference lives here in the
+    /// comment rather than in it.</b> The cap is Art. IX.2's; a reader who can act on this sentence cannot act
+    /// on that string. E1-13's audit found this notice still carrying "(Art. IX.2)" after its three siblings had
+    /// been rewritten, which is the selective-fix pattern this repo keeps recording.
+    /// </para>
+    /// <para>
+    /// <b>Three notices, because advice is only worth giving to a reader who can act on it, and that depends on
+    /// <i>who holds the occupied slots</i>, not on which call site we came from.</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><b>Nothing retained</b> (both counts 0 — always the create path, and the reconcile path too when
+    /// every existing link was dropped): the file spends the whole cap and the codes that fit are the
+    /// <i>first</i> ones in its <c>Themadoelen</c> cell (<c>Take(ruimte)</c> below), so "put the anchoring ones
+    /// first" is a fix the reader can carry out in the file.</item>
+    /// <item><b>Only <paramref name="bezetDoorBestand"/></b>: every retained link is one this file carries and
+    /// the run would drop if the file stopped carrying it, so the whole thema is the file's own doing and
+    /// shortening the cell is the fix. Column <i>order</i> is not the fix here: a code already in the database
+    /// keeps its slot wherever it sits in the cell, so only removing codes frees anything.</item>
+    /// <item><b><paramref name="bezetDoorBeslissing"/> above 0</b>: a slot is held by a link somebody already
+    /// decided on, which this run preserves (Art. IV.2) and the file cannot dislodge. Only here is the discard
+    /// opt-in mentioned, and it is named with its blast radius, because it is global over the whole run.</item>
+    /// </list>
+    /// <para>
+    /// <b>Round 2 wrote that third sentence unconditionally, and it was false in the second case — which is the
+    /// most reachable one.</b> The import creates themadoelen as <c>voorgesteld</c>, so a <i>second import of the
+    /// same file</i> meets links that <b>are</b> in it; the audit reproduced both halves, removing one code from
+    /// the file and watching the slot it claimed could not be freed be freed. Both remedies that sentence offered
+    /// were wrong there, and one was dangerous: <c>MenselijkeBeslissingenVerwijderen</c> deletes
+    /// <c>aanvaard</c>/<c>manueel</c> links across every thema and subthema in the run, and it cannot raise the
+    /// cap at all when no retained link is absent from the file. It also told the reader to remove a themadoel
+    /// "bij het thema zelf", which no screen offers until E1-14 exists (E1-13 round-3 audit, MAJOR 1; the
+    /// round-2 audit's MINOR 2 is the earlier half of the same defect).
+    /// </para>
     /// </summary>
     private static (IReadOnlyList<string> ToeTeVoegen, string? Opmerking) PasThemadoelCapToe(
         string themaNaam,
-        int reedsAanwezig,
+        int bezetDoorBestand,
+        int bezetDoorBeslissing,
         IReadOnlyList<string> nieuweCodes)
     {
+        var reedsAanwezig = bezetDoorBestand + bezetDoorBeslissing;
         var ruimte = Math.Max(0, Thema.MaxThemadoelen - reedsAanwezig);
         if (nieuweCodes.Count <= ruimte)
         {
             return (nieuweCodes, null);
         }
 
+        var toeTeVoegen = nieuweCodes.Take(ruimte).ToList();
         var genegeerd = nieuweCodes.Skip(ruimte).ToList();
-        var opmerking =
-            $"Thema '{themaNaam}' zou {reedsAanwezig + nieuweCodes.Count} themadoelen krijgen; " +
-            $"een thema wordt door ten hoogste {Thema.MaxThemadoelen} themadoelen geankerd (Art. IX.2). " +
-            $"{genegeerd.Count} genegeerd: {string.Join(", ", genegeerd)}.";
 
-        return (nieuweCodes.Take(ruimte).ToList(), opmerking);
+        // Dutch inflects the noun and the verb, so the count picks the sentence. No "(s)" dodge: the frontend
+        // cannot rescue it either, because only this layer knows the codes.
+        var overgeslagen = genegeerd.Count == 1
+            ? $"1 themadoel is daarom overgeslagen: {genegeerd[0]}."
+            : $"{genegeerd.Count} themadoelen zijn daarom overgeslagen: {string.Join(", ", genegeerd)}.";
+
+        if (reedsAanwezig == 0)
+        {
+            return (
+                toeTeVoegen,
+                $"Thema '{themaNaam}' zou {nieuweCodes.Count} themadoelen krijgen, en een thema kan er " +
+                $"hoogstens {Thema.MaxThemadoelen} hebben. {overgeslagen} " +
+                "Zet in het bestand de themadoelen die dit thema het best samenvatten vooraan in de kolom " +
+                "Themadoelen.");
+        }
+
+        if (bezetDoorBeslissing == 0)
+        {
+            // Everything this thema will hold comes from this file, so the count in the first sentence is the
+            // number of codes in its `Themadoelen` cell, and shortening that cell is the whole fix.
+            return (
+                toeTeVoegen,
+                $"Thema '{themaNaam}' zou {reedsAanwezig + nieuweCodes.Count} themadoelen krijgen, en een thema " +
+                $"kan er hoogstens {Thema.MaxThemadoelen} hebben. {overgeslagen} " +
+                "Alles wat dit thema aan themadoelen heeft, komt uit dit bestand: haal in de kolom Themadoelen " +
+                $"codes weg tot er {Thema.MaxThemadoelen} overblijven.");
+        }
+
+        var behouden = reedsAanwezig == 1
+            ? "1 themadoel dat er al staat"
+            : $"{reedsAanwezig} themadoelen die er al staan";
+        var inkomend = nieuweCodes.Count == 1
+            ? "1 nieuwe code"
+            : $"{nieuweCodes.Count} nieuwe codes";
+
+        // "waar iemand zelf al over beslist heeft" rather than "aanvaard": IsMenselijkeBeslissing also covers
+        // geweigerd, and a geweigerd link occupies a slot just as much.
+        var bezet = bezetDoorBeslissing == 1
+            ? "1 plaats is bezet door een koppeling waar iemand zelf al over beslist heeft, en die kan dit " +
+              "bestand niet vrijmaken"
+            : $"{bezetDoorBeslissing} plaatsen zijn bezet door koppelingen waar iemand zelf al over beslist " +
+              "heeft, en die kan dit bestand niet vrijmaken";
+
+        // Named only when it exists, and after the preserved decisions, because it is the cheap lever: no
+        // opt-in, no other thema touched.
+        var viaBestand = bezetDoorBestand == 0
+            ? string.Empty
+            : " Wat er nog bezet is, komt uit dit bestand zelf: daar volstaat het een code uit de kolom " +
+              "Themadoelen weg te halen.";
+
+        return (
+            toeTeVoegen,
+            $"Thema '{themaNaam}' houdt {behouden}, en dit bestand brengt {inkomend} aan. Samen is dat meer " +
+            $"dan de {Thema.MaxThemadoelen} themadoelen die een thema kan hebben. {overgeslagen} {bezet}. " +
+            "Wil je die toch vrijgeven, duid dan bij het doorvoeren aan dat koppelingen die niet meer in het " +
+            "bestand staan mogen verdwijnen, en zorg dat die codes niet in de kolom Themadoelen staan. Die " +
+            $"keuze geldt voor het hele bestand, ook bij andere thema's en subthema's.{viaBestand}");
     }
 
     /// <summary>Subdoel-link analogue of <see cref="ReconcileThemadoelen"/>.</summary>

@@ -224,8 +224,11 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             throw new SchoolcontentValidatieFout(ex.Message);
         }
 
-        // Mark the new child Added explicitly (the thema is loaded Unchanged; adding through the
-        // backing-field navigation alone does not flag the insert) — mirrors the import service.
+        // Mark the new child Added explicitly. This was the workaround for the mapping defect fixed model-wide
+        // on 2026-08-03 (AppDbContext: every Guid key is ValueGeneratedNever), so it is belt-and-braces now
+        // rather than the thing that makes the insert work. Kept because it is free and states the intent; note
+        // that the collections which had *no* such line — Subthema and Activiteit — are precisely the ones that
+        // answered 500 on a re-import for four days.
         _context.Themadoelen.Add(themadoel);
         await _context.SaveChangesAsync(cancellationToken);
         return MapThemadoel(themadoel);

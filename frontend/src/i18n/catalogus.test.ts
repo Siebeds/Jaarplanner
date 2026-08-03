@@ -46,6 +46,11 @@ const GEEN_ENKELVOUD_NODIG: Record<string, string> = {
   // constant is named "voorlopige" for a reason, and lowering it to 1 would make this string ungrammatical.
   // Whoever changes it owns adding the singular.
   "kalender.teVol": "unreachable at 1 while VOORLOPIGE_TE_VOL_DREMPEL >= 2",
+  // "{aantal} {soort}", where soort is only ever one of the three participles in `import.soort.*`
+  // (toegevoegd / bijgewerkt / ongewijzigd). A participle does not inflect with the count, so "1 toegevoegd"
+  // and "9 toegevoegd" are both correct. One count string for three kinds, rather than three plus three
+  // singulars. NOTE the coupling: interpolating an inflecting noun here would need a singular form.
+  "import.telling": "the interpolated word is an uninflected participle, so 1 reads correctly",
 };
 
 /**

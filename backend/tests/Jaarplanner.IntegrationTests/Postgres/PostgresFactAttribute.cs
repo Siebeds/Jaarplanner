@@ -19,3 +19,19 @@ public sealed class PostgresFactAttribute : FactAttribute
         }
     }
 }
+
+/// <summary>
+/// The <see cref="TheoryAttribute"/> counterpart of <see cref="PostgresFactAttribute"/>, with the same skip
+/// behaviour. Needed because a Postgres-backed case sometimes has to run over two variants (the import's
+/// Toevoegen/Bijwerken modes, say) and xUnit will not accept <c>[InlineData]</c> on a Fact.
+/// </summary>
+public sealed class PostgresTheoryAttribute : TheoryAttribute
+{
+    public PostgresTheoryAttribute()
+    {
+        if (!PostgresTestDatabase.IsBeschikbaar)
+        {
+            Skip = PostgresTestDatabase.SkipReden;
+        }
+    }
+}

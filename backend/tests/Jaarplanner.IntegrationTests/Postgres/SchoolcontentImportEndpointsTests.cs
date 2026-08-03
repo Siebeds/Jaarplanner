@@ -108,6 +108,68 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// <b>The second import of the school year.</b> A first file creates the thema; a second file adds a new
+    /// subthema and a new activiteit to that same, now-persisted thema, and both must land.
+    /// <para>
+    /// This is the ordinary FR-1.4 path from the second import onward, and until this round it answered
+    /// <b>500</b>: a child added to an already-loaded aggregate was tracked <c>Modified</c> instead of
+    /// <c>Added</c> (see <see cref="AggregaatGroeiTests"/> for the mechanism and the per-collection sweep), so
+    /// <c>SaveChanges</c> emitted an <c>UPDATE</c> for rows the run was creating. Every one of the 13
+    /// committing import tests runs on the EF <b>in-memory</b> provider, which has no rows-affected check, so
+    /// the whole suite stayed green while a teacher could not complete an import. Hence this test, over HTTP,
+    /// against real PostgreSQL.
+    /// </para>
+    /// <para>
+    /// Both modes are covered by the theory: <c>Toevoegen</c> (the default) and <c>Bijwerken</c>. The defect
+    /// hit both, and only the reconcile path shares code with the Art. IV.2 preservation logic.
+    /// </para>
+    /// </summary>
+    [PostgresTheory]
+    [InlineData("Toevoegen")]
+    [InlineData("Bijwerken")]
+    public async Task Tweede_import_laat_een_bestaand_thema_groeien(string modus)
+    {
+        var client = _factory.CreateClient();
+
+        var eerste = await Upload(client, string.Empty, Werkboek(("Herfst", "Bladeren", KlasNaam)), modus);
+        Assert.True(eerste.GetProperty("toegepast").GetBoolean());
+
+        // The same thema, one existing subthema with a NEW activiteit, plus a wholly new subthema.
+        var tweede = await Upload(
+            client,
+            string.Empty,
+            Werkboek(
+                new Rij("Herfst", "Bladeren", KlasNaam, Activiteit: "Bladeren persen"),
+                new Rij("Herfst", "Noten", KlasNaam, Activiteit: "Noten kraken")),
+            modus);
+
+        Assert.True(tweede.GetProperty("isBestandGeldig").GetBoolean());
+        Assert.True(tweede.GetProperty("isVolledigVerwerkt").GetBoolean());
+        Assert.True(tweede.GetProperty("toegepast").GetBoolean());
+
+        // Read the persisted result back, not the diff the same request computed: the defect was in the write.
+        var themas = await client.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("/api/themas");
+        var thema = Assert.Single(themas!);
+        var subthemas = thema.GetProperty("subthemas").EnumerateArray().ToList();
+        Assert.Equal(2, subthemas.Count);
+
+        var bladeren = subthemas.Single(s => s.GetProperty("naam").GetString() == "Bladeren");
+        var noten = subthemas.Single(s => s.GetProperty("naam").GetString() == "Noten");
+
+        // The existing subthema grew by one activiteit and kept the one the first import gave it.
+        Assert.Equal(["Bladeren persen", "Bladeren rapen"], Activiteitnamen(bladeren));
+
+        // And the wholly new subthema of an existing thema landed with its own activiteit.
+        Assert.Equal(["Noten kraken"], Activiteitnamen(noten));
+    }
+
+    private static List<string> Activiteitnamen(System.Text.Json.JsonElement subthema) =>
+        subthema.GetProperty("activiteiten").EnumerateArray()
+            .Select(a => a.GetProperty("naam").GetString()!)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
     /// A row missing its required klas is reported with its row number and the offending column, while
     /// the valid row still imports — "report, never silently drop" (ADR-0006 §4, FR-1.2).
     /// </summary>
@@ -211,7 +273,8 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
     private static async Task<System.Text.Json.JsonElement> Upload(
         HttpClient client,
         string pad,
-        byte[] werkboek)
+        byte[] werkboek,
+        string? modus = null)
     {
         using var inhoud = new MultipartFormDataContent();
         var bestand = new ByteArrayContent(werkboek);
@@ -219,6 +282,10 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
             new System.Net.Http.Headers.MediaTypeHeaderValue(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         inhoud.Add(bestand, "bestand", "themas.xlsx");
+        if (modus is not null)
+        {
+            inhoud.Add(new StringContent(modus), "modus");
+        }
 
         var url = string.IsNullOrEmpty(pad) ? "/api/schoolcontent-import" : $"/api/schoolcontent-import/{pad}";
         var response = await client.PostAsync(url, inhoud);
@@ -227,15 +294,32 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
         return await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
     }
 
+    /// <summary>
+    /// One sheet row. The activiteit name is a parameter because a re-import that adds an activiteit to an
+    /// existing subthema is its own case (and used to answer 500).
+    /// </summary>
+    private sealed record Rij(
+        string Thema,
+        string Subthema,
+        string? Klas,
+        string Activiteit = "Bladeren rapen");
+
     private static byte[] Werkboek(params (string Thema, string Subthema, string? Klas)[] rijen) =>
-        Werkboek(rijen, verwissel: null);
+        Werkboek(rijen.Select(r => new Rij(r.Thema, r.Subthema, r.Klas)).ToList(), verwissel: null);
+
+    private static byte[] Werkboek(params Rij[] rijen) => Werkboek(rijen, verwissel: null);
+
+    private static byte[] Werkboek(
+        IReadOnlyList<(string Thema, string Subthema, string? Klas)> rijen,
+        (SchoolcontentKolom A, SchoolcontentKolom B)? verwissel) =>
+        Werkboek(rijen.Select(r => new Rij(r.Thema, r.Subthema, r.Klas)).ToList(), verwissel);
 
     /// <summary>
     /// Builds a school-content workbook through the single-source column mapping, optionally swapping two
     /// header labels to simulate a reordered template.
     /// </summary>
     private static byte[] Werkboek(
-        IReadOnlyList<(string Thema, string Subthema, string? Klas)> rijen,
+        IReadOnlyList<Rij> rijen,
         (SchoolcontentKolom A, SchoolcontentKolom B)? verwissel)
     {
         using var workbook = new XLWorkbook();
@@ -253,7 +337,7 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
 
         for (var i = 0; i < rijen.Count; i++)
         {
-            var (thema, subthema, klas) = rijen[i];
+            var (thema, subthema, klas, activiteit) = rijen[i];
             var r = i + 2;
             sheet.Cell(r, (int)SchoolcontentKolom.ThemaNaam).Value = thema;
             sheet.Cell(r, (int)SchoolcontentKolom.ThemaDuurWeken).Value = "5";
@@ -265,7 +349,7 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
             }
 
             sheet.Cell(r, (int)SchoolcontentKolom.SubthemaLeeftijd).Value = "6";
-            sheet.Cell(r, (int)SchoolcontentKolom.ActiviteitNaam).Value = "Bladeren rapen";
+            sheet.Cell(r, (int)SchoolcontentKolom.ActiviteitNaam).Value = activiteit;
             sheet.Cell(r, (int)SchoolcontentKolom.ActiviteitType).Value = "waarneming";
         }
 

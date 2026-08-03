@@ -163,11 +163,16 @@ describe("App shell — navigation (E0-10 clause 2)", () => {
     }
   });
 
+  // Was `/import` until **E1-13** built that screen; moved to `/dekking`, which is still a placeholder
+  // (E5-02/E5-03/E5-05 own it). The route is read from `NAVIGATIE` rather than hard-coded so the next story to
+  // build a screen finds this assertion instead of silently testing a page that has since grown controls.
   it("says plainly that an unbuilt screen does not work yet, and offers no controls", async () => {
-    renderApp("/import");
+    const ongebouwd = NAVIGATIE.find((item) => !item.isGebouwd && item.binnenkortKey);
+    expect(ongebouwd).toBeDefined();
+    renderApp(ongebouwd!.pad);
 
     expect(await screen.findByText(t("binnenkort.titel"))).toBeInTheDocument();
-    expect(screen.getByText(t("binnenkort.import"))).toBeInTheDocument();
+    expect(screen.getByText(t(ongebouwd!.binnenkortKey!))).toBeInTheDocument();
 
     // "A control that does nothing teaches a review the wrong thing" (E3-06): the page itself is inert.
     const hoofdinhoud = document.getElementById("hoofdinhoud")!;
