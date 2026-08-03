@@ -213,6 +213,7 @@
     "zoekPlaceholder": "bv. NAT-K3-01 of seizoenen",
     "zoeken": "Zoeken",
     "filtersLabel": "Filters",
+    "keuzelijstenOnbeschikbaar": "De keuzelijsten konden niet geladen worden. Zoeken werkt wel, en je kan hieronder zien op welke filters de lijst nu staat.",
     "disciplineLabel": "Discipline",
     "domeinLabel": "Domein",
     "subdomeinLabel": "Subdomein",
