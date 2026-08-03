@@ -80,9 +80,15 @@ public interface IDekkingOpslag
     /// </para>
     /// <para>
     /// It is implemented and tested rather than accepted-and-ignored, so the day the ruling lands the seam is known
-    /// to work instead of being discovered to be decorative. The matching is <b>ordinal and case-sensitive</b>,
-    /// which is honest about a second open decision: the <c>jaarFase</c> code form (JK/K2/K3 versus 1K/2K/3K) is
-    /// itself unresolved, and quietly case-folding here would paper over a mismatch that ought to surface.
+    /// to work instead of being discovered to be decorative.
+    /// </para>
+    /// <para>
+    /// The matching is <b>ordinal and case-sensitive</b>, and that is now correct rather than merely cautious: the
+    /// owner ruled on 2026-08-03 that the canonical <c>jaarFase</c> form is <c>JK</c>/<c>K2</c>/<c>K3</c> +
+    /// <c>L1</c>–<c>L6</c>, and that the <b>import normalises</b> the other ordering to it. Stored values are
+    /// therefore already canonical, so a comparer that folds case or reorders characters would only mask an import
+    /// that failed to normalise. What that ruling deliberately did <i>not</i> settle is what a real Op.stap column F
+    /// actually contains, which is an observation rather than a decision and is filed against E1-12.
     /// </para>
     /// </param>
     Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
