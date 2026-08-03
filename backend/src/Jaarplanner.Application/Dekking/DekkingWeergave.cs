@@ -12,7 +12,7 @@ namespace Jaarplanner.Application.Dekking;
 /// </para>
 /// <para>
 /// <b>The summary figure is nullable, and that is the directie ruling of 2026-07-28 expressed in the type.</b>
-/// While any placement is stale (<see cref="AantalVervallenPlaatsingen"/> &gt; 0) the plan cannot report
+/// While any stale placement is unresolved (<see cref="AantalOnopgelosteVervallenPlaatsingen"/> &gt; 0) the plan cannot report
 /// trustworthy dekking, because a thema whose period is unknown is not demonstrably taught in the school year.
 /// The ruling says to mark the figure as <i>onbetrouwbaar / te herzien</i> rather than show a number that would
 /// mislead an inspectie. Making <see cref="AantalGedekt"/> <c>null</c> in that state is deliberate: a boolean
@@ -26,26 +26,65 @@ namespace Jaarplanner.Application.Dekking;
 /// <param name="SchooljaarId">The school year containing the class (Art. IX.3).</param>
 /// <param name="SchooljaarNaam">The school year label (e.g. "2026-2027").</param>
 /// <param name="IsBetrouwbaar">
-/// <c>false</c> when at least one placement is stale, i.e. its stored block start is no longer the start of any
-/// derived period. Coverage may then not be reported as a figure (directie 2026-07-28; see the type remarks).
+/// <c>false</c> when at least one stale placement is still <b>unresolved</b> — i.e. its stored block start is no
+/// longer the start of any derived period <i>and</i> the teacher has not rejected it. Coverage may then not be
+/// reported as a figure (directie 2026-07-28; see the type remarks).
+/// <para>
+/// <b>"Unresolved" is narrower than "stale", and the difference is a deliberate judgement call.</b> A placement the
+/// teacher has <c>geweigerd</c> contributes nothing to dekking whether or not its period still exists, so its
+/// staleness cannot change the figure and it does not withhold it. A stale <c>voorgesteld</c> placement <i>does</i>
+/// count as unresolved, because accepting it would raise the figure. The directie ruling says "while any placement
+/// is unresolved" and did not contemplate a rejected one. See <see cref="AantalOnopgelosteVervallenPlaatsingen"/>
+/// for the consequence a caller has to handle.
+/// </para>
 /// </param>
-/// <param name="AantalVervallenPlaatsingen">
-/// How many placements are stale. Present so a caller can name the scale of what needs resolving rather than
-/// only that something does; the placements themselves are listed by the jaarplan view (E3-07/E3-09), which is
-/// where the inline re-placement action lives.
+/// <param name="AantalOnopgelosteVervallenPlaatsingen">
+/// How many stale placements are <b>unresolved</b> — not how many are stale. Present so a caller can name the scale
+/// of what needs resolving rather than only that something does; the placements themselves are listed by the
+/// jaarplan view (E3-07/E3-09), which is where the inline re-placement action lives.
+/// <para>
+/// <b>This number is deliberately NOT the same as the kalender's stale-placement count, and a screen showing both
+/// must reconcile them.</b> The kalender's non-dismissible notice (E3-07/E3-09) counts every stale placement,
+/// including rejected ones, because a rejected card still needs its own explanation. So a plan with one stale
+/// rejected placement legitimately reports <c>0</c> here while that notice is up. Left as a divergence rather than
+/// aligned, because the two numbers answer different questions: "what must a human still fix before this figure
+/// means anything" versus "what on this calendar is pointing at a period that no longer exists". <b>E5-02 owns the
+/// copy that makes that legible</b>; presenting "1 plaatsing moet herbekeken worden" beside a bare "dekking is
+/// betrouwbaar" would be the E4-06 contradiction in a new place.
+/// </para>
 /// </param>
 /// <param name="AantalGedekt">
 /// How many leerplandoelen are covered, or <c>null</c> when <paramref name="IsBetrouwbaar"/> is <c>false</c>.
 /// </param>
 /// <param name="AantalLeerplandoelen">
-/// The denominator: how many leerplandoelen exist. Always present, because it is a property of the loaded
+/// The denominator: how many leerplandoelen are in scope. Always present, because it is a property of the loaded
 /// curriculum rather than of this plan, so no stale placement can make it dishonest.
+/// <para>
+/// <b>⚠ Which goals are in scope is an OPEN DECISION, and today the answer is "all of them" (Art. XIV).</b> With no
+/// scope passed, a K3 class is measured against every L1–L6 goal, every discipline and the illustrative
+/// <c>P</c>/<c>S</c>/<c>A</c> doelsoorten. That makes this number large and the E5-03 percentage small in a way
+/// that says more about the loaded curriculum than about the class. It is <b>not</b> a considered answer: it is the
+/// only one available, because <c>Klas</c> deliberately keys nothing on its <c>Leerjaar</c> while graadklassen /
+/// menggroepen are an unresolved Art. XIV decision, so there is nothing to derive a class's own jaar/fase set from.
+/// The choice is isolated behind <see cref="IDekkingOpslag.HaalLeerplandoelenAsync"/>'s <c>jaarFasen</c> parameter
+/// so resolving it is a value at one call site rather than a change to the computation. <b>E5-03 and E5-05 must not
+/// inherit "the whole curriculum" as a considered answer</b> — a percentage over an unscoped denominator, or a gap
+/// list naming every other year's goals as this class's lacunes, would be misleading rather than merely wide.
+/// </para>
 /// </param>
 /// <param name="Doelen">
-/// Every leerplandoel with its coverage state, ordered by (domein, subdomein, code) — the same browse order the
-/// gap list uses, so the two screens do not disagree about where a goal sits. The gap-analyse (E5-05) is the
-/// subset with <see cref="LeerplandoelDekking.IsGedekt"/> <c>false</c>; the doelsoort filter (E5-03) filters
-/// this list. Both are presentation over this one computation rather than second queries that could drift.
+/// Every in-scope leerplandoel with its coverage state, ordered <b>ordinally</b> by (domein, subdomein, code).
+/// The gap-analyse (E5-05) is the subset with <see cref="LeerplandoelDekking.IsGedekt"/> <c>false</c>; the doelsoort
+/// filter (E5-03) filters this list. Both are presentation over this one computation rather than second queries that
+/// could drift.
+/// <para>
+/// <b>Ordinal, and deliberately not culture-aware.</b> The gap list and the register order the same fields in
+/// <i>PostgreSQL</i> under the database collation, so no .NET comparer reproduces them exactly for punctuation, case
+/// or diacritics; and <c>CurrentCulture</c> would additionally make the server's output depend on the host's culture.
+/// Ordinal is therefore stable and host-independent, which is the property that matters here. It is <b>not</b> a
+/// claim that this list is byte-for-byte in the gap list's order: an earlier revision of this comment asserted that,
+/// and it was not true.
+/// </para>
 /// </param>
 public sealed record DekkingWeergave(
     Guid KlasId,
@@ -53,7 +92,7 @@ public sealed record DekkingWeergave(
     Guid SchooljaarId,
     string SchooljaarNaam,
     bool IsBetrouwbaar,
-    int AantalVervallenPlaatsingen,
+    int AantalOnopgelosteVervallenPlaatsingen,
     int? AantalGedekt,
     int AantalLeerplandoelen,
     IReadOnlyList<LeerplandoelDekking> Doelen);
@@ -84,8 +123,15 @@ public sealed record DekkingWeergave(
 /// </para>
 /// </param>
 /// <param name="IsGedekt">
-/// Whether a thema carrying this goal (status aanvaard/manueel) is placed in a real period of this plan
-/// (Art. V.1). See <see cref="DekkendeThemas"/> for what "placed" excludes.
+/// Whether a thema carrying this goal is placed in a real period of this plan (Art. V.1). Three exclusions are
+/// folded into that sentence, each with its own authority:
+/// <list type="bullet">
+/// <item>the <b>link</b> must be <c>aanvaard</c> or <c>manueel</c> — a <c>voorgesteld</c> one would let the AI grant
+/// dekking (Art. IV.1), a <c>geweigerd</c> one never counted;</item>
+/// <item>the <b>placement</b> must likewise be <c>aanvaard</c> or <c>manueel</c>, for the same reason;</item>
+/// <item>the placement must <b>not be stale</b> — a stored block start that is no longer any period's start puts the
+/// thema in no period at all, so nothing is demonstrably taught on its account (directie 2026-07-28).</item>
+/// </list>
 /// </param>
 /// <param name="DekkendeThemas">
 /// The thema's that cover this goal, ordered by name; empty exactly when <paramref name="IsGedekt"/> is

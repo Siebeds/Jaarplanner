@@ -115,7 +115,7 @@ public sealed class DekkingServiceTests
 
         Assert.False(Doelvan(dekking, "NAT-K3-01").IsGedekt);
         Assert.False(dekking.IsBetrouwbaar);
-        Assert.Equal(1, dekking.AantalVervallenPlaatsingen);
+        Assert.Equal(1, dekking.AantalOnopgelosteVervallenPlaatsingen);
 
         // The total is WITHHELD, not merely flagged. A number beside a false flag is a number a caller renders.
         Assert.Null(dekking.AantalGedekt);
@@ -144,7 +144,7 @@ public sealed class DekkingServiceTests
         var dekking = await service.BerekenAsync(KlasId);
 
         Assert.True(dekking.IsBetrouwbaar);
-        Assert.Equal(0, dekking.AantalVervallenPlaatsingen);
+        Assert.Equal(0, dekking.AantalOnopgelosteVervallenPlaatsingen);
         Assert.Equal(1, dekking.AantalGedekt);
     }
 
@@ -162,7 +162,7 @@ public sealed class DekkingServiceTests
         var dekking = await service.BerekenAsync(KlasId);
 
         Assert.False(dekking.IsBetrouwbaar);
-        Assert.Equal(1, dekking.AantalVervallenPlaatsingen);
+        Assert.Equal(1, dekking.AantalOnopgelosteVervallenPlaatsingen);
         Assert.Null(dekking.AantalGedekt);
     }
 
@@ -316,7 +316,7 @@ public sealed class DekkingServiceTests
 
         Assert.False(Doelvan(dekking, "NAT-K3-01").IsGedekt);
         Assert.False(dekking.IsBetrouwbaar);
-        Assert.Equal(1, dekking.AantalVervallenPlaatsingen);
+        Assert.Equal(1, dekking.AantalOnopgelosteVervallenPlaatsingen);
     }
 
     [Fact]
@@ -335,6 +335,23 @@ public sealed class DekkingServiceTests
 
         Assert.Equal("K-3", Doelvan(dekking, "MD-01").MinimumdoelRef);
         Assert.True(Doelvan(dekking, "MD-01").IsGedekt);
+    }
+
+    [Fact]
+    public async Task De_noemer_is_vandaag_het_hele_curriculum_en_dat_is_een_open_beslissing()
+    {
+        // Pinned so the open Art. XIV decision is visible as a test rather than only as a comment. The service passes
+        // NO jaar/fase scope, so a K3 class is measured against every loaded goal. That is not a considered answer —
+        // Klas keys nothing on Leerjaar while graadklassen are unresolved — and when the ruling lands, THIS test is
+        // the one that should fail and be rewritten, which is the point of asserting it explicitly.
+        var opslag = new FakeDekkingOpslag([], [Doel("K3-01"), Doel("L6-99")]);
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId);
+
+        Assert.True(opslag.HeeftLeerplandoelenGevraagd);
+        Assert.Null(opslag.GevraagdeJaarFasen);
+        Assert.Equal(2, dekking.AantalLeerplandoelen);
     }
 
     [Fact]

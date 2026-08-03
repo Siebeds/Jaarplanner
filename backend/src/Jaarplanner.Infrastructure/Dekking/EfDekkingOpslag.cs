@@ -129,8 +129,20 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
-        CancellationToken cancellationToken = default) =>
-        await _context.Leerplandoelen
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        IReadOnlyCollection<string>? jaarFasen = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Leerplandoelen.AsNoTracking();
+
+        // Null/empty means the whole curriculum, which is what every caller asks for today. See IDekkingOpslag for
+        // why that is an open Art. XIV decision rather than a considered answer, and why this seam is implemented
+        // and tested despite having no non-null caller yet.
+        if (jaarFasen is { Count: > 0 })
+        {
+            var fasen = jaarFasen.ToList();
+            query = query.Where(l => fasen.Contains(l.JaarFase));
+        }
+
+        return await query.ToListAsync(cancellationToken);
+    }
 }

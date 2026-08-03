@@ -59,14 +59,35 @@ public interface IDekkingOpslag
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Every loaded leerplandoel — the denominator of the coverage figure and the source of the gap list.
+    /// The in-scope leerplandoelen — the denominator of the coverage figure and the source of the gap list.
     /// <para>
     /// Returned as the domain entity rather than a fourth near-identical read DTO, following
     /// <c>IJaarplanOpslag.LaadThemasAsync</c>'s precedent. It is read-only reference data (Art. III.1) and the
     /// implementation reads it untracked, so there is nothing here to mutate by accident.
     /// </para>
     /// </summary>
-    Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(CancellationToken cancellationToken = default);
+    /// <param name="jaarFasen">
+    /// The jaar/fase codes to measure against (JK, K2, K3, L1–L6, or a fase for P/S), or <c>null</c>/empty for the
+    /// <b>whole loaded curriculum</b>.
+    /// <para>
+    /// <b>This parameter exists because "which goals should a class be measured against?" is an open Art. XIV
+    /// decision, and today every caller passes <c>null</c>.</b> That is not a considered answer, it is the only
+    /// available one: <c>Klas</c> deliberately keys nothing on its <c>Leerjaar</c> (graadklassen / menggroepen are
+    /// unresolved), so the application cannot derive a class's own jaar/fase set. Shaped as a parameter rather than
+    /// left implicit, and deliberately like the <c>IDisciplineSelectie</c> (ADR-0019) and
+    /// <c>Koppelingzichtbaarheid</c> seams: the decision is isolated at one call site, so resolving it changes a
+    /// value rather than the computation.
+    /// </para>
+    /// <para>
+    /// It is implemented and tested rather than accepted-and-ignored, so the day the ruling lands the seam is known
+    /// to work instead of being discovered to be decorative. The matching is <b>ordinal and case-sensitive</b>,
+    /// which is honest about a second open decision: the <c>jaarFase</c> code form (JK/K2/K3 versus 1K/2K/3K) is
+    /// itself unresolved, and quietly case-folding here would paper over a mismatch that ought to surface.
+    /// </para>
+    /// </param>
+    Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
+        IReadOnlyCollection<string>? jaarFasen = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

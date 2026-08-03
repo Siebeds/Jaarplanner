@@ -237,6 +237,37 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         Assert.Equal(2, doelen.Count(d => d.Code is "NOG-IN-OPSTAP" or "INGETROKKEN"));
     }
 
+    [PostgresFact]
+    public async Task De_jaarfase_seam_filtert_echt_en_is_dus_geen_decoratie()
+    {
+        // The denominator scope is an OPEN Art. XIV decision and every caller passes null today. The seam is tested
+        // anyway, deliberately: a parameter accepted and ignored is discovered to be decorative on the day someone
+        // finally needs it, which is the worst possible moment. Ordinal and case-sensitive on purpose — the jaarFase
+        // code form (JK/K2/K3 vs 1K/2K/3K) is itself unresolved, so a mismatch should surface rather than be folded
+        // away.
+        await using (var context = _db.MaakContext())
+        {
+            await ZorgVoorDoelenAsync(context, ["FASE-K3"], jaarFase: "K3");
+            await ZorgVoorDoelenAsync(context, ["FASE-L6"], jaarFase: "L6");
+        }
+
+        await using var leescontext = _db.MaakContext();
+        var opslag = new EfDekkingOpslag(leescontext);
+
+        var alles = await opslag.HaalLeerplandoelenAsync();
+        Assert.Contains(alles, d => d.Code == "FASE-K3");
+        Assert.Contains(alles, d => d.Code == "FASE-L6");
+
+        var alleenK3 = await opslag.HaalLeerplandoelenAsync(["K3"]);
+        Assert.Contains(alleenK3, d => d.Code == "FASE-K3");
+        Assert.DoesNotContain(alleenK3, d => d.Code == "FASE-L6");
+
+        // An empty collection means "no scope", not "nothing in scope" — otherwise a caller handing over an empty
+        // filter would silently report 0 out of 0, which is a coverage figure that looks perfect.
+        var leegIsGeenScope = await opslag.HaalLeerplandoelenAsync([]);
+        Assert.Contains(leegIsGeenScope, d => d.Code == "FASE-L6");
+    }
+
     /// <summary>
     /// Arranges a school year with one class and one thema, runs the caller's arrangement against a real database,
     /// and returns the ids. Names are suffixed with a GUID because the schooljaar name carries a case-insensitive
@@ -273,7 +304,10 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         return (klas.Id, thema.Id);
     }
 
-    private static async Task ZorgVoorDoelenAsync(AppDbContext context, IEnumerable<string> codes)
+    private static async Task ZorgVoorDoelenAsync(
+        AppDbContext context,
+        IEnumerable<string> codes,
+        string jaarFase = "K3")
     {
         foreach (var code in codes)
         {
@@ -282,7 +316,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
                 context.Leerplandoelen.Add(new Leerplandoel(
                     code,
                     Doelsoort.Gemeenschappelijk,
-                    "K3",
+                    jaarFase,
                     "Natuur",
                     "Levende natuur",
                     "9.1",

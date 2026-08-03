@@ -62,13 +62,31 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
         GevraagdeKlasId = klasId;
         GevraagdeThemaIds = themaIds;
 
-        // Only the links whose thema was actually asked about, so the fake cannot hand back coverage the service
-        // did not request — otherwise a test asserting "a rejected placement covers nothing" would pass for the
-        // wrong reason.
+        // Returns everything it was given, UNFILTERED. An earlier revision of this comment claimed the fake filtered
+        // by themaIds "so it cannot hand back coverage the service did not request"; it never did, and a documented
+        // guard that does not exist is worse than none — the next test to rely on it would pass silently.
+        //
+        // No filter is needed, and that is a property of the tests rather than an accident: the cases where the
+        // service must NOT count a thema (rejected, stale, voorgesteld) are asserted by
+        // `AantalKoppelingAanroepen == 0` plus `GevraagdeThemaIds` being null, i.e. by proving the port was never
+        // reached at all. That is a stronger assertion than a filtered answer, because a filtered fake could still
+        // hide a service that asked about the wrong thema and got an empty list back. `GevraagdeThemaIds` is what
+        // pins which ids were asked for.
         return Task.FromResult<IReadOnlyList<DekkendeKoppeling>>(_koppelingen.ToList());
     }
 
+    /// <summary>The jaar/fase scope the service asked for. Null today at every call site, which is itself asserted.</summary>
+    public IReadOnlyCollection<string>? GevraagdeJaarFasen { get; private set; }
+
+    public bool HeeftLeerplandoelenGevraagd { get; private set; }
+
     public Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult(_doelen);
+        IReadOnlyCollection<string>? jaarFasen = null,
+        CancellationToken cancellationToken = default)
+    {
+        HeeftLeerplandoelenGevraagd = true;
+        GevraagdeJaarFasen = jaarFasen;
+
+        return Task.FromResult(_doelen);
+    }
 }

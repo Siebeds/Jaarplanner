@@ -71,11 +71,15 @@ public sealed class DekkingService
                 g => (IReadOnlyList<string>)g
                     .Select(k => k.ThemaNaam)
                     .Distinct(StringComparer.Ordinal)
-                    .OrderBy(naam => naam, StringComparer.CurrentCulture)
+                    .OrderBy(naam => naam, StringComparer.Ordinal)
                     .ToList(),
                 StringComparer.Ordinal);
 
-        var leerplandoelen = await _opslag.HaalLeerplandoelenAsync(cancellationToken);
+        // No jaar/fase scope is passed, so the denominator is the WHOLE loaded curriculum. That is an open Art. XIV
+        // decision rather than a considered answer, and the reason is structural: Klas deliberately keys nothing on
+        // its Leerjaar while graadklassen / menggroepen are unresolved, so there is nothing here to derive a class's
+        // own jaar/fase set from. The seam is on the port so resolving it is a value at this one call site.
+        var leerplandoelen = await _opslag.HaalLeerplandoelenAsync(jaarFasen: null, cancellationToken);
 
         var doelen = leerplandoelen
             .Select(l =>
@@ -97,8 +101,11 @@ public sealed class DekkingService
                     IsGedekt: dekkendeThemas.Count > 0,
                     dekkendeThemas);
             })
-            .OrderBy(d => d.Domein, StringComparer.CurrentCulture)
-            .ThenBy(d => d.Subdomein, StringComparer.CurrentCulture)
+            // Ordinal throughout, deliberately. CurrentCulture would make the server's output depend on the host's
+            // culture, and it still would not reproduce the gap list's order, which Postgres produces under the
+            // database collation. Stable and host-independent beats almost-matching.
+            .OrderBy(d => d.Domein, StringComparer.Ordinal)
+            .ThenBy(d => d.Subdomein, StringComparer.Ordinal)
             .ThenBy(d => d.Code, StringComparer.Ordinal)
             .ToList();
 
@@ -151,6 +158,15 @@ public sealed class DekkingService
     /// Whether the teacher rejected this placement. An unrecognised status is treated as <b>not</b> rejected, so it
     /// still counts as unresolved — the same fail-closed direction as <see cref="TeltVoorDekking"/>: a status this
     /// code cannot read must not be able to silently restore confidence in the figure.
+    /// <para>
+    /// <b>This RE-EXPRESSES <c>Themaplaatsing.IsGepland</c> rather than reusing it, and that is worth naming because
+    /// the whole theme of this story is that duplicated status rules drift.</b> <c>IsGepland</c> is
+    /// <c>Status != Geweigerd</c> on the domain entity; this is the same rule read off the projection's serialised
+    /// string, because <see cref="ThemaplaatsingWeergave"/> carries a <c>string</c> and the entity is not in reach
+    /// here. The honest options were to say so or to expose the predicate on the projection; the second is a change
+    /// to a contract three other features read, so it is not this story's to make. If a fourth caller ever needs
+    /// this, that is the signal to put the predicate on <c>ThemaplaatsingWeergave</c> instead.
+    /// </para>
     /// </summary>
     private static bool IsGeweigerd(string status) =>
         Enum.TryParse<KoppelingStatus>(status, out var geparsed)

@@ -18,6 +18,20 @@ namespace Jaarplanner.Api.Controllers;
 /// figure can be verified against a real database by anyone, including this story's own gates.
 /// </para>
 /// <para>
+/// <b>Unauthenticated, like every other read surface here, and that is debt rather than a decision.</b> This adds one
+/// more anonymous read of any class's planning data. FA §3.2 lets all three roles <i>view</i> dekking (another class
+/// as "lezen"), so the role matrix demands no gate here — but it does demand a signed-in user, and there is none:
+/// <b>E7-11</b> owns that app-wide gap and is blocked on E6-01/E6-02. Noted on this controller rather than left
+/// implicit, because "12 of 13 controllers are already open" is an explanation and not a justification.
+/// </para>
+/// <para>
+/// <b>The payload is the whole in-scope curriculum, unpaged, with each goal's full text.</b> That is a deliberate
+/// divergence from the register (E1-16), which pages precisely because it "renders thousands of these". It is
+/// tolerable for one primary school and it is what a single-figure overview and an export need; it is recorded here
+/// so <b>E5-02/E5-03</b> decide consciously whether the anchor screen adopts the register's paging/filter shape
+/// instead of inheriting this one. Each request also costs four link queries plus a full thema load.
+/// </para>
+/// <para>
 /// <b>Two things this response deliberately cannot do.</b> It cannot report a total while any placement is
 /// unresolved: <c>aantalGedekt</c> is <c>null</c> in that state and <c>isBetrouwbaar</c> is <c>false</c>, per the
 /// directie ruling of 2026-07-28 that coverage must not claim what it cannot prove. And it says nothing about
