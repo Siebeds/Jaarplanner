@@ -804,8 +804,393 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
     expect(
       within(kaart("Wonen")).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
     ).toBeInTheDocument();
+    // E4-06's control is in the tree too: "Water" is locked, so the panel offers "Losmaken".
+    expect(
+      within(kaart("Water")).getByRole("button", { name: t("kalender.ontgrendelen") }),
+    ).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("locks an AI proposal and unlocks it again, keying the request on the placement", async () => {
+    // E4-06 / FR-8.4. Before this the `vergrendeld` flag could only ever be false in a real app: `api.ts` never
+    // called the endpoint, so the "Vast" badge was unreachable state and the story had no invocation surface.
+    const vrij = maakPlaatsing({ id: "p1", themaNaam: "Water" });
+    const vast = maakPlaatsing({ id: "p1", themaNaam: "Water", vergrendeld: true });
+
+    const verzoeken = stubBewerking(maakJaarplan([vrij]), maakJaarplan([vast]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    // Not locked yet, so the card carries no badge and the panel offers the lock.
+    expect(within(kaart("Water")).queryByText(t("kalender.vergrendeld"))).toBeNull();
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.vergrendelen") }));
+
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].method).toBe("PUT");
+    expect(verzoeken[0].url).toMatch(/\/jaarplan\/plaatsingen\/p1\/vergrendeling$/);
+    expect(verzoeken[0].body).toEqual({ vergrendeld: true });
+
+    // The board re-renders from the server's returned plan, so the state a teacher sees is the persisted one and
+    // never an optimistic guess: the badge appears and the control becomes its own inverse.
+    expect(await within(kaart("Water")).findByText(t("kalender.vergrendeld"))).toBeInTheDocument();
+    const losmaken = within(kaart("Water")).getByRole("button", { name: t("kalender.ontgrendelen") });
+    expect(within(kaart("Water")).queryByRole("button", { name: t("kalender.vergrendelen") })).toBeNull();
+
+    // And back: the round trip is what makes the state producible AND undoable, so no teacher can strand a card.
+    fireEvent.click(losmaken);
+    await waitFor(() => expect(verzoeken).toHaveLength(2));
+    expect(verzoeken[1].body).toEqual({ vergrendeld: false });
+  });
+
+  it("does not offer a lock on a placement that already survives a regeneration", async () => {
+    // **The design decision of this story.** `IsVervangbaar` is `Voorgesteld && !vergrendeld`, so an accepted or
+    // manual placement survives a run with no lock at all — a "Vastzetten" button there would change nothing
+    // observable, which is the E3-06 control-that-does-nothing in a new coat. The compensating obligation is that
+    // the panel must then SAY the thema survives, because the inverse silence is the worse lie: an accepted card
+    // with no "Vast" badge otherwise reads as disposable and invites pointless locking.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+      maakPlaatsing({ id: "p2", themaNaam: "Wonen", status: "Manueel", aiMotivatie: null }),
+    ]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    for (const thema of ["Water", "Wonen"]) {
+      fireEvent.click(aanpassen(thema));
+      expect(
+        within(kaart(thema)).queryByRole("button", { name: t("kalender.vergrendelen") }),
+      ).toBeNull();
+      expect(within(kaart(thema)).getByText(t("kalender.vergrendelNietNodig"))).toBeInTheDocument();
+    }
+
+    // Nothing was sent: this is an absence of a control, not a control that quietly fails.
+    expect(verzoeken).toHaveLength(0);
+  });
+
+  it("still lets a locked placement be unlocked after it has been accepted", async () => {
+    // Reachable in practice: lock a proposal, then accept it. If the control were gated purely on `Voorgesteld`
+    // the lock would become permanent, and a state a teacher produced and cannot undo is worse than an inert one.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard", vergrendeld: true }),
+    ]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.ontgrendelen") }));
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].body).toEqual({ vergrendeld: false });
+  });
+
+  it.each([["Aanvaard"] as const, ["Manueel"] as const])(
+    "tells a %s AND locked card that the lock is redundant and that losmaken will not free it",
+    async (status) => {
+      // **The false-claim finding of the round-1 audit.** The section decided *whether* to render on
+      // `(status, vergrendeld)` but *which sentence* on `vergrendeld` alone, so every locked non-`Voorgesteld`
+      // card read "een hergeneratie laat het staan, DUS het staat vast" and invited a "Losmaken" that frees
+      // nothing: `IsVervangbaar` needs `Voorgesteld`, so unlocking a decided placement leaves it unreplaceable,
+      // and the panel then flipped to `vergrendelNietNodig`, contradicting the sentence that invited the click.
+      //
+      // Reachable in two clicks and not a contrived state: lock a proposal, then move it. `VerplaatsNaar` sets
+      // `Manueel` and deliberately keeps the lock.
+      const plan = maakJaarplan([
+        maakPlaatsing({ id: "p1", themaNaam: "Water", status, vergrendeld: true }),
+      ]);
+      stubBewerking(plan);
+      renderKalender();
+
+      await screen.findByText("Water");
+      fireEvent.click(aanpassen("Water"));
+
+      const paneel = within(kaart("Water"));
+
+      // The copy asserted, not just the request: that is what the round-1 test omitted.
+      expect(paneel.getByText(t("kalender.vergrendelUitlegBeslistVast"))).toBeInTheDocument();
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegVast"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegVrij"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelNietNodig"))).toBeNull();
+
+      // No dekking sentence here: it says this thema "staat nog als AI-voorstel", and this placement is not one
+      // any more.
+      expect(paneel.queryByText(t("kalender.vergrendelDekking"))).toBeNull();
+
+      // And the control is still there, so the lock stays undoable.
+      expect(paneel.getByRole("button", { name: t("kalender.ontgrendelen") })).toBeInTheDocument();
+
+      // Not the rejected card's sentence: that one says the *weigering* is doing the work, which would be false
+      // about a thema the teacher accepted or moved.
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegGeweigerdVast"))).toBeNull();
+    },
+  );
+
+  it.each([[false], [true]])(
+    "tells a REJECTED and locked card that the weigering does the work, not the lock (isVervallen=%s)",
+    async (isVervallen) => {
+      // **The MAJOR of the round-2 audit.** A rejected + locked card fell into the `!isVoorstel` branch and got
+      // `vergrendelUitlegBeslistVast`, which opens "Je hebt dit thema zelf beslist, dus … het blijft staan" — and
+      // what the teacher decided about this thema was *no*. The second half of that sentence is true, which is
+      // exactly what made it a true-looking sentence about the opposite decision. When stale it got
+      // `vergrendelUitlegVervallen` instead, whose "kies eerst een periode" pointed at a picker that is
+      // suppressed for a rejected card.
+      //
+      // Not reachable from the UI today (nothing here sets `Geweigerd`; `wijzigPlaatsingStatus` only ever sends
+      // `Manueel`), reachable over the API now, and two clicks away the moment E4-01/E4-02 ship a reject control.
+      const plan = maakJaarplan([
+        maakPlaatsing({
+          id: "p1",
+          themaNaam: "Water",
+          status: "Geweigerd",
+          vergrendeld: true,
+          ...(isVervallen ? { blokEind: null, blokOrdinaal: null, isVervallen: true } : {}),
+        }),
+      ]);
+      const verzoeken = stubBewerking(plan);
+      renderKalender();
+
+      await screen.findByText("Water");
+      fireEvent.click(aanpassen("Water"));
+
+      const paneel = within(kaart("Water"));
+
+      expect(paneel.getByText(t("kalender.vergrendelUitlegGeweigerdVast"))).toBeInTheDocument();
+      // None of the four sentences that describe a different decision, in either the stale or the placed case.
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegBeslistVast"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegVervallen"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelUitlegVast"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelNietNodig"))).toBeNull();
+      expect(paneel.queryByText(t("kalender.vergrendelDekking"))).toBeNull();
+
+      // The regeneration fact for a rejected placement is stated once, in the weigering section, and the lock
+      // sentence does not repeat it (owner ruling, 2026-07-31).
+      expect(paneel.getByText(t("kalender.weigeringUitleg"))).toBeInTheDocument();
+      expect(t("kalender.weigeringUitleg")).toContain("hergeneratie van het hele jaarplan");
+      expect(t("kalender.vergrendelUitlegGeweigerdVast")).not.toContain("hergener");
+
+      // But it still has to be SCOPED, and this is the only assertion that says so. Idempotence is per
+      // `(thema, niveau, blokStart)`, so a weigering keeps the thema out of the AI's reach **here** and not
+      // everywhere: the AI may still propose it in another period. Because the sentence deliberately avoids the
+      // word "hergener", `catalogus.test.ts`'s family guard cannot see it — it is exempt by construction — so
+      // without this line the scoping was pinned by nothing at all and deleting "hier" left the suite green.
+      // Added 2026-08-03 after the closing audit found the comment in `catalogus.test.ts` claiming this very
+      // assertion already existed. It did not.
+      expect(t("kalender.vergrendelUitlegGeweigerdVast")).toContain("hier");
+
+      // A lock must always be undoable, whatever the status.
+      fireEvent.click(paneel.getByRole("button", { name: t("kalender.ontgrendelen") }));
+      await waitFor(() => expect(verzoeken).toHaveLength(1));
+      expect(verzoeken[0].body).toEqual({ vergrendeld: false });
+    },
+  );
+
+  it("distinguishes keeping a thema in place from making it count for the dekking", async () => {
+    // Owner ruling, 2026-07-31. The kalender has no accept control (E4-01/E4-02 owns that), so "Zet het vast om
+    // dat te voorkomen" was the only keep-action on the screen — while a locked `Voorgesteld` placement counts
+    // for **nothing** in the dekking, where only aanvaard/manueel count as placed. The nudge does not ship
+    // without the distinction beside it.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water" }),
+      maakPlaatsing({ id: "p2", themaNaam: "Wonen", vergrendeld: true }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    // Both halves of the proposal state carry it: before locking (where it qualifies the nudge) and after
+    // (where the thema is safe from the AI but still does not count).
+    for (const thema of ["Water", "Wonen"]) {
+      fireEvent.click(aanpassen(thema));
+      expect(within(kaart(thema)).getByText(t("kalender.vergrendelDekking"))).toBeInTheDocument();
+    }
+
+    // And the claim about regeneration is scoped to the path that exists. E4-05 adds a second discard path and
+    // E4-07's preserve/overwrite rule is still an open directie question, so an unqualified "een hergeneratie"
+    // would be a promise about code nobody has written.
+    //
+    // These are the two sentences *this* test renders. The **class** is pinned in `i18n/catalogus.test.ts`, over
+    // every `kalender.vergrendel*` value that mentions a hergeneratie: round 1 qualified the four sentences the
+    // audit had quoted and left `vergrendeldUitleg` ("Blijft staan bij hergenereren", the badge's own tooltip)
+    // unqualified, which is the same fix-the-noticed-instance pattern `catalogus.test.ts` was written against.
+    expect(t("kalender.vergrendelUitlegVrij")).toContain("hele jaarplan");
+    expect(t("kalender.vergrendelUitlegVast")).toContain("hele jaarplan");
+  });
+
+  it("offers no lock nudge on a STALE card, because re-placement is the only remedy", async () => {
+    // A stale placement points at a date that is no longer a period boundary, which is why the plan's dekking is
+    // flagged unreliable. Locking one pins it there: the "te herzien" state would then survive every
+    // regeneration, where before this story a stale proposal was self-healing (a run simply discards it).
+    const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p1",
+        themaNaam: "Water",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+      }),
+    ]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    const paneel = within(kaart("Water"));
+
+    // The one remedy is the period picker, and the panel says so at the top.
+    expect(paneel.getByText(t("kalender.herplaatsKies"))).toBeInTheDocument();
+    expect(paneel.queryByRole("button", { name: t("kalender.vergrendelen") })).toBeNull();
+    expect(paneel.queryByText(t("kalender.vergrendelUitlegVrij"))).toBeNull();
+    expect(paneel.queryByText(t("kalender.vergrendelDekking"))).toBeNull();
+    // Nor the "you already decided" sentence, which would be a second thing to read and not the remedy.
+    expect(paneel.queryByText(t("kalender.vergrendelNietNodig"))).toBeNull();
+    expect(verzoeken).toHaveLength(0);
+  });
+
+  it("keeps a STALE card's existing lock undoable, and points at the period instead", async () => {
+    // The state exists in the wild: lock a card, then the school edits a vakantie under it. Suppressing the
+    // whole section here would strand the lock, so the control stays and only the sentence changes.
+    const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p1",
+        themaNaam: "Water",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        vergrendeld: true,
+      }),
+    ]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    const paneel = within(kaart("Water"));
+    expect(paneel.getByText(t("kalender.vergrendelUitlegVervallen"))).toBeInTheDocument();
+    expect(paneel.queryByText(t("kalender.vergrendelUitlegVast"))).toBeNull();
+
+    fireEvent.click(paneel.getByRole("button", { name: t("kalender.ontgrendelen") }));
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].body).toEqual({ vergrendeld: false });
+  });
+
+  it("announces a SUCCESSFUL lock to assistive tech, not only a failure", async () => {
+    // WCAG 2.2 SC 4.1.3. The failure path has always had `role="alert"`; the success was silent, so a
+    // screen-reader user got a label that flipped and a badge appearing somewhere above with no announcement.
+    // `aria-pressed` was rejected on purpose (beside a flipping label it announces backwards), which left
+    // nothing in its place until this round.
+    const vrij = maakPlaatsing({ id: "p1", themaNaam: "Water" });
+    const vast = maakPlaatsing({ id: "p1", themaNaam: "Water", vergrendeld: true });
+
+    const verzoeken = stubBewerking(maakJaarplan([vrij]), maakJaarplan([vast]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    // Nothing announced before the teacher acts: a live region primed with text would have announced on open.
+    const regio = () =>
+      within(kaart("Water"))
+        .getAllByRole("status")
+        .map((element) => element.textContent);
+    expect(regio()).not.toContain(t("kalender.vergrendelVastgezet", { thema: "Water" }));
+
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.vergrendelen") }));
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+
+    // The persisted state, named, so the announcement is intelligible out of the card's visual context.
+    await waitFor(() =>
+      expect(regio()).toContain(t("kalender.vergrendelVastgezet", { thema: "Water" })),
+    );
+  });
+
+  it("announces UNLOCKING a decided card, the case where the section it sat in disappears", async () => {
+    // Found in a browser, not by a test: the first version of the live region sat inside the lock section, and
+    // unlocking a decided placement removes that whole section (the sentence becomes "Vastzetten hoeft hier
+    // niet"), so the region unmounted in the same render that should have announced. The announcement was simply
+    // absent — silently, which is how an accessibility regression normally ships.
+    const vast = maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Manueel", vergrendeld: true });
+    const vrij = maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Manueel" });
+
+    const verzoeken = stubBewerking(maakJaarplan([vast]), maakJaarplan([vrij]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.ontgrendelen") }));
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+
+    // The section really is gone, so this cannot pass by the section having survived.
+    await waitFor(() =>
+      expect(within(kaart("Water")).getByText(t("kalender.vergrendelNietNodig"))).toBeInTheDocument(),
+    );
+    expect(
+      within(kaart("Water")).queryByRole("button", { name: t("kalender.ontgrendelen") }),
+    ).toBeNull();
+
+    expect(
+      within(kaart("Water"))
+        .getAllByRole("status")
+        .map((element) => element.textContent),
+    ).toContain(t("kalender.vergrendelLosgemaakt", { thema: "Water" }));
+  });
+
+  it("gives the unrecoverable control a different weight from the reversible one beside it", async () => {
+    // Owner ruling, 2026-07-31. "Losmaken" and "Uit deze periode halen" were both `variant="outline"`, stacked
+    // and separated at 390px by a hairline: one reversible, one a DELETE with no confirmation on the card E4-06
+    // made the common case. Asserted as "the two do not look the same" rather than on a hue, so the finding is
+    // pinned while the palette stays the design system's to choose.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    const paneel = within(kaart("Water"));
+    const slot = paneel.getByRole("button", { name: t("kalender.vergrendelen") });
+    const weg = paneel.getByRole("button", { name: t("kalender.uitPeriodeHalen") });
+
+    expect(weg.className).not.toBe(slot.className);
+    // Not colour alone (Art. XII): the border is a solid rule where the neutral button uses the pale `input`
+    // token, so the difference survives without colour perception. Contrast is measured in a browser, not here.
+    expect(weg.className).toContain("border-attentie-ink");
+    expect(slot.className).not.toContain("attentie");
+  });
+
+  it("tells a stale card apart from a broken tool when the lock fails", async () => {
+    // Branched on `ApiError.status`, not on `isError` (the E3-07 precedent and its audit finding). A 404 means this
+    // browser is looking at a card that is gone, which reloading fixes; a 500 means the tool is broken, and telling
+    // the teacher to reload would send them round a loop that cannot succeed. Art. II.3: the server's own string
+    // never reaches them either way.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+
+    stubBewerking(plan, plan, 404);
+    const eerste = renderKalender();
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.vergrendelen") }));
+
+    expect(await screen.findByText(t("kalender.vergrendelVerdwenen"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.vergrendelMislukt"))).toBeNull();
+    expect(screen.queryByText(/geen periodegrens/)).toBeNull();
+    eerste.unmount();
+
+    stubBewerking(plan, plan, 500);
+    renderKalender();
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.vergrendelen") }));
+
+    expect(await screen.findByText(t("kalender.vergrendelMislukt"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.vergrendelVerdwenen"))).toBeNull();
   });
 
   it("reports a refused move in Dutch and never echoes the backend message", async () => {

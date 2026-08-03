@@ -103,6 +103,82 @@ describe("nl.json — counts always have a singular form", () => {
   });
 });
 
+/**
+ * Every string the kalender uses to talk about the lock, i.e. `kalender.vergrendel*` and `kalender.vergrendeld*`.
+ * Collected by prefix rather than listed, which is the whole point of the two guards below.
+ */
+const SLOTTEKSTEN = [...CATALOGUS].filter(([sleutel]) => sleutel.startsWith("kalender.vergrendel"));
+
+describe("nl.json — the lock copy makes no unscoped promise about regeneration", () => {
+  /**
+   * E4-06 promises that a locked thema survives *a regeneration*. Only one regeneration path exists today
+   * (`JaarplanGeneratieService`, which discards exactly `Voorgesteld && !vergrendeld`). **E4-05** adds a second
+   * discard path and **E4-07's** preserve/overwrite rule is still an open directie question, so an unqualified
+   * "bij hergenereren" is a promise about code nobody has written.
+   *
+   * Aimed at the class on purpose. The E4-06 round-1 fix qualified the four sentences the audit had quoted and
+   * left `vergrendeldUitleg` — "Blijft staan bij hergenereren", the tooltip on the "Vast" badge — untouched,
+   * which is exactly the pattern this file's header describes: *each previous fix was applied to the one instance
+   * that had been noticed.*
+   */
+  /**
+   * **Known blind spot, recorded rather than left implicit (E4-06 round-2 audit).** This guard triggers on the
+   * word `hergener`, so a sentence that makes a scope claim *without* that word is structurally invisible to it.
+   * `vergrendelUitlegGeweigerdVast` is exactly that case: it says the weigering keeps the thema out of the AI's
+   * reach and deliberately avoids the word, because the weigering section already carries the qualified claim.
+   * Its scoping is pinned instead by an explicit `toContain("hier")` in `Jaarplankalender.test.tsx`, beside the
+   * assertion that keeps it free of "hergener" — idempotence is per `(thema, niveau, blokStart)`, so the AI may
+   * still propose the thema in another period.
+   *
+   * The lesson worth keeping: a guard keyed on a phrase, plus a sibling that states the same fact while avoiding
+   * that phrase, is a guard that cannot see the newest member of the class it was written for. If a future lock
+   * string makes a scope claim, either give it the word or pin it over there the same way.
+   *
+   * *This comment is itself a correction (2026-08-03).* It previously asserted that the `toContain("hier")`
+   * assertion already existed. It did not, so deleting "hier" from the string left the whole suite green — a
+   * comment claiming coverage that was not there, which is the third instance of that class on this story and
+   * the first written while fixing the second. Found by the closing audit; the assertion now exists, so the
+   * sentence above is true rather than aspirational.
+   */
+  it("qualifies every lock string that mentions a hergeneratie", () => {
+    // Non-vacuity, kept for symmetry with the second guard although it is *redundant here*: `gevonden` is a
+    // subset of SLOTTEKSTEN, so the assertion below already fails on an empty family. That is not a guess — when
+    // a stalled agent renamed the family to `slotvergrendel*`, the line that caught it was the `gevonden.length`
+    // one, before this line existed. The second guard is where non-vacuity is genuinely load-bearing.
+    expect(SLOTTEKSTEN.length).toBeGreaterThan(0);
+
+    const gevonden = SLOTTEKSTEN.filter(([, waarde]) => waarde.includes("hergener"));
+
+    // If the phrasing ever changes so that none match, the guard has gone quiet and must be revisited.
+    expect(gevonden.length).toBeGreaterThan(0);
+
+    for (const [sleutel, waarde] of gevonden) {
+      expect(waarde, `${sleutel} promises a hergeneratie without saying which one`).toContain(
+        "hele jaarplan",
+      );
+    }
+  });
+
+  /**
+   * The re-placement instruction belongs to `kalender.herplaatsKies` alone (E3-07's), which stands at the top of
+   * the same panel. E4-06 round 1 added a second copy of it inside `vergrendelUitlegVervallen`, and on a card
+   * that is stale **and** rejected the period picker is suppressed, so the instruction pointed at an affordance
+   * that is not there — the E3-06 rule.
+   */
+  it("leaves the 'choose a period' instruction to kalender.herplaatsKies alone", () => {
+    // Same non-vacuity guard as above, for the same reason: this assertion is a bare loop over SLOTTEKSTEN, so
+    // an empty family would satisfy it forever.
+    expect(SLOTTEKSTEN.length).toBeGreaterThan(0);
+    expect(CATALOGUS.get("kalender.herplaatsKies")).toContain("Kies");
+
+    for (const [sleutel, waarde] of SLOTTEKSTEN) {
+      expect(waarde.toLowerCase(), `${sleutel} repeats the re-placement instruction`).not.toMatch(
+        /\bkies\b/,
+      );
+    }
+  });
+});
+
 describe("nl.json — no dead keys under doelen", () => {
   /**
    * Three keys shipped unused in E1-16 (`taxonomieLabel`, `sluiten`, `clusterLabel`), and one of them,
