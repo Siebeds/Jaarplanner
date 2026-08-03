@@ -110,9 +110,10 @@ public sealed class SchoolcontentImportRobustheidTests
         var resultaat = await service.ImporteerAsync(parseResultaat, SchoolcontentImportOpties.Toevoegen, toepassen: true);
 
         Assert.True(resultaat.Toegepast);
-        Assert.Contains(
-            resultaat.Diff.Opmerkingen,
-            o => o.Contains(VierdeCode, StringComparison.Ordinal) && o.Contains("genegeerd", StringComparison.Ordinal));
+        // Keyed on the dropped **code**, not on a word from the sentence. The notice's wording is product copy
+        // (rewritten in E1-13's fix round, which broke this assertion); what this test is about is that the code
+        // the cap discarded is named at all. The copy predicates live in SchoolcontentImportOpmerkingenTests.
+        Assert.Contains(resultaat.Diff.Opmerkingen, o => o.Contains(VierdeCode, StringComparison.Ordinal));
 
         var thema = await context.Themas.Include(t => t.Themadoelen).SingleAsync();
         Assert.Equal(Thema.MaxThemadoelen, thema.Themadoelen.Count);
@@ -141,9 +142,16 @@ public sealed class SchoolcontentImportRobustheidTests
 
         Assert.False(voorbeeld.Toegepast);
         Assert.True(commit.Toegepast);
+        // Non-empty first, then equal. Filtering on a word from the copy made this pass vacuously the moment
+        // the notice was reworded: two empty sequences compare equal, so the guarantee would have been lost in
+        // silence. Keyed on the dropped code instead, which is behaviour rather than wording.
+        var capOpmerkingen = voorbeeld.Diff.Opmerkingen
+            .Where(o => o.Contains(VierdeCode, StringComparison.Ordinal))
+            .ToList();
+        Assert.NotEmpty(capOpmerkingen);
         Assert.Equal(
-            voorbeeld.Diff.Opmerkingen.Where(o => o.Contains("genegeerd", StringComparison.Ordinal)),
-            commit.Diff.Opmerkingen.Where(o => o.Contains("genegeerd", StringComparison.Ordinal)));
+            capOpmerkingen,
+            commit.Diff.Opmerkingen.Where(o => o.Contains(VierdeCode, StringComparison.Ordinal)));
     }
 
     /// <summary>
@@ -176,9 +184,10 @@ public sealed class SchoolcontentImportRobustheidTests
             toepassen: true);
 
         Assert.True(resultaat.Toegepast);
-        Assert.Contains(
-            resultaat.Diff.Opmerkingen,
-            o => o.Contains(VierdeCode, StringComparison.Ordinal) && o.Contains("genegeerd", StringComparison.Ordinal));
+        // Keyed on the dropped **code**, not on a word from the sentence. The notice's wording is product copy
+        // (rewritten in E1-13's fix round, which broke this assertion); what this test is about is that the code
+        // the cap discarded is named at all. The copy predicates live in SchoolcontentImportOpmerkingenTests.
+        Assert.Contains(resultaat.Diff.Opmerkingen, o => o.Contains(VierdeCode, StringComparison.Ordinal));
 
         var thema = await context.Themas.Include(t => t.Themadoelen).SingleAsync();
         Assert.Equal(Thema.MaxThemadoelen, thema.Themadoelen.Count);
@@ -211,9 +220,16 @@ public sealed class SchoolcontentImportRobustheidTests
         var commit = await service.ImporteerAsync(
             Parse(werkboek()), SchoolcontentImportOpties.Bijwerken, toepassen: true);
 
+        // Non-empty first, then equal. Filtering on a word from the copy made this pass vacuously the moment
+        // the notice was reworded: two empty sequences compare equal, so the guarantee would have been lost in
+        // silence. Keyed on the dropped code instead, which is behaviour rather than wording.
+        var capOpmerkingen = voorbeeld.Diff.Opmerkingen
+            .Where(o => o.Contains(VierdeCode, StringComparison.Ordinal))
+            .ToList();
+        Assert.NotEmpty(capOpmerkingen);
         Assert.Equal(
-            voorbeeld.Diff.Opmerkingen.Where(o => o.Contains("genegeerd", StringComparison.Ordinal)),
-            commit.Diff.Opmerkingen.Where(o => o.Contains("genegeerd", StringComparison.Ordinal)));
+            capOpmerkingen,
+            commit.Diff.Opmerkingen.Where(o => o.Contains(VierdeCode, StringComparison.Ordinal)));
     }
 
     private static SchoolcontentParseResult Parse(MemoryStream stroom)

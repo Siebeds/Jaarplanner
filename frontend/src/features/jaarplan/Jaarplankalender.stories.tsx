@@ -52,6 +52,41 @@ const rooster: Planningsrooster = {
   ],
 };
 
+/**
+ * The same year at the **fine** tier (E3-08), so the zoom control in the story is not a control that lies.
+ *
+ * Also copied from the real API (`?niveau=Subthemaperiode`, verified 2026-07-31) rather than derived here: writing a
+ * subdivision by hand in a fixture would put a second implementation of the ADR-0020 nesting rules in the repo, and
+ * the story's whole claim is that it shows what the product shows. Note the property the fine view rests on, visible
+ * in the data: **each parent's first sub-block starts on the parent's own start date** (1 sep, 2 okt, 9 nov, 4 jan,
+ * 22 feb, 19 apr, 26 mei), which is why a placement keyed on a themaperiode still resolves here.
+ */
+const fijnRooster: Planningsrooster = {
+  ...rooster,
+  niveau: "Subthemaperiode",
+  blokken: [
+    { ordinaal: 1, start: "2026-09-01", eind: "2026-09-16", ouderOrdinaal: 1, aantalOpenDagen: 16 },
+    { ordinaal: 2, start: "2026-09-17", eind: "2026-10-01", ouderOrdinaal: 1, aantalOpenDagen: 15 },
+    { ordinaal: 3, start: "2026-10-02", eind: "2026-10-17", ouderOrdinaal: 2, aantalOpenDagen: 16 },
+    { ordinaal: 4, start: "2026-10-18", eind: "2026-11-01", ouderOrdinaal: 2, aantalOpenDagen: 15 },
+    { ordinaal: 5, start: "2026-11-09", eind: "2026-11-22", ouderOrdinaal: 3, aantalOpenDagen: 14 },
+    { ordinaal: 6, start: "2026-11-23", eind: "2026-12-06", ouderOrdinaal: 3, aantalOpenDagen: 14 },
+    { ordinaal: 7, start: "2026-12-07", eind: "2026-12-20", ouderOrdinaal: 3, aantalOpenDagen: 14 },
+    { ordinaal: 8, start: "2027-01-04", eind: "2027-01-17", ouderOrdinaal: 4, aantalOpenDagen: 14 },
+    { ordinaal: 9, start: "2027-01-18", eind: "2027-01-31", ouderOrdinaal: 4, aantalOpenDagen: 14 },
+    { ordinaal: 10, start: "2027-02-01", eind: "2027-02-14", ouderOrdinaal: 4, aantalOpenDagen: 14 },
+    { ordinaal: 11, start: "2027-02-22", eind: "2027-03-07", ouderOrdinaal: 5, aantalOpenDagen: 14 },
+    { ordinaal: 12, start: "2027-03-08", eind: "2027-03-21", ouderOrdinaal: 5, aantalOpenDagen: 14 },
+    { ordinaal: 13, start: "2027-03-22", eind: "2027-04-04", ouderOrdinaal: 5, aantalOpenDagen: 14 },
+    { ordinaal: 14, start: "2027-04-19", eind: "2027-05-01", ouderOrdinaal: 6, aantalOpenDagen: 13 },
+    { ordinaal: 15, start: "2027-05-02", eind: "2027-05-13", ouderOrdinaal: 6, aantalOpenDagen: 10 },
+    { ordinaal: 16, start: "2027-05-14", eind: "2027-05-25", ouderOrdinaal: 6, aantalOpenDagen: 11 },
+    { ordinaal: 17, start: "2027-05-26", eind: "2027-06-06", ouderOrdinaal: 7, aantalOpenDagen: 12 },
+    { ordinaal: 18, start: "2027-06-07", eind: "2027-06-18", ouderOrdinaal: 7, aantalOpenDagen: 12 },
+    { ordinaal: 19, start: "2027-06-19", eind: "2027-06-30", ouderOrdinaal: 7, aantalOpenDagen: 12 },
+  ],
+};
+
 let volgendeId = 0;
 
 function plaatsing(
@@ -140,7 +175,12 @@ function metGestubdeApi(plan: Jaarplan) {
     window.fetch = (async (input: RequestInfo | URL) => {
       const url = String(input);
       const body = url.includes("/rooster")
-        ? rooster
+        ? // The tier the request asks for, so the zoom control (E3-08) works in the story too. Answering the coarse
+          // grid whatever was asked would put a control in a review artifact that changes its own label and nothing
+          // else, which is the defect this project banned after E3-06.
+          url.includes("niveau=Subthemaperiode")
+          ? fijnRooster
+          : rooster
         : url.includes("/jaarplan/parameters")
           ? { gewensteStartthemas: [], vasteMomenten: [] }
           : plan;

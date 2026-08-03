@@ -76,10 +76,16 @@ public sealed class KlasBeheerService : IKlasBeheerService
 
         var klas = schooljaar.VoegKlasToe(naam, creatie.Leerjaar);
 
-        // Registered explicitly as Added. Reaching a new entity only through a navigation of an already-tracked
-        // principal makes EF apply its "key is set, so it must already exist" heuristic and mark the Klas *Modified*,
-        // which then fails with a concurrency error because there is no such row yet. The domain mutator still owns
-        // the containment; this line only says "insert it".
+        // Registered explicitly as Added. This used to be load-bearing: reaching a new entity only through a
+        // navigation of an already-tracked principal made EF apply its "key is set, so it must already exist"
+        // heuristic and mark the Klas *Modified*, which failed with a concurrency error because there is no such
+        // row yet.
+        //
+        // Since 2026-08-03 that heuristic no longer fires: AppDbContext declares every Guid key
+        // ValueGeneratedNever, model-wide, so the change tracker reads a new child as Added on its own (see the
+        // rule's own comment for why the workaround-per-service approach kept missing collections). The line
+        // stays because it is correct and free, and because it states the intent at the call site; it is no
+        // longer the thing that makes the insert work.
         _context.Klassen.Add(klas);
         await BewaarAsync(naam, cancellationToken);
 

@@ -9,10 +9,15 @@ import type { TranslationKey } from "../i18n";
  * nothing — the rule E3-06 was built under — so `isGebouwd: false` is rendered as a visible
  * "nog niet beschikbaar" marker and lands on a page that says so.
  *
- * `magBeheerder` records what functional analysis §3.2 (Toegangsrechten) already decrees: Import and
- * Beheer are directie-only. **Nothing filters on it yet** — there is no authenticated user to filter by
- * (E6-01, gated by E7-11), and inventing a client-side gate would be security theatre over an
- * unauthenticated API. It is here so E6-02 filters a list rather than restructuring one.
+ * `magBeheerder` records what functional analysis §3.2 (Toegangsrechten) decrees per **destination**.
+ * **Nothing filters on it yet** — there is no authenticated user to filter by (E6-01, gated by E7-11), and
+ * inventing a client-side gate would be security theatre over an unauthenticated API. It is here so E6-02
+ * filters a list rather than restructuring one.
+ *
+ * Read the granularity precisely, because getting it wrong is a live defect rather than a documentation one: it
+ * is a flag **per route**, and §3.2's rows are per *action*. A destination that carries two actions with
+ * different audiences cannot be described here at all, and `/import` is exactly that case (see its entry). Such
+ * a destination marks the restricted part at the part, not at the route.
  */
 export interface Navigatiebestemming {
   /** Route path, and the identity used by `NavLink`. */
@@ -31,7 +36,11 @@ export interface Navigatiebestemming {
    * met. Surfaced by the E0-10 close-out audit.
    */
   isGebouwd: boolean;
-  /** Directie-only per functional analysis §3.2. Not enforced here — see the note above. */
+  /**
+   * The whole destination is directie-only per functional analysis §3.2. Not enforced here — see the note
+   * above, and note it is **whole**: a route with a beheerder-only *section* on it is `false` here and carries
+   * the marking on the section instead, or E6-02 hides work its own users are entitled to.
+   */
   magBeheerder: boolean;
   /** Catalogue key describing what will live here, shown on the placeholder page. */
   binnenkortKey?: TranslationKey;
@@ -79,10 +88,29 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
   {
     pad: "/import",
     labelKey: "navigatie.import",
-    isGebouwd: false,
-    magBeheerder: true,
-    binnenkortKey: "binnenkort.import",
-    story: "E1-13 (schoolcontent) + E1-15 (Op.stap trigger)",
+    isGebouwd: true,
+    // **`false`, and this is the interesting entry.** FA §3.2 has two rows for what lives here, with two
+    // different audiences: *Leerdoelen inladen/vernieuwen (overheidsbron)* = Beheerder, and *Thema's/
+    // activiteiten invoeren* = Beheerder **and** Leerkracht (FR-1.1). E1-13 first set this to `true`, which
+    // records an answer the matrix contradicts: since this flag is what E6-02 filters the nav by, the first
+    // real role filter would have hidden the school-content import from the teachers §3.2 grants it to.
+    // So the route is visible to both roles and the beheerder-only marking sits on the Op.stap **section**:
+    // `OPSTAP_SECTIE_ALLEEN_BEHEERDER` in `features/import/Opstapimport.tsx`, beside the visible sentence
+    // that already says it. **E6-02 must gate that section, not this route.**
+    //
+    // **Ruled, so this is no longer an open reading (owner, 2026-08-03, recorded on the E1-13 story):** FA §3.2
+    // stands as written. A leerkracht may import thema's and activiteiten; only the Op.stap goals are
+    // beheerderswerk. So `false` here is the settled answer rather than E1-13's interpretation of it, and a
+    // future story that wants one directie-only import destination has to change §3.2 first.
+    magBeheerder: false,
+    // Read as precisely as the note on `isGebouwd` asks. **E1-13** built both halves of this destination: the
+    // teacher-facing school-content import (upload, sjabloon, preview, per-row problems, add vs bijwerken) and
+    // the directie-facing Op.stap review flow over E1-15's trigger. What is NOT here is a real Op.stap import
+    // of real data: a per-discipline file refuses with a 409 until **E1-12** loads the decreed minimumdoelen,
+    // which is blocked on a source file from directie. The Op.stap section states that prerequisite **up
+    // front** in visible text (`import.opstap.voorwaarde`), not only reactively in the 409 panel; an earlier
+    // version of this comment claimed the screen said so when no string on it mentioned minimumdoelen at all.
+    story: "E1-13 (both flows); E1-12 unblocks importing real Op.stap data",
   },
   {
     pad: "/beheer",

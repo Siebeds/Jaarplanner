@@ -4,6 +4,7 @@ import type {
   Generatieresultaat,
   Jaarplan,
   Plaatsingstatus,
+  Planningsblokniveau,
   Planningsrooster,
   Themakeuze,
 } from "./types";
@@ -28,9 +29,20 @@ export function haalJaarplan(klasId: string): Promise<Jaarplan> {
  * Separate from the jaarplan because the plan carries only *placements*: an empty period has no
  * placement, so a ribbon drawn from the plan alone would omit exactly the periods a teacher is
  * looking for room in.
+ *
+ * **The tier is passed explicitly, never left to the endpoint's default (E3-08, FR-6.3).** The endpoint does
+ * default to `Themaperiode`, and relying on that is how the parameter form ended up correct by coincidence — the
+ * screen now chooses a tier, so it says which one. The tier is a *derivation* argument rather than a filter: the
+ * server re-derives the whole grid per request, so the two tiers are two different answers and must be cached under
+ * two different keys (see `roosterKey`).
  */
-export function haalRooster(schooljaarId: string): Promise<Planningsrooster> {
-  return apiFetch<Planningsrooster>(`/api/schooljaren/${schooljaarId}/rooster`);
+export function haalRooster(
+  schooljaarId: string,
+  niveau: Planningsblokniveau,
+): Promise<Planningsrooster> {
+  return apiFetch<Planningsrooster>(
+    `/api/schooljaren/${schooljaarId}/rooster?niveau=${encodeURIComponent(niveau)}`,
+  );
 }
 
 /**

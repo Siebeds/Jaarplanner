@@ -92,8 +92,11 @@ These are in the artifact too, marked A–E, so they can be walked through on sc
   you plan in 8–9 shorter blocks?
 - **B. Does a thema live in exactly one period, or may it span two?** Currently one. Do your thema's run
   across a vacation?
-- **C. When is a period "te vol"?** Currently 3 thema's. Is it a count of thema's, of goals, or something
-  else — and should it scale with the period's length?
+- ~~**C. When is a period "te vol"?**~~ **Answered (owner, 2026-07-31): it scales with the period's length,
+  and it is not a count.** A period is te vol when the placed thema's need more weeks than the period offers:
+  `sum(Thema.DuurWeken)` against the period measured in open days. That is the rule the generation side already
+  applies (`Spreidingsrapport.IsOverbelast`), so the two halves of the app stop disagreeing about the word.
+  The provisional count of 3 is retired by E3-09; the full ruling and its consequences are recorded there.
 - **D. Is the unplaced-goals tray usable, or too long?** After a full Op.stap import it holds hundreds.
   Filter by discipline, by doelsoort, or something else?
 - **E. What belongs on a card?** Currently naam, doelsoort mix, coverage count. Missing anything —

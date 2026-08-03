@@ -361,4 +361,34 @@ public class ClosedXmlSchoolcontentParserTests
     {
         Assert.Throws<ArgumentNullException>(() => Parser.Parse(null!));
     }
+
+    /// <summary>
+    /// The offending column travels to the caller as a <b>Dutch label</b>, not only as an enum member
+    /// (E1-13, FR-1.2). Added because the alternative was for the import screen to keep its own
+    /// enum-name to column-label table, which would have put a second copy of the Excel layout outside
+    /// this assembly and broken Art. III.3's single-source rule from the outside.
+    /// </summary>
+    [Fact]
+    public void Names_the_offending_column_in_Dutch_from_the_single_source()
+    {
+        var result = Parse(new SchoolcontentWorkbookBuilder().MetHeader().MetRij(activiteitType: "zwemmen"));
+
+        var probleem = Assert.Single(result.Problemen);
+        Assert.Equal(SchoolcontentKolom.ActiviteitType, probleem.Kolom);
+        Assert.Equal(SchoolcontentKolommen.Label(SchoolcontentKolom.ActiviteitType), probleem.KolomLabel);
+    }
+
+    /// <summary>A file-level problem names no column, so the label must be absent rather than invented.</summary>
+    [Fact]
+    public void Leaves_the_column_label_null_for_a_file_level_problem()
+    {
+        using var stream = SchoolcontentWorkbookBuilder.LeegWerkboek();
+        var result = Parser.Parse(stream);
+
+        var probleem = Assert.Single(result.Problemen);
+        Assert.Null(probleem.Kolom);
+        Assert.Null(probleem.KolomLabel);
+        // Row 0 means "the file, not a row". Pinned because a renderer that prints it verbatim says "rij 0".
+        Assert.Equal(0, probleem.RijNummer);
+    }
 }
