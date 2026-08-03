@@ -487,10 +487,20 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
     /// <para>
     /// <b>The notice is written for a teacher (Art. II.3), and the article reference lives here in the
     /// comment rather than in it.</b> The cap is Art. IX.2's; a reader who can act on this sentence cannot act
-    /// on that string, and the fix is theirs: the codes that fit are the <i>first</i> ones in the file's
-    /// <c>Themadoelen</c> cell (<c>Take(ruimte)</c> below), so the sentence says to put the anchoring ones
-    /// first. E1-13's audit found this notice still carrying "(Art. IX.2)" after its three siblings had been
-    /// rewritten, which is the selective-fix pattern this repo keeps recording.
+    /// on that string. E1-13's audit found this notice still carrying "(Art. IX.2)" after its three siblings had
+    /// been rewritten, which is the selective-fix pattern this repo keeps recording.
+    /// </para>
+    /// <para>
+    /// <b>And the advice depends on <paramref name="reedsAanwezig"/>, which is why there are two sentences.</b>
+    /// From the create path (<c>reedsAanwezig: 0</c>) the whole cap is spent by this file, the codes that fit are
+    /// the <i>first</i> ones in its <c>Themadoelen</c> cell (<c>Take(ruimte)</c> below), and "put the anchoring
+    /// ones first" is a fix the reader can carry out in the file. From the reconcile path it is not: there
+    /// <c>reedsAanwezig</c> counts links retained from the database — including the teacher-set
+    /// <c>aanvaard</c>/<c>manueel</c> decisions Art. IV.2 preserves — so with two retained links and three
+    /// incoming codes, reordering the column can only decide which <b>one</b> of the three lands, and the real
+    /// blocker is two slots the file does not control. An earlier version of this comment claimed the
+    /// column-order advice held at both call sites; it did not, and the notice said so to a reader who could not
+    /// act on it (E1-13 round-2 audit, MINOR 2).
     /// </para>
     /// </summary>
     private static (IReadOnlyList<string> ToeTeVoegen, string? Opmerking) PasThemadoelCapToe(
@@ -512,13 +522,30 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
             ? $"1 themadoel is daarom overgeslagen: {genegeerd[0]}."
             : $"{genegeerd.Count} themadoelen zijn daarom overgeslagen: {string.Join(", ", genegeerd)}.";
 
-        var opmerking =
-            $"Thema '{themaNaam}' zou {reedsAanwezig + nieuweCodes.Count} themadoelen krijgen, en een thema " +
-            $"kan er hoogstens {Thema.MaxThemadoelen} hebben. {overgeslagen} " +
-            "Zet in het bestand de themadoelen die dit thema het best samenvatten vooraan in de kolom " +
-            "Themadoelen.";
+        if (reedsAanwezig == 0)
+        {
+            return (
+                nieuweCodes.Take(ruimte).ToList(),
+                $"Thema '{themaNaam}' zou {nieuweCodes.Count} themadoelen krijgen, en een thema kan er " +
+                $"hoogstens {Thema.MaxThemadoelen} hebben. {overgeslagen} " +
+                "Zet in het bestand de themadoelen die dit thema het best samenvatten vooraan in de kolom " +
+                "Themadoelen.");
+        }
 
-        return (nieuweCodes.Take(ruimte).ToList(), opmerking);
+        var behouden = reedsAanwezig == 1
+            ? "1 themadoel dat er al staat"
+            : $"{reedsAanwezig} themadoelen die er al staan";
+        var inkomend = nieuweCodes.Count == 1
+            ? "1 nieuwe code"
+            : $"{nieuweCodes.Count} nieuwe codes";
+
+        return (
+            nieuweCodes.Take(ruimte).ToList(),
+            $"Thema '{themaNaam}' houdt {behouden}, en dit bestand brengt {inkomend} aan. Samen is dat meer " +
+            $"dan de {Thema.MaxThemadoelen} themadoelen die een thema kan hebben. {overgeslagen} " +
+            "De bezette plaatsen kan dit bestand niet vrijmaken: haal eerst een themadoel weg bij het thema " +
+            "zelf, of duid bij het doorvoeren aan dat koppelingen die niet meer in het bestand staan mogen " +
+            "verdwijnen.");
     }
 
     /// <summary>Subdoel-link analogue of <see cref="ReconcileThemadoelen"/>.</summary>

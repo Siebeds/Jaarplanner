@@ -2,6 +2,7 @@ using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace Jaarplanner.Infrastructure.Persistence;
 
@@ -81,5 +82,38 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Every Guid key in this model is assigned by the domain constructor (`= Guid.NewGuid()`), so none of
+        // them is store-generated. Saying so once, model-wide, closes a defect class this repo met three times.
+        //
+        // EF's convention for a Guid key is ValueGenerated.OnAdd. When change tracking discovers an untracked
+        // entity inside the collection of an ALREADY-LOADED parent, it decides Added-versus-Modified from
+        // "is the key set AND store-generated" — and since the constructor set it, a brand-new child is tracked
+        // as Modified. SaveChanges then emits an UPDATE for a row that does not exist, which PostgreSQL reports
+        // as `DbUpdateConcurrencyException: expected to affect 1 row(s), but actually affected 0 row(s)`.
+        //
+        // It cost three separate diagnoses to get here, each fixing only what it happened to meet: E3-04 fixed
+        // Themaplaatsing, and KlasBeheerService/SchoolcontentBeheerService/SchoolcontentImportService each
+        // worked around it with an explicit `_context.X.Add(child)` (which forces Added). What none of them
+        // fixed was the collection with no such workaround: adding a Subthema or an Activiteit to an existing
+        // thema, i.e. the ordinary school-content re-import, answered 500 from the second import onward
+        // (found by E1-13's round-2 browser pass; `AggregaatGroeiTests` now covers every collection).
+        //
+        // Two reasons this is a model-wide rule rather than a line per configuration: the statement is true of
+        // the whole model, not of the entities that happened to break; and a new child collection would
+        // otherwise reintroduce the defect and, on the in-memory provider, no test would notice.
+        //
+        // Metadata only. Npgsql generates a `uuid` key client-side rather than with a database default, so no
+        // column, default or constraint changes — verified with `dotnet ef migrations has-pending-model-changes`
+        // and by re-running the migrations against a fresh database.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetKeys()
+                .SelectMany(key => key.Properties)
+                .Where(p => p.ClrType == typeof(Guid)))
+            {
+                property.ValueGenerated = ValueGenerated.Never;
+            }
+        }
     }
 }

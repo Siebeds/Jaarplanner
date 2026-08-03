@@ -313,6 +313,14 @@ describe("Op.stap import — a refusal is a system state, not a broken download 
     expect(await screen.findByText(t("import.opstap.geweigerdAlgemeenUitleg"))).toBeInTheDocument();
     expect(screen.queryByText(t("import.opstap.geweigerdSysteemUitleg"))).toBeNull();
     expect(screen.queryByText(t("import.opstap.geweigerdDisciplineUitleg"))).toBeNull();
+
+    // **And it claims nothing about the data either.** The frame used to end with "en er is niets gewijzigd",
+    // defended in a comment as "what a 409 always guarantees". It is not: 409 carries no statement about
+    // whether a write occurred, and `isWeigering` is true on the *commit* path too, where that sentence is the
+    // same guess this story's own `import.onbeschikbaarNaDoorvoeren` fix decided a client may not make
+    // (round-2 audit, MINOR 1). Asserted on the rendered panel rather than on the key, so restoring the clause
+    // fails here even if the key is renamed.
+    expect(screen.getByRole("alert").textContent).not.toMatch(/niets gewijzigd/);
   });
 
   it("survives a 409 whose body carried no reason", async () => {

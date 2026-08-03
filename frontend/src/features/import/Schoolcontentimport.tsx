@@ -96,6 +96,11 @@ export function Schoolcontentimport() {
    * starts" over "compare which mutation answered last" is deliberate: the invariant becomes *at most one
    * run's outcome is ever on screen, and it is the run the reader last asked for*, held in one function,
    * rather than a precedence rule every future reader has to re-derive correctly.
+   *
+   * **The loss this causes is ruled and accepted, not overlooked (owner, 2026-08-03).** Clearing before the new
+   * run answers means a report the reader still needed — the Art. IV.2 panel here, the FR-2.5 `verdwenen` report
+   * on the Op.stap half — is gone for good if the second call fails. That was weighed against a screen that
+   * keeps showing another run's report, and this side was chosen. Do not reinstate a recency rule to "fix" it.
    */
   function vergeetUitkomst() {
     voorbeeld.reset();

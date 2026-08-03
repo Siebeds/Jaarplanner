@@ -38,7 +38,19 @@ public sealed class SchoolcontentImportOpmerkingenTests
 {
     private const string GeldigeCode = "NAT-K3-01";
 
-    /// <summary>What every teacher-facing notice must satisfy, whatever else it says.</summary>
+    /// <summary>
+    /// What every teacher-facing notice must satisfy, whatever else it says.
+    /// <para>
+    /// <b>These three predicates are not the whole rule, and reading them as if they were is how the fifth
+    /// defect got shipped.</b> They catch typography and audience leaks in a <i>fixed</i> string. They cannot
+    /// catch a wrong <b>inflection</b> in a string the server composes: <c>"De 1 bestaande doelen blijven
+    /// ongewijzigd"</c> passes all three and is still wrong Dutch, and that exact sentence was live in
+    /// <c>OpstapImportService</c> while this helper existed. A notice that interpolates a count therefore needs a
+    /// case <b>per grammatical form</b> on top of these predicates. See
+    /// <see cref="Themadoelcap_wordt_leesbaar_gemeld_met_de_codes_die_wegvallen"/> for the shape, and
+    /// <c>OpstapImportOpmerkingenTests</c> for the same treatment on the other importer.
+    /// </para>
+    /// </summary>
     private static void AssertLeesbaarVoorEenLeerkracht(string opmerking)
     {
         Assert.DoesNotContain("—", opmerking, StringComparison.Ordinal);
@@ -174,6 +186,93 @@ public sealed class SchoolcontentImportOpmerkingenTests
         Assert.Equal(
             codes.Take(Thema.MaxThemadoelen),
             thema.Themadoelen.Select(td => td.Koppeling.LeerplandoelCode));
+    }
+
+    /// <summary>
+    /// The same cap, reached from the <b>reconcile</b> path, where the column-order advice above is false.
+    /// <para>
+    /// Here two of the three slots are held by links kept from the database — the teacher-set decisions Art. IV.2
+    /// preserves — so reordering the file's <c>Themadoelen</c> cell can only decide which <b>one</b> of the three
+    /// incoming codes lands, and the blocker is two slots the file does not control. The round-1 notice said
+    /// "put the anchoring ones first" here too, which is advice a reader cannot act on (E1-13 round-2 audit,
+    /// MINOR 2). This pins the two levers that do work: remove a themadoel on the thema itself, or opt in to
+    /// discarding links the file no longer carries.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Themadoelcap_op_de_overschrijfroute_noemt_de_bezette_plaatsen()
+    {
+        string[] bewaard = ["NAT-K3-90", "NAT-K3-91"];
+        string[] inkomend = ["NAT-K3-01", "NAT-K3-02", "NAT-K3-03"];
+
+        await using var context = MaakContext();
+        await SeedAsync(context, [.. bewaard, .. inkomend]);
+
+        // Two links the teacher decided on, which the incoming file does not carry: they are preserved (Art. IV.2)
+        // and therefore occupy two of the three slots.
+        var bestaand = new Thema("Herfst", duurWeken: 5);
+        foreach (var code in bewaard)
+        {
+            bestaand.VoegThemadoelToe(new DoelKoppeling(code, KoppelingStatus.Manueel));
+        }
+
+        context.Themas.Add(bestaand);
+        await context.SaveChangesAsync();
+
+        var parseResultaat = Parse(new SchoolcontentWorkbookBuilder()
+            .MetHeader()
+            .MetRij(themadoelen: string.Join(";", inkomend))
+            .Bouw());
+
+        var resultaat = await new SchoolcontentImportService(context).ImporteerAsync(
+            parseResultaat, SchoolcontentImportOpties.Bijwerken, toepassen: true);
+
+        var opmerking = Assert.Single(resultaat.Diff.Opmerkingen);
+        AssertLeesbaarVoorEenLeerkracht(opmerking);
+
+        // It names the occupied slots as the reason, rather than blaming the file's column order.
+        Assert.Contains("2 themadoelen die er al staan", opmerking, StringComparison.Ordinal);
+        Assert.Contains("3 nieuwe codes", opmerking, StringComparison.Ordinal);
+        Assert.Contains("2 themadoelen zijn daarom overgeslagen", opmerking, StringComparison.Ordinal);
+        Assert.Contains("haal eerst een themadoel weg bij het thema zelf", opmerking, StringComparison.Ordinal);
+        Assert.DoesNotContain("vooraan in de kolom", opmerking, StringComparison.Ordinal);
+
+        // And the preserved decisions really are still there, which is what makes the sentence true.
+        var thema = await context.Themas.Include(t => t.Themadoelen).SingleAsync();
+        Assert.Equal(
+            [inkomend[0], bewaard[0], bewaard[1]],
+            thema.Themadoelen.Select(td => td.Koppeling.LeerplandoelCode).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// The singular form of the reconcile notice, because Dutch inflects both counts in it and a theory over one
+    /// of them would leave the other unpinned.
+    /// </summary>
+    [Fact]
+    public async Task Themadoelcap_op_de_overschrijfroute_verbuigt_het_enkelvoud()
+    {
+        string[] inkomend = ["NAT-K3-01", "NAT-K3-02", "NAT-K3-03", "NAT-K3-04"];
+
+        await using var context = MaakContext();
+        await SeedAsync(context, ["NAT-K3-90", .. inkomend]);
+
+        var bestaand = new Thema("Herfst", duurWeken: 5);
+        bestaand.VoegThemadoelToe(new DoelKoppeling("NAT-K3-90", KoppelingStatus.Manueel));
+        context.Themas.Add(bestaand);
+        await context.SaveChangesAsync();
+
+        var resultaat = await new SchoolcontentImportService(context).ImporteerAsync(
+            Parse(new SchoolcontentWorkbookBuilder()
+                .MetHeader()
+                .MetRij(themadoelen: string.Join(";", inkomend))
+                .Bouw()),
+            SchoolcontentImportOpties.Bijwerken,
+            toepassen: true);
+
+        var opmerking = Assert.Single(resultaat.Diff.Opmerkingen);
+        AssertLeesbaarVoorEenLeerkracht(opmerking);
+        Assert.Contains("1 themadoel dat er al staat", opmerking, StringComparison.Ordinal);
+        Assert.DoesNotContain("1 themadoelen", opmerking, StringComparison.Ordinal);
     }
 
     /// <summary>

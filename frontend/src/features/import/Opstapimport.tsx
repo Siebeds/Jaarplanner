@@ -56,8 +56,12 @@ import type { OpstapImportAntwoord, OpstapRijProbleem } from "./types";
  * **E6-02 gates this section, not the route.** Nothing filters on it today, for the same reason nothing filters
  * on `routes.ts`'s flag: the API is unauthenticated (E6-01, gated by E7-11), so a client-side gate over an open
  * endpoint would be theatre. This constant exists so that story has one thing to find rather than a comment to
- * interpret. Whether the *whole* import screen should instead be directie-only is a change to §3.2 and belongs
- * in the functional analysis, not in a nav flag.
+ * interpret.
+ *
+ * **And the reading is settled, not merely defended (owner, 2026-08-03, recorded on the E1-13 story):** FA §3.2
+ * stands as written, so a leerkracht may import thema's and activiteiten and only the Op.stap goals are
+ * beheerderswerk. The split below is the ruling, not an interpretation of it; making the whole import screen
+ * directie-only would be a change to §3.2 and belongs in the functional analysis first.
  */
 export const OPSTAP_SECTIE_ALLEEN_BEHEERDER = true;
 
@@ -77,6 +81,14 @@ export function Opstapimport() {
    * nothing. Called when a new run starts too, not only when an input changes — without that, `commit.data`
    * won by fixed precedence forever, so re-checking after an import fired a real preview and then threw away
    * **the FR-2.5 review report** in favour of the previous commit's panel. That report is the whole of clause 6.
+   *
+   * **Clearing *before* the new run answers is a ruled, accepted cost, not an oversight (owner, 2026-08-03).**
+   * It means a beheerder who has just read "Nazicht bij deze inlezing: 50 doelen staan niet meer in dit bestand"
+   * and presses nakijken again loses that report if the second call fails, with no way back short of a
+   * successful re-run. The owner weighed that against the alternative — a screen that keeps showing a report
+   * belonging to a different run — and chose this. Do not "fix" it by reinstating a recency rule; if a
+   * `verdwenen` report must be re-readable at all, that is the durable-acknowledgement decision (Art. XIV) and
+   * it needs its own story.
    */
   function vergeetUitkomst() {
     voorbeeld.reset();
@@ -124,23 +136,38 @@ export function Opstapimport() {
   const isWeigering = fout instanceof ApiError && fout.status === 409;
   const isAanvraagfout = fout instanceof ApiError && fout.status === 400;
 
-  /** Nothing would be read from this file, so "Doelen inlezen" would write nothing (the E3-06 rule). */
+  /**
+   * Nothing would be read from this file, so "Doelen inlezen" would write nothing (the E3-06 rule).
+   *
+   * `overgeslagen` is the server's own "I read nothing" flag and it is set on both paths that produce one: a
+   * discipline outside the configured selection, and a file that yielded no usable rows. The second used to
+   * carry `&& bestaand.Count > 0`, so a **first** import of a header-only workbook fell through this guard with
+   * two green verdicts and a live commit button. The condition was widened in `OpstapImportService` rather than
+   * patched here, because the truthful place to say "nothing was read" is the code that read it (E1-13 round-2
+   * audit, MINOR 4). If a third skip reason appears, it must set `overgeslagen` too, and then this guard covers
+   * it without an edit.
+   */
   const nietsInTeLezen = uitkomst?.diff.overgeslagen === true;
 
   /**
    * Which framing sentence the refusal gets: matched on the discriminator, never defaulted to one of the two
    * specific claims.
    *
-   * An unrecognised or absent `type` means *we could not tell*, and gets copy that asserts only what a 409
-   * always guarantees (the file was refused as a whole, nothing changed). Defaulting to either specific frame
-   * is how a proxy-replaced body, or a refusal a future story adds, would end up printing a confident sentence
-   * about a cause nobody established.
+   * An unrecognised or absent `type` means *we could not tell*, and gets copy that says only that: the file was
+   * refused as a whole rather than row by row. Defaulting to either specific frame is how a proxy-replaced body,
+   * or a refusal a future story adds, would end up printing a confident sentence about a cause nobody
+   * established.
    *
-   * Only the generic frame states "er is niets gewijzigd", and that asymmetry is deliberate: both specific
-   * refusals already say it in their own `detail` (`OpstapImportFout`), and a frame repeating the sentence
-   * printed two lines under it is the duplicated prose this project's design rule cuts first. Seen on screen at
-   * 1440 in the fix round's browser pass, which is the only way that kind of duplication shows up. The generic
-   * frame keeps it because there may be no `detail` at all on that path.
+   * **No frame claims "er is niets gewijzigd" any more, including this one.** The previous version did, and
+   * defended it as "what a 409 always guarantees" — which is wrong: HTTP 409 carries no statement at all about
+   * whether a write occurred, and `isWeigering` is true on the *commit* path too. That is the very claim this
+   * story's own MINOR 5 fix decided a client may not make (see `import.onbeschikbaarNaDoorvoeren`), so the
+   * generic frame was asserting on the commit path exactly what the branch below refuses to. The clause is
+   * simply gone from `import.opstap.geweigerdAlgemeenUitleg`, rather than split into a commit-path variant:
+   * today's two real refusals both roll back and both say so in their own server `detail`
+   * (`OpstapImportFout`), so a second key would buy a sentence for a state no code path produces. The
+   * asymmetry that remains is the intended one: the specific frames leave the reassurance to the `detail`
+   * printed two lines under them, which is the duplicated prose this project's design rule cuts first.
    */
   const weigeringUitleg = ((): TranslationKey => {
     const soort = fout instanceof ApiError ? fout.type : undefined;

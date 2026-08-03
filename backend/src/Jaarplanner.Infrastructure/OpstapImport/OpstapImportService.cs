@@ -152,17 +152,29 @@ public sealed class OpstapImportService : IOpstapImportService
             .ToListAsync(cancellationToken);
         var bestaandPerCode = bestaand.ToDictionary(l => l.Code, StringComparer.Ordinal);
 
-        // Empty/implausible-file guard (Art. III.4): if the file yielded no valid rows but the
-        // discipline already has persisted goals, treating every existing goal as "disappeared"
-        // would be a destructive over-reaction to a bad/partial/wrong upload. Skip instead — flag or
-        // delete nothing — and surface a notice. (A genuinely first, empty import is simply a no-op.)
-        if (inkomend.Count == 0 && bestaand.Count > 0)
+        // Empty/implausible-file guard (Art. III.4): if the file yielded no valid rows, treating every existing
+        // goal as "disappeared" would be a destructive over-reaction to a bad/partial/wrong upload. Skip
+        // instead — flag or delete nothing — and surface a notice.
+        //
+        // The condition is `inkomend.Count == 0`, deliberately WITHOUT "&& bestaand.Count > 0". It used to carry
+        // that second clause, on the reasoning that a first, empty import is simply a no-op — true of the data,
+        // and false of the screen: with `overgeslagen: false` and no opmerkingen, E1-13's import screen showed
+        // two green verdicts, offered "Doelen inlezen", and afterwards said "De doelen zijn ingelezen" for zero
+        // doelen. That is exactly the control-that-does-nothing the E3-06 rule forbids, and the frontend guard
+        // (`nietsInTeLezen`) keys on `overgeslagen`, so absence of input has to be a skip whether or not rows
+        // already exist (E1-13 round-2 audit, MINOR 4).
+        if (inkomend.Count == 0)
         {
             // Dutch inflects, so the count picks the sentence: "De 1 bestaande doelen blijven" is the plural
             // bug this repo has shipped five times, and E1-13 renders this notice on a screen (Art. II.3).
-            var behouden = bestaand.Count == 1
-                ? "Het bestaande doel blijft ongewijzigd."
-                : $"De {bestaand.Count} bestaande doelen blijven ongewijzigd.";
+            // Three forms, not two: the zero case is the first import the widened condition now catches, and
+            // "Het bestaande doel blijft ongewijzigd" would be a claim about a row that does not exist.
+            var behouden = bestaand.Count switch
+            {
+                0 => "Er staan nog geen doelen voor deze discipline, dus er verandert ook niets.",
+                1 => "Het bestaande doel blijft ongewijzigd.",
+                _ => $"De {bestaand.Count} bestaande doelen blijven ongewijzigd.",
+            };
 
             var notice = new OpstapHerimportDiff(
                 disciplineNummer,

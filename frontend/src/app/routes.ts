@@ -96,8 +96,12 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
     // real role filter would have hidden the school-content import from the teachers §3.2 grants it to.
     // So the route is visible to both roles and the beheerder-only marking sits on the Op.stap **section**:
     // `OPSTAP_SECTIE_ALLEEN_BEHEERDER` in `features/import/Opstapimport.tsx`, beside the visible sentence
-    // that already says it. **E6-02 must gate that section, not this route.** If the owner decides the whole
-    // import screen is directie-only after all, that is a change to §3.2 and belongs in the FA first.
+    // that already says it. **E6-02 must gate that section, not this route.**
+    //
+    // **Ruled, so this is no longer an open reading (owner, 2026-08-03, recorded on the E1-13 story):** FA §3.2
+    // stands as written. A leerkracht may import thema's and activiteiten; only the Op.stap goals are
+    // beheerderswerk. So `false` here is the settled answer rather than E1-13's interpretation of it, and a
+    // future story that wants one directie-only import destination has to change §3.2 first.
     magBeheerder: false,
     // Read as precisely as the note on `isGebouwd` asks. **E1-13** built both halves of this destination: the
     // teacher-facing school-content import (upload, sjabloon, preview, per-row problems, add vs bijwerken) and
