@@ -192,3 +192,208 @@ first is the one that deserves a decision.
   worktree's DLLs, so nothing had to be killed before building.
 - The verification database `jp_e406_verify` is left in place, holding the eight seeded lock states plus the three
   toggles this run performed. It is throwaway.
+
+---
+
+# E4-06 — Test report (round 3, the second fix commit)
+
+**Verdict:** PASS
+**Mode:** both (xUnit unit + real-PostgreSQL integration, Vitest, guard-mutation testing, and a real headless-Chrome
+pass at 1440px and exactly 390px against the running API and PostgreSQL)
+**Commit verified:** `81b4ed9` (round 2 = `c8fabe6..81b4ed9`)
+**Worktree:** `C:\source\Jaarplanner\.claude\worktrees\e4-06-vergrendeling`, branch `story/E4-06-vergrendeling`
+
+> Round 2 touched **no backend code** (`git diff --stat c8fabe6..81b4ed9 -- backend/` is empty) and
+> `Een_vergrendeld_voorstel_overleeft_een_volledige_hergeneratie` is still at
+> `backend/tests/Jaarplanner.IntegrationTests/Postgres/JaarplanPersistentieTests.cs:214`. **Criterion 3 therefore
+> carries forward from round 2 unchanged**, and it was re-run green here. Everything else below was measured fresh:
+> the sixteen-state matrix was read out of a real browser by this run, not taken from the worklog.
+
+## Criteria checked
+
+| # | Acceptance criterion | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | Lock and unlock from the kalender; persists; keyboard-operable; not drag-dependent | **PASS** | Re-proven this round on the two states round 1 never reached. On `Geweigerd × vergrendeld × ¬vervallen` and `× vervallen`, "Losmaken" is present and **fires by keyboard only** (`Input.dispatchKeyEvent` Enter on the focused button, no pointer): `PUT /api/klassen/921c…/jaarplan/plaatsingen/b0000000-…-032/vergrendeling` with body `{"vergrendeld":false}` → **200**, then `…-034` → **200**. The badge disappears, and the API read-back gives `Geweigerd/false`. Re-locked over the API, both 200. |
+| 2 | Label or icon, never colour alone; all copy in `nl.json`; no em dashes; no server string rendered | **PASS** | Every rendered `<p>` in all 32 opened panels (16 cards × 2 widths) was mapped back to an `nl.json` key: **0 unmapped strings**, so no hard-coded Dutch and no server string reaches the user. The "Vast" badge is text + glyph, and its `title` is now "Blijft staan bij een hergeneratie van het hele jaarplan" on every locked card. Contrast measured composited (below): 5.66:1 for the new copy, 9.24:1 for the border, and the delete trigger no longer shares a class list with "Losmaken" (`del.className === los.className` is **false**). |
+| 3 | Against real PostgreSQL: a locked placement survives full regeneration while an unlocked `Voorgesteld` one is replaced | **PASS (carried forward + re-run)** | No backend change this round; the test has not moved. `dotnet test` integration: **153 passed, 0 failed, 0 skipped** against local Postgres 17. |
+| 4 | Frontend tests cover the round trip **and** the error path | **PASS** | `corepack pnpm test`: **203 passed in 12 files, 0 failed** (was 200). I read the new `it.each` for `Geweigerd × vergrendeld × (placed, stale)`: it asserts the right sentence, asserts **all four** wrong sentences are absent, and *drives* "Losmaken" and asserts the request body. Behaviour, not a green run. |
+| 5 | *Partial* regeneration is E4-05 and must not be claimed | **PASS** | `GenereerAsync` still takes no period scope. The catalogue guard now enforces the qualification over the whole `kalender.vergrendel*` family, and it bites (below). |
+
+## The full sixteen-state matrix, read out of a real browser by this run
+
+Sixteen placements seeded into a throwaway `jp_e406_r2` (migrated from the real migrations), one thema per status
+(Water = `Voorgesteld`, Wonen = `Aanvaard`, Herfst en oogst = `Manueel`, Verkeer = `Geweigerd`), each placed twice in
+real derived periods and twice on `2027-04-08` / `2027-04-10` inside the Paasvakantie where no block starts. The API
+confirmed all sixteen `(status, vergrendeld, isVervallen)` triples before the browser ran. All sixteen "Aanpassen"
+panels were opened and every `<p>` in each panel was read in **DOM order** and mapped back to its `nl.json` key.
+
+**The rows are byte-identical at 1440px and at exactly 390px** (`JSON.stringify(sig(1440)) === JSON.stringify(sig(390))`
+is `true`, over `[domOrder, titel, badgeVast, selectCount, keys, buttons]`).
+
+| # | thema | status | `vergrendeld` | `isVervallen` | picker | buttons | sentences, in DOM order |
+|---|---|---|---|---|---|---|---|
+| 0 | Verkeer | Geweigerd | no | yes | 0 | Weigering terugdraaien, Uit het jaarplan halen | `herplaatsKies`, `weigeringEerstTerugdraaien`, `weigeringUitleg` |
+| 1 | Wonen | Aanvaard | no | yes | 1 | Verplaatsen, Uit het jaarplan halen | `herplaatsKies`, `verplaatsGevolg` |
+| 2 | Herfst en oogst | Manueel | no | yes | 1 | Verplaatsen, Uit het jaarplan halen | `herplaatsKies` |
+| 3 | Water | Voorgesteld | no | yes | 1 | Verplaatsen, Uit het jaarplan halen | `herplaatsKies`, `verplaatsGevolg` |
+| **4** | **Verkeer** | **Geweigerd** | **yes** | **yes** | **0** | **Losmaken**, Weigering terugdraaien, Uit het jaarplan halen | `herplaatsKies`, `weigeringEerstTerugdraaien`, **`vergrendelUitlegGeweigerdVast`**, `weigeringUitleg` |
+| 5 | Wonen | Aanvaard | yes | yes | 1 | Verplaatsen, **Losmaken**, Uit het jaarplan halen | `herplaatsKies`, `verplaatsGevolg`, `vergrendelUitlegVervallen` |
+| 6 | Herfst en oogst | Manueel | yes | yes | 1 | Verplaatsen, **Losmaken**, Uit het jaarplan halen | `herplaatsKies`, `vergrendelUitlegVervallen` |
+| 7 | Water | Voorgesteld | yes | yes | 1 | Verplaatsen, **Losmaken**, Uit het jaarplan halen | `herplaatsKies`, `verplaatsGevolg`, `vergrendelUitlegVervallen` |
+| 8 | Water | Voorgesteld | no | no | 1 | Verplaatsen, **Vastzetten**, Uit deze periode halen | `verplaatsGevolg`, `vergrendelUitlegVrij`, **`vergrendelDekking`** |
+| **9** | **Verkeer** | **Geweigerd** | **yes** | no | **0** | **Losmaken**, Weigering terugdraaien, Uit deze periode halen | `weigeringEerstTerugdraaien`, **`vergrendelUitlegGeweigerdVast`**, `weigeringUitleg` |
+| 10 | Water | Voorgesteld | yes | no | 1 | Verplaatsen, **Losmaken**, Uit deze periode halen | `verplaatsGevolg`, `vergrendelUitlegVast`, **`vergrendelDekking`** |
+| 11 | Wonen | Aanvaard | no | no | 1 | Verplaatsen, Uit deze periode halen | `verplaatsGevolg`, `vergrendelNietNodig` |
+| 12 | Wonen | Aanvaard | yes | no | 1 | Verplaatsen, **Losmaken**, Uit deze periode halen | `verplaatsGevolg`, `vergrendelUitlegBeslistVast` |
+| 13 | Herfst en oogst | Manueel | no | no | 1 | Verplaatsen, Uit deze periode halen | `vergrendelNietNodig` |
+| 14 | Herfst en oogst | Manueel | yes | no | 1 | Verplaatsen, **Losmaken**, Uit deze periode halen | `vergrendelUitlegBeslistVast` |
+| 15 | Verkeer | Geweigerd | no | no | 0 | Weigering terugdraaien, Uit deze periode halen | `weigeringEerstTerugdraaien`, `weigeringUitleg` |
+
+**This is exactly the table the implementer reports.** The specific claims it was checked against:
+
+- **The two rows this round exists for (#9 and #4)** render `vergrendelUitlegGeweigerdVast` and **none** of the four
+  wrong sentences: no `vergrendelUitlegBeslistVast`, no `vergrendelUitlegVervallen`, no `vergrendelUitlegVast`, no
+  `vergrendelNietNodig`, and no `vergrendelDekking`. Verbatim, as read from the DOM:
+  > *"Bij een geweigerd thema voegt vastzetten niets toe: de weigering zelf houdt dit thema al buiten bereik van de
+  > AI. Losmaken haalt alleen het label “Vast” weg, de weigering blijft."*
+- **`vergrendelDekking` renders on exactly rows 8 and 10**, the two `Voorgesteld && !isVervallen` states, and
+  nowhere else. That matches the guard `isVoorstel && !plaatsing.isVervallen` at `Themakaart.tsx:419`.
+- **"Losmaken" is present on every one of the eight `vergrendeld` rows**, so a lock is always undoable whatever the
+  status or staleness.
+- **No `kalender.vergrendel*` sentence contains "kies"**; `herplaatsKies` is the only source of that instruction.
+
+## Round-2 fix claims, each verified
+
+1. **`slotUitleg` tests `isGeweigerd` first.** Confirmed in `Themakaart.tsx`, and confirmed empirically: rows #4 and
+   #9 above take the `isGeweigerd` branch and not the `isVervallen` one.
+2. **The "hier" in `weigeringUitleg` is load-bearing, so the implementer is right.**
+   `JaarplanGeneratieService.cs:217` keys idempotence on
+   `jaarplan.VindPlaatsingOp(thema.Id, GeneratieNiveau, suggestie.BlokStart)`, i.e. on `(thema, niveau, blokStart)`;
+   a hit whose `Status == Geweigerd` is recorded as `afgewezen` and **not** inserted (`:221-223`). A different
+   `blokStart` misses that lookup entirely and a fresh `Voorgesteld` row is added. So *"stelt dit thema **hier** niet
+   opnieuw voor"* is precisely true, and an unqualified version would have been false. The survival half is true
+   too: `Themaplaatsing.IsVervangbaar` is `Status == Voorgesteld && !Vergrendeld` (`Themaplaatsing.cs:105`), so a
+   `Geweigerd` row is never discarded by `VerwijderVervangbarePlaatsingen()`.
+   **Not an over-promise:** the clause *"de kaart verdwijnt alleen als je ze zelf uit het jaarplan haalt"* holds,
+   because `VerwijderPlaatsingAsync` is the only deletion path and `JaarplanConfiguration.cs:111-114` maps
+   `Themaplaatsing` to `Thema` with `DeleteBehavior.Restrict`, so a thema cannot be deleted out from under a
+   placement.
+3. **The new `vergrendelDekking` wording is true against E5.** `backlog/E5-dekking-export.md:15` binds **`Aanvaard`
+   *and* `Manueel`**; *"zodra jij dit voorstel zelf overneemt"* covers both, and covers the route this screen can
+   actually offer ("Verplaatsen" sets `Manueel`), where the old *"zodra het aanvaard is"* named the one status the
+   screen cannot set. The medium finding from round 2 is **resolved**. It renders on exactly two states (above).
+4. **The imperative is gone** from `vergrendelUitlegVervallen`, and it no longer renders on a rejected stale card
+   (row #4 takes the `Geweigerd` branch).
+5. **Contrast records reconciled**, settled with my own composite. See below; `button.tsx` and the worklog now state
+   the same figures with the backdrops named.
+6. **`vergrendeldUitleg` is qualified.** Read off every locked card badge `title` as
+   "Blijft staan bij een hergeneratie van het hele jaarplan".
+7. **The two corrected records** are present in `implementation.md`, marked as corrections rather than rewritten:
+   the round-1 state table (~373) and the "Seven placements, covering every row" claim.
+
+## The new guards actually bite (mutation-tested)
+
+Each mutation was applied to `frontend/src/i18n/nl.json`, `src/i18n/catalogus.test.ts` was run, and the file was
+restored. The tree is clean at `81b4ed9` afterwards.
+
+| mutation | result |
+| --- | --- |
+| `vergrendeldUitleg` set back to "Blijft staan bij hergenereren" (drop the qualification) | **FAILS**, naming the key: `AssertionError: kalender.vergrendeldUitleg promises a hergeneratie without saying which one: expected "Blijft staan bij hergenereren" to contain "hele jaarplan"` (`catalogus.test.ts:126`). 1 failed, 4 passed |
+| all 14 `kalender.vergrendel*` keys renamed to `slotvergrendel*` (the family stops matching) | **FAILS**: `AssertionError: expected 0 to be greater than 0` (`catalogus.test.ts:123`). The guard cannot go vacuous. *(This run was completed and the file restored by the orchestrator after I stalled the watchdog; both runs were `corepack pnpm vitest run src/i18n/catalogus.test.ts`.)* |
+| "kies eerst een periode voor dit thema" put back into `vergrendelUitlegVervallen` | **FAILS**, naming the key: `AssertionError: kalender.vergrendelUitlegVervallen repeats the re-placement instruction: expected "dit thema staat vast, maar het staat …" not to match /\bkies\b/` (`catalogus.test.ts:142`). 1 failed, 4 passed |
+| unmutated | **5 passed** |
+
+## Contrast, composited, with every backdrop named: my own figures
+
+Measured in headless Chrome on the real locked-rejected panel. The raw computed value of the well is
+`rgba(243, 241, 237, 0.6)`; flattened over the white `bg-card` it is `rgb(247.8, 246.6, 244.2)` exactly, which rounds
+to the `rgb(248, 247, 244)` every devtools readout shows.
+
+| what | foreground | backdrop | ratio | needs |
+| --- | --- | --- | --- | --- |
+| `destructiveOutline` label "Uit deze periode halen" | `rgb(103,54,20)` | its own `bg-card` fill `rgb(255,255,255)` | **9.93:1** | 4.5 |
+| its 1px border (SC 1.4.11) | `rgb(103,54,20)` | well, **exact** `rgb(247.8,246.6,244.2)` | **9.24:1** | 3.0 |
+| the same border | `rgb(103,54,20)` | well, **rounded** `rgb(248,247,244)` | 9.27:1 | 3.0 |
+| neutral `outline` "Losmaken" border | `rgb(150,138,115)` | same well | **3.16:1** | 3.0 |
+| **`vergrendelUitlegGeweigerdVast`** and **`weigeringUitleg`**, 12px | `text-ink-zacht` `rgb(83,101,110)` | same well | **5.66:1** | 4.5 |
+| `weigeringEerstTerugdraaien`, 12px | `rgb(103,54,20)` | same well | **9.24:1** | 4.5 |
+| "Losmaken" label | `rgb(21,39,46)` | same well | 15.42:1 | 4.5 |
+
+**Which number belongs in the record: 9.24.** It is the ratio against the actual `rgba(…, .6)` composite; 9.27 comes
+from rounding the backdrop first. `button.tsx` now states **both**, says which input each comes from, and names the
+backdrop, which is the right resolution: the earlier records were uncheckable precisely for lacking their backdrop.
+Both clear the 3.0 of SC 1.4.11 by a wide margin either way. **Not colour alone** is confirmed by measurement rather
+than by class name: 9.24:1 beside 3.16:1 is a roughly 3x luminance difference that survives monochrome, and
+`del.className === los.className` is **false**, so the two triggers are not merely tinted twins.
+
+## 390px
+
+`Emulation.setDeviceMetricsOverride` with **`mobile: false`, set before the first navigation**. That note from the
+implementer is correct and it mattered: the shared harness defaulted to `mobile: width < 600` and had to be patched.
+Confirmed `window.innerWidth === 390`. `body.scrollWidth === 390`, and `window.scrollTo(600, 0)` leaves
+`scrollX === 0`, so there is **no horizontal page scroll**. Walking every element: 167 sit right of the viewport with
+all sixteen panels open, and **0** of them are outside a designated `overflow-x: auto|scroll` region.
+`documentElement.scrollWidth` reads 2006 with all sixteen panels open and **390 with one panel open**, which confirms
+the large reading is the ribbon scroll region being counted and not a layout defect. Buttons are 220x36; cards are
+314px and 266px wide.
+
+## The live region, both directions (SC 4.1.3)
+
+Driven with a `MutationObserver` on the `role="status"` element inside the panel. On both locked-rejected cards the
+region was **empty before the teacher acted**, so it cannot announce on open, and then announced exactly once:
+*"“Verkeer” staat niet meer vast."* The lock direction was re-proven this round over the API plus a fresh render, and
+by the Vitest round-trip test; the three-consecutive-toggle browser proof stands from round 2 on unchanged code.
+
+## Commands run
+
+| command | result |
+| --- | --- |
+| `dotnet format --verify-no-changes` | **exit 0**, no output |
+| `dotnet test` (whole solution, `JAARPLANNER_TEST_POSTGRES` set) | **Unit: 496 passed, 0 failed, 0 skipped.** **Integration: 153 passed, 0 failed, 0 skipped** (2 m 32 s). No `[PostgresFact]` skipped. |
+| `corepack pnpm lint` (`eslint . --max-warnings 0 && tsc --noEmit`) | **exit 0**, no output |
+| `corepack pnpm test` | **203 passed in 12 files, 0 failed** (37.1 s) |
+| `corepack pnpm build` | **exit 0**, built in 8.47 s, CSS 38.18 kB (matches the worklog) |
+| `corepack pnpm vitest run src/i18n/catalogus.test.ts` × 4 (3 mutations + control) | see the mutation table |
+| `dotnet ef database update` against `jp_e406_r2` | exit 0 |
+| API on `http://127.0.0.1:5407`, Vite on 5307 proxying to it | `/health` returns `Healthy`; all 16 placements served with `isVervallen` derived from the real grid |
+| headless Chrome over CDP at 1440x1100 and 390x844 | see above |
+
+The connection string used for the backend suites was
+`Host=127.0.0.1;Port=5432;Database=postgres;Username=jaarplanner;Password=jaarplanner_local;SSL Mode=Disable`.
+
+## Evidence
+
+Screenshots in this session scratchpad (`C:\Users\desaedeleirs\AppData\Local\Temp\e406r2\`): `m2-1440.png` and
+`m2-390.png` (all sixteen panels open, full page), `geweigerd-vast-1440.png` and `geweigerd-vast-390.png` (the locked
+rejected panel alone). Machine-readable matrices: `m2-1440.json` and `m2-390.json`.
+
+## Findings (advisory, none blocks the verdict)
+
+1. **[low, pre-existing, E3-07] `herplaatsKies` still renders on a stale *rejected* card that has no picker.** Rows
+   #0 and #4 render *"Kies hieronder een periode voor dit thema, of versleep de kaart…"* while the panel contains
+   **zero** `<select>` elements and the card is not draggable. Observed at both widths. This is the breach of the
+   E3-06 rule that the implementer filed against E3-07 and was told not to fix here; recorded because it is real and
+   reproducible. Round 2 correctly stopped `vergrendelUitlegVervallen` from adding a *second* copy of it.
+2. **[low] `weigeringUitleg` is now long.** Three clauses, 52 words, in a panel that already carries
+   `weigeringEerstTerugdraaien` and `vergrendelUitlegGeweigerdVast` above it, so a locked rejected stale card shows
+   four paragraphs. Every sentence is true and the owner asked for the regeneration fact to live here, so this is a
+   density judgement for the owner, not a defect.
+3. **[informational] `vergrendelDekking` states a necessary condition in language that reads as sufficient.**
+   *"telt pas mee voor de dekking zodra jij dit voorstel zelf overneemt"*: taking the placement over is necessary,
+   but E5 will also require the `DoelKoppeling`s of the thema to be `aanvaard`/`manueel`, and the stale-placement
+   rule replaces the figure with *onbetrouwbaar* while any placement is `isVervallen`. Harmless today, since
+   `/dekking` is still `isGebouwd: false`, and clearly better than the round-1 wording. Worth one look when E5-02
+   builds the screen this sentence points at.
+
+## Housekeeping
+
+- **No product code was changed.** The three guard mutations were applied to `nl.json`, run, and restored;
+  `git status` is clean at `81b4ed9` apart from this report. No branch switch, no push, and no entry into the primary
+  tree at `C:\source\Jaarplanner`.
+- Ports **5407** (API) and **5307** (Vite) as claimed for this story, plus a private Chrome profile on CDP port 9337.
+  All three processes were stopped afterwards and the throwaway database `jp_e406_r2` was **dropped**.
+  `Jaarplanner.Api.exe` and Vite processes belonging to the `e3-08-zoom` and `agent-a8b6127bb7255ef99` worktrees were
+  identified first and **deliberately left alone**.
+- **Process note for whoever runs the next round:** I stalled the watchdog once. The cause was not a foreground
+  server, since everything here was backgrounded and polled, but a long uninterrupted stretch of local
+  test-mutation work. Poll with short commands even when nothing long-lived is running.
