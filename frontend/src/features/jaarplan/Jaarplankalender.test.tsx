@@ -973,6 +973,15 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
       expect(t("kalender.weigeringUitleg")).toContain("hergeneratie van het hele jaarplan");
       expect(t("kalender.vergrendelUitlegGeweigerdVast")).not.toContain("hergener");
 
+      // But it still has to be SCOPED, and this is the only assertion that says so. Idempotence is per
+      // `(thema, niveau, blokStart)`, so a weigering keeps the thema out of the AI's reach **here** and not
+      // everywhere: the AI may still propose it in another period. Because the sentence deliberately avoids the
+      // word "hergener", `catalogus.test.ts`'s family guard cannot see it — it is exempt by construction — so
+      // without this line the scoping was pinned by nothing at all and deleting "hier" left the suite green.
+      // Added 2026-08-03 after the closing audit found the comment in `catalogus.test.ts` claiming this very
+      // assertion already existed. It did not.
+      expect(t("kalender.vergrendelUitlegGeweigerdVast")).toContain("hier");
+
       // A lock must always be undoable, whatever the status.
       fireEvent.click(paneel.getByRole("button", { name: t("kalender.ontgrendelen") }));
       await waitFor(() => expect(verzoeken).toHaveLength(1));
