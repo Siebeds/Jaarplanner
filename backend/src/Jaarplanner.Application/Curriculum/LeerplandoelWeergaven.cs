@@ -111,7 +111,6 @@ public enum KoppelingHerkomst
 /// and hiding an open suggestion would answer a different question. The status is on every row so the
 /// reader can tell the two apart.
 /// </para>
-/// </summary>
 /// <para>
 /// <b><see cref="KlasNaam"/> is what keeps a class-scoped link from posing as a school-wide one.</b> A subdoel
 /// or an activiteit belongs to one klas and one leeftijd (Art. IX.2); rendering it next to a themadoel with no
