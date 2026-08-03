@@ -1020,10 +1020,15 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
   );
 
   it("distinguishes keeping a thema in place from making it count for the dekking", async () => {
-    // Owner ruling, 2026-07-31. The kalender has no accept control (E4-01/E4-02 owns that), so "Zet het vast om
-    // dat te voorkomen" was the only keep-action on the screen — while a locked `Voorgesteld` placement counts
-    // for **nothing** in the dekking, where only aanvaard/manueel count as placed. The nudge does not ship
-    // without the distinction beside it.
+    // Owner ruling, 2026-07-31: a locked `Voorgesteld` placement counts for **nothing** in the dekking, where only
+    // aanvaard/manueel count as placed, so the lock nudge does not ship without that distinction beside it.
+    //
+    // *Why the ruling was needed has since expired, and the assertion has not (E4-02).* At the time the kalender had
+    // no accept control, so locking was the only keep-action on the screen and the nudge had nothing to be
+    // distinguished from except a status the screen could not set. There is now an "Aanvaarden" button on the card
+    // face, and `vergrendelDekking` was reworded to point at it. The test still earns its place: the two sentences
+    // must stay distinct precisely *because* both actions are now reachable, which is when a teacher can actually
+    // confuse them.
     const plan = maakJaarplan([
       maakPlaatsing({ id: "p1", themaNaam: "Water" }),
       maakPlaatsing({ id: "p2", themaNaam: "Wonen", vergrendeld: true }),
@@ -2256,8 +2261,43 @@ describe("Jaarplankalender — aanvaarden en weigeren (E4-02, FR-7.1)", () => {
     }
   });
 
-  it("offers no decision on a STALE proposal, whose only remedy is re-placement", async () => {
+  it("lets a STALE proposal be rejected but not accepted, and says why", async () => {
     const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p9",
+        themaNaam: "Feesten in december",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Voorgesteld",
+      }),
+    ]);
+    const verzoeken = stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Feesten in december");
+
+    // **Accepting is withheld**, on the reasoning E4-06 established for the lock: it would produce a card labelled
+    // "Aanvaard" that covers nothing and STILL withholds the whole dekking figure, since E5-01 withholds it while any
+    // unresolved stale placement exists. A decision that resolves nothing, dressed as one that did.
+    expect(beslissing("Feesten in december").aanvaarden).toBeNull();
+
+    // **Rejecting is offered, and this story's first version wrongly withheld it too** by carrying the accept
+    // argument across to a case it does not describe. `DekkingService` counts `IsVervallen && !IsGeweigerd` as
+    // unresolved, so a weigering is precisely what RESOLVES a stale proposal and restores the withheld figure. Without
+    // it, saying "no" to a stale proposal had two routes and both were wrong: re-placing sets `Manueel`, which makes
+    // the thema COUNT, and "Uit het jaarplan halen" is unrecoverable.
+    const weigeren = beslissing("Feesten in december").weigeren;
+    expect(weigeren).not.toBeNull();
+    fireEvent.click(weigeren!);
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].body).toEqual({ status: "Geweigerd" });
+  });
+
+  it("explains on the stale card itself why it offers no aanvaarden", async () => {
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water" }),
       maakPlaatsing({
         id: "p9",
         themaNaam: "Feesten in december",
@@ -2273,14 +2313,94 @@ describe("Jaarplankalender — aanvaarden en weigeren (E4-02, FR-7.1)", () => {
 
     await screen.findByText("Feesten in december");
 
-    // The same reasoning E4-06 applied to the lock, applied consistently: a stale card's remedy is re-placement, and
-    // accepting one would produce a card labelled "Aanvaard" that covers nothing and STILL withholds the whole
-    // dekking figure (E5-01 withholds it while any unresolved stale placement exists). A decision that resolves
-    // nothing, dressed as one that did.
-    expect(beslissing("Feesten in december").aanvaarden).toBeNull();
-    expect(beslissing("Feesten in december").weigeren).toBeNull();
-    // The instruction it does get is the re-placement one, which belongs to E3-07 and still points at a picker.
-    expect(screen.getByText(t("kalender.herzienUitleg"))).toBeInTheDocument();
+    // A missing button with no sentence is a silent omission, and the line above the board would otherwise be telling
+    // this teacher to do something this card does not let them do. Scoped to the stale card and absent from the
+    // healthy one, because a sentence that is true of one state and false of its neighbour is the defect class that
+    // dominated E4-06's three audit rounds. Same treatment `vergrendelUitlegVervallen` already gives the lock.
+    expect(
+      within(kaart("Feesten in december")).getByText(t("kalender.beslisVervallen")),
+    ).toBeInTheDocument();
+    expect(
+      within(kaart("Water")).queryByText(t("kalender.beslisVervallen")),
+    ).toBeNull();
+  });
+
+  it("states the dekking rule once above the board, not on every card", async () => {
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water" }),
+      maakPlaatsing({ id: "p2", themaNaam: "Wonen" }),
+      maakPlaatsing({ id: "p3", themaNaam: "Weer" }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    // Pinned because the audit could delete this sentence and leave all 304 tests green (it is the one string
+    // carrying the Art. V.1 claim to a teacher, and the dead-key guard in `catalogus.test.ts` covers only `doelen.*`).
+    // Asserted as "exactly once, and outside the cards", which is the property that makes it worth having: three
+    // proposals must not produce three copies of it.
+    const overal = screen.getAllByText(t("kalender.beslisUitleg"));
+    expect(overal).toHaveLength(1);
+    expect(overal[0].closest("article")).toBeNull();
+  });
+
+  it("announces a rejection and an un-rejection, not only an acceptance", async () => {
+    // The acceptance branch is covered above. These two were NOT, and the audit proved it by mutation: swapping
+    // `beslisGeweigerd` for `beslisManueel`, and deleting both branches outright, each left the suite green — while
+    // the worklog claimed the un-reject announcement as a delivered SC 4.1.3 fix. A claim no test can falsify is the
+    // defect class this file's own E3-08 comment warns about.
+    const voorstel = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const geweigerd = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Geweigerd" }),
+    ]);
+    const verzoeken = stubBewerking(voorstel, geweigerd);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(beslissing("Water").weigeren!);
+
+    await waitFor(() =>
+      expect(
+        within(kaart("Water"))
+          .getAllByRole("status")
+          .map((regio) => regio.textContent),
+      ).toContain(t("kalender.beslisGeweigerd", { thema: "Water" })),
+    );
+    // Distinct from the un-rejection sentence, which is the mutation that survived.
+    expect(
+      within(kaart("Water"))
+        .getAllByRole("status")
+        .map((regio) => regio.textContent),
+    ).not.toContain(t("kalender.beslisManueel", { thema: "Water" }));
+    expect(verzoeken[0].body).toEqual({ status: "Geweigerd" });
+  });
+
+  it("announces an un-rejection from the panel's own button", async () => {
+    const geweigerd = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Geweigerd" }),
+    ]);
+    const manueel = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Manueel" }),
+    ]);
+    stubBewerking(geweigerd, manueel);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+    fireEvent.click(
+      within(kaart("Water")).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
+    );
+
+    // The announcement E4-02 added to a control it did not otherwise change: before this story the un-reject was
+    // silent to a screen reader, and the badge flipping from "Geweigerd" to "Manueel" announces nothing.
+    await waitFor(() =>
+      expect(
+        within(kaart("Water"))
+          .getAllByRole("status")
+          .map((regio) => regio.textContent),
+      ).toContain(t("kalender.beslisManueel", { thema: "Water" })),
+    );
   });
 
   it("tells the teacher to reload when the placement is gone, rather than to try again", async () => {
