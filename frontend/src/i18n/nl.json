@@ -183,7 +183,7 @@
       "verdwenenOngekoppeld": "geen verwijzingen uit de schoolinhoud",
       "geweigerdTitel": "De doelen zijn niet ingelezen",
       "geweigerdSysteemUitleg": "Dit gaat niet over de rijen in het bestand. De toepassing kan dit bestand nog niet inlezen, en hieronder staat waarom en wat er eerst moet gebeuren.",
-      "geweigerdDisciplineUitleg": "Dit gaat niet over de rijen in het bestand, maar over het bestand als geheel: het hoort mogelijk bij een ander disciplinenummer dan je opgaf. Er is niets gewijzigd.",
+      "geweigerdDisciplineUitleg": "Dit gaat niet over de rijen in het bestand, maar over het bestand als geheel: het hoort mogelijk bij een ander disciplinenummer dan je opgaf.",
       "geweigerdAlgemeenUitleg": "Dit gaat niet over de rijen in het bestand: het bestand is als geheel geweigerd en er is niets gewijzigd.",
       "geweigerdZonderReden": "De reden is niet doorgegeven. Meld dit aan wie de tool onderhoudt.",
       "foutAanvraagOnbekend": "Dit bestand kon niet gelezen worden. Controleer of je een .xlsx van Op.stap opgeladen hebt en of het disciplinenummer klopt.",

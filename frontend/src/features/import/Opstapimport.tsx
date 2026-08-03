@@ -135,6 +135,12 @@ export function Opstapimport() {
    * always guarantees (the file was refused as a whole, nothing changed). Defaulting to either specific frame
    * is how a proxy-replaced body, or a refusal a future story adds, would end up printing a confident sentence
    * about a cause nobody established.
+   *
+   * Only the generic frame states "er is niets gewijzigd", and that asymmetry is deliberate: both specific
+   * refusals already say it in their own `detail` (`OpstapImportFout`), and a frame repeating the sentence
+   * printed two lines under it is the duplicated prose this project's design rule cuts first. Seen on screen at
+   * 1440 in the fix round's browser pass, which is the only way that kind of duplication shows up. The generic
+   * frame keeps it because there may be no `detail` at all on that path.
    */
   const weigeringUitleg = ((): TranslationKey => {
     const soort = fout instanceof ApiError ? fout.type : undefined;
