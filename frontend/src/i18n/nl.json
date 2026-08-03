@@ -356,6 +356,7 @@
     "verwijderMislukt": "Het thema kon niet verwijderd worden. Probeer het opnieuw.",
     "weigeringTerugdraaien": "Weigering terugdraaien",
     "weigeringUitleg": "Een weigering blijft gelden zolang jij ze niet terugdraait: een hergeneratie van het hele jaarplan laat ze staan en stelt dit thema hier niet opnieuw voor, dus de kaart verdwijnt alleen als je ze zelf uit het jaarplan haalt. Terugdraaien kan wel: het thema komt dan als jouw eigen keuze in deze themaperiode.",
+    "weigeringUitlegVervallen": "Een weigering blijft gelden zolang jij ze niet terugdraait: een hergeneratie van het hele jaarplan laat ze staan en stelt dit thema hier niet opnieuw voor, dus de kaart verdwijnt alleen als je ze zelf uit het jaarplan haalt. Terugdraaien kan wel, maar dit thema staat in geen enkele periode: het komt dan terug als jouw eigen keuze en heeft nog steeds geen periode.",
     "statusMislukt": "De wijziging kon niet bewaard worden. Probeer het opnieuw.",
     "bezig": "Bezig…",
     "herplaatsKies": "Kies hieronder een themaperiode voor dit thema, of versleep de kaart naar een themaperiode in het jaarplan.",

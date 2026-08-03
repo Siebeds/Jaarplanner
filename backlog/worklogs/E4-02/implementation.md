@@ -139,8 +139,12 @@ the real migrations), at 1440px and 390px:
 - **Full round trip:** `Voorgesteld` → `Geweigerd` **by keyboard** (Tab, Enter; focus ring measured
   `rgb(21,39,46)` at 2.4px) → `Manueel` via "Weigering terugdraaien". Each step announced in its live
   region; the drag grip and the period picker disappeared and returned as the status dictates.
-- **All four (status, isVervallen) states rendered.** The stale `Voorgesteld` card correctly offers no
-  decision; `Aanvaard` and `Geweigerd` cards offer none.
+- **All four (status, isVervallen) states rendered.** ~~The stale `Voorgesteld` card correctly offers no
+  decision~~ — **this observation was accurate and the word "correctly" was the error.** It offered none because
+  of the defect MAJOR-1 fixed; after the fix round it offers "Weigeren" and not "Aanvaarden", re-verified in the
+  browser. Kept visible because it is the sharpest example of the trap in this whole story: a browser pass
+  confirms what the code *does*, and calling it "correct" smuggles in a judgement the browser cannot make.
+  `Aanvaard` and `Geweigerd` cards offer no decision, which is unchanged.
 - **E3-08's fine tier**, which only became testable after the merge: the pair renders **and works**
   there too (a rejection driven on the Subthemaperiodes view persisted, and left `BlokNiveau`
   untouched). That confirms the merge decision not to tier-pair `beslisUitleg`.
@@ -184,9 +188,17 @@ half was dropped, because that is only true on the tier where moving works.
 3. **Stale placements and dekking interact more sharply than either story states.** With one unresolved
    stale `voorgesteld` placement, dekking returned `isBetrouwbaar: false` and `aantalGedekt: null`, so
    no accept anywhere in the plan can move a figure the API refuses to give. That is E5-01 as ruled, but
-   combined with this story's deliberate choice to offer no decision on a stale card, the teacher's only
-   way out is re-placement or removal. **Worth a line in E5-02's copy.**
-4. **A teacher still cannot directly create a stale *rejected* card** (the combination E3-07 is reopened
+   the teacher's way out is now a **weigering**, which is the one action that clears `onopgeloste` and hands the
+   figure back. *Corrected after the fix round, which inverted this:* it used to read "combined with this story's
+   deliberate choice to offer no decision on a stale card, the teacher's only way out is re-placement or removal".
+   **What E5-02 must be handed is therefore sharper than a line of copy.** `kalender.herzienUitleg` ends "Zolang
+   dit openstaat is de dekking van dit jaarplan onbetrouwbaar", and `vervallenPlaatsingen` filters on staleness with
+   **no status filter**, so after a weigering the card stays in the "Te herzien" notice under that sentence while
+   the API reports `isBetrouwbaar: true, onopgeloste: 0`. E5-01 already filed that divergence against **E5-02**
+   (see [E5-dekking-export.md](../../E5-dekking-export.md)); what changed is that it is no longer a corner case but
+   **the advertised remedy**. No teacher can see the contradiction today, because no dekkingsoverzicht exists.
+4. **A teacher CAN now directly create a stale *rejected* card, and an earlier revision of this finding said
+   the opposite** (the combination E3-07 is reopened
    over), because the stale card offers no decision. It remains reachable the other way round: reject
    first, then the school edits its vakantiedata. This story does not close E3-07.
 
@@ -298,3 +310,94 @@ appears exactly once; and the rejection restored the withheld dekking figure as 
 **Not re-verified after the fix round:** the contrast figures and the 390px layout, which the fix round
 did not touch (no token, no variant, no layout change; the stale card gained one `outline` button and one
 `text-ink-zacht` sentence, both already measured shapes on this card).
+
+---
+
+# Fix round 2 — antagonist round 2: VIOLATIONS FOUND (3 MAJOR, 8 MINOR)
+
+Verdicts and findings are in [`antagonist.md`](antagonist.md). This is what changed and what it cost.
+
+**The round earned itself, because it audited the fix round as new code** rather than as a patch —
+this project's own lesson from E1-13, where a round-2 fix created the MAJOR that then blocked it. Two of
+its three MAJORs are defects the **fix round introduced**, and one is the same class it had just been
+pulled up for.
+
+## MAJOR-1 — five documentation statements falsified by the commit that wrote them
+
+`cd6e3e0` made a stale proposal rejectable *and* committed the epic entry and worklog saying "a stale card
+gets no decision". I struck one instance and missed five. **The one that mattered was inverted:** *"a
+teacher still cannot directly create a stale rejected card"*. They now can, in one press, and that is
+exactly the combination **E3-07 is reopened over** — so the sentence would have told the next reader that
+E3-07's remaining work sits on an unreachable state, when this story had just made it routine. Corrected,
+and the E3-07 line now says this story **raises** what that one owes.
+
+*The lesson, and it is not "check your prose":* the documentation was authored **before** the fix and
+committed **with** it, so every sentence describing the old behaviour arrived in the repo already false.
+Writing docs first and fixing code second is normal; committing both in one breath without re-reading the
+first is how three of this story's four documentation defects happened.
+
+## MAJOR-2 — the new button led to a sentence promising a period that does not exist
+
+`weigeringUitleg` closes with *"het thema komt dan als jouw eigen keuze in deze themaperiode"* — true
+inside a real period, false on a stale card, where un-rejecting yields `Manueel` with `isVervallen` still
+true. It also contradicted `weigeringEerstTerugdraaien` a few lines above on the same card.
+
+**The string is E4-06's; the defect is E4-02's.** Before this story that state needed a rejection *plus* a
+vakantie edit by the school. Now "Weigeren" is on the stale card and `beslisVervallen` recommends it, so
+the false promise became the advertised destination. Split into `weigeringUitlegVervallen`.
+
+*The part worth keeping:* **an existing E3-07 test was pinning the defect.** It asserted `weigeringUitleg`
+for the stale case, so it failed the moment the split landed. It is now parameterised over `isVervallen`,
+asserts the *other* variant is absent, and both variants keep the `"hier"` scoping E4-06 made load-bearing.
+A test that fails when you fix something is worth more than one that passes.
+
+## MAJOR-3 — the banner still calls the dekking unreliable in the state the new button resolves
+
+`herzienUitleg` ends *"Zolang dit openstaat is de dekking van dit jaarplan onbetrouwbaar"*, and
+`vervallenPlaatsingen` filters on staleness with **no status filter**, so after a weigering the card stays
+in the notice under that sentence while the API reports `isBetrouwbaar: true, onopgeloste: 0`. **E5-01 had
+already filed this divergence against E5-02**; what this story changed is that it went from a corner case
+to the advertised remedy. The hand-off is corrected and sharpened; the string is legitimately E5-02's, and
+no teacher can see the contradiction today because no dekkingsoverzicht exists. **I measured that exact
+flip in the browser and did not look up at the banner above it**, which is the honest version of how this
+got through.
+
+## MINORs
+
+- **The stale-rejection test asserted the request and never rendered the result** (default `naPlan`
+  returns the unchanged plan). That is the mechanism behind MAJOR-2: the `Geweigerd × stale` screen the new
+  button creates was never rendered by any test. Now it is.
+- **A comment named `magBeslissen`**, which the same commit deleted.
+- **`vergrendelDekking`'s `!isVervallen` guard was unpinned** — the auditor's M9 survived with 308 green —
+  and the round-1 reword made losing it *worse*, because *"Aanvaard het thema"* names a button a stale card
+  does not have, where the old conditional phrasing was merely vague. Now pinned.
+- **The face error had no test on the state the split created** — M10 survived, so a failed weigering on a
+  stale card would have failed **silently**: no alert, no reload advice. Now pinned.
+- **"Routed to E7-10" was routed nowhere.** SC 2.5.8 (61×16 targets) and SC 2.5.3 (label vs busy state)
+  existed only in a source comment and this worklog. Both are now **filed in E7-10**, with the
+  measurements and with the reason they need one app-wide answer rather than two new controls fixed alone.
+  *A story does not route a finding by naming a destination; it routes it by writing in the destination.*
+- **This worklog had no `antagonist.md` beside it, and the two round-1 QUESTIONs were in no artefact.**
+  Both now answered there, with the two residues that are genuinely the owner's stated as such rather than
+  quietly closed.
+- **`beslisUitleg` still rendered on a board with nothing left to decide.** Removing the quantifier fixed
+  the stale card, not a fully decided plan, where the sentence described controls that were nowhere on
+  screen. Gated on `openBeslissingen > 0`, counted over the **plan** rather than the grid, because a stale
+  proposal sits in no block and is still a decision the teacher owes.
+
+## Gates after fix round 2
+
+**314 frontend tests** (15 files), lint clean, build clean.
+
+**Six mutations, six caught, including the auditor's two survivors** (M9 `vergrendelDekking`'s guard, M10
+the face error's gate) and both directions of the `weigeringUitleg` split, plus removing the
+`openBeslissingen` gate and narrowing it to exclude stale.
+
+**Browser re-verified:** the stale rejected card shows `weigeringUitlegVervallen` and the placed rejected
+card keeps E4-06's wording; the two sentences on the stale card no longer contradict each other (*"draai
+eerst de weigering terug, daarna kan je een themaperiode geven"* followed by *"terugdraaien geeft het nog
+geen periode"* describe the same two steps); and with all four placements decided, `beslisUitleg` is gone
+from the screen.
+
+**Not re-verified:** contrast and 390px layout, untouched by both fix rounds (no token, variant or layout
+change; the two new paragraphs use `text-ink-zacht`, already measured on this card).

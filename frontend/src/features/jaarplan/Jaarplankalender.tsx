@@ -352,6 +352,14 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
     }
   }
 
+  // How many placements are still waiting for a teacher's decision (E4-02). Counted over the whole plan rather than
+  // over `grid.blokken`, deliberately: a **stale** proposal sits in no block at all, and it is still a decision the
+  // teacher owes (it can be rejected, which is what resolves it). Reading it off the grid would hide exactly the
+  // card the decision copy was most recently wrong about.
+  const openBeslissingen = plan.plaatsingen.filter(
+    (plaatsing) => plaatsing.status === "Voorgesteld",
+  ).length;
+
   const ordinaalVan = (blokStart: unknown) =>
     grid.blokken.find((blok: Planningsblok) => blok.start === blokStart)?.ordinaal;
 
@@ -611,10 +619,17 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 prose this screen keeps having to cut. Deliberately **not** tier-dependent, unlike the sentence above
                 it: a decision is available on every proposal in every view, which is exactly why it is not paired
                 through {@link BORDUITLEG}. It also says nothing about *how* a thema comes to count beyond
-                aanvaarden, because "of zelf verplaatsen" is only true on the tier where moving works. */}
-            <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
-              {t("kalender.beslisUitleg")}
-            </p>
+                aanvaarden, because "of zelf verplaatsen" is only true on the tier where moving works.
+
+                **Gated on a decision actually being outstanding** (re-audit, fix round 2). The design empties the
+                board as the teacher works, so on a fully decided plan this sentence described controls that were
+                nowhere on screen: the same defect as the stale card it was already fixed for, one level up. The
+                file's own precedent is `teVolUitleg` below, which is gated the same way on the state it describes. */}
+            {openBeslissingen > 0 && (
+              <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
+                {t("kalender.beslisUitleg")}
+              </p>
+            )}
 
             {/* Said ONCE, above the board, instead of repeated inside every flagged column. The disclosure is
                 still visible text rather than a tooltip (E3-06) — it just is not printed seven times. */}

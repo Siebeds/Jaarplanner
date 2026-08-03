@@ -970,8 +970,11 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
       // `vergrendelUitlegVervallen` instead, whose "kies eerst een periode" pointed at a picker that is
       // suppressed for a rejected card.
       //
-      // Not reachable from the UI today (nothing here sets `Geweigerd`; `wijzigPlaatsingStatus` only ever sends
-      // `Manueel`), reachable over the API now, and two clicks away the moment E4-01/E4-02 ship a reject control.
+      // *That description of reachability is now out of date, and the update is the point (E4-02).* It read: "not
+      // reachable from the UI today (nothing here sets `Geweigerd`), and two clicks away the moment E4-01/E4-02 ship
+      // a reject control." E4-02 shipped it. `Geweigerd` is now one press on the card face, so this state is a
+      // teacher-reachable state rather than an API-only one — which is what makes the parameterised case below
+      // worth having rather than defensive.
       const plan = maakJaarplan([
         maakPlaatsing({
           id: "p1",
@@ -999,8 +1002,23 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
 
       // The regeneration fact for a rejected placement is stated once, in the weigering section, and the lock
       // sentence does not repeat it (owner ruling, 2026-07-31).
-      expect(paneel.getByText(t("kalender.weigeringUitleg"))).toBeInTheDocument();
-      expect(t("kalender.weigeringUitleg")).toContain("hergeneratie van het hele jaarplan");
+      //
+      // **Parameterised over the split E4-02 made (re-audit, fix round 2).** This assertion used to name
+      // `weigeringUitleg` for both cases, and that is exactly what the re-audit caught: that string closes with
+      // "het thema komt dan als jouw eigen keuze in deze themaperiode", which is false when the card is stale,
+      // because un-rejecting yields `Manueel` with `isVervallen` still true. So this test was pinning the defect
+      // for the stale case. It now asserts whichever variant is true of the state under test, and that the other
+      // one is absent, so neither variant can quietly take over the other's card.
+      const weigeringZin = isVervallen
+        ? "kalender.weigeringUitlegVervallen"
+        : "kalender.weigeringUitleg";
+      const andereZin = isVervallen
+        ? "kalender.weigeringUitleg"
+        : "kalender.weigeringUitlegVervallen";
+      expect(paneel.getByText(t(weigeringZin))).toBeInTheDocument();
+      expect(paneel.queryByText(t(andereZin))).toBeNull();
+      expect(t(weigeringZin)).toContain("hergeneratie van het hele jaarplan");
+      expect(t(weigeringZin)).toContain("hier");
       expect(t("kalender.vergrendelUitlegGeweigerdVast")).not.toContain("hergener");
 
       // But it still has to be SCOPED, and this is the only assertion that says so. Idempotence is per
@@ -2273,7 +2291,22 @@ describe("Jaarplankalender — aanvaarden en weigeren (E4-02, FR-7.1)", () => {
         status: "Voorgesteld",
       }),
     ]);
-    const verzoeken = stubBewerking(plan);
+    // `naPlan` matters: with the default the PUT returns the UNCHANGED plan, so the `Geweigerd x stale` screen this
+    // button creates would never be rendered by any test — which is how the re-audit's weigeringUitleg MAJOR got
+    // through. This describe block's own rule: asserting the request alone proves the button is wired and proves
+    // nothing about what the teacher then sees.
+    const naPlan = maakJaarplan([
+      maakPlaatsing({
+        id: "p9",
+        themaNaam: "Feesten in december",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Geweigerd",
+      }),
+    ]);
+    const verzoeken = stubBewerking(plan, naPlan);
     renderKalender();
 
     await screen.findByText("Feesten in december");
@@ -2293,6 +2326,11 @@ describe("Jaarplankalender — aanvaarden en weigeren (E4-02, FR-7.1)", () => {
     fireEvent.click(weigeren!);
     await waitFor(() => expect(verzoeken).toHaveLength(1));
     expect(verzoeken[0].body).toEqual({ status: "Geweigerd" });
+
+    // What the teacher then sees, which is the half the first version of this test skipped.
+    expect(
+      await within(kaart("Feesten in december")).findByText(t("suggestieStatus.geweigerd")),
+    ).toBeInTheDocument();
   });
 
   it("explains on the stale card itself why it offers no aanvaarden", async () => {
@@ -2495,4 +2533,150 @@ describe("Jaarplankalender — aanvaarden en weigeren (E4-02, FR-7.1)", () => {
       laatDoor();
     },
   );
+
+  it("tells a rejected STALE card that reversing it does not give it a period", async () => {
+    // The re-audit's sharpest finding, and it is this story's own doing. `weigeringUitleg` (E4-06) closes with "het
+    // thema komt dan als jouw eigen keuze in deze themaperiode" — true inside a real period, false here, because
+    // un-rejecting yields `Manueel` with `isVervallen` still true. Before E4-02 that state needed a rejection AND a
+    // vakantie edit; now "Weigeren" is on the stale card and `beslisVervallen` recommends it, so the false promise
+    // became the advertised destination. It also contradicted `weigeringEerstTerugdraaien` on the same card.
+    const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p9",
+        themaNaam: "Feesten in december",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Geweigerd",
+      }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Feesten in december");
+    fireEvent.click(aanpassen("Feesten in december"));
+
+    const paneel = within(kaart("Feesten in december"));
+    expect(paneel.getByText(t("kalender.weigeringUitlegVervallen"))).toBeInTheDocument();
+    expect(paneel.queryByText(t("kalender.weigeringUitleg"))).toBeNull();
+    // The scoping E4-06 made load-bearing survives the split: idempotence is per (thema, niveau, blokStart), so the
+    // AI may still propose this thema elsewhere, and both variants must keep saying "hier".
+    expect(t("kalender.weigeringUitlegVervallen")).toContain("hier");
+    expect(t("kalender.weigeringUitlegVervallen")).toContain("hergeneratie van het hele jaarplan");
+  });
+
+  it("keeps the E4-06 wording for a rejected card that still has its period", async () => {
+    // The other half of the split, so neither variant can quietly take over the other's state.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Geweigerd" }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    const paneel = within(kaart("Water"));
+    expect(paneel.getByText(t("kalender.weigeringUitleg"))).toBeInTheDocument();
+    expect(paneel.queryByText(t("kalender.weigeringUitlegVervallen"))).toBeNull();
+  });
+
+  it("does not promise the dekking condition on a stale proposal's lock section", async () => {
+    // Mutation M9 in the re-audit: dropping `!isVervallen` from this paragraph's guard left all 308 tests green.
+    // The reword made losing it worse than it used to be — "Aanvaard het thema als het moet meetellen" names a
+    // button that is NOT on a stale card, where the old conditional phrasing would merely have been vague.
+    const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p9",
+        themaNaam: "Feesten in december",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Voorgesteld",
+        vergrendeld: true,
+      }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Feesten in december");
+    fireEvent.click(aanpassen("Feesten in december"));
+
+    const paneel = within(kaart("Feesten in december"));
+    // Locked, so the lock section renders and the sentence's siblings are on screen; the dekking line must not be.
+    expect(paneel.getByText(t("kalender.vergrendelUitlegVervallen"))).toBeInTheDocument();
+    expect(paneel.queryByText(t("kalender.vergrendelDekking"))).toBeNull();
+    // And it IS shown on the state it was written for, so this test cannot pass by the paragraph never rendering.
+    expect(beslissing("Feesten in december").aanvaarden).toBeNull();
+  });
+
+  it("reports a failed decision on a stale card too, not only on a healthy one", async () => {
+    // Mutation M10 in the re-audit: re-gating the face error on `magAanvaarden` left all 308 tests green, so a failed
+    // weigering on a stale card would have failed **silently** — no alert, no reload advice. The third thing the
+    // split flags gate had no test on the state the split created.
+    const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p9",
+        themaNaam: "Feesten in december",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Voorgesteld",
+      }),
+    ]);
+    const verzoeken = stubBewerking(plan, plan, 404);
+    renderKalender();
+
+    await screen.findByText("Feesten in december");
+    fireEvent.click(beslissing("Feesten in december").weigeren!);
+
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(
+      await within(kaart("Feesten in december")).findByText(t("kalender.statusVerdwenen")),
+    ).toBeInTheDocument();
+  });
+
+  it("drops the decision explanation once every proposal has been decided", async () => {
+    // Re-audit residue of MAJOR-2: removing the quantifier fixed the stale card, not a board with nothing left to
+    // decide. The design deliberately empties the board as the teacher works, so on a fully decided plan the
+    // sentence described controls that were nowhere on screen.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+      maakPlaatsing({ id: "p2", themaNaam: "Wonen", status: "Geweigerd" }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    expect(screen.queryByText(t("kalender.beslisUitleg"))).toBeNull();
+    // Not vacuous: the cards are on screen, they just have nothing outstanding.
+    expect(beslissing("Water").aanvaarden).toBeNull();
+    expect(beslissing("Wonen").weigeren).toBeNull();
+  });
+
+  it("keeps the decision explanation while a STALE proposal is the only thing outstanding", async () => {
+    // The counterpart, and the reason `openBeslissingen` counts the plan rather than the grid: a stale proposal sits
+    // in no block, and it is still a decision the teacher owes.
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+      maakPlaatsing({
+        id: "p9",
+        themaNaam: "Feesten in december",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Voorgesteld",
+      }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Feesten in december");
+    expect(screen.getAllByText(t("kalender.beslisUitleg"))).toHaveLength(1);
+  });
 });

@@ -214,7 +214,7 @@ export function Themakaart({ plaatsing, klasId, blokken, verplaatsstaat }: Thema
     >
       {/* The decision announced, not only shown (WCAG 2.2 SC 4.1.3). The status badge changing from "Voorgesteld"
           to "Aanvaard" is silent to a screen reader, and the buttons that made it happen unmount in the same render
-          because `magBeslissen` turns false, so this region has to sit **outside** that block or it would announce
+          because `magWeigeren` turns false, so this region has to sit **outside** that block or it would announce
           into a subtree that no longer exists. That is not a hypothetical: E4-06 shipped the same fix inside the
           lock section, found it silent in exactly the case that mattered, and moved it to panel level.
 
@@ -760,7 +760,23 @@ function Bewerkpaneel({
 
       {plaatsing.status === "Geweigerd" && (
         <div className="flex flex-col gap-1.5 border-t border-border pt-2.5">
-          <p className="text-xs leading-snug text-ink-zacht">{t("kalender.weigeringUitleg")}</p>
+          {/* Two variants, because E4-02 made the second state reachable in one click and the single string was
+              false about it. `weigeringUitleg` (E4-06) closes with *"het thema komt dan als jouw eigen keuze in
+              deze themaperiode"* — true of a rejection inside a real period, and a promise of a period that does
+              not exist on a **stale** card: un-rejecting yields `Manueel` with `isVervallen` still true, so the
+              card stays in the "Te herzien" notice and `DekkingService` still excludes it. It also contradicted
+              `weigeringEerstTerugdraaien`, printed a few lines above on the same card, which correctly describes
+              the reversal and the re-placement as two steps. One card, two sentences, opposite claims: the exact
+              shape E3-07 is reopened over.
+
+              Before this story that state took a rejection *plus* a vakantie edit by the school. Now "Weigeren"
+              sits on the stale card and `beslisVervallen` recommends it, so the false promise became the
+              advertised destination. That is why the split is this story's and not E5-02's. */}
+          <p className="text-xs leading-snug text-ink-zacht">
+            {plaatsing.isVervallen
+              ? t("kalender.weigeringUitlegVervallen")
+              : t("kalender.weigeringUitleg")}
+          </p>
           <Button
             type="button"
             size="sm"
