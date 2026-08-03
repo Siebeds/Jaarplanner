@@ -46,10 +46,10 @@ Backend, changed (all of it in service of the screen):
 | Path | Why |
 | --- | --- |
 | `Infrastructure/SchoolcontentImport/SchoolcontentRijProbleem.cs` | Derived `KolomLabel` from the single-source column mapping, so the offending column can be named on screen without a second copy of the layout in the frontend (Art. III.3). Its doc comment's Art. II.3 claim corrected. |
-| `Infrastructure/SchoolcontentImport/SchoolcontentImportService.cs` | Three `opmerkingen` rewritten: em dashes removed (Art. II.5), a `(s)` plural dodge replaced by two real Dutch sentences, and "Art. IX.2" moved out of a teacher's sentence into a comment (Art. II.3). |
+| `Infrastructure/SchoolcontentImport/SchoolcontentImportService.cs` | Three `opmerkingen` rewritten: em dashes removed (Art. II.5), a `(s)` plural dodge replaced by two real Dutch sentences, and "Art. IX.2" moved out of a teacher's sentence into a comment (Art. II.3). ⚠️ **Three of four.** There are **four** reachable notices in this class and `PasThemadoelCapToe`'s still carried "(Art. IX.2)" after this round: antagonist MAJOR 4, fixed in fix round 1 below. |
 | `Infrastructure/SchoolcontentImport/ClosedXmlSchoolcontentTemplateGenerator.cs` | The `Klas` example value lost its em dash: it is copied into a cell that must match a stored `Klas.Naam`, so it is product data (Art. II.5). |
 | `UnitTests/Schoolcontent/ClosedXmlSchoolcontentParserTests.cs` | +2 tests: the column label, and its absence plus `rijNummer == 0` on a file-level problem. |
-| `UnitTests/Schoolcontent/SchoolcontentImportOpmerkingenTests.cs` | New: 4 tests pinning the three notices as readable Dutch, including both grammatical forms of the skipped-code count. |
+| `UnitTests/Schoolcontent/SchoolcontentImportOpmerkingenTests.cs` | New: 4 tests pinning the three notices as readable Dutch, including both grammatical forms of the skipped-code count. ⚠️ **"the three notices" is wrong: there are four.** Corrected in fix round 1, where the guard stopped being applied notice by notice. |
 
 Docs: seven browser-check screenshots in `docs/ux/wireframes/e1-13-*.png`.
 
@@ -176,15 +176,26 @@ Frontend (51 new across three files), pinning by clause:
   (`Host=127.0.0.1;Port=5432;Database=postgres;Username=jaarplanner;Password=jaarplanner_local;SSL Mode=Disable`,
   the value `docs/dev-setup-secrets.md` documents): **502 unit passed / 0 failed / 0 skipped** and
   **152 integration passed / 0 failed / 0 skipped**.
+  > ⚠️ **These two numbers are pre-merge snapshots and they are not the tree anyone will review.** They were
+  > taken before `7193a45` merged `origin/main` in; the merged tree at `c236a68` is **502 + 153**, reproduced
+  > independently by both gate agents. Fix round 1 then took it to **505 + 155**. Left in place rather than
+  > overwritten, because the story's own record of what it measured when is part of the audit trail; corrected
+  > here so the repo does not hold two figures that disagree with no note saying which is current.
   > **Recorded because it matters for how much the gate proves:** the *first* run of the integration suite
   > reported **6 failed** (among them `Doel_met_concordantie_naar_een_onbekend_minimumdoel_geeft_409_en_wijzigt_niets`,
   > expecting `Conflict` and getting `InternalServerError`). The identical command re-run immediately afterwards
   > came back 152/0/0, twice. The likeliest cause is contention on the one local PostgreSQL instance: a parallel
   > session is active in this repo and the two assemblies also run concurrently. It is **not** a diagnosis, and
   > the failure was in Op.stap import code this story did not touch. Flagged rather than explained away.
+  > ⚠️ **Unreproduced.** The test-runner ran the integration suite twice and did not see it; fix round 1 ran the
+  > full suite three more times (once mid-round, twice at the end) and did not see it either. Six runs, one
+  > occurrence, on the run that followed a parallel session's activity. Restated as **an unreproduced
+  > observation**, not a known flake: nobody has since produced the failure, and nobody has shown it cannot
+  > happen. If it recurs, the thing to capture is which other process held the database at that moment.
 
 **Frontend** (from `frontend/`, via `corepack pnpm`):
 - `pnpm test` — **241 passed / 15 files** (was 197 / 13 before this story; 174 / 12 at E1-16's close).
+  > ⚠️ **Also a pre-merge snapshot.** The merged tree is **243 / 15**, and fix round 1 takes it to **256 / 15**.
 - `pnpm lint` — clean, no output.
 - `pnpm build` — clean.
   > **Worth knowing for every future story:** `pnpm lint` is `eslint . --max-warnings 0 && tsc --noEmit`, and
@@ -318,3 +329,190 @@ Browser (there is no Playwright; headless Chrome over CDP works, see the note in
    discriminator on the ProblemDetails would let the copy split; I did not add one, because the server's `detail`
    already names the next step for both and inventing a wire field to serve a copy nuance is the wrong order.
    Filed in case a reviewer prefers the split.
+
+---
+
+## Fix round 1 — the outcome on screen belongs to the run the reader asked for
+
+- **Findings answered:** antagonist MAJOR 1-4 and MINOR 5-8, test-runner defects 1-4, plus the orchestrator's
+  consolidated MAJOR 5 (the role flag) and QUESTION 10 (the duplicated filename).
+- **Branch:** `story/E1-13`, three commits off `bc4c880`: `a806c32` (backend), `5824429` (frontend),
+  `2247522` (browser evidence, and the one redundancy looking at it found).
+- **FR / Article:** FR-1.1…1.5, FR-2.1/2.5, FR-10 (the concurrent case); Art. II.3, Art. II.5, Art. III.4,
+  Art. IV.2, Art. VI.1 + FA §3.2, Art. X.5, Art. XII. The E3-06 rule.
+
+### Finding by finding
+
+**MAJOR 1 — a stale commit panel answers a fresh check.** `kijkNa()` now calls `vergeetUitkomst()` on **both**
+importers, so a new run starts from nothing on screen. Chosen over "derive from whichever run is more recent":
+the invariant becomes *at most one run's outcome is ever on screen, and it is the one the reader last asked
+for*, held in one function, instead of a precedence rule every future reader has to re-derive correctly.
+Verified in a browser on both halves and pinned by two tests that assert the **behaviour** (preview, commit,
+preview again shows the fresh answer) rather than the call.
+
+**MAJOR 2 — the discard flag stays armed with no control on screen.** Both halves, because either alone leaves
+the hole. `vergeetUitkomst()` resets the flag when a check starts, and one derived `bedreigdeBeslissingen` value
+now feeds **both** the panel and the wire, so `menselijkeBeslissingenVerwijderen` is gated on the diff actually
+rendered. The reachable path is closed by the reset; the gate makes the invariant hold by construction, so a
+future edit that re-introduces a path cannot re-open it. Driven end to end against real PostgreSQL: the exact
+repro from `test-report.md` now ends with `DEMO-L3-05=Aanvaard, DEMO-L3-06=Aanvaard` **intact** where it
+produced `(none)` before, and all three requests carried `menselijkeBeslissingenVerwijderen=false`. The
+concurrent-change case is now a test of its own; the existing staleness test only covered the file-change path.
+
+**MAJOR 3 — the 409 frame contradicts one of the two 409 cases.** *I chose the discriminator, not the narrowed
+copy.* `Probleemsoorten` gives each `OpstapImportFoutSoort` an RFC 7807 `type` URI, `ApiError` carries `type`,
+and the screen keys its framing sentence on it. Why the discriminator: the two refusals have **opposite owners
+of the fix** (one waits on E1-12, the other is corrected by the uploader in ten seconds), so a frame that is
+merely *not false* for both would be generic exactly where the screen can be specific, and Art. II.3 asks a
+message to tell its reader what *they* can do. Why `type` rather than an extension member or a second title:
+`type` is RFC 7807's own discriminator, so no wire field is invented for a copy nuance, and a `Title` is
+user-facing Dutch (Art. II.3) that a screen must never branch on. There is a **third, neutral** frame for a 409
+the screen cannot classify, because `IProblemDetailsService` fills `type` in from the status code whenever the
+server set nothing, so "unrecognised" is a real state and must not fall into either specific claim.
+
+**MAJOR 4 — a fourth reachable notice still says "(Art. IX.2)".** The cap notice is rewritten for a teacher: the
+article reference into the comment, and the actionable step into the sentence (the cap keeps the *first* codes
+in the cell, so it says to put the anchoring ones first). The guard **stopped being applied notice by notice**:
+one import now trips three of the four sources at once and asserts the predicates over *every* opmerking the
+diff carries, so a fifth source on that path fails without anyone remembering. Count and the word "three"
+corrected above and in `backlog/README.md`.
+
+*How I established coverage rather than asserting it.* A sweep over 73 backend product-copy literals across the
+eleven files on the two import render paths (`SchoolcontentImportService`, the parser, the column labels, the
+row-problem record, the template generator, `OpstapImportService`, `OpstapImportFout`, both controllers,
+`Probleemtitels`, the exception handler) plus all 431 `nl.json` leaves, against no em dash / no `Art.` / no
+`(s)`. It is **calibrated, not merely green**: run against the unfixed `bc4c880` the same sweep reports exactly
+one violation, this finding, and nothing else. Comments and XML docs are excluded deliberately, since English
+typography and article references are correct there, and that exclusion is the whole reason the fourth notice
+survived round 1.
+
+The sweep also has a known blind spot, and reading found what it cannot: `OpstapImportService` composed
+`"De 1 bestaande doelen blijven ongewijzigd"` on a notice this story renders. That is the plural bug this repo
+has shipped five times, and it is a **fourth predicate class** the three named ones do not cover. Fixed here.
+
+**MAJOR 5 — `/import` flagged directie-only.** `magBeheerder: false` on the route;
+`OPSTAP_SECTIE_ALLEEN_BEHEERDER` on the section, beside the visible sentence that already says it; comments in
+`routes.ts`, `ImportPagina` and `Opstapimport` recording that **E6-02 gates the section, not the route**. Not
+redesigned, per the ruling. The two §3.2 rows are now expressible: the route is visible to both roles (FR-1.1)
+and the restricted part carries its own marking. A test asserts the pair together, so route and section cannot
+drift apart in silence.
+
+**MINOR 6 — "Er is niets gewijzigd" asserted where the client cannot know it.** New
+`import.onbeschikbaarNaDoorvoeren` for the commit path on both importers; a 400 keeps the shared string, because
+request validation runs before any write. Pinned on both. **Not reproduced in a browser**: forcing a gateway
+failure *after* a successful save needs a proxy this setup does not have, so this one is test-only and I am
+saying so rather than letting the browser section imply otherwise.
+
+**MINOR 7 — three places assert a defect a merge had already fixed.** `api.ts`'s envelope (3) is restated around
+shapes that are still real (proxy HTML, an empty body, valid JSON that is not an object); the test is renamed
+and re-pointed; the comment in `Schoolcontentimport.test.tsx` is corrected. Each of the three now also records
+**the shape of the mistake**: the claim went stale through a *merge*, not an edit, which is the case nobody
+re-reads.
+
+**MINOR 8 — the E1-12 blocker disclosed only after the reader has failed.** `import.opstap.voorwaarde`, rendered
+above the form, with a comment naming who removes it (whoever lands E1-12). `routes.ts`'s false claim is
+corrected to describe what is now actually there. Seen on screen before any upload. The 409 panel stays as the
+reactive half, because only it knows which refs are missing.
+
+**MINOR 9 — a commit button for a file that imports nothing.** It is a control that does nothing (the E3-06
+rule), so it is gone on **both** importers when `diff.overgeslagen`, replaced by a line saying there is nothing
+to commit and that the reason is above. Gated on `overgeslagen` (no usable rows, or a discipline outside the
+import selection) and **not** on `isLeeg`: re-importing an unchanged file is a legitimate idempotent act the
+diff already describes in words, and hiding that button would be the opposite mistake.
+
+**QUESTION 10 — the filename on screen twice.** Deliberate, and it now says so at the place it would be tidied
+away. `Bestandkiezer`'s docstring names both reasons: everything inside the native control is the browser's own
+rendering in the browser's locale (verified in round 1 by diffing `--lang=en-US` against `--lang=nl-BE`) and it
+truncates without a `title`; and our line is the only statement a test or a screen reader can read. No behaviour
+change. The alternative, hiding the input behind a custom button, trades a UA-localised label for a
+re-implementation of labelling, keyboard reach and the file dialog.
+
+### Deliberately not changed, with the reason
+
+- **The `Toevoegen` pre-selection.** Engaged with and accepted by the antagonist on its own terms; nothing here
+  touches it.
+- **`vereistReview` stays unrendered.** Three tests pin it and the test-runner verified the decisive case.
+- **The E1-17 upstream defect** (`KoppelingAantallenAsync` omits `Thema.Doelsuggesties`, so a still-referenced
+  goal can land in `verdwenen` rather than `verdwenenMaarGekoppeld`). This screen renders what it is given;
+  compensating here would put a second copy of that rule in the UI.
+- **The `aria-hidden` `/` separator at 1.25:1** in `KlasKiezer` (E0-10 chrome), which my contrast harness flags
+  because it does not skip `aria-hidden` nodes. Pre-existing, decorative, correctly hidden from the
+  accessibility tree. Recorded so the next measurement does not rediscover it as new.
+- **A durable acknowledgement for a disappeared leerplandoel** (round 1's open question 1). Still needs storage
+  and therefore directie.
+
+### Gates — measured, on `2247522`
+
+| Command | Result |
+| --- | --- |
+| `dotnet build` | 0 warnings, 0 errors |
+| `dotnet format --verify-no-changes` | clean, exit 0 |
+| `dotnet test` (unit) with `JAARPLANNER_TEST_POSTGRES` | **505 passed / 0 failed / 0 skipped** (was 502) |
+| `dotnet test` (integration), same env | **155 passed / 0 failed / 0 skipped** (was 153) |
+| `corepack pnpm test` | **256 passed / 15 files** (was 243) |
+| `corepack pnpm lint` | clean |
+| `corepack pnpm build` | clean |
+
+Tests added: **+3 backend** (`Themadoelcap_wordt_leesbaar_gemeld_met_de_codes_die_wegvallen`, a theory over both
+grammatical forms that also pins *which* codes the cap drops; and
+`Elke_opmerking_van_een_run_is_leesbaar_voor_een_leerkracht`, the guard that grows by itself); **+2 integration**
+(`De_twee_409_weigeringen_zijn_van_elkaar_te_onderscheiden` over HTTP, which is where it matters because
+`IProblemDetailsService` is what could silently overwrite the discriminator; and an exhaustiveness check that
+every `OpstapImportFoutSoort` maps to its own URI); **+13 frontend** across the two screens and the transport.
+
+Four pre-existing `SchoolcontentImportRobustheidTests` assertions were re-keyed from the word "genegeerd" to the
+dropped code. Worth naming: two of them **filtered on that word and then compared the results**, so the moment
+the copy changed they compared two empty sequences and started passing vacuously. Keying a test on product copy
+is how a guarantee gets lost in silence.
+
+### Browser check — headless Chrome over CDP, real API, real PostgreSQL 17
+
+API on `127.0.0.1:5431`, Vite on `localhost:5533`, CDP on `9431`, all claimed in `.claude/coordination/claims/`
+in the `owner:/taken:/why:` shape and released afterwards. A **dedicated `e113fix` database**, migrated from
+scratch, so no parallel session's data was read or written. Fixtures were built with `openpyxl` from the
+sjabloon the screen itself served (7033 bytes, the server's own filename), so the FR-1.5 to FR-1.1 round trip is
+exercised again rather than assumed. Thirteen screenshots in `fix-1/`, **md5-checked distinct** before being
+cited as evidence.
+
+| Claim | Evidence |
+| --- | --- |
+| MAJOR 1, school content | `R1` to `R2` to `R3`. After the commit: "De import is doorgevoerd", past tense, no commit control. After pressing *Bestand nakijken* again on the same file and modus: the **fresh** answer, "Dit bestand verandert niets aan de thema's…", "1 ongewijzigd" three times, future tense, and *Import doorvoeren* offered again. Three requests captured in order. |
+| MAJOR 1, Op.stap (clause 6) | `R6` to `R7`. The committed panel gives way to the fresh review report: `ingelezen: false`, `ongewijzigd: true`, the import control back. |
+| MAJOR 2 | `R9` (opt-in visible and ticked), then `R10` (**the state that carries the claim**: after the concurrent removal and a re-check, the panel is gone, `0` opt-in controls on screen, the flag disarmed), then `R11`. The standing evidence is the database transition: `DEMO-L3-05=Aanvaard, DEMO-L3-06=Aanvaard` **survives** the commit, where the unfixed build produced `(none)`. The wire was read in-page, because Chrome does not inline a multipart body in `Network.requestWillBeSent`: all three requests carried `menselijkeBeslissingenVerwijderen=false`. |
+| MAJOR 3 | `R5` (the E1-12 refusal: the system frame, above "Laad eerst de decretale minimumdoelen in") and `R8` (the wrong discipline: "het hoort mogelijk bij een ander disciplinenummer dan je opgaf", above "Controleer of dit bestand bij discipline 3 hoort"). The two sentences now agree. |
+| MINOR 8 | `R4`: the prerequisite is on screen at arrival, before a discipline number or a file has been entered. |
+| MINOR 9 | `R12`: "Uit dit bestand wordt niets ingelezen" plus "Er is niets om door te voeren", **no** commit control, and the row problem still reported. |
+
+Measured rather than assumed: **59 text nodes, 0 below AA** at 1440 and again at 390 (the single flagged node is
+the `aria-hidden` decorative separator noted above). The new notice measures **9.39:1**, the new "niets om door
+te voeren" line **6.08:1**, and the lowest passing value (5.39:1, `ink-zacht` on `paper-diep`) matches the
+test-runner's independent measurement exactly. **390px:** `scrollWidth === clientWidth === 390` and nothing in
+`main` extends past the viewport, checked with `Emulation.setDeviceMetricsOverride` rather than `--window-size`,
+which clamps at about 504px on this machine. **Zero console errors** across the whole pass.
+
+**What looking found that no test did:** the wrong-discipline frame and the server's `detail` printed two lines
+under it both ended with "Er is niets gewijzigd." Only the *generic* frame states it now, because both specific
+refusals already carry it in their own detail and the generic path may have no detail at all.
+
+### For the test-runner
+
+Everything under "For the test-runner" above still applies. The four things this round adds, cheapest first:
+
+1. **MAJOR 1, either importer:** preview, commit, then *nakijken* again on the same file. The fresh answer must
+   be on screen and committable. Unit-pinned; worth one browser confirmation because it is the headline defect.
+2. **MAJOR 2:** the `test-report.md` repro verbatim, including the concurrent removal at step 3. The database
+   must still show `Aanvaard` afterwards. Needs SQL, real PostgreSQL and a `Bijwerken` re-import.
+3. **MAJOR 3:** upload a G-only file under discipline 2, then the same file under discipline 3. The frame must
+   talk about the *file*, not about the tool; a file with an MD row still gets the system frame.
+4. **MINOR 9:** any file whose only row is rejected. No *Import doorvoeren* may exist.
+
+MINOR 6 is the one thing here I could not drive in a browser (it needs a gateway failure after a successful
+save). If you can inject one with request interception, that is the gap worth closing.
+
+### Open questions / Art. XIV touched
+
+Unchanged from round 1: the durable-acknowledgement question, the browser-chrome file label, `GET /api/themas`
+against dirty local data, and the raw .NET row diagnostic. One is now **closed**: round 1's open question 5,
+"the 409 cannot be told apart structurally", is answered by `Probleemsoorten`. One is **surfaced for the owner**
+rather than decided here: MAJOR 5 is fixed the way the orchestrator ruled, but whether the *whole* import screen
+should be directie-only is a change to FA §3.2 and belongs in the functional analysis, not in a nav flag.
