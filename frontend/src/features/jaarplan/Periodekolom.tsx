@@ -1,7 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 
 import { t } from "../../i18n";
-import { Themakaart } from "./Themakaart";
+import { Themakaart, type Verplaatsstaat } from "./Themakaart";
 import {
   VOORLOPIGE_TE_VOL_DREMPEL,
   formatteerPeriode,
@@ -22,9 +22,9 @@ export interface PeriodekolomProps {
   /** The tier this column belongs to (E3-08), which decides what it is called and what it says about its parent. */
   niveau: Planningsblokniveau;
   /**
-   * Whether a thema can be moved onto this board at all (E3-08).
+   * Whether a thema can be moved onto this board at all, and if not, why not (E3-08). See {@link Verplaatsstaat}.
    *
-   * False at the fine tier, and **the reason is what a drop would mean, not what the endpoint would answer.** The
+   * Not `kan` at the fine tier, and **the reason is what a drop would mean, not what the endpoint would answer.** The
    * endpoint argument is the weaker one and only two thirds true: `VerplaatsPlaatsingAsync` resolves a target against
    * the generation tier's blocks, so most subthemaperiode starts are refused with *"… is geen begin van een periode in
    * dit schooljaar."* — but each parent's **first** sub-block starts on the parent's own start date, so 7 of a real
@@ -33,9 +33,10 @@ export interface PeriodekolomProps {
    * dishonest about the effect. A teacher aiming at a fortnight would record five weeks and see nothing say so.
    *
    * Hence no grip and no picker rather than a disabled one per column, with the board saying once in visible text
-   * where moving does work (the E3-06 rule: an unavailable destination is stated, not hidden in a tooltip).
+   * where moving does work (the E3-06 rule: an unavailable destination is stated, not hidden in a tooltip) — and
+   * saying, in the `niveauOnbekend` degrade, that it does not know where that is.
    */
-  kanVerplaatsen: boolean;
+  verplaatsstaat: Verplaatsstaat;
   /**
    * Whether the **themaperiode this column belongs to** holds a thema (E3-08 fix round 1).
    *
@@ -90,7 +91,7 @@ export function Periodekolom({
   klasId,
   blokken,
   niveau,
-  kanVerplaatsen,
+  verplaatsstaat,
   ouderIsIngepland,
 }: PeriodekolomProps) {
   const gepland = geplandeIn(plaatsingen);
@@ -101,7 +102,7 @@ export function Periodekolom({
   const { setNodeRef, isOver, active } = useDroppable({
     id: blok.start,
     data: { blok },
-    disabled: !kanVerplaatsen,
+    disabled: verplaatsstaat !== "kan",
   });
 
   // Only meaningful while something is being dragged, and only for a card coming from *elsewhere*: a thema
@@ -194,7 +195,7 @@ export function Periodekolom({
                   plaatsing={plaatsing}
                   klasId={klasId}
                   blokken={blokken}
-                  kanVerplaatsen={kanVerplaatsen}
+                  verplaatsstaat={verplaatsstaat}
                 />
               </li>
             ))}

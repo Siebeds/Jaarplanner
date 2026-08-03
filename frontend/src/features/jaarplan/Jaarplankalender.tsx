@@ -18,7 +18,7 @@ import { Jaarspine } from "./Jaarspine";
 import { Periodekolom, Vakantiegat } from "./Periodekolom";
 import { Generatieparametersformulier, type Periodestaat } from "./Generatieparametersformulier";
 import { Spreidingsoverzicht } from "./Spreidingsoverzicht";
-import { Sleepkaart, Themakaart } from "./Themakaart";
+import { Sleepkaart, Themakaart, type Verplaatsstaat } from "./Themakaart";
 import { Weergaveschakelaar } from "./Weergaveschakelaar";
 import {
   bepaalVerplaatsing,
@@ -279,19 +279,24 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   //
   // An unrecognised answer falls back to the coarse labels, and that fallback is a *presentation* default, never a
   // claim: the columns have to be called something. What it may not do is drive an instruction, which is what round 1
-  // let it do (fix round 2, MINOR-F): with `kanVerplaatsen` demanding strict equality, an unrecognised tier both told
-  // the teacher to switch to "Themaperiodes" and reported itself as being on it. Hence the separate flag below, and
-  // its own sentence.
+  // let it do (fix round 2, MINOR-F): moving demands strict equality with the generation tier, so an unrecognised tier
+  // both told the teacher to switch to "Themaperiodes" and labelled itself as being on it. Hence this separate flag,
+  // and the third `Verplaatsstaat` below that carries its own sentences.
   const bordNiveauOnbekend =
     grid.niveau !== "Themaperiode" && grid.niveau !== "Subthemaperiode";
   const bordNiveau: Planningsblokniveau =
     grid.niveau === "Subthemaperiode" ? "Subthemaperiode" : "Themaperiode";
 
-  // Whether a thema can be moved on this board.
+  // Whether a thema can be moved on this board, and if not, why not (see {@link Verplaatsstaat}).
   //
   // Compared against the generation tier rather than against a bare "Themaperiode", because a placement keys on that
   // tier's block starts (ADR-0020 §3) and `VerplaatsPlaatsingAsync` resolves a target against the same tier. Derived
   // from the server's own string, so an unrecognised tier disables moving rather than offering a control that 400s.
+  //
+  // **Three states rather than a boolean** (fix round 3, owner ruling). "Cannot move here" had two causes with one
+  // sentence between them, and the sentence belonged to the first: the fine tier really does have a working picker one
+  // view away, while the unrecognised-tier degrade has none and labels itself as being on the very view it named. The
+  // same collapse the round-2 fix removed from the periods, removed here from the board.
   //
   // **The reason the affordance is withheld at the fine tier is semantic, not API-shaped.** It would be easy to read
   // this as "the server refuses those dates", and that is only two thirds true: each parent's *first* sub-block starts
@@ -300,7 +305,11 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // themaperiode, so the control would be honest about the request and dishonest about the effect: the teacher aimed at
   // a fortnight and the plan records five weeks. The remaining columns would 400 on top of that. Both halves point the
   // same way, but this one is the argument.
-  const kanVerplaatsen = grid.niveau === GENERATIEBLOKNIVEAU;
+  const verplaatsstaat: Verplaatsstaat = bordNiveauOnbekend
+    ? "niveauOnbekend"
+    : grid.niveau === GENERATIEBLOKNIVEAU
+      ? "kan"
+      : "anderNiveau";
 
   // Placements pointing at a date that is no longer a period boundary. Collected FIRST and always
   // rendered: never silently relocated, never dropped (directie 2026-07-28).
@@ -401,7 +410,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             plaatsingen={vervallen}
             klasId={klasId}
             blokken={grid.blokken}
-            kanVerplaatsen={kanVerplaatsen}
+            verplaatsstaat={verplaatsstaat}
           />
         )}
 
@@ -468,19 +477,31 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             </p>
           </div>
 
-          {/* Why the button above is refused, beside the button, with the one control that can end the state.
+          {/* Why the button above is refused, beside the button. **Rendered for BOTH causes** (fix round 3, MINOR-1).
+              Round 2 gated the button on `periodesOnbekend` and this notice on `nietGeladen` alone, leaving
+              `nietGelezen` as a dead primary action with nothing beside it saying so: the only trace was a summary
+              clause and, behind a disclosure that is closed by default, `parameters.periodesNietGelezen` — which does
+              not mention the run at all. A refusal and its explanation wired on different conditions is the same
+              defect this story has now paid for three rounds running, so they are wired on one condition here.
+
+              The difference between the two is the retry, not the volume: `nietGeladen` is a fetch that failed and can
+              be tried again, `nietGelezen` is a request that succeeded with an answer this app cannot read, where a
+              retry would deterministically produce the same answer. So that state gets no button rather than a button
+              that cannot help — and its copy ends at the beheerder instead.
+
               Only reachable while the board is at the *other* tier: at the generation tier this query and the board's
-              are one and the same, so a missing grid takes the early return above and never gets here.
-              `nietGelezen` is not a fetch failure and has no retry that could help — the request succeeded and the
-              answer was unusable — so that case is stated by the form instead, which is where it changes what a
-              teacher can do. */}
-          {periodestaat === "nietGeladen" && (
+              are one and the same, so a missing grid takes the early return above and never gets here. */}
+          {periodesOnbekend && (
             <div className="mt-4">
-              <Roosterfout
-                soort="generatie"
-                bezig={generatieRooster.isFetching}
-                onOpnieuw={() => void generatieRooster.refetch()}
-              />
+              {periodestaat === "nietGeladen" ? (
+                <Roosterfout
+                  soort="generatie"
+                  bezig={generatieRooster.isFetching}
+                  onOpnieuw={() => void generatieRooster.refetch()}
+                />
+              ) : (
+                <Roosterfout soort="generatieNiveauOnbekend" />
+              )}
             </div>
           )}
 
@@ -556,13 +577,11 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 ran the full 1350px of a desktop viewport as a single line, which is past any readable measure.
                 Three branches, not two (fix round 2, MINOR-F): an unrecognised tier gets its own sentence, because
                 `fijnUitleg` sends the teacher to "de weergave Themaperiodes" and that degrade labels itself as being
-                on it. An instruction nobody can follow is worse than saying plainly that nothing was changed. */}
+                on it. An instruction nobody can follow is worse than saying plainly that nothing was changed.
+                Paired through {@link BORDUITLEG} since fix round 3, so this sentence and the one a stale card's panel
+                shows are decided by the same three states and cannot drift apart again. */}
             <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
-              {kanVerplaatsen
-                ? t("kalender.sleepUitleg")
-                : bordNiveauOnbekend
-                  ? t("kalender.roosterNiveauOnbekend")
-                  : t("kalender.fijnUitleg")}
+              {t(BORDUITLEG[verplaatsstaat])}
             </p>
 
             {/* Said ONCE, above the board, instead of repeated inside every flagged column. The disclosure is
@@ -614,7 +633,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                     klasId={klasId}
                     blokken={grid.blokken}
                     niveau={bordNiveau}
-                    kanVerplaatsen={kanVerplaatsen}
+                    verplaatsstaat={verplaatsstaat}
                     ouderIsIngepland={
                       segment.blok.ouderOrdinaal !== null &&
                       gevuldeOuderOrdinalen.has(segment.blok.ouderOrdinaal)
@@ -708,6 +727,19 @@ function Melding({ soort, children }: { soort: "rustig" | "fout"; children: Reac
 }
 
 /**
+ * What the board says about moving a thema, one sentence per {@link Verplaatsstaat}.
+ *
+ * A `Record` rather than a ternary chain (fix round 3) for the reason its sibling in {@link Themakaart} is one: the
+ * compiler then refuses a new board state that has not been given copy, which is what "one sentence, two causes" cost
+ * this story twice. The pairing itself is unchanged from round 2.
+ */
+const BORDUITLEG: Record<Verplaatsstaat, TranslationKey> = {
+  kan: "kalender.sleepUitleg",
+  anderNiveau: "kalender.fijnUitleg",
+  niveauOnbekend: "kalender.roosterNiveauOnbekend",
+};
+
+/**
  * Which grid could not be had, and what that costs the teacher. **One state per sentence, and never a constant.**
  *
  * - `geenGrid` — the first load failed and there is nothing cached to stand on, so the screen has nothing to draw.
@@ -715,13 +747,20 @@ function Melding({ soort, children }: { soort: "rustig" | "fout"; children: Reac
  * - `verversen` — the chosen tier IS on screen and a background refresh of it failed, so nothing was lost.
  * - `generatie` — the generation tier's grid is missing while another tier is on screen: the plan is fine, but the
  *   kept settings cannot be tied to periods, so generating is refused.
+ * - `generatieNiveauOnbekend` — the same refusal, other cause: that grid arrived at a tier this app cannot read. The
+ *   one state here with **no retry**, because the request already succeeded and repeating it changes nothing.
  *
  * `terugval` and `verversen` used to be one notice with `terugval` hard-coded to `true`, which is how a failed
  * background refetch announced "Je ziet nog de themaperiodes" over nineteen subthemaperiode columns (fix round 2,
  * MAJOR-B). TanStack keeps `data` on an errored refetch, so "errored" and "has nothing to show" are different
  * questions and must be asked separately.
  */
-type Roosterfoutsoort = "geenGrid" | "terugval" | "verversen" | "generatie";
+type Roosterfoutsoort =
+  | "geenGrid"
+  | "terugval"
+  | "verversen"
+  | "generatie"
+  | "generatieNiveauOnbekend";
 
 /**
  * The copy per state, plus whether it is announced.
@@ -736,6 +775,7 @@ const ROOSTERFOUT: Record<Roosterfoutsoort, { sleutel: TranslationKey; luid: boo
   terugval: { sleutel: "kalender.roosterFoutWeergave", luid: true },
   verversen: { sleutel: "kalender.roosterVerversenMislukt", luid: false },
   generatie: { sleutel: "kalender.generatieRoosterFout", luid: true },
+  generatieNiveauOnbekend: { sleutel: "kalender.generatieRoosterNiveauOnbekend", luid: true },
 };
 
 /**
@@ -748,15 +788,22 @@ const ROOSTERFOUT: Record<Roosterfoutsoort, { sleutel: TranslationKey; luid: boo
  * **The `alert` is the sentence, not the box.** The button is a *sibling* of the live region rather than a child of it —
  * the same separation `TeHerzien` and the settings notice use. A live region wrapping a control re-announces its whole
  * contents on every interaction, and pressing this one changes its own label.
+ *
+ * **`onOpnieuw` is optional, and its absence is a statement** (fix round 3). One state here is not a failed fetch at
+ * all: `generatieNiveauOnbekend` is a request that succeeded and answered something this app cannot read, so a retry
+ * would deterministically return the same answer. Offering it would be the control-that-does-nothing this project
+ * banned, dressed as a remedy — and the E3-04 ruling that produced this component was precisely that a notice must
+ * never prescribe the step already exhausted. The copy for that state therefore ends at the beheerder, and this stays
+ * the only place a `Roosterfout` may render without a button.
  */
 function Roosterfout({
   soort,
-  bezig,
+  bezig = false,
   onOpnieuw,
 }: {
   soort: Roosterfoutsoort;
-  bezig: boolean;
-  onOpnieuw: () => void;
+  bezig?: boolean;
+  onOpnieuw?: () => void;
 }) {
   const { sleutel, luid } = ROOSTERFOUT[soort];
 
@@ -777,26 +824,28 @@ function Roosterfout({
       >
         {t(sleutel)}
       </p>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={bezig}
-        onClick={onOpnieuw}
-        // `border-suggestie-geweigerd` rather than the default `border-input`, for the reason the settings notice
-        // records: `variant="outline"` puts `bg-card` on this panel's `suggestie-geweigerd/10` wash, so the fill carries
-        // no contrast of its own and the border is the only thing delineating the control (SC 1.4.11 wants 3:1 for it).
-        // Same hue the panel already spends, so no second chrome accent (Art. XII).
-        // The quiet variant keeps the default `border-input`: its own panel is `bg-paper`, where that token measures
-        // 3.21:1 (measured in a browser for the E3-04 notice, re-measured this round), and borrowing the refusal hue
-        // for a state that lost nothing would be the loudness the copy is trying not to have.
-        className={
-          luid
-            ? "mt-2 h-7 border-suggestie-geweigerd bg-card text-xs"
-            : "mt-2 h-7 bg-card text-xs"
-        }
-      >
-        {bezig ? t("kalender.roosterOpnieuwBezig") : t("kalender.roosterOpnieuw")}
-      </Button>
+      {onOpnieuw !== undefined && (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={bezig}
+          onClick={onOpnieuw}
+          // `border-suggestie-geweigerd` rather than the default `border-input`, for the reason the settings notice
+          // records: `variant="outline"` puts `bg-card` on this panel's `suggestie-geweigerd/10` wash, so the fill
+          // carries no contrast of its own and the border is the only thing delineating the control (SC 1.4.11 wants
+          // 3:1 for it). Same hue the panel already spends, so no second chrome accent (Art. XII).
+          // The quiet variant keeps the default `border-input`: its own panel is `bg-paper`, where that token measures
+          // 3.21:1 (measured in a browser for the E3-04 notice, re-measured this round), and borrowing the refusal hue
+          // for a state that lost nothing would be the loudness the copy is trying not to have.
+          className={
+            luid
+              ? "mt-2 h-7 border-suggestie-geweigerd bg-card text-xs"
+              : "mt-2 h-7 bg-card text-xs"
+          }
+        >
+          {bezig ? t("kalender.roosterOpnieuwBezig") : t("kalender.roosterOpnieuw")}
+        </Button>
+      )}
     </div>
   );
 }
@@ -827,21 +876,25 @@ function TeHerzien({
   plaatsingen,
   klasId,
   blokken,
-  kanVerplaatsen,
+  verplaatsstaat,
 }: {
   plaatsingen: ReturnType<typeof vervallenPlaatsingen>;
   klasId: string;
   blokken: readonly Planningsblok[];
   /**
-   * Whether these cards can be given a period from here (E3-08).
+   * Whether these cards can be given a period from here, and if not, why not (E3-08). See {@link Verplaatsstaat}.
    *
-   * False at the fine zoom, where `blokken` are subthemaperiodes and the server refuses all but the ones that
+   * `anderNiveau` at the fine zoom, where `blokken` are subthemaperiodes and the server refuses all but the ones that
    * coincide with a themaperiode start. The notice stays exactly as non-dismissible as it was — nothing is hidden,
    * nothing gains a "later" — but the card says where re-placing works instead of offering a picker that mostly
    * fails. The alternative, fetching the coarse grid alongside the fine one just for this panel, would put two
    * grids on one screen, which is the defect decision 1 of this story's design exists to avoid.
+   *
+   * `niveauOnbekend` says instead that the view could not be read, because there is no view to send anyone to; and a
+   * **rejected** card is told nothing about re-placing at either tier, since its picker is withheld by the rejection
+   * rather than by the tier (fix round 3). Both live in {@link Themakaart}, which is where the card's own status is.
    */
-  kanVerplaatsen: boolean;
+  verplaatsstaat: Verplaatsstaat;
 }) {
   const titelId = useId();
   const titel = tAantal(
@@ -877,7 +930,7 @@ function TeHerzien({
               plaatsing={plaatsing}
               klasId={klasId}
               blokken={blokken}
-              kanVerplaatsen={kanVerplaatsen}
+              verplaatsstaat={verplaatsstaat}
             />
             <p className="mt-1 text-xs font-medium text-attentie-ink" data-cijfers>
               {t("kalender.herzienDatum", { datum: formatteerDatum(plaatsing.blokStart) })}
