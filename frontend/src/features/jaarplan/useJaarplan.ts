@@ -149,7 +149,14 @@ export function useWijzigVergrendeling(klasId: string) {
   );
 }
 
-/** Records a teacher decision on one placement; E3-07 uses it to reverse a rejection (Art. IV.2). */
+/**
+ * Records a teacher decision on one placement (Art. IV.2).
+ *
+ * E3-07 called it for exactly one status, `Manueel`, to reverse a rejection, which left `Aanvaard` and `Geweigerd`
+ * unreachable and the kalender without any decision surface at all. **E4-02** sends all three; see the note on
+ * {@link Themakaart}. The hook is instantiated once per card and shared with its panel, because one placement has
+ * one status.
+ */
 export function useWijzigPlaatsingStatus(klasId: string) {
   return usePlanMutatie(
     klasId,

@@ -217,9 +217,17 @@ describe("Jaarplankalender", () => {
     });
 
     // The count sentence is still announced, just by a small live region instead of the whole notice.
-    expect(within(melding).getByRole("status")).toHaveTextContent(
-      t("kalender.herzienTitelEnkelvoud"),
-    );
+    //
+    // `getAllByRole`, not `getByRole` (E4-02). Every Themakaart now carries its own sr-only `role="status"` line for
+    // the accept/reject decision, so the notice contains several live regions and a singular query is ambiguous.
+    // Asserted as "some live region in this notice announces the count" on purpose: that is what the test means, and
+    // it does not break again the next time a card gains or loses a region. Taking `[0]` would have passed today and
+    // pinned the render order of two unrelated components.
+    expect(
+      within(melding)
+        .getAllByRole("status")
+        .map((regio) => regio.textContent),
+    ).toContain(t("kalender.herzienTitelEnkelvoud"));
 
     // The thema is named, not merely counted — a teacher must see which plan item needs attention.
     expect(melding).toHaveTextContent("Feesten in december");
@@ -429,78 +437,84 @@ describe("Jaarplankalender", () => {
  * shares with it — which request goes out, with which body, and what the teacher sees when it is refused. The
  * gesture itself is verified in a browser, and that is stated rather than implied.
  */
-describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
-  /** One thema's card, so a query cannot pick up a control belonging to a different card. */
-  function kaart(themaNaam: string): HTMLElement {
-    const article = screen.getByText(themaNaam).closest("article");
-    if (!article) {
-      throw new Error(`No card found for "${themaNaam}".`);
-    }
-
-    return article as HTMLElement;
+/**
+ * One thema's card, so a query cannot pick up a control belonging to a different card.
+ *
+ * Hoisted to module scope by E4-02, together with {@link aanpassen} and {@link stubBewerking}: the decision-surface
+ * tests below need the same three helpers, and a second copy of a fetch stub is a second place for the routing
+ * order to drift.
+ */
+function kaart(themaNaam: string): HTMLElement {
+  const article = screen.getByText(themaNaam).closest("article");
+  if (!article) {
+    throw new Error(`No card found for "${themaNaam}".`);
   }
 
-  /** The "Aanpassen" disclosure on one card. */
-  function aanpassen(themaNaam: string) {
-    return within(kaart(themaNaam)).getByRole("button", {
-      name: t("kalender.aanpassenLabel", { thema: themaNaam }),
-    });
-  }
+  return article as HTMLElement;
+}
 
-  /**
-   * Serves the reads and records every write, answering each write with `naPlan` so the board re-renders from
-   * the response, exactly as it does against the real API.
-   */
-  function stubBewerking(plan: Jaarplan, naPlan: Jaarplan = plan, mislukStatus?: number) {
-    const verzoeken: { method: string; url: string; body: unknown }[] = [];
+/** The "Aanpassen" disclosure on one card. */
+function aanpassen(themaNaam: string) {
+  return within(kaart(themaNaam)).getByRole("button", {
+    name: t("kalender.aanpassenLabel", { thema: themaNaam }),
+  });
+}
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        const method = init?.method ?? "GET";
+/**
+ * Serves the reads and records every write, answering each write with `naPlan` so the board re-renders from
+ * the response, exactly as it does against the real API.
+ */
+function stubBewerking(plan: Jaarplan, naPlan: Jaarplan = plan, mislukStatus?: number) {
+  const verzoeken: { method: string; url: string; body: unknown }[] = [];
 
-        if (method !== "GET") {
-          verzoeken.push({
-            method,
-            url,
-            body: init?.body ? JSON.parse(String(init.body)) : undefined,
-          });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
 
-          if (mislukStatus !== undefined) {
-            return new Response(
-              JSON.stringify({ title: "Ongeldige aanvraag", detail: "geen periodegrens" }),
-              { status: mislukStatus },
-            );
-          }
+      if (method !== "GET") {
+        verzoeken.push({
+          method,
+          url,
+          body: init?.body ? JSON.parse(String(init.body)) : undefined,
+        });
 
-          return new Response(JSON.stringify(naPlan), { status: 200 });
-        }
-
-        if (url.includes("/api/themas")) {
-          return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
-        }
-        // Routed before /jaarplan, whose URL it extends. See the note in the stub above.
-        if (url.includes("/jaarplan/parameters")) {
+        if (mislukStatus !== undefined) {
           return new Response(
-            JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }),
-            { status: 200 },
+            JSON.stringify({ title: "Ongeldige aanvraag", detail: "geen periodegrens" }),
+            { status: mislukStatus },
           );
         }
-        if (url.includes("/rooster")) {
-          return new Response(JSON.stringify(rooster), { status: 200 });
-        }
-        if (url.includes("/jaarplan")) {
-          return new Response(JSON.stringify(plan), { status: 200 });
-        }
 
-        return new Response("unexpected request", { status: 404 });
-      }),
-    );
+        return new Response(JSON.stringify(naPlan), { status: 200 });
+      }
 
-    return verzoeken;
-  }
+      if (url.includes("/api/themas")) {
+        return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+      }
+      // Routed before /jaarplan, whose URL it extends. See the note in the stub above.
+      if (url.includes("/jaarplan/parameters")) {
+        return new Response(
+          JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/rooster")) {
+        return new Response(JSON.stringify(rooster), { status: 200 });
+      }
+      if (url.includes("/jaarplan")) {
+        return new Response(JSON.stringify(plan), { status: 200 });
+      }
 
+      return new Response("unexpected request", { status: 404 });
+    }),
+  );
+
+  return verzoeken;
+}
+
+describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
   it("moves a thema to the chosen period and keys the request on the block START DATE", async () => {
     const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
     const verzoeken = stubBewerking(plan);
@@ -1216,4 +1230,248 @@ describe("Jaarplankalender — verplaatsen en verwijderen (E3-07)", () => {
     // The card has not moved: the board renders what the server last returned, never an optimistic guess.
     expect(within(kaart("Water")).getByText("Water")).toBeInTheDocument();
   });
+});
+
+/**
+ * E4-02 — the decision surface the kalender never had (FR-7.1, Art. IV.1/IV.2).
+ *
+ * Before this story `Themakaart` could send exactly one status, `Manueel`, from the un-reject button, so **neither
+ * `Aanvaard` nor `Geweigerd` was reachable**: the server, the endpoint, `api.ts`, the hook and the status badge all
+ * existed and no control drove them. The consequence was not cosmetic. Only `Aanvaard`/`Manueel` count as placed
+ * (Art. V.1, and E5-01 now implements it), so a freshly generated jaarplan reported 0% dekking and the only route to
+ * a figure was dragging every card, which sets `Manueel` as a side effect of moving it somewhere it need not go.
+ *
+ * Driven through the fetch boundary like every other test here, so a decision travels the real hook, the real
+ * `PUT`, and the real cache write that re-renders the board. Asserting the request alone would prove the button is
+ * wired and prove nothing about what the teacher then sees, which is the gap E5-01's audit called out.
+ */
+describe("Jaarplankalender — aanvaarden en weigeren (E4-02, FR-7.1)", () => {
+  /** The decision buttons on one card, queried by their per-thema accessible name. */
+  function beslissing(themaNaam: string) {
+    const binnen = within(kaart(themaNaam));
+
+    return {
+      aanvaarden: binnen.queryByRole("button", {
+        name: t("kalender.aanvaardenLabel", { thema: themaNaam }),
+      }),
+      weigeren: binnen.queryByRole("button", {
+        name: t("kalender.weigerenLabel", { thema: themaNaam }),
+      }),
+    };
+  }
+
+  it("accepts a proposal, sends Aanvaard, and shows the new status on the card", async () => {
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const naPlan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+    ]);
+    const verzoeken = stubBewerking(plan, naPlan);
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    // The decision is on the card FACE, reachable without opening "Aanpassen". That is the point of the story:
+    // reviewing a dozen proposals must not mean opening a dozen disclosures.
+    fireEvent.click(beslissing("Water").aanvaarden!);
+
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].method).toBe("PUT");
+    expect(verzoeken[0].url).toMatch(/\/jaarplan\/plaatsingen\/p1\/status$/);
+    expect(verzoeken[0].body).toEqual({ status: "Aanvaard" });
+
+    // And the board reports the decision back, from the server's response rather than an optimistic guess.
+    expect(
+      await within(kaart("Water")).findByText(t("suggestieStatus.aanvaard")),
+    ).toBeInTheDocument();
+    // The decision is made, so the card stops asking for one.
+    await waitFor(() => expect(beslissing("Water").aanvaarden).toBeNull());
+    expect(beslissing("Water").weigeren).toBeNull();
+  });
+
+  it("rejects a proposal and sends Geweigerd", async () => {
+    const plan = maakJaarplan([maakPlaatsing({ id: "p2", themaNaam: "Wonen" })]);
+    const naPlan = maakJaarplan([
+      maakPlaatsing({ id: "p2", themaNaam: "Wonen", status: "Geweigerd" }),
+    ]);
+    const verzoeken = stubBewerking(plan, naPlan);
+    renderKalender();
+
+    await screen.findByText("Wonen");
+    fireEvent.click(beslissing("Wonen").weigeren!);
+
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    expect(verzoeken[0].body).toEqual({ status: "Geweigerd" });
+
+    // `Geweigerd` was unreachable before this story, which made the whole rejected-card branch
+    // (`weigeringUitleg`, the suppressed period picker, the un-reject button) code for a state no teacher could
+    // produce. This assertion is what connects the two halves.
+    expect(
+      await within(kaart("Wonen")).findByText(t("suggestieStatus.geweigerd")),
+    ).toBeInTheDocument();
+    fireEvent.click(aanpassen("Wonen"));
+    expect(
+      within(kaart("Wonen")).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
+    ).toBeInTheDocument();
+  });
+
+  it("announces the decision to a screen reader, from a region the decision does not unmount", async () => {
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const naPlan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+    ]);
+    stubBewerking(plan, naPlan);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(beslissing("Water").aanvaarden!);
+
+    // WCAG 2.2 SC 4.1.3. The badge changing text is silent, and the buttons that caused the change unmount in the
+    // same render, so the live region has to live outside them — E4-06 shipped this exact fix inside the lock
+    // section, found it silent in the one case that mattered, and moved it out. Pinned here so it cannot regress by
+    // someone tidying the region into the block it reports on.
+    await waitFor(() =>
+      expect(
+        within(kaart("Water"))
+          .getAllByRole("status")
+          .map((regio) => regio.textContent),
+      ).toContain(t("kalender.beslisAanvaard", { thema: "Water" })),
+    );
+  });
+
+  it("offers no decision on a placement the teacher already decided", async () => {
+    const plan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+      maakPlaatsing({ id: "p2", themaNaam: "Wonen", status: "Manueel", aiMotivatie: null }),
+      maakPlaatsing({ id: "p3", themaNaam: "Weer", status: "Geweigerd" }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    for (const thema of ["Water", "Wonen", "Weer"]) {
+      expect(beslissing(thema).aanvaarden, `${thema} still offers Aanvaarden`).toBeNull();
+      expect(beslissing(thema).weigeren, `${thema} still offers Weigeren`).toBeNull();
+    }
+  });
+
+  it("offers no decision on a STALE proposal, whose only remedy is re-placement", async () => {
+    const plan = maakJaarplan([
+      maakPlaatsing({
+        id: "p9",
+        themaNaam: "Feesten in december",
+        blokStart: "2026-12-01",
+        blokEind: null,
+        blokOrdinaal: null,
+        isVervallen: true,
+        status: "Voorgesteld",
+      }),
+    ]);
+    stubBewerking(plan);
+    renderKalender();
+
+    await screen.findByText("Feesten in december");
+
+    // The same reasoning E4-06 applied to the lock, applied consistently: a stale card's remedy is re-placement, and
+    // accepting one would produce a card labelled "Aanvaard" that covers nothing and STILL withholds the whole
+    // dekking figure (E5-01 withholds it while any unresolved stale placement exists). A decision that resolves
+    // nothing, dressed as one that did.
+    expect(beslissing("Feesten in december").aanvaarden).toBeNull();
+    expect(beslissing("Feesten in december").weigeren).toBeNull();
+    // The instruction it does get is the re-placement one, which belongs to E3-07 and still points at a picker.
+    expect(screen.getByText(t("kalender.herzienUitleg"))).toBeInTheDocument();
+  });
+
+  it("tells the teacher to reload when the placement is gone, rather than to try again", async () => {
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const verzoeken = stubBewerking(plan, plan, 404);
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(beslissing("Water").aanvaarden!);
+
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+
+    // A 404 means this browser is looking at a stale board and reloading fixes it; "probeer het opnieuw" would send
+    // the teacher round a loop that cannot succeed. Two audits (E3-07 on the move path, E4-06 on the lock) have
+    // already required this split of a control in this card, so the third one is built with it rather than after it.
+    expect(await screen.findByText(t("kalender.statusVerdwenen"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.statusMislukt"))).toBeNull();
+    // And no server string reaches the teacher (Art. II.3, the `api.ts` rule).
+    expect(screen.queryByText(/Ongeldige aanvraag/)).toBeNull();
+  });
+
+  /**
+   * Serves the reads but leaves the write **open**, so the in-flight window can be asserted instead of raced.
+   *
+   * Returned as a helper because the test below runs it in both directions, and that is not symmetry for its own
+   * sake: the first version clicked "Weigeren" only, and a mutation that dropped the `variables` guard from the
+   * **Aanvaarden** branch left the whole suite green. A test that pins one direction of a two-way rule is half a
+   * test, and this one advertised itself as "never both".
+   */
+  function stubOpenWrite(plan: Jaarplan) {
+    let laatDoor: (() => void) | undefined;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+
+        if ((init?.method ?? "GET") !== "GET") {
+          await new Promise<void>((resolve) => {
+            laatDoor = resolve;
+          });
+
+          return new Response(JSON.stringify(plan), { status: 200 });
+        }
+
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(
+            JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }),
+            { status: 200 },
+          );
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(plan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    return () => laatDoor?.();
+  }
+
+  it.each([
+    { geklikt: "aanvaarden", ander: "weigeren", anderLabel: "kalender.weigeren" },
+    { geklikt: "weigeren", ander: "aanvaarden", anderLabel: "kalender.aanvaarden" },
+  ] as const)(
+    "says only the clicked decision is busy when $geklikt is pressed, never both",
+    async ({ geklikt, ander, anderLabel }) => {
+      const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+      const laatDoor = stubOpenWrite(plan);
+
+      renderKalender();
+      await screen.findByText("Water");
+      fireEvent.click(beslissing("Water")[geklikt]!);
+
+      // `isPending` alone would put "Bezig…" on BOTH buttons, which tells the teacher the tool is doing something it
+      // is not. The label is keyed on the mutation's in-flight `variables`, so it names the request that exists.
+      // This is the mistake E4-06 fixed on the lock toggle, arriving one story later in a new control.
+      await waitFor(() =>
+        expect(beslissing("Water")[geklikt]).toHaveTextContent(t("kalender.bezig")),
+      );
+      expect(beslissing("Water")[ander]).toHaveTextContent(t(anderLabel));
+      // Both are disabled while a write is open, which is a different claim from both being busy.
+      expect(beslissing("Water")[ander]).toBeDisabled();
+
+      laatDoor();
+    },
+  );
 });
