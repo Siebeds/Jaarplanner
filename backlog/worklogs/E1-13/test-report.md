@@ -551,3 +551,257 @@ Measured, on the fullest state of the page (the Art. IV.2 panel open **and** the
 3. **One thing stayed unverified for want of the environment:** I could not produce a gateway failure *after* a
    successful save, so `import.onbeschikbaarNaDoorvoeren` was only seen on a failure *before* the write
    (defect 1's 500 exercised it, which is closer than a test but still not the post-write case).
+
+---
+
+# E1-13 — Test report (round 3)
+
+**Verdict:** **PASS**
+**Mode:** both — unit/integration (xUnit on real PostgreSQL) + browser pass (headless Chrome over CDP)
+**Tree verified:** `story/E1-13` at **`bdd5911`**, i.e. *after* `00dc903` merged `origin/main` (E4-06) in. This is
+what will actually land.
+**Fix round under test:** `4c1fcc3` (code + tests), `46496f5` (worklog + evidence).
+
+Round 1 failed on clauses 4, 5 and 6. Round 2 passed all six on their own terms and failed on one blocking defect
+older than the story: a school-content import commit that grows an **existing** thema answered 500 against real
+PostgreSQL. That defect is now fixed, the four MINOR findings are met, and **the one thing the fix round could not
+get on screen, I did get on screen.** Verdict: PASS.
+
+## The blocking defect — my own round-2 repro, re-run end to end through the screen
+
+Driven in headless Chrome against the real API and a dedicated PostgreSQL database (`jaarplanner_e113gate3`,
+created, migrated, used, **dropped**), on ports **5471** (api) / **5472** (vite) / **9471** (CDP), all claimed in
+`.claude/coordination/claims/` and released. Fixtures built with `openpyxl` through the single-source column
+mapping. Never a dev server in the foreground; every process killed **by PID**.
+
+One distinct thema per modus, so each modus's first file genuinely *creates* and its second file genuinely
+*grows*. File 2 adds an activiteit to the **existing** subthema **and** a wholly new subthema to the **existing**
+thema: both halves of the round-2 repro in one file.
+
+| Modus | file 1 (creates) | file 2 (grows the existing thema) | console errors |
+| --- | --- | --- | --- |
+| `Toevoegen` | "Bestand gelezen: Alle rijen zijn zonder problemen gelezen." + "Inhoud volledig: Alles uit dit bestand is overgenomen." | **same two green verdicts, committed**; the diff reads `+ Noten toegevoegd in Gate3-Herfst-T` and `+ Bladeren persen toegevoegd in Gate3-Herfst-T · Bladeren` | **0** |
+| `Bijwerken` | idem | **same two green verdicts, committed** | **0** |
+
+**Read back from the database, not off the screen**, because the defect was in the write:
+
+```
+thema          | subthema | activiteit
+Gate3-Herfst-B | Bladeren | Bladeren persen     <- added by file 2
+Gate3-Herfst-B | Bladeren | Bladeren rapen      <- kept from file 1
+Gate3-Herfst-B | Noten    | Noten kraken        <- new subthema of an existing thema
+Gate3-Herfst-T | Bladeren | Bladeren persen
+Gate3-Herfst-T | Bladeren | Bladeren rapen
+Gate3-Herfst-T | Noten    | Noten kraken
+(6 rows)
+```
+
+Both modes: no 500, and the content is actually there. Round 2's defect 1 is closed.
+Evidence: `round-3/r3-t-file2-doorgevoerd.png`, `r3-b-file2-doorgevoerd.png`, plus the four preview shots.
+
+## The four claims about the fix — all four verified, the metadata one hardest
+
+### Claim 1: five broken child collections, not the two I hit — **CONFIRMED, measured**
+
+I did not take the table on trust. I **neutralised the fix** in `AppDbContext` (replaced
+`property.ValueGenerated = ValueGenerated.Never;` with a no-op carrying a temporary marker), rebuilt, and ran the
+sweep. Exactly **5 failed, 4 passed**, and the five are exactly the five named:
+
+| Test | Collection | Neutralised | Fix restored |
+| --- | --- | --- | --- |
+| `Bestaand_thema_krijgt_een_themadoel` | `Thema.Themadoelen` | **FAIL** `DbUpdateConcurrencyException: expected to affect 1 row(s), but actually affected 0 row(s)` | pass |
+| `Bestaand_thema_krijgt_een_subthema` | `Thema.Subthemas` | **FAIL** (same) | pass |
+| `Bestaand_subthema_krijgt_een_subdoel` | `Subthema.Subdoelen` | **FAIL** (same) | pass |
+| `Bestaand_subthema_krijgt_een_activiteit` | `Subthema.Activiteiten` | **FAIL** (same) | pass |
+| `Bestaand_schooljaar_krijgt_een_klas` | `Schooljaar._klassen` | **FAIL** (same) | pass |
+| `Bestaand_thema_krijgt_een_doelsuggestie` | `Thema.Doelsuggesties` (owned, composite) | pass | pass |
+| `Bestaande_activiteit_krijgt_een_doelkoppeling` | `Activiteit.Doelkoppelingen` (owned, composite) | pass | pass |
+| `Bestaand_schooljaar_krijgt_een_sluiting` | `Schooljaar._sluitingen` | pass | pass |
+| `Bestaand_jaarplan_krijgt_een_plaatsing` | `Jaarplan._plaatsingen` (E3-04) | pass | pass |
+
+`AggregaatGroeiTests`: **5 failed / 4 passed** neutralised, then **9 passed / 0 failed** restored.
+The HTTP theory `Tweede_import_laat_een_bestaand_thema_groeien` also reproduces neutralised: **2 failed**
+(`Toevoegen` *and* `Bijwerken`), then **2 passed** restored. So the sweep claim, and the claim that composite owned
+keys were never affected, are both measured rather than reasoned.
+
+The tests are honest guards, not green decoration: each loads the parent, adds the child through the domain
+method, saves, then **re-reads in a fresh `DbContext`** and asserts the count and contents. The HTTP theory reads
+the result back through `GET /api/themas`, not off the diff the same request computed.
+
+### Claim 2: three of the five were invisible because of an explicit `.Add(child)` — **CONFIRMED, with one precision**
+
+Present, and each covers one of the three collections that never surfaced in production:
+
+- `KlasBeheerService.cs:89` — `_context.Klassen.Add(klas)`, for `Schooljaar._klassen`
+- `SchoolcontentBeheerService.cs:232` — `_context.Themadoelen.Add(...)`; `:321` — `_context.Subdoelen.Add(...)`
+- `SchoolcontentImportService.cs:468` — `_context.Themadoelen.Add(...)`; `:605` — `_context.Subdoelen.Add(...)`
+
+And **absent** where the 500 came from: `SchoolcontentImportService` has **no** `_context.Subthemas.Add` and **no**
+`_context.Activiteiten.Add` (grep returns nothing), while it does grow those collections via
+`thema.VoegSubthemaToe` (`:718`) and `doelSubthema.VoegActiviteitToe` (`:369`).
+
+**The precision:** `SchoolcontentBeheerService` *does* carry `Subthemas.Add` (`:268`) and `Activiteiten.Add`
+(`:353`), so the manual beheer path was never broken either. The claim is exactly true of the **import** path,
+which is the path a teacher met as a 500. Nothing in the fix depends on the looser reading.
+
+### Claim 3: fixed model-wide in `OnModelCreating` — **CONFIRMED**
+
+`AppDbContext.OnModelCreating` iterates `modelBuilder.Model.GetEntityTypes()`, then `GetKeys()`, then
+`Where(p => p.ClrType == typeof(Guid))`, and sets `ValueGenerated.Never`. It is one rule over the whole model
+rather than nine lines, so a **new** child collection cannot reintroduce the defect. No per-configuration
+duplicate exists, and no configuration anywhere asks for a store-generated Guid: `ValueGeneratedOnAdd`,
+`HasDefaultValueSql`, `gen_random_uuid` and `uuid_generate` all return zero source hits outside `bin/`.
+
+### Claim 4: metadata only, no migration — **CONFIRMED FOUR WAYS.** This is the claim I pushed hardest.
+
+1. **No migration file was touched.** `git diff 4c1fcc3^ 4c1fcc3 -- '*Migrations*'` is empty, so the applied DDL
+   is byte-identical to before the fix. Nothing can drift in a file that did not change.
+2. **`dotnet ef migrations has-pending-model-changes`** answers *"No changes have been made to the model since the
+   last migration."* (exit 0).
+3. **I scaffolded a throw-away migration and read it.** `dotnet ef migrations add __E113DriftCheck` produced
+   `Up()` and `Down()` that are **completely empty**: zero schema operations, no column, no default, no
+   constraint, no index. The only snapshot change was the removal of **11 `.ValueGeneratedOnAdd()` lines** and
+   nothing else (`1 file changed, 11 deletions(-)`). I then ran `dotnet ef migrations remove` and restored the
+   snapshot with `git checkout`; the tree is clean and `AppDbContextModelSnapshot.cs` is untouched.
+4. **A database migrated from scratch.** Fresh `jaarplanner_e113gate3`, all 11 migrations applied, then
+   `information_schema.columns`: **all 33 `uuid` columns are `uuid NOT NULL` with an empty `column_default`.**
+   The single exception is `klassen.SchooljaarId`, whose zero-guid default comes from migration
+   `20260728150734_JaarplanEnSchooljaarKlassen.cs:47`: pre-existing, an FK rather than a key, and untouched.
+
+So: no schema diff, no migration, no data-model change. **A safe change, not silent drift** — including under
+E4-06's freshly merged work, which the 167-test integration run exercises on this same tree.
+
+**One observation, not a defect.** The committed snapshot still declares `.ValueGeneratedOnAdd()` on those 11 Guid
+keys, so it is now stale in *metadata* relative to the model. The consequence for the database is nil, proven by
+the empty `Up()`/`Down()` above; the only effect is that whoever scaffolds the next migration will see those 11
+removals ride along in the snapshot rewrite. Normal EF behaviour, worth knowing, nothing to fix. The two
+`ValueGeneratedOnAdd` entries that remain are the `bool` defaults (`NietMeerInOpstap`, `Vergrendeld`), correctly
+left alone because the loop filters on `Guid`.
+
+## Spot-checks on the six clauses — fix round 2 broke none of them
+
+Not re-derived, since round 2 established all six including the clause-5 positive control. Spot-checked because
+the fix touched both importers, `routes.ts`, `AppDbContext` and four services.
+
+### MINOR 4 — the one fix that changed **server** behaviour. Checked in **both** directions.
+
+The guard widened to `inkomend.Count == 0`, dropping `&& bestaand.Count > 0`, so it changes when the Op.stap
+commit control is withheld. Both cases driven on discipline **7**, which held **0** doelen, so each really is a
+*first* import.
+
+**(a) A first *empty* import now reads as a skip.** A header-only workbook gives the warning verdict
+*"Inhoud volledig: 1 opmerking bij dit bestand. Hieronder staat welke."*, and the notice in the **zero form**,
+verbatim on screen:
+
+> Er zijn geen geldige leerplandoelen ingelezen voor discipline 7, dus is er niets toegepast. **Er staan nog geen
+> doelen voor deze discipline, dus er verandert ook niets.** Mogelijk is het bestand leeg, onvolledig of hoort het
+> bij een andere discipline.
+
+plus *"Uit dit bestand wordt niets ingelezen."* and *"Er is niets om in te lezen. Hierboven staat waarom."*, and
+the button list is exactly `["Bestand nakijken","Op.stap-bestand nakijken"]`: **no "Doelen inlezen"**. Zero
+console errors. `round-3/r3-op-minor4-leeg-full.png`
+
+**(b) A normal first import of a file *with* rows is unaffected.** Same empty discipline 7, a two-row file:
+**two green** verdicts (*"Bestand gelezen"* plus *"Inhoud volledig: Dit bestand kan volledig ingelezen worden."*),
+*"2 toegevoegd"* listing `G3-A1` and `G3-A2`, and the live **"Doelen inlezen"** control. The widened condition did
+**not** swallow the normal path. `round-3/r3-op-minor4-vol-g-full.png`
+*(A G-only file, deliberately: an MD-concorded row trips the E1-12 minimumdoelen precondition, which is MINOR 5's
+territory and left to E1-12 by the brief.)*
+
+xUnit backs both forms: `OpstapImportOpmerkingenTests` carries `[InlineData(0, "Er staan nog geen doelen voor deze
+discipline")]`, `[InlineData(1, "Het bestaande doel blijft ongewijzigd.")]` and
+`[InlineData(3, "De 3 bestaande doelen blijven ongewijzigd.")]`.
+
+### MINOR 1 — the clause is gone from the neutral 409 frame
+
+`import.opstap.geweigerdAlgemeenUitleg` now reads *"Dit gaat niet over de rijen in het bestand: het bestand is als
+geheel geweigerd."*, and the diff confirms `en er is niets gewijzigd` was deleted. The test asserts the **rendered
+panel**, not the key, so restoring the clause fails even after a rename.
+
+I did drive a real 409 on screen, and it rendered the **system** variant (`geweigerdSysteemUitleg`), not the
+neutral one: *"De doelen zijn niet ingelezen"* / *"Dit gaat niet over de rijen in het bestand. De toepassing kan
+dit bestand nog niet inlezen..."* plus the server detail about the missing minimumdoelen. Its "Er is niets
+gewijzigd aan de doelen die al in de toepassing staan" is that case's own true statement, since a real refusal
+rolls back, and it is not the unconditional claim MINOR 1 removed. `round-3/r3-op-minor1-409-full.png`
+
+### MINOR 2 — **I got it on screen.** This is the item the fix round could not.
+
+The fix round verified this sentence over real HTTP but not in a browser, because Chrome wedged twice. It renders.
+Demo thema `Water` (2 `Manueel` themadoelen) plus a file bringing 3 new codes, modus `Bijwerken`, warning panel:
+
+> Thema 'Water' houdt 2 themadoelen die er al staan, en dit bestand brengt 3 nieuwe codes aan. Samen is dat meer
+> dan de 3 themadoelen die een thema kan hebben. 2 themadoelen zijn daarom overgeslagen: DEMO-L3-02, DEMO-L3-03.
+> De bezette plaatsen kan dit bestand niet vrijmaken: haal eerst een themadoel weg bij het thema zelf, of duid bij
+> het doorvoeren aan dat koppelingen die niet meer in het bestand staan mogen verdwijnen.
+
+Verbatim, in the warning register, with the triangle icon beside the colour (Art. XII: never colour alone).
+`round-3/r3-sc-minor2.png`
+
+**And I checked the advice is actionable, which was MINOR 2's entire point.** The sentence tells the reader to tick
+something at commit time; in that exact state the control is present and labelled *"Verwijder deze 2 koppelingen
+bij het doorvoeren. Dat kan je niet ongedaan maken."*, beside a live *"Import doorvoeren"*. The advice points at a
+real, visible control, not at a described one.
+
+### MINOR 3 — the guard and its blind spot
+
+`OpstapImportOpmerkingenTests` exists (4 `Fact`/`Theory` attributes) and its doc comment names the exact sentence
+that escaped the three predicates. Covered by the 513.
+
+### 390px
+
+On the fullest state (the MINOR 2 warning plus the full diff): `scrollWidth === clientWidth === 375` at
+`innerWidth 390` (a 15px scrollbar), and **0 elements in `main`** extending past the viewport, measured via
+`Emulation.setDeviceMetricsOverride` because `--window-size` clamps at about 504px here.
+`round-3/r3-390px-minor2.png`
+
+## Commands run — my own numbers, on `bdd5911`
+
+| Command | My result | Orchestrator's figure | Verdict |
+| --- | --- | --- | --- |
+| `dotnet format --verify-no-changes` | clean, exit 0 | clean | **confirmed** |
+| `dotnet test` UnitTests | **513 passed / 0 failed / 0 skipped** (24s) | 513 | **confirmed** |
+| `dotnet test` IntegrationTests (`JAARPLANNER_TEST_POSTGRES` set) | **167 passed / 0 failed / 0 skipped** (3m 1s) | 167 | **confirmed** |
+| `corepack pnpm test` | **272 passed / 15 files** (34.25s) | 272 / 15 | **confirmed** |
+| `corepack pnpm lint` | clean, exit 0 | clean | **confirmed** |
+| `corepack pnpm build` | clean, built in 14.22s | clean | **confirmed** |
+| `dotnet ef migrations has-pending-model-changes` | no changes since the last migration | no changes | **confirmed** |
+| `dotnet ef migrations add __E113DriftCheck` then `remove` | empty `Up()`/`Down()`; snapshot delta = 11 metadata lines | n/a (my addition) | metadata only |
+| `dotnet ef database update` on a fresh DB plus `information_schema` | 33 uuid columns, all `NOT NULL`, all default-free | n/a (my addition) | no schema diff |
+| `AggregaatGroeiTests` **neutralised** | **5 failed / 4 passed** | n/a (my addition) | sweep claim measured |
+| `Tweede_import_laat_een_bestaand_thema_groeien` **neutralised** | **2 failed** (both modi) | n/a (my addition) | the repro is a real guard |
+
+**Every number the orchestrator gave is confirmed. I contradict none of them.**
+Zero skipped tests in both backend assemblies, so nothing hid behind an absent database.
+
+## Evidence
+
+**13 screenshots in `backlog/worklogs/E1-13/round-3/`, md5-checked, all 13 distinct.** I captured 15 and kept 13. Dropped: a second
+capture of the MINOR 4 empty state that was byte-identical to `r3-op-minor4-leeg-full.png` (the same state reached
+twice by two independent scripts, so citing it would have dressed one observation up as two), and one shot of a
+mid-request "Bezig met nakijken..." state from an aborted probe, which evidences no claim I make here.
+
+Key shots: `r3-t-file2-doorgevoerd.png` and `r3-b-file2-doorgevoerd.png` (the round-2 defect, now committing in
+both modi), `r3-sc-minor2.png` (MINOR 2 on screen at last), `r3-op-minor4-leeg-full.png` and
+`r3-op-minor4-vol-g-full.png` (MINOR 4 in both directions), `r3-op-minor1-409-full.png`, `r3-390px-minor2.png`.
+
+**Zero console errors** in every browser run this round.
+
+## Housekeeping
+
+- **Tree is clean** at `bdd5911`, apart from the two things I am supposed to add: this report and the 13
+  screenshots in `round-3/`. The orchestrator holds `branch-story-E1-13` and does the committing.
+- The neutralise experiment was restored with `git checkout`; a grep for the temporary marker returns **0** and
+  `ValueGenerated.Never` is back at `AppDbContext.cs:115`. The scaffolded migration was removed and the snapshot
+  restored. `git status --short` is empty and `git ls-files --others --exclude-standard` is empty.
+- Scratch database `jaarplanner_e113gate3` **dropped**; no `e113` or `groei` database remains.
+- Ports 5471/5472/9471 released, verified with `netstat`; every process killed **by PID**, never by image name.
+  Claims `suite-agent-a8b6127bb7255ef99`, `db-e113gate3` and `ports-5471-5472-9471` released.
+- One environment hiccup, retried once as policy says: a `dotnet test` build failed with `MSB3027` because a
+  `testhost` from my previous run still held `Jaarplanner.Infrastructure.dll`. The PID was already gone by the time
+  I looked, so it was a transient file lock rather than a live process, and not a product defect; the re-run passed.
+
+## What stayed unverified
+
+**One sentence, plainly:** the *neutral* 409 frame (`geweigerdAlgemeenUitleg`) was never rendered in my browser,
+because every real 409 I could trigger on this data renders the system or discipline variant instead, so that one
+string rests on the Vitest assertion over the rendered panel rather than on a screenshot.
