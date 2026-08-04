@@ -248,6 +248,43 @@ describe("nl.json — the stale-placement notice does not overclaim about dekkin
   });
 });
 
+describe("nl.json — de copy over verplaatsen noemt het dekkingsgevolg (E4-01)", () => {
+  /**
+   * The E4-01 antagonist found a test comment asserting that *"the card discloses it before the drag"* while no string
+   * in the product said anything about dekking: `verplaatsGevolg` named the status change and the lost motivation
+   * only, and it renders inside the opened *Aanpassen* panel, so a teacher who drags never read it. The owner ruled
+   * the sentence in scope. This guard is what keeps it there, on **both** routes, because the failure mode is not a
+   * bug but a reword.
+   *
+   * **The second assertion is the one that pins the reasoning rather than the wording.** The board sentence has to
+   * speak about an **AI-voorstel**, not about "een thema": a `geweigerd` placement cannot be dragged at all (the
+   * server refuses it, and the card withholds the grip), so a general promise about dragging "a thema" would be false
+   * in exactly that state. That is the E4-06 defect class, where copy claimed something true of most cards and wrong
+   * for one.
+   *
+   * **The blind spot, stated as this file's neighbours do:** both assertions key on the word `dekking`. A reword to
+   * *"telt vanaf dan mee voor je bewijs"* would satisfy neither, which is the point, but a reword that keeps the word
+   * and drops the *move* would pass the first assertion. Hence checking the move verb in the same sentence family.
+   */
+  it("states on both routes that a verplaatsing makes a thema count", () => {
+    const bord = CATALOGUS.get("kalender.beslisUitleg");
+    const paneel = CATALOGUS.get("kalender.verplaatsGevolg");
+
+    expect(bord, "kalender.beslisUitleg has been renamed; this guard now checks nothing").toBeDefined();
+    expect(paneel, "kalender.verplaatsGevolg has been renamed; this guard now checks nothing").toBeDefined();
+
+    // The drag route has no point-of-action surface, so the board sentence is the only place it can be said.
+    expect(bord!.toLowerCase()).toContain("versleep");
+    expect(bord!.toLowerCase()).toContain("dekking");
+    // Not "een thema": a rejected card cannot be dragged, so the promise is scoped to a proposal.
+    expect(bord!.toLowerCase()).toContain("ai-voorstel naar een andere periode");
+
+    // The picker route says it at the moment of action, beside the irreversibility it already disclosed.
+    expect(paneel!.toLowerCase()).toContain("dekking");
+    expect(paneel!.toLowerCase()).toContain("niet terugdraaien");
+  });
+});
+
 describe("nl.json — no dead keys under dekking", () => {
   /**
    * The same guard as the `doelen.*` one below, extended to E5-02's family for the same reason it was written: E1-16

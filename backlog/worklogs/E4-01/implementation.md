@@ -103,14 +103,104 @@ Screenshot: [`dekking-na-aanvaarden.png`](dekking-na-aanvaarden.png) (2 of 14, s
 at unit level by the mutation check, not in the browser. Reproducing it in the running app would have meant
 editing the hook while the page was live, and an HMR reload resets the cache the defect lives in.
 
+> **Superseded by the test-runner, and left standing as the record of a wrong call.** It reproduced the
+> counterfactual in the browser by disabling the hook and **restarting the dev server** before running the flow,
+> which is the step I had not thought of: no HMR, so no cache reset. Its screenshots are in this folder. So this
+> paragraph was not a limit of the method, only of mine, and the correct reading is the one it measured: the stale
+> figure is a **one-request window** that self-corrects, *except* when the read fails, where the error alert ends
+> up directly above a figure that is wrong. Also worth recording: the three rows of the table above were observed
+> and not captured, which the antagonist flagged as a table presenting unartefacted measurements. The
+> test-runner's six screenshots now cover both states of the load-bearing column.
+
 ## What this story does **not** claim
 
 - **No minimumdoel level** (E5-04, blocked on E1-12): every figure above is leerplandoel-level.
 - **No change to the dekkingsoverzicht itself.** E5-02 owns that screen, and it is still `[~]` pending an
-  audit of its kleuterjaar chooser. This story changed behaviour, not layout, so no contrast or 390px
-  measurement was taken or is claimed.
+  audit of its kleuterjaar chooser. ~~This story changed behaviour, not layout, so no contrast or 390px
+  measurement was taken or is claimed.~~ **False after fix round 1**, which added copy on the kalender: both new
+  sentences were measured at 1440px and 390px (see *Copy, looked at rather than asserted*). No change to
+  `/dekking`'s own layout either way.
 - **No new control anywhere.** "Reflected in the dekkingsoverzicht" is satisfied by the nav item E0-10
   shipped; inventing a second route to the same screen would be scope this story does not own.
+- ~~**Not the link path.**~~ It was going to be listed here as out of scope, on the reading that E4-01's criterion
+  names plan edits. **The owner ruled otherwise on 2026-08-04: fix it in this story**, so it is in the fix round
+  below rather than in this list. What stays out is a *screen* for it: nothing was added to `/themas`, only the
+  cache rule its own comment had already promised.
+
+## Fix round 1 (`618f129`, plus the copy commit) — what the two gates changed
+
+Both gates ran on `a938b1b`. **antagonist: VIOLATIONS FOUND** (1 MAJOR, 6 MINOR, 1 QUESTION —
+[`antagonist.md`](antagonist.md)); **test-runner: PASS** on every criterion, with findings
+([`test-report.md`](test-report.md)). They converged on the same MAJOR from opposite directions, which is the
+strongest signal either produced: one read the copy, the other drove the screen.
+
+**The MAJOR was a comment of mine, and it is the sharpest kind.** `DekkingNaBewerkingTests` said the drag
+consequence is disclosed *"before the drag"*. It is not: `kalender.verplaatsGevolg` names the status change and
+the lost AI motivation, says nothing about dekking, and renders only inside the opened *Aanpassen* panel, so a
+teacher who drags never reads it. So a **standing obligation recorded in this story's own entry** was described
+by my comment as discharged. **Owner ruling (2026-08-04): write the copy, in this story.** Two existing keys, no
+new key, no component change:
+
+- `kalender.beslisUitleg` gains the drag route, once above the board, where the dekking rule already lives;
+- `kalender.verplaatsGevolg` gains it at the point of action, beside the irreversibility it already disclosed.
+
+Two wordings are deliberate and a guard in `catalogus.test.ts` pins both. The board sentence says **AI-voorstel**
+rather than *thema*, because a `geweigerd` placement cannot be dragged at all, so a general promise would be
+false in exactly that state. The panel says *"Een eigen keuze telt mee voor de dekking"* rather than *"het telt
+daardoor mee"*, because an **already accepted** placement counted before the move: naming the move as the cause
+would be the same false attribution E4-06 needed three audit rounds to get out of the lock copy.
+
+**The link path, fixed here on the owner's ruling rather than filed.** A themadoel and an accepted or adjusted
+doelsuggestie are counted `DoelKoppeling`s, so `/themas` moves the same figure the kalender does and nothing
+there touched the dekking cache. The test-runner reproduced it in a browser (link `DEMO-L3-02`, walk back through
+the nav, the overview paints the pre-link figure with that doel still *Niet gedekt*) and corrected the fix I
+would otherwise have written: a link hangs on a **school-wide** thema, so `dekkingKlasKey(klasId)` is too narrow
+and the honest drop is the whole `["dekking"]` subtree. `useVerwijderThema` deliberately does **not** drop, and
+that is a claim about the server: the delete is refused while the thema sits in any jaarplan, and a thema in no
+jaarplan covers nothing.
+
+`useThemas.ts` had predicted this and named its own successor: *"no dekking query exists in the frontend yet …
+whoever adds it should add its key here"*. E5-02 shipped the query and this story exported the key **on the same
+day**, so the sentence became false while the obligation stayed unmet. The note now records that, because a note
+that names its successor only works if the successor reads it.
+
+**Two of my own claims were weaker than stated, and both are now stronger:**
+
+- the mutation check for the client half covered **one of two call sites**. Deleting the call in
+  `useGenereerJaarplan` left all 439 tests green. Pinned by a fourth test.
+- the three original tests asserted `getQueryData(...) === undefined`, which is a mechanism rather than the
+  promise. A new test edits on the kalender, unmounts it, mounts `DekkingPagina` on the **same** client and
+  asserts the overview shows its own loading line and never the pre-edit total. **It fails under
+  `invalidateQueries`**, so the docstring's central argument is now a test.
+
+Smaller ones: a *"bitten six times"* count in a comment was stale (E7-16 says seven) and is now a citation
+without a figure; the JSDoc block my export displaced is back on the symbol it describes.
+
+### What the test-runner added rather than accepted
+
+- **It reproduced the counterfactual in the browser**, which this worklog had said was not done, and characterised
+  it better than I had: with the hook disabled the overview paints the pre-edit figure and self-corrects one
+  request later, so the defect is a **one-request window**. Except when the read fails: then the error alert sits
+  directly above a stale figure. Screenshots of both are in this folder.
+- **A real cost of `removeQueries`, measured:** a lock toggle cannot change coverage and still forces a loading
+  line for an unchanged figure (`8 van 14` → loading → `8 van 14`). Kept anyway, and the reason is stated in the
+  hook: the alternative is a per-edit rule nobody can state, and the lock shares the one hook the other four
+  edits share. A rejection is **not** in this category, whatever it looks like: rejecting a stale placement
+  resolves it and releases a withheld figure.
+- **The "a refused edit keeps the figure" rule holds for refusals only.** A 404 from a concurrent delete, or a
+  write that commits but loses its response, keeps a figure that really is stale. Pre-existing multi-user gap: the
+  jaarplan cache is equally stale in that case, so it is not this story's to close.
+
+### Copy, looked at rather than asserted
+
+Both sentences read in a real browser against a real API and PostgreSQL, at 1440px and at exactly 390px
+([`copy-1440.png`](copy-1440.png), [`copy-390.png`](copy-390.png)). At 390px the board paragraph is **4 lines**
+and the panel paragraph **5**, both inside the viewport, both `text-ink-zacht` at 12px, i.e. the token and size
+their siblings already use. Measured rather than waved through, because *"explanatory prose is the first thing to
+cut"* and this ruling adds a sentence: the board explanation is now three sentences on a phone. The overflow probe
+compares each element's right edge with the viewport rather than reading `documentElement.scrollWidth`; the
+elements it reports past 390px are the nav and the period ribbon, which are horizontal scrollers by design and
+which text inside a `<p>` cannot widen.
 
 ## Gates
 
@@ -118,7 +208,11 @@ editing the hook while the page was live, and an HMR reload resets the cache the
   full suite re-run before the story closed.
 - **Frontend:** 439 tests / 20 files, 0 skipped. `pnpm lint` clean, and `pnpm build` (`tsc -b`, the type check
   that actually runs — see E7-17) clean.
-- **Not run in this session:** the independent `test-runner` and `antagonist` passes. The harness rule in force
-  here is that subagents are spawned only when the owner asks, so both gates are **owed** and the story is
-  `[~]` until they close. Recorded rather than glossed: this backlog's own history is a series of retractions
-  caused by self-reported gates.
+- **Both independent gates ran once the owner approved them**, on `a938b1b`: **test-runner PASS**
+  ([`test-report.md`](test-report.md)), **antagonist VIOLATIONS FOUND** ([`antagonist.md`](antagonist.md)), and
+  the fix round above answers all of it. A **second antagonist round is owed** on the fix round, because it
+  touches user-facing copy and this repo's record is that copy is where its defects are: three of E4-02's four
+  rounds found nothing in the screen and everything in prose.
+- **After fix round 1:** 569 unit + 194 integration on real PostgreSQL (0 skipped), **444** frontend / 20 files,
+  `dotnet format`, `pnpm lint` and `pnpm build` clean. Every mutation reverted; the copy guard was
+  mutation-checked by removing each new clause in turn.
