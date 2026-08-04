@@ -603,9 +603,27 @@ function Bewerkpaneel({
         <p className="text-xs leading-snug text-attentie-ink">{t(HERPLAATSUITLEG[verplaatsstaat])}</p>
       )}
 
+      {/* Split on `isVervallen` (E3-07 reopening, 2026-08-04), exactly as the rejected section below already
+          splits `weigeringUitleg`.
+
+          The shared string closed with *"Daarna kan je het thema een **andere** themaperiode geven"*, and on a
+          stale card *andere* presupposes a themaperiode this card does not have — while the paragraph rendered
+          directly beneath it says *"dit thema staat in geen enkele periode"*. One card, two sentences, the first
+          presupposing what the second denies: the class this story was reopened over, in a new instance.
+
+          **What is deliberately unchanged is the non-stale sentence.** Its *andere* is correct and more
+          informative there, and repairing the correct half to fix the broken one is the mistake E4-02 recorded on
+          itself. The second step stays named in both variants (the owner's ruling on E3-08's QUESTION-A), and
+          neither names a view, so both stay true at either tier.
+
+          *The promise itself was never false, and the fix does not touch it:* reversing a rejection yields
+          `Manueel`, which restores the picker (`doelen` above is gated on `isGeweigerd`, not on `isVervallen`),
+          measured in a browser. Only the word was wrong. */}
       {isGeweigerd && (
         <p className="text-xs leading-snug text-attentie-ink">
-          {t("kalender.weigeringEerstTerugdraaien")}
+          {plaatsing.isVervallen
+            ? t("kalender.weigeringEerstTerugdraaienVervallen")
+            : t("kalender.weigeringEerstTerugdraaien")}
         </p>
       )}
 

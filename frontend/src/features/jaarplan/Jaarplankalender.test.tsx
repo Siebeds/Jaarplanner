@@ -1893,7 +1893,11 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     expect(within(kaart()).queryByText(t("kalender.herplaatsAnderNiveau"))).toBeNull();
 
     // What it says instead is true here, and its corrective control is on this same screen.
-    expect(within(kaart()).getByText(t("kalender.weigeringEerstTerugdraaien"))).toBeInTheDocument();
+    // *The stale variant since the E3-07 reopening (2026-08-04):* this fixture is `isVervallen`, and the shared
+    // sentence promised it "een andere themaperiode" — a period it does not have. See the dedicated test below.
+    expect(
+      within(kaart()).getByText(t("kalender.weigeringEerstTerugdraaienVervallen")),
+    ).toBeInTheDocument();
     expect(
       within(kaart()).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
     ).toBeInTheDocument();
@@ -1913,7 +1917,9 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
 
     // And the one sentence it does get, plus its control, survive the zoom: neither names a block, so the tier cannot
     // take them away. That is what makes silence about re-placing safe rather than a dead end.
-    expect(within(kaart()).getByText(t("kalender.weigeringEerstTerugdraaien"))).toBeInTheDocument();
+    expect(
+      within(kaart()).getByText(t("kalender.weigeringEerstTerugdraaienVervallen")),
+    ).toBeInTheDocument();
     expect(
       within(kaart()).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
     ).toBeInTheDocument();
@@ -1961,9 +1967,19 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
 
     // The catalogue itself: one string carrying both steps, and naming neither view, so it cannot become the
     // cross-view instruction that round 3 had to remove.
-    expect(t("kalender.weigeringEerstTerugdraaien")).toMatch(tweedeStap);
-    expect(t("kalender.weigeringEerstTerugdraaien")).not.toContain(t("kalender.weergaveGrof"));
-    expect(t("kalender.weigeringEerstTerugdraaien")).not.toContain(t("kalender.weergaveFijn"));
+    //
+    // *Re-aimed at the stale variant by the E3-07 reopening (2026-08-04).* This card is `isVervallen`, so it now
+    // renders `weigeringEerstTerugdraaienVervallen`; asserting the catalogue property against the non-stale key
+    // would have kept passing while saying nothing about the sentence this card shows. Both keys are checked, so
+    // the property is pinned for both states rather than moved from one to the other.
+    for (const sleutel of [
+      "kalender.weigeringEerstTerugdraaien",
+      "kalender.weigeringEerstTerugdraaienVervallen",
+    ] as const) {
+      expect(t(sleutel)).toMatch(tweedeStap);
+      expect(t(sleutel)).not.toContain(t("kalender.weergaveGrof"));
+      expect(t(sleutel)).not.toContain(t("kalender.weergaveFijn"));
+    }
 
     await screen.findByRole("region", { name: t("kalender.herzienTitelEnkelvoud") });
     paneel();
@@ -1983,6 +1999,64 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     expect(within(kaart()).queryByText(t("kalender.herplaatsAnderNiveau"))).toBeNull();
     expect(within(kaart()).queryByText(t("kalender.herplaatsKies"))).toBeNull();
     expect(within(kaart()).queryByLabelText(t("kalender.verplaatsNaar"))).toBeNull();
+  });
+
+  /**
+   * **The E3-07 reopening, 2026-08-04: a rejected card may not presuppose a period it does not have.**
+   *
+   * Found in a browser on `1dfe9b8`, on the state E4-02 made routine (press *Weigeren* on a stale card, which
+   * `kalender.beslisVervallen` recommends). The panel closed with *"Daarna kan je het thema een **andere**
+   * themaperiode geven"* while the paragraph directly beneath it read *"dit thema staat in **geen enkele
+   * periode**"*. *Andere* presupposes exactly what the next sentence denies.
+   *
+   * **What this pins is the contradiction, not a word.** Asserting `t(key)` against `t(key)` would be the
+   * tautology E4-02 was caught writing; asserting the absence of *andere* alone would pass on a card that had
+   * stopped mentioning periods altogether. So the assertion is the **conjunction**: the stale card must still
+   * carry the "geen enkele periode" clause *and* must not carry the presupposition, and the non-stale card must
+   * still carry the informative variant. A reword that reintroduces the promise fails here with the suite green
+   * everywhere else, which is the property the previous fix round lacked.
+   */
+  it("does not promise a rejected stale card another themaperiode, and keeps the promise where it is true", async () => {
+    const presuppositie = /andere themaperiode/i;
+
+    const paneelTekst = async (status: "Geweigerd", vervallen: boolean) => {
+      stubZoom(
+        maakJaarplan([
+          maakPlaatsing({
+            id: vervallen ? "pv1" : "pv2",
+            themaNaam: "Verkeer",
+            blokStart: vervallen ? "2026-12-01" : "2026-10-02",
+            blokEind: vervallen ? null : "2026-11-01",
+            blokOrdinaal: vervallen ? null : 2,
+            isVervallen: vervallen,
+            status,
+            aiMotivatie: null,
+          }),
+        ]),
+      );
+      const { unmount } = renderKalender();
+      const kaart = () => screen.getByText("Verkeer").closest("article") as HTMLElement;
+      await screen.findByText("Verkeer");
+      fireEvent.click(
+        within(kaart()).getByRole("button", {
+          name: t("kalender.aanpassenLabel", { thema: "Verkeer" }),
+        }),
+      );
+      const tekst = kaart().textContent ?? "";
+      return { tekst, unmount };
+    };
+
+    // The stale card: it says it is in no period, so it may not offer "another" one.
+    const stale = await paneelTekst("Geweigerd", true);
+    expect(stale.tekst).toContain("geen enkele periode");
+    expect(stale.tekst).not.toMatch(presuppositie);
+    stale.unmount();
+
+    // The card that really is in a period keeps the more informative sentence. Repairing the correct half to fix
+    // the broken one is the mistake this project has recorded on itself; this assertion is what forbids it.
+    const inPeriode = await paneelTekst("Geweigerd", false);
+    expect(inPeriode.tekst).toMatch(presuppositie);
+    inPeriode.unmount();
   });
 
   /**
