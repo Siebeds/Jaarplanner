@@ -365,8 +365,12 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   const teVolleThemaperiodes = plan.blokken
     .filter((blok) => blok.isOverbelast)
     .map((blok) => blok.ordinaal);
-  const teVolleOrdinalen =
-    bordNiveau === GENERATIEBLOKNIVEAU ? new Set(teVolleThemaperiodes) : new Set<number>();
+  // Keyed on the block START, not the ordinal: this set crosses from the jaarplan response into the `/rooster` one the
+  // strip is drawn from, and those are two caches. See the note on `JaarspineProps.teVolleStarts`.
+  const teVolleStarts =
+    bordNiveau === GENERATIEBLOKNIVEAU
+      ? new Set(plan.blokken.filter((blok) => blok.isOverbelast).map((blok) => blok.start))
+      : new Set<string>();
 
   // How many placements are still waiting for a teacher's decision (E4-02). Counted over the whole plan rather than
   // over `grid.blokken`, deliberately: a **stale** proposal sits in no block at all, and it is still a decision the
@@ -508,7 +512,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             <Jaarspine
               segmenten={segmenten}
               gevuldeOrdinalen={gevuldeOrdinalen}
-              teVolleOrdinalen={teVolleOrdinalen}
+              teVolleStarts={teVolleStarts}
               niveau={bordNiveau}
             />
           </div>
@@ -1112,7 +1116,21 @@ function TeHerzien({
 }
 
 /**
- * KNELPUNT 2 — how many leerplandoelen this plan teaches nowhere (E3-09, FR-6.4).
+ * KNELPUNT 2 — how many leerplandoelen this plan does not yet cover (E3-09, FR-6.4).
+ *
+ * **The sentence says "nog niet gedekt", and getting that wrong was this story's worst defect** (antagonist MAJOR,
+ * fixed here). It first read *"komen in geen enkel thema van dit jaarplan voor"*, which is a claim about **placement**
+ * while the number is a claim about **coverage**, and the two part company in the single commonest state on this
+ * screen: `DekkingService` requires the *placement* to be `Aanvaard`/`Manueel` on top of the link (Art. V.1), so a
+ * freshly generated plan is entirely `Voorgesteld` and reports 0 covered. The demo seed makes that concrete — 7 thema's
+ * carrying 14 codes, every card announcing *"2 doelen gekoppeld"*, beside a line claiming those 14 goals appeared in no
+ * thema at all. **That contradiction was on screen during this story's own browser pass and read as a pass**, which is
+ * the useful part of the lesson: looking at a screen only finds what you are looking for, and I was checking the
+ * treatment rather than the truth of the sentence.
+ *
+ * No extra clause explains *why* the figure is high, deliberately: `kalender.beslisUitleg` already sits above this line
+ * whenever a decision is outstanding and says *"Zolang een thema een AI-voorstel blijft, telt het niet mee voor de
+ * dekking"*, and `/dekking` states the full rule. Repeating it here is the prose this screen exists to cut.
  *
  * **A count and a route, not a list** (owner ruling, 2026-08-04). The approved E3-10 wireframe drew this as its own
  * tray beside the board, and that was the right answer on 2026-07-28, when nothing else could show it. E5-02 has since

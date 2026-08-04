@@ -85,10 +85,21 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
 
           <ul className="mt-1.5 flex flex-col gap-1 text-xs text-ink" data-cijfers>
             <li>
-              {t("kalender.spreidingBlokken", {
-                gebruikt: spreiding.aantalGebruikteBlokken,
-                totaal: spreiding.aantalBlokken,
-              })}
+              {/* Through `tAantal` on the TOTAL, because that is the number the noun follows: "1 van 1 themaperiodes
+                  gebruikt" was ungrammatical on a year deriving a single period. Pre-existing, and neither E3-02 nor
+                  E3-09 authored it — it surfaced when E3-09 widened `catalogus.test.ts` to stop finding counts by
+                  placeholder NAME (`{aantal}`) and start finding them by the noun that follows them. Fixed rather than
+                  exempted: the guard is new, so this is its first real catch and waving it through would teach the next
+                  reader that the list is advisory. */}
+              {tAantal(
+                spreiding.aantalBlokken,
+                "kalender.spreidingBlokkenEnkelvoud",
+                "kalender.spreidingBlokken",
+                {
+                  gebruikt: spreiding.aantalGebruikteBlokken,
+                  totaal: spreiding.aantalBlokken,
+                },
+              )}
             </li>
 
             {spreiding.legeBlokOrdinalen.length > 0 && (

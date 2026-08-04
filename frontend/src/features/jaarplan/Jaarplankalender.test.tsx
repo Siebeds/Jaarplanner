@@ -3503,6 +3503,89 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     expect(screen.queryByText(/voorlopige drempel/)).toBeNull();
   });
 
+  /**
+   * The plural fix, pinned (antagonist MAJOR, fix round 1).
+   *
+   * `beschikbareWeken` reaches 1 on the short block a long mid-year closure leaves behind, and the te-vol sentence then
+   * read *"in 1 weken"*. `catalogus.test.ts` could not see it: that guard found counts by placeholder NAME and this
+   * string interpolates `{beschikbaar}`. The guard now finds them by the noun that follows, and this test asserts the
+   * rendered sentence rather than the catalogue, because the catalogue can hold a correct singular that nothing calls.
+   */
+  it("says '1 week' rather than '1 weken' on a period of a single week", async () => {
+    // A rooster whose second block offers 7 open days = exactly 1 week, with 4 weeks of thema placed in it.
+    const kortRooster = {
+      ...rooster,
+      blokken: [
+        rooster.blokken[0],
+        { ...rooster.blokken[1], aantalOpenDagen: 7 },
+      ],
+    };
+    const plan = maakJaarplan(
+      [
+        maakPlaatsing({
+          id: "k1",
+          themaNaam: "Kort blok",
+          blokStart: "2026-11-09",
+          blokEind: "2026-12-20",
+          blokOrdinaal: 2,
+          duurWeken: 4,
+        }),
+      ],
+      [
+        {
+          ordinaal: 2,
+          start: "2026-11-09",
+          aantalThemas: 1,
+          aantalDoelen: 0,
+          benodigdeWeken: 4,
+          beschikbareWeken: 1,
+          isOverbelast: true,
+        },
+      ],
+    );
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/dekking")) {
+          return new Response(JSON.stringify(DEKKING_NIETS_ONTBREEKT), { status: 200 });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(kortRooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(plan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+    renderKalender();
+
+    await screen.findByText("Kort blok");
+
+    expect(
+      screen.getByText(t("kalender.teVolEenWeek", { nodig: 4 })),
+    ).toBeInTheDocument();
+    // And the ungrammatical form is nowhere on screen, including in the period heading. Written without a
+    // word-boundary escape deliberately: an earlier revision of this line reached the file carrying two literal
+    // BACKSPACE bytes where the escapes were meant to be. `no-control-regex` caught it; had it not, the assertion
+    // would have matched nothing and passed forever, which is the failure mode this whole test exists against.
+    expect(screen.queryByText(/(^|\s)1 weken(\s|$)/)).toBeNull();
+    // The heading itself uses the singular noun too.
+    expect(screen.getByText(t("kalender.wekenEnkelvoud"))).toBeInTheDocument();
+  });
+
   it("does not flag a period that needs exactly the weeks it has", async () => {
     // 6 weeks of thema's in period 2's 6 available weeks. The boundary the ruling settles: over means strictly more.
     stubFetch(maakJaarplan([teVolPlaatsingen()[0]]));
@@ -3589,7 +3672,11 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
 
     await screen.findByText("Water");
 
-    expect(screen.queryByText(/geen enkel thema van dit jaarplan/)).toBeNull();
+    // Matched on the copy the line ACTUALLY renders. An earlier revision of these two assertions searched for
+    // "geen enkel thema van dit jaarplan", which the antagonist fix then removed from nl.json — so they would have
+    // passed with the line fully on screen. A negative assertion against a string the product no longer contains is
+    // the most expensive kind of green.
+    expect(screen.queryByText(/nog niet gedekt door dit jaarplan/)).toBeNull();
   });
 
   it("withholds the gap count while dekking itself is untrustworthy", async () => {
@@ -3606,7 +3693,11 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
 
     await screen.findByText("Water");
 
-    expect(screen.queryByText(/geen enkel thema van dit jaarplan/)).toBeNull();
+    // Matched on the copy the line ACTUALLY renders. An earlier revision of these two assertions searched for
+    // "geen enkel thema van dit jaarplan", which the antagonist fix then removed from nl.json — so they would have
+    // passed with the line fully on screen. A negative assertion against a string the product no longer contains is
+    // the most expensive kind of green.
+    expect(screen.queryByText(/nog niet gedekt door dit jaarplan/)).toBeNull();
     expect(screen.queryByText(t("kalender.ongeplandeDoelenOnbekend"))).toBeNull();
   });
 

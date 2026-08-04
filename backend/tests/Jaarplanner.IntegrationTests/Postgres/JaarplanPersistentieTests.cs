@@ -649,12 +649,6 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Seeds a school year, a class inside it, a leerplandoel and a thema, and returns (klasId, themaId, the first
-    /// derived themaperiode's start date). The start date is taken from the year's own first teaching day, which the
-    /// E3-05 suite pins as the first block's start.
-    /// </summary>
-
-    /// <summary>
     /// <b>E3-09 / FR-6.4 on the real stack: the te-vol figures reach the plain jaarplan read.</b>
     /// <para>
     /// This is the change most able to be silently wrong, because it is a payload field. Before E3-09 the weeks
@@ -793,6 +787,11 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// Seeds a school year, a class inside it, a leerplandoel and a thema, and returns (klasId, themaId, the first
+    /// derived themaperiode's start date). The start date is taken from the year's own first teaching day, which the
+    /// E3-05 suite pins as the first block's start.
+    /// </summary>
     private async Task<(Guid KlasId, Guid ThemaId, DateOnly BlokStart)> SeedAsync()
     {
         await using var context = _db.MaakContext();
