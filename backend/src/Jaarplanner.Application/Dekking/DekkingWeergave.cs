@@ -25,6 +25,55 @@ namespace Jaarplanner.Application.Dekking;
 /// <param name="KlasNaam">The class name, so a caller need not fetch it separately.</param>
 /// <param name="SchooljaarId">The school year containing the class (Art. IX.3).</param>
 /// <param name="SchooljaarNaam">The school year label (e.g. "2026-2027").</param>
+/// <param name="Bereik">
+/// Which leerplandoelen the figures below are over: the class's own jaar/fase, or the whole loaded curriculum
+/// (owner ruling 2026-08-04). It reports what was <b>applied</b>, which is not always what was asked for — see
+/// <see cref="IsTerugvalNaarHeelCurriculum"/>. Every consumer that prints a total or a percentage has to render this
+/// beside it, because the same class has two legitimate denominators.
+/// </param>
+/// <param name="GemetenJaarFasen">
+/// The jaar/fase codes actually measured against, or empty for the whole curriculum. Present so a screen can name
+/// the scope in the school's own vocabulary ("gemeten tegen L3") rather than describing it in the abstract, and so
+/// an export can state it as evidence.
+/// </param>
+/// <param name="BeschikbareJaarFasen">
+/// The codes this class *could* be measured against: its whole derived set, before any narrowing. Empty for
+/// <see cref="Dekkingsbereik.HeelCurriculum"/>.
+/// <para>
+/// <b>Distinct from <paramref name="GemetenJaarFasen"/> for one reason: a kleutergroep has to be able to narrow, and
+/// after narrowing it must still know what it narrowed from.</b> <c>Klas.Leerjaar</c> is <c>0</c> for a kleutergroep
+/// and cannot say which kleuterjaar, so the derived set is all three kleuter codes; measured against all three, a
+/// derde kleuterklas carries roughly three times the doelen it teaches and its figure reads about a third of what it
+/// is (owner ruling 2026-08-04: let the teacher choose). Once they choose <c>K3</c>, <c>GemetenJaarFasen</c> is
+/// <c>["K3"]</c> — and a screen that only had that could no longer offer <c>JK</c> and <c>K2</c> as the alternatives
+/// it narrowed from. So the payload carries both: what was applied, and what was available.
+/// </para>
+/// <para>
+/// For a single-leerjaar class the two are equal and the caller offers no choice, which is why the chooser keys on
+/// this list having more than one member rather than on "is this a kleutergroep" — a question the data model cannot
+/// answer and a future graadklas ruling would answer differently.
+/// </para>
+/// </param>
+/// <param name="IsTerugvalNaarHeelCurriculum">
+/// <c>true</c> when the class's own jaar/fase was requested but could not be derived, so the whole curriculum was
+/// measured instead.
+/// <para>
+/// <b>This is the unresolved half of the Art. XIV decision, surfaced rather than hidden.</b> A graadklas / menggroep
+/// spans several leerjaren and <c>Klas.Leerjaar</c> is one ordinal, so no set can be derived for it. The computation
+/// widens the scope rather than narrowing it — a narrower-than-intended scope would overstate coverage — and says so
+/// here, so the overview can explain why it is showing more goals than the teacher asked for instead of silently
+/// contradicting its own control.
+/// </para>
+/// </param>
+/// <param name="AantalBuitenBereik">
+/// How many loaded leerplandoelen fall <b>outside</b> <see cref="Bereik"/>; 0 when the whole curriculum is measured.
+/// <para>
+/// Present so the narrowing cannot be silent. Scoping to one jaar/fase also drops the illustrative <c>P</c>/<c>S</c>
+/// doelsoorten, whose Art. VII.1 column F holds a fase code rather than a jaar/fase code, so the excluded set is not
+/// only "other years". A smaller denominator flatters the figure, which is the one direction coverage must never move
+/// by itself, so the screen states this number beside the whole-curriculum switch.
+/// </para>
+/// </param>
 /// <param name="IsBetrouwbaar">
 /// <c>false</c> when at least one stale placement is still <b>unresolved</b> — i.e. its stored block start is no
 /// longer the start of any derived period <i>and</i> the teacher has not rejected it. Coverage may then not be
@@ -60,16 +109,22 @@ namespace Jaarplanner.Application.Dekking;
 /// The denominator: how many leerplandoelen are in scope. Always present, because it is a property of the loaded
 /// curriculum rather than of this plan, so no stale placement can make it dishonest.
 /// <para>
-/// <b>⚠ Which goals are in scope is an OPEN DECISION, and today the answer is "all of them" (Art. XIV).</b> With no
-/// scope passed, a K3 class is measured against every L1–L6 goal, every discipline and the illustrative
-/// <c>P</c>/<c>S</c>/<c>A</c> doelsoorten. That makes this number large and the E5-03 percentage small in a way
-/// that says more about the loaded curriculum than about the class. It is <b>not</b> a considered answer: it is the
-/// only one available, because <c>Klas</c> deliberately keys nothing on its <c>Leerjaar</c> while graadklassen /
-/// menggroepen are an unresolved Art. XIV decision, so there is nothing to derive a class's own jaar/fase set from.
-/// The choice is isolated behind <see cref="IDekkingOpslag.HaalLeerplandoelenAsync"/>'s <c>jaarFasen</c> parameter
-/// so resolving it is a value at one call site rather than a change to the computation. <b>E5-03 and E5-05 must not
-/// inherit "the whole curriculum" as a considered answer</b> — a percentage over an unscoped denominator, or a gap
-/// list naming every other year's goals as this class's lacunes, would be misleading rather than merely wide.
+/// <b>Which goals are in scope was ruled on 2026-08-04 (owner), and this number now follows
+/// <see cref="Bereik"/>.</b> E5-01 shipped it as the whole loaded curriculum and recorded that as the only
+/// available answer rather than a considered one. The ruling: a class is measured against its own jaar/fase,
+/// derived from <c>Klas.Leerjaar</c>, with <see cref="Dekkingsbereik.HeelCurriculum"/> as an explicit switch.
+/// <b>E5-03 and E5-05 therefore inherit a scoped denominator</b>, and both must read <see cref="Bereik"/> before
+/// putting a percentage or a gap list on screen: the same class yields two legitimate denominators, and a figure
+/// that does not say which one it used is not evidence.
+/// </para>
+/// <para>
+/// <b>It can legitimately be 0 while the school has a full curriculum loaded</b> — a class scoped to L3 when only
+/// kleuterdoelen are imported. A caller must not render that as "alles gedekt": 0 of 0 is "we cannot measure this
+/// class yet", and <see cref="AantalBuitenBereik"/> is what distinguishes it from an empty database.
+/// </para>
+/// <para>
+/// <b>What the ruling did not settle</b> is the graadklas / menggroep, which has no single leerjaar to derive from.
+/// See <see cref="IsTerugvalNaarHeelCurriculum"/>.
 /// </para>
 /// </param>
 /// <param name="Doelen">
@@ -91,6 +146,11 @@ public sealed record DekkingWeergave(
     string KlasNaam,
     Guid SchooljaarId,
     string SchooljaarNaam,
+    Dekkingsbereik Bereik,
+    IReadOnlyList<string> GemetenJaarFasen,
+    IReadOnlyList<string> BeschikbareJaarFasen,
+    bool IsTerugvalNaarHeelCurriculum,
+    int AantalBuitenBereik,
     bool IsBetrouwbaar,
     int AantalOnopgelosteVervallenPlaatsingen,
     int? AantalGedekt,

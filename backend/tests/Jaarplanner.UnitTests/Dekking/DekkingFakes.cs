@@ -75,11 +75,28 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
         return Task.FromResult<IReadOnlyList<DekkendeKoppeling>>(_koppelingen.ToList());
     }
 
-    /// <summary>The jaar/fase scope the service asked for. Null today at every call site, which is itself asserted.</summary>
+    /// <summary>
+    /// The jaar/fase scope the service asked for: the codes for <c>Dekkingsbereik.EigenJaarFase</c>, null for
+    /// <c>HeelCurriculum</c>. This is where E5-02's ruling is observable as a <b>request</b>, independently of what
+    /// comes back.
+    /// </summary>
     public IReadOnlyCollection<string>? GevraagdeJaarFasen { get; private set; }
 
     public bool HeeftLeerplandoelenGevraagd { get; private set; }
 
+    /// <summary>
+    /// The curriculum, filtered to <paramref name="jaarFasen"/> when a scope is given (E5-02).
+    /// <para>
+    /// <b>This fake filters where <see cref="HaalDekkendeKoppelingenAsync"/> deliberately does not, and the asymmetry
+    /// has a reason.</b> There, filtering would weaken the test: the rules under test are proven by the port never
+    /// being reached, and a filtered answer could hide a service asking about the wrong thema. Here the rule under
+    /// test is arithmetic <i>over</i> the answer — <c>AantalLeerplandoelen</c> and <c>AantalBuitenBereik</c> — which
+    /// cannot be observed at all unless a scope actually removes rows. The request is still pinned separately by
+    /// <see cref="GevraagdeJaarFasen"/>, so a service that passed the wrong codes and a fake that filtered them
+    /// wrongly cannot cancel out. That the <i>real</i> query filters the same way is
+    /// <c>DekkingEndpointsTests</c>'s job, against PostgreSQL.
+    /// </para>
+    /// </summary>
     public Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
         IReadOnlyCollection<string>? jaarFasen = null,
         CancellationToken cancellationToken = default)
@@ -87,6 +104,46 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
         HeeftLeerplandoelenGevraagd = true;
         GevraagdeJaarFasen = jaarFasen;
 
-        return Task.FromResult(_doelen);
+        if (jaarFasen is not { Count: > 0 })
+        {
+            return Task.FromResult(_doelen);
+        }
+
+        // Ordinal, matching the port's documented contract: the canonical jaarFase form is ruled and the import
+        // normalises to it, so folding case here would let a service pass "l3" and still look correct.
+        var fasen = jaarFasen.ToHashSet(StringComparer.Ordinal);
+
+        return Task.FromResult<IReadOnlyList<Leerplandoel>>(
+            _doelen.Where(d => fasen.Contains(d.JaarFase)).ToList());
+    }
+
+    /// <summary>The unfiltered total, which is what the real <c>COUNT</c> returns.</summary>
+    public Task<int> TelAlleLeerplandoelenAsync(CancellationToken cancellationToken = default)
+    {
+        AantalTelAanroepen++;
+
+        return Task.FromResult(_doelen.Count);
+    }
+
+    /// <summary>
+    /// How often the total was counted. Asserted so the whole-curriculum path stays free of a query it cannot need:
+    /// unscoped, the list already IS the total.
+    /// </summary>
+    public int AantalTelAanroepen { get; private set; }
+
+    /// <summary>
+    /// The class's leerjaar, or null to simulate a class that is gone. Settable because it is the input to the
+    /// scope derivation, which is the behaviour E5-02 adds.
+    /// </summary>
+    public int? Leerjaar { get; set; }
+
+    /// <summary>Whether the service asked for the leerjaar at all: the whole-curriculum path must not.</summary>
+    public bool HeeftLeerjaarGevraagd { get; private set; }
+
+    public Task<int?> HaalLeerjaarAsync(Guid klasId, CancellationToken cancellationToken = default)
+    {
+        HeeftLeerjaarGevraagd = true;
+
+        return Task.FromResult(Leerjaar);
     }
 }
