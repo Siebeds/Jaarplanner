@@ -54,7 +54,7 @@ Accepting a placement through the real E4-02 endpoint took dekking **0 → 4 of 
 
 Contrast, alpha composited: lowest text pair **5,08:1** (white on `dekking-gedekt`), niet-gedekt chip boundary **6,48:1**, switch track **3,40:1** (SC 1.4.11), body prose 5,73–6,08:1, the figure 15,42:1. No horizontal overflow at 1440px or at exactly 390px.
 
-**Gates after the antagonist fix round:** 554 unit + **185** integration (0 skipped, real PostgreSQL) + **350** frontend / 17 files; `dotnet format --verify-no-changes` clean; `pnpm lint` and `pnpm build` clean.
+**Gates on the merged tree after both fix rounds:** **555** unit + **185** integration (0 skipped, real PostgreSQL) + **416** frontend / **20** files; `dotnet format --verify-no-changes` clean; `pnpm lint` and `pnpm build` clean.
 
 **Eight load-bearing claims mutation-checked**, each restored and re-verified green: defaulting the controller to `HeelCurriculum` fails 5 endpoint tests; zeroing `AantalBuitenBereik` fails 2 unit tests; printing the withheld figure fails 5; dropping `?bereik=` from the request fails 19; a space-joined group key fails 1; removing the empty-scope state fails 5; fetching without a class fails 1; restoring the tally unconditionally fails 1.
 
@@ -80,7 +80,22 @@ Contrast, alpha composited: lowest text pair **5,08:1** (white on `dekking-gedek
 
 *Both open questions are the owner's and are recorded rather than answered:* the kleuter scope above, and whether the per-row verdicts must be marked provisional while the plan's figure is withheld. On the second the audit was right that the reason first given was self-contradicting — the chips are just as additive as the tally I removed — so the rationale is rewritten to the narrower true one and the decision is flagged as unmade.
 
+## Antagonist round 2, and what it cost
+
+**VIOLATIONS FOUND: 3 MAJOR + 6 MINOR.** Six of its seven assigned checks came back clean; the four *new* findings were not in round 1, and **three of them are the same defect class round 1 existed to catch**. All addressed.
+
+**It also found the branch was 29 commits behind and that a claim of mine about `origin/main` was false**, so `origin/main` (`ba372a4`) was merged in before fixing anything: two findings are only judgeable against the merged content, and one of them is *retired* by it. Conflicts in `nl.json`, the E7 epic and the progress table, all resolved by keeping both sides; the table re-derived on the merged files (**97 / 42 / 43%**).
+
+1. **MAJOR — a comment described a notice the screen did not render, and that comment was the justification for a branch ordering.** `bepaalCijfer` checks the empty scope before the withheld figure and defended the order by claiming the unresolved-placement notice "is rendered **independently** of this slot". It was not: the summary had three mutually exclusive branches, so in the reachable combined state (an L3 class while only kleuterdoelen are loaded, **plus** a stale placement) the screen said *"nog niets om tegen te meten"* and **nothing at all** about the placement awaiting a decision, and withheld the link to go fix it. Fixed by moving the sentence and its link **out** of the slot, so the comment is now true, with a test for the combined state. Verified in a browser on a real L1 class: the empty scope, the open placement, the link, and no total, all at once.
+2. **MAJOR — the second open question was not on the list that three artefacts said it was on.** A component comment, the commit body and this worklog all claimed the row-verdict question was "recorded in the Art. XIV list". It was not; it existed only in the component and here, so it would never have reached the owner. **This is MAJOR-1 of round 1 reproduced by the commit that fixed MAJOR-1.** Now filed in `README.md`.
+3. **MAJOR — the branch shipped a figure its own Art. XIV bullet forbade**, with no waiver and no citation: *"E5-02 must not put a figure on screen before this is answered."* The premise held on this branch, because **E1-18** (`7e4bde8`) was not an ancestor of it. Merging retired it; the gate is struck with the citation. Product risk nil, record breach real, and it is exactly what MAJOR-1's remit was supposed to close.
+
+*The six MINOR, each fixed:* the retracted row-chips rationale survived **verbatim in the story entry**, the durable record a reader opens first, while being rewritten in two other places; my numbering note asserted E7-16/17 were "not committed to `origin/main`" when they were, the true fact being that this branch was behind; **two of the four "visible" fixes had no regression guard at all** (the `kopId` fix was invisible to every existing assertion, and the `nakijken` marker was never tested), so both now have one, each mutation-checked; the new `Link` was **the only `to={` in the app dropping the klas/schooljaar selection**, which emptied the shell's pickers and, at desktop width, left no in-app route back; SC 2.5.8 applied the moment that marker became interactive and its ~20px was computed rather than measured, so it is now `min-h-6` and **measured at 24,00 × 59,38px in a browser**; and the controller's "anything else yields 400" was overbroad, because `?bereik=EigenJaarFase,HeelCurriculum` binds as a flags combination. *Also fixed, reported by the test-runner a round earlier and left standing:* with an empty scope the list wrapper collapsed to a bare 1px rule under the summary.
+
+*One thing the round did **not** find, and it matters:* nothing in the product's behaviour. Every MAJOR was in the record around it.
+
 ## Still open on this story
 
-- **`backlog/README.md`'s progress table is corrected but E5-02 adds nothing to `done`**: it stays `[~]` until a re-audit clears this fix round. Two errors that were **not** this story's were fixed while re-deriving: the E4 cell said 1 while `E4-02` is merged, and the E7 cell said 15 while the file holds 16.
-- **A re-audit has not run.** This repo's record is that a fix round is where the next defect lives, so nothing here should be read as cleared.
+- **A third audit has not run**, and this round is the reason to want one: round 2's own findings were mostly *round 1's fixes*, twice in prose a fix round had written.
+- **Two owner questions** in the Art. XIV list: whether a three-year kleuter scope may be labelled *"Deze klas"*, and whether the row verdicts must be marked provisional while the figure is withheld. Neither reached `docs/besluiten-gevraagd.md`, the channel `README.md` says to forward; that is a pre-existing gap (E5-01's question is not there either) and it is not this story's to fix, but it is why these two may not arrive.
+- **E5-02 stays `[~]`** and adds nothing to the progress count.

@@ -106,22 +106,28 @@ export function DekkingPagina() {
               the reliability verdict are properties of the WHOLE scope, so a page of rows could not carry them; and the
               default scope is one class's jaar/fase rather than the whole curriculum, which is what keeps the volume
               reasonable. The whole-curriculum switch is the expensive case and it is a deliberate, named action. */}
-          <div className="overflow-hidden rounded-lg border border-border bg-card">
-            {groepen.map((groep, index) => (
-              <Dekkinggroep
-                key={groep.sleutel}
-                groep={groep}
-                // A DOM-safe id, generated here rather than derived from the group key: the key is JSON and contains
-                // quotes and whitespace, which an `id` may not (see `groepeerPerSubdomein`). The index is stable within
-                // one render of one server answer, which is all an `aria-labelledby` reference needs.
-                kopId={`dekking-groep-${index}`}
-                // Derived from the same function the summary uses, so the two cannot disagree about whether this plan
-                // may report a figure. Found in a browser: the summary said it would give no figure while every group
-                // printed one, and group counts add up to exactly the total that was withheld.
-                magTellingTonen={bepaalCijfer(dekking.data).soort === "cijfer"}
-              />
-            ))}
-          </div>
+          {/* Suppressed when there is nothing to list, rather than rendered empty. With an empty scope the wrapper
+              collapsed to a bare 1px rule floating under the summary, which reads as a rendering fault rather than as
+              "no rows". Reported by the test-runner as cosmetic and left standing for a round; visible in every
+              screenshot of that state, which is the argument for fixing cosmetics you can see. */}
+          {groepen.length > 0 && (
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
+              {groepen.map((groep, index) => (
+                <Dekkinggroep
+                  key={groep.sleutel}
+                  groep={groep}
+                  // A DOM-safe id, generated here rather than derived from the group key: the key is JSON and contains
+                  // quotes and whitespace, which an `id` may not (see `groepeerPerSubdomein`). The index is stable within
+                  // one render of one server answer, which is all an `aria-labelledby` reference needs.
+                  kopId={`dekking-groep-${index}`}
+                  // Derived from the same function the summary uses, so the two cannot disagree about whether this plan
+                  // may report a figure. Found in a browser: the summary said it would give no figure while every group
+                  // printed one, and group counts add up to exactly the total that was withheld.
+                  magTellingTonen={bepaalCijfer(dekking.data).soort === "cijfer"}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </section>

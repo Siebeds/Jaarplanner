@@ -80,9 +80,16 @@ export type Dekkingscijfer =
  *
  * **`nietMeetbaar` is checked first, and both orderings are defensible, so the choice is stated.** An empty scope
  * and an unresolved placement can hold at once. Neither yields a number, so nothing is suppressed by picking one;
- * what differs is which sentence a teacher reads, and "for this leerjaar no doelen are loaded" is the one they can
- * act on (it is an import, not a re-placement). Nothing is lost by the order because the unresolved-placement notice
- * is rendered **independently** of this slot, so a plan in both states still says both things.
+ * what differs is which sentence a teacher reads, and "for this class no doelen are loaded" is the one they can act
+ * on (it is an import, not a re-placement).
+ *
+ * **The other fact is not lost, and an earlier version of this comment claimed that for a reason that did not
+ * exist** (antagonist round 2). It said the unresolved-placement notice "is rendered independently of this slot", and
+ * no such notice existed: the summary had exactly three mutually exclusive branches, so in the reachable combined
+ * state — an L3 class while only kleuterdoelen are loaded, *plus* a stale placement — the screen said nothing at all
+ * about the placement awaiting a decision and withheld the link to go fix it. The comment is now true because
+ * `Dekkingsamenvatting` renders that sentence and its link **outside** the three-way slot whenever
+ * `aantalOnopgelosteVervallenPlaatsingen > 0`, and the combined state has its own test.
  *
  * **`typeof gedekt === "number"` rather than `!== null`.** `aantalGedekt` is `null` in the JSON today, but a server
  * that omitted the property instead would make it `undefined`, and `undefined !== null` would send a withheld figure

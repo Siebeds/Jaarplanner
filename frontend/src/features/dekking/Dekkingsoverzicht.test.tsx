@@ -314,6 +314,91 @@ describe("Dekkingsoverzicht — het cijfer mag ontbreken (directie 2026-07-28)",
   });
 });
 
+describe("Dekkingsoverzicht — wat ronde 2 ongedekt vond", () => {
+  it("still names the unresolved placements when there is also nothing to measure against", async () => {
+    // THE COMBINED STATE, and the defect round 2 found. An L3 class while only kleuterdoelen are loaded gives an empty
+    // scope, AND a stale placement can be open at the same time. The summary slot has three mutually exclusive
+    // branches, so with the explanation and the link living inside the `ingehouden` one, this state said "nog niets om
+    // tegen te meten" and NOTHING about the placement awaiting a decision, nor offered the link to go fix it. Worse,
+    // `bepaalCijfer` justified its branch order by claiming that block was rendered independently. It was not.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [],
+          aantalGedekt: null,
+          aantalLeerplandoelen: 0,
+          aantalBuitenBereik: 9,
+          isBetrouwbaar: false,
+          aantalOnopgelosteVervallenPlaatsingen: 1,
+        }),
+      },
+    });
+
+    // The slot reports the empty scope, which is the actionable half...
+    expect(await screen.findByText(t("dekking.nietMeetbaar"))).toBeInTheDocument();
+
+    // ...and the placement is reported anyway, with its route to being fixed.
+    expect(
+      screen.getByText(
+        tAantal(1, "dekking.ingehoudenUitlegEnkelvoud", "dekking.ingehoudenUitleg"),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: t("dekking.naarJaarplan") })).toBeInTheDocument();
+
+    // And still no coverage total, in either state's right.
+    expect(within(samenvatting()).queryByText(TOTAALVORM)).not.toBeInTheDocument();
+  });
+
+  it("gives every group an accessible name, so its heading is a real region label", async () => {
+    // The `id` was built from the group key, which is `JSON.stringify([domein, subdomein])` and therefore contains
+    // quotes and whitespace. HTML forbids whitespace in an `id` and `aria-labelledby` is an ID-reference LIST parsed on
+    // whitespace, so it resolved to two ids that do not exist and every group silently lost its name. Nothing caught
+    // it: axe does not flag an unresolvable `aria-labelledby` on a `section`, and the fixture's names were single
+    // words. This asserts the name rather than the text, which is the only level at which the difference is visible.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [
+            doel({ code: "A-01", domein: "Levende natuur", subdomein: "Dieren en planten" }),
+            doel({ code: "B-01", domein: "Wiskunde", subdomein: "Getallen en bewerkingen" }),
+          ],
+        }),
+      },
+    });
+
+    await screen.findByText("A-01");
+
+    for (const [domein, subdomein] of [
+      ["Levende natuur", "Dieren en planten"],
+      ["Wiskunde", "Getallen en bewerkingen"],
+    ]) {
+      expect(
+        screen.getByRole("region", {
+          name: new RegExp(t("ongekoppeld.domeinKop", { domein, subdomein })),
+        }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("links the nakijken marker to the register, carrying the class selection", async () => {
+    // Two claims, both previously untested. The marker says one word, "nakijken", and on this screen the row is
+    // deliberately not a link, so without a target it was an instruction with no route to its own meaning. And the
+    // link must carry `search`: `useSelectie` reads the klas/schooljaar ONLY from the URL, so dropping it empties the
+    // shell's pickers, and at desktop width the register's way back is hidden.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [doel({ code: "OUD-01", nietMeerInOpstap: true })],
+        }),
+      },
+    });
+
+    const markering = await screen.findByRole("link", { name: t("doelen.vervallenMarkering") });
+    expect(markering).toHaveAttribute("href", expect.stringContaining("/doelen/OUD-01"));
+    expect(markering).toHaveAttribute("href", expect.stringContaining(`klas=${KLAS_ID}`));
+  });
+});
+
 describe("Dekkingsoverzicht — waartegen gemeten wordt (eigenaarsruling 2026-08-04)", () => {
   it("asks the server for the class's own jaar/fase by default and names the codes", async () => {
     const fake = renderApp(MET_KLAS, { perBereik: { EigenJaarFase: dekking() } });

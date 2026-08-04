@@ -55,42 +55,12 @@ export function Dekkingsamenvatting({ dekking, bereik, onKiesBereik }: Dekkingsa
           )}
 
           {cijfer.soort === "ingehouden" && (
-            <>
-              {/*
-                Same slot, same weight, no number. `attentie` rather than the dekking hues: this is not a coverage
-                state, it is the absence of one, and colouring it green or red would assert something about coverage
-                that nobody knows yet. The heading carries the words too, so the hue is never the only signal.
-              */}
-              <p className="text-2xl font-bold text-attentie-ink">{t("dekking.cijferIngehouden")}</p>
-              <p className="mt-1 max-w-prose text-sm text-ink">
-                {tAantal(
-                  dekking.aantalOnopgelosteVervallenPlaatsingen,
-                  "dekking.ingehoudenUitlegEnkelvoud",
-                  "dekking.ingehoudenUitleg",
-                )}
-              </p>
-              {/*
-                THE RECONCILIATION E5-01 ASSIGNED TO THIS STORY, and it is copy rather than code. The kalender's
-                non-dismissible notice counts EVERY stale placement, including rejected ones; this figure counts only
-                the unresolved ones, because rejecting a stale proposal resolves it for dekking (owner ruling
-                2026-08-03). So the two screens legitimately show different numbers for what looks like one thing, and
-                without this sentence a teacher reading "3" there and "1" here concludes one of them is broken.
-              */}
-              <p className="mt-1 max-w-prose text-sm text-ink-zacht">
-                {t("dekking.ingehoudenGeweigerd")}
-              </p>
-              {/*
-                The action, on the screen that owns it. Not a button that pretends to fix it here: re-placing a thema
-                is the kalender's inline affordance (E3-07), so this is a link to where the work happens rather than a
-                control that does nothing (the E3-06 rule).
-              */}
-              <Link
-                to={{ pathname: JAARPLAN_PAD, search: location.search }}
-                className="mt-2 inline-block text-sm font-semibold text-petrol underline decoration-petrol/40 underline-offset-2 hover:decoration-petrol"
-              >
-                {t("dekking.naarJaarplan")}
-              </Link>
-            </>
+            // Same slot, same weight, no number. `attentie` rather than the dekking hues: this is not a coverage
+            // state, it is the absence of one, and colouring it green or red would assert something about coverage
+            // that nobody knows yet. The heading carries the words too, so the hue is never the only signal. The
+            // explanation and the link live BELOW, outside this slot, because they are also needed in the combined
+            // state where the scope is empty and this branch is not the one that renders.
+            <p className="text-2xl font-bold text-attentie-ink">{t("dekking.cijferIngehouden")}</p>
           )}
 
           {cijfer.soort === "nietMeetbaar" && (
@@ -121,6 +91,43 @@ export function Dekkingsamenvatting({ dekking, bereik, onKiesBereik }: Dekkingsa
                   {t("dekking.naarImport")}
                 </Link>
               )}
+            </>
+          )}
+
+          {/*
+            THE UNRESOLVED PLACEMENTS, rendered OUTSIDE the three-way slot above (antagonist round 2). They used to sit
+            inside the `ingehouden` branch, which meant that when the scope was ALSO empty — an L3 class while only
+            kleuterdoelen are loaded — the slot said "nog niets om tegen te meten" and the screen said nothing
+            whatsoever about a placement awaiting a decision, nor offered the link to go resolve it. `bepaalCijfer`
+            justified its branch order by claiming this block already existed independently; it did not, and now it
+            does.
+
+            The second sentence is THE RECONCILIATION E5-01 ASSIGNED TO THIS STORY, and it is copy rather than code.
+            The kalender's non-dismissible notice counts EVERY stale placement, including rejected ones; this count
+            covers only the unresolved, because rejecting a stale proposal resolves it for dekking (owner ruling
+            2026-08-03). Without it, a teacher reading "3" there and "1" here concludes one of the two is broken.
+
+            The link goes where the work happens rather than pretending to fix it here: re-placing a thema is the
+            kalender's inline affordance (E3-07), so this is a link rather than a control that does nothing (E3-06).
+          */}
+          {dekking.aantalOnopgelosteVervallenPlaatsingen > 0 && (
+            <>
+              <p className="mt-1 max-w-prose text-sm text-ink">
+                {tAantal(
+                  dekking.aantalOnopgelosteVervallenPlaatsingen,
+                  "dekking.ingehoudenUitlegEnkelvoud",
+                  "dekking.ingehoudenUitleg",
+                )}
+              </p>
+              <p className="mt-1 max-w-prose text-sm text-ink-zacht">
+                {t("dekking.ingehoudenGeweigerd")}
+              </p>
+              <Link
+                to={{ pathname: JAARPLAN_PAD, search: location.search }}
+                className="mt-2 inline-block text-sm font-semibold text-petrol underline decoration-petrol/40 underline-offset-2 hover:decoration-petrol"
+              >
+                {t("dekking.naarJaarplan")}
+              </Link>
             </>
           )}
 

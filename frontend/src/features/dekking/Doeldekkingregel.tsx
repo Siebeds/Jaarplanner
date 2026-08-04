@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { DoelsoortBadge } from "../../components/DoelsoortBadge";
 import { doelsoortBadgeSoort } from "../../components/doelsoort";
@@ -28,6 +28,7 @@ import type { DoelDekking } from "./types";
  */
 export function Doeldekkingregel({ doel }: { doel: DoelDekking }) {
   const soort = doelsoortBadgeSoort[doel.doelsoort];
+  const location = useLocation();
 
   return (
     <li
@@ -54,8 +55,17 @@ export function Doeldekkingregel({ doel }: { doel: DoelDekking }) {
           // (nothing else on it opens anything) while giving the one thing on it that demands follow-up somewhere to go.
           // Inline prose per row was the alternative, and this screen's rule is that prose is the first thing to cut.
           <Link
-            to={`/doelen/${encodeURIComponent(doel.code)}`}
-            className="rounded-full bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-semibold text-attentie-ink underline decoration-attentie-ink/40 underline-offset-2 hover:decoration-attentie-ink"
+            // `search` is carried along, like every other cross-screen link in this app (ADR-0021). Without it,
+            // following the marker emptied the shell's klas/schooljaar pickers — `useSelectie` reads the selection
+            // *only* from the URL — and at desktop width `Doeldetail`'s way back is `lg:hidden`, so a teacher was
+            // stranded with no in-app route back to their own class. A defect introduced by making this a link at all,
+            // found by the round-2 audit enumerating every `to={` in the app: this was the only one missing it.
+            to={{ pathname: `/doelen/${encodeURIComponent(doel.code)}`, search: location.search }}
+            // `min-h-6` for SC 2.5.8 (Target Size Minimum, AA in WCAG 2.2), which begins to apply the moment this
+            // becomes interactive: the text is 11px on a 1.5 line-height with `py-0.5`, so it computed to ~20px. The
+            // Inline and Spacing exceptions each plausibly excused it, and this project's rule is to measure rather
+            // than to argue, so it is simply made 24px instead.
+            className="inline-flex min-h-6 items-center rounded-full bg-attentie-zacht px-2 text-[0.6875rem] font-semibold text-attentie-ink underline decoration-attentie-ink/40 underline-offset-2 hover:decoration-attentie-ink"
           >
             {t("doelen.vervallenMarkering")}
           </Link>

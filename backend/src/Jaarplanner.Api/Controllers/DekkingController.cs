@@ -40,21 +40,26 @@ namespace Jaarplanner.Api.Controllers;
 /// <c>Leerjaar</c>; <c>?bereik=HeelCurriculum</c> is E5-01's original unscoped behaviour, kept as an explicit
 /// choice. The response always states which one it applied, which codes it used and how many goals it left out, so
 /// no consumer can print a total without being able to say what it is a total <i>of</i>.
-/// A value that is not one of the two is answered with a **400 by model binding**, including an out-of-range
-/// <i>numeric</i> form: <c>?bereik=5</c>, <c>?bereik=-1</c> and <c>?bereik=onzin</c> are all rejected. No Dutch
-/// message is authored for it, because the frontend validates against its own union before asking, so the only way to
-/// produce one is by hand or from another API consumer, which makes it an operator diagnostic under the ratified
-/// Art. II.3 split.
 /// </para>
 /// <para>
-/// <b>That is verified rather than assumed, and it is where an audit finding did not survive contact.</b> The E5-02
-/// antagonist audit reported that binding accepts an undefined numeric enum value, so <c>?bereik=5</c> would return
-/// whole-curriculum figures under a <c>bereik</c> label no consumer knows — and correctly flagged the finding as not
-/// empirically executed, asking for confirmation first. It does not reproduce on this stack: with an explicit
-/// <c>Enum.IsDefined</c> guard deliberately removed, all three values still answered 400. So the guard was removed
-/// again as redundant rather than kept with a justification that is not true. <b>The test stayed</b>
-/// (<c>Een_bereik_dat_niet_bestaat_geeft_400_en_geen_cijfer</c>): it pins the behaviour whoever enforces it, which is
-/// the part that matters if a framework upgrade ever changes its mind.
+/// <b>What happens to a bad <c>bereik</c>, measured rather than assumed, over two audit rounds.</b> A value binding
+/// cannot parse, and any out-of-range <i>numeric</i> form, yields a <b>400</b> from model binding:
+/// <c>?bereik=5</c>, <c>?bereik=-1</c> and <c>?bereik=onzin</c> are all rejected. No Dutch message is authored for it,
+/// because the frontend validates against its own union before asking, so the only way to produce one is by hand or
+/// from another API consumer, which makes it an operator diagnostic under the ratified Art. II.3 split.
+/// <list type="bullet">
+/// <item><b>Round 1</b> reported that binding accepts an undefined numeric enum, so <c>?bereik=5</c> would return
+/// whole-curriculum figures under a label no consumer knows — and correctly flagged the finding as not empirically
+/// executed, asking for confirmation first. It does not reproduce: with an explicit <c>Enum.IsDefined</c> guard
+/// deliberately removed, all three values still answered 400, so the guard came out again rather than staying with a
+/// justification that is untrue. <b>The test stayed</b>
+/// (<c>Een_bereik_dat_niet_bestaat_geeft_400_en_geen_cijfer</c>), because it pins the behaviour whoever enforces it.</item>
+/// <item><b>Round 2</b> then falsified the sentence that replaced it. "Anything other than the two names yields 400"
+/// is too strong: <c>?bereik=EigenJaarFase,HeelCurriculum</c> <i>binds</i>, because <c>Enum.Parse</c> reads the comma
+/// as a flags combination. It resolves to a defined member, so the response still self-labels with a scope a consumer
+/// knows and no figure is mislabelled. <b>The claim was wrong, not the behaviour</b>, which is why this paragraph is
+/// now scoped to what was actually measured.</item>
+/// </list>
 /// </para>
 /// <para>
 /// <b>Two things this response deliberately cannot do.</b> It cannot report a total while any placement is
