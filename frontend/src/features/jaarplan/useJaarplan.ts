@@ -5,8 +5,10 @@ import {
   haalGeneratieparameters,
   haalJaarplan,
   haalRooster,
+  haalThemanamen,
   verplaatsPlaatsing,
   verwijderPlaatsing,
+  voegPlaatsingToe,
   wijzigPlaatsingStatus,
   wijzigPlaatsingVergrendeling,
 } from "./api";
@@ -123,8 +125,24 @@ export function useGenereerJaarplan(klasId: string) {
 }
 
 /**
- * The four placement edits (three from E3-07, the lock from E4-06), all sharing one rule: **the server's returned
- * plan replaces the cached one.**
+ * Loads the school's thema-bibliotheek, gated on a caller actually needing it (E4-03).
+ *
+ * Shared with `Generatieparametersformulier`'s startthema picker through {@link themanamenKey}, so the two hold one
+ * cache entry rather than two copies of the same list. `enabled` is the caller's, because both consumers are behind a
+ * disclosure: fetching this on every load of the anchor screen, for panels most teachers never open, would spend a
+ * request on nothing.
+ */
+export function useThemanamen(enabled: boolean) {
+  return useQuery({
+    queryKey: themanamenKey,
+    queryFn: haalThemanamen,
+    enabled,
+  });
+}
+
+/**
+ * The five placement edits (three from E3-07, the lock from E4-06, the hand-placement from E4-03), all sharing one
+ * rule: **the server's returned plan replaces the cached one.**
  *
  * Each endpoint answers with the whole updated jaarplan, so the cache is written directly rather than
  * invalidated-and-refetched. That matters for a drag: an invalidation leaves a render in which the card has
@@ -144,6 +162,19 @@ function usePlanMutatie<TArgs>(klasId: string, muteer: (args: TArgs) => Promise<
       queryClient.setQueryData(jaarplanKey(klasId), plan);
     },
   });
+}
+
+/**
+ * Puts a thema in a period by hand, with no AI involved (E4-03, FR-7.2), persisted immediately (FR-7).
+ *
+ * Shares {@link usePlanMutatie}, so the server's returned plan replaces the cached one and the new card appears in
+ * the column in the same render the picker closes. Not optimistic, for the reason given there: the plan the server
+ * answers with is the only one that exists, and a card shown before it agrees is a guess.
+ */
+export function useVoegPlaatsingToe(klasId: string) {
+  return usePlanMutatie(klasId, ({ themaId, blokStart }: { themaId: string; blokStart: string }) =>
+    voegPlaatsingToe(klasId, themaId, blokStart),
+  );
 }
 
 /** Moves one placement to the period starting on `blokStart` (FR-6.2), persisted immediately (FR-6.5). */
