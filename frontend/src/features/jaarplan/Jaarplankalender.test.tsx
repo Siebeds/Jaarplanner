@@ -2015,24 +2015,42 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
    * carry the "geen enkele periode" clause *and* must not carry the presupposition, and the non-stale card must
    * still carry the informative variant.
    *
-   * **The rendered-text half was not enough, and the audit proved it rather than argued it (antagonist, round 1,
-   * 2026-08-04).** This docblock used to close by claiming a reword reintroducing the promise would fail here. It
-   * would not: `/andere themaperiode/i` is a contiguous **bigram**, so *"een andere, vrije themaperiode"* put the
-   * presupposition straight back on the stale card with 315 passed, 0 failed. The `toContain("geen enkele
-   * periode")` half does not catch it either, because that clause comes from `weigeringUitlegVervallen`, a string
-   * this fix never touches. So the catalogue assertions below are the half that actually pins it: word-boundary
-   * quantifiers on the **stale key itself**, where an inserted adjective cannot hide.
+   * **Three assertion designs were needed, and the two that failed are the useful record (antagonist rounds 1–3,
+   * 2026-08-04).** This docblock twice claimed a reword reintroducing the promise would fail here, and twice it
+   * would not:
+   *
+   * 1. `/andere themaperiode/i` against the rendered text is a contiguous **bigram**, so *"een andere, vrije
+   *    themaperiode"* walked through it with 315 passed. (`toContain("geen enkele periode")` does not catch it
+   *    either: that clause comes from `weigeringUitlegVervallen`, which this fix never touches.)
+   * 2. A five-item **denylist** on the key then fell to *"een volgende themaperiode"* and *"weer een
+   *    themaperiode"*, both with 315 passed. A denylist enumerates the offenders someone thought of; the comment
+   *    above it claimed no quantifier could get through. **That gap is the recurring defect in this test, not the
+   *    copy** — the product string has been correct since the first commit.
+   *
+   * What is asserted now is the **relation** between the two strings, which no reword can satisfy accidentally.
+   * See the comment on the assertion itself.
    */
   it("does not promise a rejected stale card another themaperiode, and keeps the promise where it is true", async () => {
     const presuppositie = /andere themaperiode/i;
 
-    // The catalogue property, and the assertion that survives a reword: the stale variant may carry **no**
-    // quantifier presupposing a period this card does not have. Checked on word boundaries against the key rather
-    // than as a bigram against the rendered text, which is exactly what round 1's mutation walked through.
-    for (const kwantor of [/\bandere\b/i, /\bnog een\b/i, /\btweede\b/i, /\bopnieuw\b/i, /\bvrije\b/i]) {
-      expect(t("kalender.weigeringEerstTerugdraaienVervallen")).not.toMatch(kwantor);
-    }
-    // …while the non-stale variant must keep exactly the one it is entitled to.
+    // **The catalogue property, asserted as a RELATION between the two strings rather than as a list of banned
+    // words.** Two assertion designs were defeated before this one: a bigram against the rendered text (*"een
+    // andere, vrije themaperiode"*) and then a five-item denylist (*"een volgende themaperiode"*, *"weer een
+    // themaperiode"*). Both failed the same way — they enumerated the offenders someone had thought of, under a
+    // comment claiming no quantifier could get through. A denylist cannot carry a universal claim.
+    //
+    // What holds instead: the stale variant **is** the non-stale sentence with exactly the token `andere `
+    // removed. Any quantifier added to the stale string breaks the equality whatever word it uses, and any reword
+    // of the non-stale string forces the stale one to follow, so the two cannot drift apart silently.
+    //
+    // *The cost, stated because it is real:* a future story that wants the two sentences to diverge genuinely has
+    // to change this assertion. That is the intended behaviour, not friction — divergence here is a decision, and
+    // this is what stops it happening by accident.
+    expect(t("kalender.weigeringEerstTerugdraaienVervallen")).toBe(
+      t("kalender.weigeringEerstTerugdraaien").replace(" andere ", " "),
+    );
+    // …and the non-stale variant really does carry the quantifier the relation removes, so the equality above
+    // cannot be satisfied by both strings simply becoming identical.
     expect(t("kalender.weigeringEerstTerugdraaien")).toMatch(/\bandere\b/i);
 
     const paneelTekst = async (status: "Geweigerd", vervallen: boolean) => {
@@ -2066,8 +2084,10 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
       );
       const tekst = kaart().textContent ?? "";
       // Pins what each fixture MEANS, rather than trusting a date to stay in step with a stub 2000 lines away.
-      // Round 1 set a `blokStart` matching no block, so the "card in a period" was in the Te herzien notice and
-      // nobody noticed for a full round: three mutations all aimed at the code and none at the setup.
+      // `c27f31f`, the commit that first added this test, set a `blokStart` matching no block, so the "card in a
+      // period" was in the Te herzien notice and nobody noticed for two rounds: three mutations all aimed at the
+      // code and none at the setup. (Named by commit rather than "round 1", because this file uses that phrase for
+      // the AUDIT rounds while the worklog uses it for the FIX rounds, and the two do not line up.)
       const herzien = screen.queryByRole("region", { name: t("kalender.herzienTitelEnkelvoud") });
       const inHerzien = herzien !== null && herzien.contains(kaart());
       return { tekst, inHerzien, unmount };

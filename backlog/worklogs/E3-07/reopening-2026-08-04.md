@@ -1,4 +1,11 @@
-# E3-07 — the reopening, verified against this story's own criteria (2026-08-04)
+# E3-07 — the reopened card state, re-verified (2026-08-04)
+
+> **Deliberately not titled "verified against this story's own criteria"** (antagonist, round 3). The E3-07
+> entry defines that phrase as something larger, and this work re-measured **the one card state the owner
+> reopened the story over** — not E3-07's acceptance criteria (a drag moves and persists, removal is
+> discoverable, a rejection is reversible; FR-6.2), which were not re-run. The title carried the retracted
+> phrase for a full round after the backlog entry had dropped it: fixed where noticed, left where it was not,
+> which is the pattern both artefacts spend paragraphs decrying.
 
 **Tree:** worktree `.claude/worktrees/e3-07-kaartstatus`, branch `story/E3-07-kaartstatus`, based on
 `origin/main` `1dfe9b8` (contains E1-13, E3-08, E5-01, E4-06 **and** E4-02).
@@ -139,7 +146,7 @@ swapping the two branches → **3**. **Not mutated:** the `isGeweigerd` guard it
 > **And a fifth the audit found by aiming at the *fixture* rather than the code.** The "card that really is in a
 > period" had a `blokStart` matching no block in the rooster stub, so it was swept into the Te herzien notice and
 > the assertion pinned that a card in **no** period is promised *"een andere themaperiode"* — the reopened defect,
-> asserted as correct behaviour. **All five of my own mutations had aimed at the code and none at the setup.** The
+> asserted as correct behaviour. **All three of my own mutations had aimed at the code and none at the setup** (the fourth and fifth were the audit's). The
 > lesson is cheap and general: *a fixture is a claim about the world and needs an assertion, not a literal.* Both
 > fixtures now assert their Te herzien membership, so the discrimination no longer rests on a date staying in step
 > with a stub 2000 lines away.
