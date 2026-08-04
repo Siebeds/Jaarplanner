@@ -221,6 +221,33 @@ describe("nl.json — no regeneration promise goes unscoped, in either family", 
   });
 });
 
+describe("nl.json — the stale-placement notice does not overclaim about dekking", () => {
+  /**
+   * `kalender.herzienUitleg` used to end *"Zolang dit openstaat is de dekking van dit jaarplan onbetrouwbaar"*, which
+   * the owner ruling of 2026-08-03 made false: a **rejected** stale placement leaves the figure trustworthy, because
+   * `DekkingService` counts `IsVervallen && !IsGeweigerd` and dekking is recomputed on every read, so the state is
+   * self-healing. E5-01 assigned the fix to E5-02 and E5-02 is where it landed, because E5-02 is what made the
+   * contradiction *visible*: before it, no screen showed a figure to contradict.
+   *
+   * The notice still lists a rejected stale card, deliberately: that card needs its own explanation (E3-07), and the
+   * two counts answer different questions. What changed is only the sentence, which now says what actually unblocks
+   * the figure, and says that a weigering counts.
+   *
+   * **The blind spot, stated rather than left implicit** (the E4-06 lesson: a guard keyed on a phrase cannot see a
+   * sibling that states the same thing while avoiding the phrase). This guard keys on the word `onbetrouwbaar`. A
+   * reword to *"kan je de dekking niet vertrouwen"* would restore the false claim and pass. The second assertion is
+   * what makes that harder: the sentence has to keep naming the weigering as a decision, which a rewrite that
+   * reintroduces the unconditional claim would have to actively remove.
+   */
+  it("does not call the dekking unreliable while a weigering resolves it", () => {
+    const uitleg = CATALOGUS.get("kalender.herzienUitleg");
+
+    expect(uitleg, "kalender.herzienUitleg has been renamed; this guard now checks nothing").toBeDefined();
+    expect(uitleg!.toLowerCase()).not.toContain("onbetrouwbaar");
+    expect(uitleg!.toLowerCase()).toContain("weigeren");
+  });
+});
+
 describe("nl.json — no dead keys under dekking", () => {
   /**
    * The same guard as the `doelen.*` one below, extended to E5-02's family for the same reason it was written: E1-16

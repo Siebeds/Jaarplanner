@@ -296,7 +296,7 @@
     "teVolUitleg": "Een periode met meer thema's dan de voorlopige drempel is gemarkeerd als “te vol”. Wat “te vol” precies betekent, is nog een openstaande vraag voor de review.",
     "herzienTitel": "Te herzien: {aantal} thema's staan niet meer in een themaperiode",
     "herzienTitelEnkelvoud": "Te herzien: 1 thema staat niet meer in een themaperiode",
-    "herzienUitleg": "De vakantiedata van dit schooljaar zijn gewijzigd, waardoor deze thema's naar een datum wijzen die geen begin van een themaperiode meer is. Ze zijn niet automatisch verplaatst: dat beslis jij. Zolang dit openstaat is de dekking van dit jaarplan onbetrouwbaar.",
+    "herzienUitleg": "De vakantiedata van dit schooljaar zijn gewijzigd, waardoor deze thema's naar een datum wijzen die geen begin van een themaperiode meer is. Ze zijn niet automatisch verplaatst: dat beslis jij. Zolang je over een thema niets beslist, toont het dekkingsoverzicht geen cijfer voor dit jaarplan. Een thema weigeren is ook een beslissing.",
     "herzienDatum": "Stond op {datum}",
     "statusLabel": "Status",
     "motivatieLabel": "Waarom hier?",
