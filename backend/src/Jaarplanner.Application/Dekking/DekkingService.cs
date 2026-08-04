@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Planning.Generatie;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
 
 namespace Jaarplanner.Application.Dekking;
@@ -31,11 +32,20 @@ public sealed class DekkingService
     /// <summary>
     /// Computes the coverage of one class's jaarplan.
     /// </summary>
+    /// <param name="klasId">The class to compute coverage for.</param>
+    /// <param name="bereik">
+    /// Which leerplandoelen to measure against (owner ruling 2026-08-04). Defaults to the class's own jaar/fase, so
+    /// a caller that asks for nothing gets the answer the ruling settled rather than E5-01's unscoped one.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation.</param>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
     /// The class does not exist. A class that exists but has never generated a plan is <b>not</b> an error: it
-    /// yields 0 covered out of the whole curriculum, which is the honest answer (Art. IX.3).
+    /// yields 0 covered out of the goals in scope, which is the honest answer (Art. IX.3).
     /// </exception>
-    public async Task<DekkingWeergave> BerekenAsync(Guid klasId, CancellationToken cancellationToken = default)
+    public async Task<DekkingWeergave> BerekenAsync(
+        Guid klasId,
+        Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase,
+        CancellationToken cancellationToken = default)
     {
         var plan = await _lezer.HaalJaarplanAsync(klasId, cancellationToken);
 
@@ -75,11 +85,32 @@ public sealed class DekkingService
                     .ToList(),
                 StringComparer.Ordinal);
 
-        // No jaar/fase scope is passed, so the denominator is the WHOLE loaded curriculum. That is an open Art. XIV
-        // decision rather than a considered answer, and the reason is structural: Klas deliberately keys nothing on
-        // its Leerjaar while graadklassen / menggroepen are unresolved, so there is nothing here to derive a class's
-        // own jaar/fase set from. The seam is on the port so resolving it is a value at this one call site.
-        var leerplandoelen = await _opslag.HaalLeerplandoelenAsync(jaarFasen: null, cancellationToken);
+        // THE DENOMINATOR. Since the owner ruling of 2026-08-04 a class is measured against its own jaar/fase by
+        // default, derived from Klas.Leerjaar, with Dekkingsbereik.HeelCurriculum as the explicit switch. E5-01 built
+        // the seam for exactly this and passed null from here; resolving the ruling is therefore this value.
+        //
+        // The fallback direction is the load-bearing part. Jaarfasen.VoorLeerjaar returns null rather than an empty
+        // list when it cannot map the leerjaar (a graadklas ordinal, or a class deleted mid-computation), because an
+        // empty jaar/fase set means "the whole curriculum" one layer down and "no goals at all" to a reader. The
+        // second would report a class as having nothing left to cover. So a refusal widens the scope and is DECLARED
+        // in the payload; it never narrows it.
+        var gemetenFasen = bereik == Dekkingsbereik.EigenJaarFase
+            ? await BepaalEigenJaarFasenAsync(klasId, cancellationToken)
+            : null;
+
+        var isTerugval = bereik == Dekkingsbereik.EigenJaarFase && gemetenFasen is null;
+
+        var leerplandoelen = await _opslag.HaalLeerplandoelenAsync(gemetenFasen, cancellationToken);
+
+        // How many loaded goals the scope leaves out, so the overview can say so instead of quietly reporting a
+        // smaller denominator (a narrower scope makes coverage look better, the one direction this figure must not
+        // move by itself). Only asked when a scope was actually applied: unscoped, the list IS the total.
+        //
+        // Clamped at zero because the count and the list are two reads: an import landing between them could
+        // otherwise yield a negative "left out" figure, which is a nonsense number rather than a small one.
+        var aantalBuitenBereik = gemetenFasen is null
+            ? 0
+            : Math.Max(0, await _opslag.TelAlleLeerplandoelenAsync(cancellationToken) - leerplandoelen.Count);
 
         var doelen = leerplandoelen
             .Select(l =>
@@ -133,6 +164,12 @@ public sealed class DekkingService
             plan.KlasNaam,
             plan.SchooljaarId,
             plan.SchooljaarNaam,
+            // What was APPLIED, not what was asked for. A fallback reports HeelCurriculum because that is what the
+            // figures below are over; IsTerugvalNaarHeelCurriculum is what says the caller did not choose it.
+            isTerugval ? Dekkingsbereik.HeelCurriculum : bereik,
+            gemetenFasen ?? [],
+            isTerugval,
+            aantalBuitenBereik,
             isBetrouwbaar,
             onopgeloste,
             // Withheld rather than reported while any placement is unresolved (directie 2026-07-28). Null, not a
@@ -140,6 +177,26 @@ public sealed class DekkingService
             AantalGedekt: isBetrouwbaar ? doelen.Count(d => d.IsGedekt) : null,
             doelen.Count,
             doelen);
+    }
+
+    /// <summary>
+    /// The jaar/fase codes this class should be measured against, or <c>null</c> when they cannot be derived and the
+    /// caller must widen the scope instead (E5-02).
+    /// <para>
+    /// Two distinct reasons yield <c>null</c> and both mean the same thing here: the class no longer exists (it was
+    /// deleted between the plan read and this one), or its <c>Leerjaar</c> maps to no jaar/fase set, which is the
+    /// unresolved graadklas / menggroep case (Art. XIV). They are not distinguished because the honest response is
+    /// identical, and inventing a second fallback state would put a distinction on screen that changes nothing a
+    /// teacher can act on.
+    /// </para>
+    /// </summary>
+    private async Task<IReadOnlyList<string>?> BepaalEigenJaarFasenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken)
+    {
+        var leerjaar = await _opslag.HaalLeerjaarAsync(klasId, cancellationToken);
+
+        return leerjaar is null ? null : Jaarfasen.VoorLeerjaar(leerjaar.Value);
     }
 
     /// <summary>

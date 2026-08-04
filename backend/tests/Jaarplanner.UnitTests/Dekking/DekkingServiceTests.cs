@@ -337,21 +337,131 @@ public sealed class DekkingServiceTests
         Assert.True(Doelvan(dekking, "MD-01").IsGedekt);
     }
 
+    // ── The denominator (E5-02, owner ruling 2026-08-04) ────────────────────────────────────────────────────────
+    //
+    // E5-01 left a test here named "De_noemer_is_vandaag_het_hele_curriculum_en_dat_is_een_open_beslissing", whose
+    // own comment said: when the ruling lands, THIS test is the one that should fail and be rewritten. It landed, so
+    // the tests below replace it. Kept as a note rather than silently deleted, because the instruction working as
+    // intended is the argument for writing that kind of test in the first place.
+
     [Fact]
-    public async Task De_noemer_is_vandaag_het_hele_curriculum_en_dat_is_een_open_beslissing()
+    public async Task Een_klas_wordt_standaard_tegen_haar_eigen_jaar_fase_gemeten()
     {
-        // Pinned so the open Art. XIV decision is visible as a test rather than only as a comment. The service passes
-        // NO jaar/fase scope, so a K3 class is measured against every loaded goal. That is not a considered answer —
-        // Klas keys nothing on Leerjaar while graadklassen are unresolved — and when the ruling lands, THIS test is
-        // the one that should fail and be rewritten, which is the point of asserting it explicitly.
-        var opslag = new FakeDekkingOpslag([], [Doel("K3-01"), Doel("L6-99")]);
+        // The ruling as a request AND as an answer. A kleutergroep (leerjaar 0) is measured against the three kleuter
+        // codes, so the L6 goal is not this class's lacune and does not sit in its denominator.
+        var opslag = new FakeDekkingOpslag([], [Doel("K3-01"), Doel("L6-99", jaarFase: "L6")]) { Leerjaar = 0 };
         var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
 
         var dekking = await service.BerekenAsync(KlasId);
 
-        Assert.True(opslag.HeeftLeerplandoelenGevraagd);
+        Assert.Equal(["JK", "K2", "K3"], opslag.GevraagdeJaarFasen);
+        Assert.Equal(Dekkingsbereik.EigenJaarFase, dekking.Bereik);
+        Assert.Equal(["JK", "K2", "K3"], dekking.GemetenJaarFasen);
+        Assert.False(dekking.IsTerugvalNaarHeelCurriculum);
+
+        // One goal in scope, one left out, and the number that says so. Without AantalBuitenBereik a narrowed
+        // denominator would be indistinguishable from a smaller curriculum.
+        Assert.Equal(1, dekking.AantalLeerplandoelen);
+        Assert.Equal(1, dekking.AantalBuitenBereik);
+        Assert.Equal("K3-01", Assert.Single(dekking.Doelen).Code);
+    }
+
+    [Fact]
+    public async Task Een_leerjaar_van_het_lager_levert_precies_dat_ene_leerjaar_op()
+    {
+        var opslag = new FakeDekkingOpslag([], [Doel("L3-01", jaarFase: "L3"), Doel("L4-01", jaarFase: "L4")])
+        {
+            Leerjaar = 3,
+        };
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId);
+
+        // Exactly L3: not "L1 through L3", because dekking asks what this class teaches this year, not what its
+        // pupils have ever been taught.
+        Assert.Equal(["L3"], dekking.GemetenJaarFasen);
+        Assert.Equal("L3-01", Assert.Single(dekking.Doelen).Code);
+    }
+
+    [Fact]
+    public async Task Het_hele_curriculum_is_een_expliciete_keuze_en_vraagt_geen_leerjaar()
+    {
+        var opslag = new FakeDekkingOpslag([], [Doel("K3-01"), Doel("L6-99", jaarFase: "L6")]) { Leerjaar = 0 };
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId, Dekkingsbereik.HeelCurriculum);
+
+        Assert.Null(opslag.GevraagdeJaarFasen);
+        Assert.Equal(Dekkingsbereik.HeelCurriculum, dekking.Bereik);
+        Assert.Empty(dekking.GemetenJaarFasen);
+        Assert.Equal(2, dekking.AantalLeerplandoelen);
+
+        // Two queries this path cannot need: the class's leerjaar is irrelevant, and the unscoped list already IS the
+        // total, so counting it again would be a round trip whose answer is `Doelen.Count`.
+        Assert.False(opslag.HeeftLeerjaarGevraagd);
+        Assert.Equal(0, opslag.AantalTelAanroepen);
+        Assert.Equal(0, dekking.AantalBuitenBereik);
+    }
+
+    [Theory]
+    [InlineData(7)]
+    [InlineData(-1)]
+    [InlineData(null)]
+    public async Task Een_klas_zonder_afleidbare_jaar_fase_valt_terug_op_alles_en_zegt_dat(int? leerjaar)
+    {
+        // The unresolved half of the Art. XIV decision: a graadklas ordinal nobody can map, and a class deleted
+        // between the two reads. Both must WIDEN the scope, never narrow it — a class measured against nothing would
+        // report having nothing left to cover, which is the one direction this figure must not move by itself.
+        var opslag = new FakeDekkingOpslag([], [Doel("K3-01"), Doel("L6-99", jaarFase: "L6")]) { Leerjaar = leerjaar };
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId);
+
         Assert.Null(opslag.GevraagdeJaarFasen);
         Assert.Equal(2, dekking.AantalLeerplandoelen);
+        Assert.Equal(0, dekking.AantalBuitenBereik);
+
+        // Bereik reports what was APPLIED, and the flag is what says the caller did not choose it. Both, because
+        // either one alone leaves the screen unable to explain why it is showing more than was asked for.
+        Assert.Equal(Dekkingsbereik.HeelCurriculum, dekking.Bereik);
+        Assert.True(dekking.IsTerugvalNaarHeelCurriculum);
+    }
+
+    [Fact]
+    public async Task Nul_doelen_in_bereik_is_niet_hetzelfde_als_alles_gedekt()
+    {
+        // A class scoped to L3 in a school that has only loaded kleuterdoelen. The figure is a truthful 0 of 0, and
+        // the ONLY thing that distinguishes it from an empty database is AantalBuitenBereik. A screen that reads
+        // "aantalGedekt == aantalLeerplandoelen" as success would congratulate this teacher.
+        var opslag = new FakeDekkingOpslag([], [Doel("K3-01"), Doel("K3-02")]) { Leerjaar = 3 };
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId);
+
+        Assert.Empty(dekking.Doelen);
+        Assert.Equal(0, dekking.AantalLeerplandoelen);
+        Assert.Equal(0, dekking.AantalGedekt);
+        Assert.Equal(2, dekking.AantalBuitenBereik);
+        Assert.False(dekking.IsTerugvalNaarHeelCurriculum);
+    }
+
+    [Fact]
+    public async Task Een_vervallen_plaatsing_houdt_het_cijfer_tegen_ook_binnen_een_bereik()
+    {
+        // The two rules are independent and must compose: scoping decides WHAT is measured, the stale-placement
+        // ruling decides WHETHER a total may be printed at all. A scoped denominator is still present in that state,
+        // because it is a property of the curriculum rather than of the broken placement.
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard, isVervallen: true)],
+            koppelingen: [],
+            doelen: [Doel("K3-01"), Doel("L6-99", jaarFase: "L6")]);
+
+        var dekking = await service.BerekenAsync(KlasId);
+
+        Assert.False(dekking.IsBetrouwbaar);
+        Assert.Null(dekking.AantalGedekt);
+        Assert.Equal(1, dekking.AantalLeerplandoelen);
+        Assert.Equal(Dekkingsbereik.EigenJaarFase, dekking.Bereik);
     }
 
     [Fact]
@@ -368,13 +478,25 @@ public sealed class DekkingServiceTests
         Assert.Equal("2026-2027", dekking.SchooljaarNaam);
     }
 
+    /// <summary>
+    /// The service under test, with a class that <b>can</b> state its own jaar/fase.
+    /// <para>
+    /// <c>leerjaar: 0</c> is not an incidental default. Since the owner ruling of 2026-08-04 the production default is
+    /// <c>Dekkingsbereik.EigenJaarFase</c>, and a fake whose leerjaar was left null would send every one of these
+    /// tests down the <i>fallback</i> path instead — they would all still pass, for a different reason than before,
+    /// which is precisely the kind of silent semantic change that makes a green suite meaningless. 0 is the
+    /// kleutergroep, which matches the plan's own "K3 derde kleuterklas" and the <see cref="Doel"/> helper's
+    /// <c>K3</c> jaar/fase, so the scope contains the goals these tests are about.
+    /// </para>
+    /// </summary>
     private static DekkingService Maak(
         IReadOnlyList<ThemaplaatsingWeergave> plaatsingen,
         IReadOnlyList<DekkendeKoppeling> koppelingen,
-        IReadOnlyList<Leerplandoel> doelen) =>
+        IReadOnlyList<Leerplandoel> doelen,
+        int? leerjaar = 0) =>
         new(
             new FakeJaarplanLezer(Plan(plaatsingen)),
-            new FakeDekkingOpslag(koppelingen, doelen));
+            new FakeDekkingOpslag(koppelingen, doelen) { Leerjaar = leerjaar });
 
     private static JaarplanWeergave Plan(IReadOnlyList<ThemaplaatsingWeergave> plaatsingen) =>
         new(
@@ -417,11 +539,12 @@ public sealed class DekkingServiceTests
         string code,
         string domein = "Natuur",
         string subdomein = "Levende natuur",
-        string? minimumdoelRef = null) =>
+        string? minimumdoelRef = null,
+        string jaarFase = "K3") =>
         new(
             code,
             Doelsoort.Gemeenschappelijk,
-            "K3",
+            jaarFase,
             domein,
             subdomein,
             "9.1",

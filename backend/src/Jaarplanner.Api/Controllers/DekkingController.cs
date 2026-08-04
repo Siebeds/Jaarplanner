@@ -27,9 +27,22 @@ namespace Jaarplanner.Api.Controllers;
 /// <para>
 /// <b>The payload is the whole in-scope curriculum, unpaged, with each goal's full text.</b> That is a deliberate
 /// divergence from the register (E1-16), which pages precisely because it "renders thousands of these". It is
-/// tolerable for one primary school and it is what a single-figure overview and an export need; it is recorded here
-/// so <b>E5-02/E5-03</b> decide consciously whether the anchor screen adopts the register's paging/filter shape
-/// instead of inheriting this one. Each request also costs four link queries plus a full thema load.
+/// tolerable for one primary school and it is what a single-figure overview and an export need; each request also
+/// costs four link queries plus a full thema load.
+/// <b>E5-02 took that decision consciously and kept it unpaged</b>, for a reason paging cannot satisfy: the totals
+/// and the reliability verdict are properties of the <i>whole</i> scope, so a page of rows could not carry them, and
+/// the default scope is now one jaar/fase rather than the whole curriculum (see below), which is what makes the
+/// volume reasonable. The whole-curriculum switch is the expensive case and it is a deliberate, named action.
+/// </para>
+/// <para>
+/// <b>The denominator is scoped, and the scope is a query parameter (owner ruling 2026-08-04).</b>
+/// <c>?bereik=EigenJaarFase</c> (the default) measures the class against the jaar/fase derived from its own
+/// <c>Leerjaar</c>; <c>?bereik=HeelCurriculum</c> is E5-01's original unscoped behaviour, kept as an explicit
+/// choice. The response always states which one it applied, which codes it used and how many goals it left out, so
+/// no consumer can print a total without being able to say what it is a total <i>of</i>.
+/// An unparseable value yields the framework's model-binding 400, like every other malformed parameter in this API;
+/// no Dutch message is authored for it, because the only way to produce one is to hand-edit the URL and the
+/// frontend sends the enum name.
 /// </para>
 /// <para>
 /// <b>Two things this response deliberately cannot do.</b> It cannot report a total while any placement is
@@ -50,11 +63,21 @@ public sealed class DekkingController : ControllerBase
     public DekkingController(DekkingService service) => _service = service;
 
     /// <summary>
-    /// The class's current coverage (FR-9.1): every leerplandoel with whether this plan covers it and through which
-    /// thema's, plus the reliability of the summary figure. A class that has never been generated for yields 0
-    /// covered rather than a 404 — Art. IX.3 says a klas <i>has</i> a jaarplan, and an empty one covers nothing.
+    /// The class's current coverage (FR-9.1): every in-scope leerplandoel with whether this plan covers it and
+    /// through which thema's, plus the reliability of the summary figure. A class that has never been generated for
+    /// yields 0 covered rather than a 404 — Art. IX.3 says a klas <i>has</i> a jaarplan, and an empty one covers
+    /// nothing.
     /// </summary>
+    /// <param name="klasId">The class.</param>
+    /// <param name="bereik">
+    /// Which leerplandoelen to measure against; defaults to the class's own jaar/fase (owner ruling 2026-08-04).
+    /// Omitting it therefore gives the ruled answer rather than the unscoped one E5-01 shipped.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation.</param>
     [HttpGet]
-    public async Task<ActionResult<DekkingWeergave>> Detail(Guid klasId, CancellationToken cancellationToken) =>
-        Ok(await _service.BerekenAsync(klasId, cancellationToken));
+    public async Task<ActionResult<DekkingWeergave>> Detail(
+        Guid klasId,
+        CancellationToken cancellationToken,
+        [FromQuery] Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase) =>
+        Ok(await _service.BerekenAsync(klasId, bereik, cancellationToken));
 }

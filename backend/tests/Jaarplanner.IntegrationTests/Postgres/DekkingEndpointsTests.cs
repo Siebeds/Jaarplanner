@@ -58,7 +58,9 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     public async Task Een_klas_zonder_jaarplan_krijgt_een_betrouwbare_nul_en_geen_404()
     {
         // Art. IX.3: a klas HAS a jaarplan, so a class that has never generated is not a not-found. 0 covered out of
-        // the whole loaded curriculum is the honest answer, and it is a TRUSTWORTHY 0 — nothing is unresolved.
+        // the goals IN SCOPE for this kleutergroep is the honest answer, and it is a TRUSTWORTHY 0 — nothing is
+        // unresolved. (The scope is the ruling of 2026-08-04; before it, this line read "the whole loaded
+        // curriculum", which the same three seeded rows no longer make true.)
         var klasId = await ZetKlasOpAsync();
 
         var response = await _factory.CreateClient().GetAsync($"/api/klassen/{klasId}/dekking");
@@ -71,6 +73,81 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         Assert.Equal(0, dekking.AantalGedekt);
         Assert.Equal(2, dekking.AantalLeerplandoelen);
         Assert.All(dekking.Doelen, d => Assert.False(d.IsGedekt));
+    }
+
+    [PostgresFact]
+    public async Task De_noemer_is_standaard_de_eigen_jaar_fase_van_de_klas()
+    {
+        // The owner ruling of 2026-08-04 over the wire, and specifically that the DEFAULT does the scoping: an
+        // omitted parameter must give the ruled answer, not E5-01's unscoped one. Asserted here rather than only in
+        // the unit tests because the thing that can silently be wrong is the model binding of the default.
+        var klasId = await ZetKlasOpAsync(leerjaar: 0);
+
+        var dekking = await HaalDekkingAsync(klasId);
+
+        Assert.Equal("EigenJaarFase", dekking.Bereik);
+        Assert.Equal(["JK", "K2", "K3"], dekking.GemetenJaarFasen);
+        Assert.False(dekking.IsTerugvalNaarHeelCurriculum);
+
+        // The two kleuterdoelen are measured, the L6 one is not, and the response says how many it left out. Proven
+        // by the ROWS as well as by the count, so a denominator that was right by coincidence would still fail.
+        Assert.Equal(2, dekking.AantalLeerplandoelen);
+        Assert.Equal(1, dekking.AantalBuitenBereik);
+        Assert.DoesNotContain("DEK-L6", dekking.Doelen.Select(d => d.Code));
+    }
+
+    [PostgresFact]
+    public async Task Het_hele_curriculum_is_over_HTTP_een_expliciete_keuze()
+    {
+        // The escape hatch a directie needs: what the SCHOOL loaded, not what this class is measured against.
+        var klasId = await ZetKlasOpAsync(leerjaar: 0);
+
+        var response = await _factory.CreateClient()
+            .GetAsync($"/api/klassen/{klasId}/dekking?bereik=HeelCurriculum");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var dekking = await response.Content.ReadFromJsonAsync<DekkingDto>();
+        Assert.NotNull(dekking);
+        Assert.Equal("HeelCurriculum", dekking.Bereik);
+        Assert.Empty(dekking.GemetenJaarFasen);
+        Assert.Equal(3, dekking.AantalLeerplandoelen);
+        Assert.Equal(0, dekking.AantalBuitenBereik);
+        Assert.Contains("DEK-L6", dekking.Doelen.Select(d => d.Code));
+    }
+
+    [PostgresFact]
+    public async Task Een_klas_met_een_niet_afleidbaar_leerjaar_valt_terug_op_alles_en_zegt_dat()
+    {
+        // The unresolved half of the Art. XIV decision, against a real class row: leerjaar 7 exists in the database
+        // (Klas takes any int) and maps to no jaar/fase. The scope must WIDEN, and the payload must admit that the
+        // caller did not choose it.
+        var klasId = await ZetKlasOpAsync(leerjaar: 7);
+
+        var dekking = await HaalDekkingAsync(klasId);
+
+        Assert.Equal("HeelCurriculum", dekking.Bereik);
+        Assert.True(dekking.IsTerugvalNaarHeelCurriculum);
+        Assert.Empty(dekking.GemetenJaarFasen);
+        Assert.Equal(3, dekking.AantalLeerplandoelen);
+    }
+
+    [PostgresFact]
+    public async Task Een_klas_zonder_doelen_in_haar_bereik_meldt_nul_van_nul_en_niet_alles_gedekt()
+    {
+        // An L3 class in a school that has loaded only kleuterdoelen plus one L6 goal. 0 of 0 is truthful and it is
+        // the state a screen could most easily misread as success, so what distinguishes it from an empty database is
+        // asserted at the boundary a screen actually reads.
+        var klasId = await ZetKlasOpAsync(leerjaar: 3);
+
+        var dekking = await HaalDekkingAsync(klasId);
+
+        Assert.Equal(["L3"], dekking.GemetenJaarFasen);
+        Assert.Empty(dekking.Doelen);
+        Assert.Equal(0, dekking.AantalLeerplandoelen);
+        Assert.Equal(0, dekking.AantalGedekt);
+        Assert.Equal(3, dekking.AantalBuitenBereik);
+        Assert.False(dekking.IsTerugvalNaarHeelCurriculum);
     }
 
     [PostgresFact]
@@ -202,18 +279,22 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     /// A school year with one class and two leerplandoelen, inserted straight through the DbContext because the point
     /// of this file is the read path rather than the write endpoints (which have their own tests).
     /// </summary>
-    private async Task<Guid> ZetKlasOpAsync()
+    private async Task<Guid> ZetKlasOpAsync(int leerjaar = 0)
     {
         await using var context = _db.MaakContext();
 
-        foreach (var code in new[] { "DEK-01", "DEK-02" })
+        // Two kleuterdoelen and ONE L6 doel. The third exists so the scoped denominator is observable over HTTP: a
+        // kleutergroep must not be measured against it (owner ruling 2026-08-04), and `?bereik=HeelCurriculum` must.
+        // Seeded unconditionally rather than per test, because these rows are shared by every test in this class and
+        // xUnit guarantees no order: a test that inserted a counted row would make its neighbours order-dependent.
+        foreach (var (code, jaarFase) in new[] { ("DEK-01", "K3"), ("DEK-02", "K3"), ("DEK-L6", "L6") })
         {
             if (!await context.Leerplandoelen.AnyAsync(l => l.Code == code))
             {
                 context.Leerplandoelen.Add(new Leerplandoel(
                     code,
                     Doelsoort.Gemeenschappelijk,
-                    "K3",
+                    jaarFase,
                     "Natuur",
                     "Levende natuur",
                     "9.1",
@@ -226,7 +307,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
             $"2026-2027-{Guid.NewGuid():N}"[..20],
             new DateOnly(2026, 9, 1),
             new DateOnly(2027, 6, 30));
-        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", leerjaar: 0);
+        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", leerjaar);
         context.Schooljaren.Add(schooljaar);
 
         await context.SaveChangesAsync();
@@ -237,6 +318,10 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     private sealed record DekkingDto(
         Guid KlasId,
         string KlasNaam,
+        string Bereik,
+        List<string> GemetenJaarFasen,
+        bool IsTerugvalNaarHeelCurriculum,
+        int AantalBuitenBereik,
         bool IsBetrouwbaar,
         int AantalOnopgelosteVervallenPlaatsingen,
         int? AantalGedekt,

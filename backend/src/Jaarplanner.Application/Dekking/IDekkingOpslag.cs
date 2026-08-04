@@ -70,17 +70,18 @@ public interface IDekkingOpslag
     /// The jaar/fase codes to measure against (JK, K2, K3, L1–L6, or a fase for P/S), or <c>null</c>/empty for the
     /// <b>whole loaded curriculum</b>.
     /// <para>
-    /// <b>This parameter exists because "which goals should a class be measured against?" is an open Art. XIV
-    /// decision, and today every caller passes <c>null</c>.</b> That is not a considered answer, it is the only
-    /// available one: <c>Klas</c> deliberately keys nothing on its <c>Leerjaar</c> (graadklassen / menggroepen are
-    /// unresolved), so the application cannot derive a class's own jaar/fase set. Shaped as a parameter rather than
-    /// left implicit, and deliberately like the <c>IDisciplineSelectie</c> (ADR-0019) and
-    /// <c>Koppelingzichtbaarheid</c> seams: the decision is isolated at one call site, so resolving it changes a
-    /// value rather than the computation.
+    /// <b>The ruling this seam was built for has landed (owner, 2026-08-04), so it now has real callers.</b> E5-01
+    /// created this parameter while "which goals should a class be measured against?" was an open Art. XIV decision
+    /// and every caller passed <c>null</c>; E5-02 asked, and the answer is that a class is measured against its own
+    /// jaar/fase by default (<c>Dekkingsbereik.EigenJaarFase</c>) with the whole curriculum as an explicit switch.
+    /// <c>DekkingService</c> therefore passes the codes from <c>Jaarfasen.VoorLeerjaar</c> for the default and
+    /// <c>null</c> for <c>Dekkingsbereik.HeelCurriculum</c>. Building the seam ahead of the ruling paid off exactly
+    /// as intended: resolving the decision changed a value at one call site rather than the computation.
     /// </para>
     /// <para>
-    /// It is implemented and tested rather than accepted-and-ignored, so the day the ruling lands the seam is known
-    /// to work instead of being discovered to be decorative.
+    /// <b>What is still open</b> is the graadklas / menggroep half: <c>Klas.Leerjaar</c> is a single ordinal, so a
+    /// class spanning several leerjaren cannot state its set, and <c>Jaarfasen.VoorLeerjaar</c> refuses rather than
+    /// guesses. See <c>Dekkingsbereik</c>.
     /// </para>
     /// <para>
     /// The matching is <b>ordinal and case-sensitive</b>, and that is now correct rather than merely cautious: the
@@ -94,6 +95,39 @@ public interface IDekkingOpslag
     Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
         IReadOnlyCollection<string>? jaarFasen = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// How many leerplandoelen are loaded in total, ignoring any jaar/fase scope (E5-02).
+    /// <para>
+    /// <b>It exists so a narrowed denominator cannot be silent.</b> Scoping a class to its own jaar/fase drops every
+    /// other year's goals <i>and</i> the illustrative P/S doelsoorten, whose column F holds a fase code rather than
+    /// one of the nine jaar/fase codes (Art. VII.1). A smaller denominator makes coverage look better, which is the
+    /// one direction this figure must never move by itself, so the overview states how many goals it left out and
+    /// offers the whole-curriculum switch beside it. That sentence needs this number.
+    /// </para>
+    /// <para>
+    /// A <c>COUNT</c> rather than a second full read: the scoped list is already materialised and the only missing
+    /// quantity is the total.
+    /// </para>
+    /// </summary>
+    Task<int> TelAlleLeerplandoelenAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The class's <c>Leerjaar</c> ordinal, or <c>null</c> when no such class exists (E5-02).
+    /// <para>
+    /// <b>Why the coverage computation needs it, and why it is not read off the jaarplan projection.</b> Scoping the
+    /// denominator to the class's own jaar/fase requires the class's leerjaar, and <c>JaarplanWeergave</c> does not
+    /// carry it. Adding it there would change a contract the kalender, the spreading report and the generation flow
+    /// all read, for one consumer's benefit; E5-01 explicitly declined a comparable change for the same reason. So
+    /// the lookup lives on this port, where the only cost is one keyed read.
+    /// </para>
+    /// <para>
+    /// <c>null</c> means the class is gone, which for this computation can only happen if it was deleted between the
+    /// plan read and this one. It is treated exactly like a leerjaar that maps to no jaar/fase: fall back to the
+    /// whole curriculum and say so, never to an empty denominator.
+    /// </para>
+    /// </summary>
+    Task<int?> HaalLeerjaarAsync(Guid klasId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

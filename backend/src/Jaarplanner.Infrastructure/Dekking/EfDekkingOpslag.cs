@@ -134,9 +134,9 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
     {
         var query = _context.Leerplandoelen.AsNoTracking();
 
-        // Null/empty means the whole curriculum, which is what every caller asks for today. See IDekkingOpslag for
-        // why that is an open Art. XIV decision rather than a considered answer, and why this seam is implemented
-        // and tested despite having no non-null caller yet.
+        // Null/empty means the whole curriculum. Since the owner ruling of 2026-08-04 that is the explicit
+        // Dekkingsbereik.HeelCurriculum choice (and the fallback for a class whose jaar/fase cannot be derived)
+        // rather than the only available answer; the default now passes real codes. See IDekkingOpslag.
         if (jaarFasen is { Count: > 0 })
         {
             var fasen = jaarFasen.ToList();
@@ -144,5 +144,30 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
         }
 
         return await query.ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<int> TelAlleLeerplandoelenAsync(CancellationToken cancellationToken = default) =>
+        _context.Leerplandoelen.AsNoTracking().CountAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<int?> HaalLeerjaarAsync(Guid klasId, CancellationToken cancellationToken = default)
+    {
+        // Projected to a nullable int rather than loading the Klas: this needs one column, and materialising the
+        // entity would put a mutable aggregate in reach of a read-only computation.
+        //
+        // The `(int?)` projection is load-bearing. Without it `FirstOrDefaultAsync` on an `int` sequence yields 0 for
+        // "no such class" — and 0 is a VALID leerjaar here, the kleutergroep, so a missing class would silently be
+        // measured against JK/K2/K3 instead of falling back to the whole curriculum.
+        //
+        // It is defensive rather than covered by an endpoint test, and that is worth stating rather than implying:
+        // DekkingService reads the jaarplan first and a missing class 404s there, so the only way to reach this
+        // branch is a class deleted BETWEEN the two reads. The `null` path itself is pinned at the port boundary by
+        // DekkingServiceTests (`Leerjaar = null`); what has no test is the race that produces it.
+        return await _context.Klassen
+            .AsNoTracking()
+            .Where(k => k.Id == klasId)
+            .Select(k => (int?)k.Leerjaar)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }
