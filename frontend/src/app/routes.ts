@@ -28,12 +28,13 @@ export interface Navigatiebestemming {
    * False while the screen behind it is a placeholder; rendered as an explicit marker.
    *
    * Read it precisely: it means "a real screen answers this route", **not** "everything §3 promises for this
-   * destination exists". `/themas` is `true` and is knowingly partial — §3 defines Thema's as the shared
-   * thema-bibliotheek plus the goal-first opbouwwizard, and neither is built; what answers the route today is
-   * the E2 doelsuggestie-review (E1-14 adds beheer, E2-08 the trigger). Flipping it to `false` would hide
-   * working, tested UI behind a placeholder, which is worse than the over-claim; so the honest move is to say
-   * so here and on the story rather than to let clause 2's absent-or-labelled binary read as unconditionally
-   * met. Surfaced by the E0-10 close-out audit.
+   * destination exists". `/themas` is `true` and is still partial, though less so than it was: **E1-14 landing
+   * 1** built the shared thema-bibliotheek and one thema in full, and the E2 doelsuggestie-review now sits on
+   * that thema's detail instead of behind a hand-typed id. What §3 promises and is **not** built: the
+   * goal-first thema-opbouwwizard (E6-05), and the class-scoped writes for subthema's and activiteiten, which
+   * are E1-14 landing 2 and are rendered read-only with a sentence saying so. Flipping this to `false` would
+   * hide working, tested UI behind a placeholder, which is worse than the over-claim; so the honest move is to
+   * say so here and on the story. Surfaced by the E0-10 close-out audit.
    */
   isGebouwd: boolean;
   /**
@@ -68,7 +69,7 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
     labelKey: "navigatie.themas",
     isGebouwd: true,
     magBeheerder: false,
-    story: "E2-05/E2-06 built the review, E2-08 the trigger; E1-14 adds beheer",
+    story: "E1-14 landing 1 (bibliotheek + thema detail); E2-05/E2-06/E2-08 review, now on the detail; landing 2 owns the class-scoped writes",
   },
   {
     pad: JAARPLAN_PAD,

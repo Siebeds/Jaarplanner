@@ -382,7 +382,7 @@ const NIVEAUWOORD: Record<KoppelingNiveau, TranslationKey> = {
 /**
  * The Art. IV.2 warning, and the one control that can override it (clause 5).
  *
- * The links listed here are the teacher's own decisions (`aanvaard`/`geweigerd`/`manueel`) that the new file
+ * The links listed here are decided links (a teacher's decision in the app, or one that arrived through an earlier import; see E1-18) (`aanvaard`/`geweigerd`/`manueel`) that the new file
  * no longer carries. The server **keeps** them unless told otherwise, so this list describes a risk rather
  * than a loss, and the copy says so before the checkbox rather than after it.
  *

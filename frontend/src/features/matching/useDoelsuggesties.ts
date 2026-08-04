@@ -12,8 +12,18 @@ import type { Leerdoelselectie, Leerkrachtbeslissing } from "./types";
 /** Query key for a thema's doelsuggesties — one cache entry per thema. */
 const suggestiesKey = (themaId: string) => ["doelsuggesties", themaId] as const;
 
-/** Query key for the school-wide "ongekoppelde doelen" gap list (E2-06). */
-const ongekoppeldeDoelenKey = ["ongekoppelde-doelen"] as const;
+/**
+ * Query key for the school-wide "ongekoppelde doelen" gap list (E2-06).
+ *
+ * **Exported because a second feature has to invalidate it (E1-14).** Linking a leerplandoel by hand from the
+ * beheer screens changes this list exactly as accepting a suggestion does, so the beheer mutations invalidate
+ * it too. Sharing the constant rather than repeating the string is deliberate: two literals that must match
+ * are two literals that will stop matching, and the failure is silent — a stale gap list still renders.
+ */
+export const ONGEKOPPELDE_DOELEN_KEY = ["ongekoppelde-doelen"] as const;
+
+/** Local alias, so the call sites below read as they did before the key was exported. */
+const ongekoppeldeDoelenKey = ONGEKOPPELDE_DOELEN_KEY;
 
 /** Loads (and caches) the AI doelsuggesties for a thema; disabled until a thema-id is present. */
 export function useDoelsuggesties(themaId: string) {
