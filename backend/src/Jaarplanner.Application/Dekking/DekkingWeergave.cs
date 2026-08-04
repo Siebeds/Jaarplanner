@@ -34,8 +34,25 @@ namespace Jaarplanner.Application.Dekking;
 /// <param name="GemetenJaarFasen">
 /// The jaar/fase codes actually measured against, or empty for the whole curriculum. Present so a screen can name
 /// the scope in the school's own vocabulary ("gemeten tegen L3") rather than describing it in the abstract, and so
-/// an export can state it as evidence. A kleutergroep yields all three kleuter codes: <c>Klas.Leerjaar</c> cannot say
-/// which kleuterjaar a group is, so the widest honest set is used (see <c>Jaarfasen.VoorLeerjaar</c>).
+/// an export can state it as evidence.
+/// </param>
+/// <param name="BeschikbareJaarFasen">
+/// The codes this class *could* be measured against: its whole derived set, before any narrowing. Empty for
+/// <see cref="Dekkingsbereik.HeelCurriculum"/>.
+/// <para>
+/// <b>Distinct from <paramref name="GemetenJaarFasen"/> for one reason: a kleutergroep has to be able to narrow, and
+/// after narrowing it must still know what it narrowed from.</b> <c>Klas.Leerjaar</c> is <c>0</c> for a kleutergroep
+/// and cannot say which kleuterjaar, so the derived set is all three kleuter codes; measured against all three, a
+/// derde kleuterklas carries roughly three times the doelen it teaches and its figure reads about a third of what it
+/// is (owner ruling 2026-08-04: let the teacher choose). Once they choose <c>K3</c>, <c>GemetenJaarFasen</c> is
+/// <c>["K3"]</c> — and a screen that only had that could no longer offer <c>JK</c> and <c>K2</c> as the alternatives
+/// it narrowed from. So the payload carries both: what was applied, and what was available.
+/// </para>
+/// <para>
+/// For a single-leerjaar class the two are equal and the caller offers no choice, which is why the chooser keys on
+/// this list having more than one member rather than on "is this a kleutergroep" — a question the data model cannot
+/// answer and a future graadklas ruling would answer differently.
+/// </para>
 /// </param>
 /// <param name="IsTerugvalNaarHeelCurriculum">
 /// <c>true</c> when the class's own jaar/fase was requested but could not be derived, so the whole curriculum was
@@ -131,6 +148,7 @@ public sealed record DekkingWeergave(
     string SchooljaarNaam,
     Dekkingsbereik Bereik,
     IReadOnlyList<string> GemetenJaarFasen,
+    IReadOnlyList<string> BeschikbareJaarFasen,
     bool IsTerugvalNaarHeelCurriculum,
     int AantalBuitenBereik,
     bool IsBetrouwbaar,

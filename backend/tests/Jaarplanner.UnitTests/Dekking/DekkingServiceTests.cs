@@ -404,6 +404,99 @@ public sealed class DekkingServiceTests
     }
 
     [Fact]
+    public async Task Een_kleutergroep_kan_versmald_worden_tot_een_kleuterjaar()
+    {
+        // OWNER RULING 2026-08-04. Leerjaar 0 says "kleutergroep" and not WHICH kleuterjaar, so the derived scope is all
+        // three codes and a derde kleuterklas carries roughly three times the doelen it teaches: its figure reads about
+        // a third of what it is, and its gap list names doelen for two-and-a-half-year-olds. The teacher narrows it.
+        var opslag = new FakeDekkingOpslag(
+            [],
+            [Doel("JK-01", jaarFase: "JK"), Doel("K2-01", jaarFase: "K2"), Doel("K3-01", jaarFase: "K3")])
+        {
+            Leerjaar = KleuterLeerjaar,
+        };
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId, jaarFase: "K3");
+
+        // Measured against K3 alone...
+        Assert.Equal(["K3"], opslag.GevraagdeJaarFasen);
+        Assert.Equal(["K3"], dekking.GemetenJaarFasen);
+        Assert.Equal("K3-01", Assert.Single(dekking.Doelen).Code);
+        Assert.Equal(1, dekking.AantalLeerplandoelen);
+        Assert.Equal(2, dekking.AantalBuitenBereik);
+
+        // ...while still reporting what it narrowed FROM, or the screen could not offer the alternatives.
+        Assert.Equal(["JK", "K2", "K3"], dekking.BeschikbareJaarFasen);
+        Assert.Equal(Dekkingsbereik.EigenJaarFase, dekking.Bereik);
+        Assert.False(dekking.IsTerugvalNaarHeelCurriculum);
+    }
+
+    [Fact]
+    public async Task Zonder_keuze_meet_een_kleutergroep_tegen_alle_drie()
+    {
+        var opslag = new FakeDekkingOpslag(
+            [],
+            [Doel("JK-01", jaarFase: "JK"), Doel("K3-01", jaarFase: "K3")])
+        { Leerjaar = KleuterLeerjaar };
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId);
+
+        Assert.Equal(["JK", "K2", "K3"], dekking.GemetenJaarFasen);
+        Assert.Equal(["JK", "K2", "K3"], dekking.BeschikbareJaarFasen);
+        Assert.Equal(2, dekking.AantalLeerplandoelen);
+    }
+
+    [Theory]
+    [InlineData("L6")]
+    [InlineData("k3")]
+    [InlineData("")]
+    public async Task Een_jaar_fase_die_deze_klas_niet_heeft_wordt_genegeerd(string jaarFase)
+    {
+        // Narrowing is a filter over what this class HAS, never free choice: nobody may measure a kleutergroep against
+        // L6. Ignored rather than refused, because a 400 would take a teacher who followed a stale link off a working
+        // screen — and the payload stays honest because GemetenJaarFasen reports what was APPLIED. "k3" is in the set
+        // only under case folding, and the comparison is deliberately ordinal: stored codes are canonical (owner ruling
+        // 2026-08-03, the import normalises), so folding here would mask an import that did not.
+        var opslag = new FakeDekkingOpslag([], [Doel("K3-01", jaarFase: "K3")]) { Leerjaar = KleuterLeerjaar };
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId, jaarFase: jaarFase);
+
+        Assert.Equal(["JK", "K2", "K3"], dekking.GemetenJaarFasen);
+    }
+
+    [Fact]
+    public async Task Een_klas_met_een_enkel_leerjaar_valt_niet_te_versmallen()
+    {
+        // An L3 class has exactly one code, so there is nothing to choose and nothing to get wrong. Asserted because the
+        // narrowing guard keys on "more than one available" rather than on "is this a kleutergroep", which is a question
+        // the data model cannot answer and a future graadklas ruling would answer differently.
+        var opslag = new FakeDekkingOpslag([], [Doel("L3-01", jaarFase: "L3")]) { Leerjaar = 3 };
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId, jaarFase: "L1");
+
+        Assert.Equal(["L3"], dekking.GemetenJaarFasen);
+        Assert.Equal(["L3"], dekking.BeschikbareJaarFasen);
+    }
+
+    [Fact]
+    public async Task Het_hele_curriculum_negeert_een_jaar_fase_keuze()
+    {
+        var opslag = new FakeDekkingOpslag([], [Doel("K3-01"), Doel("L6-01", jaarFase: "L6")]) { Leerjaar = KleuterLeerjaar };
+        var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
+
+        var dekking = await service.BerekenAsync(KlasId, Dekkingsbereik.HeelCurriculum, jaarFase: "K3");
+
+        Assert.Null(opslag.GevraagdeJaarFasen);
+        Assert.Empty(dekking.GemetenJaarFasen);
+        Assert.Empty(dekking.BeschikbareJaarFasen);
+        Assert.Equal(2, dekking.AantalLeerplandoelen);
+    }
+
+    [Fact]
     public async Task Het_hele_curriculum_is_een_expliciete_keuze_en_vraagt_geen_leerjaar()
     {
         var opslag = new FakeDekkingOpslag([], [Doel("K3-01"), Doel("L6-99", jaarFase: "L6")]) { Leerjaar = 0 };

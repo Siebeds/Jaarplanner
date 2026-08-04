@@ -90,11 +90,17 @@ public sealed class DekkingController : ControllerBase
     /// Which leerplandoelen to measure against; defaults to the class's own jaar/fase (owner ruling 2026-08-04).
     /// Omitting it therefore gives the ruled answer rather than the unscoped one E5-01 shipped.
     /// </param>
+    /// <param name="jaarFase">
+    /// Narrows the class's own scope to one of its codes, for a class that has more than one (owner ruling
+    /// 2026-08-04: a kleutergroep is JK+K2+K3 and the teacher says which). Ignored when it is not one of them, so a
+    /// stale link degrades to the full scope rather than to an error; the response reports what was applied.
+    /// </param>
     /// <param name="cancellationToken">Cancellation.</param>
     [HttpGet]
     public async Task<ActionResult<DekkingWeergave>> Detail(
         Guid klasId,
         CancellationToken cancellationToken,
-        [FromQuery] Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase) =>
-        Ok(await _service.BerekenAsync(klasId, bereik, cancellationToken));
+        [FromQuery] Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase,
+        [FromQuery] string? jaarFase = null) =>
+        Ok(await _service.BerekenAsync(klasId, bereik, jaarFase, cancellationToken));
 }

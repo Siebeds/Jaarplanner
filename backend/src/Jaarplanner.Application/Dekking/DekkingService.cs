@@ -37,6 +37,17 @@ public sealed class DekkingService
     /// Which leerplandoelen to measure against (owner ruling 2026-08-04). Defaults to the class's own jaar/fase, so
     /// a caller that asks for nothing gets the answer the ruling settled rather than E5-01's unscoped one.
     /// </param>
+    /// <param name="jaarFase">
+    /// Narrow <see cref="Dekkingsbereik.EigenJaarFase"/> to this one code, when the class has more than one available
+    /// (owner ruling 2026-08-04). Ignored when null, when the scope is the whole curriculum, or when the code is not
+    /// one this class could be measured against.
+    /// <para>
+    /// <b>An out-of-set code is ignored rather than refused, and the payload is what keeps that honest.</b> A 400 would
+    /// take a teacher who followed a stale link off a working screen; ignoring keeps them on it, and because
+    /// <c>GemetenJaarFasen</c> reports what was <i>applied</i> rather than what was asked, the screen cannot claim a
+    /// narrowing that did not happen. Same shape as the frontend's own handling of an unknown <c>bereik</c>.
+    /// </para>
+    /// </param>
     /// <param name="cancellationToken">Cancellation.</param>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
     /// The class does not exist. A class that exists but has never generated a plan is <b>not</b> an error: it
@@ -45,6 +56,7 @@ public sealed class DekkingService
     public async Task<DekkingWeergave> BerekenAsync(
         Guid klasId,
         Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase,
+        string? jaarFase = null,
         CancellationToken cancellationToken = default)
     {
         var plan = await _lezer.HaalJaarplanAsync(klasId, cancellationToken);
@@ -94,11 +106,20 @@ public sealed class DekkingService
         // empty jaar/fase set means "the whole curriculum" one layer down and "no goals at all" to a reader. The
         // second would report a class as having nothing left to cover. So a refusal widens the scope and is DECLARED
         // in the payload; it never narrows it.
-        var gemetenFasen = bereik == Dekkingsbereik.EigenJaarFase
+        var beschikbareFasen = bereik == Dekkingsbereik.EigenJaarFase
             ? await BepaalEigenJaarFasenAsync(klasId, cancellationToken)
             : null;
 
-        var isTerugval = bereik == Dekkingsbereik.EigenJaarFase && gemetenFasen is null;
+        var isTerugval = bereik == Dekkingsbereik.EigenJaarFase && beschikbareFasen is null;
+
+        // The teacher's narrowing, and it is a filter over what this class HAS rather than free choice: a kleutergroep
+        // may narrow JK+K2+K3 to K3, and nobody may narrow an L3 class to L6. `Contains` is ordinal, matching the rest
+        // of the jaar/fase comparisons: stored codes are canonical (owner ruling 2026-08-03, the import normalises), so
+        // folding case here would only mask an import that did not.
+        var gemetenFasen = beschikbareFasen is { Count: > 1 } && jaarFase is not null
+            && beschikbareFasen.Contains(jaarFase, StringComparer.Ordinal)
+                ? (IReadOnlyList<string>)[jaarFase]
+                : beschikbareFasen;
 
         var leerplandoelen = await _opslag.HaalLeerplandoelenAsync(gemetenFasen, cancellationToken);
 
@@ -168,6 +189,8 @@ public sealed class DekkingService
             // figures below are over; IsTerugvalNaarHeelCurriculum is what says the caller did not choose it.
             isTerugval ? Dekkingsbereik.HeelCurriculum : bereik,
             gemetenFasen ?? [],
+            // What this class COULD be measured against, so a narrowed screen still knows its alternatives.
+            beschikbareFasen ?? [],
             isTerugval,
             aantalBuitenBereik,
             isBetrouwbaar,

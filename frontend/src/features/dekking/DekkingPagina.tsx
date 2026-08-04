@@ -12,6 +12,9 @@ import { DEKKINGSBEREIKEN, type Dekkingsbereik } from "./types";
 /** The scope's query-string parameter, so a shared link opens the same denominator (ADR-0021). */
 export const BEREIK_PARAM = "bereik";
 
+/** The narrowed jaar/fase, in the URL for the same reason: a figure a directie is asked to check must be linkable. */
+export const JAARFASE_PARAM = "jaarFase";
+
 /**
  * The dekkingsoverzicht: which leerplandoelen this class's jaarplan covers and which it does not
  * (E5-02, FR-9.1, Art. V.1).
@@ -39,7 +42,11 @@ export function DekkingPagina() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const bereik = leesBereik(searchParams);
-  const dekking = useDekking(klasId, bereik);
+  // Not validated here against the class's codes, deliberately: only the server knows them, and it ignores one this
+  // class does not have while reporting what it actually measured. Validating in the browser would need the answer
+  // before the request that produces it.
+  const jaarFase = searchParams.get(JAARFASE_PARAM) || null;
+  const dekking = useDekking(klasId, bereik, jaarFase);
 
   const groepen = useMemo(
     () => (dekking.data ? groepeerPerSubdomein(dekking.data.doelen) : []),
@@ -49,6 +56,22 @@ export function DekkingPagina() {
   function kiesBereik(volgende: Dekkingsbereik) {
     const params = new URLSearchParams(searchParams);
     params.set(BEREIK_PARAM, volgende);
+    // A narrowing belongs to the class's own scope, so switching to the whole curriculum drops it rather than leaving it
+    // in the URL to reappear on the way back. The server ignores it in that scope anyway; carrying it would make the
+    // link say something the answer does not.
+    params.delete(JAARFASE_PARAM);
+    setSearchParams(params, { replace: true });
+  }
+
+  function kiesJaarFase(volgende: string | null) {
+    const params = new URLSearchParams(searchParams);
+
+    if (volgende) {
+      params.set(JAARFASE_PARAM, volgende);
+    } else {
+      params.delete(JAARFASE_PARAM);
+    }
+
     setSearchParams(params, { replace: true });
   }
 
@@ -100,6 +123,8 @@ export function DekkingPagina() {
             dekking={dekking.data}
             bereik={bereik}
             onKiesBereik={kiesBereik}
+            gekozenJaarFase={jaarFase}
+            onKiesJaarFase={kiesJaarFase}
           />
 
           {/* No paging, and that is a decision rather than an omission (recorded on DekkingController). The totals and

@@ -209,6 +209,49 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         Assert.False(dekking.Doelen.Single(d => d.Code == "DEK-01").IsGedekt);
     }
 
+    [PostgresFact]
+    public async Task Een_kleutergroep_kan_over_HTTP_versmald_worden_tot_een_kleuterjaar()
+    {
+        // The owner ruling of 2026-08-04 over the wire. The seeded class is a kleutergroep (leerjaar 0), so its scope is
+        // JK+K2+K3; DEK-01/DEK-02 are K3 and DEK-L6 is out of scope either way. Narrowing to JK must therefore measure
+        // against NOTHING of the two K3 doelen, which is a stronger assertion than narrowing to K3 would be: it proves
+        // the parameter reached the query rather than that the answer happened to look right.
+        var klasId = await ZetKlasOpAsync(leerjaar: 0);
+
+        var response = await _factory.CreateClient()
+            .GetAsync($"/api/klassen/{klasId}/dekking?bereik=EigenJaarFase&jaarFase=JK");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var dekking = await response.Content.ReadFromJsonAsync<DekkingDto>();
+        Assert.NotNull(dekking);
+        Assert.Equal(["JK"], dekking.GemetenJaarFasen);
+        Assert.Equal(["JK", "K2", "K3"], dekking.BeschikbareJaarFasen);
+        Assert.Equal(0, dekking.AantalLeerplandoelen);
+        Assert.Equal(3, dekking.AantalBuitenBereik);
+
+        // Narrowing to K3 instead puts the two K3 doelen back, so the parameter is doing the work either way.
+        var k3 = await _factory.CreateClient()
+            .GetAsync($"/api/klassen/{klasId}/dekking?bereik=EigenJaarFase&jaarFase=K3");
+        var k3Dekking = await k3.Content.ReadFromJsonAsync<DekkingDto>();
+        Assert.NotNull(k3Dekking);
+        Assert.Equal(["K3"], k3Dekking.GemetenJaarFasen);
+        Assert.Equal(2, k3Dekking.AantalLeerplandoelen);
+    }
+
+    [PostgresFact]
+    public async Task Een_jaar_fase_buiten_de_klas_wordt_over_HTTP_genegeerd_en_niet_geweigerd()
+    {
+        // A stale or hand-edited link: ignored rather than refused, so the teacher stays on a working screen, and the
+        // response says what it actually measured so nothing can claim a narrowing that did not happen.
+        var klasId = await ZetKlasOpAsync(leerjaar: 0);
+
+        var dekking = await HaalDekkingAsync($"{klasId}/dekking?bereik=EigenJaarFase&jaarFase=L6");
+
+        Assert.Equal(["JK", "K2", "K3"], dekking.GemetenJaarFasen);
+        Assert.Equal(2, dekking.AantalLeerplandoelen);
+    }
+
     [PostgresTheory]
     [InlineData("5")]
     [InlineData("-1")]
@@ -245,9 +288,12 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private async Task<DekkingDto> HaalDekkingAsync(Guid klasId)
+    private Task<DekkingDto> HaalDekkingAsync(Guid klasId) => HaalDekkingAsync($"{klasId}/dekking");
+
+    /// <summary>The same read, with the path tail spelled out so a test can add a query string.</summary>
+    private async Task<DekkingDto> HaalDekkingAsync(string staart)
     {
-        var response = await _factory.CreateClient().GetAsync($"/api/klassen/{klasId}/dekking");
+        var response = await _factory.CreateClient().GetAsync($"/api/klassen/{staart}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var dekking = await response.Content.ReadFromJsonAsync<DekkingDto>();
@@ -346,6 +392,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         string KlasNaam,
         string Bereik,
         List<string> GemetenJaarFasen,
+        List<string> BeschikbareJaarFasen,
         bool IsTerugvalNaarHeelCurriculum,
         int AantalBuitenBereik,
         bool IsBetrouwbaar,

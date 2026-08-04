@@ -15,8 +15,17 @@ import type { Dekking, Dekkingsbereik } from "./types";
  * because the same class has two legitimate denominators, so a request that does not state it produces a figure the
  * screen cannot label.
  */
-export function haalDekking(klasId: string, bereik: Dekkingsbereik): Promise<Dekking> {
+export function haalDekking(
+  klasId: string,
+  bereik: Dekkingsbereik,
+  jaarFase: string | null,
+): Promise<Dekking> {
+  // `jaarFase` is omitted rather than sent empty when nothing is chosen, so the request says "no narrowing" instead of
+  // "narrow to the empty string". The server ignores a code this class does not have, and reports what it applied, so a
+  // stale link degrades to the full scope on a working screen rather than to an error.
+  const smaller = jaarFase ? `&jaarFase=${encodeURIComponent(jaarFase)}` : "";
+
   return apiFetch<Dekking>(
-    `/api/klassen/${klasId}/dekking?bereik=${encodeURIComponent(bereik)}`,
+    `/api/klassen/${klasId}/dekking?bereik=${encodeURIComponent(bereik)}${smaller}`,
   );
 }

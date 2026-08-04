@@ -53,6 +53,7 @@ export function dekking(overschrijving: Partial<Dekking> = {}): Dekking {
     schooljaarNaam: "2026-2027",
     bereik: "EigenJaarFase",
     gemetenJaarFasen: ["JK", "K2", "K3"],
+    beschikbareJaarFasen: ["JK", "K2", "K3"],
     isTerugvalNaarHeelCurriculum: false,
     aantalBuitenBereik: 0,
     isBetrouwbaar: true,
@@ -67,6 +68,14 @@ export function dekking(overschrijving: Partial<Dekking> = {}): Dekking {
 export interface FakeOpties {
   /** The answer per scope. `EigenJaarFase` is what an unparameterised screen would never get, so both are explicit. */
   perBereik?: Partial<Record<string, Dekking>>;
+  /**
+   * The answer per narrowed jaar/fase, keyed on the `jaarFase` query value.
+   *
+   * Server-side like `perBereik`, and for the same reason: narrowing changes the denominator, so a fixture that ignored
+   * the parameter would be satisfied by a screen that filtered rows in the browser and left the total alone — which is
+   * precisely the defect this control must not have.
+   */
+  perJaarFase?: Partial<Record<string, Dekking>>;
   /** Answer the dekking call with this status instead of 200. */
   status?: number;
 }
@@ -94,14 +103,18 @@ export function maakDekkingFetchFake(opties: FakeOpties = {}) {
         });
       }
 
-      const bereik = new URL(url, "http://test").searchParams.get("bereik") ?? "";
-      const antwoord = opties.perBereik?.[bereik];
+      const parameters = new URL(url, "http://test").searchParams;
+      const bereik = parameters.get("bereik") ?? "";
+      const jaarFase = parameters.get("jaarFase");
+      const antwoord = jaarFase
+        ? opties.perJaarFase?.[jaarFase]
+        : opties.perBereik?.[bereik];
 
       if (!antwoord) {
         // Deliberately a failure rather than a default. A fixture that fell back to "some answer" for an unknown or
         // absent scope would hide the exact defect these tests exist to catch: a screen that does not say which
         // denominator it wants.
-        return new Response(`no fixture for bereik=${bereik}`, { status: 500 });
+        return new Response(`no fixture for bereik=${bereik} jaarFase=${jaarFase}`, { status: 500 });
       }
 
       return new Response(JSON.stringify(antwoord), { status: 200 });

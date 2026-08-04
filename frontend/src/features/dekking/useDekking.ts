@@ -17,12 +17,15 @@ import type { Dekkingsbereik } from "./types";
  * figure that Art. V.1's "computed, never stored" exists to prevent. Contrast the register's facets, which cache for
  * five minutes because the curriculum only changes on an import.
  */
-const dekkingKey = (klasId: string, bereik: Dekkingsbereik) => ["dekking", klasId, bereik] as const;
+const dekkingKey = (klasId: string, bereik: Dekkingsbereik, jaarFase: string | null) =>
+  ["dekking", klasId, bereik, jaarFase] as const;
 
-export function useDekking(klasId: string, bereik: Dekkingsbereik) {
+export function useDekking(klasId: string, bereik: Dekkingsbereik, jaarFase: string | null) {
   return useQuery({
-    queryKey: dekkingKey(klasId, bereik),
-    queryFn: () => haalDekking(klasId, bereik),
+    // `jaarFase` is part of the key for the same reason `bereik` is: narrowing changes the DENOMINATOR, so two
+    // narrowings are two computations and caching them together would show one scope's rows beside another's total.
+    queryKey: dekkingKey(klasId, bereik, jaarFase),
+    queryFn: () => haalDekking(klasId, bereik, jaarFase),
     // No class chosen means there is nothing to ask about. Without this the screen would fire
     // `/api/klassen//dekking` on first paint and render its error state at a teacher who has simply not picked a
     // class yet, which is a different message (see DekkingPagina's three-valued selection handling).

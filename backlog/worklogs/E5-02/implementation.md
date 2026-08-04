@@ -94,6 +94,16 @@ Contrast, alpha composited: lowest text pair **5,08:1** (white on `dekking-gedek
 
 *One thing the round did **not** find, and it matters:* nothing in the product's behaviour. Every MAJOR was in the record around it.
 
+## The kleuterjaar chooser (owner ruling 2026-08-04)
+
+Round 1's second MAJOR was that a kleutergroep is measured against three jaar/fase codes with nothing declaring it. The first fix declared it in copy; the owner then ruled the real fix: **let the teacher choose.**
+
+Backend: `?jaarFase=` narrows **within** the class's own derived set, so nobody can measure a kleutergroep against L6, and an out-of-set code is **ignored rather than refused** — a 400 would take a teacher who followed a stale link off a working screen, and the payload stays honest because `GemetenJaarFasen` reports what was *applied*. The payload gains `BeschikbareJaarFasen`, because after narrowing to `K3` the measured list is `["K3"]` and a screen with only that could no longer offer `JK` and `K2` as the alternatives it narrowed from.
+
+The chooser renders on **"this class has more than one code"**, not on "is this kleuter". The second is a question the data model cannot answer, and the still-open graadklas ruling would answer it differently while needing exactly this shape.
+
+*Measured in a browser on a seeded kleuterklas with JK, K2 and K3 doelen:* all three gives **4 doelen in scope, 14 outside**; pressing `K3` refetches, puts `jaarFase=K3` in the URL, and gives **2 in scope, 16 outside** with only the two K3 codes listed. The scope sentence changes to *"omdat je dat jaar gekozen hebt"*, which is what distinguishes a narrowed kleutergroep from an L3 class. Every option measures 24px (SC 2.5.8), contrast 6,08 / 8,90 / 15,42:1, no overflow at 1440px or 390px. Ten new tests (five unit, two endpoint, five component); two load-bearing claims mutation-checked: dropping the parameter from the request fails 4, and rendering the chooser unconditionally fails 2.
+
 ## Still open on this story
 
 - **A third audit has not run**, and this round is the reason to want one: round 2's own findings were mostly *round 1's fixes*, twice in prose a fix round had written.

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { JAARPLAN_PAD } from "../../app/routes";
 import { t, tAantal } from "../../i18n";
 import { Bereikschakelaar } from "./Bereikschakelaar";
+import { Jaarfasekiezer } from "./Jaarfasekiezer";
 import { bepaalCijfer } from "./dekkingFormat";
 import type { Dekking, Dekkingsbereik } from "./types";
 
@@ -25,9 +26,18 @@ export interface DekkingsamenvattingProps {
   dekking: Dekking;
   bereik: Dekkingsbereik;
   onKiesBereik: (bereik: Dekkingsbereik) => void;
+  /** The single jaar/fase narrowed to, or null for all of the class's own codes. */
+  gekozenJaarFase: string | null;
+  onKiesJaarFase: (jaarFase: string | null) => void;
 }
 
-export function Dekkingsamenvatting({ dekking, bereik, onKiesBereik }: DekkingsamenvattingProps) {
+export function Dekkingsamenvatting({
+  dekking,
+  bereik,
+  onKiesBereik,
+  gekozenJaarFase,
+  onKiesJaarFase,
+}: DekkingsamenvattingProps) {
   const cijfer = bepaalCijfer(dekking);
   // Read through the router rather than `window.location`, so the klas/schooljaar selection travels with the link the
   // way every other cross-screen link in this app carries it (ADR-0021), and so it is testable in jsdom.
@@ -150,9 +160,14 @@ export function Dekkingsamenvatting({ dekking, bereik, onKiesBereik }: Dekkingsa
           <p className="mt-2 max-w-prose text-sm text-ink-zacht">
             {dekking.gemetenJaarFasen.length === 0
               ? t("dekking.gemetenTegenAlles")
-              : dekking.gemetenJaarFasen.length === 1
-                ? t("dekking.gemetenTegen", { fasen: dekking.gemetenJaarFasen[0] })
-                : t("dekking.gemetenTegenMeerdere", { fasen: dekking.gemetenJaarFasen.join(", ") })}
+              : dekking.gemetenJaarFasen.length > 1
+                ? t("dekking.gemetenTegenMeerdere", { fasen: dekking.gemetenJaarFasen.join(", ") })
+                : // One code, and WHY it is one matters. For an L3 class it is simply the class's leerjaar; for a
+                  // kleutergroep that narrowed, it is the teacher's own choice, and saying "gemeten tegen de doelen van
+                  // K3" without that would read as though the tool knew all along.
+                  dekking.beschikbareJaarFasen.length > 1
+                  ? t("dekking.gemetenTegenGekozen", { fasen: dekking.gemetenJaarFasen[0] })
+                  : t("dekking.gemetenTegen", { fasen: dekking.gemetenJaarFasen[0] })}
           </p>
 
           {/* The narrowing, stated rather than left implicit: a smaller denominator flatters the figure. Suppressed at
@@ -178,8 +193,18 @@ export function Dekkingsamenvatting({ dekking, bereik, onKiesBereik }: Dekkingsa
           )}
         </div>
 
-        <div className="shrink-0">
+        <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end">
           <Bereikschakelaar bereik={bereik} onKies={onKiesBereik} />
+
+          {/* Only for a class that HAS more than one code, which today means a kleutergroep and tomorrow may mean a
+              graadklas. A control offering one option would be a control that does nothing (the E3-06 rule). */}
+          {dekking.beschikbareJaarFasen.length > 1 && (
+            <Jaarfasekiezer
+              beschikbaar={dekking.beschikbareJaarFasen}
+              gekozen={gekozenJaarFase}
+              onKies={onKiesJaarFase}
+            />
+          )}
         </div>
       </div>
     </section>

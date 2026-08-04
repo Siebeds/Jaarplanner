@@ -419,8 +419,13 @@ describe("Dekkingsoverzicht — waartegen gemeten wordt (eigenaarsruling 2026-08
     // lacunes. The payload calls both `EigenJaarFase` with no fallback flag, which is accurate and not the whole
     // truth, so the widening has to be said out loud. Derived from the number of codes, so a future graadklas ruling
     // that yields two codes lands in the same branch.
+    // Both lists, because they cannot disagree in reality: a class measured against L3 alone is a class whose only
+    // available code is L3. Setting only `gemetenJaarFasen` described a state the server cannot produce, and the
+    // kleuterjaar chooser then correctly read it as "narrowed by choice" and failed this test.
     const enkel = renderApp(MET_KLAS, {
-      perBereik: { EigenJaarFase: dekking({ gemetenJaarFasen: ["L3"] }) },
+      perBereik: {
+        EigenJaarFase: dekking({ gemetenJaarFasen: ["L3"], beschikbareJaarFasen: ["L3"] }),
+      },
     });
 
     expect(await screen.findByText(t("dekking.gemetenTegen", { fasen: "L3" }))).toBeInTheDocument();
@@ -525,6 +530,132 @@ describe("Dekkingsoverzicht — waartegen gemeten wordt (eigenaarsruling 2026-08
     expect(
       screen.queryByText(tAantal(0, "dekking.buitenBereikEnkelvoud", "dekking.buitenBereik")),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Dekkingsoverzicht — een kleutergroep kiest haar kleuterjaar (eigenaarsruling 2026-08-04)", () => {
+  it("offers the choice only when the class has more than one code", async () => {
+    // A control with one option is a control that does nothing (the E3-06 rule). The chooser keys on how many codes the
+    // class HAS, not on "is this kleuter", because the data model cannot answer the second and a graadklas ruling would
+    // answer it differently while producing the same shape.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          gemetenJaarFasen: ["L3"],
+          beschikbareJaarFasen: ["L3"],
+        }),
+      },
+    });
+
+    await screen.findByText(t("dekking.gemetenTegen", { fasen: "L3" }));
+    expect(screen.queryByText(t("dekking.jaarFaseLabel"))).not.toBeInTheDocument();
+  });
+
+  it("narrows to one kleuterjaar through a NEW request, and puts it in the URL", async () => {
+    const fake = renderApp(MET_KLAS, {
+      perBereik: { EigenJaarFase: dekking() },
+      perJaarFase: {
+        K3: dekking({
+          gemetenJaarFasen: ["K3"],
+          beschikbareJaarFasen: ["JK", "K2", "K3"],
+          aantalBuitenBereik: 12,
+          doelen: [doel({ code: "NAT-K3-01", isGedekt: true, dekkendeThemas: ["Herfst"] })],
+        }),
+      },
+    });
+
+    await screen.findByText(t("dekking.gemetenTegenMeerdere", { fasen: "JK, K2, K3" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "K3" }));
+
+    // A new REQUEST, because narrowing changes the denominator. A screen that filtered rows in the browser would leave
+    // the total over three years and pass any test that only counted rows.
+    await waitFor(() => expect(fake.laatsteDekkingUrl()).toContain("jaarFase=K3"));
+    expect(new URLSearchParams(window.location.search).get("jaarFase")).toBe("K3");
+
+    // And the sentence says the scope is the teacher's CHOICE rather than the class's one leerjaar, which is what
+    // distinguishes a narrowed kleutergroep from an L3 class.
+    expect(
+      await screen.findByText(t("dekking.gemetenTegenGekozen", { fasen: "K3" })),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(t("dekking.gemetenTegen", { fasen: "K3" })),
+    ).not.toBeInTheDocument();
+
+    // The denominator really moved: one doel in scope now, twelve left out.
+    expect(
+      screen.getByText(tAantal(1, "dekking.cijferEnkelvoud", "dekking.cijfer", { gedekt: 1 })),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(tAantal(12, "dekking.buitenBereikEnkelvoud", "dekking.buitenBereik")),
+    ).toBeInTheDocument();
+  });
+
+  it("opens a shared narrowed link at that jaar/fase, with the option pressed", async () => {
+    const fake = renderApp(`${MET_KLAS}&jaarFase=K2`, {
+      perJaarFase: {
+        K2: dekking({ gemetenJaarFasen: ["K2"], beschikbareJaarFasen: ["JK", "K2", "K3"] }),
+      },
+    });
+
+    expect(
+      await screen.findByText(t("dekking.gemetenTegenGekozen", { fasen: "K2" })),
+    ).toBeInTheDocument();
+    expect(fake.laatsteDekkingUrl()).toContain("jaarFase=K2");
+    expect(screen.getByRole("button", { name: "K2" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: t("dekking.jaarFaseAlle") })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("goes back to all three, and drops the narrowing from the URL", async () => {
+    renderApp(`${MET_KLAS}&jaarFase=K3`, {
+      perBereik: { EigenJaarFase: dekking() },
+      perJaarFase: {
+        K3: dekking({ gemetenJaarFasen: ["K3"], beschikbareJaarFasen: ["JK", "K2", "K3"] }),
+      },
+    });
+
+    await screen.findByText(t("dekking.gemetenTegenGekozen", { fasen: "K3" }));
+
+    fireEvent.click(screen.getByRole("button", { name: t("dekking.jaarFaseAlle") }));
+
+    await waitFor(() =>
+      expect(new URLSearchParams(window.location.search).has("jaarFase")).toBe(false),
+    );
+    expect(
+      await screen.findByText(t("dekking.gemetenTegenMeerdere", { fasen: "JK, K2, K3" })),
+    ).toBeInTheDocument();
+  });
+
+  it("drops the narrowing when switching to the whole curriculum", async () => {
+    // A narrowing belongs to the class's own scope. Left in the URL it would say something the answer does not, and it
+    // would reappear on the way back.
+    renderApp(`${MET_KLAS}&jaarFase=K3`, {
+      perJaarFase: {
+        K3: dekking({ gemetenJaarFasen: ["K3"], beschikbareJaarFasen: ["JK", "K2", "K3"] }),
+      },
+      perBereik: {
+        HeelCurriculum: dekking({
+          bereik: "HeelCurriculum",
+          gemetenJaarFasen: [],
+          beschikbareJaarFasen: [],
+        }),
+      },
+    });
+
+    await screen.findByText(t("dekking.gemetenTegenGekozen", { fasen: "K3" }));
+
+    fireEvent.click(screen.getByRole("button", { name: t("dekking.bereikAlles") }));
+
+    await waitFor(() =>
+      expect(new URLSearchParams(window.location.search).has("jaarFase")).toBe(false),
+    );
+    expect(await screen.findByText(t("dekking.gemetenTegenAlles"))).toBeInTheDocument();
+
+    // And the chooser is gone, because the whole curriculum has no class codes to narrow.
+    expect(screen.queryByText(t("dekking.jaarFaseLabel"))).not.toBeInTheDocument();
   });
 });
 

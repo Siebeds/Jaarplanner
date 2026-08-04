@@ -54,6 +54,14 @@ export interface Dekking {
   bereik: Dekkingsbereik;
   /** The jaar/fase codes measured against; empty for the whole curriculum. */
   gemetenJaarFasen: string[];
+  /**
+   * The codes this class *could* be measured against, before any narrowing; empty for the whole curriculum.
+   *
+   * Distinct from `gemetenJaarFasen` because a kleutergroep must be able to narrow and, having narrowed, must still know
+   * what it narrowed from: after choosing K3 the measured list is `["K3"]`, and a screen with only that could no longer
+   * offer JK and K2 as the alternatives. More than one member is also the condition the chooser renders on.
+   */
+  beschikbareJaarFasen: string[];
   /** The class's own jaar/fase was asked for and could not be derived, so the scope was widened. */
   isTerugvalNaarHeelCurriculum: boolean;
   /** How many loaded doelen fall outside `bereik`; 0 for the whole curriculum. */
