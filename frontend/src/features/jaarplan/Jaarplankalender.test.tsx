@@ -2985,11 +2985,15 @@ describe("Jaarplankalender — een thema met de hand plannen (E4-03, FR-7.2)", (
 
     fireEvent.click(screen.getByRole("button", { name: t("kalender.annuleren") }));
 
-    // In period 1, where it already sits, it is not an option at all: the server refuses that with a 400, so
-    // offering it would be a control that can only fail.
+    // In period 1, where it already sits, it is offered as a DISABLED option that says so. Fix round 1 changed this
+    // from omitting it: a teacher looking at that thema's card in this very column found it simply absent from the
+    // picker, with nothing explaining why. The server refuses it with a 400, so it must not be selectable either.
     const keuzeHier = await openKiezer(1);
-    expect(within(keuzeHier).queryByRole("option", { name: /Herfst/ })).toBeNull();
-    expect(within(keuzeHier).getByRole("option", { name: "Water" })).toBeInTheDocument();
+    const alHier = within(keuzeHier).getByRole("option", {
+      name: t("kalender.plaatsThemaKeuzeHier", { naam: "Herfst" }),
+    });
+    expect(alHier).toBeDisabled();
+    expect(within(keuzeHier).getByRole("option", { name: "Water" })).toBeEnabled();
   });
 
   /**
@@ -3015,7 +3019,11 @@ describe("Jaarplankalender — een thema met de hand plannen (E4-03, FR-7.2)", (
     await screen.findByText("Herfst");
     const keuze = await openKiezer(1);
 
-    expect(within(keuze).queryByRole("option", { name: /Herfst/ })).toBeNull();
+    expect(
+      within(keuze).getByRole("option", {
+        name: t("kalender.plaatsThemaKeuzeHier", { naam: "Herfst" }),
+      }),
+    ).toBeDisabled();
   });
 
   /** A school with no thema's gets a sentence naming where thema's come from, not an empty picker. */
@@ -3149,6 +3157,95 @@ describe("Jaarplankalender — een thema met de hand plannen (E4-03, FR-7.2)", (
     fireEvent.change(await openKiezer(2), { target: { value: "t-water" } });
     fireEvent.click(screen.getByRole("button", { name: t("kalender.plaatsen") }));
     await waitFor(() => expect(document.activeElement).toBe(toevoegknop(2)));
+  });
+
+  /**
+   * <b>Focus moves INTO the panel when it opens, not only back out when it closes.</b>
+   *
+   * The trigger is unmounted while the panel is open, so opening has the same hazard as closing: without a move,
+   * focus stays on a detached node and a keyboard user is stranded. The close direction was found in a browser and
+   * fixed; this direction was carried entirely by React's `autoFocus` with nothing pinning it, and `autoFocus` is the
+   * only occurrence of that prop in the codebase with no lint rule guarding it. Raised by the fix-round-1 audit as
+   * exactly the gap the story's headline finding should have taught me to close on both sides.
+   */
+  it("moves focus into the picker when it opens", async () => {
+    stubPlaatsen(maakJaarplan([]));
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    const keuze = await openKiezer(2);
+
+    await waitFor(() => expect(document.activeElement).toBe(keuze));
+  });
+
+  /**
+   * A thema deleted while this picker held a cached list is a <b>404</b>, and the teacher can fix it by reloading.
+   * The first version answered it with "meld dit aan de beheerder", advice nobody can act on for a recoverable
+   * situation; `Themakaart` already had the right precedent. Three branches now, so this test and the two beside it
+   * pin all three.
+   */
+  it("tells a deleted thema apart from a refused placement and a broken tool", async () => {
+    stubPlaatsen(maakJaarplan([]), undefined, 404);
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    fireEvent.change(await openKiezer(1), { target: { value: "t-water" } });
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.plaatsen") }));
+
+    expect(await screen.findByText(t("kalender.plaatsThemaVerdwenen"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.plaatsMislukt"))).toBeNull();
+    expect(screen.queryByText(t("kalender.plaatsOnbeschikbaar"))).toBeNull();
+  });
+
+  /**
+   * A failed library load offers a real retry, because the sentence tells the teacher to try again and the E3-06 rule
+   * forbids an instruction pointing at nothing. Reuses the board's own `roosterOpnieuw` copy rather than a new string.
+   */
+  it("offers a retry when the thema list fails to load", async () => {
+    let faal = true;
+    const posts: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (init?.method === "POST") {
+          posts.push(url);
+          return new Response(JSON.stringify(maakJaarplan([])), { status: 200 });
+        }
+        if (url.includes("/api/themas")) {
+          if (faal) {
+            faal = false;
+            return new Response("boom", { status: 500 });
+          }
+          return new Response(JSON.stringify(BIBLIOTHEEK), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(maakJaarplan([])), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    fireEvent.click(toevoegknop(1));
+
+    expect(await screen.findByText(t("kalender.plaatsThemasFout"))).toBeInTheDocument();
+
+    // The retry is a control, not just an instruction, and pressing it recovers into a usable picker.
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.roosterOpnieuw") }));
+
+    expect(await screen.findByLabelText(t("kalender.plaatsKies"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.plaatsThemasFout"))).toBeNull();
   });
 
   /** The picker itself, with the panel open, has to survive an axe structure check like every other panel here. */

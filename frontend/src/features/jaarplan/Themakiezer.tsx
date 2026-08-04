@@ -18,8 +18,11 @@ export interface ThemakiezerProps {
    *
    * Passed in rather than derived here because only the board holds the whole plan: a column knows its own
    * placements and nothing about the other eleven periods. Two things are built from it, and the second is the
-   * reason it exists at all: the *"staat al in themaperiode 3"* annotation, and withholding the thema that is
+   * reason it exists at all: the *"staat al in themaperiode 3"* annotation, and **disabling** the thema that is
    * already in **this** period, which the server refuses with a 400.
+   *
+   * *Disabling rather than omitting, since fix round 1.* Omitting it left the one confusing case silent: a teacher
+   * looking at a rejected card for that thema in this very column opened the picker and found it simply absent.
    */
   alGeplaatst: ReadonlyMap<string, readonly number[]>;
 }
@@ -96,7 +99,12 @@ export function Themakiezer({ klasId, blok, alGeplaatst }: ThemakiezerProps) {
         // called "Thema toevoegen" that each do something different (SC 2.4.6, and the same fix E1-14 made for its
         // per-subthema "Nieuwe activiteit").
         aria-label={t("kalender.plaatsToevoegenLabel", { ordinaal: blok.ordinaal })}
-        aria-expanded={false}
+        // **No `aria-expanded`** (fix round 1, antagonist MINOR). It was hard-coded to `false` on an element that
+        // ceases to exist the moment the value would be `true`, so it announced a toggle that never toggles. The
+        // trigger is replaced by the panel rather than sitting above it, which is a different pattern from
+        // `Themakaart`'s persistent disclosure; promising the collapsible one here would be a lie in every state that
+        // ever renders. Focus is moved into the panel on open and back here on close, which is what actually keeps a
+        // keyboard user oriented.
         onClick={() => setOpen(true)}
       >
         <span aria-hidden="true">+</span> {t("kalender.plaatsToevoegen")}
@@ -116,7 +124,27 @@ export function Themakiezer({ klasId, blok, alGeplaatst }: ThemakiezerProps) {
     <div className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2.5">
       {themas.isPending && <p className="text-xs text-ink-zacht">{t("kalender.plaatsLaden")}</p>}
 
-      {themas.isError && <Foutmelding>{t("kalender.plaatsThemasFout")}</Foutmelding>}
+      {/* A retry the sentence can actually point at (fix round 1, antagonist MINOR). The copy said "Probeer het
+          opnieuw" while the panel offered nothing but "Annuleren", so the only route was close-and-reopen and nothing
+          named it: an instruction pointing at nothing, which is the E3-06 rule applied to copy. The board's own
+          precedent for exactly this situation is a real button (`kalender.roosterOpnieuw`), reused here rather than
+          reinvented, including its in-flight label. */}
+      {themas.isError && (
+        <>
+          <Foutmelding>{t("kalender.plaatsThemasFout")}</Foutmelding>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={themas.isFetching}
+            onClick={() => void themas.refetch()}
+          >
+            {themas.isFetching
+              ? t("kalender.roosterOpnieuwBezig")
+              : t("kalender.roosterOpnieuw")}
+          </Button>
+        </>
+      )}
 
       {/* Three dead ends, three sentences. "No thema's at all" is a different problem from "this period already
           holds them all": the first is solved elsewhere in the app and says where, the second is not a problem. */}
@@ -147,26 +175,37 @@ export function Themakiezer({ klasId, blok, alGeplaatst }: ThemakiezerProps) {
             className="w-full rounded-md border border-ink-zacht bg-card px-2 py-1.5 text-xs text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:opacity-60"
           >
             <option value="">{t("kalender.plaatsKiesLeeg")}</option>
-            {kiesbaar.map((thema) => {
+            {gesorteerd.map((thema) => {
+              const hier = alHier(thema.id);
+              // No need to exclude this period's own ordinal: `hier` being false is exactly the statement that it is
+              // not in here, and when `hier` is true the annotation below never reads `elders`.
               const elders = alGeplaatst.get(thema.id) ?? [];
 
               return (
-                <option key={thema.id} value={thema.id}>
+                // **Rendered and disabled, not filtered out** (fix round 1, antagonist MINOR). The first version
+                // dropped the thema already in this period from the list entirely, which left the one genuinely
+                // confusing case unexplained: a teacher looking at a rejected card for "Herfst" in this very column
+                // opens the picker and finds Herfst simply absent. Disabling it says why, and it is what the
+                // otherwise-dead `plaatsThemaKeuzeHier` key was written for. The submit button stays gated on a real
+                // choice, and `plaatsAllesAlHier` still covers the case where nothing is selectable.
+                <option key={thema.id} value={thema.id} disabled={hier}>
                   {/* The thema's own name is domain data, so it is rendered bare; the annotation around it is
                       authored copy and comes from nl.json (Art. II.3). The annotation is the one thing this picker
                       does that a plain list would not: it tells the teacher where the thema already sits in the year
                       before they plan it a second time by accident. */}
-                  {elders.length === 0
-                    ? thema.naam
-                    : elders.length === 1
-                      ? t("kalender.plaatsThemaKeuzeElders", {
-                          naam: thema.naam,
-                          ordinaal: elders[0],
-                        })
-                      : t("kalender.plaatsThemaKeuzeEldersMeervoud", {
-                          naam: thema.naam,
-                          ordinalen: formatteerOrdinalen(elders),
-                        })}
+                  {hier
+                    ? t("kalender.plaatsThemaKeuzeHier", { naam: thema.naam })
+                    : elders.length === 0
+                      ? thema.naam
+                      : elders.length === 1
+                        ? t("kalender.plaatsThemaKeuzeElders", {
+                            naam: thema.naam,
+                            ordinaal: elders[0],
+                          })
+                        : t("kalender.plaatsThemaKeuzeEldersMeervoud", {
+                            naam: thema.naam,
+                            ordinalen: formatteerOrdinalen(elders),
+                          })}
                 </option>
               );
             })}
@@ -206,17 +245,37 @@ export function Themakiezer({ klasId, blok, alGeplaatst }: ThemakiezerProps) {
         </Button>
       </div>
 
-      {/* 400 means the plan moved since this page loaded (someone else added the same thema, or the vakantiedata
-          changed under the grid) and rereading the screen is the fix. Anything else means the tool is broken, and
-          telling a teacher to look again would send them round a loop that cannot succeed. The same split the move
-          path makes, after it learned the hard way that branching on `isError` tells everyone to retry. */}
+      {/* **Three branches, not two** (fix round 1, antagonist MINOR). 400 means the plan moved since this page loaded
+          (someone else added the same thema, or the vakantiedata changed under the grid) and rereading the screen is
+          the fix. **404 means the thema itself is gone**, deleted through E1-14's beheer screen while this picker held
+          a cached list — a case this story's own unit test calls reachable in practice, and which the first version
+          answered with "meld dit aan de beheerder", advice a teacher cannot act on for something they can fix by
+          reloading. `Themakaart` already had the right precedent (`vergrendelVerdwenen`). Only what is left over means
+          the tool is broken, and there telling a teacher to look again would send them round a loop that cannot
+          succeed. The same split the move path makes, after it learned the hard way that branching on `isError` tells
+          everyone to retry. */}
       {toevoegen.isError && (
-        <Foutmelding>
-          {toevoegen.error instanceof ApiError && toevoegen.error.status === 400
-            ? t("kalender.plaatsMislukt")
-            : t("kalender.plaatsOnbeschikbaar")}
-        </Foutmelding>
+        <Foutmelding>{plaatsFoutmelding(toevoegen.error)}</Foutmelding>
       )}
     </div>
   );
+}
+
+/**
+ * Which sentence a failed hand-placement gets, keyed on the status rather than on `isError`.
+ *
+ * A named function per {@link Themakaart}'s `statusFoutmelding` precedent, rather than a nested ternary in the JSX:
+ * the point of this mapping is that it is **three** cases and readable as three, since collapsing two of them is the
+ * defect fix round 1 repaired here and the defect E3-07 repaired on the move path before that.
+ */
+function plaatsFoutmelding(fout: unknown): string {
+  if (fout instanceof ApiError && fout.status === 400) {
+    return t("kalender.plaatsMislukt");
+  }
+
+  if (fout instanceof ApiError && fout.status === 404) {
+    return t("kalender.plaatsThemaVerdwenen");
+  }
+
+  return t("kalender.plaatsOnbeschikbaar");
 }

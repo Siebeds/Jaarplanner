@@ -364,7 +364,13 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // Which periods each thema already occupies (E4-03), for the hand-placement picker. Derived once for the board
   // because it is a fact about the whole plan: a column sees only its own placements, so it could not tell a teacher
   // that a thema already sits in period 3. Status-blind on purpose — see `themaPeriodeOrdinalen`.
-  const alGeplaatst = themaPeriodeOrdinalen(plan.plaatsingen, grid.blokken);
+  //
+  // **The board's own tier is passed explicitly** (fix round 1, antagonist MINOR). Left to the default, the map was
+  // built from whichever grid was on screen while the copy hard-codes *"themaperiode {ordinaal}"*, so at the fine tier
+  // a coarse placement whose start coincides with a sub-block's start would have been annotated with the *fine*
+  // ordinal. Only the `verplaatsstaat === "kan"` gate kept that off screen, which is a coincidence rather than a
+  // reason. Passing the tier makes the map correctly empty at the fine tier instead of quietly wrong.
+  const alGeplaatst = themaPeriodeOrdinalen(plan.plaatsingen, grid.blokken, bordNiveau);
 
   const ordinaalVan = (blokStart: unknown) =>
     grid.blokken.find((blok: Planningsblok) => blok.start === blokStart)?.ordinaal;

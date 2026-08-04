@@ -137,17 +137,33 @@ export function geplandeIn(plaatsingen: readonly Themaplaatsing[]): Themaplaatsi
  * makes them display-only, exactly as ADR-0020 §3 requires: nothing derived here is ever sent back to the
  * server, which is keyed on `blokStart` throughout.
  *
- * Placements at another tier and stale ones whose date matches no current period are skipped: neither can be
- * named by an ordinal that exists, and a stale placement's own period is precisely what is unknown.
+ * Two classes of placement are skipped, and **both are matched explicitly rather than left to fall out of the
+ * arithmetic** (E4-03 fix round 1, antagonist MINOR): one at another tier, and a stale one whose stored date is no
+ * longer any period's start. Neither can be named by an ordinal that exists, and a stale placement's own period is
+ * precisely what is unknown.
+ *
+ * *The tier check is the one that had to be added.* An earlier revision of this comment claimed it while the body
+ * read only `blokStart`, so the skip held by luck: it worked only while a fine-tier start happened not to coincide
+ * with a coarse one, and **each themaperiode's first sub-block shares its parent's start date** — the very property
+ * this story's own backend test documents. So the single input class the claimed filter existed for was exactly the
+ * one that slipped through. Unreachable today (nothing writes a `Subthemaperiode` placement), which is why it was a
+ * false comment rather than a live defect, and why the fix is one predicate.
  */
 export function themaPeriodeOrdinalen(
   plaatsingen: readonly Themaplaatsing[],
   blokken: readonly Planningsblok[],
+  niveau: Planningsblokniveau = "Themaperiode",
 ): ReadonlyMap<string, readonly number[]> {
+  // `blokken` is already one tier's grid — it comes from `/rooster?niveau=…` — so there is nothing to filter here,
+  // and a first draft of this fix tried to, against a `niveau` field `Planningsblok` does not have.
   const ordinaalPerStart = new Map(blokken.map((blok) => [blok.start, blok.ordinaal]));
   const perThema = new Map<string, number[]>();
 
   for (const plaatsing of plaatsingen) {
+    if (plaatsing.blokNiveau !== niveau) {
+      continue;
+    }
+
     const ordinaal = ordinaalPerStart.get(plaatsing.blokStart);
     if (ordinaal === undefined) {
       continue;
