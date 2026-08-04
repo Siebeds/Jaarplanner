@@ -84,3 +84,31 @@ it: E4-02 made it reachable in **one press** instead of requiring a vakantiedata
 ruling of 2026-08-04 (a rejected stale placement leaves the figure trustworthy) is what turns an
 inconsistency into a **false sentence**. **The owner decided on 2026-08-04 to verify it separately and route
 it later**; E3-09 is still `[ ]`, so nobody holds it today.
+
+## The fix, and what pins it
+
+`Themakaart.tsx` branches the rejected card's first paragraph on `isVervallen`, exactly as the rejected
+section two paragraphs below already branches `weigeringUitleg`. One new key,
+`kalender.weigeringEerstTerugdraaienVervallen`, identical to the shared string minus *andere*.
+
+**Measured in the browser after the fix**, both branches, real API + real PostgreSQL:
+
+| Card | First paragraph ends | `andere themaperiode` | says "geen enkele periode" | `<select>` |
+|---|---|---|---|---|
+| `Geweigerd` + stale (`Verkeer`) | *"…een themaperiode geven."* | **no** | yes | 0 |
+| `Geweigerd` in a period (`Herfst en oogst`) | *"…een **andere** themaperiode geven."* | yes | no | 0 |
+
+**Gates:** 315 vitest / 15 files (314 on `main` + 1), `eslint --max-warnings 0` clean, `pnpm build`
+(`tsc -b`, the type check that actually runs — see E7-17) clean. Backend untouched.
+
+**Mutation testing, reported with what was *not* mutated** (E4-02's rule: six-for-six says nothing about
+what you did not assert). Three mutations aimed at the branch the new assertions discriminate on, three
+caught: reverting the branch to the shared string → **2** failures; giving the new key *andere* back → **1**;
+swapping the two branches → **3**. **Not mutated:** the `isGeweigerd` guard itself and the picker suppression
+(both already pinned by E3-08's tests, which still pass), and `vervallenPlaatsingen` (unchanged by this fix).
+
+**At 390px:** the sentence does not overflow its container (253px in a 297px card), and the page does not
+scroll horizontally (`body` 375 = 375). A `documentElement.scrollWidth` of 1700 in the iframe harness was
+chased down rather than reported: every element past the viewport sits inside a deliberate scroll container,
+the `<nav>` being `overflow-x-auto` with a 571px list in a 347px track. It reproduces E4-02's own figure and
+is not a defect.
