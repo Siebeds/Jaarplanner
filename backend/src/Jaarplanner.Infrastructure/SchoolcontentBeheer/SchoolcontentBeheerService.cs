@@ -465,7 +465,12 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         var bestaat = await _context.Leerplandoelen.AsNoTracking().AnyAsync(l => l.Code == code, cancellationToken);
         if (!bestaat)
         {
-            throw new SchoolcontentValidatieFout($"Onbekende leerdoelcode '{code}' — koppeling geweigerd (Art. III.5).");
+            // Art. III.5 (a leerplandoel's code is its stable identity, so an unknown one is refused rather
+            // than created) is the rule; the sentence deliberately does not cite it. This message is read by a
+            // teacher linking a goal, and an article number is not something they can act on. It also carries
+            // no em dash (Art. II.5). Recorded here because E1-14 landing 2 is the first screen to render it.
+            throw new SchoolcontentValidatieFout(
+                $"Leerplandoel '{code}' staat niet bij de ingeladen Op.stap-doelen, dus er is niets gekoppeld.");
         }
 
         return code;
@@ -476,13 +481,17 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         if (klasId == Guid.Empty)
         {
-            throw new SchoolcontentValidatieFout("Een subthema is klas-gebonden; een klas is verplicht (Art. IX.2).");
+            // Art. IX.2 makes the class scope structural for a subthema. Same reasoning as above: the rule
+            // stays in the comment, the sentence says what the reader has to do.
+            throw new SchoolcontentValidatieFout("Een subthema hoort altijd bij één klas. Kies eerst een klas.");
         }
 
         var bestaat = await _context.Klassen.AsNoTracking().AnyAsync(k => k.Id == klasId, cancellationToken);
         if (!bestaat)
         {
-            throw new SchoolcontentValidatieFout($"Onbekende klas '{klasId}'.");
+            // The id is deliberately left out: a raw GUID is not a sentence a teacher can act on, and the
+            // caller already knows which id it sent. Same correction as the 404-on-delete case in the UI.
+            throw new SchoolcontentValidatieFout("Die klas bestaat niet meer. Kies een klas uit de lijst.");
         }
     }
 
