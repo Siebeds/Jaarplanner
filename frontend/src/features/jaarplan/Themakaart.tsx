@@ -107,15 +107,77 @@ export interface ThemakaartProps {
  *
  * **Nor does the lock make a thema count.** Only `aanvaard`/`manueel` placements count as placed for the dekking,
  * so a locked `voorgesteld` thema is safe from the AI and worth nothing to an onderwijsinspectie. The panel draws
- * that distinction in words (owner ruling, 2026-07-31); the accept control that resolves it is **E4-01/E4-02's**,
- * deliberately not built here, so the copy states the condition rather than pointing at a button. The condition is
- * phrased as *the teacher taking the proposal over* rather than as the status `aanvaard`: both `aanvaard` and
- * `manueel` count (the binding reading in E5), and "Verplaatsen" on this very card is the route to `manueel`, so
- * naming only `aanvaard` would name the one status this screen cannot set while omitting the one it can.
+ * that distinction in words (owner ruling, 2026-07-31) and now points at the control that resolves it, which is
+ * **this story's** (E4-02).
+ *
+ * **The decision pair lives on the card face; every edit stays behind "Aanpassen" (E4-02, FR-7.1, Art. IV.1).**
+ * Before this story the screen could send exactly one status, `Manueel`, from the un-reject button — so neither
+ * `Aanvaard` nor `Geweigerd` was reachable, the whole rejected-card state below was code for a state no teacher
+ * could produce, and a generated plan reported 0% dekking with dragging every card as the only route to a figure.
+ * Fifth instance of the E2-08 / E1-15 / E0-10 / E4-06 pattern: server, endpoint, client, hook and badge all
+ * existed, the switch did not.
+ *
+ * *Why the face and not the panel*, which is the one structural choice here. The panel holds six actions of two
+ * different kinds: **decisions** (aanvaarden, weigeren), which are what a `voorgesteld` card is waiting for, and
+ * **adjustments** (verplaatsen, vastzetten, uit de periode halen). Reviewing a generated plan of a dozen cards by
+ * opening a dozen disclosures is the "overzichtelijk beats exhaustive" failure in its purest form, and "Aanpassen"
+ * is an honest label for adjusting and a dishonest one for deciding. Consequence, and it is deliberate: since the
+ * pair renders only while a decision is outstanding, **the board empties as the teacher works** and a card with no
+ * buttons left is a reviewed card.
+ *
+ * *Weight follows `DoelsuggestieLijst`*: aanvaarden filled, weigeren `outline`, so the same decision reads the same
+ * way wherever a teacher meets it, exactly as the shared status-badge tokens already do. **That is why
+ * "Verplaatsen" below is no longer the default variant** — two filled buttons on a 288px card are two main
+ * actions, and moving a thema is not the main thing to do with a proposal. `secondary` was not an option: E7-10
+ * records that variant at 1,16:1 against the card with no border at all.
+ *
+ * *On a **stale** card the two halves of the decision part company, and the asymmetry is the point.*
+ * **Aanvaarden is withheld**, for the reason E4-06 established for the lock: accepting would produce a card
+ * labelled "Aanvaard" that still covers nothing and still withholds the whole dekking figure, so it resolves
+ * nothing while looking as though it had. **Weigeren is offered**, and the first version of this story wrongly
+ * withheld it too, by carrying the accept argument across to a case it does not describe. `DekkingService`
+ * counts `IsVervallen && !IsGeweigerd` as unresolved, so **a weigering is precisely what resolves a stale
+ * proposal** and restores the withheld figure; that service was written expecting this state to exist. Without
+ * it, a teacher who wants to say *no* to a stale proposal has two routes and both are wrong: re-placing it sets
+ * `Manueel`, which makes the thema **count** (the opposite of rejecting it, and there is then no decision pair
+ * left to undo it), and "Uit het jaarplan halen" is unrecoverable in a codebase with no soft delete. Offering
+ * a resolution is not the same as offering a *keep* remedy, which is what E4-06 actually banned here.
+ *
+ * *One consequence for E5:* `DekkingService`'s comment justifies poisoning the figure on a stale `voorgesteld`
+ * placement by saying "the teacher may still accept it". After this story they cannot. The conclusion survives
+ * because re-placement still raises the figure, but the stated reason is now half stale, and E5-02 should not
+ * quote it.
  */
 export function Themakaart({ plaatsing, klasId, blokken, verplaatsstaat }: ThemakaartProps) {
   const [paneelOpen, setPaneelOpen] = useState(false);
   const paneelId = useId();
+
+  // Hoisted to the card and passed down, rather than one instance here and another in the panel. One placement has
+  // one status, so two instances could each hold their own `isPending` over the same row, and it puts the pending
+  // flag and the announcement in one place.
+  //
+  // **This closes one direction of the race, not both, and the earlier version of this comment claimed both.**
+  // The panel's `bezig` includes `statuswijziging.isPending`, so a decision in flight disables Verplaatsen,
+  // Vastzetten and the delete. The reverse is open: these face buttons check only `statuswijziging.isPending`, so
+  // with the panel open a teacher can fire Verplaatsen and then Aanvaarden and leave two PUTs against one row
+  // outstanding, with last-response-wins deciding the visible status (`usePlanMutatie` does not serialise, and both
+  // handlers write the whole plan into the cache). Left open deliberately rather than fixed: closing it means the
+  // card face reading four mutations' pending flags, i.e. the panel's whole `bezig` lifted to the card, which is a
+  // larger change to E3-07's and E4-06's controls than this story should make. The consequence is bounded — every
+  // one of those writes returns the full plan, so the board self-corrects on the next response, and no write is
+  // lost or silently reordered server-side. Stated so the next story can close it on purpose.
+  const statuswijziging = useWijzigPlaatsingStatus(klasId);
+
+  /**
+   * The two halves of the decision, deliberately **not** one flag.
+   *
+   * They were one flag in this story's first version, which is how the accept argument silently annexed the
+   * reject case. Splitting them makes the asymmetry a decision someone has to look at: see the class note for
+   * why a stale proposal may be rejected but not accepted, and `DekkingService`'s
+   * `IsVervallen && !IsGeweigerd` for the code that depends on it.
+   */
+  const magAanvaarden = plaatsing.status === "Voorgesteld" && !plaatsing.isVervallen;
+  const magWeigeren = plaatsing.status === "Voorgesteld";
 
   // A rejected placement is not draggable at all. Moving it would convert the rejection to `Manueel`, which is
   // the one transition here that changes dekking (Art. V.1) — the server refuses it, and offering a grip that
@@ -150,6 +212,27 @@ export function Themakaart({ plaatsing, klasId, blokken, verplaatsstaat }: Thema
         isDragging ? "opacity-40" : "",
       ].join(" ")}
     >
+      {/* The decision announced, not only shown (WCAG 2.2 SC 4.1.3). The status badge changing from "Voorgesteld"
+          to "Aanvaard" is silent to a screen reader, and the buttons that made it happen unmount in the same render
+          because `magWeigeren` turns false, so this region has to sit **outside** that block or it would announce
+          into a subtree that no longer exists. That is not a hypothetical: E4-06 shipped the same fix inside the
+          lock section, found it silent in exactly the case that mattered, and moved it to panel level.
+
+          Keyed on the persisted `plaatsing.status`, so it reports what the server stored rather than what was
+          requested. `isSuccess` goes false while the next request is in flight, which empties the text and lets a
+          repeat announce. */}
+      <p role="status" className="sr-only">
+        {statuswijziging.isSuccess
+          ? plaatsing.status === "Aanvaard"
+            ? t("kalender.beslisAanvaard", { thema: plaatsing.themaNaam })
+            : plaatsing.status === "Geweigerd"
+              ? t("kalender.beslisGeweigerd", { thema: plaatsing.themaNaam })
+              : plaatsing.status === "Manueel"
+                ? t("kalender.beslisManueel", { thema: plaatsing.themaNaam })
+                : ""
+          : ""}
+      </p>
+
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-1.5">
           {/* Pointer-only affordance: see the class note. `touch-none` stops the browser claiming the gesture
@@ -206,6 +289,73 @@ export function Themakaart({ plaatsing, klasId, blokken, verplaatsstaat }: Thema
       )}
 
       <div className="mt-2.5 border-t border-border pt-2">
+        {/* Inside the existing actions block rather than in a section of its own: one hairline separates "the card"
+            from "what you can do with it", and decisions come before the adjust link in reading order. A second
+            divider would be a new structural device for a distinction the button weights already carry.
+
+            No general explanation here, deliberately: what a decision means for the dekking is stated once above
+            the board (`kalender.beslisUitleg`), because prose repeated on a dozen cards is the first thing this
+            screen cuts. The one sentence that *is* per-card is the stale exception below, because it is true of
+            this card and false of its neighbours, which is exactly the kind of fact a shared line cannot carry. */}
+        {magWeigeren && (
+          <div className="mb-2 flex flex-col gap-1.5">
+            {/* Why this card offers a weigering and no aanvaarding. Without it the missing button is a silent
+                omission, and the sentence above the board would be telling this teacher to do something this card
+                does not let them do. The same treatment `vergrendelUitlegVervallen` already gives the lock. */}
+            {!magAanvaarden && (
+              <p className="text-xs leading-snug text-ink-zacht">{t("kalender.beslisVervallen")}</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {/* Each button reports only its **own** request as busy. `statuswijziging.isPending` alone would put
+                  "Bezig…" on "Aanvaarden" while the teacher's "Weigeren" is in flight, which is the mistake E4-06
+                  fixed on the lock toggle. `variables` is the in-flight argument, so no extra state is needed.
+
+                  The `aria-label` deliberately keeps naming the thema while the visible label flips to "Bezig…", so
+                  the two disagree for the duration of the request (SC 2.5.3). Left as the file's existing pattern
+                  (`aanpassen`/`aanpassenSluiten` do the same) rather than fixed in two controls only; routed to
+                  E7-10 with the SC 2.5.8 item, so the screen gets one answer instead of three. */}
+              {magAanvaarden && (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={statuswijziging.isPending}
+                  aria-label={t("kalender.aanvaardenLabel", { thema: plaatsing.themaNaam })}
+                  onClick={() =>
+                    statuswijziging.mutate({ plaatsingId: plaatsing.id, status: "Aanvaard" })
+                  }
+                >
+                  {statuswijziging.isPending && statuswijziging.variables?.status === "Aanvaard"
+                    ? t("kalender.bezig")
+                    : t("kalender.aanvaarden")}
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={statuswijziging.isPending}
+                aria-label={t("kalender.weigerenLabel", { thema: plaatsing.themaNaam })}
+                onClick={() =>
+                  statuswijziging.mutate({ plaatsingId: plaatsing.id, status: "Geweigerd" })
+                }
+              >
+                {statuswijziging.isPending && statuswijziging.variables?.status === "Geweigerd"
+                  ? t("kalender.bezig")
+                  : t("kalender.weigeren")}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* A failed decision leaves the card `Voorgesteld`, so `magWeigeren` is still true and this sits beside the
+            buttons that produced it. The panel renders the same mutation's error for the un-reject button; the two
+            can never both show, because that section needs `Geweigerd` and these buttons need `Voorgesteld`. */}
+        {magWeigeren && statuswijziging.isError && (
+          <div className="mb-2">
+            <Foutmelding>{statusFoutmelding(statuswijziging.error)}</Foutmelding>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={() => setPaneelOpen((open) => !open)}
@@ -223,6 +373,7 @@ export function Themakaart({ plaatsing, klasId, blokken, verplaatsstaat }: Thema
             plaatsing={plaatsing}
             klasId={klasId}
             blokken={blokken}
+            statuswijziging={statuswijziging}
             verplaatsstaat={verplaatsstaat}
             onKlaar={() => setPaneelOpen(false)}
           />
@@ -270,6 +421,7 @@ function Bewerkpaneel({
   plaatsing,
   klasId,
   blokken,
+  statuswijziging,
   verplaatsstaat,
   onKlaar,
 }: {
@@ -277,6 +429,8 @@ function Bewerkpaneel({
   plaatsing: Themaplaatsing;
   klasId: string;
   blokken: readonly Planningsblok[];
+  /** Owned by {@link Themakaart}: one placement has one status. See the note at its declaration. */
+  statuswijziging: ReturnType<typeof useWijzigPlaatsingStatus>;
   verplaatsstaat: Verplaatsstaat;
   onKlaar: () => void;
 }) {
@@ -285,7 +439,6 @@ function Bewerkpaneel({
 
   const verplaats = useVerplaatsPlaatsing(klasId);
   const verwijder = useVerwijderPlaatsing(klasId);
-  const statuswijziging = useWijzigPlaatsingStatus(klasId);
   const vergrendeling = useWijzigVergrendeling(klasId);
 
   const bezig =
@@ -498,9 +651,16 @@ function Bewerkpaneel({
             <p className="text-xs leading-snug text-ink-zacht">{t("kalender.verplaatsGevolg")}</p>
           )}
 
+          {/* `outline`, not the default filled variant (E4-02). It used to be the card's only primary, which put the
+              loudest weight on an adjustment while the decision the card was actually waiting for had no control at
+              all. Now that "Aanvaarden" is that primary on the face, a filled button here would be a second main
+              action on a 288px card. All three adjustments therefore read as one family, with the unrecoverable one
+              marked out by `destructiveOutline` (E4-06 ruling 2), which is a cleaner hierarchy than before rather
+              than a flatter one: the picker's own label and `select` already say what this button submits. */}
           <Button
             type="button"
             size="sm"
+            variant="outline"
             disabled={bezig || doelBlok.length === 0}
             onClick={() =>
               verplaats.mutate(
@@ -535,11 +695,22 @@ function Bewerkpaneel({
               {/* The distinction the kalender otherwise never draws, and the reason the nudge above is safe to
                   ship (owner ruling, 2026-07-31). Locking keeps a thema in its period; only `aanvaard` or
                   `manueel` makes it count as placed for the dekking (the binding reading in E5), and a locked
-                  `voorgesteld` placement counts for nothing there. The condition is worded as the teacher taking
-                  the proposal over, which is what covers **both** counting statuses and stays satisfiable on this
-                  screen today: "Verplaatsen" above sets `Manueel`. Stated as a condition rather than as an
-                  instruction, because the accept control is E4-01/E4-02's and is deliberately not built here.
-                  Only on a proposal, where that decision is still ahead of the teacher. */}
+                  `voorgesteld` placement counts for nothing there.
+
+                  **Reworded by E4-02, which retired the reason for the old phrasing.** It used to say the thema
+                  counts once the teacher "takes the proposal over" — a *condition* rather than an instruction,
+                  covering both `aanvaard` and `manueel`, deliberately naming no button because the accept control
+                  did not exist. It exists now, on this card's face, so the sentence names it:
+                  *"Aanvaard het thema als het moet meetellen."* Two things that phrasing gives up, recorded rather
+                  than glossed: it names one of the two counting statuses, and it is an imperative. Both are
+                  acceptable here and only here, because this paragraph renders **only** on a non-stale
+                  `voorgesteld` placement, which is exactly the state where "Aanvaarden" is on screen a few lines
+                  up. On any other state it would point at a control that is not there. A future story that
+                  loosens this condition has to re-read the string, not just the guard.
+
+                  Note for E4-05/E4-07: this is not one of the six `kalender.vergrendel*` strings E4-06 listed for
+                  re-reading (it makes no hergeneratie claim), but it *has* changed since E4-06 quoted it, so read
+                  the file rather than that list. */}
               {isVoorstel && !plaatsing.isVervallen && (
                 <p className="text-xs leading-snug text-ink-zacht">{t("kalender.vergrendelDekking")}</p>
               )}
@@ -589,7 +760,34 @@ function Bewerkpaneel({
 
       {plaatsing.status === "Geweigerd" && (
         <div className="flex flex-col gap-1.5 border-t border-border pt-2.5">
-          <p className="text-xs leading-snug text-ink-zacht">{t("kalender.weigeringUitleg")}</p>
+          {/* Two variants, because E4-02 made the second state reachable in one click and the single string was
+              false about it. `weigeringUitleg` (E4-06) closes with *"het thema komt dan als jouw eigen keuze in
+              deze themaperiode"* — true of a rejection inside a real period, and a promise of a period that does
+              not exist on a **stale** card: un-rejecting yields `Manueel` with `isVervallen` still true, so the
+              card stays in the "Te herzien" notice and `DekkingService` still excludes it. It also contradicted
+              `weigeringEerstTerugdraaien`, printed a few lines above on the same card, which correctly describes
+              the reversal and the re-placement as two steps. One card, two sentences, opposite claims: the exact
+              shape E3-07 is reopened over.
+
+              Before this story that state took a rejection *plus* a vakantie edit by the school. Now "Weigeren"
+              sits on the stale card and `beslisVervallen` recommends it, so the false promise became the
+              advertised destination. That is why the split is this story's and not E5-02's.
+
+              **One gap the split does not close, recorded rather than left implicit (round-3 audit).** This
+              branches on the server's `isVervallen`, while `kalenderFormat.vervallenPlaatsingen` puts a card in
+              the "Te herzien" notice on the wider `isVervallen || !starts.has(blokStart)` — a deliberate client
+              fallback for the two views disagreeing. On a card caught only by that fallback, this renders
+              `weigeringUitleg`, i.e. the sentence above, on a card that is in no period. Left on the server flag
+              on purpose: it is the one the *server* also uses to derive dekking, so the copy stays aligned with
+              the figure rather than with the notice, and the divergence is a transient race between two
+              independently refetching queries rather than a steady state. Widening this branch would align it
+              with the notice and mis-align it with `DekkingService`, which is the worse trade while E5-02's
+              ruling on that divergence is still open. */}
+          <p className="text-xs leading-snug text-ink-zacht">
+            {plaatsing.isVervallen
+              ? t("kalender.weigeringUitlegVervallen")
+              : t("kalender.weigeringUitleg")}
+          </p>
           <Button
             type="button"
             size="sm"
@@ -601,7 +799,9 @@ function Bewerkpaneel({
           >
             {statuswijziging.isPending ? t("kalender.bezig") : t("kalender.weigeringTerugdraaien")}
           </Button>
-          {statuswijziging.isError && <Foutmelding>{t("kalender.statusMislukt")}</Foutmelding>}
+          {statuswijziging.isError && (
+            <Foutmelding>{statusFoutmelding(statuswijziging.error)}</Foutmelding>
+          )}
         </div>
       )}
 
@@ -721,6 +921,31 @@ function Foutmelding({ children }: { children: string }) {
       {children}
     </p>
   );
+}
+
+/**
+ * Which sentence a failed status change gets.
+ *
+ * A 404 means the placement is gone from the plan and this browser is looking at a stale board, so reloading is the
+ * fix; anything else means the tool is broken, and "probeer het opnieuw" is then a loop that cannot succeed.
+ *
+ * **This is the lock toggle's split, not the move path's**, and an earlier version of this comment ran the two
+ * together. The lock branches on **404** with these same two meanings. The move path branches on **400** with
+ * different ones: a 400 there is *fixable by choosing differently* (the server refuses a date that starts no
+ * period, or a thema already in the target period, all three documented as 400 on `JaarplanController`), so its
+ * fixable case is "pick another period" rather than "reload". What the two share is only the shape: branch on the
+ * status code, never echo the server's body. Two audits (E3-07 on the move, E4-06 on the lock) each required that
+ * shape of a control in this panel, which is why the third one was built with it.
+ *
+ * *The text of `statusVerdwenen` duplicates `vergrendelVerdwenen` word for word today, and that is deliberate rather
+ * than an oversight.* They are the same fact about the same object reported under two different controls, and the
+ * lock family is guarded as a family (`catalogus.test.ts`), so folding them into one key would put a decision string
+ * inside a prefix whose next reword is aimed at the lock.
+ */
+function statusFoutmelding(fout: unknown) {
+  return fout instanceof ApiError && fout.status === 404
+    ? t("kalender.statusVerdwenen")
+    : t("kalender.statusMislukt");
 }
 
 /** Maps the API's PascalCase status onto the nl.json key for it. */
