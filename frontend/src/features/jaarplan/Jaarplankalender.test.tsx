@@ -3248,6 +3248,51 @@ describe("Jaarplankalender — een thema met de hand plannen (E4-03, FR-7.2)", (
     expect(screen.queryByText(t("kalender.plaatsThemasFout"))).toBeNull();
   });
 
+  /**
+   * The third <code>Verplaatsstaat</code>: a tier the app does not recognise. `Planningsrooster.niveau` is a plain
+   * `string` on purpose (it is what the server said, not what this app hopes), so an unknown value is a real branch
+   * and it gets its own sentence rather than borrowing the fine tier's, which would send the teacher to a view they
+   * may already be on. Added in fix round 1 after the test-runner reported this `PLAATSUITLEG` entry as the one
+   * unexercised branch — coverage rather than a suspected defect, which is exactly why it is cheap to close.
+   */
+  it("says hand-planning is unavailable when the tier is unrecognised, without naming another view", async () => {
+    stubPlaatsen(maakJaarplan([]));
+    // The server answers a tier this app has no name for. `stubPlaatsen` serves `rooster` for anything that is not
+    // the fine tier, so overriding its `niveau` is enough.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify(BIBLIOTHEEK), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify({ ...rooster, niveau: "Kwartaal" }), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(maakJaarplan([])), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.plaatsNiveauOnbekend"))).toBeInTheDocument();
+    // Not the fine tier's sentence, which names "de weergave Themaperiodes" and would be an instruction the teacher
+    // cannot act on here.
+    expect(screen.queryByText(t("kalender.plaatsAnderNiveau"))).toBeNull();
+    // And no control, since there is no tier to plan into.
+    expect(
+      screen.queryByRole("button", { name: t("kalender.plaatsToevoegenLabel", { ordinaal: 1 }) }),
+    ).toBeNull();
+  });
+
   /** The picker itself, with the panel open, has to survive an axe structure check like every other panel here. */
   it("has no axe violations with the picker OPEN", async () => {
     stubPlaatsen(maakJaarplan([]));

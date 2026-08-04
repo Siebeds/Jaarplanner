@@ -173,6 +173,21 @@ luck. Both sides are sorted now, with the reason in a comment.
   descendant scroll content. **`documentElement.scrollWidth` is the wrong probe when a descendant
   scrolls**; ask whether the *window* can scroll.
 
+## Gate outcome
+
+**Antagonist round 1: VIOLATIONS FOUND** (1 MAJOR, 5 MINOR, 2 QUESTION), **no code-level constitutional
+violation**; all fixed or routed. **Test-runner: PASS on all eight claims, no defects**, four MINOR. Full
+dispositions and the cross-check between the two in [`antagonist.md`](antagonist.md); the independent
+verification in [`test-report.md`](test-report.md), with three browser screenshots in `gate-evidence/`.
+
+The one-line summary of the round: **the MAJOR and three of the five MINORs were in prose, not code** — a claim
+about the repository that a single `grep` falsified, and two comments that had stopped describing their code.
+Both gates independently flagged the same two lines. Figures after the fix round: **542 unit + 180 integration
+(0 skipped) + 392 frontend**, format / lint / build clean, and the fix round's own new claims mutation-checked
+in both directions (removing `autoFocus` kills the focus-on-open test; collapsing the 404 branch kills the
+deleted-thema test). *One mutation check had to be repeated:* the first attempt did not apply, so the test
+passed trivially and briefly looked like proof, which is the trap this project keeps recording.
+
 ## Two disclosures
 
 1. **I wrote to the shared dev database by accident and reversed it.** `ConnectionStrings__Jaarplanner`

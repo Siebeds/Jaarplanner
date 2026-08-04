@@ -116,3 +116,133 @@ E1-14 endpoints on `Themas`/`Subthemas`/`Activiteiten`. The one verb-by-object c
 moving an activiteit to another subthema; the implementer disclosed it rather than claiming it, and it is now
 filed as E4-08 in the working tree. It is not needed for "a fully hand-built plan is possible", so it does
 not block this criterion, but whether E4-03 may close with that cell open is the owner's call.
+
+---
+
+## Gates re-derived (measured on this tree, none copied)
+
+| Gate | Result |
+| --- | --- |
+| `dotnet test` with `JAARPLANNER_TEST_POSTGRES` | **542 unit + 180 integration, 0 failed, 0 skipped** — matches the implementer's figures exactly |
+| `corepack pnpm test` | **388 passed / 18 files** — matches exactly |
+| `corepack pnpm lint` (`eslint . --max-warnings 0 && tsc --noEmit`) | clean, exit 0 |
+| `corepack pnpm build` (the one that type-checks, E7-17) | clean, `built in 4.36s` |
+| `dotnet format --verify-no-changes` | clean, exit 0 |
+| axe **4.10.2 in a real browser**, picker open | **0 violations.** Five `incomplete` `color-contrast` nodes, all pre-existing chrome (an `aria-hidden` icon span, three empty period wells, the vertical vakantie label); none is an element this story added |
+| Backlog progress table at `4a6ad37` | **96 / 43 / 45%**, independently re-derived from the checkboxes: 10+18+9+10+7+9+9+17+7 = 96 stories, done 10+14+8+7+3+1 = 43. Correct. The working tree now reads 97/43/44% because the still-live implementer session added E4-08 at 17:19, and that recount is also correct. My own first count was wrong at 92 because the regex missed the `[!]` blocked marker; four epics use it. |
+
+### Mutation checks I ran myself, in a scratch clone
+
+| Mutation | Killed | Survived |
+| --- | --- | --- |
+| `KoppelingStatus.Manueel` to `Voorgesteld` | `Een_klas_zonder_jaarplan_krijgt_haar_eerste_thema_handmatig_zonder_enige_ai_aanroep` and `Een_handmatig_geplaatst_thema_overleeft_een_hergeneratie` | 539 others |
+| create-if-absent to 404 (`LaadOfMaakJaarplanAsync` becomes `LaadJaarplanAsync ?? throw`) | 6 E4-03 tests | `Handmatig_plaatsen_van_een_onbekend_thema_is_niet_gevonden`, the disclosed blind spot: confirmed real and confirmed harmless, since six other tests catch that regression |
+
+A third test, `De_frontendconstante_voor_het_generatieniveau_volgt_de_backend`, failed under both mutations.
+That is a scratch-copy artefact rather than a mutation kill: it walks up for a repo root holding both
+`backend/src` and `frontend/src`, and I copied only `backend/`.
+
+### The two disclosed blind spots, probed rather than repeated
+
+1. `Handmatig_plaatsen_van_een_onbekend_thema_is_niet_gevonden` reproduces exactly as disclosed: it survives
+   the create-if-absent mutation. Not a defect, because the behaviour is pinned six times over.
+2. A jsdom axe run cannot fail on `label-content-name-mismatch`, `duplicate-id-aria` or
+   `form-field-multiple-labels`, so I ran axe in the browser and read `incomplete` explicitly rather than only
+   `violations`. Nothing this story added appears in either list. SC 2.5.3 also holds by direct read: every
+   trigger's accessible name contains its visible label ("Thema toevoegen aan themaperiode 3" contains
+   "Thema toevoegen"), and all seven names are distinct.
+
+### Contrast and target size, composited and measured in the browser
+
+| Element | Measured | Threshold |
+| --- | --- | --- |
+| label "Zet in deze themaperiode", `rgb(21,39,46)` on white | **15.42:1** | SC 1.4.3 needs 4.5 |
+| select text, same colour | **15.42:1** | needs 4.5 |
+| select border `rgb(83,101,110)` on white | **6.08:1** | SC 1.4.11 needs 3 |
+| trigger label `rgb(21,39,46)` on white | **15.42:1** | needs 4.5 |
+| trigger border `rgb(150,138,115)` on white | **3.40:1** | needs 3 |
+| `plaatsGevolg` `rgb(83,101,110)` on white, 12px | **6.08:1** | needs 4.5 |
+| target sizes | trigger **266x36**, select **244x31** | SC 2.5.8 needs 24x24 |
+
+A harmless divergence worth recording: the implementer reported the trigger boundary at 3.21:1, composited
+against the `rgba(250,248,245,0.7)` well. I measured 3.40:1, because the trigger's own computed background is
+solid white, which is the nearer opaque ancestor. Both pass 3:1 and neither figure is wrong; they use
+different backdrops.
+
+**390px:** `windowScrollsX = false` after `scrollTo(9999,0)`, `body.scrollWidth === clientWidth === 390`, and
+the picker panel stays inside its column (a 244px select in a 288px column). Elements reported as past the
+viewport all sit inside `overflow-x: auto` scrollers (the board list, the nav list), which is the trap the
+implementer documented, reproduced here and dismissed for the same reason.
+
+**Console:** 0 errors and 0 warnings on the final page with the picker open. The only errors seen all session
+were the 500s I induced by killing my own API for dead end (b), plus `localhost:5496` refusals left in the
+shared browser profile by another session.
+
+---
+
+## Commands run
+
+- `dotnet test` in the worktree `backend/` with `JAARPLANNER_TEST_POSTGRES` set: 542 + 180, 0 skipped, exit 0
+- `corepack pnpm test`: 388 / 18 files, exit 0
+- `corepack pnpm lint`: exit 0. `corepack pnpm build`: exit 0. `dotnet format --verify-no-changes`: exit 0
+- `dotnet ef database update` against `jp_e403gate`, because the app does not auto-migrate, then
+  `dotnet run --project src/Jaarplanner.Api --no-launch-profile` with `ASPNETCORE_ENVIRONMENT=Development`,
+  `Demo__Seed=true` and `ASPNETCORE_URLS=http://127.0.0.1:5507`; `pnpm dev --port 5508` with `VITE_API_PROXY_TARGET`
+- `curl` probes: duplicate gives 400, ordinal body gives 400, non-boundary date gives 400, rejected re-place
+  gives 400, generation without AI config gives 500 and writes nothing; `GET .../dekking` read at every step
+- `psql` against `jp_e403gate` for every assertion about rows, never against the shared `jaarplanner`
+- Playwright MCP for the user flow; headless Chrome over CDP for axe 4.10.2, computed styles and the 390px probe
+- Mutation checks in a scratch clone under the session scratchpad
+
+One harness error of mine, recorded because it looked exactly like a product defect: a first attempt to place
+all seven thema's returned 400 for six of them and 200 for the seventh. `psql` on Windows emits CRLF, so every
+id except the last (command substitution strips the final newline) carried a stray carriage return inside the
+JSON body, which model binding correctly rejected. Re-run with `tr -d '\r'`: all seven return 200. The product
+was never involved.
+
+## Evidence files
+
+- `C:\source\Jaarplanner\.claude\worktrees\e4-03-handmatig-plaatsen\backlog\worklogs\E4-03\gate-evidence\e4-03-hand-built-plan-two-manueel-cards.png`
+- `C:\source\Jaarplanner\.claude\worktrees\e4-03-handmatig-plaatsen\backlog\worklogs\E4-03\gate-evidence\e4-03-picker-open-rejected-withheld.png` (rejected card visible while `Water` is withheld from the picker)
+- `C:\source\Jaarplanner\.claude\worktrees\e4-03-handmatig-plaatsen\backlog\worklogs\E4-03\gate-evidence\e4-03-deadend-library-load-failed.png`
+
+Playwright wrote these three screenshots into the shared main working tree (`C:\source\Jaarplanner\`); they
+were moved here and the main tree verified clean again, because another session is working there.
+
+## Defects
+
+**None.** Four MINOR observations, none blocking and none a criterion failure:
+
+- **[MINOR] Dead `nl.json` key.** `kalender.plaatsThemaKeuzeHier` ("{naam} (staat al in deze themaperiode)")
+  is referenced nowhere in `src/`. The thema already in this period is withheld rather than annotated, which
+  is the right behaviour, so the key is a leftover of the earlier design. Delete it, or the next reader will
+  assume that state renders.
+- **[MINOR] `themaPeriodeOrdinalen`'s doc comment overstates its filtering.** It says "Placements at another
+  tier ... are skipped", but the function filters only on `blokStart` matching a current block, so a
+  `Subthemaperiode` placement whose start coincides with a themaperiode start would be counted. Unreachable
+  today, because every writer fixes the tier to `GeneratieNiveau`, so this is a comment that has stopped
+  describing its code: the class this repo retracts most often.
+- **[MINOR] Untested `Verplaatsstaat` branch.** `PLAATSUITLEG.niveauOnbekend`, mapping to
+  `kalender.plaatsNiveauOnbekend`, is unexercised by any test I could find and I could not reach that state
+  from the running app. The string exists and the record is exhaustively typed, so this is coverage, not a
+  suspected defect.
+- **[MINOR] Uncommitted work in the verified worktree.** At `4a6ad37` the tree is source-clean, but
+  `backlog/E4-bewerking-hergeneratie.md` and `backlog/README.md` carry uncommitted edits written at
+  17:19-17:20 (the E4-08 filing) by the still-live implementer session. Everything above was measured on
+  `4a6ad37`'s source, which those edits do not touch, but whoever merges must commit or drop them
+  deliberately rather than as a by-product.
+
+## Not verified, stated as plainly as what was
+
+- **Survival of a real (Azure) regeneration run.** No AI is configured in this environment and nobody can run
+  one here. Claim 2's regeneration half rests on a mutation-checked unit test over a faked AI client plus the
+  `IsVervangbaar` predicate, not on a live model call.
+- **`Verplaatsstaat = niveauOnbekend`.** Not reachable from the app as configured.
+- **Moving an activiteit between subthema's.** Not built, not claimed, filed as E4-08.
+- **The rest of the board's pre-existing behaviour** (drag-and-drop, aanvaarden and weigeren, the lock). Those
+  belong to E3-07/E4-02/E4-06 and were exercised only where E4-03's own criteria required it, namely the status
+  PUT used to reach the rejected-occupancy case.
+- **Multi-user concurrency.** The 400 copy tells a teacher that someone else may have just added the thema, but
+  two simultaneous clients were not tested.
+- **Keyboard-only traversal of the whole board.** Focus return was measured; tab order across seven columns was
+  not walked.
