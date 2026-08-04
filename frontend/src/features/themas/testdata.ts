@@ -188,6 +188,8 @@ export interface ThemaFakeOpties {
   verwijderAlWeg?: boolean;
   /** Answer a subthema delete with a 404, i.e. a colleague deleted that subthema first. */
   subthemaAlWeg?: boolean;
+  /** Answer a thema PUT with a 404: a colleague deleted the thema while the edit form was open. */
+  themaWijzigAlWeg?: boolean;
 }
 
 /** One recorded write, so a test can assert the address, the verb and the body the screen sent. */
@@ -460,6 +462,18 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
 
     if (url.pathname.match(/^\/api\/themas\/[^/]+$/)) {
       if (methode === "PUT") {
+        if (opties.themaWijzigAlWeg) {
+          // The real 404 for this path, with the server's own sentence in it. No fixture modelled this, which
+          // is exactly how round 4's finding 1 (an English sentence reaching a teacher) went unseen.
+          return json(
+            {
+              title: "Niet gevonden",
+              detail: "Dit thema bestaat niet meer. Iemand anders heeft het verwijderd.",
+              status: 404,
+            },
+            404,
+          );
+        }
         const invoer = JSON.parse(String(init?.body)) as Record<string, unknown>;
         return json({ ...bibliotheek[0], ...invoer, subthemas: [] });
       }

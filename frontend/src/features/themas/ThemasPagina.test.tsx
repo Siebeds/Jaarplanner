@@ -385,6 +385,24 @@ describe("Thema's — een serverfout zonder reden en een thema dat al weg is", (
   });
 });
 
+describe("Thema's — een thema dat tijdens het wijzigen verdween (antagonist ronde 4)", () => {
+  it("zet geen Engelse serverzin op het scherm van een leerkracht", async () => {
+    renderApp(`/themas/${THEMA_HERFST}`, { themaWijzigAlWeg: true });
+
+    fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.wijzigActie") }));
+    fireEvent.change(screen.getByLabelText(t("themabeheer.naamLabel")), {
+      target: { value: "Herfst en oogst" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    // The path had no fixture at all, which is how a round of fixes translated the server's sentence to
+    // English and left this one form rendering it. The screen must stay Dutch whatever the server says.
+    const melding = await screen.findByRole("alert");
+    expect(melding).toHaveTextContent(t("themabeheer.bewaarMislukt"));
+    expect(melding.textContent).not.toMatch(/not found|deleted by another writer/i);
+  });
+});
+
 describe("Thema's — themadoelen koppelen (FR-3.2)", () => {
   it("koppelt een gezocht leerplandoel en stuurt alleen de code", async () => {
     const fake = renderApp(`/themas/${THEMA_HERFST}`);

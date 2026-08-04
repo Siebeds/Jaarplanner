@@ -39,7 +39,18 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
    * sentence does.
    */
   const [alWeg, setAlWeg] = useState<"subthema" | "activiteit" | null>(null);
+
   const maakSubthema = useMaakSubthema();
+  /*
+    **Cleared by any later successful write, not only by opening the create form** (antagonist round 4).
+
+    It used to be reset on one event, so after a 404 on subthema A a teacher could successfully delete B and
+    still read "iemand anders heeft het verwijderd" above the list, about their own action. Reading it off the
+    mutation state rather than adding a reset to every call site keeps the rule in one place.
+  */
+  if (alWeg && maakSubthema.isSuccess) {
+    setAlWeg(null);
+  }
 
   // The class's own name, so the heading reads "Van L3 derde leerjaar" rather than a GUID. The selector's list
   // is the only place names live; a class the URL names but the list does not contain gets a neutral fallback
@@ -122,9 +133,9 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
           {nieuw ? (
             <div className="mt-3">
               <Subthemaformulier
-                // A new action clears a stale "already gone" notice: it was about a record that is now off the
-                // screen, and leaving it above a form the teacher is filling in would read as being about that.
-                key={alWeg ?? "nieuw"}
+                // No `key` here. Round 3 keyed this on the notice to "clear" it, which the button handler
+                // already does; the key's only reachable effect was to remount the form and wipe five typed
+                // fields when a delete elsewhere on the screen 404ed (antagonist round 4).
                 klasId={klasId}
                 klasNaam={klasNaam}
                 onBewaar={bewaarNieuw}

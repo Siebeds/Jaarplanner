@@ -412,7 +412,9 @@ function Themadetailinhoud() {
       </section>
 
       {/* ---- The class-scoped layer. Its own endpoint, its own section, its own sentence. ---- */}
-      <Klaslaag themaId={thema.id} klasId={klasId} />
+      {/* Keyed on the klas, so nothing class-specific (an "already gone" notice, an open form) survives a
+          switch to another class. `themaId` is already keyed one level up (antagonist round 4). */}
+      <Klaslaag key={klasId} themaId={thema.id} klasId={klasId} />
 
       {/* ---- The AI suggestions for this thema (E2-05 review + E2-08 trigger, mounted here per the owner's
               ruling of 2026-08-04). The components are E2's, unchanged; only the thema id's source changed. ---- */}

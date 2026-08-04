@@ -66,16 +66,16 @@ export function Activiteitformulier({
   }
 
   /**
-   * The server's reason, minus the one status whose sentence the UI owns.
+   * The server's own sentence, when it sent one.
    *
-   * A **404** here means the record was deleted while this form was open. The screen says that itself (see
-   * `themabeheer.activiteitAlWeg`), so rendering the server's version too would put one fact in two places and let the
-   * two drift, which is what antagonist round 3 flagged. Everything else the server explains is still framed
-   * and shown, because only it knows which field or value was refused.
+   * **No status is special-cased here, and that is a reverted decision** (antagonist round 4). Round 3 excluded
+   * a 404 and rendered a catalogue sentence instead, to remove a duplicated string. That caused two defects:
+   * on a **create** path the missing record is the *parent*, so "dit subthema bestaat niet meer" is simply
+   * false about a subthema being typed; and the third form was never given the same guard, so once the server
+   * messages were translated for it, a teacher read English. The server's 404 sentence is Dutch again and is
+   * shown framed, like every other reason, which is the state three audit rounds had already validated.
    */
-  const serverMelding =
-    fout instanceof ApiError && fout.status !== 404 ? fout.detail : undefined;
-  const alWeg = fout instanceof ApiError && fout.status === 404;
+  const serverMelding = fout instanceof ApiError ? fout.detail : undefined;
 
   return (
     <form onSubmit={verstuur} className="rounded-md border border-petrol/40 bg-card p-3.5">
@@ -149,7 +149,7 @@ export function Activiteitformulier({
 
       {fout ? (
         <div role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
-          <p>{alWeg ? t("themabeheer.activiteitAlWeg") : t("themabeheer.activiteitBewaarMislukt")}</p>
+          <p>{t("themabeheer.activiteitBewaarMislukt")}</p>
           {serverMelding ? (
             <p className="mt-1 font-normal text-ink-zacht">
               {t("themabeheer.serverReden", { melding: serverMelding })}

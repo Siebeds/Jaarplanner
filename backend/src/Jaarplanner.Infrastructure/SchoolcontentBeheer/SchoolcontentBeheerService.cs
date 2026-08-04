@@ -114,7 +114,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
         if (thema is null)
         {
-            throw new SchoolcontentNietGevondenFout("Thema not found: it was deleted by another writer.");
+            throw new SchoolcontentNietGevondenFout("Dit thema bestaat niet meer. Iemand anders heeft het verwijderd.");
         }
 
         return MapThema(thema);
@@ -420,7 +420,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     private async Task<Thema> LaadThemaAsync(Guid themaId, CancellationToken cancellationToken)
     {
         var thema = await ThemasMetSubtreeQuery().FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken);
-        return thema ?? throw new SchoolcontentNietGevondenFout("Thema not found: it was deleted by another writer.");
+        return thema ?? throw new SchoolcontentNietGevondenFout("Dit thema bestaat niet meer. Iemand anders heeft het verwijderd.");
     }
 
     private async Task<Subthema> LaadSubthemaAsync(Guid subthemaId, CancellationToken cancellationToken)
@@ -429,7 +429,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             .Include(s => s.Subdoelen)
             .Include(s => s.Activiteiten)
             .FirstOrDefaultAsync(s => s.Id == subthemaId, cancellationToken);
-        return subthema ?? throw new SchoolcontentNietGevondenFout("Subthema not found: it was deleted by another writer.");
+        return subthema ?? throw new SchoolcontentNietGevondenFout("Dit subthema bestaat niet meer. Iemand anders heeft het verwijderd.");
     }
 
     private async Task<Activiteit> LaadActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken)
@@ -437,7 +437,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         var activiteit = await _context.Activiteiten
             .Include(a => a.Doelkoppelingen)
             .FirstOrDefaultAsync(a => a.Id == activiteitId, cancellationToken);
-        return activiteit ?? throw new SchoolcontentNietGevondenFout("Activiteit not found: it was deleted by another writer.");
+        return activiteit ?? throw new SchoolcontentNietGevondenFout("Deze activiteit bestaat niet meer. Iemand anders heeft ze verwijderd.");
     }
 
     /// <summary>

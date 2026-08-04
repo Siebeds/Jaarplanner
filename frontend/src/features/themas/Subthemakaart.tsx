@@ -187,9 +187,12 @@ export function Subthemakaart({ subthema, klasId, klasNaam, onAlWeg }: Subthemak
                 verwijderSubthema.mutate(
                   { subthemaId: subthema.id },
                   {
+                    // **Only a 404 closes the panel** (antagonist round 4). Closing it for every error hid
+                    // the one place the failure is reported, so a 500, a proxy's HTML page or a dropped
+                    // connection left the row in place and said nothing at all.
                     onError: (fout) => {
-                      setVerwijderen(false);
                       if (fout instanceof ApiError && fout.status === 404) {
+                        setVerwijderen(false);
                         onAlWeg("subthema");
                       }
                     },
@@ -472,9 +475,10 @@ function Activiteitregel({
                 verwijderActiviteit.mutate(
                   { activiteitId: activiteit.id },
                   {
+                    // Only a 404, for the reason given at subthema level.
                     onError: (fout) => {
-                      setVerwijderen(false);
                       if (fout instanceof ApiError && fout.status === 404) {
+                        setVerwijderen(false);
                         onAlWeg("activiteit");
                       }
                     },
