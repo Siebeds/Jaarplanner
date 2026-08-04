@@ -117,9 +117,30 @@ export function useWijzigThema() {
  * The server refuses with a 400 while the thema still sits in any jaarplan, and the caller renders that
  * refusal: only the server knows how many placements there are, and they may belong to a class the deleting
  * teacher never opens. So this mutation's error state is a normal outcome to be shown, not an exception.
+ *
+ * **It does not use {@link useBeheerMutatie}, and the reason came out of a browser pass rather than a test.**
+ * Invalidating the `["thema"]` prefix asks every mounted thema query to refetch, including the one for the
+ * thema just deleted, so the class-scoped read fired again and answered **404** while the screen was still
+ * navigating away. Nothing was visible on a fast local connection, which is exactly why it needed fixing
+ * rather than accepting: one slower request and a teacher reads "Dit thema kon niet geladen worden"
+ * immediately after a delete that in fact succeeded.
+ *
+ * So a delete refreshes **only the two lists that changed** and deliberately leaves the deleted thema's own
+ * cache entries alone. `removeQueries` was the first fix and it was the wrong one: removing a query that still
+ * has a mounted observer makes that observer fetch again immediately, so it reproduced the very 404 it was
+ * meant to prevent. Leaving a stale entry for a thema nothing will mount again costs nothing, and a fresh
+ * visit to that URL is answered from the bibliotheek with "dit thema bestaat niet".
  */
 export function useVerwijderThema() {
-  return useBeheerMutatie((themaId: string) => verwijderThema(themaId));
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (themaId: string) => verwijderThema(themaId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: bibliotheekKey });
+      void queryClient.invalidateQueries({ queryKey: ONGEKOPPELDE_DOELEN_KEY });
+    },
+  });
 }
 
 export function useVoegThemadoelToe() {

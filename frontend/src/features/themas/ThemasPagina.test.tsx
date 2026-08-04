@@ -240,6 +240,20 @@ describe("Thema's — aanmaken, wijzigen en verwijderen (FR-3.1)", () => {
     });
   });
 
+  it("vraagt na het verwijderen niets meer op over het verwijderde thema", async () => {
+    const fake = renderApp(`/themas/${THEMA_WATER}?klas=${KLAS_L3}`);
+
+    fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.verwijderActie") }));
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.verwijderBevestig") }));
+
+    // Found in a browser, not by a test: invalidating the thema prefix made the class-scoped read fire again
+    // for the thema just deleted, and the server answered 404. Invisible on a fast connection, and one slow
+    // request away from telling a teacher their successful delete failed to load.
+    await waitFor(() => expect(fake.verzoeken).toHaveLength(1));
+    const naVerwijderen = fake.urls.slice(fake.urls.indexOf(`/api/themas/${THEMA_WATER}`) + 1);
+    expect(naVerwijderen.filter((url) => url.includes(THEMA_WATER))).toEqual([]);
+  });
+
   it("zegt bij een thema zonder afgeleide inhoud dat alleen het thema zelf verdwijnt", async () => {
     renderApp(`/themas/${THEMA_WATER}`);
 
