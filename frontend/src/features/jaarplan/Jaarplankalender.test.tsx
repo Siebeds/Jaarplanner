@@ -3124,6 +3124,33 @@ describe("Jaarplankalender — een thema met de hand plannen (E4-03, FR-7.2)", (
     }
   });
 
+  /**
+   * <b>Focus comes back to the trigger when the picker closes.</b>
+   *
+   * This test exists because the first version shipped a defect no test could see and a browser found in one probe:
+   * `sluit()` called `trigger.current?.focus()` directly, and `setOpen(false)` is batched, so at that moment the
+   * trigger was still unmounted and the ref was null. Focus fell to `<body>` and a keyboard user pressing
+   * "Annuleren" lost their place on a board that scrolls sideways, while the code comment claimed the opposite.
+   *
+   * Asserted on both exits, because both go through the same path: cancelling, and a successful placement.
+   */
+  it("returns focus to the trigger when the picker closes", async () => {
+    stubPlaatsen(maakJaarplan([]));
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+
+    // Cancelling.
+    await openKiezer(2);
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.annuleren") }));
+    await waitFor(() => expect(document.activeElement).toBe(toevoegknop(2)));
+
+    // And a successful placement, which closes through the same function.
+    fireEvent.change(await openKiezer(2), { target: { value: "t-water" } });
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.plaatsen") }));
+    await waitFor(() => expect(document.activeElement).toBe(toevoegknop(2)));
+  });
+
   /** The picker itself, with the panel open, has to survive an axe structure check like every other panel here. */
   it("has no axe violations with the picker OPEN", async () => {
     stubPlaatsen(maakJaarplan([]));

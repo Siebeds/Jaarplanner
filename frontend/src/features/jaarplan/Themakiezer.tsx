@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "../../components/ui/button";
 import { t } from "../../i18n";
@@ -61,11 +61,28 @@ export function Themakiezer({ klasId, blok, alGeplaatst }: ThemakiezerProps) {
     setOpen(false);
     setKeuze("");
     toevoegen.reset();
-
-    // Focus goes back to the control that opened this, or it would land on <body> and a keyboard user would lose
-    // their place on a horizontally scrolling board.
-    trigger.current?.focus();
   }
+
+  /**
+   * Returns focus to the trigger once the panel has actually closed.
+   *
+   * **Not called from `sluit()`, and that is the whole point.** It was, and it silently did nothing: `setOpen(false)`
+   * is batched, so at the moment `sluit()` ran the trigger was still unmounted and `trigger.current` was null. Focus
+   * fell to `<body>`, and a keyboard user pressing "Annuleren" lost their place on a board that scrolls sideways —
+   * exactly what the comment there claimed to prevent. **No test caught it; it was measured in a browser**, which is
+   * this project's standing argument for looking at the thing.
+   *
+   * Guarded on the previous value so it only fires on a real open → closed transition. Without that it would run on
+   * mount and every period column on the board would grab focus in turn as the plan renders.
+   */
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      trigger.current?.focus();
+    }
+
+    wasOpen.current = open;
+  }, [open]);
 
   if (!open) {
     return (
