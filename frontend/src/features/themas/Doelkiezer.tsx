@@ -25,6 +25,14 @@ import type { DoelRegel } from "../doelen/types";
  * "already done".
  */
 export interface DoelkiezerProps {
+  /**
+   * What the link will attach to, as a Dutch noun phrase from `nl.json` (`themabeheer.niveau*`).
+   *
+   * It goes into the two aria labels, so a screen-reader user hears *"Leerplandoel NAT-K3-01 koppelen aan dit
+   * subthema"* rather than three identical buttons on one screen. The picker is used at all three levels
+   * (thema, subthema, activiteit) and before landing 2 its label said "aan dit thema" unconditionally.
+   */
+  waaraan: string;
   /** Codes already linked at this level, so they render as such instead of as an offer. */
   gekoppeldeCodes: readonly string[];
   /** Link this code. The caller owns the mutation, its pending state and its error copy. */
@@ -39,8 +47,9 @@ const MAX_RESULTATEN = 8;
 /** Below this, a search is too broad to be worth a request: two characters is where a code starts to mean something. */
 const MINIMUM_ZOEKLENGTE = 2;
 
-export function Doelkiezer({ gekoppeldeCodes, onKoppel, bezig }: DoelkiezerProps) {
+export function Doelkiezer({ waaraan, gekoppeldeCodes, onKoppel, bezig }: DoelkiezerProps) {
   const [zoek, setZoek] = useState("");
+  const veldId = `doelkiezer-zoek-${waaraan.replace(/\s+/g, "-")}`;
   const genormaliseerd = zoek.trim();
   const magZoeken = genormaliseerd.length >= MINIMUM_ZOEKLENGTE;
 
@@ -90,11 +99,11 @@ export function Doelkiezer({ gekoppeldeCodes, onKoppel, bezig }: DoelkiezerProps
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <label className="block text-sm font-semibold text-ink" htmlFor="doelkiezer-zoek">
+      <label className="block text-sm font-semibold text-ink" htmlFor={veldId}>
         {t("themabeheer.doelZoekLabel")}
       </label>
       <input
-        id="doelkiezer-zoek"
+        id={veldId}
         type="search"
         value={zoek}
         onChange={(event) => setZoek(event.target.value)}
@@ -144,7 +153,7 @@ export function Doelkiezer({ gekoppeldeCodes, onKoppel, bezig }: DoelkiezerProps
                       type="button"
                       onClick={() => onKoppel(doel.code)}
                       disabled={bezig}
-                      aria-label={t("themabeheer.doelKoppelAria", { code: doel.code })}
+                      aria-label={t("themabeheer.doelKoppelAria", { code: doel.code, waaraan })}
                       className="shrink-0 rounded-md bg-petrol px-3 py-1.5 text-xs font-semibold text-petrol-foreground hover:bg-petrol-helder disabled:opacity-60"
                     >
                       {bezig ? t("themabeheer.doelKoppelBezig") : t("themabeheer.doelKoppel")}

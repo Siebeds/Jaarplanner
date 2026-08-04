@@ -25,9 +25,11 @@ import type {
  * caller needs the child's own id and never has to know its ancestors. The two exceptions are the *create*
  * calls, which necessarily post to the parent that will own the new row.
  *
- * **Every write invalidates a thema-shaped query, so callers must know which thema they touched.** For the
- * child levels the response body does not always carry it (an activiteit's view has no `themaId`), which is
- * why the mutation hooks take the thema id as an explicit argument rather than deriving it from the result.
+ * **A write does not have to know which thema it touched.** For the child levels the response body does not
+ * always carry one (an activiteit's view has no `themaId`), and rather than thread an ancestor id through every
+ * call, the mutation hooks invalidate the whole `["thema", …]` prefix. That is a handful of cache entries at
+ * primary-school volume, and it removes a class of bug where a correct write leaves a stale screen because the
+ * caller passed the wrong parent.
  */
 
 // --- Reads ---

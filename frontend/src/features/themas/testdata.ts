@@ -1,6 +1,6 @@
 import { DOELEN } from "../doelen/testdata";
 import type { SchooljaarKeuze } from "../../app/schooljaren";
-import type { Subthema, Thema, ThemaBibliotheekItem } from "./types";
+import type { Activiteit, Subthema, Thema, ThemaBibliotheekItem } from "./types";
 
 /**
  * Fixtures and a routing fetch fake for the beheer screens (E1-14).
@@ -157,9 +157,8 @@ const SUBTHEMA_L3: Subthema = {
 };
 
 /** The per-klas view: the school-wide layer plus only the requested class's subthema's. */
-function themaVoorKlas(item: ThemaBibliotheekItem, klasId: string): Thema {
-  const subthemas =
-    item.id === THEMA_HERFST && klasId === KLAS_L3 ? [SUBTHEMA_L3] : ([] as Subthema[]);
+function themaVoorKlas(item: ThemaBibliotheekItem, klasId: string, opslag: Subthema[]): Thema {
+  const subthemas = opslag.filter((sub) => sub.themaId === item.id && sub.klasId === klasId);
 
   return {
     id: item.id,
@@ -200,6 +199,16 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
   const bibliotheek = opties.bibliotheek ?? BIBLIOTHEEK;
   const urls: string[] = [];
   const verzoeken: Verzoek[] = [];
+
+  /**
+   * The class-scoped store, mutated by the write endpoints below.
+   *
+   * Deliberately stateful: a fake that answered a canned list would let a **missing invalidation** pass, since
+   * the screen would render the same rows before and after a write. Here a create only becomes visible if the
+   * component really refetches, which is the behaviour worth pinning.
+   */
+  const subthemaOpslag: Subthema[] = [structuredClone(SUBTHEMA_L3)];
+  let teller = 0;
 
   const fetchFake = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const pad = String(input);
@@ -285,7 +294,7 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
     const voorKlas = url.pathname.match(/^\/api\/themas\/([^/]+)\/voor-klas\/([^/]+)$/);
     if (voorKlas) {
       const item = bibliotheek.find((thema) => thema.id === voorKlas[1]);
-      return item ? json(themaVoorKlas(item, voorKlas[2])) : json({ detail: "onbekend" }, 404);
+      return item ? json(themaVoorKlas(item, voorKlas[2], subthemaOpslag)) : json({ detail: "onbekend" }, 404);
     }
 
     if (url.pathname.match(/^\/api\/themas\/[^/]+\/themadoelen$/) && methode === "POST") {
@@ -293,6 +302,148 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
     }
 
     if (url.pathname.match(/^\/api\/themas\/[^/]+\/themadoelen\/[^/]+$/) && methode === "DELETE") {
+      return new Response(null, { status: 204 });
+    }
+
+    const nieuwSubthema = url.pathname.match(/^\/api\/themas\/([^/]+)\/subthemas$/);
+    if (nieuwSubthema && methode === "POST") {
+      const invoer = JSON.parse(String(init?.body)) as {
+        naam: string;
+        duurWeken: number;
+        klasId: string;
+        leeftijd: string;
+        probleemstelling?: string | null;
+        onderzoeksvraag?: string | null;
+      };
+      teller += 1;
+      const gemaakt: Subthema = {
+        id: `nieuw-subthema-${teller}`,
+        themaId: nieuwSubthema[1],
+        naam: invoer.naam,
+        duurWeken: invoer.duurWeken,
+        klasId: invoer.klasId,
+        leeftijd: invoer.leeftijd,
+        probleemstelling: invoer.probleemstelling ?? null,
+        onderzoeksvraag: invoer.onderzoeksvraag ?? null,
+        subdoelen: [],
+        activiteiten: [],
+      };
+      subthemaOpslag.push(gemaakt);
+      return json(gemaakt);
+    }
+
+    const subthemaPad = url.pathname.match(/^\/api\/subthemas\/([^/]+)$/);
+    if (subthemaPad) {
+      const bestaand = subthemaOpslag.find((sub) => sub.id === subthemaPad[1]);
+      if (!bestaand) return json({ detail: "onbekend subthema" }, 404);
+
+      if (methode === "PUT") {
+        Object.assign(bestaand, JSON.parse(String(init?.body)));
+        return json(bestaand);
+      }
+      if (methode === "DELETE") {
+        subthemaOpslag.splice(subthemaOpslag.indexOf(bestaand), 1);
+        return new Response(null, { status: 204 });
+      }
+    }
+
+    const subdoelKoppel = url.pathname.match(/^\/api\/subthemas\/([^/]+)\/doelkoppelingen$/);
+    if (subdoelKoppel && methode === "POST") {
+      const sub = subthemaOpslag.find((kandidaat) => kandidaat.id === subdoelKoppel[1]);
+      const { leerplandoelCode } = JSON.parse(String(init?.body)) as { leerplandoelCode: string };
+      teller += 1;
+      const subdoel = {
+        id: `nieuw-subdoel-${teller}`,
+        leeftijd: sub?.leeftijd ?? "",
+        koppeling: {
+          id: `nieuwe-koppeling-${teller}`,
+          leerplandoelCode,
+          status: "Manueel" as const,
+          aiMotivatie: null,
+        },
+      };
+      sub?.subdoelen.push(subdoel);
+      return json(subdoel);
+    }
+
+    const subdoelWeg = url.pathname.match(/^\/api\/subthemas\/([^/]+)\/subdoelen\/([^/]+)$/);
+    if (subdoelWeg && methode === "DELETE") {
+      const sub = subthemaOpslag.find((kandidaat) => kandidaat.id === subdoelWeg[1]);
+      if (sub) sub.subdoelen = sub.subdoelen.filter((doel) => doel.id !== subdoelWeg[2]);
+      return new Response(null, { status: 204 });
+    }
+
+    const nieuweActiviteit = url.pathname.match(/^\/api\/subthemas\/([^/]+)\/activiteiten$/);
+    if (nieuweActiviteit && methode === "POST") {
+      const sub = subthemaOpslag.find((kandidaat) => kandidaat.id === nieuweActiviteit[1]);
+      const invoer = JSON.parse(String(init?.body)) as {
+        naam: string;
+        activiteitType: Activiteit["activiteitType"];
+        hoek?: string | null;
+        verwachteUitkomsten?: string | null;
+      };
+      teller += 1;
+      const gemaakt: Activiteit = {
+        id: `nieuwe-activiteit-${teller}`,
+        naam: invoer.naam,
+        activiteitType: invoer.activiteitType,
+        hoek: invoer.hoek ?? null,
+        verwachteUitkomsten: invoer.verwachteUitkomsten ?? null,
+        doelkoppelingen: [],
+      };
+      sub?.activiteiten.push(gemaakt);
+      return json(gemaakt);
+    }
+
+    const activiteitPad = url.pathname.match(/^\/api\/activiteiten\/([^/]+)$/);
+    if (activiteitPad) {
+      const eigenaar = subthemaOpslag.find((sub) =>
+        sub.activiteiten.some((kandidaat) => kandidaat.id === activiteitPad[1]),
+      );
+      const activiteit = eigenaar?.activiteiten.find((kandidaat) => kandidaat.id === activiteitPad[1]);
+      if (!activiteit || !eigenaar) return json({ detail: "onbekende activiteit" }, 404);
+
+      if (methode === "PUT") {
+        Object.assign(activiteit, JSON.parse(String(init?.body)));
+        return json(activiteit);
+      }
+      if (methode === "DELETE") {
+        eigenaar.activiteiten = eigenaar.activiteiten.filter(
+          (kandidaat) => kandidaat.id !== activiteitPad[1],
+        );
+        return new Response(null, { status: 204 });
+      }
+    }
+
+    const activiteitKoppel = url.pathname.match(/^\/api\/activiteiten\/([^/]+)\/doelkoppelingen$/);
+    if (activiteitKoppel && methode === "POST") {
+      const activiteit = subthemaOpslag
+        .flatMap((sub) => sub.activiteiten)
+        .find((kandidaat) => kandidaat.id === activiteitKoppel[1]);
+      const { leerplandoelCode } = JSON.parse(String(init?.body)) as { leerplandoelCode: string };
+      teller += 1;
+      const koppeling = {
+        id: `nieuwe-koppeling-${teller}`,
+        leerplandoelCode,
+        status: "Manueel" as const,
+        aiMotivatie: null,
+      };
+      activiteit?.doelkoppelingen.push(koppeling);
+      return json(koppeling);
+    }
+
+    const activiteitOntkoppel = url.pathname.match(
+      /^\/api\/activiteiten\/([^/]+)\/doelkoppelingen\/([^/]+)$/,
+    );
+    if (activiteitOntkoppel && methode === "DELETE") {
+      const activiteit = subthemaOpslag
+        .flatMap((sub) => sub.activiteiten)
+        .find((kandidaat) => kandidaat.id === activiteitOntkoppel[1]);
+      if (activiteit) {
+        activiteit.doelkoppelingen = activiteit.doelkoppelingen.filter(
+          (kandidaat) => kandidaat.id !== activiteitOntkoppel[2],
+        );
+      }
       return new Response(null, { status: 204 });
     }
 

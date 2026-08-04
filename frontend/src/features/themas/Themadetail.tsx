@@ -371,6 +371,7 @@ function Themadetailinhoud() {
                     disabled={verwijderThemadoel.isPending}
                     aria-label={t("themabeheer.ontkoppelAria", {
                       code: themadoel.koppeling.leerplandoelCode,
+                      waaraan: t("themabeheer.niveauThema"),
                     })}
                     className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-suggestie-geweigerd underline hover:bg-paper-diep disabled:opacity-60"
                   >
@@ -390,6 +391,7 @@ function Themadetailinhoud() {
           {doelKiezen ? (
             <div className="mt-3">
               <Doelkiezer
+                waaraan={t("themabeheer.niveauThema")}
                 gekoppeldeCodes={gekoppeldeCodes}
                 bezig={voegThemadoelToe.isPending}
                 onKoppel={(code) =>

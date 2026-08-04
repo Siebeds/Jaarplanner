@@ -395,7 +395,7 @@ describe("Thema's — themadoelen koppelen (FR-3.2)", () => {
     });
 
     const koppel = await screen.findByRole("button", {
-      name: t("themabeheer.doelKoppelAria", { code: "MUZ-L2-01" }),
+      name: t("themabeheer.doelKoppelAria", { code: "MUZ-L2-01", waaraan: t("themabeheer.niveauThema") }),
     });
     fireEvent.click(koppel);
 
@@ -420,7 +420,7 @@ describe("Thema's — themadoelen koppelen (FR-3.2)", () => {
     expect(await screen.findByText(t("themabeheer.doelAlGekoppeld"))).toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: t("themabeheer.doelKoppelAria", { code: "NAT-K3-01" }),
+        name: t("themabeheer.doelKoppelAria", { code: "NAT-K3-01", waaraan: t("themabeheer.niveauThema") }),
       }),
     ).not.toBeInTheDocument();
   });
