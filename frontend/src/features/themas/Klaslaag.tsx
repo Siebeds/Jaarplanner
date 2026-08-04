@@ -68,9 +68,33 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
                     <span className="text-xs font-medium text-ink-zacht">
                       {tAantal(subthema.duurWeken, "themabeheer.duurEnkelvoud", "themabeheer.duur")}
                       {" · "}
-                      {t("themabeheer.leeftijdLabel")} {subthema.leeftijd}
+                      {t("themabeheer.leeftijdWaarde", { leeftijd: subthema.leeftijd })}
                     </span>
                   </div>
+
+                  {/*
+                    The two questions that make a subthema kennisrijk (Art. IX.2, and the glossary calls the
+                    onderzoeksvraag the driving question). They were in the transport type and on no screen,
+                    so an onderzoeksvraag could exist in the database and be visible nowhere in the product
+                    (antagonist round 1). Rendered only when filled: an empty label per subthema is the kind
+                    of repetition that makes a list unscannable.
+                  */}
+                  {subthema.probleemstelling ? (
+                    <p className="mt-1 text-sm text-ink">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-ink-zacht">
+                        {t("themabeheer.probleemstellingLabel")}
+                      </span>{" "}
+                      {subthema.probleemstelling}
+                    </p>
+                  ) : null}
+                  {subthema.onderzoeksvraag ? (
+                    <p className="mt-1 text-sm text-ink">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-ink-zacht">
+                        {t("themabeheer.onderzoeksvraagLabel")}
+                      </span>{" "}
+                      {subthema.onderzoeksvraag}
+                    </p>
+                  ) : null}
 
                   <p className="mt-1.5 text-xs font-semibold uppercase tracking-wide text-ink-zacht">
                     {t("themabeheer.subdoelenLabel")}
@@ -109,7 +133,7 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
   );
 }
 
-/** One activiteit: its naam, its type, the hoek when it has one, and the codes it is linked to. */
+/** One activiteit: naam, type, the hoek and expected outcomes when it has them, and the codes it is linked to. */
 function Activiteitregel({ activiteit }: { activiteit: Activiteit }) {
   return (
     <li className="text-sm text-ink">
@@ -117,12 +141,22 @@ function Activiteitregel({ activiteit }: { activiteit: Activiteit }) {
       <span className="text-ink-zacht">
         {" · "}
         {t(`activiteitType.${typeSleutel(activiteit.activiteitType)}`)}
-        {activiteit.hoek ? ` · ${t("themabeheer.hoekLabel")}: ${activiteit.hoek}` : ""}
+        {/* The label and its punctuation live in the catalogue, not in a template here: only the Dutch knows
+            whether it takes a colon. */}
+        {activiteit.hoek ? ` · ${t("themabeheer.hoekWaarde", { hoek: activiteit.hoek })}` : ""}
       </span>
       {activiteit.doelkoppelingen.length > 0 ? (
         <span className="ml-1 font-mono text-xs text-ink-zacht">
           {activiteit.doelkoppelingen.map((koppeling) => koppeling.leerplandoelCode).join(", ")}
         </span>
+      ) : null}
+      {activiteit.verwachteUitkomsten ? (
+        <p className="text-sm text-ink-zacht">
+          <span className="text-xs font-semibold uppercase tracking-wide">
+            {t("themabeheer.verwachteUitkomstenLabel")}
+          </span>{" "}
+          {activiteit.verwachteUitkomsten}
+        </p>
       ) : null}
     </li>
   );

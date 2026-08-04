@@ -8,10 +8,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../App";
 import { t, tAantal } from "../../i18n";
 import {
+  BIBLIOTHEEK,
   HERFST,
   KLAS_K3,
   KLAS_L3,
   THEMA_HERFST,
+  THEMA_VOL,
   THEMA_WATER,
   maakThemaFetchFake,
   type ThemaFakeOpties,
@@ -61,7 +63,9 @@ describe("Thema's — de lijst (FR-3.1)", () => {
     renderApp("/themas");
 
     const rijen = within(await lijst()).getAllByRole("listitem");
-    expect(rijen).toHaveLength(2);
+    // Against the fixture rather than a literal: a fixture gains entries as states are covered, and a hard 2
+    // would have to be edited every time instead of asserting "one row per thema".
+    expect(rijen).toHaveLength(BIBLIOTHEEK.length);
 
     const herfst = within(await lijst()).getByRole("link", { name: /Herfst/ });
     expect(herfst).toHaveTextContent(tAantal(6, "themabeheer.duurEnkelvoud", "themabeheer.duur"));
@@ -275,6 +279,109 @@ describe("Thema's — aanmaken, wijzigen en verwijderen (FR-3.1)", () => {
     const melding = await screen.findByRole("alert");
     expect(melding).toHaveTextContent(t("themabeheer.verwijderMislukt"));
     expect(melding).toHaveTextContent(t("themabeheer.serverReden", { melding: weigering }));
+  });
+});
+
+describe("Thema's — een thema wisselen mag nooit het vorige overschrijven (antagonist ronde 1)", () => {
+  it("gooit een openstaand wijzigformulier weg als je een ander thema kiest", async () => {
+    const fake = renderApp(`/themas/${THEMA_HERFST}`);
+
+    fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.wijzigActie") }));
+    expect(screen.getByLabelText(t("themabeheer.naamLabel"))).toHaveValue("Herfst");
+
+    // The reachable route to data loss: at >=1024px the list stays beside the detail, so the teacher can
+    // switch thema with the form open. The form seeded its fields at mount, so it kept Herfst's values and
+    // sent them to Water's URL, overwriting Water school-wide with no confirmation and no undo.
+    fireEvent.click(within(await lijst()).getByRole("link", { name: /Water/ }));
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText(t("themabeheer.naamLabel"))).not.toBeInTheDocument(),
+    );
+    expect(fake.verzoeken).toEqual([]);
+  });
+
+  it("gooit een openstaande verwijderbevestiging weg als je een ander thema kiest", async () => {
+    const fake = renderApp(`/themas/${THEMA_HERFST}`);
+
+    fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.verwijderActie") }));
+    expect(screen.getByRole("button", { name: t("themabeheer.verwijderBevestig") })).toBeInTheDocument();
+
+    fireEvent.click(within(await lijst()).getByRole("link", { name: /Water/ }));
+
+    // A decision taken about Herfst must not be able to delete Water.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: t("themabeheer.verwijderBevestig") }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(fake.verzoeken).toEqual([]);
+  });
+
+  it("laat een klik in de lijst voorgaan op een openstaand nieuw-formulier", async () => {
+    renderApp("/themas");
+
+    fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.nieuw") }));
+    expect(screen.getByRole("heading", { name: t("themabeheer.formTitelNieuw") })).toBeInTheDocument();
+
+    fireEvent.click(within(await lijst()).getByRole("link", { name: /Water/ }));
+
+    // Otherwise the URL changes, the row is marked current, and the pane keeps showing the empty form: a
+    // click that visibly does nothing (the E3-06 rule).
+    expect(await screen.findByRole("heading", { name: "Water" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: t("themabeheer.formTitelNieuw") }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("Thema's — het maximum van 3 themadoelen is wél afgedwongen (antagonist ronde 1)", () => {
+  it("biedt bij drie themadoelen geen koppelknop aan, maar zegt wat je kan doen", async () => {
+    renderApp(`/themas/${THEMA_VOL}`);
+
+    // `Thema.VoegThemadoelToe` throws at 3 and the API answers 400, so a koppel control here could not
+    // succeed. The screen used to offer it and then report a bare failure with no reason.
+    expect(await screen.findByText(t("themabeheer.themadoelenMax"))).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("themabeheer.doelKiezerTitel") }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("belooft in het advies geen vrijheid die de server weigert", async () => {
+    renderApp(`/themas/${THEMA_WATER}`);
+
+    // The advice line renders below two themadoelen, so it may only speak about the lower bound. It used to
+    // say "Je kan gewoon verder werken zoals het nu staat" about a guideline whose upper half is law.
+    const advies = await screen.findByText(t("themabeheer.adviesUitleg"));
+    expect(advies).toBeInTheDocument();
+    expect(advies.textContent).toContain("Met minder");
+  });
+});
+
+describe("Thema's — een serverfout zonder reden en een thema dat al weg is", () => {
+  it("laat de eigen zin alleen staan wanneer de server geen reden meestuurt", async () => {
+    renderApp(`/themas/${THEMA_HERFST}`, { verwijderZonderReden: true });
+
+    fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.verwijderActie") }));
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.verwijderBevestig") }));
+
+    // A bare 500 carries no `detail`, and a dropped connection is not even an ApiError. The framing sentence
+    // from nl.json has to be able to stand on its own, and nothing may render an English server title.
+    const melding = await screen.findByRole("alert");
+    expect(melding).toHaveTextContent(t("themabeheer.verwijderMislukt"));
+    expect(melding.textContent).not.toContain("An error occurred");
+    expect(melding.textContent).not.toContain(t("themabeheer.serverReden", { melding: "" }).trim());
+  });
+
+  it("behandelt een thema dat iemand anders al verwijderde als weg, niet als een fout", async () => {
+    renderApp(`/themas/${THEMA_HERFST}`, { verwijderAlWeg: true });
+
+    fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.verwijderActie") }));
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.verwijderBevestig") }));
+
+    // The outcome the teacher wanted has happened. Reporting a failure would contradict reality, and the
+    // server's detail for this case is a raw GUID sentence no teacher can act on.
+    await waitFor(() => expect(window.location.pathname).toBe("/themas"));
+    expect(screen.queryByText(t("themabeheer.verwijderMislukt"))).not.toBeInTheDocument();
   });
 });
 

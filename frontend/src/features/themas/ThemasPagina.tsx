@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useMatch, useNavigate } from "react-router-dom";
 
 import { t } from "../../i18n";
@@ -27,6 +27,21 @@ export function ThemasPagina() {
   const { search } = useLocation();
   const gekozenThemaId = useMatch("/themas/:themaId")?.params.themaId;
   const maakThema = useMaakThema();
+
+  /*
+    **A click on a thema wins over an open create form** (antagonist round 1).
+
+    The pane used to prefer `nieuw` over `gekozenThemaId`, so with the create form open every click in the list
+    changed the URL and moved `aria-current` while the pane kept showing the empty form: a control that visibly
+    does nothing, which is the rule E3-06 exists for. The click is the clearer statement of intent, so it wins
+    and the form closes. That does discard whatever was typed, which is the honest trade: the form is four
+    fields, and the alternative was a list that looked broken.
+  */
+  useEffect(() => {
+    if (gekozenThemaId) {
+      setNieuw(false);
+    }
+  }, [gekozenThemaId]);
 
   function bewaarNieuw(invoer: ThemaInvoer) {
     maakThema.mutate(invoer, {

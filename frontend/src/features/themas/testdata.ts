@@ -18,6 +18,8 @@ export const KLAS_L3 = "44444444-4444-4444-4444-444444444444";
 export const KLAS_K3 = "44444444-4444-4444-4444-444444444445";
 export const THEMA_HERFST = "11111111-1111-1111-1111-111111111111";
 export const THEMA_WATER = "11111111-1111-1111-1111-111111111112";
+/** A thema sitting on the domain's hard ceiling of three themadoelen (`Thema.MaxThemadoelen`). */
+export const THEMA_VOL = "11111111-1111-1111-1111-111111111113";
 
 export const SCHOOLJAREN: SchooljaarKeuze[] = [
   {
@@ -87,7 +89,31 @@ export const WATER: ThemaBibliotheekItem = {
   aantalAfgeleideKlassen: 0,
 };
 
-export const BIBLIOTHEEK: ThemaBibliotheekItem[] = [HERFST, WATER];
+/**
+ * At the cap. It exists because the browser pass never reached this state (it went 0 -> 1 themadoelen on a
+ * fresh thema), and it is the one state on this screen where the server refuses a write.
+ */
+export const VOL: ThemaBibliotheekItem = {
+  id: THEMA_VOL,
+  naam: "Volle mand",
+  duurWeken: 5,
+  invalshoeken: null,
+  kernwoordenschat: [],
+  rijkeWoordenschat: [],
+  heeftVoldoendeThemadoelen: true,
+  themadoelen: [1, 2, 3].map((nr) => ({
+    id: `aaaaaaa3-0000-0000-0000-00000000000${nr}`,
+    koppeling: {
+      id: `bbbbbbb3-0000-0000-0000-00000000000${nr}`,
+      leerplandoelCode: `NAT-K3-0${nr}`,
+      status: "Manueel" as const,
+      aiMotivatie: null,
+    },
+  })),
+  aantalAfgeleideKlassen: 0,
+};
+
+export const BIBLIOTHEEK: ThemaBibliotheekItem[] = [HERFST, WATER, VOL];
 
 /** What L3 derived from Herfst. K3 derived nothing, which is what makes the bleed test meaningful. */
 const SUBTHEMA_L3: Subthema = {
@@ -98,7 +124,7 @@ const SUBTHEMA_L3: Subthema = {
   klasId: KLAS_L3,
   leeftijd: "8",
   probleemstelling: "Waarom vallen bladeren?",
-  onderzoeksvraag: null,
+  onderzoeksvraag: "Wat gebeurt er met een blad in water?",
   subdoelen: [
     {
       id: "dddddddd-0000-0000-0000-000000000001",
@@ -117,7 +143,7 @@ const SUBTHEMA_L3: Subthema = {
       naam: "Bladkroon maken",
       activiteitType: "Hoek",
       hoek: "creahoek",
-      verwachteUitkomsten: null,
+      verwachteUitkomsten: "De kleuter benoemt drie kleuren van bladeren.",
       doelkoppelingen: [
         {
           id: "ffffffff-0000-0000-0000-000000000002",
@@ -157,6 +183,10 @@ export interface ThemaFakeOpties {
   verwijderWeigering?: string;
   /** Serve an empty Op.stap register, so the picker must say "nothing imported" rather than "not found". */
   geenCurriculum?: boolean;
+  /** Answer a thema delete with a bare 500 that carries no `detail`, so the framing sentence must stand alone. */
+  verwijderZonderReden?: boolean;
+  /** Answer a thema delete with a 404: a colleague deleted it first. */
+  verwijderAlWeg?: boolean;
 }
 
 /** One recorded write, so a test can assert the address, the verb and the body the screen sent. */
@@ -273,6 +303,13 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
       }
 
       if (methode === "DELETE") {
+        if (opties.verwijderZonderReden) {
+          // What a real unhandled 500 looks like: ProblemDetails with a title and status, and no detail.
+          return json({ title: "An error occurred while processing your request.", status: 500 }, 500);
+        }
+        if (opties.verwijderAlWeg) {
+          return json({ title: "Niet gevonden", detail: `Thema ${THEMA_HERFST} bestaat niet.`, status: 404 }, 404);
+        }
         return opties.verwijderWeigering
           ? json({ title: "Ongeldige aanvraag", detail: opties.verwijderWeigering, status: 400 }, 400)
           : new Response(null, { status: 204 });

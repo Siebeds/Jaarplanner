@@ -528,7 +528,8 @@
     "themadoelen": "{aantal} themadoelen",
     "themadoelenGeen": "Nog geen themadoel",
     "adviesKort": "Advies: 2 of 3",
-    "adviesUitleg": "Een thema draagt het best 2 of 3 themadoelen. Je kan gewoon verder werken zoals het nu staat.",
+    "adviesUitleg": "Een thema draagt het best 2 of 3 themadoelen. Met minder kan je verder werken zoals het nu staat.",
+    "themadoelenMax": "Je kan er maximaal 3 koppelen. Wil je een ander doel, haal er dan eerst een weg.",
     "klassenEnkelvoud": "{aantal} klas werkte dit uit",
     "klassen": "{aantal} klassen werkten dit uit",
     "klassenGeen": "Nog geen klas werkte dit uit",
@@ -555,8 +556,6 @@
     "subdoelenGeen": "Nog geen subdoel",
     "activiteitenLabel": "Activiteiten",
     "activiteitenGeen": "Nog geen activiteit",
-    "hoekLabel": "Hoek",
-    "leeftijdLabel": "Leeftijd",
     "formTitelNieuw": "Nieuw thema",
     "formTitelWijzig": "Thema wijzigen",
     "naamLabel": "Naam",
@@ -597,6 +596,11 @@
     "doelAlGekoppeld": "Al gekoppeld",
     "ontkoppel": "Ontkoppelen",
     "ontkoppelAria": "Leerplandoel {code} niet meer koppelen aan dit thema",
-    "ontkoppelMislukt": "De koppeling kon niet weggehaald worden."
+    "ontkoppelMislukt": "De koppeling kon niet weggehaald worden.",
+    "hoekWaarde": "Hoek: {hoek}",
+    "leeftijdWaarde": "Leeftijd {leeftijd}",
+    "probleemstellingLabel": "Probleemstelling",
+    "onderzoeksvraagLabel": "Onderzoeksvraag",
+    "verwachteUitkomstenLabel": "Verwachte uitkomsten"
   }
 }

@@ -21,7 +21,7 @@ by id, the lockfile removed, and it launched. No CDP workaround was needed.
 | No klas chosen | "Kies bovenaan een klas…" and **zero** `…/voor-klas/` requests |
 | Klas chosen (L3) | heading reads *"VAN L3 DERDE LEERJAAR (DEMO)"*, one request, for that klas only |
 | Create "Sneeuw en ijs" | saved, navigated to the new detail, `?schooljaar=&klas=` preserved |
-| The 2-or-3 advice | appeared on the new thema: *"Nog geen themadoel · Advies: 2 of 3"* |
+| The 2-or-3 advice | appeared on the new thema: *"Nog geen themadoel"* beside *"Advies: 2 of 3"* |
 | Woordenschat as lines | `sneeuw/ijs/smelten` round-tripped and rendered as "sneeuw, ijs, smelten" |
 | Link a leerplandoel | searched `DEMO-L3-1`, linked `DEMO-L3-10`, list count moved to "1 themadoel" (singular) |
 | Unlink a themadoel | removed, and Water's advice marker appeared as its count dropped to 1 |
@@ -66,3 +66,21 @@ identified by its heading *"Dit thema verwijderen?"* and its consequence sentenc
 inside it carry their own boundary (a solid fill on the confirm, `border-input` on "Annuleren"). So
 SC 1.4.11 is not engaged by the border. Recorded rather than silently left, because "it is only a
 container" is exactly the reasoning that should be visible to whoever checks next.
+
+## Corrections after the antagonist audit of 2026-08-04 (round 1)
+
+Three things in this record needed fixing, and the third is the one that matters.
+
+1. **A quotation that was not one.** The advice row was written as *"Nog geen themadoel · Advies: 2 of 3"*.
+   The list separates those two spans with a flex gap and renders no middot; the `·` separators live in
+   `Klaslaag`. Corrected above. A quoted string has to be copied, not reconstructed from memory.
+2. **Two states this pass never reached**, both found by the audit instead: a thema at the **cap of three**
+   themadoelen (where the server refuses the write, so the screen was offering a control that could not
+   succeed), and **switching thema with a form open**, which overwrote one thema with another's values.
+   Both are now fixed and pinned by tests, and both are the two-pane interaction this pass should have
+   exercised. The lesson for the next pass on a list-plus-detail screen: drive the *transitions* between two
+   selections, not just each selection.
+3. **What the pass could not verify, stated plainly:** the audit is read-only and could not check the contrast
+   table or the 390 px claim, so those numbers rest on this run alone. They were measured with alpha
+   composited against the real backdrop, and the method is in the table above; anyone re-checking should
+   re-measure rather than trust the figure.

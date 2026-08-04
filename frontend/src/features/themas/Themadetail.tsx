@@ -6,6 +6,7 @@ import { t, tAantal } from "../../i18n";
 import { ApiError } from "../../lib/api";
 import { DoelsuggestieGeneratie } from "../matching/DoelsuggestieGeneratie";
 import { DoelsuggestieLijst } from "../matching/DoelsuggestieLijst";
+import type { SuggestieStatus } from "../matching/types";
 import { Doelkiezer } from "./Doelkiezer";
 import { Klaslaag } from "./Klaslaag";
 import { Themaformulier } from "./Themaformulier";
@@ -37,6 +38,27 @@ export const THEMA_DETAIL_PAD = ":themaId";
  * thema list existed yet. Now the suggestions are about the thema already open, and the stopgap is gone.
  */
 export function Themadetail() {
+  const { themaId } = useParams<{ themaId: string }>();
+
+  /*
+    **Keyed on the thema, and this is a data-loss guard rather than a tidy-up** (antagonist round 1, MAJOR 1).
+
+    The detail is one element at one position in the router tree, so changing `:themaId` re-renders it and
+    remounts nothing. Every piece of per-thema state below therefore survived a thema switch, and
+    `Themaformulier` seeds its fields once, at mount. The reachable sequence at >=1024px, where the list stays
+    beside the detail: open Herfst, click Wijzigen, click Water in the list, click Bewaren. The form still held
+    Herfst's values and sent them to Water's URL, overwriting Water's naam, duur and both woordenschat lists
+    school-wide, with no confirmation and no undo. The same cause let a confirmation panel opened about Herfst
+    delete Water.
+
+    A `key` makes the switch a remount, which discards `wijzigen`, `verwijderen`, `doelKiezen` and the form's
+    fields. Deliberately here rather than in `App.tsx`: the route element cannot see the parameter, and putting
+    it on `Themaformulier` alone would fix the form and leave the delete panel armed.
+  */
+  return <Themadetailinhoud key={themaId} />;
+}
+
+function Themadetailinhoud() {
   const { themaId } = useParams<{ themaId: string }>();
   const { search } = useLocation();
   const navigate = useNavigate();
@@ -86,6 +108,16 @@ export function Themadetail() {
 
   const gekoppeldeCodes = thema.themadoelen.map((themadoel) => themadoel.koppeling.leerplandoelCode);
 
+  /**
+   * At the domain's hard ceiling of three themadoelen (`Thema.MaxThemadoelen`, which throws).
+   *
+   * The number is duplicated from the domain on purpose and it is the lesser evil: the read model carries
+   * `heeftVoldoendeThemadoelen` for the **lower** bound only, so the client has nothing to read for the upper
+   * one. If Art. IX.2's ceiling ever moves, this line and the catalogue sentence move with it, and the
+   * integration test that asserts the 400 is what will notice.
+   */
+  const opCap = thema.themadoelen.length >= 3;
+
   function bewaarWijziging(invoer: ThemaInvoer) {
     wijzigThema.mutate(
       { themaId: thema!.id, invoer },
@@ -93,16 +125,41 @@ export function Themadetail() {
     );
   }
 
+  function terugNaarLijst() {
+    // The klas/schooljaar choice travels along: a thema disappearing is not a reason to reset which class a
+    // teacher is working on.
+    navigate({ pathname: "/themas", search }, { replace: true });
+  }
+
   function bevestigVerwijderen() {
     verwijderThema.mutate(thema!.id, {
-      // Back to the list, because the thing this pane was showing no longer exists. The klas/schooljaar
-      // choice travels along: deleting a thema is not a reason to reset which class a teacher is working on.
-      onSuccess: () => navigate({ pathname: "/themas", search }, { replace: true }),
+      onSuccess: terugNaarLijst,
+      // A 404 means someone else deleted it first, so the teacher's goal is already met. Reporting a failure
+      // for an outcome that happened would be the screen contradicting reality.
+      onError: (fout) => {
+        if (fout instanceof ApiError && fout.status === 404) {
+          terugNaarLijst();
+        }
+      },
     });
   }
 
+  /**
+   * The server's own reason for refusing a delete, when it sent one **and** it is a reason.
+   *
+   * A **404 is deliberately excluded**: it means a colleague deleted this thema first, and the server's
+   * `detail` for it is `"Thema <guid> bestaat niet."` — a raw GUID is not a sentence a teacher can act on,
+   * which is the test the amended Art. II.3 actually sets. That case is handled as what it is, below: the
+   * thema is gone, which is the outcome the teacher wanted, so the screen goes back to the list instead of
+   * reporting a failure (antagonist round 1).
+   */
   const verwijderMelding =
-    verwijderThema.error instanceof ApiError ? verwijderThema.error.detail : undefined;
+    verwijderThema.error instanceof ApiError && verwijderThema.error.status !== 404
+      ? verwijderThema.error.detail
+      : undefined;
+
+  const verwijderdDoorIemandAnders =
+    verwijderThema.error instanceof ApiError && verwijderThema.error.status === 404;
 
   return (
     <div className="flex flex-col gap-6">
@@ -210,7 +267,7 @@ export function Themadetail() {
                   )}
             </p>
 
-            {verwijderThema.isError ? (
+            {verwijderThema.isError && !verwijderdDoorIemandAnders ? (
               <div role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
                 <p>{t("themabeheer.verwijderMislukt")}</p>
                 {/*
@@ -253,13 +310,32 @@ export function Themadetail() {
         <div className="mt-5 border-t border-border pt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-sm font-bold text-ink">{t("themabeheer.themadoelenLabel")}</h4>
-            <button
-              type="button"
-              onClick={() => setDoelKiezen((open) => !open)}
-              className="rounded-md border border-input px-3 py-1.5 text-sm font-semibold text-ink hover:bg-paper-diep"
-            >
-              {doelKiezen ? t("themabeheer.annuleer") : t("themabeheer.doelKiezerTitel")}
-            </button>
+            {/*
+              **At the cap the control is replaced by a sentence, not left enabled** (antagonist round 1,
+              MAJOR 2). Art. IX.2's "2 to 3" is two different rules and the screen used to treat both as
+              advice: the lower bound really is advisory (`HeeftVoldoendeThemadoelen` is `count >= 2` and
+              nothing blocks), but the upper bound is a **hard domain invariant** — `Thema.VoegThemadoelToe`
+              throws at 3 and the API answers 400. So at three themadoelen the koppel button could not
+              succeed, which is the E3-06 rule, and the teacher got a bare "kon niet gekoppeld worden" with
+              no way to learn a cap exists.
+
+              The sentence is ours from `nl.json` rather than the server's `detail`, deliberately: that
+              message reads "Een thema heeft ten hoogste 3 themadoelen (Art. IX.2)", and an article
+              reference is not something a teacher can act on.
+            */}
+            {opCap ? (
+              <p className="rounded-sm bg-attentie-zacht px-2 py-1 text-xs font-medium text-attentie-ink">
+                {t("themabeheer.themadoelenMax")}
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDoelKiezen((open) => !open)}
+                className="rounded-md border border-input px-3 py-1.5 text-sm font-semibold text-ink hover:bg-paper-diep"
+              >
+                {doelKiezen ? t("themabeheer.annuleer") : t("themabeheer.doelKiezerTitel")}
+              </button>
+            )}
           </div>
 
           {thema.heeftVoldoendeThemadoelen ? null : (
@@ -373,10 +449,13 @@ function Veld({ label, waarde }: { label: string; waarde: string | null }) {
 /**
  * The catalogue key for a link status.
  *
- * The wire sends `"Voorgesteld"`, `nl.json` keys are `suggestieStatus.voorgesteld`, and lower-casing the first
- * letter is the whole mapping. Written as a function rather than inline so the two vocabularies meet in one
- * place: if a fifth `KoppelingStatus` ever arrives, this is where it fails to resolve.
+ * The wire sends `"Voorgesteld"`, `nl.json` keys are `suggestieStatus.voorgesteld`, and lower-casing is the
+ * whole mapping. Typed against `SuggestieStatus` rather than `string`, which is what makes the claim in the
+ * next sentence true: a fifth `KoppelingStatus` fails to compile here instead of rendering its own key as
+ * visible text (`t()` falls back to the key). The first version took a `string` and its comment claimed the
+ * compile-time guarantee anyway; the antagonist caught that, and its sibling `typeSleutel` in `Klaslaag` is
+ * the shape both should have had.
  */
-function statusSleutel(status: string): "voorgesteld" | "aanvaard" | "geweigerd" | "manueel" {
-  return status.toLowerCase() as "voorgesteld" | "aanvaard" | "geweigerd" | "manueel";
+function statusSleutel(status: SuggestieStatus): Lowercase<SuggestieStatus> {
+  return status.toLowerCase() as Lowercase<SuggestieStatus>;
 }
