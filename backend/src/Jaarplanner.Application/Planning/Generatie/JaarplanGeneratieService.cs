@@ -752,9 +752,19 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
                     p.Status.ToString(),
                     p.AiMotivatie,
                     p.Vergrendeld,
-                    thema is null ? [] : JaarplanGeneratiePromptBuilder.ThemaDoelcodes(thema));
+                    thema is null ? [] : JaarplanGeneratiePromptBuilder.ThemaDoelcodes(thema),
+                    thema?.DuurWeken ?? 0);
             })
             .ToList();
+
+        // How full each period is (E3-09, FR-6.4), measured by the SAME method the generation response uses — same
+        // filters, same arithmetic, same verdict. Reusing `Meet` rather than writing a leaner read-side variant is the
+        // whole point: a second implementation is how the board came to carry a threshold that contradicted the server.
+        var belasting = Spreidingsrapport.Meet(
+            (jaarplan?.Plaatsingen ?? []).Where(p => p.BlokNiveau == GeneratieNiveau && p.IsGepland),
+            blokken,
+            themaPerId,
+            schooljaar);
 
         return new JaarplanWeergave(
             klas.Id,
@@ -762,7 +772,8 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
             schooljaar.Id,
             schooljaar.Naam,
             _indeling.Omschrijving,
-            plaatsingen);
+            plaatsingen,
+            belasting.Blokken);
     }
 
     private static string Datum(DateOnly datum) =>

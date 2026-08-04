@@ -51,6 +51,14 @@ export interface Navigatiebestemming {
 
 export const JAARPLAN_PAD = "/jaarplan";
 
+/**
+ * Named because the kalender links to it (E3-09): its knelpunt line states how many leerplandoelen the plan teaches
+ * nowhere and sends the teacher here for the list. A literal in two files is how a route rename silently breaks one of
+ * them, and the klas is not in the path — `useSelectie` carries it — so the bare route keeps the class the teacher is
+ * looking at.
+ */
+export const DEKKING_PAD = "/dekking";
+
 export const NAVIGATIE: readonly Navigatiebestemming[] = [
   {
     pad: "/doelen",
@@ -79,7 +87,7 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
     story: "E3-06",
   },
   {
-    pad: "/dekking",
+    pad: DEKKING_PAD,
     labelKey: "navigatie.dekking",
     isGebouwd: true,
     magBeheerder: false,

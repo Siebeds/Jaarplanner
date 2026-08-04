@@ -618,7 +618,11 @@ public sealed class DekkingServiceTests
             Guid.Parse("33333333-3333-3333-3333-333333333333"),
             "2026-2027",
             "themaperiode (4-6 weken)",
-            plaatsingen);
+            plaatsingen,
+            // Dekking does not read the per-block load (E3-09) and must not start to: how full a period is says
+            // nothing about whether a goal is taught in it. Empty rather than populated, so a future coupling shows
+            // up as a test that needs data instead of one that silently passes on a fixture's leftovers.
+            []);
 
     private static ThemaplaatsingWeergave Plaatsing(
         Guid themaId,
@@ -646,7 +650,10 @@ public sealed class DekkingServiceTests
             status,
             null,
             false,
-            []);
+            [],
+            // A nominal duration, not 0: `DuurWeken` is `RequirePositive` in the domain, and 0 is reserved for the
+            // "thema could not be resolved" degrade. Dekking ignores the field either way.
+            4);
 
     private static Leerplandoel Doel(
         string code,

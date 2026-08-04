@@ -54,6 +54,16 @@ const leegPlan: Jaarplan = {
   schooljaarId: SCHOOLJAAR_ID,
   schooljaarNaam: "2026-2027",
   blokindeling: rooster.blokindeling,
+  // No placements, so no period carries any weeks: the te-vol signal is out of scope for this file (E3-09).
+  blokken: rooster.blokken.map((blok) => ({
+    ordinaal: blok.ordinaal,
+    start: blok.start,
+    aantalThemas: 0,
+    aantalDoelen: 0,
+    benodigdeWeken: 0,
+    beschikbareWeken: Math.ceil(blok.aantalOpenDagen / 7),
+    isOverbelast: false,
+  })),
   plaatsingen: [],
 };
 
@@ -183,12 +193,15 @@ function stubFetch(
   return posts;
 }
 
+/** A router because the kalender links to `/dekking` (E3-09); see the note on the same helper in its own test file. */
 function renderKalender() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <Jaarplankalender klasId={KLAS_ID} />
+      <MemoryRouter>
+        <Jaarplankalender klasId={KLAS_ID} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }

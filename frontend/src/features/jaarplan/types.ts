@@ -149,29 +149,50 @@ export interface Themaplaatsing {
   vergrendeld: boolean;
   /** The leerplandoel codes this thema carries. Derived server-side; dekking is never stored (Art. V.1). */
   doelcodes: string[];
+  /**
+   * The thema's nominal duration in weeks.
+   *
+   * Here so the board can predict "would this period become te vol?" while the card is still hovering, which no
+   * round trip can answer. 0 means the server could not resolve the thema, never a thema of no length.
+   */
+  duurWeken: number;
 }
 
-/** One block's share of the plan, as measured after generation (E3-02, FR-5.2). */
+/**
+ * One block's share of the plan: how full the period is (E3-02, FR-5.2, E3-09).
+ *
+ * Returned by **both** the generation response and the plain jaarplan read, from one server-side method, so the
+ * board no longer needs a threshold of its own. Before E3-09 it had one, counting thema's, and it contradicted this
+ * for months.
+ */
 export interface Blokspreiding {
   ordinaal: number;
   start: string;
   aantalThemas: number;
   /** Distinct leerplandoelen carried by the thema's in this block. */
   aantalDoelen: number;
-  /** Sum of the placed thema's durations, in weeks. */
+  /** Sum of the placed thema's durations, in weeks. Rejected placements are excluded server-side. */
   benodigdeWeken: number;
-  /** The block's own span in weeks. */
+  /**
+   * The block's own span in whole weeks of open days, rounded up (owner ruling, 2026-07-31).
+   *
+   * A whole number rather than one decimal, so a screen can never print "6 weken nodig, 5,4 beschikbaar" beside
+   * "niet te vol". Rounding up is what keeps a Hemelvaart plus a brugdag from making an ordinary period te vol.
+   */
   beschikbareWeken: number;
-  /** True when the placed thema's need more weeks than the block spans. */
+  /** True when the placed thema's need more weeks than the block offers. The server's verdict, not a local one. */
   isOverbelast: boolean;
 }
 
 /**
  * How a generated plan is spread over the year (E3-02, FR-5.2).
  *
- * **Advisory and threshold-free by design.** There is no "good/bad" verdict here, because nothing in the
- * functional analysis defines an acceptable spread and inventing a limit in code would answer a question that
- * belongs to the school — the same reasoning that keeps the kalender's "te vol" threshold provisional.
+ * **Advisory and threshold-free by design.** There is no "good/bad" verdict on the *spread* here, because nothing in
+ * the functional analysis defines an acceptable spread and inventing a limit in code would answer a question that
+ * belongs to the school.
+ *
+ * `overbelasteBlokOrdinalen` is not such an invented limit and never was: it is arithmetic on two figures the school
+ * supplied, which is why the owner could rule on it (2026-07-31) while "evenly spread enough" still has no answer.
  */
 export interface Spreidingsrapport {
   aantalBlokken: number;
@@ -297,6 +318,12 @@ export interface Jaarplan {
   schooljaarNaam: string;
   blokindeling: string;
   plaatsingen: Themaplaatsing[];
+  /**
+   * How full each period is (E3-09). **Always the themaperiode tier**, whatever the board is zoomed to: te vol is a
+   * property of the tier a placement keys on (ADR-0020 §3), and the fine view summarises it in one line rather than
+   * inheriting a mark per sub-column.
+   */
+  blokken: Blokspreiding[];
 }
 
 /** Just enough of a thema to offer it in a picker: the name is what the generation contract keys on. */

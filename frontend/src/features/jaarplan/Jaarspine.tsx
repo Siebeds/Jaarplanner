@@ -121,10 +121,15 @@ export function Jaarspine({
                 {teVol && (
                   // The second, non-colour carrier for "te vol" (Art. XII). A proportional segment can be
                   // 40px wide, so visually there is only room to point — but a screen reader announcing a
-                  // bare "!" would learn nothing, so the word rides along invisibly. The full sentence is on
+                  // bare glyph would learn nothing, so the word rides along invisibly. The full sentence is on
                   // the board column below.
+                  //
+                  // The glyph is `▲`, the same one the board column and the explanation above it use (E3-09). It was
+                  // `!` while te vol was two loosely related things; now that the rule has one definition, one signal
+                  // wearing two glyphs on the same screen reads as two different problems. The width argument that
+                  // justified a bare marker still holds and is untouched: `▲` is no wider than `!`.
                   <span className="font-bold text-attentie-ink">
-                    !<span className="sr-only"> {t("spine.teVol")}</span>
+                    ▲<span className="sr-only"> {t("spine.teVol")}</span>
                   </span>
                 )}
               </p>

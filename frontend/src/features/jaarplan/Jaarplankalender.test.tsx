@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { axe } from "jest-axe";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "../../i18n";
@@ -38,7 +39,44 @@ const rooster: Planningsrooster = {
   onderbrekingen: [{ naam: "Herfstvakantie", start: "2026-11-02", eind: "2026-11-08" }],
 };
 
-function maakJaarplan(plaatsingen: Jaarplan["plaatsingen"]): Jaarplan {
+/**
+ * The per-block load the server sends with the plan (E3-09), derived from the placements so the fixture cannot
+ * describe a board that could not exist: a payload claiming 12 weeks of thema's in a period holding one 4-week card
+ * would let a rendering test pass on a state the server never produces.
+ *
+ * `beschikbareWeken` rounds the rooster's open days **up**, exactly as the server does, so the two halves of every
+ * assertion come from the same arithmetic the product uses.
+ *
+ * Rejected placements are excluded, matching `Themaplaatsing.IsGepland`: nothing is taught in a period on account of
+ * a thema the teacher threw out.
+ */
+function maakBelasting(plaatsingen: Jaarplan["plaatsingen"]): Jaarplan["blokken"] {
+  return rooster.blokken.map((blok) => {
+    const inBlok = plaatsingen.filter(
+      (plaatsing) =>
+        plaatsing.blokStart === blok.start &&
+        !plaatsing.isVervallen &&
+        plaatsing.status !== "Geweigerd",
+    );
+    const benodigdeWeken = inBlok.reduce((som, plaatsing) => som + plaatsing.duurWeken, 0);
+    const beschikbareWeken = Math.ceil(blok.aantalOpenDagen / 7);
+
+    return {
+      ordinaal: blok.ordinaal,
+      start: blok.start,
+      aantalThemas: inBlok.length,
+      aantalDoelen: new Set(inBlok.flatMap((plaatsing) => plaatsing.doelcodes)).size,
+      benodigdeWeken,
+      beschikbareWeken,
+      isOverbelast: benodigdeWeken > beschikbareWeken,
+    };
+  });
+}
+
+function maakJaarplan(
+  plaatsingen: Jaarplan["plaatsingen"],
+  blokken: Jaarplan["blokken"] = maakBelasting(plaatsingen),
+): Jaarplan {
   return {
     klasId: KLAS_ID,
     klasNaam: "L3 derde leerjaar",
@@ -46,6 +84,7 @@ function maakJaarplan(plaatsingen: Jaarplan["plaatsingen"]): Jaarplan {
     schooljaarNaam: "2026-2027",
     blokindeling: rooster.blokindeling,
     plaatsingen,
+    blokken,
   };
 }
 
@@ -65,6 +104,9 @@ function maakPlaatsing(
     aiMotivatie: "past hier volgens de AI",
     vergrendeld: false,
     doelcodes: [],
+    // A nominal thema length. 4 against block 1's 9 available weeks keeps the default fixture comfortably NOT te vol,
+    // so a test that wants the flag has to ask for it rather than inherit it.
+    duurWeken: 4,
     ...overrides,
   };
 }
@@ -75,7 +117,35 @@ function maakPlaatsing(
  * `generatie` optionally controls the POST: a run result for success, or an HTTP status number to simulate a
  * failure. The order of the checks matters — the generation URL also contains "/jaarplan".
  */
-function stubFetch(jaarplan: Jaarplan, generatie?: Generatieresultaat | number) {
+/**
+ * A coverage answer in which nothing is missing, so the E3-09 knelpunt line stays silent by default.
+ *
+ * The default is deliberately the *quiet* one: a fixture that reported gaps would put a knelpunt sentence on every
+ * screen this file asserts about, and the tests that are actually about the signal would then be asserting the presence
+ * of something they did not arrange.
+ */
+const DEKKING_NIETS_ONTBREEKT = {
+  klasId: KLAS_ID,
+  klasNaam: "L3 derde leerjaar",
+  schooljaarId: SCHOOLJAAR_ID,
+  schooljaarNaam: "2026-2027",
+  bereik: "EigenJaarFase",
+  gemetenJaarFasen: ["L3"],
+  beschikbareJaarFasen: ["L3"],
+  isTerugvalNaarHeelCurriculum: false,
+  aantalBuitenBereik: 0,
+  isBetrouwbaar: true,
+  aantalOnopgelosteVervallenPlaatsingen: 0,
+  aantalGedekt: 8,
+  aantalLeerplandoelen: 8,
+  doelen: [],
+};
+
+function stubFetch(
+  jaarplan: Jaarplan,
+  generatie?: Generatieresultaat | number,
+  dekking?: unknown,
+) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -110,6 +180,13 @@ function stubFetch(jaarplan: Jaarplan, generatie?: Generatieresultaat | number) 
           { status: 200 },
         );
       }
+      // The dekking read behind the "goals this plan teaches nowhere" knelpunt (E3-09). Routed for every test in this
+      // file, not only the ones about it, because an unrouted URL falls through to the 404 below and the knelpunt line
+      // then renders its "could not be checked" state on every screen this file asserts against — including the axe
+      // runs, which would be measuring a permanent error state nobody meant to put there.
+      if (url.includes("/dekking")) {
+        return new Response(JSON.stringify(dekking ?? DEKKING_NIETS_ONTBREEKT), { status: 200 });
+      }
       if (url.includes("/rooster")) {
         return new Response(JSON.stringify(rooster), { status: 200 });
       }
@@ -141,13 +218,21 @@ function periodes() {
  * refetch produces (`refetchQueries` on a key whose fetch then fails). Nothing in the component tree can be clicked
  * to reach it.
  */
+/**
+ * A router is required, not decorative (E3-09): the knelpunt line for goals the plan teaches nowhere links to
+ * `/dekking`, and react-router's `Link` throws without a router context. The real screen always has one, since the
+ * kalender is only ever reached through a route, so providing it here makes the harness match the app rather than
+ * papering over a missing dependency. Rendering without it is what 75 of this file's tests did until the link existed.
+ */
 function renderKalender() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
-        <Jaarplankalender klasId={KLAS_ID} />
+        <MemoryRouter>
+          <Jaarplankalender klasId={KLAS_ID} />
+        </MemoryRouter>
       </QueryClientProvider>,
     ),
     queryClient,
@@ -175,6 +260,7 @@ describe("Jaarplankalender", () => {
           aiMotivatie: "past bij het begin van het schooljaar",
           vergrendeld: false,
           doelcodes: ["NAT-L3-01", "NL-L3-04"],
+          duurWeken: 5,
         },
       ]),
     );
@@ -190,9 +276,13 @@ describe("Jaarplankalender", () => {
     // The vakantie is drawn between them.
     expect(screen.getByText("Herfstvakantie")).toBeInTheDocument();
 
-    // Proportional width comes from teaching days, shown as weeks: 62/7 = 8,9 and 42/7 = 6,0.
-    expect(screen.getByText("8,9 weken")).toBeInTheDocument();
-    expect(screen.getByText("6,0 weken")).toBeInTheDocument();
+    // The heading states the period in WHOLE weeks, rounded up, because the te-vol rule it sits above compares that
+    // way (owner ruling 2026-08-04, E3-09): 62 open days is 8,9 weeks and reads 9; 42 is exactly 6. The precise figure
+    // has not been lost, it moved to where it is load-bearing — the spine still sizes its segments on open days.
+    expect(screen.getByText("9 weken")).toBeInTheDocument();
+    expect(screen.getByText("6 weken")).toBeInTheDocument();
+    // And no decimal survives anywhere on the board, which is the property that makes the two figures agree.
+    expect(screen.queryByText(/\d,\d weken/)).toBeNull();
 
     // The count says GEKOPPELD, not "gedekt": doelcodes are links, and Art. V.1 makes a doel gedekt only
     // once its thema is placed. Asserting the exact word is the point — "gedekt" here would be a false
@@ -220,6 +310,7 @@ describe("Jaarplankalender", () => {
           aiMotivatie: null,
           vergrendeld: true,
           doelcodes: ["MUZ-L3-02"],
+          duurWeken: 4,
         },
       ]),
     );
@@ -363,8 +454,11 @@ describe("Jaarplankalender", () => {
     // FR-5.2's three measurements are surfaced.
     expect(screen.getByText("1 van 2 themaperiodes gebruikt.")).toBeInTheDocument();
     expect(screen.getByText("Nog leeg: themaperiode 2.")).toBeInTheDocument();   // singular ordinal
+    // Named "te vol" here as well as on the board (E3-09): after the owner's ruling of 2026-07-31 these are one
+    // signal, and this report used to call it "Te weinig weken" while the board called it "Te vol". Two names for one
+    // problem reads as two problems.
     expect(
-      screen.getByText(/Te weinig weken voor de geplande thema's: themaperiode 1\./),
+      screen.getByText(/Te vol, te weinig weken voor de geplande thema's: themaperiode 1\./),
     ).toBeInTheDocument();
 
     // Locked/decided placements survived, and the model's miss is named rather than swallowed (Art. IV.4).
@@ -1344,6 +1438,10 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
         if (url.includes("/jaarplan/parameters")) {
           return new Response(JSON.stringify(instellingen), { status: 200 });
         }
+        // As in the main stub: unrouted, the E3-09 knelpunt line would render its failure state on every zoom test.
+        if (url.includes("/dekking")) {
+          return new Response(JSON.stringify(DEKKING_NIETS_ONTBREEKT), { status: 200 });
+        }
         if (url.includes("/rooster")) {
           roosterUrls.push(url);
 
@@ -2307,6 +2405,58 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     );
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  /**
+   * E3-09's claim, verified on E3-08's harness because this is where a real fine grid exists.
+   *
+   * Te vol belongs to the themaperiode tier (owner ruling, 2026-07-31): applied to a fortnight, a thema's whole 4 to 6
+   * weeks against the ~2 a sub-block offers flags every filled sub-column, which signals nothing and invites the
+   * reading that *this* fortnight is overbooked. So the mark disappears from the columns and the sentence above the
+   * board names the periods instead. Both halves matter: losing the mark without gaining the sentence would make
+   * zooming in hide a knelpunt.
+   */
+  it("summarises te vol above the board at the finer zoom instead of marking sub-columns", async () => {
+    // 12 weeks of thema's in themaperiode 2, which offers 6. At the fine tier that period is sub-columns 5, 6 and 7.
+    const teVol = maakJaarplan([
+      maakPlaatsing({
+        id: "v1",
+        themaNaam: "Licht en donker",
+        blokStart: "2026-11-09",
+        blokEind: "2026-12-20",
+        blokOrdinaal: 2,
+        duurWeken: 6,
+      }),
+      maakPlaatsing({
+        id: "v2",
+        themaNaam: "Feesten",
+        blokStart: "2026-11-09",
+        blokEind: "2026-12-20",
+        blokOrdinaal: 2,
+        duurWeken: 6,
+      }),
+    ]);
+    stubZoom(teVol);
+    renderKalender();
+
+    await screen.findByText("Licht en donker");
+    // Flagged per column at the coarse tier, which is the state the switch is about to change.
+    expect(screen.getByText(t("kalender.teVol", { nodig: 12, beschikbaar: 6 }))).toBeInTheDocument();
+
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // Named above the board, so zooming in does not make the knelpunt disappear.
+    expect(
+      screen.getByText(t("kalender.teVolEldersEnkelvoud", { ordinalen: "2" })),
+    ).toBeInTheDocument();
+
+    // And not inherited by any sub-column: the per-column flag is gone entirely, rather than repeated across the
+    // three sub-columns of themaperiode 2.
+    expect(screen.queryByText(t("kalender.teVol", { nodig: 12, beschikbaar: 6 }))).toBeNull();
+    expect(screen.queryByText(/Te vol: \d+ weken thema/)).toBeNull();
   });
 });
 
@@ -3300,6 +3450,223 @@ describe("Jaarplankalender — een thema met de hand plannen (E4-03, FR-7.2)", (
 
     expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
     await openKiezer(1);
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+/**
+ * Knelpunt-signalering (E3-09, FR-6.4): the three things the board must not let a teacher miss.
+ *
+ * They are deliberately not one uniform banner. A period the teacher has overbooked is a judgement they may accept; a
+ * placement pointing at a date that no longer exists is not, and must stay until a human resolves it (directie
+ * 2026-07-28); and curriculum the plan never teaches is a coverage fact rather than a calendar fault. So each is
+ * asserted on its own terms, including the ones about what a signal does NOT claim.
+ */
+describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
+  /** Two 6-week thema's in period 2, which offers 6 weeks: 12 needed, 6 available. */
+  function teVolPlaatsingen() {
+    return [
+      maakPlaatsing({
+        id: "v1",
+        themaNaam: "Licht en donker",
+        blokStart: "2026-11-09",
+        blokEind: "2026-12-20",
+        blokOrdinaal: 2,
+        duurWeken: 6,
+      }),
+      maakPlaatsing({
+        id: "v2",
+        themaNaam: "Feesten",
+        blokStart: "2026-11-09",
+        blokEind: "2026-12-20",
+        blokOrdinaal: 2,
+        duurWeken: 6,
+      }),
+    ];
+  }
+
+  it("flags an over-full period in weeks, with an icon and words rather than colour alone", async () => {
+    stubFetch(maakJaarplan(teVolPlaatsingen()));
+    renderKalender();
+
+    await screen.findByText("Licht en donker");
+
+    // The two figures the teacher can act on, not a count of thema's: 12 weeks of thema's in a 6-week period.
+    expect(screen.getByText(t("kalender.teVol", { nodig: 12, beschikbaar: 6 }))).toBeInTheDocument();
+
+    // The old count-based wording is gone, not merely unused: "Te vol: 2 thema's" was the pre-ruling claim.
+    expect(screen.queryByText(/Te vol: \d+ thema/)).toBeNull();
+
+    // The explanation is given ONCE above the board, and it no longer calls the rule provisional.
+    expect(screen.getByText(t("kalender.teVolUitleg"))).toBeInTheDocument();
+    expect(screen.queryByText(/voorlopige drempel/)).toBeNull();
+  });
+
+  it("does not flag a period that needs exactly the weeks it has", async () => {
+    // 6 weeks of thema's in period 2's 6 available weeks. The boundary the ruling settles: over means strictly more.
+    stubFetch(maakJaarplan([teVolPlaatsingen()[0]]));
+    renderKalender();
+
+    await screen.findByText("Licht en donker");
+
+    expect(screen.queryByText(/Te vol/)).toBeNull();
+    expect(screen.queryByText(t("kalender.teVolUitleg"))).toBeNull();
+  });
+
+  it("ignores a rejected thema when deciding whether a period is over-full", async () => {
+    // 12 weeks placed, but one of the two is rejected: nothing is taught in this period on its account, so 6 remain
+    // and the period is not te vol. The card itself stays visible, since a teacher must see what they threw out.
+    const [eerste, tweede] = teVolPlaatsingen();
+    stubFetch(maakJaarplan([eerste, { ...tweede, status: "Geweigerd" }]));
+    renderKalender();
+
+    await screen.findByText("Feesten");
+
+    expect(screen.queryByText(/Te vol/)).toBeNull();
+  });
+
+  /**
+   * The year strip's te-vol marker: **one glyph, and the same one the board uses** (E3-09, Art. XII).
+   *
+   * Untested until now, which is why the strip could carry `!` while the column carried `▲` for as long as it did. The
+   * glyph is the strip's only non-colour carrier of the state — a 40px segment has no room for a sentence — so it is
+   * exactly the kind of detail Art. XII's "never colour alone" depends on and exactly the kind a passing suite was
+   * silent about.
+   */
+  it("marks te vol on the year strip with the same glyph the board uses, plus a word for screen readers", async () => {
+    stubFetch(maakJaarplan(teVolPlaatsingen()));
+    renderKalender();
+
+    await screen.findByText("Licht en donker");
+
+    // The strip is the region above the board; its te-vol segment carries the glyph and an sr-only word.
+    const merktekens = screen.getAllByText("▲", { exact: false });
+    expect(merktekens.length).toBeGreaterThan(0);
+
+    // The word rides along invisibly, so a screen reader does not announce a bare glyph.
+    expect(screen.getByText(t("spine.teVol"))).toBeInTheDocument();
+
+    // And the old glyph is gone entirely: two glyphs for one signal read as two problems.
+    expect(screen.queryByText("!", { exact: true })).toBeNull();
+  });
+
+  it("states how many leerplandoelen the plan teaches nowhere, and links to the overview", async () => {
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, {
+      ...DEKKING_NIETS_ONTBREEKT,
+      aantalGedekt: 3,
+      aantalLeerplandoelen: 11,
+    });
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    expect(
+      await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 8 })),
+    ).toBeInTheDocument();
+
+    // A real route, not a dead control (the E3-06 rule): the list lives on the dekkingsoverzicht, which E5-02 built.
+    expect(screen.getByRole("link", { name: t("kalender.ongeplandeDoelenLink") })).toHaveAttribute(
+      "href",
+      "/dekking",
+    );
+  });
+
+  it("uses the singular for exactly one uncovered leerplandoel", async () => {
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, {
+      ...DEKKING_NIETS_ONTBREEKT,
+      aantalGedekt: 7,
+      aantalLeerplandoelen: 8,
+    });
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.ongeplandeDoelenEnkelvoud"))).toBeInTheDocument();
+  });
+
+  it("says nothing about uncovered goals when every goal in scope is taught", async () => {
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    expect(screen.queryByText(/geen enkel thema van dit jaarplan/)).toBeNull();
+  });
+
+  it("withholds the gap count while dekking itself is untrustworthy", async () => {
+    // An unresolved stale placement makes the server withhold `aantalGedekt` (directie 2026-07-28, point 4). A plan
+    // that cannot report dekking cannot report a gap in it either, and the Te herzien notice is already saying what
+    // has to happen first. Neither the count NOR the "could not be checked" line belongs here: nothing failed.
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, {
+      ...DEKKING_NIETS_ONTBREEKT,
+      isBetrouwbaar: false,
+      aantalOnopgelosteVervallenPlaatsingen: 1,
+      aantalGedekt: null,
+    });
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    expect(screen.queryByText(/geen enkel thema van dit jaarplan/)).toBeNull();
+    expect(screen.queryByText(t("kalender.ongeplandeDoelenOnbekend"))).toBeNull();
+  });
+
+  it("says the gap could not be checked rather than implying there is none", async () => {
+    // Silence on a failed read would read as "nothing is missing", which is the one direction this signal must never
+    // fail in, and the direction a 500 or a dropped connection fails in by default.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url.includes("/dekking")) {
+          return new Response("nope", { status: 500 });
+        }
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(
+            JSON.stringify(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })])),
+            { status: 200 },
+          );
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.ongeplandeDoelenOnbekend"))).toBeInTheDocument();
+  });
+
+  it("has no axe violations with all three knelpunten on screen at once", async () => {
+    stubFetch(
+      maakJaarplan([
+        ...teVolPlaatsingen(),
+        maakPlaatsing({
+          id: "v3",
+          themaNaam: "Vervallen thema",
+          blokStart: "2026-12-01",
+          blokEind: null,
+          blokOrdinaal: null,
+          isVervallen: true,
+        }),
+      ]),
+      undefined,
+      { ...DEKKING_NIETS_ONTBREEKT, aantalGedekt: 3, aantalLeerplandoelen: 11 },
+    );
+    const { container } = renderKalender();
+
+    await screen.findByText("Licht en donker");
+    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 8 }));
 
     expect(await axe(container)).toHaveNoViolations();
   });

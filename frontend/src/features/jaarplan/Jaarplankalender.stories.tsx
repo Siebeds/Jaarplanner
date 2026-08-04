@@ -109,6 +109,7 @@ function plaatsing(
     aiMotivatie: null,
     vergrendeld: false,
     doelcodes: [],
+    duurWeken: 5,
     ...overrides,
   };
 }
@@ -126,8 +127,11 @@ const plaatsingen: Themaplaatsing[] = [
     aiMotivatie: "sluit aan bij het seizoen in deze periode",
   }),
 
-  // Periode 3 holds three thema's, so the "te vol" knelpunt is visible (FR-6.4) — and with it the note
-  // saying the threshold is still an open review question (E3-10 question C).
+  // Periode 3 holds three thema's, so the "te vol" knelpunt is visible (FR-6.4). It fires on the weeks those
+  // thema's need against the weeks the period offers (owner ruling 2026-07-31, E3-09), not on their number: three
+  // 5-week thema's is 15 weeks in a period of at most 6, which is over by any reading. The story used to note that
+  // the threshold was an open review question; it is now decided, so the note is gone rather than left to mislead
+  // whoever opens this next.
   plaatsing("Licht en donker", "2026-11-09", {
     doelcodes: doelen(11),
     aiMotivatie: "de donkere maanden maken dit thema concreet waarneembaar",
@@ -151,6 +155,33 @@ const plaatsingen: Themaplaatsing[] = [
   plaatsing("Zomer en vakantie", "2027-05-26", { doelcodes: doelen(6) }),
 ];
 
+/**
+ * The per-block load the server ships with the plan (E3-09), derived here from the placements themselves.
+ *
+ * Derived rather than hand-written for the same reason the test fixture derives it: a story is the picture people
+ * trust, and a hand-kept list would drift from `plaatsingen` the first time one is added, showing a te-vol flag on a
+ * period whose cards do not account for it. `beschikbareWeken` rounds open days up, as the server does.
+ */
+function belasting(eigen: Themaplaatsing[]): Jaarplan["blokken"] {
+  return rooster.blokken.map((blok) => {
+    const inBlok = eigen.filter(
+      (plaatsing) => plaatsing.blokStart === blok.start && plaatsing.status !== "Geweigerd",
+    );
+    const benodigdeWeken = inBlok.reduce((som, plaatsing) => som + plaatsing.duurWeken, 0);
+    const beschikbareWeken = Math.ceil(blok.aantalOpenDagen / 7);
+
+    return {
+      ordinaal: blok.ordinaal,
+      start: blok.start,
+      aantalThemas: inBlok.length,
+      aantalDoelen: new Set(inBlok.flatMap((plaatsing) => plaatsing.doelcodes)).size,
+      benodigdeWeken,
+      beschikbareWeken,
+      isOverbelast: benodigdeWeken > beschikbareWeken,
+    };
+  });
+}
+
 function jaarplan(eigen: Themaplaatsing[]): Jaarplan {
   return {
     klasId: "11111111-1111-1111-1111-111111111111",
@@ -159,6 +190,7 @@ function jaarplan(eigen: Themaplaatsing[]): Jaarplan {
     schooljaarNaam: "2026-2027",
     blokindeling: rooster.blokindeling,
     plaatsingen: eigen,
+    blokken: belasting(eigen),
   };
 }
 

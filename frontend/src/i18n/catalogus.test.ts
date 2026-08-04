@@ -42,10 +42,12 @@ const GEEN_ENKELVOUD_NODIG: Record<string, string> = {
   "doelen.optieMetAantal": "no inflected noun, the number stands alone in brackets",
   // "nog niet gekoppeld" is a participle phrase and does not inflect: "1 nog niet gekoppeld" is correct.
   "ongekoppeld.aantal": "the trailing phrase does not inflect with the count",
-  // Unreachable at 1: `isTeVol` requires `>= VOORLOPIGE_TE_VOL_DREMPEL`, which is 3. NOTE the coupling: that
-  // constant is named "voorlopige" for a reason, and lowering it to 1 would make this string ungrammatical.
-  // Whoever changes it owns adding the singular.
-  "kalender.teVol": "unreachable at 1 while VOORLOPIGE_TE_VOL_DREMPEL >= 2",
+  // `kalender.teVol` used to be exempted here, "unreachable at 1 while VOORLOPIGE_TE_VOL_DREMPEL >= 2", and the
+  // exemption named the coupling that would break it. E3-09 broke it exactly as predicted: the owner ruled te vol is
+  // weeks needed against weeks available (2026-07-31), the constant is gone and the string interpolates no count at
+  // all, so this guard no longer has anything to say about it. Removed rather than reworded, because
+  // "keeps its exemption lists honest" fails on an entry whose key no longer carries `{aantal}` — which is the guard
+  // working. Left as a comment because the coupling note was right and paid off.
   // "{aantal} {soort}", where soort is only ever one of the three participles in `import.soort.*`
   // (toegevoegd / bijgewerkt / ongewijzigd). A participle does not inflect with the count, so "1 toegevoegd"
   // and "9 toegevoegd" are both correct. One count string for three kinds, rather than three plus three

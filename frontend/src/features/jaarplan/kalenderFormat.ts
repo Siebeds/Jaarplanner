@@ -4,7 +4,13 @@
  */
 
 import type { TranslationKey } from "../../i18n";
-import type { Planningsblok, Planningsblokniveau, Themaplaatsing, Planningsonderbreking } from "./types";
+import type {
+  Blokspreiding,
+  Planningsblok,
+  Planningsblokniveau,
+  Themaplaatsing,
+  Planningsonderbreking,
+} from "./types";
 
 /**
  * The word for one block at each tier (E3-08 fix round 4, MINOR-4b).
@@ -41,17 +47,30 @@ export function formatteerPeriode(start: string, eind: string): string {
 }
 
 /**
- * The block's length in weeks, Dutch-formatted to one decimal ("4,4").
+ * The block's length in **whole** weeks, rounded up: 40 open days reads "6", not "5,7".
  *
- * Derived from `aantalOpenDagen`, i.e. days the school is not closed. Note this still counts weekends —
- * see the caveat on `PlanningsblokWeergave.AantalOpenDagen`; the resulting figure matches the approved
- * wireframe's own arithmetic (31 days ÷ 7 = "4,4 weken") and is a review question, not a silent choice.
+ * Derived from `aantalOpenDagen`, i.e. days the school is not closed. Note this still counts weekends — see the caveat
+ * on `PlanningsblokWeergave.AantalOpenDagen`.
+ *
+ * **It rounds because te vol does** (owner ruling, 2026-08-04, on top of the te-vol ruling of 2026-07-31). This used to
+ * render one decimal, matching the approved wireframe's arithmetic (31 days ÷ 7 = "4,4 weken"), and E3-09 put a second
+ * weeks figure directly beneath it: the te-vol flag compares against `ceil(openDagen / 7)`, so a period of 40 open days
+ * showed "5,7 weken" in its heading and "in 6 weken" one line down. Two numbers for one period length, which is the
+ * self-contradiction the te-vol ruling exists to prevent, one level up from where that ruling was looking.
+ *
+ * **What rounding up means, so the figure is not misread as precision.** It is a deliberate leniency, not a
+ * measurement: a thema's `DuurWeken` is nominal while a vrije dag costs a seventh of a week, so rounding up is what
+ * keeps single free days from making an ordinary period te vol while a vakantie still does (it breaks the period
+ * outright). The cost the owner accepted: a period carrying three vrije dagen now labels the same as an unbroken one,
+ * and the {@link Jaarspine} still sizes its segments on exact open days, so two segments of visibly different width
+ * can share a label. The width stays the honest signal of teaching time; the label is the figure the rule uses.
+ *
+ * **Returns a number, not a formatted string, and the rename to `wekenInBlok` records that.** It used to hand back
+ * "4,4" ready to interpolate; a whole number has to reach `tAantal` as a count, because "1 weken" is grammatical
+ * nonsense that a decimal was accidentally hiding.
  */
-export function formatteerWeken(aantalOpenDagen: number): string {
-  return (aantalOpenDagen / 7).toLocaleString("nl-BE", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
+export function wekenInBlok(aantalOpenDagen: number): number {
+  return Math.ceil(aantalOpenDagen / 7);
 }
 
 /**
@@ -98,15 +117,34 @@ export function bouwRibbon(
 }
 
 /**
- * The provisional "te vol" threshold, in thema's per period.
+ * How full each period is, by the block start date it keys on.
  *
- * **This is a placeholder for review question C, not a decision.** The approved wireframe flags at 3, and
- * question C asks whether "te vol" should count thema's, count goals, or scale with the period's length — a
- * 6-week period is genuinely wider than a 4-week one and can hold more before it looks full. It lives in one
- * place, and the UI says out loud that the threshold is provisional, so the review can change it without
- * hunting for a magic number.
+ * A lookup rather than a computation, and that is the point of E3-09: *te vol* used to be decided here by a
+ * provisional threshold that counted thema's, while the server decided the same question by arithmetic on weeks. The
+ * two disagreed for months. The rule now has one implementation, `BlokspreidingWeergave.IsOverbelast`, and this
+ * module only reads its answer.
+ *
+ * Keyed on `start` and not on `ordinaal`, like everything else that has to survive a vakantie edit (ADR-0020 §3).
  */
-export const VOORLOPIGE_TE_VOL_DREMPEL = 3;
+export function belastingPerStart(
+  blokken: readonly Blokspreiding[],
+): ReadonlyMap<string, Blokspreiding> {
+  return new Map(blokken.map((blok) => [blok.start, blok]));
+}
+
+/**
+ * Whether a period would be te vol carrying `benodigdeWeken` weeks of thema's.
+ *
+ * **The one sanctioned mirror of the server's `IsOverbelast`.** It exists only because the board has to answer "would
+ * this become te vol?" *during* a drag, and a hover cannot round-trip. Everything about the state already on screen
+ * reads {@link Blokspreiding.isOverbelast} instead of calling this.
+ *
+ * That mirror is pinned rather than trusted: a test asserts this function reproduces the server's own verdict for
+ * every block of a real payload, so a change to the comparison on either side fails here.
+ */
+export function isTeVolMet(beschikbareWeken: number, benodigdeWeken: number): boolean {
+  return benodigdeWeken > beschikbareWeken;
+}
 
 /**
  * The placements that actually occupy teaching time in a period.
@@ -193,13 +231,16 @@ export function formatteerOrdinalen(ordinalen: readonly number[]): string {
 }
 
 /**
- * Whether a period counts as over-full.
+ * The weeks a period would carry if the dragged thema were dropped into it.
  *
- * Lives here rather than in the component so the year spine and the period card cannot disagree about
- * which period is flagged — they now read the same predicate.
+ * `undefined` when the target has no measured load, which at the coarse tier means the board and the plan disagree
+ * about the grid: the caller shows nothing rather than guessing a number.
  */
-export function isTeVol(plaatsingen: readonly Themaplaatsing[]): boolean {
-  return geplandeIn(plaatsingen).length >= VOORLOPIGE_TE_VOL_DREMPEL;
+export function benodigdeWekenNa(
+  belasting: Blokspreiding | undefined,
+  extraWeken: number,
+): number | undefined {
+  return belasting === undefined ? undefined : belasting.benodigdeWeken + extraWeken;
 }
 
 /** The placements sitting in a given block, matched on the block start date they key on. */

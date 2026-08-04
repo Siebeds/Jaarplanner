@@ -70,7 +70,7 @@ should therefore scale with the period's length.
 | 6.1 render the plan per block | The ribbon; one column per themaperiode, with its dates and length in weeks |
 | 6.2 drag thema's between periods | Grabbable cards with a visible grip + an explicit on-screen keyboard route |
 | 6.3 zoom jaar ↔ periode/blok | "Hele jaar" / "Per periode" toggle; the zoom strip shows P3 split into subthemaperiodes. The control never says "maand" or "week" |
-| 6.4 knelpunt-signalering | Over-full period: border + ▲ + the words "Te vol". Goals placed nowhere: their own tray, because something absent cannot stand out in the ribbon |
+| 6.4 knelpunt-signalering | Over-full period: border + ▲ + the words "Te vol". Goals placed nowhere: their own tray, because something absent cannot stand out in the ribbon — **built instead as a count plus a route to `/dekking`** (owner, 2026-08-04; see question D) |
 | 6.5 save immediately, dekking live | Stated on the keyboard-help strip; each card shows its own coverage count |
 | Art. IX.3 `vergrendeld` | "Feesten in december" carries a 🔒 lock on the card itself, not hidden in a menu (E4-06) |
 
@@ -97,8 +97,16 @@ These are in the artifact too, marked A–E, so they can be walked through on sc
   `sum(Thema.DuurWeken)` against the period measured in open days. That is the rule the generation side already
   applies (`Spreidingsrapport.IsOverbelast`), so the two halves of the app stop disagreeing about the word.
   The provisional count of 3 is retired by E3-09; the full ruling and its consequences are recorded there.
-- **D. Is the unplaced-goals tray usable, or too long?** After a full Op.stap import it holds hundreds.
-  Filter by discipline, by doelsoort, or something else?
+- ~~**D. Is the unplaced-goals tray usable, or too long?**~~ **Void (owner, 2026-08-04): there is no tray.**
+  The question answered itself in the direction of "too long": after a full Op.stap import it holds hundreds, and
+  by the time E3-09 was built `/dekking` (E5-02) already listed every in-scope leerplandoel with its coverage, its
+  doelsoort and the thema's covering it. So the kalender states the count and links there, and **E5-03/E5-05** own
+  the list and any filtering of it. Ask the reviewer about the *sentence* and whether the route is discoverable;
+  do not ask them to judge a tray. The full ruling is recorded on E3-09.
+  > The **mock still draws the tray**, and that is deliberate, exactly as with question C above: it is a picture of
+  > the design directie approved on 2026-07-28, and retouching it would falsify the record of what was reviewed.
+  > Whoever runs the session should say out loud that the tray was replaced, rather than let the reviewer discover
+  > that the screen does not match the drawing.
 - **E. What belongs on a card?** Currently naam, doelsoort mix, coverage count. Missing anything —
   subthema's, activiteiten, who wrote it?
 

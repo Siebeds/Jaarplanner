@@ -1,17 +1,21 @@
 import { useDroppable } from "@dnd-kit/core";
 
-import { t } from "../../i18n";
+import { t, tAantal } from "../../i18n";
 import { Themakaart, type Verplaatsstaat } from "./Themakaart";
 import { Themakiezer } from "./Themakiezer";
 import {
   PERIODELABEL,
-  VOORLOPIGE_TE_VOL_DREMPEL,
+  benodigdeWekenNa,
   formatteerPeriode,
-  formatteerWeken,
-  geplandeIn,
-  isTeVol,
+  isTeVolMet,
+  wekenInBlok,
 } from "./kalenderFormat";
-import type { Planningsblok, Planningsblokniveau, Themaplaatsing } from "./types";
+import type {
+  Blokspreiding,
+  Planningsblok,
+  Planningsblokniveau,
+  Themaplaatsing,
+} from "./types";
 
 /** One column of the board. Fixed width, so every period is equally readable. */
 export interface PeriodekolomProps {
@@ -57,6 +61,15 @@ export interface PeriodekolomProps {
    * only ever sees its own placements.
    */
   alGeplaatst: ReadonlyMap<string, readonly number[]>;
+  /**
+   * How full this period is, as the server measured it (E3-09): the weeks its thema's need against the weeks it
+   * offers. `undefined` at the fine tier, where the load belongs to the parent themaperiode and is summarised once
+   * above the board rather than repeated across up to nineteen sub-columns (owner ruling, 2026-07-31).
+   *
+   * The column never decides te vol itself. It used to, by counting thema's against a provisional threshold, and that
+   * count disagreed with the server's arithmetic on every period holding three short thema's.
+   */
+  belasting: Blokspreiding | undefined;
 }
 
 /**
@@ -89,11 +102,16 @@ export interface PeriodekolomProps {
  * **It is the drop target (E3-07).** While a card is over it the column fills with the petrol wash and says
  * "Hierheen verplaatsen" in words, because a colour change alone carries nothing (Art. XII, WCAG 2.2 AA).
  *
- * **And it answers "is there room here?" during the gesture, not after the drop.** A period that the incoming
- * thema would tip over the te-vol threshold says so while the card hovers it. That is the one place this screen
- * spends any boldness: a teacher rearranging a year is asking exactly that question, and every other tool makes
- * them drop first and read the consequence afterwards. The threshold is still the provisional one from review
- * question C, so the warning is phrased as a consequence rather than a refusal — nothing is blocked.
+ * **And it answers "is there room here?" during the gesture, not after the drop.** A period the incoming thema would
+ * tip over says so while the card hovers it, in the same weeks the flag itself uses. That is the one place this screen
+ * spends any boldness: a teacher rearranging a year is asking exactly that question, and every other tool makes them
+ * drop first and read the consequence afterwards. It is phrased as a consequence, never a refusal, because nothing is
+ * blocked: a period may be te vol if the teacher decides it should be (Art. IV.1).
+ *
+ * **What "te vol" means is the server's answer, not this column's** (owner ruling, 2026-07-31, E3-09): the placed
+ * thema's need more weeks than the period offers. Until E3-09 this file counted thema's against a provisional 3, which
+ * called three two-week thema's in a 6-week period over-full and said nothing about two six-week ones that genuinely
+ * do not fit.
  */
 export function Periodekolom({
   blok,
@@ -104,9 +122,9 @@ export function Periodekolom({
   verplaatsstaat,
   ouderIsIngepland,
   alGeplaatst,
+  belasting,
 }: PeriodekolomProps) {
-  const gepland = geplandeIn(plaatsingen);
-  const teVol = isTeVol(plaatsingen);
+  const teVol = belasting?.isOverbelast ?? false;
 
   // Disabled rather than absent at the fine tier: hooks cannot be conditional, and dnd-kit's own `disabled` is the
   // supported way to say "this is not a landing place". Nothing is draggable there either, so this is belt and braces.
@@ -121,7 +139,17 @@ export function Periodekolom({
   const sleependeKaart = active?.data.current?.plaatsing as Themaplaatsing | undefined;
   const komtVanElders = Boolean(sleependeKaart) && sleependeKaart!.blokStart !== blok.start;
   const isDoelwit = isOver && komtVanElders;
-  const wordtTeVol = isDoelwit && gepland.length + 1 >= VOORLOPIGE_TE_VOL_DREMPEL;
+
+  // The prediction, in the dragged thema's own weeks rather than "one more thema". Adding 1 to a count was the old
+  // threshold's arithmetic, and it promised something the flag after the drop would then contradict: a 6-week thema
+  // dropped into a 6-week period holding one 2-week thema is te vol immediately, which "one more thema" never saw.
+  const benodigdNa = isDoelwit
+    ? benodigdeWekenNa(belasting, sleependeKaart?.duurWeken ?? 0)
+    : undefined;
+  const wordtTeVol =
+    benodigdNa !== undefined && belasting !== undefined
+      ? isTeVolMet(belasting.beschikbareWeken, benodigdNa)
+      : false;
 
   return (
     <li className="flex w-72 shrink-0 flex-col">
@@ -138,7 +166,15 @@ export function Periodekolom({
             {t(PERIODELABEL[niveau], { ordinaal: blok.ordinaal })}
           </h3>
           <span className="shrink-0 text-xs font-medium text-ink-zacht" data-cijfers>
-            {t("kalender.weken", { weken: formatteerWeken(blok.aantalOpenDagen) })}
+            {/* Through `tAantal` since the figure became a whole number (E3-09): "1 weken" is now reachable, on the
+                short block a long mid-year closure can leave behind, and it was not while this rendered "1,0 weken".
+                Worth naming because `catalogus.test.ts` could not have caught it — that guard fires on `{aantal}`, and
+                this key interpolated `{weken}`. Renamed to `{aantal}` so the guard covers it from here on. */}
+            {tAantal(
+              wekenInBlok(blok.aantalOpenDagen),
+              "kalender.wekenEnkelvoud",
+              "kalender.weken",
+            )}
           </span>
         </div>
         <p className="mt-0.5 text-xs text-ink-zacht">
@@ -155,20 +191,33 @@ export function Periodekolom({
           </p>
         )}
 
-        {teVol && (
+        {teVol && belasting !== undefined && (
           // Icon AND word, never colour alone (Art. XII, FR-6.4). The *explanation* of what "te vol" means
           // is shown once above the board rather than repeated in every flagged column — the same disclosure
           // seven times over is what made the first version unreadable.
-          <p className="mt-2 text-xs font-semibold text-attentie-ink">
-            <span aria-hidden="true">▲</span> {t("kalender.teVol", { aantal: gepland.length })}
+          //
+          // It states the two weeks figures rather than a count of thema's, because those are what a teacher can act
+          // on: "5 weken nodig, 4 beschikbaar" says how much has to move, where "te vol: 3 thema's" said only that
+          // something was wrong and misnamed the reason.
+          <p className="mt-2 text-xs font-semibold text-attentie-ink" data-cijfers>
+            <span aria-hidden="true">▲</span>{" "}
+            {t("kalender.teVol", {
+              nodig: belasting.benodigdeWeken,
+              beschikbaar: belasting.beschikbareWeken,
+            })}
           </p>
         )}
 
-        {/* The consequence of the drop the teacher is about to make, stated before they make it. Only when it
-            is not already flagged, so the column does not say the same thing twice. */}
-        {wordtTeVol && !teVol && (
-          <p className="mt-2 text-xs font-semibold text-attentie-ink">
-            <span aria-hidden="true">▲</span> {t("kalender.wordtTeVol")}
+        {/* The consequence of the drop the teacher is about to make, stated before they make it, in the same two
+            figures the flag uses. Only when it is not already flagged, so the column does not say the same thing
+            twice. */}
+        {wordtTeVol && !teVol && belasting !== undefined && (
+          <p className="mt-2 text-xs font-semibold text-attentie-ink" data-cijfers>
+            <span aria-hidden="true">▲</span>{" "}
+            {t("kalender.wordtTeVol", {
+              nodig: benodigdNa!,
+              beschikbaar: belasting.beschikbareWeken,
+            })}
           </p>
         )}
       </div>

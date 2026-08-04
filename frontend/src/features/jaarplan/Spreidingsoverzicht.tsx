@@ -6,11 +6,15 @@ import type { Generatieresultaat } from "./types";
  * The report from one generation run (E3-02, FR-5.2): what was proposed, what was skipped, and how the result
  * is spread over the year.
  *
- * **It states facts and passes no judgement.** There is no green tick and no threshold: nothing in the
- * functional analysis defines an acceptable spread, so a verdict here would answer by code a question that
- * belongs to the school — the same reason the kalender's "te vol" limit is still marked provisional. The last
- * line says so out loud, because a teacher shown four numbers will otherwise reasonably assume the tool
- * approves or disapproves.
+ * **It states facts and passes no judgement on the spread.** There is no green tick: nothing in the functional
+ * analysis defines an acceptable spread, so a verdict on it here would answer by code a question that belongs to the
+ * school. The last line says so out loud, because a teacher shown four numbers will otherwise reasonably assume the
+ * tool approves or disapproves.
+ *
+ * **The overbelast line is the one exception, and it is not an invented threshold.** It reports the same te-vol rule
+ * the board flags (owner ruling, 2026-07-31, E3-09): the placed thema's need more weeks than the period offers, both
+ * figures supplied by the school. It is therefore worded with the same words the board uses, because one signal under
+ * two names reads as two problems.
  *
  * **Nothing here is a decision.** Every placement the run added is `Voorgesteld` and visible on the ribbon for
  * the teacher to accept or reject (Art. IV.1/IV.2).
