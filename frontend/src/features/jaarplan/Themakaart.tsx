@@ -611,14 +611,21 @@ function Bewerkpaneel({
           directly beneath it says *"dit thema staat in geen enkele periode"*. One card, two sentences, the first
           presupposing what the second denies: the class this story was reopened over, in a new instance.
 
-          **What is deliberately unchanged is the non-stale sentence.** Its *andere* is correct and more
-          informative there, and repairing the correct half to fix the broken one is the mistake E4-02 recorded on
+          **What is deliberately unchanged is the non-stale sentence.** Its *andere* is correct **on the state this
+          branch selects**, and repairing the correct half to fix the broken one is the mistake E4-02 recorded on
           itself. The second step stays named in both variants (the owner's ruling on E3-08's QUESTION-A), and
           neither names a view, so both stay true at either tier.
+          *The one state where that is not true is already recorded further down this file:* a card caught only by
+          `vervallenPlaatsingen`'s `!starts.has(blokStart)` fallback has `isVervallen === false`, so it takes the
+          non-stale branch while sitting in no period. This branches on the **server** flag on purpose, for the
+          reason the rejected section below gives at length: that is the flag `DekkingService` derives dekking
+          from, so the copy stays aligned with the figure rather than with the notice.
 
           *The promise itself was never false, and the fix does not touch it:* reversing a rejection yields
-          `Manueel`, which restores the picker (`doelen` above is gated on `isGeweigerd`, not on `isVervallen`),
-          measured in a browser. Only the word was wrong. */}
+          `Manueel`, and the picker returns **where the board can offer one** — `doelen` above is gated on
+          `isGeweigerd || verplaatsstaat !== "kan"`, so at the subthemaperiode tier and at an unrecognised tier
+          reversing restores no picker, which is E3-08's round-3 fix rather than a gap here. Measured in a browser
+          at the coarse tier. Only the word was wrong. */}
       {isGeweigerd && (
         <p className="text-xs leading-snug text-attentie-ink">
           {plaatsing.isVervallen

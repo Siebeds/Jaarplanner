@@ -78,12 +78,29 @@ recommended that press.
 **Root cause:** `kalenderFormat.vervallenPlaatsingen` filters on `isVervallen` with **no status filter**,
 while `DekkingService` counts `IsVervallen && !IsGeweigerd`.
 
-**Why it is not fixed here.** E3-08 already filed it and routed it to **E3-09**; the owner scoped this
-reopening to one *card* state, and this is the notice plus a shared selector. What changed since E3-08 filed
-it: E4-02 made it reachable in **one press** instead of requiring a vakantiedata edit, and the owner's
-ruling of 2026-08-04 (a rejected stale placement leaves the figure trustworthy) is what turns an
-inconsistency into a **false sentence**. **The owner decided on 2026-08-04 to verify it separately and route
-it later**; E3-09 is still `[ ]`, so nobody holds it today.
+**Why it is not fixed here.** The owner scoped this reopening to one *card* state, and this is the notice
+plus a shared selector.
+
+**Who owns it, corrected after the antagonist audit of 2026-08-04 — this section was wrong twice, in the
+direction that made this session look like the discoverer.** It read *"E3-08 filed it and routed it to E3-09
+… E3-09 is still `[ ]`, so nobody holds it today"*, and dated the enabling ruling 2026-08-04. Re-derived
+from the artefacts rather than from memory:
+
+- **E5-02 owns it, in writing and with the decision already specified.** `backlog/E5-dekking-export.md:36-37`
+  addresses E5-02 in the second person (*"`kalender.herzienUitleg` is the thing to fix, and it is yours"*),
+  `backlog/E4-bewerking-hergeneratie.md:24` records the same hand-off, and **this story's own
+  `Themakaart.tsx`** says it too (*"while E5-02's ruling on that divergence is still open"*). E3-09 was the
+  earlier half of the routing; E5-02 is the later and authoritative one. So *"nobody holds it"* was false,
+  and filing it a third time is the drift this backlog keeps having to retract.
+- **The ruling is dated 2026-08-03**, not 2026-08-04 — stated identically in
+  `backlog/E5-dekking-export.md:37`, `backlog/E4-bewerking-hergeneratie.md:24` and two E4-02 worklogs. The
+  2026-08-04 timestamp belongs to E4-02's *announcement of it in the groepschat*, which is what this section
+  had read. A ruling and the message reporting it are not the same event, and conflating them backdated an
+  existing decision into this session's discovery.
+
+What this session did add is a **measurement**: the three-row matrix above, which shows the divergence is
+confined to exactly one status. The owner's decision of 2026-08-04 was to verify it separately and route it
+afterwards; that verification is the matrix, and the routing question is whether it stays with E5-02.
 
 ## The fix, and what pins it
 
@@ -107,8 +124,18 @@ caught: reverting the branch to the shared string → **2** failures; giving the
 swapping the two branches → **3**. **Not mutated:** the `isGeweigerd` guard itself and the picker suppression
 (both already pinned by E3-08's tests, which still pass), and `vervallenPlaatsingen` (unchanged by this fix).
 
-**At 390px:** the sentence does not overflow its container (253px in a 297px card), and the page does not
-scroll horizontally (`body` 375 = 375). A `documentElement.scrollWidth` of 1700 in the iframe harness was
-chased down rather than reported: every element past the viewport sits inside a deliberate scroll container,
-the `<nav>` being `overflow-x-auto` with a 571px list in a 347px track. It reproduces E4-02's own figure and
-is not a defect.
+> **A fourth mutation existed and I did not run it — the antagonist did, and it survived (2026-08-04).**
+> Inserting an adjective, *"een **andere, vrije** themaperiode"*, restores the presupposition on the stale card
+> with **315 passed, 0 failed**: `/andere themaperiode/i` is a bigram, and the `toContain("geen enkele
+> periode")` half is satisfied by `weigeringUitlegVervallen`, a string this fix does not touch. So the docblock's
+> claim that a reword would fail here was **false when written**. Fixed by asserting word-boundary quantifiers on
+> the stale key itself. Three-for-three said nothing about the mutation I did not think of, which is the whole
+> point of the rule I was quoting.
+
+**At 390px** (iframe frame width 390px; `body` measures **375px**, the 15px difference being the vertical
+scrollbar — stated because a "390px" heading over a 375px figure otherwise looks like a mismeasurement, and the
+antagonist correctly queried it): the sentence does not overflow its container (253px in a 297px card), and the
+page does not scroll horizontally (`body.scrollWidth` 375 = `body.clientWidth` 375). A
+`documentElement.scrollWidth` of 1700 was chased down rather than reported: every element past the viewport sits
+inside a deliberate scroll container, the `<nav>` being `overflow-x-auto` with a 571px list in a 347px track. It
+reproduces E4-02's own figure and is not a defect.
