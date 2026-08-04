@@ -7,12 +7,12 @@ namespace Jaarplanner.Application.Schoolcontent.Import;
 /// unchanged) for the chosen <see cref="SchoolcontentImportModus"/>, computed by the <b>same code</b>
 /// that the commit uses, so the committed result is guaranteed to match the preview for the same input.
 /// <para>
-/// <b>Headline (Art. IV.2).</b> <see cref="BedreigdeBeslissingen"/> lists every teacher-set
+/// <b>Headline (Art. IV.2).</b> <see cref="BedreigdeBeslissingen"/> lists every decided (teacher-set, or set by an earlier import: see E1-18)
 /// <c>DoelKoppeling</c> (<c>aanvaard</c>/<c>geweigerd</c>/<c>manueel</c>) that an overwrite would discard
 /// because the re-imported file no longer carries it. By default these are <b>preserved</b> (kept on the
 /// content) and this list is purely a warning; they are only actually dropped when the caller explicitly
 /// confirms (<see cref="SchoolcontentImportOpties.MenselijkeBeslissingenVerwijderen"/> = true). A re-import
-/// therefore never silently destroys a human decision.
+/// therefore never silently destroys a decided link.
 /// </para>
 /// </summary>
 public sealed class SchoolcontentImportDiff
@@ -49,7 +49,7 @@ public sealed class SchoolcontentImportDiff
     public IReadOnlyList<ActiviteitWijziging> Activiteiten { get; }
 
     /// <summary>
-    /// The teacher-set goal links an overwrite would discard (the file no longer carries them). The
+    /// The decided (teacher-set, or set by an earlier import: see E1-18) goal links an overwrite would discard (the file no longer carries them). The
     /// headline of the non-destructive guarantee (Art. IV.2): by default these are kept and this is a
     /// warning; discarding requires explicit confirmation.
     /// </summary>
@@ -120,14 +120,14 @@ public sealed record ActiviteitWijziging(
     WijzigingSoort Soort);
 
 /// <summary>
-/// A teacher-set <c>DoelKoppeling</c> (a human decision) that an overwrite would discard because the
+/// A decided (teacher-set, or set by an earlier import: see E1-18) <c>DoelKoppeling</c> (a decided link) that an overwrite would discard because the
 /// re-imported file no longer carries that leerplandoel link on this content (Art. IV.2). Surfaced so
 /// the teacher can decide; by default it is <b>kept</b> (never silently lost).
 /// </summary>
 /// <param name="Niveau">Where the link lives: themadoel, subdoel, or activiteit.</param>
 /// <param name="ContentNaam">The thema/subthema/activiteit naam carrying the link (for the review notice).</param>
 /// <param name="LeerplandoelCode">The leerplandoel code of the threatened link.</param>
-/// <param name="Status">The teacher-set status that would be lost (aanvaard/geweigerd/manueel).</param>
+/// <param name="Status">The decided (teacher-set, or set by an earlier import: see E1-18) status that would be lost (aanvaard/geweigerd/manueel).</param>
 public sealed record BedreigdeBeslissing(
     KoppelingNiveau Niveau,
     string ContentNaam,

@@ -201,7 +201,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                 {
                     if (toepassen)
                     {
-                        doelThema.VoegThemadoelToe(new DoelKoppeling(code, KoppelingStatus.Voorgesteld));
+                        doelThema.VoegThemadoelToe(new DoelKoppeling(code, IngelezenKoppelingStatus));
                     }
                 }
             }
@@ -310,7 +310,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                 {
                     foreach (var code in VerzamelSubdoelCodes(subthemaGroep, codeControle))
                     {
-                        doelSubthema.VoegSubdoelToe(sleutel.Leeftijd, new DoelKoppeling(code, KoppelingStatus.Voorgesteld));
+                        doelSubthema.VoegSubdoelToe(sleutel.Leeftijd, new DoelKoppeling(code, IngelezenKoppelingStatus));
                     }
                 }
             }
@@ -481,7 +481,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         {
             if (toepassen)
             {
-                var themadoel = thema.VoegThemadoelToe(new DoelKoppeling(code, KoppelingStatus.Voorgesteld));
+                var themadoel = thema.VoegThemadoelToe(new DoelKoppeling(code, IngelezenKoppelingStatus));
                 _context.Themadoelen.Add(themadoel);
             }
         }
@@ -664,11 +664,44 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
 
             if (toepassen)
             {
-                var subdoel = subthema.VoegSubdoelToe(subthema.Leeftijd, new DoelKoppeling(code, KoppelingStatus.Voorgesteld));
+                var subdoel = subthema.VoegSubdoelToe(subthema.Leeftijd, new DoelKoppeling(code, IngelezenKoppelingStatus));
                 _context.Subdoelen.Add(subdoel);
             }
         }
     }
+
+    /// <summary>
+    /// The status a goal link gets when it arrives through the school's <b>own</b> Excel (E1-18, owner ruling
+    /// 2026-08-04: <i>"de school kan besliste koppelingen importeren"</i>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// It used to be <see cref="KoppelingStatus.Voorgesteld"/>, and that was the defect E1-18 was filed for:
+    /// dekking counts only <c>Aanvaard</c>/<c>Manueel</c> (Art. V.1), and <b>no operation anywhere in the
+    /// product could move a themadoel out of <c>Voorgesteld</c></b>, so every thema a school imported
+    /// contributed nothing to its coverage, permanently and with nothing on screen explaining why.
+    /// </para>
+    /// <para>
+    /// <b><see cref="KoppelingStatus.Manueel"/> rather than <c>Aanvaard</c>, deliberately.</b> <c>Aanvaard</c>
+    /// means a teacher accepted an <i>AI suggestion</i> (Art. IV.2); nothing was suggested here. The file is
+    /// the school's own content, so the link is the school's own, which is exactly what <c>Manueel</c> records.
+    /// Both count identically for dekking, so this is about the story the status tells, not about the number.
+    /// </para>
+    /// <para>
+    /// <b>The consequence to know about, because it changes re-import behaviour.</b> <c>Manueel</c> is a human
+    /// decision by <see cref="IsMenselijkeBeslissing"/>, so an imported link that later disappears from the
+    /// file is now <i>preserved</i> and reported as bedreigd rather than dropped, and removing it takes the
+    /// explicit opt-in E1-13 built. That follows from the ruling rather than sitting beside it: if the school
+    /// decided a link, the tool does not un-decide it because a later spreadsheet forgot it.
+    /// </para>
+    /// <para>
+    /// <b>No data migration ships with this.</b> There is no deployed environment (E7-11 is the deployment
+    /// gate), so the only rows that carry the old value are demo and test data. A school that has already
+    /// imported into a real database would need its existing <c>Voorgesteld</c> themadoelen and subdoelen
+    /// moved over; that is a one-statement update, and it is deliberately not written blind here.
+    /// </para>
+    /// </remarks>
+    private const KoppelingStatus IngelezenKoppelingStatus = KoppelingStatus.Manueel;
 
     private static bool IsMenselijkeBeslissing(KoppelingStatus status) =>
         status is KoppelingStatus.Aanvaard or KoppelingStatus.Geweigerd or KoppelingStatus.Manueel;
