@@ -151,6 +151,18 @@ swapping the two branches → **3**. **Not mutated:** the `isGeweigerd` guard it
 > fixtures now assert their Te herzien membership, so the discrimination no longer rests on a date staying in step
 > with a stub 2000 lines away.
 
+> **The guard needed four designs, and the boundary of the fourth is demonstrated rather than asserted.**
+> A bigram against the rendered text fell to an inserted adjective; a five-item denylist fell to two unlisted
+> words; the relation that replaced the denylist fell to the one path none of my re-attacks had tried, a reword
+> of the **non-stale** string propagated exactly as the relation demands (*"nog een andere themaperiode"* →
+> *"nog een themaperiode"*), which was also a **net regression** because the denylist had caught two of those
+> outright. The two now sit side by side, and the coordinated attack is caught three for three. **What still
+> gets through is stated in the docblock and was then measured rather than left as a caveat:** a quantifier
+> outside the list, propagated the same way, passes — *"een zoveelste themaperiode"* → **72 passed**. Three
+> successive versions of that docblock claimed a universal and three mutations defeated it. A guard of this
+> shape has a boundary; the honest move is to put the boundary in the comment and show it holds where you say
+> it does.
+
 > **Fix round 1 reported both of those as repaired and shipped neither, and that is the worst error in this
 > story.** The edits were written, passed, and were then destroyed by a `git checkout <testfile>` used to revert a
 > mutation while they were still uncommitted; the commit that followed carried only the other three files, and
