@@ -467,6 +467,79 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
             klasId, plaatsingId, plaatsing => plaatsing.StelVergrendelingIn(vergrendeld), cancellationToken);
 
     /// <summary>
+    /// Places a thema in the period starting on <paramref name="blokStart"/> <b>by hand, with no AI involved</b>
+    /// (E4-03, FR-7.2), persisted immediately (FR-7).
+    /// <para>
+    /// <b>This is the one placement path that creates the jaarplan if it does not exist yet</b>, and that is the
+    /// story rather than a convenience. Until this method, <see cref="Jaarplan.VoegPlaatsingToe"/> was reached from
+    /// exactly two callers — <see cref="GenereerAsync"/> and the demo seeder — so the only way a thema ever entered a
+    /// plan was a generation run. A teacher who wanted to build a year themselves had to ask the AI for a proposal
+    /// first and edit it afterwards, which is precisely what FR-7.2's "los van de AI" says they must not have to do.
+    /// The other manual paths (move, remove, status, lock) all operate on a placement that already exists and
+    /// therefore rightly 404 on a class with no plan.
+    /// </para>
+    /// <para>
+    /// <b>The placement lands as <see cref="KoppelingStatus.Manueel"/>, and every consequence of that is intended.</b>
+    /// It is the teacher's own decision, so attributing it to the model would misreport who decided (Art. IV.3) and
+    /// there is no <c>aiMotivatie</c> to carry. Two things follow, both correct: it counts as placed for dekking under
+    /// the binding reading in <c>backlog/E5-dekking-export.md</c> (Art. V.1), because a teacher who put a thema in a
+    /// period is teaching it; and it is not <see cref="Themaplaatsing.IsVervangbaar"/>, so a later regeneration cannot
+    /// discard it (Art. IV.1, Art. IX.3). This is the same status a drag produces
+    /// (<see cref="Themaplaatsing.VerplaatsNaar"/>), which keeps "the teacher positioned this" one state rather than
+    /// two.
+    /// </para>
+    /// <para>
+    /// <b>Fixed to the generation tier</b> (<see cref="GeneratieNiveau"/>), like every other placement in the model: a
+    /// <see cref="Themaplaatsing"/> keys on a themaperiode start (ADR-0020 §3) and nothing records which weeks inside
+    /// it a thema occupies. Accepting a subthemaperiode start would record five weeks where the teacher aimed at a
+    /// fortnight, which is the same reason E3-08 withholds the move affordance at the fine tier.
+    /// </para>
+    /// </summary>
+    /// <returns>The updated plan, so a caller need not re-fetch it.</returns>
+    /// <exception cref="OngeldigePlaatsingFout">
+    /// The chosen period starts no block of the current grid, or that thema is already in it.
+    /// </exception>
+    /// <exception cref="SchoolcontentNietGevondenFout">The class or the thema does not exist.</exception>
+    public async Task<JaarplanWeergave> VoegPlaatsingToeAsync(
+        Guid klasId,
+        Guid themaId,
+        DateOnly blokStart,
+        CancellationToken cancellationToken = default)
+    {
+        var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
+
+        var jaarplan = await LaadOfMaakJaarplanAsync(klasId, cancellationToken);
+
+        // Requested for one tier, so every block in the set is at GeneratieNiveau and the start date alone identifies
+        // it. Refused rather than snapped to the nearest period (ADR-0020, directie 2026-07-28).
+        var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau);
+        if (!blokken.Any(b => b.Start == blokStart))
+        {
+            throw OngeldigePlaatsingFout.GeenPeriodebegin();
+        }
+
+        // Loaded here rather than after the guards because `Projecteer` needs the same list, and validating the thema
+        // against it means an unknown id cannot reach `VoegPlaatsingToe` and write a placement pointing at nothing.
+        var themas = await _opslag.LaadThemasAsync(cancellationToken);
+        if (themas.All(t => t.Id != themaId))
+        {
+            throw new SchoolcontentNietGevondenFout($"Thema {themaId} is niet gevonden.");
+        }
+
+        // A block holds several thema's (Art. IX.3), so only the exact duplicate is refused. Checked here rather than
+        // relying on the aggregate's own guard, which throws an English programmer-error exception no handler maps.
+        if (jaarplan.IsAlGeplaatst(themaId, GeneratieNiveau, blokStart))
+        {
+            throw OngeldigePlaatsingFout.ThemaStaatErAl();
+        }
+
+        jaarplan.VoegPlaatsingToe(themaId, GeneratieNiveau, blokStart, KoppelingStatus.Manueel);
+        await _opslag.BewaarAsync(cancellationToken);
+
+        return Projecteer(klas, schooljaar, blokken, themas, jaarplan);
+    }
+
+    /// <summary>
     /// Moves one placement to the planningsblok starting on <paramref name="doelBlokStart"/> — the teacher dragging a
     /// thema to another period (E3-07, FR-6.2), persisted immediately (FR-6.5).
     /// <para>

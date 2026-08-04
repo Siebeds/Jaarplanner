@@ -287,6 +287,106 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// <b>E4-03 / FR-7.2 on the real stack: a class with no jaarplan at all gets one from a hand-placement, and the AI
+    /// is never reached.</b>
+    /// <para>
+    /// This is the case the unit suite cannot honestly verify, and E7-16 is the story that says so. Two distinct things
+    /// happen in one <c>SaveChanges</c> here: a new <see cref="Jaarplan"/> is inserted <i>and</i> an owned
+    /// <see cref="Themaplaatsing"/> is inserted with it, through <c>IJaarplanOpslag.VoegJaarplanToe</c> on a class that
+    /// had no row. The fake storage port keeps the aggregate in a field, so "it was created" cannot fail there; and the
+    /// Guid key on the owned element is the exact spot where <c>ValueGenerated.Never</c> is load-bearing (see
+    /// <see cref="Een_plaatsing_toevoegen_aan_een_bestaand_plan_slaagt"/> for the defect that taught this project so).
+    /// </para>
+    /// <para>
+    /// <b>The AI client throws rather than counting.</b> "Los van de AI" is the requirement, so the strongest available
+    /// statement is a stack in which any model call fails the test outright, on the production service over the
+    /// production storage port. Asserted on the rows, not only on the aggregate.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_handmatige_plaatsing_maakt_het_jaarplan_en_haar_rij_zonder_ai()
+    {
+        var (klasId, themaId, blokStart) = await SeedAsync();
+
+        // The precondition, asserted rather than assumed: no plan exists for this class.
+        await using (var context = _db.MaakContext())
+        {
+            Assert.Empty(await context.Jaarplannen.Where(j => j.KlasId == klasId).ToListAsync());
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var weergave = await MaakService(context).VoegPlaatsingToeAsync(klasId, themaId, blokStart);
+
+            var geplaatst = Assert.Single(weergave.Plaatsingen);
+            Assert.Equal("Manueel", geplaatst.Status);
+            Assert.Null(geplaatst.AiMotivatie);
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // The plan itself was created by the hand-placement.
+            var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
+            var plaatsing = Assert.Single(jaarplan.Plaatsingen);
+            Assert.Equal(themaId, plaatsing.ThemaId);
+            Assert.Equal(blokStart, plaatsing.BlokStart);
+            Assert.Equal(Planningsblokniveau.Themaperiode, plaatsing.BlokNiveau);
+            Assert.Equal(KoppelingStatus.Manueel, plaatsing.Status);
+            Assert.Null(plaatsing.AiMotivatie);
+            Assert.False(plaatsing.Vergrendeld);
+
+            // And the INSERT really reached the table, with the status stored as a name and no motivation column value.
+            var rijen = await context.Database
+                .SqlQueryRaw<string>("""SELECT "Status" AS "Value" FROM themaplaatsingen""")
+                .ToListAsync();
+            Assert.Equal(["Manueel"], rijen);
+
+            var zonderMotivatie = await context.Database
+                .SqlQueryRaw<int>(
+                    """SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen WHERE "AiMotivatie" IS NULL""")
+                .SingleAsync();
+            Assert.Equal(1, zonderMotivatie);
+        }
+    }
+
+    /// <summary>
+    /// A <b>second</b> hand-placement, onto a plan that is already in the database. Separated from the test above
+    /// because it exercises a different EF path — growing an already-persisted aggregate rather than inserting a fresh
+    /// one — and that is precisely the path whose failure (<c>DbUpdateConcurrencyException</c>) shipped to <c>main</c>
+    /// once already while every in-memory test stayed green.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_tweede_handmatige_plaatsing_op_een_bestaand_plan_wordt_ingevoegd()
+    {
+        var (klasId, themaId, _) = await SeedAsync();
+        var blokken = Blokken(await LaadSchooljaarAsync(klasId));
+
+        await using (var context = _db.MaakContext())
+        {
+            await MaakService(context).VoegPlaatsingToeAsync(klasId, themaId, blokken[0].Start);
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // A different period, same thema: allowed, and it lands on a plan that already has a row.
+            var weergave = await MaakService(context).VoegPlaatsingToeAsync(klasId, themaId, blokken[2].Start);
+            Assert.Equal(2, weergave.Plaatsingen.Count);
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
+            Assert.Equal(2, jaarplan.Plaatsingen.Count);
+            Assert.All(jaarplan.Plaatsingen, p => Assert.Equal(KoppelingStatus.Manueel, p.Status));
+
+            var aantal = await context.Database
+                .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
+                .SingleAsync();
+            Assert.Equal(2, aantal);
+        }
+    }
+
     /// <summary>Art. IX.3: a Klas "has one Jaarplan" — enforced by the database, not merely by the service.</summary>
     [PostgresFact]
     public async Task Een_klas_heeft_ten_hoogste_een_jaarplan()
@@ -611,6 +711,26 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     private static IReadOnlyList<Planningsblok> Blokken(Schooljaar schooljaar) =>
         new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions())
             .Blokken(schooljaar, Planningsblokniveau.Themaperiode);
+
+    /// <summary>
+    /// The production service over the production storage port, with a model that must never be called (E4-03). Used by
+    /// the hand-placement tests, which are about a path where the AI has no part to play.
+    /// </summary>
+    private static JaarplanGeneratieService MaakService(Jaarplanner.Infrastructure.Persistence.AppDbContext context) =>
+        new(new OntploffendeAiClient(),
+            new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
+            new EfJaarplanOpslag(context));
+
+    /// <summary>
+    /// An <see cref="IAiClient"/> that fails the test if it is reached at all. Stronger than counting calls: FR-7.2's
+    /// "los van de AI" is a claim about the path, and a path that cannot tolerate a model call is the claim itself.
+    /// </summary>
+    private sealed class OntploffendeAiClient : IAiClient
+    {
+        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException(
+                "The AI client was called on a path that must not involve the model (E4-03, FR-7.2).");
+    }
 
     /// <summary>A model stand-in that always answers the same canned completion: no network (Art. IV.6).</summary>
     private sealed class VastAntwoordAiClient : IAiClient
