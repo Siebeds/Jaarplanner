@@ -222,3 +222,39 @@ describe("nl.json — no dead keys under doelen", () => {
     expect(ongebruikt).toEqual([]);
   });
 });
+
+describe("nl.json — no dead keys under themabeheer", () => {
+  /**
+   * The same guard as the `doelen.*` one above, for the same reason and with the same scope caveat.
+   *
+   * It earned its place before this story shipped: writing it found `themabeheer.verwachteUitkomstenLabel`,
+   * a field the class-scoped list does not render, and `themabeheer.doelGeenCurriculum`, which was **not**
+   * dead clutter but a missing behaviour — the goal picker could only say "geen leerplandoel gevonden voor die
+   * zoekterm", including at a school with an empty register. That is the E1-16 defect (finding 1) one screen
+   * over. So a dead key here is worth treating as a question rather than as tidying: it is either copy nobody
+   * needs, or a state nobody built.
+   *
+   * `activiteitType.*` is deliberately **not** covered: its keys are reached by template
+   * (`t(`activiteitType.${...}`)`), so a text scan cannot see them. That union is pinned by the compiler
+   * instead, in `Klaslaag`'s `typeSleutel`.
+   */
+  it("renders every themabeheer.* key somewhere in the feature", async () => {
+    const bestanden = import.meta.glob("../features/themas/*.{ts,tsx}", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
+
+    const bron = Object.entries(bestanden)
+      .filter(([pad]) => !pad.includes(".test.") && !pad.includes("testdata"))
+      .map(([, inhoud]) => inhoud)
+      .join("\n");
+
+    const ongebruikt = [...CATALOGUS.keys()]
+      .filter((sleutel) => sleutel.startsWith("themabeheer."))
+      .map((sleutel) => sleutel.slice("themabeheer.".length))
+      .filter((naam) => !bron.includes(`themabeheer.${naam}`));
+
+    expect(ongebruikt).toEqual([]);
+  });
+});

@@ -7,8 +7,9 @@ import { JAARPLAN_PAD } from "./app/routes";
 import { Doeldetail } from "./features/doelen/Doeldetail";
 import { DOEL_DETAIL_PAD, DoelenPagina } from "./features/doelen/DoelenPagina";
 import { ImportPagina } from "./features/import/ImportPagina";
-import { DoelsuggestieReview } from "./features/matching/DoelsuggestieReview";
 import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
+import { THEMA_DETAIL_PAD, Themadetail } from "./features/themas/Themadetail";
+import { ThemasPagina } from "./features/themas/ThemasPagina";
 
 /**
  * Route table (E0-10, ADR-0021). Declarative `react-router-dom`; every screen renders inside {@link AppShell}.
@@ -21,10 +22,11 @@ import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
  * `app/routes.ts`, which is what the navigation renders from. **E1-16** replaced `/doelen`'s placeholder with
  * the real register and **E1-13** replaced `/import`'s, so `routes.ts` flips both entries to `isGebouwd`.
  *
- * `DoelsuggestieReview` is mounted at `/themas` because reviewing a thema's AI-suggested goals is where it
- * belongs in the IA. It still asks for a thema-id by hand: replacing that with a real thema list is
- * **E1-14**. Deliberately not fixed here — this story owns the frame, not the screens. (Generating the
- * suggestions was **E2-08**, and has since landed; the trigger sits on that page.)
+ * `/themas` is the thema-beheer screen (**E1-14**): the list, and one thema at `/themas/:themaId`. It replaced
+ * `DoelsuggestieReview`, which was mounted here with a thema-id typed into a text box because no thema list
+ * existed to pick from. The review itself was not deleted: per the owner's ruling of 2026-08-04 it is a section
+ * on the thema detail, so E2's components (E2-05's list, E2-08's trigger) render there against the thema
+ * already open, and the school-wide gap list (E2-06) sits under the thema list.
  *
  * `DndContext` is gone from this level. It wrapped an app with nothing draggable in it (an E0-05
  * "library is importable" proof); **E3-07** introduces drag-and-drop and should mount it around the
@@ -37,7 +39,11 @@ function App() {
         <Route element={<AppShell />}>
           <Route index element={<Navigate to={JAARPLAN_PAD} replace />} />
           <Route path={JAARPLAN_PAD} element={<JaarplanPagina />} />
-          <Route path="/themas" element={<DoelsuggestieReview />} />
+          {/* Same nested shape as `/doelen`, and for the same reason: the thema stays deep-linkable while the
+              list keeps its place (E1-14, ADR-0021). */}
+          <Route path="/themas" element={<ThemasPagina />}>
+            <Route path={THEMA_DETAIL_PAD} element={<Themadetail />} />
+          </Route>
           {/* The detail is a NESTED route, not a sibling: `/doelen/:code` renders inside the register's
               right-hand pane, which is what makes one doel deep-linkable while the list and its filters stay
               where they are (E1-16, ADR-0021). */}
