@@ -2,6 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 
 import { t } from "../../i18n";
 import { Themakaart, type Verplaatsstaat } from "./Themakaart";
+import { Themakiezer } from "./Themakiezer";
 import {
   PERIODELABEL,
   VOORLOPIGE_TE_VOL_DREMPEL,
@@ -48,6 +49,14 @@ export interface PeriodekolomProps {
    * parent the thema occupies, and that is a different sentence.
    */
   ouderIsIngepland: boolean;
+  /**
+   * Which coarse periods each thema already occupies, by thema id (E4-03). Threaded straight through to
+   * {@link Themakiezer}; see its prop docs for what the two consumers of it are.
+   *
+   * Computed once for the whole board rather than per column, because it is a fact about the *plan* and a column
+   * only ever sees its own placements.
+   */
+  alGeplaatst: ReadonlyMap<string, readonly number[]>;
 }
 
 /**
@@ -94,6 +103,7 @@ export function Periodekolom({
   niveau,
   verplaatsstaat,
   ouderIsIngepland,
+  alGeplaatst,
 }: PeriodekolomProps) {
   const gepland = geplandeIn(plaatsingen);
   const teVol = isTeVol(plaatsingen);
@@ -200,6 +210,22 @@ export function Periodekolom({
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Planning a thema into this period by hand (E4-03, FR-7.2).
+
+            **Gated on the same `verplaatsstaat` the grip and the move picker use, deliberately reusing that answer
+            rather than deriving a second one.** The reasoning transfers exactly: a `Themaplaatsing` keys on a
+            *themaperiode* start (ADR-0020 §3), so at the fine tier this control would record five weeks where the
+            teacher aimed at a fortnight. That is the same "honest about the request, dishonest about the effect"
+            problem documented on {@link PeriodekolomProps.verplaatsstaat}, and the board says once above itself
+            where hand-planning does work, instead of a disabled button in nineteen columns.
+
+            Below the cards and the empty well, as a footer: the well already reads "there is room here", and the
+            action belongs after the content it adds to rather than above it. Hidden while a card hovers, so the
+            landing sentence below is the only thing the column says during a drag. */}
+        {verplaatsstaat === "kan" && !isDoelwit && (
+          <Themakiezer klasId={klasId} blok={blok} alGeplaatst={alGeplaatst} />
         )}
 
         {/* Words, not just a colour wash: the fill says "something is happening here", the sentence says what.

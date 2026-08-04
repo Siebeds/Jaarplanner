@@ -2847,3 +2847,460 @@ describe("Jaarplankalender — aanvaarden en weigeren (E4-02, FR-7.1)", () => {
     expect(screen.getAllByText(t("kalender.beslisUitleg"))).toHaveLength(1);
   });
 });
+
+describe("Jaarplankalender — een thema met de hand plannen (E4-03, FR-7.2)", () => {
+  const BIBLIOTHEEK = [
+    { id: "t-herfst", naam: "Herfst" },
+    { id: "t-water", naam: "Water" },
+  ];
+
+  /**
+   * The board plus the school's thema-bibliotheek, recording every hand-placement POST so the *request* can be
+   * asserted rather than only its effect.
+   *
+   * Its own stub rather than another parameter on `stubFetch`: that helper is shared by 72 tests here and its branch
+   * order is load-bearing, with three comments in it recording what a mis-ordered branch cost.
+   */
+  function stubPlaatsen(
+    jaarplan: Jaarplan,
+    themas: { id: string; naam: string }[] = BIBLIOTHEEK,
+    antwoord: Jaarplan | number = jaarplan,
+  ) {
+    const posts: { url: string; body: unknown }[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+
+        // Before the plain `/jaarplan` branch, which this URL extends — the mistake this file's comments record.
+        if (init?.method === "POST" && url.includes("/jaarplan/plaatsingen")) {
+          posts.push({ url, body: JSON.parse(String(init.body)) });
+
+          return typeof antwoord === "number"
+            ? new Response(JSON.stringify({ title: "Ongeldige aanvraag", detail: "…" }), {
+                status: antwoord,
+              })
+            : new Response(JSON.stringify(antwoord), { status: 200 });
+        }
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify(themas), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/rooster")) {
+          const fijn = url.includes("niveau=Subthemaperiode");
+
+          return new Response(
+            JSON.stringify(
+              fijn
+                ? {
+                    ...rooster,
+                    niveau: "Subthemaperiode",
+                    blokken: [
+                      {
+                        ordinaal: 1,
+                        start: "2026-09-01",
+                        eind: "2026-09-16",
+                        ouderOrdinaal: 1,
+                        aantalOpenDagen: 16,
+                      },
+                    ],
+                  }
+                : rooster,
+            ),
+            { status: 200 },
+          );
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(jaarplan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    return posts;
+  }
+
+  /** One period's trigger, found by the accessible name that distinguishes it from its siblings. */
+  const toevoegknop = (ordinaal: number) =>
+    screen.getByRole("button", { name: t("kalender.plaatsToevoegenLabel", { ordinaal }) });
+
+  /** Opens the picker of one period and returns its select. */
+  async function openKiezer(ordinaal: number) {
+    fireEvent.click(toevoegknop(ordinaal));
+
+    return screen.findByLabelText(t("kalender.plaatsKies"));
+  }
+
+  /**
+   * <b>The story's own criterion: a plan built from nothing, with no generation run.</b> An empty jaarplan is exactly
+   * the state a class is in before anyone presses generate, and until E4-03 the board offered it no action at all.
+   * The <i>request</i> is asserted and not just the effect, because the thing that must never regress is what gets
+   * sent: the period's <b>start date</b>, never its ordinal (ADR-0020 §3).
+   */
+  it("plans a thema into an empty plan and keys the request on the block START DATE", async () => {
+    const posts = stubPlaatsen(maakJaarplan([]));
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    expect(toevoegknop(1)).toBeInTheDocument();
+    expect(toevoegknop(2)).toBeInTheDocument();
+
+    const keuze = await openKiezer(2);
+    fireEvent.change(keuze, { target: { value: "t-water" } });
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.plaatsen") }));
+
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].url).toContain(`/api/klassen/${KLAS_ID}/jaarplan/plaatsingen`);
+    // Period 2 starts on 2026-11-09. The ordinal is a display position that shifts when the school edits a vakantie,
+    // so sending "2" would reintroduce the silent relocation the date key exists to prevent.
+    expect(posts[0].body).toEqual({ themaId: "t-water", blokStart: "2026-11-09" });
+  });
+
+  /**
+   * The annotation that is the reason this is not a plain list of names: it tells the teacher where a thema already
+   * sits in the year <b>before</b> they plan it a second time by accident.
+   */
+  it("says which other period a thema is already in, and withholds the one already here", async () => {
+    stubPlaatsen(
+      maakJaarplan([
+        maakPlaatsing({ id: "p1", themaId: "t-herfst", themaNaam: "Herfst", blokStart: "2026-09-01" }),
+      ]),
+    );
+    renderKalender();
+
+    await screen.findByText("Herfst");
+
+    const keuze = await openKiezer(2);
+    expect(
+      within(keuze).getByRole("option", {
+        name: t("kalender.plaatsThemaKeuzeElders", { naam: "Herfst", ordinaal: 1 }),
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.annuleren") }));
+
+    // In period 1, where it already sits, it is offered as a DISABLED option that says so. Fix round 1 changed this
+    // from omitting it: a teacher looking at that thema's card in this very column found it simply absent from the
+    // picker, with nothing explaining why. The server refuses it with a 400, so it must not be selectable either.
+    const keuzeHier = await openKiezer(1);
+    const alHier = within(keuzeHier).getByRole("option", {
+      name: t("kalender.plaatsThemaKeuzeHier", { naam: "Herfst" }),
+    });
+    expect(alHier).toBeDisabled();
+    expect(within(keuzeHier).getByRole("option", { name: "Water" })).toBeEnabled();
+  });
+
+  /**
+   * <b>Status-blind, matching the server's own duplicate guard.</b> `Jaarplan.IsAlGeplaatst` matches on
+   * `(themaId, niveau, blokStart)` and on no status, so a <b>rejected</b> card still occupies the slot. Reaching for
+   * `geplandeIn` here — which drops `Geweigerd`, and which every other count on this board uses — would offer an
+   * option that can only answer 400, while telling the teacher a period is free that visibly holds a card.
+   */
+  it("treats a REJECTED placement as still occupying the period", async () => {
+    stubPlaatsen(
+      maakJaarplan([
+        maakPlaatsing({
+          id: "p1",
+          themaId: "t-herfst",
+          themaNaam: "Herfst",
+          blokStart: "2026-09-01",
+          status: "Geweigerd",
+        }),
+      ]),
+    );
+    renderKalender();
+
+    await screen.findByText("Herfst");
+    const keuze = await openKiezer(1);
+
+    expect(
+      within(keuze).getByRole("option", {
+        name: t("kalender.plaatsThemaKeuzeHier", { naam: "Herfst" }),
+      }),
+    ).toBeDisabled();
+  });
+
+  /** A school with no thema's gets a sentence naming where thema's come from, not an empty picker. */
+  it("says where thema's come from when the school has none", async () => {
+    stubPlaatsen(maakJaarplan([]), []);
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    fireEvent.click(toevoegknop(1));
+
+    expect(await screen.findByText(t("kalender.plaatsGeenThemas"))).toBeInTheDocument();
+    // No dead control: there is nothing to submit, so nothing offers to (the E3-06 rule).
+    expect(screen.queryByRole("button", { name: t("kalender.plaatsen") })).toBeNull();
+  });
+
+  /** Every thema already here is not a failure and not an empty list: it is a state with its own sentence. */
+  it("says so when this period already holds every thema the school has", async () => {
+    stubPlaatsen(
+      maakJaarplan([
+        maakPlaatsing({ id: "p1", themaId: "t-herfst", themaNaam: "Herfst", blokStart: "2026-09-01" }),
+        maakPlaatsing({ id: "p2", themaId: "t-water", themaNaam: "Water", blokStart: "2026-09-01" }),
+      ]),
+    );
+    renderKalender();
+
+    await screen.findByText("Herfst");
+    fireEvent.click(toevoegknop(1));
+
+    expect(await screen.findByText(t("kalender.plaatsAllesAlHier"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("kalender.plaatsen") })).toBeNull();
+  });
+
+  /**
+   * A refused placement gets the sentence that tells the teacher to look again; it also keeps the panel open, so
+   * they read why instead of watching the control disappear.
+   */
+  it("keeps the picker open and explains a refused placement", async () => {
+    stubPlaatsen(maakJaarplan([]), undefined, 400);
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    fireEvent.change(await openKiezer(1), { target: { value: "t-water" } });
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.plaatsen") }));
+
+    expect(await screen.findByText(t("kalender.plaatsMislukt"))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("kalender.plaatsen") })).toBeInTheDocument();
+  });
+
+  /**
+   * A broken tool gets a different sentence, which is the split the move path had to learn the hard way: branching
+   * on `isError` alone told a teacher to look again when the tool was down, a retry that cannot succeed.
+   */
+  it("tells an unavailable tool apart from a refused placement", async () => {
+    stubPlaatsen(maakJaarplan([]), undefined, 503);
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    fireEvent.change(await openKiezer(1), { target: { value: "t-water" } });
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.plaatsen") }));
+
+    expect(await screen.findByText(t("kalender.plaatsOnbeschikbaar"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.plaatsMislukt"))).toBeNull();
+  });
+
+  /**
+   * At the fine tier the control is <b>absent</b>, not disabled, and the board says where it works instead (the
+   * E3-06 rule). Deliberately the same `verplaatsstaat` the move affordance uses: a placement keys on a
+   * themaperiode start, so planning into a fortnight would record five weeks.
+   */
+  it("withholds hand-planning at the finer tier and says where it works", async () => {
+    stubPlaatsen(maakJaarplan([]));
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.plaatsAnderNiveau"))).toBeNull();
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: t("kalender.weergaveLabel") })).getByRole("button", {
+        name: t("kalender.weergaveFijn"),
+      }),
+    );
+
+    expect(await screen.findByText(t("kalender.plaatsAnderNiveau"))).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("kalender.plaatsToevoegenLabel", { ordinaal: 1 }) }),
+    ).toBeNull();
+  });
+
+  /**
+   * SC 2.5.3 (Label in Name): the accessible name must <i>contain</i> the visible label, or speech control cannot
+   * address the button. Asserted explicitly because <b>a jsdom axe run cannot fail on this</b> — axe returns
+   * `label-content-name-mismatch` as *incomplete* and `toHaveNoViolations` reads only violations, which is exactly
+   * where two of E1-14's WCAG defects sat.
+   */
+  it("keeps the visible label inside each period's accessible name", async () => {
+    stubPlaatsen(maakJaarplan([]));
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+
+    for (const ordinaal of [1, 2]) {
+      expect(toevoegknop(ordinaal).textContent).toContain(t("kalender.plaatsToevoegen"));
+      expect(t("kalender.plaatsToevoegenLabel", { ordinaal })).toContain(
+        t("kalender.plaatsToevoegen"),
+      );
+    }
+  });
+
+  /**
+   * <b>Focus comes back to the trigger when the picker closes.</b>
+   *
+   * This test exists because the first version shipped a defect no test could see and a browser found in one probe:
+   * `sluit()` called `trigger.current?.focus()` directly, and `setOpen(false)` is batched, so at that moment the
+   * trigger was still unmounted and the ref was null. Focus fell to `<body>` and a keyboard user pressing
+   * "Annuleren" lost their place on a board that scrolls sideways, while the code comment claimed the opposite.
+   *
+   * Asserted on both exits, because both go through the same path: cancelling, and a successful placement.
+   */
+  it("returns focus to the trigger when the picker closes", async () => {
+    stubPlaatsen(maakJaarplan([]));
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+
+    // Cancelling.
+    await openKiezer(2);
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.annuleren") }));
+    await waitFor(() => expect(document.activeElement).toBe(toevoegknop(2)));
+
+    // And a successful placement, which closes through the same function.
+    fireEvent.change(await openKiezer(2), { target: { value: "t-water" } });
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.plaatsen") }));
+    await waitFor(() => expect(document.activeElement).toBe(toevoegknop(2)));
+  });
+
+  /**
+   * <b>Focus moves INTO the panel when it opens, not only back out when it closes.</b>
+   *
+   * The trigger is unmounted while the panel is open, so opening has the same hazard as closing: without a move,
+   * focus stays on a detached node and a keyboard user is stranded. The close direction was found in a browser and
+   * fixed; this direction was carried entirely by React's `autoFocus` with nothing pinning it, and `autoFocus` is the
+   * only occurrence of that prop in the codebase with no lint rule guarding it. Raised by the fix-round-1 audit as
+   * exactly the gap the story's headline finding should have taught me to close on both sides.
+   */
+  it("moves focus into the picker when it opens", async () => {
+    stubPlaatsen(maakJaarplan([]));
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    const keuze = await openKiezer(2);
+
+    await waitFor(() => expect(document.activeElement).toBe(keuze));
+  });
+
+  /**
+   * A thema deleted while this picker held a cached list is a <b>404</b>, and the teacher can fix it by reloading.
+   * The first version answered it with "meld dit aan de beheerder", advice nobody can act on for a recoverable
+   * situation; `Themakaart` already had the right precedent. Three branches now, so this test and the two beside it
+   * pin all three.
+   */
+  it("tells a deleted thema apart from a refused placement and a broken tool", async () => {
+    stubPlaatsen(maakJaarplan([]), undefined, 404);
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    fireEvent.change(await openKiezer(1), { target: { value: "t-water" } });
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.plaatsen") }));
+
+    expect(await screen.findByText(t("kalender.plaatsThemaVerdwenen"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.plaatsMislukt"))).toBeNull();
+    expect(screen.queryByText(t("kalender.plaatsOnbeschikbaar"))).toBeNull();
+  });
+
+  /**
+   * A failed library load offers a real retry, because the sentence tells the teacher to try again and the E3-06 rule
+   * forbids an instruction pointing at nothing. Reuses the board's own `roosterOpnieuw` copy rather than a new string.
+   */
+  it("offers a retry when the thema list fails to load", async () => {
+    let faal = true;
+    const posts: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (init?.method === "POST") {
+          posts.push(url);
+          return new Response(JSON.stringify(maakJaarplan([])), { status: 200 });
+        }
+        if (url.includes("/api/themas")) {
+          if (faal) {
+            faal = false;
+            return new Response("boom", { status: 500 });
+          }
+          return new Response(JSON.stringify(BIBLIOTHEEK), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(maakJaarplan([])), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    fireEvent.click(toevoegknop(1));
+
+    expect(await screen.findByText(t("kalender.plaatsThemasFout"))).toBeInTheDocument();
+
+    // The retry is a control, not just an instruction, and pressing it recovers into a usable picker.
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.roosterOpnieuw") }));
+
+    expect(await screen.findByLabelText(t("kalender.plaatsKies"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.plaatsThemasFout"))).toBeNull();
+  });
+
+  /**
+   * The third <code>Verplaatsstaat</code>: a tier the app does not recognise. `Planningsrooster.niveau` is a plain
+   * `string` on purpose (it is what the server said, not what this app hopes), so an unknown value is a real branch
+   * and it gets its own sentence rather than borrowing the fine tier's, which would send the teacher to a view they
+   * may already be on. Added in fix round 1 after the test-runner reported this `PLAATSUITLEG` entry as the one
+   * unexercised branch — coverage rather than a suspected defect, which is exactly why it is cheap to close.
+   */
+  it("says hand-planning is unavailable when the tier is unrecognised, without naming another view", async () => {
+    stubPlaatsen(maakJaarplan([]));
+    // The server answers a tier this app has no name for. `stubPlaatsen` serves `rooster` for anything that is not
+    // the fine tier, so overriding its `niveau` is enough.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify(BIBLIOTHEEK), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify({ ...rooster, niveau: "Kwartaal" }), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(maakJaarplan([])), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.plaatsNiveauOnbekend"))).toBeInTheDocument();
+    // Not the fine tier's sentence, which names "de weergave Themaperiodes" and would be an instruction the teacher
+    // cannot act on here.
+    expect(screen.queryByText(t("kalender.plaatsAnderNiveau"))).toBeNull();
+    // And no control, since there is no tier to plan into.
+    expect(
+      screen.queryByRole("button", { name: t("kalender.plaatsToevoegenLabel", { ordinaal: 1 }) }),
+    ).toBeNull();
+  });
+
+  /** The picker itself, with the panel open, has to survive an axe structure check like every other panel here. */
+  it("has no axe violations with the picker OPEN", async () => {
+    stubPlaatsen(maakJaarplan([]));
+    const { container } = renderKalender();
+
+    expect(await screen.findByText(t("kalender.periode", { ordinaal: 1 }))).toBeInTheDocument();
+    await openKiezer(1);
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});

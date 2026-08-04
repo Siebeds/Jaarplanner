@@ -12,9 +12,10 @@ namespace Jaarplanner.Api.Controllers;
 /// found "done" features nobody could reach — the E2 matching service is still called from nothing but its own
 /// unit tests, which is why M2 was withdrawn. Plan generation therefore ships with the trigger in the same change
 /// as the service: <c>POST …/jaarplan/generatie</c> generates, <c>GET …/jaarplan</c> reviews,
-/// <c>GET …/jaarplan/parameters</c> reads the class's kept pre-generation settings, the three PUTs let the teacher
-/// decide, lock and move, and <c>DELETE …/jaarplan/plaatsingen/{id}</c> removes a placement outright. The kalender
-/// (E3-06/E3-07) reaches all of them from a browser.
+/// <c>GET …/jaarplan/parameters</c> reads the class's kept pre-generation settings,
+/// <c>POST …/jaarplan/plaatsingen</c> places a thema by hand, the three PUTs let the teacher decide, lock and move,
+/// and <c>DELETE …/jaarplan/plaatsingen/{id}</c> removes a placement outright. The kalender (E3-06/E3-07/E4-03)
+/// reaches all of them from a browser.
 /// </para>
 /// <para>
 /// <b>The DELETE is listed deliberately.</b> It is the only destructive member here, it ignores status and lock by
@@ -24,9 +25,14 @@ namespace Jaarplanner.Api.Controllers;
 /// audit findings, so the enumeration is kept complete on purpose.
 /// </para>
 /// <para>
-/// <b>Nothing here auto-applies</b> (Art. IV.1/IV.2): generation persists placements as <c>voorgesteld</c> with a
-/// motivation, and only the explicit status PUT moves one to aanvaard/geweigerd/manueel. A generation run whose AI
-/// response is invalid changes nothing and reports 422 with the diagnostic (Art. IV.5).
+/// <b>Nothing the AI proposes auto-applies</b> (Art. IV.1/IV.2): generation persists placements as <c>voorgesteld</c>
+/// with a motivation, and nothing but an explicit teacher action moves one to aanvaard/geweigerd/manueel. A generation
+/// run whose AI response is invalid changes nothing and reports 422 with the diagnostic (Art. IV.5).
+/// <br/>
+/// Read that as a constraint on <i>AI output</i>, not as "every placement starts as a proposal": the status PUT is no
+/// longer the only route to <c>manueel</c>, since a move (E3-07) and a hand-placement (E4-03) are both teacher
+/// decisions and are recorded as such at once. An earlier revision of this paragraph said "only the explicit status
+/// PUT", which the POST below falsified the moment it landed.
 /// </para>
 /// </summary>
 [ApiController]
@@ -49,6 +55,14 @@ public sealed class JaarplanController : ControllerBase
     /// (ADR-0020 §3), so accepting one here would reintroduce exactly the silent relocation the date key prevents.
     /// </summary>
     public sealed record BlokWijziging(DateOnly BlokStart);
+
+    /// <summary>
+    /// Body for placing a thema in a period by hand (E4-03): which thema, and the <b>start date</b> of the period.
+    /// A date rather than an ordinal for the reason given on <see cref="BlokWijziging"/>, and no status field: a
+    /// hand-placement is <c>manueel</c> by definition, so letting a client name its own status would let it claim the
+    /// AI proposed something (Art. IV.3).
+    /// </summary>
+    public sealed record HandmatigePlaatsing(Guid ThemaId, DateOnly BlokStart);
 
     /// <summary>
     /// The class's current jaarplan proposal (FR-5.1, Art. IV.2): every placement with its planningsblok, status,
@@ -140,6 +154,29 @@ public sealed class JaarplanController : ControllerBase
         Guid klasId,
         CancellationToken cancellationToken) =>
         Ok(await _service.HaalParametersAsync(klasId, cancellationToken));
+
+    /// <summary>
+    /// Places a thema in a period <b>by hand, without the AI</b> (E4-03, FR-7.2) and persists it immediately (FR-7).
+    /// <para>
+    /// <b>The only endpoint here that works on a class with no plan yet</b>, and the one that makes a fully hand-built
+    /// year possible: before it, a thema could enter a jaarplan only through a generation run, so "manual editing,
+    /// independent of the AI" meant editing something the AI had produced first. The plan is created on the first
+    /// hand-placement, exactly as generation creates it on the first run.
+    /// </para>
+    /// <para>
+    /// Response contract: <b>400</b> when the period starts no block of the current grid (refused, never snapped) or
+    /// when that thema is already in that period; <b>404</b> when the class or the thema does not exist; <b>200</b>
+    /// with the updated plan otherwise. The placement lands as <c>manueel</c>, so it counts for dekking (Art. V.1) and
+    /// survives regeneration (Art. IX.3).
+    /// </para>
+    /// </summary>
+    [HttpPost("plaatsingen")]
+    public async Task<ActionResult<JaarplanWeergave>> VoegPlaatsingToe(
+        Guid klasId,
+        [FromBody] HandmatigePlaatsing plaatsing,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.VoegPlaatsingToeAsync(
+            klasId, plaatsing.ThemaId, plaatsing.BlokStart, cancellationToken));
 
     /// <summary>
     /// Records the teacher's decision on one generated placement (Art. IV.1/IV.2): accept, reject or adjust

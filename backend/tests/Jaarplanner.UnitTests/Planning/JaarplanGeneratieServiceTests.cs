@@ -1737,6 +1737,191 @@ public sealed class JaarplanGeneratieServiceTests
             match.Groups["niveau"].Value);
     }
 
+    // --- E4-03: placing a thema by hand, with no AI involved (FR-7.2). ---
+
+    /// <summary>
+    /// <b>The story's own criterion, and the one thing that was impossible before it.</b> A class that has never been
+    /// generated for has no <c>Jaarplan</c> row at all, and every other manual path 404s on that. Here the plan is
+    /// created by the hand-placement itself, and the assertion that carries the weight is
+    /// <see cref="FakeAiClient.AantalAanroepen"/>: <b>zero</b>. "Los van de AI" is not evidenced by a placement that
+    /// happens to be manual, but by a plan that exists without the model ever having been asked.
+    /// </summary>
+    [Fact]
+    public async Task Een_klas_zonder_jaarplan_krijgt_haar_eerste_thema_handmatig_zonder_enige_ai_aanroep()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, client, klas, _, themas) = Opzet(Antwoord(), schooljaar);
+
+        // No generation ran, so there is no plan to edit — the precondition, asserted rather than assumed.
+        Assert.Empty((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+
+        var na = Assert.Single(
+            (await service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, blokken[2].Start)).Plaatsingen);
+
+        Assert.Equal(0, client.AantalAanroepen);
+
+        Assert.Equal(themas[0].Id, na.ThemaId);
+        Assert.Equal(blokken[2].Start, na.BlokStart);
+        Assert.Equal(blokken[2].Ordinaal, na.BlokOrdinaal);
+        Assert.Equal("Themaperiode", na.BlokNiveau);
+        Assert.False(na.IsVervallen);
+
+        // The teacher's own decision: manueel, and nothing attributed to a model that was never called (Art. IV.3).
+        Assert.Equal("Manueel", na.Status);
+        Assert.Null(na.AiMotivatie);
+        Assert.False(na.Vergrendeld);
+
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+
+        // Survives a reload: the plan was persisted, not just projected back out of the call's own return value.
+        Assert.Equal("Manueel", Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen).Status);
+    }
+
+    /// <summary>
+    /// A period that starts no block of the current grid is <b>refused</b>, never snapped to the nearest one. Same rule
+    /// and same reason as the move path and generation: a thema in a period nobody chose is the silent relocation
+    /// ADR-0020 and the directie ruling of 2026-07-28 forbid.
+    /// </summary>
+    [Fact]
+    public async Task Handmatig_plaatsen_op_een_datum_die_geen_periodebegin_is_wordt_geweigerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, themas) = Opzet(Antwoord(), schooljaar);
+
+        // One day past a real boundary: the nearest block is obvious, which is exactly why refusing matters.
+        var netNaastEenGrens = blokken[1].Start.AddDays(1);
+
+        await Assert.ThrowsAsync<OngeldigePlaatsingFout>(
+            () => service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, netNaastEenGrens));
+
+        Assert.Empty((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// A subthemaperiode start is refused too, and this is the case a "is it a date on the grid?" check would wave
+    /// through: each themaperiode's <b>first</b> sub-block shares its parent's start date, so those dates are real
+    /// boundaries at the fine tier. Accepting one would record five weeks where the teacher aimed at a fortnight
+    /// (E3-08's reasoning), so the service resolves against the generation tier only. Uses a fine start that is
+    /// <i>not</i> also a coarse one, which is the only form of this input that can fail.
+    /// </summary>
+    [Fact]
+    public async Task Handmatig_plaatsen_op_een_subthemaperiode_die_geen_themaperiode_begint_wordt_geweigerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var grofOverzicht = Blokken(schooljaar).Select(b => b.Start).ToHashSet();
+        var fijn = Indeling.Blokken(schooljaar, Planningsblokniveau.Subthemaperiode);
+
+        var alleenFijn = fijn.First(b => !grofOverzicht.Contains(b.Start));
+
+        var (service, opslag, _, klas, _, themas) = Opzet(Antwoord(), schooljaar);
+
+        await Assert.ThrowsAsync<OngeldigePlaatsingFout>(
+            () => service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, alleenFijn.Start));
+
+        Assert.Empty((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// The exact duplicate is refused in Dutch by the service, rather than letting the aggregate's English
+    /// programmer-error exception escape to a teacher.
+    /// </summary>
+    [Fact]
+    public async Task Hetzelfde_thema_twee_keer_in_dezelfde_periode_wordt_geweigerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, themas) = Opzet(Antwoord(), schooljaar);
+
+        await service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, blokken[0].Start);
+
+        await Assert.ThrowsAsync<OngeldigePlaatsingFout>(
+            () => service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, blokken[0].Start));
+
+        Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+        Assert.Equal(1, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// <b>Two different thema's in one period is allowed</b>, because Art. IX.3 says a block holds "a list of thema's".
+    /// Pinned alongside the duplicate refusal above so a future tightening of that guard cannot quietly become
+    /// "one thema per period", which the model does not say and a graadklas would not survive.
+    /// </summary>
+    [Fact]
+    public async Task Twee_verschillende_themas_in_dezelfde_periode_mogen()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, themas) = Opzet(Antwoord(), schooljaar);
+
+        await service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, blokken[0].Start);
+        var na = (await service.VoegPlaatsingToeAsync(klas.Id, themas[1].Id, blokken[0].Start)).Plaatsingen;
+
+        Assert.Equal(2, na.Count);
+        Assert.All(na, p => Assert.Equal(blokken[0].Start, p.BlokStart));
+
+        // Both sides sorted. An earlier revision sorted only the actual against an unsorted expected of two random
+        // Guids, so it passed on the ordering luck of that run — a test that can pass for the wrong reason.
+        Assert.Equal(
+            new[] { themas[0].Id, themas[1].Id }.Order().ToArray(),
+            na.Select(p => p.ThemaId).Order().ToArray());
+    }
+
+    /// <summary>
+    /// An unknown thema is a 404, not a placement pointing at nothing. Reachable in practice from a picker list that
+    /// went stale while the page was open (a colleague deleting a thema through E1-14's beheer screen).
+    /// </summary>
+    [Fact]
+    public async Task Handmatig_plaatsen_van_een_onbekend_thema_is_niet_gevonden()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, _) = Opzet(Antwoord(), schooljaar);
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => service.VoegPlaatsingToeAsync(klas.Id, Guid.NewGuid(), blokken[0].Start));
+
+        Assert.Empty((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// <b>A hand-placed thema survives a regeneration, without the teacher locking anything.</b> This is the
+    /// consequence of landing as <c>manueel</c> rather than <c>voorgesteld</c>, and it is what makes hand-built work
+    /// safe to do before pressing generate: <c>IsVervangbaar</c> is <c>Voorgesteld &amp;&amp; !Vergrendeld</c>, so a run
+    /// discards the AI's own untouched proposals and leaves this one alone (Art. IV.1, Art. IX.3). Pinned here because
+    /// E4-06's copy tells teachers exactly this in words, and until now no hand-placement existed to test it with.
+    /// </summary>
+    [Fact]
+    public async Task Een_handmatig_geplaatst_thema_overleeft_een_hergeneratie()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+
+        // The AI proposes Water in period 1; the teacher has hand-placed Herfst in period 4.
+        var (service, _, _, klas, _, themas) = Opzet(Antwoord(("Water", blokken[0].Start)), schooljaar);
+        var handmatig = Assert.Single(
+            (await service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, blokken[3].Start)).Plaatsingen);
+
+        await service.GenereerAsync(klas.Id);
+        var na = (await service.HaalJaarplanAsync(klas.Id)).Plaatsingen;
+
+        // Both are there: the generated proposal, and the teacher's own placement untouched.
+        var bewaard = Assert.Single(na, p => p.Id == handmatig.Id);
+        Assert.Equal("Manueel", bewaard.Status);
+        Assert.Equal(blokken[3].Start, bewaard.BlokStart);
+        Assert.Contains(na, p => p.Status == "Voorgesteld" && p.BlokStart == blokken[0].Start);
+
+        // And a second run still leaves it standing, which is the case FR-8 actually exercises.
+        await service.GenereerAsync(klas.Id);
+        Assert.Equal(
+            "Manueel",
+            Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen, p => p.Id == handmatig.Id).Status);
+    }
+
     /// <summary>
     /// Walks up from the test assembly to the repository root, identified by holding both source trees. Walked rather
     /// than assumed as a fixed number of <c>..</c> segments, which breaks on a different target framework or output path.

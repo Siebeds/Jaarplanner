@@ -27,6 +27,7 @@ import {
   geplandeIn,
   isTeVol,
   plaatsingenIn,
+  themaPeriodeOrdinalen,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
 import { GENERATIEBLOKNIVEAU, leesNiveau } from "./types";
@@ -360,6 +361,17 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
     (plaatsing) => plaatsing.status === "Voorgesteld",
   ).length;
 
+  // Which periods each thema already occupies (E4-03), for the hand-placement picker. Derived once for the board
+  // because it is a fact about the whole plan: a column sees only its own placements, so it could not tell a teacher
+  // that a thema already sits in period 3. Status-blind on purpose — see `themaPeriodeOrdinalen`.
+  //
+  // **The board's own tier is passed explicitly** (fix round 1, antagonist MINOR). Left to the default, the map was
+  // built from whichever grid was on screen while the copy hard-codes *"themaperiode {ordinaal}"*, so at the fine tier
+  // a coarse placement whose start coincides with a sub-block's start would have been annotated with the *fine*
+  // ordinal. Only the `verplaatsstaat === "kan"` gate kept that off screen, which is a coincidence rather than a
+  // reason. Passing the tier makes the map correctly empty at the fine tier instead of quietly wrong.
+  const alGeplaatst = themaPeriodeOrdinalen(plan.plaatsingen, grid.blokken, bordNiveau);
+
   const ordinaalVan = (blokStart: unknown) =>
     grid.blokken.find((blok: Planningsblok) => blok.start === blokStart)?.ordinaal;
 
@@ -614,6 +626,14 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
               {t(BORDUITLEG[verplaatsstaat])}
             </p>
 
+            {/* Where hand-planning works, said only where the control is absent (E4-03). See {@link PLAATSUITLEG}
+                for why `kan` contributes no sentence: the button is in every column and labels itself. */}
+            {PLAATSUITLEG[verplaatsstaat] !== null && (
+              <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
+                {t(PLAATSUITLEG[verplaatsstaat]!)}
+              </p>
+            )}
+
             {/* What aanvaarden and weigeren mean, said ONCE here rather than on every card (E4-02). The decision
                 buttons live on the card face, and a dozen proposals with a two-line explanation each is the wall of
                 prose this screen keeps having to cut. Deliberately **not** tier-dependent, unlike the sentence above
@@ -689,6 +709,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                       segment.blok.ouderOrdinaal !== null &&
                       gevuldeOuderOrdinalen.has(segment.blok.ouderOrdinaal)
                     }
+                    alGeplaatst={alGeplaatst}
                   />
                 ) : (
                   <Vakantiegat
@@ -788,6 +809,25 @@ const BORDUITLEG: Record<Verplaatsstaat, TranslationKey> = {
   kan: "kalender.sleepUitleg",
   anderNiveau: "kalender.fijnUitleg",
   niveauOnbekend: "kalender.roosterNiveauOnbekend",
+};
+
+/**
+ * What the board says about **hand-planning** a thema, one entry per {@link Verplaatsstaat} (E4-03, FR-7.2).
+ *
+ * A second record beside {@link BORDUITLEG} rather than three longer sentences inside it: those are E3-08's, they are
+ * about *moving*, and each has been through its own audit. Two gestures, two statements, so neither has to be reworded
+ * to accommodate the other.
+ *
+ * **`kan` is deliberately `null`.** At the generation tier every period column carries a labelled "Thema toevoegen"
+ * button, so a sentence above the board saying the same thing would be the per-row prose CLAUDE.md says to cut. The
+ * other two states have no control at all, and there the E3-06 rule bites: an unavailable destination is stated in
+ * visible text, not left to be discovered. Typed with `| null` so the compiler still demands an answer for any state
+ * added later, instead of letting a new one silently say nothing.
+ */
+const PLAATSUITLEG: Record<Verplaatsstaat, TranslationKey | null> = {
+  kan: null,
+  anderNiveau: "kalender.plaatsAnderNiveau",
+  niveauOnbekend: "kalender.plaatsNiveauOnbekend",
 };
 
 /**

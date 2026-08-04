@@ -104,6 +104,30 @@ export function verplaatsPlaatsing(
 }
 
 /**
+ * Puts a thema in a period **by hand, with no AI involved** (E4-03, FR-7.2).
+ *
+ * `blokStart` is the period's **start date**, for the reason given on {@link verplaatsPlaatsing}.
+ *
+ * The one call here that works on a class with **no jaarplan yet**: the server creates the plan on the first
+ * hand-placement, which is what makes a fully hand-built year possible. It lands as `Manueel`, so it counts for
+ * dekking and a regeneration leaves it standing.
+ *
+ * **400** when the period starts no current block (the grid changed under the page) or when that thema is
+ * already in that period. The picker withholds the second case rather than letting it fail, so a 400 reaching
+ * the UI means the plan moved since it loaded.
+ */
+export function voegPlaatsingToe(
+  klasId: string,
+  themaId: string,
+  blokStart: string,
+): Promise<Jaarplan> {
+  return apiFetch<Jaarplan>(`/api/klassen/${klasId}/jaarplan/plaatsingen`, {
+    method: "POST",
+    body: JSON.stringify({ themaId, blokStart }),
+  });
+}
+
+/**
  * Takes a thema out of a period (FR-7). **Unrecoverable:** there is no soft delete and no audit trail, so the
  * confirmation in the UI is the only protection for accepted or locked teacher work — see `Themakaart`.
  */

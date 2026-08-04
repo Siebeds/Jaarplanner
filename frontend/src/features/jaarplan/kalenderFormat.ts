@@ -120,6 +120,79 @@ export function geplandeIn(plaatsingen: readonly Themaplaatsing[]): Themaplaatsi
 }
 
 /**
+ * Which coarse periods each thema already occupies, as a map from thema id to those periods' **ordinals**
+ * (E4-03). Feeds the hand-placement picker, which says *"staat al in themaperiode 3"* beside a thema and
+ * refuses the one already in the period being planned.
+ *
+ * **Status is deliberately ignored, and that is the whole correctness of this function.** The obvious thing to
+ * reach for here is {@link geplandeIn}, which drops `Geweigerd` — and it would be wrong twice over. The
+ * server's duplicate guard is `Jaarplan.IsAlGeplaatst`, which matches on `(themaId, niveau, blokStart)` and
+ * looks at no status at all, so a rejected placement still occupies the slot: filtering it out here would offer
+ * the teacher an option that can only answer 400. And it would be wrong for the teacher too, since a rejected
+ * card is visibly sitting in that period and telling them the period is free contradicts what they can see.
+ * The two functions therefore answer different questions on purpose: `geplandeIn` is about *teaching time*,
+ * this is about *slot occupancy*.
+ *
+ * Ordinals rather than start dates because the ordinal is what the teacher reads on the column heading. That
+ * makes them display-only, exactly as ADR-0020 §3 requires: nothing derived here is ever sent back to the
+ * server, which is keyed on `blokStart` throughout.
+ *
+ * Two classes of placement are skipped, and **both are matched explicitly rather than left to fall out of the
+ * arithmetic** (E4-03 fix round 1, antagonist MINOR): one at another tier, and a stale one whose stored date is no
+ * longer any period's start. Neither can be named by an ordinal that exists, and a stale placement's own period is
+ * precisely what is unknown.
+ *
+ * *The tier check is the one that had to be added.* An earlier revision of this comment claimed it while the body
+ * read only `blokStart`, so the skip held by luck: it worked only while a fine-tier start happened not to coincide
+ * with a coarse one, and **each themaperiode's first sub-block shares its parent's start date** — the very property
+ * this story's own backend test documents. So the single input class the claimed filter existed for was exactly the
+ * one that slipped through. Unreachable today (nothing writes a `Subthemaperiode` placement), which is why it was a
+ * false comment rather than a live defect, and why the fix is one predicate.
+ */
+export function themaPeriodeOrdinalen(
+  plaatsingen: readonly Themaplaatsing[],
+  blokken: readonly Planningsblok[],
+  niveau: Planningsblokniveau = "Themaperiode",
+): ReadonlyMap<string, readonly number[]> {
+  // `blokken` is already one tier's grid — it comes from `/rooster?niveau=…` — so there is nothing to filter here,
+  // and a first draft of this fix tried to, against a `niveau` field `Planningsblok` does not have.
+  const ordinaalPerStart = new Map(blokken.map((blok) => [blok.start, blok.ordinaal]));
+  const perThema = new Map<string, number[]>();
+
+  for (const plaatsing of plaatsingen) {
+    if (plaatsing.blokNiveau !== niveau) {
+      continue;
+    }
+
+    const ordinaal = ordinaalPerStart.get(plaatsing.blokStart);
+    if (ordinaal === undefined) {
+      continue;
+    }
+
+    const bestaande = perThema.get(plaatsing.themaId);
+    if (bestaande === undefined) {
+      perThema.set(plaatsing.themaId, [ordinaal]);
+    } else if (!bestaande.includes(ordinaal)) {
+      bestaande.push(ordinaal);
+    }
+  }
+
+  for (const ordinalen of perThema.values()) {
+    ordinalen.sort((a, b) => a - b);
+  }
+
+  return perThema;
+}
+
+/** Dutch enumeration, e.g. "3 en 5" or "1, 3 en 5". The platform's own list grammar, not a hand-rolled join. */
+const ordinaalLijst = new Intl.ListFormat("nl-BE", { style: "long", type: "conjunction" });
+
+/** Formats period ordinals as a Dutch list for the picker's "staat al in themaperiode 3 en 5" annotation. */
+export function formatteerOrdinalen(ordinalen: readonly number[]): string {
+  return ordinaalLijst.format(ordinalen.map(String));
+}
+
+/**
  * Whether a period counts as over-full.
  *
  * Lives here rather than in the component so the year spine and the period card cannot disagree about

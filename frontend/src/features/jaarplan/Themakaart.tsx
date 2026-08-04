@@ -941,7 +941,10 @@ export function Sleepkaart({ plaatsing }: { plaatsing: Themaplaatsing }) {
 }
 
 /** One failed edit, stated where the teacher acted rather than at the top of the page. */
-function Foutmelding({ children }: { children: string }) {
+// Exported for `Themakiezer` (E4-03) rather than copied into it: the feature already carries this markup twice (here
+// and inline in `Jaarplankalender`), and a third copy is how a `role="alert"` ends up missing from one of them. The
+// other copy is deliberately left alone — E7-15 owns consistency sweeps.
+export function Foutmelding({ children }: { children: string }) {
   return (
     <p
       role="alert"
