@@ -4,6 +4,7 @@ import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "../../i18n";
+import { dekkingKlasKey } from "../dekking/useDekking";
 import { Jaarplankalender } from "./Jaarplankalender";
 import type {
   Generatieparameters,
@@ -3302,5 +3303,96 @@ describe("Jaarplankalender — een thema met de hand plannen (E4-03, FR-7.2)", (
     await openKiezer(1);
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+/**
+ * E4-01 (FR-6.5, FR-7, Art. V.1): an edit must not leave a coverage figure computed before it in the cache.
+ *
+ * The server half of this story is proven where it belongs, over HTTP against real PostgreSQL
+ * (`DekkingNaBewerkingTests`): dekking is recomputed on every read, so there is nothing to invalidate behind the
+ * API. **The whole remaining risk is on the client**, and it is invisible to every test that only checks what the
+ * kalender renders: the dekkingsoverzicht is another route, so while a teacher edits here its query is inactive and
+ * TanStack keeps the last answer. Left in place, that answer is what `/dekking` paints on arrival.
+ */
+describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7)", () => {
+  const EIGEN_SCOPE = [...dekkingKlasKey(KLAS_ID), "EigenJaarFase", null] as const;
+  const HEEL_CURRICULUM = [...dekkingKlasKey(KLAS_ID), "HeelCurriculum", null] as const;
+  const ANDERE_KLAS = [...dekkingKlasKey("33333333-3333-3333-3333-333333333333"), "EigenJaarFase", null] as const;
+
+  /** The figures a teacher had already looked at, in the two scopes the overview can be left in. */
+  function zetDekkingInCache(queryClient: QueryClient) {
+    queryClient.setQueryData(EIGEN_SCOPE, { aantalGedekt: 0, aantalLeerplandoelen: 2 });
+    queryClient.setQueryData(HEEL_CURRICULUM, { aantalGedekt: 0, aantalLeerplandoelen: 40 });
+    queryClient.setQueryData(ANDERE_KLAS, { aantalGedekt: 3, aantalLeerplandoelen: 12 });
+  }
+
+  it("drops every cached figure for this class when a proposal is accepted", async () => {
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const naPlan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+    ]);
+    stubBewerking(plan, naPlan);
+    const { queryClient } = renderKalender();
+    zetDekkingInCache(queryClient);
+
+    await screen.findByText("Water");
+    fireEvent.click(
+      within(kaart("Water")).getByRole("button", {
+        name: t("kalender.aanvaardenLabel", { thema: "Water" }),
+      }),
+    );
+
+    // Both scopes, not just the default one: the acceptance changed the numerator of every denominator, and a
+    // teacher who had switched to the whole curriculum would otherwise come back to the stale one of the two.
+    await waitFor(() => expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeUndefined());
+    expect(queryClient.getQueryData(HEEL_CURRICULUM)).toBeUndefined();
+
+    // And the removal is scoped: another class's figure is not affected by an edit to this plan, and the plan the
+    // board is rendering survives — it was written from the server's response, not thrown away with the dekking.
+    expect(queryClient.getQueryData(ANDERE_KLAS)).toBeDefined();
+    expect(queryClient.getQueryData(["jaarplan", KLAS_ID])).toBeDefined();
+  });
+
+  it("drops the figure on a move too, because the moved placement starts counting", async () => {
+    // A second edit through a second control, deliberately: the rule lives in the hook the five placement mutations
+    // share, and a test that only ever pressed "Aanvaarden" would pass just as well with the call wired into that
+    // one handler. A move is also the case with the most surprising figure change — the placement becomes `manueel`,
+    // which counts for dekking, so a drag raises the coverage figure without any decision being recorded.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    stubBewerking(plan);
+    const { queryClient } = renderKalender();
+    zetDekkingInCache(queryClient);
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    const keuze = within(kaart("Water")).getByLabelText(t("kalender.verplaatsNaar"));
+    fireEvent.change(keuze, { target: { value: "2026-11-09" } });
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.verplaatsen") }));
+
+    await waitFor(() => expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeUndefined());
+    expect(queryClient.getQueryData(ANDERE_KLAS)).toBeDefined();
+  });
+
+  it("keeps the figure when the edit was refused, because the plan did not change", async () => {
+    // The other direction, and the one an over-eager `onSettled` would get wrong: a 400 means nothing was persisted,
+    // so throwing the figure away would send the teacher back to a loading state to be told the same number. The
+    // rule is that the cache follows the PLAN, not the gesture.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    stubBewerking(plan, plan, 400);
+    const { queryClient } = renderKalender();
+    zetDekkingInCache(queryClient);
+
+    await screen.findByText("Water");
+    fireEvent.click(aanpassen("Water"));
+
+    const keuze = within(kaart("Water")).getByLabelText(t("kalender.verplaatsNaar"));
+    fireEvent.change(keuze, { target: { value: "2026-11-09" } });
+    fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.verplaatsen") }));
+
+    // Wait for the failure to be on screen, so this is not asserting on a request that had not finished yet.
+    expect(await within(kaart("Water")).findByText(t("kalender.verplaatsMislukt"))).toBeInTheDocument();
+    expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeDefined();
   });
 });

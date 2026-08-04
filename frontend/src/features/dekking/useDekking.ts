@@ -17,8 +17,19 @@ import type { Dekkingsbereik } from "./types";
  * figure that Art. V.1's "computed, never stored" exists to prevent. Contrast the register's facets, which cache for
  * five minutes because the curriculum only changes on an import.
  */
+/**
+ * Everything cached about one class's dekking, whatever scope or narrowing it was asked under (E4-01).
+ *
+ * Exported because a **plan edit invalidates every one of those answers at once**: a placement that appears, moves,
+ * is decided on or is removed changes the numerator of each scope the teacher happens to have opened. The kalender's
+ * mutations therefore drop this whole subtree rather than enumerating `(bereik, jaarFase)` pairs they cannot know.
+ * Owned here and imported there, so the string `"dekking"` exists once, following the precedent in
+ * `themas/useThemas.ts`, which reaches for `matching`'s key for the same reason.
+ */
+export const dekkingKlasKey = (klasId: string) => ["dekking", klasId] as const;
+
 const dekkingKey = (klasId: string, bereik: Dekkingsbereik, jaarFase: string | null) =>
-  ["dekking", klasId, bereik, jaarFase] as const;
+  [...dekkingKlasKey(klasId), bereik, jaarFase] as const;
 
 export function useDekking(klasId: string, bereik: Dekkingsbereik, jaarFase: string | null) {
   return useQuery({
