@@ -318,20 +318,47 @@ public sealed class SchoolcontentImportServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Overwrite_freely_replaces_an_ai_only_voorgesteld_link()
+    public async Task Overwrite_preserves_an_imported_link_the_file_no_longer_carries()
     {
-        // LP-1 stays voorgesteld (no teacher decision). Re-import drops it for LP-9 without warning.
+        // **This test asserted the opposite until 2026-08-04, and the change is a ruling rather than a fix.**
+        // It used to be called `Overwrite_freely_replaces_an_ai_only_voorgesteld_link`, because an imported
+        // link was `Voorgesteld` and therefore not a human decision. E1-18 established that it is one: the
+        // owner ruled that a school imports *decided* links, so the import now writes `Manueel`.
+        //
+        // The consequence lands exactly here. `Manueel` satisfies `IsMenselijkeBeslissing`, so a link that
+        // disappears from a later version of the file is **preserved and reported as bedreigd** instead of
+        // being dropped silently, and removing it takes E1-13's explicit opt-in. That follows from the ruling:
+        // if the school decided a link, the tool does not un-decide it because a later spreadsheet forgot it.
         await Importeer(Parse(Rij(themadoelen: ["LP-1"])));
 
         var result = await Importeer(
             Parse(Rij(themadoelen: ["LP-9"])),
             SchoolcontentImportModus.Bijwerken);
 
-        Assert.Empty(result.Diff.BedreigdeBeslissingen); // voorgesteld is not a human decision
+        var bedreigd = Assert.Single(result.Diff.BedreigdeBeslissingen);
+        Assert.Equal(KoppelingNiveau.Themadoel, bedreigd.Niveau);
+        Assert.Equal("LP-1", bedreigd.LeerplandoelCode);
 
         var thema = await LoadThemaAsync("Herfst");
-        Assert.DoesNotContain(thema.Themadoelen, td => td.Koppeling.LeerplandoelCode == "LP-1");
+        Assert.Contains(thema.Themadoelen, td => td.Koppeling.LeerplandoelCode == "LP-1");
         Assert.Contains(thema.Themadoelen, td => td.Koppeling.LeerplandoelCode == "LP-9");
+    }
+
+    [Fact]
+    public async Task An_imported_link_counts_for_dekking_because_it_is_a_decision()
+    {
+        // The whole point of E1-18, asserted at the level where the defect actually bit: dekking counts only
+        // `Aanvaard`/`Manueel` (Art. V.1), so an imported themadoel used to contribute nothing to a school's
+        // coverage, permanently, with no way in the product to change it.
+        await Importeer(Parse(Rij(themadoelen: ["LP-1"], subdoelen: ["LP-3"])));
+
+        var thema = await LoadThemaAsync("Herfst");
+        var themadoel = Assert.Single(thema.Themadoelen);
+        Assert.Equal(KoppelingStatus.Manueel, themadoel.Koppeling.Status);
+
+        var subthema = Assert.Single(thema.Subthemas);
+        var subdoel = Assert.Single(subthema.Subdoelen);
+        Assert.Equal(KoppelingStatus.Manueel, subdoel.Koppeling.Status);
     }
 
     [Fact]
