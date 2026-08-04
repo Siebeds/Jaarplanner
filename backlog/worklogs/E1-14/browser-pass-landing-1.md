@@ -84,3 +84,22 @@ Three things in this record needed fixing, and the third is the one that matters
    table or the 390 px claim, so those numbers rest on this run alone. They were measured with alpha
    composited against the real backdrop, and the method is in the table above; anyone re-checking should
    re-measure rather than trust the figure.
+
+## Second browser pass: the two fixed MAJORs, verified outside jsdom (2026-08-04, same session)
+
+The audit's two MAJOR findings were fixed and pinned by tests, and then checked in the running app,
+because a test in jsdom is not where either of them lived.
+
+**MAJOR 1, the data loss.** Opened the first thema, clicked *Wijzigen*, and then clicked a **different**
+thema in the list while the form was open. The form is gone after the switch
+(`formulierNogOpen: false`), the heading matches the thema now selected, and *Wijzigen* is back. Before
+the fix this was the sequence that sent thema A's naam, duur and woordenschat to thema B's URL.
+
+**MAJOR 2, the cap.** Put a thema at three themadoelen and asked the server for a fourth, to confirm
+what it really does: **400**, `"Een thema heeft ten hoogste 3 themadoelen (Art. IX.2)."` So the ceiling
+is law, not advice, exactly as the audit said. On that thema's screen: **no koppel button**, the sentence
+*"Je kan er maximaal 3 koppelen. Wil je een ander doel, haal er dan eerst een weg."*, and no advice
+marker (correct, it is at three). Measured **9.39:1** on the same `attentie` pair as the advice marker.
+
+Recorded because it closes the loop the first pass left open: the state the browser never reached is now
+a state the browser has been in.
