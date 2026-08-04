@@ -2027,8 +2027,18 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
    *    above it claimed no quantifier could get through. **That gap is the recurring defect in this test, not the
    *    copy** — the product string has been correct since the first commit.
    *
-   * What is asserted now is the **relation** between the two strings, which no reword can satisfy accidentally.
-   * See the comment on the assertion itself.
+   * 3. The **relation** that replaced the denylist was defeated in turn, by rewording the **non-stale** string and
+   *    propagating it exactly as the relation demands: *"nog een andere themaperiode"* → *"nog een
+   *    themaperiode"*. It constrains the stale string as a function of the other, so it forbids the two drifting
+   *    apart and says nothing about what they drift into. It was also a **net regression**, since the denylist
+   *    had caught two of those attacks outright.
+   *
+   * **So what is asserted now is a conjunction, and its coverage is stated rather than claimed:** the relation
+   * catches the two strings diverging, and the denylist catches the listed quantifiers however they arrived.
+   * **Neither is universal and together they are not either** — a Dutch quantifier outside the list, reworded into
+   * the non-stale string and propagated, would still get through. That is the honest boundary. Three rounds of
+   * this docblock asserted a universal and three mutations defeated it; the lesson is that a guard of this shape
+   * has a boundary, and the comment above it is where the boundary belongs.
    */
   it("does not promise a rejected stale card another themaperiode, and keeps the promise where it is true", async () => {
     const presuppositie = /andere themaperiode/i;
@@ -2052,6 +2062,25 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     // …and the non-stale variant really does carry the quantifier the relation removes, so the equality above
     // cannot be satisfied by both strings simply becoming identical.
     expect(t("kalender.weigeringEerstTerugdraaien")).toMatch(/\bandere\b/i);
+
+    // **The denylist is kept BESIDE the relation, not replaced by it** (antagonist, round 4). The relation
+    // constrains the stale string entirely as a function of the non-stale one, so it forbids the two DRIFTING
+    // APART but not a quantifier reworded into the non-stale sentence and propagated exactly as the relation
+    // demands: *"nog een andere themaperiode"* → *"nog een themaperiode"* satisfies every assertion above.
+    // Worse, the relation's failure message actively tells a developer to apply that replacement. So the two
+    // guard different axes and are a conjunction: the relation catches drift, this catches known quantifiers
+    // however they arrived.
+    for (const kwantor of [
+      /\bandere\b/i,
+      /\bnog een\b/i,
+      /\btweede\b/i,
+      /\bopnieuw\b/i,
+      /\bvrije\b/i,
+      /\bweer\b/i,
+      /\bvolgende\b/i,
+    ]) {
+      expect(t("kalender.weigeringEerstTerugdraaienVervallen")).not.toMatch(kwantor);
+    }
 
     const paneelTekst = async (status: "Geweigerd", vervallen: boolean) => {
       stubZoom(
@@ -2085,7 +2114,8 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
       const tekst = kaart().textContent ?? "";
       // Pins what each fixture MEANS, rather than trusting a date to stay in step with a stub 2000 lines away.
       // `c27f31f`, the commit that first added this test, set a `blokStart` matching no block, so the "card in a
-      // period" was in the Te herzien notice and nobody noticed for two rounds: three mutations all aimed at the
+      // period" was in the Te herzien notice and nobody noticed for a full round, after which the fix was lost for a
+      // second (see the worklog): three mutations all aimed at the
       // code and none at the setup. (Named by commit rather than "round 1", because this file uses that phrase for
       // the AUDIT rounds while the worklog uses it for the FIX rounds, and the two do not line up.)
       const herzien = screen.queryByRole("region", { name: t("kalender.herzienTitelEnkelvoud") });
