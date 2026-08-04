@@ -21,6 +21,12 @@ namespace Jaarplanner.Api.Infrastructure;
 /// concordance key is known (Art. II.3 as amended 2026-07-30: a message the person running the import can
 /// act on is Dutch).
 /// </para>
+/// <para>
+/// <b>The <c>Type</c> discriminates the two 409s (E1-13 fix round 1).</b> They share a status and a title, and
+/// a screen that cannot tell them apart has to frame both the same way — which made one of the two frames
+/// contradict the <c>Detail</c> printed under it. See <see cref="Probleemsoorten"/> for why this is a
+/// <c>type</c> URI rather than a new field or a second title.
+/// </para>
 /// </summary>
 public sealed class OpstapImportExceptionHandler : IExceptionHandler
 {
@@ -55,6 +61,9 @@ public sealed class OpstapImportExceptionHandler : IExceptionHandler
                 Title = status == StatusCodes.Status400BadRequest
                     ? Probleemtitels.OngeldigeAanvraag
                     : Probleemtitels.ImportNietDoorgevoerd,
+                // Which refusal this is, machine-readably. Null is left unset so the framework's own
+                // status-derived URI applies; a caller then falls back to copy that claims nothing.
+                Type = Probleemsoorten.VoorOpstapImport(fout.Soort),
                 Detail = fout.Message,
             },
         });

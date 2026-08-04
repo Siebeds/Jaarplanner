@@ -1,6 +1,7 @@
-import { t } from "../../i18n";
+import { t, type TranslationKey } from "../../i18n";
 import type { Ribbonsegment } from "./kalenderFormat";
-import { formatteerDatum } from "./kalenderFormat";
+import { PERIODELABEL, formatteerDatum } from "./kalenderFormat";
+import type { Planningsblokniveau } from "./types";
 
 /**
  * The school year as one proportional strip — the whole September→June stretch at a glance.
@@ -21,8 +22,10 @@ import { formatteerDatum } from "./kalenderFormat";
  * strip still reads in greyscale, in print, and for someone who cannot tell petrol from amber. That is what
  * the legend used to buy, bought more cheaply.
  *
- * Purely presentational: no click targets, because selecting a period does nothing yet (E3-08 owns zoom,
- * E3-07 the dragging). A control that does nothing teaches a review the wrong thing.
+ * Purely presentational: no click targets. **The zoom (E3-08) deliberately did not turn these bars into buttons** —
+ * a segment is 40px wide and carries no label a teacher could aim at, and "click a period to zoom into it" would be
+ * a *different* feature (one period at a time) from the one the story asks for (the whole year at a finer grain).
+ * The tier is chosen by the named control above instead, and this strip re-renders at that tier.
  */
 export interface JaarspineProps {
   segmenten: Ribbonsegment[];
@@ -30,14 +33,46 @@ export interface JaarspineProps {
   gevuldeOrdinalen: ReadonlySet<number>;
   /** Ordinals flagged as over-full, matching the board columns below. */
   teVolleOrdinalen: ReadonlySet<number>;
+  /**
+   * The tier these segments belong to (E3-08).
+   *
+   * The strip zooms **with** the board rather than staying pinned to the year: one `/rooster` answer feeds both, so
+   * the two can never disagree about which period an ordinal means. The visible strip is unchanged by the tier (it
+   * is dates and bars either way); what has to follow it is the sr-only ordinal, because "Periode 12" would name a
+   * themaperiode that does not exist while pointing at a subthemaperiode.
+   */
+  niveau: Planningsblokniveau;
 }
 
-export function Jaarspine({ segmenten, gevuldeOrdinalen, teVolleOrdinalen }: JaarspineProps) {
+/**
+ * The strip's own title per tier (E3-08 fix round 4, MINOR-4b).
+ *
+ * A `Record` rather than a ternary for the reason its siblings are: this sentence is the **first** thing a
+ * screen-reader user hears about the strip, so a tier added later inheriting *"in themaperiodes"* would contradict
+ * every ordinal underneath it before anyone noticed. The ordinal itself comes from the shared
+ * {@link PERIODELABEL}, which the board column reads too.
+ */
+const SPINETITEL: Record<Planningsblokniveau, TranslationKey> = {
+  Themaperiode: "spine.titel",
+  Subthemaperiode: "spine.titelFijn",
+};
+
+export function Jaarspine({
+  segmenten,
+  gevuldeOrdinalen,
+  teVolleOrdinalen,
+  niveau,
+}: JaarspineProps) {
+  const periodeSleutel = PERIODELABEL[niveau];
+
   return (
     <figure className="border-b border-border pb-4">
       {/* The heading earns no visual weight here — the strip explains itself — but a screen-reader user
-          still needs to know what this row of bars is. */}
-      <figcaption className="sr-only">{t("spine.titel")}</figcaption>
+          still needs to know what this row of bars is.
+          It names the tier (E3-08 fix round 2, MINOR-5): "het schooljaar in periodes" was the fourth name for an
+          object whose columns and ordinals say "themaperiode" or "subthemaperiode", and it is the FIRST thing a
+          screen-reader user hears about this strip, immediately before ordinals that use the other word. */}
+      <figcaption className="sr-only">{t(SPINETITEL[niveau])}</figcaption>
 
       <div className="flex items-end gap-1" role="presentation">
         {segmenten.map((segment) => {
@@ -68,9 +103,19 @@ export function Jaarspine({ segmenten, gevuldeOrdinalen, teVolleOrdinalen }: Jaa
                   Screen readers still get the ordinal, because they cannot use position to infer it.
                 */}
                 <span className="sr-only">
-                  {t("kalender.periode", { ordinaal: segment.blok.ordinaal })}:{" "}
+                  {t(periodeSleutel, { ordinaal: segment.blok.ordinaal })}:{" "}
                 </span>
-                <time dateTime={segment.blok.start} className="truncate">
+                {/* Hidden below `sm` at the fine tier, and that came out of looking at a phone: 19 segments across
+                    390px leaves each label about 18px, so every date truncated to "1… 1… 2…" — fragments where the
+                    first number reads as a day. The bar itself still carries filled-versus-outline, the sr-only
+                    ordinal above is untouched, and every board column below states its own dates in full. At `sm`
+                    and up the dates fit and are the anchor of the strip, so they stay. */}
+                <time
+                  dateTime={segment.blok.start}
+                  className={
+                    niveau === "Subthemaperiode" ? "hidden truncate sm:inline" : "truncate"
+                  }
+                >
                   {formatteerDatum(segment.blok.start)}
                 </time>
                 {teVol && (

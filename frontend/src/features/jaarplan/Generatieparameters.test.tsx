@@ -113,6 +113,13 @@ function stubFetch(
     instellingenHerstel?: () => Generatieparameters | "hangt" | null;
     /** Overrides the grid, so a test can hand the form another tier's periods (E3-08's zoom). */
     rooster?: Planningsrooster;
+    /**
+     * Served when the request asks for `?niveau=Subthemaperiode` (E3-08).
+     *
+     * Present so a test can drive the **real** zoom control rather than pre-loading the form with another tier's
+     * grid: the tier is a request argument, and the property under test is what survives the switch.
+     */
+    fijnRooster?: Planningsrooster;
   } = {},
 ) {
   const {
@@ -120,6 +127,7 @@ function stubFetch(
     instellingen = geenInstellingen,
     instellingenHerstel,
     rooster: grid = rooster,
+    fijnRooster,
   } = opties;
   const posts: (string | undefined)[] = [];
 
@@ -159,7 +167,10 @@ function stubFetch(
         );
       }
       if (url.includes("/rooster")) {
-        return new Response(JSON.stringify(grid), { status: 200 });
+        const antwoord =
+          fijnRooster && url.includes("niveau=Subthemaperiode") ? fijnRooster : grid;
+
+        return new Response(JSON.stringify(antwoord), { status: 200 });
       }
       if (url.includes("/jaarplan")) {
         return new Response(JSON.stringify(leegPlan), { status: 200 });
@@ -669,7 +680,7 @@ describe("Generatieparameters — a kept setting whose period is gone (E3-04)", 
     const knop = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
     const samenvatting = () => /\(([^)]*)\)/.exec(knop.textContent ?? "")?.[1] ?? "";
 
-    await waitFor(() => expect(samenvatting()).toBe("1 zonder periode"));
+    await waitFor(() => expect(samenvatting()).toBe("1 zonder themaperiode"));
     expect(samenvatting()).not.toContain("startthema");
   });
 
@@ -737,28 +748,226 @@ describe("Generatieparameters — the grid it may read (E3-04)", () => {
 
     const knop = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
     const samenvatting = () => /\(([^)]*)\)/.exec(knop.textContent ?? "")?.[1] ?? "";
-    await waitFor(() => expect(samenvatting()).toBe("1 startthema"));
 
-    // NOT called stranded: at this tier the form cannot tell, so it claims nothing either way.
-    expect(samenvatting()).not.toContain("zonder periode");
+    // **It counts nothing at all** (fix round 2, MAJOR-A). Round 1 read "1 startthema" here, which happens to be true
+    // for this fixture's valid preference and would have been false for a stranded one — the form cannot tell either
+    // way without the generation tier's grid, and a count it cannot check is a claim it may not make. It says so
+    // instead, and the run is refused rather than offered.
+    await waitFor(() => expect(samenvatting()).toBe("themaperiodes onbekend"));
+    expect(samenvatting()).not.toContain("startthema");
+    expect(samenvatting()).not.toContain("zonder themaperiode");
     expect(
       screen.queryByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
     ).toBeNull();
+    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeDisabled();
 
-    // And it offers no period rows built from the wrong tier's dates: it says where to set them instead.
+    // And it offers no period rows built from the wrong tier's dates. The sentence is the one for *this* cause: the
+    // grid could not be read. Not `anderNiveau`, which would tell a teacher to switch to a view they are looking at
+    // (fix round 2, MINOR-F), and not the fetch-failure one, since the request succeeded.
     fireEvent.click(knop);
     const startthemas = await screen.findByRole("group", {
       name: t("parameters.startthemasTitel"),
     });
-    expect(within(startthemas).getByText(t("parameters.anderNiveau"))).toBeInTheDocument();
+    expect(within(startthemas).getByText(t("parameters.periodesNietGelezen"))).toBeInTheDocument();
+    expect(within(startthemas).queryByText(t("parameters.anderNiveau"))).toBeNull();
+    expect(within(startthemas).queryByText(t("parameters.periodesNietGeladen"))).toBeNull();
     expect(within(startthemas).queryByRole("combobox")).toBeNull();
 
-    // The kept setting itself is untouched and still sent, exactly as stored.
+    // Pressing the refused button sends nothing: the refusal is the disabled attribute AND the absence of a path
+    // around it. (That the stored settings survive an untouched form is pinned by the first test in this file; here
+    // there is no run to inspect, which is the point.)
     fireEvent.click(screen.getByRole("button", { name: t("kalender.genereer") }));
+    expect(posts).toHaveLength(0);
+  });
+});
+
+/**
+ * The two obligations E3-04 left to E3-08, now that the other tier is actually reachable.
+ *
+ * The `anderNiveau` branch had never executed in a browser: `/rooster` always answered `Themaperiode`, so the test
+ * above had to *hand* the form another tier's grid to reach it. Here the real control does the switching, which is
+ * what makes these assertions about the product rather than about a fixture.
+ *
+ * The sharpest of them is the first. The kalender holds the teacher's unsent parameter edit in its own state, and the
+ * form holds the fields it was typed into. A switch that tore the screen down and rebuilt it would keep the parent's
+ * edit and reload the form's fields from the server — the display/request desync E3-04's fix round 4 closed for a
+ * failed settings load, re-created by a zoom control.
+ */
+describe("Generatieparameters — across a zoom switch (E3-08, FR-6.3)", () => {
+  /** Subthemaperiodes nested in the two themaperiodes above, each parent's first part sharing its start date. */
+  const fijnRooster: Planningsrooster = {
+    ...rooster,
+    niveau: "Subthemaperiode",
+    blokken: [
+      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-16", ouderOrdinaal: 1, aantalOpenDagen: 16 },
+      { ordinaal: 2, start: "2026-09-17", eind: "2026-10-02", ouderOrdinaal: 1, aantalOpenDagen: 16 },
+      { ordinaal: 3, start: "2026-11-09", eind: "2026-11-22", ouderOrdinaal: 2, aantalOpenDagen: 14 },
+      { ordinaal: 4, start: "2026-11-23", eind: "2026-12-20", ouderOrdinaal: 2, aantalOpenDagen: 28 },
+    ],
+  };
+
+  const zoom = (sleutel: "kalender.weergaveGrof" | "kalender.weergaveFijn") =>
+    within(screen.getByRole("group", { name: t("kalender.weergaveLabel") })).getByRole("button", {
+      name: t(sleutel),
+    });
+
+  it("keeps an unsent edit through a switch to the finer tier and back, and still sends it", async () => {
+    const posts = stubFetch(resultaat(leegRapport), { fijnRooster });
+    renderKalender();
+
+    // Type an edit and do NOT generate. This is the state the switch must not touch.
+    await openForm();
+    await waitFor(() => expect(periodeKeuze(1)).toBeInTheDocument());
+    fireEvent.change(periodeKeuze(1), { target: { value: "Herfst" } });
+
+    const trigger = screen.getByRole("button", { name: new RegExp(t("parameters.titel")) });
+    await waitFor(() => expect(trigger.textContent).toContain("1 startthema"));
+
+    fireEvent.click(zoom("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // Obligation 1: at the fine tier the form renders no period rows and makes no stranded claim, because it cannot
+    // tell which periods these blocks are. The panel is still OPEN, which is only possible if it was never remounted.
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const startthemas = screen.getByRole("group", { name: t("parameters.startthemasTitel") });
+    expect(within(startthemas).getByText(t("parameters.anderNiveau"))).toBeInTheDocument();
+    expect(within(startthemas).queryByRole("combobox")).toBeNull();
+    expect(
+      screen.queryByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
+    ).toBeNull();
+    // The summary still counts the edit: it is not "lost while another tier is shown".
+    expect(trigger.textContent).toContain("1 startthema");
+
+    fireEvent.click(zoom("kalender.weergaveGrof"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabel") })).toBeInTheDocument(),
+    );
+
+    // Back at the generation tier the row is there again with the teacher's own choice still in it, not reloaded from
+    // the server's older copy.
+    expect(periodeKeuze(1)).toHaveValue("Herfst");
+    expect(periodeKeuze(2)).toHaveValue("");
+
+    await genereer();
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0]!)).toEqual({
+      gewensteStartthemas: [{ blokStart: "2026-09-01", themaNaam: "Herfst" }],
+      vasteMomenten: [],
+    });
+  });
+
+  it("sends the kept settings unchanged while the finer tier is showing", async () => {
+    const posts = stubFetch(resultaat(leegRapport), {
+      fijnRooster,
+      instellingen: {
+        // Valid at the generation tier: themaperiode 2's start date.
+        gewensteStartthemas: [{ blokStart: "2026-11-09", themaNaam: "Water" }],
+        vasteMomenten: [{ naam: "Schoolfeest", datum: "2026-09-15", blokkeertPlaatsing: true }],
+      },
+    });
+    renderKalender();
+
+    const trigger = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
+    await waitFor(() => expect(trigger.textContent).toContain("1 startthema"));
+
+    fireEvent.click(zoom("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // Generating from the fine view is still allowed, and it must not quietly change what is stored: the run is at the
+    // generation tier whatever the board happens to be showing.
+    await genereer();
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0]!)).toEqual({
+      gewensteStartthemas: [{ blokStart: "2026-11-09", themaNaam: "Water" }],
+      vasteMomenten: [{ naam: "Schoolfeest", datum: "2026-09-15", blokkeertPlaatsing: true }],
+    });
+  });
+
+  /**
+   * Fix round 1, finding 1: **a stranded kept startthema must not be relabelled as a valid one by zooming in.**
+   *
+   * The stranded check ran against whatever grid the board was showing, so at the fine tier it could not run at all and
+   * the entry fell out of `vervallenStarts` — which is the set `aantalStartthemas` *excludes*. Identical state and an
+   * identical POST body therefore read `(1 zonder themaperiode)` at the coarse tier and `(1 startthema)` at the fine
+   * one, with generation enabled: a teacher whose kept preference had been orphaned by a vakantie edit zoomed in, was
+   * told one startthema was set, generated, and found out only from the run's own `vervallenStartthemas`.
+   *
+   * Note the existing "keeps an unsent edit" test's `queryByRole("region", …)` cannot catch this: its fixture has no
+   * stranded setting, so the assertion passes vacuously. This one has one.
+   */
+  it("does not relabel a stranded kept startthema as a valid one at the finer tier", async () => {
+    const posts = stubFetch(resultaat(leegRapport), {
+      fijnRooster,
+      instellingen: {
+        // 5 October is not the start of any themaperiode in `rooster`: the beheerder moved the vakantie after this was
+        // saved. It is still sent, and still the teacher's to resolve (directie 2026-07-28).
+        gewensteStartthemas: [{ blokStart: "2026-10-05", themaNaam: "Water" }],
+        vasteMomenten: [],
+      },
+    });
+    renderKalender();
+
+    const trigger = await screen.findByRole("button", { name: new RegExp(t("parameters.titel")) });
+    const samenvatting = () => /\(([^)]*)\)/.exec(trigger.textContent ?? "")?.[1] ?? "";
+
+    await waitFor(() => expect(samenvatting()).toBe("1 zonder themaperiode"));
+    // The loud notice is here at the tier whose periods it talks about.
+    expect(
+      screen.getByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(zoom("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // THE regression: the summary is a statement about the settings, so it may not change with the view. It certainly
+    // may not turn a setting the run will discard into one it will honour.
+    expect(samenvatting()).toBe("1 zonder themaperiode");
+    expect(samenvatting()).not.toContain("startthema");
+
+    // The rows and the resolve-it-here notice are withheld (E3-04 obligation 1: those periods are not on screen), and
+    // the panel says where to deal with it instead. Hiding the ROWS was licensed; upgrading the claim was not.
+    expect(
+      screen.queryByRole("region", { name: t("parameters.vervallenTitelEnkelvoud") }),
+    ).toBeNull();
+    fireEvent.click(trigger);
+    const startthemas = screen.getByRole("group", { name: t("parameters.startthemasTitel") });
+    expect(within(startthemas).getByText(t("parameters.anderNiveau"))).toBeInTheDocument();
+
+    // And generating from here still sends the stranded setting untouched, which is what makes the summary the only
+    // thing a teacher could have been misled by.
+    await genereer();
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(JSON.parse(posts[0]!).gewensteStartthemas).toEqual([
-      { blokStart: "2026-11-09", themaNaam: "Water" },
+      { blokStart: "2026-10-05", themaNaam: "Water" },
     ]);
+  });
+
+  it("names the control in the copy that tells a teacher where to set a startthema", async () => {
+    // Obligation 2. The copy used to name a control that did not exist ("zet de kalender terug op het hele jaar"), then
+    // described a state instead ("zolang de kalender het hele schooljaar toont") — which is subtly false, because BOTH
+    // tiers show the whole school year. It now names the control and the tier, so this asserts the agreement rather
+    // than the sentence: the words in the message have to be the words on the buttons.
+    stubFetch(resultaat(leegRapport), { fijnRooster });
+    renderKalender();
+
+    await openForm();
+    fireEvent.click(zoom("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    const bericht = t("parameters.anderNiveau");
+    expect(screen.getByText(bericht)).toBeInTheDocument();
+    expect(bericht).toContain(t("kalender.weergaveGrof"));
+    expect(bericht).toContain(t("kalender.weergaveLabel").toLowerCase());
+    // And it no longer claims the finer view is not the whole school year.
+    expect(bericht).not.toContain("hele schooljaar");
   });
 });
 
