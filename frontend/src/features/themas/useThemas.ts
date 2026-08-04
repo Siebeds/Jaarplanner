@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/
 
 import { ApiError } from "../../lib/api";
 
+import { DEKKING_KEY } from "../dekking/useDekking";
 import { ONGEKOPPELDE_DOELEN_KEY } from "../matching/useDoelsuggesties";
 import {
   haalThemaBibliotheek,
@@ -38,10 +39,20 @@ import type { ActiviteitInvoer, SubthemaInvoer, ThemaInvoer } from "./types";
  *    `heeftVoldoendeThemadoelen`, and `aantalAfgeleideKlassen` when a class's first subthema appears.
  * 3. **The ongekoppelde-doelen gap list** (E2-06, FR-4.4), because a manual link is a link: coupling a doel
  *    here must remove it from "nog niet gekoppeld", and unlinking must put it back.
+ * 4. **The dekking queries** (E4-01). A link change moves coverage (Art. V.1), and the whole `["dekking"]`
+ *    subtree goes rather than one class's: a themadoel hangs on a **school-wide** thema, so it can change the
+ *    figure of every class that has that thema in its plan, including classes this teacher never opens.
+ *    Dropped rather than invalidated, for the reason spelled out on {@link DEKKING_KEY} and in
+ *    `jaarplan/useJaarplan.ts`: an invalidated entry is still painted while its refetch is in flight, so
+ *    `/dekking` would open on a figure from before this edit.
  *
- * **Not invalidated, and stated so the omission is a decision rather than an oversight:** the dekking queries.
- * A link change moves coverage (Art. V.1), but no dekking query exists in the frontend yet — E5-02 builds the
- * screen. Whoever adds it should add its key here, because that is the fourth thing a manual link changes.
+ * > *This is the fourth item because it was written down as owed and then not done.* The paragraph here used to
+ * > read *"no dekking query exists in the frontend yet — E5-02 builds the screen. Whoever adds it should add its
+ * > key here"*. E5-02 shipped the query on 2026-08-04 and E4-01 exported its key the same day, so the sentence
+ * > became false and the obligation stayed unmet, which the E4-01 **test-runner** then reproduced from `/themas`
+ * > in a browser: link `DEMO-L3-02`, walk back through the nav, and the overview paints the pre-link figure with
+ * > that doel still marked *Niet gedekt*. A note that names its own successor only works if the successor reads
+ * > it.
  */
 
 /** Query key for the school-wide bibliotheek list. */
@@ -98,6 +109,9 @@ function useBeheerMutatie<TVars, TResult>(
     for (const key of [THEMA_PREFIX, bibliotheekKey, ONGEKOPPELDE_DOELEN_KEY] as QueryKey[]) {
       void queryClient.invalidateQueries({ queryKey: key });
     }
+
+    // Item 4 above: dropped, not invalidated, and school-wide rather than per klas.
+    queryClient.removeQueries({ queryKey: DEKKING_KEY });
   }
 
   return useMutation({
@@ -156,6 +170,11 @@ export function useWijzigThema() {
  * has a mounted observer makes that observer fetch again immediately, so it reproduced the very 404 it was
  * meant to prevent. Leaving a stale entry for a thema nothing will mount again costs nothing, and a fresh
  * visit to that URL is answered from the bibliotheek with "dit thema bestaat niet".
+ *
+ * **It also does not drop the dekking cache, and that is a claim about the server rather than an omission**
+ * (E4-01): the delete is refused while the thema sits in *any* jaarplan, and a thema in no jaarplan covers
+ * nothing (Art. V.1 counts placed thema's only). So a delete that succeeded cannot have moved any figure. If
+ * that guard is ever relaxed, this is one of the places that has to change with it.
  */
 export function useVerwijderThema() {
   const queryClient = useQueryClient();

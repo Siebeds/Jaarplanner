@@ -24,10 +24,12 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// have nowhere to put it in these tests without changing them.
 /// </para>
 /// <para>
-/// <b>Against real PostgreSQL, deliberately (E7-16).</b> Dekking is computed by a query over four
-/// <c>DoelKoppeling</c> layers, and this project has now been bitten six times by a write path that only ever ran
-/// on the in-memory provider. A story whose whole content is "the figure follows the edit" cannot be evidenced by
-/// a provider that answers a different query.
+/// <b>Against real PostgreSQL, deliberately.</b> Dekking is computed by a query over four <c>DoelKoppeling</c>
+/// layers, and a write path verified only on the in-memory provider is not verified: that class is <b>E7-16</b>,
+/// which keeps the count of times this project has rediscovered it. Cited without repeating the figure, because a
+/// count copied into a comment is a count that goes stale silently, and this one already had (antagonist round 1).
+/// A story whose whole content is "the figure follows the edit" cannot be evidenced by a provider that answers a
+/// different query.
 /// </para>
 /// <para>
 /// <b>What is deliberately not here.</b> No claim about a screen: what a teacher sees is E5-02's page, verified in
@@ -120,8 +122,16 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
     {
         // The interaction E4-01's story entry warns about, asserted rather than described: a drag sets the placement
         // to `manueel` (`Themaplaatsing.VerplaatsNaar`) and `manueel` counts, so moving a standing proposal RAISES
-        // the coverage figure as a side effect of the move. It is correct under Art. V.1 and it is also the kind of
-        // consequence a teacher must be told about, which is why the card discloses it before the drag.
+        // the coverage figure as a side effect of the move. Correct under Art. V.1, and a consequence a teacher has
+        // to be told about.
+        //
+        // **What the product actually discloses, stated exactly, because the first version of this comment claimed
+        // more than the product does** (antagonist round 1, MAJOR): `kalender.verplaatsGevolg` says the thema
+        // becomes the teacher's own choice and that the AI motivation is lost, it says nothing about dekking, and it
+        // renders only inside the opened *Aanpassen* panel, so a teacher who **drags** never reads it. The owner
+        // ruled on 2026-08-04 that this story writes the missing sentence, on both routes; until that copy lands in
+        // `nl.json` the dekking half of this consequence is undisclosed, and this comment says so rather than
+        // implying a disclosure exists. It is the story's own standing obligation, not a discharged one.
         var opzet = await ZetOpAsync();
         var plaatsingId = await ZetPlaatsingOpAsync(opzet, KoppelingStatus.Voorgesteld, opzet.EersteBlok);
         var client = _factory.CreateClient();

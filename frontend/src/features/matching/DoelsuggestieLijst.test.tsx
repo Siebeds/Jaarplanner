@@ -65,13 +65,17 @@ function maakFetchFake(vervangStatus = 200) {
   return { fetchFake, putBodies };
 }
 
+/** The client is returned so a test can read the cache a decision here reaches into (E4-01). */
 function renderLijst() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <DoelsuggestieLijst themaId={THEMA_ID} />
-    </QueryClientProvider>,
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <DoelsuggestieLijst themaId={THEMA_ID} />
+      </QueryClientProvider>,
+    ),
+    queryClient,
+  };
 }
 
 let putBodies: unknown[];
@@ -272,5 +276,34 @@ describe("DoelsuggestieLijst", () => {
       const list = within(container).getByRole("list");
       expect(await axe(list)).toHaveNoViolations();
     });
+  });
+});
+
+/**
+ * E4-01: accepting a suggestion is a link, and a link is coverage (Art. V.1).
+ *
+ * Pinned here rather than only in `useThemas.ts`'s neighbour test because this is the *other* mutation family that
+ * writes a counted `DoelKoppeling`, and the two are wired independently: `useBeheerMutatie` shares one refresh
+ * function, while these hooks each list their own keys. A rule that holds in one file and not the other is exactly
+ * how the original omission survived.
+ */
+describe("DoelsuggestieLijst — een beslissing raakt de dekking (E4-01, Art. V.1)", () => {
+  it("gooit de gecachte dekking van elke klas weg zodra een suggestie aanvaard is", async () => {
+    const { queryClient } = renderLijst();
+
+    const klasA = ["dekking", "klas-a", "EigenJaarFase", null];
+    const klasB = ["dekking", "klas-b", "EigenJaarFase", null];
+    queryClient.setQueryData(klasA, { aantalGedekt: 3, aantalLeerplandoelen: 12 });
+    queryClient.setQueryData(klasB, { aantalGedekt: 5, aantalLeerplandoelen: 12 });
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: t("matching.aanvaardenAria", { code: "NAT-K3-01" }),
+      }),
+    );
+
+    // Both, because the thema this suggestion hangs on is school-wide.
+    await waitFor(() => expect(queryClient.getQueryData(klasA)).toBeUndefined());
+    expect(queryClient.getQueryData(klasB)).toBeUndefined();
   });
 });

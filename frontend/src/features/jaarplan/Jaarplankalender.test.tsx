@@ -3,7 +3,11 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { t } from "../../i18n";
+import { MemoryRouter } from "react-router-dom";
+
+import { t, tAantal } from "../../i18n";
+import { DekkingPagina } from "../dekking/DekkingPagina";
+import { dekking as maakDekking } from "../dekking/testdata";
 import { dekkingKlasKey } from "../dekking/useDekking";
 import { Jaarplankalender } from "./Jaarplankalender";
 import type {
@@ -3394,5 +3398,91 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
     // Wait for the failure to be on screen, so this is not asserting on a request that had not finished yet.
     expect(await within(kaart("Water")).findByText(t("kalender.verplaatsMislukt"))).toBeInTheDocument();
     expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeDefined();
+  });
+
+  it("drops the figure after a generation run, which replaces the placements it was computed from", async () => {
+    // Antagonist round 1 [MINOR]: this branch of the change was pinned by nothing. Deleting the call in
+    // `useGenereerJaarplan` left all 439 tests green, and the mutation check in the worklog only ever covered the
+    // shared placement hook, which is a claim about one of two call sites presented as a claim about both.
+    const resultaat: Generatieresultaat = {
+      isGeslaagd: true,
+      fout: null,
+      jaarplan: null,
+      aantalNieuw: 2,
+      aantalBehouden: 0,
+      aantalVervangen: 1,
+      onbekendeThemas: [],
+      onbekendeBlokken: [],
+      duplicaten: [],
+      afgewezen: [],
+      parameters: null,
+      spreiding: null,
+    };
+    stubFetch(maakJaarplan([]), resultaat);
+    const { queryClient } = renderKalender();
+    zetDekkingInCache(queryClient);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+
+    // A run discards every replaceable placement and proposes new ones, so the figure it produced describes a plan
+    // that no longer exists. `aantalVervangen: 1` above is that case in the fixture rather than only in prose.
+    await waitFor(() => expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeUndefined());
+    expect(queryClient.getQueryData(HEEL_CURRICULUM)).toBeUndefined();
+    expect(queryClient.getQueryData(ANDERE_KLAS)).toBeDefined();
+  });
+
+  it("gives the dekkingsoverzicht its own loading line after an edit, never the figure from before it", async () => {
+    /**
+     * Antagonist round 1 [MINOR]: the three tests above assert the **cache**, which is a mechanism, not a promise.
+     * What the story promises a teacher is this screen's behaviour, so this test asserts that instead: edit on the
+     * kalender, then arrive at the overview on the **same** `QueryClient` — which is what client-side navigation
+     * through the nav does — and read what is on it while the fresh figure is still in flight.
+     *
+     * The pre-edit figure is a realistic `Dekking` from E5-02's own fixtures, so it is a total the screen really
+     * would render: with `invalidateQueries` instead of a removal this test fails on its last assertion, which is
+     * the whole argument of `vergeetDekking` expressed as a test rather than as a docstring.
+     */
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const naPlan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+    ]);
+    stubBewerking(plan, naPlan);
+    const { queryClient, unmount } = renderKalender();
+
+    const voorBewerking = maakDekking();
+    queryClient.setQueryData(EIGEN_SCOPE, voorBewerking);
+    // Built the way the summary builds it, so this asserts the absence of the string a teacher would actually
+    // have read rather than the absence of a plausible-looking one.
+    const oudTotaal = tAantal(
+      voorBewerking.aantalLeerplandoelen,
+      "dekking.cijferEnkelvoud",
+      "dekking.cijfer",
+      { gedekt: voorBewerking.aantalGedekt! },
+    );
+
+    await screen.findByText("Water");
+    fireEvent.click(
+      within(kaart("Water")).getByRole("button", {
+        name: t("kalender.aanvaardenLabel", { thema: "Water" }),
+      }),
+    );
+    await waitFor(() => expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeUndefined());
+
+    // Leaving the kalender the way a teacher does: the screen goes, the client stays.
+    unmount();
+
+    // The overview's own read never resolves inside this test, which is the three-second window the browser pass
+    // had to slow the network down to observe at all. Everything the screen shows here, it shows in that window.
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/dekking?klas=${KLAS_ID}`]}>
+          <DekkingPagina />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(t("dekking.laden"));
+    expect(screen.queryByText(oudTotaal)).toBeNull();
   });
 });
