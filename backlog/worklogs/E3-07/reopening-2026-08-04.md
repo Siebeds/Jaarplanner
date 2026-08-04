@@ -88,10 +88,15 @@ from the artefacts rather than from memory:
 
 - **E5-02 owns it, in writing and with the decision already specified.** `backlog/E5-dekking-export.md:36-37`
   addresses E5-02 in the second person (*"`kalender.herzienUitleg` is the thing to fix, and it is yours"*),
-  `backlog/E4-bewerking-hergeneratie.md:24` records the same hand-off, and **this story's own
-  `Themakaart.tsx`** says it too (*"while E5-02's ruling on that divergence is still open"*). E3-09 was the
-  earlier half of the routing; E5-02 is the later and authoritative one. So *"nobody holds it"* was false,
-  and filing it a third time is the drift this backlog keeps having to retract.
+  `backlog/E4-bewerking-hergeneratie.md:24` records the same hand-off. E3-09 was the earlier half of the
+  routing; E5-02 is the later and authoritative one. So *"nobody holds it"* was false, and filing it a third
+  time is the drift this backlog keeps having to retract.
+  > *A third citation was offered here and has been withdrawn (antagonist, round 2).* `Themakaart.tsx` says
+  > *"while E5-02's ruling on that divergence is still open"*, which this section had quoted as evidence of
+  > E5-02's ownership. The quotation is exact and the comment is **stale**: it is E4-02's, written before the
+  > ruling landed, and the very next bullet establishes that the ruling was **made** on 2026-08-03. Citing a
+  > comment that says a decision is open, inside the correction establishing that it is closed, is the same
+  > rotted-citation move this section exists to fix. Left for **E5-02** to correct with the copy it owns.
 - **The ruling is dated 2026-08-03**, not 2026-08-04 — stated identically in
   `backlog/E5-dekking-export.md:37`, `backlog/E4-bewerking-hergeneratie.md:24` and two E4-02 worklogs. The
   2026-08-04 timestamp belongs to E4-02's *announcement of it in the groepschat*, which is what this section
@@ -128,9 +133,25 @@ swapping the two branches → **3**. **Not mutated:** the `isGeweigerd` guard it
 > Inserting an adjective, *"een **andere, vrije** themaperiode"*, restores the presupposition on the stale card
 > with **315 passed, 0 failed**: `/andere themaperiode/i` is a bigram, and the `toContain("geen enkele
 > periode")` half is satisfied by `weigeringUitlegVervallen`, a string this fix does not touch. So the docblock's
-> claim that a reword would fail here was **false when written**. Fixed by asserting word-boundary quantifiers on
-> the stale key itself. Three-for-three said nothing about the mutation I did not think of, which is the whole
-> point of the rule I was quoting.
+> claim that a reword would fail here was **false when written**. Three-for-three said nothing about the mutation
+> I did not think of, which is the whole point of the rule I was quoting.
+>
+> **And a fifth the audit found by aiming at the *fixture* rather than the code.** The "card that really is in a
+> period" had a `blokStart` matching no block in the rooster stub, so it was swept into the Te herzien notice and
+> the assertion pinned that a card in **no** period is promised *"een andere themaperiode"* — the reopened defect,
+> asserted as correct behaviour. **All five of my own mutations had aimed at the code and none at the setup.** The
+> lesson is cheap and general: *a fixture is a claim about the world and needs an assertion, not a literal.* Both
+> fixtures now assert their Te herzien membership, so the discrimination no longer rests on a date staying in step
+> with a stub 2000 lines away.
+
+> **Fix round 1 reported both of those as repaired and shipped neither, and that is the worst error in this
+> story.** The edits were written, passed, and were then destroyed by a `git checkout <testfile>` used to revert a
+> mutation while they were still uncommitted; the commit that followed carried only the other three files, and
+> this worklog asserted a fix that was not in the tree. The round-2 audit caught it with `git diff --stat`.
+> **It was the second time the same trap fired in this session**, the first on `Themakaart.tsx` an hour earlier,
+> which is what makes it a process defect rather than a slip. Two rules adopted: **commit before mutating**, and
+> **revert a mutation from a copy, never with `git checkout`**. A worklog documenting a fix that is not in the
+> diff is worse than the unfixed defect, because it converts a visible gap into an invisible one.
 
 **At 390px** (iframe frame width 390px; `body` measures **375px**, the 15px difference being the vertical
 scrollbar — stated because a "390px" heading over a 375px figure otherwise looks like a mismeasurement, and the

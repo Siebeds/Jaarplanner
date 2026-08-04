@@ -611,15 +611,19 @@ function Bewerkpaneel({
           directly beneath it says *"dit thema staat in geen enkele periode"*. One card, two sentences, the first
           presupposing what the second denies: the class this story was reopened over, in a new instance.
 
-          **What is deliberately unchanged is the non-stale sentence.** Its *andere* is correct **on the state this
-          branch selects**, and repairing the correct half to fix the broken one is the mistake E4-02 recorded on
-          itself. The second step stays named in both variants (the owner's ruling on E3-08's QUESTION-A), and
-          neither names a view, so both stay true at either tier.
-          *The one state where that is not true is already recorded further down this file:* a card caught only by
-          `vervallenPlaatsingen`'s `!starts.has(blokStart)` fallback has `isVervallen === false`, so it takes the
-          non-stale branch while sitting in no period. This branches on the **server** flag on purpose, for the
-          reason the rejected section below gives at length: that is the flag `DekkingService` derives dekking
-          from, so the copy stays aligned with the figure rather than with the notice.
+          **What is deliberately unchanged is the non-stale sentence.** Its *andere* is correct **wherever the
+          server's `isVervallen` and the client's own staleness fallback agree**, which is every steady state, and
+          repairing the correct half to fix the broken one is the mistake E4-02 recorded on itself. The second step
+          stays named in both variants (the owner's ruling on E3-08's QUESTION-A), and neither names a view, so
+          both stay true at either tier.
+          *Where they disagree it is not correct, and that state is recorded further down this file:* a card caught
+          only by `vervallenPlaatsingen`'s `!starts.has(blokStart)` fallback has `isVervallen === false`, so it
+          takes the non-stale branch while sitting in no period. This still branches on the **server** flag on
+          purpose, for the reason the rejected section below gives at length: that is the flag `DekkingService`
+          derives dekking from, so the copy stays aligned with the figure rather than with the notice.
+          *(An earlier revision of this comment said the sentence is correct "on the state this branch selects" and
+          then described a member of that state where it is not. A qualifier that its own next sentence negates is
+          worse than the unqualified claim it replaced; antagonist, round 2.)*
 
           *The promise itself was never false, and the fix does not touch it:* reversing a rejection yields
           `Manueel`, and the picker returns **where the board can offer one** — `doelen` above is gated on
