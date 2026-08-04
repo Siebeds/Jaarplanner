@@ -104,8 +104,15 @@ The chooser renders on **"this class has more than one code"**, not on "is this 
 
 *Measured in a browser on a seeded kleuterklas with JK, K2 and K3 doelen:* all three gives **4 doelen in scope, 14 outside**; pressing `K3` refetches, puts `jaarFase=K3` in the URL, and gives **2 in scope, 16 outside** with only the two K3 codes listed. The scope sentence changes to *"omdat je dat jaar gekozen hebt"*, which is what distinguishes a narrowed kleutergroep from an L3 class. Every option measures 24px (SC 2.5.8), contrast 6,08 / 8,90 / 15,42:1, no overflow at 1440px or 390px. Ten new tests (five unit, two endpoint, five component); two load-bearing claims mutation-checked: dropping the parameter from the request fails 4, and rendering the chooser unconditionally fails 2.
 
-## Still open on this story
+## Closed, and on what basis
 
-- **A third audit has not run**, and this round is the reason to want one: round 2's own findings were mostly *round 1's fixes*, twice in prose a fix round had written.
-- **Two owner questions** in the Art. XIV list: whether a three-year kleuter scope may be labelled *"Deze klas"*, and whether the row verdicts must be marked provisional while the figure is withheld. Neither reached `docs/besluiten-gevraagd.md`, the channel `README.md` says to forward; that is a pre-existing gap (E5-01's question is not there either) and it is not this story's to fix, but it is why these two may not arrive.
-- **E5-02 stays `[~]`** and adds nothing to the progress count.
+**`[x]` on the owner's decision, 2026-08-04, with one commit unaudited.** Asked whether to run a third round on the kleuterjaar chooser or close, the owner chose to close. The story entry carries the caveat in full and the progress table moved to 43/97 = 44%, re-derived from the epic files rather than incremented.
+
+**What that `[x]` rests on, precisely.** Everything up to and including the round-2 fixes had **two independent antagonist rounds plus a test-runner PASS**. The kleuterjaar chooser (`5998cba`) was built *in response to* round 2 and has ten tests, two mutation checks and a browser pass on a seeded kleuterklas — **all by its author**. That is the E5-01 shape, and it is recorded here for the same reason: it is the first place to look if something turns out to be wrong. The concrete residual is the `?jaarFase=` narrowing, the `BeschikbareJaarFasen` field, the ignore-an-out-of-set-code decision, and the *"omdat je dat jaar gekozen hebt"* copy.
+
+**The counterweight, because it changes how much that residual should worry anyone:** across both audited rounds, **nothing was found in the product's behaviour**. Every MAJOR sat in the record around it — twice in prose a previous fix round had written, and once in a comment whose false claim was the *justification for a branch ordering*. This story's demonstrated failure mode is prose, not screens.
+
+## Still open, and not this story's
+
+- **The graadklas / menggroep half** of the Art. XIV denominator question, which has the same root as the kleuter half: `Klas` carries one `Leerjaar` ordinal. The fix is to give a class a real jaar/fase, which needs a migration and the beheerscherm E6-03/E6-04 will build, so it is a future story rather than a loose end here.
+- **Neither of this story's two owner questions reached `docs/besluiten-gevraagd.md`**, the channel `README.md` says to forward to directie. One of them was answered anyway, in session. That gap is pre-existing (E5-01's question is not there either) and is worth someone owning, because a question that only lives in `README.md` reaches the owner only when they read it.
