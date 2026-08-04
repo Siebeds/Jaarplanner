@@ -51,7 +51,19 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
   const gekoppeldeSubdoelen = subthema.subdoelen.map((subdoel) => subdoel.koppeling.leerplandoelCode);
 
   function bewaarWijziging(invoer: SubthemaInvoer) {
-    wijzigSubthema.mutate({ subthemaId: subthema.id, invoer }, { onSuccess: () => setWijzigen(false) });
+    /*
+      **The record's own klas, never the section's** (antagonist round 2, MINOR 7).
+
+      `WijzigSubthemaAsync` calls `WijzigScope(klasId, leeftijd)`, so every save re-assigns the klas to
+      whatever is passed. Taking it from the form (which takes it from the section, which takes it from the
+      URL) was correct only because a klas switch currently unmounts the card. Add `keepPreviousData` to that
+      query — an improvement any reviewer would wave through — and a save would silently move the subthema to
+      another class. The record knows its own klas; ask it.
+    */
+    wijzigSubthema.mutate(
+      { subthemaId: subthema.id, invoer: { ...invoer, klasId: subthema.klasId } },
+      { onSuccess: () => setWijzigen(false) },
+    );
   }
 
   function bewaarActiviteit(invoer: ActiviteitInvoer) {
@@ -61,8 +73,19 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
     );
   }
 
+  /**
+   * The server's reason, when it sent one **and** it is a reason a teacher can act on.
+   *
+   * A 404 is excluded for the same reason landing 1 excludes it one level up: it means a colleague deleted
+   * this subthema first, and the server's sentence for that names a raw GUID. It is reported as what it is
+   * below, not as a failure, because the outcome the teacher wanted has happened (antagonist round 2).
+   */
+  const verwijderdDoorIemandAnders =
+    verwijderSubthema.error instanceof ApiError && verwijderSubthema.error.status === 404;
   const verwijderMelding =
-    verwijderSubthema.error instanceof ApiError ? verwijderSubthema.error.detail : undefined;
+    verwijderSubthema.error instanceof ApiError && !verwijderdDoorIemandAnders
+      ? verwijderSubthema.error.detail
+      : undefined;
 
   if (wijzigen) {
     return (
@@ -83,7 +106,7 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
   return (
     <li className="rounded-md border border-border/70 p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className="font-semibold text-ink">{subthema.naam}</span>
+        <h4 className="font-semibold text-ink">{subthema.naam}</h4>
         <span className="flex items-center gap-3">
           <span className="text-xs font-medium text-ink-zacht">
             {tAantal(subthema.duurWeken, "themabeheer.duurEnkelvoud", "themabeheer.duur")}
@@ -139,7 +162,11 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
           {/* What goes with it, and what does not: a subthema is one class's derivation, so no colleague's
               work is at stake here. Saying so is the point of the sentence. */}
           <p className="mt-1 text-sm text-ink-zacht">{t("themabeheer.subthemaVerwijderGevolg")}</p>
-          {verwijderSubthema.isError ? (
+          {verwijderdDoorIemandAnders ? (
+            <p role="status" className="mt-2 text-sm text-ink-zacht">
+              {t("themabeheer.subthemaAlWeg")}
+            </p>
+          ) : verwijderSubthema.isError ? (
             <div role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
               <p>{t("themabeheer.subthemaVerwijderMislukt")}</p>
               {verwijderMelding ? (
@@ -245,6 +272,11 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
         <button
           type="button"
           onClick={() => setActiviteitToevoegen((open) => !open)}
+          aria-label={
+            activiteitToevoegen
+              ? undefined
+              : t("themabeheer.activiteitNieuwAria", { naam: subthema.naam })
+          }
           className="rounded-md border border-input px-2 py-1 text-xs font-semibold text-ink hover:bg-paper-diep"
         >
           {activiteitToevoegen ? t("themabeheer.annuleer") : t("themabeheer.activiteitNieuw")}
@@ -398,7 +430,11 @@ function Activiteitregel({
         <div className="mt-2 rounded-md border border-suggestie-geweigerd/40 p-2.5">
           <h5 className="text-sm font-bold text-ink">{t("themabeheer.activiteitVerwijderTitel")}</h5>
           <p className="mt-1 text-sm text-ink-zacht">{t("themabeheer.activiteitVerwijderGevolg")}</p>
-          {verwijderActiviteit.isError ? (
+          {verwijderActiviteit.error instanceof ApiError && verwijderActiviteit.error.status === 404 ? (
+            <p role="status" className="mt-1 text-sm text-ink-zacht">
+              {t("themabeheer.activiteitAlWeg")}
+            </p>
+          ) : verwijderActiviteit.isError ? (
             <p role="alert" className="mt-1 text-sm font-medium text-suggestie-geweigerd">
               {t("themabeheer.activiteitVerwijderMislukt")}
             </p>
@@ -449,7 +485,13 @@ function Activiteitregel({
   );
 }
 
-/** See the note on the same helper in `Klaslaag`: typed against the union so a new member fails to compile. */
+/**
+ * The catalogue key for an activiteittype.
+ *
+ * Typed against the union rather than `string`, so adding an `ActiviteitType` without its Dutch label is a
+ * compile error here instead of a `t()` call that renders its own key on screen. (An earlier version of this
+ * comment pointed at a twin in `Klaslaag`, which landing 2's rewrite removed.)
+ */
 function typeSleutel(type: Activiteit["activiteitType"]) {
   return type.toLowerCase() as Lowercase<Activiteit["activiteitType"]>;
 }

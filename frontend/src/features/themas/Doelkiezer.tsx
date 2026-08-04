@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { DoelsoortBadge } from "../../components/DoelsoortBadge";
@@ -49,7 +49,9 @@ const MINIMUM_ZOEKLENGTE = 2;
 
 export function Doelkiezer({ waaraan, gekoppeldeCodes, onKoppel, bezig }: DoelkiezerProps) {
   const [zoek, setZoek] = useState("");
-  const veldId = `doelkiezer-zoek-${waaraan.replace(/\s+/g, "-")}`;
+  // Keyed on the instance, not on `waaraan`: two cards' subdoel pickers are both "aan dit subthema", so a
+  // level-derived id collided exactly where two pickers can be open (antagonist round 2, MAJOR 1).
+  const veldId = useId();
   const genormaliseerd = zoek.trim();
   const magZoeken = genormaliseerd.length >= MINIMUM_ZOEKLENGTE;
 

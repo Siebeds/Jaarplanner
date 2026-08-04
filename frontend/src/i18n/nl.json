@@ -116,9 +116,9 @@
       "volledigDoorProblemenGedaan": "Wat niet gelezen kon worden, is ook niet overgenomen."
     },
     "bedreigd": {
-      "titel": "{aantal} koppelingen die jij zelf beslist hebt, staan niet meer in dit bestand",
-      "titelEnkelvoud": "1 koppeling die jij zelf beslist hebt, staat niet meer in dit bestand",
-      "uitleg": "Ze blijven staan zolang je hieronder niets aanduidt. De tool gooit een beslissing van een leerkracht nooit vanzelf weg.",
+      "titel": "{aantal} vastgelegde koppelingen staan niet meer in dit bestand",
+      "titelEnkelvoud": "1 vastgelegde koppeling staat niet meer in dit bestand",
+      "uitleg": "Deze koppelingen liggen vast: een leerkracht heeft ze beslist, of ze kwamen uit een eerdere import van dit bestand. Ze blijven staan zolang je hieronder niets aanduidt. De tool gooit een vastgelegde koppeling nooit vanzelf weg.",
       "verwijder": "Verwijder deze {aantal} koppelingen bij het doorvoeren. Dat kan je niet ongedaan maken.",
       "verwijderEnkelvoud": "Verwijder deze koppeling bij het doorvoeren. Dat kan je niet ongedaan maken."
     },
@@ -594,7 +594,7 @@
     "doelKoppelMislukt": "Het leerplandoel kon niet gekoppeld worden.",
     "doelAlGekoppeld": "Al gekoppeld",
     "ontkoppel": "Ontkoppelen",
-    "ontkoppelAria": "Leerplandoel {code} niet meer koppelen aan {waaraan}",
+    "ontkoppelAria": "Ontkoppelen: leerplandoel {code} van {waaraan}",
     "ontkoppelMislukt": "De koppeling kon niet weggehaald worden.",
     "hoekWaarde": "Hoek: {hoek}",
     "leeftijdWaarde": "Leeftijd {leeftijd}",
@@ -638,6 +638,9 @@
     "subdoelKoppelAria": "Leerdoel koppelen aan subthema {naam}",
     "activiteitWijzigAria": "Activiteit {naam} wijzigen",
     "activiteitVerwijderAria": "Activiteit {naam} verwijderen",
-    "activiteitKoppelAria": "Leerdoel koppelen aan activiteit {naam}"
+    "activiteitKoppelAria": "Leerdoel koppelen aan activiteit {naam}",
+    "activiteitNieuwAria": "Nieuwe activiteit in subthema {naam}",
+    "subthemaAlWeg": "Dit subthema bestaat niet meer. Iemand anders heeft het verwijderd.",
+    "activiteitAlWeg": "Deze activiteit bestaat niet meer. Iemand anders heeft ze verwijderd."
   }
 }

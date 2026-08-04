@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 
 import { t } from "../../i18n";
 import { ApiError } from "../../lib/api";
@@ -41,6 +41,8 @@ export function Activiteitformulier({
   const [uitkomsten, setUitkomsten] = useState(activiteit?.verwachteUitkomsten ?? "");
   const [eigenFout, setEigenFout] = useState<string | null>(null);
 
+  // Per instance, for the reason spelled out in `Subthemaformulier`: two of these can be open at once.
+  const id = useId();
   const veld =
     "mt-1.5 h-11 w-full rounded-md border border-input bg-card px-3.5 text-sm text-ink placeholder:text-ink-zacht";
 
@@ -75,11 +77,11 @@ export function Activiteitformulier({
 
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-semibold text-ink" htmlFor="activiteit-naam">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`${id}-naam`}>
             {t("themabeheer.naamLabel")}
           </label>
           <input
-            id="activiteit-naam"
+            id={`${id}-naam`}
             value={naam}
             onChange={(event) => setNaam(event.target.value)}
             placeholder={t("themabeheer.activiteitNaamPlaceholder")}
@@ -87,11 +89,11 @@ export function Activiteitformulier({
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-ink" htmlFor="activiteit-soort">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`${id}-soort`}>
             {t("themabeheer.activiteitTypeLabel")}
           </label>
           <select
-            id="activiteit-soort"
+            id={`${id}-soort`}
             value={soort}
             onChange={(event) => setSoort(event.target.value as ActiviteitType)}
             className={veld}
@@ -104,11 +106,11 @@ export function Activiteitformulier({
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-ink" htmlFor="activiteit-hoek">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`${id}-hoek`}>
             {t("themabeheer.hoekLabel")}
           </label>
           <input
-            id="activiteit-hoek"
+            id={`${id}-hoek`}
             value={hoek}
             onChange={(event) => setHoek(event.target.value)}
             placeholder={t("themabeheer.hoekPlaceholder")}
@@ -116,11 +118,11 @@ export function Activiteitformulier({
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-ink" htmlFor="activiteit-uitkomsten">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`${id}-uitkomsten`}>
             {t("themabeheer.verwachteUitkomstenLabel")}
           </label>
           <input
-            id="activiteit-uitkomsten"
+            id={`${id}-uitkomsten`}
             value={uitkomsten}
             onChange={(event) => setUitkomsten(event.target.value)}
             placeholder={t("themabeheer.verwachteUitkomstenPlaceholder")}

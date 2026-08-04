@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 
 import { t } from "../../i18n";
 import { ApiError } from "../../lib/api";
@@ -46,6 +46,18 @@ export function Subthemaformulier({
   const [eigenFout, setEigenFout] = useState<string | null>(null);
 
   const weken = Number.parseInt(duur, 10);
+
+  /*
+    **Field ids are per instance, not per component** (antagonist round 2, MAJOR 1).
+
+    Two of these forms can be open at once: the create form under the list plus an edit form on any card, or a
+    card's activiteit form beside it. With literal ids, the second form's five `<label htmlFor>` attributes
+    resolved to the FIRST form's inputs, so the second form's fields had no label at all and clicking "Naam"
+    focused the wrong box. axe cannot fail on it either: it classes `duplicate-id-aria` and
+    `form-field-multiple-labels` as *incomplete* rather than violations, and `toHaveNoViolations` only reads
+    violations. `useId` makes each mount its own namespace.
+  */
+  const id = useId();
   const veld =
     "mt-1.5 h-11 w-full rounded-md border border-input bg-card px-3.5 text-sm text-ink placeholder:text-ink-zacht";
 
@@ -92,11 +104,11 @@ export function Subthemaformulier({
 
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_6rem_6rem]">
         <div>
-          <label className="block text-xs font-semibold text-ink" htmlFor="subthema-naam">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`${id}-naam`}>
             {t("themabeheer.naamLabel")}
           </label>
           <input
-            id="subthema-naam"
+            id={`${id}-naam`}
             value={naam}
             onChange={(event) => setNaam(event.target.value)}
             placeholder={t("themabeheer.subthemaNaamPlaceholder")}
@@ -104,11 +116,11 @@ export function Subthemaformulier({
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-ink" htmlFor="subthema-duur">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`${id}-duur`}>
             {t("themabeheer.duurLabel")}
           </label>
           <input
-            id="subthema-duur"
+            id={`${id}-duur`}
             type="number"
             min={1}
             value={duur}
@@ -117,11 +129,11 @@ export function Subthemaformulier({
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-ink" htmlFor="subthema-leeftijd">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`${id}-leeftijd`}>
             {t("themabeheer.leeftijdLabel")}
           </label>
           <input
-            id="subthema-leeftijd"
+            id={`${id}-leeftijd`}
             value={leeftijd}
             onChange={(event) => setLeeftijd(event.target.value)}
             placeholder={t("themabeheer.leeftijdPlaceholder")}
@@ -132,11 +144,11 @@ export function Subthemaformulier({
 
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-semibold text-ink" htmlFor="subthema-probleemstelling">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`${id}-probleemstelling`}>
             {t("themabeheer.probleemstellingLabel")}
           </label>
           <input
-            id="subthema-probleemstelling"
+            id={`${id}-probleemstelling`}
             value={probleemstelling}
             onChange={(event) => setProbleemstelling(event.target.value)}
             placeholder={t("themabeheer.probleemstellingPlaceholder")}
@@ -144,11 +156,11 @@ export function Subthemaformulier({
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-ink" htmlFor="subthema-onderzoeksvraag">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`${id}-onderzoeksvraag`}>
             {t("themabeheer.onderzoeksvraagLabel")}
           </label>
           <input
-            id="subthema-onderzoeksvraag"
+            id={`${id}-onderzoeksvraag`}
             value={onderzoeksvraag}
             onChange={(event) => setOnderzoeksvraag(event.target.value)}
             placeholder={t("themabeheer.onderzoeksvraagPlaceholder")}

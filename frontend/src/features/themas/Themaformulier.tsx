@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 
 import { ApiError } from "../../lib/api";
 import { t } from "../../i18n";
@@ -46,6 +46,9 @@ export function Themaformulier({ thema, onBewaar, onAnnuleer, bezig, fout }: The
   const [eigenFout, setEigenFout] = useState<string | null>(null);
 
   const weken = Number.parseInt(duur, 10);
+  // Per instance, like the two class-scoped forms: only one of these is reachable at a time today, and an id
+  // that is unique by accident of routing is not unique.
+  const id = useId();
 
   function verstuur(event: FormEvent) {
     event.preventDefault();
@@ -89,11 +92,11 @@ export function Themaformulier({ thema, onBewaar, onAnnuleer, bezig, fout }: The
 
       <div className="mt-4 flex flex-col gap-4">
         <div>
-          <label className="block text-sm font-semibold text-ink" htmlFor="thema-naam">
+          <label className="block text-sm font-semibold text-ink" htmlFor={`${id}-naam`}>
             {t("themabeheer.naamLabel")}
           </label>
           <input
-            id="thema-naam"
+            id={`${id}-naam`}
             value={naam}
             onChange={(event) => setNaam(event.target.value)}
             placeholder={t("themabeheer.naamPlaceholder")}
@@ -102,11 +105,11 @@ export function Themaformulier({ thema, onBewaar, onAnnuleer, bezig, fout }: The
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-ink" htmlFor="thema-duur">
+          <label className="block text-sm font-semibold text-ink" htmlFor={`${id}-duur`}>
             {t("themabeheer.duurLabel")}
           </label>
           <input
-            id="thema-duur"
+            id={`${id}-duur`}
             type="number"
             min={1}
             value={duur}
@@ -116,11 +119,11 @@ export function Themaformulier({ thema, onBewaar, onAnnuleer, bezig, fout }: The
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-ink" htmlFor="thema-invalshoeken">
+          <label className="block text-sm font-semibold text-ink" htmlFor={`${id}-invalshoeken`}>
             {t("themabeheer.invalshoekenLabel")}
           </label>
           <input
-            id="thema-invalshoeken"
+            id={`${id}-invalshoeken`}
             value={invalshoeken}
             onChange={(event) => setInvalshoeken(event.target.value)}
             placeholder={t("themabeheer.invalshoekenPlaceholder")}
@@ -130,11 +133,11 @@ export function Themaformulier({ thema, onBewaar, onAnnuleer, bezig, fout }: The
 
         <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-semibold text-ink" htmlFor="thema-kernwoordenschat">
+            <label className="block text-sm font-semibold text-ink" htmlFor={`${id}-kernwoordenschat`}>
               {t("themabeheer.kernwoordenschatLabel")}
             </label>
             <textarea
-              id="thema-kernwoordenschat"
+              id={`${id}-kernwoordenschat`}
               rows={4}
               value={kernwoordenschat}
               onChange={(event) => setKernwoordenschat(event.target.value)}
@@ -142,11 +145,11 @@ export function Themaformulier({ thema, onBewaar, onAnnuleer, bezig, fout }: The
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-ink" htmlFor="thema-rijkewoordenschat">
+            <label className="block text-sm font-semibold text-ink" htmlFor={`${id}-rijkewoordenschat`}>
               {t("themabeheer.rijkeWoordenschatLabel")}
             </label>
             <textarea
-              id="thema-rijkewoordenschat"
+              id={`${id}-rijkewoordenschat`}
               rows={4}
               value={rijkeWoordenschat}
               onChange={(event) => setRijkeWoordenschat(event.target.value)}

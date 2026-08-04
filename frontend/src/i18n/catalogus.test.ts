@@ -236,7 +236,7 @@ describe("nl.json — no dead keys under themabeheer", () => {
    *
    * `activiteitType.*` is deliberately **not** covered: its keys are reached by template
    * (`t(`activiteitType.${...}`)`), so a text scan cannot see them. That union is pinned by the compiler
-   * instead, in `Klaslaag`'s `typeSleutel`.
+   * instead, in `Subthemakaart`'s `typeSleutel`.
    */
   it("renders every themabeheer.* key somewhere in the feature", async () => {
     const bestanden = import.meta.glob("../features/themas/*.{ts,tsx}", {

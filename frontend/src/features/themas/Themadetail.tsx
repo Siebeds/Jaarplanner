@@ -455,8 +455,8 @@ function Veld({ label, waarde }: { label: string; waarde: string | null }) {
  * whole mapping. Typed against `SuggestieStatus` rather than `string`, which is what makes the claim in the
  * next sentence true: a fifth `KoppelingStatus` fails to compile here instead of rendering its own key as
  * visible text (`t()` falls back to the key). The first version took a `string` and its comment claimed the
- * compile-time guarantee anyway; the antagonist caught that, and its sibling `typeSleutel` in `Klaslaag` is
- * the shape both should have had.
+ * compile-time guarantee anyway; the antagonist caught that, and its sibling `typeSleutel` in
+ * `Subthemakaart` is the shape both should have had.
  */
 function statusSleutel(status: SuggestieStatus): Lowercase<SuggestieStatus> {
   return status.toLowerCase() as Lowercase<SuggestieStatus>;

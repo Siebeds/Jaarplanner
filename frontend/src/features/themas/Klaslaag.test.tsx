@@ -168,7 +168,11 @@ describe("Klaslaag — activiteiten (FR-3.1)", () => {
     const fake = renderApp(L3_PAD);
     const sectie = await klassectie();
 
-    fireEvent.click(within(sectie).getByRole("button", { name: t("themabeheer.activiteitNieuw") }));
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitNieuwAria", { naam: "Bladeren" }),
+      }),
+    );
     fireEvent.change(screen.getByLabelText(t("themabeheer.naamLabel")), {
       target: { value: "Bladeren persen" },
     });
@@ -194,9 +198,11 @@ describe("Klaslaag — activiteiten (FR-3.1)", () => {
 
     // The activiteit's own delete, not the subthema's: both are on screen, so the test has to pick the right
     // one. The activiteit sits inside the list item that names it.
-    const activiteitRegel = within(sectie).getByText(/Bladkroon maken/).closest("li") as HTMLElement;
+    const activiteitRegel = (await within(sectie).findByText(/Bladkroon maken/)).closest(
+      "li",
+    ) as HTMLElement;
     fireEvent.click(
-      within(activiteitRegel).getByRole("button", {
+      await within(activiteitRegel).findByRole("button", {
         name: t("themabeheer.activiteitVerwijderAria", { naam: "Bladkroon maken" }),
       }),
     );
@@ -282,9 +288,11 @@ describe("Klaslaag — leerdoelen koppelen op klasniveau (FR-3.2)", () => {
     const fake = renderApp(L3_PAD);
     const sectie = await klassectie();
 
-    const activiteitRegel = within(sectie).getByText(/Bladkroon maken/).closest("li") as HTMLElement;
+    const activiteitRegel = (await within(sectie).findByText(/Bladkroon maken/)).closest(
+      "li",
+    ) as HTMLElement;
     fireEvent.click(
-      within(activiteitRegel).getByRole("button", {
+      await within(activiteitRegel).findByRole("button", {
         name: t("themabeheer.activiteitKoppelAria", { naam: "Bladkroon maken" }),
       }),
     );
@@ -316,6 +324,26 @@ describe("Klaslaag — leerdoelen koppelen op klasniveau (FR-3.2)", () => {
   });
 });
 
+describe("Klaslaag — een record dat iemand anders al verwijderde (antagonist ronde 2)", () => {
+  it("meldt een verwijderd subthema als weg, zonder de GUID van de server", async () => {
+    renderApp(L3_PAD, { subthemaAlWeg: true });
+    const sectie = await klassectie();
+
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.subthemaVerwijderAria", { naam: "Bladeren" }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.subthemaVerwijderBevestig") }));
+
+    // Landing 1 already treats a 404 on delete this way one level up; the two new levels did not, and reported
+    // it as a failure while rendering "Subthema <guid> bestaat niet." at a teacher.
+    expect(await screen.findByText(t("themabeheer.subthemaAlWeg"))).toBeInTheDocument();
+    expect(screen.queryByText(t("themabeheer.subthemaVerwijderMislukt"))).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
+  });
+});
+
 describe("Klaslaag — geen inhoud van een andere klas, en geen zin meer die naar Import wijst", () => {
   it("laat K3 niets van L3 zien, ook nu er geschreven kan worden", async () => {
     renderApp(`/themas/${THEMA_HERFST}?klas=${KLAS_K3}`);
@@ -336,6 +364,57 @@ describe("Klaslaag — geen inhoud van een andere klas, en geen zin meer die naa
       }),
     );
 
+    // **Settle the picker before auditing.** Its unfiltered-total query resolves ~1s in, and nothing used to
+    // await it, so axe walked a DOM that re-rendered under it and the update could land after the test
+    // returned. That is the mechanism behind the one unexplained failure recorded on this story: React's
+    // "update was not wrapped in act(...)" warning named this test on every run, green or not.
+    await screen.findByLabelText(t("themabeheer.doelZoekLabel"));
+    await waitFor(() => expect(screen.getByText(t("themabeheer.doelZoekKort"))).toBeInTheDocument());
+
     expect(await axe(document.body)).toHaveNoViolations();
+  });
+
+  it("heeft geen axe-schendingen met een activiteitformulier open, kopniveaus incluis", async () => {
+    renderApp(L3_PAD);
+    const sectie = await klassectie();
+
+    // The heading-order fix only held while a subthema-level h4 was open, so opening an activiteit-level form
+    // on its own jumped h3 -> h5 again (antagonist round 2). This is that state, audited.
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitNieuwAria", { naam: "Bladeren" }),
+      }),
+    );
+    await screen.findByRole("heading", {
+      name: t("themabeheer.activiteitFormNieuw", { subthema: "Bladeren" }),
+    });
+
+    expect(await axe(document.body)).toHaveNoViolations();
+  });
+
+  it("laat twee open formulieren elkaars velden niet afpakken", async () => {
+    renderApp(L3_PAD);
+    const sectie = await klassectie();
+
+    // Two forms at once: the create form under the list plus the edit form on the existing card. With literal
+    // field ids the second form's labels resolved to the FIRST form's inputs, so five fields had no label and
+    // clicking "Naam" focused the wrong box. axe cannot fail on that (it reports those rules as *incomplete*),
+    // so this asserts the association directly (antagonist round 2, MAJOR 1).
+    fireEvent.click(within(sectie).getByRole("button", { name: t("themabeheer.subthemaNieuw") }));
+    fireEvent.click(
+      within(await klassectie()).getByRole("button", {
+        name: t("themabeheer.subthemaWijzigAria", { naam: "Bladeren" }),
+      }),
+    );
+
+    const naamvelden = screen.getAllByLabelText(t("themabeheer.naamLabel"));
+    expect(naamvelden).toHaveLength(2);
+    // Each label reaches its own input: two distinct elements, and neither is labelled twice.
+    expect(naamvelden[0]).not.toBe(naamvelden[1]);
+    for (const veld of naamvelden) {
+      expect((veld as HTMLInputElement).labels).toHaveLength(1);
+    }
+    // And the edit form really is the one holding the record's values.
+    expect(naamvelden.map((veld) => (veld as HTMLInputElement).value)).toContain("Bladeren");
   });
 });

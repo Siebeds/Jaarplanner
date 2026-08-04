@@ -186,6 +186,8 @@ export interface ThemaFakeOpties {
   verwijderZonderReden?: boolean;
   /** Answer a thema delete with a 404: a colleague deleted it first. */
   verwijderAlWeg?: boolean;
+  /** Answer a subthema delete with a 404, i.e. a colleague deleted that subthema first. */
+  subthemaAlWeg?: boolean;
 }
 
 /** One recorded write, so a test can assert the address, the verb and the body the screen sent. */
@@ -342,6 +344,10 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
         return json(bestaand);
       }
       if (methode === "DELETE") {
+        if (opties.subthemaAlWeg) {
+          // What the server really answers, GUID and all, so the screen has to decide what to do with it.
+          return json({ title: "Niet gevonden", detail: `Subthema ${bestaand.id} bestaat niet.`, status: 404 }, 404);
+        }
         subthemaOpslag.splice(subthemaOpslag.indexOf(bestaand), 1);
         return new Response(null, { status: 204 });
       }
