@@ -108,10 +108,15 @@ describe("App shell — routing (E0-10 clause 1)", () => {
     await waitFor(() => expect(window.location.pathname).toBe("/jaarplan"));
   });
 
+  // Both of these used `/dekking` as their example destination and asserted on `binnenkort.dekking`, because the
+  // route rendered a placeholder. **E5-02** put the real dekkingsoverzicht there, so they now assert on its own title.
+  // That makes them slightly stronger rather than merely different: they prove the route reaches the real screen. No
+  // class is selected in these URLs, so the screen renders its "choose a class" state and fires no request, which is
+  // why the fetch stub does not need to know about dekking.
   it("opens a deep link directly, without passing through the root", async () => {
     renderApp("/dekking");
 
-    expect(await screen.findByText(t("binnenkort.dekking"))).toBeInTheDocument();
+    expect(await screen.findByText(t("dekking.titel"))).toBeInTheDocument();
     expect(window.location.pathname).toBe("/dekking");
   });
 
@@ -120,7 +125,7 @@ describe("App shell — routing (E0-10 clause 1)", () => {
     await vindNavigatie();
 
     fireEvent.click(screen.getByRole("link", { name: navLabel(bestemming("/dekking")) }));
-    expect(await screen.findByText(t("binnenkort.dekking"))).toBeInTheDocument();
+    expect(await screen.findByText(t("dekking.titel"))).toBeInTheDocument();
 
     window.history.back();
 

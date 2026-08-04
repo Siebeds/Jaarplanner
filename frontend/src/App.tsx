@@ -4,6 +4,7 @@ import { AppShell } from "./app/AppShell";
 import { BinnenkortPagina } from "./app/BinnenkortPagina";
 import { NietGevondenPagina } from "./app/NietGevondenPagina";
 import { JAARPLAN_PAD } from "./app/routes";
+import { DekkingPagina } from "./features/dekking/DekkingPagina";
 import { Doeldetail } from "./features/doelen/Doeldetail";
 import { DOEL_DETAIL_PAD, DoelenPagina } from "./features/doelen/DoelenPagina";
 import { ImportPagina } from "./features/import/ImportPagina";
@@ -16,10 +17,11 @@ import { JaarplanPagina } from "./features/jaarplan/JaarplanPagina";
  * `/` redirects to the jaarplan — the kalender is an anchor screen (Art. VIII) and the most complete thing
  * here, so it is the honest landing page. The redirect `replace`s so Back does not bounce off it.
  *
- * The remaining `BinnenkortPagina` routes exist so the §3 information architecture is visible and clickable
- * without pretending to work; the nav marks them "nog niet beschikbaar". Keep these paths in step with
+ * The remaining `BinnenkortPagina` route exists so the §3 information architecture is visible and clickable
+ * without pretending to work; the nav marks it "nog niet beschikbaar". Keep these paths in step with
  * `app/routes.ts`, which is what the navigation renders from. **E1-16** replaced `/doelen`'s placeholder with
- * the real register and **E1-13** replaced `/import`'s, so `routes.ts` flips both entries to `isGebouwd`.
+ * the real register, **E1-13** replaced `/import`'s and **E5-02** replaced `/dekking`'s, so `routes.ts` flips all
+ * three entries to `isGebouwd`. Only `/beheer` is still a placeholder (E6-03/E6-04).
  *
  * `DoelsuggestieReview` is mounted at `/themas` because reviewing a thema's AI-suggested goals is where it
  * belongs in the IA. It still asks for a thema-id by hand: replacing that with a real thema list is
@@ -44,7 +46,7 @@ function App() {
           <Route path="/doelen" element={<DoelenPagina />}>
             <Route path={DOEL_DETAIL_PAD} element={<Doeldetail />} />
           </Route>
-          <Route path="/dekking" element={<BinnenkortPagina uitlegKey="binnenkort.dekking" />} />
+          <Route path="/dekking" element={<DekkingPagina />} />
           <Route path="/import" element={<ImportPagina />} />
           <Route path="/beheer" element={<BinnenkortPagina uitlegKey="binnenkort.beheer" />} />
           <Route path="*" element={<NietGevondenPagina />} />

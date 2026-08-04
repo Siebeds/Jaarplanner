@@ -177,14 +177,18 @@ describe("KlasKiezer — choosing from a list (E0-10 clause 3)", () => {
     renderApp(`/jaarplan?schooljaar=${JAAR_A}&klas=${KLAS_L3}`);
     await waitFor(() => expect(klasKeuze()).toHaveValue(KLAS_L3));
 
+    // Retargeted from `/dekking` to `/beheer` by **E5-02**, which replaced `/dekking`'s placeholder with the real
+    // dekkingsoverzicht. `/beheer` is the destination that is still a placeholder (E6-03/E6-04), so this test keeps
+    // testing what it was written to test — that the class selection survives a cross-screen click — without also
+    // firing a coverage request this file's fetch stub knows nothing about.
     fireEvent.click(
       screen.getByRole("link", {
-        name: `${t("navigatie.dekking")} ${t("navigatie.binnenkort")}`,
+        name: `${t("navigatie.beheer")} ${t("navigatie.binnenkort")}`,
       }),
     );
 
-    expect(await screen.findByText(t("binnenkort.dekking"))).toBeInTheDocument();
-    expect(window.location.pathname).toBe("/dekking");
+    expect(await screen.findByText(t("binnenkort.beheer"))).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/beheer");
     // The whole point of routing every nav link through one component (ADR-0021).
     expect(new URLSearchParams(window.location.search).get("klas")).toBe(KLAS_L3);
   });

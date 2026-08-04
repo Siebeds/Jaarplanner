@@ -20,7 +20,6 @@
   "binnenkort": {
     "titel": "Dit onderdeel is nog niet beschikbaar",
     "uitleg": "Dit deel van de tool is nog in opbouw. Het staat al in het menu zodat je ziet wat er komt. Op deze pagina werkt nog niets.",
-    "dekking": "Hier komt het dekkingsoverzicht: hoeveel van je doelen gedekt zijn, welke doelen nog ontbreken, en het bewijs dat je aan de inspectie kan voorleggen.",
     "beheer": "Hier beheert de directie straks de schooljaren, de klassen, de leerkrachten en hun rechten."
   },
   "selectie": {
@@ -516,5 +515,38 @@
     "rapportVervallenEnkelvoud": "Dit bewaarde startthema hoort bij een themaperiode die niet meer bestaat, dus er is niets mee gevraagd: {themas}.",
     "rapportVervallen": "Deze bewaarde startthema's horen bij themaperiodes die niet meer bestaan, dus er is niets mee gevraagd: {themas}.",
     "rapportVervallenItem": "{thema} (themaperiode vanaf {datum})"
+  },
+  "dekking": {
+    "titel": "Dekking van dit jaarplan",
+    "watGedekt": "Een doel is gedekt zodra een thema dat het doel draagt op een periode van dit jaarplan staat en jij die plaatsing hebt aanvaard.",
+    "alleenLeerplandoelen": "Dit overzicht gaat over leerplandoelen. Dekking op het niveau van de minimumdoelen, wat de onderwijsinspectie toetst, kan pas zodra de minimumdoelen ingeladen zijn.",
+    "kiesKlas": "Kies hierboven een klas om de dekking van haar jaarplan te zien.",
+    "laden": "De dekking wordt berekend.",
+    "fout": "De dekking kon niet berekend worden.",
+    "bereikLabel": "Meten tegen",
+    "bereikEigen": "Deze klas",
+    "bereikAlles": "Heel curriculum",
+    "gemetenTegen": "Gemeten tegen de doelen van {fasen}.",
+    "gemetenTegenAlles": "Gemeten tegen alles wat de school heeft ingeladen, dus ook de doelen van andere jaren en fases.",
+    "buitenBereik": "{aantal} ingeladen doelen horen bij een ander jaar of een andere fase en blijven hier buiten.",
+    "buitenBereikEnkelvoud": "1 ingeladen doel hoort bij een ander jaar of een andere fase en blijft hier buiten.",
+    "terugval": "Van deze klas is geen jaar of fase bekend, dus meet dit overzicht tegen het hele curriculum.",
+    "cijfer": "{gedekt} van {aantal} doelen gedekt",
+    "cijferEnkelvoud": "{gedekt} van 1 doel gedekt",
+    "cijferIngehouden": "Nog geen betrouwbaar cijfer",
+    "ingehoudenUitleg": "{aantal} plaatsingen in dit jaarplan wachten nog op een beslissing: hun periode bestaat niet meer. Zolang dat zo is, geeft dit overzicht geen cijfer.",
+    "ingehoudenUitlegEnkelvoud": "1 plaatsing in dit jaarplan wacht nog op een beslissing: haar periode bestaat niet meer. Zolang dat zo is, geeft dit overzicht geen cijfer.",
+    "ingehoudenGeweigerd": "Een thema dat je geweigerd hebt, hoeft niet opnieuw geplaatst te worden en houdt het cijfer dus niet tegen. Het jaarplan kan er daarom meer opnoemen dan er hier meetellen.",
+    "naarJaarplan": "Los dit op in het jaarplan",
+    "nietMeetbaar": "Nog niets om tegen te meten",
+    "nietMeetbaarUitleg": "Voor deze klas staan er nog geen leerplandoelen in de tool, dus valt er niets te berekenen. Er zijn wel {aantal} doelen van andere jaren of fases ingeladen.",
+    "nietMeetbaarUitlegEnkelvoud": "Voor deze klas staan er nog geen leerplandoelen in de tool, dus valt er niets te berekenen. Er is wel 1 doel van een ander jaar of een andere fase ingeladen.",
+    "nietMeetbaarLeeg": "Er zijn nog geen leerplandoelen van Op.stap ingeladen, dus valt er niets te berekenen.",
+    "naarImport": "Naar Inladen",
+    "groepTelling": "{gedekt} van {aantal} gedekt",
+    "groepTellingEnkelvoud": "{gedekt} van 1 gedekt",
+    "gedekt": "Gedekt",
+    "nietGedekt": "Niet gedekt",
+    "dekkendeThemas": "Gedekt door {themas}"
   }
 }

@@ -221,6 +221,38 @@ describe("nl.json — no regeneration promise goes unscoped, in either family", 
   });
 });
 
+describe("nl.json — no dead keys under dekking", () => {
+  /**
+   * The same guard as the `doelen.*` one below, extended to E5-02's family for the same reason it was written: E1-16
+   * shipped three unused keys and one of them, `clusterLabel`, was the field the screen *should* have been rendering,
+   * while a test asserting its absence read as coverage of the branch. This family is the one most exposed to that,
+   * because several of its keys exist for states a test has to construct deliberately (the withheld figure, the empty
+   * scope, the fallback), so a key that is never reached also never shows up as a missing screen.
+   *
+   * Scoped per family rather than repo-wide for the reason the sibling gives: a repo-wide version needs real usage
+   * analysis (some keys are built by template, e.g. `doelsoort.${soort}`), and a guard weakened until it passes
+   * teaches nothing.
+   */
+  it("renders every dekking.* key somewhere in the feature", async () => {
+    const bestanden = import.meta.glob("../features/dekking/*.{ts,tsx}", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
+
+    const bron = Object.entries(bestanden)
+      .filter(([pad]) => !pad.includes(".test.") && !pad.includes("testdata"))
+      .map(([, inhoud]) => inhoud)
+      .join("\n");
+
+    const ongebruikt = [...CATALOGUS.keys()]
+      .filter((sleutel) => sleutel.startsWith("dekking."))
+      .filter((sleutel) => !bron.includes(sleutel));
+
+    expect(ongebruikt).toEqual([]);
+  });
+});
+
 describe("nl.json — no dead keys under doelen", () => {
   /**
    * Three keys shipped unused in E1-16 (`taxonomieLabel`, `sluiten`, `clusterLabel`), and one of them,
