@@ -25,16 +25,9 @@ export interface DekkingsamenvattingProps {
   dekking: Dekking;
   bereik: Dekkingsbereik;
   onKiesBereik: (bereik: Dekkingsbereik) => void;
-  /** A scope change is in flight, so the figures shown are the previous scope's. */
-  bezig: boolean;
 }
 
-export function Dekkingsamenvatting({
-  dekking,
-  bereik,
-  onKiesBereik,
-  bezig,
-}: DekkingsamenvattingProps) {
+export function Dekkingsamenvatting({ dekking, bereik, onKiesBereik }: DekkingsamenvattingProps) {
   const cijfer = bepaalCijfer(dekking);
   // Read through the router rather than `window.location`, so the klas/schooljaar selection travels with the link the
   // way every other cross-screen link in this app carries it (ADR-0021), and so it is testable in jsdom.
@@ -131,12 +124,28 @@ export function Dekkingsamenvatting({
             </>
           )}
 
-          {/* What the figure above is a figure OF. One line, directly under it, because a total without its scope is
-              not evidence: the same class has two legitimate denominators. */}
+          {/*
+            What the figure above is a figure OF. One line, directly under it, because a total without its scope is not
+            evidence: the same class has two legitimate denominators.
+
+            **More than one code is a WIDER scope than the control admits, and it says so** (antagonist MAJOR-2). A
+            kleutergroep has `Leerjaar = 0`, which cannot say which kleuterjaar it is, so it is measured against JK, K2
+            and K3 together: up to two other years' doelen sit in a derde-kleuterklas's denominator and appear as its
+            own lacunes. The payload reports `EigenJaarFase` with `isTerugvalNaarHeelCurriculum` false, which is
+            accurate and not the whole truth, and only the leerjaar-7 case had a notice. Since kleuter is roughly half
+            of a 2,5-12 school this is not an edge case.
+
+            Derived from `gemetenJaarFasen.length` rather than from a new flag, deliberately: the sentence then cannot
+            drift from the codes printed beside it, and a future graadklas ruling that yields two codes lands in the
+            same branch without new copy. Whether a three-year scope may be labelled "Deze klas" at all is the owner's
+            to rule and is recorded in the Art. XIV list.
+          */}
           <p className="mt-2 max-w-prose text-sm text-ink-zacht">
-            {dekking.gemetenJaarFasen.length > 0
-              ? t("dekking.gemetenTegen", { fasen: dekking.gemetenJaarFasen.join(", ") })
-              : t("dekking.gemetenTegenAlles")}
+            {dekking.gemetenJaarFasen.length === 0
+              ? t("dekking.gemetenTegenAlles")
+              : dekking.gemetenJaarFasen.length === 1
+                ? t("dekking.gemetenTegen", { fasen: dekking.gemetenJaarFasen[0] })
+                : t("dekking.gemetenTegenMeerdere", { fasen: dekking.gemetenJaarFasen.join(", ") })}
           </p>
 
           {/* The narrowing, stated rather than left implicit: a smaller denominator flatters the figure. Suppressed at
@@ -163,7 +172,7 @@ export function Dekkingsamenvatting({
         </div>
 
         <div className="shrink-0">
-          <Bereikschakelaar bereik={bereik} onKies={onKiesBereik} bezig={bezig} />
+          <Bereikschakelaar bereik={bereik} onKies={onKiesBereik} />
         </div>
       </div>
     </section>

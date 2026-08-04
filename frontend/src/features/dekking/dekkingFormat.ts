@@ -36,7 +36,12 @@ export function groepeerPerSubdomein(doelen: readonly DoelDekking[]): Dekkingsgr
     // `JSON.stringify` of the pair, NOT the two names joined by a separator. Any separator that can occur in a real
     // name collides: joined with a space, ("Levende natuur", "Dieren") and ("Levende", "natuur Dieren") produce the
     // same key, silently merging two subdomeinen into one group with one tally. JSON quoting escapes its own
-    // delimiters, so it cannot. The key is internal; nothing renders it.
+    // delimiters, so it cannot.
+    //
+    // **It is a Map key and a React key only. It must never reach the DOM as an `id`**, because it contains quotes and
+    // whitespace: an earlier version of this comment said "nothing renders it" and `Dekkinggroep` was rendering it into
+    // `id`/`aria-labelledby` two files away, which silently cost every group its accessible name (antagonist MINOR-1).
+    // A DOM id is passed in separately by the page.
     const sleutel = JSON.stringify([doel.domein, doel.subdomein]);
     const bestaande = groepen.get(sleutel);
 

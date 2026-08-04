@@ -40,9 +40,21 @@ namespace Jaarplanner.Api.Controllers;
 /// <c>Leerjaar</c>; <c>?bereik=HeelCurriculum</c> is E5-01's original unscoped behaviour, kept as an explicit
 /// choice. The response always states which one it applied, which codes it used and how many goals it left out, so
 /// no consumer can print a total without being able to say what it is a total <i>of</i>.
-/// An unparseable value yields the framework's model-binding 400, like every other malformed parameter in this API;
-/// no Dutch message is authored for it, because the only way to produce one is to hand-edit the URL and the
-/// frontend sends the enum name.
+/// A value that is not one of the two is answered with a **400 by model binding**, including an out-of-range
+/// <i>numeric</i> form: <c>?bereik=5</c>, <c>?bereik=-1</c> and <c>?bereik=onzin</c> are all rejected. No Dutch
+/// message is authored for it, because the frontend validates against its own union before asking, so the only way to
+/// produce one is by hand or from another API consumer, which makes it an operator diagnostic under the ratified
+/// Art. II.3 split.
+/// </para>
+/// <para>
+/// <b>That is verified rather than assumed, and it is where an audit finding did not survive contact.</b> The E5-02
+/// antagonist audit reported that binding accepts an undefined numeric enum value, so <c>?bereik=5</c> would return
+/// whole-curriculum figures under a <c>bereik</c> label no consumer knows — and correctly flagged the finding as not
+/// empirically executed, asking for confirmation first. It does not reproduce on this stack: with an explicit
+/// <c>Enum.IsDefined</c> guard deliberately removed, all three values still answered 400. So the guard was removed
+/// again as redundant rather than kept with a justification that is not true. <b>The test stayed</b>
+/// (<c>Een_bereik_dat_niet_bestaat_geeft_400_en_geen_cijfer</c>): it pins the behaviour whoever enforces it, which is
+/// the part that matters if a framework upgrade ever changes its mind.
 /// </para>
 /// <para>
 /// <b>Two things this response deliberately cannot do.</b> It cannot report a total while any placement is

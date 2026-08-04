@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import { DoelsoortBadge } from "../../components/DoelsoortBadge";
 import { doelsoortBadgeSoort } from "../../components/doelsoort";
 import { t } from "../../i18n";
@@ -44,9 +46,19 @@ export function Doeldekkingregel({ doel }: { doel: DoelDekking }) {
         {doel.nietMeerInOpstap && (
           // Text, not a colour and not a tooltip: a state a teacher must act on says so out loud (E3-06). The key is
           // the register's, reused rather than duplicated — it is the same fact about the same field.
-          <span className="rounded-full bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-semibold text-attentie-ink">
+          //
+          // **A LINK, unlike in the register** (antagonist MINOR-7). There the marker sits inside a row that is itself
+          // a link to `Doeldetail`, which renders `doelen.vervallenUitleg`, so a teacher can find out what to check.
+          // Here the row is deliberately not a link and that explanation is on no screen, so the word "nakijken" was an
+          // instruction with no route to its own meaning. Making the marker itself the link keeps the row unclickable
+          // (nothing else on it opens anything) while giving the one thing on it that demands follow-up somewhere to go.
+          // Inline prose per row was the alternative, and this screen's rule is that prose is the first thing to cut.
+          <Link
+            to={`/doelen/${encodeURIComponent(doel.code)}`}
+            className="rounded-full bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-semibold text-attentie-ink underline decoration-attentie-ink/40 underline-offset-2 hover:decoration-attentie-ink"
+          >
             {t("doelen.vervallenMarkering")}
-          </span>
+          </Link>
         )}
       </span>
 

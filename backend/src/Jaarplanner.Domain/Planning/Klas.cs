@@ -21,9 +21,16 @@ namespace Jaarplanner.Domain.Planning;
 /// </para>
 /// <para>
 /// <b><see cref="Leerjaar"/> is not assumed to be singular downstream.</b> How a graadklas / menggroep spanning
-/// several leerjaren is modelled is an open decision (Art. XIV), so no planning logic keys on this value; it is
-/// carried as descriptive data (and shown to the AI as such) and the <see cref="Jaarplan"/> aggregate has no
-/// invariant that mentions it.
+/// several leerjaren is modelled is an open decision (Art. XIV), and the <see cref="Jaarplan"/> aggregate has no
+/// invariant that mentions this value.
+/// <para>
+/// <b>It is no longer purely descriptive, though (E5-02, owner ruling 2026-08-04).</b> This documentation used to say
+/// "no planning logic keys on this value"; that stopped being true when a class began being measured against its own
+/// jaar/fase, because <c>Jaarfasen.VoorLeerjaar</c> turns this ordinal into the **denominator of every coverage
+/// figure**. The two unresolved cases are handled by refusing rather than guessing: a value that maps to nothing
+/// (a graadklas ordinal) yields <c>null</c>, and <c>DekkingService</c> then widens the scope and declares that it
+/// did. <c>0</c> means "een kleutergroep" and cannot say which kleuterjaar, so it yields all three kleuter codes.
+/// </para>
 /// </para>
 /// </summary>
 public sealed class Klas

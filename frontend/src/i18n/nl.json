@@ -519,7 +519,7 @@
   "dekking": {
     "titel": "Dekking van dit jaarplan",
     "watGedekt": "Een doel is gedekt zodra een thema dat het doel draagt op een periode van dit jaarplan staat en jij die plaatsing hebt aanvaard.",
-    "alleenLeerplandoelen": "Dit overzicht gaat over leerplandoelen. Dekking op het niveau van de minimumdoelen, wat de onderwijsinspectie toetst, kan pas zodra de minimumdoelen ingeladen zijn.",
+    "alleenLeerplandoelen": "Dit overzicht gaat over leerplandoelen. Dekking op het niveau van de minimumdoelen, wat de onderwijsinspectie toetst, zit er nog niet in: die doelen moeten eerst ingeladen worden en dat overzicht moet nog gebouwd worden.",
     "kiesKlas": "Kies hierboven een klas om de dekking van haar jaarplan te zien.",
     "laden": "De dekking wordt berekend.",
     "fout": "De dekking kon niet berekend worden.",
@@ -528,6 +528,7 @@
     "bereikAlles": "Heel curriculum",
     "gemetenTegen": "Gemeten tegen de doelen van {fasen}.",
     "gemetenTegenAlles": "Gemeten tegen alles wat de school heeft ingeladen, dus ook de doelen van andere jaren en fases.",
+    "gemetenTegenMeerdere": "Gemeten tegen de doelen van {fasen} samen. Van deze klas is niet één leerjaar bekend, dus staan er ook doelen van de andere genoemde jaren in dit overzicht, en die tellen mee als niet gedekt.",
     "buitenBereik": "{aantal} ingeladen doelen horen bij een ander jaar of een andere fase en blijven hier buiten.",
     "buitenBereikEnkelvoud": "1 ingeladen doel hoort bij een ander jaar of een andere fase en blijft hier buiten.",
     "terugval": "Van deze klas is geen jaar of fase bekend, dus meet dit overzicht tegen het hele curriculum.",

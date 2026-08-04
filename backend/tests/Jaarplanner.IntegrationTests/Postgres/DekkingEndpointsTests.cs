@@ -209,6 +209,32 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         Assert.False(dekking.Doelen.Single(d => d.Code == "DEK-01").IsGedekt);
     }
 
+    [PostgresTheory]
+    [InlineData("5")]
+    [InlineData("-1")]
+    [InlineData("onzin")]
+    public async Task Een_bereik_dat_niet_bestaat_geeft_400_en_geen_cijfer(string bereik)
+    {
+        // Model binding rejects "onzin" by itself, but it accepts an enum's UNDERLYING NUMERIC form without
+        // range-checking it: `?bereik=5` bound to (Dekkingsbereik)5, fell through the "not EigenJaarFase" branch and
+        // returned whole-curriculum figures labelled with a `bereik` value no consumer's contract knows. A figure whose
+        // scope label is meaningless is exactly what this response exists to prevent.
+        //
+        // All three are asserted together rather than only the numeric one, because the fix (Enum.IsDefined) and the
+        // framework's own parsing now answer the same status for different reasons, and a later refactor that dropped
+        // one of the two paths should fail here.
+        var klasId = await ZetKlasOpAsync();
+
+        var response = await _factory.CreateClient()
+            .GetAsync($"/api/klassen/{klasId}/dekking?bereik={bereik}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        // And no figure leaked into the error body.
+        var lichaam = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("aantalGedekt", lichaam);
+    }
+
     [PostgresFact]
     public async Task Een_onbekende_klas_geeft_404_en_geen_lege_dekking()
     {

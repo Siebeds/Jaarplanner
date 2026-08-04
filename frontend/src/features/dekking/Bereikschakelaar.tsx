@@ -27,21 +27,24 @@ const BEREIKLABEL: Record<Dekkingsbereik, TranslationKey> = {
   HeelCurriculum: "dekking.bereikAlles",
 };
 
+/**
+ * **There is deliberately no "bezig" state here, and there was one, described in terms of behaviour this app does not
+ * have** (antagonist MINOR-3). It claimed the control "keeps the old figures visible with the schakelaar saying so",
+ * copying the kalender's zoom control. That is false: the scope is part of the query key and no `placeholderData` is
+ * configured, so switching scope yields `isPending` with no data, and the summary unmounts behind the page's own
+ * loading line. The branch was unreachable on the only path it was written for.
+ *
+ * Removed rather than made real by adding `placeholderData`, and that is the safer of the two fixes: keeping the
+ * previous answer on screen would show a total computed over a *different denominator* while the pressed button named
+ * the new one. On a screen whose whole subject is that a figure must be able to say what it is a total of, a briefly
+ * mislabelled total is the wrong trade.
+ */
 export interface BereikschakelaarProps {
   bereik: Dekkingsbereik;
   onKies: (bereik: Dekkingsbereik) => void;
-  /**
-   * The new scope's answer is still on its way, so the figures beside it are still the previous scope's.
-   *
-   * Said in visible text rather than left as a silent lag, following the zoom control: the buttons answer
-   * immediately (they must, or the control feels broken), which means that for one request the pressed option and
-   * the total disagree about what is being counted. Here that matters more than on the kalender, because the thing
-   * disagreeing is a number a teacher may write down.
-   */
-  bezig: boolean;
 }
 
-export function Bereikschakelaar({ bereik, onKies, bezig }: BereikschakelaarProps) {
+export function Bereikschakelaar({ bereik, onKies }: BereikschakelaarProps) {
   const labelId = useId();
 
   return (
@@ -79,12 +82,6 @@ export function Bereikschakelaar({ bereik, onKies, bezig }: BereikschakelaarProp
         })}
       </div>
 
-      {/* `status` rather than `alert`: a total that is one request behind is progress, not a problem. */}
-      {bezig && (
-        <span role="status" className="text-xs text-ink-zacht">
-          {t("dekking.laden")}
-        </span>
-      )}
     </div>
   );
 }

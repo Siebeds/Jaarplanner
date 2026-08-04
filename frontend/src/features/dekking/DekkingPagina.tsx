@@ -83,8 +83,11 @@ export function DekkingPagina() {
         </p>
       )}
 
-      {/* `isPending` rather than `isLoading`, and only when there is no previous answer to keep on screen: a scope
-          switch keeps the old figures visible with the schakelaar saying so, which is why `bezig` is passed down. */}
+      {/* `isPending` rather than `isLoading`: this fires for the first answer of each (klas, bereik) pair, which
+          includes a scope switch, because the scope is part of the query key and no previous answer is kept. That is
+          the deliberate choice rather than an oversight, and the reason is on `Bereikschakelaar`: keeping the old
+          figures up would print a total computed over a different denominator while the pressed button named the new
+          one. An earlier comment here described the opposite behaviour, which this app never had. */}
       {klasId && dekking.isPending && (
         <p role="status" className="px-5 py-8 text-center text-sm text-ink-zacht">
           {t("dekking.laden")}
@@ -97,7 +100,6 @@ export function DekkingPagina() {
             dekking={dekking.data}
             bereik={bereik}
             onKiesBereik={kiesBereik}
-            bezig={dekking.isFetching}
           />
 
           {/* No paging, and that is a decision rather than an omission (recorded on DekkingController). The totals and
@@ -105,10 +107,14 @@ export function DekkingPagina() {
               default scope is one class's jaar/fase rather than the whole curriculum, which is what keeps the volume
               reasonable. The whole-curriculum switch is the expensive case and it is a deliberate, named action. */}
           <div className="overflow-hidden rounded-lg border border-border bg-card">
-            {groepen.map((groep) => (
+            {groepen.map((groep, index) => (
               <Dekkinggroep
                 key={groep.sleutel}
                 groep={groep}
+                // A DOM-safe id, generated here rather than derived from the group key: the key is JSON and contains
+                // quotes and whitespace, which an `id` may not (see `groepeerPerSubdomein`). The index is stable within
+                // one render of one server answer, which is all an `aria-labelledby` reference needs.
+                kopId={`dekking-groep-${index}`}
                 // Derived from the same function the summary uses, so the two cannot disagree about whether this plan
                 // may report a figure. Found in a browser: the summary said it would give no figure while every group
                 // printed one, and group counts add up to exactly the total that was withheld.

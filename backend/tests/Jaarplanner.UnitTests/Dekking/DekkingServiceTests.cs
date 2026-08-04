@@ -22,6 +22,19 @@ public sealed class DekkingServiceTests
     private static readonly Guid HerfstId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
     private static readonly Guid WinterId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000002");
 
+    /// <summary>
+    /// The leerjaar every fake in this file is given: 0, a kleutergroep, matching the plan's own "K3 derde
+    /// kleuterklas" and the <see cref="Doel"/> helper's <c>K3</c> jaar/fase.
+    /// <para>
+    /// <b>Not a detail.</b> Since the owner ruling of 2026-08-04 the production default is
+    /// <c>Dekkingsbereik.EigenJaarFase</c>, and a fake left with <c>Leerjaar = null</c> runs the whole-curriculum
+    /// <i>fallback</i> instead: the test still passes, for a different reason than the one it was written for. Five
+    /// tests here did exactly that for a while, including the Art. IV.1 one, which is why this constant exists rather
+    /// than the value being repeated.
+    /// </para>
+    /// </summary>
+    private const int KleuterLeerjaar = 0;
+
     [Fact]
     public async Task Een_doel_is_gedekt_wanneer_een_aanvaarde_plaatsing_het_draagt()
     {
@@ -66,7 +79,8 @@ public sealed class DekkingServiceTests
         // can prove to an inspectie (Art. IV.1).
         var opslag = new FakeDekkingOpslag(
             [new DekkendeKoppeling("NAT-K3-01", "Herfst")],
-            [Doel("NAT-K3-01")]);
+            [Doel("NAT-K3-01")])
+        { Leerjaar = KleuterLeerjaar };
 
         var service = new DekkingService(
             new FakeJaarplanLezer(Plan([Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)])),
@@ -88,7 +102,8 @@ public sealed class DekkingServiceTests
     {
         var opslag = new FakeDekkingOpslag(
             [new DekkendeKoppeling("NAT-K3-01", "Herfst")],
-            [Doel("NAT-K3-01")]);
+            [Doel("NAT-K3-01")])
+        { Leerjaar = KleuterLeerjaar };
 
         var service = new DekkingService(
             new FakeJaarplanLezer(Plan([Plaatsing(HerfstId, "Herfst", KoppelingStatus.Geweigerd)])),
@@ -175,7 +190,8 @@ public sealed class DekkingServiceTests
         // for content class B teaches.
         var opslag = new FakeDekkingOpslag(
             [new DekkendeKoppeling("NAT-K3-01", "Herfst")],
-            [Doel("NAT-K3-01")]);
+            [Doel("NAT-K3-01")])
+        { Leerjaar = KleuterLeerjaar };
 
         var service = new DekkingService(
             new FakeJaarplanLezer(Plan([Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)])),
@@ -195,7 +211,8 @@ public sealed class DekkingServiceTests
         // about once and the doel counts once.
         var opslag = new FakeDekkingOpslag(
             [new DekkendeKoppeling("NAT-K3-01", "Herfst")],
-            [Doel("NAT-K3-01")]);
+            [Doel("NAT-K3-01")])
+        { Leerjaar = KleuterLeerjaar };
 
         var service = new DekkingService(
             new FakeJaarplanLezer(Plan(
@@ -259,9 +276,12 @@ public sealed class DekkingServiceTests
     public async Task Een_leeg_jaarplan_dekt_niets_en_is_geen_fout()
     {
         // Art. IX.3 says a klas HAS a jaarplan, so a class that has never generated yields an empty plan rather
-        // than a not-found. 0 of the whole curriculum is the honest answer, and it is a trustworthy 0: nothing is
+        // than a not-found. 0 of the doelen IN SCOPE is the honest answer, and it is a trustworthy 0: nothing is
         // unresolved.
-        var opslag = new FakeDekkingOpslag([], [Doel("NAT-K3-01"), Doel("NAT-K3-02")]);
+        var opslag = new FakeDekkingOpslag([], [Doel("NAT-K3-01"), Doel("NAT-K3-02")])
+        {
+            Leerjaar = KleuterLeerjaar,
+        };
         var service = new DekkingService(new FakeJaarplanLezer(Plan([])), opslag);
 
         var dekking = await service.BerekenAsync(KlasId);

@@ -319,12 +319,30 @@ describe("Dekkingsoverzicht — waartegen gemeten wordt (eigenaarsruling 2026-08
     const fake = renderApp(MET_KLAS, { perBereik: { EigenJaarFase: dekking() } });
 
     expect(
-      await screen.findByText(t("dekking.gemetenTegen", { fasen: "JK, K2, K3" })),
+      await screen.findByText(t("dekking.gemetenTegenMeerdere", { fasen: "JK, K2, K3" })),
     ).toBeInTheDocument();
 
     // The scope travelled to the server. The fixture refuses an absent or unknown one, so a screen relying on the
     // endpoint's own default would have failed above rather than reached this line.
     expect(fake.laatsteDekkingUrl()).toContain("bereik=EigenJaarFase");
+  });
+
+  it("names one leerjaar plainly, and says so when the scope is wider than one", async () => {
+    // THE DISTINCTION THE ANTAGONIST'S MAJOR-2 WAS ABOUT. An L3 class is measured against exactly L3, which the plain
+    // sentence states. A kleutergroep has `Leerjaar = 0` and cannot say WHICH kleuterjaar it is, so it is measured
+    // against all three kleuter codes: up to two other years' doelen sit in its denominator and read as its own
+    // lacunes. The payload calls both `EigenJaarFase` with no fallback flag, which is accurate and not the whole
+    // truth, so the widening has to be said out loud. Derived from the number of codes, so a future graadklas ruling
+    // that yields two codes lands in the same branch.
+    const enkel = renderApp(MET_KLAS, {
+      perBereik: { EigenJaarFase: dekking({ gemetenJaarFasen: ["L3"] }) },
+    });
+
+    expect(await screen.findByText(t("dekking.gemetenTegen", { fasen: "L3" }))).toBeInTheDocument();
+    expect(
+      screen.queryByText(t("dekking.gemetenTegenMeerdere", { fasen: "L3" })),
+    ).not.toBeInTheDocument();
+    expect(enkel.laatsteDekkingUrl()).toContain("bereik=EigenJaarFase");
   });
 
   it("switches to the whole curriculum, refetches, and puts the choice in the URL", async () => {
@@ -343,7 +361,7 @@ describe("Dekkingsoverzicht — waartegen gemeten wordt (eigenaarsruling 2026-08
       },
     });
 
-    await screen.findByText(t("dekking.gemetenTegen", { fasen: "JK, K2, K3" }));
+    await screen.findByText(t("dekking.gemetenTegenMeerdere", { fasen: "JK, K2, K3" }));
 
     fireEvent.click(screen.getByRole("button", { name: t("dekking.bereikAlles") }));
 
@@ -376,7 +394,7 @@ describe("Dekkingsoverzicht — waartegen gemeten wordt (eigenaarsruling 2026-08
       perBereik: { EigenJaarFase: dekking() },
     });
 
-    await screen.findByText(t("dekking.gemetenTegen", { fasen: "JK, K2, K3" }));
+    await screen.findByText(t("dekking.gemetenTegenMeerdere", { fasen: "JK, K2, K3" }));
     expect(fake.laatsteDekkingUrl()).toContain("bereik=EigenJaarFase");
   });
 
