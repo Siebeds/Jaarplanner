@@ -191,6 +191,47 @@ describe("Dekkingsoverzicht — het cijfer mag ontbreken (directie 2026-07-28)",
     expect(within(samenvatting()).queryByText(TOTAALVORM)).not.toBeInTheDocument();
   });
 
+  it("shows no per-group tally either while the figure is withheld", async () => {
+    // FOUND BY OPENING THE SCREEN, not by a test: the summary said "Zolang dat zo is, geeft dit overzicht geen cijfer"
+    // and two lines below it every group printed "2 van 14 gedekt". The group counts are additive, so a teacher could
+    // add them up and reconstruct exactly the total the ruling of 2026-07-28 forbids, in its misleading form: a stale
+    // placement's doelen count as niet gedekt here, while what is actually unknown is which period they sit in.
+    //
+    // The row chips deliberately stay: "this doel is covered by thema X" is a per-doel fact that holds either way, and
+    // what the ruling forbids is a figure for the plan. A per-group count is one.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          isBetrouwbaar: false,
+          aantalGedekt: null,
+          aantalOnopgelosteVervallenPlaatsingen: 1,
+          doelen: [
+            doel({ code: "A-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+            doel({ code: "A-02" }),
+          ],
+        }),
+      },
+    });
+
+    await screen.findByText(t("dekking.cijferIngehouden"));
+
+    // The group is still there, with its rows and their chips.
+    expect(
+      screen.getByText(
+        t("ongekoppeld.domeinKop", { domein: "Natuur", subdomein: "Levende natuur" }),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t("dekking.gedekt"))).toBeInTheDocument();
+
+    // But no count anywhere on the page, in either grammatical form.
+    expect(
+      screen.queryByText(
+        tAantal(2, "dekking.groepTellingEnkelvoud", "dekking.groepTelling", { gedekt: 1 }),
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/van \d+ gedekt/)).not.toBeInTheDocument();
+  });
+
   it("explains why the kalender may name more stale placements than this figure counts", async () => {
     // The reconciliation E5-01 assigned to this story. The kalender's notice counts EVERY stale placement, including
     // rejected ones; this figure counts only the unresolved. Without this sentence a teacher reading two different

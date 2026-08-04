@@ -5,7 +5,7 @@ import { useSelectie } from "../../app/useSelectie";
 import { t } from "../../i18n";
 import { Dekkinggroep } from "./Dekkinggroep";
 import { Dekkingsamenvatting } from "./Dekkingsamenvatting";
-import { groepeerPerSubdomein } from "./dekkingFormat";
+import { bepaalCijfer, groepeerPerSubdomein } from "./dekkingFormat";
 import { useDekking } from "./useDekking";
 import { DEKKINGSBEREIKEN, type Dekkingsbereik } from "./types";
 
@@ -106,7 +106,14 @@ export function DekkingPagina() {
               reasonable. The whole-curriculum switch is the expensive case and it is a deliberate, named action. */}
           <div className="overflow-hidden rounded-lg border border-border bg-card">
             {groepen.map((groep) => (
-              <Dekkinggroep key={groep.sleutel} groep={groep} />
+              <Dekkinggroep
+                key={groep.sleutel}
+                groep={groep}
+                // Derived from the same function the summary uses, so the two cannot disagree about whether this plan
+                // may report a figure. Found in a browser: the summary said it would give no figure while every group
+                // printed one, and group counts add up to exactly the total that was withheld.
+                magTellingTonen={bepaalCijfer(dekking.data).soort === "cijfer"}
+              />
             ))}
           </div>
         </>
