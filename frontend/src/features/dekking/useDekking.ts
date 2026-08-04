@@ -14,7 +14,9 @@ import type { Dekkingsbereik } from "./types";
  * - a **link** edit (a themadoel, an accepted or adjusted doelsuggestie) changes a `DoelKoppeling` on a
  *   school-wide thema, and that thema may sit in any number of classes' plans. `/themas` therefore drops this
  *   whole subtree. Narrowing it to the class the teacher happens to have selected would leave every *other*
- *   class's figure stale, which is the same defect one screen further along.
+ *   class's figure stale, which is the same defect one screen further along;
+ * - an **import** writes both sides of the figure at once: counted `DoelKoppeling`s and, on the curriculum side,
+ *   the denominator itself. Same subtree, same reason (round-2 audit, MAJOR 2).
  *
  * Owned here and imported by the features that write, so the string `"dekking"` exists in one place, following
  * the precedent in `themas/useThemas.ts`, which reaches for `matching`'s key for the same reason.

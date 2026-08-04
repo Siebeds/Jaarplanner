@@ -251,37 +251,39 @@ describe("nl.json — the stale-placement notice does not overclaim about dekkin
 describe("nl.json — de copy over verplaatsen noemt het dekkingsgevolg (E4-01)", () => {
   /**
    * The E4-01 antagonist found a test comment asserting that *"the card discloses it before the drag"* while no string
-   * in the product said anything about dekking: `verplaatsGevolg` named the status change and the lost motivation
-   * only, and it renders inside the opened *Aanpassen* panel, so a teacher who drags never read it. The owner ruled
-   * the sentence in scope. This guard is what keeps it there, on **both** routes, because the failure mode is not a
-   * bug but a reword.
+   * in the product said anything about dekking. The owner ruled the sentence in scope, so this guard exists to keep it
+   * from being reworded away.
    *
-   * **The second assertion is the one that pins the reasoning rather than the wording.** The board sentence has to
-   * speak about an **AI-voorstel**, not about "een thema": a `geweigerd` placement cannot be dragged at all (the
-   * server refuses it, and the card withholds the grip), so a general promise about dragging "a thema" would be false
-   * in exactly that state. That is the E4-06 defect class, where copy claimed something true of most cards and wrong
-   * for one.
+   * **What this file can and cannot see, stated flatly, because round 1 of this guard got it wrong.** A catalogue test
+   * mounts nothing, so it cannot know whether a sentence is *true in the state it renders in* — and that, not a
+   * reword, is the failure mode this copy actually had: the first version of the clause sat in `beslisUitleg`, which
+   * is tier-independent, and therefore promised a drag on the two tiers where the grip and the picker are both
+   * withheld. **That property is pinned in `Jaarplankalender.test.tsx`**, which renders each tier; this file only
+   * pins that the two sentences still make their claim at all.
    *
-   * **The blind spot, stated as this file's neighbours do:** both assertions key on the word `dekking`. A reword to
-   * *"telt vanaf dan mee voor je bewijs"* would satisfy neither, which is the point, but a reword that keeps the word
-   * and drops the *move* would pass the first assertion. Hence checking the move verb in the same sentence family.
+   * It keys on the two **keys** rather than on their wording for the same reason: an assertion quoting five words of
+   * the string it checks is a tautology (the E4-02 lesson). `dekking` is the domain word and cannot be paraphrased
+   * away without the register changing, so it is the one substring worth keying on.
    */
-  it("states on both routes that a verplaatsing makes a thema count", () => {
-    const bord = CATALOGUS.get("kalender.beslisUitleg");
+  it("keeps the dekking consequence on the tier-paired sentence and in the picker panel", () => {
+    // `sleepUitleg` is BORDUITLEG's `kan` entry, so it renders only where moving actually works. That pairing is the
+    // fix for the defect above, which is why the guard checks THIS key and not the tier-independent one.
+    const bord = CATALOGUS.get("kalender.sleepUitleg");
     const paneel = CATALOGUS.get("kalender.verplaatsGevolg");
+    const beslis = CATALOGUS.get("kalender.beslisUitleg");
 
-    expect(bord, "kalender.beslisUitleg has been renamed; this guard now checks nothing").toBeDefined();
+    expect(bord, "kalender.sleepUitleg has been renamed; this guard now checks nothing").toBeDefined();
     expect(paneel, "kalender.verplaatsGevolg has been renamed; this guard now checks nothing").toBeDefined();
+    expect(beslis, "kalender.beslisUitleg has been renamed; this guard now checks nothing").toBeDefined();
 
-    // The drag route has no point-of-action surface, so the board sentence is the only place it can be said.
-    expect(bord!.toLowerCase()).toContain("versleep");
     expect(bord!.toLowerCase()).toContain("dekking");
-    // Not "een thema": a rejected card cannot be dragged, so the promise is scoped to a proposal.
-    expect(bord!.toLowerCase()).toContain("ai-voorstel naar een andere periode");
-
-    // The picker route says it at the moment of action, beside the irreversibility it already disclosed.
     expect(paneel!.toLowerCase()).toContain("dekking");
-    expect(paneel!.toLowerCase()).toContain("niet terugdraaien");
+
+    // And it must NOT drift back into the tier-independent sentence, where it was false on two of three states. This
+    // is the one assertion here that pins a property rather than a presence: `beslisUitleg` may say a proposal does
+    // not count, and may not say what makes it count, because it renders where that answer differs per tier.
+    expect(beslis!.toLowerCase()).not.toContain("versleep");
+    expect(beslis!.toLowerCase()).not.toContain("verplaats");
   });
 });
 

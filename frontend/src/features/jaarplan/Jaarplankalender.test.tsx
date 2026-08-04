@@ -2313,6 +2313,38 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
 
     expect(await axe(container)).toHaveNoViolations();
   });
+  /**
+   * Round-2 audit, MAJOR 1: the copy the owner ruled into this story was first put in `kalender.beslisUitleg`, which
+   * renders on **every** tier because a decision is available on every tier. Moving is not: at `Subthemaperiode` the
+   * card has no grip and the panel no picker, and at an unrecognised tier nothing can be moved at all. So the sentence
+   * instructed a gesture the screen was simultaneously saying was unavailable, in one case one paragraph apart.
+   *
+   * The clause now lives in `kalender.sleepUitleg`, the `kan` entry of `BORDUITLEG`. **This test pins the property
+   * rather than the location**, so moving the clause back would fail it even if the key names stayed put: what may
+   * not happen is a promise that a verplaatsing makes a thema count, on a tier where a verplaatsing is refused.
+   */
+  it("promises the count-by-moving consequence only on the tier where moving works", async () => {
+    // The distinctive tail of the clause, so this test does not depend on which key carries it.
+    const gevolg = /telt het vanaf dan mee voor de dekking/;
+
+    stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+    await screen.findByText("Water");
+
+    // The premise: at the generation tier the promise is on screen, beside a card that really can be dragged.
+    expect(screen.getByText(gevolg)).toBeInTheDocument();
+
+    fireEvent.click(knop("kalender.weergaveFijn"));
+    await waitFor(() =>
+      expect(screen.getByRole("list", { name: t("kalender.ribbonLabelFijn") })).toBeInTheDocument(),
+    );
+
+    // Gone with the affordance. The decision explanation stays, because deciding still works here: that asymmetry is
+    // the whole reason the clause had to move out of it.
+    expect(screen.queryByText(gevolg)).toBeNull();
+    expect(screen.getByText(t("kalender.beslisUitleg"))).toBeInTheDocument();
+    expect(screen.getByText(t("kalender.fijnUitleg"))).toBeInTheDocument();
+  });
 });
 
 /**
@@ -3439,8 +3471,14 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
      * through the nav does — and read what is on it while the fresh figure is still in flight.
      *
      * The pre-edit figure is a realistic `Dekking` from E5-02's own fixtures, so it is a total the screen really
-     * would render: with `invalidateQueries` instead of a removal this test fails on its last assertion, which is
-     * the whole argument of `vergeetDekking` expressed as a test rather than as a docstring.
+     * would render.
+     *
+     * **It waits on the card rather than on the cache, and that is what makes it discriminate** (round-2 audit,
+     * MINOR 6). The first version waited for `getQueryData` to be `undefined` before unmounting, so under
+     * `invalidateQueries` it timed out *there* and died before `DekkingPagina` was ever mounted: it failed for the
+     * right reason at the wrong line, and the two assertions that describe the promise never ran. Waiting for the
+     * persisted status on the card instead means the edit is complete either way, so the strategy is judged by what
+     * the overview then paints: with a removal, its own loading line; with an invalidation, the pre-edit total.
      */
     const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
     const naPlan = maakJaarplan([
@@ -3466,7 +3504,10 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
         name: t("kalender.aanvaardenLabel", { thema: "Water" }),
       }),
     );
-    await waitFor(() => expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeUndefined());
+    // The server's answer is on the card, so the edit has landed and `onSuccess` has run. Deliberately NOT a wait on
+    // the dekking cache: that would be the assertion this test exists to replace, and it would stop the test before
+    // the screen this test is about.
+    expect(await within(kaart("Water")).findByText(t("suggestieStatus.aanvaard"))).toBeInTheDocument();
 
     // Leaving the kalender the way a teacher does: the screen goes, the client stays.
     unmount();

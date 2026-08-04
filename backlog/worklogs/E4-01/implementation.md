@@ -43,8 +43,10 @@ entry only described in prose: dragging a standing proposal raises the coverage 
 without any decision being recorded. The **stale** case pins the half E5-01 explicitly left unverified: it
 proved the figure is *withheld* while a placement is stale, never that resolving one releases it again.
 
-Against real PostgreSQL deliberately (E7-16): dekking is a query over four `DoelKoppeling` layers, and this
-project has been bitten six times by a write path verified only on the in-memory provider.
+Against real PostgreSQL deliberately: dekking is a query over four `DoelKoppeling` layers, and a **database path**
+verified only on the in-memory provider is not verified. That class is **E7-16**, cited without repeating its count,
+because a figure copied into a story goes stale silently and this one already had (round-1 audit found "six" where the
+epic said seven). E7-16 also records that *"write path"* was too narrow: a read path is exactly as unverified.
 
 **Mutation-checked rather than trusted for passing first time:**
 
@@ -110,7 +112,11 @@ editing the hook while the page was live, and an HMR reload resets the cache the
 > figure is a **one-request window** that self-corrects, *except* when the read fails, where the error alert ends
 > up directly above a figure that is wrong. Also worth recording: the three rows of the table above were observed
 > and not captured, which the antagonist flagged as a table presenting unartefacted measurements. The
-> test-runner's six screenshots now cover both states of the load-bearing column.
+> test-runner's six screenshots cover the **counterfactual pair** — a stale figure with the fix disabled, and an error
+> alert with no stale figure beside it once it is on. They do **not** show the loading line, and neither does mine: the
+> evidence for that is the accessibility snapshot in its report (`status: "De dekking wordt berekend."` with no figure
+> element), which was not committed as a file. Said plainly because the first version of this sentence claimed the
+> screenshots covered "both states of the load-bearing column", and the column is the loading line.
 
 ## What this story does **not** claim
 
@@ -202,6 +208,70 @@ compares each element's right edge with the viewport rather than reading `docume
 elements it reports past 390px are the nav and the period ribbon, which are horizontal scrollers by design and
 which text inside a `<p>` cannot widen.
 
+## Fix round 2 — the copy was in the wrong string, and the importers were never in the rule
+
+**antagonist ronde 2: VIOLATIONS FOUND (2 MAJOR, 9 MINOR, 1 QUESTION)**, full report in
+[`antagonist-ronde-2.md`](antagonist-ronde-2.md). It confirmed the mechanism a second time (it read TanStack's own
+`queryCache`/`query` source to check that a removal cancels an in-flight fetch rather than letting it write back) and
+then took the copy apart.
+
+**MAJOR 1 — the clause was in the tier-independent sentence.** `kalender.beslisUitleg` renders on **every** tier,
+because deciding works on every tier. Moving does not: at `Subthemaperiode` the card has no grip and the panel no
+picker, and at an unrecognised tier nothing can be moved at all. So fix round 1's sentence instructed a gesture that
+the same screen was simultaneously reporting as unavailable, in one state one paragraph apart. **The comment three
+lines above the render site had said exactly that** — *"'of zelf verplaatsen' is only true on the tier where moving
+works"* — and the fix walked past it. The clause now lives in `kalender.sleepUitleg`, i.e. the `kan` entry of
+`BORDUITLEG`, the mechanism this file already had for the hazard. *The lesson is now in the file:* a sentence about an
+affordance belongs in the record keyed on that affordance's state, not beside the topic it shares.
+
+Two of ronde 2's open questions dissolved with the move rather than being answered: there is no third paragraph above
+the board any more (the clause joined a sentence that was already there), and the wording is *themaperiode*, like every
+sibling, instead of the ambiguous *periode*.
+
+**MAJOR 2 — the importers.** `useImporteerSchoolcontent` and `useImporteerOpstap` called `invalidateQueries()`
+unfiltered, which is precisely the thing this story argues is not enough. An import is the write that can move the
+figure furthest in one action, because it writes **both sides** of it: counted `DoelKoppeling`s and, on the curriculum
+side, the denominator. `/import` is a primary nav destination reached client-side like any other. Both now drop the
+subtree, with a test.
+
+**Three claims of mine were weaker than written:**
+
+- the behaviour test *did* fail under `invalidateQueries`, but at its **cache** assertion, before `DekkingPagina` was
+  ever mounted — so it discriminated nothing the three earlier tests did not, while its docstring said it did. It now
+  waits for the persisted status **on the card** and fails on the loading-line assertion instead. Verified by mutation:
+  under `invalidateQueries` it reports *"Unable to find an accessible element with the role status"*, i.e. the overview
+  painted the cached figure instead of its loading line.
+- the copy guard was three verbatim fragments of the string it checked, which is the tautology E4-02 recorded. It now
+  keys on the **keys**, asserts the one property a catalogue test can see (the clause is in the tier-paired sentence and
+  **not** in the tier-independent one), and states plainly that truth-in-state is pinned elsewhere.
+- *"the test-runner's six screenshots cover both states of the load-bearing column"* was false: they cover the
+  counterfactual pair, and the loading line's evidence is an accessibility snapshot that was never committed. Corrected
+  in place.
+
+**MINOR 7 is fixed with artefacts rather than prose.** Three new screenshots at exactly 390px:
+[`r2-bordzin-390.png`](r2-bordzin-390.png) shows the board paragraph carrying the clause **and** the decision paragraph
+without it; [`r2-fijn-geen-sleepbelofte-390.png`](r2-fijn-geen-sleepbelofte-390.png) is the finer tier, where the whole
+sentence is gone; [`r2-paneelzin-390.png`](r2-paneelzin-390.png) is the opened panel. Measured in the same pass: board
+paragraph 5 lines at 335px, panel paragraph 5 lines at 221px, both inside the viewport.
+
+**Two things ronde 2 asked for that were deliberately *not* changed:**
+
+- **`kalender.vergrendelDekking` stays as it is.** Its own comment demanded a re-read by any story that loosened its
+  condition, and this story did. Naming the second counting route there was tried and reverted: that paragraph carries
+  **no tier condition**, so at the finer tier it would name an action its own panel cannot perform, and pointing at
+  another view from inside a card is the two-step inference ronde 2 rejected one screen up. It stays **under-inclusive
+  rather than false**, and the reasoning is recorded on the string.
+- **No new E7 story for the `DemoDataSeeder` em dash.** Both rounds reported it as unfiled; it has been filed since
+  2026-08-04 as **E7-18**, in the file ronde 2 searched. What that says is worth more than the correction: *a filing two
+  independent audits cannot find is not discoverable*, because the entry is titled "Demo-fixture Dutch reaches
+  teachers" and an auditor greps for the character. E7-18 now names `DemoDataSeeder.cs:239`, the em dash and Art. II.5
+  in its own text, plus the fact that this story's screenshots render it on **every row** of the dekkingsoverzicht.
+
+**Mutation-checked, all four:** putting the clause back into `beslisUitleg` fails the catalogue guard **and** the
+render test that drives both tiers; disabling the import drop fails exactly the new import test; disabling the two
+link-path drops fails exactly the two link tests; swapping remove for invalidate fails the four kalender cases,
+including the behaviour one on its own assertion now.
+
 ## Gates
 
 - **Backend:** the five new tests pass against real PostgreSQL (`JAARPLANNER_TEST_POSTGRES`, 0 skipped);
@@ -213,6 +283,6 @@ which text inside a `<p>` cannot widen.
   the fix round above answers all of it. A **second antagonist round is owed** on the fix round, because it
   touches user-facing copy and this repo's record is that copy is where its defects are: three of E4-02's four
   rounds found nothing in the screen and everything in prose.
-- **After fix round 1:** 569 unit + 194 integration on real PostgreSQL (0 skipped), **444** frontend / 20 files,
+- **After fix round 2:** 569 unit + 194 integration on real PostgreSQL (0 skipped), **446** frontend / 20 files,
   `dotnet format`, `pnpm lint` and `pnpm build` clean. Every mutation reverted; the copy guard was
   mutation-checked by removing each new clause in turn.

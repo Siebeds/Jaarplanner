@@ -25,9 +25,12 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// </para>
 /// <para>
 /// <b>Against real PostgreSQL, deliberately.</b> Dekking is computed by a query over four <c>DoelKoppeling</c>
-/// layers, and a write path verified only on the in-memory provider is not verified: that class is <b>E7-16</b>,
-/// which keeps the count of times this project has rediscovered it. Cited without repeating the figure, because a
-/// count copied into a comment is a count that goes stale silently, and this one already had (antagonist round 1).
+/// layers, and a <b>database</b> path verified only on the in-memory provider is not verified: that class is
+/// <b>E7-16</b>, which records that "write path" was itself too narrow a framing (a read path is exactly as
+/// unverified),
+/// and which keeps the count of times this project has rediscovered it. Cited without repeating the
+/// figure, because a count copied into a comment is a count that goes stale silently, and this one already had
+/// (antagonist round 1).
 /// A story whose whole content is "the figure follows the edit" cannot be evidenced by a provider that answers a
 /// different query.
 /// </para>

@@ -45,6 +45,13 @@ import type { ActiviteitInvoer, SubthemaInvoer, ThemaInvoer } from "./types";
  *    Dropped rather than invalidated, for the reason spelled out on {@link DEKKING_KEY} and in
  *    `jaarplan/useJaarplan.ts`: an invalidated entry is still painted while its refetch is in flight, so
  *    `/dekking` would open on a figure from before this edit.
+ *    > **This fires on every write through this hook, not only on a link change** (round-2 audit, MINOR 11): a
+ *    > rename, a new subthema and an edited activiteit drop every class's figure too, and most of them cannot have
+ *    > moved it. Deliberate, on the same reasoning as the fixed invalidation set above: eleven mutations each
+ *    > deciding whether *their* write touched a `DoelKoppeling` is eleven chances to decide wrong, and the cost of
+ *    > being wrong is asymmetric. A needless drop costs one loading line on a screen the teacher then opens; a
+ *    > missed drop is a coverage figure that is quietly wrong (Art. V.2). The cost is real and is recorded in the
+ *    > story rather than left to be discovered.
  *
  * > *This is the fourth item because it was written down as owed and then not done.* The paragraph here used to
  * > read *"no dekking query exists in the frontend yet — E5-02 builds the screen. Whoever adds it should add its

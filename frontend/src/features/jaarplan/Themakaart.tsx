@@ -737,6 +737,16 @@ function Bewerkpaneel({
                   up. On any other state it would point at a control that is not there. A future story that
                   loosens this condition has to re-read the string, not just the guard.
 
+                  **E4-01 loosened it and the string stays as it is, deliberately** (round-2 audit, which asked for
+                  exactly this re-read). E4-01 made the second counting route explicit in `sleepUitleg`: verplaatsen
+                  turns a voorstel into the teacher's own choice, so it counts too. Naming that route *here* was
+                  tried and reverted, because this paragraph carries **no tier condition** while moving exists only
+                  at the themaperiode tier: at `Subthemaperiode` it would name an action the panel around it cannot
+                  perform, and pointing at "de weergave Themaperiodes" from inside a card is the two-step inference
+                  the same audit rejected one screen up. So the sentence stays **under-inclusive rather than
+                  false**: aanvaarden is a route that is always available where this renders, and it is the one on
+                  screen. The complete rule is stated once above the board, on the tier where both routes exist.
+
                   Note for E4-05/E4-07: this is not one of the six `kalender.vergrendel*` strings E4-06 listed for
                   re-reading (it makes no hergeneratie claim), but it *has* changed since E4-06 quoted it, so read
                   the file rather than that list. */}

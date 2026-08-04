@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { DEKKING_KEY } from "../dekking/useDekking";
+
 import {
   importeerOpstap,
   importeerSchoolcontent,
@@ -22,6 +24,14 @@ import type { OpstapInvoer, SchoolcontentInvoer } from "./api";
  * the doelen register, the thema list, the doelsuggesties, the gap list and the jaarplan's thema picker, so
  * enumerating the affected keys here would be a list to keep in sync with five features. A commit is a rare,
  * deliberate act, so refetching what is mounted costs one round of requests and cannot go stale.
+ *
+ * **Except the dekking queries, which are DROPPED rather than invalidated (E4-01, round-2 audit MAJOR 2).** An
+ * invalidated entry keeps its data, so TanStack paints it on the next mount and refetches behind it: a teacher who had
+ * `/dekking` open, imports a file and walks back through the nav would read a figure computed before the import, with
+ * no loading state to say so. An import is the write in this app that can move that figure furthest in one action,
+ * because it writes both sides of it: counted `DoelKoppeling`s (the numerator) and, on the curriculum side, every
+ * leerplandoel (the denominator). Art. V.2 is why the direction matters: an inspectie-facing figure may be missing,
+ * never quietly wrong. The blunt invalidation above still covers everything else.
  */
 
 /** Previews a school-content upload (FR-1.3). Writes nothing, so nothing is invalidated. */
@@ -39,6 +49,7 @@ export function useImporteerSchoolcontent() {
     mutationFn: (invoer: SchoolcontentInvoer) => importeerSchoolcontent(invoer),
     onSuccess: () => {
       void queryClient.invalidateQueries();
+      queryClient.removeQueries({ queryKey: DEKKING_KEY });
     },
   });
 }
@@ -58,6 +69,7 @@ export function useImporteerOpstap() {
     mutationFn: (invoer: OpstapInvoer) => importeerOpstap(invoer),
     onSuccess: () => {
       void queryClient.invalidateQueries();
+      queryClient.removeQueries({ queryKey: DEKKING_KEY });
     },
   });
 }

@@ -50,7 +50,8 @@ function renderImport(opties: ImportFakeOpties = {}) {
     </StrictMode>,
   );
 
-  return fake;
+  // The client is returned so a test can read the dekking cache a commit reaches into (E4-01 round-2 audit).
+  return { ...fake, queryClient };
 }
 
 /**
@@ -702,5 +703,33 @@ describe("Import screen — accessibility", () => {
     expect(regio).not.toBeNull();
     expect(within(regio as HTMLElement).queryByRole("button")).toBeNull();
     expect(within(regio as HTMLElement).queryByRole("checkbox")).toBeNull();
+  });
+});
+
+
+/**
+ * E4-01, round-2 audit MAJOR 2: an import moves the coverage figure further than any other single action, because it
+ * writes both sides of it — counted `DoelKoppeling`s and, on the curriculum side, the denominator itself.
+ *
+ * `useImport` invalidated everything, which the story's own argument says is not enough: an invalidated entry keeps its
+ * data, so `/dekking` paints the pre-import figure on arrival and refetches behind it. `/import` is a primary nav
+ * destination reached client-side like any other, so the sequence is one a teacher takes on purpose.
+ */
+describe("Import screen — een doorvoer laat geen dekkingscijfer van voor de import staan (E4-01)", () => {
+  it("gooit elk gecacht dekkingscijfer weg zodra de schoolcontent doorgevoerd is", async () => {
+    const { queryClient } = renderImport();
+    const klasA = ["dekking", "klas-a", "EigenJaarFase", null];
+    const klasB = ["dekking", "klas-b", "HeelCurriculum", null];
+    queryClient.setQueryData(klasA, { aantalGedekt: 4, aantalLeerplandoelen: 14 });
+    queryClient.setQueryData(klasB, { aantalGedekt: 4, aantalLeerplandoelen: 40 });
+
+    kiesBestand();
+    fireEvent.click(nakijkknop());
+    await verdicten();
+    fireEvent.click(doorvoerknop());
+
+    // Every class and every scope: an import is school-wide, and the denominator it can change is the curriculum.
+    await waitFor(() => expect(queryClient.getQueryData(klasA)).toBeUndefined());
+    expect(queryClient.getQueryData(klasB)).toBeUndefined();
   });
 });
