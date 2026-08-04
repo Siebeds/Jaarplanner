@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 
+import { ApiError } from "../../lib/api";
+
 import { ONGEKOPPELDE_DOELEN_KEY } from "../matching/useDoelsuggesties";
 import {
   haalThemaBibliotheek,
@@ -86,14 +88,38 @@ export function useThemaVoorKlas(themaId: string | undefined, klasId: string | u
  * The one mutation wrapper every write uses. `mutationFn` is the only thing that varies; the invalidation set
  * is fixed (see the module comment) so no call site can ship a shorter one.
  */
-function useBeheerMutatie<TVars, TResult>(mutationFn: (vars: TVars) => Promise<TResult>) {
+function useBeheerMutatie<TVars, TResult>(
+  mutationFn: (vars: TVars) => Promise<TResult>,
+  opties: { verversOok404?: boolean } = {},
+) {
   const queryClient = useQueryClient();
+
+  function verversAlles() {
+    for (const key of [THEMA_PREFIX, bibliotheekKey, ONGEKOPPELDE_DOELEN_KEY] as QueryKey[]) {
+      void queryClient.invalidateQueries({ queryKey: key });
+    }
+  }
 
   return useMutation({
     mutationFn,
-    onSuccess: () => {
-      for (const key of [THEMA_PREFIX, bibliotheekKey, ONGEKOPPELDE_DOELEN_KEY] as QueryKey[]) {
-        void queryClient.invalidateQueries({ queryKey: key });
+    onSuccess: verversAlles,
+    /**
+     * **A 404 on a delete has to refresh the screen too** (antagonist round 3, MAJOR 1).
+     *
+     * Round 2 taught the two class-level deletes to say *"iemand anders heeft het verwijderd"* on a 404
+     * instead of reporting a failure. That was half the fix: the message appeared while the record stayed on
+     * screen with its subdoelen, its activiteiten and an **enabled** confirm button that could only reproduce
+     * the same 404. One panel asserting a record is gone beside a control offering to delete it is the
+     * contradiction that reopened E3-07 by owner ruling.
+     *
+     * Landing 1 did this correctly and the copied comment claimed to match it: at thema level a 404 navigates
+     * back to the list, so the message is suppressed **and acted on**. There is no list to navigate to at these
+     * levels, so acting means refreshing: the record disappears exactly as it does after a successful delete,
+     * and the caller's own `onError` closes the panel.
+     */
+    onError: (fout) => {
+      if (opties.verversOok404 && fout instanceof ApiError && fout.status === 404) {
+        verversAlles();
       }
     },
   });
@@ -170,7 +196,9 @@ export function useWijzigSubthema() {
 }
 
 export function useVerwijderSubthema() {
-  return useBeheerMutatie((vars: { subthemaId: string }) => verwijderSubthema(vars.subthemaId));
+  return useBeheerMutatie((vars: { subthemaId: string }) => verwijderSubthema(vars.subthemaId), {
+    verversOok404: true,
+  });
 }
 
 export function useKoppelSubthemaAanDoel() {
@@ -200,7 +228,9 @@ export function useWijzigActiviteit() {
 }
 
 export function useVerwijderActiviteit() {
-  return useBeheerMutatie((vars: { activiteitId: string }) => verwijderActiviteit(vars.activiteitId));
+  return useBeheerMutatie((vars: { activiteitId: string }) => verwijderActiviteit(vars.activiteitId), {
+    verversOok404: true,
+  });
 }
 
 export function useKoppelActiviteitAanDoel() {

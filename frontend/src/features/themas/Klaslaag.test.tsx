@@ -341,6 +341,14 @@ describe("Klaslaag — een record dat iemand anders al verwijderde (antagonist r
     expect(await screen.findByText(t("themabeheer.subthemaAlWeg"))).toBeInTheDocument();
     expect(screen.queryByText(t("themabeheer.subthemaVerwijderMislukt"))).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
+
+    // **And the screen must agree with the sentence** (antagonist round 3, MAJOR 1). Saying a record is gone
+    // while its card, its activiteiten and an enabled "Ja, verwijder dit subthema" stay on screen is the
+    // self-contradiction that reopened E3-07: the confirm could only reproduce the same 404.
+    await waitFor(() => expect(screen.queryByText("Bladeren")).not.toBeInTheDocument());
+    expect(
+      screen.queryByRole("button", { name: t("themabeheer.subthemaVerwijderBevestig") }),
+    ).not.toBeInTheDocument();
   });
 });
 

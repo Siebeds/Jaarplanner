@@ -345,7 +345,12 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
       }
       if (methode === "DELETE") {
         if (opties.subthemaAlWeg) {
-          // What the server really answers, GUID and all, so the screen has to decide what to do with it.
+          // Model what a 404 MEANS: it is gone server-side. Leaving it in the store would let a screen that
+          // never refetches pass the test that says the row disappears (antagonist round 3).
+          subthemaOpslag.splice(subthemaOpslag.indexOf(bestaand), 1);
+          // **Deliberately pessimistic, and no longer what the server says.** The service was swept of
+          // GUIDs in the same round; this fixture keeps the old shape so the screen cannot start relying on
+          // the server's wording, and so the "no GUID reaches a teacher" assertion stays meaningful.
           return json({ title: "Niet gevonden", detail: `Subthema ${bestaand.id} bestaat niet.`, status: 404 }, 404);
         }
         subthemaOpslag.splice(subthemaOpslag.indexOf(bestaand), 1);

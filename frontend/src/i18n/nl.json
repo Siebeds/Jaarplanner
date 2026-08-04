@@ -118,7 +118,7 @@
     "bedreigd": {
       "titel": "{aantal} vastgelegde koppelingen staan niet meer in dit bestand",
       "titelEnkelvoud": "1 vastgelegde koppeling staat niet meer in dit bestand",
-      "uitleg": "Deze koppelingen liggen vast: een leerkracht heeft ze beslist, of ze kwamen uit een eerdere import van dit bestand. Ze blijven staan zolang je hieronder niets aanduidt. De tool gooit een vastgelegde koppeling nooit vanzelf weg.",
+      "uitleg": "Deze koppelingen liggen vast: een leerkracht heeft ze beslist, of ze kwamen uit een eerdere import. Ze blijven staan zolang je hieronder niets aanduidt. De tool gooit een vastgelegde koppeling nooit vanzelf weg.",
       "verwijder": "Verwijder deze {aantal} koppelingen bij het doorvoeren. Dat kan je niet ongedaan maken.",
       "verwijderEnkelvoud": "Verwijder deze koppeling bij het doorvoeren. Dat kan je niet ongedaan maken."
     },
@@ -426,7 +426,7 @@
   },
   "ongekoppeld": {
     "titel": "Ongekoppelde leerplandoelen",
-    "uitleg": "Deze leerplandoelen zijn nog niet aan een thema gekoppeld. Een doel telt pas als gekoppeld wanneer een suggestie aanvaard is of je manueel een koppeling maakt.",
+    "uitleg": "Deze leerplandoelen zijn nog niet aan een thema gekoppeld. Een doel telt als gekoppeld wanneer een suggestie aanvaard is, wanneer je zelf een koppeling maakt, of wanneer de koppeling meekwam met een import.",
     "laden": "Ongekoppelde doelen laden…",
     "fout": "De ongekoppelde doelen konden niet geladen worden.",
     "leeg": "Alle leerplandoelen zijn gekoppeld aan een thema.",

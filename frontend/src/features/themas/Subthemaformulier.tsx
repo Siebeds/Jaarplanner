@@ -92,7 +92,17 @@ export function Subthemaformulier({
     });
   }
 
-  const serverMelding = fout instanceof ApiError ? fout.detail : undefined;
+  /**
+   * The server's reason, minus the one status whose sentence the UI owns.
+   *
+   * A **404** here means the record was deleted while this form was open. The screen says that itself (see
+   * `themabeheer.subthemaAlWeg`), so rendering the server's version too would put one fact in two places and let the
+   * two drift, which is what antagonist round 3 flagged. Everything else the server explains is still framed
+   * and shown, because only it knows which field or value was refused.
+   */
+  const serverMelding =
+    fout instanceof ApiError && fout.status !== 404 ? fout.detail : undefined;
+  const alWeg = fout instanceof ApiError && fout.status === 404;
 
   return (
     <form onSubmit={verstuur} className="rounded-md border border-petrol/40 bg-card p-3.5">
@@ -177,7 +187,7 @@ export function Subthemaformulier({
 
       {fout ? (
         <div role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
-          <p>{t("themabeheer.subthemaBewaarMislukt")}</p>
+          <p>{alWeg ? t("themabeheer.subthemaAlWeg") : t("themabeheer.subthemaBewaarMislukt")}</p>
           {serverMelding ? (
             <p className="mt-1 font-normal text-ink-zacht">
               {t("themabeheer.serverReden", { melding: serverMelding })}

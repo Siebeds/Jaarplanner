@@ -34,9 +34,17 @@ export interface SubthemakaartProps {
   subthema: Subthema;
   klasId: string;
   klasNaam: string;
+  /**
+   * Called when a delete answers 404, i.e. a colleague got there first.
+   *
+   * **The message cannot live on this card.** Reconciling the screen (antagonist round 3, MAJOR 1) refetches
+   * and the row disappears, which is the correct outcome and also unmounts whatever was rendering the notice.
+   * So the card reports the fact upward and {@link Klaslaag} says it, because the section outlives the row.
+   */
+  onAlWeg: (soort: "subthema" | "activiteit") => void;
 }
 
-export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps) {
+export function Subthemakaart({ subthema, klasId, klasNaam, onAlWeg }: SubthemakaartProps) {
   const [wijzigen, setWijzigen] = useState(false);
   const [verwijderen, setVerwijderen] = useState(false);
   const [subdoelKiezen, setSubdoelKiezen] = useState(false);
@@ -76,9 +84,9 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
   /**
    * The server's reason, when it sent one **and** it is a reason a teacher can act on.
    *
-   * A 404 is excluded for the same reason landing 1 excludes it one level up: it means a colleague deleted
-   * this subthema first, and the server's sentence for that names a raw GUID. It is reported as what it is
-   * below, not as a failure, because the outcome the teacher wanted has happened (antagonist round 2).
+   * A 404 is excluded for the same reason landing 1 excludes it one level up: it means a colleague deleted this
+   * subthema first, so it is not a failure. It is reported to {@link Klaslaag} through `onAlWeg` rather than
+   * rendered here, because the refetch that follows removes this card.
    */
   const verwijderdDoorIemandAnders =
     verwijderSubthema.error instanceof ApiError && verwijderSubthema.error.status === 404;
@@ -162,11 +170,7 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
           {/* What goes with it, and what does not: a subthema is one class's derivation, so no colleague's
               work is at stake here. Saying so is the point of the sentence. */}
           <p className="mt-1 text-sm text-ink-zacht">{t("themabeheer.subthemaVerwijderGevolg")}</p>
-          {verwijderdDoorIemandAnders ? (
-            <p role="status" className="mt-2 text-sm text-ink-zacht">
-              {t("themabeheer.subthemaAlWeg")}
-            </p>
-          ) : verwijderSubthema.isError ? (
+          {verwijderdDoorIemandAnders ? null : verwijderSubthema.isError ? (
             <div role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
               <p>{t("themabeheer.subthemaVerwijderMislukt")}</p>
               {verwijderMelding ? (
@@ -179,7 +183,19 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => verwijderSubthema.mutate({ subthemaId: subthema.id })}
+              onClick={() =>
+                verwijderSubthema.mutate(
+                  { subthemaId: subthema.id },
+                  {
+                    onError: (fout) => {
+                      setVerwijderen(false);
+                      if (fout instanceof ApiError && fout.status === 404) {
+                        onAlWeg("subthema");
+                      }
+                    },
+                  },
+                )
+              }
               disabled={verwijderSubthema.isPending}
               className="rounded-md bg-suggestie-geweigerd px-3 py-1.5 text-sm font-semibold text-suggestie-geweigerd-foreground disabled:opacity-60"
             >
@@ -243,6 +259,12 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
         </ul>
       )}
 
+      {ontkoppelSubdoel.isError ? (
+        <p role="alert" className="text-sm font-medium text-suggestie-geweigerd">
+          {t("themabeheer.ontkoppelMislukt")}
+        </p>
+      ) : null}
+
       {subdoelKiezen ? (
         <div className="mt-2">
           <Doelkiezer
@@ -288,7 +310,12 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
       ) : (
         <ul className="flex flex-col gap-2">
           {subthema.activiteiten.map((activiteit) => (
-            <Activiteitregel key={activiteit.id} activiteit={activiteit} subthemaNaam={subthema.naam} />
+            <Activiteitregel
+              key={activiteit.id}
+              activiteit={activiteit}
+              subthemaNaam={subthema.naam}
+              onAlWeg={onAlWeg}
+            />
           ))}
         </ul>
       )}
@@ -317,9 +344,11 @@ export function Subthemakaart({ subthema, klasId, klasNaam }: SubthemakaartProps
 function Activiteitregel({
   activiteit,
   subthemaNaam,
+  onAlWeg,
 }: {
   activiteit: Activiteit;
   subthemaNaam: string;
+  onAlWeg: SubthemakaartProps["onAlWeg"];
 }) {
   const [wijzigen, setWijzigen] = useState(false);
   const [verwijderen, setVerwijderen] = useState(false);
@@ -430,11 +459,8 @@ function Activiteitregel({
         <div className="mt-2 rounded-md border border-suggestie-geweigerd/40 p-2.5">
           <h5 className="text-sm font-bold text-ink">{t("themabeheer.activiteitVerwijderTitel")}</h5>
           <p className="mt-1 text-sm text-ink-zacht">{t("themabeheer.activiteitVerwijderGevolg")}</p>
-          {verwijderActiviteit.error instanceof ApiError && verwijderActiviteit.error.status === 404 ? (
-            <p role="status" className="mt-1 text-sm text-ink-zacht">
-              {t("themabeheer.activiteitAlWeg")}
-            </p>
-          ) : verwijderActiviteit.isError ? (
+          {verwijderActiviteit.error instanceof ApiError &&
+          verwijderActiviteit.error.status === 404 ? null : verwijderActiviteit.isError ? (
             <p role="alert" className="mt-1 text-sm font-medium text-suggestie-geweigerd">
               {t("themabeheer.activiteitVerwijderMislukt")}
             </p>
@@ -442,7 +468,19 @@ function Activiteitregel({
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => verwijderActiviteit.mutate({ activiteitId: activiteit.id })}
+              onClick={() =>
+                verwijderActiviteit.mutate(
+                  { activiteitId: activiteit.id },
+                  {
+                    onError: (fout) => {
+                      setVerwijderen(false);
+                      if (fout instanceof ApiError && fout.status === 404) {
+                        onAlWeg("activiteit");
+                      }
+                    },
+                  },
+                )
+              }
               disabled={verwijderActiviteit.isPending}
               className="rounded-md bg-suggestie-geweigerd px-2.5 py-1 text-xs font-semibold text-suggestie-geweigerd-foreground disabled:opacity-60"
             >
@@ -459,6 +497,12 @@ function Activiteitregel({
             </button>
           </div>
         </div>
+      ) : null}
+
+      {ontkoppel.isError ? (
+        <p role="alert" className="text-sm font-medium text-suggestie-geweigerd">
+          {t("themabeheer.ontkoppelMislukt")}
+        </p>
       ) : null}
 
       {doelKiezen ? (

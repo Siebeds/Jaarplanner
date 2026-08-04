@@ -31,6 +31,14 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
   const thema = useThemaVoorKlas(themaId, heeftKlas ? klasId : undefined);
   const schooljaren = useSchooljaren();
   const [nieuw, setNieuw] = useState(false);
+  /**
+   * "Someone else already deleted it", raised by a card and said here.
+   *
+   * It lives at section level because the fix for antagonist round 3's MAJOR 1 refetches on that 404, so the
+   * row (and any notice inside it) is gone by the time a teacher would read it. The section survives, so the
+   * sentence does.
+   */
+  const [alWeg, setAlWeg] = useState<"subthema" | "activiteit" | null>(null);
   const maakSubthema = useMaakSubthema();
 
   // The class's own name, so the heading reads "Van L3 derde leerjaar" rather than a GUID. The selector's list
@@ -64,13 +72,22 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
         {heeftKlas && !nieuw ? (
           <button
             type="button"
-            onClick={() => setNieuw(true)}
+            onClick={() => {
+              setAlWeg(null);
+              setNieuw(true);
+            }}
             className="rounded-md border border-input px-3 py-1.5 text-sm font-semibold text-ink hover:bg-paper-diep"
           >
             {t("themabeheer.subthemaNieuw")}
           </button>
         ) : null}
       </div>
+
+      {alWeg ? (
+        <p role="alert" className="mt-3 text-sm text-ink-zacht">
+          {alWeg === "subthema" ? t("themabeheer.subthemaAlWeg") : t("themabeheer.activiteitAlWeg")}
+        </p>
+      ) : null}
 
       {heeftKlas ? (
         <>
@@ -94,6 +111,7 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
                       subthema={subthema}
                       klasId={klasId}
                       klasNaam={klasNaam}
+                      onAlWeg={setAlWeg}
                     />
                   ))}
                 </ul>
@@ -104,6 +122,9 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
           {nieuw ? (
             <div className="mt-3">
               <Subthemaformulier
+                // A new action clears a stale "already gone" notice: it was about a record that is now off the
+                // screen, and leaving it above a form the teacher is filling in would read as being about that.
+                key={alWeg ?? "nieuw"}
                 klasId={klasId}
                 klasNaam={klasNaam}
                 onBewaar={bewaarNieuw}

@@ -155,7 +155,13 @@ export function Doelkiezer({ waaraan, gekoppeldeCodes, onKoppel, bezig }: Doelki
                       type="button"
                       onClick={() => onKoppel(doel.code)}
                       disabled={bezig}
-                      aria-label={t("themabeheer.doelKoppelAria", { code: doel.code, waaraan })}
+                      // While the visible text is "Bezig met koppelen", the label is dropped so the
+                      // accessible name IS the visible text (SC 2.5.3). Same treatment as the "Annuleren"
+                      // toggles; keeping the idle label here would break Label in Name for every row at once,
+                      // because `bezig` is one flag for the whole list (antagonist round 3).
+                      aria-label={
+                        bezig ? undefined : t("themabeheer.doelKoppelAria", { code: doel.code, waaraan })
+                      }
                       className="shrink-0 rounded-md bg-petrol px-3 py-1.5 text-xs font-semibold text-petrol-foreground hover:bg-petrol-helder disabled:opacity-60"
                     >
                       {bezig ? t("themabeheer.doelKoppelBezig") : t("themabeheer.doelKoppel")}
