@@ -347,6 +347,7 @@
     "verplaatsMislukt": "Het thema kon niet verplaatst worden. Kies een themaperiode uit dit jaarplan.",
     "verplaatsOnbeschikbaar": "Verplaatsen is nu niet beschikbaar. Er is niets gewijzigd aan je jaarplan. Meld dit aan de beheerder van de tool.",
     "weigeringEerstTerugdraaien": "Dit thema is geweigerd, dus je kan het niet verplaatsen. Draai hieronder eerst de weigering terug. Daarna kan je het thema een andere themaperiode geven.",
+    "weigeringEerstTerugdraaienVervallen": "Dit thema is geweigerd, dus je kan het niet verplaatsen. Draai hieronder eerst de weigering terug. Daarna kan je het thema een themaperiode geven.",
     "uitPeriodeHalen": "Uit de themaperiode halen",
     "uitJaarplanHalen": "Uit het jaarplan halen",
     "verwijderVraag": "“{thema}” uit themaperiode {ordinaal} halen? Dat kan je niet ongedaan maken.",

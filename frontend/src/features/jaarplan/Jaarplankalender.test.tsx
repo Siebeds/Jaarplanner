@@ -1893,7 +1893,11 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     expect(within(kaart()).queryByText(t("kalender.herplaatsAnderNiveau"))).toBeNull();
 
     // What it says instead is true here, and its corrective control is on this same screen.
-    expect(within(kaart()).getByText(t("kalender.weigeringEerstTerugdraaien"))).toBeInTheDocument();
+    // *The stale variant since the E3-07 reopening (2026-08-04):* this fixture is `isVervallen`, and the shared
+    // sentence promised it "een andere themaperiode" — a period it does not have. See the dedicated test below.
+    expect(
+      within(kaart()).getByText(t("kalender.weigeringEerstTerugdraaienVervallen")),
+    ).toBeInTheDocument();
     expect(
       within(kaart()).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
     ).toBeInTheDocument();
@@ -1913,7 +1917,9 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
 
     // And the one sentence it does get, plus its control, survive the zoom: neither names a block, so the tier cannot
     // take them away. That is what makes silence about re-placing safe rather than a dead end.
-    expect(within(kaart()).getByText(t("kalender.weigeringEerstTerugdraaien"))).toBeInTheDocument();
+    expect(
+      within(kaart()).getByText(t("kalender.weigeringEerstTerugdraaienVervallen")),
+    ).toBeInTheDocument();
     expect(
       within(kaart()).getByRole("button", { name: t("kalender.weigeringTerugdraaien") }),
     ).toBeInTheDocument();
@@ -1961,9 +1967,19 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
 
     // The catalogue itself: one string carrying both steps, and naming neither view, so it cannot become the
     // cross-view instruction that round 3 had to remove.
-    expect(t("kalender.weigeringEerstTerugdraaien")).toMatch(tweedeStap);
-    expect(t("kalender.weigeringEerstTerugdraaien")).not.toContain(t("kalender.weergaveGrof"));
-    expect(t("kalender.weigeringEerstTerugdraaien")).not.toContain(t("kalender.weergaveFijn"));
+    //
+    // *Re-aimed at the stale variant by the E3-07 reopening (2026-08-04).* This card is `isVervallen`, so it now
+    // renders `weigeringEerstTerugdraaienVervallen`; asserting the catalogue property against the non-stale key
+    // would have kept passing while saying nothing about the sentence this card shows. Both keys are checked, so
+    // the property is pinned for both states rather than moved from one to the other.
+    for (const sleutel of [
+      "kalender.weigeringEerstTerugdraaien",
+      "kalender.weigeringEerstTerugdraaienVervallen",
+    ] as const) {
+      expect(t(sleutel)).toMatch(tweedeStap);
+      expect(t(sleutel)).not.toContain(t("kalender.weergaveGrof"));
+      expect(t(sleutel)).not.toContain(t("kalender.weergaveFijn"));
+    }
 
     await screen.findByRole("region", { name: t("kalender.herzienTitelEnkelvoud") });
     paneel();
@@ -1983,6 +1999,144 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     expect(within(kaart()).queryByText(t("kalender.herplaatsAnderNiveau"))).toBeNull();
     expect(within(kaart()).queryByText(t("kalender.herplaatsKies"))).toBeNull();
     expect(within(kaart()).queryByLabelText(t("kalender.verplaatsNaar"))).toBeNull();
+  });
+
+  /**
+   * **The E3-07 reopening, 2026-08-04: a rejected card may not presuppose a period it does not have.**
+   *
+   * Found in a browser on `1dfe9b8`, on the state E4-02 made routine (press *Weigeren* on a stale card, which
+   * `kalender.beslisVervallen` recommends). The panel closed with *"Daarna kan je het thema een **andere**
+   * themaperiode geven"* while the paragraph directly beneath it read *"dit thema staat in **geen enkele
+   * periode**"*. *Andere* presupposes exactly what the next sentence denies.
+   *
+   * **What this pins is the contradiction, not a word.** Asserting `t(key)` against `t(key)` would be the
+   * tautology E4-02 was caught writing; asserting the absence of *andere* alone would pass on a card that had
+   * stopped mentioning periods altogether. So the assertion is the **conjunction**: the stale card must still
+   * carry the "geen enkele periode" clause *and* must not carry the presupposition, and the non-stale card must
+   * still carry the informative variant.
+   *
+   * **Three assertion designs were needed, and the two that failed are the useful record (antagonist rounds 1–3,
+   * 2026-08-04).** This docblock twice claimed a reword reintroducing the promise would fail here, and twice it
+   * would not:
+   *
+   * 1. `/andere themaperiode/i` against the rendered text is a contiguous **bigram**, so *"een andere, vrije
+   *    themaperiode"* walked through it with 315 passed. (`toContain("geen enkele periode")` does not catch it
+   *    either: that clause comes from `weigeringUitlegVervallen`, which this fix never touches.)
+   * 2. A five-item **denylist** on the key then fell to *"een volgende themaperiode"* and *"weer een
+   *    themaperiode"*, both with 315 passed. A denylist enumerates the offenders someone thought of; the comment
+   *    above it claimed no quantifier could get through. **That gap is the recurring defect in this test, not the
+   *    copy** — the product string has been correct since the first commit.
+   *
+   * 3. The **relation** that replaced the denylist was defeated in turn, by rewording the **non-stale** string and
+   *    propagating it exactly as the relation demands: *"nog een andere themaperiode"* → *"nog een
+   *    themaperiode"*. It constrains the stale string as a function of the other, so it forbids the two drifting
+   *    apart and says nothing about what they drift into. It was also a **net regression**, since the denylist
+   *    had caught two of those attacks outright.
+   *
+   * **So what is asserted now is a conjunction, and its coverage is stated rather than claimed:** the relation
+   * catches the two strings diverging, and the denylist catches the listed quantifiers however they arrived.
+   * **Neither is universal and together they are not either** — a Dutch quantifier outside the list, reworded into
+   * the non-stale string and propagated, would still get through. That is the honest boundary. Three rounds of
+   * this docblock asserted a universal and three mutations defeated it; the lesson is that a guard of this shape
+   * has a boundary, and the comment above it is where the boundary belongs.
+   */
+  it("does not promise a rejected stale card another themaperiode, and keeps the promise where it is true", async () => {
+    const presuppositie = /andere themaperiode/i;
+
+    // **The catalogue property, asserted as a RELATION between the two strings rather than as a list of banned
+    // words.** Two assertion designs were defeated before this one: a bigram against the rendered text (*"een
+    // andere, vrije themaperiode"*) and then a five-item denylist (*"een volgende themaperiode"*, *"weer een
+    // themaperiode"*). Both failed the same way — they enumerated the offenders someone had thought of, under a
+    // comment claiming no quantifier could get through. A denylist cannot carry a universal claim.
+    //
+    // What holds instead: the stale variant **is** the non-stale sentence with exactly the token `andere `
+    // removed. Any quantifier added to the stale string breaks the equality whatever word it uses, and any reword
+    // of the non-stale string forces the stale one to follow, so the two cannot drift apart silently.
+    //
+    // *The cost, stated because it is real:* a future story that wants the two sentences to diverge genuinely has
+    // to change this assertion. That is the intended behaviour, not friction — divergence here is a decision, and
+    // this is what stops it happening by accident.
+    expect(t("kalender.weigeringEerstTerugdraaienVervallen")).toBe(
+      t("kalender.weigeringEerstTerugdraaien").replace(" andere ", " "),
+    );
+    // …and the non-stale variant really does carry the quantifier the relation removes, so the equality above
+    // cannot be satisfied by both strings simply becoming identical.
+    expect(t("kalender.weigeringEerstTerugdraaien")).toMatch(/\bandere\b/i);
+
+    // **The denylist is kept BESIDE the relation, not replaced by it** (antagonist, round 4). The relation
+    // constrains the stale string entirely as a function of the non-stale one, so it forbids the two DRIFTING
+    // APART but not a quantifier reworded into the non-stale sentence and propagated exactly as the relation
+    // demands: *"nog een andere themaperiode"* → *"nog een themaperiode"* satisfies every assertion above.
+    // Worse, the relation's failure message actively tells a developer to apply that replacement. So the two
+    // guard different axes and are a conjunction: the relation catches drift, this catches known quantifiers
+    // however they arrived.
+    for (const kwantor of [
+      /\bandere\b/i,
+      /\bnog een\b/i,
+      /\btweede\b/i,
+      /\bopnieuw\b/i,
+      /\bvrije\b/i,
+      /\bweer\b/i,
+      /\bvolgende\b/i,
+    ]) {
+      expect(t("kalender.weigeringEerstTerugdraaienVervallen")).not.toMatch(kwantor);
+    }
+
+    const paneelTekst = async (status: "Geweigerd", vervallen: boolean) => {
+      stubZoom(
+        maakJaarplan([
+          maakPlaatsing({
+            id: vervallen ? "pv1" : "pv2",
+            themaNaam: "Verkeer",
+            // **The non-stale start must be a REAL block start of `rooster`** (`2026-09-01` or `2026-11-09`).
+            // It was `2026-10-02`, which is neither, so `vervallenPlaatsingen`'s client fallback
+            // (`!starts.has(blokStart)`) swept the "card that really is in a period" into the Te herzien notice,
+            // and the assertion below then pinned that a card in NO period is promised "een andere themaperiode":
+            // the very presupposition this story was reopened over. The fixture was also self-inconsistent, with
+            // `blokOrdinaal: 2` beside block 1's end date. Found by the antagonist, 2026-08-04.
+            blokStart: vervallen ? "2026-12-01" : "2026-09-01",
+            blokEind: vervallen ? null : "2026-11-01",
+            blokOrdinaal: vervallen ? null : 1,
+            isVervallen: vervallen,
+            status,
+            aiMotivatie: null,
+          }),
+        ]),
+      );
+      const { unmount } = renderKalender();
+      const kaart = () => screen.getByText("Verkeer").closest("article") as HTMLElement;
+      await screen.findByText("Verkeer");
+      fireEvent.click(
+        within(kaart()).getByRole("button", {
+          name: t("kalender.aanpassenLabel", { thema: "Verkeer" }),
+        }),
+      );
+      const tekst = kaart().textContent ?? "";
+      // Pins what each fixture MEANS, rather than trusting a date to stay in step with a stub 2000 lines away.
+      // `c27f31f`, the commit that first added this test, set a `blokStart` matching no block, so the "card in a
+      // period" was in the Te herzien notice and nobody noticed for a full round, after which the fix was lost for a
+      // second (see the worklog): three mutations all aimed at the
+      // code and none at the setup. (Named by commit rather than "round 1", because this file uses that phrase for
+      // the AUDIT rounds while the worklog uses it for the FIX rounds, and the two do not line up.)
+      const herzien = screen.queryByRole("region", { name: t("kalender.herzienTitelEnkelvoud") });
+      const inHerzien = herzien !== null && herzien.contains(kaart());
+      return { tekst, inHerzien, unmount };
+    };
+
+    // The stale card: it says it is in no period, so it may not offer "another" one.
+    const stale = await paneelTekst("Geweigerd", true);
+    expect(stale.inHerzien).toBe(true);
+    expect(stale.tekst).toContain("geen enkele periode");
+    expect(stale.tekst).not.toMatch(presuppositie);
+    stale.unmount();
+
+    // The card that really is in a period keeps the more informative sentence. Repairing the correct half to fix
+    // the broken one is the mistake this project has recorded on itself; this assertion is what forbids it.
+    const inPeriode = await paneelTekst("Geweigerd", false);
+    expect(inPeriode.inHerzien).toBe(false);
+    expect(inPeriode.tekst).toMatch(presuppositie);
+    expect(inPeriode.tekst).not.toContain("geen enkele periode");
+    inPeriode.unmount();
   });
 
   /**
