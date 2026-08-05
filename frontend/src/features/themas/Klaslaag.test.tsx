@@ -1069,6 +1069,223 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     expect(new Set(namen).size).toBe(namen.length);
   });
 
+  it("is een echte uitklapknop: hij meldt de paneelstaat, wijst ernaar en klapt ook weer in", async () => {
+    /*
+      Round 4's MAJOR. The trigger used to open only, while `aria-expanded` reported `true`, so a screen reader
+      heard "uitgevouwen, knop" and pressing it called `setVerplaatsen(true)` on a state already `true`: no
+      collapse, no focus move, nothing. That is the surviving half of round 2's MAJOR 1 for exactly the users who
+      cannot see that the panel is open, and no axe rule catches a lying `aria-expanded`.
+
+      Closing from the trigger also has to do the panel's own cleanup, or round 2's MINOR 3 comes back by a new
+      door: a stale failure greeting the next open, with a destination still preselected.
+    */
+    const { sectie } = await openVerplaatspaneel({ verplaatsWeigering: "Dit subthema bestaat niet meer." });
+    const trigger = () =>
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+      });
+
+    // It says the panel is open, and it says which panel.
+    expect(trigger()).toHaveAttribute("aria-expanded", "true");
+    const paneelId = trigger().getAttribute("aria-controls");
+    expect(paneelId).toBeTruthy();
+    expect(document.getElementById(paneelId!)).toBeInTheDocument();
+
+    // Leave a failure and a choice behind, so the cleanup has something to clean.
+    fireEvent.change(
+      within(sectie).getByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ),
+      { target: { value: "cccccccc-0000-0000-0000-000000000002" } },
+    );
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+    expect(await screen.findByText(t("themabeheer.activiteitVerplaatsMislukt"))).toBeInTheDocument();
+
+    // Pressing the trigger while open collapses it, which is what it had been announcing all along.
+    fireEvent.click(within(await klassectie()).getByRole("button", {
+      name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+    }));
+    const dicht = await klassectie();
+    const naSluiten = within(dicht).getByRole("button", {
+      name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+    });
+    expect(naSluiten).toHaveAttribute("aria-expanded", "false");
+    expect(document.getElementById(paneelId!)).not.toBeInTheDocument();
+
+    // And it reset on the way out: no stale reason, no preselected destination behind an enabled submit.
+    fireEvent.click(naSluiten);
+    const heropend = await klassectie();
+    expect(screen.queryByText(t("themabeheer.activiteitVerplaatsMislukt"))).not.toBeInTheDocument();
+    expect(
+      (within(heropend).getByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ) as HTMLSelectElement).value,
+    ).toBe("");
+    expect(
+      (within(heropend).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("biedt bij een laadfout een knop die de lijst echt opnieuw ophaalt", async () => {
+    /*
+      Round 4's MINOR 1. Round 3 asked the list-error state to name a remedy; the first attempt put "Probeer het
+      opnieuw." in the copy with nothing to press, which is the half-measure `Themakiezer`'s own fix round
+      rejected. Closing and reopening this panel issues no request: the query is section-scoped, stays mounted
+      with the row, and has exhausted its retries. So the button is the remedy, and the sentence states the fact.
+    */
+    const { fake, sectie } = await openVerplaatspaneel({ bestemmingenFaalt: true });
+
+    expect(within(sectie).getByText(t("themabeheer.activiteitVerplaatsLijstFout"))).toBeInTheDocument();
+    const voor = fake.urls.filter((url) => url.includes("/api/subthemas/voor-klas/")).length;
+    expect(voor).toBeGreaterThan(0);
+
+    fireEvent.click(
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsOpnieuwAria") }),
+    );
+
+    await waitFor(() =>
+      expect(fake.urls.filter((url) => url.includes("/api/subthemas/voor-klas/")).length).toBeGreaterThan(voor),
+    );
+  });
+
+  it("zet nooit twee tegenstrijdige meldingen tegelijk boven de lijst", async () => {
+    /*
+      Round 4's MINOR 3. `Klaslaag`'s comment claims the two notices are "mutually exclusive by construction,
+      since each setter clears the other", and the construction is there while nothing observed it: removing
+      either clear left the suite green. The state is reachable, and it prints an assertive "Deze activiteit
+      bestaat niet meer" directly above a polite "staat nu bij Drijven en zinken", which is the contradiction
+      class this story has now fixed four times in four shapes.
+
+      `subthemaAlWeg` makes the delete answer 404, which is the only thing that raises `alWeg`: a *successful*
+      delete reports nothing upward, which is E1-20.
+    */
+    const { sectie } = await openVerplaatspaneel({ subthemaAlWeg: true });
+
+    // First a successful move, which raises the confirmation.
+    fireEvent.change(
+      within(sectie).getByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ),
+      { target: { value: "cccccccc-0000-0000-0000-000000000002" } },
+    );
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+    const bevestiging = t("themabeheer.activiteitVerplaatstNaar", {
+      activiteit: "Bladkroon maken",
+      subthema: "Drijven en zinken",
+      thema: "Water",
+    });
+    expect(await screen.findByText(bevestiging)).toBeInTheDocument();
+
+    // Then a colleague's delete of the subthema, which raises the other notice.
+    const metSubthema = await klassectie();
+    fireEvent.click(
+      within(metSubthema).getByRole("button", {
+        name: t("themabeheer.subthemaVerwijderAria", { naam: "Bladeren" }),
+      }),
+    );
+    fireEvent.click(
+      within(await klassectie()).getByRole("button", { name: t("themabeheer.subthemaVerwijderBevestig") }),
+    );
+
+    // Whichever arrives second, the other is gone: they cannot both stand.
+    await waitFor(() => expect(screen.getByText(t("themabeheer.subthemaAlWeg"))).toBeInTheDocument());
+    expect(screen.queryByText(bevestiging)).not.toBeInTheDocument();
+
+  });
+
+  it("wist de verwijdermelding zodra een verhuizing lukt, de andere richting van dezelfde uitsluiting", async () => {
+    /*
+      The exclusion is a claim about a **pair**, so it needs both directions. A first version asserted only
+      move-then-delete, and removing `setAlWeg(null)` from `onVerplaatst` then left the suite green.
+
+      It has to be its own test rather than two more steps in the previous one: a successful cross-thema move
+      takes the activiteit off this screen, so there is nothing left to move a second time. The order here is
+      therefore 404-delete first, move second.
+    */
+    /*
+      The notice is raised by a move that 404s, not by a subthema delete: `subthemaAlWeg` removes the subthema
+      from the store, so after that sentence there is no activiteit left on this screen to move. This fixture
+      404s the first attempt only and leaves the row in place.
+    */
+    const { sectie } = await openVerplaatspaneel({ verplaatsActiviteitAlWegEenmaal: true });
+
+    const kies = (huidig: HTMLElement) =>
+      fireEvent.change(
+        within(huidig).getByLabelText(
+          t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+        ),
+        { target: { value: "cccccccc-0000-0000-0000-000000000002" } },
+      );
+    const verstuur = (huidig: HTMLElement) =>
+      fireEvent.click(
+        within(huidig).getByRole("button", {
+          name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+        }),
+      );
+
+    kies(sectie);
+    verstuur(sectie);
+    expect(await screen.findByText(t("themabeheer.activiteitAlWeg"))).toBeInTheDocument();
+
+    const naFout = await klassectie();
+    fireEvent.click(
+      await within(naFout).findByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+    const opnieuw = await klassectie();
+    kies(opnieuw);
+    verstuur(opnieuw);
+
+    expect(
+      await screen.findByText(
+        t("themabeheer.activiteitVerplaatstNaar", {
+          activiteit: "Bladkroon maken",
+          subthema: "Drijven en zinken",
+          thema: "Water",
+        }),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(t("themabeheer.activiteitAlWeg"))).not.toBeInTheDocument();
+  });
+
+  it("houdt de verplaatsknop staan wanneer het paneel open is en er niets meer te kiezen valt", async () => {
+    // Round 4's MINOR 5: `|| verplaatsen` in `kanVerplaatsen` was unasserted. The trigger is now also the
+    // panel's toggle, so losing it in this state would take a way out with it.
+    const { sectie } = await openVerplaatspaneel({ verplaatsBestemmingVerdwijnt: true });
+
+    fireEvent.change(
+      within(sectie).getByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ),
+      { target: { value: "cccccccc-0000-0000-0000-000000000002" } },
+    );
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+    expect(
+      await screen.findByText(t("themabeheer.activiteitVerplaatsGeenBestemming")),
+    ).toBeInTheDocument();
+
+    expect(
+      within(await klassectie()).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+      }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("heeft geen axe-schendingen met het verplaatspaneel open", async () => {
     // Every other panel on these screens got an axe pass in the state it renders in; this one introduces the
     // first select/optgroup on the card and a new heading level (antagonist round 1).

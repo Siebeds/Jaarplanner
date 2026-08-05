@@ -402,8 +402,12 @@ function Activiteitregel({
     already shows why. While the list is loading, or if it failed, the control stays and the panel explains
     itself, because hiding on those two states would remove a capability that does exist.
 
-    `|| verplaatsen` keeps the trigger in place once the panel is open. That is E3-09's lesson applied: a control
-    that vanishes from under the cursor that just used it leaves the teacher holding a state they cannot undo.
+    `|| verplaatsen` keeps the trigger in place once the panel is open. **Its original reason has expired and the
+    term is kept on a narrower one** (round 4, MINOR 5): it used to cite E3-09's "a control that vanishes leaves
+    the teacher holding a state they cannot undo", and since round 2 made the panel's cancel unconditional the
+    state is always undoable from inside. What still holds is the plainer half: controls should not disappear
+    from under the cursor that just pressed them, and since round 4 this trigger is also the panel's toggle, so
+    removing it would take a way out with it.
   */
   const kanVerplaatsen =
     verplaatsen || bestemmingen.isPending || bestemmingen.isError || kandidaten.length > 0;
@@ -464,6 +468,19 @@ function Activiteitregel({
       return groepen.set(bestemming.themaId, groep);
     }, new Map<string, { themaId: string; themaNaam: string; items: typeof kandidaten }>())
     .values()];
+
+  /**
+   * The one way the panel closes, shared by the trigger and by the cancel (round 4, MAJOR).
+   *
+   * It exists because making the trigger a real toggle would otherwise have reintroduced round 2's MINOR 3 by a
+   * new door: closing from the trigger without resetting leaves the next open showing the reason a *previous*
+   * attempt failed, and leaves a stale destination preselected behind an enabled submit.
+   */
+  function sluitVerplaatspaneel() {
+    setVerplaatsen(false);
+    setGekozenBestemming("");
+    verplaats.reset();
+  }
 
   function verplaatsNu() {
     const doel = kandidaten.find((bestemming) => bestemming.id === geldigeKeuze);
@@ -556,8 +573,22 @@ function Activiteitregel({
                 So it follows the delete flow on this same card instead: a stable trigger, an affirmative submit
                 that names what it does, and one cancel inside the panel.
               */
-              onClick={() => setVerplaatsen(true)}
+              /*
+                **A real toggle, with `aria-controls`, because it announces itself as a disclosure** (round 4,
+                MAJOR). It used to open only, while `aria-expanded` reported `true` and pressing it called
+                `setVerplaatsen(true)` on a state already `true`: a screen reader heard "uitgevouwen, knop" and
+                activating it did nothing at all. That is the surviving half of round 2's MAJOR 1 ("an enabled
+                control with no observable effect"), for exactly the users who cannot see that the panel is open.
+
+                This repo had already ruled on the shape twice and this was a third: `Themakiezer` **removes**
+                `aria-expanded` because its trigger is replaced by the panel, while `Themakaart` and
+                `Generatieparametersformulier` pair it with `aria-controls` and a toggling handler. This trigger
+                persists beside its panel, so it is the second shape. The visible label stays "Verplaatsen" in
+                both states, which is what keeps round 2's duplicate-name defect from coming back.
+              */
+              onClick={() => (verplaatsen ? sluitVerplaatspaneel() : setVerplaatsen(true))}
               aria-expanded={verplaatsen}
+              aria-controls={`verplaatspaneel-${activiteit.id}`}
               // Named per activiteit for the same reason as its three neighbours.
               aria-label={t("themabeheer.activiteitVerplaatsAria", { naam: activiteit.naam })}
               className="rounded-md border border-input px-2 py-0.5 text-xs font-semibold text-ink hover:bg-paper-diep"
@@ -661,7 +692,7 @@ function Activiteitregel({
       ) : null}
 
       {verplaatsen ? (
-        <div className="mt-2 rounded-md border border-petrol/40 p-2.5">
+        <div id={`verplaatspaneel-${activiteit.id}`} className="mt-2 rounded-md border border-petrol/40 p-2.5">
           {/* Named per activiteit, because `verplaatsen` is per-row state: two rows can have a panel open at
               once, and two identical headings plus two selects called "Nieuw subthema" is the duplicate-name
               class this row already carries three times (antagonist round 1). */}
@@ -700,10 +731,14 @@ function Activiteitregel({
             the failure notice and the teacher was told what the state is without being told that their move did
             not happen. What happened first, then what the state is.
 
-            A 404 is still said by the section, which outlives this row; everything else is said here, where the
-            teacher can act on it.
+            **No 404 branch, and that is a deletion rather than an omission** (round 4, MINOR 4). A 404 means the
+            activiteit is gone, and `verplaatsNu`'s `onError` closes the panel in the same batch, so this block is
+            already unmounted before it could render one. Removing the guard changed no test, including the
+            dedicated 404 test, which is proof it rendered nothing rather than proof it was doing the work. The
+            section says that case, because it outlives the row. Insurance that cannot fire is the shape this
+            story already deleted once at the trigger, and `key={alWeg ?? "nieuw"}` before that.
           */}
-          {verplaats.error instanceof ApiError && verplaats.error.status === 404 ? null : verplaats.isError ? (
+          {verplaats.isError ? (
             <div role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
               <p>{t("themabeheer.activiteitVerplaatsMislukt")}</p>
               {verplaatsMelding ? (
@@ -717,9 +752,28 @@ function Activiteitregel({
           {bestemmingen.isPending ? (
             <p className="mt-2 text-sm text-ink-zacht">{t("themabeheer.activiteitVerplaatsLaden")}</p>
           ) : bestemmingen.isError ? (
-            <p role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
-              {t("themabeheer.activiteitVerplaatsLijstFout")}
-            </p>
+            /*
+              **The sentence states the fact and a control offers the remedy** (round 4, MINOR 1). Round 3 asked
+              for a remedy and the first attempt added *"Probeer het opnieuw."* to the copy with nothing to press,
+              which is precisely the half-measure `Themakiezer`'s own fix round rejected: closing and reopening
+              this panel issues no request at all, because the query is section-scoped, stays mounted with the row
+              and has already exhausted its retries. So a teacher's only routes were a window refocus or a reload,
+              and the sentence named neither.
+            */
+            <div role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
+              <p className="max-w-prose">{t("themabeheer.activiteitVerplaatsLijstFout")}</p>
+              <button
+                type="button"
+                onClick={() => void bestemmingen.refetch()}
+                disabled={bestemmingen.isFetching}
+                aria-label={t("themabeheer.activiteitVerplaatsOpnieuwAria")}
+                className="mt-2 rounded-md border border-input px-2.5 py-1 text-xs font-semibold text-ink hover:bg-paper-diep disabled:opacity-60"
+              >
+                {bestemmingen.isFetching
+                  ? t("themabeheer.activiteitVerplaatsOpnieuwBezig")
+                  : t("themabeheer.activiteitVerplaatsOpnieuw")}
+              </button>
+            </div>
           ) : kandidaten.length === 0 ? (
             /*
               **The empty case is a sentence, not an empty picker** (antagonist round 1, MAJOR 2). The panel can
@@ -805,6 +859,8 @@ function Activiteitregel({
                   onClick={() => {
                     setVerplaatsen(false);
                     setGekozenBestemming("");
+                    // Kept inline rather than calling sluitVerplaatspaneel(), so the comment below stays attached
+                    // to the reset it explains; the trigger's close routine does the same three things.
                     /*
                       **The reset belongs here and nowhere else.** The mutation lives on the row, not on the
                       panel, so without it the next open greets a teacher with the reason a *previous* attempt

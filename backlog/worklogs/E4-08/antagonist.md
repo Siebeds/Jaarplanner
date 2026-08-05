@@ -63,7 +63,45 @@ scenario (source leeftijd 8, destination 9): the leeftijd sentence appears where
 mounted and empty before anything happens, and in the emptied state the cancel is present, visible and closes
 the panel.
 
-## Round 3
+## Round 3, on `38a64f8`: **VIOLATIONS FOUND** — 1 MAJOR, 6 MINOR, 2 QUESTION
 
-**Owed.** Two rounds have now each found defects introduced by the previous round's fixes, so on this story that
-is a measured expectation rather than a formality.
+It verified round 2's ten findings against the code and confirmed **both round-2 MAJOR fixes are correct and
+bite under mutation**. The MAJOR it found is in round 2's *third* fix, the one round 2 called its most useful.
+
+| # | Grade | Finding | Outcome |
+| --- | --- | --- | --- |
+| 1 | MAJOR | **A mutation check passed because the test's own setup had already done the thing under test.** The notice-clearing test clicked *Nieuw subthema* first, and that handler already clears notices, so the assertion never observed the `onSuccess` site round 1's MAJOR-1 fix installed. Deleting either site alone left 33/33 green | **Fixed.** A test that opens the create form *before* the notice exists, so `onSuccess` is the only thing that can remove the sentence. Mutation bites, and it fails exactly one test |
+| 2 | MINOR | The "elke toestand" property test drove **three of four** panel states, and the missing loading state hid a live mutation: a submit rendered with no picker | **Fixed.** Four states, and a second property (`Boolean(submit) === Boolean(kiezer)`). A new `bestemmingenHangt` fixture reaches the loading state |
+| 3 | MINOR | The gates block was relabelled to the new commit and its figures were not (459 where it was 466; "twice" where three passes had run) | **Fixed.** Round 2's MINOR 8 repaired the label and left the payload |
+| 4 | MINOR | A comment quoted, in the present tense, the remedy half of a server message this story had deleted | **Fixed** |
+| 5 | MINOR | The list-error state is the one of four that names no remedy, while the repo's sibling for the identical case ends *"Probeer het opnieuw."* | **Fixed**, then **fixed again** in round 4: the sentence alone was the half-measure `Themakiezer` had already rejected. See round 4 MINOR 1 |
+| 6 | MINOR | `kanLeeftijdWisselen` reads `kandidaten`, and TanStack's `isRefetchError` keeps `data` while `isError` is true, so the disclosure could print above *"er is nu geen bestemming om uit te kiezen"* | **Fixed**: gated on `heeftKeuzelijst`, with a fixture that serves the list once and fails afterwards. Mutation bites |
+| 7 | MINOR | Two factual errors in the record: "twelve keys" where there are seventeen, and E1-20's "exactly one event" where there are two | **Fixed.** The second was load-bearing: the forgotten site is what made the MAJOR possible |
+| 8-9 | QUESTION | Authorization on the new endpoints; Art. XIV graadklassen now carrying shipped behaviour | **Routed**, both to their epics, neither held against this story |
+
+## Round 4, on `9dbe204`: **VIOLATIONS FOUND** — 1 MAJOR, 6 MINOR, 1 QUESTION
+
+Round 3's three fixes verified correct and biting. The MAJOR is the assistive-technology half of round 2's
+MAJOR 1, which had stood through two further rounds because every test and every browser pass was looking at
+pixels.
+
+| # | Grade | Finding | Outcome |
+| --- | --- | --- | --- |
+| 1 | MAJOR | **The trigger announced `aria-expanded="true"` and did nothing when pressed in that state.** A screen reader heard *"uitgevouwen, knop"*; activating it called `setVerplaatsen(true)` on a state already `true`. No `aria-controls` either, so the announced disclosure could not be reached. `axe` has no rule for a lying `aria-expanded`, and the panel's axe run passed while it was live | **Fixed** by adopting the repo's existing shape: `aria-controls` plus a real toggle, sharing one close routine with the cancel so closing from the trigger also resets. Three mutations bite (open-only, no `aria-controls`, close-without-cleanup) |
+| 2 | MINOR | `"Probeer het opnieuw."* with **no retry control**, which is exactly the half-measure `Themakiezer`'s own fix round rejected. Worse here: closing and reopening issues no request, because the query is section-scoped and its retries are spent | **Fixed**: the sentence states the fact and a button does the refetch, with an in-flight label. Mutation bites |
+| 3 | MINOR | Three of the four notice-clearing behaviours survived mutation; only `onSuccess` was pinned. The comment claiming the two notices are mutually exclusive was unobserved | **Fixed** for the pair, in **both** directions, which needed two tests plus a one-shot-404 fixture: a successful cross-thema move takes the row off the screen, so there is nothing left to move a second time. Both mutations bite. The trigger's own clear is still unpinned and now says so |
+| 4 | MINOR | The panel's 404 guard is unreachable: `onError` closes the panel in the same batch | **Deleted**, per this story's own rule about insurance that cannot fire |
+| 5 | MINOR | `\|\| verplaatsen` survived mutation, and the E3-09 reason printed beside it had expired once round 2 made the cancel unconditional | **Fixed**: reworded to the reason that still holds, and asserted. Mutation bites |
+| 6 | MINOR | Round 3's request counter was inserted between a doc comment and the variable it documents | **Fixed** |
+| 7 | MINOR | No browser pass since fix round 3, which changed rendered copy and a render condition; and the list-error paragraph was the only one in the panel without `max-w-prose` | **Fixed**: fourth browser pass, and the cap added. Reaching the state needed `Network.setBlockedURLs` on a cold document, because the app's own QueryClient retries with backoff and a warm cache hides the state entirely |
+| 8 | QUESTION | Round 3's own findings were not yet in this file, so its two QUESTIONs were invisible | **Fixed**: this file now carries all four rounds |
+
+**Filed rather than fixed:** **E7-20** — `aria-expanded` on disclosure triggers is answered three different ways
+in three files, each defended in its own comment, and no gate can catch a wrong call. Round 4 found the third
+answer *as a MAJOR*, which is the argument for writing the rule down somewhere a builder meets it.
+
+## Round 5
+
+**Owed on the same reasoning as rounds 3 and 4, but the surface is now small**: fix round 4 is one render
+condition, one deleted branch, one new control and six comment or record edits. Four rounds have found
+1 MAJOR each in the last two, both of them in the *fixes* rather than in the original build.

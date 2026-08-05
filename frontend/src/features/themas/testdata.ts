@@ -233,6 +233,15 @@ export interface ThemaFakeOpties {
    * this option cannot stand for both (see `verplaatsActiviteit`).
    */
   verplaatsActiviteitAlWeg?: boolean;
+  /**
+   * Answer the **first** move with a 404 and let every later one through (E4-08 round 4).
+   *
+   * It exists for one property that needs two notices in sequence: a 404 raises "iemand anders heeft ze
+   * verwijderd", and a later *successful* move has to clear that sentence while raising its own. `subthemaAlWeg`
+   * cannot stand in, because it removes the subthema from the store, so after that notice there is no activiteit
+   * left on this screen to move.
+   */
+  verplaatsActiviteitAlWegEenmaal?: boolean;
   /** Answer a move with a 400 carrying this `detail`, e.g. a destination a colleague deleted meanwhile. */
   verplaatsWeigering?: string;
   /**
@@ -285,7 +294,6 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
    * the screen would render the same rows before and after a write. Here a create only becomes visible if the
    * component really refetches, which is the behaviour worth pinning.
    */
-  let bestemmingenGeleverd = 0;
   const subthemaOpslag: Subthema[] = opties.geenBestemming
     ? [structuredClone(SUBTHEMA_L3)]
     : [
@@ -293,6 +301,12 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
         structuredClone(SUBTHEMA_L3_WATER),
         ...(opties.extraBestemming ? [structuredClone(SUBTHEMA_L3_DERDE)] : []),
       ];
+
+  /** How many times the destinations read has been answered, for `bestemmingenFaaltNaEerste`. */
+  let bestemmingenGeleverd = 0;
+
+  /** How many move attempts have arrived, for `verplaatsActiviteitAlWegEenmaal`. */
+  let verplaatspogingen = 0;
   let teller = 0;
 
   const fetchFake = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -507,6 +521,12 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
     const verplaats = url.pathname.match(/^\/api\/activiteiten\/([^/]+)\/subthema$/);
     if (verplaats && methode === "PUT") {
       if (opties.verplaatsActiviteitAlWeg) {
+        return json({ title: "Niet gevonden", detail: "Deze activiteit bestaat niet meer.", status: 404 }, 404);
+      }
+
+      verplaatspogingen += 1;
+      if (opties.verplaatsActiviteitAlWegEenmaal && verplaatspogingen === 1) {
+        // Deliberately does NOT remove the activiteit: the row has to survive for the second attempt.
         return json({ title: "Niet gevonden", detail: "Deze activiteit bestaat niet meer.", status: 404 }, 404);
       }
 

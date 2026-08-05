@@ -3,8 +3,8 @@
 **Branch:** `story/E4-08-activiteit-verplaatsen`, off `origin/main` `3e646da`
 **Commits:** `950b009` (server), `2c7ea32` (screen), `777f9e6` (browser pass), `afde19d` + `35e2dc1` (fix
 round 1), `1cf91d6` (record), `c697d4f` (two owner rulings), `ce1cadc` (fix round 2)
-**Status:** `[~]`. Two antagonist rounds have run and each found defects introduced by the previous round's
-fixes, so round 3 is owed rather than optional.
+**Status:** `[~]`. **Four** antagonist rounds have run. Rounds 2, 3 and 4 each found defects introduced by the
+previous round's fixes, so a round 5 is owed on the same reasoning, though fix round 4's surface is small.
 
 ## The ruling, first, because the story forbade guessing it
 
@@ -51,7 +51,7 @@ PostgreSQL, and stated in the panel where the action is.
    failure rather than only on a 404, and the chosen destination is derived from the list rather than trusted
    from state.
 
-## Two antagonist rounds, and both found the next defect inside the previous fix
+## Four antagonist rounds, and three of them found the next defect inside the previous fix
 
 See [`antagonist.md`](antagonist.md) for all twenty findings and what happened to each.
 
@@ -68,6 +68,16 @@ The sharpest MINOR is worth more than either MAJOR: **the `geldigeKeuze` fix was
 fixture**, because the refused destination was the klas's only candidate, so the picker vanished and the submit
 was absent whatever the component computed. Reverting the fix left all 459 tests green.
 
+**Round 3** (1 MAJOR, 6 MINOR, 2 QUESTION) confirmed round 2's two MAJOR fixes correct and biting, then found
+its MAJOR in round 2's *third* fix: **a mutation check that passed because the test's own setup had already done
+the thing under test.** The notice-clearing test clicked *Nieuw subthema* first, and that handler already clears
+notices, so it never observed the `onSuccess` site the fix installed.
+
+**Round 4** (1 MAJOR, 6 MINOR, 1 QUESTION) found the **assistive-technology half of round 2's MAJOR 1**, which
+had stood through two further rounds because every test and every browser pass looks at pixels: the trigger
+announced `aria-expanded="true"` and did nothing when pressed in that state. `axe` has no rule for it and the
+panel's axe run passed the whole time. Filed **E7-20**, because three files answer that question three ways.
+
 ## The guards needed three rewrites, and that is the transferable part
 
 - A duplicate-name guard comparing **accessible** names passes on two visibly identical buttons, because an
@@ -79,28 +89,32 @@ was absent whatever the component computed. Reverting the fix left all 459 tests
 - A `verplaats.reset()` on the trigger was **removed** after a mutation check showed it changed no test and
   the close paths showed it cannot fire.
 
-**Fifteen mutation checks across the story; five only began biting after being rewritten.** The last of them
-took three attempts: a Tailwind `hidden` class is invisible to jsdom, which loads no CSS, and then a
+**Twenty-five mutation checks across the story; seven only began biting after being rewritten.** One took three
+attempts: a Tailwind `hidden` class is invisible to jsdom, which loads no CSS, and then a
 first-occurrence replace hit the *delete* panel's identical class list, failing two unrelated tests while
 leaving the code under test untouched. A mutation that fails the wrong test is as uninformative as one that
 fails none.
 
-## Gates on `ce1cadc`
+## Gates on the final commit
 
-575 unit + 201 integration against real PostgreSQL, 466 frontend / 20 files, 0 skipped. `dotnet format`,
-eslint, `tsc`, `pnpm build` clean. Round 2's auditor re-ran all four itself on `c697d4f` rather than taking
-them on trust, and every figure reproduced.
+575 unit + 201 integration against real PostgreSQL, 471 frontend / 20 files, 0 skipped. `dotnet format`,
+eslint, `tsc`, `pnpm build` clean. **No backend file has changed since `38a64f8`.** Rounds 2, 3 and 4 each
+re-ran all four gates themselves rather than taking them on trust, and every figure reproduced except the story
+entry's own stale one, which was round 3's MINOR 3.
 
-Browser passes at 1440px and exactly 390px against a live API and real PostgreSQL, run **three times** (after
-the build, after fix round 1 and after fix round 2), including the colleague-deletes-the-destination race and,
-in the third, a graadklas-shaped scenario with the destination at another leeftijd. Measured: submit **8,90:1**,
+Browser passes at 1440px and exactly 390px against a live API and real PostgreSQL, run **four times**, one after
+the build and one after each fix round. They covered the colleague-deletes-the-destination race, a
+graadklas-shaped scenario, and finally the disclosure semantics plus the list-error state. That last state needed
+`Network.setBlockedURLs` on a **cold** document: the app's own QueryClient retries with backoff, and a warm cache
+hides the state entirely, which is why two earlier attempts measured nothing. Measured: submit **8,90:1**,
 empty-state sentence **5,80:1**, disabled submit **2,16:1** (inactive, outside SC 1.4.3, recorded because it
 is the state the panel opens in). The only elements past 390px are the nav's own `overflow-x:auto` scroller;
 `document.documentElement.scrollWidth` reads 390, which is why that probe is the wrong one.
 
 ## Owed
 
-**Round 3.** Both earlier rounds found defects in the previous round's fixes, so this is an expectation.
+**Round 5**, on the same reasoning, though fix round 4 is one render condition, one deleted branch, one new
+control and six comment or record edits.
 
 *The two questions round 1 raised are answered:* the owner ruled on 2026-08-05 that the **leeftijd** crossing is
 permitted and must be disclosed in the panel, and that the **subthema re-scope** route stays as it is and is
@@ -114,3 +128,5 @@ filed, which it is, as **E1-19**.
   doelkoppeling across the class boundary.
 - **E1-20** — a notice on the klaslaag survives a later successful write that has nothing to do with it, which
   is the case E1-14's round 4 described in a comment and never fixed.
+- **E7-20** — `aria-expanded` on disclosure triggers is answered three different ways in three files, and no
+  gate can catch a wrong call. Round 4 found the third answer as a MAJOR.
