@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { JAARFASE_PARAM } from "../../app/routes";
 import { useSelectie } from "../../app/useSelectie";
 import { t } from "../../i18n";
 import { Dekkinggroep } from "./Dekkinggroep";
@@ -12,8 +13,15 @@ import { DEKKINGSBEREIKEN, type Dekkingsbereik } from "./types";
 /** The scope's query-string parameter, so a shared link opens the same denominator (ADR-0021). */
 export const BEREIK_PARAM = "bereik";
 
-/** The narrowed jaar/fase, in the URL for the same reason: a figure a directie is asked to check must be linkable. */
-export const JAARFASE_PARAM = "jaarFase";
+/**
+ * The narrowed jaar/fase, in the URL for the same reason as the scope: a figure a directie is asked to check must be
+ * linkable.
+ *
+ * **Defined in `app/routes.ts` and re-exported here** (E3-09, antagonist round 2). The kalender's knelpunt line carries
+ * this param in its link, and importing it out of this page module pulled the whole page subtree into the jaarplan
+ * feature's graph. Two literals would have been worse: a route contract shared by two features belongs to neither.
+ */
+export { JAARFASE_PARAM };
 
 /**
  * The dekkingsoverzicht: which leerplandoelen this class's jaarplan covers and which it does not

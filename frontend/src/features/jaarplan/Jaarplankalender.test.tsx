@@ -504,6 +504,48 @@ describe("Jaarplankalender", () => {
     expect(melding).not.toHaveTextContent("geen bruikbaar antwoord");
   });
 
+  /**
+   * The spreiding report in the **singular**, which is the plural guard's first real catch (antagonist round 2).
+   *
+   * `kalender.spreidingBlokken` read *"{gebruikt} van {totaal} themaperiodes gebruikt"* and had no singular, so a year
+   * deriving one themaperiode printed *"1 van 1 themaperiodes gebruikt"*. It is pre-existing — E3-02 authored it — and it
+   * escaped `catalogus.test.ts` for as long as that guard found counts by placeholder NAME. The fix round added the
+   * singular and rendered it through `tAantal`; **this test is what stops the call site regressing**, because the guard
+   * only proves a singular EXISTS, never that anything calls it, so reverting to `t(...)` would leave the suite green.
+   */
+  it("uses the singular when the year derives a single themaperiode", async () => {
+    const resultaat: Generatieresultaat = {
+      isGeslaagd: true,
+      fout: null,
+      jaarplan: null,
+      aantalNieuw: 1,
+      aantalBehouden: 0,
+      aantalVervangen: 0,
+      onbekendeThemas: [],
+      onbekendeBlokken: [],
+      duplicaten: [],
+      afgewezen: [],
+      parameters: null,
+      spreiding: {
+        aantalBlokken: 1,
+        aantalGebruikteBlokken: 1,
+        blokken: [],
+        legeBlokOrdinalen: [],
+        overbelasteBlokOrdinalen: [],
+        minsteDoelenInEenBlok: 2,
+        meesteDoelenInEenBlok: 2,
+      },
+    };
+    stubFetch(maakJaarplan([]), resultaat);
+    renderKalender();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+
+    expect(await screen.findByText("1 van 1 themaperiode gebruikt.")).toBeInTheDocument();
+    // And the ungrammatical form is not on screen.
+    expect(screen.queryByText(/themaperiodes gebruikt/)).toBeNull();
+  });
+
   it("has no axe violations on a POPULATED plan", async () => {
     // Populated deliberately. An earlier revision ran axe over `maakJaarplan([])` — an empty ribbon with
     // no card, no badge, no lock and no alert, i.e. none of the components most likely to carry a

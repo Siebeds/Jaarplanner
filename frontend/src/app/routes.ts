@@ -59,6 +59,16 @@ export const JAARPLAN_PAD = "/jaarplan";
  */
 export const DEKKING_PAD = "/dekking";
 
+/**
+ * The search param that narrows the dekkingsoverzicht to one jaar/fase.
+ *
+ * Here rather than in `features/dekking/DekkingPagina`, because the kalender's knelpunt link carries it (E3-09) and
+ * importing it from a page module pulled that page and its whole subtree into the jaarplan feature's module graph — with
+ * `Dekkingsamenvatting` already importing `JAARPLAN_PAD`, the two features were one import from a cycle. Same reasoning
+ * that put `DEKKING_PAD` here: a route contract shared by two features belongs to neither of them.
+ */
+export const JAARFASE_PARAM = "jaarFase";
+
 export const NAVIGATIE: readonly Navigatiebestemming[] = [
   {
     pad: "/doelen",

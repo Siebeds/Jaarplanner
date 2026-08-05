@@ -205,8 +205,13 @@ export function Periodekolom({
                 counts and only one of them can reach 1 in a reachable state: `beschikbareWeken` is 1 on the short block
                 a long mid-year closure leaves behind, which this story's own `wekenInBlok(7) === 1` test documents, so
                 it printed *"in 1 weken"*. `benodigdeWeken` reaches 1 only when `beschikbareWeken` is 0, which needs a
-                block of no open days at all, so it is left in the plural form rather than given a fourth key for a
-                state nothing can produce. */}
+                block of no open days at all, so it is left in the plural form rather than given a fourth key.
+                **Not "a state nothing can produce"**, which is what this comment claimed until antagonist round 2 checked
+                the derivation: `Lesperiodes()` splits only on period-breaking closures and `VerdeelGelijkmatig` always
+                emits at least one block per stretch, so a one-day stretch between two vakanties covered by a vrije dag
+                *would* yield a block of zero open days and print *"1 weken thema's in 0 weken"*. What is true is that
+                nothing in the product can author such a schooljaar until **E6-03**, which is how the sibling zero-block
+                cases on this screen are already phrased. */}
             {tAantal(belasting.beschikbareWeken, "kalender.teVolEenWeek", "kalender.teVol", {
               nodig: belasting.benodigdeWeken,
               beschikbaar: belasting.beschikbareWeken,

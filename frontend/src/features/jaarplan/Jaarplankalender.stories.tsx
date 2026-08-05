@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Meta, StoryObj } from "@storybook/react";
+import { MemoryRouter } from "react-router-dom";
 
 import { Jaarplankalender } from "./Jaarplankalender";
 import type { Jaarplan, Planningsrooster, Themaplaatsing } from "./types";
@@ -85,6 +86,34 @@ const fijnRooster: Planningsrooster = {
     { ordinaal: 18, start: "2027-06-07", eind: "2027-06-18", ouderOrdinaal: 7, aantalOpenDagen: 12 },
     { ordinaal: 19, start: "2027-06-19", eind: "2027-06-30", ouderOrdinaal: 7, aantalOpenDagen: 12 },
   ],
+};
+
+/**
+ * The coverage answer behind E3-09's knelpunt line, as `GET /api/klassen/{id}/dekking` shapes it.
+ *
+ * **An L3 class deliberately, so the story shows the ordinary case:** one jaar/fase, therefore no kleuterjaar chooser
+ * (that control renders only when there is more than one code to choose between). The figures say 3 of 14 covered, so
+ * the knelpunt line reads "11 leerplandoelen zijn nog niet gedekt" — a review artifact in which the signal this story
+ * added is actually visible, rather than one in which it is silently absent.
+ *
+ * `doelen` is empty on purpose: the kalender reads only the two counts, and pasting fourteen goal records into a
+ * fixture would be fourteen more things to keep true.
+ */
+const dekking = {
+  klasId: "11111111-1111-1111-1111-111111111111",
+  klasNaam: "L3 derde leerjaar",
+  schooljaarId: SCHOOLJAAR_ID,
+  schooljaarNaam: "2026-2027",
+  bereik: "EigenJaarFase",
+  gemetenJaarFasen: ["L3"],
+  beschikbareJaarFasen: ["L3"],
+  isTerugvalNaarHeelCurriculum: false,
+  aantalBuitenBereik: 0,
+  isBetrouwbaar: true,
+  aantalOnopgelosteVervallenPlaatsingen: 0,
+  aantalGedekt: 3,
+  aantalLeerplandoelen: 14,
+  doelen: [],
 };
 
 let volgendeId = 0;
@@ -215,7 +244,16 @@ function metGestubdeApi(plan: Jaarplan) {
           : rooster
         : url.includes("/jaarplan/parameters")
           ? { gewensteStartthemas: [], vasteMomenten: [] }
-          : plan;
+          : // E3-09's coverage read. **Routed explicitly, and the fall-through below is why it has to be** (antagonist
+            // round 2, MAJOR): this chain used to end in `: plan`, so a `/dekking` request was answered with the
+            // *Jaarplan* fixture. `api.ts` casts rather than validates, so `dekking.data.beschikbareJaarFasen` was
+            // `undefined` and the kalender crashed on `.length` — all three stories rendered nothing but a TypeError,
+            // in the file this story's own record cites as "the picture people trust". A chain whose default answers
+            // every unrecognised URL with a plausible-looking object cannot fail loudly, so it failed silently until
+            // someone opened Storybook.
+            url.includes("/dekking")
+            ? dekking
+            : plan;
 
       return new Response(JSON.stringify(body), {
         status: 200,
@@ -227,9 +265,14 @@ function metGestubdeApi(plan: Jaarplan) {
 
     return (
       <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen bg-slate-50 p-6">
-          <Story />
-        </div>
+        {/* A router, because `OngeplandeDoelen` links to `/dekking` (E3-09). The test harnesses were given one when the
+            link landed; this decorator was not, so react-router's `Link` threw here even after the fetch stub was
+            fixed. Two independent breaks behind one symptom. */}
+        <MemoryRouter>
+          <div className="min-h-screen bg-slate-50 p-6">
+            <Story />
+          </div>
+        </MemoryRouter>
       </QueryClientProvider>
     );
   };

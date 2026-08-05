@@ -566,6 +566,13 @@ describe("Dekkingsoverzicht — een kleutergroep kiest haar kleuterjaar (eigenaa
 
     await screen.findByText(t("dekking.gemetenTegenMeerdere", { fasen: "JK, K2, K3" }));
 
+    // THIS screen's own caption, asserted in both directions (antagonist round 2). `Jaarfasekiezer` is shared with the
+    // kalender since E3-09 and takes a `uitlegKey`, defaulting to the dekking one; nothing pinned that default, so
+    // changing it — or passing the kalender's key from `Dekkingsamenvatting` — would silently put a sentence about "de
+    // dekking" on a screen that measures it, and no test would fail.
+    expect(screen.getByText(t("dekking.jaarFaseUitleg"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.jaarFaseUitleg"))).toBeNull();
+
     fireEvent.click(screen.getByRole("button", { name: "K3" }));
 
     // A new REQUEST, because narrowing changes the denominator. A screen that filtered rows in the browser would leave

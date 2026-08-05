@@ -134,7 +134,8 @@ public sealed record Spreidingsrapport(
         var benodigdeWeken = themas.Sum(t => t.DuurWeken);
 
         // Open days, NOT the calendar span — the same basis the kalender sizes and labels blocks with, so the
-        // overload check and the "N,N weken" on screen can never contradict each other.
+        // overload check and the weeks figure on screen can never contradict each other. (That figure read "N,N" until
+        // owner ruling 2026-08-04 made the heading whole weeks too, for exactly this reason.)
         //
         // **Rounded UP to whole weeks (owner ruling, 2026-07-31).** `TelOpenDagen` counts weekends, because
         // `Schooljaar.IsLesdag` excludes only closures, so a vrije dag costs a seventh of a week while

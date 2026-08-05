@@ -12,8 +12,7 @@ import {
 import { useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
-import { DEKKING_PAD } from "../../app/routes";
-import { JAARFASE_PARAM } from "../dekking/DekkingPagina";
+import { DEKKING_PAD, JAARFASE_PARAM } from "../../app/routes";
 import { Jaarfasekiezer } from "../dekking/Jaarfasekiezer";
 import { Button } from "../../components/ui/button";
 import { t, tAantal, type TranslationKey } from "../../i18n";
@@ -423,14 +422,30 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // vanishing from under the cursor that just clicked it, then reappearing. Latching is honest as well as calmer: the
   // set is what this class COULD be measured against, so narrowing cannot change it. A remount per class (`key={klasId}`
   // on this component) is what resets it.
-  if (dekking.data !== undefined && dekking.data.beschikbareJaarFasen.length > 0) {
-    beschikbaarLatch.current = dekking.data.beschikbareJaarFasen;
+  // `?? []` rather than trusting the field to exist (antagonist round 2, MAJOR). `apiFetch` **casts** the body, it does
+  // not validate it, so one payload without this field white-screened the whole kalender on `.length` — which is exactly
+  // how it happened: the Storybook decorator answered `/dekking` with a `Jaarplan`. A screen whose worst case is a
+  // missing signal must not have a worst case of a missing screen.
+  const gemeld = dekking.data?.beschikbareJaarFasen ?? [];
+  if (gemeld.length > 0) {
+    beschikbaarLatch.current = gemeld;
   }
   const beschikbareJaarFasen = beschikbaarLatch.current;
 
   const toonJaarfasekiezer =
     beschikbareJaarFasen.length > 1 &&
     (jaarFase !== null || (dekking.data?.aantalLeerplandoelen ?? 0) > 0);
+
+  // Gated on the figure it describes actually rendering, not on the fallback flag alone (antagonist round 2). Two states
+  // reach `isTerugvalNaarHeelCurriculum` with no line under it — a stale placement (`aantalGedekt === null`) and a fully
+  // covered scope — and the sentence then points at nothing. Same gating discipline as `teVolUitleg` and `beslisUitleg`
+  // below, and the same defect they were each fixed for.
+  const ongedektAantal =
+    dekking.data !== undefined && dekking.data.aantalGedekt !== null
+      ? dekking.data.aantalLeerplandoelen - dekking.data.aantalGedekt
+      : null;
+  const toonDekkingTerugval =
+    dekking.data?.isTerugvalNaarHeelCurriculum === true && (ongedektAantal ?? 0) > 0;
 
   // **Te vol is a themaperiode property, so the board marks columns only at that tier** (owner ruling, 2026-07-31).
   // The arithmetic applied to a fortnight flags every filled sub-column — a thema's whole 4 to 6 weeks against the ~2
@@ -596,7 +611,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 — the open graadklas case — is silently measured against the WHOLE curriculum, so without this the
                 teacher reads a number several times too large with no way to tell. `/dekking` already renders its own
                 sentence for exactly this state; this is that sentence, worded for this screen. */}
-            {dekking.data?.isTerugvalNaarHeelCurriculum === true && (
+            {toonDekkingTerugval && (
               <p className="max-w-prose text-xs text-ink-zacht">{t("kalender.dekkingTerugval")}</p>
             )}
 
@@ -1292,10 +1307,20 @@ function OngeplandeDoelen({
 
   const data = dekking.data;
 
-  // Nothing to say: still loading, dekking withheld because a placement is stale, no curriculum loaded at all
-  // (E1-12 blocks the import, so this is the ordinary state on a fresh database), or every goal in scope is taught.
-  if (data === undefined || data.aantalGedekt === null || data.aantalLeerplandoelen === 0) {
+  // Nothing to say: still loading, or dekking withheld because a placement is stale (directie 2026-07-28, point 4).
+  if (data === undefined || data.aantalGedekt === null) {
     return null;
+  }
+
+  // Nothing in scope to measure against.
+  //
+  // **Silent only when the teacher did not ask for this scope** (antagonist round 2). Unnarrowed it means no curriculum
+  // is loaded at all, which is the ordinary state until E1-12 and which the import screen is the place to say something
+  // about. But once a kleuterjaar has been CHOSEN, the same emptiness is the direct result of a click, and answering a
+  // click with nothing violates this component's own rule that silence here reads as "no goals are missing". `/dekking`
+  // renders `dekking.nietMeetbaar` for exactly this state; this is the same fact, worded for one line.
+  if (data.aantalLeerplandoelen === 0) {
+    return jaarFase === null ? null : <p className={KNELPUNT_DEKKING}>{t("kalender.geenDoelenInJaar")}</p>;
   }
 
   const ongedekt = data.aantalLeerplandoelen - data.aantalGedekt;
@@ -1330,9 +1355,14 @@ function OngeplandeDoelen({
  * Both are fixed by taking things away rather than adding. The left rule keeps it identifiable as a knelpunt and keeps
  * the dekking token doing the semantic work, while leaving it visibly lighter than the te-vol band, which is the
  * ordering the three signals were designed to have: the stale-placement notice heaviest (a human must resolve it), te
- * vol in the middle (a judgement a teacher may accept), this lightest (a fact, and it points off-screen). The Art. XII
- * carrier is now the **sentence itself** — "komen in geen enkel thema van dit jaarplan voor" needs no glyph to be
- * understood in monochrome, which is a stronger guarantee than an icon nobody can see.
+ * vol in the middle (a judgement a teacher may accept), this lightest (a fact, and it points off-screen). The SC 1.4.1
+ * carrier is now the **sentence itself** — *"zijn nog niet gedekt door dit jaarplan"* needs no glyph to be understood in
+ * monochrome, which is a stronger guarantee than an icon nobody can see.
+ *
+ * *Two corrections by antagonist round 2:* this quoted the copy the fix round **deleted as a falsehood**, stating it as
+ * the present carrier — the fifth false doc comment on this story, and the first authored by the round that fixed the
+ * other four. And it cited **Art. XII**, which is the constitution's glossary; the rule is WCAG 2.2 AA SC 1.4.1 via
+ * Art. VIII and ADR-0017.
  */
 const KNELPUNT_DEKKING =
   "border-l-2 border-dekking-niet-gedekt py-1 pl-3 text-xs leading-snug text-ink";
