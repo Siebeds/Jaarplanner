@@ -109,6 +109,56 @@ public sealed class Subthema
     }
 
     /// <summary>
+    /// Moves <paramref name="activiteit"/> out of this subthema and into <paramref name="doelSubthema"/>
+    /// (E4-08, FR-7.2). The activiteit keeps its identity, its attributes and every
+    /// <c>DoelKoppeling</c> it carries, which is what makes this different in kind from deleting it here and
+    /// retyping it there.
+    /// <para>
+    /// <b>The class boundary is the invariant, and it is enforced here because this is the only place both
+    /// scopes are known</b> (Art. IX.2: a subthema is scoped per klas and leeftijd, an activiteit inherits
+    /// that scope). A move to another klas would silently hand one class's content to another, so it is
+    /// refused. A move to another <b>thema</b> is allowed (owner ruling, 2026-08-05), and so is a move to
+    /// another <b>leeftijd</b> within the same klas: that is the graadklas differentiation Art. IX.2 exists
+    /// for, and the destination's leeftijd is visible to whoever picks it.
+    /// </para>
+    /// </summary>
+    public void VerplaatsActiviteitNaar(Activiteit activiteit, Subthema doelSubthema)
+    {
+        ArgumentNullException.ThrowIfNull(activiteit);
+        ArgumentNullException.ThrowIfNull(doelSubthema);
+
+        if (!_activiteiten.Contains(activiteit))
+        {
+            // Not a teacher's mistake and not reachable through the API, where the source subthema is resolved
+            // from the activiteit itself. English and a 500 rather than a Dutch 400: a caller pairing the wrong
+            // two objects is an operator diagnostic (Art. II.3), and it must not travel to a teacher's screen.
+            throw new InvalidOperationException("Activiteit does not belong to this subthema.");
+        }
+
+        // Both refusals below deliberately pass **no paramName**, and that is not a style choice.
+        // `ArgumentException(message, paramName)` appends "(Parameter 'doelSubthema')" to `Message`, the service
+        // forwards `ex.Message` as the 400's `detail`, and the form renders that detail verbatim. The paramName
+        // overload therefore puts an English developer artefact in a Dutch sentence on a teacher's screen, which
+        // is the defect E1-14's round 4 found on this very screen. Caught here by an integration test asserting
+        // the payload rather than the status code.
+        if (doelSubthema.Id == Id)
+        {
+            throw new ArgumentException("Deze activiteit staat al in dit subthema. Kies een ander subthema.");
+        }
+
+        if (doelSubthema.KlasId != KlasId)
+        {
+            // Art. IX.2 makes the class scope structural. The sentence stays free of the article reference and
+            // says what the reader can do, which is the rule E1-14 landed for every message on these screens.
+            throw new ArgumentException("Een activiteit kan alleen verhuizen naar een subthema van dezelfde klas.");
+        }
+
+        _activiteiten.Remove(activiteit);
+        doelSubthema._activiteiten.Add(activiteit);
+        activiteit.VerhuisNaar(doelSubthema.Id);
+    }
+
+    /// <summary>
     /// Removes a subdoel from this subthema. Used by the import overwrite reconciliation (E1-08) to drop
     /// an AI-only <c>voorgesteld</c> link the file no longer carries, or — only on explicit teacher
     /// confirmation — a discarded human decision (Art. IV.2).

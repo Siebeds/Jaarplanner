@@ -382,6 +382,63 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<ActiviteitWeergave> VerplaatsActiviteitAsync(Guid activiteitId, Guid doelSubthemaId, CancellationToken cancellationToken = default)
+    {
+        // The links are loaded first and for two reasons: the response carries them, and loading them here is
+        // what makes the "they survive a move" claim observable in the answer rather than only in the database.
+        var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
+
+        // The source is derived, never accepted from the caller: an activiteit knows which subthema it sits in,
+        // so there is no way to submit a mismatched pair.
+        var bron = await LaadSubthemaAsync(activiteit.SubthemaId, cancellationToken);
+
+        // Same loader, so a destination a colleague deleted meanwhile gets the same Dutch sentence as any other
+        // vanished subthema. The source cannot be missing: the activiteit's FK is what named it.
+        var doel = await LaadSubthemaAsync(doelSubthemaId, cancellationToken);
+
+        try
+        {
+            // The klas boundary and the two no-op refusals live in the domain (Art. IX.2), so every caller
+            // meets them, and their Dutch sentences travel out as a 400 the form renders.
+            bron.VerplaatsActiviteitNaar(activiteit, doel);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapActiviteit(activiteit);
+    }
+
+    public async Task<IReadOnlyList<SubthemaBestemming>> HaalSubthemaBestemmingenAsync(Guid klasId, CancellationToken cancellationToken = default)
+    {
+        // Projected to an anonymous type and mapped to the record afterwards, deliberately: ordering happens in
+        // SQL under the database collation (a Dutch name sorted by .NET's ordinal comparer puts "Ijs" in the
+        // wrong place), while the record construction stays out of the translation. Same SelectMany-over-
+        // Subthemas shape EfDekkingOpslag already proves translatable on PostgreSQL.
+        var rijen = await _context.Themas
+            .AsNoTracking()
+            .SelectMany(t => t.Subthemas
+                .Where(s => s.KlasId == klasId)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.Naam,
+                    s.Leeftijd,
+                    ThemaId = t.Id,
+                    ThemaNaam = t.Naam,
+                }))
+            .OrderBy(r => r.ThemaNaam)
+            .ThenBy(r => r.Naam)
+            .ThenBy(r => r.Leeftijd)
+            .ToListAsync(cancellationToken);
+
+        return rijen
+            .Select(r => new SubthemaBestemming(r.Id, r.Naam, r.Leeftijd, r.ThemaId, r.ThemaNaam))
+            .ToList();
+    }
+
     public async Task<DoelKoppelingWeergave> KoppelActiviteitAanDoelAsync(Guid activiteitId, string leerplandoelCode, CancellationToken cancellationToken = default)
     {
         var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);

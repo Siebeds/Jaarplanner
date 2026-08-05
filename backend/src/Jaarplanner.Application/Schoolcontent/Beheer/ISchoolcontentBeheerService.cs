@@ -81,6 +81,22 @@ public interface ISchoolcontentBeheerService
     Task VerwijderActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Moves an activiteit to another subthema (E4-08, FR-7.2), keeping its attributes and every goal link.
+    /// The destination may belong to another thema and to another leeftijd, but <b>not to another klas</b>
+    /// (owner ruling, 2026-08-05); the domain enforces that boundary and a crossing is refused as a
+    /// <see cref="SchoolcontentValidatieFout"/>.
+    /// </summary>
+    Task<ActiviteitWeergave> VerplaatsActiviteitAsync(Guid activiteitId, Guid doelSubthemaId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists the subthema's of <b>one klas</b>, across every thema, as candidate destinations for a move
+    /// (E4-08). Class-scoped by construction: it filters on <paramref name="klasId"/>, so no other class's
+    /// derivations are in the answer to begin with (Art. IX.2), which is the same property
+    /// <see cref="HaalThemaVoorKlasAsync"/> relies on.
+    /// </summary>
+    Task<IReadOnlyList<SubthemaBestemming>> HaalSubthemaBestemmingenAsync(Guid klasId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Links an activiteit to <paramref name="leerplandoelCode"/> (status <c>manueel</c>, Art. IV.2);
     /// an activiteit may carry one or more links. Rejects an unknown code and a duplicate link.
     /// </summary>
