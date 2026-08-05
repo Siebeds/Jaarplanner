@@ -22,9 +22,14 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// <para>
 /// <b>It is a fact, not a score.</b> There is no single "spreading quality" number, because nothing in the
 /// functional analysis or the constitution defines an acceptable spread, and inventing a threshold here would
-/// answer by code a question that belongs to the school — the same mistake as hard-coding a "te vol" limit
-/// (E3-10 question C, still open). Counts and named outliers let a human judge; a green tick would pretend the
-/// judgement was already made.
+/// answer by code a question that belongs to the school. Counts and named outliers let a human judge; a green
+/// tick would pretend the judgement was already made.
+/// <para>
+/// Note the contrast with <see cref="BlokspreidingWeergave.IsOverbelast"/>, which <i>is</i> a verdict: that one
+/// is not an invented threshold but arithmetic on two figures the school itself supplied (a thema's
+/// <c>DuurWeken</c> against the period's open days), which is exactly why the owner was able to rule on it
+/// (2026-07-31) where "how evenly spread is spread enough" still has no answer.
+/// </para>
 /// </para>
 /// </summary>
 /// <param name="AantalBlokken">Blocks the year offers at the generation tier — the denominator for FR-5.2's
@@ -129,8 +134,20 @@ public sealed record Spreidingsrapport(
         var benodigdeWeken = themas.Sum(t => t.DuurWeken);
 
         // Open days, NOT the calendar span — the same basis the kalender sizes and labels blocks with, so the
-        // overload check and the "N,N weken" on screen can never contradict each other.
-        var blokWeken = schooljaar.TelOpenDagen(blok.Start, blok.Eind) / 7.0;
+        // overload check and the weeks figure on screen can never contradict each other. (That figure read "N,N" until
+        // owner ruling 2026-08-04 made the heading whole weeks too, for exactly this reason.)
+        //
+        // **Rounded UP to whole weeks (owner ruling, 2026-07-31).** `TelOpenDagen` counts weekends, because
+        // `Schooljaar.IsLesdag` excludes only closures, so a vrije dag costs a seventh of a week while
+        // `DuurWeken` stays nominal. Left fractional, a 6-week thema stopped fitting a 6-week period the moment
+        // Hemelvaart and a brugdag fell inside it — te vol would fire on the commonest calendar a Flemish school
+        // has. Rounding up means single free days never make a period te vol, while a vakantie still does (it
+        // breaks the period outright, so it never had to be modelled here).
+        //
+        // **The rounding is on the number, not on the comparison**, deliberately: a one-decimal `double` on the
+        // wire would let a screen print "6 weken nodig, 5,4 weken beschikbaar" beside "niet te vol", which is
+        // the self-contradictory copy the ruling exists to end — and E3-09 requires that sentence to be printed.
+        var beschikbareWeken = (int)Math.Ceiling(schooljaar.TelOpenDagen(blok.Start, blok.Eind) / 7.0);
 
         return new BlokspreidingWeergave(
             Ordinaal: blok.Ordinaal,
@@ -138,7 +155,7 @@ public sealed record Spreidingsrapport(
             AantalThemas: inBlok.Count,
             AantalDoelen: doelcodes,
             BenodigdeWeken: benodigdeWeken,
-            BeschikbareWeken: Math.Round(blokWeken, 1));
+            BeschikbareWeken: beschikbareWeken);
     }
 }
 
@@ -148,23 +165,31 @@ public sealed record Spreidingsrapport(
 /// <param name="AantalThemas">Placements sitting in this block.</param>
 /// <param name="AantalDoelen">Distinct leerplandoelen carried by those thema's.</param>
 /// <param name="BenodigdeWeken">Sum of the placed thema's <c>DuurWeken</c>.</param>
-/// <param name="BeschikbareWeken">The block's own span in weeks, to one decimal.</param>
+/// <param name="BeschikbareWeken">
+/// The block's own span in <b>whole</b> weeks of open days, rounded up. See the rounding note in
+/// <c>BouwBlokspreiding</c> for why it is neither fractional nor the raw calendar span.
+/// </param>
 public sealed record BlokspreidingWeergave(
     int Ordinaal,
     DateOnly Start,
     int AantalThemas,
     int AantalDoelen,
     int BenodigdeWeken,
-    double BeschikbareWeken)
+    int BeschikbareWeken)
 {
     /// <summary>
     /// <c>true</c> when the placed thema's need more weeks than this block spans.
     /// <para>
     /// Computed from each thema's own <c>DuurWeken</c> rather than from a count of thema's, because a count
     /// cannot distinguish three two-week thema's (which fit a 6-week period comfortably) from two six-week ones
-    /// (which do not). This is also why it is <b>not</b> the same signal as the kalender's provisional "te vol"
-    /// threshold: that one counts thema's and is an open review question, this one is arithmetic on data the
-    /// school supplied.
+    /// (which do not).
+    /// </para>
+    /// <para>
+    /// <b>This is the kalender's "te vol" signal — the one and only definition of it</b> (owner ruling,
+    /// 2026-07-31; E3-09). Until then the board carried a provisional threshold of its own, counting thema's,
+    /// and this doc comment asserted the two were deliberately different signals. They are not, and E3-09
+    /// deleted the count: the rule is arithmetic on data the school supplied, so it lives here, server-side,
+    /// and reaches the board on a plain page load via <see cref="JaarplanWeergave.Blokken"/>.
     /// </para>
     /// </summary>
     public bool IsOverbelast => BenodigdeWeken > BeschikbareWeken;

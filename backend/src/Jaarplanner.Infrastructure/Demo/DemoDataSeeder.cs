@@ -273,10 +273,16 @@ public sealed class DemoDataSeeder : IHostedService
     /// Which themaperiode each thema in <see cref="BouwThemas"/> is placed in, by index.
     /// <para>
     /// Not simply <c>0,1,2,3,…</c>: periode 3 (index 2) deliberately holds <b>three</b> thema's so the
-    /// "te vol" flag actually fires in the demo. One card per period would leave
-    /// <c>VOORLOPIGE_TE_VOL_DREMPEL</c> unreachable, and E3-10 question C — "when is a period te vol?" —
-    /// would go to the review with its own illustration invisible. Periode 4 (index 3) is left empty for
-    /// the same reason in reverse: the empty-period state is what a teacher looking for room actually sees.
+    /// "te vol" flag actually fires in the demo. One card per period would leave it unreachable, and the
+    /// state would go to the teacher review with its own illustration invisible. Periode 4 (index 3) is left
+    /// empty for the same reason in reverse: the empty-period state is what a teacher looking for room sees.
+    /// <para>
+    /// <b>Still fires after the te-vol ruling of 2026-07-31, and by a wider margin</b> (E3-09). The flag used
+    /// to be a count of thema's against a provisional 3, which this array was built to reach; it is now the
+    /// weeks those thema's need against the weeks the period offers. Indices 2, 3 and 4 land here and each run
+    /// <b>6</b> weeks, so periode 3 needs 18 weeks of a period that offers at most 6. The illustration survived
+    /// the rule change on its own merits, which is worth stating: a fixture tuned to a threshold usually does
+    /// not, and this one would have gone quiet without failing a single test.
     /// </para>
     /// </summary>
     private static readonly int[] BlokVoorThema = [0, 1, 2, 2, 2, 4, 5];

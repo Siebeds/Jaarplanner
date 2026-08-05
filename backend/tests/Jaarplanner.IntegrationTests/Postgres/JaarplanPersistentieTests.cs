@@ -649,6 +649,145 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// <b>E3-09 / FR-6.4 on the real stack: the te-vol figures reach the plain jaarplan read.</b>
+    /// <para>
+    /// This is the change most able to be silently wrong, because it is a payload field. Before E3-09 the weeks
+    /// arithmetic existed only on the <i>generation</i> response, while the board renders from this read plus
+    /// <c>/rooster</c> — which is why the kalender carried a threshold of its own that counted thema's and disagreed
+    /// with the server for months. If <c>Blokken</c> arrives empty here, the board silently flags nothing and every
+    /// frontend test still passes on its own fixture.
+    /// </para>
+    /// <para>
+    /// Read through <c>HaalJaarplanAsync</c> on a fresh context, so the placements come back out of Postgres rather
+    /// than out of the tracker that wrote them.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Het_leespad_levert_de_belasting_per_periode()
+    {
+        var (klasId, themaId, blokStart) = await SeedAsync();
+        var schooljaar = await LaadSchooljaarAsync(klasId);
+        var blokken = Blokken(schooljaar);
+
+        // Two placements of the seeded 5-week thema: one in the first period, one in the second. 5 weeks against a
+        // 4-to-6-week period is not te vol, which makes the negative half of the assertion meaningful.
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = new Jaarplan(klasId);
+            jaarplan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Aanvaard, "eerste");
+            jaarplan.VoegPlaatsingToe(
+                themaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Voorgesteld, "tweede");
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var weergave = await MaakService(context).HaalJaarplanAsync(klasId);
+
+            // Every period of the year is described, not only the filled ones: an empty period is where there is room.
+            Assert.Equal(blokken.Count, weergave.Blokken.Count);
+            Assert.Equal(
+                blokken.Select(b => b.Start),
+                weergave.Blokken.Select(b => b.Start));
+
+            var eerste = weergave.Blokken.Single(b => b.Start == blokStart);
+            Assert.Equal(5, eerste.BenodigdeWeken);
+            Assert.True(eerste.BeschikbareWeken >= 4, $"a themaperiode offers 4-6 weeks, got {eerste.BeschikbareWeken}");
+            Assert.False(eerste.IsOverbelast);
+
+            // The thema's own length rides along on the placement, which is what lets the board predict a drop before
+            // it happens rather than only report it afterwards.
+            Assert.All(weergave.Plaatsingen, p => Assert.Equal(5, p.DuurWeken));
+
+            // A period holding nothing needs no weeks. Stated because "0 needed" is what makes `IsOverbelast` false for
+            // an empty period, and a null-ish default would have made every empty period te vol or none of them.
+            var leeg = weergave.Blokken.First(b => b.AantalThemas == 0);
+            Assert.Equal(0, leeg.BenodigdeWeken);
+            Assert.False(leeg.IsOverbelast);
+        }
+    }
+
+    /// <summary>
+    /// A period is te vol on the read path too, and a <b>rejected</b> thema does not make it so.
+    /// <para>
+    /// Both halves in one test on purpose: they are the same arithmetic seen from either side, and separating them
+    /// would let a filter defect pass whichever one was written first. The rejected placement is the one this project
+    /// has already got wrong once, in the E3-02 code review, where a period was reported overbelast on the strength of
+    /// a thema the teacher had thrown out.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_geweigerd_thema_maakt_een_periode_niet_te_vol_op_het_leespad()
+    {
+        var (klasId, _, blokStart) = await SeedAsync();
+        Guid zwaarId;
+        Guid geweigerdId;
+
+        // 4 + 8 = 12 weeks in one period. The durations straddle the period's own length deliberately: the default
+        // themaperiode is 5 weeks, so together they are over it and the surviving 4-week thema is comfortably under.
+        // An earlier revision used 6 and 6, which left 6 weeks in a 5-week period after the rejection and so still
+        // reported te vol — the test failed while the filter it was testing worked perfectly.
+        await using (var context = _db.MaakContext())
+        {
+            var zwaar = new Thema($"Licht-{Guid.NewGuid():N}", duurWeken: 4);
+            var geweigerd = new Thema($"Feesten-{Guid.NewGuid():N}", duurWeken: 8);
+            context.Themas.AddRange(zwaar, geweigerd);
+            await context.SaveChangesAsync();
+            zwaarId = zwaar.Id;
+            geweigerdId = geweigerd.Id;
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = new Jaarplan(klasId);
+            jaarplan.VoegPlaatsingToe(
+                zwaarId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Aanvaard, "zwaar");
+            jaarplan.VoegPlaatsingToe(
+                geweigerdId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "ook zwaar");
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+        }
+
+        // Both counted: 12 weeks in a period that offers 4 to 6.
+        await using (var context = _db.MaakContext())
+        {
+            var blok = (await MaakService(context).HaalJaarplanAsync(klasId))
+                .Blokken.Single(b => b.Start == blokStart);
+
+            Assert.Equal(12, blok.BenodigdeWeken);
+            Assert.True(blok.IsOverbelast);
+
+            // Pinned rather than assumed, because the two durations above are chosen relative to it: if the configured
+            // grain ever changes, this fails here with the reason instead of further down as a puzzling verdict.
+            Assert.InRange(blok.BeschikbareWeken, 4, 6);
+        }
+
+        // The teacher rejects one. Nothing is taught in this period on its account, so the period stops being te vol.
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
+            var plaatsing = jaarplan.Plaatsingen.Single(p => p.ThemaId == geweigerdId);
+            await MaakService(context).WijzigPlaatsingStatusAsync(klasId, plaatsing.Id, KoppelingStatus.Geweigerd);
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var weergave = await MaakService(context).HaalJaarplanAsync(klasId);
+            var blok = weergave.Blokken.Single(b => b.Start == blokStart);
+
+            Assert.Equal(4, blok.BenodigdeWeken);
+            Assert.False(blok.IsOverbelast);
+
+            // And the rejected card is still THERE — excluded from the arithmetic, not deleted from the plan. A human
+            // decision is not the tool's to discard (Art. IV.1), and a teacher must be able to see what they threw out.
+            Assert.Equal(2, weergave.Plaatsingen.Count);
+            Assert.Contains(weergave.Plaatsingen, p => p.Status == "Geweigerd");
+        }
+    }
+
+    /// <summary>
     /// Seeds a school year, a class inside it, a leerplandoel and a thema, and returns (klasId, themaId, the first
     /// derived themaperiode's start date). The start date is taken from the year's own first teaching day, which the
     /// E3-05 suite pins as the first block's start.

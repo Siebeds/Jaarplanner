@@ -51,6 +51,24 @@ export interface Navigatiebestemming {
 
 export const JAARPLAN_PAD = "/jaarplan";
 
+/**
+ * Named because the kalender links to it (E3-09): its knelpunt line states how many leerplandoelen the plan teaches
+ * nowhere and sends the teacher here for the list. A literal in two files is how a route rename silently breaks one of
+ * them, and the klas is not in the path — `useSelectie` carries it — so the bare route keeps the class the teacher is
+ * looking at.
+ */
+export const DEKKING_PAD = "/dekking";
+
+/**
+ * The search param that narrows the dekkingsoverzicht to one jaar/fase.
+ *
+ * Here rather than in `features/dekking/DekkingPagina`, because the kalender's knelpunt link carries it (E3-09) and
+ * importing it from a page module pulled that page and its whole subtree into the jaarplan feature's module graph — with
+ * `Dekkingsamenvatting` already importing `JAARPLAN_PAD`, the two features were one import from a cycle. Same reasoning
+ * that put `DEKKING_PAD` here: a route contract shared by two features belongs to neither of them.
+ */
+export const JAARFASE_PARAM = "jaarFase";
+
 export const NAVIGATIE: readonly Navigatiebestemming[] = [
   {
     pad: "/doelen",
@@ -79,7 +97,7 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
     story: "E3-06",
   },
   {
-    pad: "/dekking",
+    pad: DEKKING_PAD,
     labelKey: "navigatie.dekking",
     isGebouwd: true,
     magBeheerder: false,

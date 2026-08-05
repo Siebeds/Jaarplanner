@@ -219,8 +219,62 @@ public class SpreidingsrapportTests
         var rapport = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId, jaar);
         var blok = rapport.Blokken.Single(b => b.Ordinaal == 1);
 
-        Assert.Equal(5.0, blok.BeschikbareWeken);   // open days, not the 6,0 the calendar span would give
+        Assert.Equal(5, blok.BeschikbareWeken);     // open days, not the 6 the calendar span would give
         Assert.True(blok.IsOverbelast);             // a 6-week thema no longer "fits" a 5-week period
+    }
+
+    /// <summary>
+    /// The case the rounding ruling exists for (owner, 2026-07-31): <b>single free days must not make a period te
+    /// vol.</b>
+    /// <para>
+    /// <c>DuurWeken</c> is nominal while <c>TelOpenDagen</c> loses a seventh of a week per vrije dag, so measured
+    /// fractionally a 6-week thema stops fitting a 6-week period as soon as Hemelvaart and a brugdag fall inside it —
+    /// i.e. te vol would fire on the commonest calendar a Flemish school has. Rounding the available side <b>up</b> is
+    /// what keeps that quiet, while a vakantie still splits the period outright and so never needed modelling here.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Een_losse_vrije_dag_maakt_een_periode_niet_te_vol()
+    {
+        var jaar = new Schooljaar("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
+        // One free day inside block 1: 42 calendar days become 41 open days = 5,857… weeks, which rounds up to 6.
+        jaar.VoegSluitingToe(new Schoolsluiting(
+            "Pedagogische studiedag", new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 7), Sluitingssoort.VrijeDag));
+
+        var (plan, perId) = Plan((Thema("Water", 6, "A-1"), Blok1Start));
+
+        var blok = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId, jaar)
+            .Blokken.Single(b => b.Ordinaal == 1);
+
+        Assert.Equal(6, blok.BeschikbareWeken);
+        Assert.False(blok.IsOverbelast);
+        Assert.Equal(6, blok.BenodigdeWeken);
+    }
+
+    /// <summary>
+    /// <c>BeschikbareWeken</c> is a whole number on the wire, not a rounded comparison over a fractional field.
+    /// <para>
+    /// The distinction is the whole reason the owner ruled on which number rounds: with a one-decimal <c>double</c> a
+    /// screen could print <i>"6 weken nodig, 5,4 weken beschikbaar"</i> beside <i>"niet te vol"</i>, and E3-09's copy
+    /// is required to print exactly that pair of figures. A test on the type is the only place this stays pinned,
+    /// because both forms produce the same verdict and no assertion about te vol can tell them apart.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Beschikbare_weken_is_een_heel_getal_en_rondt_naar_boven_af()
+    {
+        var jaar = new Schooljaar("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
+        // Three free days: 39 open days = 5,571… weeks. Neither a whole number nor a clean decimal.
+        jaar.VoegSluitingToe(new Schoolsluiting(
+            "Brugdagen", new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 9), Sluitingssoort.VrijeDag));
+
+        var (plan, perId) = Plan((Thema("Water", 4, "A-1"), Blok1Start));
+
+        var blok = Spreidingsrapport.Meet(plan.Plaatsingen, Blokken(), perId, jaar)
+            .Blokken.Single(b => b.Ordinaal == 1);
+
+        Assert.IsType<int>(blok.BeschikbareWeken);
+        Assert.Equal(6, blok.BeschikbareWeken);
     }
 
     [Fact]

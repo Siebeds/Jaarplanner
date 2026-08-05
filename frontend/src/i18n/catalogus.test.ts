@@ -42,10 +42,12 @@ const GEEN_ENKELVOUD_NODIG: Record<string, string> = {
   "doelen.optieMetAantal": "no inflected noun, the number stands alone in brackets",
   // "nog niet gekoppeld" is a participle phrase and does not inflect: "1 nog niet gekoppeld" is correct.
   "ongekoppeld.aantal": "the trailing phrase does not inflect with the count",
-  // Unreachable at 1: `isTeVol` requires `>= VOORLOPIGE_TE_VOL_DREMPEL`, which is 3. NOTE the coupling: that
-  // constant is named "voorlopige" for a reason, and lowering it to 1 would make this string ungrammatical.
-  // Whoever changes it owns adding the singular.
-  "kalender.teVol": "unreachable at 1 while VOORLOPIGE_TE_VOL_DREMPEL >= 2",
+  // `kalender.teVol` used to be exempted here, "unreachable at 1 while VOORLOPIGE_TE_VOL_DREMPEL >= 2", and the
+  // exemption named the coupling that would break it. E3-09 broke it exactly as predicted: the owner ruled te vol is
+  // weeks needed against weeks available (2026-07-31), the constant is gone and the string interpolates no count at
+  // all, so this guard no longer has anything to say about it. Removed rather than reworded, because
+  // "keeps its exemption lists honest" fails on an entry whose key no longer carries `{aantal}` — which is the guard
+  // working. Left as a comment because the coupling note was right and paid off.
   // "{aantal} {soort}", where soort is only ever one of the three participles in `import.soort.*`
   // (toegevoegd / bijgewerkt / ongewijzigd). A participle does not inflect with the count, so "1 toegevoegd"
   // and "9 toegevoegd" are both correct. One count string for three kinds, rather than three plus three
@@ -59,14 +61,72 @@ const GEEN_ENKELVOUD_NODIG: Record<string, string> = {
  */
 const AFWIJKEND_ENKELVOUD: Record<string, string> = {
   "kalender.doelenGekoppeld": "kalender.eenDoelGekoppeld",
+  // These two carry TWO counts and only the available one can reach 1 in a reachable state, so the singular is named
+  // for the case rather than for the convention: `…EenWeek`, not `…Enkelvoud`. See the note at the te-vol render in
+  // `Periodekolom.tsx` for why `benodigdeWeken` needs no variant.
+  "kalender.teVol": "kalender.teVolEenWeek",
+  "kalender.wordtTeVol": "kalender.wordtTeVolEenWeek",
 };
+
+/**
+ * The Dutch nouns this catalogue inflects after a count, and the singular each takes.
+ *
+ * **This list exists because the `{aantal}` rule below was structurally blind, and E3-09 proved it twice in one
+ * commit.** That rule finds a count by its *placeholder name*, so `kalender.weken` (`"{weken} weken"`) escaped it for
+ * as long as it existed, and then `kalender.teVol` (`"{nodig} weken thema's in {beschikbaar} weken"`) escaped it again
+ * in the very commit that diagnosed the first escape. Eight instances of this defect in this repo, two of them found
+ * by an auditor rather than by this file.
+ *
+ * So the guard no longer trusts the placeholder's *name*. It looks at what sits **after** a placeholder: any
+ * `{whatever}` immediately followed by one of these nouns is a count, whatever it is called.
+ *
+ * *Why a list of nouns rather than a general rule.* A fully general "placeholder followed by any word" check flags
+ * dozens of correct strings (`"{thema} staat nu vast"`, `"Stond op {datum}"`), so it would need a bigger exemption list
+ * than the defect is worth, and an exemption list is the thing that rots. A noun list is the maintenance point instead,
+ * and it is a **visible** one: adding a plural noun to the product without adding it here is the way the ninth instance
+ * gets in. Prefer the shape that needs no entry at all — put the noun before the count, or outside the interpolation.
+ */
+const GETELDE_ZELFSTANDIGE_NAAMWOORDEN = [
+  "weken",
+  "dagen",
+  "thema's",
+  "doelen",
+  "leerplandoelen",
+  "activiteiten",
+  "subthema's",
+  "plaatsingen",
+  "periodes",
+  "themaperiodes",
+  "voorstellen",
+  "rijen",
+  "bestanden",
+];
+
+/** Every placeholder in `waarde` that is directly followed by an inflecting noun, e.g. `nodig` in `"{nodig} weken"`. */
+function tellendePlaatshouders(waarde: string): string[] {
+  const gevonden: string[] = [];
+
+  for (const noun of GETELDE_ZELFSTANDIGE_NAAMWOORDEN) {
+    // `{x} weken` and `{x} hele weken`: one optional adjective between the count and its noun.
+    const patroon = new RegExp(`\\{(\\w+)\\}\\s+(?:\\w+\\s+)?${noun.replace("'", "'")}\\b`, "g");
+    for (const match of waarde.matchAll(patroon)) {
+      gevonden.push(match[1]);
+    }
+  }
+
+  return [...new Set(gevonden)];
+}
 
 describe("nl.json — counts always have a singular form", () => {
   it("gives every {aantal} string a singular counterpart, or an explicit reason", () => {
     const ontbreekt: string[] = [];
 
     for (const [sleutel, waarde] of CATALOGUS) {
-      if (!waarde.includes("{aantal}") || sleutel.endsWith("Enkelvoud")) {
+      // A count is a placeholder named `aantal`, OR any placeholder sitting directly in front of an inflecting noun.
+      // The second test is the one that matters: see GETELDE_ZELFSTANDIGE_NAAMWOORDEN for the two defects that got
+      // through while only the first existed.
+      const telt = waarde.includes("{aantal}") || tellendePlaatshouders(waarde).length > 0;
+      if (!telt || sleutel.endsWith("Enkelvoud") || sleutel.endsWith("EenWeek")) {
         continue;
       }
 

@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-import { t } from "../../i18n";
+import { t, type TranslationKey } from "../../i18n";
 
 /**
  * Which of the class's own jaar/fase codes to measure against (E5-02, owner ruling 2026-08-04).
@@ -19,7 +19,7 @@ import { t } from "../../i18n";
  * the day a graadklas gets two codes this control offers those two without a change.
  *
  * Same gesture and the same three state carriers as `Bereikschakelaar` and the kalender's zoom (`aria-pressed`, weight,
- * fill-versus-transparent on a bordered track), so nothing rests on colour (Art. XII, WCAG 2.2 AA) and a teacher who has
+ * fill-versus-transparent on a bordered track), so nothing rests on colour (WCAG 2.2 AA SC 1.4.1; Art. VIII, ADR-0017) and a teacher who has
  * used one has used all three. No new hue: `petrol` is the one structural chrome colour.
  */
 export interface JaarfasekiezerProps {
@@ -28,9 +28,24 @@ export interface JaarfasekiezerProps {
   /** The single code currently narrowed to, or null when all of them are being measured. */
   gekozen: string | null;
   onKies: (jaarFase: string | null) => void;
+  /**
+   * Which explanation to render under the control, because it names what the narrowing affects and that differs per
+   * screen (E3-09, owner ruling 2026-08-05).
+   *
+   * The dekkingsoverzicht says *"dan meet dit overzicht alleen…"*; on the kalender "dit overzicht" would point at the
+   * board, which the narrowing does not touch at all — it changes one sentence below the control. A shared control with
+   * per-screen copy, rather than one sentence vague enough to be true on both, which is how a caption stops carrying
+   * information.
+   */
+  uitlegKey?: TranslationKey;
 }
 
-export function Jaarfasekiezer({ beschikbaar, gekozen, onKies }: JaarfasekiezerProps) {
+export function Jaarfasekiezer({
+  beschikbaar,
+  gekozen,
+  onKies,
+  uitlegKey = "dekking.jaarFaseUitleg",
+}: JaarfasekiezerProps) {
   const labelId = useId();
 
   return (
@@ -88,7 +103,7 @@ export function Jaarfasekiezer({ beschikbaar, gekozen, onKies }: JaarfasekiezerP
 
       {/* Why this control exists at all, once, under it. A teacher who has never thought about JK/K2/K3 as a scope needs
           to know that the tool cannot tell, or the choice looks arbitrary. */}
-      <p className="max-w-prose text-xs text-ink-zacht">{t("dekking.jaarFaseUitleg")}</p>
+      <p className="max-w-prose text-xs text-ink-zacht">{t(uitlegKey)}</p>
     </div>
   );
 }

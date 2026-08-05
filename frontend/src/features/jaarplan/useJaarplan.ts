@@ -51,9 +51,16 @@ const roosterKey = (schooljaarId: string, niveau: Planningsblokniveau) =>
  * Forgets everything cached about this class's dekking, because the plan it was computed from has just changed
  * (E4-01, FR-6.5/FR-7, Art. V.1).
  *
- * **Removed rather than invalidated, and the difference is the whole point.** The dekkingsoverzicht is a different
- * route, so while a teacher edits the kalender that query has no observer: an invalidation would only mark it stale
- * and leave the pre-edit answer in the cache. TanStack would then paint that answer the moment the teacher opens
+ * **Removed rather than invalidated, and the difference is the whole point.** An invalidation would only mark the
+ * entry stale and leave the pre-edit answer in the cache.
+ *
+ * *The original reasoning here added "the dekkingsoverzicht is a different route, so while a teacher edits the kalender
+ * that query has no observer", and **E3-09 made that half false** (merge, 2026-08-05): the kalender now runs its own
+ * `useDekking` for the knelpunt line that states how many leerplandoelen the plan does not yet cover. The **choice is
+ * unchanged and is now load-bearing on two screens instead of one**, but the consequence is new and visible: a plan
+ * edit drops an **active** query, so that line briefly disappears and returns with the new figure rather than showing
+ * the old one. That is the same trade this function was written to make, applied where a teacher can actually watch it,
+ * and it is why the kalender latches `beschikbareJaarFasen` instead of reading it off the current answer.* TanStack would then paint that answer the moment the teacher opens
  * `/dekking` and refetch behind it, so for the length of one request the screen would show a coverage figure computed
  * *before* the edit, with no loading state to say so. For a figure a directie may put in front of an inspectie that
  * is the one failure this screen must not have, and if the refetch then fails the stale number stays on screen beside

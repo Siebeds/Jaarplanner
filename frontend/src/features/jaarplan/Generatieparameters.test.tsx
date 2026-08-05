@@ -54,6 +54,16 @@ const leegPlan: Jaarplan = {
   schooljaarId: SCHOOLJAAR_ID,
   schooljaarNaam: "2026-2027",
   blokindeling: rooster.blokindeling,
+  // No placements, so no period carries any weeks: the te-vol signal is out of scope for this file (E3-09).
+  blokken: rooster.blokken.map((blok) => ({
+    ordinaal: blok.ordinaal,
+    start: blok.start,
+    aantalThemas: 0,
+    aantalDoelen: 0,
+    benodigdeWeken: 0,
+    beschikbareWeken: Math.ceil(blok.aantalOpenDagen / 7),
+    isOverbelast: false,
+  })),
   plaatsingen: [],
 };
 
@@ -166,6 +176,33 @@ function stubFetch(
           { status: 200 },
         );
       }
+      // The dekking read behind E3-09's knelpunt line. Routed here for the same reason it is routed in
+      // `Jaarplankalender.test.tsx`, and the audit caught that E3-09 did NOT route it here: this stub throws on an
+      // unrouted URL, so every render in this file resolved `useDekking` to its error state and painted
+      // `kalender.ongeplandeDoelenOnbekend` — including the axe assertion, which was then measuring a permanent error
+      // state nobody meant to put there. Exactly the defect the sibling file's own comment warns about.
+      if (url.includes("/dekking")) {
+        return new Response(
+          JSON.stringify({
+            klasId: KLAS_ID,
+            klasNaam: "L3 derde leerjaar",
+            schooljaarId: SCHOOLJAAR_ID,
+            schooljaarNaam: "2026-2027",
+            bereik: "EigenJaarFase",
+            gemetenJaarFasen: ["L3"],
+            beschikbareJaarFasen: ["L3"],
+            isTerugvalNaarHeelCurriculum: false,
+            aantalBuitenBereik: 0,
+            isBetrouwbaar: true,
+            aantalOnopgelosteVervallenPlaatsingen: 0,
+            // Nothing missing, so the knelpunt line stays silent: this file is about the parameter form.
+            aantalGedekt: 8,
+            aantalLeerplandoelen: 8,
+            doelen: [],
+          }),
+          { status: 200 },
+        );
+      }
       if (url.includes("/rooster")) {
         const antwoord =
           fijnRooster && url.includes("niveau=Subthemaperiode") ? fijnRooster : grid;
@@ -183,12 +220,15 @@ function stubFetch(
   return posts;
 }
 
+/** A router because the kalender links to `/dekking` (E3-09); see the note on the same helper in its own test file. */
 function renderKalender() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <Jaarplankalender klasId={KLAS_ID} />
+      <MemoryRouter>
+        <Jaarplankalender klasId={KLAS_ID} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
