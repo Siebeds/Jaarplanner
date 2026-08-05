@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../../App";
 import { t, tAantal } from "../../i18n";
+import { dekkingKlasKey } from "../dekking/useDekking";
 import {
   BIBLIOTHEEK,
   HERFST,
@@ -45,7 +46,9 @@ function renderApp(pad: string, opties: ThemaFakeOpties = {}) {
     </StrictMode>,
   );
 
-  return fake;
+  // The client is returned alongside the fake so a test can read the dekking cache a write here reaches into
+  // (E4-01), the same reason the kalender's harness returns its own.
+  return { ...fake, queryClient };
 }
 
 /** The thema list, awaited. */
@@ -501,5 +504,48 @@ describe("Thema's — toegankelijkheid", () => {
     await screen.findByText("Bladeren");
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+/**
+ * E4-01, on a ruling taken after its own gates: a **link** changes coverage too, and until now nothing on this
+ * screen told the dekking cache so.
+ *
+ * The E4-01 test-runner reproduced it here in a browser: cache a figure, link `DEMO-L3-02` on `/themas`, walk back
+ * through the nav, and the overview paints the pre-link figure with that doel still marked *Niet gedekt*. The note in
+ * `useThemas.ts` had predicted exactly this and named its own successor, which is the part worth remembering: it was
+ * written down as owed, E5-02 shipped the query, and the sentence quietly became false instead of being acted on.
+ */
+describe("Thema's — een koppeling raakt de dekking van elke klas (E4-01, Art. V.1)", () => {
+  it("gooit elke gecachte dekking weg, ook die van een klas die deze leerkracht niet open heeft", async () => {
+    const { verzoeken, queryClient } = renderApp(`/themas/${THEMA_HERFST}`);
+
+    // Two classes and two scopes, because that is the point: a themadoel hangs on a SCHOOL-WIDE thema, so it can
+    // move the figure of any class whose plan holds it. A drop scoped to the selected klas would leave the other
+    // one stale, which is the same defect one screen further along.
+    const eigenL3 = [...dekkingKlasKey(KLAS_L3), "EigenJaarFase", null];
+    const heelL3 = [...dekkingKlasKey(KLAS_L3), "HeelCurriculum", null];
+    const andereKlas = [...dekkingKlasKey(KLAS_K3), "EigenJaarFase", null];
+    for (const sleutel of [eigenL3, heelL3, andereKlas]) {
+      queryClient.setQueryData(sleutel, { aantalGedekt: 7, aantalLeerplandoelen: 14 });
+    }
+
+    fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.doelKiezerTitel") }));
+    fireEvent.change(screen.getByLabelText(t("themabeheer.doelZoekLabel")), {
+      target: { value: "MUZ-L2-01" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: t("themabeheer.doelKoppelAria", {
+          code: "MUZ-L2-01",
+          waaraan: t("themabeheer.niveauThema"),
+        }),
+      }),
+    );
+
+    await waitFor(() => expect(verzoeken).toHaveLength(1));
+    await waitFor(() => expect(queryClient.getQueryData(eigenL3)).toBeUndefined());
+    expect(queryClient.getQueryData(heelL3)).toBeUndefined();
+    expect(queryClient.getQueryData(andereKlas)).toBeUndefined();
   });
 });

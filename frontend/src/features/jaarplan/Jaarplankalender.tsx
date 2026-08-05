@@ -641,6 +641,17 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 through {@link BORDUITLEG}. It also says nothing about *how* a thema comes to count beyond
                 aanvaarden, because "of zelf verplaatsen" is only true on the tier where moving works.
 
+                **E4-01 put that exact clause in here and its round-2 audit took it back out** (2026-08-04). The
+                owner had ruled that a teacher must be told a verplaatsing makes a thema count, and this looked
+                like the place: the dekking rule already lives here. But this sentence is tier-independent by
+                design and moving is not, so the clause promised a drag on the two states where the grip and the
+                picker are both withheld, one of them (`niveauOnbekend`) directly under a sentence saying no thema
+                can be moved here at all. The comment above was the warning, and it was walked past. The clause now
+                lives in `kalender.sleepUitleg`, i.e. the `kan` entry of {@link BORDUITLEG}, which is the mechanism
+                this file already had for exactly this hazard. **The lesson, since this file has now paid for it
+                twice: a sentence about an affordance belongs in the record that is keyed on that affordance's
+                state, not next to the topic it happens to share.**
+
                 **Gated on a decision actually being outstanding** (re-audit, fix round 2). The design empties the
                 board as the teacher works, so on a fully decided plan this sentence described controls that were
                 nowhere on screen: the same defect as the stale card it was already fixed for, one level up. The

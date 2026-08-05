@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 
 import {
   genereerJaarplan,
@@ -12,6 +18,7 @@ import {
   wijzigPlaatsingStatus,
   wijzigPlaatsingVergrendeling,
 } from "./api";
+import { dekkingKlasKey } from "../dekking/useDekking";
 import type {
   Generatieparameters,
   Jaarplan,
@@ -39,6 +46,29 @@ export const generatieparametersKey = (klasId: string) => ["generatieparameters"
  */
 const roosterKey = (schooljaarId: string, niveau: Planningsblokniveau) =>
   ["planningsrooster", schooljaarId, niveau] as const;
+
+/**
+ * Forgets everything cached about this class's dekking, because the plan it was computed from has just changed
+ * (E4-01, FR-6.5/FR-7, Art. V.1).
+ *
+ * **Removed rather than invalidated, and the difference is the whole point.** The dekkingsoverzicht is a different
+ * route, so while a teacher edits the kalender that query has no observer: an invalidation would only mark it stale
+ * and leave the pre-edit answer in the cache. TanStack would then paint that answer the moment the teacher opens
+ * `/dekking` and refetch behind it, so for the length of one request the screen would show a coverage figure computed
+ * *before* the edit, with no loading state to say so. For a figure a directie may put in front of an inspectie that
+ * is the one failure this screen must not have, and if the refetch then fails the stale number stays on screen beside
+ * the error. Removing it means the page has nothing to paint and shows its own "laden" line instead.
+ *
+ * It is also the choice the screen already made for itself: `DekkingPagina` deliberately renders `isPending` on a
+ * scope switch rather than keeping the previous figures, because a total computed over another denominator is worse
+ * than a pause. A total computed over another *plan* is the same mistake with the same cost.
+ *
+ * The server needs no counterpart: dekking is computed on every read and never stored (Art. V.1), so there is nothing
+ * to invalidate behind the API. This function exists purely because the browser is allowed to remember.
+ */
+function vergeetDekking(queryClient: QueryClient, klasId: string) {
+  queryClient.removeQueries({ queryKey: dekkingKlasKey(klasId) });
+}
 
 /** Loads a class's jaarplan; disabled until a class id is present. */
 export function useJaarplan(klasId: string) {
@@ -114,6 +144,10 @@ export function useGenereerJaarplan(klasId: string) {
     onSuccess: (_resultaat, parameters) => {
       void queryClient.invalidateQueries({ queryKey: jaarplanKey(klasId) });
 
+      // A run replaces the replaceable placements, so whatever dekking was last computed for this class describes a
+      // plan that no longer exists.
+      vergeetDekking(queryClient, klasId);
+
       // The run also SAVED the settings (E3-04 persistence half), so the cached copy is now the stale one. Written
       // rather than invalidated: an invalidation would refetch and could land on the teacher's next keystroke,
       // resetting a field they had already started editing.
@@ -160,6 +194,12 @@ function usePlanMutatie<TArgs>(klasId: string, muteer: (args: TArgs) => Promise<
     mutationFn: muteer,
     onSuccess: (plan) => {
       queryClient.setQueryData(jaarplanKey(klasId), plan);
+
+      // Every one of the five edits can change the figure: a hand-placement and an acceptance raise it, a removal
+      // lowers it, a move raises it (the placement becomes `manueel`, which counts), and resolving a stale placement
+      // releases a figure that was being withheld altogether. The lock is the one that cannot, and it shares this
+      // path deliberately: a hook that dropped the cache for four of five edits would be a rule nobody could state.
+      vergeetDekking(queryClient, klasId);
     },
   });
 }
