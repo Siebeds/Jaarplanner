@@ -35,6 +35,8 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
 | **Totaal** | | | **98** | **46** | **47%** |
 
+> **The table did not move when E3-03 landed (2026-08-05), and that is the story's own claim rather than an oversight.** E3-03 is `[~]`, not `[x]`: it is built and every gate this session could run itself is green, but no independent audit has run, and this repo's rule is that a self-review does not retire a story. Recounted from the checkboxes anyway rather than assumed — `grep -cE '^- \[x\] \*\*E[0-9]-[0-9]{2}' backlog/E*.md` still gives 10 + 14 + 8 + 8 + 4 + 2 + 0 + 0 + 0 = **46 of 98**, and the denominator is unchanged because the story already existed. It moves to 47 when the audit closes.
+>
 > **46 / 98 = 47% after merging E4-01 into E3-09 (2026-08-05).** Per epic: 10 + 14 + 8 + **8** + **4** + 2 + 0 + 0 + 0 = **46**; denominator `10+18+9+10+8+9+9+18+7 = 98`, unchanged because neither story filed anything new.
 >
 > **This merge is the third instance of the pattern two notes below, and it behaved exactly as they predict.** Each side held one correct row and one wrong one: this branch knew **E3** was 8 and still thought **E4** was 3; `origin/main` knew **E4** was 4 and still thought **E3** was 7. Taking either whole side would have silently deleted the other story. Resolved **per row** — E3 from here, E4 from `origin/main` — and only then recounted with the command over the merged epic files. The rule holds: *a merge conflict in this table is never resolved by picking a side*, and the `Totaal` cell is never carried across a merge, because it is the one number both sides always get wrong.

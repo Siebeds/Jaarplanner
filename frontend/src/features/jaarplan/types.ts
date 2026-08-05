@@ -8,6 +8,11 @@
  * introduce a timezone that a school year does not have.
  */
 
+// The scope enum is imported rather than restated: the generation panel and the dekkingsoverzicht report the same
+// `Dekkingsbereik`, and a second copy of the union here would let the two drift into disagreeing about what a scope
+// name means.
+import type { Dekkingsbereik } from "../dekking/types";
+
 /** One derived block of the planning grid. Never a month or a week — a tier + a span (ADR-0013). */
 export interface Planningsblok {
   /** 1-based display position ("periode 3"). Display only; it shifts when vakanties change. */
@@ -225,6 +230,44 @@ export interface Generatieresultaat {
   spreiding: Spreidingsrapport | null;
   /** What became of the teacher's pre-generation parameters (E3-04, FR-5.4); absent when none were sent. */
   parameters: Parameterrapport | null;
+  /** What this proposal would cover once accepted (E3-03, FR-5.3); absent on a failed run. */
+  vooruitzicht: Dekkingsvooruitzicht | null;
+}
+
+/**
+ * What a jaarplan **would** cover if the teacher accepted every proposal standing in it, beside what it covers
+ * today (E3-03, FR-5.3).
+ *
+ * **It is a prospect, never proof.** A freshly generated plan covers nothing at all: every placement it creates is
+ * `Voorgesteld`, and only a placement the teacher stands behind counts as taught (Art. IV.1/V.1). So `aantalGedekt`
+ * is 0 after a first run by design, and `aantalMogelijkGedekt` is the ceiling accepting would reach. A screen that
+ * showed the second without the first would be presenting the AI's proposal as coverage.
+ *
+ * The real, decided figure and the per-doel detail live on the dekkingsoverzicht (E5-02); this is the same
+ * computation, reported for one run.
+ */
+export interface Dekkingsvooruitzicht {
+  /** Which leerplandoelen the figures are over (owner ruling 2026-08-04): what was applied, not what was asked. */
+  bereik: Dekkingsbereik;
+  /** The jaar/fase codes measured against; empty for the whole curriculum. */
+  gemetenJaarFasen: string[];
+  /** The class's own set could not be derived (the unresolved graadklas case), so the scope was widened. */
+  isTerugvalNaarHeelCurriculum: boolean;
+  /** How many loaded doelen fall outside `bereik`; 0 for the whole curriculum. */
+  aantalBuitenBereik: number;
+  /** False while a stale placement is unresolved, in which case **both** figures below are null. */
+  isBetrouwbaar: boolean;
+  aantalOnopgelosteVervallenPlaatsingen: number;
+  /** Covered today, by what the teacher already accepted or placed; null when `isBetrouwbaar` is false. */
+  aantalGedekt: number | null;
+  /** Covered if every standing proposal were accepted; null when `isBetrouwbaar` is false. */
+  aantalMogelijkGedekt: number | null;
+  /** The denominator. Can legitimately be 0, which means "we cannot measure this class yet", never "all covered". */
+  aantalLeerplandoelen: number;
+  /** In scope and carried by no placed thema: the gap accepting cannot close. Null when the figures are withheld. */
+  aantalOnbereikbaar: number | null;
+  /** What accepting everything would add. Null when the figures are withheld. */
+  aantalWinstBijAanvaarden: number | null;
 }
 
 /**

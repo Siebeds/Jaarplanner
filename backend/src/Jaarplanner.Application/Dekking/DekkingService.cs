@@ -97,43 +97,11 @@ public sealed class DekkingService
                     .ToList(),
                 StringComparer.Ordinal);
 
-        // THE DENOMINATOR. Since the owner ruling of 2026-08-04 a class is measured against its own jaar/fase by
-        // default, derived from Klas.Leerjaar, with Dekkingsbereik.HeelCurriculum as the explicit switch. E5-01 built
-        // the seam for exactly this and passed null from here; resolving the ruling is therefore this value.
-        //
-        // The fallback direction is the load-bearing part. Jaarfasen.VoorLeerjaar returns null rather than an empty
-        // list when it cannot map the leerjaar (a graadklas ordinal, or a class deleted mid-computation), because an
-        // empty jaar/fase set means "the whole curriculum" one layer down and "no goals at all" to a reader. The
-        // second would report a class as having nothing left to cover. So a refusal widens the scope and is DECLARED
-        // in the payload; it never narrows it.
-        var beschikbareFasen = bereik == Dekkingsbereik.EigenJaarFase
-            ? await BepaalEigenJaarFasenAsync(klasId, cancellationToken)
-            : null;
+        // THE DENOMINATOR, resolved by the one method both this figure and E3-03's vooruitzicht read it from, so the
+        // two can never be over different sets of goals. See BepaalBereikAsync for the ruling it implements.
+        var scope = await BepaalBereikAsync(klasId, bereik, jaarFase, cancellationToken);
 
-        var isTerugval = bereik == Dekkingsbereik.EigenJaarFase && beschikbareFasen is null;
-
-        // The teacher's narrowing, and it is a filter over what this class HAS rather than free choice: a kleutergroep
-        // may narrow JK+K2+K3 to K3, and nobody may narrow an L3 class to L6. `Contains` is ordinal, matching the rest
-        // of the jaar/fase comparisons: stored codes are canonical (owner ruling 2026-08-03, the import normalises), so
-        // folding case here would only mask an import that did not.
-        var gemetenFasen = beschikbareFasen is { Count: > 1 } && jaarFase is not null
-            && beschikbareFasen.Contains(jaarFase, StringComparer.Ordinal)
-                ? (IReadOnlyList<string>)[jaarFase]
-                : beschikbareFasen;
-
-        var leerplandoelen = await _opslag.HaalLeerplandoelenAsync(gemetenFasen, cancellationToken);
-
-        // How many loaded goals the scope leaves out, so the overview can say so instead of quietly reporting a
-        // smaller denominator (a narrower scope makes coverage look better, the one direction this figure must not
-        // move by itself). Only asked when a scope was actually applied: unscoped, the list IS the total.
-        //
-        // Clamped at zero because the count and the list are two reads: an import landing between them could
-        // otherwise yield a negative "left out" figure, which is a nonsense number rather than a small one.
-        var aantalBuitenBereik = gemetenFasen is null
-            ? 0
-            : Math.Max(0, await _opslag.TelAlleLeerplandoelenAsync(cancellationToken) - leerplandoelen.Count);
-
-        var doelen = leerplandoelen
+        var doelen = scope.Leerplandoelen
             .Select(l =>
             {
                 var dekkendeThemas = themasPerCode.GetValueOrDefault(l.Code, []);
@@ -175,8 +143,7 @@ public sealed class DekkingService
         //
         // This narrowing is a judgement call, not an owner ruling. The directie ruling of 2026-07-28 says the
         // figure is onbetrouwbaar "while any placement is unresolved" and did not contemplate a rejected one.
-        var onopgeloste = plan.Plaatsingen
-            .Count(p => p.IsVervallen && !IsGeweigerd(p.Status));
+        var onopgeloste = TelOnopgelosteVervallen(plan);
 
         var isBetrouwbaar = onopgeloste == 0;
 
@@ -185,14 +152,12 @@ public sealed class DekkingService
             plan.KlasNaam,
             plan.SchooljaarId,
             plan.SchooljaarNaam,
-            // What was APPLIED, not what was asked for. A fallback reports HeelCurriculum because that is what the
-            // figures below are over; IsTerugvalNaarHeelCurriculum is what says the caller did not choose it.
-            isTerugval ? Dekkingsbereik.HeelCurriculum : bereik,
-            gemetenFasen ?? [],
+            scope.ToegepastBereik,
+            scope.GemetenFasen ?? [],
             // What this class COULD be measured against, so a narrowed screen still knows its alternatives.
-            beschikbareFasen ?? [],
-            isTerugval,
-            aantalBuitenBereik,
+            scope.BeschikbareFasen ?? [],
+            scope.IsTerugval,
+            scope.AantalBuitenBereik,
             isBetrouwbaar,
             onopgeloste,
             // Withheld rather than reported while any placement is unresolved (directie 2026-07-28). Null, not a
@@ -201,6 +166,181 @@ public sealed class DekkingService
             doelen.Count,
             doelen);
     }
+
+    /// <summary>
+    /// What this class's plan <b>would</b> cover if the teacher accepted every proposal standing in it, beside what it
+    /// covers today (E3-03, FR-5.3). See <see cref="Dekkingsvooruitzicht"/> for why a potential figure exists at all
+    /// and why it is never presented as dekking.
+    /// <para>
+    /// <b>It lives here rather than in the generation service, and that is the point.</b> Every rule that decides
+    /// coverage — which link layers count, which placement statuses count, what a stale placement does to the figure,
+    /// which goals are in scope — is applied by exactly the code that computes the real dekking, one method above.
+    /// A leaner copy next to the generator is how the two would come to disagree, and this codebase has already paid
+    /// for that class of divergence more than once (the te-vol threshold, the four link layers).
+    /// </para>
+    /// <para>
+    /// <b>The one deliberate difference from <see cref="BerekenAsync"/>:</b> it counts a second, wider set of
+    /// placements — the ones a teacher could still say yes to. Nothing about the <i>decided</i> figure changes, and
+    /// both are returned so a caller cannot show one without the other.
+    /// </para>
+    /// <para>
+    /// No <c>jaarFase</c> narrowing is accepted: the chooser that produces it belongs to the dekkingsoverzicht and its
+    /// answer is not persisted, so this report measures the class's whole derived set and says which codes those were.
+    /// </para>
+    /// </summary>
+    /// <param name="klasId">The class whose plan is being looked ahead over.</param>
+    /// <param name="bereik">Which leerplandoelen to measure against; the same ruling and the same default as dekking.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
+    /// The class does not exist.
+    /// </exception>
+    public async Task<Dekkingsvooruitzicht> BerekenVooruitzichtAsync(
+        Guid klasId,
+        Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase,
+        CancellationToken cancellationToken = default)
+    {
+        var plan = await _lezer.HaalJaarplanAsync(klasId, cancellationToken);
+        var scope = await BepaalBereikAsync(klasId, bereik, jaarFase: null, cancellationToken);
+
+        // The placements that make a thema taught today: exactly BerekenAsync's rule, so the decided half of this
+        // report and the dekkingsoverzicht answer the same number for the same plan.
+        var beslist = Themaplaatsingen(plan, TeltVoorDekking);
+
+        // The placements a teacher could still say yes to, PLUS the decided ones — a ceiling, so it must be a
+        // superset. Rejected placements are excluded because the teacher has already answered, and stale ones because
+        // they sit in no period at all; an unrecognised status counts as neither (see IsVoorstelbaar).
+        var voorstelbaar = Themaplaatsingen(plan, IsVoorstelbaar);
+
+        var nuGedekt = await TelGedekteDoelenAsync(klasId, beslist, scope.Leerplandoelen, cancellationToken);
+        var mogelijkGedekt = beslist.Count == voorstelbaar.Count
+            // Same thema set, so the same answer: no proposal is standing and the second read would be identical.
+            // Skipped rather than repeated because this is the state a plan is in whenever nothing was just generated.
+            ? nuGedekt
+            : await TelGedekteDoelenAsync(klasId, voorstelbaar, scope.Leerplandoelen, cancellationToken);
+
+        var onopgeloste = TelOnopgelosteVervallen(plan);
+        var isBetrouwbaar = onopgeloste == 0;
+
+        return new Dekkingsvooruitzicht(
+            scope.ToegepastBereik,
+            scope.GemetenFasen ?? [],
+            scope.IsTerugval,
+            scope.AantalBuitenBereik,
+            isBetrouwbaar,
+            onopgeloste,
+            // Both withheld together (directie 2026-07-28). Withholding only the decided one would let a screen print
+            // a ceiling with nothing to compare it against, which reads as the figure rather than as a prospect.
+            AantalGedekt: isBetrouwbaar ? nuGedekt : null,
+            AantalMogelijkGedekt: isBetrouwbaar ? mogelijkGedekt : null,
+            scope.Leerplandoelen.Count);
+    }
+
+    /// <summary>
+    /// The distinct thema's placed in a real period of this plan whose placement status satisfies
+    /// <paramref name="teltMee"/>. Stale placements are excluded here rather than per caller, because "sits in no
+    /// period" disqualifies a placement under every predicate this service applies.
+    /// </summary>
+    private static IReadOnlyList<Guid> Themaplaatsingen(JaarplanWeergave plan, Func<string, bool> teltMee) =>
+        plan.Plaatsingen
+            .Where(p => !p.IsVervallen && teltMee(p.Status))
+            .Select(p => p.ThemaId)
+            .Distinct()
+            .ToList();
+
+    /// <summary>
+    /// How many of <paramref name="leerplandoelen"/> at least one of <paramref name="themaIds"/> carries a counting
+    /// link to. Counted over the in-scope goals rather than over the links, so a link pointing at a goal outside the
+    /// scope cannot inflate the figure past its own denominator.
+    /// </summary>
+    private async Task<int> TelGedekteDoelenAsync(
+        Guid klasId,
+        IReadOnlyList<Guid> themaIds,
+        IReadOnlyList<Leerplandoel> leerplandoelen,
+        CancellationToken cancellationToken)
+    {
+        if (themaIds.Count == 0)
+        {
+            return 0;
+        }
+
+        var koppelingen = await _opslag.HaalDekkendeKoppelingenAsync(klasId, themaIds, cancellationToken);
+
+        var gedekteCodes = koppelingen
+            .Select(k => k.LeerplandoelCode)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return leerplandoelen.Count(l => gedekteCodes.Contains(l.Code));
+    }
+
+    /// <summary>
+    /// How many stale placements are still <b>unresolved</b> — stale and not rejected. One implementation, read by the
+    /// dekking figure and by the vooruitzicht, because the two must withhold their numbers in exactly the same states.
+    /// </summary>
+    private static int TelOnopgelosteVervallen(JaarplanWeergave plan) =>
+        plan.Plaatsingen.Count(p => p.IsVervallen && !IsGeweigerd(p.Status));
+
+    /// <summary>
+    /// Resolves which leerplandoelen this class is measured against (owner ruling 2026-08-04) and reads them.
+    /// <para>
+    /// The fallback direction is the load-bearing part. <c>Jaarfasen.VoorLeerjaar</c> returns <c>null</c> rather than
+    /// an empty list when it cannot map the leerjaar (a graadklas ordinal, or a class deleted mid-computation),
+    /// because an empty jaar/fase set means "the whole curriculum" one layer down and "no goals at all" to a reader.
+    /// The second would report a class as having nothing left to cover. So a refusal <b>widens</b> the scope and is
+    /// declared in the payload; it never narrows it.
+    /// </para>
+    /// </summary>
+    private async Task<Bereikuitkomst> BepaalBereikAsync(
+        Guid klasId,
+        Dekkingsbereik bereik,
+        string? jaarFase,
+        CancellationToken cancellationToken)
+    {
+        var beschikbareFasen = bereik == Dekkingsbereik.EigenJaarFase
+            ? await BepaalEigenJaarFasenAsync(klasId, cancellationToken)
+            : null;
+
+        var isTerugval = bereik == Dekkingsbereik.EigenJaarFase && beschikbareFasen is null;
+
+        // The teacher's narrowing, and it is a filter over what this class HAS rather than free choice: a kleutergroep
+        // may narrow JK+K2+K3 to K3, and nobody may narrow an L3 class to L6. `Contains` is ordinal, matching the rest
+        // of the jaar/fase comparisons: stored codes are canonical (owner ruling 2026-08-03, the import normalises), so
+        // folding case here would only mask an import that did not.
+        var gemetenFasen = beschikbareFasen is { Count: > 1 } && jaarFase is not null
+            && beschikbareFasen.Contains(jaarFase, StringComparer.Ordinal)
+                ? (IReadOnlyList<string>)[jaarFase]
+                : beschikbareFasen;
+
+        var leerplandoelen = await _opslag.HaalLeerplandoelenAsync(gemetenFasen, cancellationToken);
+
+        // How many loaded goals the scope leaves out, so a caller can say so instead of quietly reporting a smaller
+        // denominator (a narrower scope makes coverage look better, the one direction this figure must not move by
+        // itself). Only asked when a scope was actually applied: unscoped, the list IS the total.
+        //
+        // Clamped at zero because the count and the list are two reads: an import landing between them could
+        // otherwise yield a negative "left out" figure, which is a nonsense number rather than a small one.
+        var aantalBuitenBereik = gemetenFasen is null
+            ? 0
+            : Math.Max(0, await _opslag.TelAlleLeerplandoelenAsync(cancellationToken) - leerplandoelen.Count);
+
+        return new Bereikuitkomst(
+            // What was APPLIED, not what was asked for. A fallback reports HeelCurriculum because that is what the
+            // figures are over; IsTerugval is what says the caller did not choose it.
+            isTerugval ? Dekkingsbereik.HeelCurriculum : bereik,
+            gemetenFasen,
+            beschikbareFasen,
+            isTerugval,
+            aantalBuitenBereik,
+            leerplandoelen);
+    }
+
+    /// <summary>The resolved denominator and everything a payload has to state about how it was arrived at.</summary>
+    private sealed record Bereikuitkomst(
+        Dekkingsbereik ToegepastBereik,
+        IReadOnlyList<string>? GemetenFasen,
+        IReadOnlyList<string>? BeschikbareFasen,
+        bool IsTerugval,
+        int AantalBuitenBereik,
+        IReadOnlyList<Leerplandoel> Leerplandoelen);
 
     /// <summary>
     /// The jaar/fase codes this class should be measured against, or <c>null</c> when they cannot be derived and the
@@ -233,6 +373,21 @@ public sealed class DekkingService
     private static bool TeltVoorDekking(string status) =>
         Enum.TryParse<KoppelingStatus>(status, out var geparsed)
         && geparsed is KoppelingStatus.Aanvaard or KoppelingStatus.Manueel;
+
+    /// <summary>
+    /// Whether a placement could still <b>become</b> covering: the decided ones, plus the proposals the teacher has
+    /// not answered yet (E3-03). Used only by <see cref="BerekenVooruitzichtAsync"/>; the dekking figure itself never
+    /// counts a <c>voorgesteld</c> placement, which is Art. IV.1.
+    /// <para>
+    /// Written as "counts already, or is an open proposal" rather than as "not rejected", deliberately. The two are
+    /// equivalent for the four known statuses and they differ on an <b>unrecognised</b> one: "not rejected" would let
+    /// a status this code cannot read raise the ceiling, while this direction leaves it out, matching
+    /// <see cref="TeltVoorDekking"/>'s fail-closed rule. A number we cannot justify is worse than a lower one.
+    /// </para>
+    /// </summary>
+    private static bool IsVoorstelbaar(string status) =>
+        TeltVoorDekking(status)
+        || (Enum.TryParse<KoppelingStatus>(status, out var geparsed) && geparsed == KoppelingStatus.Voorgesteld);
 
     /// <summary>
     /// Whether the teacher rejected this placement. An unrecognised status is treated as <b>not</b> rejected, so it

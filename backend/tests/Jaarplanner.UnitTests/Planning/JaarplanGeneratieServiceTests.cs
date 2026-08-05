@@ -439,6 +439,59 @@ public sealed class JaarplanGeneratieServiceTests
     }
 
     /// <summary>
+    /// FR-5.3's <b>asked</b> half (E3-03): the prompt tells the model to aim for full coverage over the year, and
+    /// carries the figures that make the instruction satisfiable.
+    /// <para>
+    /// Split from the measured half for the same reason E3-02 split its own claim: the AI client is a fake in every
+    /// test (Art. IV.6), so "the model achieved good coverage" is unfalsifiable here and asserting it would assert
+    /// the fake. What <i>is</i> verifiable is that the request is not silently missing the instruction — the failure
+    /// mode that would leave FR-5.3 unimplemented while looking done, which is exactly what happened to FR-4.1 and
+    /// FR-8.4 on this project. The result side is <c>DekkingsvooruitzichtTests</c>.
+    /// </para>
+    /// <para>
+    /// <b>It also pins what the coverage section must NOT contain.</b> No target number, no percentage and no
+    /// curriculum: the model is grounded on the school's own thema's only (Art. IV.4), and asking it to judge its own
+    /// coverage against a bar would be the retry loop E3-02 deliberately refused to build (Art. IV.1). The
+    /// denominator is resolved server-side, where the owner's ruling of 2026-08-04 lives.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task De_prompt_vraagt_volledige_dekking_en_zet_er_geen_streefcijfer_in()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var (service, _, client, klas, _, themas) = Opzet("""{"plaatsingen":[]}""", schooljaar);
+
+        await service.GenereerAsync(klas.Id);
+
+        var systeem = client.LaatsteRequest!.SystemPrompt;
+        var prompt = client.LaatsteRequest.UserPrompt;
+
+        // 1. The aim itself, in FR-5.3's own words, under its own heading rather than buried in the spreiding list.
+        Assert.Contains("Dekking (streef naar volledige dekking over het hele schooljaar):", systeem);
+
+        // 2. What coverage actually depends on: the UNION of the placed thema's goals, so different goals and every
+        //    thema placed at least once. A thema left out contributes nothing, which is the fact the model needs.
+        Assert.Contains("zoveel mogelijk VERSCHILLENDE leerplandoelen", systeem);
+        Assert.Contains("Plaats elk thema minstens één keer", systeem);
+        Assert.Contains("nog nergens anders in het jaarplan voorkomen", systeem);
+
+        // 3. Subordinate to the fit rule, never a licence to overfill a period: "as long as it fits in the blocks".
+        Assert.Contains("zolang het in de blokken past", systeem);
+
+        // 4. The count that makes "place every thema" checkable, beside the block count E3-02 added. Together they
+        //    make the one case the coverage rules arbitrate — more thema's than blocks — visible at a glance.
+        Assert.Contains($"Aantal thema's: {themas.Count}", prompt);
+
+        // 5. No target, no percentage, no curriculum in the prompt. Asserted rather than assumed, because a
+        //    well-meaning "streef naar minstens 80%" is the obvious next edit and it would hand the judgement to the
+        //    model (Art. IV.1) using a denominator it cannot see.
+        Assert.DoesNotContain("%", systeem);
+        Assert.DoesNotContain("procent", systeem, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("minstens 8", systeem);
+        Assert.DoesNotContain("minimumdoel", systeem, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// The run reports how the resulting plan is spread (E3-02), so a teacher sees a clumped proposal as clumped.
     /// It is <b>advisory</b>: the badly spread plan is still returned in full and the run still succeeds
     /// (Art. IV.1) — a generator that rejected its own output would be deciding for the teacher.

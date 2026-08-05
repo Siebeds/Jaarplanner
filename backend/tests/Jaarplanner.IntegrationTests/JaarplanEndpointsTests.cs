@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using Jaarplanner.Application.Ai;
+using Jaarplanner.Application.Dekking;
 using Jaarplanner.Application.Planning.Beheer;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
@@ -72,6 +74,77 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         Assert.False(plaatsing.IsVervallen);
         Assert.NotNull(plaatsing.BlokEind);
         Assert.Equal("Themaperiode", plaatsing.BlokNiveau);
+    }
+
+    /// <summary>
+    /// <b>The wiring test for E3-03:</b> a successful generation response really carries a <c>vooruitzicht</c> object
+    /// (FR-5.3), and it names the scope it measured against.
+    /// <para>
+    /// It exists because the composition happens in the <i>controller</i> rather than in the generation service — the
+    /// coverage rules have one owner and that owner reads the plan through <c>IJaarplanLezer</c>, which the generation
+    /// service implements, so a generator depending on it would close the loop. A field attached one layer up is
+    /// exactly the kind of thing that can be silently absent while every unit test stays green, which is the failure
+    /// mode that cost this project a withdrawn milestone (E2-08) and three reopened stories.
+    /// </para>
+    /// <para>
+    /// <b>It deliberately asserts no coverage figure.</b> This fixture's <c>IDekkingOpslag</c> is stubbed empty
+    /// (the real query cannot run on the in-memory provider — see the factory), so every number here would be a
+    /// number about nothing. The figures are asserted against real PostgreSQL in
+    /// <c>Postgres/DekkingsvooruitzichtPostgresTests</c>, over a real generation run.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_geslaagde_generatie_draagt_een_dekkingsvooruitzicht_mee()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+
+        _factory.AiAntwoord =
+            $"{{\"plaatsingen\":[{{\"blokStart\":\"{blokStart:yyyy-MM-dd}\",\"thema\":\"Herfst\"," +
+            "\"motivatie\":\"seizoen\"}]}";
+
+        var generatie = await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        Assert.Equal(HttpStatusCode.OK, generatie.StatusCode);
+
+        var resultaat = await generatie.Content.ReadFromJsonAsync<GeneratieDto>();
+        Assert.True(resultaat!.IsGeslaagd);
+
+        var vooruitzicht = resultaat.Vooruitzicht;
+        Assert.NotNull(vooruitzicht);
+
+        // The scope has to travel with the figures, because the same class has two legitimate denominators (owner
+        // ruling 2026-08-04). This much IS observable through the stub, which reports the seeded class's leerjaar.
+        Assert.Equal("EigenJaarFase", vooruitzicht!.Bereik);
+        Assert.Equal(["L3"], vooruitzicht.GemetenJaarFasen);
+        Assert.False(vooruitzicht.IsTerugvalNaarHeelCurriculum);
+
+        // And the empty fixture answers the honest empty state rather than a plausible-looking number: 0 of 0, which
+        // a screen must never read as "alles gedekt".
+        Assert.Equal(0, vooruitzicht.AantalLeerplandoelen);
+        Assert.Equal(0, vooruitzicht.AantalGedekt);
+        Assert.Equal(0, vooruitzicht.AantalMogelijkGedekt);
+    }
+
+    /// <summary>
+    /// A failed run reports no outlook, for the same reason it reports no spreading: nothing was persisted, so there
+    /// is no plan to look ahead over (Art. IV.5). A zero here would read as "this proposal covers nothing", which is a
+    /// statement about a plan that does not exist.
+    /// </summary>
+    [Fact]
+    public async Task Een_mislukte_generatie_draagt_geen_dekkingsvooruitzicht()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, _) = await _factory.SeedAsync();
+        _factory.AiAntwoord = "dit is geen JSON {kapot";
+
+        var generatie = await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, generatie.StatusCode);
+
+        // Asserted on the raw body: the 422 is a ProblemDetails, so there is no vooruitzicht field to read at all.
+        var lichaam = await generatie.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("vooruitzicht", lichaam, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("aantalMogelijkGedekt", lichaam, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -693,7 +766,28 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
     {
         /// <summary>E3-04's parameter report, present once the request carries parameters.</summary>
         public ParameterRapportDto? Parameters { get; init; }
+
+        /// <summary>E3-03's dekkingsvooruitzicht, attached by the controller on every successful run.</summary>
+        public VooruitzichtDto? Vooruitzicht { get; init; }
     }
+
+    /// <summary>
+    /// The coverage outlook as the wire carries it (E3-03). <c>AantalGedekt</c> and <c>AantalMogelijkGedekt</c> are
+    /// nullable here for the same reason they are on the server: while a stale placement is unresolved the figures are
+    /// absent from the JSON entirely, so a client cannot render a total it never received.
+    /// </summary>
+    private sealed record VooruitzichtDto(
+        string Bereik,
+        IReadOnlyList<string> GemetenJaarFasen,
+        bool IsTerugvalNaarHeelCurriculum,
+        int AantalBuitenBereik,
+        bool IsBetrouwbaar,
+        int AantalOnopgelosteVervallenPlaatsingen,
+        int? AantalGedekt,
+        int? AantalMogelijkGedekt,
+        int AantalLeerplandoelen,
+        int? AantalOnbereikbaar,
+        int? AantalWinstBijAanvaarden);
 
     private sealed record ParameterRapportDto(
         IReadOnlyList<GeweigerdePlaatsingDto> GeweigerdDoorVastMoment,
@@ -763,6 +857,21 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
                 // The only AI stand-in: no network, and it reads the canned answer at call time so a test can set
                 // it after the host is built (Art. IV.6).
                 services.AddSingleton<IAiClient>(new StubAiClient(() => AiAntwoord));
+
+                // THE COVERAGE PORT IS STUBBED HERE, AND IT IS NOT A CONVENIENCE (E3-03).
+                //
+                // Since E3-03 the generation endpoint attaches a dekkingsvooruitzicht, which reads the four link
+                // layers through EfDekkingOpslag. That query throws `NotImplementedException` on the EF **in-memory**
+                // provider — it projects inside a nested SelectMany over owned collections, which InMemory cannot
+                // execute — while running perfectly against Npgsql. So without this stub every generation test in
+                // this file answers 500, on a query production runs without complaint.
+                //
+                // Note the direction, because it is the mirror image of E7-16 and worth knowing before someone
+                // "fixes" this: the usual failure is a path that passes in memory and breaks on Postgres. This one
+                // passes on Postgres and breaks in memory. Either way the conclusion is the same — a database path is
+                // only verified against a real database, which is why every figure this stub makes unobservable is
+                // asserted in Postgres/DekkingsvooruitzichtPostgresTests instead.
+                services.AddScoped<IDekkingOpslag, LegeDekkingOpslag>();
             });
         }
 
@@ -795,6 +904,41 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             var blokken = indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
 
             return (klas.Id, blokken[0].Start);
+        }
+
+        /// <summary>
+        /// A coverage port that knows nothing: no links, no curriculum, no leerjaar. It exists only so the generation
+        /// endpoint can answer at all on the in-memory provider (see the registration above for why the real one
+        /// cannot run there), and it deliberately reports the honest empty state rather than plausible-looking
+        /// numbers: 0 leerplandoelen in scope, which is exactly what "this fixture has no curriculum" means.
+        /// <para>
+        /// A test in this file must therefore never assert a coverage <b>figure</b>. What it can assert is that the
+        /// field is there, which is the wiring E3-03 could otherwise have shipped missing.
+        /// </para>
+        /// </summary>
+        private sealed class LegeDekkingOpslag : IDekkingOpslag
+        {
+            public Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
+                Guid klasId,
+                IReadOnlyCollection<Guid> themaIds,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<DekkendeKoppeling>>([]);
+
+            public Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
+                IReadOnlyCollection<string>? jaarFasen = null,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<Leerplandoel>>([]);
+
+            public Task<int> TelAlleLeerplandoelenAsync(CancellationToken cancellationToken = default) =>
+                Task.FromResult(0);
+
+            /// <summary>
+            /// The class's leerjaar, hard-wired to <c>3</c> to match <see cref="SeedAsync"/>'s class. Returning
+            /// <c>null</c> would be simpler and would make every response report a fallback to the whole curriculum,
+            /// i.e. the unresolved-graadklas state, which is a lie about this fixture's classes.
+            /// </summary>
+            public Task<int?> HaalLeerjaarAsync(Guid klasId, CancellationToken cancellationToken = default) =>
+                Task.FromResult<int?>(3);
         }
 
         private sealed class StubAiClient : IAiClient

@@ -394,7 +394,16 @@
     "genereerVervangen": "{aantal} eerdere voorstellen zijn vervangen.",
     "genereerVervangenEnkelvoud": "1 eerder voorstel is vervangen.",
     "spreidingLeegEnkelvoud": "Nog leeg: themaperiode {ordinalen}.",
-    "spreidingOverbelastEnkelvoud": "Te vol, te weinig weken voor de geplande thema's: themaperiode {ordinalen}."
+    "spreidingOverbelastEnkelvoud": "Te vol, te weinig weken voor de geplande thema's: themaperiode {ordinalen}.",
+    "dekkingTitel": "Dekking van dit voorstel",
+    "dekkingUitleg": "Zolang een thema een AI-voorstel blijft, telt het niet mee voor de dekking. Deze cijfers zijn dus een vooruitzicht, geen bewijs.",
+    "dekkingNu": "Nu gedekt: {gedekt} van {totaal}.",
+    "dekkingMogelijk": "Als je alle voorstellen aanvaardt: {mogelijk} van {totaal}.",
+    "dekkingOnbereikbaar": "Zit in geen enkel gepland thema: {onbereikbaar}.",
+    "dekkingGemeten": "Gemeten tegen {fasen}.",
+    "dekkingGemetenAlles": "Gemeten tegen alle ingeladen leerplandoelen.",
+    "dekkingGeenDoelen": "Voor deze klas zijn nog geen leerplandoelen ingeladen, dus er valt nog niets te meten.",
+    "dekkingOnbetrouwbaar": "Er staan thema's buiten een periode. Zolang je daarover niets beslist, kunnen we niet zeggen wat dit voorstel dekt."
   },
   "doelen": {
     "titel": "Doelen van Op.stap",

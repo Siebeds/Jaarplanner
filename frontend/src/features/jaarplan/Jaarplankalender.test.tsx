@@ -425,6 +425,9 @@ describe("Jaarplankalender", () => {
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
       fout: null,
+      // E3-03's outlook is asserted in Vooruitzichtoverzicht.test.tsx; null here renders no dekking block, which
+      // keeps these assertions about the spreading report alone.
+      vooruitzicht: null,
       jaarplan: null,
       aantalNieuw: 3,
       aantalBehouden: 1,
@@ -520,6 +523,9 @@ describe("Jaarplankalender", () => {
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
       fout: null,
+      // E3-03's outlook is asserted in Vooruitzichtoverzicht.test.tsx; null here renders no dekking block, which
+      // keeps these assertions about the spreading report alone.
+      vooruitzicht: null,
       jaarplan: null,
       aantalNieuw: 1,
       aantalBehouden: 0,
@@ -4145,6 +4151,9 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
       fout: null,
+      // E3-03's outlook is asserted in Vooruitzichtoverzicht.test.tsx; null here renders no dekking block, which
+      // keeps these assertions about the spreading report alone.
+      vooruitzicht: null,
       jaarplan: null,
       aantalNieuw: 2,
       aantalBehouden: 0,

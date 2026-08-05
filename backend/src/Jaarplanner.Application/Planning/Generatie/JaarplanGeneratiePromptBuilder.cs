@@ -75,6 +75,31 @@ public static class JaarplanGeneratiePromptBuilder
         "voeg geen kennis van buiten toe." + Nl +
         "- Verdeel de gekoppelde leerplandoelen evenwichtig over het schooljaar. Zet niet alle " +
         "doelenrijke thema's in de eerste blokken." + Nl +
+        Nl +
+        // FR-5.3's asked half (E3-03). It comes AFTER the spreiding rules on purpose: those are stated as
+        // "in deze volgorde belangrijk", and a thema crammed into a period too short for it covers its goals on
+        // paper only. So coverage is what decides between placements that already fit, never a licence to overfill —
+        // which is also why it does not contradict E3-02's "er zijn niet meer thema's dan blokken nodig": that line
+        // discourages stacking, and these say which thema to leave out when not everything fits.
+        //
+        // Nothing here mentions the curriculum, the class's jaar/fase or a target number, and that is deliberate.
+        // The model is given the school's thema's with their goal codes and nothing else (Art. IV.4), so the only
+        // coverage it can reason about is the union of what it places. The DENOMINATOR — which leerplandoelen this
+        // class is measured against — is resolved server-side by DekkingService (owner ruling 2026-08-04) and
+        // reported as Dekkingsvooruitzicht. Putting a target in the prompt would ask the model to judge its own
+        // coverage, which is the retry loop E3-02 deliberately refused to build (Art. IV.1).
+        "Dekking (streef naar volledige dekking over het hele schooljaar):" + Nl +
+        "- Zorg dat samen zoveel mogelijk VERSCHILLENDE leerplandoelen aan bod komen. Een thema dat je " +
+        "nergens plaatst, draagt niets bij." + Nl +
+        "- Plaats elk thema minstens één keer, zolang het in de blokken past. Past niet alles, laat dan het " +
+        "thema weg waarvan de leerplandoelen ook door een ander gepland thema gedekt zijn." + Nl +
+        "- Twijfel je tussen twee thema's voor hetzelfde blok, kies dan het thema met leerplandoelen die " +
+        "nog nergens anders in het jaarplan voorkomen." + Nl +
+        "- Zet niet hetzelfde thema in meerdere blokken zolang er nog thema's zonder blok zijn." + Nl +
+        Nl +
+        // Given its own heading by E3-03. These two bullets used to hang off the "Spreiding" list, where they read as
+        // spreading rules; a second topical section above them would have made that misfiling worse.
+        "Antwoordvorm:" + Nl +
         "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst of uitleg eromheen:" + Nl +
         "  {\"plaatsingen\": [{\"blokStart\": \"" + JaarplanGeneratieResponseParser.DatumFormaat +
         "\", \"thema\": \"<themanaam>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
@@ -263,6 +288,13 @@ public static class JaarplanGeneratiePromptBuilder
             Line(sb, "- (geen thema's aangeleverd)");
             return;
         }
+
+        // Stated for the same reason the block count is (E3-02): FR-5.3 asks the model to place every thema it can, and
+        // a model that has to tally a list to know how many there are is a model that may tally it wrong. Beside the
+        // block count it also makes the one case the coverage rules have to arbitrate visible at a glance — more
+        // thema's than blocks — instead of leaving it to be discovered halfway through the list.
+        Line(sb, $"Aantal thema's: {themas.Count}");
+        Line(sb, string.Empty);
 
         // Ordered by name so caller ordering cannot change the prompt.
         foreach (var thema in themas.OrderBy(t => t.Naam, StringComparer.Ordinal))

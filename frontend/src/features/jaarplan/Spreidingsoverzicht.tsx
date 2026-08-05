@@ -1,5 +1,6 @@
 import { t, tAantal } from "../../i18n";
 import { Parameteroverzicht } from "./Parameteroverzicht";
+import { Vooruitzichtoverzicht } from "./Vooruitzichtoverzicht";
 import type { Generatieresultaat } from "./types";
 
 /**
@@ -141,6 +142,11 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
           </p>
         </div>
       )}
+
+      {/* What the proposal would cover once accepted (E3-03, FR-5.3). Below the spreading rather than above it: the
+          spreading describes what came back, and this describes what it would be worth — a teacher reads the second
+          question after the first. Absent on a failed run, where nothing was persisted to measure. */}
+      {resultaat.vooruitzicht && <Vooruitzichtoverzicht vooruitzicht={resultaat.vooruitzicht} />}
 
       {/* The parameter report belongs to the same run, so it lives in the same panel (E3-04, FR-5.4). It renders
           nothing when the teacher set no parameters. */}
