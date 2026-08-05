@@ -401,7 +401,13 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         var doel = await _context.Subthemas
             .Include(s => s.Activiteiten)
             .FirstOrDefaultAsync(s => s.Id == doelSubthemaId, cancellationToken)
-            ?? throw new SchoolcontentValidatieFout("Dit subthema bestaat niet meer. Kies een ander subthema.");
+            // The sentence states the fact and **not** the remedy, which is a correction a browser pass forced.
+            // It used to end "Kies een ander subthema.", and when the vanished destination was the klas's last
+            // one the panel then read that instruction directly above "Deze klas heeft geen ander subthema om de
+            // activiteit naar te verhuizen": an instruction pointing at nothing, which is the same class of
+            // defect as the one this round fixed one line over. The server owns the diagnosis, the screen owns
+            // what to do about it, and only the screen knows whether an alternative exists.
+            ?? throw new SchoolcontentValidatieFout("Dit subthema bestaat niet meer.");
 
         try
         {

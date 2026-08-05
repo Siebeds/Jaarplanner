@@ -466,7 +466,7 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
         return json(
           {
             title: "Ongeldige aanvraag",
-            detail: "Dit subthema bestaat niet meer. Kies een ander subthema.",
+            detail: "Dit subthema bestaat niet meer.",
             status: 400,
           },
           400,
@@ -486,7 +486,7 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
       const doel = subthemaOpslag.find((sub) => sub.id === doelSubthemaId);
       if (!doel) {
         return json(
-          { title: "Ongeldige aanvraag", detail: "Dit subthema bestaat niet meer. Kies een ander subthema.", status: 400 },
+          { title: "Ongeldige aanvraag", detail: "Dit subthema bestaat niet meer.", status: 400 },
           400,
         );
       }

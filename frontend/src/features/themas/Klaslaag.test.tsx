@@ -538,7 +538,7 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
   });
 
   it("houdt het paneel open met de reden van de server wanneer de bestemming geweigerd wordt", async () => {
-    const weigering = "Dit subthema bestaat niet meer. Kies een ander subthema.";
+    const weigering = "Dit subthema bestaat niet meer.";
     const { sectie } = await openVerplaatspaneel({ verplaatsWeigering: weigering });
 
     fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })), {
@@ -561,7 +561,7 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
   it("haalt de bestemmingen opnieuw op na een weigering, zodat de lijst niets blijft aanbieden wat weg is", async () => {
     /*
       Found in a browser, by no test: with the destination deleted by a colleague, the server answers 400 with
-      "Dit subthema bestaat niet meer. Kies een ander subthema." while the picker one line above it still
+      "Dit subthema bestaat niet meer." while the picker one line above it still
       **offered** that subthema, and still had it selected. A message asserting something is gone beside a
       control presenting it is the contradiction that reopened E3-07.
 

@@ -154,7 +154,7 @@ public sealed class Subthema
         // the payload rather than the status code.
         if (doelSubthema.Id == Id)
         {
-            throw new ArgumentException("Deze activiteit staat al in dit subthema. Kies een ander subthema.");
+            throw new ArgumentException("Deze activiteit staat al in dit subthema.");
         }
 
         if (doelSubthema.KlasId != KlasId)

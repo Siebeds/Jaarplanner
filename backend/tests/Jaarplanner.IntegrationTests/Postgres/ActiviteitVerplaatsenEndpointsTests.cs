@@ -153,7 +153,9 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
             new { doelSubthemaId = Guid.NewGuid() });
         Assert.Equal(HttpStatusCode.BadRequest, weg.StatusCode);
         var probleem = await weg.Content.ReadFromJsonAsync<ProbleemDto>();
-        Assert.Equal("Dit subthema bestaat niet meer. Kies een ander subthema.", probleem!.Detail);
+        // The fact, without a remedy: only the screen knows whether another subthema exists to point at, and
+        // when it does not, an instruction to choose one lands directly above a sentence saying there is none.
+        Assert.Equal("Dit subthema bestaat niet meer.", probleem!.Detail);
 
         var geenActiviteit = await client.PutAsJsonAsync(
             $"/api/activiteiten/{Guid.NewGuid()}/subthema",
