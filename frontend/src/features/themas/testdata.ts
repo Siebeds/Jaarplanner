@@ -222,6 +222,12 @@ export interface ThemaFakeOpties {
   verplaatsActiviteitAlWeg?: boolean;
   /** Answer a move with a 400 carrying this `detail`, e.g. a destination a colleague deleted meanwhile. */
   verplaatsWeigering?: string;
+  /**
+   * The exact race a browser pass found: the move is refused **and** the destination really is gone, so the
+   * next destinations read no longer contains it. A plain `verplaatsWeigering` cannot stand in for this,
+   * because the list it answers stays unchanged and the picker would look correct either way.
+   */
+  verplaatsBestemmingVerdwijnt?: boolean;
 }
 
 /** One recorded write, so a test can assert the address, the verb and the body the screen sent. */
@@ -451,6 +457,20 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
 
       if (opties.verplaatsWeigering) {
         return json({ title: "Ongeldige aanvraag", detail: opties.verplaatsWeigering, status: 400 }, 400);
+      }
+
+      if (opties.verplaatsBestemmingVerdwijnt) {
+        const { doelSubthemaId } = JSON.parse(String(init?.body)) as { doelSubthemaId: string };
+        const weg = subthemaOpslag.findIndex((sub) => sub.id === doelSubthemaId);
+        if (weg >= 0) subthemaOpslag.splice(weg, 1);
+        return json(
+          {
+            title: "Ongeldige aanvraag",
+            detail: "Dit subthema bestaat niet meer. Kies een ander subthema.",
+            status: 400,
+          },
+          400,
+        );
       }
 
       const { doelSubthemaId } = JSON.parse(String(init?.body)) as { doelSubthemaId: string };

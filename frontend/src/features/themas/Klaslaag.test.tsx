@@ -558,6 +558,68 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     ).toBeInTheDocument();
   });
 
+  it("haalt de bestemmingen opnieuw op na een weigering, zodat de lijst niets blijft aanbieden wat weg is", async () => {
+    /*
+      Found in a browser, by no test: with the destination deleted by a colleague, the server answers 400 with
+      "Dit subthema bestaat niet meer. Kies een ander subthema." while the picker one line above it still
+      **offered** that subthema, and still had it selected. A message asserting something is gone beside a
+      control presenting it is the contradiction that reopened E3-07.
+
+      Pinned as "the destinations are refetched after a failure", which is the property that makes the list
+      correct whatever the reason for the refusal was.
+    */
+    const { fake, sectie } = await openVerplaatspaneel({ verplaatsWeigering: "Dit subthema bestaat niet meer." });
+
+    const voor = fake.urls.filter((url) => url.includes("/api/subthemas/voor-klas/")).length;
+    expect(voor).toBeGreaterThan(0);
+
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+      target: { value: "cccccccc-0000-0000-0000-000000000002" },
+    });
+    fireEvent.click(
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestig") }),
+    );
+
+    expect(await screen.findByText(t("themabeheer.activiteitVerplaatsMislukt"))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(fake.urls.filter((url) => url.includes("/api/subthemas/voor-klas/")).length).toBeGreaterThan(voor),
+    );
+  });
+
+  it("laat geen verplaatsknop staan voor een bestemming die intussen verdwenen is", async () => {
+    /*
+      The other half of the same browser finding, and it needs the destination to *really* vanish: once the
+      refused subthema is refetched away, the id still held in state points at something the list no longer
+      offers. A submit that stayed enabled on it could only reproduce the same refusal, which is the
+      "message says it is gone, control still offers it" shape again.
+
+      Asserted on the submit rather than on the select's value: a `<select>` refuses a value that matches no
+      option all by itself, so that assertion would pass on any implementation, including one that trusts the
+      stale state. The enabled/disabled state is the part this component decides.
+    */
+    const { sectie } = await openVerplaatspaneel({ verplaatsBestemmingVerdwijnt: true });
+
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+      target: { value: "cccccccc-0000-0000-0000-000000000002" },
+    });
+    const submit = () =>
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestig"),
+      }) as HTMLButtonElement;
+    expect(submit().disabled).toBe(false);
+
+    fireEvent.click(submit());
+    expect(await screen.findByText(t("themabeheer.activiteitVerplaatsMislukt"))).toBeInTheDocument();
+
+    // The refused destination is gone from the list, so the choice is no longer a choice.
+    await waitFor(() => expect(submit().disabled).toBe(true));
+    expect(
+      within(sectie)
+        .getByLabelText(t("themabeheer.activiteitVerplaatsLabel"))
+        .querySelectorAll("option").length,
+    ).toBe(1);
+  });
+
   it("behandelt een 404 als een activiteit die iemand anders al verwijderde, niet als een mislukte verhuizing", async () => {
     const { sectie } = await openVerplaatspaneel({ verplaatsActiviteitAlWeg: true });
 

@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 
-import { ApiError } from "../../lib/api";
-
 import { DEKKING_KEY } from "../dekking/useDekking";
 import { ONGEKOPPELDE_DOELEN_KEY } from "../matching/useDoelsuggesties";
 import {
@@ -110,7 +108,7 @@ export function useThemaVoorKlas(themaId: string | undefined, klasId: string | u
  */
 function useBeheerMutatie<TVars, TResult>(
   mutationFn: (vars: TVars) => Promise<TResult>,
-  opties: { verversOok404?: boolean } = {},
+  opties: { verversOokBijFout?: boolean } = {},
 ) {
   const queryClient = useQueryClient();
 
@@ -139,9 +137,22 @@ function useBeheerMutatie<TVars, TResult>(
      * back to the list, so the message is suppressed **and acted on**. There is no list to navigate to at these
      * levels, so acting means refreshing: the record disappears exactly as it does after a successful delete,
      * and the caller's own `onError` closes the panel.
+     *
+     * **It fires on any failure, not only a 404, and E4-08 is why** (found in a browser, not by a test). A move
+     * whose destination a colleague had just deleted is answered as a **400** carrying *"Dit subthema bestaat
+     * niet meer. Kies een ander subthema."* With a 404-only rule the screen said that sentence while the picker
+     * one line above it still **offered** the deleted subthema, and still had it selected. A message asserting
+     * something is gone beside a control that presents it is the contradiction that reopened E3-07 and that
+     * round 3 of E1-14 fixed at these two levels; here the server's status told the truth and the client
+     * narrowed on it.
+     *
+     * Refreshing on every failure is the same asymmetric-cost argument the fixed invalidation set above makes:
+     * a needless refetch costs one request nobody waits for, while a skipped one leaves a control offering a
+     * row that no longer exists. Deciding per status which failures "really" invalidate something is the kind
+     * of judgement this wrapper exists to avoid.
      */
-    onError: (fout) => {
-      if (opties.verversOok404 && fout instanceof ApiError && fout.status === 404) {
+    onError: () => {
+      if (opties.verversOokBijFout) {
         verversAlles();
       }
     },
@@ -225,7 +236,7 @@ export function useWijzigSubthema() {
 
 export function useVerwijderSubthema() {
   return useBeheerMutatie((vars: { subthemaId: string }) => verwijderSubthema(vars.subthemaId), {
-    verversOok404: true,
+    verversOokBijFout: true,
   });
 }
 
@@ -257,7 +268,7 @@ export function useWijzigActiviteit() {
 
 export function useVerwijderActiviteit() {
   return useBeheerMutatie((vars: { activiteitId: string }) => verwijderActiviteit(vars.activiteitId), {
-    verversOok404: true,
+    verversOokBijFout: true,
   });
 }
 
@@ -283,17 +294,17 @@ export function useSubthemaBestemmingen(klasId: string | undefined) {
 /**
  * Move an activiteit to another subthema of the same klas (E4-08, FR-7.2).
  *
- * `verversOok404: true` for the same reason as the deletes: a 404 means the activiteit is gone, so the screen
- * has to *act* rather than only report, or a teacher is left looking at a row that no longer exists. The server
- * is what makes that branch safe to take blindly, and it was changed for it: a **destination** that vanished is
- * answered as a 400 validation refusal rather than a 404, so a 404 here can only be about the activiteit itself.
- * A caller must therefore not translate a 404 into "the destination is gone".
+ * `verversOokBijFout: true` for two reasons, and the second one was found in a browser. A **404** means the
+ * activiteit is gone, so the screen has to *act* rather than only report; the server makes that branch safe to
+ * take blindly, because a destination that vanished is answered as a 400 instead, so a 404 here can only be
+ * about the activiteit itself. And a **400** may itself mean the chosen destination no longer exists, so the
+ * destination list has to be refetched or the picker keeps offering it (see {@link useBeheerMutatie}).
  */
 export function useVerplaatsActiviteit() {
   return useBeheerMutatie(
     (vars: { activiteitId: string; doelSubthemaId: string }) =>
       verplaatsActiviteit(vars.activiteitId, vars.doelSubthemaId),
-    { verversOok404: true },
+    { verversOokBijFout: true },
   );
 }
 

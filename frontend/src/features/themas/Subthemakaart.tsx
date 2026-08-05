@@ -408,6 +408,17 @@ function Activiteitregel({
   const codes = activiteit.doelkoppelingen.map((koppeling) => koppeling.leerplandoelCode);
   const verplaatsMelding = verplaats.error instanceof ApiError ? verplaats.error.detail : undefined;
 
+  /*
+    The choice is **derived** from the list rather than trusted from state, which is the other half of the fix
+    for what a browser found: when the refused destination is refetched away, the id in state points at a
+    subthema that is no longer offered. Reading validity off the data means the picker falls back to its
+    placeholder and the submit disables itself, instead of standing enabled on a choice that can only fail
+    again.
+  */
+  const geldigeKeuze = kandidaten.some((bestemming) => bestemming.id === gekozenBestemming)
+    ? gekozenBestemming
+    : "";
+
   // Grouped by thema, because two subthema's of one klas may share a naam and the thema is what tells them
   // apart. The server already orders by thema then naam, so the groups come out in that order without sorting.
   const perThema = kandidaten.reduce<{ themaId: string; themaNaam: string; items: typeof kandidaten }[]>(
@@ -425,7 +436,7 @@ function Activiteitregel({
   );
 
   function verplaatsNu() {
-    const doel = kandidaten.find((bestemming) => bestemming.id === gekozenBestemming);
+    const doel = kandidaten.find((bestemming) => bestemming.id === geldigeKeuze);
     if (!doel) {
       return;
     }
@@ -645,7 +656,7 @@ function Activiteitregel({
               </label>
               <select
                 id={`verplaats-${activiteit.id}`}
-                value={gekozenBestemming}
+                value={geldigeKeuze}
                 onChange={(event) => setGekozenBestemming(event.target.value)}
                 className="mt-1.5 h-11 w-full rounded-md border border-input bg-card px-3.5 text-sm text-ink sm:max-w-sm"
               >
@@ -682,7 +693,7 @@ function Activiteitregel({
                   onClick={verplaatsNu}
                   // Disabled until a destination is chosen: the placeholder option is not a target, and a submit
                   // that can only fail is the same defect as a control that does nothing.
-                  disabled={gekozenBestemming === "" || verplaats.isPending}
+                  disabled={geldigeKeuze === "" || verplaats.isPending}
                   className="rounded-md bg-petrol px-2.5 py-1 text-xs font-semibold text-petrol-foreground disabled:opacity-60"
                 >
                   {verplaats.isPending
