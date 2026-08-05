@@ -3,8 +3,9 @@
 **Branch:** `story/E4-08-activiteit-verplaatsen`, off `origin/main` `3e646da`
 **Commits:** `950b009` (server), `2c7ea32` (screen), `777f9e6` (browser pass), `afde19d` + `35e2dc1` (fix
 round 1), `1cf91d6` (record), `c697d4f` (two owner rulings), `ce1cadc` (fix round 2)
-**Status:** `[~]`. **Four** antagonist rounds have run. Rounds 2, 3 and 4 each found defects introduced by the
-previous round's fixes, so a round 5 is owed on the same reasoning, though fix round 4's surface is small.
+**Status:** `[x]`, **closed 2026-08-05 by owner ruling after four antagonist rounds and without a fifth.** Every
+MAJOR is fixed and mutation-checked; fix round 4's own fixes were verified by tests, mutation checks and a
+browser pass, but not independently. The story entry records that plainly, as E5-01's and E4-01's do.
 
 ## The ruling, first, because the story forbade guessing it
 
@@ -111,10 +112,12 @@ empty-state sentence **5,80:1**, disabled submit **2,16:1** (inactive, outside S
 is the state the panel opens in). The only elements past 390px are the nav's own `overflow-x:auto` scroller;
 `document.documentElement.scrollWidth` reads 390, which is why that probe is the wrong one.
 
-## Owed
+## What the closing ruling knowingly accepts
 
-**Round 5**, on the same reasoning, though fix round 4 is one render condition, one deleted branch, one new
-control and six comment or record edits.
+**No fifth round.** Rounds 2, 3 and 4 each found defects introduced by the previous fix round, and twice those
+were invisible to a green suite. Fix round 4 is one render condition, one deleted branch, one new control and six
+comment or record edits, which is the surface the owner weighed. Nameable residual risk: the same class, on that
+small surface.
 
 *The two questions round 1 raised are answered:* the owner ruled on 2026-08-05 that the **leeftijd** crossing is
 permitted and must be disclosed in the panel, and that the **subthema re-scope** route stays as it is and is

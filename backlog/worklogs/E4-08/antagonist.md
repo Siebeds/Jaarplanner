@@ -102,6 +102,12 @@ answer *as a MAJOR*, which is the argument for writing the rule down somewhere a
 
 ## Round 5
 
-**Owed on the same reasoning as rounds 3 and 4, but the surface is now small**: fix round 4 is one render
-condition, one deleted branch, one new control and six comment or record edits. Four rounds have found
-1 MAJOR each in the last two, both of them in the *fixes* rather than in the original build.
+**Not run. The owner closed the story after round 4 (2026-08-05).** The reasoning for a fifth round stood and is
+recorded rather than dropped: rounds 2, 3 and 4 each found defects introduced by the previous fix round, twice
+invisible to a green suite. What the ruling weighed against it is fix round 4's surface, which is one render
+condition, one deleted branch, one new control and six comment or record edits.
+
+**Score across the four rounds:** 6 MAJOR, 25 MINOR, 6 QUESTION. Every MAJOR fixed and mutation-checked in both
+directions. Four findings handed to their owners as **E7-19**, **E1-19**, **E1-20** and **E7-20**. Two owner
+rulings taken mid-story (the leeftijd crossing and the subthema re-scope route). **Twenty-five mutation checks**,
+seven of which only began biting after being rewritten, and one of which needed three attempts.
