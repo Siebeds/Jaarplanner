@@ -24,7 +24,7 @@ agrees with the server rather than being the only thing between a teacher and a 
 | Domain | the move verb on `Subthema`; an `internal` re-parent on `Activiteit` |
 | Application | `VerplaatsActiviteitAsync`, `HaalSubthemaBestemmingenAsync`, `SubthemaBestemming` |
 | Api | `PUT /api/activiteiten/{id}/subthema`, `GET /api/subthemas/voor-klas/{klasId}` |
-| Frontend | a destination picker per activiteit row, a section-level confirmation, twelve `themabeheer.activiteitVerplaats*` keys |
+| Frontend | a destination picker per activiteit row, a section-level confirmation, seventeen `themabeheer.activiteitVerplaats*` keys |
 
 **The links travel for free**, and that is the whole point: `Doelkoppelingen` is an owned collection keyed on
 the activiteit, so changing `SubthemaId` carries every `Manueel` link with it. Delete-and-retype, the only
@@ -87,7 +87,7 @@ fails none.
 
 ## Gates on `ce1cadc`
 
-575 unit + 201 integration against real PostgreSQL, 464 frontend / 20 files, 0 skipped. `dotnet format`,
+575 unit + 201 integration against real PostgreSQL, 466 frontend / 20 files, 0 skipped. `dotnet format`,
 eslint, `tsc`, `pnpm build` clean. Round 2's auditor re-ran all four itself on `c697d4f` rather than taking
 them on trust, and every figure reproduced.
 

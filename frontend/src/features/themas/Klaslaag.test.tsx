@@ -492,6 +492,51 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     expect(t("themabeheer.activiteitVerplaatsLeeftijd")).toContain("klas blijft altijd dezelfde");
   });
 
+  it("zegt niets over leeftijden zodra het paneel meldt dat het de lijst niet kon laden", async () => {
+    /*
+      Round 3, MINOR 6. `isRefetchError` is a real TanStack state: `isError` true while `data` still holds the
+      previous list. A failed *refetch* therefore drops the panel into its list-error branch with candidates
+      still in hand, and without gating the disclosure on `heeftKeuzelijst` a graadklas would read an
+      instruction about choosing another age directly above the sentence saying nothing can be chosen.
+
+      `bestemmingenFaalt` cannot reach this, because failing the first fetch means no data ever exists. This
+      fixture serves the list once and fails afterwards.
+
+      The move has to be **refused** as well, and that is not incidental: a successful move closes the panel and
+      takes the row with it, so there would be no panel left to contradict itself. A refusal keeps it open and is
+      also what fires the refresh-on-any-failure rule whose refetch then fails. Two fake options for one state,
+      because the state genuinely needs both.
+    */
+    const { sectie } = await openVerplaatspaneel({
+      extraBestemming: true,
+      bestemmingenFaaltNaEerste: true,
+      verplaatsWeigering: "Dit subthema bestaat niet meer.",
+    });
+
+    // The disclosure is there while the list is: leeftijd 9 is on offer against a source of 8.
+    expect(within(sectie).getByText(t("themabeheer.activiteitVerplaatsLeeftijd"))).toBeInTheDocument();
+
+    // A move that fails triggers the refresh-on-any-failure rule, whose refetch now fails.
+    fireEvent.change(
+      within(sectie).getByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ),
+      { target: { value: "cccccccc-0000-0000-0000-000000000003" } },
+    );
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+
+    expect(
+      await screen.findByText(t("themabeheer.activiteitVerplaatsLijstFout")),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(t("themabeheer.activiteitVerplaatsLeeftijd")),
+    ).not.toBeInTheDocument();
+  });
+
   it("zet de verplaatsknop weer uit wanneer juist de gekozen bestemming verdwijnt", async () => {
     /*
       Round 2, MINOR 3. The derived-choice fix was untestable in the old fixture: the refused destination was
@@ -541,6 +586,7 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
 
     for (const opties of [
       {},
+      { bestemmingenHangt: true },
       { bestemmingenFaalt: true },
       { verplaatsBestemmingVerdwijnt: true },
     ] as ThemaFakeOpties[]) {
@@ -565,6 +611,21 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
       }
 
       const huidig = await klassectie();
+
+      /*
+        Round 3, MINOR 2: the loading state was missing from this loop, and its absence hid a live mutation —
+        rendering the submit while `bestemmingen.isPending` left the whole suite green, which is a submit with no
+        picker to submit from. So the property is now two properties, over four states: there is always a way
+        out, and a submit never appears without the control it acts on.
+      */
+      const kiezer = within(huidig).queryByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      );
+      const submit = within(huidig).queryByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      });
+      expect(Boolean(submit)).toBe(Boolean(kiezer));
+
       const annuleer = within(huidig).getByRole("button", { name: annuleerNaam });
       fireEvent.click(annuleer);
 
@@ -616,6 +677,57 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
         "Drijven en zinken",
       ),
     );
+  });
+
+  it("wist de melding bij het bewaren, ook als het formulier al openstond voor de melding er was", async () => {
+    /*
+      Round 3's MAJOR, and it is a lesson about test setup rather than about the code. The test below raises the
+      notice and *then* opens the create form, but the trigger's own handler already clears notices, so the
+      assertion never observed the `onSuccess` site that round 1's MAJOR-1 fix installed. Measured: deleting
+      either clearing site alone left 33/33 green; only removing both failed. The mechanism whose absence made a
+      confirmation never paint was therefore unprotected, and E1-20 told the next author it was pinned.
+
+      Here the form is opened **first**, so the trigger's clear happens before there is anything to clear, and
+      the only thing that can remove the sentence is the create's `onSuccess`.
+    */
+    const fake = renderApp(L3_PAD);
+    const sectie = await klassectie();
+
+    fireEvent.click(within(sectie).getByRole("button", { name: t("themabeheer.subthemaNieuw") }));
+
+    // Now move an activiteit, with the create form standing open and untouched.
+    fireEvent.click(
+      await within(await klassectie()).findByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+    const metPaneel = await klassectie();
+    fireEvent.change(
+      within(metPaneel).getByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ),
+      { target: { value: "cccccccc-0000-0000-0000-000000000002" } },
+    );
+    fireEvent.click(
+      within(metPaneel).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+    const melding = t("themabeheer.activiteitVerplaatstNaar", {
+      activiteit: "Bladkroon maken",
+      subthema: "Drijven en zinken",
+      thema: "Water",
+    });
+    expect(await screen.findByText(melding)).toBeInTheDocument();
+
+    // Saving the form that was already open is the only remaining event.
+    fireEvent.change(screen.getByLabelText(t("themabeheer.naamLabel")), { target: { value: "Water en ijs" } });
+    fireEvent.change(screen.getByLabelText(t("themabeheer.leeftijdLabel")), { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    expect(await within(await klassectie()).findByText("Water en ijs")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(melding)).not.toBeInTheDocument());
+    expect(fake.verzoeken.some((verzoek) => verzoek.pad.endsWith("/subthemas"))).toBe(true);
   });
 
   it("laat een melding niet staan na een latere geslaagde schrijfactie", async () => {

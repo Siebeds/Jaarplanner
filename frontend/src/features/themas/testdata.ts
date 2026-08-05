@@ -246,6 +246,19 @@ export interface ThemaFakeOpties {
   /** Fail `GET /api/subthemas/voor-klas/{klasId}`, for the panel's list-error state. */
   bestemmingenFaalt?: boolean;
   /**
+   * Never resolve the destinations read, for the panel's **loading** state (E4-08 round 3).
+   *
+   * It exists because a property test named over "every state the panel can be in" drove three of four, and the
+   * missing one hid a real surviving mutation: a submit rendered while there was no picker.
+   */
+  bestemmingenHangt?: boolean;
+  /**
+   * Answer the destinations read once and fail every later one, which is the `isRefetchError` state: `isError`
+   * true while `data` still holds the previous list (E4-08 round 3, MINOR 6). `bestemmingenFaalt` cannot stand
+   * in for it, because failing the first fetch means no data ever exists.
+   */
+  bestemmingenFaaltNaEerste?: boolean;
+  /**
    * The exact race a browser pass found: the move is refused **and** the destination really is gone, so the
    * next destinations read no longer contains it. A plain `verplaatsWeigering` cannot stand in for this,
    * because the list it answers stays unchanged and the picker would look correct either way.
@@ -272,6 +285,7 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
    * the screen would render the same rows before and after a write. Here a create only becomes visible if the
    * component really refetches, which is the behaviour worth pinning.
    */
+  let bestemmingenGeleverd = 0;
   const subthemaOpslag: Subthema[] = opties.geenBestemming
     ? [structuredClone(SUBTHEMA_L3)]
     : [
@@ -457,6 +471,16 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
     const bestemmingen = url.pathname.match(/^\/api\/subthemas\/voor-klas\/([^/]+)$/);
     if (bestemmingen && methode === "GET") {
       if (opties.bestemmingenFaalt) {
+        return json({ title: "Serverfout", status: 500 }, 500);
+      }
+
+      if (opties.bestemmingenHangt) {
+        // Never settles, so the query stays `isPending` and the panel stays in its loading branch.
+        return new Promise<Response>(() => {});
+      }
+
+      bestemmingenGeleverd += 1;
+      if (opties.bestemmingenFaaltNaEerste && bestemmingenGeleverd > 1) {
         return json({ title: "Serverfout", status: 500 }, 500);
       }
 

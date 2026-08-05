@@ -425,8 +425,19 @@ function Activiteitregel({
   /** There is something to pick from, so the picker and its submit are the panel's content. */
   const heeftKeuzelijst = !bestemmingen.isPending && !bestemmingen.isError && kandidaten.length > 0;
 
-  /** A destination with another leeftijd is on offer, so the age consequence can actually happen. */
-  const kanLeeftijdWisselen = kandidaten.some((bestemming) => bestemming.leeftijd !== subthemaLeeftijd);
+  /**
+   * A destination with another leeftijd is on offer, so the age consequence can actually happen.
+   *
+   * **Gated on `heeftKeuzelijst` as well, which is not belt and braces** (round 3, MINOR 6). TanStack has a
+   * state with `isError: true` *and* `data` still defined (`isRefetchError`), so a failed **refetch** — from a
+   * window refocus, or from the new refresh-on-any-failure rule — drops the panel into its list-error branch
+   * while `kandidaten` still holds the previous list. Without this gate a graadklas would then read *"Kies je
+   * een subthema met een andere leeftijd…"* directly above *"…er is nu geen bestemming om uit te kiezen"*: an
+   * instruction about options the same panel says it cannot offer, which is the stale-card contradiction this
+   * story has now fixed three times in three different shapes.
+   */
+  const kanLeeftijdWisselen =
+    heeftKeuzelijst && kandidaten.some((bestemming) => bestemming.leeftijd !== subthemaLeeftijd);
 
   /*
     Grouped by thema, because two subthema's of one klas may share a naam and the thema is what tells them apart.
@@ -436,6 +447,11 @@ function Activiteitregel({
     adjacency reduce turns that into two groups with the same id and the same label, which is precisely what
     the grouping exists to prevent. The server now breaks the tie on thema id as well, so this map is the
     second half of one fix rather than a belt for a fixed belt: order comes from the query, identity from here.
+
+    **Only the server half is pinned by a test** (round 2, MINOR 6): the integration suite asserts every thema's
+    rows arrive contiguously, while no fixture here has two thema's sharing a naam, so reverting this map to an
+    adjacency reduce passes the whole frontend suite. Recorded rather than papered over, because "defence in
+    depth" and "untested" are the same sentence read from two sides.
   */
   const perThema = [...kandidaten
     .reduce((groepen, bestemming) => {

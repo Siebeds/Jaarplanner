@@ -139,8 +139,11 @@ function useBeheerMutatie<TVars, TResult>(
      * and the caller's own `onError` closes the panel.
      *
      * **It fires on any failure, not only a 404, and E4-08 is why** (found in a browser, not by a test). A move
-     * whose destination a colleague had just deleted is answered as a **400** carrying *"Dit subthema bestaat
-     * niet meer. Kies een ander subthema."* With a 404-only rule the screen said that sentence while the picker
+     * whose destination a colleague had just deleted is answered as a **400**. At the time this was written that
+     * 400 carried *"Dit subthema bestaat niet meer. Kies een ander subthema."*; the remedy half was dropped later
+     * in the same story, once looking at the screen showed the remedy is the screen's to state and not the
+     * server's. It now reads *"Dit subthema bestaat niet meer."* With a 404-only rule the screen said that
+     * sentence while the picker
      * one line above it still **offered** the deleted subthema, and still had it selected. A message asserting
      * something is gone beside a control that presents it is the contradiction that reopened E3-07 and that
      * round 3 of E1-14 fixed at these two levels; here the server's status told the truth and the client
