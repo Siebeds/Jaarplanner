@@ -9,10 +9,12 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useId, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { DEKKING_PAD } from "../../app/routes";
+import { JAARFASE_PARAM } from "../dekking/DekkingPagina";
+import { Jaarfasekiezer } from "../dekking/Jaarfasekiezer";
 import { Button } from "../../components/ui/button";
 import { t, tAantal, type TranslationKey } from "../../i18n";
 import { ApiError } from "../../lib/api";
@@ -91,7 +93,50 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // grain does a teacher see first", the other is "which grain does a placement key on".
   const [niveau, setNiveau] = useState<Planningsblokniveau>("Themaperiode");
 
+  /**
+   * Which single jaar/fase the coverage figure below is measured against, or `null` for all of this class's own codes
+   * (owner ruling, 2026-08-05).
+   *
+   * **Component state, not a URL param**, matching the zoom above it and for the reason ADR-0021's 2026-07-31 amendment
+   * gives: one reader tree, rooted where the fetch lives, and no module-scoped store to carry one class's choice into
+   * the next. `JaarplanPagina` renders this component with `key={klasId}`, so a class switch remounts and the narrowing
+   * resets rather than quietly following the teacher to another class.
+   *
+   * **Why it has to exist here and not only on `/dekking`.** `Klas.Leerjaar` is a single ordinal: `0` means "a
+   * kleutergroep" and cannot say *which* kleuterjaar, so `Jaarfasen.VoorLeerjaar` derives `JK + K2 + K3` and a derde
+   * kleuterklas is measured against roughly three times the doelen it teaches. E5-02 gave the dekkingsoverzicht this
+   * control; E3-09 then put the resulting figure on the anchor screen **without** it, so the number a teacher meets
+   * first was the unlabelled, threefold one. The antagonist audit raised it as a QUESTION and the owner ruled the
+   * chooser belongs here too.
+   */
+  const [jaarFase, setJaarFase] = useState<string | null>(null);
+
+  /**
+   * The class's available jaar/fase codes, remembered across a narrowing.
+   *
+   * **Declared here with the other hooks, not beside the derivation that uses it**, because this component early-returns
+   * on the loading and error paths: a `useRef` further down is a conditional hook, and React answers that with
+   * "Rendered more hooks than during the previous render" and a blank screen. Found by a test suite that went from 105
+   * passing to 5 files of nothing.
+   *
+   * See the latching note further down for why the value is held at all rather than read off the current answer.
+   */
+  const beschikbaarLatch = useRef<readonly string[]>([]);
+
   const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId, niveau);
+
+  /**
+   * The coverage read behind the knelpunt line and behind the chooser above it (E3-09).
+   *
+   * **One query for both**, lifted out of `OngeplandeDoelen` in the fix round: the control needs
+   * `beschikbareJaarFasen` and the sentence needs the counts, and they must be the *same* answer or the chooser could
+   * offer a code the figure was not measured against. TanStack would dedupe two identical keys, but "they happen to
+   * share a cache entry" is a weaker guarantee than "there is one call".
+   *
+   * `EigenJaarFase` always: the whole-curriculum scope is a deliberate choice a teacher makes on `/dekking`, and
+   * offering it here would put a second scope control on the board for a figure that is about *this class*.
+   */
+  const dekking = useDekking(klasId, "EigenJaarFase", jaarFase);
 
   // The GENERATION tier's grid, fetched independently of the zoom (E3-08 fix round 1, antagonist finding 1).
   //
@@ -357,6 +402,36 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // every other plan↔grid join on this screen (ADR-0020 §3).
   const belasting = belastingPerStart(plan.blokken);
 
+  /**
+   * Whether to offer the kleuterjaar choice (owner ruling, 2026-08-05).
+   *
+   * Three conditions, and the last two were found by pointing the running app at a real kleuterklas rather than at the
+   * L3 demo class:
+   * 1. **more than one code to choose between** — every L1–L6 class has exactly one, and one button that cannot change
+   *    anything is the control-that-does-nothing this repo bans (the E3-06 rule);
+   * 2. **a figure the choice can govern.** The demo database holds only `L3` goals, so a kleutergroep measures `0 van 0`
+   *    and the sentence below does not render at all. A chooser over nothing is the same banned control, one step
+   *    removed, and it is the ordinary state until **E1-12** loads real curriculum;
+   * 3. **unless the teacher has already narrowed**, in which case it must stay whatever the figures do. Without this
+   *    clause, narrowing to a kleuterjaar that happens to carry no goals makes the control that produced that state
+   *    disappear, and there is no way back to "Alle drie". That is the trap version of condition 2.
+   */
+  //
+  // `beschikbareJaarFasen` is **latched** rather than read straight off the current answer, and that came out of a test:
+  // narrowing creates a NEW query key, `useDekking` deliberately keeps no previous data (E5-02's choice, and not this
+  // story's to change), so for the length of the request `dekking.data` is `undefined` and the control would unmount —
+  // vanishing from under the cursor that just clicked it, then reappearing. Latching is honest as well as calmer: the
+  // set is what this class COULD be measured against, so narrowing cannot change it. A remount per class (`key={klasId}`
+  // on this component) is what resets it.
+  if (dekking.data !== undefined && dekking.data.beschikbareJaarFasen.length > 0) {
+    beschikbaarLatch.current = dekking.data.beschikbareJaarFasen;
+  }
+  const beschikbareJaarFasen = beschikbaarLatch.current;
+
+  const toonJaarfasekiezer =
+    beschikbareJaarFasen.length > 1 &&
+    (jaarFase !== null || (dekking.data?.aantalLeerplandoelen ?? 0) > 0);
+
   // **Te vol is a themaperiode property, so the board marks columns only at that tier** (owner ruling, 2026-07-31).
   // The arithmetic applied to a fortnight flags every filled sub-column — a thema's whole 4 to 6 weeks against the ~2
   // a sub-block offers — which is a board that signals nothing and, worse, invites the reading that *this* fortnight
@@ -493,6 +568,37 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
               // previous grid is being shown while the chosen one is in flight.
               bezig={rooster.isPlaceholderData}
             />
+
+            {/* Which jaar/fase the coverage figure below is measured against (owner ruling, 2026-08-05).
+                See the `jaarFase` state for why the kalender needs this and not only `/dekking`.
+
+                **The same component `/dekking` uses, imported rather than reimplemented.** It is already written to the
+                right condition — it renders on "this class has more than one available code", not on "is this a
+                kleutergroep", which is a question the data model cannot answer and which the still-open graadklas
+                decision would answer differently while producing exactly this shape. A second copy here would be the
+                two-implementations-of-one-rule problem this whole story exists to end, one layer up.
+
+                **Gated on there being something to choose.** With a single code (every L1–L6 class) the control would be
+                one button that cannot change anything, which is the E3-06 rule. With `HeelCurriculum` in force
+                `beschikbareJaarFasen` is empty and it likewise does not render. */}
+            {toonJaarfasekiezer && (
+              <Jaarfasekiezer
+                beschikbaar={beschikbareJaarFasen}
+                gekozen={jaarFase}
+                onKies={setJaarFase}
+                uitlegKey="kalender.jaarFaseUitleg"
+              />
+            )}
+
+            {/* Nothing to choose, and the figure below is not about this class's own year (owner: the chosen option left
+                this case unlabelled; I am labelling it anyway and saying so, because an unlabelled number here is the
+                same defect as the one the audit's first MAJOR was about). A class whose `Leerjaar` maps to no jaar/fase
+                — the open graadklas case — is silently measured against the WHOLE curriculum, so without this the
+                teacher reads a number several times too large with no way to tell. `/dekking` already renders its own
+                sentence for exactly this state; this is that sentence, worded for this screen. */}
+            {dekking.data?.isTerugvalNaarHeelCurriculum === true && (
+              <p className="max-w-prose text-xs text-ink-zacht">{t("kalender.dekkingTerugval")}</p>
+            )}
 
             {/* The chosen tier failed. Said here, beside the control that caused it and above the strip it is about,
                 rather than as a full-screen replacement. Which of the two sentences it is, is derived rather than
@@ -713,7 +819,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 even when the grid it no longer fits has collapsed. All of this is unreachable until E6-03 lets someone
                 configure a year that derives no blocks; it is written down so the next reader does not have to
                 rediscover which of the three placements were chosen and which were inherited. */}
-            <OngeplandeDoelen klasId={klasId} />
+            <OngeplandeDoelen dekking={dekking} jaarFase={jaarFase} />
 
             {/* A refused move (a date that is no longer a period boundary, or a thema already in the target
                 period). Stated at board level because a drop has no panel to report into, and it says the plan
@@ -1153,15 +1259,31 @@ function TeHerzien({
  * **A failed load says so rather than showing nothing.** Silence here reads as "no goals are missing", which is the
  * one direction this signal must never fail in.
  */
-function OngeplandeDoelen({ klasId }: { klasId: string }) {
-  // Same scope the dekkingsoverzicht defaults to, so this count and that screen's cannot disagree.
-  const dekking = useDekking(klasId, "EigenJaarFase", null);
+function OngeplandeDoelen({
+  dekking,
+  jaarFase,
+}: {
+  dekking: ReturnType<typeof useDekking>;
+  /**
+   * The narrowing currently applied, threaded into the link so the two screens agree.
+   *
+   * **This is what makes "the number here is the number there" actually true.** The claim was in this file before the
+   * fix round and it only held until the teacher touched anything: `DekkingPagina` keeps its scope in search params and
+   * this link went to the bare route, so a kalender narrowed to K3 sent the teacher to a screen measuring all three
+   * kleuterjaren, with nothing on either explaining the different figure.
+   */
+  jaarFase: string | null;
+}) {
+  // Carries the narrowing, so following the link does not silently widen the scope back out.
+  const doel = jaarFase
+    ? `${DEKKING_PAD}?${JAARFASE_PARAM}=${encodeURIComponent(jaarFase)}`
+    : DEKKING_PAD;
 
   if (dekking.isError) {
     return (
       <p className={KNELPUNT_DEKKING}>
         {t("kalender.ongeplandeDoelenOnbekend")}{" "}
-        <Link to={DEKKING_PAD} className="font-semibold text-petrol underline">
+        <Link to={doel} className="font-semibold text-petrol underline">
           {t("kalender.ongeplandeDoelenLink")}
         </Link>
       </p>
@@ -1188,7 +1310,7 @@ function OngeplandeDoelen({ klasId }: { klasId: string }) {
           aantal: ongedekt,
         })}
       </span>{" "}
-      <Link to={DEKKING_PAD} className="font-semibold text-petrol underline">
+      <Link to={doel} className="font-semibold text-petrol underline">
         {t("kalender.ongeplandeDoelenLink")}
       </Link>
     </p>

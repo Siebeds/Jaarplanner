@@ -3738,6 +3738,208 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     expect(await screen.findByText(t("kalender.ongeplandeDoelenOnbekend"))).toBeInTheDocument();
   });
 
+  /**
+   * The kleuterjaar chooser on the kalender (owner ruling, 2026-08-05, on the antagonist's QUESTION).
+   *
+   * `Klas.Leerjaar` is one ordinal: `0` says "a kleutergroep" and cannot say which kleuterjaar, so the server derives
+   * `JK + K2 + K3` and a derde kleuterklas is measured against roughly three times the doelen it teaches. E5-02 gave
+   * `/dekking` this control; E3-09 put the resulting figure on the anchor screen without it. These four tests are the
+   * ruling: the control appears exactly when there is something to choose, it changes what is measured, it carries the
+   * narrowing into the link, and the case where nothing can be chosen says so instead of showing a bare number.
+   */
+  const KLEUTERDEKKING = {
+    ...DEKKING_NIETS_ONTBREEKT,
+    klasNaam: "K3 derde kleuterklas",
+    gemetenJaarFasen: ["JK", "K2", "K3"],
+    beschikbareJaarFasen: ["JK", "K2", "K3"],
+    aantalGedekt: 4,
+    aantalLeerplandoelen: 45,
+  };
+
+  /** Records every dekking URL, so the assertions can be about the REQUEST and not only about the screen. */
+  function stubMetDekking(antwoordVoor: (jaarFase: string | null) => unknown) {
+    const urls: string[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url.includes("/dekking")) {
+          urls.push(url);
+          const match = /[?&]jaarFase=([^&]*)/.exec(url);
+          return new Response(
+            JSON.stringify(antwoordVoor(match ? decodeURIComponent(match[1]) : null)),
+            { status: 200 },
+          );
+        }
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(
+            JSON.stringify(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })])),
+            { status: 200 },
+          );
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    return urls;
+  }
+
+  it("offers the kleuterjaar choice when the class has more than one, and narrows what is measured", async () => {
+    const urls = stubMetDekking((jaarFase) =>
+      jaarFase === "K3"
+        ? { ...KLEUTERDEKKING, gemetenJaarFasen: ["K3"], aantalGedekt: 4, aantalLeerplandoelen: 15 }
+        : KLEUTERDEKKING,
+    );
+    renderKalender();
+
+    // Unnarrowed: measured against all three kleuterjaren, so 41 of 45 are not yet covered.
+    expect(
+      await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 41 })),
+    ).toBeInTheDocument();
+
+    const groep = screen.getByRole("group", { name: t("dekking.jaarFaseLabel") });
+    expect(within(groep).getByRole("button", { name: "K3" })).toBeInTheDocument();
+    // The explanation is the kalender's own, not the dekkingsoverzicht's: "dit overzicht" would point at the board,
+    // which this control does not touch.
+    expect(screen.getByText(t("kalender.jaarFaseUitleg"))).toBeInTheDocument();
+    expect(screen.queryByText(t("dekking.jaarFaseUitleg"))).toBeNull();
+
+    fireEvent.click(within(groep).getByRole("button", { name: "K3" }));
+
+    // Narrowed: 11 of 15. The DENOMINATOR moved, which is the whole point — a narrowing that only refiltered the rows
+    // would leave the figure unchanged and the control would be decoration.
+    expect(
+      await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 11 })),
+    ).toBeInTheDocument();
+
+    // And it reached the server as a scope argument rather than being applied in the browser.
+    expect(urls.some((url) => url.includes("jaarFase=K3"))).toBe(true);
+  });
+
+  it("carries the narrowing into the link, so the two screens cannot report different numbers", async () => {
+    stubMetDekking((jaarFase) =>
+      jaarFase === "K3"
+        ? { ...KLEUTERDEKKING, gemetenJaarFasen: ["K3"], aantalGedekt: 4, aantalLeerplandoelen: 15 }
+        : KLEUTERDEKKING,
+    );
+    renderKalender();
+
+    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 41 }));
+    // Unnarrowed the link is bare, which is `/dekking`'s own default.
+    expect(screen.getByRole("link", { name: t("kalender.ongeplandeDoelenLink") })).toHaveAttribute(
+      "href",
+      "/dekking",
+    );
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: t("dekking.jaarFaseLabel") })).getByRole("button", {
+        name: "K3",
+      }),
+    );
+    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 11 }));
+
+    expect(screen.getByRole("link", { name: t("kalender.ongeplandeDoelenLink") })).toHaveAttribute(
+      "href",
+      "/dekking?jaarFase=K3",
+    );
+  });
+
+  it("offers no chooser when there is no figure for it to govern", async () => {
+    // A kleutergroep on a database holding no kleuter goals: `0 van 0`, so the sentence below does not render and a
+    // chooser over it would be a control that changes nothing. Found by pointing the running app at a real kleuterklas
+    // instead of at the L3 demo class, and it is the ORDINARY state until E1-12 loads real curriculum.
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, {
+      ...KLEUTERDEKKING,
+      aantalGedekt: 0,
+      aantalLeerplandoelen: 0,
+    });
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    expect(screen.queryByRole("group", { name: t("dekking.jaarFaseLabel") })).toBeNull();
+    expect(screen.queryByText(/nog niet gedekt door dit jaarplan/)).toBeNull();
+  });
+
+  it("keeps the chooser once narrowed, even if the chosen year turns out to hold no goals", async () => {
+    // The trap version of the test above: if the control vanished on the state it produced, there would be no way back
+    // to "Alle drie" and the teacher would be stuck measuring an empty year.
+    stubMetDekking((jaarFase) =>
+      jaarFase === "JK"
+        ? { ...KLEUTERDEKKING, gemetenJaarFasen: ["JK"], aantalGedekt: 0, aantalLeerplandoelen: 0 }
+        : KLEUTERDEKKING,
+    );
+    renderKalender();
+
+    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 41 }));
+    const groep = screen.getByRole("group", { name: t("dekking.jaarFaseLabel") });
+    fireEvent.click(within(groep).getByRole("button", { name: "JK" }));
+
+    // The figure is gone, because there is nothing to measure in JK...
+    await waitFor(() =>
+      expect(screen.queryByText(/nog niet gedekt door dit jaarplan/)).toBeNull(),
+    );
+    // ...and the way back is still on screen, with "Alle drie" selectable.
+    const nogSteeds = screen.getByRole("group", { name: t("dekking.jaarFaseLabel") });
+    expect(within(nogSteeds).getByRole("button", { name: "JK" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(within(nogSteeds).getByRole("button", { name: t("dekking.jaarFaseAlle") }));
+    expect(
+      await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 41 })),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no chooser for a class with a single jaar/fase", async () => {
+    // Every L1 to L6 class. One button that cannot change anything is the control-that-does-nothing this repo bans.
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, {
+      ...DEKKING_NIETS_ONTBREEKT,
+      aantalGedekt: 3,
+      aantalLeerplandoelen: 11,
+    });
+    renderKalender();
+
+    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 8 }));
+
+    expect(screen.queryByRole("group", { name: t("dekking.jaarFaseLabel") })).toBeNull();
+    expect(screen.queryByText(t("kalender.jaarFaseUitleg"))).toBeNull();
+  });
+
+  it("says the figure is measured against the whole curriculum when the class's own year is unknown", async () => {
+    // The open graadklas case: `Leerjaar` maps to no jaar/fase, so the server widens the scope and declares it. Without
+    // this sentence the teacher reads a number several times too large with no way to tell, which is the same defect as
+    // the audit's first MAJOR.
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, {
+      ...DEKKING_NIETS_ONTBREEKT,
+      bereik: "HeelCurriculum",
+      gemetenJaarFasen: [],
+      beschikbareJaarFasen: [],
+      isTerugvalNaarHeelCurriculum: true,
+      aantalGedekt: 4,
+      aantalLeerplandoelen: 212,
+    });
+    renderKalender();
+
+    expect(await screen.findByText(t("kalender.dekkingTerugval"))).toBeInTheDocument();
+    // Nothing to choose, so no chooser either.
+    expect(screen.queryByRole("group", { name: t("dekking.jaarFaseLabel") })).toBeNull();
+  });
+
   it("has no axe violations with all three knelpunten on screen at once", async () => {
     stubFetch(
       maakJaarplan([

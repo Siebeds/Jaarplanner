@@ -316,6 +316,8 @@
     "ongeplandeDoelenEnkelvoud": "1 leerplandoel is nog niet gedekt door dit jaarplan.",
     "ongeplandeDoelenLink": "Bekijk het dekkingsoverzicht",
     "ongeplandeDoelenOnbekend": "Het is nu niet te zien welke leerplandoelen nog niet gedekt zijn.",
+    "jaarFaseUitleg": "Van een kleutergroep staat niet vast welk kleuterjaar het is. Kies het hier, dan gaat de regel hieronder alleen over de doelen van dat jaar.",
+    "dekkingTerugval": "Van deze klas is geen jaar of fase bekend, dus de regel hieronder gaat over het hele curriculum en niet alleen over wat deze klas geeft.",
     "herzienTitel": "Te herzien: {aantal} thema's staan niet meer in een themaperiode",
     "herzienTitelEnkelvoud": "Te herzien: 1 thema staat niet meer in een themaperiode",
     "herzienUitleg": "De vakantiedata van dit schooljaar zijn gewijzigd, waardoor deze thema's naar een datum wijzen die geen begin van een themaperiode meer is. Ze zijn niet automatisch verplaatst: dat beslis jij. Zolang je over een thema niets beslist, toont het dekkingsoverzicht geen cijfer voor dit jaarplan. Een thema weigeren is ook een beslissing.",
