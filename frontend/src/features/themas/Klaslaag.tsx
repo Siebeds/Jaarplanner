@@ -69,6 +69,14 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
 
     The clearing therefore happens in the create path's `onSuccess`, which is the actual event, and there is
     exactly one such call site, so the "one place" argument is unaffected.
+
+    **What this does NOT fix, restored here because rewriting this comment deleted the repo's only record of it**
+    (round 2, MINOR 4). Round 4 of E1-14 was about a sharper case: after a 404 on subthema A, a teacher could
+    successfully delete B and still read *"iemand anders heeft het verwijderd"* about their own action. The
+    latched guard never fixed that either, because a successful **delete** clears nothing here; only a successful
+    **create** does, since that is the only write this component owns. Filed as **E1-20** rather than fixed,
+    because the other writes live in {@link Subthemakaart} and hooking five of its call sites is E1-14's change,
+    not E4-08's.
   */
   function wisMeldingen() {
     setAlWeg(null);
@@ -131,18 +139,33 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
         </p>
       ) : null}
 
-      {/* `role="status"` rather than `alert`: this is a confirmation of something the teacher just did, so it is
-          announced politely instead of interrupting. Mutually exclusive with `alWeg` by construction, since each
-          setter clears the other: two notices about the same activiteit would contradict each other. */}
-      {verplaatst ? (
-        <p role="status" className="mt-3 text-sm text-ink-zacht">
-          {t("themabeheer.activiteitVerplaatstNaar", {
-            activiteit: verplaatst.activiteit,
-            subthema: verplaatst.subthema,
-            thema: verplaatst.thema,
-          })}
-        </p>
-      ) : null}
+      {/*
+        `role="status"` rather than `alert`: this is a confirmation of something the teacher just did, so it is
+        announced politely instead of interrupting. Mutually exclusive with `alWeg` by construction, since each
+        setter clears the other: two notices about the same activiteit would contradict each other.
+
+        **The region is mounted with the section and only its *text* is conditional** (round 2, MAJOR 2), which
+        is the rule this codebase wrote down after being burned by it twice: a `role="status"` element that
+        enters the DOM already populated is frequently not announced at all. `Schoolcontentimport.tsx` states it,
+        and `Themakaart.tsx` records that **E4-06 shipped exactly this fix inside a block that unmounted, found
+        it silent in the one case that mattered, and moved it**. The first version of this notice did what both
+        of those had already fixed, and it matters more here than in either: for a cross-thema move the row
+        leaves the screen, so this sentence is the only evidence a teacher gets, and a screen-reader user would
+        otherwise have no way to tell a successful move from a delete.
+
+        `alWeg` above is unaffected: `role="alert"` is assertive and *is* announced on insertion.
+      */}
+      <div role="status" className={verplaatst ? "mt-3" : undefined}>
+        {verplaatst ? (
+          <p className="text-sm text-ink-zacht">
+            {t("themabeheer.activiteitVerplaatstNaar", {
+              activiteit: verplaatst.activiteit,
+              subthema: verplaatst.subthema,
+              thema: verplaatst.thema,
+            })}
+          </p>
+        ) : null}
+      </div>
 
       {heeftKlas ? (
         <>

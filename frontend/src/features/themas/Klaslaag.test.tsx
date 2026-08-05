@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -471,11 +471,189 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     expect(within(sectie).getByText(t("themabeheer.activiteitVerplaatsGevolg"))).toBeInTheDocument();
 
     /*
-      And the second consequence, ruled on 2026-08-05 after the audit established it had been inferred rather
-      than ruled: a move may cross a **leeftijd** within one klas, which changes which age group teaches the
-      activiteit, and the panel has to say so rather than leave it to the age printed in an option label.
+      And **not** the leeftijd sentence here, because every destination this klas offers has the same leeftijd as
+      the source. The owner ruled that the crossing must be disclosed, not that the sentence must always be
+      printed (round 2, MINOR 9), so on a non-graadklas the panel does not carry a paragraph about something that
+      cannot happen. The next test is the same panel with a different-age destination on offer.
     */
+    expect(
+      within(sectie).queryByText(t("themabeheer.activiteitVerplaatsLeeftijd")),
+    ).not.toBeInTheDocument();
+  });
+
+  it("zegt dat een andere leeftijd een andere leeftijdsgroep betekent, zodra zo'n bestemming bestaat", async () => {
+    // The owner's ruling of 2026-08-05, in the state where it applies: a graadklas offering a subthema at
+    // another age. Art. IX.2 makes (subthema x leeftijd) the differentiation axis, so this changes who teaches
+    // the activiteit from then on, and the age in an option label is not a disclosure of that.
+    const { sectie } = await openVerplaatspaneel({ extraBestemming: true });
+
     expect(within(sectie).getByText(t("themabeheer.activiteitVerplaatsLeeftijd"))).toBeInTheDocument();
+    // And the klas half is stated in the same breath, so the sentence answers the question it raises.
+    expect(t("themabeheer.activiteitVerplaatsLeeftijd")).toContain("klas blijft altijd dezelfde");
+  });
+
+  it("zet de verplaatsknop weer uit wanneer juist de gekozen bestemming verdwijnt", async () => {
+    /*
+      Round 2, MINOR 3. The derived-choice fix was untestable in the old fixture: the refused destination was
+      L3's only candidate, so the whole picker was replaced by the empty-state sentence and the submit was absent
+      **whatever** the component computed. With a second destination still on offer the picker stays, and the
+      question becomes the one the fix is about: does a chosen id that is no longer offered still enable the
+      submit?
+    */
+    const { sectie } = await openVerplaatspaneel({
+      extraBestemming: true,
+      verplaatsBestemmingVerdwijnt: true,
+    });
+
+    const kiezer = () =>
+      within(sectie).getByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ) as HTMLSelectElement;
+    const submit = () =>
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      }) as HTMLButtonElement;
+
+    fireEvent.change(kiezer(), { target: { value: "cccccccc-0000-0000-0000-000000000002" } });
+    expect(submit().disabled).toBe(false);
+
+    fireEvent.click(submit());
+    expect(await screen.findByText(t("themabeheer.activiteitVerplaatsMislukt"))).toBeInTheDocument();
+
+    // The picker is still there, with the surviving destination, and the choice that no longer exists is no
+    // longer a choice: without the derivation the submit would stay enabled on a stale id and do nothing.
+    await waitFor(() => expect(submit().disabled).toBe(true));
+    expect(kiezer().value).toBe("");
+    expect(kiezer().querySelectorAll("option").length).toBe(2);
+  });
+
+  it("laat het paneel in elke toestand sluiten, ook wanneer er niets te kiezen valt", async () => {
+    /*
+      Round 2, MAJOR 1, and it was introduced by the fix for round 1's MAJOR 2: replacing the picker with a
+      sentence took the cancel with it, because the cancel lived inside the "there are destinations" arm. The
+      panel then had no control that closes it at all, beside a trigger above that only sets a state which is
+      already set.
+
+      Asserted as a property over **every** state the panel can be in, rather than for the one branch that was
+      broken, so a fifth branch added later is covered.
+      */
+    const annuleerNaam = t("themabeheer.activiteitVerplaatsAnnuleerAria", { naam: "Bladkroon maken" });
+
+    for (const opties of [
+      {},
+      { bestemmingenFaalt: true },
+      { verplaatsBestemmingVerdwijnt: true },
+    ] as ThemaFakeOpties[]) {
+      const { sectie } = await openVerplaatspaneel(opties);
+
+      if ("verplaatsBestemmingVerdwijnt" in opties) {
+        // Reach the empty state the way a teacher does: the destination is deleted under the open panel.
+        fireEvent.change(
+          within(sectie).getByLabelText(
+            t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+          ),
+          { target: { value: "cccccccc-0000-0000-0000-000000000002" } },
+        );
+        fireEvent.click(
+          within(sectie).getByRole("button", {
+            name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+          }),
+        );
+        expect(
+          await screen.findByText(t("themabeheer.activiteitVerplaatsGeenBestemming")),
+        ).toBeInTheDocument();
+      }
+
+      const huidig = await klassectie();
+      const annuleer = within(huidig).getByRole("button", { name: annuleerNaam });
+      fireEvent.click(annuleer);
+
+      // It really closes: the panel and its heading are gone, not merely unreachable.
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("heading", {
+            name: t("themabeheer.activiteitVerplaatsTitel", { naam: "Bladkroon maken" }),
+          }),
+        ).not.toBeInTheDocument(),
+      );
+
+      cleanup();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("houdt de live region gemonteerd, zodat de bevestiging ook aangekondigd wordt", async () => {
+    /*
+      Round 2, MAJOR 2. A role="status" element that enters the DOM already populated is frequently not
+      announced at all, which this codebase wrote down twice after E4-06 shipped exactly that and found it
+      silent. The region is therefore mounted with the section and only its text is conditional. It matters more
+      here than in either earlier case: for a cross-thema move the row leaves the screen, so this sentence is the
+      only evidence a teacher gets.
+    */
+    const { sectie } = await openVerplaatspaneel();
+    const regios = () => within(sectie).getAllByRole("status", { hidden: true });
+
+    // Present before anything happened, and empty.
+    expect(regios().length).toBeGreaterThan(0);
+    expect(regios()[0].textContent).toBe("");
+
+    fireEvent.change(
+      within(sectie).getByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ),
+      { target: { value: "cccccccc-0000-0000-0000-000000000002" } },
+    );
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+
+    // The same element is filled rather than a new one inserted, which is the whole point.
+    const na = await klassectie();
+    await waitFor(() =>
+      expect(within(na).getAllByRole("status", { hidden: true })[0].textContent).toContain(
+        "Drijven en zinken",
+      ),
+    );
+  });
+
+  it("laat een melding niet staan na een latere geslaagde schrijfactie", async () => {
+    /*
+      Round 2, MINOR 4: nothing asserted that a notice is ever *cleared*, so the mechanism that replaced round
+      4's latched guard was unpinned in exactly the way the latched guard had been. Deleting both wisMeldingen()
+      calls left the suite green.
+    */
+    const { sectie } = await openVerplaatspaneel();
+
+    fireEvent.change(
+      within(sectie).getByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ),
+      { target: { value: "cccccccc-0000-0000-0000-000000000002" } },
+    );
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+    const melding = t("themabeheer.activiteitVerplaatstNaar", {
+      activiteit: "Bladkroon maken",
+      subthema: "Drijven en zinken",
+      thema: "Water",
+    });
+    expect(await screen.findByText(melding)).toBeInTheDocument();
+
+    // A later successful write is a new fact about the screen, so the old sentence must go.
+    fireEvent.click(
+      within(await klassectie()).getByRole("button", { name: t("themabeheer.subthemaNieuw") }),
+    );
+    fireEvent.change(screen.getByLabelText(t("themabeheer.naamLabel")), { target: { value: "Water en ijs" } });
+    fireEvent.change(screen.getByLabelText(t("themabeheer.leeftijdLabel")), { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    expect(await within(await klassectie()).findByText("Water en ijs")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(melding)).not.toBeInTheDocument());
   });
 
   it("verplaatst de activiteit en zegt waar ze nu staat, want de rij verdwijnt van dit scherm", async () => {

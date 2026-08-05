@@ -121,9 +121,10 @@ public sealed class Subthema
     /// <para>
     /// <b>Deliberately narrow wording: this guards the move verb, not the system.</b>
     /// <c>WijzigScope</c> still accepts a different klas, so re-scoping a subthema carries every activiteit in
-    /// it across a class boundary by another route. That is pre-existing E1-10 behaviour which no screen
-    /// offers, and whether the ruling is meant to bind it too is an open question for the owner rather than
-    /// something this method may decide (antagonist round 1).
+    /// it across a class boundary by another route. That is pre-existing E1-10 behaviour which no screen offers.
+    /// <b>The owner ruled on 2026-08-05 to leave that route as it is and file it</b>, so it is <b>E1-19</b>, and
+    /// closing it is that story's decision rather than this method's. Until then the claim above is true of this
+    /// verb and not of the system, which is why it is worded that way.
     /// </para>
     /// <para>
     /// A move to another <b>leeftijd</b> within the same klas is permitted, which is the graadklas

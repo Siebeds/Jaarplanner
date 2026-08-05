@@ -250,10 +250,14 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
     public async Task Twee_themas_met_dezelfde_naam_blijven_gescheiden_in_de_bestemmingenlijst()
     {
         /*
-          `Thema.Naam` carries no unique index, so two thema's may share a naam. Ordering on the naam alone let
-          their subthema's interleave, and the picker groups by consecutive thema id, so interleaved rows became
-          two groups with the same id and the same label. Pinned as a property of the *answer*: every thema's
-          rows are contiguous, whatever their names are.
+          `Thema.Naam` carries no unique index, so two thema's may share a naam, and ordering on the naam alone
+          let their subthema's interleave: one thema's rows split around another's.
+
+          Pinned as a property of the **answer** rather than of any consumer: every thema's rows are contiguous,
+          whatever the names are. That wording matters, because the client no longer depends on it. The first fix
+          for this paired the tie-break with a picker that grouped by *consecutive* thema id, where interleaving
+          produced two groups with the same id and label; that picker now groups on a keyed map, so this test
+          pins the ordering it asked for and the client half is defence in depth (round 2, MINOR 6).
         */
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();

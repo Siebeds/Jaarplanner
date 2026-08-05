@@ -109,8 +109,13 @@ public class ActiviteitVerplaatsenTests
         // 400's detail, and the form renders that detail verbatim. So the paramName overload writes English into
         // a Dutch sentence on a teacher's screen (Art. II.3), which is E1-14's round-4 MAJOR one screen over.
         //
-        // Keyed on **every** message this method can refuse with, not on the two sentences, so a third refusal
-        // added later is covered without anyone remembering this test exists.
+        // The property is asserted over the refusals **as a set** rather than sentence by sentence, so a reword
+        // cannot slip past it.
+        //
+        // **It does not cover a refusal added later**, and an earlier version of this comment claimed it did
+        // (round 2, MINOR 7). The list below is hand-written, so a third refusal is covered only if someone adds
+        // a third line, which is exactly what that claim told the next author was unnecessary. Stated plainly
+        // instead: today's coverage is total, tomorrow's needs a line.
         var thema = new Thema("Water", duurWeken: 4);
         var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, Klas, leeftijd: "K3");
         var andereKlas = thema.VoegSubthemaToe("De plas", duurWeken: 2, AndereKlas, leeftijd: "K3");

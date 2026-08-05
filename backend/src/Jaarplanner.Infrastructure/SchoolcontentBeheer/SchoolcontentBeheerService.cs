@@ -449,11 +449,15 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                     ThemaNaam = t.Naam,
                 }))
             .OrderBy(r => r.ThemaNaam)
-            // ThemaId breaks the tie, and it is load-bearing rather than tidy: `Thema.Naam` carries no unique
-            // index, so two thema's may share a naam, and without this the rows of the two interleave by
-            // subthema naam. The picker groups by consecutive ThemaId, so interleaved rows produce two groups
-            // with the same id and the same label, which is exactly what the grouping exists to prevent
-            // (antagonist round 1).
+            // ThemaId breaks the tie because `Thema.Naam` carries no unique index: two thema's may share a naam,
+            // and without this their rows interleave by subthema naam, so a reader (or an export) sees one
+            // thema's subthema's split around another's.
+            //
+            // **It is no longer what the picker's correctness depends on** (round 2, MINOR 6). The first fix for
+            // this paired the tie-break with a client that grouped by *consecutive* ThemaId, where interleaving
+            // produced two groups carrying the same id and label; the client now groups on a keyed map, so
+            // adjacency is irrelevant there and this clause is about the order rows arrive in, which is still
+            // worth getting right and is what the integration test pins.
             .ThenBy(r => r.ThemaId)
             .ThenBy(r => r.Naam)
             .ThenBy(r => r.Leeftijd)

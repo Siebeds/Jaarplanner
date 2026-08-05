@@ -329,6 +329,7 @@ export function Subthemakaart({ subthema, klasId, klasNaam, onAlWeg, onVerplaats
               activiteit={activiteit}
               subthemaId={subthema.id}
               subthemaNaam={subthema.naam}
+              subthemaLeeftijd={subthema.leeftijd}
               klasId={klasId}
               onAlWeg={onAlWeg}
               onVerplaatst={onVerplaatst}
@@ -362,6 +363,7 @@ function Activiteitregel({
   activiteit,
   subthemaId,
   subthemaNaam,
+  subthemaLeeftijd,
   klasId,
   onAlWeg,
   onVerplaatst,
@@ -369,6 +371,7 @@ function Activiteitregel({
   activiteit: Activiteit;
   subthemaId: string;
   subthemaNaam: string;
+  subthemaLeeftijd: string;
   klasId: string;
   onAlWeg: SubthemakaartProps["onAlWeg"];
   onVerplaatst: SubthemakaartProps["onVerplaatst"];
@@ -418,6 +421,12 @@ function Activiteitregel({
   const geldigeKeuze = kandidaten.some((bestemming) => bestemming.id === gekozenBestemming)
     ? gekozenBestemming
     : "";
+
+  /** There is something to pick from, so the picker and its submit are the panel's content. */
+  const heeftKeuzelijst = !bestemmingen.isPending && !bestemmingen.isError && kandidaten.length > 0;
+
+  /** A destination with another leeftijd is on offer, so the age consequence can actually happen. */
+  const kanLeeftijdWisselen = kandidaten.some((bestemming) => bestemming.leeftijd !== subthemaLeeftijd);
 
   /*
     Grouped by thema, because two subthema's of one klas may share a naam and the thema is what tells them apart.
@@ -656,9 +665,18 @@ function Activiteitregel({
             about *who teaches it from now on*. The klas half is stated in the same breath, because that is the
             boundary the move can never cross and a teacher reading about one scope will wonder about the other.
           */}
-          <p className="mt-1 max-w-prose text-sm text-ink-zacht">
-            {t("themabeheer.activiteitVerplaatsLeeftijd")}
-          </p>
+          {/*
+            **Rendered only when a destination with another leeftijd is actually on offer** (round 2, MINOR 9).
+            The ruling was that the crossing must be *disclosed*, not that the sentence must always be printed,
+            and for a non-graadklas every candidate shares the source's leeftijd, so the panel would otherwise
+            carry a paragraph about something that cannot happen. Same reasoning as the fix for round 1's
+            MINOR 4: tie the claim to the condition that actually holds.
+          */}
+          {kanLeeftijdWisselen ? (
+            <p className="mt-1 max-w-prose text-sm text-ink-zacht">
+              {t("themabeheer.activiteitVerplaatsLeeftijd")}
+            </p>
+          ) : null}
 
           {/*
             **Outside the branches below, deliberately.** It used to sit inside the "there are destinations"
@@ -728,8 +746,25 @@ function Activiteitregel({
                 ))}
               </select>
 
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
+            </>
+          )}
+
+          {/*
+            **The button row sits outside every branch above, and the cancel is why** (round 2, MAJOR 1).
+
+            The fix for round 1's MAJOR 2 replaced the picker with a sentence when no destination is left, and it
+            took the cancel with it, because the cancel lived inside the "there are destinations" arm. So in the
+            very state that fix exists for, and in the loading and list-error states too, the panel had **no
+            control that closes it**: no cancel, no submit, no Escape handler, and a trigger above it that only
+            ever sets a state which is already set. A panel with no way out, beside an enabled control with no
+            observable effect, which is the rule this story invokes more than any other.
+
+            The submit stays conditional, because it can only act when there is something to pick. The cancel is
+            unconditional, because leaving must always be possible.
+          */}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {heeftKeuzelijst ? (
+              <button
                   type="button"
                   onClick={verplaatsNu}
                   /*
@@ -747,7 +782,8 @@ function Activiteitregel({
                   {verplaats.isPending
                     ? t("themabeheer.activiteitVerplaatsBezig")
                     : t("themabeheer.activiteitVerplaatsBevestig")}
-                </button>
+              </button>
+            ) : null}
                 <button
                   type="button"
                   onClick={() => {
@@ -771,9 +807,7 @@ function Activiteitregel({
                 >
                   {t("themabeheer.annuleer")}
                 </button>
-              </div>
-            </>
-          )}
+          </div>
         </div>
       ) : null}
 

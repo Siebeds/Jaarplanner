@@ -163,6 +163,19 @@ const SUBTHEMA_L3: Subthema = {
  * thema but never its klas, and with one subthema per klas the picker would correctly render nothing and prove
  * nothing. It carries no activiteiten of its own, so a moved one is unambiguous.
  */
+const SUBTHEMA_L3_DERDE: Subthema = {
+  id: "cccccccc-0000-0000-0000-000000000003",
+  themaId: THEMA_VOL,
+  naam: "De regenboog",
+  duurWeken: 2,
+  klasId: KLAS_L3,
+  leeftijd: "9",
+  probleemstelling: null,
+  onderzoeksvraag: null,
+  subdoelen: [],
+  activiteiten: [],
+};
+
 const SUBTHEMA_L3_WATER: Subthema = {
   id: "cccccccc-0000-0000-0000-000000000002",
   themaId: THEMA_WATER,
@@ -223,6 +236,16 @@ export interface ThemaFakeOpties {
   /** Answer a move with a 400 carrying this `detail`, e.g. a destination a colleague deleted meanwhile. */
   verplaatsWeigering?: string;
   /**
+   * Add a **third** subthema for L3, under a third thema and with a different `leeftijd` (E4-08 round 2).
+   *
+   * Opt-in, because the default two-subthema store is what the destination-list test asserts exactly. Two
+   * findings need it: the leeftijd disclosure only renders when a destination with another age is on offer, and
+   * the derived-choice fix can only be observed when the chosen destination vanishes while **another remains**.
+   */
+  extraBestemming?: boolean;
+  /** Fail `GET /api/subthemas/voor-klas/{klasId}`, for the panel's list-error state. */
+  bestemmingenFaalt?: boolean;
+  /**
    * The exact race a browser pass found: the move is refused **and** the destination really is gone, so the
    * next destinations read no longer contains it. A plain `verplaatsWeigering` cannot stand in for this,
    * because the list it answers stays unchanged and the picker would look correct either way.
@@ -251,7 +274,11 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
    */
   const subthemaOpslag: Subthema[] = opties.geenBestemming
     ? [structuredClone(SUBTHEMA_L3)]
-    : [structuredClone(SUBTHEMA_L3), structuredClone(SUBTHEMA_L3_WATER)];
+    : [
+        structuredClone(SUBTHEMA_L3),
+        structuredClone(SUBTHEMA_L3_WATER),
+        ...(opties.extraBestemming ? [structuredClone(SUBTHEMA_L3_DERDE)] : []),
+      ];
   let teller = 0;
 
   const fetchFake = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -429,6 +456,10 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
     // --- E4-08: the destinations of a move, scoped to one klas across every thema. ---
     const bestemmingen = url.pathname.match(/^\/api\/subthemas\/voor-klas\/([^/]+)$/);
     if (bestemmingen && methode === "GET") {
+      if (opties.bestemmingenFaalt) {
+        return json({ title: "Serverfout", status: 500 }, 500);
+      }
+
       return json(
         subthemaOpslag
           .filter((sub) => sub.klasId === bestemmingen[1])
