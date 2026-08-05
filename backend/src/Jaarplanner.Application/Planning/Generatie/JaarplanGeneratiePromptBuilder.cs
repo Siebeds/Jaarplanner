@@ -80,7 +80,19 @@ public static class JaarplanGeneratiePromptBuilder
         // "in deze volgorde belangrijk", and a thema crammed into a period too short for it covers its goals on
         // paper only. So coverage is what decides between placements that already fit, never a licence to overfill —
         // which is also why it does not contradict E3-02's "er zijn niet meer thema's dan blokken nodig": that line
-        // discourages stacking, and these say which thema to leave out when not everything fits.
+        // discourages stacking, and these decide WHICH thema's to use.
+        //
+        // **It asks for selection, not for exhaustion, and that is an owner ruling (2026-08-05).** The first version
+        // said "plaats elk thema minstens één keer", which the antagonist correctly read as asserting that every
+        // school-wide thema belongs in every class's year. The owner ruled the opposite: thema's are often aligned
+        // across the classes of one leerjaar, but each class — each teacher — may have its own. So the library is an
+        // offer, and a plan that leaves a thema unused is not a worse plan.
+        //
+        // **The consequence this prompt cannot fix, filed rather than papered over:** `Thema` is school-wide
+        // (Art. IX.2) and nothing records which thema's belong to which class, so this prompt is handed the WHOLE
+        // library for every class. Wording it as an offer is the honest half; the missing half is a per-class
+        // selection, which is a data-model question and sits with the Art. XIV entry "is a thema shared school-wide
+        // or per class" in backlog/README.md.
         //
         // Nothing here mentions the curriculum, the class's jaar/fase or a target number, and that is deliberate.
         // The model is given the school's thema's with their goal codes and nothing else (Art. IV.4), so the only
@@ -89,13 +101,13 @@ public static class JaarplanGeneratiePromptBuilder
         // reported as Dekkingsvooruitzicht. Putting a target in the prompt would ask the model to judge its own
         // coverage, which is the retry loop E3-02 deliberately refused to build (Art. IV.1).
         "Dekking (streef naar volledige dekking over het hele schooljaar):" + Nl +
-        "- Zorg dat samen zoveel mogelijk VERSCHILLENDE leerplandoelen aan bod komen. Een thema dat je " +
-        "nergens plaatst, draagt niets bij." + Nl +
-        "- Plaats elk thema minstens één keer, zolang het in de blokken past. Past niet alles, laat dan het " +
-        "thema weg waarvan de leerplandoelen ook door een ander gepland thema gedekt zijn." + Nl +
+        "- Zorg dat samen zoveel mogelijk VERSCHILLENDE leerplandoelen aan bod komen." + Nl +
+        "- Kies daarvoor de combinatie van thema's die samen het meeste dekt. Je hoeft niet elk thema te " +
+        "gebruiken: de lijst is de bibliotheek van de school, niet een verplichte inhoud voor deze klas." + Nl +
         "- Twijfel je tussen twee thema's voor hetzelfde blok, kies dan het thema met leerplandoelen die " +
         "nog nergens anders in het jaarplan voorkomen." + Nl +
-        "- Zet niet hetzelfde thema in meerdere blokken zolang er nog thema's zonder blok zijn." + Nl +
+        "- Zet hetzelfde thema niet in meerdere blokken als een ander thema doelen zou toevoegen die nog " +
+        "niet gedekt zijn." + Nl +
         Nl +
         // Given its own heading by E3-03. These two bullets used to hang off the "Spreiding" list, where they read as
         // spreading rules; a second topical section above them would have made that misfiling worse.
@@ -289,10 +301,15 @@ public static class JaarplanGeneratiePromptBuilder
             return;
         }
 
-        // Stated for the same reason the block count is (E3-02): FR-5.3 asks the model to place every thema it can, and
-        // a model that has to tally a list to know how many there are is a model that may tally it wrong. Beside the
-        // block count it also makes the one case the coverage rules have to arbitrate visible at a glance — more
-        // thema's than blocks — instead of leaving it to be discovered halfway through the list.
+        // Stated for the same reason the block count is (E3-02): a model that has to tally a list to know how many
+        // there are is a model that may tally it wrong. Beside the block count it makes the shape of the choice
+        // visible at a glance — twenty thema's for seven periods is a selection problem, five for seven is not —
+        // instead of leaving it to be discovered halfway down the list.
+        //
+        // *Its justification changed with the owner's ruling of 2026-08-05 and the number did not.* It used to be
+        // here to make "place every thema" checkable; that instruction is gone, and the count earns its place on the
+        // selection reasoning instead. Recorded because a figure whose stated reason has quietly expired is the kind
+        // of thing that survives three stories and then gets defended by the wrong argument.
         Line(sb, $"Aantal thema's: {themas.Count}");
         Line(sb, string.Empty);
 

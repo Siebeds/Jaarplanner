@@ -215,3 +215,44 @@ by a response whose plan genuinely differs from the one on screen, and both the 
 *One process note:* the first browser run photographed a shell that had not resolved its class in 4 of 14
 iterations, because it slept a fixed 3.5s. It now waits on the button and on the block, which is the difference
 between a check and a screenshot of a race.
+
+---
+
+# Owner ruling, 2026-08-05 — the prompt asked for exhaustion and should have asked for selection
+
+The antagonist's open QUESTION went to the owner and came back answered:
+
+> *"Elke klas van elk leerjaar kan zijn eigen thema's hebben. VAAK worden de thema's gealigneerd across klassen
+> (bijvoorbeeld voor alle derde leerjaren) maar niet altijd, elke individuele klas/leerkracht kan zijn eigen
+> thema's hebben."*
+
+So alignment across the classes of one leerjaar is the **common case and never an invariant**, and the
+thema-bibliotheek is an offer rather than a syllabus. The prompt said the opposite:
+
+- **was:** *"Plaats elk thema minstens één keer, zolang het in de blokken past. Past niet alles, laat dan het thema
+  weg waarvan de leerplandoelen ook door een ander gepland thema gedekt zijn."*
+- **now:** *"Kies daarvoor de combinatie van thema's die samen het meeste dekt. Je hoeft niet elk thema te gebruiken:
+  de lijst is de bibliotheek van de school, niet een verplichte inhoud voor deze klas."*
+
+The last bullet changed with it: "do not repeat a thema while another has no block" was a rule about using
+everything, and is now conditioned on coverage ("…if another thema would add doelen that are not covered yet").
+
+`De_prompt_vraagt_volledige_dekking_en_zet_er_geen_streefcijfer_in` asserts the new sentences **and** that the old
+one is absent. That second assertion is the load-bearing one: *"plaats elk thema minstens één keer"* is individually
+plausible and would read as an improvement to anyone re-adding it.
+
+`Aantal thema's` stayed and its justification did not. It was there to make "place every thema" checkable; that
+instruction is gone, so the comment now justifies it as showing whether this is a selection problem at all (twenty
+thema's for seven periods is, five for seven is not). Written down because a figure whose stated reason has quietly
+expired is exactly the kind of thing that survives three stories and is then defended with the wrong argument.
+
+## The half this does not close
+
+`Thema` is school-wide (Art. IX.2) and **nothing records which thema's a class actually does**, so every generation
+is still handed the whole library for every class. The ruling turns that from an unexamined default into a known
+defect: the AI can propose a thema this class does not teach, and the teacher's only remedy is to reject it card by
+card. It needs a per-class selection in the data model, not a prompt sentence, so it is filed in `backlog/README.md`
+under the open decisions, next to the pre-existing `CLAUDE.md` question *"whether a leerplandoel/thema is shared
+school-wide or per class"* — which this ruling answers at the **planning** level and leaves open at the
+**data-model** level. It also bears on E5: the dekking denominator is scoped per class, while the numerator may
+draw on thema's that are not this class's.

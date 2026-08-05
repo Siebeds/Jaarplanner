@@ -469,17 +469,23 @@ public sealed class JaarplanGeneratieServiceTests
         // 1. The aim itself, in FR-5.3's own words, under its own heading rather than buried in the spreiding list.
         Assert.Contains("Dekking (streef naar volledige dekking over het hele schooljaar):", systeem);
 
-        // 2. What coverage actually depends on: the UNION of the placed thema's goals, so different goals and every
-        //    thema placed at least once. A thema left out contributes nothing, which is the fact the model needs.
+        // 2. What coverage actually depends on: the UNION of the placed thema's goals, so as many DIFFERENT ones as
+        //    the chosen combination can reach.
         Assert.Contains("zoveel mogelijk VERSCHILLENDE leerplandoelen", systeem);
-        Assert.Contains("Plaats elk thema minstens één keer", systeem);
+        Assert.Contains("de combinatie van thema's die samen het meeste dekt", systeem);
         Assert.Contains("nog nergens anders in het jaarplan voorkomen", systeem);
 
-        // 3. Subordinate to the fit rule, never a licence to overfill a period: "as long as it fits in the blocks".
-        Assert.Contains("zolang het in de blokken past", systeem);
+        // 3. **Selection, not exhaustion** (owner ruling 2026-08-05). The first version asked for every thema to be
+        //    placed at least once, which asserts that every school-wide thema belongs in every class's year. The
+        //    owner ruled that each class may have its own thema's, so the library is an offer. Asserted in both
+        //    directions, because the earlier sentence was individually plausible and would read as an improvement to
+        //    anyone re-adding it.
+        Assert.Contains("Je hoeft niet elk thema te gebruiken", systeem);
+        Assert.Contains("niet een verplichte inhoud voor deze klas", systeem);
+        Assert.DoesNotContain("Plaats elk thema minstens", systeem);
 
-        // 4. The count that makes "place every thema" checkable, beside the block count E3-02 added. Together they
-        //    make the one case the coverage rules arbitrate — more thema's than blocks — visible at a glance.
+        // 4. The library's size, beside the block count E3-02 added: together they show whether this is a selection
+        //    problem at all. (Its justification changed with the ruling above; the figure did not.)
         Assert.Contains($"Aantal thema's: {themas.Count}", prompt);
 
         // 5. No target, no percentage, no curriculum in the prompt. Asserted rather than assumed, because a
