@@ -114,12 +114,23 @@ public sealed class Subthema
     /// <c>DoelKoppeling</c> it carries, which is what makes this different in kind from deleting it here and
     /// retyping it there.
     /// <para>
-    /// <b>The class boundary is the invariant, and it is enforced here because this is the only place both
-    /// scopes are known</b> (Art. IX.2: a subthema is scoped per klas and leeftijd, an activiteit inherits
-    /// that scope). A move to another klas would silently hand one class's content to another, so it is
-    /// refused. A move to another <b>thema</b> is allowed (owner ruling, 2026-08-05), and so is a move to
-    /// another <b>leeftijd</b> within the same klas: that is the graadklas differentiation Art. IX.2 exists
-    /// for, and the destination's leeftijd is visible to whoever picks it.
+    /// <b>The class boundary is the invariant of this verb, and it is enforced here because this is the only
+    /// place both scopes are known</b> (Art. IX.2: a subthema is scoped per klas and leeftijd, an activiteit
+    /// inherits that scope). A move to another klas would silently hand one class's content to another, so it
+    /// is refused. A move to another <b>thema</b> is allowed (owner ruling, 2026-08-05).
+    /// <para>
+    /// <b>Deliberately narrow wording: this guards the move verb, not the system.</b>
+    /// <c>WijzigScope</c> still accepts a different klas, so re-scoping a subthema carries every activiteit in
+    /// it across a class boundary by another route. That is pre-existing E1-10 behaviour which no screen
+    /// offers, and whether the ruling is meant to bind it too is an open question for the owner rather than
+    /// something this method may decide (antagonist round 1).
+    /// </para>
+    /// <para>
+    /// A move to another <b>leeftijd</b> within the same klas is permitted here, which is the graadklas
+    /// differentiation Art. IX.2 exists for, and the destination's leeftijd is shown to whoever picks it.
+    /// <b>That half was inferred, not ruled</b>: the owner chose between options about the *thema* boundary,
+    /// so until it is confirmed it is an Art. XIV question and not a settled rule.
+    /// </para>
     /// </para>
     /// </summary>
     public void VerplaatsActiviteitNaar(Activiteit activiteit, Subthema doelSubthema)

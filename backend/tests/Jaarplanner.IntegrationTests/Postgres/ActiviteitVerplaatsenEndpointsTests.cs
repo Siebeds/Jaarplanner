@@ -228,6 +228,50 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         Assert.False(na.Doelen.Single(d => d.Code == "VER-01").IsGedekt);
     }
 
+    [PostgresFact]
+    public async Task Een_onbekende_klas_wordt_geweigerd_en_niet_als_een_lege_lijst_beantwoord()
+    {
+        // An empty list and "this klas does not exist" are different facts, and the picker cannot tell them
+        // apart: it reads an empty list as "there is nowhere to move to" and hides the control, which turns an
+        // infrastructure state into a statement about the school's content (antagonist round 1).
+        await ZetOpAsync();
+        var client = _factory.CreateClient();
+
+        var antwoord = await client.GetAsync($"/api/subthemas/voor-klas/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, antwoord.StatusCode);
+        var probleem = await antwoord.Content.ReadFromJsonAsync<ProbleemDto>();
+        Assert.Equal("Die klas bestaat niet meer. Kies een klas uit de lijst.", probleem!.Detail);
+    }
+
+    [PostgresFact]
+    public async Task Twee_themas_met_dezelfde_naam_blijven_gescheiden_in_de_bestemmingenlijst()
+    {
+        /*
+          `Thema.Naam` carries no unique index, so two thema's may share a naam. Ordering on the naam alone let
+          their subthema's interleave, and the picker groups by consecutive thema id, so interleaved rows became
+          two groups with the same id and the same label. Pinned as a property of the *answer*: every thema's
+          rows are contiguous, whatever their names are.
+        */
+        var opzet = await ZetOpAsync();
+        var client = _factory.CreateClient();
+
+        // Names chosen so that ordering by subthema naam alone would interleave them: A1, B1, A2, B2.
+        var een = await MaakThemaMetSubthemaAsync(client, "Water", "Aa", opzet.KlasId, "K3");
+        var twee = await MaakThemaMetSubthemaAsync(client, "Water", "Bb", opzet.KlasId, "K3");
+        await VoegSubthemaToeAsync(client, een.ThemaId, "Cc", opzet.KlasId, "K3");
+        await VoegSubthemaToeAsync(client, twee.ThemaId, "Dd", opzet.KlasId, "K3");
+
+        var lijst = await client.GetFromJsonAsync<List<BestemmingDto>>($"/api/subthemas/voor-klas/{opzet.KlasId}");
+
+        var idsInOrde = lijst!.Select(b => b.ThemaId).ToList();
+        Assert.Equal(4, idsInOrde.Count);
+
+        // Contiguous: the number of blocks equals the number of distinct thema's.
+        var blokken = idsInOrde.Where((id, i) => i == 0 || id != idsInOrde[i - 1]).Count();
+        Assert.Equal(idsInOrde.Distinct().Count(), blokken);
+    }
+
     // --- Setup helpers. ---
 
     private async Task<Opzet> ZetOpAsync()
@@ -289,6 +333,23 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         var subthema = await subResp.Content.ReadFromJsonAsync<SubthemaDto>();
 
         return new ThemaMetSubthema(thema.Id, subthema!.Id);
+    }
+
+    private static async Task VoegSubthemaToeAsync(
+        HttpClient client,
+        Guid themaId,
+        string naam,
+        Guid klasId,
+        string leeftijd)
+    {
+        var resp = await client.PostAsJsonAsync($"/api/themas/{themaId}/subthemas", new
+        {
+            naam,
+            duurWeken = 2,
+            klasId,
+            leeftijd,
+        });
+        Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
     }
 
     private static async Task<Guid> MaakActiviteitAsync(

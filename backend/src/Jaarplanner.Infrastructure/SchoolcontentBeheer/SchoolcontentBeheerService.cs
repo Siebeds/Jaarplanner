@@ -420,6 +420,12 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     public async Task<IReadOnlyList<SubthemaBestemming>> HaalSubthemaBestemmingenAsync(Guid klasId, CancellationToken cancellationToken = default)
     {
+        // Verified rather than assumed, and the reason is a product one (antagonist round 1). Without it an
+        // unknown or deleted klas answers an empty list, and the picker reads an empty list as "this klas has
+        // nowhere to move to" and hides the control. That renders an infrastructure state as a statement about
+        // the school's content. A refusal makes the screen say it could not load the destinations instead.
+        await VereisKlasAsync(klasId, cancellationToken);
+
         // Projected to an anonymous type and mapped to the record afterwards, deliberately: ordering happens in
         // SQL under the database collation (a Dutch name sorted by .NET's ordinal comparer puts "Ijs" in the
         // wrong place), while the record construction stays out of the translation. Same SelectMany-over-
@@ -437,6 +443,12 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                     ThemaNaam = t.Naam,
                 }))
             .OrderBy(r => r.ThemaNaam)
+            // ThemaId breaks the tie, and it is load-bearing rather than tidy: `Thema.Naam` carries no unique
+            // index, so two thema's may share a naam, and without this the rows of the two interleave by
+            // subthema naam. The picker groups by consecutive ThemaId, so interleaved rows produce two groups
+            // with the same id and the same label, which is exactly what the grouping exists to prevent
+            // (antagonist round 1).
+            .ThenBy(r => r.ThemaId)
             .ThenBy(r => r.Naam)
             .ThenBy(r => r.Leeftijd)
             .ToListAsync(cancellationToken);

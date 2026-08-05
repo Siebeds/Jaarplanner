@@ -419,21 +419,26 @@ function Activiteitregel({
     ? gekozenBestemming
     : "";
 
-  // Grouped by thema, because two subthema's of one klas may share a naam and the thema is what tells them
-  // apart. The server already orders by thema then naam, so the groups come out in that order without sorting.
-  const perThema = kandidaten.reduce<{ themaId: string; themaNaam: string; items: typeof kandidaten }[]>(
-    (groepen, bestemming) => {
-      const laatste = groepen.at(-1);
-      if (laatste?.themaId === bestemming.themaId) {
-        laatste.items.push(bestemming);
-      } else {
-        groepen.push({ themaId: bestemming.themaId, themaNaam: bestemming.themaNaam, items: [bestemming] });
-      }
+  /*
+    Grouped by thema, because two subthema's of one klas may share a naam and the thema is what tells them apart.
 
-      return groepen;
-    },
-    [],
-  );
+    **Keyed on the thema id rather than on adjacency** (antagonist round 1). `Thema.Naam` carries no unique
+    index, so two thema's may share a naam; ordering by naam alone then interleaves their rows, and an
+    adjacency reduce turns that into two groups with the same id and the same label, which is precisely what
+    the grouping exists to prevent. The server now breaks the tie on thema id as well, so this map is the
+    second half of one fix rather than a belt for a fixed belt: order comes from the query, identity from here.
+  */
+  const perThema = [...kandidaten
+    .reduce((groepen, bestemming) => {
+      const groep = groepen.get(bestemming.themaId) ?? {
+        themaId: bestemming.themaId,
+        themaNaam: bestemming.themaNaam,
+        items: [] as typeof kandidaten,
+      };
+      groep.items.push(bestemming);
+      return groepen.set(bestemming.themaId, groep);
+    }, new Map<string, { themaId: string; themaNaam: string; items: typeof kandidaten }>())
+    .values()];
 
   function verplaatsNu() {
     const doel = kandidaten.find((bestemming) => bestemming.id === geldigeKeuze);
@@ -632,7 +637,12 @@ function Activiteitregel({
 
       {verplaatsen ? (
         <div className="mt-2 rounded-md border border-petrol/40 p-2.5">
-          <h5 className="text-sm font-bold text-ink">{t("themabeheer.activiteitVerplaatsTitel")}</h5>
+          {/* Named per activiteit, because `verplaatsen` is per-row state: two rows can have a panel open at
+              once, and two identical headings plus two selects called "Nieuw subthema" is the duplicate-name
+              class this row already carries three times (antagonist round 1). */}
+          <h5 className="text-sm font-bold text-ink">
+            {t("themabeheer.activiteitVerplaatsTitel", { naam: activiteit.naam })}
+          </h5>
           {/* The consequence of *this* action, so it belongs in the panel that performs it rather than once
               above the list: a move can take doelen out of this class's dekking figure without leaving the klas,
               because dekking counts an activiteitkoppeling through the thema its subthema hangs under. */}
@@ -640,11 +650,44 @@ function Activiteitregel({
             {t("themabeheer.activiteitVerplaatsGevolg")}
           </p>
 
+          {/*
+            **Outside the branches below, deliberately.** It used to sit inside the "there are destinations"
+            branch, so when the refused destination was this klas's last one the empty-state sentence replaced
+            the failure notice and the teacher was told what the state is without being told that their move did
+            not happen. What happened first, then what the state is.
+
+            A 404 is still said by the section, which outlives this row; everything else is said here, where the
+            teacher can act on it.
+          */}
+          {verplaats.error instanceof ApiError && verplaats.error.status === 404 ? null : verplaats.isError ? (
+            <div role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
+              <p>{t("themabeheer.activiteitVerplaatsMislukt")}</p>
+              {verplaatsMelding ? (
+                <p className="mt-1 font-normal text-ink-zacht">
+                  {t("themabeheer.serverReden", { melding: verplaatsMelding })}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           {bestemmingen.isPending ? (
             <p className="mt-2 text-sm text-ink-zacht">{t("themabeheer.activiteitVerplaatsLaden")}</p>
           ) : bestemmingen.isError ? (
             <p role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
               {t("themabeheer.activiteitVerplaatsLijstFout")}
+            </p>
+          ) : kandidaten.length === 0 ? (
+            /*
+              **The empty case is a sentence, not an empty picker** (antagonist round 1, MAJOR 2). The panel can
+              be open when the list empties: the refetch-on-any-failure rule does it, and so does an ordinary
+              window refocus. Rendering the label, a select holding only its placeholder and a disabled submit
+              told a teacher to "kies een ander subthema" from a list with nothing in it, which is the same
+              self-contradiction that reopened E3-07. The trigger is hidden at zero candidates for the same
+              reason; this is that decision applied to the panel, which is where the earlier version disagreed
+              with itself.
+            */
+            <p className="mt-2 max-w-prose text-sm text-ink-zacht">
+              {t("themabeheer.activiteitVerplaatsGeenBestemming")}
             </p>
           ) : (
             <>
@@ -656,6 +699,7 @@ function Activiteitregel({
               </label>
               <select
                 id={`verplaats-${activiteit.id}`}
+                aria-label={t("themabeheer.activiteitVerplaatsKiezerAria", { naam: activiteit.naam })}
                 value={geldigeKeuze}
                 onChange={(event) => setGekozenBestemming(event.target.value)}
                 className="mt-1.5 h-11 w-full rounded-md border border-input bg-card px-3.5 text-sm text-ink sm:max-w-sm"
@@ -674,23 +718,17 @@ function Activiteitregel({
                 ))}
               </select>
 
-              {/* A 404 is said by the section, which outlives this row; everything else is said here, where the
-                  teacher can still pick another subthema. */}
-              {verplaats.error instanceof ApiError && verplaats.error.status === 404 ? null : verplaats.isError ? (
-                <div role="alert" className="mt-2 text-sm font-medium text-suggestie-geweigerd">
-                  <p>{t("themabeheer.activiteitVerplaatsMislukt")}</p>
-                  {verplaatsMelding ? (
-                    <p className="mt-1 font-normal text-ink-zacht">
-                      {t("themabeheer.serverReden", { melding: verplaatsMelding })}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={verplaatsNu}
+                  /*
+                    Named per activiteit like the four buttons in the row above, and for the same reason: the
+                    open state is per row, so two panels can be open at once and two buttons reading "Verplaats
+                    naar dit subthema" are two identical accessible names (antagonist round 1). The visible label
+                    stays short; the accessible name says what it acts on.
+                  */
+                  aria-label={t("themabeheer.activiteitVerplaatsBevestigAria", { naam: activiteit.naam })}
                   // Disabled until a destination is chosen: the placeholder option is not a target, and a submit
                   // that can only fail is the same defect as a control that does nothing.
                   disabled={geldigeKeuze === "" || verplaats.isPending}
@@ -705,7 +743,20 @@ function Activiteitregel({
                   onClick={() => {
                     setVerplaatsen(false);
                     setGekozenBestemming("");
+                    /*
+                      **The reset belongs here and nowhere else.** The mutation lives on the row, not on the
+                      panel, so without it the next open greets a teacher with the reason a *previous* attempt
+                      failed, beside a fresh picker and nothing attempted (antagonist round 1).
+
+                      A second reset on the trigger was written first and then removed as unreachable: the panel
+                      closes only by cancelling (here), by succeeding (no error to carry) or on a 404 (after
+                      which the row is refetched away, so nothing reopens). A mutation check proved it, since
+                      dropping it changed no test while dropping this one fails the suite. Insurance that cannot
+                      fire is the shape E1-14 already shipped once as `key={alWeg ?? "nieuw"}`.
+                    */
+                    verplaats.reset();
                   }}
+                  aria-label={t("themabeheer.activiteitVerplaatsAnnuleerAria", { naam: activiteit.naam })}
                   className="rounded-md border border-input px-2.5 py-1 text-xs font-semibold text-ink hover:bg-paper-diep"
                 >
                   {t("themabeheer.annuleer")}

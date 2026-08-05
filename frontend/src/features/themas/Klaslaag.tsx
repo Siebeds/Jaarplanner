@@ -53,18 +53,25 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
   );
 
   const maakSubthema = useMaakSubthema();
+
   /*
-    **Cleared by any later successful write, not only by opening the create form** (antagonist round 4).
+    **Both notices are cleared by the *event* of a later successful write, never by reading the mutation's
+    state** (E4-08's antagonist round 1, and it corrects E1-14's round-4 fix rather than adding to it).
 
-    It used to be reset on one event, so after a 404 on subthema A a teacher could successfully delete B and
-    still read "iemand anders heeft het verwijderd" above the list, about their own action. Reading it off the
-    mutation state rather than adding a reset to every call site keeps the rule in one place.
+    That round replaced a per-call-site reset with a render-phase `if (alWeg && maakSubthema.isSuccess)`, on the
+    reasoning that reading it off the mutation state keeps the rule in one place. The rule is right and the
+    mechanism is not: `isSuccess` is **latched**, not an event, and nothing in this feature calls `.reset()`. So
+    after one successful subthema create it stays `true` for the whole mount, and the guard then fires on the
+    same render that *raises* a notice and throws it away. Concretely: create a subthema, then move an
+    activiteit, and the confirmation never paints, which is the one flow where it is the only feedback there is
+    (a move to another thema takes the row off this screen). Every test wrote once, so the suite could not see
+    it.
+
+    The clearing therefore happens in the create path's `onSuccess`, which is the actual event, and there is
+    exactly one such call site, so the "one place" argument is unaffected.
   */
-  if (alWeg && maakSubthema.isSuccess) {
+  function wisMeldingen() {
     setAlWeg(null);
-  }
-
-  if (verplaatst && maakSubthema.isSuccess) {
     setVerplaatst(null);
   }
 
@@ -79,7 +86,15 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
   const subthemas: Subthema[] = thema.data?.subthemas ?? [];
 
   function bewaarNieuw(invoer: SubthemaInvoer) {
-    maakSubthema.mutate({ themaId, invoer }, { onSuccess: () => setNieuw(false) });
+    maakSubthema.mutate(
+      { themaId, invoer },
+      {
+        onSuccess: () => {
+          setNieuw(false);
+          wisMeldingen();
+        },
+      },
+    );
   }
 
   return (
@@ -100,8 +115,7 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
           <button
             type="button"
             onClick={() => {
-              setAlWeg(null);
-              setVerplaatst(null);
+              wisMeldingen();
               setNieuw(true);
             }}
             className="rounded-md border border-input px-3 py-1.5 text-sm font-semibold text-ink hover:bg-paper-diep"

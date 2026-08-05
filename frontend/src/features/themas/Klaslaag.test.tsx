@@ -445,7 +445,7 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
   it("biedt de andere subthema's van deze klas aan, gegroepeerd per thema, en nooit het eigen subthema", async () => {
     const { sectie } = await openVerplaatspaneel();
 
-    const keuzelijst = within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel"));
+    const keuzelijst = within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }));
     const opties = Array.from(keuzelijst.querySelectorAll("option")).map((optie) => optie.textContent);
 
     // The placeholder plus exactly one destination: the klas's other subthema, under the other thema.
@@ -474,11 +474,11 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
   it("verplaatst de activiteit en zegt waar ze nu staat, want de rij verdwijnt van dit scherm", async () => {
     const { fake, sectie } = await openVerplaatspaneel();
 
-    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })), {
       target: { value: "cccccccc-0000-0000-0000-000000000002" },
     });
     fireEvent.click(
-      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestig") }),
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }) }),
     );
 
     // The destination is named, because a move to another thema takes the activiteit off this screen entirely
@@ -541,11 +541,11 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     const weigering = "Dit subthema bestaat niet meer. Kies een ander subthema.";
     const { sectie } = await openVerplaatspaneel({ verplaatsWeigering: weigering });
 
-    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })), {
       target: { value: "cccccccc-0000-0000-0000-000000000002" },
     });
     fireEvent.click(
-      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestig") }),
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }) }),
     );
 
     expect(await screen.findByText(t("themabeheer.activiteitVerplaatsMislukt"))).toBeInTheDocument();
@@ -554,7 +554,7 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     // Still open, and still able to pick another subthema: a refusal a teacher can act on must leave the
     // control that acts on it standing.
     expect(
-      within(await klassectie()).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")),
+      within(await klassectie()).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })),
     ).toBeInTheDocument();
   });
 
@@ -573,11 +573,11 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     const voor = fake.urls.filter((url) => url.includes("/api/subthemas/voor-klas/")).length;
     expect(voor).toBeGreaterThan(0);
 
-    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })), {
       target: { value: "cccccccc-0000-0000-0000-000000000002" },
     });
     fireEvent.click(
-      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestig") }),
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }) }),
     );
 
     expect(await screen.findByText(t("themabeheer.activiteitVerplaatsMislukt"))).toBeInTheDocument();
@@ -599,35 +599,47 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     */
     const { sectie } = await openVerplaatspaneel({ verplaatsBestemmingVerdwijnt: true });
 
-    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })), {
       target: { value: "cccccccc-0000-0000-0000-000000000002" },
     });
     const submit = () =>
       within(sectie).getByRole("button", {
-        name: t("themabeheer.activiteitVerplaatsBevestig"),
+        name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }),
       }) as HTMLButtonElement;
     expect(submit().disabled).toBe(false);
 
     fireEvent.click(submit());
     expect(await screen.findByText(t("themabeheer.activiteitVerplaatsMislukt"))).toBeInTheDocument();
 
-    // The refused destination is gone from the list, so the choice is no longer a choice.
-    await waitFor(() => expect(submit().disabled).toBe(true));
+    /*
+      The refused destination was this klas's only other subthema, so the list is now empty, and an empty list
+      must be a **sentence** rather than a picker holding only its placeholder (antagonist round 1, MAJOR 2).
+      The first version of this test asserted the bare placeholder as the desired outcome, which is how this
+      class of defect became sticky in E3-07: a passing test declaring the contradiction correct.
+    */
+    await waitFor(() =>
+      expect(
+        within(sectie).getByText(t("themabeheer.activiteitVerplaatsGeenBestemming")),
+      ).toBeInTheDocument(),
+    );
     expect(
-      within(sectie)
-        .getByLabelText(t("themabeheer.activiteitVerplaatsLabel"))
-        .querySelectorAll("option").length,
-    ).toBe(1);
+      within(sectie).queryByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }) }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(sectie).queryByLabelText(
+        t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }),
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("behandelt een 404 als een activiteit die iemand anders al verwijderde, niet als een mislukte verhuizing", async () => {
     const { sectie } = await openVerplaatspaneel({ verplaatsActiviteitAlWeg: true });
 
-    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })), {
       target: { value: "cccccccc-0000-0000-0000-000000000002" },
     });
     fireEvent.click(
-      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestig") }),
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }) }),
     );
 
     // The section says it, because the row is refetched away; and it says "gone", not "failed".
@@ -638,9 +650,135 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     // self-contradiction that reopened E3-07.
     await waitFor(() =>
       expect(
-        screen.queryByLabelText(t("themabeheer.activiteitVerplaatsLabel")),
+        screen.queryByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("zegt ook waar de activiteit heen ging wanneer er eerst een subthema is aangemaakt", async () => {
+    /*
+      The regression test for antagonist round 1's MAJOR 1, and the flow no earlier test walked: every move test
+      here wrote exactly once. `maakSubthema.isSuccess` is a **latched** flag, so a render-phase
+      `if (verplaatst && maakSubthema.isSuccess) setVerplaatst(null)` cleared the notice on the very render that
+      raised it, for the whole mount after one successful create. The confirmation then never painted, in the
+      one flow where it is the only feedback there is: a move to another thema takes the row off this screen, so
+      without the sentence a successful move is indistinguishable from a delete.
+    */
+    const fake = renderApp(L3_PAD);
+    const sectie = await klassectie();
+
+    fireEvent.click(within(sectie).getByRole("button", { name: t("themabeheer.subthemaNieuw") }));
+    fireEvent.change(screen.getByLabelText(t("themabeheer.naamLabel")), { target: { value: "Water en ijs" } });
+    fireEvent.change(screen.getByLabelText(t("themabeheer.leeftijdLabel")), { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+    expect(await within(await klassectie()).findByText("Water en ijs")).toBeInTheDocument();
+
+    const naCreatie = await klassectie();
+    fireEvent.click(
+      await within(naCreatie).findByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+    const paneel = await klassectie();
+    fireEvent.change(within(paneel).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })), {
+      target: { value: "cccccccc-0000-0000-0000-000000000002" },
+    });
+    fireEvent.click(
+      within(paneel).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }) }),
+    );
+
+    expect(
+      await screen.findByText(
+        t("themabeheer.activiteitVerplaatstNaar", {
+          activiteit: "Bladkroon maken",
+          subthema: "Drijven en zinken",
+          thema: "Water",
+        }),
+      ),
+    ).toBeInTheDocument();
+    // And the move really happened, so this is not a notice about nothing.
+    expect(fake.verzoeken.some((verzoek) => verzoek.pad.endsWith("/subthema"))).toBe(true);
+  });
+
+  it("laat een eerdere mislukking niet terugkomen bij het opnieuw openen van het paneel", async () => {
+    // The mutation lives on the row, not on the panel, so without a reset the next open greets a teacher with
+    // the reason a *previous* attempt failed, beside a fresh picker and nothing attempted (antagonist round 1).
+    const { sectie } = await openVerplaatspaneel({ verplaatsWeigering: "Dit subthema bestaat niet meer." });
+
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" })), {
+      target: { value: "cccccccc-0000-0000-0000-000000000002" },
+    });
+    fireEvent.click(
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestigAria", { naam: "Bladkroon maken" }) }),
+    );
+    expect(await screen.findByText(t("themabeheer.activiteitVerplaatsMislukt"))).toBeInTheDocument();
+
+    fireEvent.click(
+      within(await klassectie()).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsAnnuleerAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+    fireEvent.click(
+      within(await klassectie()).getByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+      }),
+    );
+
+    expect(screen.queryByText(t("themabeheer.activiteitVerplaatsMislukt"))).not.toBeInTheDocument();
+  });
+
+  it("houdt twee gelijktijdig open panelen onderscheidbaar, want de open-staat is per rij", async () => {
+    /*
+      `verplaatsen` is per-row state, so two rows can have a panel open at once. With one heading and one select
+      label shared between them, a screen reader got two identically named controls and two identical headings
+      with nothing saying which activiteit they belong to (antagonist round 1). The property asserted is that no
+      two accessible names in the section collide, over every control and every heading, so a third panel or a
+      fourth control is covered without anyone remembering this test.
+
+      A second activiteit is created through the UI rather than added to the fixtures, so no other test's
+      expectations move.
+    */
+    const fake = renderApp(L3_PAD);
+    const sectie = await klassectie();
+
+    fireEvent.click(
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitNieuwAria", { naam: "Bladeren" }) }),
+    );
+    fireEvent.change(screen.getByLabelText(t("themabeheer.naamLabel")), {
+      target: { value: "Bladeren persen" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+    expect(await within(await klassectie()).findByText(/Bladeren persen/)).toBeInTheDocument();
+    expect(fake.verzoeken.some((verzoek) => verzoek.pad.endsWith("/activiteiten"))).toBe(true);
+
+    for (const naam of ["Bladkroon maken", "Bladeren persen"]) {
+      fireEvent.click(
+        await within(await klassectie()).findByRole("button", {
+          name: t("themabeheer.activiteitVerplaatsAria", { naam }),
+        }),
+      );
+    }
+
+    const beide = await klassectie();
+    const selects = within(beide).getAllByRole("combobox");
+    expect(selects.length).toBeGreaterThanOrEqual(2);
+
+    const namen = [
+      ...within(beide).getAllByRole("button"),
+      ...selects,
+      ...within(beide).getAllByRole("heading"),
+    ].map((el) => el.getAttribute("aria-label") ?? el.textContent?.trim() ?? "");
+
+    expect(new Set(namen).size).toBe(namen.length);
+  });
+
+  it("heeft geen axe-schendingen met het verplaatspaneel open", async () => {
+    // Every other panel on these screens got an axe pass in the state it renders in; this one introduces the
+    // first select/optgroup on the card and a new heading level (antagonist round 1).
+    const { sectie } = await openVerplaatspaneel();
+    await within(sectie).findByLabelText(t("themabeheer.activiteitVerplaatsKiezerAria", { naam: "Bladkroon maken" }));
+
+    expect(await axe(document.body)).toHaveNoViolations();
   });
 
   it("geeft elke verplaatsknop een eigen naam, zodat drie activiteiten niet drie keer hetzelfde heten", async () => {
