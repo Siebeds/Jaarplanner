@@ -712,7 +712,7 @@
     "activiteitVerplaatsBezig": "Bezig met verplaatsen",
     "activiteitVerplaatsMislukt": "De activiteit kon niet verplaatst worden.",
     "activiteitVerplaatsLaden": "De subthema's van deze klas worden geladen.",
-    "activiteitVerplaatsLijstFout": "De subthema's van deze klas konden niet geladen worden, dus er is nu geen bestemming om uit te kiezen.",
+    "activiteitVerplaatsLijstFout": "De subthema's van deze klas konden niet geladen worden, dus er is nu geen bestemming om uit te kiezen. Probeer het opnieuw.",
     "activiteitVerplaatstNaar": "“{activiteit}” staat nu bij “{subthema}” in thema “{thema}”.",
     "subdoelKoppelen": "Leerdoel koppelen",
     "activiteitDoelKoppelen": "Leerdoel koppelen",
