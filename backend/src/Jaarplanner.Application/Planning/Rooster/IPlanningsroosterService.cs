@@ -92,8 +92,10 @@ public sealed record PlanningsroosterWeergave(
 /// from the wire contract; the open question survives intact.
 /// </para>
 /// <para>
-/// Dividing by 7 therefore yields the calendar-week figure the approved wireframe itself uses ("4,4 weken"
-/// for 1 sep – 1 okt = 31/7). Proportional width is barely affected, because weekends fall near-uniformly
+/// Dividing by 7 yields the calendar-week figure the approved wireframe used ("4,4 weken" for 1 sep – 1 okt = 31/7).
+/// <b>The screen no longer prints that:</b> owner ruling 2026-08-04 rounds the displayed figure <i>up</i> to whole weeks
+/// (<c>ceil(31/7) = 5</c>) so a period's heading and its te-vol verdict state one length. This field stays the raw
+/// count; the rounding lives at the two places that present it. Proportional width is barely affected, because weekends fall near-uniformly
 /// across blocks — but a block containing vrije dagen renders a slightly weaker narrowing than teaching-day
 /// counting would give, which is part of what the teachers are being asked about.
 /// </para>

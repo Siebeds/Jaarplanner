@@ -18,13 +18,43 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// can show <i>why</i> the periods look the way they do instead of inferring a unit.
 /// </param>
 /// <param name="Plaatsingen">The thema placements, chronological by the block start date they key on.</param>
+/// <param name="Blokken">
+/// Every block of the <b>generation</b> tier with how full it is: the weeks its thema's need against the weeks it
+/// offers, and the resulting <c>IsOverbelast</c> verdict (E3-09, FR-6.4).
+/// <para>
+/// <b>Why it rides on the plan read and not on the rooster.</b> "Te vol" is a fact about a <i>class's plan</i>, not
+/// about the year: the same period is over-full for L3 and empty for L1. <c>PlanningsroosterWeergave</c> is keyed on
+/// the schooljaar alone and knows no placements, so it can supply only the available half.
+/// </para>
+/// <para>
+/// <b>Why it is computed here at all rather than in TypeScript.</b> Before E3-09 these figures existed only on the
+/// <i>generation</i> response, while the board renders from this read plus the rooster — so the kalender had a
+/// provisional threshold of its own that counted thema's and contradicted the server for months. The rule is
+/// arithmetic on data the school supplied (Art. IX.3) and it now has exactly one implementation,
+/// <see cref="BlokspreidingWeergave.IsOverbelast"/>, reached by both responses.
+/// </para>
+/// <para>
+/// <b>Rejected placements are excluded and stale ones cannot appear</b>, matching the generation path exactly:
+/// nothing is taught in a period on account of a thema the teacher threw out (<c>Themaplaatsing.IsGepland</c>), and a
+/// stale <c>BlokStart</c> matches no block's start so it lands in no entry. A stale placement is therefore absent
+/// from this list <i>and</i> flagged by <see cref="ThemaplaatsingWeergave.IsVervallen"/>, which is the honest pair:
+/// its weeks are not attributed to a period that does not hold it, and it is not silently forgotten.
+/// </para>
+/// <para>
+/// <b>Always the generation tier, whatever the board is zoomed to</b> (owner ruling, 2026-07-31). Applied naively at
+/// the subthemaperiode tier the arithmetic flags every filled sub-column, since a fortnight offers ~2 weeks against a
+/// thema's whole 4 to 6 — a board that signals nothing. The property belongs to the tier a placement keys on
+/// (ADR-0020 §3), and the fine view summarises it in one line above the board instead of inheriting a mark per column.
+/// </para>
+/// </param>
 public sealed record JaarplanWeergave(
     Guid KlasId,
     string KlasNaam,
     Guid SchooljaarId,
     string SchooljaarNaam,
     string Blokindeling,
-    IReadOnlyList<ThemaplaatsingWeergave> Plaatsingen);
+    IReadOnlyList<ThemaplaatsingWeergave> Plaatsingen,
+    IReadOnlyList<BlokspreidingWeergave> Blokken);
 
 /// <summary>
 /// One thema placement as returned by the API: the persisted facts plus the block bounds projected from the
@@ -60,6 +90,20 @@ public sealed record JaarplanWeergave(
 /// stored on the plan</b> — a goal is covered because its thema is placed (Art. V.1), and duplicating the codes
 /// onto the placement would be storing dekking, which Art. V.1 forbids.
 /// </param>
+/// <param name="DuurWeken">
+/// The thema's nominal duration in weeks, straight off the <c>Thema</c> (E3-09).
+/// <para>
+/// Carried so the board can answer "would this period become te vol?" <b>during</b> the drag, before the drop, which
+/// is the one question a teacher rearranging a year is actually asking. A hover cannot round-trip to the server, so
+/// the client adds this to the target block's <c>BenodigdeWeken</c> and applies the same comparison. That is the only
+/// sanctioned mirror of <see cref="BlokspreidingWeergave.IsOverbelast"/>, and a frontend test pins the mirror against
+/// the server's own answer for the state already on screen so the two cannot drift.
+/// </para>
+/// <para>
+/// 0 when the thema could not be resolved, the same degrade <paramref name="ThemaNaam"/> takes. <c>DuurWeken</c> is
+/// <c>RequirePositive</c> in the domain, so 0 means "unknown thema", never "a thema of no length".
+/// </para>
+/// </param>
 public sealed record ThemaplaatsingWeergave(
     Guid Id,
     Guid ThemaId,
@@ -72,4 +116,5 @@ public sealed record ThemaplaatsingWeergave(
     string Status,
     string? AiMotivatie,
     bool Vergrendeld,
-    IReadOnlyList<string> Doelcodes);
+    IReadOnlyList<string> Doelcodes,
+    int DuurWeken);

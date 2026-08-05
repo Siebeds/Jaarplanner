@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Meta, StoryObj } from "@storybook/react";
+import { MemoryRouter } from "react-router-dom";
 
 import { Jaarplankalender } from "./Jaarplankalender";
 import type { Jaarplan, Planningsrooster, Themaplaatsing } from "./types";
@@ -87,6 +88,34 @@ const fijnRooster: Planningsrooster = {
   ],
 };
 
+/**
+ * The coverage answer behind E3-09's knelpunt line, as `GET /api/klassen/{id}/dekking` shapes it.
+ *
+ * **An L3 class deliberately, so the story shows the ordinary case:** one jaar/fase, therefore no kleuterjaar chooser
+ * (that control renders only when there is more than one code to choose between). The figures say 3 of 14 covered, so
+ * the knelpunt line reads "11 leerplandoelen zijn nog niet gedekt" — a review artifact in which the signal this story
+ * added is actually visible, rather than one in which it is silently absent.
+ *
+ * `doelen` is empty on purpose: the kalender reads only the two counts, and pasting fourteen goal records into a
+ * fixture would be fourteen more things to keep true.
+ */
+const dekking = {
+  klasId: "11111111-1111-1111-1111-111111111111",
+  klasNaam: "L3 derde leerjaar",
+  schooljaarId: SCHOOLJAAR_ID,
+  schooljaarNaam: "2026-2027",
+  bereik: "EigenJaarFase",
+  gemetenJaarFasen: ["L3"],
+  beschikbareJaarFasen: ["L3"],
+  isTerugvalNaarHeelCurriculum: false,
+  aantalBuitenBereik: 0,
+  isBetrouwbaar: true,
+  aantalOnopgelosteVervallenPlaatsingen: 0,
+  aantalGedekt: 3,
+  aantalLeerplandoelen: 14,
+  doelen: [],
+};
+
 let volgendeId = 0;
 
 function plaatsing(
@@ -109,6 +138,7 @@ function plaatsing(
     aiMotivatie: null,
     vergrendeld: false,
     doelcodes: [],
+    duurWeken: 5,
     ...overrides,
   };
 }
@@ -126,8 +156,11 @@ const plaatsingen: Themaplaatsing[] = [
     aiMotivatie: "sluit aan bij het seizoen in deze periode",
   }),
 
-  // Periode 3 holds three thema's, so the "te vol" knelpunt is visible (FR-6.4) — and with it the note
-  // saying the threshold is still an open review question (E3-10 question C).
+  // Periode 3 holds three thema's, so the "te vol" knelpunt is visible (FR-6.4). It fires on the weeks those
+  // thema's need against the weeks the period offers (owner ruling 2026-07-31, E3-09), not on their number: three
+  // 5-week thema's is 15 weeks in a period of at most 6, which is over by any reading. The story used to note that
+  // the threshold was an open review question; it is now decided, so the note is gone rather than left to mislead
+  // whoever opens this next.
   plaatsing("Licht en donker", "2026-11-09", {
     doelcodes: doelen(11),
     aiMotivatie: "de donkere maanden maken dit thema concreet waarneembaar",
@@ -151,6 +184,33 @@ const plaatsingen: Themaplaatsing[] = [
   plaatsing("Zomer en vakantie", "2027-05-26", { doelcodes: doelen(6) }),
 ];
 
+/**
+ * The per-block load the server ships with the plan (E3-09), derived here from the placements themselves.
+ *
+ * Derived rather than hand-written for the same reason the test fixture derives it: a story is the picture people
+ * trust, and a hand-kept list would drift from `plaatsingen` the first time one is added, showing a te-vol flag on a
+ * period whose cards do not account for it. `beschikbareWeken` rounds open days up, as the server does.
+ */
+function belasting(eigen: Themaplaatsing[]): Jaarplan["blokken"] {
+  return rooster.blokken.map((blok) => {
+    const inBlok = eigen.filter(
+      (plaatsing) => plaatsing.blokStart === blok.start && plaatsing.status !== "Geweigerd",
+    );
+    const benodigdeWeken = inBlok.reduce((som, plaatsing) => som + plaatsing.duurWeken, 0);
+    const beschikbareWeken = Math.ceil(blok.aantalOpenDagen / 7);
+
+    return {
+      ordinaal: blok.ordinaal,
+      start: blok.start,
+      aantalThemas: inBlok.length,
+      aantalDoelen: new Set(inBlok.flatMap((plaatsing) => plaatsing.doelcodes)).size,
+      benodigdeWeken,
+      beschikbareWeken,
+      isOverbelast: benodigdeWeken > beschikbareWeken,
+    };
+  });
+}
+
 function jaarplan(eigen: Themaplaatsing[]): Jaarplan {
   return {
     klasId: "11111111-1111-1111-1111-111111111111",
@@ -159,6 +219,7 @@ function jaarplan(eigen: Themaplaatsing[]): Jaarplan {
     schooljaarNaam: "2026-2027",
     blokindeling: rooster.blokindeling,
     plaatsingen: eigen,
+    blokken: belasting(eigen),
   };
 }
 
@@ -183,7 +244,16 @@ function metGestubdeApi(plan: Jaarplan) {
           : rooster
         : url.includes("/jaarplan/parameters")
           ? { gewensteStartthemas: [], vasteMomenten: [] }
-          : plan;
+          : // E3-09's coverage read. **Routed explicitly, and the fall-through below is why it has to be** (antagonist
+            // round 2, MAJOR): this chain used to end in `: plan`, so a `/dekking` request was answered with the
+            // *Jaarplan* fixture. `api.ts` casts rather than validates, so `dekking.data.beschikbareJaarFasen` was
+            // `undefined` and the kalender crashed on `.length` — all three stories rendered nothing but a TypeError,
+            // in the file this story's own record cites as "the picture people trust". A chain whose default answers
+            // every unrecognised URL with a plausible-looking object cannot fail loudly, so it failed silently until
+            // someone opened Storybook.
+            url.includes("/dekking")
+            ? dekking
+            : plan;
 
       return new Response(JSON.stringify(body), {
         status: 200,
@@ -195,9 +265,14 @@ function metGestubdeApi(plan: Jaarplan) {
 
     return (
       <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen bg-slate-50 p-6">
-          <Story />
-        </div>
+        {/* A router, because `OngeplandeDoelen` links to `/dekking` (E3-09). The test harnesses were given one when the
+            link landed; this decorator was not, so react-router's `Link` threw here even after the fetch stub was
+            fixed. Two independent breaks behind one symptom. */}
+        <MemoryRouter>
+          <div className="min-h-screen bg-slate-50 p-6">
+            <Story />
+          </div>
+        </MemoryRouter>
       </QueryClientProvider>
     );
   };

@@ -341,7 +341,29 @@ public sealed class JaarplanGeneratieServiceTests
         foreach (var blok in blokken)
         {
             Assert.Contains($"startdatum {blok.Start:yyyy-MM-dd}", prompt);
+
+            // **The capacity the model is told is the capacity the te-vol verdict measures** (owner ruling,
+            // 2026-08-05, E3-09): `ceil(TelOpenDagen / 7)`, the same arithmetic as
+            // `BlokspreidingWeergave.BeschikbareWeken`. It used to be `AantalDagen / 7` to one decimal, so the prompt
+            // said "4,4 weken" about a period the flag on screen measured as 5 — the generator steered by a stricter
+            // number than the verdict it would be judged against. Asserted against the *rapport* rather than against a
+            // literal, so the two cannot be changed apart.
+            var capaciteit = Spreidingsrapport
+                .Meet([], blokken, new Dictionary<Guid, Thema>(), schooljaar)
+                .Blokken.Single(b => b.Start == blok.Start)
+                .BeschikbareWeken;
+            Assert.Contains($"({capaciteit} weken)", prompt);
         }
+
+        // And no fractional weeks anywhere in the prompt, which is the property that makes the sentence above true
+        // rather than merely currently equal.
+        //
+        // **Both separators**, because the old form was `ToString("0.0", InvariantCulture)` and therefore printed a
+        // POINT. A first version of this line matched only a comma and so could not have caught the very code it was
+        // written against — found by mutating rather than by reading, which is the only way that class of test gets
+        // caught. (The first mutation attempt was itself wrong: integer division also prints no separator and passed,
+        // which proves only that a mutation has to reproduce the original, not merely differ from the fix.)
+        Assert.DoesNotMatch(@"\d[.,]\d weken", prompt);
 
         // The school's own thema's are offered, and nothing else — grounded only on school data (Art. IV.4).
         Assert.Contains("Thema: Herfst", prompt);

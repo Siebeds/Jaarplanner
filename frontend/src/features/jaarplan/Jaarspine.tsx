@@ -16,11 +16,16 @@ import type { Planningsblokniveau } from "./types";
  * strip, not the headline: no card, no border, no shadow, thin bars, no legend block, and the explanatory
  * sentence is gone.
  *
- * The trade to watch when you strip a legend is Art. XII — colour may never be the sole carrier — so state
- * is encoded twice over: a planned period is a **filled** bar, an empty one is an **outline**, and an
- * over-full one is filled *and* carries a visible `!`. Fill-versus-outline is a shape difference, so the
- * strip still reads in greyscale, in print, and for someone who cannot tell petrol from amber. That is what
- * the legend used to buy, bought more cheaply.
+ * The trade to watch when you strip a legend is WCAG 2.2 AA SC 1.4.1 (Art. VIII, ADR-0017): colour may never be the
+ * sole carrier. So state is encoded twice over: a planned period is a **filled** bar, an empty one is an **outline**,
+ * and an over-full one is filled *and* carries a visible `▲`. Fill-versus-outline is a shape difference, so the strip
+ * still reads in greyscale, in print, and for someone who cannot tell petrol from amber. That is what the legend used
+ * to buy, bought more cheaply.
+ *
+ * *Two corrections here, both E3-09 (2026-08-04).* The glyph was `!` until this story unified it with the board's; and
+ * this paragraph cited **Art. XII**, which is the constitution's **glossary** and fixes no colour rule at all. The
+ * WCAG target lives in Art. VIII and ADR-0017. That miscitation is repo-wide (`CLAUDE.md` carries it too) and is filed
+ * rather than swept here.
  *
  * Purely presentational: no click targets. **The zoom (E3-08) deliberately did not turn these bars into buttons** —
  * a segment is 40px wide and carries no label a teacher could aim at, and "click a period to zoom into it" would be
@@ -29,10 +34,25 @@ import type { Planningsblokniveau } from "./types";
  */
 export interface JaarspineProps {
   segmenten: Ribbonsegment[];
-  /** Ordinals holding at least one planned thema, so the strip shows where the year is filled. */
+  /**
+   * Ordinals holding at least one planned thema, so the strip shows where the year is filled.
+   *
+   * An ordinal is safe here, unlike {@link teVolleStarts} below: this set is derived from the **same** `/rooster`
+   * answer that produced `segmenten`, so the two cannot be a version apart.
+   */
   gevuldeOrdinalen: ReadonlySet<number>;
-  /** Ordinals flagged as over-full, matching the board columns below. */
-  teVolleOrdinalen: ReadonlySet<number>;
+  /**
+   * Block **start dates** flagged as over-full, matching the board columns below.
+   *
+   * **Start dates and not ordinals** (antagonist MINOR, E3-09 fix round 1), because this set crosses a query boundary:
+   * the te-vol verdict comes from the *jaarplan* response while `segmenten` come from *`/rooster`*, and those are two
+   * caches that can be a beat apart — `kalender.roosterVerversenMislukt` exists for precisely that window. An ordinal
+   * is a position in a grid, so if the two answers disagree about the grid the strip marks the wrong segment; a start
+   * date is the placement key (ADR-0020 §3) and simply fails to match. E3-09 introduced the cross-response join and
+   * first made it on the ordinal, one file after writing "keyed on `start` and not on `ordinaal`, like everything else
+   * that has to survive a vakantie edit" in `belastingPerStart`.
+   */
+  teVolleStarts: ReadonlySet<string>;
   /**
    * The tier these segments belong to (E3-08).
    *
@@ -60,7 +80,7 @@ const SPINETITEL: Record<Planningsblokniveau, TranslationKey> = {
 export function Jaarspine({
   segmenten,
   gevuldeOrdinalen,
-  teVolleOrdinalen,
+  teVolleStarts,
   niveau,
 }: JaarspineProps) {
   const periodeSleutel = PERIODELABEL[niveau];
@@ -82,7 +102,7 @@ export function Jaarspine({
             return <div key={`spine-gat-${segment.onderbreking.start}`} className="w-2.5 shrink-0" />;
           }
 
-          const teVol = teVolleOrdinalen.has(segment.blok.ordinaal);
+          const teVol = teVolleStarts.has(segment.blok.start);
           const gevuld = gevuldeOrdinalen.has(segment.blok.ordinaal);
 
           return (
@@ -121,10 +141,15 @@ export function Jaarspine({
                 {teVol && (
                   // The second, non-colour carrier for "te vol" (Art. XII). A proportional segment can be
                   // 40px wide, so visually there is only room to point — but a screen reader announcing a
-                  // bare "!" would learn nothing, so the word rides along invisibly. The full sentence is on
+                  // bare glyph would learn nothing, so the word rides along invisibly. The full sentence is on
                   // the board column below.
+                  //
+                  // The glyph is `▲`, the same one the board column and the explanation above it use (E3-09). It was
+                  // `!` while te vol was two loosely related things; now that the rule has one definition, one signal
+                  // wearing two glyphs on the same screen reads as two different problems. The width argument that
+                  // justified a bare marker still holds and is untouched: `▲` is no wider than `!`.
                   <span className="font-bold text-attentie-ink">
-                    !<span className="sr-only"> {t("spine.teVol")}</span>
+                    ▲<span className="sr-only"> {t("spine.teVol")}</span>
                   </span>
                 )}
               </p>

@@ -2,16 +2,24 @@ import { describe, expect, it } from "vitest";
 
 import {
   PERIODELABEL,
+  belastingPerStart,
+  benodigdeWekenNa,
   bepaalVerplaatsing,
   bouwRibbon,
   formatteerDatum,
   formatteerPeriode,
-  formatteerWeken,
+  wekenInBlok,
+  isTeVolMet,
   plaatsingenIn,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
 import { PLANNINGSBLOKNIVEAUS, leesNiveau } from "./types";
-import type { Planningsblok, Planningsonderbreking, Themaplaatsing } from "./types";
+import type {
+  Blokspreiding,
+  Planningsblok,
+  Planningsonderbreking,
+  Themaplaatsing,
+} from "./types";
 
 /**
  * The arithmetic and ordering the ribbon's honesty rests on (E3-06). These are the claims the picture
@@ -36,6 +44,7 @@ function plaatsing(overrides: Partial<Themaplaatsing> & { id: string }): Themapl
     aiMotivatie: null,
     vergrendeld: false,
     doelcodes: [],
+    duurWeken: 4,
     ...overrides,
   };
 }
@@ -60,11 +69,98 @@ describe("formatteerDatum", () => {
   });
 });
 
-describe("formatteerWeken", () => {
-  it("renders weeks to one decimal with a Dutch comma", () => {
-    // 31 open days ÷ 7 = 4,4 — the approved wireframe's own figure for 1 sep – 1 okt.
-    expect(formatteerWeken(31)).toBe("4,4");
-    expect(formatteerWeken(42)).toBe("6,0");
+describe("wekenInBlok", () => {
+  it("rounds up to whole weeks, so the heading and the te-vol rule state one length", () => {
+    // Exact multiples are unchanged.
+    expect(wekenInBlok(42)).toBe(6);
+
+    // 31 open days is 4,4 weeks, the approved wireframe's own figure for 1 sep – 1 okt. It now reads 5, because the
+    // te-vol comparison it sits above rounds the same way (owner ruling 2026-08-04). The precise figure survives as
+    // the spine's segment WIDTH, which is still sized on exact open days.
+    expect(wekenInBlok(31)).toBe(5);
+
+    // The case the rounding exists for: a 6-week period losing a vrije dag must still offer 6, or te vol would fire
+    // on the commonest Flemish school calendar there is.
+    expect(wekenInBlok(41)).toBe(6);
+  });
+
+  it("never reports a fractional or zero-week period as one week", () => {
+    // The short block a long mid-year closure can leave behind. Reaching 1 is what makes "1 weken" possible, which is
+    // why the heading renders through tAantal.
+    expect(wekenInBlok(7)).toBe(1);
+    expect(wekenInBlok(1)).toBe(1);
+  });
+});
+
+describe("te vol (E3-09, FR-6.4)", () => {
+  /**
+   * The load payload as the server sends it. `isOverbelast` is written by hand here rather than derived from the two
+   * week figures, and that is the whole point of the mirror test below: deriving it would compare
+   * `benodigde > beschikbare` against itself and pass no matter what either side did.
+   */
+  function belasting(
+    start: string,
+    benodigdeWeken: number,
+    beschikbareWeken: number,
+    isOverbelast: boolean,
+  ): Blokspreiding {
+    return {
+      ordinaal: 1,
+      start,
+      aantalThemas: 1,
+      aantalDoelen: 0,
+      benodigdeWeken,
+      beschikbareWeken,
+      isOverbelast,
+    };
+  }
+
+  it("indexes the server's measurement by block start, not by ordinal", () => {
+    const kaart = belastingPerStart([
+      belasting("2026-09-01", 4, 9, false),
+      belasting("2026-11-09", 12, 6, true),
+    ]);
+
+    expect(kaart.get("2026-11-09")?.isOverbelast).toBe(true);
+    // A date that is no period's start: a stale placement's own key. The caller must get nothing rather than a
+    // neighbouring period's figures.
+    expect(kaart.get("2026-12-01")).toBeUndefined();
+  });
+
+  it("reproduces the server's own verdict, so the drag preview cannot contradict the flag", () => {
+    // Hand-written verdicts, including the two boundary cases the ruling turns on: needing exactly as many weeks as
+    // the period offers is NOT te vol, one more week is.
+    const gevallen = [
+      belasting("2026-09-01", 4, 9, false),
+      belasting("2026-09-02", 6, 6, false),
+      belasting("2026-09-03", 7, 6, true),
+      belasting("2026-09-04", 18, 6, true),
+      belasting("2026-09-05", 0, 6, false),
+    ];
+
+    for (const geval of gevallen) {
+      expect(
+        isTeVolMet(geval.beschikbareWeken, geval.benodigdeWeken),
+        `${geval.benodigdeWeken} weken in ${geval.beschikbareWeken}`,
+      ).toBe(geval.isOverbelast);
+    }
+  });
+
+  it("adds the dragged thema's own weeks, not one", () => {
+    const doel = belasting("2026-09-01", 4, 6, false);
+
+    // Two weeks fits: 4 + 2 = 6, which is exactly the period and therefore not te vol.
+    expect(benodigdeWekenNa(doel, 2)).toBe(6);
+    expect(isTeVolMet(doel.beschikbareWeken, benodigdeWekenNa(doel, 2)!)).toBe(false);
+
+    // A six-week thema does not, and this is the case a count of thema's could never see: "one more thema" would
+    // have promised room in both.
+    expect(benodigdeWekenNa(doel, 6)).toBe(10);
+    expect(isTeVolMet(doel.beschikbareWeken, benodigdeWekenNa(doel, 6)!)).toBe(true);
+  });
+
+  it("predicts nothing for a target it has no measurement for", () => {
+    expect(benodigdeWekenNa(undefined, 5)).toBeUndefined();
   });
 });
 
