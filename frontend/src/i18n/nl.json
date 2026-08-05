@@ -701,6 +701,7 @@
     "activiteitVerplaatsen": "Verplaatsen",
     "activiteitVerplaatsTitel": "“{naam}” naar een ander subthema verplaatsen",
     "activiteitVerplaatsGevolg": "De doelen van deze activiteit tellen mee via het thema waarin ze staat, zolang dat thema in het jaarplan van deze klas staat. Verhuist ze naar een ander thema, dan kan de dekking van deze klas veranderen.",
+    "activiteitVerplaatsLeeftijd": "Kies je een subthema met een andere leeftijd, dan doet die leeftijdsgroep de activiteit vanaf nu. De klas blijft altijd dezelfde.",
     "activiteitVerplaatsLabel": "Nieuw subthema",
     "activiteitVerplaatsKiezerAria": "Nieuw subthema voor activiteit {naam}",
     "activiteitVerplaatsBevestigAria": "Activiteit {naam} naar het gekozen subthema verplaatsen",

@@ -469,6 +469,13 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
     // The consequence of the owner's ruling: dekking counts an activiteitkoppeling through the thema its
     // subthema hangs under, so a move that stays inside the klas can still change the figure.
     expect(within(sectie).getByText(t("themabeheer.activiteitVerplaatsGevolg"))).toBeInTheDocument();
+
+    /*
+      And the second consequence, ruled on 2026-08-05 after the audit established it had been inferred rather
+      than ruled: a move may cross a **leeftijd** within one klas, which changes which age group teaches the
+      activiteit, and the panel has to say so rather than leave it to the age printed in an option label.
+    */
+    expect(within(sectie).getByText(t("themabeheer.activiteitVerplaatsLeeftijd"))).toBeInTheDocument();
   });
 
   it("verplaatst de activiteit en zegt waar ze nu staat, want de rij verdwijnt van dit scherm", async () => {

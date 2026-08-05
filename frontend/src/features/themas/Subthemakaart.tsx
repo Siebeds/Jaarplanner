@@ -649,6 +649,16 @@ function Activiteitregel({
           <p className="mt-1 max-w-prose text-sm text-ink-zacht">
             {t("themabeheer.activiteitVerplaatsGevolg")}
           </p>
+          {/*
+            **Owner ruling, 2026-08-05, on the antagonist's QUESTION.** Crossing a leeftijd within one klas is
+            permitted, and the panel has to say what it means rather than leave it to the age printed in an
+            option label. Art. IX.2 makes `(subthema × leeftijd)` the differentiation axis, so this sentence is
+            about *who teaches it from now on*. The klas half is stated in the same breath, because that is the
+            boundary the move can never cross and a teacher reading about one scope will wonder about the other.
+          */}
+          <p className="mt-1 max-w-prose text-sm text-ink-zacht">
+            {t("themabeheer.activiteitVerplaatsLeeftijd")}
+          </p>
 
           {/*
             **Outside the branches below, deliberately.** It used to sit inside the "there are destinations"

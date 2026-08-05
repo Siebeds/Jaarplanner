@@ -126,10 +126,11 @@ public sealed class Subthema
     /// something this method may decide (antagonist round 1).
     /// </para>
     /// <para>
-    /// A move to another <b>leeftijd</b> within the same klas is permitted here, which is the graadklas
-    /// differentiation Art. IX.2 exists for, and the destination's leeftijd is shown to whoever picks it.
-    /// <b>That half was inferred, not ruled</b>: the owner chose between options about the *thema* boundary,
-    /// so until it is confirmed it is an Art. XIV question and not a settled rule.
+    /// A move to another <b>leeftijd</b> within the same klas is permitted, which is the graadklas
+    /// differentiation Art. IX.2 exists for. <b>Ruled by the owner on 2026-08-05</b>, after an antagonist
+    /// QUESTION established that the earlier ruling had only covered the *thema* boundary and that this half
+    /// had been inferred: permitted, <b>and the panel must say what it means</b> rather than leave it to the
+    /// age printed in an option label (<c>themabeheer.activiteitVerplaatsLeeftijd</c>).
     /// </para>
     /// </para>
     /// </summary>
