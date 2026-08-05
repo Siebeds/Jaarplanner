@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { DEKKING_KEY } from "../dekking/useDekking";
 import {
   genereerDoelsuggesties,
   haalDoelsuggesties,
@@ -53,6 +54,12 @@ export function useOngekoppeldeDoelen() {
  * invalidates the "ongekoppelde doelen" gap list: accepting/adjusting a suggestion links its doel (or
  * rejecting one may unlink it), so the gap list must refetch to stay correct (FR-4.4 "updates as links
  * change"). The server is the source of truth in both cases.
+ *
+ * **It also drops the dekking cache (E4-01).** An accepted or adjusted suggestion is a counted `DoelKoppeling`
+ * (Art. V.1), so this decision moves the coverage figure of every class whose plan holds this thema. The whole
+ * `["dekking"]` subtree goes, not one class's: a thema is school-wide. Dropped rather than invalidated because an
+ * invalidated entry is still painted while its refetch runs, so `/dekking` would open on a figure from before the
+ * decision; see {@link DEKKING_KEY}.
  */
 export function useWijzigSuggestieStatus(themaId: string) {
   const queryClient = useQueryClient();
@@ -63,6 +70,7 @@ export function useWijzigSuggestieStatus(themaId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: suggestiesKey(themaId) });
       void queryClient.invalidateQueries({ queryKey: ongekoppeldeDoelenKey });
+      queryClient.removeQueries({ queryKey: DEKKING_KEY });
     },
   });
 }
@@ -92,6 +100,9 @@ export function useGenereerDoelsuggesties(themaId: string) {
  * Mutation for FR-4.3's "aanpassen": substitutes a different leerplandoel on a suggestion, which makes it
  * the teacher's own `Manueel` link. Invalidates both the thema's suggestions and the gap list, since a
  * `manueel` link counts as coupled (Art. V) and therefore removes its doel from "nog niet gekoppeld".
+ *
+ * It drops the dekking cache for the same reason as {@link useWijzigSuggestieStatus}, and here the figure moves
+ * **twice**: the substituted doel stops being covered by this thema and the new one starts.
  */
 export function useVervangSuggestieDoel(themaId: string) {
   const queryClient = useQueryClient();
@@ -102,6 +113,7 @@ export function useVervangSuggestieDoel(themaId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: suggestiesKey(themaId) });
       void queryClient.invalidateQueries({ queryKey: ongekoppeldeDoelenKey });
+      queryClient.removeQueries({ queryKey: DEKKING_KEY });
     },
   });
 }

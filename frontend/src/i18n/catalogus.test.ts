@@ -308,6 +308,45 @@ describe("nl.json — the stale-placement notice does not overclaim about dekkin
   });
 });
 
+describe("nl.json — de copy over verplaatsen noemt het dekkingsgevolg (E4-01)", () => {
+  /**
+   * The E4-01 antagonist found a test comment asserting that *"the card discloses it before the drag"* while no string
+   * in the product said anything about dekking. The owner ruled the sentence in scope, so this guard exists to keep it
+   * from being reworded away.
+   *
+   * **What this file can and cannot see, stated flatly, because round 1 of this guard got it wrong.** A catalogue test
+   * mounts nothing, so it cannot know whether a sentence is *true in the state it renders in* — and that, not a
+   * reword, is the failure mode this copy actually had: the first version of the clause sat in `beslisUitleg`, which
+   * is tier-independent, and therefore promised a drag on the two tiers where the grip and the picker are both
+   * withheld. **That property is pinned in `Jaarplankalender.test.tsx`**, which renders each tier; this file only
+   * pins that the two sentences still make their claim at all.
+   *
+   * It keys on the two **keys** rather than on their wording for the same reason: an assertion quoting five words of
+   * the string it checks is a tautology (the E4-02 lesson). `dekking` is the domain word and cannot be paraphrased
+   * away without the register changing, so it is the one substring worth keying on.
+   */
+  it("keeps the dekking consequence on the tier-paired sentence and in the picker panel", () => {
+    // `sleepUitleg` is BORDUITLEG's `kan` entry, so it renders only where moving actually works. That pairing is the
+    // fix for the defect above, which is why the guard checks THIS key and not the tier-independent one.
+    const bord = CATALOGUS.get("kalender.sleepUitleg");
+    const paneel = CATALOGUS.get("kalender.verplaatsGevolg");
+    const beslis = CATALOGUS.get("kalender.beslisUitleg");
+
+    expect(bord, "kalender.sleepUitleg has been renamed; this guard now checks nothing").toBeDefined();
+    expect(paneel, "kalender.verplaatsGevolg has been renamed; this guard now checks nothing").toBeDefined();
+    expect(beslis, "kalender.beslisUitleg has been renamed; this guard now checks nothing").toBeDefined();
+
+    expect(bord!.toLowerCase()).toContain("dekking");
+    expect(paneel!.toLowerCase()).toContain("dekking");
+
+    // And it must NOT drift back into the tier-independent sentence, where it was false on two of three states. This
+    // is the one assertion here that pins a property rather than a presence: `beslisUitleg` may say a proposal does
+    // not count, and may not say what makes it count, because it renders where that answer differs per tier.
+    expect(beslis!.toLowerCase()).not.toContain("versleep");
+    expect(beslis!.toLowerCase()).not.toContain("verplaats");
+  });
+});
+
 describe("nl.json — no dead keys under dekking", () => {
   /**
    * The same guard as the `doelen.*` one below, extended to E5-02's family for the same reason it was written: E1-16
