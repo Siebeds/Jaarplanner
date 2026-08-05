@@ -131,7 +131,7 @@ public static class JaarplanGeneratiePromptBuilder
 
         SchrijfKlas(sb, klas, schooljaar);
         sb.Append(Nl);
-        SchrijfBlokken(sb, blokken);
+        SchrijfBlokken(sb, blokken, schooljaar);
         sb.Append(Nl);
         SchrijfThemas(sb, themas);
 
@@ -208,7 +208,10 @@ public static class JaarplanGeneratiePromptBuilder
         Line(sb, $"Schooljaar: {schooljaar.Naam} ({Datum(schooljaar.Start)} t/m {Datum(schooljaar.Eind)})");
     }
 
-    private static void SchrijfBlokken(StringBuilder sb, IReadOnlyCollection<Planningsblok> blokken)
+    private static void SchrijfBlokken(
+        StringBuilder sb,
+        IReadOnlyCollection<Planningsblok> blokken,
+        Schooljaar schooljaar)
     {
         Line(sb, "# Planningsblokken");
         Line(sb, string.Empty);
@@ -232,10 +235,21 @@ public static class JaarplanGeneratiePromptBuilder
         {
             // Weeks are printed next to days because the fit rule is expressed in weeks (a thema's DuurWeken).
             // Making the model divide by 7 itself is an arithmetic step that buys nothing.
+            //
+            // **The weeks figure is the one the te-vol rule uses** (owner ruling, 2026-08-05, on the E3-09 antagonist's
+            // QUESTION): open days rounded up, `ceil(TelOpenDagen / 7)`. It was `AantalDagen / 7` to one decimal, so the
+            // prompt told the model a 1 sep – 1 okt period was "4,4 weken" while the flag a teacher then reads measures
+            // the same period as **5**. Pre-existing since E3-02 and lenient in the safe direction, but this is the
+            // input that decides whether the model even tries to fit a thema, so the generator was being steered by a
+            // stricter number than the verdict it would be judged against.
+            //
+            // **The days are still the calendar span, and that is deliberate**: the model is asked to reason about
+            // seasons and about "a moment in the school year", for which the real dates are the truth. Only the
+            // capacity figure follows the rule.
             Line(
                 sb,
                 $"- startdatum {Datum(blok.Start)} | einddatum {Datum(blok.Eind)} | {blok.AantalDagen} dagen " +
-                $"({Weken(blok.AantalDagen)} weken) | label \"{blok.Niveau} {blok.Ordinaal}\"");
+                $"({WekenCapaciteit(blok, schooljaar)} weken) | label \"{blok.Niveau} {blok.Ordinaal}\"");
         }
     }
 
@@ -319,11 +333,18 @@ public static class JaarplanGeneratiePromptBuilder
     }
 
     /// <summary>
-    /// Days as weeks to one decimal, invariant-formatted so the prompt is byte-identical on every platform (a
-    /// Dutch locale would render "4,4" and break the snapshot on one OS but not the other).
+    /// A block's teaching capacity in <b>whole weeks</b>, by the same arithmetic the te-vol verdict uses:
+    /// <c>ceil(TelOpenDagen / 7)</c>.
+    /// <para>
+    /// <b>Shared with <see cref="BlokspreidingWeergave.IsOverbelast"/> by construction, not by coincidence</b> (owner
+    /// ruling, 2026-08-05). This used to be <c>AantalDagen / 7</c> to one decimal, which was a *tenth* place where a
+    /// period's length in weeks was computed and the only one that steers the model. It is an integer, so it needs no
+    /// culture-invariant formatting: the reason the old helper carried a <see cref="CultureInfo"/> was that a Dutch
+    /// locale renders "4,4" and would have made the prompt differ per OS.
+    /// </para>
     /// </summary>
-    private static string Weken(int dagen) =>
-        (dagen / 7.0).ToString("0.0", CultureInfo.InvariantCulture);
+    private static int WekenCapaciteit(Planningsblok blok, Schooljaar schooljaar) =>
+        (int)Math.Ceiling(schooljaar.TelOpenDagen(blok.Start, blok.Eind) / 7.0);
 
     private static string Datum(DateOnly datum) =>
         datum.ToString(JaarplanGeneratieResponseParser.DatumFormaat, CultureInfo.InvariantCulture);
