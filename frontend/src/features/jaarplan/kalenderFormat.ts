@@ -305,3 +305,24 @@ export function vervallenPlaatsingen(
 
   return plaatsingen.filter((p) => p.isVervallen || !starts.has(p.blokStart));
 }
+
+/**
+ * A signature of a plan's placements: their ids with the state that can change what coverage they contribute.
+ *
+ * **Why coverage needs this at all (E3-03, antagonist round 1).** The generation panel's dekking figures come from the
+ * generation response and nothing invalidates them, while `usePlanMutatie` drops the live dekking cache on every
+ * placement edit. So the moment a teacher accepts a card, the panel and the live coverage line on the same screen
+ * describe two different plans. Comparing this signature of the plan the response carried with the one on screen
+ * answers the only question that matters — "do those numbers still describe what I am looking at" — without counting
+ * mutations, which would also fire for edits that changed nothing.
+ *
+ * Status and staleness are in, position is not: a move changes `blokStart`, and it also changes the status to
+ * `Manueel`, so the status carries it. `IsVervallen` is in because a placement that stops being stale releases a
+ * figure that was being withheld altogether.
+ */
+export function plaatsingssignatuur(plaatsingen: readonly Themaplaatsing[]): string {
+  return plaatsingen
+    .map((p) => `${p.id}:${p.status}:${p.isVervallen ? 1 : 0}`)
+    .sort()
+    .join("|");
+}

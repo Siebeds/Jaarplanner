@@ -123,12 +123,19 @@ public sealed class JaarplanController : ControllerBase
     /// the input they just typed. A malformed body is a 400 and stores nothing.
     /// </para>
     /// </param>
+    /// <param name="jaarFase">
+    /// The kleuterjaar the teacher has narrowed the screen to (owner ruling 2026-08-04), passed through to the
+    /// dekkingsvooruitzicht only. It changes <b>nothing</b> about the generation itself: the run is over the whole
+    /// class either way, and this is purely which leerplandoelen the reported figures are measured against, so that
+    /// they match the live dekking line the same screen shows. Ignored when it is not one of this class's codes.
+    /// </param>
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     [HttpPost("generatie")]
     public async Task<ActionResult<JaarplanGeneratieResultaat>> Genereer(
         Guid klasId,
         [FromBody] JaarplanGeneratieParameters? parameters,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] string? jaarFase = null)
     {
         var resultaat = await _service.GenereerAsync(klasId, parameters, cancellationToken);
 
@@ -149,7 +156,13 @@ public sealed class JaarplanController : ControllerBase
         //
         // It runs only on success, and only after the run has persisted, so it measures the plan the teacher is about
         // to be shown. A failed run leaves it null: nothing was persisted, so there is no new plan to look ahead over.
-        var vooruitzicht = await _dekking.BerekenVooruitzichtAsync(klasId, cancellationToken: cancellationToken);
+        //
+        // `jaarFase` is the kalender's own kleuterjaar choice, passed through so this figure and the live dekking line
+        // on the SAME SCREEN are over the same denominator (antagonist round 1: the chooser is on the kalender, not on
+        // /dekking as an earlier comment claimed). Ignored by the service when it is not one of the class's codes,
+        // exactly as GET …/dekking ignores it, so a stale link can never break a generation run.
+        var vooruitzicht = await _dekking.BerekenVooruitzichtAsync(
+            klasId, jaarFase: jaarFase, cancellationToken: cancellationToken);
 
         return Ok(resultaat with { Vooruitzicht = vooruitzicht });
     }

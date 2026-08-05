@@ -184,12 +184,20 @@ public sealed class DekkingService
     /// both are returned so a caller cannot show one without the other.
     /// </para>
     /// <para>
-    /// No <c>jaarFase</c> narrowing is accepted: the chooser that produces it belongs to the dekkingsoverzicht and its
-    /// answer is not persisted, so this report measures the class's whole derived set and says which codes those were.
+    /// <b>It accepts the same <c>jaarFase</c> narrowing as <see cref="BerekenAsync"/>, and that is a correction rather
+    /// than a feature</b> (antagonist round 1, 2026-08-05). The first version refused one, on the stated grounds that
+    /// the kleuterjaar chooser "lives on the dekkingsoverzicht". It does not: E3-09 put a <c>Jaarfasekiezer</c> on the
+    /// <i>kalender</i>, driving the live dekking line on the same screen as this panel. So a kleutergroep narrowed to
+    /// K3 would have read one figure measured against K3 and, a few pixels away, one measured against JK+K2+K3, with
+    /// nothing a teacher could use to reconcile them.
     /// </para>
     /// </summary>
     /// <param name="klasId">The class whose plan is being looked ahead over.</param>
     /// <param name="bereik">Which leerplandoelen to measure against; the same ruling and the same default as dekking.</param>
+    /// <param name="jaarFase">
+    /// The teacher's narrowing within the class's own set, exactly as <see cref="BerekenAsync"/> takes it: ignored when
+    /// null, when the scope is the whole curriculum, or when the code is not one this class could be measured against.
+    /// </param>
     /// <param name="cancellationToken">Cancellation.</param>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
     /// The class does not exist.
@@ -197,10 +205,11 @@ public sealed class DekkingService
     public async Task<Dekkingsvooruitzicht> BerekenVooruitzichtAsync(
         Guid klasId,
         Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase,
+        string? jaarFase = null,
         CancellationToken cancellationToken = default)
     {
         var plan = await _lezer.HaalJaarplanAsync(klasId, cancellationToken);
-        var scope = await BepaalBereikAsync(klasId, bereik, jaarFase: null, cancellationToken);
+        var scope = await BepaalBereikAsync(klasId, bereik, jaarFase, cancellationToken);
 
         // The placements that make a thema taught today: exactly BerekenAsync's rule, so the decided half of this
         // report and the dekkingsoverzicht answer the same number for the same plan.

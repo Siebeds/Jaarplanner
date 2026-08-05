@@ -141,13 +141,18 @@ export function useGeneratieparameters(klasId: string) {
  * an optimistic update: the server decides what was actually persisted (a returned thema the school does not
  * own is skipped, not invented), so guessing locally could show a teacher a placement that does not exist.
  */
-export function useGenereerJaarplan(klasId: string) {
+export function useGenereerJaarplan(klasId: string, jaarFase?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     // The parameters are passed at mutate() time rather than captured here, so the form's current value is what
     // gets sent and a stale closure cannot generate with the previous run's settings (E3-04, FR-5.4).
-    mutationFn: (parameters?: Generatieparameters) => genereerJaarplan(klasId, parameters),
+    //
+    // `jaarFase` is captured, unlike the parameters, and the asymmetry is deliberate: it is the screen's current
+    // narrowing rather than something the teacher submits with the run, and it changes only which leerplandoelen the
+    // reported dekkingsvooruitzicht is measured against (E3-03). A stale value here cannot produce a wrong plan, only
+    // a figure over the previous scope, and the response states the scope it used.
+    mutationFn: (parameters?: Generatieparameters) => genereerJaarplan(klasId, parameters, jaarFase),
     onSuccess: (_resultaat, parameters) => {
       void queryClient.invalidateQueries({ queryKey: jaarplanKey(klasId) });
 

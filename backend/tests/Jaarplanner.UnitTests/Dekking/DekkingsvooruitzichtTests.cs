@@ -331,6 +331,51 @@ public sealed class DekkingsvooruitzichtTests
         }
     }
 
+    [Fact]
+    public async Task Een_kleutergroep_kan_het_vooruitzicht_versmallen_tot_een_kleuterjaar()
+    {
+        // Antagonist round 1's third MAJOR. The kleuterjaar chooser sits on the KALENDER (E3-09), driving the live
+        // dekking line on the same screen as this panel, so a report that refused to narrow put two figures over two
+        // denominators a few pixels apart. Narrowing to JK is asserted rather than to K3, because the seeded doelen
+        // are K3: it proves the parameter reached the query rather than that the answer happened to look right.
+        var opslag = Opslag(
+            [Doel("NAT-K3-01"), Doel("NAT-JK-01", jaarFase: "JK")],
+            perThema: new Dictionary<Guid, IReadOnlyList<DekkendeKoppeling>>
+            {
+                [HerfstId] = [new DekkendeKoppeling("NAT-K3-01", "Herfst")],
+            });
+
+        var service = new DekkingService(
+            new FakeJaarplanLezer(Plan([Plaatsing(HerfstId, KoppelingStatus.Voorgesteld)])),
+            opslag);
+
+        var breed = await service.BerekenVooruitzichtAsync(KlasId);
+        var versmald = await service.BerekenVooruitzichtAsync(KlasId, jaarFase: "JK");
+
+        Assert.Equal(Jaarfasen.Kleuter, breed.GemetenJaarFasen);
+        Assert.Equal(2, breed.AantalLeerplandoelen);
+        Assert.Equal(1, breed.AantalMogelijkGedekt);
+
+        Assert.Equal(["JK"], versmald.GemetenJaarFasen);
+        Assert.Equal(1, versmald.AantalLeerplandoelen);
+        Assert.Equal(0, versmald.AantalMogelijkGedekt);
+    }
+
+    [Fact]
+    public async Task Een_jaar_fase_buiten_de_klas_wordt_genegeerd_en_gemeld_als_niet_toegepast()
+    {
+        // Same rule as the dekking figure: ignored rather than refused, and `GemetenJaarFasen` reports what was
+        // APPLIED, so no screen can claim a narrowing that did not happen.
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, KoppelingStatus.Voorgesteld)],
+            doelen: [Doel("NAT-K3-01"), Doel("NAT-K3-02")]);
+
+        var vooruitzicht = await service.BerekenVooruitzichtAsync(KlasId, jaarFase: "L6");
+
+        Assert.Equal(Jaarfasen.Kleuter, vooruitzicht.GemetenJaarFasen);
+        Assert.Equal(2, vooruitzicht.AantalLeerplandoelen);
+    }
+
     /// <summary>
     /// A service whose two thema's carry one distinct doel each — <c>Herfst</c> covers <c>NAT-K3-01</c> and
     /// <c>Winter</c> covers <c>NAT-K3-02</c> — so which set of placements was counted is visible in the figure.

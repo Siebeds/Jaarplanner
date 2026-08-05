@@ -45,7 +45,7 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
   it("noemt de doelen die in geen enkel gepland thema zitten", () => {
     render(<Vooruitzichtoverzicht vooruitzicht={basis} />);
 
-    expect(screen.getByText("Zit in geen enkel gepland thema: 22.")).toBeInTheDocument();
+    expect(screen.getByText("Ook dan nog niet gedekt: 22.")).toBeInTheDocument();
   });
 
   it("zwijgt over onbereikbare doelen wanneer het voorstel alles kan dekken", () => {
@@ -55,7 +55,7 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
       />,
     );
 
-    expect(screen.queryByText(/Zit in geen enkel gepland thema/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ook dan nog niet gedekt/)).not.toBeInTheDocument();
     expect(
       screen.getByText("Als je alle voorstellen aanvaardt: 34 van 34."),
     ).toBeInTheDocument();
@@ -81,7 +81,28 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
       />,
     );
 
+    expect(
+      screen.getByText("Van deze klas is geen jaar of fase bekend, dus gemeten tegen het hele curriculum."),
+    ).toBeInTheDocument();
+  });
+
+  it("zegt bij een bewuste keuze voor het hele curriculum iets anders dan bij een terugval", () => {
+    // The distinction the first version could not make, because the component branched on `gemetenJaarFasen.length`
+    // alone and the two states share that. A directie that deliberately measures against everything has not lost
+    // anything; a graadklas whose jaar/fase could not be derived has. Same empty list, different sentence.
+    render(
+      <Vooruitzichtoverzicht
+        vooruitzicht={{
+          ...basis,
+          bereik: "HeelCurriculum",
+          gemetenJaarFasen: [],
+          isTerugvalNaarHeelCurriculum: false,
+        }}
+      />,
+    );
+
     expect(screen.getByText("Gemeten tegen alle ingeladen leerplandoelen.")).toBeInTheDocument();
+    expect(screen.queryByText(/geen jaar of fase bekend/)).not.toBeInTheDocument();
   });
 
   it("toont geen enkel cijfer zolang een thema buiten een periode staat", () => {
@@ -101,7 +122,12 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
       />,
     );
 
-    expect(screen.getByText(/kunnen we niet zeggen wat dit voorstel dekt/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "1 thema staat buiten een themaperiode. Zolang je daarover niets beslist, kunnen we niet zeggen wat " +
+          "dit jaarplan dekt.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Als je alle voorstellen aanvaardt/)).not.toBeInTheDocument();
 
@@ -125,9 +151,46 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
       />,
     );
 
-    expect(screen.getByText(/nog geen leerplandoelen ingeladen/)).toBeInTheDocument();
+    expect(
+      screen.getByText("Voor dit jaar staan er nog geen leerplandoelen in de tool, dus valt er niets te meten."),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
     expect(screen.queryByText(/0 van 0/)).not.toBeInTheDocument();
+  });
+
+  it("telt in het meervoud de vervallen plaatsingen op", () => {
+    render(
+      <Vooruitzichtoverzicht
+        vooruitzicht={{
+          ...basis,
+          isBetrouwbaar: false,
+          aantalOnopgelosteVervallenPlaatsingen: 3,
+          aantalGedekt: null,
+          aantalMogelijkGedekt: null,
+          aantalOnbereikbaar: null,
+          aantalWinstBijAanvaarden: null,
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/^3 thema's staan buiten een themaperiode/)).toBeInTheDocument();
+  });
+
+  it("houdt elk cijfer in wanneer het jaarplan sinds de generatie gewijzigd is", () => {
+    // The defect the antagonist's second MAJOR named: these figures come from the generation response and nothing
+    // invalidates them, while the live dekking line on the same screen moves the moment a card is accepted. Two
+    // coverage statements about one class, disagreeing, is E4-06's "one card says two things" applied to the number a
+    // directie reads. Withheld rather than refreshed: this panel reports on a run, and a run that has been edited
+    // over is finished.
+    render(<Vooruitzichtoverzicht vooruitzicht={basis} isVerouderd />);
+
+    expect(screen.getByText(/kloppen niet meer/)).toBeInTheDocument();
+    expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Als je alle voorstellen aanvaardt/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ook dan nog niet gedekt/)).not.toBeInTheDocument();
+
+    // The scope survives, like in every other withheld state.
+    expect(screen.getByText("Gemeten tegen L3.")).toBeInTheDocument();
   });
 
   it("noemt de dekking nergens een bewijs of een percentage", () => {

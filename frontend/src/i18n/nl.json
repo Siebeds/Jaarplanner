@@ -395,15 +395,18 @@
     "genereerVervangenEnkelvoud": "1 eerder voorstel is vervangen.",
     "spreidingLeegEnkelvoud": "Nog leeg: themaperiode {ordinalen}.",
     "spreidingOverbelastEnkelvoud": "Te vol, te weinig weken voor de geplande thema's: themaperiode {ordinalen}.",
-    "dekkingTitel": "Dekking van dit voorstel",
+    "dekkingTitel": "Dekking van dit jaarplan",
     "dekkingUitleg": "Zolang een thema een AI-voorstel blijft, telt het niet mee voor de dekking. Deze cijfers zijn dus een vooruitzicht, geen bewijs.",
     "dekkingNu": "Nu gedekt: {gedekt} van {totaal}.",
     "dekkingMogelijk": "Als je alle voorstellen aanvaardt: {mogelijk} van {totaal}.",
-    "dekkingOnbereikbaar": "Zit in geen enkel gepland thema: {onbereikbaar}.",
+    "dekkingOnbereikbaar": "Ook dan nog niet gedekt: {onbereikbaar}.",
     "dekkingGemeten": "Gemeten tegen {fasen}.",
     "dekkingGemetenAlles": "Gemeten tegen alle ingeladen leerplandoelen.",
-    "dekkingGeenDoelen": "Voor deze klas zijn nog geen leerplandoelen ingeladen, dus er valt nog niets te meten.",
-    "dekkingOnbetrouwbaar": "Er staan thema's buiten een periode. Zolang je daarover niets beslist, kunnen we niet zeggen wat dit voorstel dekt."
+    "dekkingGeenDoelen": "Voor dit jaar staan er nog geen leerplandoelen in de tool, dus valt er niets te meten.",
+    "dekkingOnbetrouwbaar": "{aantal} thema's staan buiten een themaperiode. Zolang je daarover niets beslist, kunnen we niet zeggen wat dit jaarplan dekt.",
+    "dekkingOnbetrouwbaarEnkelvoud": "1 thema staat buiten een themaperiode. Zolang je daarover niets beslist, kunnen we niet zeggen wat dit jaarplan dekt.",
+    "dekkingGemetenTerugval": "Van deze klas is geen jaar of fase bekend, dus gemeten tegen het hele curriculum.",
+    "dekkingVerouderd": "Je hebt het jaarplan aangepast na deze generatie, dus deze cijfers kloppen niet meer. Het dekkingsoverzicht toont de actuele stand."
   },
   "doelen": {
     "titel": "Doelen van Op.stap",

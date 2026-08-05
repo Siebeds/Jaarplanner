@@ -127,3 +127,91 @@ figures are proven by the Postgres tests — this pass proves the rendering, the
   presentation; this reports the count.
 - **The prompt half is asked, not proven.** No test here asserts that a real model achieves better coverage,
   because no test here can.
+
+---
+
+# Fix round 1 — antagonist round 1 (2026-08-05)
+
+**Verdict: VIOLATIONS FOUND — 3 MAJOR, 5 MINOR, 3 QUESTION.** All addressed. The striking part is that **none of
+the three MAJOR was a code defect in the usual sense**: two were false statements rendered to a teacher, and the
+third was a claim in a doc comment about where a control lives.
+
+## MAJOR 1 — the gap sentence was false in the ordinary post-matching state
+
+`IsVoorstelbaar` widens the **placement** status set. The **link** filter (`aanvaard`/`manueel`) is untouched and
+lives inline in the four SQL branches of `EfDekkingOpslag`. So a leerplandoel that a *placed* thema carries through
+a still-`voorgesteld` doelsuggestie — exactly what FR-4 matching produces — is not counted, and the rendered line
+said *"Zit in geen enkel gepland thema"*, which was simply untrue of it.
+
+Two options existed: widen the link read too, or narrow the claim. **Narrowed the claim**, because the ceiling is
+about accepting the plan's *placements*, and doelsuggesties are decided on a different screen. The line is now
+*"Ook dan nog niet gedekt"*. The doc's invariant "accepting proposals cannot reduce it" was false for the same
+reason and is corrected.
+
+Pinned by `Een_nog_niet_aanvaarde_doelsuggestie_verhoogt_het_plafond_niet` — necessarily a **Postgres** test: the
+link-status filter is in SQL, so a fake `IDekkingOpslag` cannot express a link the port never returns.
+
+## MAJOR 2 — the figure never refreshed, on the screen where the invalidating actions live
+
+The panel renders from the generation mutation's data, which nothing invalidates, while `usePlanMutatie` drops the
+dekking cache on all five placement edits. Accept one card and the panel still read "Nu gedekt: 0 van 34" beside a
+live coverage line that had already moved to 33. **Two coverage statements about one class, disagreeing on one
+screen** — E4-06's defect promoted to the number a directie reads.
+
+Fixed by withholding rather than refreshing: this panel is a report about a run, and a run that has been edited
+over is finished. Staleness is derived by comparing the plan the response carried against the plan on screen
+(`plaatsingssignatuur`: id, status, staleness), not by counting mutations — an edit that changes nothing must not
+blank a correct figure, and an edit arriving through a refetch must.
+
+## MAJOR 3 — two denominators, and my reason for it was wrong
+
+`BerekenVooruitzichtAsync` refused a `jaarFase` narrowing and justified it with *"the chooser lives on the
+dekkingsoverzicht"*. **It does not.** E3-09 put a `Jaarfasekiezer` on the kalender, driving the live dekking line on
+the same screen. A narrowed kleutergroep would have read one figure over K3 and another over JK+K2+K3 a few pixels
+apart.
+
+The chosen code now travels with the run as `POST …/jaarplan/generatie?jaarFase=`, changing only what the reported
+figures are measured against — never the run itself, which is over the whole class either way. Ignored server-side
+when it is not one of the class's own codes, exactly as `GET …/dekking` ignores it, so a stale link cannot break a
+generation.
+
+**The lesson worth keeping:** a claim about where a control lives is not checkable by any test, and this one was
+written confidently and was wrong within one story of the change that falsified it.
+
+## The five MINOR
+
+1. Title said *"Dekking van dit voorstel"* while the figures are over the whole plan, including placements the run
+   only kept. Now *"van dit jaarplan"*.
+2. The withheld sentence was hard-plural, in the state that is singular most of the time. Now through `tAantal`,
+   like the sibling `herzienTitel` pair, and it says *themaperiode* like that sibling too.
+3. The 0-of-0 sentence claimed no leerplandoelen were loaded at all; hundreds may sit outside the class's scope. Now
+   worded like `geenDoelenInJaar`, which already gets this right.
+4. The terugval test asserted a string the component rendered for a different reason (it branched on
+   `gemetenJaarFasen.length`, never on the flag). The fallback now has its **own** sentence, the component reads the
+   flag, and a second test pins that a deliberate whole-curriculum measurement says something different from a
+   graadklas that could not be derived.
+5. **Nothing exercised the production wire.** Every Postgres test built `new DekkingService(...)` by hand, and the
+   only test that POSTs the generation endpoint runs in memory with the port stubbed. `aantalOnbereikbaar` is a
+   **derived getter**, so a serialisation change could have dropped the gap line with every test green.
+   `PostgresApiFactory` gained an AI stand-in (which throws unless a test sets an answer, so no Postgres test can
+   ever reach Azure) and there is now an endpoint test asserting both derived getters off the JSON.
+
+## The three QUESTIONs
+
+- **Layering** — the cycle is real, but it only rules out a generator dependency; an Application-layer orchestrator
+  has no cycle. The doc now says the choice was about ceremony rather than pretending it was forced.
+- **"Ceiling ≥ figure"** — true per moment, but the two figures come from two non-transactional reads. The doc no
+  longer offers it as a guarantee.
+- **Open, and the owner's:** the prompt's *"Plaats elk thema minstens één keer"* is issued over the whole
+  school-wide bibliotheek, i.e. it assumes every thema the school owns belongs in every class's year. Nothing
+  auto-applies, so nothing is decided behind anyone's back, but it is a pedagogical default no FR states.
+
+## Gates after the fix round
+
+586 unit + 202 integration (0 skipped, real PostgreSQL), 481 frontend, `dotnet format` / `pnpm lint` / `pnpm build`
+clean, and **fourteen** panel states re-read in a browser at 1440px and 390px — including the stale state, driven
+by a response whose plan genuinely differs from the one on screen, and both the singular and plural withheld forms.
+
+*One process note:* the first browser run photographed a shell that had not resolved its class in 4 of 14
+iterations, because it slept a fixed 3.5s. It now waits on the button and on the block, which is the difference
+between a check and a screenshot of a race.

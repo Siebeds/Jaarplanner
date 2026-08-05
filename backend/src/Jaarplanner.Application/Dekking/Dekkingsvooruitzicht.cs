@@ -43,10 +43,12 @@ namespace Jaarplanner.Application.Dekking;
 /// The jaar/fase codes actually measured against, or empty for the whole curriculum, so a screen can name the scope
 /// in the school's own vocabulary rather than in the abstract.
 /// <para>
-/// <b>A kleutergroep is measured against all three kleuter codes here, and this report offers no narrowing.</b> The
-/// chooser that resolves that (owner ruling 2026-08-04) lives on the dekkingsoverzicht, where the teacher's choice
-/// is a URL parameter on that screen and is not persisted anywhere this computation could read. Inventing a second
-/// chooser on the generation panel would be a second place to make the same choice, and the two could disagree.
+/// <b>A kleutergroep's narrowing is honoured</b> (owner ruling 2026-08-04): the caller passes the chosen code and
+/// this reports what was applied. <i>An earlier revision refused to accept one and justified it by claiming the
+/// chooser "lives on the dekkingsoverzicht". That was simply false — E3-09 put a <c>Jaarfasekiezer</c> on the
+/// kalender, driving the live dekking line on the same screen as this panel — and the consequence was two figures
+/// over two different denominators a few pixels apart. Kept as a note because the mistake was not in the code but
+/// in a claim about where a control lives, which no test can contradict.</i>
 /// </para>
 /// </param>
 /// <param name="IsTerugvalNaarHeelCurriculum">
@@ -76,12 +78,23 @@ namespace Jaarplanner.Application.Dekking;
 /// this is 0, and that is the correct answer rather than a defect.
 /// </param>
 /// <param name="AantalMogelijkGedekt">
-/// How many in-scope leerplandoelen would be covered if the teacher accepted <b>every</b> proposal now standing in
-/// the plan; <c>null</c> when <paramref name="IsBetrouwbaar"/> is <c>false</c>.
+/// How many in-scope leerplandoelen would be covered if the teacher accepted every <b>placement</b> proposal now
+/// standing in the plan; <c>null</c> when <paramref name="IsBetrouwbaar"/> is <c>false</c>.
 /// <para>
 /// It is a ceiling, not a forecast: rejected placements are excluded (the teacher has already decided) and so are
-/// stale ones (they sit in no period). It can never be lower than <paramref name="AantalGedekt"/>, because the set
-/// it counts over contains that one.
+/// stale ones (they sit in no period). It can never be lower than <paramref name="AantalGedekt"/> at one moment,
+/// because the set it counts over contains that one. (The two figures come from two non-transactional reads, so a
+/// link deleted between them could in principle cross that; nothing guards it and nothing here promises otherwise.)
+/// </para>
+/// <para>
+/// <b>It widens the PLACEMENT status set and nothing else, and that boundary is the correction of a real defect
+/// (antagonist round 1, 2026-08-05).</b> The links a thema carries are still counted only when they are
+/// <c>aanvaard</c>/<c>manueel</c>, because <c>IDekkingOpslag</c> filters them there for every caller. So a
+/// leerplandoel attached to a placed thema through a still-<c>voorgesteld</c> doelsuggestie — the ordinary state
+/// right after FR-4 matching — does <b>not</b> count here. That is defensible (nobody has decided that link either)
+/// but it makes this a ceiling over <i>placements</i>, not over "everything the teacher could say yes to", and the
+/// first version of the copy claimed the second: it told a teacher the doel sat in no planned thema at all, which
+/// could be false. The rendered sentence now states only what this number can carry.
 /// </para>
 /// <para>
 /// <b>Nullable for the same reason as <paramref name="AantalGedekt"/>, and the type is what enforces it</b> — a
@@ -109,14 +122,23 @@ public sealed record Dekkingsvooruitzicht(
     int AantalLeerplandoelen)
 {
     /// <summary>
-    /// How many in-scope leerplandoelen <b>no</b> thema in this plan carries, even after accepting everything;
-    /// <c>null</c> when the figures are withheld.
+    /// How many in-scope leerplandoelen are still not covered once every standing <b>placement</b> proposal is
+    /// accepted; <c>null</c> when the figures are withheld.
     /// <para>
-    /// This is the number FR-5.3 is really about, and it is the one a teacher can act on: accepting proposals cannot
-    /// reduce it. Closing it needs a different thema, a new goal link, or the acknowledgement that this class's
-    /// curriculum is not fully covered by the school's current content. <b>Which</b> doelen they are is deliberately
-    /// not listed here: that is the gap-analyse (E5-05) over the dekkingsoverzicht's own per-doel list, and a second
-    /// list composed on the generation panel could disagree with it.
+    /// This is the number FR-5.3 is really about: accepting the plan's proposals cannot reduce it. Closing it needs a
+    /// different thema, or a goal link, or the acknowledgement that the school's current content does not cover this
+    /// class's curriculum.
+    /// </para>
+    /// <para>
+    /// <b>What it is NOT, corrected after antagonist round 1:</b> it is not "no thema in this plan carries these
+    /// doelen". A placed thema may carry one through a doelsuggestie the teacher has not accepted yet, and accepting
+    /// <i>that</i> would reduce this number — so the earlier phrasing, and the sentence rendered from it, could both
+    /// be false in the ordinary state right after AI matching. The number is unchanged; what it may be said to mean
+    /// is narrower.
+    /// </para>
+    /// <para>
+    /// <b>Which</b> doelen they are is deliberately not listed here: that is the gap-analyse (E5-05) over the
+    /// dekkingsoverzicht's own per-doel list, and a second list composed on the generation panel could disagree.
     /// </para>
     /// </summary>
     public int? AantalOnbereikbaar =>

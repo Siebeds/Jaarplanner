@@ -9,6 +9,8 @@ using Jaarplanner.Infrastructure.Dekking;
 using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.Planning;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Net.Http.Json;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
@@ -31,6 +33,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
 {
     private PostgresTestDatabase _db = null!;
+    private PostgresApiFactory _factory = null!;
 
     public async Task InitializeAsync()
     {
@@ -40,15 +43,118 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         }
 
         _db = await PostgresTestDatabase.MaakAsync("vooruitzicht");
+        _factory = new PostgresApiFactory(_db.ConnectionString);
     }
 
     public async Task DisposeAsync()
     {
+        if (_factory is not null)
+        {
+            await _factory.DisposeAsync();
+        }
+
         if (_db is not null)
         {
             await _db.DisposeAsync();
         }
     }
+
+    [PostgresFact]
+    public async Task Het_vooruitzicht_haalt_de_HTTP_grens_met_zijn_afgeleide_cijfers()
+    {
+        // **The gap the antagonist's last MINOR named, and it was a real one.** Every other test here builds
+        // `new DekkingService(generatie, new EfDekkingOpslag(context))` by hand, and the only test that POSTs the
+        // generation endpoint runs on the in-memory fixture whose coverage port is stubbed. So the combination a
+        // teacher actually uses — the DI-resolved service, the real Npgsql queries, the controller's composition and
+        // the JSON serialiser — was verified nowhere.
+        //
+        // `aantalOnbereikbaar` is the sharp case and is asserted deliberately: it is a DERIVED getter, so a
+        // `[JsonIgnore]`, a source-generated context or a records-only serialisation policy would drop it from the
+        // wire with every other test still green, and the panel's gap line would simply never appear.
+        var seed = await SeedAsync();
+        var blokken = Blokken(await LaadSchooljaarAsync(seed.KlasId));
+
+        _factory.AiAntwoord =
+            "{\"plaatsingen\":[{\"blokStart\":\"" + blokken[0].Start.ToString("yyyy-MM-dd") +
+            "\",\"thema\":\"" + seed.HerfstNaam + "\",\"motivatie\":\"seizoen\"}]}";
+
+        var response = await _factory.CreateClient()
+            .PostAsync($"/api/klassen/{seed.KlasId}/jaarplan/generatie", content: null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var resultaat = await response.Content.ReadFromJsonAsync<GeneratieDto>();
+        Assert.NotNull(resultaat);
+        Assert.True(resultaat!.IsGeslaagd);
+
+        var vooruitzicht = resultaat.Vooruitzicht;
+        Assert.NotNull(vooruitzicht);
+        Assert.Equal("EigenJaarFase", vooruitzicht!.Bereik);
+        Assert.Equal(["L3"], vooruitzicht.GemetenJaarFasen);
+        Assert.Equal(3, vooruitzicht.AantalLeerplandoelen);
+        Assert.Equal(0, vooruitzicht.AantalGedekt);
+        Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
+
+        // The two derived getters, which exist only as computed properties on the record.
+        Assert.Equal(2, vooruitzicht.AantalOnbereikbaar);
+        Assert.Equal(1, vooruitzicht.AantalWinstBijAanvaarden);
+    }
+
+    [PostgresFact]
+    public async Task Een_nog_niet_aanvaarde_doelsuggestie_verhoogt_het_plafond_niet()
+    {
+        // **The boundary the antagonist's first MAJOR was about, pinned where it actually lives.** The ceiling widens
+        // the PLACEMENT status set; the LINK filter (aanvaard/manueel) is untouched and lives in SQL inside
+        // `EfDekkingOpslag`, so no unit test with a fake port can observe this: the port never returns a
+        // `voorgesteld` link at all.
+        //
+        // The behaviour is defensible — nobody has decided that link either — but it is exactly why the rendered
+        // sentence may not say "this doel sits in no planned thema": it does sit in one, through a suggestion the
+        // teacher has not answered. The copy now says only "ook dan nog niet gedekt", which stays true here.
+        var seed = await SeedAsync();
+        var blokken = Blokken(await LaadSchooljaarAsync(seed.KlasId));
+
+        await using var context = _db.MaakContext();
+
+        // A third L3 doel, carried by the placed thema through an UNACCEPTED suggestion.
+        var suggestieCode = $"L3S-{Guid.NewGuid():N}"[..12];
+        context.Leerplandoelen.Add(new Leerplandoel(
+            suggestieCode, Doelsoort.Gemeenschappelijk, "L3", "Natuur", "Levende natuur", "9.1",
+            tekst: $"Tekst van {suggestieCode}"));
+
+        var herfst = await context.Themas.SingleAsync(t => t.Naam == seed.HerfstNaam);
+        herfst.VoegDoelsuggestieToe(new DoelKoppeling(suggestieCode, KoppelingStatus.Voorgesteld, "AI stelde dit voor"));
+        await context.SaveChangesAsync();
+
+        var generatie = new JaarplanGeneratieService(
+            new VastAntwoordAiClient(
+                "{\"plaatsingen\":[{\"blokStart\":\"" + blokken[0].Start.ToString("yyyy-MM-dd") +
+                "\",\"thema\":\"" + seed.HerfstNaam + "\",\"motivatie\":\"seizoen\"}]}"),
+            new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
+            new EfJaarplanOpslag(context));
+
+        await generatie.GenereerAsync(seed.KlasId);
+
+        var vooruitzicht = await new DekkingService(generatie, new EfDekkingOpslag(context))
+            .BerekenVooruitzichtAsync(seed.KlasId);
+
+        // Four in scope now, and the ceiling still counts only the one accepted link the placed thema carries.
+        Assert.Equal(4, vooruitzicht.AantalLeerplandoelen);
+        Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
+        Assert.Equal(3, vooruitzicht.AantalOnbereikbaar);
+    }
+
+    /// <summary>Only the parts of the generation response this file reads.</summary>
+    private sealed record GeneratieDto(bool IsGeslaagd, VooruitzichtDto? Vooruitzicht);
+
+    private sealed record VooruitzichtDto(
+        string Bereik,
+        List<string> GemetenJaarFasen,
+        int AantalLeerplandoelen,
+        int? AantalGedekt,
+        int? AantalMogelijkGedekt,
+        int? AantalOnbereikbaar,
+        int? AantalWinstBijAanvaarden);
 
     [PostgresFact]
     public async Task Een_echte_generatie_dekt_nog_niets_en_meldt_wat_aanvaarden_zou_opleveren()

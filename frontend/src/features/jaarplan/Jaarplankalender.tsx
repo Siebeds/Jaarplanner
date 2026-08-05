@@ -32,6 +32,7 @@ import {
   formatteerOrdinalen,
   geplandeIn,
   plaatsingenIn,
+  plaatsingssignatuur,
   themaPeriodeOrdinalen,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
@@ -157,7 +158,9 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // themaperiodes by definition.
   const generatieRooster = usePlanningsrooster(jaarplan.data?.schooljaarId, GENERATIEBLOKNIVEAU);
 
-  const generatie = useGenereerJaarplan(klasId);
+  // The chosen kleuterjaar travels with the run, so the panel's dekkingsvooruitzicht and the live dekking line
+  // above it are measured against the same set (E3-03, antagonist round 1).
+  const generatie = useGenereerJaarplan(klasId, jaarFase ?? undefined);
   const verplaats = useVerplaatsPlaatsing(klasId);
 
   // Whether the teacher has pressed *Opnieuw proberen* on a failed grid fetch.
@@ -744,7 +747,21 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             </p>
           )}
 
-          {generatie.isSuccess && <Spreidingsoverzicht resultaat={generatie.data} />}
+          {generatie.isSuccess && (
+            <Spreidingsoverzicht
+              resultaat={generatie.data}
+              /* Whether the plan on screen is still the plan those coverage figures were computed over. Compared by
+                 signature rather than by a mutation counter: an edit that changes nothing must not blank a correct
+                 figure, and an edit made in another tab that arrives through a refetch must. A response that carries
+                 no plan (only the failure path does) is treated as unchanged, because there is nothing to disagree
+                 with. */
+              planIsGewijzigd={
+                generatie.data.jaarplan !== null &&
+                plaatsingssignatuur(generatie.data.jaarplan.plaatsingen) !==
+                  plaatsingssignatuur(plan.plaatsingen)
+              }
+            />
+          )}
         </div>
 
         {grid.blokken.length > 0 && (

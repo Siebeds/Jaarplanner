@@ -22,9 +22,18 @@ import type { Generatieresultaat } from "./types";
  */
 export interface SpreidingsoverzichtProps {
   resultaat: Generatieresultaat;
+  /**
+   * The plan has changed since this run, so its coverage figures no longer describe what is on screen (E3-03).
+   *
+   * Only the dekking block reacts. The spreiding lines above it are statements about what the run itself produced
+   * and stay true of that run; "Nu gedekt" is present tense about the plan, which is the difference that made one of
+   * them a defect and not the other. The spreiding report going stale after a manual edit is real but pre-existing
+   * (E3-02) and not this story's to fix silently.
+   */
+  planIsGewijzigd?: boolean;
 }
 
-export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
+export function Spreidingsoverzicht({ resultaat, planIsGewijzigd = false }: SpreidingsoverzichtProps) {
   const { spreiding } = resultaat;
 
   // Skipped items, only named when there is something to name. These are the model's misses — a thema the
@@ -146,7 +155,9 @@ export function Spreidingsoverzicht({ resultaat }: SpreidingsoverzichtProps) {
       {/* What the proposal would cover once accepted (E3-03, FR-5.3). Below the spreading rather than above it: the
           spreading describes what came back, and this describes what it would be worth — a teacher reads the second
           question after the first. Absent on a failed run, where nothing was persisted to measure. */}
-      {resultaat.vooruitzicht && <Vooruitzichtoverzicht vooruitzicht={resultaat.vooruitzicht} />}
+      {resultaat.vooruitzicht && (
+        <Vooruitzichtoverzicht vooruitzicht={resultaat.vooruitzicht} isVerouderd={planIsGewijzigd} />
+      )}
 
       {/* The parameter report belongs to the same run, so it lives in the same panel (E3-04, FR-5.4). It renders
           nothing when the teacher set no parameters. */}

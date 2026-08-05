@@ -135,13 +135,20 @@ public sealed record JaarplanGeneratieResultaat
     /// What the resulting plan <b>would</b> cover if the teacher accepted every proposal in it, beside what it covers
     /// today (E3-03, FR-5.3). <c>null</c> on failure, and <c>null</c> on a path that did not ask for it.
     /// <para>
-    /// <b>Set by the caller after the run rather than produced by the generation service, and the reason is a
-    /// dependency cycle rather than taste.</b> The coverage rules live in <c>DekkingService</c> — one owner for which
-    /// link layers count, which placement statuses count and which goals are in scope — and that service reads the
-    /// plan through <c>IJaarplanLezer</c>, which <c>JaarplanGeneratieService</c> itself implements. A generator that
-    /// depended on it would close the loop. The alternative was a second, leaner coverage computation beside the
-    /// generator, which is precisely the divergence this codebase has already paid for twice (the te-vol threshold,
-    /// the four link layers), so the composition happens one layer up instead.
+    /// <b>Set by the caller after the run rather than produced by the generation service.</b> The coverage rules live
+    /// in <c>DekkingService</c> — one owner for which link layers count, which placement statuses count and which
+    /// goals are in scope — and that service reads the plan through <c>IJaarplanLezer</c>, which
+    /// <c>JaarplanGeneratieService</c> itself implements, so a generator depending on it under constructor injection
+    /// would close the loop. A second, leaner coverage computation beside the generator is the alternative that was
+    /// rejected outright: that is precisely the divergence this codebase has already paid for twice (the te-vol
+    /// threshold, the four link layers).
+    /// </para>
+    /// <para>
+    /// <b>The cycle rules out one alternative, not all of them, and saying otherwise would overstate the case</b>
+    /// (antagonist round 1). A third Application-layer type depending on both services has no cycle at all. It was not
+    /// built because it would be a class whose entire body is these two calls, on a project whose architecture note
+    /// says to favour clarity over ceremony — that is a judgement about ceremony, not a constraint. The controller
+    /// applies no rule; it asks and attaches.
     /// </para>
     /// <para>
     /// <b>Consequence a new generation path must handle:</b> an endpoint that runs a generation and does not attach
