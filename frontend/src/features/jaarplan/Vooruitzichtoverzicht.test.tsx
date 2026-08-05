@@ -42,7 +42,7 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
     expect(screen.getByText(/vooruitzicht, geen bewijs/)).toBeInTheDocument();
   });
 
-  it("noemt de doelen die in geen enkel gepland thema zitten", () => {
+  it("noemt wat aanvaarden nog steeds niet zou dekken", () => {
     render(<Vooruitzichtoverzicht vooruitzicht={basis} />);
 
     expect(screen.getByText("Ook dan nog niet gedekt: 22.")).toBeInTheDocument();
@@ -124,8 +124,8 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
 
     expect(
       screen.getByText(
-        "1 thema staat buiten een themaperiode. Zolang je daarover niets beslist, kunnen we niet zeggen wat " +
-          "dit jaarplan dekt.",
+        "1 plaatsing staat buiten een themaperiode. Zolang je daarover niets beslist, kunnen we niet " +
+          "zeggen wat dit jaarplan dekt.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
@@ -158,7 +158,7 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
     expect(screen.queryByText(/0 van 0/)).not.toBeInTheDocument();
   });
 
-  it("telt in het meervoud de vervallen plaatsingen op", () => {
+  it("telt de vervallen plaatsingen als plaatsingen, niet als thema's", () => {
     render(
       <Vooruitzichtoverzicht
         vooruitzicht={{
@@ -173,24 +173,7 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
       />,
     );
 
-    expect(screen.getByText(/^3 thema's staan buiten een themaperiode/)).toBeInTheDocument();
-  });
-
-  it("houdt elk cijfer in wanneer het jaarplan sinds de generatie gewijzigd is", () => {
-    // The defect the antagonist's second MAJOR named: these figures come from the generation response and nothing
-    // invalidates them, while the live dekking line on the same screen moves the moment a card is accepted. Two
-    // coverage statements about one class, disagreeing, is E4-06's "one card says two things" applied to the number a
-    // directie reads. Withheld rather than refreshed: this panel reports on a run, and a run that has been edited
-    // over is finished.
-    render(<Vooruitzichtoverzicht vooruitzicht={basis} isVerouderd />);
-
-    expect(screen.getByText(/kloppen niet meer/)).toBeInTheDocument();
-    expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Als je alle voorstellen aanvaardt/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Ook dan nog niet gedekt/)).not.toBeInTheDocument();
-
-    // The scope survives, like in every other withheld state.
-    expect(screen.getByText("Gemeten tegen L3.")).toBeInTheDocument();
+    expect(screen.getByText(/^3 plaatsingen staan buiten een themaperiode/)).toBeInTheDocument();
   });
 
   it("noemt de dekking nergens een bewijs of een percentage", () => {

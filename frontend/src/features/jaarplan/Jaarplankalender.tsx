@@ -21,7 +21,7 @@ import { useDekking } from "../dekking/useDekking";
 import { Jaarspine } from "./Jaarspine";
 import { Periodekolom, Vakantiegat } from "./Periodekolom";
 import { Generatieparametersformulier, type Periodestaat } from "./Generatieparametersformulier";
-import { Spreidingsoverzicht } from "./Spreidingsoverzicht";
+import { Spreidingsoverzicht, type Verouderingsreden } from "./Spreidingsoverzicht";
 import { Sleepkaart, Themakaart, type Verplaatsstaat } from "./Themakaart";
 import { Weergaveschakelaar } from "./Weergaveschakelaar";
 import {
@@ -469,6 +469,26 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // over `grid.blokken`, deliberately: a **stale** proposal sits in no block at all, and it is still a decision the
   // teacher owes (it can be rejected, which is what resolves it). Reading it off the grid would hide exactly the
   // card the decision copy was most recently wrong about.
+  // Whether the last run's MEASUREMENTS still describe what is on screen, and if not, why (E3-03).
+  //
+  // Two causes, because they need two different sentences. The plan itself may have changed — compared by signature
+  // rather than by a mutation counter, so an edit that changes nothing does not blank a correct figure while a change
+  // arriving through a refetch does. Or the teacher may have moved the kleuterjaar chooser afterwards, which leaves
+  // the plan alone and changes the DENOMINATOR: the live dekking line re-fetches on the new scope while the panel
+  // keeps figures over the old one, which is the two-denominator state in a second guise (antagonist rounds 1 and 2).
+  //
+  // A response carrying no plan (only the failure path) is treated as unchanged: there is nothing to disagree with.
+  const gemetenBereik = generatie.data?.vooruitzicht?.gemetenJaarFasen;
+  const huidigBereik = jaarFase !== null ? [jaarFase] : beschikbareJaarFasen;
+  const verouderingsreden: Verouderingsreden | null = !generatie.isSuccess
+    ? null
+    : generatie.data.jaarplan !== null &&
+        plaatsingssignatuur(generatie.data.jaarplan.plaatsingen) !== plaatsingssignatuur(plan.plaatsingen)
+      ? "plan"
+      : gemetenBereik !== undefined && gemetenBereik.join(",") !== huidigBereik.join(",")
+        ? "bereik"
+        : null;
+
   const openBeslissingen = plan.plaatsingen.filter(
     (plaatsing) => plaatsing.status === "Voorgesteld",
   ).length;
@@ -748,19 +768,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
           )}
 
           {generatie.isSuccess && (
-            <Spreidingsoverzicht
-              resultaat={generatie.data}
-              /* Whether the plan on screen is still the plan those coverage figures were computed over. Compared by
-                 signature rather than by a mutation counter: an edit that changes nothing must not blank a correct
-                 figure, and an edit made in another tab that arrives through a refetch must. A response that carries
-                 no plan (only the failure path does) is treated as unchanged, because there is nothing to disagree
-                 with. */
-              planIsGewijzigd={
-                generatie.data.jaarplan !== null &&
-                plaatsingssignatuur(generatie.data.jaarplan.plaatsingen) !==
-                  plaatsingssignatuur(plan.plaatsingen)
-              }
-            />
+            <Spreidingsoverzicht resultaat={generatie.data} verouderd={verouderingsreden} />
           )}
         </div>
 

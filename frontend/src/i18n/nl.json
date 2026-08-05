@@ -403,10 +403,12 @@
     "dekkingGemeten": "Gemeten tegen {fasen}.",
     "dekkingGemetenAlles": "Gemeten tegen alle ingeladen leerplandoelen.",
     "dekkingGeenDoelen": "Voor dit jaar staan er nog geen leerplandoelen in de tool, dus valt er niets te meten.",
-    "dekkingOnbetrouwbaar": "{aantal} thema's staan buiten een themaperiode. Zolang je daarover niets beslist, kunnen we niet zeggen wat dit jaarplan dekt.",
-    "dekkingOnbetrouwbaarEnkelvoud": "1 thema staat buiten een themaperiode. Zolang je daarover niets beslist, kunnen we niet zeggen wat dit jaarplan dekt.",
+    "dekkingOnbetrouwbaar": "{aantal} plaatsingen staan buiten een themaperiode. Zolang je daarover niets beslist, kunnen we niet zeggen wat dit jaarplan dekt.",
+    "dekkingOnbetrouwbaarEnkelvoud": "1 plaatsing staat buiten een themaperiode. Zolang je daarover niets beslist, kunnen we niet zeggen wat dit jaarplan dekt.",
     "dekkingGemetenTerugval": "Van deze klas is geen jaar of fase bekend, dus gemeten tegen het hele curriculum.",
-    "dekkingVerouderd": "Je hebt het jaarplan aangepast na deze generatie, dus deze cijfers kloppen niet meer. Het dekkingsoverzicht toont de actuele stand."
+    "metingenVerouderd": "Je hebt het jaarplan aangepast na deze generatie, dus de metingen van deze run kloppen niet meer. Genereer opnieuw voor een voorstel met actuele cijfers.",
+    "metingenVerouderdBereik": "Je meet nu tegen een ander jaar dan tijdens deze generatie, dus de metingen van deze run kloppen niet meer. Genereer opnieuw voor cijfers over het jaar dat je nu gekozen hebt.",
+    "dekkingGeenDoelenAlles": "Er staan nog geen leerplandoelen in de tool, dus valt er niets te meten."
   },
   "doelen": {
     "titel": "Doelen van Op.stap",

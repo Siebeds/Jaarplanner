@@ -11,13 +11,14 @@ import type { Dekkingsvooruitzicht } from "./types";
  * are a prospect rather than proof. Showing the ceiling alone would present the AI's proposal as coverage, which is
  * precisely what Art. V.2 forbids and what the whole accept/reject flow exists to prevent.
  *
- * **The figures are a snapshot of the moment of generation, and the block says so as soon as that stops being
- * harmless** (antagonist round 1). They come from the generation response, which nothing invalidates, while
- * `usePlanMutatie` drops the dekking cache on every placement edit — so after one acceptance the live coverage line
- * elsewhere on this screen has moved and these have not. Two coverage statements about one class, disagreeing, is the
- * E4-06 "one card says two things" defect promoted to the figure a directie reads. When the plan has changed since
- * the run, the numbers are withheld rather than refreshed: this panel is a report about a run, and a run that has
- * been edited over is finished.
+ * **The figures are a snapshot of the moment of generation.** They come from the generation response, which nothing
+ * invalidates, while `usePlanMutatie` drops the dekking cache on every placement edit — so after one acceptance the
+ * live coverage line elsewhere on this screen has moved and these have not. Two coverage statements about one class,
+ * disagreeing, is the E4-06 "one card says two things" defect promoted to the figure a directie reads.
+ *
+ * **Handling that is the panel's job, not this block's** (antagonist round 2): `Spreidingsoverzicht` withholds every
+ * plan-measured block behind one notice, because the spreiding lines are just as present-tense about the plan as
+ * these figures are. This component therefore renders figures or nothing, and never has to say why.
  *
  * **No verdict, no target, no percentage**, for three reasons that each belong to a different story: nothing in the
  * functional analysis defines how much coverage is enough (the same argument that keeps `Spreidingsrapport`
@@ -32,15 +33,9 @@ import type { Dekkingsvooruitzicht } from "./types";
  */
 export interface VooruitzichtoverzichtProps {
   vooruitzicht: Dekkingsvooruitzicht;
-  /**
-   * The plan has changed since the run that produced these figures. Derived by comparing the plan the response
-   * carried with the one on screen, rather than by counting mutations: it is the question "do these numbers still
-   * describe what I am looking at", and only the two plans can answer it.
-   */
-  isVerouderd?: boolean;
 }
 
-export function Vooruitzichtoverzicht({ vooruitzicht, isVerouderd = false }: VooruitzichtoverzichtProps) {
+export function Vooruitzichtoverzicht({ vooruitzicht }: VooruitzichtoverzichtProps) {
   const {
     isBetrouwbaar,
     aantalGedekt,
@@ -68,15 +63,15 @@ export function Vooruitzichtoverzicht({ vooruitzicht, isVerouderd = false }: Voo
         {t("kalender.dekkingTitel")}
       </h3>
 
-      {isVerouderd ? (
-        /* Withheld rather than recomputed. A stale coverage figure beside a live one is worse than none, and this
-           panel has no business fetching: the dekkingsoverzicht is where the current answer lives. */
-        <p className="mt-1.5 text-xs text-ink-zacht">{t("kalender.dekkingVerouderd")}</p>
-      ) : !isBetrouwbaar || aantalGedekt === null || aantalMogelijkGedekt === null ? (
+      {!isBetrouwbaar || aantalGedekt === null || aantalMogelijkGedekt === null ? (
         /* The directie ruling of 2026-07-28: while a placement points at a period that no longer exists, no figure
            is shown at all. The null checks are not defensive noise, they are what makes it impossible to render a
            total that was withheld: the server sends no number, so there is none to print. */
         <p className="mt-1.5 text-xs text-ink-zacht">
+          {/* Counted and named as PLACEMENTS, which is what the server counts (antagonist round 2). A thema may sit
+              in two periods, so "2 thema's staan buiten een themaperiode" would be a claim about one thema. The
+              sibling `herzienTitel` says "thema's" for the same fact; that divergence is deliberate and noted on the
+              story, because being right here is worth more than matching a sentence that is loose. */}
           {tAantal(
             aantalOnopgelosteVervallenPlaatsingen,
             "kalender.dekkingOnbetrouwbaarEnkelvoud",
@@ -86,9 +81,15 @@ export function Vooruitzichtoverzicht({ vooruitzicht, isVerouderd = false }: Voo
         </p>
       ) : aantalLeerplandoelen === 0 ? (
         /* 0 of 0 is "we cannot measure this class yet", never "alles gedekt" — the one reading of this state that
-           would be actively misleading. Worded like the sibling `geenDoelenInJaar`, i.e. about THIS jaar/fase: the
-           school may well have hundreds of leerplandoelen loaded for other years. */
-        <p className="mt-1.5 text-xs text-ink-zacht">{t("kalender.dekkingGeenDoelen")}</p>
+           would be actively misleading.
+
+           Branched on the scope, like `bereikRegel` below it. The jaar/fase wording was borrowed from the sibling
+           `geenDoelenInJaar` without the guard that makes it true there (it only renders when a jaar/fase is
+           chosen), so with the whole curriculum in scope it said "voor dit jaar" directly above "gemeten tegen alle
+           ingeladen leerplandoelen". */
+        <p className="mt-1.5 text-xs text-ink-zacht">
+          {t(gemetenJaarFasen.length > 0 ? "kalender.dekkingGeenDoelen" : "kalender.dekkingGeenDoelenAlles")}
+        </p>
       ) : (
         <>
           <ul className="mt-1.5 flex flex-col gap-1 text-xs text-ink" data-vooruitzicht>

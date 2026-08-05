@@ -319,10 +319,15 @@ export function vervallenPlaatsingen(
  * Status and staleness are in, position is not: a move changes `blokStart`, and it also changes the status to
  * `Manueel`, so the status carries it. `IsVervallen` is in because a placement that stops being stale releases a
  * figure that was being withheld altogether.
+ *
+ * **`doelcodes` is in too, and leaving it out was a real gap** (antagonist round 2). It is the codes the thema
+ * actually carries — themadoelen plus accepted/manual links — so accepting a doelsuggestie on `/themas`, or a
+ * colleague doing it in another tab, changes the coverage figure while leaving id, status and staleness identical.
+ * The data was already on the object being signed; only the signature was blind to it.
  */
 export function plaatsingssignatuur(plaatsingen: readonly Themaplaatsing[]): string {
   return plaatsingen
-    .map((p) => `${p.id}:${p.status}:${p.isVervallen ? 1 : 0}`)
+    .map((p) => `${p.id}:${p.status}:${p.isVervallen ? 1 : 0}:${[...p.doelcodes].sort().join(",")}`)
     .sort()
     .join("|");
 }

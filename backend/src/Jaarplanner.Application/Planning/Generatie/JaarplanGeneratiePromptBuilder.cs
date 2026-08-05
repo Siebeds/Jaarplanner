@@ -91,8 +91,10 @@ public static class JaarplanGeneratiePromptBuilder
         // **The consequence this prompt cannot fix, filed rather than papered over:** `Thema` is school-wide
         // (Art. IX.2) and nothing records which thema's belong to which class, so this prompt is handed the WHOLE
         // library for every class. Wording it as an offer is the honest half; the missing half is a per-class
-        // selection, which is a data-model question and sits with the Art. XIV entry "is a thema shared school-wide
-        // or per class" in backlog/README.md.
+        // selection, which is a data-model question. It is filed as an open decision in backlog/README.md — NOT
+        // against Art. XIV's "shared vs per-class" entry, which the constitution lists under *Resolved*: that
+        // binary settled where a thema is SCOPED, and this is the different question of which of the school's
+        // thema's a given class actually teaches.
         //
         // Nothing here mentions the curriculum, the class's jaar/fase or a target number, and that is deliberate.
         // The model is given the school's thema's with their goal codes and nothing else (Art. IV.4), so the only

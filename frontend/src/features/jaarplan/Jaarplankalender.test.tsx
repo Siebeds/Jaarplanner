@@ -480,6 +480,94 @@ describe("Jaarplankalender", () => {
     expect(screen.getByText(/Wat een goede spreiding is, beslist de school/)).toBeInTheDocument();
   });
 
+  it("toont de dekkingscijfers meteen na een geslaagde generatie, niet de verouderingsmelding", async () => {
+    // **The regression test for the defect fix round 1 introduced** (antagonist round 2). The panel withholds its
+    // measurements when the plan has changed since the run, compared by signature against `jaarplan.data`. But
+    // `useGenereerJaarplan` only INVALIDATED that query, and TanStack keeps the previous data for the whole refetch —
+    // so on the ordinary happy path the comparison ran against the PRE-generation plan, the signatures differed, and
+    // the teacher who had just pressed Genereren and changed nothing was told "je hebt het jaarplan aangepast" while
+    // every figure was hidden.
+    //
+    // The fix writes the response's own plan into the cache first, which is `usePlanMutatie`'s existing rule. This
+    // test drives the real hook through the real component, so it fails if that write is ever removed.
+    const naPlan = maakJaarplan([maakPlaatsing({ id: "p-nieuw" })]);
+    const resultaat: Generatieresultaat = {
+      isGeslaagd: true,
+      fout: null,
+      jaarplan: naPlan,
+      aantalNieuw: 1,
+      aantalBehouden: 0,
+      aantalVervangen: 0,
+      onbekendeThemas: [],
+      onbekendeBlokken: [],
+      duplicaten: [],
+      afgewezen: [],
+      parameters: null,
+      spreiding: null,
+      vooruitzicht: {
+        bereik: "EigenJaarFase",
+        gemetenJaarFasen: ["L3"],
+        isTerugvalNaarHeelCurriculum: false,
+        aantalBuitenBereik: 0,
+        isBetrouwbaar: true,
+        aantalOnopgelosteVervallenPlaatsingen: 0,
+        aantalGedekt: 0,
+        aantalMogelijkGedekt: 4,
+        aantalLeerplandoelen: 9,
+        aantalOnbereikbaar: 5,
+        aantalWinstBijAanvaarden: 4,
+      },
+    };
+
+    // **The refetch is held open, and that is what makes this test discriminating.** The defect lives in exactly the
+    // window between "the run succeeded" and "the invalidated query has come back": TanStack keeps the previous data
+    // for that whole window, so a comparison against `jaarplan.data` sees the PRE-generation plan. Let the refetch
+    // resolve immediately, as an ordinary stub does, and `findByText` simply waits the window out — the first version
+    // of this test did exactly that and passed with the fix REMOVED, which is the tautology this comment exists to
+    // stop coming back.
+    //
+    // So the post-run GET blocks until the test releases it. With the fix the figures are on screen before that
+    // happens, because the response's own plan was written into the cache at success. Without it, they cannot be:
+    // the panel shows the stale notice for as long as the refetch is held.
+    let isGegenereerd = false;
+    let laatRefetchDoor: () => void = () => {};
+    const refetchGeblokkeerd = new Promise<void>((resolve) => {
+      laatRefetchDoor = resolve;
+    });
+
+    stubFetch(maakJaarplan([]), resultaat);
+    const gestubdeFetch = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    const origineel = gestubdeFetch.getMockImplementation()!;
+    gestubdeFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method === "POST" && url.includes("/generatie")) {
+        isGegenereerd = true;
+        return new Response(JSON.stringify(resultaat), { status: 200 });
+      }
+      if (isGegenereerd && url.includes("/jaarplan") && !url.includes("/parameters")) {
+        await refetchGeblokkeerd;
+
+        return new Response(JSON.stringify(naPlan), { status: 200 });
+      }
+
+      return origineel(input, init);
+    });
+
+    renderKalender();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+
+    expect(await screen.findByText("Nu gedekt: 0 van 9.")).toBeInTheDocument();
+    expect(screen.getByText("Als je alle voorstellen aanvaardt: 4 van 9.")).toBeInTheDocument();
+    expect(screen.getByText("Ook dan nog niet gedekt: 5.")).toBeInTheDocument();
+    expect(screen.queryByText(/kloppen niet meer/)).not.toBeInTheDocument();
+
+    // Released so the refetch can finish inside the test rather than after it, which would leave a pending promise
+    // updating state on an unmounted tree.
+    laatRefetchDoor();
+    await screen.findByText("Nu gedekt: 0 van 9.");
+  });
+
   it("shows Dutch copy on a 422 and never echoes the English diagnostic", async () => {
     stubFetch(maakJaarplan([]), 422);
     renderKalender();

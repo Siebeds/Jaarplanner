@@ -23,17 +23,30 @@ import type { Generatieresultaat } from "./types";
 export interface SpreidingsoverzichtProps {
   resultaat: Generatieresultaat;
   /**
-   * The plan has changed since this run, so its coverage figures no longer describe what is on screen (E3-03).
+   * Why this run's **measurements** no longer describe what is on screen, or `null` while they still do (E3-03).
    *
-   * Only the dekking block reacts. The spreiding lines above it are statements about what the run itself produced
-   * and stay true of that run; "Nu gedekt" is present tense about the plan, which is the difference that made one of
-   * them a defect and not the other. The spreiding report going stale after a manual edit is real but pre-existing
-   * (E3-02) and not this story's to fix silently.
+   * **Both measured blocks react, and that is a correction** (antagonist round 2). Round 1 withheld only the dekking
+   * figures, on the reasoning that the spreiding lines are statements about the run while "Nu gedekt" is present
+   * tense about the plan. **That reasoning was false:** `spreidingLeeg` ("Nog leeg: themaperiode 3") and
+   * `spreidingOverbelast` ("Te vol …") are present-tense claims about the plan too, and E3-09 made te-vol a live
+   * property rendered from the plain jaarplan read on the board beside this panel. The result was one panel printing
+   * an unqualified "▲ Te vol" directly above "deze cijfers kloppen niet meer" — the E4-06 contradiction this fix was
+   * meant to end, moved four lines up.
+   *
+   * So the rule is now stated by what a line is *about*: the counts of what this run added, kept, replaced and
+   * skipped stay (they are facts about the run and remain true forever), and everything measured **over the plan** is
+   * withheld together.
    */
-  planIsGewijzigd?: boolean;
+  verouderd?: Verouderingsreden | null;
 }
 
-export function Spreidingsoverzicht({ resultaat, planIsGewijzigd = false }: SpreidingsoverzichtProps) {
+/**
+ * Why a run's measurements are stale. Two causes, two sentences: "je hebt het jaarplan aangepast" is simply the
+ * wrong thing to say to a teacher who only changed the kleuterjaar chooser.
+ */
+export type Verouderingsreden = "plan" | "bereik";
+
+export function Spreidingsoverzicht({ resultaat, verouderd = null }: SpreidingsoverzichtProps) {
   const { spreiding } = resultaat;
 
   // Skipped items, only named when there is something to name. These are the model's misses — a thema the
@@ -87,6 +100,14 @@ export function Spreidingsoverzicht({ resultaat, planIsGewijzigd = false }: Spre
         </p>
       )}
 
+      {verouderd !== null ? (
+        /* One notice governing every measurement below it, rather than one per block. Placed where the measurements
+           would have been, so it reads as their replacement rather than as a remark about the counts above it. */
+        <p className="mt-4 border-t border-border pt-3 text-xs text-ink-zacht">
+          {t(verouderd === "bereik" ? "kalender.metingenVerouderdBereik" : "kalender.metingenVerouderd")}
+        </p>
+      ) : (
+        <>
       {spreiding && (
         <div className="mt-4 border-t border-border pt-3">
           <h3 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
@@ -155,8 +176,8 @@ export function Spreidingsoverzicht({ resultaat, planIsGewijzigd = false }: Spre
       {/* What the proposal would cover once accepted (E3-03, FR-5.3). Below the spreading rather than above it: the
           spreading describes what came back, and this describes what it would be worth — a teacher reads the second
           question after the first. Absent on a failed run, where nothing was persisted to measure. */}
-      {resultaat.vooruitzicht && (
-        <Vooruitzichtoverzicht vooruitzicht={resultaat.vooruitzicht} isVerouderd={planIsGewijzigd} />
+      {resultaat.vooruitzicht && <Vooruitzichtoverzicht vooruitzicht={resultaat.vooruitzicht} />}
+        </>
       )}
 
       {/* The parameter report belongs to the same run, so it lives in the same panel (E3-04, FR-5.4). It renders

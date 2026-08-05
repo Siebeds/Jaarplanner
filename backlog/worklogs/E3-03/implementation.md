@@ -256,3 +256,68 @@ under the open decisions, next to the pre-existing `CLAUDE.md` question *"whethe
 school-wide or per class"* — which this ruling answers at the **planning** level and leaves open at the
 **data-model** level. It also bears on E5: the dekking denominator is scoped per class, while the numerator may
 draw on thema's that are not this class's.
+
+---
+
+# Fix round 2 — antagonist round 2 (2026-08-05)
+
+**Verdict: VIOLATIONS FOUND — 2 MAJOR, 8 MINOR, 2 QUESTION.** The first MAJOR was a defect **fix round 1
+introduced**, which is the whole argument for a second round.
+
+## MAJOR 1 — the staleness guard fired on the happy path
+
+`useGenereerJaarplan.onSuccess` only called `invalidateQueries`. TanStack keeps the previous `data` for the entire
+duration of the refetch that triggers, so at the moment `generatie.isSuccess` flipped, `jaarplan.data` was still the
+**pre-generation** plan. Round 1's comparison therefore reported "the plan changed" on every run that placed
+anything: the teacher pressed *Genereren*, changed nothing, and was told *"Je hebt het jaarplan aangepast"* with all
+three figures suppressed.
+
+Fixed by writing the response's own plan into the cache before invalidating — `usePlanMutatie`'s existing rule, and
+not an optimistic update: it is the body the server just returned.
+
+**The regression test is the part worth remembering.** The first version passed *with the fix removed*, because
+`findByText` retries for a second and the stubbed refetch resolved instantly, so it waited the defect out. It now
+**holds the post-run GET open** until the test releases it, which makes the window observable: with the fix the
+figures are on screen while the refetch is still in flight; without it, they cannot be. Calibrated both ways —
+removed the fix, watched it fail, restored from a copy and diffed.
+
+## MAJOR 2 — the panel contradicted itself, on a justification that was false
+
+Round 1 withheld only the dekking figures and justified it in a prop doc: the spreiding lines describe the run,
+"Nu gedekt" describes the plan. **That distinction does not exist.** `spreidingLeeg` ("Nog leeg: themaperiode 3")
+and `spreidingOverbelast` ("Te vol …") are present-tense claims about the plan, and E3-09 made te-vol a live
+property rendered from the plain jaarplan read on the board beside this panel. The result: an unqualified
+`▲ Te vol` printed directly above "deze cijfers kloppen niet meer".
+
+One rule now, stated by what a line is *about*: the run's own counts stay (they are true of that run forever), and
+every block **measured over the plan** is withheld together behind a single notice. Verified in a browser: in both
+stale states the run counts survive and no figure, no "Te vol" and no "Nog leeg" does.
+
+## The eight MINOR
+
+1. `plaatsingssignatuur` ignored `doelcodes` — the one field on the object that records a link decision. Accepting a
+   doelsuggestie in another tab moved the live figure and left the panel's standing.
+2. Changing the kleuterjaar chooser **after** a run re-created the two-denominator state MAJOR 3 was about. It now
+   has its own reason and its own sentence, because "je hebt het jaarplan aangepast" is the wrong thing to say to
+   someone who only changed a filter.
+3. The 0-of-0 sentence said *"Voor dit jaar"* directly above *"gemeten tegen alle ingeladen leerplandoelen"*. It was
+   borrowed from `geenDoelenInJaar` without the guard that makes it true there.
+4. The notice pointed at the dekkingsoverzicht for three withheld figures, two of which exist nowhere else in the
+   product. It now offers the only action that reproduces them: generate again.
+5. **The backlog still described the prompt rule the owner's ruling had removed** — fourteen lines below the ruling.
+   Corrected in the story entry as well as in the code comment.
+6. A test name still asserted the meaning the fix repudiated ("noemt de doelen die in geen enkel gepland thema
+   zitten").
+7. A code comment filed the new open question against an Art. XIV entry the constitution lists under *Resolved*.
+8. The withheld sentence counted **plaatsingen** and called them thema's — false the moment one thema holds two
+   stale placements, which the move guard permits.
+
+## Gates
+
+586 unit + 202 integration (0 skipped, real PostgreSQL), 481 frontend, `dotnet format` / `pnpm lint` / `pnpm build`
+clean. Every panel state re-read in a browser at 1440px and 390px, including the two replacement states.
+
+**Reported rather than fixed:** two full integration runs this round failed 3 and 2 *different* dekking tests, while
+the same tests passed in isolation, as a family, and on the next full run — which took **2m 48s** against the failing
+runs' **6m**. Contention against the shared PostgreSQL server, seen independently by the round-2 auditor on its own
+first run, and logged on **E7-14** with that timing evidence.
