@@ -39,6 +39,18 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
    * sentence does.
    */
   const [alWeg, setAlWeg] = useState<"subthema" | "activiteit" | null>(null);
+  /**
+   * "It moved, and here is where it went", raised by an activiteit row and said here (E4-08).
+   *
+   * Same reason as `alWeg` and a sharper case of it: a move to a subthema of **another thema** takes the
+   * activiteit off this screen, because this half shows one thema. So the row that performed the move is gone
+   * by the time anyone could read a confirmation inside it, and without this notice a successful move looks
+   * exactly like a delete. It names the destination for that reason: "it worked" would not tell a teacher
+   * where to look.
+   */
+  const [verplaatst, setVerplaatst] = useState<{ activiteit: string; subthema: string; thema: string } | null>(
+    null,
+  );
 
   const maakSubthema = useMaakSubthema();
   /*
@@ -50,6 +62,10 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
   */
   if (alWeg && maakSubthema.isSuccess) {
     setAlWeg(null);
+  }
+
+  if (verplaatst && maakSubthema.isSuccess) {
+    setVerplaatst(null);
   }
 
   // The class's own name, so the heading reads "Van L3 derde leerjaar" rather than a GUID. The selector's list
@@ -85,6 +101,7 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
             type="button"
             onClick={() => {
               setAlWeg(null);
+              setVerplaatst(null);
               setNieuw(true);
             }}
             className="rounded-md border border-input px-3 py-1.5 text-sm font-semibold text-ink hover:bg-paper-diep"
@@ -97,6 +114,19 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
       {alWeg ? (
         <p role="alert" className="mt-3 text-sm text-ink-zacht">
           {alWeg === "subthema" ? t("themabeheer.subthemaAlWeg") : t("themabeheer.activiteitAlWeg")}
+        </p>
+      ) : null}
+
+      {/* `role="status"` rather than `alert`: this is a confirmation of something the teacher just did, so it is
+          announced politely instead of interrupting. Mutually exclusive with `alWeg` by construction, since each
+          setter clears the other: two notices about the same activiteit would contradict each other. */}
+      {verplaatst ? (
+        <p role="status" className="mt-3 text-sm text-ink-zacht">
+          {t("themabeheer.activiteitVerplaatstNaar", {
+            activiteit: verplaatst.activiteit,
+            subthema: verplaatst.subthema,
+            thema: verplaatst.thema,
+          })}
         </p>
       ) : null}
 
@@ -122,7 +152,14 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
                       subthema={subthema}
                       klasId={klasId}
                       klasNaam={klasNaam}
-                      onAlWeg={setAlWeg}
+                      onAlWeg={(soort) => {
+                        setVerplaatst(null);
+                        setAlWeg(soort);
+                      }}
+                      onVerplaatst={(bestemming) => {
+                        setAlWeg(null);
+                        setVerplaatst(bestemming);
+                      }}
                     />
                   ))}
                 </ul>

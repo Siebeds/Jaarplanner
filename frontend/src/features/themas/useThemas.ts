@@ -5,6 +5,7 @@ import { ApiError } from "../../lib/api";
 import { DEKKING_KEY } from "../dekking/useDekking";
 import { ONGEKOPPELDE_DOELEN_KEY } from "../matching/useDoelsuggesties";
 import {
+  haalSubthemaBestemmingen,
   haalThemaBibliotheek,
   haalThemaVoorKlas,
   koppelActiviteitAanDoel,
@@ -14,6 +15,7 @@ import {
   maakThema,
   ontkoppelActiviteitDoel,
   ontkoppelSubdoel,
+  verplaatsActiviteit,
   verwijderActiviteit,
   verwijderSubthema,
   verwijderThema,
@@ -257,6 +259,42 @@ export function useVerwijderActiviteit() {
   return useBeheerMutatie((vars: { activiteitId: string }) => verwijderActiviteit(vars.activiteitId), {
     verversOok404: true,
   });
+}
+
+/**
+ * The destinations a move may target: every subthema of one klas, across thema's (E4-08).
+ *
+ * Its own query key rather than a slice of the thema queries, because its scope is the **klas** rather than a
+ * thema. It still starts with `"thema"` so the fixed invalidation set in {@link useBeheerMutatie} reaches it: a
+ * move, a rename or a new subthema all change what belongs in this list, and the list is only ever read while a
+ * picker is open, so refetching it on every write costs a request nobody waits for.
+ *
+ * `enabled` on the klas, for the same reason as {@link useThemaVoorKlas}: with no klas there is nothing to ask
+ * for, and a picker that cannot be opened should not be firing requests.
+ */
+export function useSubthemaBestemmingen(klasId: string | undefined) {
+  return useQuery({
+    queryKey: ["thema", "bestemmingen", "klas", klasId ?? ""] as const,
+    queryFn: () => haalSubthemaBestemmingen(klasId!),
+    enabled: Boolean(klasId),
+  });
+}
+
+/**
+ * Move an activiteit to another subthema of the same klas (E4-08, FR-7.2).
+ *
+ * `verversOok404: true` for the same reason as the deletes: a 404 means the activiteit is gone, so the screen
+ * has to *act* rather than only report, or a teacher is left looking at a row that no longer exists. The server
+ * is what makes that branch safe to take blindly, and it was changed for it: a **destination** that vanished is
+ * answered as a 400 validation refusal rather than a 404, so a 404 here can only be about the activiteit itself.
+ * A caller must therefore not translate a 404 into "the destination is gone".
+ */
+export function useVerplaatsActiviteit() {
+  return useBeheerMutatie(
+    (vars: { activiteitId: string; doelSubthemaId: string }) =>
+      verplaatsActiviteit(vars.activiteitId, vars.doelSubthemaId),
+    { verversOok404: true },
+  );
 }
 
 export function useKoppelActiviteitAanDoel() {

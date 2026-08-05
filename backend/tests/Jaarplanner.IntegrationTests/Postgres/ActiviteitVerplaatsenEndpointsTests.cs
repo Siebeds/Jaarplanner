@@ -136,6 +136,32 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task Een_verdwenen_bestemming_is_een_400_en_een_verdwenen_activiteit_een_404()
+    {
+        // The two "it is gone" cases must be distinguishable by **status**, because the screen has to answer them
+        // differently and reading Dutch prose to tell them apart is not an option. The addressed resource is the
+        // activiteit, so its absence is a 404 the screen acts on like a delete; a destination that a colleague
+        // deleted meanwhile is a referenced resource, so it is a refusal the picker shows while staying open.
+        var opzet = await ZetOpAsync();
+        var client = _factory.CreateClient();
+
+        var bron = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", opzet.KlasId, "K3");
+        var activiteitId = await MaakActiviteitAsync(client, bron.SubthemaId, "Waterproef", null, null);
+
+        var weg = await client.PutAsJsonAsync(
+            $"/api/activiteiten/{activiteitId}/subthema",
+            new { doelSubthemaId = Guid.NewGuid() });
+        Assert.Equal(HttpStatusCode.BadRequest, weg.StatusCode);
+        var probleem = await weg.Content.ReadFromJsonAsync<ProbleemDto>();
+        Assert.Equal("Dit subthema bestaat niet meer. Kies een ander subthema.", probleem!.Detail);
+
+        var geenActiviteit = await client.PutAsJsonAsync(
+            $"/api/activiteiten/{Guid.NewGuid()}/subthema",
+            new { doelSubthemaId = bron.SubthemaId });
+        Assert.Equal(HttpStatusCode.NotFound, geenActiviteit.StatusCode);
+    }
+
+    [PostgresFact]
     public async Task De_bestemmingenlijst_geeft_alleen_de_subthemas_van_die_ene_klas()
     {
         var opzet = await ZetOpAsync();

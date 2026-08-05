@@ -392,9 +392,16 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         // so there is no way to submit a mismatched pair.
         var bron = await LaadSubthemaAsync(activiteit.SubthemaId, cancellationToken);
 
-        // Same loader, so a destination a colleague deleted meanwhile gets the same Dutch sentence as any other
-        // vanished subthema. The source cannot be missing: the activiteit's FK is what named it.
-        var doel = await LaadSubthemaAsync(doelSubthemaId, cancellationToken);
+        // A 400 rather than the loader's 404, and the distinction is what lets the UI answer correctly without
+        // reading Dutch prose: the *addressed* resource here is the activiteit, so a 404 always means "your
+        // activiteit is gone" and the screen can act on it exactly as it does after a delete. A destination that
+        // vanished meanwhile is a *referenced* resource, so it is a validation refusal the picker shows while
+        // staying open with a refreshed list. Same shape as VereisKlasAsync, which refuses a missing klas the
+        // same way rather than 404ing the subthema being created.
+        var doel = await _context.Subthemas
+            .Include(s => s.Activiteiten)
+            .FirstOrDefaultAsync(s => s.Id == doelSubthemaId, cancellationToken)
+            ?? throw new SchoolcontentValidatieFout("Dit subthema bestaat niet meer. Kies een ander subthema.");
 
         try
         {

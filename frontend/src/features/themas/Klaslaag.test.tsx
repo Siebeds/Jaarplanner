@@ -426,3 +426,192 @@ describe("Klaslaag — geen inhoud van een andere klas, en geen zin meer die naa
     expect(naamvelden.map((veld) => (veld as HTMLInputElement).value)).toContain("Bladeren");
   });
 });
+
+describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08, FR-7.2)", () => {
+  /** Opens the move panel on the one activiteit L3 has, and hands back the section it lives in. */
+  async function openVerplaatspaneel(opties: ThemaFakeOpties = {}) {
+    const fake = renderApp(L3_PAD, opties);
+    const sectie = await klassectie();
+
+    // Awaited, because the control is deliberately absent until the destinations are known to exist.
+    const knop = await within(sectie).findByRole("button", {
+      name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+    });
+    fireEvent.click(knop);
+
+    return { fake, sectie: await klassectie() };
+  }
+
+  it("biedt de andere subthema's van deze klas aan, gegroepeerd per thema, en nooit het eigen subthema", async () => {
+    const { sectie } = await openVerplaatspaneel();
+
+    const keuzelijst = within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel"));
+    const opties = Array.from(keuzelijst.querySelectorAll("option")).map((optie) => optie.textContent);
+
+    // The placeholder plus exactly one destination: the klas's other subthema, under the other thema.
+    expect(opties).toEqual([
+      t("themabeheer.activiteitVerplaatsKies"),
+      `Drijven en zinken · ${t("themabeheer.leeftijdWaarde", { leeftijd: "8" })}`,
+    ]);
+
+    // Its own subthema is not offered. The server refuses it too, so this is the picker agreeing with the
+    // server rather than the only thing standing between a teacher and a refusal.
+    expect(opties.some((optie) => optie?.startsWith("Bladeren"))).toBe(false);
+
+    // Grouped by thema, which is the only thing that tells two same-named subthema's of one klas apart.
+    const groep = keuzelijst.querySelector("optgroup");
+    expect(groep).toHaveAttribute("label", "Water");
+  });
+
+  it("zegt in het paneel dat een verhuizing de dekking van deze klas kan veranderen", async () => {
+    const { sectie } = await openVerplaatspaneel();
+
+    // The consequence of the owner's ruling: dekking counts an activiteitkoppeling through the thema its
+    // subthema hangs under, so a move that stays inside the klas can still change the figure.
+    expect(within(sectie).getByText(t("themabeheer.activiteitVerplaatsGevolg"))).toBeInTheDocument();
+  });
+
+  it("verplaatst de activiteit en zegt waar ze nu staat, want de rij verdwijnt van dit scherm", async () => {
+    const { fake, sectie } = await openVerplaatspaneel();
+
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+      target: { value: "cccccccc-0000-0000-0000-000000000002" },
+    });
+    fireEvent.click(
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestig") }),
+    );
+
+    // The destination is named, because a move to another thema takes the activiteit off this screen entirely
+    // and "het is gelukt" would leave a teacher with nowhere to look.
+    expect(
+      await screen.findByText(
+        t("themabeheer.activiteitVerplaatstNaar", {
+          activiteit: "Bladkroon maken",
+          subthema: "Drijven en zinken",
+          thema: "Water",
+        }),
+      ),
+    ).toBeInTheDocument();
+
+    // Only the place changed: the body names the destination and nothing else.
+    const schrijf = fake.verzoeken.find((verzoek) => verzoek.pad.endsWith("/subthema"));
+    expect(schrijf?.methode).toBe("PUT");
+    expect(schrijf?.body).toEqual({ doelSubthemaId: "cccccccc-0000-0000-0000-000000000002" });
+
+    /*
+      And it really left this thema's card. The fake is stateful, so the row can only disappear if the screen
+      refetched after the write.
+
+      Asserted on the row's own control rather than on its name: the confirmation above the list *contains* the
+      activiteit's name, so a text query for "Bladkroon maken" matches the notice this test just demanded and
+      would fail while the screen was in fact correct.
+    */
+    await waitFor(() =>
+      expect(
+        within(sectie).queryByRole("button", {
+          name: t("themabeheer.activiteitVerwijderAria", { naam: "Bladkroon maken" }),
+        }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("biedt geen verplaatsknop aan wanneer deze klas nergens anders naartoe kan", async () => {
+    renderApp(L3_PAD, { geenBestemming: true });
+    const sectie = await klassectie();
+
+    // The destinations read has to have happened before absence means anything, otherwise this test would
+    // pass on a screen that simply had not loaded yet.
+    await waitFor(() => expect(within(sectie).getByText(/Bladkroon maken/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        within(sectie).getByRole("button", {
+          name: t("themabeheer.activiteitVerwijderAria", { naam: "Bladkroon maken" }),
+        }),
+      ).toBeInTheDocument(),
+    );
+
+    expect(
+      within(sectie).queryByRole("button", {
+        name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }),
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("houdt het paneel open met de reden van de server wanneer de bestemming geweigerd wordt", async () => {
+    const weigering = "Dit subthema bestaat niet meer. Kies een ander subthema.";
+    const { sectie } = await openVerplaatspaneel({ verplaatsWeigering: weigering });
+
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+      target: { value: "cccccccc-0000-0000-0000-000000000002" },
+    });
+    fireEvent.click(
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestig") }),
+    );
+
+    expect(await screen.findByText(t("themabeheer.activiteitVerplaatsMislukt"))).toBeInTheDocument();
+    expect(screen.getByText(t("themabeheer.serverReden", { melding: weigering }))).toBeInTheDocument();
+
+    // Still open, and still able to pick another subthema: a refusal a teacher can act on must leave the
+    // control that acts on it standing.
+    expect(
+      within(await klassectie()).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")),
+    ).toBeInTheDocument();
+  });
+
+  it("behandelt een 404 als een activiteit die iemand anders al verwijderde, niet als een mislukte verhuizing", async () => {
+    const { sectie } = await openVerplaatspaneel({ verplaatsActiviteitAlWeg: true });
+
+    fireEvent.change(within(sectie).getByLabelText(t("themabeheer.activiteitVerplaatsLabel")), {
+      target: { value: "cccccccc-0000-0000-0000-000000000002" },
+    });
+    fireEvent.click(
+      within(sectie).getByRole("button", { name: t("themabeheer.activiteitVerplaatsBevestig") }),
+    );
+
+    // The section says it, because the row is refetched away; and it says "gone", not "failed".
+    expect(await screen.findByText(t("themabeheer.activiteitAlWeg"))).toBeInTheDocument();
+    expect(screen.queryByText(t("themabeheer.activiteitVerplaatsMislukt"))).not.toBeInTheDocument();
+
+    // The panel closed with it: an open picker under a notice saying the activiteit is gone is the
+    // self-contradiction that reopened E3-07.
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText(t("themabeheer.activiteitVerplaatsLabel")),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("geeft elke verplaatsknop een eigen naam, zodat drie activiteiten niet drie keer hetzelfde heten", async () => {
+    const { sectie } = await openVerplaatspaneel();
+
+    /*
+      Landing 2 found four controls on one card sharing an accessible name, and this row now carries four. The
+      first version of this affordance reintroduced the defect twice over: the trigger toggled to "Annuleren"
+      beside the panel's own "Annuleren", and the submit repeated the trigger's "Verplaatsen". So the property
+      asserted here is that **no two controls in this row share a name**, over every control, rather than that
+      one particular label exists.
+    */
+    /*
+      Scoped to the activiteit's own row, and that scope is load-bearing. At section level "Wijzigen" and
+      "Verwijderen" each appear twice by design (once for the subthema, once for the activiteit), disambiguated
+      by their aria-labels and by the row a teacher sees them in. That is E1-14's deliberate answer, so a
+      section-wide check would fail on correct code.
+    */
+    const rij = within(sectie)
+      .getByRole("button", { name: t("themabeheer.activiteitVerplaatsAria", { naam: "Bladkroon maken" }) })
+      .closest("li") as HTMLElement;
+    const knoppen = within(rij).getAllByRole("button");
+    const namen = knoppen.map((knop) => knop.getAttribute("aria-label") ?? knop.textContent?.trim() ?? "");
+    const zichtbaar = knoppen.map((knop) => knop.textContent?.trim() ?? "");
+
+    expect(namen.length).toBeGreaterThan(4);
+    // What a screen reader hears.
+    expect(new Set(namen).size).toBe(namen.length);
+    /*
+      And what a sighted teacher reads, which is a **separate** property: an `aria-label` keeps the accessible
+      names unique even when two buttons show the same word, so the first version of this guard passed on the
+      defect it was written for (the trigger toggling to "Annuleren" beside the panel's own "Annuleren").
+    */
+    expect(new Set(zichtbaar).size).toBe(zichtbaar.length);
+  });
+});
