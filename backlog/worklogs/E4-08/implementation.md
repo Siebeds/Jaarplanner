@@ -1,8 +1,10 @@
 # E4-08 — Een activiteit naar een ander subthema verplaatsen
 
 **Branch:** `story/E4-08-activiteit-verplaatsen`, off `origin/main` `3e646da`
-**Commits:** `950b009` (server), `2c7ea32` (screen), `777f9e6` (browser pass), `afde19d` + `35e2dc1` (fix round 1)
-**Status:** `[~]`. The fix round has had no independent pass, and two of the audit's questions are the owner's.
+**Commits:** `950b009` (server), `2c7ea32` (screen), `777f9e6` (browser pass), `afde19d` + `35e2dc1` (fix
+round 1), `1cf91d6` (record), `c697d4f` (two owner rulings), `ce1cadc` (fix round 2)
+**Status:** `[~]`. Two antagonist rounds have run and each found defects introduced by the previous round's
+fixes, so round 3 is owed rather than optional.
 
 ## The ruling, first, because the story forbade guessing it
 
@@ -49,10 +51,22 @@ PostgreSQL, and stated in the panel where the action is.
    failure rather than only on a 404, and the chosen destination is derived from the list rather than trusted
    from state.
 
-## Antagonist round 1: VIOLATIONS FOUND (2 MAJOR, 6 MINOR, 2 QUESTION)
+## Two antagonist rounds, and both found the next defect inside the previous fix
 
-See [`antagonist.md`](antagonist.md). Both MAJORs were real; the first broke this story's own feedback
-mechanism **and** E1-14's, through a latched TanStack flag that no single-write test could observe.
+See [`antagonist.md`](antagonist.md) for all twenty findings and what happened to each.
+
+**Round 1** (2 MAJOR, 6 MINOR, 2 QUESTION): the first MAJOR broke this story's own feedback mechanism **and**
+E1-14's, through a latched TanStack flag that no single-write test could observe.
+
+**Round 2** (2 MAJOR, 7 MINOR, 1 QUESTION) verified every round-1 finding against the code rather than against
+my table, re-ran all four gates itself, and then found that **both new MAJORs were introduced by round 1's
+fixes**: the empty-state sentence had taken the panel's only cancel button with it, and the confirmation was a
+`role="status"` region mounted together with its text, which this codebase forbids in two places after E4-06
+shipped exactly that and found it silent.
+
+The sharpest MINOR is worth more than either MAJOR: **the `geldigeKeuze` fix was untestable in its own
+fixture**, because the refused destination was the klas's only candidate, so the picker vanished and the submit
+was absent whatever the component computed. Reverting the fix left all 459 tests green.
 
 ## The guards needed three rewrites, and that is the transferable part
 
@@ -65,22 +79,38 @@ mechanism **and** E1-14's, through a latched TanStack flag that no single-write 
 - A `verplaats.reset()` on the trigger was **removed** after a mutation check showed it changed no test and
   the close paths showed it cannot fire.
 
-**Ten mutation checks; three only began biting after being rewritten.**
+**Fifteen mutation checks across the story; five only began biting after being rewritten.** The last of them
+took three attempts: a Tailwind `hidden` class is invisible to jsdom, which loads no CSS, and then a
+first-occurrence replace hit the *delete* panel's identical class list, failing two unrelated tests while
+leaving the code under test untouched. A mutation that fails the wrong test is as uninformative as one that
+fails none.
 
-## Gates on `35e2dc1`
+## Gates on `ce1cadc`
 
-575 unit + 201 integration against real PostgreSQL, 459 frontend / 20 files, 0 skipped. `dotnet format`,
-eslint, `tsc`, `pnpm build` clean.
+575 unit + 201 integration against real PostgreSQL, 464 frontend / 20 files, 0 skipped. `dotnet format`,
+eslint, `tsc`, `pnpm build` clean. Round 2's auditor re-ran all four itself on `c697d4f` rather than taking
+them on trust, and every figure reproduced.
 
-Browser passes at 1440px and exactly 390px against a live API and real PostgreSQL, run twice (before and
-after the fix round), including the colleague-deletes-the-destination race. Measured: submit **8,90:1**,
+Browser passes at 1440px and exactly 390px against a live API and real PostgreSQL, run **three times** (after
+the build, after fix round 1 and after fix round 2), including the colleague-deletes-the-destination race and,
+in the third, a graadklas-shaped scenario with the destination at another leeftijd. Measured: submit **8,90:1**,
 empty-state sentence **5,80:1**, disabled submit **2,16:1** (inactive, outside SC 1.4.3, recorded because it
 is the state the panel opens in). The only elements past 390px are the nav's own `overflow-x:auto` scroller;
 `document.documentElement.scrollWidth` reads 390, which is why that probe is the wrong one.
 
 ## Owed
 
-1. An independent pass on the fix round.
-2. Whether the **leeftijd** half of the ruling was actually ruled (the options were about the thema boundary).
-3. Whether "never to another klas" binds `PUT /api/subthemas/{id}`, which re-scopes a subthema with every
-   activiteit inside it.
+**Round 3.** Both earlier rounds found defects in the previous round's fixes, so this is an expectation.
+
+*The two questions round 1 raised are answered:* the owner ruled on 2026-08-05 that the **leeftijd** crossing is
+permitted and must be disclosed in the panel, and that the **subthema re-scope** route stays as it is and is
+filed, which it is, as **E1-19**.
+
+## Three defects handed to their owners rather than fixed here
+
+- **E7-19** — `Subthema.Require` composes an English message, and `ArgumentException(message, paramName)`
+  appends `(Parameter 'naam')` to it, which E1-14's forms render verbatim.
+- **E1-19** — `PUT /api/subthemas/{id}` re-scopes a subthema to another klas and drags every activiteit and
+  doelkoppeling across the class boundary.
+- **E1-20** — a notice on the klaslaag survives a later successful write that has nothing to do with it, which
+  is the case E1-14's round 4 described in a comment and never fixed.

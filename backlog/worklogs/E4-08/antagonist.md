@@ -31,8 +31,39 @@ One correction the auditor made to its own reading, worth noting: it re-ran the 
 19 files / 439 tests with one environment-level worker timeout, and said so rather than reporting a
 discrepancy with the claimed 20 / 455.
 
-## Round 2
+## Round 2, on `c697d4f` (the fix round): **VIOLATIONS FOUND** — 2 MAJOR, 7 MINOR, 1 QUESTION
 
-**Not run.** The story stays `[~]` for that reason, and because two of round 1's questions are the owner's to
-answer. This repo's record is that a fix round is where the next defect lives: three consecutive rounds on
-E1-14 and four on E4-02 found one.
+It began by doing the two things this repo has learned to ask for. It **verified every round-1 finding against
+the code rather than against the table above** — all ten are really in the tree, none is a phantom repair — and
+it **re-ran all four gates itself** on HEAD rather than on the commit the story quoted. Then: *"the pattern
+held again: the fix round contains the next two defects, and both are in the code the fix round wrote."*
+
+| # | Grade | Finding | Outcome |
+| --- | --- | --- | --- |
+| 1 | MAJOR | **Caused by the fix for round-1 MAJOR 2.** Replacing the empty picker with a sentence took the **cancel** with it, because the cancel lived inside the "there are destinations" arm. The empty, loading and list-error states had no control that closed the panel, beside a trigger that only set an already-set state | **Fixed.** The button row sits outside every branch; the submit stays conditional, the cancel does not. Test asserts a closing control exists in every state, including a new list-error fixture. Mutation check bites (third attempt, see below) |
+| 2 | MAJOR | The confirmation was a `role="status"` region mounted **together with its text**, which this codebase forbids in two places after **E4-06 shipped exactly that and found it silent** | **Fixed.** Region mounted with the section, text conditional, as `Schoolcontentimport.tsx` and `Themakaart.tsx` do. The auditor stated it could not verify silence without a real screen reader and graded it on the contradicted rule, which is the honest form |
+| 3 | MINOR | **The `geldigeKeuze` fix was untestable in its own fixture**: the refused destination was the klas's only candidate, so the picker vanished and the submit was absent whatever the component computed. Reverting the derivation left all 459 tests green | **Fixed.** New opt-in fixture with a second destination still on offer; the assertion is on the submit staying disabled on a stale id. Mutation check bites |
+| 4 | MINOR | **Nothing asserted that a notice is ever *cleared***, so the replacement for round 4's latched guard was unpinned exactly as the guard had been. And rewriting that comment deleted the repo's only record of the defect round 4 described, which is **still live** | **Both halves.** A test now pins the clearing (mutation check bites), the record is restored to the comment, and the live defect is filed as **E1-20** rather than fixed, because the other writes live in `Subthemakaart` and hooking five call sites is E1-14's change |
+| 5 | MINOR | A comment still called ruling 5 an open question, in the commit titled *"two owner rulings"* | **Fixed**: it points at E1-19 |
+| 6 | MINOR | Two comments asserted *"the picker groups by consecutive ThemaId"*, which the fix round had replaced with a keyed map; and the client half is untested | **Fixed**: both comments describe the current mechanism, and each states that the client half is defence in depth pinned only server-side |
+| 7 | MINOR | The refusal-message test claimed a property over **future** refusals that a hand-written list cannot have | **Fixed**: the claim is downgraded to what it does. Today's coverage is total; tomorrow's needs a line |
+| 8 | MINOR | The story entry recorded gates on a commit that was no longer HEAD, and HEAD changed product code | **Fixed**, and the first repair invented a hash **before the commit existed**, which was the same defect in a new form. Now written as a placeholder and filled in afterwards |
+| 9 | MINOR | The leeftijd disclosure printed unconditionally, including when no offered destination has another leeftijd | **Fixed**: tied to `kandidaten.some(k => k.leeftijd !== …)`. The ruling was that the crossing must be *disclosed*, not that the sentence must always appear. Mutation check bites |
+| 10 | QUESTION | The two new endpoints carry no `[Authorize]`, and the destinations read is a new enumeration surface | **Routed, not answered.** Verified as consistent pre-existing drift (only `OpstapImportController` has one); E6 / FR-10.2 |
+
+**Mutation 11 took three attempts, and the two failures are the useful part.** First attempt hid the button row
+with a Tailwind `hidden` class — invisible to jsdom, which loads no CSS, so the button stayed queryable and the
+mutation survived. Second attempt used the `hidden` attribute but a first-occurrence replace hit the **delete**
+panel's identical class list, failing two unrelated tests while leaving the code under test untouched. Third
+attempt anchored on the line below and failed exactly the intended test. *A mutation that fails the wrong test
+is as uninformative as one that fails none.*
+
+**Third browser pass**, on the round-2 fixes, against a live API and real PostgreSQL with a graadklas-shaped
+scenario (source leeftijd 8, destination 9): the leeftijd sentence appears where it applies, the live region is
+mounted and empty before anything happens, and in the emptied state the cancel is present, visible and closes
+the panel.
+
+## Round 3
+
+**Owed.** Two rounds have now each found defects introduced by the previous round's fixes, so on this story that
+is a measured expectation rather than a formality.
