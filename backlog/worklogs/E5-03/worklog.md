@@ -1,6 +1,8 @@
 # E5-03 — dekkingspercentage, doelsoortfilter en ontbrekende doelen (FR-9.2)
 
-Branch `story/E5-03-percentage-filter`, off `origin/main` `b9d2786`. Seven commits, local only.
+Branch `story/E5-03-percentage-filter`, off `origin/main` `b9d2786`. **Nine commits**, local only: the build, seven
+fix rounds, and one backlog note. (Counted with `git rev-list --count origin/main..HEAD`; an earlier revision of this
+line said seven, which was the number of *fix rounds* rather than of commits.)
 
 ## What it delivers
 
@@ -54,19 +56,43 @@ the person reading it and not only by a test.
 ## Gates
 
 **567 frontend tests / 23 files** and **15 Postgres integration tests**, 0 failed, 0 skipped. `pnpm lint`,
-`pnpm build`, `dotnet format --verify-no-changes` all clean. **Twenty-six mutations across seven rounds, all
-twenty-six bite.**
+`pnpm build`, `dotnet format --verify-no-changes` all clean.
 
-**Browser** (headless Chrome over CDP, real API, real PostgreSQL, 1440px and 390px): 43% unfiltered (6 of 14), 63%
-narrowed to MD (5 of 8), still 63% with the gaps-only view on and only the three uncovered MD codes listed. With a
-genuinely stale placement, filtered and unfiltered: no percentage, no total, no missing-count, no group tally, no
-meter. No overflow at 390px, every target ≥24px, worst composited contrast **5,08:1** (E5-02's existing Gedekt badge).
+**Twenty-three mutations, of which twenty-two bite.** The twenty-third is the interesting one and it is recorded rather
+than dropped from the count: reverting the empty-state sentence to a false version fails **nothing**, and cannot, for
+the reason under *On testing copy* below. Plus two checks in the other direction, that the catalogue guard does **not**
+misfire on `Op.stap` or `bv.`
+
+**Browser — as of `a2058ad`, and that date is load-bearing.** Headless Chrome over CDP, real API, real PostgreSQL,
+1440px and 390px: 43% unfiltered (6 of 14), 63% narrowed to MD (5 of 8), still 63% with the gaps-only view on and only
+the three uncovered MD codes listed. With a genuinely stale placement, filtered and unfiltered: no percentage, no
+total, no missing-count, no group tally, no meter. No overflow at 390px, every target ≥24px, worst composited contrast
+**5,08:1** (E5-02's existing Gedekt badge).
+
+> **What that pass does *not* cover, stated because an undated gates paragraph reads as covering HEAD** (antagonist
+> round 8, and it is this story's own rule applied to its own record). Rounds 2–7 changed copy, tests and docs only,
+> and the auditor and I agreed each time that none was visible to a browser — but the shipped string *"Er staan hier
+> geen doelen om te tonen."* and the withheld screen with the `gefilterdOp…` paragraph removed have therefore **never
+> been seen in a browser**. Both are a shorter string inside an existing dashed box and one removed paragraph in a
+> column carrying four other elements.
 
 *Verified in jsdom only:* the withheld + gaps-only + no-gaps state. Reaching it in a browser needs every measured doel
 covered **and** a stale placement at once, which the demo seed cannot produce.
 
-*One test run reported 1 failure I did not capture,* between two green runs and immediately after a `pnpm install` that
-failed at the worktree root. Every run since is green. I cannot reproduce it and will not call it nothing.
+### Two flaky episodes, both recorded, one diagnosed
+
+1. **One run reported a single failure I did not capture**, between two green runs and immediately after a
+   `pnpm install` that failed at the worktree root. Never reproduced.
+2. **One full-suite run reported seven failures** in `matching` and `themas` — features this story does not touch (the
+   three-dot diff for those paths is empty). All seven were **axe** assertions measured at 5–6 seconds; they pass in
+   isolation; another session's Playwright browser pass was saturating the machine at the time.
+
+**The second has a mechanism, so it is a known fragility rather than a mystery** (diagnosed by the antagonist, round
+8): `frontend/vite.config.ts` sets no `testTimeout`, so vitest's default **5000 ms** applies, and axe is CPU-bound with
+no help from jsdom. That predicts the entire signature — only axe specs fail, only under concurrent load, they pass in
+isolation, they never reproduce on an idle machine. **It is not E5-03's and it will recur on any story with axe tests;
+a raised `testTimeout` for those specs is the durable answer.** Recorded here because it happened here, and flagged to
+the board because it belongs to the project rather than to this story.
 
 ## Seven antagonist rounds, and what they cost
 
@@ -80,9 +106,19 @@ Every round found something. **Six of the defects were user-facing copy, and not
 | 4 | 2 MINOR — the guard banned my two sentences rather than the rule |
 | 5 | 3 MINOR — the standing rule I added to `CLAUDE.md` misattributed one of its own examples |
 | 6 | 1 MINOR — the new query param was a contract shared by two features, declared by neither |
+| 7 | 1 MINOR — I fixed that instance and left the identical one nine lines below it |
+| 8 | 5 MINOR, **all in this worklog**, none in the code |
 
-**Three of those were introduced by a fix round answering the audit.** That is the repo's own recorded pattern
-(E3-08's two MAJOR classes came the same way) and it held here exactly.
+**From round 2 onward, every round's findings were in the fix round that answered the previous one.** Not one round
+after the first found a defect that came from the original build. At least **nine** distinct findings did not exist
+before the commit that produced them: empty-state v1, the prototype-key `in` and the displaced XML doc (fix round 1);
+empty-state v2 (round 2); the too-narrow catalogue guard and the overstated regex comment (round 3); the `CLAUDE.md`
+misattribution, the verbless fragment and the `Op.stap` splitter (round 4); the half-applied constant (round 6).
+
+> *An earlier revision of this paragraph said "three", which was only true of the MAJORs and was wrong even for those
+> (two).* Corrected because this is the finding the worklog exists to transmit, and undercounting it by a factor of
+> three would have thrown away most of what nine commits bought. The repo had recorded the pattern before — E3-08's two
+> MAJOR classes both came from fix rounds — and E5-03 is the densest instance rather than the first.
 
 ### The empty-state sentence, three attempts
 
@@ -106,7 +142,8 @@ something about coverage that is untrue.
 
 > **A conditional sentence may assert only what its own render condition guarantees.**
 
-That is the mechanism behind all four false sentences **and** the three false code comments on this story. Each reached
+That is the mechanism behind all four false sentences **and** the six false code comments on this story (an earlier
+revision said three; the audit raised six). Each reached
 past what its branch proved: *"Kies bij Doelsoort"* asserted a control another branch owned; *"tellen mee in dit
 cijfer"* presupposed a figure another branch owned; v1 asserted that `groepen` consults `isBetrouwbaar` (frontend, one
 file away); v2 asserted a property of `isGedekt` that `DekkingService` owns. The corollary is the operational half:
@@ -130,8 +167,16 @@ paraphrase.
 - **The client↔server count invariant was asserted nowhere**, including in the backend, where every assertion pins an
   absolute value. `DekkingEndpointsTests.Dekking_totalen_komen_overeen_met_de_rijen_die_ze_beschrijven` now pins it
   against real PostgreSQL. Adding 1 to the server's `AantalGedekt` fails it.
-- **`DOELSOORT_PARAM`** hoisted to `app/routes.ts`, the second instance of a drift `JAARFASE_PARAM` already had a
-  written answer for.
+- **`leesFilter` read `"jaarFase"` as a bare literal**, and had since E1-16, while the same file used the hoisted
+  constant for it in `FILTERSLEUTELS`. Renaming `JAARFASE_PARAM` would have moved `/dekking`, the kalender link and
+  that list to the new key while the register kept reading the old one, so its jaar/fase filter would silently stop
+  responding to a shared link — and no test could see it, because the register's own URL tests use the literal too, so
+  after a rename the test and the code agree with each other and disagree with `/dekking`.
+
+> **`DOELSOORT_PARAM`'s hoist is deliberately *not* in this list, having been filed here at first** (antagonist round
+> 8). That key exists because E5-03 created the doelsoort filter and declared it locally; hoisting it is this story
+> cleaning up its own drift, not a pre-existing gap. The genuinely pre-existing one was sitting nine lines below it and
+> is the bullet above.
 
 ## Left for the owner
 
@@ -149,6 +194,12 @@ paraphrase.
   cross-screen link in this feature that does not carry it — and E5-02's round-2 audit enumerated every `to={` and
   concluded the vervallen marker was the only one missing it, so that conclusion was one short. On `main`, untouched
   here.
+  > **This bullet is not its home and the completion condition is concrete: one line in `backlog/README.md` or the E5
+  > epic file.** Nobody picking up E5-02's follow-ups reads another story's worklog, which was this session's own
+  > argument for putting the Art. XIV note in `README.md` rather than in a commit message. It is here and in the
+  > groepschat only because `backlog/README.md` was claimed by **E4-04** at 15:54 for their own `[x]` and a claim is
+  > not mine to break. **If this session ends before that claim clears, the line is handed to the `technical-lead`
+  > explicitly** — an intention that outlives nobody is the failure mode.
 - **A seventh backend `Doelsoort`** would render `doelsoort.undefined` into a `<select>` option and every badge. Left
   in a comment rather than guarded at runtime: Art. VII.1 fixes the six, and the shared TS union makes it a compile
   error at the mapping long before it reaches a label.
