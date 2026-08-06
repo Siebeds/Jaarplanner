@@ -297,8 +297,16 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     /// was covered by unit tests over a <i>fake</i> storage port, where a removal from an owned collection cannot fail
     /// to be a DELETE because there is no table to delete from. That is exactly the class <b>E7-16</b> exists for, and
     /// the discard here is the same owned-collection removal the in-memory provider has already been caught accepting
-    /// silently. Both surviving statuses are covered: <c>Aanvaard</c> (E4-02's accept) and <c>Manueel</c> (E4-03's
-    /// hand-placement, and what a drag leaves behind).
+    /// silently. <b>All three</b> surviving statuses are covered: <c>Aanvaard</c> (E4-02's accept), <c>Manueel</c>
+    /// (E4-03's hand-placement, and what a drag leaves behind) and <c>Geweigerd</c>.
+    /// <para>
+    /// <b><c>Geweigerd</c> is in here on the antagonist's finding, and it is the one a teacher cannot check by
+    /// looking.</b> The first version said "both surviving statuses" and covered two, while the new copy promises the
+    /// teacher four things survive. A rejected card looks identical whether it survived the run or was deleted and
+    /// re-proposed, so the screen gives no feedback; and its survival is what keeps the AI from proposing that thema
+    /// in that period again, which is the promise <c>kalender.weigeringUitleg</c> makes in so many words. It had unit
+    /// coverage over the fake port only, which is exactly the argument this test makes for <c>Aanvaard</c>.
+    /// </para>
     /// </para>
     /// <para>
     /// <b>Nothing here is E4-04's own code</b>, and that is the point worth recording rather than hiding: E4-04
@@ -317,13 +325,14 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         var blokken = Blokken(await LaadSchooljaarAsync(klasId));
         Guid aanvaardId;
         Guid manueelId;
+        Guid geweigerdId;
         Guid losId;
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
 
-            // Three placements, none of them locked, so the LOCK cannot be the reason any of them survives — the
+            // Four placements, none of them locked, so the LOCK cannot be the reason any of them survives — the
             // status is the only variable. Two blocks are enough: a block may hold several thema's (Art. IX.3), and
             // only the same thema twice in one block is refused.
             var aanvaard = jaarplan.VoegPlaatsingToe(
@@ -332,6 +341,9 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
             var manueel = jaarplan.VoegPlaatsingToe(
                 losThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Manueel);
 
+            var geweigerd = jaarplan.VoegPlaatsingToe(
+                losThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Geweigerd, "geweigerd door de leerkracht");
+
             var los = jaarplan.VoegPlaatsingToe(
                 beslistThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Voorgesteld, "los voorstel");
 
@@ -339,6 +351,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
             await context.SaveChangesAsync();
             aanvaardId = aanvaard.Id;
             manueelId = manueel.Id;
+            geweigerdId = geweigerd.Id;
             losId = los.Id;
         }
 
@@ -359,9 +372,9 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
             Assert.True(resultaat.IsGeslaagd);
             Assert.Equal(1, resultaat.AantalNieuw);
 
-            // The two the teacher decided on were kept; the one they had not looked at was replaced. These are the
+            // The three the teacher decided on were kept; the one they had not looked at was replaced. These are the
             // figures the run reports to the screen, so they are asserted here rather than left to the client.
-            Assert.Equal(2, resultaat.AantalBehouden);
+            Assert.Equal(3, resultaat.AantalBehouden);
             Assert.Equal(1, resultaat.AantalVervangen);
         }
 
@@ -383,6 +396,15 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
             Assert.Equal(blokken[0].Start, manueel!.BlokStart);
             Assert.Equal(KoppelingStatus.Manueel, manueel.Status);
 
+            // The rejection survives as a rejection. Both halves matter: were it deleted, the AI could propose this
+            // thema in this period again on the next run, which is the opposite of what the teacher decided and of
+            // what `kalender.weigeringUitleg` promises them; were it silently reset to Voorgesteld, the card would
+            // come back looking undecided.
+            var geweigerd = jaarplan.VindPlaatsing(geweigerdId);
+            Assert.NotNull(geweigerd);
+            Assert.Equal(blokken[1].Start, geweigerd!.BlokStart);
+            Assert.Equal(KoppelingStatus.Geweigerd, geweigerd.Status);
+
             // And the untouched proposal is gone from the TABLE. Asserted in SQL for the reason this whole file
             // exists: an owned element dropped from its parent's backing list is precisely what the in-memory
             // provider can appear to accept with no DELETE ever issued.
@@ -392,13 +414,14 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
                 .ToListAsync();
             Assert.Contains(aanvaardId, overlevendeIds);
             Assert.Contains(manueelId, overlevendeIds);
+            Assert.Contains(geweigerdId, overlevendeIds);
             Assert.DoesNotContain(losId, overlevendeIds);
 
             // The run's own proposal landed as an unlocked `voorgesteld` one, which is what makes it replaceable by
             // the next press (Art. IV.1/IV.2). Without this the test would pass on a run that placed nothing.
             var nieuw = Assert.Single(
                 jaarplan.Plaatsingen,
-                p => p.Id != aanvaardId && p.Id != manueelId);
+                p => p.Id != aanvaardId && p.Id != manueelId && p.Id != geweigerdId);
             Assert.Equal(blokken[2].Start, nieuw.BlokStart);
             Assert.Equal(KoppelingStatus.Voorgesteld, nieuw.Status);
             Assert.False(nieuw.Vergrendeld);

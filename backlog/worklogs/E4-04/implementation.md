@@ -39,8 +39,11 @@ and works" has now been mistaken for "the story is done" seven times.
 > **Hele jaarplan opnieuw genereren…**
 >
 > Er staat al een jaarplan. Opnieuw genereren geldt voor het hele jaarplan: AI-voorstellen waarover je nog niets
-> beslist hebt, worden vervangen door nieuwe voorstellen. Wat je aanvaard, geweigerd, zelf geplaatst of vastgezet
-> hebt, blijft staan.
+> beslist hebt, verdwijnen, ook als de AI er deze keer minder of geen voorstelt. Wat je aanvaard, geweigerd, zelf
+> geplaatst, verplaatst of vastgezet hebt, blijft staan. Wat de AI nu voorstelt, komt als “Voorgesteld” op de
+> kalender en jij beslist.
+
+*Three sentences after the audit rather than two; see the fix round below for why each clause is load-bearing.*
 
 **It keys on "does this class have a plan", never on "is anything replaceable".** The second question is
 `IsVervangbaar`, which is the server's rule, and answering it in the client would be a second implementation of it —
@@ -121,6 +124,69 @@ Two rules out of it, both cheap:
 
 Recorded rather than quietly fixed because the failure mode is invisible in every artifact this project reviews: the
 diff, the tests and the worklog would all have been honest while the screenshot was of something else.
+
+## Antagonist round 1 — VIOLATIONS FOUND (3 MAJOR, 4 MINOR, 2 QUESTION), all addressed
+
+Run on `ff47067`. **All three MAJORs were in the disclosure or in prose about it, which is exactly what this story is,
+so none of them was cosmetic.** The auditor re-ran vitest, lint and `dotnet format` itself and ran the two new backend
+tests against real PostgreSQL rather than taking the worklog's figures.
+
+**MAJOR-1 — the copy promised replacement where the code only guarantees deletion.** *"…worden vervangen door nieuwe
+voorstellen"* is stronger than `GenereerAsync`: the discard at line 136 is unconditional on a valid parse and happens
+**before** anything is placed, so at least three success paths delete and put nothing back (the model returns an empty
+list, every proposal is skipped as an unknown thema/date, every proposal lands in a period a `vast moment` blocks).
+**This story's own new endpoint test constructs the first of those**, which is the sharpest part of the finding: the
+counterexample was in the commit. Worse, the certain half was worded as a swap while the uncertain half was stated
+flatly, which inverts the risk on the one press the sentence exists to inform, and it was stronger than
+`kalender.vergrendelUitlegVrij`'s own *"kan het vervangen"* two keys away. Now: *"verdwijnen, ook als de AI er deze keer
+minder of geen voorstelt"*, pinned by an assertion on the clause **and** a `not.toHaveTextContent(/worden vervangen/)`.
+
+**MAJOR-2 — replacing the first-run sentence deleted the human-in-the-loop statement in a reachable state.** The
+justification was that the board's `beslisUitleg` carries *"jij beslist"* anyway. It does not always: it is gated on
+`openBeslissingen > 0`, deliberately, by E4-02's own re-audit, and there is an existing test proving it disappears once
+every card is decided. So on a **fully decided plan** — the likeliest state to press regenerate from, having worked
+through every card and wanting the empty periods filled — neither sentence rendered and nothing said the arrivals are
+proposals the teacher still decides on (Art. IV.1/IV.2). None of my four tests covered it: test 4's third placement is
+`Voorgesteld`+`vergrendeld`, so `openBeslissingen` is 1 there and `beslisUitleg` renders. Fixed in the string itself,
+which no other component can gate, plus a fifth test with an all-decided fixture that **asserts the precondition**
+(`beslisUitleg` really is absent) so it cannot quietly stop testing its own case.
+
+**MAJOR-3 — "no server test read `aantalVervangen`" was false, three times.** E4-06's lock test asserts it forty lines
+above my new test in the same file, and the unit suite reads `AantalBehouden` four times. The consequence I drew from
+it was wrong too: renaming the C# property breaks the build, so the suite would not have been green. Only the
+**serialized** name was unpinned. All three sentences narrowed to that; the mutation figure for the endpoint test was
+also off (`1 → 0`, not `2 → 0`). *This is the class the last five audits here keep finding, and I produced a textbook
+instance while writing a story whose whole subject is a claim that outran the code.*
+
+**MINOR-1** — the new guard's docblock argued a non-vacuity canary was impossible and then wrote one three lines below.
+Kept the canary, rewrote the paragraph, and said plainly what the tripwire costs. **MINOR-2** — the guard's pattern
+required *opnieuw* and *gener* to be adjacent, so **FR-8.1's own phrasing** (*"opnieuw laten genereren"*), quoted twice
+in this very change, escaped it. Widened to tolerate two words, bounded rather than `.*` so an unrelated "probeer het
+opnieuw" cannot drag a string in; mutation-checked with a string phrased the way the requirement is.
+**MINOR-3** — the copy promises four survivors and the row-level test covered two while its docblock claimed there were
+only two. `Geweigerd` is now in the fixture: it is the survivor a teacher can least verify by looking, since a rejected
+card looks identical either way, and its survival is what keeps the AI from re-proposing that thema there.
+**MINOR-4** — *"zelf geplaatst"* did not cover a **dragged** thema, which becomes `Manueel` and survives; the component
+comment relied on that while the sentence did not say it. Added *"verplaatst"*, the screen's own verb.
+
+**Both QUESTIONs are recorded rather than acted on**, and both are the owner's: that a directie ruling on E4-07's
+preserve/overwrite rule would now falsify a primary-screen sentence as well as E4-06's six card-level ones (this story
+keeps E4-06's *"hele jaarplan"* qualifier, so it adds no new commitment); and that the *Te herzien* panel does not say
+a regeneration resolves an undecided stale card by deleting it, though the new copy does cover it.
+
+**Fix round gates:** 577 unit + 205 integration (0 skipped, real PostgreSQL), **501** frontend / 20 files,
+format/lint/build clean. Three new mutation checks, all biting: dropping the third clause fails the new all-decided
+test; a sibling phrased *"opnieuw laten genereren"* without a scope clause fails the widened guard; making `Geweigerd`
+replaceable fails the Postgres test. **No product code changed in this round** — copy, comments and tests only — so the
+regeneration journey measured earlier still stands as measured.
+
+*The copy was re-measured in a browser because it grew:* at 390px the paragraph is now **7 lines / 116px** where the
+first version was 4, contrast unchanged at **6,08:1**, button **8,90:1**, no overflow. That cost is accepted rather
+than hidden: this is the disclosure before a run that deletes work, on a control a teacher presses once or twice a
+year, and after the audit every clause answers a state the previous version got wrong.
+
+**A second `--no-build` lesson from the fix round, applied rather than repeated:** the `Geweigerd` mutation was
+restored with `touch` + a full `dotnet build` before anything else ran, which is the rule the near-miss above produced.
 
 ## What this story does not claim
 

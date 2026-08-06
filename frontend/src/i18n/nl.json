@@ -329,7 +329,7 @@
     "genereerBezig": "Bezig met genereren…",
     "genereerUitleg": "De AI stelt een verdeling van je thema's over de themaperiodes voor. Niets wordt automatisch toegepast: elk voorstel komt als “Voorgesteld” op de kalender en jij beslist.",
     "hergenereer": "Hele jaarplan opnieuw genereren…",
-    "hergenereerUitleg": "Er staat al een jaarplan. Opnieuw genereren geldt voor het hele jaarplan: AI-voorstellen waarover je nog niets beslist hebt, worden vervangen door nieuwe voorstellen. Wat je aanvaard, geweigerd, zelf geplaatst of vastgezet hebt, blijft staan.",
+    "hergenereerUitleg": "Er staat al een jaarplan. Opnieuw genereren geldt voor het hele jaarplan: AI-voorstellen waarover je nog niets beslist hebt, verdwijnen, ook als de AI er deze keer minder of geen voorstelt. Wat je aanvaard, geweigerd, zelf geplaatst, verplaatst of vastgezet hebt, blijft staan. Wat de AI nu voorstelt, komt als “Voorgesteld” op de kalender en jij beslist.",
     "genereerMislukt": "De AI gaf geen bruikbaar antwoord. Er is niets gewijzigd aan je jaarplan. Probeer het opnieuw.",
     "genereerOnbeschikbaar": "Het genereren is nu niet beschikbaar. Er is niets gewijzigd aan je jaarplan. Meld dit aan de beheerder van de tool.",
     "genereerGelukt": "{aantal} thema's voorgesteld.",

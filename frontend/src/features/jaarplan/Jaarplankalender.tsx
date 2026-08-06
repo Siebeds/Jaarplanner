@@ -681,11 +681,15 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                   ? t("kalender.hergenereer")
                   : t("kalender.genereer")}
             </Button>
-            {/* The explanation is **replaced**, not supplemented, once a plan exists. Two paragraphs beside one button
-                is the wall of prose this screen keeps having to cut, and the two say overlapping things: the run still
-                produces proposals a teacher decides on, which "worden vervangen door nieuwe voorstellen" carries, and
-                which the board's own `beslisUitleg` states once above the cards anyway (E4-02). What the first-run
-                sentence cannot carry is the only fact that is new on the second press, so that is what stands here. */}
+            {/* The explanation is **replaced**, not supplemented, once a plan exists: two paragraphs beside one button
+                is the wall of prose this screen keeps having to cut. So the regeneration sentence has to carry
+                everything the first-run one did, and the audit's second MAJOR is what proves that is not a formality.
+                The first draft justified dropping the human-in-the-loop clause by pointing at the board's own
+                `beslisUitleg` — which is gated on `openBeslissingen > 0` further down, precisely so it disappears once
+                every card is decided. On a **fully decided plan**, the state a teacher most plausibly regenerates
+                from, both sentences were therefore absent and nothing on the screen said that what arrives is a
+                proposal they still decide on (Art. IV.1/IV.2). It is now the third clause of the string itself, which
+                depends on no other component's render condition. Pinned by a test with an all-decided fixture. */}
             <p className="max-w-2xl text-xs leading-snug text-ink-zacht">
               {t(heeftPlan ? "kalender.hergenereerUitleg" : "kalender.genereerUitleg")}
             </p>

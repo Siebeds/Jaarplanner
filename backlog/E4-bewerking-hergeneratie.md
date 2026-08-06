@@ -50,7 +50,30 @@
 
 ### FR-8 — (Re)generation
 
-- [~] **E4-04 — Regenerate the whole plan** — *built 2026-08-06 on `story/E4-04-hergeneratie` (off `origin/main` `59183ad`). Gates green; **the antagonist audit has not run** and the `[~]` says so. Narrative + full measurements: [`worklogs/E4-04/implementation.md`](worklogs/E4-04/implementation.md).*
+- [~] **E4-04 — Regenerate the whole plan** — *built 2026-08-06 on `story/E4-04-hergeneratie` (off `origin/main` `59183ad`). **Antagonist ronde 1: VIOLATIONS FOUND (3 MAJOR, 4 MINOR, 2 QUESTION), every finding fixed or routed; ronde 2 is owed and the `[~]` says so.** Narrative + full measurements: [`worklogs/E4-04/implementation.md`](worklogs/E4-04/implementation.md).*
+  > **All three MAJORs were in the disclosure or in prose about it, which is the whole story, so none was cosmetic.**
+  > *(1)* The copy said untouched proposals *"worden vervangen door nieuwe voorstellen"* while the discard is
+  > **unconditional** on a valid parse and happens before anything is placed: an empty, fully-skipped or fully-blocked
+  > answer deletes them and puts nothing back. **The counterexample was inside the commit** — this story's own new
+  > endpoint test posts `{"plaatsingen":[]}` and asserts `aantalVervangen 1`. It also stated the *certain* half as a
+  > swap and the *uncertain* half flatly, inverting the risk, and was stronger than `vergrendelUitlegVrij`'s
+  > *"kan het vervangen"* two keys away. Now *"verdwijnen, ook als de AI er deze keer minder of geen voorstelt"*.
+  > *(2)* Replacing the first-run sentence was justified by the board's `beslisUitleg` carrying *"jij beslist"* — but
+  > that is gated on `openBeslissingen > 0` by E4-02's own re-audit, so on a **fully decided plan**, the likeliest
+  > state to regenerate from, **neither** sentence rendered and nothing said the arrivals are still proposals
+  > (Art. IV.1/IV.2). The clause now lives in the string, which no other component can gate, plus a fifth test that
+  > asserts its own precondition. *(3)* *"No server test read `aantalVervangen`"* was false in three places (E4-06's
+  > lock test asserts it forty lines above mine) and the risk I drew from it was wrong: only the **serialized** name
+  > was unpinned, since a property rename breaks the build.
+  > *The four MINORs, each a real hole:* the new guard's docblock argued a non-vacuity canary was impossible and then
+  > wrote one; the guard's pattern required adjacency, so **FR-8.1's own phrasing** *"opnieuw laten genereren"* —
+  > quoted twice in this change — escaped it; the copy promises four survivors and the row-level test covered two,
+  > with `Geweigerd` (the survivor a teacher cannot verify by looking) left at the fake-port level; and *"zelf
+  > geplaatst"* did not cover a **dragged** thema, which becomes `Manueel` and survives.
+  > **Two QUESTIONs are the owner's**, both recorded rather than acted on: a directie ruling on E4-07's
+  > preserve/overwrite rule would now falsify a primary-screen sentence as well as E4-06's six card-level ones (this
+  > story adds no new commitment, it keeps the *"hele jaarplan"* qualifier); and the *Te herzien* panel does not say
+  > that regenerating resolves an undecided stale card by deleting it, though the new copy covers the fact.
   Re-run generation for the entire class plan.
   *Done when:* full regeneration produces a new proposal. Ref: FR-8.1.
   > **The run was already repeatable; what did not exist was any way to know that before pressing.** `GenereerAsync`
@@ -78,7 +101,7 @@
   > construction. A third guard now covers every `kalender.*` string that mentions running the generation again, in
   > either wording. It found a pre-existing gap on its first run: **`kalender.plaatsGevolg`** (E4-03) makes the same
   > claim from outside both prefixes and nothing pinned it.
-  > **Gates:** 577 unit + 205 integration (0 skipped, real PostgreSQL), 500 frontend / 20 files, `dotnet format` / lint
+  > **Gates, re-run after the fix round:** 577 unit + 205 integration (0 skipped, real PostgreSQL), 501 frontend / 20 files, `dotnet format` / lint
   > / build clean, every new claim mutation-checked in the failing direction. Browser pass at 1440px and 390px against
   > a real API and real PostgreSQL with the model stubbed: a class with no plan gets the first-run copy, **the label and
   > the sentence flip within the same session** the moment the first run lands, and on the demo class an accepted and a

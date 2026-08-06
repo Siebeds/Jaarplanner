@@ -417,8 +417,14 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
     /// that a plain second POST to the same endpoint is a regeneration, and that its response carries
     /// <c>aantalVervangen</c> and <c>aantalBehouden</c> under those names. E4-04's new copy promises a teacher that
     /// their decisions survive and their untouched proposals do not, and <c>Spreidingsoverzicht</c> then reports the
-    /// counts: until now the frontend read both fields from a hand-written fixture and no server test read either, so
-    /// the two sides of that seam were only ever checked against each other's assumptions.
+    /// counts: until now the frontend read both fields from a hand-written fixture and nothing on the server side read
+    /// them <b>over the wire</b>, so the JSON half of that seam was checked against nobody.
+    /// </para>
+    /// <para>
+    /// <i>Corrected on the antagonist's finding:</i> an earlier version of this claimed no server test read
+    /// <c>AantalVervangen</c> at all. It does — E4-06's lock test in <c>JaarplanPersistentieTests</c> asserts it forty
+    /// lines above E4-04's own new test, and the unit suite reads <c>AantalBehouden</c> four times. So a rename of the
+    /// C# property was never the unpinned risk; a change to the serialized name was.
     /// </para>
     /// <para>
     /// The second period comes from the public rooster endpoint rather than from a hard-coded date, for the reason
@@ -764,8 +770,11 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         int AantalNieuw,
         int AantalBehouden,
         // E4-04: the field the teacher's "X eerdere voorstellen zijn vervangen" is built from. It has been on the wire
-        // since E3-01 and no test here had ever read it, so nothing but the frontend's own stubbed fixture pinned the
-        // name — a rename would have emptied a sentence on the anchor screen with every suite green.
+        // since E3-01 and no test had ever read it **over HTTP**, i.e. under its serialized name — the C# property is
+        // asserted by `JaarplanPersistentieTests` (E4-06's lock test) and by the unit suite, so a *property* rename
+        // breaks the build, but a change to the JSON name was pinned by nothing except the frontend's own hand-written
+        // fixture. (The first version of this comment said "no server test read either", which is simply false; the
+        // narrow claim is the one worth making.)
         int AantalVervangen)
     {
         /// <summary>E3-04's parameter report, present once the request carries parameters.</summary>

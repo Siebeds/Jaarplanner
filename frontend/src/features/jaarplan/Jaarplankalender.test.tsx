@@ -4278,12 +4278,18 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: t("kalender.genereer") })).toBeNull();
 
-    // Keyed on the two facts rather than on the whole string, so a rewrite that keeps both survives and one that
-    // drops either fails. **What is lost** and **what is kept** are separate assertions on purpose: E4-06 shipped
-    // three rounds of lock copy that got one of those two halves right at a time.
+    // Keyed on the facts rather than on the whole string, so a rewrite that keeps them survives and one that drops
+    // any of them fails. **What is lost**, **what is kept** and **what arrives** are separate assertions on purpose:
+    // E4-06 shipped three rounds of lock copy that got one half right at a time.
     const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
-    expect(uitleg).toHaveTextContent(/vervangen/);
+    // "verdwijnen", not "worden vervangen" (antagonist MAJOR-1). The discard is unconditional on a valid parse and
+    // happens before anything is placed, so an empty, fully-skipped or fully-blocked answer deletes the undecided
+    // proposals and puts nothing back. Wording the certain half as a swap understated exactly the risk this sentence
+    // exists to disclose, and it was strictly stronger than `vergrendelUitlegVrij`'s own "kan het vervangen".
+    expect(uitleg).toHaveTextContent(/verdwijnen/);
+    expect(uitleg).toHaveTextContent(/minder of geen voorstelt/);
     expect(uitleg).toHaveTextContent(/blijft staan/);
+    expect(uitleg).not.toHaveTextContent(/worden vervangen/);
     // And it says WHICH regeneration, because E4-05 adds a second one. Pinned here as well as in the catalogue
     // guard: the guard proves the string is qualified, this proves the qualified string is the one that renders.
     expect(uitleg).toHaveTextContent(/hele jaarplan/);
@@ -4334,6 +4340,33 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     expect(await screen.findByText("2 thema's voorgesteld.")).toBeInTheDocument();
     expect(screen.getByText(/1 eerder voorstel is vervangen/)).toBeInTheDocument();
     expect(screen.getByText(/1 bestaande plaatsing bleef staan/)).toBeInTheDocument();
+  });
+
+  it("keeps the human-in-the-loop statement on a plan where every card is already decided", async () => {
+    // **The state the first version of this story was wrong about (antagonist MAJOR-2).** Replacing `genereerUitleg`
+    // rather than supplementing it was justified by the board's `beslisUitleg` carrying "jij beslist" instead — but
+    // that sentence is gated on `openBeslissingen > 0` (deliberately, by E4-02's re-audit), so on a fully decided plan
+    // BOTH were absent. That is the likeliest state to regenerate from: a teacher who has worked through every card
+    // and wants the empty periods filled. Nothing then told them the arrivals are proposals they still decide on
+    // (Art. IV.1/IV.2). The clause now lives in the regeneration string itself, which no other component can gate.
+    stubFetch(
+      maakJaarplan([
+        maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+        maakPlaatsing({ id: "p2", themaNaam: "Wonen", status: "Geweigerd" }),
+      ]),
+    );
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    // The precondition, asserted rather than assumed: this really is the state where the board's own explanation is
+    // gone. Without this line the test would still pass if `beslisUitleg` started rendering again, and would then be
+    // proving nothing about the case it was written for.
+    expect(screen.queryByText(t("kalender.beslisUitleg"))).toBeNull();
+
+    const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
+    expect(uitleg).toHaveTextContent(/Voorgesteld/);
+    expect(uitleg).toHaveTextContent(/jij beslist/);
   });
 
   it("discloses the rule from a plan in which nothing is replaceable, rather than predicting the outcome", async () => {

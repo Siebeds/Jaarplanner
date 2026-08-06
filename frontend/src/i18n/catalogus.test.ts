@@ -294,17 +294,25 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
    * and E4-07's preserve/overwrite rule is still an open directie question, so an unqualified promise is a statement
    * about code nobody has written — that reasoning is unchanged, only its reach is.
    *
-   * The two guards above are **not** replaced by it, and that is deliberate rather than an oversight: they carry the
-   * per-family non-vacuity canaries that caught a rename once already, and this one cannot, because its family is
-   * defined by content and legitimately shrinks to nothing if the copy is reworded. A canary here would fire on a
-   * rewrite that is perfectly correct.
+   * The two guards above are **not** replaced by it: they carry the per-family non-vacuity canaries that caught a
+   * rename once already, and a family defined by *content* rather than by key prefix cannot canary the same property.
+   * It carries a canary anyway, and the trade-off is deliberate rather than unnoticed (this paragraph is a correction:
+   * the first version argued a canary here was impossible and then wrote one three lines below). Rewording **all**
+   * `kalender.*` copy away from every trigger phrase would turn a correct tree red — but that is a tripwire worth
+   * having, because the same rewrite is how this guard would silently stop guarding anything at all. If you hit it,
+   * the fix is to re-point the pattern at the new wording, not to delete the line.
    *
-   * *Known limit, stated so the next author does not have to find it the hard way:* a third wording that avoids both
-   * `hergener` and `opnieuw gener` (say, *"nog eens laten genereren"*) is invisible here too. This narrows the class;
-   * it does not close it. If you write a new one, add its wording to the pattern in the same commit.
+   * *Known limit, stated so the next author does not have to find it the hard way:* the pattern tolerates up to two
+   * words between *opnieuw* and *gener*, so it reads *"opnieuw genereren"*, *"opnieuw laten genereren"* (FR-8.1's own
+   * phrasing, which the first version missed) and *"opnieuw kunnen laten genereren"*. A wording that avoids both stems
+   * (*"nog eens door de AI laten doen"*) is still invisible. This narrows the class; it does not close it.
    */
   it("qualifies every kalender string that talks about generating again, in any wording", () => {
-    const OPNIEUW = /hergener|opnieuw gener/i;
+    // Two words of slack, because the requirement itself says "opnieuw **laten** genereren" and the first version of
+    // this pattern required adjacency — so the phrasing most likely to be copied out of the FA was the one phrasing
+    // that escaped. Bounded rather than open-ended (`.*`) so an unrelated "probeer het opnieuw" three sentences above
+    // a "genereren" cannot drag a string into the family and demand a scope clause it does not need.
+    const OPNIEUW = /hergener|opnieuw(\s+\S+){0,2}\s+gener/i;
 
     const gevonden = [...CATALOGUS].filter(
       ([sleutel, waarde]) => sleutel.startsWith("kalender.") && OPNIEUW.test(waarde),
