@@ -170,8 +170,15 @@ export function Dekkingsamenvatting({
                   in this class's scope, importing more of the same discipline would not help, so no link is offered
                   rather than one that leads nowhere useful. */}
               {dekking.aantalBuitenBereik === 0 && (
+                // The `search` is carried, like every other cross-screen link in this app (ADR-0021). It used to be
+                // absent, so following this link silently dropped the klas/schooljaar selection: found by E5-03's
+                // antagonist, recorded against E5-02 in the epic file, and handed to whoever next opened this feature.
+                // That is E5-06, so it is fixed here rather than routed on a third time. Low impact by itself, because
+                // the import is school-wide and the teacher still lands somewhere useful. It is worth the two lines
+                // because of how it was missed: E5-02's own audit enumerated every `to={` in this feature and concluded
+                // one link was the only one without a `search`, and that enumeration was one short.
                 <Link
-                  to="/import"
+                  to={{ pathname: "/import", search: location.search }}
                   className="mt-2 inline-block text-sm font-semibold text-petrol underline decoration-petrol/40 underline-offset-2 hover:decoration-petrol"
                 >
                   {t("dekking.naarImport")}
