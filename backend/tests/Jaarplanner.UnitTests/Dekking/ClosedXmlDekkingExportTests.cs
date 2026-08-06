@@ -398,6 +398,38 @@ public class ClosedXmlDekkingExportTests
     }
 
     [Fact]
+    public void Elk_kopbloklabel_past_in_de_breedte_van_de_eerste_kolom()
+    {
+        // TURNS AN INVISIBLE RENDERING PROPERTY INTO A CHECKABLE ONE, which is why this test exists at all. Excel clips
+        // a cell whose neighbour is populated, and every kopblok label sits in column 1 with a populated column 2, so a
+        // label longer than that column renders truncated. The antagonist found "Buiten dit overzicht" clipped at width
+        // 14 by READING the code; no assertion here could see it, because they all read cell values and clipping does
+        // not change a value. Asserting that every label fits is the closest a test can get to looking at the sheet.
+        //
+        // The labels are read out of a generated workbook rather than from a list in this test, so a new kopblok field
+        // is covered the day it is added rather than the day someone remembers to add it here.
+        var bestand = Export().Genereer(
+            Weergave(aantalBuitenBereik: 132, isBetrouwbaar: false, aantalOnopgeloste: 3, aantalGedekt: null));
+
+        var blad = Blad(bestand, out var workbook);
+        using var _ = workbook;
+
+        var breedte = DekkingKolommen.Breedte(DekkingKolom.Code);
+        var kopregel = Kopregel(blad);
+
+        var telang = blad.Column((int)DekkingKolom.Code)
+            .CellsUsed()
+            .Where(cel => cel.Address.RowNumber < kopregel)
+            // Only the label cells: a note spans the sheet on its own row with nothing beside it, so it may overflow.
+            .Where(cel => !blad.Cell(cel.Address.RowNumber, 2).IsEmpty())
+            .Select(cel => cel.GetString())
+            .Where(tekst => tekst.Length > breedte)
+            .ToList();
+
+        Assert.Empty(telang);
+    }
+
+    [Fact]
     public void De_bestandsnaam_noemt_het_bereik_waartegen_gemeten_is()
     {
         // Two exports of one class under two scopes are two different documents, and the kopblok was the only thing
