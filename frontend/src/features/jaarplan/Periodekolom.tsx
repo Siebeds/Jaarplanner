@@ -103,6 +103,18 @@ export interface Periodehergeneratie {
   /** True only while *this* period's run is in flight. */
   bezig: boolean;
   /**
+   * True while **another** period's run is in flight, which is what makes this button unavailable without it
+   * claiming to be the one that is working.
+   *
+   * **Found in the browser pass, not by a test.** One `useMutation` serves all seven columns, and `variables` holds
+   * only the last period pressed — so a second press while the first request was still open moved the "Bezig met
+   * genereren…" label to the new column and let the first one look idle while its run was still open. Two runs on
+   * different periods are safe on the server (each discards only its own block), so the honest answer is not to
+   * forbid it in principle but to stop the screen from misreporting it: one run at a time, and only the running
+   * column says so. The whole-plan button has always worked this way.
+   */
+  wachten: boolean;
+  /**
    * Why this period's last run failed, or `null`. Told apart by **status** rather than by message, because the four
    * cases need four different things from the teacher and the server's `detail` is not theirs to read (Art. II.3).
    */
@@ -405,7 +417,8 @@ export function Periodekolom({
               size="sm"
               className="w-full"
               onClick={hergeneratie.start}
-              disabled={hergeneratie.bezig}
+              // Disabled while ANY period is running, labelled only while this one is: see `wachten`.
+              disabled={hergeneratie.bezig || hergeneratie.wachten}
               aria-label={t("kalender.periodeHergenereerLabel", { ordinaal: blok.ordinaal })}
             >
               {hergeneratie.bezig

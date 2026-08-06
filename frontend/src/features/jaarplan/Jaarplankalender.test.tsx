@@ -4972,6 +4972,69 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     ).toBeNull();
   });
 
+  it("laat maar één periode tegelijk lopen en laat alleen die periode zich bezig noemen", async () => {
+    // Found in the browser pass rather than by a test, which is why it has one now: a second press while the first
+    // request was still open moved the "Bezig" label to the new column and left the first looking idle mid-run.
+    const plan = maakJaarplan([]);
+    const doel = rooster.blokken[0];
+    let laatBinnen: (() => void) | null = null;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+
+        if (init?.method === "POST" && url.includes("/periodes/")) {
+          // Held open on purpose: the state under test only exists while a request is in flight.
+          await new Promise<void>((resolve) => {
+            laatBinnen = resolve;
+          });
+
+          return new Response(JSON.stringify(periodeResultaat(plan, doel.start)), { status: 200 });
+        }
+
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/dekking")) {
+          return new Response(JSON.stringify(DEKKING_NIETS_ONTBREEKT), { status: 200 });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(plan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    renderKalender();
+    await waitFor(() => expect(hergenereerknop(1)).toBeInTheDocument());
+
+    fireEvent.click(hergenereerknop(doel.ordinaal));
+
+    // The pressed column says so, and it is the ONLY one that does.
+    await waitFor(() =>
+      expect(hergenereerknop(doel.ordinaal).textContent).toContain(t("kalender.genereerBezig")),
+    );
+    const ander = hergenereerknop(2);
+    expect(ander.textContent).toContain(t("kalender.periodeHergenereer"));
+
+    // And no second run can be started underneath it, which is what kept the label honest.
+    expect(ander).toBeDisabled();
+    expect(hergenereerknop(doel.ordinaal)).toBeDisabled();
+
+    laatBinnen?.();
+    await waitFor(() => expect(hergenereerknop(2)).toBeEnabled());
+  });
+
   it("heeft geen axe-schendingen met een bezette periode op het bord", async () => {
     const bezet = rooster.blokken[1];
     const plan: Jaarplan = {

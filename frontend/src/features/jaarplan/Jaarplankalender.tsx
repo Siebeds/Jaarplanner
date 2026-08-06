@@ -1077,6 +1077,9 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                       bezig:
                         periodegeneratie.isPending &&
                         periodegeneratie.variables === segment.blok.start,
+                      wachten:
+                        periodegeneratie.isPending &&
+                        periodegeneratie.variables !== segment.blok.start,
                       foutsoort:
                         periodegeneratie.isError &&
                         periodegeneratie.variables === segment.blok.start
