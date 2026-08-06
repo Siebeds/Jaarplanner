@@ -36,6 +36,11 @@ export interface SpreidingsoverzichtProps {
    * So the rule is now stated by what a line is *about*: the counts of what this run added, kept, replaced and
    * skipped stay (they are facts about the run and remain true forever), and everything measured **over the plan** is
    * withheld together.
+   *
+   * **That rule is applied to the parameter report too, and it lands the other way** (antagonist round 3): its
+   * sentences are run facts, so it stays visible, but two of them were phrased as present-tense claims about the plan
+   * and had to be reworded before that was true. A block is not exempt because it sits outside the branch; it is
+   * outside the branch because every sentence in it survives an edit.
    */
   verouderd?: Verouderingsreden | null;
 }
@@ -101,87 +106,98 @@ export function Spreidingsoverzicht({ resultaat, verouderd = null }: Spreidingso
       )}
 
       {verouderd !== null ? (
-        /* One notice governing every measurement below it, rather than one per block. Placed where the measurements
-           would have been, so it reads as their replacement rather than as a remark about the counts above it. */
+        /* One notice replacing every plan-measured block at once, rather than one per block. Placed where those
+           measurements would have been, so it reads as their replacement rather than as a remark about the run counts
+           above it.
+
+           **It does not govern the parameter report below it, and saying that it did was wrong** (antagonist round 3).
+           That report is outside this branch on purpose: every sentence in it is a fact about the run ("de AI koos een
+           ander thema", "vast moment meegenomen"), and a fact about the run stays true no matter what the teacher
+           edits afterwards. The two sentences that were NOT run facts are the reason this comment had to be corrected
+           rather than merely believed: `rapportGeweigerd` said "Thema's die **nu** in geen enkele themaperiode staan"
+           and `rapportGeweigerdWatNu` told the teacher to give it a period, both still printing after the teacher had
+           done exactly that. They are reworded as run facts instead of being withheld, because the refusal block
+           carries the model's motivation and is the only place that proposal can still be read. */
         <p className="mt-4 border-t border-border pt-3 text-xs text-ink-zacht">
           {t(verouderd === "bereik" ? "kalender.metingenVerouderdBereik" : "kalender.metingenVerouderd")}
         </p>
       ) : (
         <>
-      {spreiding && (
-        <div className="mt-4 border-t border-border pt-3">
-          <h3 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
-            {t("kalender.spreidingTitel")}
-          </h3>
+          {spreiding && (
+            <div className="mt-4 border-t border-border pt-3">
+              <h3 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-zacht">
+                {t("kalender.spreidingTitel")}
+              </h3>
 
-          <ul className="mt-1.5 flex flex-col gap-1 text-xs text-ink" data-cijfers>
-            <li>
-              {/* Through `tAantal` on the TOTAL, because that is the number the noun follows: "1 van 1 themaperiodes
-                  gebruikt" was ungrammatical on a year deriving a single period. Pre-existing, and neither E3-02 nor
-                  E3-09 authored it — it surfaced when E3-09 widened `catalogus.test.ts` to stop finding counts by
-                  placeholder NAME (`{aantal}`) and start finding them by the noun that follows them. Fixed rather than
-                  exempted: the guard is new, so this is its first real catch and waving it through would teach the next
-                  reader that the list is advisory. */}
-              {tAantal(
-                spreiding.aantalBlokken,
-                "kalender.spreidingBlokkenEnkelvoud",
-                "kalender.spreidingBlokken",
-                {
-                  gebruikt: spreiding.aantalGebruikteBlokken,
-                  totaal: spreiding.aantalBlokken,
-                },
-              )}
-            </li>
+              <ul className="mt-1.5 flex flex-col gap-1 text-xs text-ink" data-cijfers>
+                <li>
+                  {/* Through `tAantal` on the TOTAL, because that is the number the noun follows: "1 van 1
+                      themaperiodes gebruikt" was ungrammatical on a year deriving a single period. Pre-existing, and
+                      neither E3-02 nor E3-09 authored it — it surfaced when E3-09 widened `catalogus.test.ts` to stop
+                      finding counts by placeholder NAME (`{aantal}`) and start finding them by the noun that follows
+                      them. Fixed rather than exempted: the guard is new, so this is its first real catch and waving it
+                      through would teach the next reader that the list is advisory. */}
+                  {tAantal(
+                    spreiding.aantalBlokken,
+                    "kalender.spreidingBlokkenEnkelvoud",
+                    "kalender.spreidingBlokken",
+                    {
+                      gebruikt: spreiding.aantalGebruikteBlokken,
+                      totaal: spreiding.aantalBlokken,
+                    },
+                  )}
+                </li>
 
-            {spreiding.legeBlokOrdinalen.length > 0 && (
-              <li>
-                {tAantal(
-                  spreiding.legeBlokOrdinalen.length,
-                  "kalender.spreidingLeegEnkelvoud",
-                  "kalender.spreidingLeeg",
-                  { ordinalen: spreiding.legeBlokOrdinalen.join(", ") },
+                {spreiding.legeBlokOrdinalen.length > 0 && (
+                  <li>
+                    {tAantal(
+                      spreiding.legeBlokOrdinalen.length,
+                      "kalender.spreidingLeegEnkelvoud",
+                      "kalender.spreidingLeeg",
+                      { ordinalen: spreiding.legeBlokOrdinalen.join(", ") },
+                    )}
+                  </li>
                 )}
-              </li>
-            )}
 
-            {spreiding.overbelasteBlokOrdinalen.length > 0 && (
-              /* Icon AND word, never colour alone (Art. XII, WCAG 2.2 AA). */
-              <li className="font-semibold text-attentie-ink">
-                <span aria-hidden="true">▲</span>{" "}
-                {tAantal(
-                  spreiding.overbelasteBlokOrdinalen.length,
-                  "kalender.spreidingOverbelastEnkelvoud",
-                  "kalender.spreidingOverbelast",
-                  { ordinalen: spreiding.overbelasteBlokOrdinalen.join(", ") },
+                {spreiding.overbelasteBlokOrdinalen.length > 0 && (
+                  /* Icon AND word, never colour alone (Art. XII, WCAG 2.2 AA). */
+                  <li className="font-semibold text-attentie-ink">
+                    <span aria-hidden="true">▲</span>{" "}
+                    {tAantal(
+                      spreiding.overbelasteBlokOrdinalen.length,
+                      "kalender.spreidingOverbelastEnkelvoud",
+                      "kalender.spreidingOverbelast",
+                      { ordinalen: spreiding.overbelasteBlokOrdinalen.join(", ") },
+                    )}
+                  </li>
                 )}
-              </li>
-            )}
 
-            {spreiding.aantalGebruikteBlokken > 0 && (
-              <li>
-                {t("kalender.spreidingDoelen", {
-                  minste: spreiding.minsteDoelenInEenBlok,
-                  meeste: spreiding.meesteDoelenInEenBlok,
-                })}
-              </li>
-            )}
-          </ul>
+                {spreiding.aantalGebruikteBlokken > 0 && (
+                  <li>
+                    {t("kalender.spreidingDoelen", {
+                      minste: spreiding.minsteDoelenInEenBlok,
+                      meeste: spreiding.meesteDoelenInEenBlok,
+                    })}
+                  </li>
+                )}
+              </ul>
 
-          <p className="mt-2.5 text-xs italic text-ink-zacht">
-            {t("kalender.spreidingGeenOordeel")}
-          </p>
-        </div>
-      )}
+              <p className="mt-2.5 text-xs italic text-ink-zacht">
+                {t("kalender.spreidingGeenOordeel")}
+              </p>
+            </div>
+          )}
 
-      {/* What the proposal would cover once accepted (E3-03, FR-5.3). Below the spreading rather than above it: the
-          spreading describes what came back, and this describes what it would be worth — a teacher reads the second
-          question after the first. Absent on a failed run, where nothing was persisted to measure. */}
-      {resultaat.vooruitzicht && <Vooruitzichtoverzicht vooruitzicht={resultaat.vooruitzicht} />}
+          {/* What the proposal would cover once accepted (E3-03, FR-5.3). Below the spreading rather than above it:
+              the spreading describes what came back, and this describes what it would be worth — a teacher reads the
+              second question after the first. Absent on a failed run, where nothing was persisted to measure. */}
+          {resultaat.vooruitzicht && <Vooruitzichtoverzicht vooruitzicht={resultaat.vooruitzicht} />}
         </>
       )}
 
       {/* The parameter report belongs to the same run, so it lives in the same panel (E3-04, FR-5.4). It renders
-          nothing when the teacher set no parameters. */}
+          nothing when the teacher set no parameters. Deliberately OUTSIDE the staleness branch above: it states run
+          facts only, which an edit cannot falsify. See the notice's own comment for what that cost to establish. */}
       {resultaat.parameters && <Parameteroverzicht rapport={resultaat.parameters} />}
     </div>
   );

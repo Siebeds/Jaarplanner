@@ -24,7 +24,6 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
     aantalMogelijkGedekt: 12,
     aantalLeerplandoelen: 34,
     aantalOnbereikbaar: 22,
-    aantalWinstBijAanvaarden: 12,
   };
 
   it("toont wat er nu gedekt is naast wat aanvaarden zou opleveren", () => {
@@ -117,7 +116,6 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
           aantalGedekt: null,
           aantalMogelijkGedekt: null,
           aantalOnbereikbaar: null,
-          aantalWinstBijAanvaarden: null,
         }}
       />,
     );
@@ -146,7 +144,6 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
           aantalMogelijkGedekt: 0,
           aantalLeerplandoelen: 0,
           aantalOnbereikbaar: 0,
-          aantalWinstBijAanvaarden: 0,
         }}
       />,
     );
@@ -155,6 +152,31 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
       screen.getByText("Voor dit jaar staan er nog geen leerplandoelen in de tool, dus valt er niets te meten."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/0 van 0/)).not.toBeInTheDocument();
+  });
+
+  it("zegt niet 'voor dit jaar' wanneer er tegen het hele curriculum gemeten wordt", () => {
+    // The sibling branch of the one above, and the one fix round 2 added while its twin was asserted twice
+    // (antagonist round 3). With no jaar/fase in scope, "voor dit jaar" sat directly above "gemeten tegen alle
+    // ingeladen leerplandoelen" — the sentence contradicting the line under it.
+    render(
+      <Vooruitzichtoverzicht
+        vooruitzicht={{
+          ...basis,
+          bereik: "HeelCurriculum",
+          gemetenJaarFasen: [],
+          aantalGedekt: 0,
+          aantalMogelijkGedekt: 0,
+          aantalLeerplandoelen: 0,
+          aantalOnbereikbaar: 0,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Er staan nog geen leerplandoelen in de tool, dus valt er niets te meten."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Voor dit jaar/)).not.toBeInTheDocument();
     expect(screen.queryByText(/0 van 0/)).not.toBeInTheDocument();
   });
 
@@ -168,7 +190,6 @@ describe("Dekkingsvooruitzicht op het generatiepaneel", () => {
           aantalGedekt: null,
           aantalMogelijkGedekt: null,
           aantalOnbereikbaar: null,
-          aantalWinstBijAanvaarden: null,
         }}
       />,
     );

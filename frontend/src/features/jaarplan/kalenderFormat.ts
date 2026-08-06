@@ -316,9 +316,14 @@ export function vervallenPlaatsingen(
  * answers the only question that matters — "do those numbers still describe what I am looking at" — without counting
  * mutations, which would also fire for edits that changed nothing.
  *
- * Status and staleness are in, position is not: a move changes `blokStart`, and it also changes the status to
- * `Manueel`, so the status carries it. `IsVervallen` is in because a placement that stops being stale releases a
- * figure that was being withheld altogether.
+ * **Position is in, and leaving it out was the gap that survived two fix rounds** (antagonist round 3). The comment
+ * here used to argue that `blokStart` was redundant: a move sets the status to `Manueel`, so the status was said to
+ * carry it. That holds only for a placement that was not *already* `Manueel`. Moving one that is — a kept hand
+ * placement, which is what `aantalBehouden` preserves across a run, or anything E4-03 placed — changes `blokStart`
+ * and nothing else this function reads, so the panel went on printing "▲ Te vol: themaperiode 2" and "Nog leeg:
+ * themaperiode 3" above a board that had just stopped agreeing with both. The dekking half stays correct through a
+ * move, which is precisely why no test noticed. `IsVervallen` is in because a placement that stops being stale
+ * releases a figure that was being withheld altogether.
  *
  * **`doelcodes` is in too, and leaving it out was a real gap** (antagonist round 2). It is the codes the thema
  * actually carries — themadoelen plus accepted/manual links — so accepting a doelsuggestie on `/themas`, or a
@@ -327,7 +332,10 @@ export function vervallenPlaatsingen(
  */
 export function plaatsingssignatuur(plaatsingen: readonly Themaplaatsing[]): string {
   return plaatsingen
-    .map((p) => `${p.id}:${p.status}:${p.isVervallen ? 1 : 0}:${[...p.doelcodes].sort().join(",")}`)
+    .map(
+      (p) =>
+        `${p.id}:${p.status}:${p.blokStart}:${p.isVervallen ? 1 : 0}:${[...p.doelcodes].sort().join(",")}`,
+    )
     .sort()
     .join("|");
 }

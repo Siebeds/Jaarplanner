@@ -25,11 +25,14 @@ import type { Dekkingsvooruitzicht } from "./types";
  * threshold-free); the dekkingspercentage belongs to E5-03 and a second one computed here could drift from it; and a
  * bar would invite a teacher to accept a plan to make a number go up.
  *
- * **The scope is named rather than counted.** `aantalBuitenBereik` is deliberately not rendered: the obligation to
- * state how many goals a narrowed denominator leaves out sits on the screen that offers the whole-curriculum switch
- * (E5-02), and repeating the figure here without the control would be a number a teacher cannot act on. Saying which
- * jaar/fase was measured is the disclosure this panel owes, and since the kalender's own kleuterjaar chooser now
- * reaches this computation, the scope named here is the one the teacher chose.
+ * **The scope is named rather than counted, and that is now an owner ruling rather than this component's judgement**
+ * (2026-08-06, on antagonist round 3's QUESTION). `aantalBuitenBereik` is deliberately not rendered: the obligation
+ * to state how many goals a narrowed denominator leaves out sits on the screen that offers the whole-curriculum
+ * switch (E5-02), and repeating the figure here without the control would be a number a teacher cannot act on.
+ * Saying which jaar/fase was measured is the disclosure this panel owes, and since the kalender's own kleuterjaar
+ * chooser now reaches this computation, the scope named here is the one the teacher chose. The cost the owner
+ * accepted, stated so nobody has to rediscover it: a kleuterklas narrowed to K3 reads "3 van 40" on the anchor
+ * screen with roughly 118 doelen unmentioned.
  */
 export interface VooruitzichtoverzichtProps {
   vooruitzicht: Dekkingsvooruitzicht;
@@ -99,7 +102,16 @@ export function Vooruitzichtoverzicht({ vooruitzicht }: VooruitzichtoverzichtPro
 
             {/* The line this block exists for, so it carries the weight. Weight rather than colour: the palette is
                 spoken for by doelsoort and status (Art. XII), and a new hue here would compete with the signals the
-                calendar beside it is sending. */}
+                calendar beside it is sending.
+
+                **"alle voorstellen" means the placements on this board, and the owner ruled the local reading
+                sufficient** (2026-08-06, on antagonist round 3's QUESTION). The audit's point was real: a
+                *doelsuggestie* is called a voorstel throughout this product too, and an unaccepted one does NOT raise
+                this ceiling (round 1's MAJOR 1, pinned by
+                `Een_nog_niet_aanvaarde_doelsuggestie_verhoogt_het_plafond_niet`). The sentence was left unqualified
+                anyway rather than lengthened to "alle voorstellen op deze kalender", because it sits inside the
+                generation panel on the kalender with the cards it counts directly beside it. Recorded rather than
+                left implicit: this is a ruled-on ambiguity, not one nobody noticed. */}
             <li className="font-semibold">
               {t("kalender.dekkingMogelijk", {
                 mogelijk: aantalMogelijkGedekt,

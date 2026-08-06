@@ -59,7 +59,6 @@ public sealed class DekkingsvooruitzichtTests
 
         // The two derived figures, which are what the panel actually renders: accepting everything gains two doelen
         // and still leaves one that no placed thema carries at all.
-        Assert.Equal(2, vooruitzicht.AantalWinstBijAanvaarden);
         Assert.Equal(1, vooruitzicht.AantalOnbereikbaar);
     }
 
@@ -155,7 +154,6 @@ public sealed class DekkingsvooruitzichtTests
         // The derived figures follow rather than computing over a null: a screen that shows "nog 2 onbereikbaar"
         // beside "we kunnen dit niet meten" would be the E4-06 contradiction in a new place.
         Assert.Null(vooruitzicht.AantalOnbereikbaar);
-        Assert.Null(vooruitzicht.AantalWinstBijAanvaarden);
 
         // The denominator survives, because it is a property of the curriculum rather than of this plan.
         Assert.Equal(2, vooruitzicht.AantalLeerplandoelen);
@@ -203,7 +201,6 @@ public sealed class DekkingsvooruitzichtTests
 
         Assert.Equal(2, vooruitzicht.AantalGedekt);
         Assert.Equal(2, vooruitzicht.AantalMogelijkGedekt);
-        Assert.Equal(0, vooruitzicht.AantalWinstBijAanvaarden);
         Assert.Equal(1, opslag.AantalKoppelingAanroepen);
     }
 

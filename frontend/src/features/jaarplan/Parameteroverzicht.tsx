@@ -186,8 +186,16 @@ export function Parameteroverzicht({ rapport }: ParameteroverzichtProps) {
       </ul>
 
       {/* Refusals get their own block rather than a list line, because each one carries the model's motivation
-          and is the only place a teacher can still read what was proposed. The thema is now planned NOWHERE, so
-          this is the most actionable thing on the screen after a parameterised run. */}
+          and is the only place a teacher can still read what was proposed. The run left that thema planned nowhere,
+          so this is the most actionable thing on the screen after a parameterised run.
+
+          **Worded as a run fact, and that is a fix rather than a style choice** (antagonist round 3). The heading
+          said "Thema's die *nu* in geen enkele themaperiode staan" and the closing line said "Deze thema's zijn niet
+          ingepland. Geef ze zelf een themaperiode" — both present-tense claims about the current plan, in a panel
+          that is NOT withheld when the plan changes under it. A teacher who followed that instruction then read it
+          again, unchanged, directly below "je hebt het jaarplan aangepast". The remedy survives as a conditional
+          ("staan ze er nog altijd niet"), because this component cannot see the live plan and a remedy that asserts
+          the state it is remedying is the defect. */}
       {geweigerdDoorVastMoment.length > 0 && (
         <div className="mt-3 rounded-md border border-attentie bg-attentie/10 p-3">
           <p className="text-xs font-semibold text-attentie-ink">

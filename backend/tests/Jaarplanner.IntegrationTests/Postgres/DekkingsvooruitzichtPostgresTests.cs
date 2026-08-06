@@ -97,7 +97,6 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
 
         // The two derived getters, which exist only as computed properties on the record.
         Assert.Equal(2, vooruitzicht.AantalOnbereikbaar);
-        Assert.Equal(1, vooruitzicht.AantalWinstBijAanvaarden);
     }
 
     [PostgresFact]
@@ -153,8 +152,7 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         int AantalLeerplandoelen,
         int? AantalGedekt,
         int? AantalMogelijkGedekt,
-        int? AantalOnbereikbaar,
-        int? AantalWinstBijAanvaarden);
+        int? AantalOnbereikbaar);
 
     [PostgresFact]
     public async Task Een_echte_generatie_dekt_nog_niets_en_meldt_wat_aanvaarden_zou_opleveren()
@@ -191,7 +189,6 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         Assert.Equal(0, vooruitzicht.AantalGedekt);
         Assert.Equal(2, vooruitzicht.AantalMogelijkGedekt);
         Assert.Equal(3, vooruitzicht.AantalLeerplandoelen);
-        Assert.Equal(2, vooruitzicht.AantalWinstBijAanvaarden);
 
         // The gap that acceptance cannot close, which is the number FR-5.3 is actually about.
         Assert.Equal(1, vooruitzicht.AantalOnbereikbaar);
@@ -244,7 +241,6 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
 
         Assert.Equal(1, na.AantalGedekt);
         Assert.Equal(2, na.AantalMogelijkGedekt);
-        Assert.Equal(1, na.AantalWinstBijAanvaarden);
 
         // The ceiling did not move, because accepting changes who stands behind a placement and not which doelen the
         // plan can reach. A ceiling that rose on acceptance would mean it was counting the wrong set.

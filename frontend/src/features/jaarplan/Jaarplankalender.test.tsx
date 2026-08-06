@@ -515,7 +515,6 @@ describe("Jaarplankalender", () => {
         aantalMogelijkGedekt: 4,
         aantalLeerplandoelen: 9,
         aantalOnbereikbaar: 5,
-        aantalWinstBijAanvaarden: 4,
       },
     };
 

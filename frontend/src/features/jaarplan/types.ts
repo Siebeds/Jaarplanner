@@ -267,7 +267,6 @@ export interface Dekkingsvooruitzicht {
   /** In scope and carried by no placed thema: the gap accepting cannot close. Null when the figures are withheld. */
   aantalOnbereikbaar: number | null;
   /** What accepting everything would add. Null when the figures are withheld. */
-  aantalWinstBijAanvaarden: number | null;
 }
 
 /**

@@ -126,6 +126,57 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
     }
 
     /// <summary>
+    /// <b>The <c>?jaarFase=</c> query parameter binds and reaches the coverage calculation</b> (E3-03, antagonist
+    /// round 3).
+    /// <para>
+    /// It pins the fix for round 1's MAJOR: without this narrowing the panel's figures and the live dekking line on
+    /// the same screen were measured over two different denominators. That fix was verified at service level only —
+    /// nothing asserted that the value survives the HTTP boundary — so a rename of the parameter, or a
+    /// <c>[FromQuery(Name=…)]</c> slip, would have silently restored the two-denominator state with every test green.
+    /// The frontend half of the same wire is pinned in <c>features/jaarplan/api.test.ts</c>.
+    /// </para>
+    /// <para>
+    /// A <b>kleutergroep</b>, because narrowing needs more than one available code (<c>BepaalBereikAsync</c>): against
+    /// an L3 class the scope is <c>["L3"]</c> whatever the query says, so the test would pass with the parameter
+    /// unbound and prove nothing.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task De_gekozen_jaarfase_uit_de_querystring_versmalt_het_vooruitzicht()
+    {
+        var client = _factory.CreateClient();
+        _factory.Leerjaar = 0;
+
+        try
+        {
+            var (klasId, _) = await _factory.SeedAsync();
+
+            // Without the query the class is measured against everything it could be measured against.
+            var breed = await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+            var breedResultaat = await breed.Content.ReadFromJsonAsync<GeneratieDto>();
+            Assert.Equal(["JK", "K2", "K3"], breedResultaat!.Vooruitzicht!.GemetenJaarFasen);
+
+            // With it, the teacher's own choice on the kalender narrows the denominator.
+            var smal = await client.PostAsync(
+                $"/api/klassen/{klasId}/jaarplan/generatie?jaarFase=K3", content: null);
+            var smalResultaat = await smal.Content.ReadFromJsonAsync<GeneratieDto>();
+            Assert.Equal(["K3"], smalResultaat!.Vooruitzicht!.GemetenJaarFasen);
+
+            // And a code this class could never be measured against is ignored rather than honoured, exactly as
+            // GET …/dekking ignores it, so a stale link cannot break a generation run.
+            var vreemd = await client.PostAsync(
+                $"/api/klassen/{klasId}/jaarplan/generatie?jaarFase=L6", content: null);
+            Assert.Equal(HttpStatusCode.OK, vreemd.StatusCode);
+            var vreemdResultaat = await vreemd.Content.ReadFromJsonAsync<GeneratieDto>();
+            Assert.Equal(["JK", "K2", "K3"], vreemdResultaat!.Vooruitzicht!.GemetenJaarFasen);
+        }
+        finally
+        {
+            _factory.Leerjaar = 3;
+        }
+    }
+
+    /// <summary>
     /// A failed run reports no outlook, for the same reason it reports no spreading: nothing was persisted, so there
     /// is no plan to look ahead over (Art. IV.5). A zero here would read as "this proposal covers nothing", which is a
     /// statement about a plan that does not exist.
@@ -786,8 +837,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         int? AantalGedekt,
         int? AantalMogelijkGedekt,
         int AantalLeerplandoelen,
-        int? AantalOnbereikbaar,
-        int? AantalWinstBijAanvaarden);
+        int? AantalOnbereikbaar);
 
     private sealed record ParameterRapportDto(
         IReadOnlyList<GeweigerdePlaatsingDto> GeweigerdDoorVastMoment,
@@ -834,6 +884,13 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         /// <summary>The canned completion the stub AI client returns; set per test before generating.</summary>
         public string AiAntwoord { get; set; } = """{"plaatsingen":[]}""";
 
+        /// <summary>
+        /// What the stubbed coverage port reports as the class's leerjaar. <c>3</c> matches <see cref="SeedAsync"/>;
+        /// <c>0</c> makes it a kleutergroep, which is the only way the <c>?jaarFase=</c> narrowing becomes visible.
+        /// Reset it in the test that changes it: this factory is a class fixture and is shared.
+        /// </summary>
+        public int? Leerjaar { get; set; } = 3;
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment(Environments.Development);
@@ -871,7 +928,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
                 // passes on Postgres and breaks in memory. Either way the conclusion is the same — a database path is
                 // only verified against a real database, which is why every figure this stub makes unobservable is
                 // asserted in Postgres/DekkingsvooruitzichtPostgresTests instead.
-                services.AddScoped<IDekkingOpslag, LegeDekkingOpslag>();
+                services.AddScoped<IDekkingOpslag>(_ => new LegeDekkingOpslag(() => Leerjaar));
             });
         }
 
@@ -918,6 +975,10 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         /// </summary>
         private sealed class LegeDekkingOpslag : IDekkingOpslag
         {
+            private readonly Func<int?> _leerjaar;
+
+            public LegeDekkingOpslag(Func<int?> leerjaar) => _leerjaar = leerjaar;
+
             public Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
                 Guid klasId,
                 IReadOnlyCollection<Guid> themaIds,
@@ -933,12 +994,18 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
                 Task.FromResult(0);
 
             /// <summary>
-            /// The class's leerjaar, hard-wired to <c>3</c> to match <see cref="SeedAsync"/>'s class. Returning
+            /// The class's leerjaar, <c>3</c> by default to match <see cref="SeedAsync"/>'s class. Returning
             /// <c>null</c> would be simpler and would make every response report a fallback to the whole curriculum,
             /// i.e. the unresolved-graadklas state, which is a lie about this fixture's classes.
+            /// <para>
+            /// Read through a delegate so a test can set <see cref="Factory.Leerjaar"/> to <c>0</c> and get a
+            /// kleutergroep, whose jaar/fase set has three codes. That is the only shape in which the
+            /// <c>?jaarFase=</c> narrowing is observable at all: narrowing requires more than one available code, so
+            /// against an L3 class every value of the query parameter, valid or not, yields the same answer.
+            /// </para>
             /// </summary>
             public Task<int?> HaalLeerjaarAsync(Guid klasId, CancellationToken cancellationToken = default) =>
-                Task.FromResult<int?>(3);
+                Task.FromResult<int?>(_leerjaar());
         }
 
         private sealed class StubAiClient : IAiClient

@@ -144,11 +144,11 @@ public sealed record Dekkingsvooruitzicht(
     public int? AantalOnbereikbaar =>
         AantalMogelijkGedekt is null ? null : AantalLeerplandoelen - AantalMogelijkGedekt;
 
-    /// <summary>
-    /// How many in-scope leerplandoelen accepting every standing proposal would <b>add</b>; <c>null</c> when the
-    /// figures are withheld. Zero when the proposals bring nothing the plan does not already cover, which is a real
-    /// and useful answer: it says the run added no coverage rather than that it added nothing.
-    /// </summary>
-    public int? AantalWinstBijAanvaarden =>
-        AantalMogelijkGedekt is null || AantalGedekt is null ? null : AantalMogelijkGedekt - AantalGedekt;
+    // REMOVED: `AantalWinstBijAanvaarden` (= AantalMogelijkGedekt - AantalGedekt), antagonist round 3.
+    //
+    // It was computed here, serialised, typed on the frontend and asserted across three test layers, and no screen
+    // ever read it. The choice the audit put was "render it or drop it", and dropping is the one that does not invent
+    // a new sentence on the anchor screen inside a fix round: both operands travel on this same payload, so any
+    // consumer that wants the difference can subtract, and a figure nothing reads is a figure nothing protects.
+    // If a screen ever wants it, it comes back with the copy that justifies it.
 }

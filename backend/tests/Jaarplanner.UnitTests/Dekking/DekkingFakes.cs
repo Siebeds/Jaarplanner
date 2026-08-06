@@ -67,9 +67,6 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     /// </summary>
     public IReadOnlyDictionary<Guid, IReadOnlyList<DekkendeKoppeling>>? KoppelingenPerThema { get; set; }
 
-    /// <summary>Every thema id set this port was asked about, in order — one entry per call (E3-03).</summary>
-    public List<IReadOnlyCollection<Guid>> AlleGevraagdeThemaIds { get; } = [];
-
     public Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
         Guid klasId,
         IReadOnlyCollection<Guid> themaIds,
@@ -78,7 +75,6 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
         AantalKoppelingAanroepen++;
         GevraagdeKlasId = klasId;
         GevraagdeThemaIds = themaIds;
-        AlleGevraagdeThemaIds.Add(themaIds.ToList());
 
         if (KoppelingenPerThema is not null)
         {
