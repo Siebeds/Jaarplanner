@@ -243,6 +243,19 @@ doing nothing, because the AI stub had been killed in the previous teardown and 
 defect and not a false one this time, but the same shape: **an environment I had dismantled, measured as if it were
 the product.**
 
+## Closed 2026-08-06 by owner ruling, without a third round
+
+The owner was offered a third round and closed the story instead, on the same basis as E5-01, E4-01, E4-08 and E3-03.
+**What that knowingly accepts is nameable here rather than generic:** each of the two rounds found its MAJOR in the
+previous round's fix, in this one paragraph, pointing opposite ways, so a third round would have attacked the round-2
+rewrite of `kalender.hergenereerUitleg` and the two `genereerVervangen*` keys, and nothing else.
+
+Against that, and it is why the ruling is defensible rather than a coin flip: ronde 2 **re-ran every gate itself**
+instead of reading the figures off this file; it reported per finding which of round 1's were genuinely closed rather
+than crediting the attempt; the round-2 fix changed the sentence's **shape** rather than adding another condition, so
+the specific failure mode (two lists of statuses drifting apart) cannot recur by drift; and the state both MAJORs were
+about was then driven in a browser against real PostgreSQL.
+
 ## What this story does not claim
 
 - **Nothing about per-period regeneration** (E4-05). The copy is scoped to the whole plan in both new strings, which is
