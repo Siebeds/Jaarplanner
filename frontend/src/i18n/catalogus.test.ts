@@ -470,10 +470,27 @@ describe("nl.json — the gaps-only empty state says nothing about coverage", ()
    * directie ruling of 2026-07-28 withholds. So the slot may state the fact and must say nothing about coverage in
    * either direction, including denials.
    *
-   * **Why this is a catalogue guard and not a render test.** A `getByText(t(key))` assertion compares the screen
-   * against the catalogue, so editing the catalogue moves the expectation with it: reverting either false version
-   * failed no test in the suite. Only a guard that reads the VALUE can see this class, which is why this family of
-   * describes exists.
+   * **Why this is a catalogue guard and not a render test, stated precisely because the first version of this note was
+   * too sweeping** (antagonist round 5). A render assertion *can* catch a sentence whose **referent** is missing from
+   * the screen, and two in `Dekkingsoverzicht.test.tsx` do exactly that: *"keeps the doelsoort control on screen…"* and
+   * *"does not say what counts towards a cijfer on a screen that gives no cijfer"*. What it cannot catch is a sentence
+   * whose **content** is false, because `getByText(t(key))` compares the screen against the catalogue and editing the
+   * catalogue moves the expectation with it — reverting either false version below failed no test in the suite. That
+   * class, and only that class, needs a guard that reads the VALUE. Hence this family of describes.
+   *
+   * **The case law, moved here from `CLAUDE.md` where it was too long and got one example wrong** (antagonist round 5).
+   * The standing rule is *a conditional sentence may assert only what its own render condition guarantees*; these are
+   * the four sentences on E5-03 that broke it, each reaching past its branch to something a **different** owner
+   * controlled:
+   * - *"Kies bij Doelsoort een andere soort"* — asserted a **control** rendered by another branch's condition.
+   * - *"… tellen mee in dit cijfer"* — presupposed a **figure** another branch owned.
+   * - empty-state v1 — asserted that `groepen` consults `isBetrouwbaar`. It does not: `toonbareDoelen` never reads it,
+   *   which is why the gaps list renders rows in the withheld state. **Falsified in the frontend, one file away.**
+   * - empty-state v2 — asserted an epistemic property of `isGedekt` that `DekkingService` owns, across the API boundary.
+   *
+   * The last two are listed separately on purpose: `CLAUDE.md` collapsed them into "owned by `DekkingService`", which
+   * was true of one of them, and that lost the more useful half — the code a sentence reaches past is as often in the
+   * same file tree as across the wire. The rule caught three code comments on this story too, by the same mechanism.
    *
    * **Two limits, stated rather than left to be rediscovered** (the E4-06 lesson, already recorded by the
    * `herzienUitleg` guard above). A keyword guard cannot see a paraphrase: *"hieruit volgt niet dat je klaar bent"*
@@ -496,12 +513,23 @@ describe("nl.json — the gaps-only empty state says nothing about coverage", ()
     // this slot has to obey is "state the fact and stop": both false versions were a true first sentence followed by an
     // explanatory second one, and the explanation was the defect each time. A keyword list can only forbid the wording
     // already seen; this forbids the *shape* that produced all of it, whatever words the next author reaches for.
+    // **Splits on a terminator followed by a capital or the end of the string, not on a bare `.`** (antagonist round
+    // 5). A bare `.` treats **Op.stap** as a sentence boundary, and that is the product's own name: it occurs 20 times
+    // in this catalogue, and `bv.` another 15, both in copy of exactly this register. The failure direction was safe (a
+    // build break, never a shipped lie) but the message would have read "expected 1, received 2" on a genuinely single
+    // sentence, and a guard that cries wolf on the product's name is a guard someone deletes.
+    //
+    // Residual, stated rather than left to be found: a second sentence beginning in lowercase evades this. Rare in
+    // Dutch prose, and the keyword assertions below cover the wordings we have actually seen.
     const zinnen = CATALOGUS.get(SLEUTEL)!
       .trim()
-      .split(/[.!?]/)
+      .split(/[.!?](?=\s+[A-Z]|$)/)
       .filter((deel) => deel.trim().length > 0);
 
-    expect(zinnen).toHaveLength(1);
+    expect(
+      zinnen,
+      `${SLEUTEL} must state the fact and stop; an explanatory second sentence is what made both earlier versions false`,
+    ).toHaveLength(1);
   });
 
   it("makes no claim about coverage, in either direction", () => {
