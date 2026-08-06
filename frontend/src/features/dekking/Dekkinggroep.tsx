@@ -53,9 +53,26 @@ export interface DekkinggroepProps {
    * axe does not flag an unresolvable `aria-labelledby` on a `section`.
    */
   kopId: string;
+  /**
+   * The list is showing only the gaps (E5-03), so this group holds a subset of its own rows and its tally is
+   * suppressed.
+   *
+   * **Suppressed rather than recomputed over the whole group.** The tally's one guarantee is that it counts the rows
+   * the group renders (*"derived from the same rows the group renders or the two can disagree"*), and in this view
+   * those rows are all uncovered: the honest count would be "0 van 5 gedekt", which reads as a subdomein with no
+   * coverage at all rather than as a filtered view of one. Restoring the true "3 van 8" would mean counting rows that
+   * are not on screen, breaking that guarantee in the other direction. The missing total is stated once above the
+   * list instead, where it is a property of the view rather than of a group.
+   */
+  toonAlleenOntbrekende?: boolean;
 }
 
-export function Dekkinggroep({ groep, magTellingTonen, kopId }: DekkinggroepProps) {
+export function Dekkinggroep({
+  groep,
+  magTellingTonen,
+  kopId,
+  toonAlleenOntbrekende = false,
+}: DekkinggroepProps) {
   return (
     <section aria-labelledby={kopId}>
       <h4
@@ -65,7 +82,7 @@ export function Dekkinggroep({ groep, magTellingTonen, kopId }: DekkinggroepProp
         <span className="text-sm font-semibold text-ink">
           {t("ongekoppeld.domeinKop", { domein: groep.domein, subdomein: groep.subdomein })}
         </span>
-        {magTellingTonen && (
+        {magTellingTonen && !toonAlleenOntbrekende && (
           <span className="text-xs font-medium text-ink-zacht" data-cijfers>
             {tAantal(groep.doelen.length, "dekking.groepTellingEnkelvoud", "dekking.groepTelling", {
               gedekt: groep.aantalGedekt,

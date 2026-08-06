@@ -6,9 +6,19 @@ import { DEKKINGSBEREIKEN, type Dekkingsbereik } from "./types";
 /**
  * Which leerplandoelen this class is measured against (E5-02, owner ruling 2026-08-04).
  *
- * **It changes the denominator, not a filter over one answer.** Pressing it refetches, because the two scopes are two
- * server-side computations with two different totals. That is why the label is *"Meten tegen"* rather than
- * *"Toon"*: a filter hides rows and leaves the figure alone, and this does the opposite.
+ * **It changes the denominator, and it does so on the server.** Pressing it refetches, because the two scopes are two
+ * server-side computations with two different totals: only the server knows which leerplandoelen exist outside this
+ * class's jaar/fase, so no narrowing of the answer already in hand could produce the wider one.
+ *
+ * > **Corrected by E5-03, because the original distinction stopped being true.** This paragraph used to end: *"That is
+ * > why the label is 'Meten tegen' rather than 'Toon': a filter hides rows and leaves the figure alone, and this does
+ * > the opposite."* E5-03's **doelsoort filter also changes the figure** (FR-9.2: filtering by MD shows minimumdoel-only
+ * > coverage), so "a filter leaves the figure alone" is no longer a property of this screen's filters and cannot be
+ * > this control's distinguishing mark. What survives is the sentence above: this one is answered by the server and
+ * > costs a request; the doelsoort narrowing is applied to the payload already on screen. **The screen's real
+ * > three-way split is now:** this control and the doelsoort filter change *what is measured* and both live in the
+ * > summary; *"Alleen ontbrekende"* changes only *what is shown* and lives on the list, which is why it is the one
+ * > control not sitting here.
  *
  * **Deliberately the same control as the kalender's zoom** (`Weergaveschakelaar`): a two-option track, hand-rolled
  * rather than a new Radix primitive, with state on three carriers so it never rests on colour (Art. XII, WCAG 2.2

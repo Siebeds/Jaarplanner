@@ -1,10 +1,82 @@
+import type { DoelsoortNaam } from "../../components/doelsoort";
 import type { Dekking, DoelDekking } from "./types";
 
 /**
- * The dekkingsoverzicht's pure derivations (E5-02): what the summary may say, and how the flat list of doelen
- * becomes readable groups. Kept out of the components so the two rules that actually carry risk — never printing a
- * figure the server withheld, and never reading "0 of 0" as success — are unit-testable without rendering anything.
+ * The dekkingsoverzicht's pure derivations (E5-02, E5-03): what the summary may say, how the flat list of doelen
+ * becomes readable groups, and what the doelsoort filter does to both. Kept out of the components so the rules that
+ * actually carry risk — never printing a figure the server withheld, never reading "0 of 0" as success, and never
+ * rounding a percentage to a number that contradicts its own fraction — are unit-testable without rendering anything.
  */
+
+/**
+ * The doelsoort the overview is narrowed to, or `null` for all of them (E5-03, FR-9.2).
+ *
+ * **This narrowing changes the figure, and that is the story's own acceptance criterion** (*"filtering by MD shows
+ * minimumdoel-only coverage"*). It is therefore a different kind of control from the "alleen ontbrekende" toggle
+ * beside the list, which hides rows and must leave the figure alone. Two client-side filters over one payload, one
+ * of which is a change of subject and one of which is a change of view: see {@link Dekkingskeuze}.
+ */
+export type Doelsoortkeuze = DoelsoortNaam | null;
+
+/**
+ * What the list is filtered by. Split into the two halves deliberately, because they are not the same kind of thing
+ * and a single "filter" bag would invite the defect this separation exists to prevent.
+ *
+ * - `doelsoort` narrows **what is being measured**. The percentage and the counts follow it.
+ * - `alleenOntbrekende` narrows **what is being shown**. The percentage and the counts must NOT follow it, or the
+ *   screen would report 0% every time a teacher asked to see their gaps.
+ */
+export interface Dekkingskeuze {
+  doelsoort: Doelsoortkeuze;
+  alleenOntbrekende: boolean;
+}
+
+/**
+ * The doelen a given doelsoort narrowing measures over.
+ *
+ * Separate from {@link toonbareDoelen} because the two answer different questions and the summary must never be
+ * computed over the second: `alleenOntbrekende` is a view, not a scope.
+ */
+export function gemetenDoelen(
+  doelen: readonly DoelDekking[],
+  doelsoort: Doelsoortkeuze,
+): DoelDekking[] {
+  return doelsoort === null ? [...doelen] : doelen.filter((doel) => doel.doelsoort === doelsoort);
+}
+
+/** The rows the list actually renders: the measured set, minus the covered ones when only gaps are wanted. */
+export function toonbareDoelen(
+  doelen: readonly DoelDekking[],
+  keuze: Dekkingskeuze,
+): DoelDekking[] {
+  const gemeten = gemetenDoelen(doelen, keuze.doelsoort);
+
+  return keuze.alleenOntbrekende ? gemeten.filter((doel) => !doel.isGedekt) : gemeten;
+}
+
+/** One doelsoort the filter may offer, with how many of this class's in-scope doelen carry it. */
+export interface Doelsoortoptie {
+  doelsoort: DoelsoortNaam;
+  aantal: number;
+}
+
+/**
+ * The doelsoorten actually present in this class's scope, in the order the server sent them.
+ *
+ * **Derived from the payload rather than from the six-member enum**, for the same reason the register's filters are
+ * (`Doelenfilters`): a compiled-in list offers a teacher a doelsoort their curriculum does not contain, and choosing
+ * it yields an empty screen that looks like a fault. Which disciplines are loaded is an open Art. XIV decision, so
+ * the set genuinely varies per school.
+ */
+export function beschikbareDoelsoorten(doelen: readonly DoelDekking[]): Doelsoortoptie[] {
+  const aantallen = new Map<DoelsoortNaam, number>();
+
+  for (const doel of doelen) {
+    aantallen.set(doel.doelsoort, (aantallen.get(doel.doelsoort) ?? 0) + 1);
+  }
+
+  return [...aantallen].map(([doelsoort, aantal]) => ({ doelsoort, aantal }));
+}
 
 /** One (domein, subdomein) group, with its own tally. */
 export interface Dekkingsgroep {
@@ -71,9 +143,39 @@ export function groepeerPerSubdomein(doelen: readonly DoelDekking[]): Dekkingsgr
  * - `ingehouden` — the server withheld the figure because a stale placement is unresolved.
  */
 export type Dekkingscijfer =
-  | { soort: "cijfer"; gedekt: number; totaal: number }
+  | { soort: "cijfer"; gedekt: number; totaal: number; percentage: number }
   | { soort: "nietMeetbaar"; aantalBuitenBereik: number }
+  | { soort: "geenVanDezeSoort" }
   | { soort: "ingehouden"; aantalOnopgeloste: number };
+
+/**
+ * The dekkingspercentage (E5-03, FR-9.2), as a whole number.
+ *
+ * **The two clamps are the whole of this function and neither is cosmetic.** Plain rounding produces two lies that
+ * are precisely the ones an inspectie-facing figure must never tell:
+ *
+ * - `1` of `500` is `0,2%`, which rounds to **0%** and reads as "nothing is covered" while a doel demonstrably is;
+ * - `499` of `500` is `99,8%`, which rounds to **100%** and reads as "everything is covered" while a doel is not.
+ *
+ * So 0% is reserved for a genuinely empty numerator and 100% for a genuinely complete one, and everything in
+ * between is clamped into 1..99. A figure that disagrees with the fraction printed beside it is worse than a
+ * coarse figure, and this screen always prints both.
+ *
+ * Rounds half away from zero (`Math.round`), which for a percentage in 0..100 is ordinary commercial rounding.
+ * Whole numbers rather than one decimal, matching the ruling E3-09 applied to week counts for the same reason:
+ * a decimal invites a precision this computation does not have.
+ */
+export function bepaalPercentage(gedekt: number, totaal: number): number {
+  if (totaal <= 0 || gedekt <= 0) {
+    return 0;
+  }
+
+  if (gedekt >= totaal) {
+    return 100;
+  }
+
+  return Math.min(99, Math.max(1, Math.round((gedekt / totaal) * 100)));
+}
 
 /**
  * Decides which of the three the screen may render.
@@ -95,10 +197,33 @@ export type Dekkingscijfer =
  * that omitted the property instead would make it `undefined`, and `undefined !== null` would send a withheld figure
  * down the `cijfer` branch to render "undefined van 40". The two rules that must never both fail are the flag and the
  * value, so both are checked and disagreement resolves towards withholding.
+ *
+ * **The counts are derived from `gemeten` rather than read from `aantalGedekt` / `aantalLeerplandoelen`, and that is
+ * E5-03's one genuinely risky change** (FR-9.2). A doelsoort narrowing is client-side by the server's own design
+ * (`DekkingWeergave.Doelen`: *"presentation over this one computation rather than second queries that could drift"*),
+ * so under a filter there is no server figure to read and the rows are the only source. Using the rows in **both**
+ * cases rather than switching source on whether a filter is active is the deliberate half: one code path, and
+ * unfiltered it must reproduce the server's own numbers exactly, because the server computes `AantalGedekt` as
+ * `doelen.Count(d => d.IsGedekt)` over this very list (`DekkingService.cs`). A test pins that equality, so a server
+ * that ever stopped agreeing with its own rows would fail here rather than silently let the browser answer.
+ *
+ * **What did NOT move is the gate.** `isBetrouwbaar` and the presence of `aantalGedekt` still decide whether any
+ * figure may be printed, and they are still the server's. That matters more under a filter than without one: the
+ * withheld state leaves `doelen[].isGedekt` fully populated, so counting a subset is a route around the directie
+ * ruling of 2026-07-28 that is open to any caller. It is closed here, once, for every caller.
+ *
+ * @param gemeten The doelen the figure is over: the doelsoort-narrowed set, never the "alleen ontbrekende" one.
  */
-export function bepaalCijfer(dekking: Dekking): Dekkingscijfer {
+export function bepaalCijfer(dekking: Dekking, gemeten: readonly DoelDekking[]): Dekkingscijfer {
   if (dekking.aantalLeerplandoelen === 0) {
     return { soort: "nietMeetbaar", aantalBuitenBereik: dekking.aantalBuitenBereik };
+  }
+
+  // Doelen are loaded and in scope, but none of them is of the chosen doelsoort. Its own state, before the
+  // withholding check and for the same reason `nietMeetbaar` comes first: neither yields a number, and this is the
+  // one a teacher can act on in a single click. Unreachable without a filter, since an empty scope is caught above.
+  if (gemeten.length === 0) {
+    return { soort: "geenVanDezeSoort" };
   }
 
   if (!dekking.isBetrouwbaar || typeof dekking.aantalGedekt !== "number") {
@@ -108,5 +233,12 @@ export function bepaalCijfer(dekking: Dekking): Dekkingscijfer {
     };
   }
 
-  return { soort: "cijfer", gedekt: dekking.aantalGedekt, totaal: dekking.aantalLeerplandoelen };
+  const gedekt = gemeten.filter((doel) => doel.isGedekt).length;
+
+  return {
+    soort: "cijfer",
+    gedekt,
+    totaal: gemeten.length,
+    percentage: bepaalPercentage(gedekt, gemeten.length),
+  };
 }

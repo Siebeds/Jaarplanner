@@ -40,6 +40,10 @@ const CATALOGUS = new Map(bladeren(nl));
 const GEEN_ENKELVOUD_NODIG: Record<string, string> = {
   // A bare parenthesised numeral with no noun to inflect: "Wiskunde (1)" is correct.
   "doelen.optieMetAantal": "no inflected noun, the number stands alone in brackets",
+  // The same shape as `doelen.optieMetAantal` and for the same reason: the count sits alone in brackets after the
+  // doelsoort label, so "Minimumdoel (1)" is correct. Deliberately the same string shape as the register's doelsoort
+  // filter, which is the control this one is modelled on.
+  "dekking.doelsoortOptie": "no inflected noun, the number stands alone in brackets",
   // "nog niet gekoppeld" is a participle phrase and does not inflect: "1 nog niet gekoppeld" is correct.
   "ongekoppeld.aantal": "the trailing phrase does not inflect with the count",
   // `kalender.teVol` used to be exempted here, "unreachable at 1 while VOORLOPIGE_TE_VOL_DREMPEL >= 2", and the

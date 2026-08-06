@@ -594,7 +594,20 @@
     "groepTellingEnkelvoud": "{gedekt} van 1 gedekt",
     "gedekt": "Gedekt",
     "nietGedekt": "Niet gedekt",
-    "dekkendeThemas": "Gedekt door {themas}"
+    "dekkendeThemas": "Gedekt door {themas}",
+    "percentage": "{percentage}%",
+    "doelsoortLabel": "Doelsoort",
+    "doelsoortAlle": "Alle doelsoorten",
+    "doelsoortOptie": "{naam} ({aantal})",
+    "gefilterdOpDoelsoort": "Alleen doelen van de soort {naam} tellen mee in dit cijfer.",
+    "geenVanDezeSoort": "Geen doelen van deze soort",
+    "geenVanDezeSoortUitleg": "Deze klas heeft geen enkel doel van de soort {naam}, dus valt er niets te berekenen. Kies bij Doelsoort een andere soort.",
+    "toonLabel": "Tonen",
+    "toonAlle": "Alle doelen",
+    "toonOntbrekende": "Alleen ontbrekende",
+    "ontbrekendeTelling": "{aantal} doelen nog niet gedekt",
+    "ontbrekendeTellingEnkelvoud": "1 doel nog niet gedekt",
+    "allesGedekt": "Elk doel in dit overzicht is gedekt, dus er ontbreekt hier niets meer."
   },
   "activiteitType": {
     "experiment": "Experiment",

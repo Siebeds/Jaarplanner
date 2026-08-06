@@ -6,12 +6,36 @@ import { useSelectie } from "../../app/useSelectie";
 import { t } from "../../i18n";
 import { Dekkinggroep } from "./Dekkinggroep";
 import { Dekkingsamenvatting } from "./Dekkingsamenvatting";
-import { bepaalCijfer, groepeerPerSubdomein } from "./dekkingFormat";
+import { Dekkingslijstkop } from "./Dekkingslijstkop";
+import {
+  bepaalCijfer,
+  beschikbareDoelsoorten,
+  gemetenDoelen,
+  groepeerPerSubdomein,
+  toonbareDoelen,
+  type Doelsoortkeuze,
+} from "./dekkingFormat";
 import { useDekking } from "./useDekking";
 import { DEKKINGSBEREIKEN, type Dekkingsbereik } from "./types";
 
 /** The scope's query-string parameter, so a shared link opens the same denominator (ADR-0021). */
 export const BEREIK_PARAM = "bereik";
+
+/**
+ * The doelsoort narrowing, in the URL for the same reason as the scope (E5-03).
+ *
+ * It changes the figure, so a link that omitted it would open a different percentage from the one the sender was
+ * looking at. That is the whole argument for the scope being in the URL and it applies here identically.
+ */
+export const DOELSOORT_PARAM = "doelsoort";
+
+/**
+ * Whether the list shows only the gaps.
+ *
+ * In the URL too, though it changes no figure: *"stuur me je ontbrekende doelen"* is the realistic thing a directie
+ * asks a teacher for, and a link that dropped it would open the full list.
+ */
+export const ONTBREKEND_PARAM = "ontbrekend";
 
 /**
  * The narrowed jaar/fase, in the URL for the same reason as the scope: a figure a directie is asked to check must be
@@ -56,8 +80,36 @@ export function DekkingPagina() {
   const jaarFase = searchParams.get(JAARFASE_PARAM) || null;
   const dekking = useDekking(klasId, bereik, jaarFase);
 
+  // Not validated against the six-member enum either, and for the same reason the jaar/fase is not: an unknown value
+  // simply matches no row, which `bepaalCijfer` reports as `geenVanDezeSoort` with a sentence and a way out. A 400 or a
+  // silent reset would both be worse than a screen that says what it is showing.
+  const doelsoort = (searchParams.get(DOELSOORT_PARAM) || null) as Doelsoortkeuze;
+  const alleenOntbrekende = searchParams.get(ONTBREKEND_PARAM) === "1";
+
+  // THE ONE DERIVATION CHAIN, computed here and passed down, so the summary, the list header and every group tally
+  // read the same numbers. The split between these two is the story's central rule: `gemeten` is what the figure is
+  // over (doelsoort only), `getoond` is what the list renders (doelsoort plus the gaps-only view). Deriving the figure
+  // from `getoond` would report 0% whenever a teacher asked to see their gaps.
+  const gemeten = useMemo(
+    () => (dekking.data ? gemetenDoelen(dekking.data.doelen, doelsoort) : []),
+    [dekking.data, doelsoort],
+  );
+
+  const cijfer = useMemo(
+    () => (dekking.data ? bepaalCijfer(dekking.data, gemeten) : null),
+    [dekking.data, gemeten],
+  );
+
   const groepen = useMemo(
-    () => (dekking.data ? groepeerPerSubdomein(dekking.data.doelen) : []),
+    () =>
+      dekking.data
+        ? groepeerPerSubdomein(toonbareDoelen(dekking.data.doelen, { doelsoort, alleenOntbrekende }))
+        : [],
+    [dekking.data, doelsoort, alleenOntbrekende],
+  );
+
+  const doelsoortopties = useMemo(
+    () => (dekking.data ? beschikbareDoelsoorten(dekking.data.doelen) : []),
     [dekking.data],
   );
 
@@ -78,6 +130,33 @@ export function DekkingPagina() {
       params.set(JAARFASE_PARAM, volgende);
     } else {
       params.delete(JAARFASE_PARAM);
+    }
+
+    setSearchParams(params, { replace: true });
+  }
+
+  // Deliberately NOT dropped when the scope changes, unlike the jaar/fase above. A jaar/fase narrowing is a subset of
+  // the class's own codes and means nothing under the whole curriculum, so it has to go; a doelsoort exists in both
+  // scopes and a teacher looking only at minimumdoelen wants to keep doing so while they widen the denominator.
+  function kiesDoelsoort(volgende: Doelsoortkeuze) {
+    const params = new URLSearchParams(searchParams);
+
+    if (volgende) {
+      params.set(DOELSOORT_PARAM, volgende);
+    } else {
+      params.delete(DOELSOORT_PARAM);
+    }
+
+    setSearchParams(params, { replace: true });
+  }
+
+  function kiesAlleenOntbrekende(volgende: boolean) {
+    const params = new URLSearchParams(searchParams);
+
+    if (volgende) {
+      params.set(ONTBREKEND_PARAM, "1");
+    } else {
+      params.delete(ONTBREKEND_PARAM);
     }
 
     setSearchParams(params, { replace: true });
@@ -125,15 +204,43 @@ export function DekkingPagina() {
         </p>
       )}
 
-      {dekking.data && (
+      {dekking.data && cijfer && (
         <>
           <Dekkingsamenvatting
             dekking={dekking.data}
+            cijfer={cijfer}
             bereik={bereik}
             onKiesBereik={kiesBereik}
             gekozenJaarFase={jaarFase}
             onKiesJaarFase={kiesJaarFase}
+            doelsoortopties={doelsoortopties}
+            gekozenDoelsoort={doelsoort}
+            onKiesDoelsoort={kiesDoelsoort}
           />
+
+          {/*
+            The list header, rendered whenever there is a scope to have a view over. Kept OUTSIDE the
+            `groepen.length > 0` guard below on purpose: with "alleen ontbrekende" pressed and nothing missing, the
+            groups are empty and the control that produced that state must still be on screen to press back. A toggle
+            that disappears when it succeeds strands the teacher on an empty list.
+          */}
+          {cijfer.soort !== "nietMeetbaar" && cijfer.soort !== "geenVanDezeSoort" && (
+            <Dekkingslijstkop
+              alleenOntbrekende={alleenOntbrekende}
+              onKies={kiesAlleenOntbrekende}
+              aantalOntbrekend={cijfer.soort === "cijfer" ? cijfer.totaal - cijfer.gedekt : 0}
+              magTellingTonen={cijfer.soort === "cijfer"}
+            />
+          )}
+
+          {/* Every measured doel is covered and the teacher asked to see only the gaps, so there are no rows and that
+              is the good news rather than an empty result. Said in words, because an empty area under a pressed
+              "Alleen ontbrekende" is indistinguishable from a screen that failed to load. */}
+          {alleenOntbrekende && cijfer.soort === "cijfer" && groepen.length === 0 && (
+            <p className="rounded-lg border border-dashed border-border bg-card/70 px-5 py-8 text-center text-sm text-ink">
+              {t("dekking.allesGedekt")}
+            </p>
+          )}
 
           {/* No paging, and that is a decision rather than an omission (recorded on DekkingController). The totals and
               the reliability verdict are properties of the WHOLE scope, so a page of rows could not carry them; and the
@@ -153,10 +260,17 @@ export function DekkingPagina() {
                   // quotes and whitespace, which an `id` may not (see `groepeerPerSubdomein`). The index is stable within
                   // one render of one server answer, which is all an `aria-labelledby` reference needs.
                   kopId={`dekking-groep-${index}`}
-                  // Derived from the same function the summary uses, so the two cannot disagree about whether this plan
-                  // may report a figure. Found in a browser: the summary said it would give no figure while every group
-                  // printed one, and group counts add up to exactly the total that was withheld.
-                  magTellingTonen={bepaalCijfer(dekking.data).soort === "cijfer"}
+                  // The same value the summary renders from, now passed rather than recomputed. It used to call
+                  // `bepaalCijfer` a second time here, which was equal by construction while the function took one
+                  // argument; with a filter in play the two calls would have had to be given the same narrowed list to
+                  // stay equal, and that is a coincidence to rely on rather than a guarantee. Found in a browser once
+                  // already: the summary said it would give no figure while every group printed one, and the group
+                  // counts add up to exactly the total that was withheld.
+                  magTellingTonen={cijfer.soort === "cijfer"}
+                  // With "alleen ontbrekende" pressed a group's rows are only its gaps, so "0 van 3 gedekt" would be a
+                  // count over a subset presented as a count over the group. The tally is suppressed rather than
+                  // recomputed: the honest per-group number in that view is the one the group no longer shows.
+                  toonAlleenOntbrekende={alleenOntbrekende}
                 />
               ))}
             </div>

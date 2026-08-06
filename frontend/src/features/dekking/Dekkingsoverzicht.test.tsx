@@ -714,3 +714,217 @@ describe("Dekkingsoverzicht — de andere toestanden", () => {
     expect(await axe(document.body)).toHaveNoViolations();
   });
 });
+
+/**
+ * A mixed scope: two minimumdoelen (one covered) and three gemeenschappelijke doelen (two covered).
+ *
+ * The numbers are chosen so the filtered and unfiltered figures cannot be confused with each other: unfiltered is
+ * 3 of 5 (60%), narrowed to MD it is 1 of 2 (50%). A fixture where the two coincided would let a screen that ignored
+ * the filter pass every assertion below.
+ */
+function gemengd() {
+  return dekking({
+    doelen: [
+      doel({ code: "MD-01", doelsoort: "Minimumdoel", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+      doel({ code: "MD-02", doelsoort: "Minimumdoel" }),
+      doel({ code: "G-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+      doel({ code: "G-02", isGedekt: true, dekkendeThemas: ["Winter"] }),
+      doel({ code: "G-03" }),
+    ],
+  });
+}
+
+describe("Dekkingsoverzicht — percentage, doelsoortfilter en ontbrekende doelen (E5-03, FR-9.2)", () => {
+  it("shows the percentage and the fraction it was computed from, never the percentage alone", async () => {
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: gemengd() } });
+
+    const paneel = await screen.findByRole("region", { name: t("dekking.titel") });
+
+    expect(within(paneel).getByText(t("dekking.percentage", { percentage: 60 }))).toBeInTheDocument();
+    // The fraction stays, so a reader can check the percentage against it. That is what makes the 1..99 clamp
+    // verifiable by the person looking at the screen rather than only by a unit test.
+    expect(
+      within(paneel).getByText(tAantal(5, "dekking.cijferEnkelvoud", "dekking.cijfer", { gedekt: 3 })),
+    ).toBeInTheDocument();
+  });
+
+  it("shows minimumdoel-only coverage when filtered by MD", async () => {
+    // THE STORY'S ACCEPTANCE CRITERION, in the browser's terms. Unfiltered this class reads 3 of 5; narrowed to
+    // minimumdoelen it must read 1 of 2, and the percentage must move with it.
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: gemengd() } });
+
+    const keuze = await screen.findByLabelText(t("dekking.doelsoortLabel"));
+    fireEvent.change(keuze, { target: { value: "Minimumdoel" } });
+
+    const paneel = samenvatting();
+    await waitFor(() =>
+      expect(within(paneel).getByText(t("dekking.percentage", { percentage: 50 }))).toBeInTheDocument(),
+    );
+    expect(
+      within(paneel).getByText(tAantal(2, "dekking.cijferEnkelvoud", "dekking.cijfer", { gedekt: 1 })),
+    ).toBeInTheDocument();
+
+    // And it says so, because a percentage that rose or fell because the denominator changed is the most misleading
+    // thing this screen could do silently.
+    expect(
+      within(paneel).getByText(t("dekking.gefilterdOpDoelsoort", { naam: t("doelsoort.md") })),
+    ).toBeInTheDocument();
+
+    // The rows follow the same narrowing: the gemeenschappelijke doelen are gone.
+    expect(screen.getByText("MD-01")).toBeInTheDocument();
+    expect(screen.queryByText("G-01")).not.toBeInTheDocument();
+  });
+
+  it("puts the doelsoort narrowing in the URL, because it changes the figure", async () => {
+    // Same argument as the scope (ADR-0021): a link that dropped it would open a different percentage from the one the
+    // sender was looking at, and this figure is the one a directie is asked to check.
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: gemengd() } });
+
+    fireEvent.change(await screen.findByLabelText(t("dekking.doelsoortLabel")), {
+      target: { value: "Minimumdoel" },
+    });
+
+    await waitFor(() =>
+      expect(new URLSearchParams(window.location.search).get("doelsoort")).toBe("Minimumdoel"),
+    );
+  });
+
+  it("opens on the narrowed figure when the URL already carries the doelsoort", async () => {
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel`, { perBereik: { EigenJaarFase: gemengd() } });
+
+    const paneel = await screen.findByRole("region", { name: t("dekking.titel") });
+    expect(within(paneel).getByText(t("dekking.percentage", { percentage: 50 }))).toBeInTheDocument();
+  });
+
+  it("does not offer a filter when the scope holds one doelsoort, because every option would do nothing", async () => {
+    // The E3-06 rule. `dekking()`'s two doelen are both Gemeenschappelijk.
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: dekking() } });
+
+    await screen.findByText("NAT-K3-01");
+
+    expect(screen.queryByLabelText(t("dekking.doelsoortLabel"))).not.toBeInTheDocument();
+  });
+
+  it("says a doelsoort has no doelen rather than reporting nothing to measure", async () => {
+    // Distinct from `nietMeetbaar`, whose remedy is an import. Reached here by a URL naming a doelsoort this class does
+    // not have, which is the realistic route: a stale shared link.
+    renderApp(`${MET_KLAS}&doelsoort=Verdieping`, { perBereik: { EigenJaarFase: gemengd() } });
+
+    expect(await screen.findByText(t("dekking.geenVanDezeSoort"))).toBeInTheDocument();
+    expect(screen.queryByText(t("dekking.nietMeetbaar"))).not.toBeInTheDocument();
+    expect(screen.queryByText(TOTAALVORM)).not.toBeInTheDocument();
+  });
+
+  it("shows only the gaps without changing the figure", async () => {
+    // THE ASYMMETRY THE WHOLE DESIGN RESTS ON. "Alleen ontbrekende" is a view, not a scope: if the figure followed it,
+    // asking to see your gaps would report 0% every single time, because every row left standing is uncovered.
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: gemengd() } });
+
+    fireEvent.click(await screen.findByRole("button", { name: t("dekking.toonOntbrekende") }));
+
+    const paneel = samenvatting();
+    await waitFor(() => expect(screen.queryByText("MD-01")).not.toBeInTheDocument());
+
+    // The rows are only the two uncovered ones...
+    expect(screen.getByText("MD-02")).toBeInTheDocument();
+    expect(screen.getByText("G-03")).toBeInTheDocument();
+    expect(screen.queryByText("G-01")).not.toBeInTheDocument();
+
+    // ...and the figure has not moved.
+    expect(within(paneel).getByText(t("dekking.percentage", { percentage: 60 }))).toBeInTheDocument();
+    expect(
+      within(paneel).getByText(tAantal(5, "dekking.cijferEnkelvoud", "dekking.cijfer", { gedekt: 3 })),
+    ).toBeInTheDocument();
+  });
+
+  it("states how many doelen are still missing, in either view", async () => {
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: gemengd() } });
+
+    // Before pressing anything: the number a teacher came for should not require a click.
+    expect(
+      await screen.findByText(
+        tAantal(2, "dekking.ontbrekendeTellingEnkelvoud", "dekking.ontbrekendeTelling"),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("combines the two narrowings without letting the view half reach the figure", async () => {
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel&ontbrekend=1`, {
+      perBereik: { EigenJaarFase: gemengd() },
+    });
+
+    // Rows: the one uncovered minimumdoel, and nothing else.
+    expect(await screen.findByText("MD-02")).toBeInTheDocument();
+    expect(screen.queryByText("MD-01")).not.toBeInTheDocument();
+    expect(screen.queryByText("G-03")).not.toBeInTheDocument();
+
+    // Figure: minimumdoel-only (the doelsoort half applied) but still counting the covered one (the view half did not).
+    expect(within(samenvatting()).getByText(t("dekking.percentage", { percentage: 50 }))).toBeInTheDocument();
+  });
+
+  it("says everything is covered rather than leaving an empty area under a pressed toggle", async () => {
+    const allesGedekt = dekking({
+      doelen: [
+        doel({ code: "A-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+        doel({ code: "A-02", isGedekt: true, dekkendeThemas: ["Winter"] }),
+      ],
+    });
+    renderApp(`${MET_KLAS}&ontbrekend=1`, { perBereik: { EigenJaarFase: allesGedekt } });
+
+    expect(await screen.findByText(t("dekking.allesGedekt"))).toBeInTheDocument();
+
+    // And the control that produced the state is still there to press back. A toggle that vanishes when it succeeds
+    // strands the teacher on an empty list.
+    expect(screen.getByRole("button", { name: t("dekking.toonAlle") })).toBeInTheDocument();
+  });
+
+  it("drops the per-group tally in the gaps-only view rather than counting a subset as a whole", async () => {
+    // The group then holds only its uncovered rows, so its honest tally would read "0 van 1 gedekt" and describe a
+    // subdomein with no coverage at all. Suppressed; the missing total is stated once above the list instead.
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: gemengd() } });
+
+    const groepTelling = tAantal(5, "dekking.groepTellingEnkelvoud", "dekking.groepTelling", {
+      gedekt: 3,
+    });
+    expect(await screen.findByText(groepTelling)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: t("dekking.toonOntbrekende") }));
+
+    await waitFor(() => expect(screen.queryByText(groepTelling)).not.toBeInTheDocument());
+  });
+
+  it("gives no percentage under a filter while a stale placement withholds the figure", async () => {
+    // THE ROUTE AROUND THE DIRECTIE RULING, closed in the browser as well as in the unit test. The server nulls the
+    // total in this state, but every row still carries its own `isGedekt`, so a client-side count over a filtered
+    // subset could reconstruct precisely the number that is being withheld. A percentage is a second way to print one.
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel`, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: gemengd().doelen,
+          isBetrouwbaar: false,
+          aantalGedekt: null,
+          aantalOnopgelosteVervallenPlaatsingen: 1,
+        }),
+      },
+    });
+
+    expect(await screen.findByText(t("dekking.cijferIngehouden"))).toBeInTheDocument();
+    expect(screen.queryByText(TOTAALVORM)).not.toBeInTheDocument();
+    // The percentage specifically, in every form it could take for this fixture.
+    expect(screen.queryByText(t("dekking.percentage", { percentage: 50 }))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("dekking.percentage", { percentage: 60 }))).not.toBeInTheDocument();
+    // And the missing-count is withheld with it: it is additive with the group tallies, so printing it would hand back
+    // the same total by subtraction.
+    expect(
+      screen.queryByText(tAantal(2, "dekking.ontbrekendeTellingEnkelvoud", "dekking.ontbrekendeTelling")),
+    ).not.toBeInTheDocument();
+  });
+
+  it("has no axe violations with both narrowings on screen", async () => {
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel`, { perBereik: { EigenJaarFase: gemengd() } });
+
+    await screen.findByText("MD-02");
+
+    expect(await axe(document.body)).toHaveNoViolations();
+  });
+});
