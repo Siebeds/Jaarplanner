@@ -57,13 +57,19 @@ export function haalRooster(
 export function genereerJaarplan(
   klasId: string,
   parameters?: Generatieparameters,
+  jaarFase?: string,
 ): Promise<Generatieresultaat> {
   // A body REPLACES the class's kept settings; no body USES them (E3-04 persistence half, owner ruling 2026-07-30).
   // The two are therefore no longer interchangeable, and the difference is what makes clearing possible: an
   // explicitly empty object wipes the settings, where omitting the body would silently reuse them. The form always
   // sends its current state once it has loaded, so `undefined` here means "the form has nothing to say yet" — a run
   // fired before the settings arrived still honours what is stored, which is the right answer either way.
-  return apiFetch<Generatieresultaat>(`/api/klassen/${klasId}/jaarplan/generatie`, {
+  // `jaarFase` narrows only the dekkingsvooruitzicht the response carries, never the run itself (E3-03). It is sent
+  // so the panel's figures and the live dekking line on the same screen are over one denominator: the kalender's
+  // kleuterjaar chooser drives both. The server ignores a code that is not one of this class's own.
+  const query = jaarFase ? `?jaarFase=${encodeURIComponent(jaarFase)}` : "";
+
+  return apiFetch<Generatieresultaat>(`/api/klassen/${klasId}/jaarplan/generatie${query}`, {
     method: "POST",
     ...(parameters ? { body: JSON.stringify(parameters) } : {}),
   });

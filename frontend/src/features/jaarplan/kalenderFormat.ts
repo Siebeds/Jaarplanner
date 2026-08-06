@@ -305,3 +305,37 @@ export function vervallenPlaatsingen(
 
   return plaatsingen.filter((p) => p.isVervallen || !starts.has(p.blokStart));
 }
+
+/**
+ * A signature of a plan's placements: their ids with the state that can change what coverage they contribute.
+ *
+ * **Why coverage needs this at all (E3-03, antagonist round 1).** The generation panel's dekking figures come from the
+ * generation response and nothing invalidates them, while `usePlanMutatie` drops the live dekking cache on every
+ * placement edit. So the moment a teacher accepts a card, the panel and the live coverage line on the same screen
+ * describe two different plans. Comparing this signature of the plan the response carried with the one on screen
+ * answers the only question that matters — "do those numbers still describe what I am looking at" — without counting
+ * mutations, which would also fire for edits that changed nothing.
+ *
+ * **Position is in, and leaving it out was the gap that survived two fix rounds** (antagonist round 3). The comment
+ * here used to argue that `blokStart` was redundant: a move sets the status to `Manueel`, so the status was said to
+ * carry it. That holds only for a placement that was not *already* `Manueel`. Moving one that is — a kept hand
+ * placement, which is what `aantalBehouden` preserves across a run, or anything E4-03 placed — changes `blokStart`
+ * and nothing else this function reads, so the panel went on printing "▲ Te vol: themaperiode 2" and "Nog leeg:
+ * themaperiode 3" above a board that had just stopped agreeing with both. The dekking half stays correct through a
+ * move, which is precisely why no test noticed. `IsVervallen` is in because a placement that stops being stale
+ * releases a figure that was being withheld altogether.
+ *
+ * **`doelcodes` is in too, and leaving it out was a real gap** (antagonist round 2). It is the codes the thema
+ * actually carries — themadoelen plus accepted/manual links — so accepting a doelsuggestie on `/themas`, or a
+ * colleague doing it in another tab, changes the coverage figure while leaving id, status and staleness identical.
+ * The data was already on the object being signed; only the signature was blind to it.
+ */
+export function plaatsingssignatuur(plaatsingen: readonly Themaplaatsing[]): string {
+  return plaatsingen
+    .map(
+      (p) =>
+        `${p.id}:${p.status}:${p.blokStart}:${p.isVervallen ? 1 : 0}:${[...p.doelcodes].sort().join(",")}`,
+    )
+    .sort()
+    .join("|");
+}

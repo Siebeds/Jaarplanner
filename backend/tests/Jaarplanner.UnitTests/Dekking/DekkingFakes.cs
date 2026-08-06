@@ -53,6 +53,20 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
 
     public int AantalKoppelingAanroepen { get; private set; }
 
+    /// <summary>
+    /// Links per thema, for the tests that need the answer to <b>depend</b> on which thema's were asked about
+    /// (E3-03). When set, it is used instead of the flat list.
+    /// <para>
+    /// <b>Why the flat list is not enough for the vooruitzicht.</b> That computation asks this port twice — once for
+    /// the decided placements and once for those plus the standing proposals — and the difference between the two
+    /// answers <i>is</i> the figure under test. A fake that returns everything both times makes
+    /// <c>AantalGedekt</c> and <c>AantalMogelijkGedekt</c> equal by construction, so a service that ignored the
+    /// distinction entirely would pass. The dekking tests below need no such thing, which is why this is opt-in and
+    /// the unfiltered default stays exactly as documented above.
+    /// </para>
+    /// </summary>
+    public IReadOnlyDictionary<Guid, IReadOnlyList<DekkendeKoppeling>>? KoppelingenPerThema { get; set; }
+
     public Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
         Guid klasId,
         IReadOnlyCollection<Guid> themaIds,
@@ -61,6 +75,14 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
         AantalKoppelingAanroepen++;
         GevraagdeKlasId = klasId;
         GevraagdeThemaIds = themaIds;
+
+        if (KoppelingenPerThema is not null)
+        {
+            return Task.FromResult<IReadOnlyList<DekkendeKoppeling>>(
+                themaIds
+                    .SelectMany(id => KoppelingenPerThema.TryGetValue(id, out var lijst) ? lijst : [])
+                    .ToList());
+        }
 
         // Returns everything it was given, UNFILTERED. An earlier revision of this comment claimed the fake filtered
         // by themaIds "so it cannot hand back coverage the service did not request"; it never did, and a documented

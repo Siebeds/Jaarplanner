@@ -439,6 +439,65 @@ public sealed class JaarplanGeneratieServiceTests
     }
 
     /// <summary>
+    /// FR-5.3's <b>asked</b> half (E3-03): the prompt tells the model to aim for full coverage over the year, and
+    /// carries the figures that make the instruction satisfiable.
+    /// <para>
+    /// Split from the measured half for the same reason E3-02 split its own claim: the AI client is a fake in every
+    /// test (Art. IV.6), so "the model achieved good coverage" is unfalsifiable here and asserting it would assert
+    /// the fake. What <i>is</i> verifiable is that the request is not silently missing the instruction — the failure
+    /// mode that would leave FR-5.3 unimplemented while looking done, which is exactly what happened to FR-4.1 and
+    /// FR-8.4 on this project. The result side is <c>DekkingsvooruitzichtTests</c>.
+    /// </para>
+    /// <para>
+    /// <b>It also pins what the coverage section must NOT contain.</b> No target number, no percentage and no
+    /// curriculum: the model is grounded on the school's own thema's only (Art. IV.4), and asking it to judge its own
+    /// coverage against a bar would be the retry loop E3-02 deliberately refused to build (Art. IV.1). The
+    /// denominator is resolved server-side, where the owner's ruling of 2026-08-04 lives.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task De_prompt_vraagt_volledige_dekking_en_zet_er_geen_streefcijfer_in()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var (service, _, client, klas, _, themas) = Opzet("""{"plaatsingen":[]}""", schooljaar);
+
+        await service.GenereerAsync(klas.Id);
+
+        var systeem = client.LaatsteRequest!.SystemPrompt;
+        var prompt = client.LaatsteRequest.UserPrompt;
+
+        // 1. The aim itself, in FR-5.3's own words, under its own heading rather than buried in the spreiding list.
+        Assert.Contains("Dekking (streef naar volledige dekking over het hele schooljaar):", systeem);
+
+        // 2. What coverage actually depends on: the UNION of the placed thema's goals, so as many DIFFERENT ones as
+        //    the chosen combination can reach.
+        Assert.Contains("zoveel mogelijk VERSCHILLENDE leerplandoelen", systeem);
+        Assert.Contains("de combinatie van thema's die samen het meeste dekt", systeem);
+        Assert.Contains("nog nergens anders in het jaarplan voorkomen", systeem);
+
+        // 3. **Selection, not exhaustion** (owner ruling 2026-08-05). The first version asked for every thema to be
+        //    placed at least once, which asserts that every school-wide thema belongs in every class's year. The
+        //    owner ruled that each class may have its own thema's, so the library is an offer. Asserted in both
+        //    directions, because the earlier sentence was individually plausible and would read as an improvement to
+        //    anyone re-adding it.
+        Assert.Contains("Je hoeft niet elk thema te gebruiken", systeem);
+        Assert.Contains("niet een verplichte inhoud voor deze klas", systeem);
+        Assert.DoesNotContain("Plaats elk thema minstens", systeem);
+
+        // 4. The library's size, beside the block count E3-02 added: together they show whether this is a selection
+        //    problem at all. (Its justification changed with the ruling above; the figure did not.)
+        Assert.Contains($"Aantal thema's: {themas.Count}", prompt);
+
+        // 5. No target, no percentage, no curriculum in the prompt. Asserted rather than assumed, because a
+        //    well-meaning "streef naar minstens 80%" is the obvious next edit and it would hand the judgement to the
+        //    model (Art. IV.1) using a denominator it cannot see.
+        Assert.DoesNotContain("%", systeem);
+        Assert.DoesNotContain("procent", systeem, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("minstens 8", systeem);
+        Assert.DoesNotContain("minimumdoel", systeem, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// The run reports how the resulting plan is spread (E3-02), so a teacher sees a clumped proposal as clumped.
     /// It is <b>advisory</b>: the badly spread plan is still returned in full and the run still succeeds
     /// (Art. IV.1) — a generator that rejected its own output would be deciding for the teacher.

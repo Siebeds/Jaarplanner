@@ -1,3 +1,5 @@
+using Jaarplanner.Application.Dekking;
+
 namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
@@ -128,6 +130,38 @@ public sealed record JaarplanGeneratieResultaat
     /// </para>
     /// </summary>
     public ParameterRapport? Parameters { get; }
+
+    /// <summary>
+    /// What the resulting plan <b>would</b> cover if the teacher accepted every proposal in it, beside what it covers
+    /// today (E3-03, FR-5.3). <c>null</c> on failure, and <c>null</c> on a path that did not ask for it.
+    /// <para>
+    /// <b>Set by the caller after the run rather than produced by the generation service.</b> The coverage rules live
+    /// in <c>DekkingService</c> — one owner for which link layers count, which placement statuses count and which
+    /// goals are in scope — and that service reads the plan through <c>IJaarplanLezer</c>, which
+    /// <c>JaarplanGeneratieService</c> itself implements, so a generator depending on it under constructor injection
+    /// would close the loop. A second, leaner coverage computation beside the generator is the alternative that was
+    /// rejected outright: that is precisely the divergence this codebase has already paid for twice (the te-vol
+    /// threshold, the four link layers).
+    /// </para>
+    /// <para>
+    /// <b>The cycle rules out one alternative, not all of them, and saying otherwise would overstate the case</b>
+    /// (antagonist round 1). A third Application-layer type depending on both services has no cycle at all. It was not
+    /// built because it would be a class whose entire body is these two calls, on a project whose architecture note
+    /// says to favour clarity over ceremony — that is a judgement about ceremony, not a constraint. The controller
+    /// applies no rule; it asks and attaches.
+    /// </para>
+    /// <para>
+    /// <b>Consequence a new generation path must handle:</b> an endpoint that runs a generation and does not attach
+    /// this leaves the panel's dekking section out. That fails visibly rather than silently, but it is an obligation —
+    /// noted against E4-04/E4-05 in <c>backlog/E4-bewerking-hergeneratie.md</c>.
+    /// </para>
+    /// <para>
+    /// <b>Advisory like every other report here</b> (Art. IV.1): it never fails a run, never retries one and carries no
+    /// target. And it is a prospect, never proof — see <see cref="Dekkingsvooruitzicht"/> for why a fresh plan covers
+    /// nothing at all and why that is correct.
+    /// </para>
+    /// </summary>
+    public Dekkingsvooruitzicht? Vooruitzicht { get; init; }
 
     /// <summary>Builds a success result.</summary>
     public static JaarplanGeneratieResultaat Geslaagd(

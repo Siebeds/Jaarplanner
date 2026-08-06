@@ -21,7 +21,7 @@ import { useDekking } from "../dekking/useDekking";
 import { Jaarspine } from "./Jaarspine";
 import { Periodekolom, Vakantiegat } from "./Periodekolom";
 import { Generatieparametersformulier, type Periodestaat } from "./Generatieparametersformulier";
-import { Spreidingsoverzicht } from "./Spreidingsoverzicht";
+import { Spreidingsoverzicht, type Verouderingsreden } from "./Spreidingsoverzicht";
 import { Sleepkaart, Themakaart, type Verplaatsstaat } from "./Themakaart";
 import { Weergaveschakelaar } from "./Weergaveschakelaar";
 import {
@@ -32,6 +32,7 @@ import {
   formatteerOrdinalen,
   geplandeIn,
   plaatsingenIn,
+  plaatsingssignatuur,
   themaPeriodeOrdinalen,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
@@ -157,7 +158,9 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // themaperiodes by definition.
   const generatieRooster = usePlanningsrooster(jaarplan.data?.schooljaarId, GENERATIEBLOKNIVEAU);
 
-  const generatie = useGenereerJaarplan(klasId);
+  // The chosen kleuterjaar travels with the run, so the panel's dekkingsvooruitzicht and the live dekking line
+  // above it are measured against the same set (E3-03, antagonist round 1).
+  const generatie = useGenereerJaarplan(klasId, jaarFase ?? undefined);
   const verplaats = useVerplaatsPlaatsing(klasId);
 
   // Whether the teacher has pressed *Opnieuw proberen* on a failed grid fetch.
@@ -462,6 +465,34 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
       ? new Set(plan.blokken.filter((blok) => blok.isOverbelast).map((blok) => blok.start))
       : new Set<string>();
 
+  // Whether the last run's MEASUREMENTS still describe what is on screen, and if not, why (E3-03).
+  //
+  // Two causes, because they need two different sentences. The plan itself may have changed — compared by signature
+  // rather than by a mutation counter, so an edit that changes nothing does not blank a correct figure while a change
+  // arriving through a refetch does. Or the teacher may have moved the kleuterjaar chooser afterwards, which leaves
+  // the plan alone and changes the DENOMINATOR: the live dekking line re-fetches on the new scope while the panel
+  // keeps figures over the old one, which is the two-denominator state in a second guise (antagonist rounds 1 and 2).
+  //
+  // A response carrying no plan (only the failure path) is treated as unchanged: there is nothing to disagree with.
+  // The `bereik` half needs to know the CURRENT scope, and `[]` does not mean "the whole curriculum" — it means the
+  // latch has not been filled yet, because `/dekking` has not answered once (antagonist round 3). With a persistently
+  // failing `/dekking` it never fills at all. Comparing an empty list against a server that reported `["L3"]`
+  // mismatches, so the panel told a teacher "je meet nu tegen een ander jaar" while they had changed nothing and had
+  // no chooser on screen to change it with, and suppressed the whole report with it. When the current scope is
+  // unknown the honest answer is "not stale": a withheld figure needs a reason a teacher can act on.
+  const gemetenBereik = generatie.data?.vooruitzicht?.gemetenJaarFasen;
+  const huidigBereik = jaarFase !== null ? [jaarFase] : beschikbareJaarFasen;
+  const verouderingsreden: Verouderingsreden | null = !generatie.isSuccess
+    ? null
+    : generatie.data.jaarplan !== null &&
+        plaatsingssignatuur(generatie.data.jaarplan.plaatsingen) !== plaatsingssignatuur(plan.plaatsingen)
+      ? "plan"
+      : gemetenBereik !== undefined &&
+          huidigBereik.length > 0 &&
+          gemetenBereik.join(",") !== huidigBereik.join(",")
+        ? "bereik"
+        : null;
+
   // How many placements are still waiting for a teacher's decision (E4-02). Counted over the whole plan rather than
   // over `grid.blokken`, deliberately: a **stale** proposal sits in no block at all, and it is still a decision the
   // teacher owes (it can be rejected, which is what resolves it). Reading it off the grid would hide exactly the
@@ -744,7 +775,9 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             </p>
           )}
 
-          {generatie.isSuccess && <Spreidingsoverzicht resultaat={generatie.data} />}
+          {generatie.isSuccess && (
+            <Spreidingsoverzicht resultaat={generatie.data} verouderd={verouderingsreden} />
+          )}
         </div>
 
         {grid.blokken.length > 0 && (
