@@ -48,9 +48,41 @@
   > *Not urgent, and worth saying so:* no teacher can read the contradiction until this story puts a number on a screen. That is exactly why it is cheap to fix now.
   > *Also inherited, smaller:* `DekkingService`'s comment justifies poisoning the figure on a stale `voorgesteld` placement with *"the teacher may still accept it"*. After E4-02 they cannot (accepting is withheld on a stale card, rejecting is not). The conclusion survives, because re-placement still raises the figure; the stated reason is half stale, so do not quote it.
 
-- [ ] **E5-03 — Coverage % + missing-goals list + doelsoort filter**
+- [x] **E5-03 — Coverage % + missing-goals list + doelsoort filter** — *done 2026-08-06*
   Show dekkingspercentage, list ontbrekende doelen, filter by doelsoort (e.g. only minimumdoelen).
   *Done when:* filtering by MD shows minimumdoel-only coverage. Ref: FR-9.2.
+  **Measured in a browser: 43% unfiltered (6 of 14) becomes 63% narrowed to MD (5 of 8)**, against a real API and real
+  PostgreSQL. Client-side over the one payload E5-02 already fetches, which is what `DekkingWeergave.Doelen` was
+  designed for and says so. **No backend behaviour changed**; the single backend commit is a test.
+  *Gates:* 567 frontend / 23 files + 15 Postgres integration tests, 0 failed, 0 skipped; lint, build and
+  `dotnet format` clean; **23 mutations, 22 bite** (the 23rd provably cannot — see the worklog).
+  **Eight antagonist rounds, every one of which found something.** Full record in
+  [`backlog/worklogs/E5-03/worklog.md`](worklogs/E5-03/worklog.md).
+  > **The design question this story turned out to be about was not the percentage.** It was *which* narrowing may
+  > touch the figure. **Doelsoort** changes what is measured, so the figure follows it; **"alleen ontbrekende"** changes
+  > only what is shown, and a figure that followed *that* would report 0% every time a teacher asked to see their gaps.
+  > Two client-side filters over one payload, one a change of subject and one a change of view. It also falsified a
+  > documented distinction on `Bereikschakelaar` (*"a filter hides rows and leaves the figure alone"*), now rewritten.
+  > **The trap, for whoever adds the next figure here:** the server nulls `aantalGedekt` while a placement is stale,
+  > but every row still carries its own `isGedekt`, so a client-side count over a filtered subset reconstructs exactly
+  > the total the directie ruling of 2026-07-28 withholds. That route was open to any caller and is now closed in
+  > `bepaalCijfer` alone. **Route any third figure through it.**
+  > **`bepaalPercentage` clamps to 1..99.** Plain rounding turns 1 of 500 into "0%" and 499 of 500 into "100%", and the
+  > second is the worst thing an inspectie-facing screen can say. The fraction is always printed beside it.
+  > **What this story did NOT do, so no later story credits itself with it:** the gap-analyse grouped by discipline and
+  > actionable from the kalender is **E5-05**; the minimumdoel level is **E5-04** and stays blocked on E1-12. An
+  > MD-doelsoort filter is *not* minimumdoelniveau — Art. V.1 makes a minimumdoel covered when **one** concorded
+  > leerplandoel is, aggregated over distinct refs — and the screen now says so in its own copy rather than leaving a
+  > directie to read "63%" as coverage of the minimumdoelen.
+  > **Six of the eight rounds' defects were user-facing copy and not one was an arithmetic error.** From round 2 onward
+  > **every round's findings sat in the fix round that answered the previous one**; no round after the first found a
+  > defect from the original build. One empty-state sentence took three attempts, false in one direction and then the
+  > other. That produced the standing rule now in `CLAUDE.md`: *a conditional sentence may assert only what its own
+  > render condition guarantees*, with the corollary that when the honest explanation is forbidden you say **less**,
+  > never something else.
+  > **Owed, and it is not this story's defect:** `Dekkingsamenvatting`'s *"Naar Inladen"* link has no `search`, so it
+  > drops the klas/schooljaar selection. On `main`, predates E5-03; E5-02's round-2 audit enumerated every `to={` and
+  > concluded the vervallen marker was the only one missing it, so that conclusion was one short.
 
 - [ ] **E5-04 — Minimumdoel-level coverage (inspection level)**
   Surface coverage at minimumdoel level via concordance — the level the onderwijsinspectie tests.
