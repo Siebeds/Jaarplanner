@@ -665,9 +665,13 @@ function Bewerkpaneel({
           withheld by the rejection itself, and this whole block is gated on `!isGeweigerd`. My round-2 comment claimed "the instruction and the picker appear and disappear
           together"; that was true of the sentence I added and false of the instruction already here.
 
-          The other two branches must NOT be gated: they do not offer a picker, they say where re-placing *does* work
-          (`herplaatsAnderNiveau`) or that the view could not be read (`niveauOnbekend`), and withholding those would
-          take away the only way forward — the E3-06 rule, pointing the other way. */}
+          The other two branches must NOT be gated, and the reason is **by construction**: at those tiers `doelen` is
+          `[]` by definition (see its derivation above), so `kiesbareDoelen.length === 0` there carries no information
+          about blocked periods at all — gating on it would suppress a true sentence on a premise that is not about
+          bezet. They also carry different information (`herplaatsAnderNiveau` says where re-placing *does* work;
+          `niveauOnbekend` says the view could not be read), which is the secondary reason. *An earlier version of this
+          comment gave only that second reason, and phrased it as "withholding those would take away the only way
+          forward" — not decisive on its own, since the board carries `fijnUitleg` at that tier.* */}
       {plaatsing.isVervallen &&
         !isGeweigerd &&
         (verplaatsstaat !== "kan" || kiesbareDoelen.length > 0) && (

@@ -257,9 +257,15 @@
   > violation and deliberately not repaired there:** E4-02's own lesson is that repairing the correct half to fix the
   > broken one is the worse trade, and the convention is what keeps the copy aligned with dekking. It is recorded here
   > because E4-05's own round-3 finding established that a decision living only in the source comment implementing it is
-  > not a record — and this residue now has four strings on it and no owner. E5-02 holds a *different* aspect of the
+  > not a record — and this residue has no owner. **Six copy selections ride on that flag, not four**, and the two
+  > beyond the `*Vervallen` splits are the sharper ones: `kalender.dekkingOnbekend` (`Themakaart.tsx:217`), where the
+  > disagreement card shows a **doelcodes count** while *"Dekking onbekend zolang dit thema geen themaperiode heeft"* is
+  > the true line — which bears directly on the dekking alignment this whole server-flag convention exists to preserve —
+  > and `uitPeriodeHalen` vs `uitJaarplanHalen` (`:1006`), which is a **button label** offering to take a thema out of a
+  > themaperiode it does not have. The four splits are at `:604`, `:706`, `:727` and `:926`. *Counted with a `grep` on
+  > `plaatsing.isVervallen` rather than from memory: the first version of this paragraph said four, which is the number
+  > of `*Vervallen` splits and not the number of strings the residue reaches.* E5-02 holds a *different* aspect of the
   > same disagreement (see the clause above); this is the copy half.
-
   *Done when (added 2026-07-29, E3-01 audit — the compensating control):* ✅ **built.** **deleting a placement that is not `Voorgesteld`, or that is `vergrendeld`, requires an explicit confirmation naming the thema and the period.** E3-01's `DELETE …/plaatsingen/{id}` deliberately ignores status and lock, and the audit sustained that reading: Art. IV.2's *adjustable* presupposes revisable, Art. IX.3 scopes `vergrendeld` to "excluded from **regeneration**", and the endpoint names the exact object so the caller cannot be unaware. What makes that safe is **specificity**, not a status check — the round-1 defect was a *cascade* destroying placements as an unnamed side effect of deleting something else. But it means the only protection for accepted, locked teacher work is a UI confirmation, in a codebase with **no soft-delete and no audit trail**, where the loss is unrecoverable. This clause exists because that obligation would otherwise be recorded nowhere, and this project's record is that unrecorded obligations do not get built (M2 withdrawn; "clear diagnostics" documented but never implemented).
 
 - [x] **E3-08 — Zoom levels (jaar ↔ periode/blok)** — *built on `story/E3-08-zoomniveaus`, branched fresh from `main` (`0de4851`) at the owner's instruction. **Closed 2026-08-03** after **four build rounds and five gate rounds**: final antagonist verdict **COMPLIANT**, test-runner **PASS 9/9** on the merged tree, browser-measured against real PostgreSQL. Gates at landing: **229 vitest / 12 files, 0 skipped**, lint 0, `tsc -b` 0, backend provably untouched (three-dot).*

@@ -195,12 +195,16 @@
   > halves false, **the same defect class as the state an owner ruling reopened E3-07 over (there: a stale **rejected** card, where the picker is withheld by the rejection; here: a stale card with every period bezet)**. The new sentence carried the same defect
   > class in a second form (*"nergens **anders** heen"* for a card that is in no period, two lines under a paragraph
   > saying exactly that), which three strings in that same file had already been repaired for. Fixed by gating only the
-  > `kan` branch, because only that branch promises a picker: the other two say where re-placing *does* work
-  > (`herplaatsAnderNiveau`) or that the view could not be read at all (`herplaatsNiveauOnbekend`), and withholding
-  > either would leave the card with no statement whatsoever. *(An earlier revision of this line compressed both into
-  > "say where moving works", which is false of the second: it says where it does **not**, and is the only thing that
-  > state gets. The source comment had it right and the entry did not, which is the wrong way round, since the entry is
-  > what outlives the branch.)* Fixed further by giving the sentence a `*Vervallen` variant. Both pinned, and the round also moved a **vacuous assertion**
+  > `kan` branch, and the reason is **by construction rather than editorial**: at the other two tiers `doelen` is `[]`
+  > by definition (`isGeweigerd || verplaatsstaat !== "kan" ? [] : …`), so `kiesbareDoelen.length === 0` there says
+  > *nothing about blocked periods at all* — gating on it would suppress a true sentence on a premise that is not about
+  > bezet. Those two branches also carry different information (`herplaatsAnderNiveau` says where re-placing **does**
+  > work; `herplaatsNiveauOnbekend` says the view could not be read at all), which is the secondary reason.
+  > *(Two earlier revisions of this line were weaker. The first compressed both branches into "say where moving works",
+  > false of the second, which says where it does **not**. The replacement argued they would leave the card with "no
+  > statement whatsoever" — also not decisive, since the board itself carries `fijnUitleg` at that tier, so the screen
+  > is not silent even when the card is. The entry outlives the branch, so it is the artefact that has to carry the
+  > argument that actually holds.)* Fixed further by giving the sentence a `*Vervallen` variant. Both pinned, and the round also moved a **vacuous assertion**
   > that appeared to check the claim while standing on a card that could not exercise it.
   > **Inherited from E3-03 via E4-04 (2026-08-06): your new path must attach the dekkingsvooruitzicht itself.** FR-5.3's
   > measured half is composed in `JaarplanController.Genereer`, not inside `JaarplanGeneratieService`, so a second

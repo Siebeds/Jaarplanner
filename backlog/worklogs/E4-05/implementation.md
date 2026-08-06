@@ -265,9 +265,12 @@ been repaired for. *The first draft cited `herplaatsUitlegVervallen`, **a key th
 `herplaatsAnderNiveau`, which was repaired for a different reason. A citation nobody checks is how a comment comes to
 justify itself; the three real precedents make the argument stronger than the invented one did.*
 
-**Fixed by gating only the `kan` branch.** The other two branches must stay: they do not offer a picker, they say where
-re-placing *does* work or that the view could not be read, and withholding those would remove the only way forward —
-the E3-06 rule pointing the other way. A mutation that gates all three bites, which is how that asymmetry is pinned
+**Fixed by gating only the `kan` branch, and the reason is by construction rather than editorial.** At the other two
+tiers `doelen` is `[]` by definition (`isGeweigerd || verplaatsstaat !== "kan" ? [] : …`), so `kiesbareDoelen.length === 0`
+there says nothing about blocked periods at all, and gating on it would suppress a true sentence on a premise that is not
+about bezet. The secondary reason is that those branches carry different information: where re-placing *does* work, or
+that the view could not be read. *An earlier version of this paragraph gave only the second reason and called it "the only
+way forward", which the board's own `fijnUitleg` contradicts at that tier (antagonist round 5).* A mutation that gates all three bites, which is how that asymmetry is pinned
 rather than merely explained.
 
 ### The three MINORs
