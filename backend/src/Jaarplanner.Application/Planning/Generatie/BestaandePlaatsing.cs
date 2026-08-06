@@ -20,3 +20,16 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// <param name="ThemaNaam">The thema's name, as the model must spell it if it refers to it.</param>
 /// <param name="BlokStart">The start date of the block it sits in — never an ordinal (ADR-0020 §3).</param>
 public sealed record BestaandePlaatsing(string ThemaNaam, DateOnly BlokStart);
+
+/// <summary>
+/// One proposal a per-period run refused because it named <b>another</b> period (E4-05, FR-8.2).
+/// <para>
+/// A record rather than the pre-composed <c>"Water @ 2026-11-02"</c> string the four older skip buckets use. Those are
+/// diagnosis; this is <b>presentation</b>: its whole point is the actionable fact that the model thinks this thema
+/// belongs elsewhere, which a teacher reads. Art. II.3's ratified consequence prefers structured fields exactly here,
+/// so the client formats the date and names the period in its own Dutch.
+/// </para>
+/// </summary>
+/// <param name="ThemaNaam">The thema the model proposed.</param>
+/// <param name="BlokStart">The period it proposed it for. The key, never an ordinal (ADR-0020 3).</param>
+public sealed record BuitenPeriodeVoorstel(string ThemaNaam, DateOnly BlokStart);

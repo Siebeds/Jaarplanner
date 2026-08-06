@@ -532,3 +532,44 @@ describe("nl.json — no dead keys under themabeheer", () => {
     expect(ongebruikt).toEqual([]);
   });
 });
+
+describe("nl.json — een aria-label bevat het zichtbare label (WCAG 2.2 SC 2.5.3)", () => {
+  /**
+   * **Label in Name (Level A): the accessible name must contain the visible label**, or speech input cannot reach the
+   * control — a user says what they see, and the browser matches what the name says.
+   *
+   * This guard exists because **axe cannot see it**: SC 2.5.3 is not machine-testable from the DOM alone, so E4-05's
+   * browser pass reported "0 violations, 28 rules" while its new button was failing. The convention this codebase
+   * already followed was to *append* (`plaatsToevoegen` "Thema toevoegen" → `plaatsToevoegenLabel` "Thema toevoegen aan
+   * themaperiode {ordinaal}"); E4-05's first version *substituted* ("Deze periode opnieuw genereren…" → "Themaperiode 3
+   * opnieuw genereren"), which is the failure. Pairs are found by the `<key>` / `<key>Label` naming this feature uses,
+   * so a new control inherits the check by naming its keys the way its siblings do.
+   *
+   * A base string carrying its own placeholder is skipped: its rendered text is not the literal, so a literal
+   * containment test would be meaningless rather than strict.
+   */
+  it("keeps every <key>Label a superset of its visible <key>", () => {
+    const paren = [...CATALOGUS].filter(
+      ([sleutel]) => sleutel.endsWith("Label") && CATALOGUS.has(sleutel.slice(0, -"Label".length)),
+    );
+
+    // Non-vacuity: renaming the convention away must fail here rather than silently switch the guard off.
+    expect(paren.length).toBeGreaterThan(0);
+
+    for (const [labelSleutel, label] of paren) {
+      const zichtbaar = CATALOGUS.get(labelSleutel.slice(0, -"Label".length))!;
+      if (zichtbaar.includes("{")) {
+        continue;
+      }
+
+      // **Case-insensitive**, and that is the standard rather than a loosening: speech-input engines match the
+      // spoken text case-insensitively, and this codebase's own convention puts the interpolation first
+      // (`aanvaardenLabel` = "{thema} aanvaarden" over the visible "Aanvaarden"). A case-sensitive version of this
+      // guard failed on that pair on its first run, i.e. it called the *good* precedent a violation.
+      expect(
+        label.toLowerCase(),
+        `${labelSleutel} does not contain its own visible label "${zichtbaar}" (WCAG 2.2 SC 2.5.3)`,
+      ).toContain(zichtbaar.toLowerCase());
+    }
+  });
+});

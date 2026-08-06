@@ -129,3 +129,61 @@ model is a local stub and everything else is the shipping code (Art. IV.6).
 *And one non-defect worth writing down:* the AI stub read an empty prompt on its first request, because .NET sends
 `JsonContent` **chunked** with no `Content-Length`. The browser then showed a run that placed nothing, which looks
 exactly like a product defect. A test harness that fails quietly is worse than one that fails loudly.
+
+## Fix round 1 (antagonist ronde 1: VIOLATIONS FOUND, 2 MAJOR + 7 MINOR + 2 QUESTION)
+
+The four things the audit was asked to be hostile about came back **clean**: nothing auto-applies, no failed run
+persists, no ordinal is ever a key, and the new write paths do run against real PostgreSQL. Both MAJORs were in the
+**seam between ruling 2 and the shipped UI** — not in the new code, but in the two paths the ruling narrowed.
+
+**MAJOR 1 — ruling 2 was enforced on the drag and not on the drag's mandated alternative.** The board withheld the drop
+target, but the card's *"Verplaats naar"* `<select>` still offered every period, and that control exists to satisfy
+**WCAG 2.2 SC 2.5.7 (Dragging Movements)**. So the one route a teacher without a mouse has was the one route that
+offered a target the server refuses — and the 409 fell through to *"Meld dit aan de beheerder van de tool"*: the tool
+blaming itself, and sending the teacher to escalate, for a rule it had just applied on the strength of their own
+setting. The stale-placement notice is the likeliest way in, since such a card sits in no period and its picker offers
+all of them. Fixed by keeping the blocked period **in the list, disabled, naming the moment**, plus a 409 branch on both
+manual routes.
+
+**MAJOR 2 — the new button failed SC 2.5.3 (Label in Name, Level A).** Visible *"Deze periode opnieuw genereren…"*,
+accessible name *"Themaperiode 3 opnieuw genereren"*: the visible text was not contained in the name, so speech input
+could not reach the control. Every other `aria-label` in this feature appends; this one substituted. **axe cannot see
+SC 2.5.3**, which is why the browser pass's "0 violations, 28 rules" was silent about it — so it is now a
+catalogue-wide guard instead: every `<key>Label` must contain its visible `<key>`. *The first version of that guard was
+case-sensitive and failed on `aanvaardenLabel` ("{thema} aanvaarden" over "Aanvaarden"), i.e. it called the codebase's
+own good precedent a violation. Speech engines match case-insensitively, and so does the guard now.*
+
+**The seven MINORs, all fixed:** the bezet explanation rendered at the fine tier where no column carries the marker (a
+themaperiode's start is also its first sub-block's start, so the naive check was true there); the period-button
+explanation promised a button a fully blocked year has nowhere; the parameter report was measured plan-wide under a
+period-scoped heading; a **stale** placement was described to the model as sitting in a period the same prompt had
+omitted; `BuitenPeriode` shipped `"Water @ 2026-11-02"` to a teacher and is now structured, so the screen composes
+*"Water (themaperiode 4)"*; the `Manueel` half of the seven widened promises had no test and its docstring claimed four
+statuses while pinning two; and the third billable anonymous route is now recorded on **E7-11**, whose AI-cost
+dimension it changes from one call per class to one per period.
+
+### What the re-verification found that the tests could not
+
+**A copy inconsistency in my own fix, found by looking at the select in a browser.** The blocked option read
+*"3: 9 nov – 20 dec (bezet door Oudercontact)"* while every sibling read *"Themaperiode 4: 4 jan – 14 feb"* — my new
+string had dropped the noun, in the one list where a teacher scans for "Themaperiode 3". The test asserted the string
+verbatim, so it passed while the wording disagreed with its neighbours: **a copy test cannot catch an inconsistency it
+was handed.** It is now composed from the sibling string plus the reason.
+
+### Gates after the fix round
+
+- **611 unit + 218 integration**, 0 skipped, real PostgreSQL; `dotnet format --verify-no-changes` **exit 0**.
+  *(Measured by exit code rather than by a pipeline's last command: an earlier line in this session printed
+  "FORMAT CLEAN" from an `&&` chain whose exit status came from `tail`, while format was in fact complaining.)*
+- **546 frontend / 23 files**; `pnpm lint` exit 0, `pnpm build` exit 0.
+- **10 further mutation checks, all biting** (9 in one sweep, plus the SC 2.5.3 one re-run against the literal string
+  after its first anchor missed), so every fix above has a test that fails without it.
+- Browser: the blocked option **disabled and named**, mirroring its siblings, and **axe still 0 violations**.
+
+**Ronde 2 is owed**, and the story entry says so. Two items are deliberately open: the Art. XIV line in
+`backlog/README.md` (the file was claimed by another session, so it was asked for in the groepschat rather than edited
+around the lock), and the audit's question for the owner about whether the settings form should disclose, at the point
+of choosing, that "bezet" now binds the teacher as well as the AI.
+
+*One process note, recorded because it cost the auditor a gate:* the running dev API holds the build output on Windows,
+so `dotnet format` and a full rebuild fail for anyone else with file locks. Stop the API before running either.

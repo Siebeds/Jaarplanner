@@ -88,6 +88,14 @@ export interface PeriodekolomProps {
    */
   bezetDoor: string | null;
   /**
+   * **Every** blocked period, by start date, valued with the moment's name — not just this column's.
+   *
+   * The column itself only needs {@link PeriodekolomProps.bezetDoor}; this is for the cards, whose move picker offers
+   * *other* periods and must not offer a blocked one (E4-05). Threaded through rather than fetched twice, so the board
+   * and every card read one answer.
+   */
+  bezettePeriodes: ReadonlyMap<string, string>;
+  /**
    * Regenerating **this period alone** (E4-05, FR-8.2), or `undefined` where the board does not offer it.
    *
    * The mutation lives once on the board rather than per column, so `bezig` and `foutsoort` are already narrowed to
@@ -200,6 +208,7 @@ export function Periodekolom({
   alGeplaatst,
   belasting,
   bezetDoor,
+  bezettePeriodes,
   hergeneratie,
 }: PeriodekolomProps) {
   const teVol = belasting?.isOverbelast ?? false;
@@ -371,6 +380,7 @@ export function Periodekolom({
                   plaatsing={plaatsing}
                   klasId={klasId}
                   blokken={blokken}
+                  bezettePeriodes={bezettePeriodes}
                   verplaatsstaat={verplaatsstaat}
                 />
               </li>

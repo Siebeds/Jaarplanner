@@ -233,7 +233,7 @@ export interface Generatieresultaat {
    *
    * Always empty on a whole-plan run, where nothing can be out of scope.
    */
-  buitenPeriode: string[];
+  buitenPeriode: BuitenPeriodeVoorstel[];
   /**
    * The period this run regenerated, or `null` for a whole-plan run (FR-8.2 vs FR-8.1).
    *
@@ -398,6 +398,18 @@ export interface GeblokkeerdePeriode {
   blokStart: string;
   /** What the teacher called it ("Oudercontact"), so the reason can name the commitment rather than the rule. */
   momentNaam: string;
+}
+
+/**
+ * One proposal a per-period run refused because it named another period (E4-05).
+ *
+ * **Structured rather than a composed sentence**, unlike the four older skip buckets: this is presentation, so the
+ * client formats it. A teacher reads "Water (themaperiode 4)", never "Water @ 2026-11-02".
+ */
+export interface BuitenPeriodeVoorstel {
+  themaNaam: string;
+  /** The period the model proposed it for, as the key it is (ADR-0020 3). */
+  blokStart: string;
 }
 
 /** Just enough of a thema to offer it in a picker: the name is what the generation contract keys on. */

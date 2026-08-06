@@ -563,7 +563,22 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
 
   // Only the periods on screen. A blocked period that no longer exists in the current grid contributes no column, so
   // counting it here would make the board explain a marker nobody can see.
-  const bezetOpBord = grid.blokken.some((blok: Planningsblok) => bezetteperiodes.has(blok.start));
+  // **Tier-gated, because the marker is** (antagonist round 1, MINOR). A themaperiode's own start date is also the
+  // start of its FIRST subthemaperiode, so at the fine tier `bezetteperiodes.has(blok.start)` is true for that
+  // sub-column while `bezetDoor` is deliberately withheld there — the board then explained a marker no column was
+  // showing, which is verbatim what this was written to prevent. The earlier comment asserted the fine tier could
+  // never reach it; that was the mistake, not the gate.
+  const bezetOpBord =
+    bordNiveau === GENERATIEBLOKNIVEAU &&
+    grid.blokken.some((blok: Planningsblok) => bezetteperiodes.has(blok.start));
+
+  // Whether ANY column offers the per-period button, which is what its explanation asserts (antagonist round 1,
+  // MINOR). `verplaatsstaat === "kan"` alone was not that claim: a year whose every derived themaperiode holds a
+  // blocking moment offers the button nowhere, and the sentence still promised "de knop onderaan die periode".
+  // Reachable on a short school year with two periods and two oudercontacten.
+  const periodeknopOpBord =
+    verplaatsstaat === "kan" &&
+    grid.blokken.some((blok: Planningsblok) => !bezetteperiodes.has(blok.start));
 
   function bijSleepStart(event: DragStartEvent) {
     setSleepKaart((event.active.data.current?.plaatsing as Themaplaatsing) ?? null);
@@ -632,6 +647,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             plaatsingen={vervallen}
             klasId={klasId}
             blokken={grid.blokken}
+            bezettePeriodes={bezetteperiodes}
             verplaatsstaat={verplaatsstaat}
           />
         )}
@@ -872,6 +888,25 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                   (blok: Planningsblok) => blok.start === laatsteRun.geregenereerdePeriode,
                 )?.ordinaal
               }
+              // Composed here, where the grid is, because the panel deliberately holds none. The server sends the
+              // pair structured so a teacher reads "Water (themaperiode 4)" rather than "Water @ 2026-11-02"
+              // (Art. II.3's ratified preference for presentation payloads). A period the current grid cannot name
+              // degrades to a Dutch date rather than to the ISO one.
+              buitenPeriodeLabels={laatsteRun.buitenPeriode.map((voorstel) => {
+                const blok = generatieRooster.data?.blokken.find(
+                  (kandidaat: Planningsblok) => kandidaat.start === voorstel.blokStart,
+                );
+
+                return blok
+                  ? t("kalender.periodeBuitenPeriodeItem", {
+                      thema: voorstel.themaNaam,
+                      ordinaal: blok.ordinaal,
+                    })
+                  : t("kalender.periodeBuitenPeriodeItemDatum", {
+                      thema: voorstel.themaNaam,
+                      datum: formatteerDatum(voorstel.blokStart),
+                    });
+              })}
             />
           )}
         </div>
@@ -914,7 +949,7 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
 
                 Gated on the button existing at all: at the fine tier and on an unreadable grid there is no per-period
                 control in any column, so the sentence would describe something absent. */}
-            {verplaatsstaat === "kan" && (
+            {periodeknopOpBord && (
               <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
                 {t("kalender.periodeHergenereerUitleg")}
               </p>
@@ -1070,6 +1105,10 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                         ? (bezetteperiodes.get(segment.blok.start) ?? null)
                         : null
                     }
+                    // The whole map, for the cards' own move picker. Not tier-gated, unlike `bezetDoor`: the picker
+                    // offers themaperiodes at every zoom (at the fine tier it offers none at all), so narrowing this
+                    // to the coarse tier would re-open the very target the ruling closes.
+                    bezettePeriodes={bezetteperiodes}
                     // The mutation is narrowed to this column here, so the column itself never has to ask whether the
                     // run in flight is its own. `variables` is the block start the teacher last pressed.
                     hergeneratie={{
@@ -1397,11 +1436,19 @@ function TeHerzien({
   plaatsingen,
   klasId,
   blokken,
+  bezettePeriodes,
   verplaatsstaat,
 }: {
   plaatsingen: ReturnType<typeof vervallenPlaatsingen>;
   klasId: string;
   blokken: readonly Planningsblok[];
+  /**
+   * The blocked periods, for the cards' move picker (E4-05).
+   *
+   * **This notice is the likeliest route into a blocked period**, which is why it must not be forgotten here: a stale
+   * placement sits in no period at all, so its picker offers *every* one of them.
+   */
+  bezettePeriodes: ReadonlyMap<string, string>;
   /**
    * Whether these cards can be given a period from here, and if not, why not (E3-08). See {@link Verplaatsstaat}.
    *
@@ -1451,6 +1498,7 @@ function TeHerzien({
               plaatsing={plaatsing}
               klasId={klasId}
               blokken={blokken}
+              bezettePeriodes={bezettePeriodes}
               verplaatsstaat={verplaatsstaat}
             />
             <p className="mt-1 text-xs font-medium text-attentie-ink" data-cijfers>

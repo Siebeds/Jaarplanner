@@ -50,6 +50,20 @@ export interface ThemakaartProps {
   /** Every period of the year, so the panel can offer them as move targets. */
   blokken: readonly Planningsblok[];
   /**
+   * The periods that accept nothing new, by start date, valued with the name of the vast moment blocking each
+   * (E4-05, owner ruling 2026-08-06).
+   *
+   * **This panel needs it because it is the SC 2.5.7 route.** The board withholds the drop target for a blocked
+   * period, but dragging is not the only way in and must not be: this `<select>` is the pointer-and-keyboard
+   * alternative that satisfies *Dragging Movements*. Left un-narrowed it offered every period, so the one route a
+   * teacher without a mouse has was the one route that still proposed a target the server refuses.
+   *
+   * A blocked period is **kept in the list and disabled**, not removed. Removing it would leave a teacher scanning
+   * for a period that is plainly on the board; disabling it with the reason in the option says why in visible text,
+   * which is what the E3-06 rule asks for.
+   */
+  bezettePeriodes: ReadonlyMap<string, string>;
+  /**
    * Whether moving is possible on the board this card is on, and if not, why not (E3-08). See {@link Verplaatsstaat}.
    *
    * Not `kan` at the subthemaperiode zoom, so the grip and the period picker are **absent** rather than
@@ -148,7 +162,13 @@ export interface ThemakaartProps {
  * because re-placement still raises the figure, but the stated reason is now half stale, and E5-02 should not
  * quote it.
  */
-export function Themakaart({ plaatsing, klasId, blokken, verplaatsstaat }: ThemakaartProps) {
+export function Themakaart({
+  plaatsing,
+  klasId,
+  blokken,
+  verplaatsstaat,
+  bezettePeriodes,
+}: ThemakaartProps) {
   const [paneelOpen, setPaneelOpen] = useState(false);
   const paneelId = useId();
 
@@ -373,6 +393,7 @@ export function Themakaart({ plaatsing, klasId, blokken, verplaatsstaat }: Thema
             plaatsing={plaatsing}
             klasId={klasId}
             blokken={blokken}
+            bezettePeriodes={bezettePeriodes}
             statuswijziging={statuswijziging}
             verplaatsstaat={verplaatsstaat}
             onKlaar={() => setPaneelOpen(false)}
@@ -395,6 +416,32 @@ export function Themakaart({ plaatsing, klasId, blokken, verplaatsstaat }: Thema
  * is not in this table at all — it is the `!isGeweigerd` on the paragraph below — so a new member gets a sentence
  * without anyone being made to decide whether a rejected card should be told it. See {@link Verplaatsstaat}.
  */
+/**
+ * Which sentence a failed **move** gets, keyed on the status (E4-05).
+ *
+ * Three cases, and the middle one is new because ruling 2 made a fourth status reachable here. Before it, a 409 fell
+ * through to *"Verplaatsen is nu niet beschikbaar. Meld dit aan de beheerder van de tool."* — the tool blaming itself,
+ * and sending the teacher to escalate, for a rule it had just applied on the strength of the teacher's own setting.
+ *
+ * A named function rather than a nested ternary, per {@link Themakiezer}'s `plaatsFoutmelding` precedent: the point is
+ * that these are three distinct answers and it should read as three.
+ *
+ * - **409** the target is bezet. The picker disables such an option, so reaching this means the page is out of date.
+ * - **400** the teacher can fix it by choosing differently.
+ * - anything else: the tool is broken, and *"kies een periode"* would send them round a loop that cannot succeed.
+ */
+function verplaatsFoutmelding(fout: unknown): string {
+  if (fout instanceof ApiError && fout.status === 409) {
+    return t("kalender.verplaatsBezet");
+  }
+
+  if (fout instanceof ApiError && fout.status === 400) {
+    return t("kalender.verplaatsMislukt");
+  }
+
+  return t("kalender.verplaatsOnbeschikbaar");
+}
+
 const HERPLAATSUITLEG: Record<Verplaatsstaat, TranslationKey> = {
   kan: "kalender.herplaatsKies",
   anderNiveau: "kalender.herplaatsAnderNiveau",
@@ -421,6 +468,7 @@ function Bewerkpaneel({
   plaatsing,
   klasId,
   blokken,
+  bezettePeriodes,
   statuswijziging,
   verplaatsstaat,
   onKlaar,
@@ -429,6 +477,8 @@ function Bewerkpaneel({
   plaatsing: Themaplaatsing;
   klasId: string;
   blokken: readonly Planningsblok[];
+  /** See {@link ThemakaartProps.bezettePeriodes}: this panel is the SC 2.5.7 route, so it needs the same answer. */
+  bezettePeriodes: ReadonlyMap<string, string>;
   /** Owned by {@link Themakaart}: one placement has one status. See the note at its declaration. */
   statuswijziging: ReturnType<typeof useWijzigPlaatsingStatus>;
   verplaatsstaat: Verplaatsstaat;
@@ -661,14 +711,27 @@ function Bewerkpaneel({
             className="w-full rounded-md border border-ink-zacht bg-card px-2 py-1.5 text-xs text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:opacity-60"
           >
             <option value="">{t("kalender.verplaatsKies")}</option>
-            {doelen.map((blok) => (
-              <option key={blok.start} value={blok.start}>
-                {t("kalender.periodeKeuze", {
-                  ordinaal: blok.ordinaal,
-                  periode: formatteerPeriode(blok.start, blok.eind),
-                })}
-              </option>
-            ))}
+            {doelen.map((blok) => {
+              // Kept and DISABLED rather than dropped (E4-05, owner ruling 2026-08-06). A silently shorter list
+              // sends a teacher looking for a period that is plainly on the board; a disabled option names the
+              // period, says it is bezet and names the commitment, all in visible text.
+              const bezetDoor = bezettePeriodes.get(blok.start);
+
+              return (
+                <option key={blok.start} value={blok.start} disabled={bezetDoor !== undefined}>
+                  {bezetDoor !== undefined
+                    ? t("kalender.periodeKeuzeBezet", {
+                        ordinaal: blok.ordinaal,
+                        periode: formatteerPeriode(blok.start, blok.eind),
+                        moment: bezetDoor,
+                      })
+                    : t("kalender.periodeKeuze", {
+                        ordinaal: blok.ordinaal,
+                        periode: formatteerPeriode(blok.start, blok.eind),
+                      })}
+                </option>
+              );
+            })}
           </select>
           {/* The consequence, stated where the action is taken and BEFORE it is taken.
               A move is not reversible: putting the thema back restores the date and nothing else, so the AI
@@ -703,13 +766,7 @@ function Bewerkpaneel({
           {/* 400 means the teacher can fix it by choosing differently; anything else means the tool is broken
               and telling them to "kies een periode" would send them round a loop that cannot succeed. The same
               split the generation panel makes, for the same reason. */}
-          {verplaats.isError && (
-            <Foutmelding>
-              {verplaats.error instanceof ApiError && verplaats.error.status === 400
-                ? t("kalender.verplaatsMislukt")
-                : t("kalender.verplaatsOnbeschikbaar")}
-            </Foutmelding>
-          )}
+          {verplaats.isError && <Foutmelding>{verplaatsFoutmelding(verplaats.error)}</Foutmelding>}
         </div>
       )}
 

@@ -63,6 +63,15 @@ export interface SpreidingsoverzichtProps {
    * is honest; inventing a number from the response's date would be the guess ADR-0020 forbids.
    */
   periodeOrdinaal?: number;
+  /**
+   * The refused out-of-period proposals, already rendered as Dutch labels by the caller (E4-05, fix round 1).
+   *
+   * Composed by the caller for the same reason {@link SpreidingsoverzichtProps.periodeOrdinaal} is passed in: naming a
+   * period needs the grid, and this panel deliberately holds none. The server sends the pair structured
+   * (`BuitenPeriodeVoorstel`) precisely so the client can say "Water (themaperiode 4)" instead of showing a teacher an
+   * ISO date, which is Art. II.3's ratified preference.
+   */
+  buitenPeriodeLabels?: readonly string[];
 }
 
 /**
@@ -75,6 +84,7 @@ export function Spreidingsoverzicht({
   resultaat,
   verouderd = null,
   periodeOrdinaal,
+  buitenPeriodeLabels = [],
 }: SpreidingsoverzichtProps) {
   const { spreiding } = resultaat;
 
@@ -149,9 +159,9 @@ export function Spreidingsoverzicht({
           exists, the date is a real period boundary, and the only thing wrong with the proposal is that the teacher
           asked about a different period. Filing it under "Overgeslagen" would tell them the AI answered with something
           invalid, and it would hide the one fact they might act on: that the model thinks this thema belongs elsewhere. */}
-      {resultaat.buitenPeriode.length > 0 && (
+      {buitenPeriodeLabels.length > 0 && (
         <p className="mt-1.5 text-xs text-ink-zacht">
-          {t("kalender.periodeBuitenPeriode", { details: resultaat.buitenPeriode.join(" · ") })}
+          {t("kalender.periodeBuitenPeriode", { details: buitenPeriodeLabels.join(" · ") })}
         </p>
       )}
 

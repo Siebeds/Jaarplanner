@@ -17,6 +17,7 @@ namespace Jaarplanner.Application.Planning.Generatie;
 public sealed record JaarplanGeneratieResultaat
 {
     private static readonly IReadOnlyList<string> LeegTekst = [];
+    private static readonly IReadOnlyList<BuitenPeriodeVoorstel> GeenBuitenPeriode = [];
 
     private JaarplanGeneratieResultaat(
         bool isGeslaagd,
@@ -178,7 +179,7 @@ public sealed record JaarplanGeneratieResultaat
     /// not propose, which is the silent relocation ADR-0020 forbids.
     /// </para>
     /// </summary>
-    public IReadOnlyList<string> BuitenPeriode { get; init; } = LeegTekst;
+    public IReadOnlyList<BuitenPeriodeVoorstel> BuitenPeriode { get; init; } = GeenBuitenPeriode;
 
     /// <summary>
     /// The start date of the period this run regenerated, or <c>null</c> for a whole-plan run (FR-8.1 vs FR-8.2).

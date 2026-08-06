@@ -144,9 +144,44 @@
   > **Inherited obligation from E3-03 (2026-08-05): a new generation path must attach the dekkingsvooruitzicht itself.** FR-5.3's measured half is composed in `JaarplanController.Genereer` rather than inside `JaarplanGeneratieService`, because `DekkingService` reads the plan through `IJaarplanLezer` — which the generation service implements — so a dependency there would close the loop. **If you reuse `POST …/jaarplan/generatie` you inherit it for free; if you add an endpoint, attach it or the panel silently loses its dekking section.** It fails visibly rather than wrongly, which is why the composition was accepted at that layer, but it is an obligation rather than a guarantee. Same note on **E4-05**.
   > *Where that obligation actually lands, now that E4-04 is closed (added while merging E3-03 in, 2026-08-06):* **E4-04 added no generation path.** It presses the one endpoint that already existed, so the vooruitzicht `JaarplanController.Genereer` composes travels with it unchanged and nothing here had to attach anything. The obligation is therefore **E4-05's** in full, which is the story that adds the second path, and it is repeated on that story below rather than left only here.
 
-- [ ] **E4-05 — Regenerate a single period**
+- [~] **E4-05 — Regenerate a single period** — *built 2026-08-06 on `story/E4-05-periode-hergeneratie` (off `origin/main` `b2401e3`, so E4-04, E4-08 and E3-03 are all in). **Antagonist ronde 1: VIOLATIONS FOUND (2 MAJOR + 7 MINOR + 2 QUESTION), all fixed or routed; ronde 2 is owed and this checkbox says so.** Narrative + full measurements: [`worklogs/E4-05/implementation.md`](worklogs/E4-05/implementation.md).*
   Regenerate one block/period without touching the rest.
   *Done when:* only the chosen period changes. Ref: FR-8.2.
+  > **What ronde 1 found, and both MAJORs were in the seam rather than in the new code.** The four things the audit was
+  > asked to be hostile about came back clean (nothing auto-applies, no failed run persists, no ordinal is ever a key,
+  > the new write paths do run against real PostgreSQL). What it found instead:
+  > 1. **Ruling 2 was enforced on the drag and not on the drag's mandated alternative.** The board withheld the drop
+  >    target for a blocked period, but the *card's* "Verplaats naar" `<select>` — the control that exists to satisfy
+  >    **WCAG 2.2 SC 2.5.7 (Dragging Movements)** — still offered every period. So the one route a teacher without a
+  >    mouse has was the one route that proposed a target the server refuses, and the 409 fell through to *"Meld dit
+  >    aan de beheerder van de tool"*: the tool blaming itself, for a rule it had just applied on the strength of the
+  >    teacher's own setting. The stale-placement notice is the likeliest way in, because such a card sits in no period
+  >    and its picker offers all of them. Fixed by keeping the blocked period in the list **disabled, naming the
+  >    moment** (a silently shorter list sends a teacher hunting for a period that is plainly on the board), plus a 409
+  >    branch on **both** manual routes.
+  > 2. **The new button failed SC 2.5.3 (Label in Name, Level A).** Visible *"Deze periode opnieuw genereren…"*,
+  >    accessible name *"Themaperiode 3 opnieuw genereren"* — the visible text was not in the name, so speech input
+  >    could not reach it. Every other `aria-label` in this feature *appends*; this one *substituted*. **axe cannot see
+  >    this**, so the browser pass's "0 violations" was silent about it, which is exactly why it is now a
+  >    catalogue-wide guard: any `<key>Label` must contain its visible `<key>`, case-insensitively.
+  > *Also fixed:* the bezet explanation rendered at the fine tier where no column carries the marker (a themaperiode's
+  > start is also its first sub-block's start); the period-button explanation promised a button a fully blocked year has
+  > nowhere; the parameter report was measured plan-wide under a period-scoped heading, so a run on period 5 could
+  > report on period 2; a **stale** placement was described to the model as sitting in a period the same prompt had just
+  > omitted; `BuitenPeriode` shipped `"Water @ 2026-11-02"` to a teacher and is now structured, so the client says
+  > *"Water (themaperiode 4)"*; and the `Manueel` half of the seven widened promises was the one still resting on
+  > shared-code reasoning, so it has its own test and the docstring that overclaimed is corrected.
+  > **Routed, not fixed here:** the third billable anonymous route is recorded on **E7-11**, whose own dimension it
+  > changes (one billable call per *period* rather than per class).
+  > **⚠️ One item is open and this story may not close over it.** The Art. XIV entry for the vast-moment question still
+  > ends *"Nothing hard-assumes either reading today"*, which the rulings below made false: the strict reading is
+  > compiled in on three paths. `backlog/README.md` was **claimed by another session (E5-06)** when this was found, so
+  > it was left untouched and asked for in the groepschat rather than edited around the lock.
+  > **The audit's own open question, for the owner:** the settings form asks *"Mag er een thema in die themaperiode?"*
+  > and its blocking answer reads *"Nee, die themaperiode is bezet"* — generic, so not false, and the reason the column
+  > reuses the word. But that answer's **meaning changed**: it used to constrain the AI and now removes the teacher's
+  > own picker and drop target, and the disclosure lives on the board rather than where the choice is made. Should the
+  > form say so at the point of choosing?
   > **Inherited from E3-03 via E4-04 (2026-08-06): your new path must attach the dekkingsvooruitzicht itself.** FR-5.3's
   > measured half is composed in `JaarplanController.Genereer`, not inside `JaarplanGeneratieService`, so a second
   > generation route that does not repeat that composition returns a run report with no coverage figures and nothing

@@ -214,7 +214,12 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
                 blokken,
                 themas,
                 doelBlok,
-                await BestaandePlaatsingenAsync(klasId, themas, doelBlok, cancellationToken),
+                await BestaandePlaatsingenAsync(
+                    klasId,
+                    themas,
+                    doelBlok,
+                    blokken.Select(b => b.Start).ToHashSet(),
+                    cancellationToken),
                 parameters);
 
         var completion = await _aiClient.CompleteAsync(request, cancellationToken);
@@ -259,7 +264,7 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
         var onbekendeBlokken = new List<string>();
         var duplicaten = new List<string>();
         var afgewezen = new List<string>();
-        var buitenPeriode = new List<string>();
+        var buitenPeriode = new List<BuitenPeriodeVoorstel>();
         var geweigerdDoorVastMoment = new List<GeweigerdePlaatsing>();
         var nieuw = 0;
 
@@ -287,7 +292,10 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
             // model did not propose, which is the same silent relocation ADR-0020 forbids for a stale placement.
             if (doelBlok is not null && suggestie.BlokStart != doelBlok.Start)
             {
-                buitenPeriode.Add($"{thema.Naam} @ {Datum(suggestie.BlokStart)}");
+                // Structured, not a pre-composed sentence: this is presentation rather than diagnosis, and
+                // Art. II.3's ratified consequence prefers structured fields precisely so the client can format the
+                // date and name the period in real Dutch instead of showing a teacher "Water @ 2026-11-02".
+                buitenPeriode.Add(new BuitenPeriodeVoorstel(thema.Naam, suggestie.BlokStart));
                 continue;
             }
 
@@ -360,10 +368,28 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
         // spreading report, and — like it — carrying no verdict and triggering no retry (Art. IV.1). The enforced
         // half is handed in because only this method knows what it refused; the advisory half is measured against the
         // plan that came back.
-        var parameterRapport = parameters.IsLeeg
+        // **Scoped the same way the counts are, on a per-period run** (antagonist round 1, MINOR).
+        // `ParameterRapport` judges every kept startthema against the whole plan, so a run on period 5 could print
+        // "De AI koos andere thema's voor themaperiode 2" about a period it was explicitly told not to fill, or claim
+        // credit for compliance a previous whole-plan run produced. Both landed directly under "Alleen themaperiode 5
+        // is opnieuw gegenereerd". This is the call already made for nieuw/behouden/vervangen rather than a new
+        // judgement: a report describes its own run, and this run only ever looked at one period.
+        //
+        // The vaste momenten half is deliberately NOT narrowed: a per-period prompt states every moment too, so
+        // "meegenomen" is true of all of them, and the refusals are handed in explicitly below.
+        var rapportParameters = doelBlok is null
+            ? parameters
+            : parameters with
+            {
+                GewensteStartthemas = parameters.GenormaliseerdeStartthemas()
+                    .Where(keuze => keuze.BlokStart == doelBlok.Start)
+                    .ToList(),
+            };
+
+        var parameterRapport = rapportParameters.IsLeeg
             ? ParameterRapport.Geen
             : ParameterRapport.Meet(
-                parameters,
+                rapportParameters,
                 jaarplan.Plaatsingen.Where(p => p.BlokNiveau == GeneratieNiveau),
                 themas.ToDictionary(t => t.Id),
                 blokStarts,
@@ -476,6 +502,7 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
         Guid klasId,
         IReadOnlyList<Thema> themas,
         Planningsblok doelBlok,
+        IReadOnlySet<DateOnly> blokStarts,
         CancellationToken cancellationToken)
     {
         var jaarplan = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
@@ -488,6 +515,12 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
 
         return jaarplan.Plaatsingen
             .Where(p => p.BlokNiveau == GeneratieNiveau)
+            // A STALE placement is left out (antagonist round 1, MINOR). `IsGepland` only means "not rejected"; it
+            // says nothing about the block still existing, so a placement whose stored date stopped being a period
+            // boundary after a vakantie edit was printed under "In de andere periodes staat dit al" — naming a period
+            // absent from the block list the same prompt had just printed. Same class as the "het jaarplan is nog leeg"
+            // defect one method over, and Art. IV.4 forbids both.
+            .Where(p => blokStarts.Contains(p.BlokStart))
             .Where(p => p.BlokStart == doelBlok.Start ? !p.IsVervangbaar : p.IsGepland)
             // A placement whose thema no longer exists is skipped rather than named: the prompt may only contain
             // thema names the model is allowed to use (Art. IV.4), and an empty name would be worse than an omission.
