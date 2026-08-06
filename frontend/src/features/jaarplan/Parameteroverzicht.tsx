@@ -186,8 +186,22 @@ export function Parameteroverzicht({ rapport }: ParameteroverzichtProps) {
       </ul>
 
       {/* Refusals get their own block rather than a list line, because each one carries the model's motivation
-          and is the only place a teacher can still read what was proposed. The thema is now planned NOWHERE, so
-          this is the most actionable thing on the screen after a parameterised run. */}
+          and is the only place a teacher can still read what was proposed. The run left that thema planned nowhere,
+          so this is the most actionable thing on the screen after a parameterised run.
+
+          **Every sentence is scoped to the PERIOD, never to the thema's place in the plan** (antagonist rounds 3 and
+          4, and round 4 is the one that got it right). Round 3 rewrote the heading to "Thema dat deze generatie niet
+          kon inplannen" and the closing line to "Deze generatie liet het buiten het plan" — better than the
+          present-tense claims they replaced ("staat *nu* in geen enkele themaperiode"), and still false, because
+          `geweigerdDoorVastMoment` is appended **per suggestion** on `(thema, blokStart)` and never consults the rest
+          of the plan. Two paths falsify it with no teacher edit at all: the model may propose one thema for two
+          periods (the prompt explicitly allows it), and (her)generatie keeps decided placements (`aantalBehouden`,
+          E4-06). So the panel could tell a teacher a thema was left out of the plan while that same run's card for it
+          sat on the board, and following the instruction would have created a duplicate.
+
+          The refusal is about one period, so the copy now says only that, which `rapportGeweigerdRegel` had been
+          saying truthfully all along. The remedy is conditional on the thing this component cannot see: "staat het
+          nergens anders in je jaarplan". */}
       {geweigerdDoorVastMoment.length > 0 && (
         <div className="mt-3 rounded-md border border-attentie bg-attentie/10 p-3">
           <p className="text-xs font-semibold text-attentie-ink">

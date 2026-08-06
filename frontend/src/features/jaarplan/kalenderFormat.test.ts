@@ -11,6 +11,7 @@ import {
   wekenInBlok,
   isTeVolMet,
   plaatsingenIn,
+  plaatsingssignatuur,
   vervallenPlaatsingen,
 } from "./kalenderFormat";
 import { PLANNINGSBLOKNIVEAUS, leesNiveau } from "./types";
@@ -336,5 +337,69 @@ describe("leesNiveau", () => {
 
     expect(labels).toHaveLength(PLANNINGSBLOKNIVEAUS.length);
     expect(new Set(labels).size).toBe(labels.length);
+  });
+});
+
+/**
+ * The signature the generation panel decides staleness with (E3-03).
+ *
+ * **Every one of these is a defect that shipped, not a hypothetical.** The function's whole job is to answer "do
+ * this run's numbers still describe the plan on screen", and each field it was once blind to produced a panel
+ * asserting figures over a plan that had moved on. So the tests are written per field, and each one changes exactly
+ * that field: a signature that ignores a field looks identical to a correct one until you vary it alone.
+ */
+describe("plaatsingssignatuur", () => {
+  it("changes when a placement moves to another period, even when it was ALREADY Manueel", () => {
+    // Antagonist round 3's MAJOR. The comment here used to argue `blokStart` was redundant because a move sets the
+    // status to `Manueel` — true only for a placement that was not already `Manueel`. A kept hand placement (what
+    // `aantalBehouden` preserves across a run, and what E4-03 creates) moves without changing status, so the panel
+    // went on printing "Te vol: themaperiode 2" over a board where that period had just been emptied.
+    const voor = [plaatsing({ id: "p1", status: "Manueel", blokStart: "2026-09-01" })];
+    const na = [plaatsing({ id: "p1", status: "Manueel", blokStart: "2026-11-02" })];
+
+    expect(plaatsingssignatuur(voor)).not.toBe(plaatsingssignatuur(na));
+  });
+
+  it("changes when a proposal is accepted", () => {
+    const voor = [plaatsing({ id: "p1", status: "Voorgesteld" })];
+    const na = [plaatsing({ id: "p1", status: "Aanvaard" })];
+
+    expect(plaatsingssignatuur(voor)).not.toBe(plaatsingssignatuur(na));
+  });
+
+  it("changes when a placement stops being stale", () => {
+    const voor = [plaatsing({ id: "p1", isVervallen: true })];
+    const na = [plaatsing({ id: "p1", isVervallen: false })];
+
+    expect(plaatsingssignatuur(voor)).not.toBe(plaatsingssignatuur(na));
+  });
+
+  it("changes when the thema starts carrying another doel", () => {
+    // Accepting a doelsuggestie on `/themas`, or a colleague doing it in another tab, moves the coverage figure
+    // while id, status, position and staleness all stay put (antagonist round 2).
+    const voor = [plaatsing({ id: "p1", doelcodes: ["A1"] })];
+    const na = [plaatsing({ id: "p1", doelcodes: ["A1", "B2"] })];
+
+    expect(plaatsingssignatuur(voor)).not.toBe(plaatsingssignatuur(na));
+  });
+
+  it("is stable under reordering and under doelcode order, so an edit that changed nothing does not blank a figure", () => {
+    const een = [
+      plaatsing({ id: "p1", doelcodes: ["B2", "A1"] }),
+      plaatsing({ id: "p2", blokStart: "2026-11-02" }),
+    ];
+    const ander = [
+      plaatsing({ id: "p2", blokStart: "2026-11-02" }),
+      plaatsing({ id: "p1", doelcodes: ["A1", "B2"] }),
+    ];
+
+    expect(plaatsingssignatuur(een)).toBe(plaatsingssignatuur(ander));
+  });
+
+  it("changes when a placement is removed altogether", () => {
+    const voor = [plaatsing({ id: "p1" }), plaatsing({ id: "p2" })];
+    const na = [plaatsing({ id: "p1" })];
+
+    expect(plaatsingssignatuur(voor)).not.toBe(plaatsingssignatuur(na));
   });
 });

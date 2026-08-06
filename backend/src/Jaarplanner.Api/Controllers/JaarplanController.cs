@@ -1,3 +1,4 @@
+using Jaarplanner.Application.Dekking;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Domain.Schoolcontent;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +7,14 @@ namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
 /// Thin REST controller (Art. VIII) for a class's <c>Jaarplan</c> (E3-01, FR-5.1). All logic lives in
-/// <see cref="JaarplanGeneratieService"/>; the controller only binds, delegates and returns.
+/// <see cref="JaarplanGeneratieService"/>; the controller binds, delegates and returns.
+/// <para>
+/// <b>One action composes two services, and it is the only one</b>: <c>POST …/generatie</c> asks
+/// <see cref="DekkingService"/> for the run's dekkingsvooruitzicht (E3-03, FR-5.3) and attaches it to the result. No
+/// rule is applied here — the coverage rules stay in the service that owns them, and the composition sits at this
+/// layer because that service reads the plan through <c>IJaarplanLezer</c>, which the generation service implements.
+/// See <c>JaarplanGeneratieResultaat.Vooruitzicht</c>.
+/// </para>
 /// <para>
 /// <b>This is the story's invocation surface, and it is the point.</b> Three consecutive audits on this project
 /// found "done" features nobody could reach — the E2 matching service is still called from nothing but its own
@@ -40,8 +48,13 @@ namespace Jaarplanner.Api.Controllers;
 public sealed class JaarplanController : ControllerBase
 {
     private readonly JaarplanGeneratieService _service;
+    private readonly DekkingService _dekking;
 
-    public JaarplanController(JaarplanGeneratieService service) => _service = service;
+    public JaarplanController(JaarplanGeneratieService service, DekkingService dekking)
+    {
+        _service = service;
+        _dekking = dekking;
+    }
 
     /// <summary>Body for a teacher decision on one placement: the new status (aanvaard / geweigerd / manueel).</summary>
     public sealed record StatusWijziging(KoppelingStatus Status);
@@ -110,23 +123,48 @@ public sealed class JaarplanController : ControllerBase
     /// the input they just typed. A malformed body is a 400 and stores nothing.
     /// </para>
     /// </param>
+    /// <param name="jaarFase">
+    /// The kleuterjaar the teacher has narrowed the screen to (owner ruling 2026-08-04), passed through to the
+    /// dekkingsvooruitzicht only. It changes <b>nothing</b> about the generation itself: the run is over the whole
+    /// class either way, and this is purely which leerplandoelen the reported figures are measured against, so that
+    /// they match the live dekking line the same screen shows. Ignored when it is not one of this class's codes.
+    /// </param>
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     [HttpPost("generatie")]
     public async Task<ActionResult<JaarplanGeneratieResultaat>> Genereer(
         Guid klasId,
         [FromBody] JaarplanGeneratieParameters? parameters,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] string? jaarFase = null)
     {
         var resultaat = await _service.GenereerAsync(klasId, parameters, cancellationToken);
 
-        return resultaat.IsGeslaagd
-            ? Ok(resultaat)
-            : UnprocessableEntity(new ProblemDetails
+        if (!resultaat.IsGeslaagd)
+        {
+            return UnprocessableEntity(new ProblemDetails
             {
                 Status = StatusCodes.Status422UnprocessableEntity,
                 Title = "Invalid AI response",
                 Detail = resultaat.Fout,
             });
+        }
+
+        // FR-5.3's measured half (E3-03), composed here rather than inside the generation service because the coverage
+        // rules have exactly one owner and that owner reads the plan through IJaarplanLezer, which the generation
+        // service itself implements: a generator that depended on it would close the loop. See
+        // JaarplanGeneratieResultaat.Vooruitzicht.
+        //
+        // It runs only on success, and only after the run has persisted, so it measures the plan the teacher is about
+        // to be shown. A failed run leaves it null: nothing was persisted, so there is no new plan to look ahead over.
+        //
+        // `jaarFase` is the kalender's own kleuterjaar choice, passed through so this figure and the live dekking line
+        // on the SAME SCREEN are over the same denominator (antagonist round 1: the chooser is on the kalender, not on
+        // /dekking as an earlier comment claimed). Ignored by the service when it is not one of the class's codes,
+        // exactly as GET …/dekking ignores it, so a stale link can never break a generation run.
+        var vooruitzicht = await _dekking.BerekenVooruitzichtAsync(
+            klasId, jaarFase: jaarFase, cancellationToken: cancellationToken);
+
+        return Ok(resultaat with { Vooruitzicht = vooruitzicht });
     }
 
     /// <summary>

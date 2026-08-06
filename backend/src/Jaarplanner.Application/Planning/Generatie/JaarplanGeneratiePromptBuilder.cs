@@ -75,6 +75,45 @@ public static class JaarplanGeneratiePromptBuilder
         "voeg geen kennis van buiten toe." + Nl +
         "- Verdeel de gekoppelde leerplandoelen evenwichtig over het schooljaar. Zet niet alle " +
         "doelenrijke thema's in de eerste blokken." + Nl +
+        Nl +
+        // FR-5.3's asked half (E3-03). It comes AFTER the spreiding rules on purpose: those are stated as
+        // "in deze volgorde belangrijk", and a thema crammed into a period too short for it covers its goals on
+        // paper only. So coverage is what decides between placements that already fit, never a licence to overfill —
+        // which is also why it does not contradict E3-02's "er zijn niet meer thema's dan blokken nodig": that line
+        // discourages stacking, and these decide WHICH thema's to use.
+        //
+        // **It asks for selection, not for exhaustion, and that is an owner ruling (2026-08-05).** The first version
+        // said "plaats elk thema minstens één keer", which the antagonist correctly read as asserting that every
+        // school-wide thema belongs in every class's year. The owner ruled the opposite: thema's are often aligned
+        // across the classes of one leerjaar, but each class — each teacher — may have its own. So the library is an
+        // offer, and a plan that leaves a thema unused is not a worse plan.
+        //
+        // **The consequence this prompt cannot fix, filed rather than papered over:** `Thema` is school-wide
+        // (Art. IX.2) and nothing records which thema's belong to which class, so this prompt is handed the WHOLE
+        // library for every class. Wording it as an offer is the honest half; the missing half is a per-class
+        // selection, which is a data-model question. It is filed as an open decision in backlog/README.md — NOT
+        // against Art. XIV's "shared vs per-class" entry, which the constitution lists under *Resolved*: that
+        // binary settled where a thema is SCOPED, and this is the different question of which of the school's
+        // thema's a given class actually teaches.
+        //
+        // Nothing here mentions the curriculum, the class's jaar/fase or a target number, and that is deliberate.
+        // The model is given the school's thema's with their goal codes and nothing else (Art. IV.4), so the only
+        // coverage it can reason about is the union of what it places. The DENOMINATOR — which leerplandoelen this
+        // class is measured against — is resolved server-side by DekkingService (owner ruling 2026-08-04) and
+        // reported as Dekkingsvooruitzicht. Putting a target in the prompt would ask the model to judge its own
+        // coverage, which is the retry loop E3-02 deliberately refused to build (Art. IV.1).
+        "Dekking (streef naar volledige dekking over het hele schooljaar):" + Nl +
+        "- Zorg dat samen zoveel mogelijk VERSCHILLENDE leerplandoelen aan bod komen." + Nl +
+        "- Kies daarvoor de combinatie van thema's die samen het meeste dekt. Je hoeft niet elk thema te " +
+        "gebruiken: de lijst is de bibliotheek van de school, niet een verplichte inhoud voor deze klas." + Nl +
+        "- Twijfel je tussen twee thema's voor hetzelfde blok, kies dan het thema met leerplandoelen die " +
+        "nog nergens anders in het jaarplan voorkomen." + Nl +
+        "- Zet hetzelfde thema niet in meerdere blokken als een ander thema doelen zou toevoegen die nog " +
+        "niet gedekt zijn." + Nl +
+        Nl +
+        // Given its own heading by E3-03. These two bullets used to hang off the "Spreiding" list, where they read as
+        // spreading rules; a second topical section above them would have made that misfiling worse.
+        "Antwoordvorm:" + Nl +
         "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst of uitleg eromheen:" + Nl +
         "  {\"plaatsingen\": [{\"blokStart\": \"" + JaarplanGeneratieResponseParser.DatumFormaat +
         "\", \"thema\": \"<themanaam>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
@@ -263,6 +302,18 @@ public static class JaarplanGeneratiePromptBuilder
             Line(sb, "- (geen thema's aangeleverd)");
             return;
         }
+
+        // Stated for the same reason the block count is (E3-02): a model that has to tally a list to know how many
+        // there are is a model that may tally it wrong. Beside the block count it makes the shape of the choice
+        // visible at a glance — twenty thema's for seven periods is a selection problem, five for seven is not —
+        // instead of leaving it to be discovered halfway down the list.
+        //
+        // *Its justification changed with the owner's ruling of 2026-08-05 and the number did not.* It used to be
+        // here to make "place every thema" checkable; that instruction is gone, and the count earns its place on the
+        // selection reasoning instead. Recorded because a figure whose stated reason has quietly expired is the kind
+        // of thing that survives three stories and then gets defended by the wrong argument.
+        Line(sb, $"Aantal thema's: {themas.Count}");
+        Line(sb, string.Empty);
 
         // Ordered by name so caller ordering cannot change the prompt.
         foreach (var thema in themas.OrderBy(t => t.Naam, StringComparer.Ordinal))

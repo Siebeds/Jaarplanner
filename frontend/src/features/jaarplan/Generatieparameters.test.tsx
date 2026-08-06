@@ -85,6 +85,8 @@ function resultaat(parameters: Parameterrapport | null): Generatieresultaat {
   return {
     isGeslaagd: true,
     fout: null,
+    // No coverage outlook (E3-03): this file is about the parameter report, and a null renders no dekking block.
+    vooruitzicht: null,
     jaarplan: leegPlan,
     aantalNieuw: 1,
     aantalBehouden: 0,
