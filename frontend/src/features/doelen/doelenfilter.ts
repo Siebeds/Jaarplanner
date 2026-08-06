@@ -1,3 +1,4 @@
+import { DOELSOORT_PARAM, JAARFASE_PARAM } from "../../app/routes";
 import type { Doelsoort, DoelsoortNaam } from "../../components/doelsoort";
 import { doelsoortBadgeSoort } from "../../components/doelsoort";
 import { t } from "../../i18n";
@@ -14,7 +15,16 @@ import type { Doelenfilter } from "./types";
  */
 
 /** The query-string keys this feature owns. Anything else in the URL (`?klas=`, `?schooljaar=`) is left alone. */
-const FILTERSLEUTELS = ["zoek", "discipline", "domein", "subdomein", "doelsoort", "jaarFase"] as const;
+const FILTERSLEUTELS = [
+  "zoek",
+  "discipline",
+  "domein",
+  "subdomein",
+  // The two keys another feature also writes, imported rather than spelled again: `/dekking` narrows by both
+  // and `Doeldekkingregel` carries the whole query string here (E5-03, antagonist round 6).
+  DOELSOORT_PARAM,
+  JAARFASE_PARAM,
+] as const;
 
 /** The doelsoort values the API accepts, so an unknown one in a stale link is dropped instead of sent on. */
 const DOELSOORTEN = Object.keys(doelsoortBadgeSoort) as DoelsoortNaam[];
@@ -42,7 +52,8 @@ const DOELSOORT_PER_SPELLING: Record<string, DoelsoortNaam> = Object.fromEntries
 /** Reads the filter out of the URL, ignoring blank and unrecognised values. */
 export function leesFilter(params: URLSearchParams): Doelenfilter {
   const waarde = (sleutel: string) => params.get(sleutel)?.trim() || undefined;
-  const doelsoort = waarde("doelsoort")?.toLowerCase();
+  // The shared constant, not the literal: this is the read half of the contract `/dekking` writes (E5-03).
+  const doelsoort = waarde(DOELSOORT_PARAM)?.toLowerCase();
 
   return {
     zoek: waarde("zoek"),

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { JAARFASE_PARAM } from "../../app/routes";
+import { DOELSOORT_PARAM, JAARFASE_PARAM } from "../../app/routes";
 import { useSelectie } from "../../app/useSelectie";
 import { doelsoortBadgeSoort, type DoelsoortNaam } from "../../components/doelsoort";
 import { t } from "../../i18n";
@@ -27,8 +27,13 @@ export const BEREIK_PARAM = "bereik";
  *
  * It changes the figure, so a link that omitted it would open a different percentage from the one the sender was
  * looking at. That is the whole argument for the scope being in the URL and it applies here identically.
+ *
+ * **Defined in `app/routes.ts` and re-exported, like `JAARFASE_PARAM` above it** (antagonist round 6). The
+ * Doelen-register has read this key out of the URL since E1-16, and `Doeldekkingregel`'s *nakijken* link carries the
+ * whole query string from here to `/doelen/{code}`, so it is a contract shared by two features rather than this page's
+ * to own. Declaring it locally was the second instance of the drift the paragraph on `JAARFASE_PARAM` was written about.
  */
-export const DOELSOORT_PARAM = "doelsoort";
+export { DOELSOORT_PARAM };
 
 /**
  * Whether the list shows only the gaps.
