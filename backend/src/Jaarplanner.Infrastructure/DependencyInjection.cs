@@ -23,6 +23,7 @@ using Jaarplanner.Infrastructure.SchoolcontentImport;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace Jaarplanner.Infrastructure;
@@ -202,6 +203,17 @@ public static class DependencyInjection
         // port, so the highest-risk logic in the system (Art. V.6) is unit-tested with no database.
         services.AddScoped<IDekkingOpslag, EfDekkingOpslag>();
         services.AddScoped<DekkingService>();
+
+        // The coverage export as proof of coverage (E5-06, FR-9.5/FR-11.2, Art. V.4). Stateless apart from the
+        // clock → singleton-safe. It renders a DekkingWeergave the endpoint has already computed, so there is no
+        // second query and no second definition of "gedekt" that could drift from Art. V.1.
+        //
+        // TryAddSingleton for the clock, because TimeProvider is a framework abstraction other stories will want
+        // and two AddSingleton calls for it would be a duplicate registration rather than an override. It is the
+        // system clock in the app and a fake in the tests, which is what lets a test assert the document's
+        // "opgemaakt op" stamp rather than merely assert that one exists.
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<IDekkingExport, ClosedXmlDekkingExport>();
 
         // Demo data for the E3-06 review session, OPT-IN ONLY. The flag is checked HERE rather than only
         // inside the service, so an environment that does not ask for it never registers a hosted service
