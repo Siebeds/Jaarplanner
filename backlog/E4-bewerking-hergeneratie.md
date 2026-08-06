@@ -50,7 +50,22 @@
 
 ### FR-8 — (Re)generation
 
-- [~] **E4-04 — Regenerate the whole plan** — *built 2026-08-06 on `story/E4-04-hergeneratie` (off `origin/main` `59183ad`). **Antagonist ronde 1: VIOLATIONS FOUND (3 MAJOR, 4 MINOR, 2 QUESTION), every finding fixed or routed; ronde 2 is owed and the `[~]` says so.** Narrative + full measurements: [`worklogs/E4-04/implementation.md`](worklogs/E4-04/implementation.md).*
+- [~] **E4-04 — Regenerate the whole plan** — *built 2026-08-06 on `story/E4-04-hergeneratie` (off `origin/main` `59183ad`). **Two antagonist rondes, both VIOLATIONS FOUND (3 MAJOR + 4 MINOR + 2 QUESTION, then 1 MAJOR + 2 MINOR); every finding fixed or routed. Ronde 3 is owed and the `[~]` says so.** Narrative + full measurements: [`worklogs/E4-04/implementation.md`](worklogs/E4-04/implementation.md).*
+  > **Both rondes found the same class of defect in the same paragraph, pointing opposite ways, and that is the story's
+  > one durable lesson.** Ronde 1: the copy promised replacement where the code guarantees only deletion. Ronde 2: the
+  > fix then said *"AI-voorstellen waarover je nog niets beslist hebt, verdwijnen"*, which is **false for a locked
+  > proposal** — undecided by definition, since `vergrendelUitlegVrij` tells the teacher to lock precisely *"zonder er
+  > nu al over te beslissen"*, and kept by `IsVervangbaar`. The paragraph then contradicted itself two clauses later,
+  > where *"vastgezet"* stands among the survivors, so a teacher who used the lock as advertised read both that their
+  > thema disappears and that it stays. **This story's own test rendered that exact fixture and asserted only that a
+  > sentence appeared.** *Fixed by changing the shape rather than adding a condition:* what is lost is now the
+  > **complement** of what is kept (*"De overige AI-voorstellen verdwijnen…"*, after the survivor list). Two lists can
+  > drift from each other, as these did twice in one day; a complement cannot. Pinned by an **order** assertion, the
+  > single line that fails when the clauses are swapped with nothing else changed.
+  > *One out-of-scope edit, declared rather than slipped in:* `kalender.genereerVervangen` (E3-02's run report, three
+  > lines below the disclosure) still said *"zijn vervangen"*, so on an empty AI answer the card read *"De AI stelde
+  > geen enkel thema voor."* directly above *"6 eerdere voorstellen zijn vervangen."* Both keys now say
+  > *"verdwenen"*. Aligning beat routing: two words for one event on one card is the drift these guards exist to stop.
   > **All three MAJORs were in the disclosure or in prose about it, which is the whole story, so none was cosmetic.**
   > *(1)* The copy said untouched proposals *"worden vervangen door nieuwe voorstellen"* while the discard is
   > **unconditional** on a valid parse and happens before anything is placed: an empty, fully-skipped or fully-blocked
@@ -101,12 +116,16 @@
   > construction. A third guard now covers every `kalender.*` string that mentions running the generation again, in
   > either wording. It found a pre-existing gap on its first run: **`kalender.plaatsGevolg`** (E4-03) makes the same
   > claim from outside both prefixes and nothing pinned it.
-  > **Gates, re-run after the fix round:** 577 unit + 205 integration (0 skipped, real PostgreSQL), 501 frontend / 20 files, `dotnet format` / lint
+  > **Gates, re-run after each fix round and by the auditor itself in ronde 2:** 577 unit + 205 integration (0 skipped, real PostgreSQL), 501 frontend / 20 files, `dotnet format` / lint
   > / build clean, every new claim mutation-checked in the failing direction. Browser pass at 1440px and 390px against
   > a real API and real PostgreSQL with the model stubbed: a class with no plan gets the first-run copy, **the label and
   > the sentence flip within the same session** the moment the first run lands, and on the demo class an accepted and a
   > locked placement survived while five untouched proposals were replaced (*"5 eerdere voorstellen zijn vervangen, 2
-  > bestaande plaatsingen bleven staan"*, with the board agreeing). Composited contrast 8,90:1 and 6,08:1, no overflow.
+  > bestaande plaatsingen bleven staan"*, with the board agreeing). Re-measured after the ronde-2 rewrite on the state both findings were about (a **locked** proposal plus an
+  > **empty** model answer, the run that destroys and creates nothing): the board keeps `Verkeer 🔒 Vast` and the
+  > report reads *"De AI stelde geen enkel thema voor." / "6 eerdere voorstellen zijn verdwenen." / "1 bestaande
+  > plaatsing bleef staan"*, with no *"vervangen"* left on the card. 6 lines / 99px at 390px, composited contrast
+  > 8,90:1 (button), 6,08:1 (disclosure) and 5,73:1 (report), no overflow.
   > **The near-miss, recorded because no artifact this project reviews would have caught it.** Mid-pass the browser
   > showed an `Aanvaard` placement being discarded, reproducing over `curl` and over a row inserted straight into the
   > table, on real PostgreSQL, while the xUnit test asserting the opposite passed on the same tree. **The API was

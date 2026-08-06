@@ -470,7 +470,10 @@ describe("Jaarplankalender", () => {
     expect(screen.getByText(/1 bestaande plaatsing bleef staan/)).toBeInTheDocument();
 
     // A run that discarded the previous proposal must say so; see the aantalVervangen assertions below.
-    expect(screen.getByText("2 eerdere voorstellen zijn vervangen.")).toBeInTheDocument();
+    // "verdwenen" since E4-04: the report is E3-02's, but it describes the same event as the disclosure three lines
+    // above it on the same card, and "vervangen" is false whenever the run places nothing back. On an empty answer a
+    // teacher read "De AI stelde geen enkel thema voor." directly above "2 eerdere voorstellen zijn vervangen."
+    expect(screen.getByText("2 eerdere voorstellen zijn verdwenen.")).toBeInTheDocument();
     expect(screen.getByText(/Ruimtevaart/)).toBeInTheDocument();
 
     // And it explicitly disclaims a judgement: no threshold is defined anywhere, so the tool must not imply one.
@@ -4282,14 +4285,29 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     // any of them fails. **What is lost**, **what is kept** and **what arrives** are separate assertions on purpose:
     // E4-06 shipped three rounds of lock copy that got one half right at a time.
     const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
-    // "verdwijnen", not "worden vervangen" (antagonist MAJOR-1). The discard is unconditional on a valid parse and
-    // happens before anything is placed, so an empty, fully-skipped or fully-blocked answer deletes the undecided
+    // "verdwijnen", not "worden vervangen" (antagonist round-1 MAJOR-1). The discard is unconditional on a valid parse
+    // and happens before anything is placed, so an empty, fully-skipped or fully-blocked answer deletes the undecided
     // proposals and puts nothing back. Wording the certain half as a swap understated exactly the risk this sentence
     // exists to disclose, and it was strictly stronger than `vergrendelUitlegVrij`'s own "kan het vervangen".
-    expect(uitleg).toHaveTextContent(/verdwijnen/);
+    //
+    // **"De overige", not a second list of conditions** (round-2 MAJOR). The first fix qualified the verb as
+    // "AI-voorstellen waarover je nog niets beslist hebt, verdwijnen", which is false for a **locked** proposal —
+    // undecided by definition, since `vergrendelUitlegVrij` tells the teacher to lock precisely "zonder er nu al over
+    // te beslissen", and kept by `IsVervangbaar`. The paragraph then contradicted itself two clauses later, where
+    // "vastgezet" appears in the survivor list. Defining the losers as the **complement** of the survivors makes the
+    // two halves incapable of disagreeing, which a second list of exclusions could not.
+    expect(uitleg).toHaveTextContent(/De overige AI-voorstellen verdwijnen/);
     expect(uitleg).toHaveTextContent(/minder of geen voorstelt/);
     expect(uitleg).toHaveTextContent(/blijft staan/);
     expect(uitleg).not.toHaveTextContent(/worden vervangen/);
+
+    // The survivor list is asserted term by term, because the round-2 MAJOR was a survivor the sentence promised in
+    // one clause and deleted in another. "vastgezet" is the one that finding turned on.
+    for (const overlever of ["aanvaard", "geweigerd", "zelf geplaatst", "verplaatst", "vastgezet"]) {
+      expect(uitleg, `${overlever} is not named as surviving`).toHaveTextContent(
+        new RegExp(overlever),
+      );
+    }
     // And it says WHICH regeneration, because E4-05 adds a second one. Pinned here as well as in the catalogue
     // guard: the guard proves the string is qualified, this proves the qualified string is the one that renders.
     expect(uitleg).toHaveTextContent(/hele jaarplan/);
@@ -4338,7 +4356,7 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     // server's own `AantalBehouden`/`AantalVervangen` and are asserted in the singular, which is where this file's
     // plural defects have always surfaced.
     expect(await screen.findByText("2 thema's voorgesteld.")).toBeInTheDocument();
-    expect(screen.getByText(/1 eerder voorstel is vervangen/)).toBeInTheDocument();
+    expect(screen.getByText(/1 eerder voorstel is verdwenen/)).toBeInTheDocument();
     expect(screen.getByText(/1 bestaande plaatsing bleef staan/)).toBeInTheDocument();
   });
 
@@ -4386,6 +4404,19 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     await screen.findByText("Water");
 
     expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeInTheDocument();
-    expect(screen.getByText(t("kalender.hergenereerUitleg"))).toBeInTheDocument();
+    const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
+
+    // **This fixture holds a LOCKED, UNDECIDED proposal, and that is what the round-2 MAJOR turned on** (`p3`). It is
+    // an AI proposal the teacher has decided nothing about — `kalender.vergrendelUitlegVrij` tells them to lock
+    // exactly "zonder er nu al over te beslissen" — and `IsVervangbaar` keeps it. So a sentence phrased as
+    // "AI-voorstellen waarover je nog niets beslist hebt, verdwijnen" is false here, and this test rendered that
+    // fixture while asserting only that *some* sentence appeared, which is why it could not see it.
+    //
+    // The order assertion is the real pin. "De overige" only names the right set if the survivors are listed BEFORE
+    // it: reversed, the sentence would say the undecided proposals disappear and then, too late, that locked ones
+    // stay. A rewrite that keeps both clauses but swaps them re-creates the contradiction, and only this line fails.
+    const tekst = uitleg.textContent ?? "";
+    expect(tekst).toContain("vastgezet hebt, blijft staan");
+    expect(tekst.indexOf("blijft staan")).toBeLessThan(tekst.indexOf("De overige"));
   });
 });

@@ -689,7 +689,17 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 every card is decided. On a **fully decided plan**, the state a teacher most plausibly regenerates
                 from, both sentences were therefore absent and nothing on the screen said that what arrives is a
                 proposal they still decide on (Art. IV.1/IV.2). It is now the third clause of the string itself, which
-                depends on no other component's render condition. Pinned by a test with an all-decided fixture. */}
+                depends on no other component's render condition. Pinned by a test with an all-decided fixture.
+
+                **The sentence names what is lost as the complement of what is kept, and that shape is also a fix**
+                (round-2 MAJOR). Round 1 spelled the losers out as "AI-voorstellen waarover je nog niets beslist hebt",
+                which is false for a **locked** proposal: the teacher decided nothing about it, `vergrendelUitlegVrij`
+                invites exactly that, and `IsVervangbaar` keeps it — so the paragraph contradicted itself two clauses
+                later, where "vastgezet" appears among the survivors. A second list of exclusions can drift from the
+                first; "de overige" cannot. *One edge left standing deliberately:* a drag that ends in the period it
+                started in writes nothing (`VerplaatsPlaatsingAsync` treats it as a normal gesture), so such a
+                placement stays `Voorgesteld` and does disappear, while a teacher might call it "verplaatst". Making
+                the no-op write would cost a standing proposal its motivation, which is the worse trade. */}
             <p className="max-w-2xl text-xs leading-snug text-ink-zacht">
               {t(heeftPlan ? "kalender.hergenereerUitleg" : "kalender.genereerUitleg")}
             </p>

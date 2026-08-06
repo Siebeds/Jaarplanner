@@ -38,12 +38,13 @@ and works" has now been mistaken for "the story is done" seven times.
 
 > **Hele jaarplan opnieuw genereren…**
 >
-> Er staat al een jaarplan. Opnieuw genereren geldt voor het hele jaarplan: AI-voorstellen waarover je nog niets
-> beslist hebt, verdwijnen, ook als de AI er deze keer minder of geen voorstelt. Wat je aanvaard, geweigerd, zelf
-> geplaatst, verplaatst of vastgezet hebt, blijft staan. Wat de AI nu voorstelt, komt als “Voorgesteld” op de
-> kalender en jij beslist.
+> Er staat al een jaarplan. Opnieuw genereren geldt voor het hele jaarplan. Wat je aanvaard, geweigerd, zelf
+> geplaatst, verplaatst of vastgezet hebt, blijft staan. De overige AI-voorstellen verdwijnen, ook als de AI er deze
+> keer minder of geen voorstelt. Wat de AI nu voorstelt, komt als “Voorgesteld” op de kalender en jij beslist.
 
-*Three sentences after the audit rather than two; see the fix round below for why each clause is load-bearing.*
+*Four sentences after two audit rounds rather than two, and the **shape** is the round-2 fix: what is lost is named as
+the **complement** of what is kept, in that order. Both audits found the same class of defect in this one paragraph, in
+opposite directions, and a second list of conditions is what let them drift. See the fix rounds below.*
 
 **It keys on "does this class have a plan", never on "is anything replaceable".** The second question is
 `IsVervangbaar`, which is the server's rule, and answering it in the client would be a second implementation of it —
@@ -187,6 +188,60 @@ year, and after the audit every clause answers a state the previous version got 
 
 **A second `--no-build` lesson from the fix round, applied rather than repeated:** the `Geweigerd` mutation was
 restored with `touch` + a full `dotnet build` before anything else ran, which is the rule the near-miss above produced.
+
+## Antagonist round 2 — VIOLATIONS FOUND (1 MAJOR, 2 MINOR), all addressed
+
+Run on `4926852`, by the same auditor, explicitly told that a fix round has contained the next defect four stories
+running here. **It found the new defect in the fix, in the same sentence, pointing the opposite way** — and it also
+stated plainly which round-1 findings were genuinely closed rather than crediting the attempt (MAJOR-2, MAJOR-3 and all
+four MINORs closed; MAJOR-1 closed in the direction filed and reopened in the other).
+
+**MAJOR — *"verdwijnen"* was false for a locked proposal, and the paragraph contradicted itself two clauses later.**
+Round 1's fix read *"AI-voorstellen waarover je nog niets beslist hebt, verdwijnen"*. A **locked, undecided** proposal
+is exactly that, and `IsVervangbaar` keeps it. This is not a corner: it is the state **E4-06 built the lock for**, and
+`kalender.vergrendelUitlegVrij` instructs the teacher to create it in those words (*"Zet het vast als je het wil houden
+zonder er nu al over te beslissen"*), while `vergrendelNietNodig` defines *beslissen* and *vastzetten* as disjoint. So
+the reading that would rescue the sentence is the one the screen's own copy rules out. Sentence 3 then listed
+*"vastgezet"* among the survivors, so a teacher who used the lock as advertised read first that their proposal
+disappears and then that it stays. **This story's own test 4 renders precisely that fixture and asserted only that the
+sentence appeared**, which is why it could not see it.
+
+*Fixed by changing the shape, not by adding a condition.* What is lost is now the **complement** of what is kept:
+*"Wat je aanvaard, geweigerd, zelf geplaatst, verplaatst of vastgezet hebt, blijft staan. De overige AI-voorstellen
+verdwijnen…"*. A second list of exclusions can drift from the first, as it just did in both directions; *"de overige"*
+cannot. The complement is exactly `IsVervangbaar`, without restating it. Pinned in test 4 by an **order** assertion
+(the survivors must be named before *"De overige"*), which is the one line that fails when the two clauses are swapped
+with no other change, and by asserting each survivor term by term.
+
+**MINOR — the word this round declared wrong survived in the report three lines below.** `kalender.genereerVervangen`
+still said *"{aantal} eerdere voorstellen zijn vervangen"*, so on an empty model answer a teacher read
+*"De AI stelde geen enkel thema voor."* immediately followed by *"6 eerdere voorstellen zijn vervangen."* — the exact
+false framing round 1 filed, left standing one paragraph lower and now the only thing on screen after a destructive
+run. The report is **E3-02's**, so this is an out-of-scope edit and it is declared as one in the groepschat: both keys
+now say *"verdwenen"*. Aligning beat routing because the alternative is two words for one event on one card, which is
+the drift these guards exist to stop.
+
+**MINOR — *"verplaatst"* is not true for a no-op move**, where a card is dragged back into the period it started in:
+`VerplaatsPlaatsingAsync` deliberately writes nothing, so the placement stays `Voorgesteld` and does disappear. Left
+unfixed on the auditor's own advice and recorded in the component comment instead. Making the no-op write would cost a
+standing proposal its motivation, which is the worse trade, and `kalender.sleepUitleg` already carries the same
+imprecision, so this is pre-existing drift rather than a regression.
+
+**Round-2 gates:** 577 unit + 205 integration (0 skipped, real PostgreSQL) and **501** frontend, all re-run by the
+auditor itself rather than read off this file, plus lint / build / `dotnet format` clean and `dotnet build` at 0
+warnings. The clause-swap mutation fails exactly one assertion, which is the one written for it.
+
+*Measured again in a browser, on the state both findings were about* (locked proposal + **empty** model answer, the
+run that destroys and creates nothing): the board keeps `Verkeer 🔒 Vast` and nothing else, and the report reads
+*"De AI stelde geen enkel thema voor." / "6 eerdere voorstellen zijn verdwenen." / "1 bestaande plaatsing bleef staan
+(vast of al beslist)."* No occurrence of *"vervangen"* anywhere on the card. At 390px the paragraph is **6 lines /
+99px** (down from 7 after the restructure), contrast **6,08:1** for the disclosure and **5,73:1** for the report, no
+overflow.
+
+*One process note, since it is the second `--no-build` sighting in one story:* the re-measurement first showed the run
+doing nothing, because the AI stub had been killed in the previous teardown and the API was answering 500. Not a
+defect and not a false one this time, but the same shape: **an environment I had dismantled, measured as if it were
+the product.**
 
 ## What this story does not claim
 
