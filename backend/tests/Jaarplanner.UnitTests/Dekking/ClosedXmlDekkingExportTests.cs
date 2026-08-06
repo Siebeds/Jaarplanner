@@ -33,6 +33,34 @@ public class ClosedXmlDekkingExportTests
         public override DateTimeOffset GetUtcNow() => _nu;
     }
 
+    /// <summary>
+    /// A clock that jumps a whole day on every read.
+    /// <para>
+    /// <b>It exists because <see cref="VasteTijd"/> is blind to the defect it replaces</b> (antagonist round 2, MAJOR).
+    /// The generator's comment claimed the kopblok stamp and the filename date could not name different days, while
+    /// <c>Genereer</c> read the clock twice: once for the stamp and once for the name. A constant clock cannot
+    /// distinguish one read from two, so the guarantee was untestable exactly where it was asserted. This one makes the
+    /// number of reads observable: two reads produce two different days and the assertion fails.
+    /// </para>
+    /// </summary>
+    private sealed class StappendeTijd : TimeProvider
+    {
+        private DateTimeOffset _nu;
+
+        public StappendeTijd(DateTimeOffset start) => _nu = start;
+
+        public int AantalAanroepen { get; private set; }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            AantalAanroepen++;
+            var huidig = _nu;
+            _nu = _nu.AddDays(1);
+
+            return huidig;
+        }
+    }
+
     /// <summary>2026-08-06 at 16:12 UTC, which is 18:12 in the school's own zone (CEST).</summary>
     private static readonly DateTimeOffset Middag =
         new(2026, 8, 6, 16, 12, 0, TimeSpan.Zero);
@@ -398,6 +426,24 @@ public class ClosedXmlDekkingExportTests
     }
 
     [Fact]
+    public void De_klok_wordt_een_keer_per_document_gelezen()
+    {
+        // The kopblok's stamp and the filename's date must name the same day, and the only way to break that is to read
+        // the clock twice. So the clock is made to JUMP A DAY per read: with one read the stamp and the name agree, and
+        // with two they cannot. Asserting the agreement rather than the call count is deliberate, because the property
+        // that matters is what the document says, not how many times a method ran; the count is asserted too, because
+        // it names the cause when the first assertion fails.
+        var tijd = new StappendeTijd(Middag);
+
+        var bestand = new ClosedXmlDekkingExport(tijd).Genereer(Weergave());
+        var cellen = AlleCellen(bestand);
+
+        Assert.Equal(1, tijd.AantalAanroepen);
+        Assert.Contains("2026-08-06", bestand.Bestandsnaam, StringComparison.Ordinal);
+        Assert.Contains(cellen, tekst => tekst.Contains("6 augustus 2026", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Elk_kopbloklabel_past_in_de_breedte_van_de_eerste_kolom()
     {
         // TURNS AN INVISIBLE RENDERING PROPERTY INTO A CHECKABLE ONE, which is why this test exists at all. Excel clips
@@ -407,7 +453,14 @@ public class ClosedXmlDekkingExportTests
         // not change a value. Asserting that every label fits is the closest a test can get to looking at the sheet.
         //
         // The labels are read out of a generated workbook rather than from a list in this test, so a new kopblok field
-        // is covered the day it is added rather than the day someone remembers to add it here.
+        // is covered the day it is added **provided it renders in this arranged state** (antagonist round 2 narrowed
+        // this claim: a field conditional on something this state does not set would be invisible here, and the comment
+        // used to read as if the test were state-independent). The state below is therefore the widest one: a narrowed
+        // scope, a withheld figure and a buiten-bereik count all at once.
+        //
+        // `Length > Breedte` is a PROXY and not the property. Excel's width unit is the default font's digit width and
+        // these labels are bold, so a 22-character label of wide glyphs could fit the test and still clip. It holds
+        // today with room to spare; what it cannot do is replace looking at a rendered sheet.
         var bestand = Export().Genereer(
             Weergave(aantalBuitenBereik: 132, isBetrouwbaar: false, aantalOnopgeloste: 3, aantalGedekt: null));
 

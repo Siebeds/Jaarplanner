@@ -161,16 +161,48 @@
   >   it is plausibly what an audit of decreed-goal coverage asks about first.**
   > - **No PDF, no page layout.** See ruling 1.
   > ### Gates
-  > **613 unit + 218 integration on real PostgreSQL, 0 skipped; 583 frontend / 24 files; `dotnet format`, `pnpm lint`
+  > **615 unit + 218 integration on real PostgreSQL, 0 skipped; 586 frontend / 24 files; `dotnet format`, `pnpm lint`
   > and `pnpm build` clean** (the last of those matters here: E7-17 means `lint` alone type-checks nothing, and a
   > missing catalogue key is a **compile** error because `t` is typed against `nl.json`, which is how the two new keys
-  > could not have been forgotten). **Eleven mutation checks, each failing the intended test and no other.**
+  > could not have been forgotten). **Thirteen mutation checks, each failing the
+  > intended test and no other, listed because a bare count is not checkable by a later reader** (round-2 audit:
+  > mutations leave no artefact behind, so the claim has to name its evidence).
+  > 1. withheld slot derives the number from the rows → `Een_ingehouden_cijfer_wordt_nooit_als_getal_afgedrukt`
+  > 2. the full-set note deleted → `Het_bestand_zegt_dat_schermfilters_er_niets_aan_veranderen`. **This one passed on
+  >    the first attempt, and the mutation was the weak thing rather than the test:** it replaced *"Dit bestand"* while
+  >    the assertion reads *"alle doelen die in dit overzicht meetellen"*.
+  > 3. an em dash in a document sentence → `Nergens_in_het_bestand_staat_een_kastlijntje`
+  > 4. the singular plaatsing sentence deleted → `Een_enkele_openstaande_plaatsing_krijgt_enkelvoud`
+  > 5. `bereik` ignored by the endpoint → `Het_bereik_reist_mee_naar_de_export`
+  > 6. a doelsoort filter applied to the document → `De_schermfilters_veranderen_de_export_niet` **and** the anti-drift
+  >    test `Het_document_stemt_rij_voor_rij_overeen_met_het_JSON_antwoord`
+  > 7. the link carries `doelsoort` and `ontbrekend` → *"laat de doelsoortfilter en de alleen-ontbrekende-schakelaar er
+  >    BUITEN"*
+  > 8. `dekking.exportUitleg` rewritten to *"Je krijgt precies wat je nu ziet."* → both `catalogus.test.ts` export guards
+  > 9. `dekking.alleenLeerplandoelen` rewritten into a claim → both new `catalogus.test.ts` minimumdoel guards
+  > 10. the `Minimumdoel` column added back → `Er_staat_geen_minimumdoelkolom_in_het_document`
+  > 11. column 1's width back to 14 → `Elk_kopbloklabel_past_in_de_breedte_van_de_eerste_kolom`
+  > 12. the clock read a second time for the filename → `De_klok_wordt_een_keer_per_document_gelezen`
+  > 13. the export link rendered before the read completes → the two absence tests on the screen
+  >
+  > **Two of these assert an ABSENCE**, which no deletion can mutation-check: the no-filter-parameter one was checked by
+  > **adding** the filter a future story would add back, and the no-minimumdoel-column one by adding the column back.
   > A **real browser pass** over CDP against a live API and real PostgreSQL, on a throwaway database: two placements
   > accepted through E4-02's own button took dekking **0 → 4 of 14**; the screen was then narrowed to
   > `?doelsoort=Minimumdoel&ontbrekend=1` (showing **80%** and one row) and the downloaded workbook still held **all 14
   > rows, 4 `Ja` / 10 `Nee`**. Contrast composited in the browser: link **8,4:1**, explanation **5,73:1**; axe **0
   > violations** at 1440px; no horizontal overflow at a true 390px viewport (`Emulation.setDeviceMetricsOverride`, not
   > a clamped `--window-size`).
+  > **⚠️ The browser pass predates fix round 1; the Gates figures above do not.** Said plainly rather than presented as
+  > one measurement, because they are not one. Fix round 1 touched no frontend source at all (only `catalogus.test.ts`),
+  > so every *screen* figure above still describes the shipped screen, and every *document* claim survives the fixes and
+  > is now additionally covered by the HTTP tests on real PostgreSQL. **The one property a browser was the sole witness
+  > to, and which the fix changed, is the rendered column width** — and that is honestly unverified in a renderer.
+  > `Elk_kopbloklabel_past_in_de_breedte_van_de_eerste_kolom` asserts `Length > Breedte`, which is a **proxy**: Excel's
+  > width unit is the default font's digit width and these labels are bold, so the assertion holds today with room to
+  > spare and is not the same thing as having looked. **Nobody has opened this workbook in Excel or LibreOffice.**
+  > *An alternative worth naming because it needs no width at all:* a single-cell `"Klas: K3 derde kleuterklas"` layout
+  > has no populated neighbour, so there is nothing for Excel to clip against.
   > *Playwright MCP was unavailable all story (its profile was in use by another session), so this ran over CDP.*
   > ### Three results worth carrying to other stories
   > 1. **A negative behaviour is only observable in the state it forbids.** Ruling 2 is enforced by an *absence* (no
@@ -191,6 +223,14 @@
   >   (see the antagonist's QUESTION-1): real Op.stap text will contain em dashes, so the export must either alter
   >   decreed text (Art. III.1 forbids it) or breach Art. II.5. Art. II.5 needs a clause exempting verbatim decreed
   >   curriculum text, with the boundary stated.
+  > - **Should `CONSTITUTION.md` carry the directie ruling of 2026-07-28 at all?** *(round-2 audit.)* That ruling now
+  >   governs what an **exported** artefact may contain (Art. V.4), and it appears **nowhere in the constitution**: it
+  >   lives in `DekkingWeergave`'s doc-comment and in this backlog. The format ruling above is flagged as owing an
+  >   amendment while this one is not, which is inconsistent treatment of two rulings taken on the same day. Art. V, or
+  >   the `Dekking` clause of Art. IX.3, is where it would go. Owner/directie call. *Also noted, and pre-existing rather
+  >   than this story's:* the Art. XI ratification log has no row for `e420648`, the 2026-07-30 language amendment that
+  >   this story's server-composed Dutch rests on. The amendment text is in Art. II.3, so the authority is sound and it
+  >   is only the log that is short.
   > - **axe reports 0 violations and one `incomplete`**: `aria-prohibited-attr` on 14 nodes, all of them the
   >   pre-existing doelsoort badge, a roleless `<span aria-label="Minimumdoel">`. ARIA prohibits that, so a screen
   >   reader may announce *"MD"* and never the expansion. E5-02/E1-16 own the component; **E7-20** is the family.

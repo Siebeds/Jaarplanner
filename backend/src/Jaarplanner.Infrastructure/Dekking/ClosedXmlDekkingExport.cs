@@ -82,20 +82,28 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
         using var workbook = new XLWorkbook();
         var sheet = workbook.AddWorksheet(WerkbladNaam);
 
-        var kopregel = SchrijfKopblok(sheet, dekking);
+        // ONE read of the clock for the whole document, and it has to be here rather than inside the two writers.
+        // Both the kopblok's stamp and the filename's date come from it, and the guarantee that they name the same day
+        // is only true if the instant is captured once: `Nu()` unified the ZONE conversion, not the instant, so two
+        // calls either side of midnight produced a file stamped 6 August and named 2026-08-07. The window is
+        // sub-millisecond and the defect was in the comment claiming it could not happen (antagonist round 2, MAJOR).
+        // A fixed-clock test is blind to this by construction, which is why `StappendeTijd` exists in the tests.
+        var nu = Nu();
+
+        var kopregel = SchrijfKopblok(sheet, dekking, nu);
         SchrijfTabel(sheet, dekking, kopregel);
 
         var stream = new MemoryStream();
         workbook.SaveAs(stream);
         stream.Position = 0;
 
-        return new DekkingExportbestand(stream, Bestandsnaam(dekking), XlsxContentType);
+        return new DekkingExportbestand(stream, Bestandsnaam(dekking, nu), XlsxContentType);
     }
 
     /// <summary>
     /// Writes the kopblok and returns the row the table header goes on.
     /// </summary>
-    private int SchrijfKopblok(IXLWorksheet sheet, DekkingWeergave dekking)
+    private static int SchrijfKopblok(IXLWorksheet sheet, DekkingWeergave dekking, DateTimeOffset nu)
     {
         var rij = 1;
 
@@ -120,7 +128,7 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
         }
 
         rij = SchrijfVeld(sheet, rij, "Dekking", DekkingZin(dekking));
-        rij = SchrijfVeld(sheet, rij, "Opgemaakt op", OpgemaaktOp());
+        rij = SchrijfVeld(sheet, rij, "Opgemaakt op", OpgemaaktOp(nu));
         rij++;
 
         // Two document-level statements, both unconditional, both about what this file is NOT.
@@ -259,16 +267,18 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
     /// printouts is the current one, and "proof of coverage" that cannot be located in time is not proof of much.
     /// </para>
     /// </summary>
-    private string OpgemaaktOp() =>
+    private static string OpgemaaktOp(DateTimeOffset nu) =>
         SchoolZone is null
-            ? $"{Nu().ToString("d MMMM yyyy 'om' HH:mm", Nl)} (UTC)"
-            : Nu().ToString("d MMMM yyyy 'om' HH:mm", Nl);
+            ? $"{nu.ToString("d MMMM yyyy 'om' HH:mm", Nl)} (UTC)"
+            : nu.ToString("d MMMM yyyy 'om' HH:mm", Nl);
 
     /// <summary>
     /// Now, in the school's own zone when the host knows it.
     /// <para>
-    /// One helper, so the kopblok's stamp and the filename's date cannot name different days for the same document.
-    /// Two separate reads of the clock either side of midnight would do exactly that.
+    /// <b>Called exactly once per document, from <see cref="Genereer"/>.</b> This helper unifies the zone conversion
+    /// and nothing else, so it is the single <i>call site</i> rather than this method that makes the kopblok's stamp
+    /// and the filename's date agree. An earlier revision claimed the helper itself guaranteed that while
+    /// <c>Genereer</c> read the clock twice, which is the E5-03 rule failing in a code comment.
     /// </para>
     /// </summary>
     private DateTimeOffset Nu()
@@ -355,9 +365,14 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
     /// RFC 6266/5987 and every target browser reads it.
     /// </para>
     /// </summary>
-    private string Bestandsnaam(DekkingWeergave dekking) =>
+    private static string Bestandsnaam(DekkingWeergave dekking, DateTimeOffset nu) =>
         $"dekking-{Veilig(dekking.KlasNaam)}-{Veilig(dekking.SchooljaarNaam)}"
-        + $"-{Veilig(BereikKort(dekking))}-{Nu():yyyy-MM-dd}.xlsx";
+        // `ToString` with an explicit culture, not an interpolated format specifier: interpolation resolves through
+        // CurrentCulture, and `yyyy`/`MM`/`dd` render in that culture's CALENDAR. On a th-TH or ar-SA host the file
+        // would be named 2569-… while the kopblok stamp, which already formats with an explicit culture, said
+        // "6 augustus 2026" — the very stamp-versus-filename disagreement the paragraph above forbids, arriving by a
+        // second route (antagonist round 2). The separators being literals is what made this look safe.
+        + $"-{Veilig(BereikKort(dekking))}-{nu.ToString("yyyy-MM-dd", Nl)}.xlsx";
 
     /// <summary>
     /// The scope, short enough for a filename: the measured jaar/fase codes, or that the whole curriculum was
