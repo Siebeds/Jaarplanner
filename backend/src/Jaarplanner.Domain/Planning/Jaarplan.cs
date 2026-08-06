@@ -128,11 +128,40 @@ public sealed class Jaarplan
     /// <summary>
     /// Drops the placements a (re)generation run is allowed to replace — untouched, unlocked AI proposals — and
     /// returns them. Everything the teacher decided on or locked survives (Art. IV.1, Art. IX.3); that is what
-    /// makes <c>vergrendeld</c> mean something, and it is the hook E4's per-period regeneration extends.
+    /// makes <c>vergrendeld</c> mean something.
+    /// <para>
+    /// This is the <b>whole-plan</b> variant (FR-8.1). The per-period one is
+    /// <see cref="VerwijderVervangbarePlaatsingenIn"/>, and both delegate to the same private filter so the two
+    /// regeneration paths cannot come to disagree about what a run may take.
+    /// </para>
     /// </summary>
-    public IReadOnlyList<Themaplaatsing> VerwijderVervangbarePlaatsingen()
+    public IReadOnlyList<Themaplaatsing> VerwijderVervangbarePlaatsingen() =>
+        VerwijderVervangbare(_ => true);
+
+    /// <summary>
+    /// Drops the replaceable placements <b>in one planningsblok only</b> and returns them — FR-8.2's half of the
+    /// discard. A block is identified by tier + start date, exactly as everywhere else in this aggregate.
+    /// <para>
+    /// <b>The predicate is identical to the whole-plan variant's, narrowed by position.</b> A per-period run is not
+    /// permitted to take anything a whole-plan run may not take: same <see cref="Themaplaatsing.IsVervangbaar"/>, so
+    /// an accepted, rejected, hand-placed, moved or locked placement in the regenerated period survives. That is what
+    /// keeps E4-06's reasoning intact — the lock control stays hidden on decided placements because it changes nothing
+    /// for either path — and it is why E4-07's preserve/overwrite ruling is still open rather than pre-empted here.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Themaplaatsing> VerwijderVervangbarePlaatsingenIn(
+        Planningsblokniveau blokNiveau,
+        DateOnly blokStart) =>
+        VerwijderVervangbare(p => p.BlokNiveau == blokNiveau && p.BlokStart == blokStart);
+
+    /// <summary>
+    /// The one place a regeneration removes placements. Callers narrow <i>which</i> blocks are in scope; none of them
+    /// may widen <i>what</i> is replaceable, because that predicate is <see cref="Themaplaatsing.IsVervangbaar"/> and
+    /// it lives on the placement.
+    /// </summary>
+    private IReadOnlyList<Themaplaatsing> VerwijderVervangbare(Func<Themaplaatsing, bool> inScope)
     {
-        var vervangbaar = _plaatsingen.Where(p => p.IsVervangbaar).ToList();
+        var vervangbaar = _plaatsingen.Where(p => p.IsVervangbaar && inScope(p)).ToList();
         foreach (var plaatsing in vervangbaar)
         {
             _plaatsingen.Remove(plaatsing);
