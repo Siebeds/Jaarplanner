@@ -70,8 +70,14 @@ export interface SpreidingsoverzichtProps {
    * period needs the grid, and this panel deliberately holds none. The server sends the pair structured
    * (`BuitenPeriodeVoorstel`) precisely so the client can say "Water (themaperiode 4)" instead of showing a teacher an
    * ISO date, which is Art. II.3's ratified preference.
+   *
+   * **Required, with no empty default** (antagonist round 2, finding A). An optional list is a caller's chance to
+   * *suppress* a report about the model's output, and the panel no longer reads `resultaat.buitenPeriode` itself, so
+   * nothing else would notice. That is the mirror image of the argument that made `Projecteer` read the blocked periods
+   * itself instead of taking them as an argument — the same defect shape, pointing the other way. Pass `[]` explicitly
+   * when a run has none.
    */
-  buitenPeriodeLabels?: readonly string[];
+  buitenPeriodeLabels: readonly string[];
 }
 
 /**
@@ -84,7 +90,7 @@ export function Spreidingsoverzicht({
   resultaat,
   verouderd = null,
   periodeOrdinaal,
-  buitenPeriodeLabels = [],
+  buitenPeriodeLabels,
 }: SpreidingsoverzichtProps) {
   const { spreiding } = resultaat;
 

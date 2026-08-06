@@ -513,6 +513,13 @@ function Bewerkpaneel({
       ? []
       : blokken.filter((blok) => blok.start !== plaatsing.blokStart);
 
+  // **How many of those a teacher can actually pick** (antagonist round 2, finding C). Since a blocked period is kept
+  // in the list and disabled, `doelen.length > 0` stopped meaning "there is somewhere to move this". In a year where
+  // every other period is bezet, the panel rendered "Kies hieronder een themaperiode…" over a placeholder and one
+  // unselectable option — an instruction to do something impossible, which is exactly the standard applied to the
+  // board's own explanation one finding earlier. Reachable on a two-period year with two oudercontacten.
+  const kiesbareDoelen = doelen.filter((blok) => !bezettePeriodes.has(blok.start));
+
   /**
    * Whether removing this placement must be confirmed.
    *
@@ -688,7 +695,16 @@ function Bewerkpaneel({
         </p>
       )}
 
-      {doelen.length > 0 && (
+      {/* **Gated on a SELECTABLE period, not merely on a listed one** (antagonist round 2, finding C): since a bezet
+          period is kept and disabled, `doelen.length` stopped answering "is there anywhere to move this". The
+          instruction and the picker are one unit, so they appear and disappear together. */}
+      {kiesbareDoelen.length === 0 && doelen.length > 0 && (
+        <p className="text-xs leading-snug text-ink-zacht">
+          {t("kalender.verplaatsGeenVrijePeriode")}
+        </p>
+      )}
+
+      {kiesbareDoelen.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${id}-periode`} className="text-xs font-semibold text-ink">
             {t("kalender.verplaatsNaar")}

@@ -667,6 +667,20 @@ export function Generatieparametersformulier({
                   </label>
                 </fieldset>
 
+                {/* What that answer now costs the teacher, stated where they choose it (owner ruling 2026-08-06, on
+                    the E4-05 antagonist's QUESTION).
+
+                    The question above is generic ("Mag er een thema in die themaperiode?"), so it was never a promise
+                    about the AI alone — but its MEANING changed when the owner ruled that a blocked period refuses a
+                    hand-placement and a drag too. Before this, the only disclosure was on the kalender, i.e. after the
+                    fact. **Shown only once the blocking answer is actually selected**, so it explains a consequence the
+                    teacher has chosen rather than warning about one of two options while both are still open. */}
+                {moment.blokkeertPlaatsing === true && (
+                  <p className="mt-1 text-xs leading-snug text-ink-zacht">
+                    {t("parameters.momentGeenThemaGevolg")}
+                  </p>
+                )}
+
                 {/* Stated in visible text, not left to a silently-dropped row: an unanswered question means this
                     moment is not sent at all, and a teacher who typed a name and a date would otherwise have every
                     reason to think it was. */}

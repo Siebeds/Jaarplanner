@@ -4728,6 +4728,19 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
   });
 
   /**
+   * A **three**-period year, needed because finding C's fix gates the card's picker on a *selectable* period: with the
+   * two-period fixture and one of them bezet, the picker correctly disappears, so a test about what the picker OFFERS
+   * has nowhere to stand. Three periods give one blocked and one free.
+   */
+  const drieRooster: Planningsrooster = {
+    ...rooster,
+    blokken: [
+      ...rooster.blokken,
+      { ordinaal: 3, start: "2027-01-04", eind: "2027-02-14", ouderOrdinaal: null, aantalOpenDagen: 30 },
+    ],
+  };
+
+  /**
    * The same year subdivided, with the property this section's tier test rests on: **each parent's first sub-block
    * starts on the parent's own start date**, which is exactly why `bezetteperiodes.has(blok.start)` was true at the
    * fine tier while the marker was withheld there. Sub-block 5 starts on the blocked themaperiode's start date.
@@ -4764,6 +4777,7 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
   function stubMetPeriodegeneratie(
     jaarplan: Jaarplan,
     antwoord: Generatieresultaat | number,
+    grofRooster: Planningsrooster = rooster,
   ): { urls: string[] } {
     const urls: string[] = [];
 
@@ -4800,7 +4814,7 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
           // Serves the tier that was ASKED for. A stub that always answers the coarse grid makes a zoom switch a
           // no-op, and a tier-gated assertion then passes for the wrong reason.
           return new Response(
-            JSON.stringify(url.includes("niveau=Subthemaperiode") ? fijnereRooster : rooster),
+            JSON.stringify(url.includes("niveau=Subthemaperiode") ? fijnereRooster : grofRooster),
             { status: 200 },
           );
         }
@@ -5073,13 +5087,13 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     // **The SC 2.5.7 route** (antagonist round 1, MAJOR). The board withholds the drop target for a blocked period,
     // but dragging may not be the only way in: this picker is the pointer-and-keyboard alternative. Left un-narrowed
     // it was the one route that still offered a target the server refuses with a 409.
-    const bezet = rooster.blokken[1];
-    const plaatsing = maakPlaatsing({ id: "kaart-1", blokStart: rooster.blokken[0].start });
+    const bezet = drieRooster.blokken[1];
+    const plaatsing = maakPlaatsing({ id: "kaart-1", blokStart: drieRooster.blokken[0].start });
     const plan: Jaarplan = {
       ...maakJaarplan([plaatsing]),
       geblokkeerdePeriodes: [{ blokStart: bezet.start, momentNaam: "Oudercontact" }],
     };
-    stubMetPeriodegeneratie(plan, periodeResultaat(plan, bezet.start));
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, bezet.start), drieRooster);
 
     renderKalender();
     await waitFor(() => expect(screen.getByText("Thema")).toBeInTheDocument());
@@ -5264,6 +5278,68 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     expect(await screen.findByText(t("kalender.plaatsBezet"))).toBeInTheDocument();
     expect(screen.queryByText(t("kalender.plaatsOnbeschikbaar"))).toBeNull();
     expect(screen.queryByText(/SERVERDETAIL-NIET-TONEN/)).toBeNull();
+  });
+
+  it("belooft geen keuze wanneer elke andere periode bezet is, en zegt wat er dan wel kan", async () => {
+    // Finding C (antagonist round 2), and it is the same standard as MINOR 8 one round earlier: since a bezet period is
+    // KEPT in the list and disabled, "the list is not empty" stopped meaning "there is somewhere to move this". The
+    // panel used to render "Kies hieronder een themaperiode…" over a placeholder and one unselectable option.
+    const plaatsing = maakPlaatsing({ id: "kaart-3", blokStart: rooster.blokken[0].start });
+    const plan: Jaarplan = {
+      ...maakJaarplan([plaatsing]),
+      // The only other period of this two-period year.
+      geblokkeerdePeriodes: [{ blokStart: rooster.blokken[1].start, momentNaam: "Oudercontact" }],
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, rooster.blokken[1].start));
+
+    renderKalender();
+    await waitFor(() => expect(screen.getByText("Thema")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }));
+
+    // No instruction and no picker, because neither could be honoured...
+    expect(await screen.findByText(t("kalender.verplaatsGeenVrijePeriode"))).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: t("kalender.verplaatsNaar") })).toBeNull();
+    expect(screen.queryByText(t("kalender.herplaatsKies"))).toBeNull();
+  });
+
+  it("houdt de bezette periode ook weg uit de kiezer van een vervallen kaart", async () => {
+    // Finding D (antagonist round 2). The wiring was right, but every other test drove a card inside a period column,
+    // so the assertion existed for the route I had called *less* likely. A stale placement sits in no period at all,
+    // so its picker offers every one of them — which is why the prop doc calls this the likeliest route in.
+    const vervallen = maakPlaatsing({
+      id: "kaart-4",
+      // A date that starts no block of the current grid: the definition of stale.
+      blokStart: "2026-08-15",
+      blokEind: null,
+      blokOrdinaal: null,
+      isVervallen: true,
+    });
+    const bezet = drieRooster.blokken[1];
+    const plan: Jaarplan = {
+      ...maakJaarplan([vervallen]),
+      geblokkeerdePeriodes: [{ blokStart: bezet.start, momentNaam: "Oudercontact" }],
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, bezet.start), drieRooster);
+
+    renderKalender();
+
+    // Inside the "Te herzien" notice, not on the board: a stale placement has no column.
+    const melding = await screen.findByRole("region", { name: new RegExp(t("kalender.herzienTitelEnkelvoud")) });
+    fireEvent.click(
+      within(melding).getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }),
+    );
+
+    const keuze = await within(melding).findByRole("combobox", { name: t("kalender.verplaatsNaar") });
+    const optie = within(keuze).getByRole("option", {
+      name: t("kalender.periodeKeuzeBezet", {
+        ordinaal: bezet.ordinaal,
+        periode: formatteerPeriode(bezet.start, bezet.eind),
+        moment: "Oudercontact",
+      }),
+    });
+
+    expect(optie).toBeDisabled();
   });
 
   it("heeft geen axe-schendingen met een bezette periode op het bord", async () => {

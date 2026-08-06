@@ -668,6 +668,33 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     expect(await screen.findByText(t("parameters.geenThemas"))).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).toBeNull();
   });
+  it("zegt bij het blokkerende antwoord wat het de leerkracht zelf kost, en alleen daar", async () => {
+    // Owner ruling 2026-08-06, on the E4-05 antagonist's QUESTION. The question above the radios is generic ("Mag er
+    // een thema in die themaperiode?"), so it was never a promise about the AI alone — but its MEANING changed when a
+    // blocked period started refusing a hand-placement and a drag too, and until this the only disclosure was on the
+    // kalender, i.e. after the fact.
+    stubFetch(resultaat(leegRapport), { instellingen: { gewensteStartthemas: [], vasteMomenten: [] } });
+    renderKalender();
+    await openForm();
+
+    fireEvent.click(await screen.findByRole("button", { name: t("parameters.momentToevoegen") }));
+
+    // Nothing is claimed while the question is unanswered: both options are open, so a warning about one of them
+    // would describe a choice the teacher has not made. This is also the state the form deliberately starts in.
+    expect(screen.queryByText(t("parameters.momentGeenThemaGevolg"))).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: t("parameters.momentMagThema") }));
+    expect(screen.queryByText(t("parameters.momentGeenThemaGevolg"))).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: t("parameters.momentGeenThema") }));
+    expect(screen.getByText(t("parameters.momentGeenThemaGevolg"))).toBeInTheDocument();
+
+    // It names BOTH consequences, because the ruling is that one rule binds human and machine, plus the boundary that
+    // keeps it honest: nothing already planned is removed.
+    const gevolg = t("parameters.momentGeenThemaGevolg");
+    expect(gevolg).toContain("jij kan er zelf ook geen thema in zetten");
+    expect(gevolg).toContain("blijft staan");
+  });
 });
 
 describe("Generatieparameters — a kept setting whose period is gone (E3-04)", () => {

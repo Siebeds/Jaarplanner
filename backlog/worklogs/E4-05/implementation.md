@@ -187,3 +187,48 @@ of choosing, that "bezet" now binds the teacher as well as the AI.
 
 *One process note, recorded because it cost the auditor a gate:* the running dev API holds the build output on Windows,
 so `dotnet format` and a full rebuild fail for anyone else with file locks. Stop the API before running either.
+
+## Fix round 2 (antagonist ronde 2: VIOLATIONS FOUND, **no MAJOR**, 5 MINOR)
+
+Round 2 verified both round-1 MAJORs discharged, all seven MINORs fixed, the routing done in the destination, and both
+open dispositions acceptable — it checked the README lock itself rather than taking my word for it. It also answered the
+four questions I put to it: the disabled option is defensible and SC 2.5.7 still holds; every card render site is
+covered *and the required prop makes a future third site a compile error*; and the scoped parameter report under-reports
+nothing that was visible before this story.
+
+**Three of the five MINORs lived inside the fixes**, which is the pattern I asked it to hunt for:
+
+- **A.** `buitenPeriodeLabels` was optional with an empty default, so a caller could **suppress** a report about the
+  model's output — the mirror image of the argument that made `Projecteer` read the blocked periods itself. Now
+  required, with every call site passing explicitly. The check is a **compile failure**, not a red test, because that
+  is the whole content of the fix.
+- **B.** The guard's justification quoted a string MAJOR 2 had deleted, and its `themaperiode {ordinaal}` allowlist
+  member looked dead. It was not: `kalender.periodeRapportKop` matches on it **alone** — but only once the pattern
+  learned to read *"gegenereerd"*, which Dutch's participle prefix had hidden from `\s+gener` all along. So the fix
+  widened the pattern rather than dropping the member, and the paragraph now says which string keeps it alive.
+- **C.** Because a blocked period is now **kept and disabled**, `doelen.length > 0` stopped meaning "there is somewhere
+  to move this": in a year where every other period is bezet, the card's panel rendered *"Kies hieronder een
+  themaperiode…"* over a placeholder and one unselectable option. Gated on a **selectable** period, with a sentence for
+  the case where none is.
+- **D.** The route I had called *likeliest* — the Te-herzien notice — was the one route with no test. It has one now.
+- **E.** The `catalogus.test.ts` claim breach. Nothing further in code; kept visible until E5-06 confirms, and now in
+  this gate list, which round 2 correctly noted it was missing from.
+
+### The mistake worth copying, because I made it twice in ten minutes
+
+Fixing **B** I wrote `ge?gener`, which is `g` + optional `e` + `gener` — so it matches "gegener" and **not** "gener".
+The "widening" silently dropped three existing members, `hergenereerUitleg` among them. **The script I verified it with
+carried the same mistake and duly confirmed the claim.** It was caught by an assertion I had added for an unrelated
+reason (naming two family members explicitly). Then, checking the corrected pattern, my script reported two strings
+naming no scope — because the guard lowercases its input before matching and my script did not.
+
+**A regex fix verified with the same regex is not verified, and neither is a guard checked by a script that does not do
+what the guard does.** Both are recorded in the test file itself.
+
+### Gates after fix round 2
+
+- **611 unit + 218 integration**, 0 skipped, real PostgreSQL; `dotnet format --verify-no-changes` **exit 0**.
+- **549 frontend / 23 files**; `pnpm lint` exit 0, `pnpm build` exit 0.
+- **4 more mutation checks, all biting**, one of them a deliberate compile failure.
+- *The lock trap recurred and cost the auditor a gate a second time*: my restarted dev API held this worktree's build
+  output, so its integration run failed to build. The servers are stopped now. **Stop the API before any full build.**

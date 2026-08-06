@@ -304,10 +304,18 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
    * (*"nog eens door de AI laten doen"*). It narrows the class; it does not close it.
    */
   /**
-   * *`themaperiode {ordinaal}` earned its place by this guard failing on E4-05's own aria-label*, which is the guard
-   * working rather than the guard being in the way. "Themaperiode 3 opnieuw genereren" is the **most** precise scope
-   * statement in this whole family: it does not merely say which *kind* of regeneration, it names the period. The
-   * placeholder is matched literally so this branch cannot be satisfied by prose that happens to mention a
+   * *`themaperiode {ordinaal}` earned its place by this guard failing on E4-05's own aria-label,* which was the guard
+   * working rather than being in the way: naming the period is the **most** precise scope statement in the family,
+   * since it says not merely which *kind* of regeneration but which period.
+   *
+   * **That aria-label no longer needs the member, and the member is still load-bearing — for a different string**
+   * (antagonist round 2, finding B). Fixing SC 2.5.3 reworded the label to "Deze periode opnieuw genereren… (themaperiode
+   * {ordinaal})", which now matches on *"deze periode"*, so this branch looked dead. It is not:
+   * `kalender.periodeRapportKop` matches on it alone — and it only entered the family at all once the pattern above
+   * learned to read *"gegenereerd"*. Recorded rather than quietly rewritten, because a comment whose stated reason has
+   * expired is the defect class this repo has retracted most often, and here the reason changed while the code was right.
+   *
+   * The placeholder is matched literally, so this branch cannot be satisfied by prose that happens to mention a
    * themaperiode; only a string that interpolates the period's own label qualifies.
    */
   const BEREIK = /hele jaarplan|deze periode|die periode|één periode|themaperiode \{ordinaal\}/;
@@ -344,7 +352,18 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
     // this pattern required adjacency — so the phrasing most likely to be copied out of the FA was the one phrasing
     // that escaped. Bounded rather than open-ended (`.*`) so an unrelated "probeer het opnieuw" three sentences above
     // a "genereren" cannot drag a string into the family and demand a scope clause it does not need.
-    const OPNIEUW = /hergener|opnieuw(\s+\S+){0,2}\s+gener/i;
+    //
+    // **`(?:ge)?gener` since round 2 of E4-05's audit, and it closed a real hole rather than tidying one.** Dutch puts
+    // "ge" in front of the participle, so `\s+gener` could not see *"opnieuw gegenereerd"* — and
+    // `kalender.periodeRapportKop` ("Alleen themaperiode 3 is opnieuw **gegenereerd**") is exactly that shape. It was
+    // making a regeneration claim outside this family the whole time.
+    //
+    // *Written `ge?gener` at first, which is `g` + optional `e` + `gener` and therefore matches "gegener" but **not**
+    // "gener" — so the "widening" silently dropped three existing members, including `hergenereerUitleg`. The
+    // verification script I checked it with carried the same mistake and duly confirmed the claim. It was caught by the
+    // named-member assertion below, which I had added for an unrelated reason. **A regex fix verified with the same
+    // regex is not verified.**
+    const OPNIEUW = /hergener|opnieuw(\s+\S+){0,2}\s+(?:ge)?gener/i;
 
     const gevonden = [...CATALOGUS].filter(
       ([sleutel, waarde]) => sleutel.startsWith("kalender.") && OPNIEUW.test(waarde),
@@ -353,6 +372,15 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
     // Non-vacuity is safe *here* in a way it is not for the guard above: this list is defined by content over the
     // whole namespace, and the button copy E4-04 added keeps it non-empty independently of the lock family's naming.
     expect(gevonden.length).toBeGreaterThan(0);
+
+    // **Two named members, because both entered the family through a pattern change that could silently be undone**
+    // (antagonist round 2, finding B). `periodeRapportKop` says "opnieuw **gegenereerd**", which the pattern could not
+    // read until `ge?gener`; narrowing it back would drop the string from the family with every test still green, and
+    // it is the ONLY member that names its scope through the `themaperiode {ordinaal}` branch — so that branch would
+    // become dead in the same move. Naming them here makes both regressions loud instead of invisible.
+    const sleutels = gevonden.map(([sleutel]) => sleutel);
+    expect(sleutels).toContain("kalender.periodeRapportKop");
+    expect(sleutels).toContain("kalender.hergenereerUitleg");
 
     for (const [sleutel, waarde] of gevonden) {
       // Lower-cased, unlike the guard above, because this family includes a **button label** where the phrase opens
