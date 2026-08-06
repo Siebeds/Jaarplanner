@@ -204,8 +204,15 @@ export function bepaalPercentage(gedekt: number, totaal: number): number {
  * so under a filter there is no server figure to read and the rows are the only source. Using the rows in **both**
  * cases rather than switching source on whether a filter is active is the deliberate half: one code path, and
  * unfiltered it must reproduce the server's own numbers exactly, because the server computes `AantalGedekt` as
- * `doelen.Count(d => d.IsGedekt)` over this very list (`DekkingService.cs`). A test pins that equality, so a server
- * that ever stopped agreeing with its own rows would fail here rather than silently let the browser answer.
+ * `doelen.Count(d => d.IsGedekt)` over this very list (`DekkingService.cs`).
+ *
+ * **That equality is pinned on the SERVER, and saying so here is a correction** (antagonist round 1, MINOR-1). This
+ * comment used to claim a frontend test pinned it. It could not: the fixture factory derives `aantalGedekt` from the
+ * same array it hands to `bepaalCijfer`, so the assertion compared a count against itself and would have passed just
+ * as happily on an implementation that read `aantalGedekt` instead of counting. The real guard is
+ * `DekkingEndpointsTests.Dekking_totalen_komen_overeen_met_de_rijen_die_ze_beschrijven`, an integration assertion
+ * against **real PostgreSQL** that the payload's own totals equal a count over its own rows. That is the test that
+ * fails if the server ever stops agreeing with itself, which is the only way this browser-side count can go wrong.
  *
  * **What did NOT move is the gate.** `isBetrouwbaar` and the presence of `aantalGedekt` still decide whether any
  * figure may be printed, and they are still the server's. That matters more under a filter than without one: the

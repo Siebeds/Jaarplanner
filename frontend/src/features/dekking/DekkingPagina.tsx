@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { JAARFASE_PARAM } from "../../app/routes";
 import { useSelectie } from "../../app/useSelectie";
+import { doelsoortBadgeSoort, type DoelsoortNaam } from "../../components/doelsoort";
 import { t } from "../../i18n";
 import { Dekkinggroep } from "./Dekkinggroep";
 import { Dekkingsamenvatting } from "./Dekkingsamenvatting";
@@ -80,10 +81,16 @@ export function DekkingPagina() {
   const jaarFase = searchParams.get(JAARFASE_PARAM) || null;
   const dekking = useDekking(klasId, bereik, jaarFase);
 
-  // Not validated against the six-member enum either, and for the same reason the jaar/fase is not: an unknown value
-  // simply matches no row, which `bepaalCijfer` reports as `geenVanDezeSoort` with a sentence and a way out. A 400 or a
-  // silent reset would both be worse than a screen that says what it is showing.
-  const doelsoort = (searchParams.get(DOELSOORT_PARAM) || null) as Doelsoortkeuze;
+  // VALIDATED against the wire vocabulary, which is a correction (antagonist round 1, MINOR-2). It used to be an
+  // unchecked cast, justified by "an unknown value matches no row, which `bepaalCijfer` reports with a sentence and a
+  // way out". Both halves were wrong: `doelsoortLabel` looks the value up in `doelsoortBadgeSoort`, misses, and asks
+  // the catalogue for `doelsoort.undefined`, which `t` returns verbatim — so `?doelsoort=Foo` printed *"geen enkel doel
+  // van de soort doelsoort.undefined"* to a non-technical teacher (Art. II.3).
+  //
+  // Falls back to no narrowing rather than 400ing, exactly as `leesBereik` does for the scope: a teacher who followed a
+  // stale link gets the working screen. A value that IS a real doelsoort but matches no row is a different case and
+  // still reaches `geenVanDezeSoort`, which is the honest report and now always has a control to act on.
+  const doelsoort = leesDoelsoort(searchParams);
   const alleenOntbrekende = searchParams.get(ONTBREKEND_PARAM) === "1";
 
   // THE ONE DERIVATION CHAIN, computed here and passed down, so the summary, the list header and every group tally
@@ -233,12 +240,25 @@ export function DekkingPagina() {
             />
           )}
 
-          {/* Every measured doel is covered and the teacher asked to see only the gaps, so there are no rows and that
-              is the good news rather than an empty result. Said in words, because an empty area under a pressed
-              "Alleen ontbrekende" is indistinguishable from a screen that failed to load. */}
-          {alleenOntbrekende && cijfer.soort === "cijfer" && groepen.length === 0 && (
+          {/*
+            Nothing to list under a pressed "Alleen ontbrekende", said in words: an empty area there is
+            indistinguishable from a screen that failed to load.
+
+            **Two sentences, not one, and the split is load-bearing** (antagonist round 1, MINOR-3). The first version
+            required `soort === "cijfer"`, which left the withheld state showing the toggle with silence underneath —
+            the exact state the comment claimed to prevent. The `cijfer` guard is nonetheless right and stays: *"Elk
+            doel is gedekt"* asserts `gedekt === totaal`, which is the withheld total handed over in words. So the
+            withheld case gets a neutral line that claims no coverage at all.
+          */}
+          {alleenOntbrekende && groepen.length === 0 && cijfer.soort === "cijfer" && (
             <p className="rounded-lg border border-dashed border-border bg-card/70 px-5 py-8 text-center text-sm text-ink">
               {t("dekking.allesGedekt")}
+            </p>
+          )}
+
+          {alleenOntbrekende && groepen.length === 0 && cijfer.soort === "ingehouden" && (
+            <p className="rounded-lg border border-dashed border-border bg-card/70 px-5 py-8 text-center text-sm text-ink">
+              {t("dekking.geenOntbrekendeInBeeld")}
             </p>
           )}
 
@@ -292,4 +312,18 @@ function leesBereik(searchParams: URLSearchParams): Dekkingsbereik {
   const ruw = searchParams.get(BEREIK_PARAM);
 
   return DEKKINGSBEREIKEN.find((optie) => optie === ruw) ?? "EigenJaarFase";
+}
+
+/**
+ * The doelsoort narrowing from the query string, or `null` when there is none or the value is not a doelsoort.
+ *
+ * Checked against `doelsoortBadgeSoort` rather than against a literal list, so the validation cannot drift from the
+ * mapping that the label lookup uses: those are the exact keys for which a Dutch label exists. Anything else falls back
+ * to no narrowing, which keeps a teacher who followed a stale link on a working screen instead of showing them a
+ * catalogue key (antagonist round 1, MINOR-2).
+ */
+function leesDoelsoort(searchParams: URLSearchParams): Doelsoortkeuze {
+  const ruw = searchParams.get(DOELSOORT_PARAM);
+
+  return ruw && ruw in doelsoortBadgeSoort ? (ruw as DoelsoortNaam) : null;
 }

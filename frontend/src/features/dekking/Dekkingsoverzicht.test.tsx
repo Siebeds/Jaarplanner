@@ -765,10 +765,9 @@ describe("Dekkingsoverzicht — percentage, doelsoortfilter en ontbrekende doele
     ).toBeInTheDocument();
 
     // And it says so, because a percentage that rose or fell because the denominator changed is the most misleading
-    // thing this screen could do silently.
-    expect(
-      within(paneel).getByText(t("dekking.gefilterdOpDoelsoort", { naam: t("doelsoort.md") })),
-    ).toBeInTheDocument();
+    // thing this screen could do silently. For MD specifically that sentence also has to disown the minimumdoel LEVEL
+    // (antagonist round 1, MAJOR-2), which is why this is not the generic key.
+    expect(within(paneel).getByText(t("dekking.gefilterdOpMinimumdoel"))).toBeInTheDocument();
 
     // The rows follow the same narrowing: the gemeenschappelijke doelen are gone.
     expect(screen.getByText("MD-01")).toBeInTheDocument();
@@ -926,5 +925,96 @@ describe("Dekkingsoverzicht — percentage, doelsoortfilter en ontbrekende doele
     await screen.findByText("MD-02");
 
     expect(await axe(document.body)).toHaveNoViolations();
+  });
+});
+
+describe("Dekkingsoverzicht — wat antagonist ronde 1 vond (E5-03)", () => {
+  it("keeps the doelsoort control on screen when a narrowing is active but the scope holds one soort", async () => {
+    // MAJOR-1. The two conditions intersect: `dekking()`'s doelen are all Gemeenschappelijk, so the "more than one
+    // option" rule hid the filter, while `?doelsoort=Minimumdoel` matched no row and produced a sentence telling the
+    // teacher to use it. No control, no list header: the only ways out were the Back button and the scope switch,
+    // which changes the denominator instead of clearing the filter.
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel`, { perBereik: { EigenJaarFase: dekking() } });
+
+    expect(await screen.findByText(t("dekking.geenVanDezeSoort"))).toBeInTheDocument();
+
+    const keuze = screen.getByLabelText(t("dekking.doelsoortLabel"));
+    expect(keuze).toBeInTheDocument();
+    // And it reports the narrowing that is actually in force. Without the absent value among its options the browser
+    // would paint the first one, so the control would read "Alle doelsoorten" beside a screen saying everything was
+    // filtered out.
+    expect((keuze as HTMLSelectElement).value).toBe("Minimumdoel");
+  });
+
+  it("clears the narrowing from that state, so the way out the copy promises exists", async () => {
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel`, { perBereik: { EigenJaarFase: dekking() } });
+
+    await screen.findByText(t("dekking.geenVanDezeSoort"));
+    fireEvent.change(screen.getByLabelText(t("dekking.doelsoortLabel")), { target: { value: "" } });
+
+    // Back to a real figure, and the parameter is gone from the URL rather than left behind to reappear.
+    expect(await screen.findByText(t("dekking.percentage", { percentage: 50 }))).toBeInTheDocument();
+    expect(new URLSearchParams(window.location.search).get("doelsoort")).toBeNull();
+  });
+
+  it("does not let an MD narrowing read as coverage at minimumdoelniveau", async () => {
+    // MAJOR-2. The doelsoort is labelled "Minimumdoel", so "63%" landed a few lines under "Dekking op het niveau van de
+    // minimumdoelen ... zit er nog niet in". Those are different quantities: Art. V.1 makes a minimumdoel covered when
+    // AT LEAST ONE concorded leerplandoel is, aggregated over distinct refs, so E5-04 will print a different number for
+    // the same class.
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel`, { perBereik: { EigenJaarFase: gemengd() } });
+
+    expect(await screen.findByText(t("dekking.gefilterdOpMinimumdoel"))).toBeInTheDocument();
+    // The generic sentence must NOT be the one used here.
+    expect(
+      screen.queryByText(t("dekking.gefilterdOpDoelsoort", { naam: t("doelsoort.md") })),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the generic sentence for a doelsoort that carries no such ambiguity", async () => {
+    const metVerdieping = dekking({
+      doelen: [
+        doel({ code: "V-01", doelsoort: "Verdieping", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+        doel({ code: "G-01" }),
+      ],
+    });
+    renderApp(`${MET_KLAS}&doelsoort=Verdieping`, { perBereik: { EigenJaarFase: metVerdieping } });
+
+    expect(
+      await screen.findByText(t("dekking.gefilterdOpDoelsoort", { naam: t("doelsoort.verdieping") })),
+    ).toBeInTheDocument();
+  });
+
+  it("ignores a doelsoort the vocabulary does not know rather than rendering the catalogue key", async () => {
+    // MINOR-2. `doelsoortLabel("Foo")` looked up `doelsoortBadgeSoort["Foo"]` → undefined → `t("doelsoort.undefined")`,
+    // and `t` returns a missing path verbatim, so the screen read "geen enkel doel van de soort doelsoort.undefined"
+    // (Art. II.3). Falls back to no narrowing, exactly as an unknown `bereik` does.
+    renderApp(`${MET_KLAS}&doelsoort=Foo`, { perBereik: { EigenJaarFase: gemengd() } });
+
+    // The unfiltered figure: `gemengd()` is 3 of 5, so the bad value narrowed nothing.
+    expect(await screen.findByText(t("dekking.percentage", { percentage: 60 }))).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("doelsoort.undefined");
+    expect(screen.queryByText(t("dekking.geenVanDezeSoort"))).not.toBeInTheDocument();
+  });
+
+  it("says something under a pressed gaps-only toggle even while the figure is withheld", async () => {
+    // MINOR-3. Reachable: an unresolved stale placement while the other placements cover the whole in-scope set. The
+    // `cijfer` guard on "Elk doel is gedekt" is correct and stays, because that sentence asserts gedekt === totaal and
+    // would hand over the withheld figure in words. So this state needs its own neutral line, not a relaxed guard.
+    const allesGedektMaarOnbetrouwbaar = dekking({
+      doelen: [
+        doel({ code: "A-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+        doel({ code: "A-02", isGedekt: true, dekkendeThemas: ["Winter"] }),
+      ],
+      isBetrouwbaar: false,
+      aantalGedekt: null,
+      aantalOnopgelosteVervallenPlaatsingen: 1,
+    });
+    renderApp(`${MET_KLAS}&ontbrekend=1`, { perBereik: { EigenJaarFase: allesGedektMaarOnbetrouwbaar } });
+
+    expect(await screen.findByText(t("dekking.geenOntbrekendeInBeeld"))).toBeInTheDocument();
+    // And it still claims no coverage: "everything is covered" would be the withheld total, spelled out.
+    expect(screen.queryByText(t("dekking.allesGedekt"))).not.toBeInTheDocument();
+    expect(screen.queryByText(TOTAALVORM)).not.toBeInTheDocument();
   });
 });

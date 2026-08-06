@@ -600,6 +600,7 @@
     "doelsoortAlle": "Alle doelsoorten",
     "doelsoortOptie": "{naam} ({aantal})",
     "gefilterdOpDoelsoort": "Alleen doelen van de soort {naam} tellen mee in dit cijfer.",
+    "gefilterdOpMinimumdoel": "Alleen leerplandoelen van de soort minimumdoel tellen mee in dit cijfer. Dit is nog niet de dekking op minimumdoelniveau: daarvoor telt een minimumdoel als gedekt zodra één gekoppeld leerplandoel gedekt is, en dat overzicht moet nog gebouwd worden.",
     "geenVanDezeSoort": "Geen doelen van deze soort",
     "geenVanDezeSoortUitleg": "Deze klas heeft geen enkel doel van de soort {naam}, dus valt er niets te berekenen. Kies bij Doelsoort een andere soort.",
     "toonLabel": "Tonen",
@@ -607,7 +608,8 @@
     "toonOntbrekende": "Alleen ontbrekende",
     "ontbrekendeTelling": "{aantal} doelen nog niet gedekt",
     "ontbrekendeTellingEnkelvoud": "1 doel nog niet gedekt",
-    "allesGedekt": "Elk doel in dit overzicht is gedekt, dus er ontbreekt hier niets meer."
+    "allesGedekt": "Elk doel in dit overzicht is gedekt, dus er ontbreekt hier niets meer.",
+    "geenOntbrekendeInBeeld": "Hier staat niets zolang dit overzicht geen cijfer geeft. Los eerst de plaatsingen hierboven op, dan zie je welke doelen nog ontbreken."
   },
   "activiteitType": {
     "experiment": "Experiment",

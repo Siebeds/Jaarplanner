@@ -351,6 +351,41 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     /// A school year with one class and two leerplandoelen, inserted straight through the DbContext because the point
     /// of this file is the read path rather than the write endpoints (which have their own tests).
     /// </summary>
+
+    [PostgresFact]
+    public async Task Dekking_totalen_komen_overeen_met_de_rijen_die_ze_beschrijven()
+    {
+        // THE INVARIANT E5-03'S BROWSER NOW DEPENDS ON, and nothing asserted it anywhere until this test.
+        //
+        // E5-03 puts a doelsoort filter on the dekkingsoverzicht. Under a narrowing there is no server figure to read,
+        // so the screen counts `doelen` itself; and because switching source on whether a filter is active is how two
+        // implementations of one number start to drift, it counts them unfiltered too. That is only honest while the
+        // payload's own totals agree with the payload's own rows.
+        //
+        // They do, by construction: `DekkingService` builds `AantalGedekt` as `doelen.Count(d => d.IsGedekt)` over the
+        // very list it serialises. But "by construction" is exactly the kind of guarantee this repo has watched decay
+        // (the te-vol threshold, the four DoelKoppeling layers), and every other assertion in this file pins an
+        // ABSOLUTE value, so a change that broke the relationship while keeping each figure individually plausible
+        // would pass all of them.
+        //
+        // A frontend test cannot stand in for this: its fixture derives the totals from the same array it asserts
+        // against, so it compares a count with itself. This is the layer where the two can actually disagree.
+        var (klasId, _) = await ZetGeplaatstThemaOpAsync(KoppelingStatus.Aanvaard, vervallen: false);
+
+        var dekking = await HaalDekkingAsync(klasId);
+
+        // A mixed pattern, not all-covered or all-uncovered: 1 of 2. Either extreme would let a broken count coincide
+        // with the right answer.
+        Assert.Equal(1, dekking.Doelen.Count(d => d.IsGedekt));
+        Assert.Equal(2, dekking.Doelen.Count);
+
+        Assert.Equal(dekking.Doelen.Count(d => d.IsGedekt), dekking.AantalGedekt);
+        Assert.Equal(dekking.Doelen.Count, dekking.AantalLeerplandoelen);
+
+        // And the evidence half travels with it: a doel is covered exactly when it names a thema, so a client counting
+        // either field reaches the same total.
+        Assert.All(dekking.Doelen, doel => Assert.Equal(doel.IsGedekt, doel.DekkendeThemas.Count > 0));
+    }
     private async Task<Guid> ZetKlasOpAsync(int leerjaar = 0)
     {
         await using var context = _db.MaakContext();

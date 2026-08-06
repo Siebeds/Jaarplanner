@@ -82,25 +82,15 @@ describe("bepaalCijfer", () => {
     });
   });
 
-  it("reproduces the server's own totals exactly when nothing is filtered", () => {
-    // THE EQUALITY E5-03 NOW DEPENDS ON. The counts moved from `aantalGedekt` / `aantalLeerplandoelen` to a client-side
-    // count over the rows, because under a doelsoort filter there is no server figure to read. That is only safe while
-    // the server computes its total the same way, which it does (`DekkingService` counts `doelen.Count(d => d.IsGedekt)`
-    // over this very list). Pinned here so a server that ever stopped agreeing with its own rows fails a test rather
-    // than letting the browser quietly become the authority on coverage.
-    const antwoord = dekking({
-      doelen: [
-        doel({ code: "A-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
-        doel({ code: "A-02", isGedekt: true, dekkendeThemas: ["Winter"] }),
-        doel({ code: "A-03" }),
-        doel({ code: "A-04" }),
-        doel({ code: "A-05" }),
-      ],
-    });
-    const cijfer = bepaalCijfer(antwoord, antwoord.doelen);
-
-    expect(cijfer).toMatchObject({ gedekt: antwoord.aantalGedekt, totaal: antwoord.aantalLeerplandoelen });
-  });
+  // THE CLIENT↔SERVER EQUALITY THIS FILE USED TO CLAIM TO PIN IS NOT PINNABLE HERE, and the attempt was deleted rather
+  // than reworded (antagonist round 1, MINOR-1). The test read: build a fixture, assert `bepaalCijfer`'s count equals
+  // the fixture's `aantalGedekt`. But `testdata.dekking()` derives `aantalGedekt` from the same array it puts in
+  // `doelen`, so the assertion compared a count against itself in one process, could never observe a server change,
+  // and passed identically on an implementation that read `aantalGedekt` instead of counting rows. It tested nothing
+  // that the test above it does not.
+  //
+  // The equality is real and it is worth guarding, so it is guarded where it can actually be observed:
+  // `DekkingEndpointsTests.Dekking_totalen_komen_overeen_met_de_rijen_die_ze_beschrijven`, against real PostgreSQL.
 
   it("counts only the measured doelen when a doelsoort narrowing is active", () => {
     // The story's acceptance criterion: filtering by MD shows minimumdoel-only coverage. Two of the five doelen are

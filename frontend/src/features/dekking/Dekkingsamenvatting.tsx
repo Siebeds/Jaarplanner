@@ -254,10 +254,24 @@ export function Dekkingsamenvatting({
 
             Suppressed in the `geenVanDezeSoort` state, where the sentence in the slot above already names the doelsoort
             and there is no figure for anything to count towards.
+
+            **MINIMUMDOEL GETS ITS OWN SENTENCE, and that is a correction rather than a nicety** (antagonist round 1,
+            MAJOR-2). The doelsoort is labelled *"Minimumdoel"*, so with that filter on, the screen read, top to bottom:
+            *"Dekking op het niveau van de minimumdoelen, wat de onderwijsinspectie toetst, zit er nog niet in"*, then
+            **63%**, then *"Alleen doelen van de soort Minimumdoel tellen mee in dit cijfer."* A directie reads that as
+            *63% van de minimumdoelen*, on the one screen whose whole job is to be evidence.
+
+            They are genuinely different quantities, not two names for one. Art. V.1 makes a **minimumdoel** covered
+            when **at least one** concorded leerplandoel is covered, aggregated over distinct `minimumdoelRef`; this
+            counts leerplandoelen one by one whose `doelsoort` happens to be MD. The OR alone makes the two numbers
+            differ, so E5-04 will print a different percentage for the same class. Saying so costs one sentence now and
+            avoids retracting a number later.
           */}
           {gekozenDoelsoort !== null && cijfer.soort !== "geenVanDezeSoort" && (
             <p className="mt-1 max-w-prose text-sm text-ink-zacht">
-              {t("dekking.gefilterdOpDoelsoort", { naam: doelsoortLabel(gekozenDoelsoort) })}
+              {gekozenDoelsoort === "Minimumdoel"
+                ? t("dekking.gefilterdOpMinimumdoel")
+                : t("dekking.gefilterdOpDoelsoort", { naam: doelsoortLabel(gekozenDoelsoort) })}
             </p>
           )}
 
@@ -293,11 +307,22 @@ export function Dekkingsamenvatting({
             and that placement is the design carrying the distinction — it changes what is shown, not what is measured,
             so it sits on the thing it changes.
 
-            Rendered only when the scope holds more than one doelsoort. With one, every option would produce the same
-            screen, which is a control that does nothing (the E3-06 rule), and the same condition the kleuterjaar
-            chooser above uses for the same reason.
+            Rendered when the scope holds more than one doelsoort **or a narrowing is currently active**, and the second
+            half is a fix (antagonist round 1, MAJOR-1). The first half alone is the kleuterjaar chooser's rule — with
+            one option every choice yields the same screen, so the control would do nothing (E3-06). But the two
+            conditions intersect: a class whose scope holds exactly one doelsoort, plus a `?doelsoort=` naming another,
+            renders *"Kies bij Doelsoort een andere soort"* with **no Doelsoort control on the page at all**. The list
+            header is suppressed in that branch too, so the only ways out were the Back button and the scope switch,
+            which changes the denominator rather than clearing the filter.
+
+            It is reachable by ordinary clicking, not just by a pasted link: `useSelectie.kiesKlas` carries every other
+            query param across a class switch, and `kiesBereik` deliberately keeps `doelsoort` while dropping
+            `jaarFase`. So "Heel curriculum, filter to Verdieping, back to Deze klas" lands in it.
+
+            A control that can clear a live narrowing is emphatically not a control that does nothing, so the E3-06 rule
+            is satisfied by rendering it, not by hiding it.
           */}
-          {doelsoortopties.length > 1 && (
+          {(doelsoortopties.length > 1 || gekozenDoelsoort !== null) && (
             <Doelsoortfilter
               opties={doelsoortopties}
               gekozen={gekozenDoelsoort}
