@@ -40,6 +40,10 @@ const CATALOGUS = new Map(bladeren(nl));
 const GEEN_ENKELVOUD_NODIG: Record<string, string> = {
   // A bare parenthesised numeral with no noun to inflect: "Wiskunde (1)" is correct.
   "doelen.optieMetAantal": "no inflected noun, the number stands alone in brackets",
+  // The same shape as `doelen.optieMetAantal` and for the same reason: the count sits alone in brackets after the
+  // doelsoort label, so "Minimumdoel (1)" is correct. Deliberately the same string shape as the register's doelsoort
+  // filter, which is the control this one is modelled on.
+  "dekking.doelsoortOptie": "no inflected noun, the number stands alone in brackets",
   // "nog niet gekoppeld" is a participle phrase and does not inflect: "1 nog niet gekoppeld" is correct.
   "ongekoppeld.aantal": "the trailing phrase does not inflect with the count",
   // `kalender.teVol` used to be exempted here, "unreachable at 1 while VOORLOPIGE_TE_VOL_DREMPEL >= 2", and the
@@ -558,6 +562,121 @@ describe("nl.json — no dead keys under themabeheer", () => {
       .filter((naam) => !bron.includes(`themabeheer.${naam}`));
 
     expect(ongebruikt).toEqual([]);
+  });
+});
+
+describe("nl.json — the gaps-only empty state says nothing about coverage", () => {
+  /**
+   * `dekking.geenOntbrekendeInBeeld` fills one slot: the gaps-only view of the dekkingsoverzicht, with no rows, while
+   * the figure is withheld. **Three sentences have occupied it and the first two were false**, each in a different
+   * direction, and each was written to answer an audit finding about the one before it.
+   *
+   * 1. *"Hier staat niets zolang dit overzicht geen cijfer geeft. Los eerst de plaatsingen hierboven op, dan zie je
+   *    welke doelen nog ontbreken."* — false twice. `groepen` never consults `isBetrouwbaar`, so gaps DO render in
+   *    that state and the list is empty only when there are none; and resolving a placement can never reveal a row,
+   *    only cover more doelen.
+   * 2. *"… kan je daar niet uit besluiten dat alles gedekt is."* — false the other way. `DekkingService` excludes
+   *    stale placements from its covering set (`!p.IsVervallen && TeltVoorDekking(p.Status)`), so staleness only ever
+   *    suppresses coverage. The inference it forbade was valid and stable under resolution.
+   *
+   * **The bind that keeps producing this**, recorded so the fourth author does not rediscover it: the one accurate
+   * explanation of the emptiness is *"er ontbreekt niets"*, and that is `gedekt === totaal`, i.e. the figure the
+   * directie ruling of 2026-07-28 withholds. So the slot may state the fact and must say nothing about coverage in
+   * either direction, including denials.
+   *
+   * **Why this is a catalogue guard and not a render test, stated precisely because the first version of this note was
+   * too sweeping** (antagonist round 5). A render assertion *can* catch a sentence whose **referent** is missing from
+   * the screen, and two in `Dekkingsoverzicht.test.tsx` do exactly that: *"keeps the doelsoort control on screen…"* and
+   * *"does not say what counts towards a cijfer on a screen that gives no cijfer"*. What it cannot catch is a sentence
+   * whose **content** is false, because `getByText(t(key))` compares the screen against the catalogue and editing the
+   * catalogue moves the expectation with it — reverting either false version below failed no test in the suite. That
+   * class, and only that class, needs a guard that reads the VALUE. Hence this family of describes.
+   *
+   * **The case law, moved here from `CLAUDE.md` where it was too long and got one example wrong** (antagonist round 5).
+   * The standing rule is *a conditional sentence may assert only what its own render condition guarantees*; these are
+   * the four sentences on E5-03 that broke it, each reaching past its branch to something a **different** owner
+   * controlled:
+   * - *"Kies bij Doelsoort een andere soort"* — asserted a **control** rendered by another branch's condition.
+   * - *"… tellen mee in dit cijfer"* — presupposed a **figure** another branch owned.
+   * - empty-state v1 — asserted that `groepen` consults `isBetrouwbaar`. It does not: `toonbareDoelen` never reads it,
+   *   which is why the gaps list renders rows in the withheld state. **Falsified in the frontend, one file away.**
+   * - empty-state v2 — asserted an epistemic property of `isGedekt` that `DekkingService` owns, across the API boundary.
+   *
+   * The last two are listed separately on purpose: `CLAUDE.md` collapsed them into "owned by `DekkingService`", which
+   * was true of one of them, and that lost the more useful half — the code a sentence reaches past is as often in the
+   * same file tree as across the wire. The rule caught three code comments on this story too, by the same mechanism.
+   *
+   * **Two limits, stated rather than left to be rediscovered** (the E4-06 lesson, already recorded by the
+   * `herzienUitleg` guard above). A keyword guard cannot see a paraphrase: *"hieruit volgt niet dat je klaar bent"*
+   * makes the same false claim and passes. And it cannot decide truth at all; it encodes a rule a human derived once
+   * from `DekkingService` — in this state, no claims about coverage. The structural half lives in
+   * `Dekkingsoverzicht.test.tsx` ("still lists the gaps while the figure is withheld"), which pins the world the
+   * sentence describes. Neither half is sufficient alone.
+   */
+  const SLEUTEL = "dekking.geenOntbrekendeInBeeld";
+
+  it("still exists, so this guard cannot be silently disarmed by a rename", () => {
+    expect(
+      CATALOGUS.get(SLEUTEL),
+      `${SLEUTEL} has been renamed or removed; this guard now checks nothing`,
+    ).toBeDefined();
+  });
+
+  it("is a single sentence, which is the rule rather than a word list", () => {
+    // THE ASSERTION THAT GENERALISES, and the only one here that catches a paraphrase (antagonist round 4). The rule
+    // this slot has to obey is "state the fact and stop": both false versions were a true first sentence followed by an
+    // explanatory second one, and the explanation was the defect each time. A keyword list can only forbid the wording
+    // already seen; this forbids the *shape* that produced all of it, whatever words the next author reaches for.
+    // **Splits on a terminator followed by a capital or the end of the string, not on a bare `.`** (antagonist round
+    // 5). A bare `.` treats **Op.stap** as a sentence boundary, and that is the product's own name: it occurs 20 times
+    // in this catalogue, and `bv.` another 15, both in copy of exactly this register. The failure direction was safe (a
+    // build break, never a shipped lie) but the message would have read "expected 1, received 2" on a genuinely single
+    // sentence, and a guard that cries wolf on the product's name is a guard someone deletes.
+    //
+    // Residual, stated rather than left to be found: a second sentence beginning in lowercase evades this. Rare in
+    // Dutch prose, and the keyword assertions below cover the wordings we have actually seen.
+    const zinnen = CATALOGUS.get(SLEUTEL)!
+      .trim()
+      .split(/[.!?](?=\s+[A-Z]|$)/)
+      .filter((deel) => deel.trim().length > 0);
+
+    expect(
+      zinnen,
+      `${SLEUTEL} must state the fact and stop; an explanatory second sentence is what made both earlier versions false`,
+    ).toHaveLength(1);
+  });
+
+  it("makes no claim about coverage, in either direction", () => {
+    const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
+
+    // Version 2's defect: denying an inference the code makes valid is still a claim about coverage.
+    expect(zin).not.toContain("gedekt");
+    expect(zin).not.toContain("dekking");
+
+    // **Dutch states coverage by ABSENCE at least as often as by the word `gedekt`** (antagonist round 4), and the
+    // guard did not see that: "Er ontbreekt hier niets meer" is `gedekt === totaal` in words and passed every
+    // assertion above. That is not a hypothetical phrasing — it is already a substring of `dekking.allesGedekt`, six
+    // lines away in this same JSON object, so filling this slot from its neighbour is the likeliest route to a fourth
+    // false version.
+    expect(zin).not.toContain("ontbreek");
+    expect(zin).not.toContain("volledig");
+    expect(zin).not.toContain("compleet");
+  });
+
+  it("promises no reveal and blames no cause", () => {
+    const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
+
+    // Version 1's two defects: a temporal promise ("dan zie je") and a causal tie between the emptiness and the
+    // withheld figure ("zolang ... geen cijfer"). Rows are not hidden here and resolving cannot produce any.
+    //
+    // `zolang` and `cijfer` are banned INDEPENDENTLY, not as one pattern (antagonist round 4 corrected the comment
+    // that said otherwise). `zolang` can only introduce that causal tie in this slot, so it costs nothing. `cijfer`
+    // is mildly broader than the rule needs — it also forecloses a true sentence like "Dit overzicht geeft hier geen
+    // cijfer" — and it is kept anyway, because that sentence would only repeat what `cijferIngehouden` already says
+    // three lines above it on the same screen.
+    expect(zin).not.toMatch(/\bdan zie je\b|\bverschijn/);
+    expect(zin).not.toContain("zolang");
+    expect(zin).not.toContain("cijfer");
   });
 });
 

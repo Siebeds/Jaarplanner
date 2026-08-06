@@ -12,6 +12,8 @@
  * constants breaks React Fast Refresh (and our lint rule says so).
  */
 
+import { t } from "../i18n";
+
 /** The badge's own key per doelsoort — also the design-token name (see `tailwind.config.js`). */
 export type Doelsoort =
   | "md"
@@ -39,3 +41,20 @@ export const doelsoortBadgeSoort: Record<DoelsoortNaam, Doelsoort> = {
   Specifiek: "specifiek",
   AnderstaligeNieuwkomers: "anderstalige",
 };
+
+/**
+ * The Dutch label for a doelsoort in its **wire** form (E5-03).
+ *
+ * A one-line wrapper, and it lives here rather than at its call site for the reason this whole module exists: the two
+ * forms are what it keeps straight, and passing the wire form ("Minimumdoel") where the catalogue key ("md") belongs
+ * renders a bare `doelsoort.Minimumdoel` on screen instead of a Dutch label.
+ *
+ * It is also why it is not exported from the component that uses it: a component file exporting a function breaks
+ * React Fast Refresh, which is the same rule that put `doelsoortBadgeSoort` here in the first place.
+ *
+ * `Doelenfilters` holds a private `badgeKey` doing the same hop. It is left where it is rather than migrated, because
+ * changing the register is not E5-03's; a third caller should use this one rather than write a third copy.
+ */
+export function doelsoortLabel(doelsoort: DoelsoortNaam): string {
+  return t(`doelsoort.${doelsoortBadgeSoort[doelsoort]}`);
+}

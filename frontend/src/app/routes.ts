@@ -69,6 +69,22 @@ export const DEKKING_PAD = "/dekking";
  */
 export const JAARFASE_PARAM = "jaarFase";
 
+/**
+ * The doelsoort narrowing, shared by the dekkingsoverzicht and the Doelen-register.
+ *
+ * **Here for the same reason as `JAARFASE_PARAM`, and it is the second time this exact drift has happened**
+ * (E5-03, antagonist round 6). E5-03 gave `/dekking` a doelsoort filter and declared the key locally; the register has
+ * read `doelsoort` out of the URL since E1-16 (`doelenfilter.ts`, `FILTERSLEUTELS`). So two features owned one route
+ * contract, which is the situation the paragraph above says belongs to neither of them.
+ *
+ * **The coupling is live, not theoretical.** `Doeldekkingregel`'s *nakijken* link navigates from `/dekking` to
+ * `/doelen/{code}` carrying `location.search`, so the narrowing travels with it. It happens to work today because both
+ * sides derive their vocabulary from `doelsoortBadgeSoort` — the register lower-cases and also accepts the Op.stap
+ * short code, and `/dekking` writes the wire form. That agreement was an accident of both reaching for the same table,
+ * and nothing recorded that it has to hold. This does.
+ */
+export const DOELSOORT_PARAM = "doelsoort";
+
 export const NAVIGATIE: readonly Navigatiebestemming[] = [
   {
     pad: "/doelen",

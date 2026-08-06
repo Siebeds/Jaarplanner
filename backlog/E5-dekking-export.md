@@ -31,6 +31,7 @@
   > **E3-07 closed its two halves of that ruling on 2026-07-30 and this one is now the only part outstanding.** A stale placement is detected and persisted (`IsVervallen` on `ThemaplaatsingWeergave`), rendered in a non-dismissible notice, and re-placeable inline. **Clause 4 — "coverage must not claim what it cannot prove" — is unimplementable until this story exists**, and E3-07's test report records it as *not verifiable* rather than as a pass, precisely so it does not read as done. Concretely: `HaalJaarplanAsync` already gives you the flag per placement, so the check is `plan.Plaatsingen.Any(p => p.IsVervallen)` → emit *onbetrouwbaar / te herzien* instead of a figure, in the view **and** in every export (FR-11).
 
 - [x] **E5-02 — Per-class coverage view (gedekt / niet gedekt)** — *done 2026-08-04 on `story/E5-02-dekkingsoverzicht`, pushed at `5998cba` (9 commits, with `origin/main` `ba372a4` merged in first so the gates saw the tree that lands). **test-runner PASS on all nine claims, no defects**; **antagonist two rounds, both VIOLATIONS FOUND, all 20 findings addressed**. Gates: **562 unit + 187 integration (0 skipped, real PostgreSQL) + 421 frontend / 20 files**, `dotnet format` / lint / build clean, twelve mutation checks. Narrative: [`worklogs/E5-02/implementation.md`](worklogs/E5-02/implementation.md).*
+  > **One defect left behind, found by E5-03's antagonist on 2026-08-06 and recorded here because it is E5-02's code.** `Dekkingsamenvatting`'s *"Naar Inladen"* link renders `<Link to="/import">` with **no `search`**, so following it drops the klas/schooljaar selection — the one cross-screen link in this feature that does not carry it (ADR-0021). **Worth more than its impact, which is low** (import is school-wide, so the teacher lands somewhere useful anyway): E5-02's own round-2 audit enumerated every `to={` in the feature and concluded the vervallen marker *"was the only one missing it"*, and that conclusion was one short. **An enumeration is a checkable claim, and this one was checked and still wrong** — the same lesson the 2026-08-04 note on E4-03 records about "this is recorded elsewhere". Not reopening E5-02: its acceptance criteria are met and one missing `search` is not a regressed story. Whoever picks up **E5-05** or **E5-06** is in this file already and should take it.
   > **⚠ One commit in this `[x]` was never audited, and it would be dishonest to let this read like the others.** The **kleuterjaar chooser** (`5998cba`, the last commit) was built *in response to* antagonist round 2 and then shipped **without a third round**, on the owner's decision when asked. Everything before it had two independent audit rounds plus a test-runner pass; that commit has its own ten tests, two mutation checks and a browser pass, all **by its author**. Same shape as **E5-01**'s `[x]`, and recorded for the same reason: if something in E5-02 turns out to be wrong, this is the most likely place to look. **The concrete residual:** the `?jaarFase=` narrowing, the new `BeschikbareJaarFasen` payload field, the ignore-an-out-of-set-code decision and the *"omdat je dat jaar gekozen hebt"* copy have no adversarial reading behind them. What is *not* residual risk: the two audited rounds found **nothing in the product's behaviour** at all, so the pattern this story exhibited is prose defects rather than broken screens.
   Show, per class, which leerplandoelen are covered and which are not.
   *Done when:* the view matches the plan state live. Ref: FR-9.1.
@@ -48,9 +49,41 @@
   > *Not urgent, and worth saying so:* no teacher can read the contradiction until this story puts a number on a screen. That is exactly why it is cheap to fix now.
   > *Also inherited, smaller:* `DekkingService`'s comment justifies poisoning the figure on a stale `voorgesteld` placement with *"the teacher may still accept it"*. After E4-02 they cannot (accepting is withheld on a stale card, rejecting is not). The conclusion survives, because re-placement still raises the figure; the stated reason is half stale, so do not quote it.
 
-- [ ] **E5-03 — Coverage % + missing-goals list + doelsoort filter**
+- [x] **E5-03 — Coverage % + missing-goals list + doelsoort filter** — *done 2026-08-06*
   Show dekkingspercentage, list ontbrekende doelen, filter by doelsoort (e.g. only minimumdoelen).
   *Done when:* filtering by MD shows minimumdoel-only coverage. Ref: FR-9.2.
+  **Measured in a browser: 43% unfiltered (6 of 14) becomes 63% narrowed to MD (5 of 8)**, against a real API and real
+  PostgreSQL. Client-side over the one payload E5-02 already fetches, which is what `DekkingWeergave.Doelen` was
+  designed for and says so. **No backend behaviour changed**; the single backend commit is a test.
+  *Gates:* 567 frontend / 23 files + 15 Postgres integration tests, 0 failed, 0 skipped; lint, build and
+  `dotnet format` clean; **23 mutations, 22 bite** (the 23rd provably cannot — see the worklog).
+  **Eight antagonist rounds, every one of which found something.** Full record in
+  [`backlog/worklogs/E5-03/worklog.md`](worklogs/E5-03/worklog.md).
+  > **The design question this story turned out to be about was not the percentage.** It was *which* narrowing may
+  > touch the figure. **Doelsoort** changes what is measured, so the figure follows it; **"alleen ontbrekende"** changes
+  > only what is shown, and a figure that followed *that* would report 0% every time a teacher asked to see their gaps.
+  > Two client-side filters over one payload, one a change of subject and one a change of view. It also falsified a
+  > documented distinction on `Bereikschakelaar` (*"a filter hides rows and leaves the figure alone"*), now rewritten.
+  > **The trap, for whoever adds the next figure here:** the server nulls `aantalGedekt` while a placement is stale,
+  > but every row still carries its own `isGedekt`, so a client-side count over a filtered subset reconstructs exactly
+  > the total the directie ruling of 2026-07-28 withholds. That route was open to any caller and is now closed in
+  > `bepaalCijfer` alone. **Route any third figure through it.**
+  > **`bepaalPercentage` clamps to 1..99.** Plain rounding turns 1 of 500 into "0%" and 499 of 500 into "100%", and the
+  > second is the worst thing an inspectie-facing screen can say. The fraction is always printed beside it.
+  > **What this story did NOT do, so no later story credits itself with it:** the gap-analyse grouped by discipline and
+  > actionable from the kalender is **E5-05**; the minimumdoel level is **E5-04** and stays blocked on E1-12. An
+  > MD-doelsoort filter is *not* minimumdoelniveau — Art. V.1 makes a minimumdoel covered when **one** concorded
+  > leerplandoel is, aggregated over distinct refs — and the screen now says so in its own copy rather than leaving a
+  > directie to read "63%" as coverage of the minimumdoelen.
+  > **Six of the eight rounds' defects were user-facing copy and not one was an arithmetic error.** From round 2 onward
+  > **every round's findings sat in the fix round that answered the previous one**; no round after the first found a
+  > defect from the original build. One empty-state sentence took three attempts, false in one direction and then the
+  > other. That produced the standing rule now in `CLAUDE.md`: *a conditional sentence may assert only what its own
+  > render condition guarantees*, with the corollary that when the honest explanation is forbidden you say **less**,
+  > never something else.
+  > **Owed, and it is not this story's defect:** `Dekkingsamenvatting`'s *"Naar Inladen"* link has no `search`, so it
+  > drops the klas/schooljaar selection. On `main`, predates E5-03; E5-02's round-2 audit enumerated every `to={` and
+  > concluded the vervallen marker was the only one missing it, so that conclusion was one short.
 
 - [ ] **E5-04 — Minimumdoel-level coverage (inspection level)**
   Surface coverage at minimumdoel level via concordance — the level the onderwijsinspectie tests.

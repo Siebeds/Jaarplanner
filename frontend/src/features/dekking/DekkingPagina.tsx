@@ -1,17 +1,47 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { JAARFASE_PARAM } from "../../app/routes";
+import { DOELSOORT_PARAM, JAARFASE_PARAM } from "../../app/routes";
 import { useSelectie } from "../../app/useSelectie";
+import { doelsoortBadgeSoort, type DoelsoortNaam } from "../../components/doelsoort";
 import { t } from "../../i18n";
 import { Dekkinggroep } from "./Dekkinggroep";
 import { Dekkingsamenvatting } from "./Dekkingsamenvatting";
-import { bepaalCijfer, groepeerPerSubdomein } from "./dekkingFormat";
+import { Dekkingslijstkop } from "./Dekkingslijstkop";
+import {
+  bepaalCijfer,
+  beschikbareDoelsoorten,
+  gemetenDoelen,
+  groepeerPerSubdomein,
+  toonbareDoelen,
+  type Doelsoortkeuze,
+} from "./dekkingFormat";
 import { useDekking } from "./useDekking";
 import { DEKKINGSBEREIKEN, type Dekkingsbereik } from "./types";
 
 /** The scope's query-string parameter, so a shared link opens the same denominator (ADR-0021). */
 export const BEREIK_PARAM = "bereik";
+
+/**
+ * The doelsoort narrowing, in the URL for the same reason as the scope (E5-03).
+ *
+ * It changes the figure, so a link that omitted it would open a different percentage from the one the sender was
+ * looking at. That is the whole argument for the scope being in the URL and it applies here identically.
+ *
+ * **Defined in `app/routes.ts` and re-exported, like `JAARFASE_PARAM` above it** (antagonist round 6). The
+ * Doelen-register has read this key out of the URL since E1-16, and `Doeldekkingregel`'s *nakijken* link carries the
+ * whole query string from here to `/doelen/{code}`, so it is a contract shared by two features rather than this page's
+ * to own. Declaring it locally was the second instance of the drift the paragraph on `JAARFASE_PARAM` was written about.
+ */
+export { DOELSOORT_PARAM };
+
+/**
+ * Whether the list shows only the gaps.
+ *
+ * In the URL too, though it changes no figure: *"stuur me je ontbrekende doelen"* is the realistic thing a directie
+ * asks a teacher for, and a link that dropped it would open the full list.
+ */
+export const ONTBREKEND_PARAM = "ontbrekend";
 
 /**
  * The narrowed jaar/fase, in the URL for the same reason as the scope: a figure a directie is asked to check must be
@@ -56,8 +86,42 @@ export function DekkingPagina() {
   const jaarFase = searchParams.get(JAARFASE_PARAM) || null;
   const dekking = useDekking(klasId, bereik, jaarFase);
 
+  // VALIDATED against the wire vocabulary, which is a correction (antagonist round 1, MINOR-2). It used to be an
+  // unchecked cast, justified by "an unknown value matches no row, which `bepaalCijfer` reports with a sentence and a
+  // way out". Both halves were wrong: `doelsoortLabel` looks the value up in `doelsoortBadgeSoort`, misses, and asks
+  // the catalogue for `doelsoort.undefined`, which `t` returns verbatim — so `?doelsoort=Foo` printed *"geen enkel doel
+  // van de soort doelsoort.undefined"* to a non-technical teacher (Art. II.3).
+  //
+  // Falls back to no narrowing rather than 400ing, exactly as `leesBereik` does for the scope: a teacher who followed a
+  // stale link gets the working screen. A value that IS a real doelsoort but matches no row is a different case and
+  // still reaches `geenVanDezeSoort`, which is the honest report and now always has a control to act on.
+  const doelsoort = leesDoelsoort(searchParams);
+  const alleenOntbrekende = searchParams.get(ONTBREKEND_PARAM) === "1";
+
+  // THE ONE DERIVATION CHAIN, computed here and passed down, so the summary, the list header and every group tally
+  // read the same numbers. The split between these two is the story's central rule: `gemeten` is what the figure is
+  // over (doelsoort only), `getoond` is what the list renders (doelsoort plus the gaps-only view). Deriving the figure
+  // from `getoond` would report 0% whenever a teacher asked to see their gaps.
+  const gemeten = useMemo(
+    () => (dekking.data ? gemetenDoelen(dekking.data.doelen, doelsoort) : []),
+    [dekking.data, doelsoort],
+  );
+
+  const cijfer = useMemo(
+    () => (dekking.data ? bepaalCijfer(dekking.data, gemeten) : null),
+    [dekking.data, gemeten],
+  );
+
   const groepen = useMemo(
-    () => (dekking.data ? groepeerPerSubdomein(dekking.data.doelen) : []),
+    () =>
+      dekking.data
+        ? groepeerPerSubdomein(toonbareDoelen(dekking.data.doelen, { doelsoort, alleenOntbrekende }))
+        : [],
+    [dekking.data, doelsoort, alleenOntbrekende],
+  );
+
+  const doelsoortopties = useMemo(
+    () => (dekking.data ? beschikbareDoelsoorten(dekking.data.doelen) : []),
     [dekking.data],
   );
 
@@ -78,6 +142,33 @@ export function DekkingPagina() {
       params.set(JAARFASE_PARAM, volgende);
     } else {
       params.delete(JAARFASE_PARAM);
+    }
+
+    setSearchParams(params, { replace: true });
+  }
+
+  // Deliberately NOT dropped when the scope changes, unlike the jaar/fase above. A jaar/fase narrowing is a subset of
+  // the class's own codes and means nothing under the whole curriculum, so it has to go; a doelsoort exists in both
+  // scopes and a teacher looking only at minimumdoelen wants to keep doing so while they widen the denominator.
+  function kiesDoelsoort(volgende: Doelsoortkeuze) {
+    const params = new URLSearchParams(searchParams);
+
+    if (volgende) {
+      params.set(DOELSOORT_PARAM, volgende);
+    } else {
+      params.delete(DOELSOORT_PARAM);
+    }
+
+    setSearchParams(params, { replace: true });
+  }
+
+  function kiesAlleenOntbrekende(volgende: boolean) {
+    const params = new URLSearchParams(searchParams);
+
+    if (volgende) {
+      params.set(ONTBREKEND_PARAM, "1");
+    } else {
+      params.delete(ONTBREKEND_PARAM);
     }
 
     setSearchParams(params, { replace: true });
@@ -125,15 +216,80 @@ export function DekkingPagina() {
         </p>
       )}
 
-      {dekking.data && (
+      {dekking.data && cijfer && (
         <>
           <Dekkingsamenvatting
             dekking={dekking.data}
+            cijfer={cijfer}
             bereik={bereik}
             onKiesBereik={kiesBereik}
             gekozenJaarFase={jaarFase}
             onKiesJaarFase={kiesJaarFase}
+            doelsoortopties={doelsoortopties}
+            gekozenDoelsoort={doelsoort}
+            onKiesDoelsoort={kiesDoelsoort}
           />
+
+          {/*
+            The list header, rendered whenever there is a scope to have a view over. Kept OUTSIDE the
+            `groepen.length > 0` guard below on purpose: with "alleen ontbrekende" pressed and nothing missing, the
+            groups are empty and the control that produced that state must still be on screen to press back. A toggle
+            that disappears when it succeeds strands the teacher on an empty list.
+          */}
+          {cijfer.soort !== "nietMeetbaar" && cijfer.soort !== "geenVanDezeSoort" && (
+            <Dekkingslijstkop
+              alleenOntbrekende={alleenOntbrekende}
+              onKies={kiesAlleenOntbrekende}
+              aantalOntbrekend={cijfer.soort === "cijfer" ? cijfer.totaal - cijfer.gedekt : 0}
+              magTellingTonen={cijfer.soort === "cijfer"}
+            />
+          )}
+
+          {/*
+            Nothing to list under a pressed "Alleen ontbrekende", said in words: an empty area there is
+            indistinguishable from a screen that failed to load.
+
+            **Two sentences, not one, and the split is load-bearing** (antagonist round 1, MINOR-3). The first version
+            required `soort === "cijfer"`, which left the withheld state showing the toggle with silence underneath —
+            the exact state the comment claimed to prevent. The `cijfer` guard is nonetheless right and stays: *"Elk
+            doel is gedekt"* asserts `gedekt === totaal`, which is the withheld total handed over in words. So the
+            withheld case gets a line that claims no coverage at all.
+
+            **The withheld sentence was rewritten in round 2, because the first attempt at it was false** (antagonist
+            round 2, MAJOR). It read *"Hier staat niets zolang dit overzicht geen cijfer geeft. Los eerst de plaatsingen
+            hierboven op, dan zie je welke doelen nog ontbreken."* Both halves were wrong, and the reason is that
+            **`groepen` never consults `isBetrouwbaar`**: the gaps list renders its rows normally while the figure is
+            withheld, so this branch fires only when there are genuinely zero gaps. So the list is not empty *because*
+            the figure is withheld, and resolving a placement cannot reveal rows — it can only cover more doelen and
+            shrink the set further.
+
+            **Round 3 killed the replacement too, and the third attempt is the one that says nothing about coverage at
+            all.** The rewrite read *"Er staan hier geen doelen. Zolang dit overzicht geen cijfer geeft, kan je daar niet
+            uit besluiten dat alles gedekt is."* False in the opposite direction, and the proof is on the server:
+            `DekkingService` builds its covering set from `!p.IsVervallen && TeltVoorDekking(p.Status)`, so a stale
+            placement is **excluded** and staleness can only ever *suppress* coverage, never manufacture it. An empty
+            gaps list therefore does mean every measured doel is covered, and resolving the outstanding placements can
+            only accept (adds coverage) or reject (changes nothing). The inference was valid and stable, and the
+            sentence told a teacher it was not. It was also the loudest possible pointer at the withheld proposition,
+            since this branch fires only when `gedekt === totaal` and the sentence named that proposition out loud.
+
+            **The lesson, after three attempts in one slot:** the bind only forbids saying anything *about coverage*. It
+            never required saying something about coverage that is untrue. Twice I tried to explain the emptiness and
+            twice the explanation was the defect; the sentence now states the fact and stops.
+
+            A `catalogus.test.ts` guard pins that, because a `t(key)` assertion cannot: it moves with the catalogue.
+          */}
+          {alleenOntbrekende && groepen.length === 0 && cijfer.soort === "cijfer" && (
+            <p className="rounded-lg border border-dashed border-border bg-card/70 px-5 py-8 text-center text-sm text-ink">
+              {t("dekking.allesGedekt")}
+            </p>
+          )}
+
+          {alleenOntbrekende && groepen.length === 0 && cijfer.soort === "ingehouden" && (
+            <p className="rounded-lg border border-dashed border-border bg-card/70 px-5 py-8 text-center text-sm text-ink">
+              {t("dekking.geenOntbrekendeInBeeld")}
+            </p>
+          )}
 
           {/* No paging, and that is a decision rather than an omission (recorded on DekkingController). The totals and
               the reliability verdict are properties of the WHOLE scope, so a page of rows could not carry them; and the
@@ -153,10 +309,17 @@ export function DekkingPagina() {
                   // quotes and whitespace, which an `id` may not (see `groepeerPerSubdomein`). The index is stable within
                   // one render of one server answer, which is all an `aria-labelledby` reference needs.
                   kopId={`dekking-groep-${index}`}
-                  // Derived from the same function the summary uses, so the two cannot disagree about whether this plan
-                  // may report a figure. Found in a browser: the summary said it would give no figure while every group
-                  // printed one, and group counts add up to exactly the total that was withheld.
-                  magTellingTonen={bepaalCijfer(dekking.data).soort === "cijfer"}
+                  // The same value the summary renders from, now passed rather than recomputed. It used to call
+                  // `bepaalCijfer` a second time here, which was equal by construction while the function took one
+                  // argument; with a filter in play the two calls would have had to be given the same narrowed list to
+                  // stay equal, and that is a coincidence to rely on rather than a guarantee. Found in a browser once
+                  // already: the summary said it would give no figure while every group printed one, and the group
+                  // counts add up to exactly the total that was withheld.
+                  magTellingTonen={cijfer.soort === "cijfer"}
+                  // With "alleen ontbrekende" pressed a group's rows are only its gaps, so "0 van 3 gedekt" would be a
+                  // count over a subset presented as a count over the group. The tally is suppressed rather than
+                  // recomputed: the honest per-group number in that view is the one the group no longer shows.
+                  toonAlleenOntbrekende={alleenOntbrekende}
                 />
               ))}
             </div>
@@ -178,4 +341,24 @@ function leesBereik(searchParams: URLSearchParams): Dekkingsbereik {
   const ruw = searchParams.get(BEREIK_PARAM);
 
   return DEKKINGSBEREIKEN.find((optie) => optie === ruw) ?? "EigenJaarFase";
+}
+
+/**
+ * The doelsoort narrowing from the query string, or `null` when there is none or the value is not a doelsoort.
+ *
+ * Checked against `doelsoortBadgeSoort` rather than against a literal list, so the validation cannot drift from the
+ * mapping that the label lookup uses. Anything else falls back to no narrowing, which keeps a teacher who followed a
+ * stale link on a working screen instead of showing them a catalogue key (antagonist round 1, MINOR-2).
+ *
+ * **`Object.hasOwn`, not `in`, and the difference was a live defect** (antagonist round 2). `in` walks the prototype
+ * chain, so `?doelsoort=Foo` was rejected while `toString`, `valueOf`, `constructor`, `hasOwnProperty` and `__proto__`
+ * all passed. `doelsoortBadgeSoort["toString"]` is then a *function*, which the label lookup interpolates into a
+ * template literal, so the screen read *"geen enkel doel van de soort doelsoort.function toString() { [native code] }"*
+ * — the exact Art. II.3 breach the round-1 fix was written to close, in the exact same input class. The round-1 comment
+ * also claimed these were "the exact keys for which a Dutch label exists", which was false for those five.
+ */
+function leesDoelsoort(searchParams: URLSearchParams): Doelsoortkeuze {
+  const ruw = searchParams.get(DOELSOORT_PARAM);
+
+  return ruw && Object.hasOwn(doelsoortBadgeSoort, ruw) ? (ruw as DoelsoortNaam) : null;
 }
