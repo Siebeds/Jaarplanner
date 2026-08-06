@@ -5348,7 +5348,7 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     // **The MAJOR of antagonist round 3.** Round 2 gated the picker and added a sentence, and left the instruction
     // that actually promises a picker gated on staleness alone. So this state read "Kies hieronder een themaperiode …
     // of versleep de kaart" over no picker, onto a board whose every column is a disabled droppable — both halves
-    // false, which is verbatim the state an owner ruling reopened E3-07 over.
+    // false, which is the same defect class as the state an owner ruling reopened E3-07 over (there: a stale REJECTED card, where the picker is withheld by the rejection; here: a stale card with every period bezet).
     const vervallen = maakPlaatsing({
       id: "kaart-5",
       blokStart: "2026-08-15",

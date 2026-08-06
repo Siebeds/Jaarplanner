@@ -192,11 +192,15 @@
   > repair gated the move *picker* and added a sentence, and left the instruction that actually promises a picker gated
   > on staleness alone. So on a **stale** card in a year where every period is bezet the panel read *"Kies hieronder een
   > themaperiode … of versleep de kaart"* over no picker, onto a board whose every column is a disabled droppable: both
-  > halves false, **verbatim the state an owner ruling reopened E3-07 over**. The new sentence carried the same defect
+  > halves false, **the same defect class as the state an owner ruling reopened E3-07 over (there: a stale **rejected** card, where the picker is withheld by the rejection; here: a stale card with every period bezet)**. The new sentence carried the same defect
   > class in a second form (*"nergens **anders** heen"* for a card that is in no period, two lines under a paragraph
   > saying exactly that), which three strings in that same file had already been repaired for. Fixed by gating only the
-  > `kan` branch — the other two say *where* moving works and withholding them would take away the only way forward —
-  > and by giving the sentence a `*Vervallen` variant. Both pinned, and the round also moved a **vacuous assertion**
+  > `kan` branch, because only that branch promises a picker: the other two say where re-placing *does* work
+  > (`herplaatsAnderNiveau`) or that the view could not be read at all (`herplaatsNiveauOnbekend`), and withholding
+  > either would leave the card with no statement whatsoever. *(An earlier revision of this line compressed both into
+  > "say where moving works", which is false of the second: it says where it does **not**, and is the only thing that
+  > state gets. The source comment had it right and the entry did not, which is the wrong way round, since the entry is
+  > what outlives the branch.)* Fixed further by giving the sentence a `*Vervallen` variant. Both pinned, and the round also moved a **vacuous assertion**
   > that appeared to check the claim while standing on a card that could not exercise it.
   > **Inherited from E3-03 via E4-04 (2026-08-06): your new path must attach the dekkingsvooruitzicht itself.** FR-5.3's
   > measured half is composed in `JaarplanController.Genereer`, not inside `JaarplanGeneratieService`, so a second

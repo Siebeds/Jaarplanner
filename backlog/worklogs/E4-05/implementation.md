@@ -249,15 +249,21 @@ instruction that *actually promises a picker* — `HERPLAATSUITLEG` — gated on
 
 *"Kies hieronder een themaperiode voor dit thema, of versleep de kaart naar een themaperiode in het jaarplan."*
 
-with **no picker** below it and every column a disabled droppable, so both halves were false. That is verbatim the state
-an owner ruling reopened **E3-07** over. My round-2 comment claimed *"the instruction and the picker are one unit, so
+with **no picker** below it and every column a disabled droppable, so both halves were false. That is the same defect CLASS as the state
+an owner ruling reopened **E3-07** over, and not the same state: there it was a stale **rejected** card, whose picker
+is withheld by the rejection itself; here a stale card with every period bezet. E3-07 closed on 2026-08-04 and this
+block is gated on `!isGeweigerd`, so E4-05 never touched its branch. *Written "verbatim" first, in four artefacts,
+which would invite a later reader to think a closed reopening had been re-broken.* My round-2 comment claimed *"the instruction and the picker are one unit, so
 they appear and disappear together"* — true of the sentence I had just added, false of the instruction already there.
 **The diff showed the new gate; it did not show the ungated instruction above it,** which is why the auditor read the
 whole conditional chain instead of the hunk.
 
 The new sentence carried the same defect class in a second form: *"nergens **anders** heen"* presupposes a themaperiode
 a stale card does not have, two lines under a paragraph saying it stands in none — the construction
-`weigeringUitlegVervallen`, `herplaatsUitlegVervallen` and `herplaatsAnderNiveau` had each already been repaired for.
+`weigeringUitlegVervallen`, `weigeringEerstTerugdraaienVervallen` and `vergrendelUitlegVervallen` had each already
+been repaired for. *The first draft cited `herplaatsUitlegVervallen`, **a key that has never existed**, and
+`herplaatsAnderNiveau`, which was repaired for a different reason. A citation nobody checks is how a comment comes to
+justify itself; the three real precedents make the argument stronger than the invented one did.*
 
 **Fixed by gating only the `kan` branch.** The other two branches must stay: they do not offer a picker, they say where
 re-placing *does* work or that the view could not be read, and withholding those would remove the only way forward —

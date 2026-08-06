@@ -660,8 +660,9 @@ function Bewerkpaneel({
           MAJOR). Round 2 gated the picker and added a sentence, and left THIS instruction — which is the one that
           actually promises a picker — on staleness alone. On a stale card in a year where every period is bezet the
           panel therefore read *"Kies hieronder een themaperiode … of versleep de kaart"* over no picker and onto a
-          board whose every column is a disabled droppable: both halves false, which is verbatim the state an owner
-          ruling reopened E3-07 over. My round-2 comment claimed "the instruction and the picker appear and disappear
+          board whose every column is a disabled droppable: both halves false, which is the same defect CLASS as the state an
+          owner ruling reopened E3-07 over — not the same state: there it was a stale REJECTED card, whose picker is
+          withheld by the rejection itself, and this whole block is gated on `!isGeweigerd`. My round-2 comment claimed "the instruction and the picker appear and disappear
           together"; that was true of the sentence I added and false of the instruction already here.
 
           The other two branches must NOT be gated: they do not offer a picker, they say where re-placing *does* work
@@ -714,8 +715,12 @@ function Bewerkpaneel({
           **Split on `isVervallen` like every other sentence in this panel** (round 3, MAJOR): a stale card is in no
           period, so *"nergens **anders** heen"* presupposes a themaperiode it does not have, two lines under a
           paragraph saying it stands in none. Three earlier strings in this file were repaired for exactly that
-          (`weigeringUitlegVervallen`, `herplaatsUitlegVervallen`, `herplaatsAnderNiveau`); this one arrived carrying
-          the defect they were fixed for. */}
+          (`weigeringUitlegVervallen`, `weigeringEerstTerugdraaienVervallen`,
+          `vergrendelUitlegVervallen`); this one arrived carrying the defect they were fixed for.
+
+          *An earlier revision cited `herplaatsUitlegVervallen`, **which has never existed**, and `herplaatsAnderNiveau`,
+          which was repaired for a different reason. Corrected rather than quietly rewritten: a citation nobody checks
+          is how a comment comes to justify itself.* */}
       {kiesbareDoelen.length === 0 && doelen.length > 0 && (
         <p className="text-xs leading-snug text-ink-zacht">
           {t(
