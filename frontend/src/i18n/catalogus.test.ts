@@ -195,7 +195,7 @@ const WEIGERINGTEKSTEN = [...CATALOGUS].filter(([sleutel]) =>
 /** Both families, for the per-string assertions. Non-vacuity is asserted per family, never over this. */
 const HERGENERATIETEKSTEN = [...SLOTTEKSTEN, ...WEIGERINGTEKSTEN];
 
-describe("nl.json — no regeneration promise goes unscoped, in either family", () => {
+describe("nl.json — no regeneration promise goes unscoped, in any family", () => {
   /**
    * E4-06 promises that a locked thema survives *a regeneration*. Only one regeneration path exists today
    * (`JaarplanGeneratieService`, which discards exactly `Voorgesteld && !vergrendeld`). **E4-05** adds a second
@@ -281,6 +281,59 @@ describe("nl.json — no regeneration promise goes unscoped, in either family", 
       expect(waarde.toLowerCase(), `${sleutel} repeats the re-placement instruction`).not.toMatch(
         /\bkies\b/,
       );
+    }
+  });
+
+  /**
+   * **The same rule, over the whole `kalender` namespace rather than two prefixes (E4-04).**
+   *
+   * The two guards above are keyed on the key's *prefix* and on the word `hergener`, and this file already records
+   * both blind spots that leaves. E4-04 walked straight into the second one: its own copy says *"opnieuw genereren"*,
+   * which is FR-8.1's own wording and contains no `hergener` at all, so the family guard could not have seen the
+   * newest member of the class it exists for. And a `grep` for the first blind spot found `kalender.plaatsGevolg`
+   * (E4-03) already outside both prefixes, making the qualified claim with nothing pinning it.
+   *
+   * So this guard is keyed on the **claim** instead of on the key: any `kalender.*` string that talks about running
+   * the generation again, in either wording, must say which regeneration it means. E4-05 adds the second discard path
+   * and E4-07's preserve/overwrite rule is still an open directie question, so an unqualified promise is a statement
+   * about code nobody has written — that reasoning is unchanged, only its reach is.
+   *
+   * The two guards above are **not** replaced by it: they carry the per-family non-vacuity canaries that caught a
+   * rename once already, and a family defined by *content* rather than by key prefix cannot canary the same property.
+   * It carries a canary anyway, and the trade-off is deliberate rather than unnoticed (this paragraph is a correction:
+   * the first version argued a canary here was impossible and then wrote one three lines below). Rewording **all**
+   * `kalender.*` copy away from every trigger phrase would turn a correct tree red — but that is a tripwire worth
+   * having, because the same rewrite is how this guard would silently stop guarding anything at all. If you hit it,
+   * the fix is to re-point the pattern at the new wording, not to delete the line.
+   *
+   * *Known limit, stated so the next author does not have to find it the hard way:* the pattern tolerates up to two
+   * words between *opnieuw* and *gener*, so it reads *"opnieuw genereren"*, *"opnieuw laten genereren"* (FR-8.1's own
+   * phrasing, which the first version missed) and *"opnieuw kunnen laten genereren"*. A wording that avoids both stems
+   * (*"nog eens door de AI laten doen"*) is still invisible. This narrows the class; it does not close it.
+   */
+  it("qualifies every kalender string that talks about generating again, in any wording", () => {
+    // Two words of slack, because the requirement itself says "opnieuw **laten** genereren" and the first version of
+    // this pattern required adjacency — so the phrasing most likely to be copied out of the FA was the one phrasing
+    // that escaped. Bounded rather than open-ended (`.*`) so an unrelated "probeer het opnieuw" three sentences above
+    // a "genereren" cannot drag a string into the family and demand a scope clause it does not need.
+    const OPNIEUW = /hergener|opnieuw(\s+\S+){0,2}\s+gener/i;
+
+    const gevonden = [...CATALOGUS].filter(
+      ([sleutel, waarde]) => sleutel.startsWith("kalender.") && OPNIEUW.test(waarde),
+    );
+
+    // Non-vacuity is safe *here* in a way it is not for the guard above: this list is defined by content over the
+    // whole namespace, and the button copy E4-04 added keeps it non-empty independently of the lock family's naming.
+    expect(gevonden.length).toBeGreaterThan(0);
+
+    for (const [sleutel, waarde] of gevonden) {
+      // Lower-cased, unlike the guard above, because this family includes a **button label** where the phrase opens
+      // the sentence: "Hele jaarplan opnieuw genereren…". The stricter guard's literal `toContain` would have forced
+      // the copy into a worse Dutch word order to satisfy a test, which is the tail wagging the dog.
+      expect(
+        waarde.toLowerCase(),
+        `${sleutel} promises a regeneration without saying which one`,
+      ).toContain("hele jaarplan");
     }
   });
 });

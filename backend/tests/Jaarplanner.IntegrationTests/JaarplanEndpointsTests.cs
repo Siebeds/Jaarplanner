@@ -534,6 +534,81 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
     }
 
     /// <summary>
+    /// <b>E4-04 / FR-8.1 over the wire: the second press, and the two figures the teacher is shown afterwards.</b>
+    /// <para>
+    /// The behaviour itself is proven where a deletion can actually fail — <c>JaarplanPersistentieTests</c>, against
+    /// real PostgreSQL, for both halves of <c>IsVervangbaar</c>. What only this level can prove is the <b>contract</b>:
+    /// that a plain second POST to the same endpoint is a regeneration, and that its response carries
+    /// <c>aantalVervangen</c> and <c>aantalBehouden</c> under those names. E4-04's new copy promises a teacher that
+    /// their decisions survive and their untouched proposals do not, and <c>Spreidingsoverzicht</c> then reports the
+    /// counts: until now the frontend read both fields from a hand-written fixture and nothing on the server side read
+    /// them <b>over the wire</b>, so the JSON half of that seam was checked against nobody.
+    /// </para>
+    /// <para>
+    /// <i>Corrected on the antagonist's finding:</i> an earlier version of this claimed no server test read
+    /// <c>AantalVervangen</c> at all. It does — E4-06's lock test in <c>JaarplanPersistentieTests</c> asserts it forty
+    /// lines above E4-04's own new test, and the unit suite reads <c>AantalBehouden</c> four times. So a rename of the
+    /// C# property was never the unpinned risk; a change to the serialized name was.
+    /// </para>
+    /// <para>
+    /// The second period comes from the public rooster endpoint rather than from a hard-coded date, for the reason
+    /// Art. IX.3 gives: nothing may assume how long a period is or where a boundary falls.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_tweede_run_vervangt_het_onaangeroerde_voorstel_en_laat_de_beslissing_staan()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, blokStart) = await _factory.SeedAsync();
+
+        // The grid, read the way the app reads it. `[1]` is the period the second proposal goes into.
+        var eerstePlan = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        var rooster = await client.GetFromJsonAsync<RoosterDto>(
+            $"/api/schooljaren/{eerstePlan!.SchooljaarId}/rooster");
+        Assert.True(rooster!.Blokken.Count >= 2, "this fixture needs at least two themaperiodes");
+        var tweedeStart = rooster.Blokken[1].Start;
+
+        // Run 1 fills two periods with proposals.
+        _factory.AiAntwoord =
+            $$"""
+            {"plaatsingen":[
+              {"blokStart":"{{blokStart:yyyy-MM-dd}}","thema":"Herfst","motivatie":"seizoen"},
+              {"blokStart":"{{tweedeStart:yyyy-MM-dd}}","thema":"Herfst","motivatie":"nog eens"}]}
+            """;
+        var eerste = await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        Assert.Equal(HttpStatusCode.OK, eerste.StatusCode);
+        Assert.Equal(2, (await eerste.Content.ReadFromJsonAsync<GeneratieDto>())!.AantalNieuw);
+
+        // The teacher decides on exactly one of them and leaves the other alone. No lock anywhere in this test, so
+        // the status is the only thing that can explain the outcome below.
+        var naEerste = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        var beslist = naEerste!.Plaatsingen.Single(p => p.BlokStart == blokStart);
+        var onaangeroerd = naEerste.Plaatsingen.Single(p => p.BlokStart == tweedeStart);
+        var status = await client.PutAsJsonAsync(
+            $"/api/klassen/{klasId}/jaarplan/plaatsingen/{beslist.Id}/status", new { status = "Aanvaard" });
+        Assert.Equal(HttpStatusCode.OK, status.StatusCode);
+
+        // Run 2: the same endpoint, no body, nothing about it says "again". The model proposes nothing this time, so
+        // every difference below is the regeneration's own doing rather than a new placement's.
+        _factory.AiAntwoord = """{"plaatsingen":[]}""";
+        var tweede = await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+        Assert.Equal(HttpStatusCode.OK, tweede.StatusCode);
+
+        var resultaat = await tweede.Content.ReadFromJsonAsync<GeneratieDto>();
+        Assert.True(resultaat!.IsGeslaagd);
+        Assert.Equal(0, resultaat.AantalNieuw);
+        Assert.Equal(1, resultaat.AantalBehouden);
+        Assert.Equal(1, resultaat.AantalVervangen);
+
+        // And the plan itself agrees with the report, which is the half a count alone cannot promise.
+        var naTweede = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        var overlevend = Assert.Single(naTweede!.Plaatsingen);
+        Assert.Equal(beslist.Id, overlevend.Id);
+        Assert.Equal("Aanvaard", overlevend.Status);
+        Assert.DoesNotContain(naTweede.Plaatsingen, p => p.Id == onaangeroerd.Id);
+    }
+
+    /// <summary>
     /// <b>The escape hatch, over HTTP.</b> A placement can be deleted even when accepted and locked, and the response
     /// carries the updated plan. Without this route the <c>Klas</c> delete guard was a trap: one accepted placement
     /// made the class undeletable forever while the guard's message instructed an action the API did not offer.
@@ -813,7 +888,18 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         bool Vergrendeld,
         List<string> Doelcodes);
 
-    private sealed record GeneratieDto(bool IsGeslaagd, string? Fout, int AantalNieuw, int AantalBehouden)
+    private sealed record GeneratieDto(
+        bool IsGeslaagd,
+        string? Fout,
+        int AantalNieuw,
+        int AantalBehouden,
+        // E4-04: the field the teacher's "X eerdere voorstellen zijn vervangen" is built from. It has been on the wire
+        // since E3-01 and no test had ever read it **over HTTP**, i.e. under its serialized name — the C# property is
+        // asserted by `JaarplanPersistentieTests` (E4-06's lock test) and by the unit suite, so a *property* rename
+        // breaks the build, but a change to the JSON name was pinned by nothing except the frontend's own hand-written
+        // fixture. (The first version of this comment said "no server test read either", which is simply false; the
+        // narrow claim is the one worth making.)
+        int AantalVervangen)
     {
         /// <summary>E3-04's parameter report, present once the request carries parameters.</summary>
         public ParameterRapportDto? Parameters { get; init; }
