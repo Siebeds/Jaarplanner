@@ -258,9 +258,21 @@ export function DekkingPagina() {
             the figure is withheld, and resolving a placement cannot reveal rows — it can only cover more doelen and
             shrink the set further.
 
-            The bind that produced it is real and worth naming: the only accurate explanation of the emptiness is
-            *"er ontbreekt niets"*, which is `gedekt === totaal`, which is the withheld figure spelled out. The escape
-            is to state the view's standing and **refuse the inference** rather than to explain the emptiness at all.
+            **Round 3 killed the replacement too, and the third attempt is the one that says nothing about coverage at
+            all.** The rewrite read *"Er staan hier geen doelen. Zolang dit overzicht geen cijfer geeft, kan je daar niet
+            uit besluiten dat alles gedekt is."* False in the opposite direction, and the proof is on the server:
+            `DekkingService` builds its covering set from `!p.IsVervallen && TeltVoorDekking(p.Status)`, so a stale
+            placement is **excluded** and staleness can only ever *suppress* coverage, never manufacture it. An empty
+            gaps list therefore does mean every measured doel is covered, and resolving the outstanding placements can
+            only accept (adds coverage) or reject (changes nothing). The inference was valid and stable, and the
+            sentence told a teacher it was not. It was also the loudest possible pointer at the withheld proposition,
+            since this branch fires only when `gedekt === totaal` and the sentence named that proposition out loud.
+
+            **The lesson, after three attempts in one slot:** the bind only forbids saying anything *about coverage*. It
+            never required saying something about coverage that is untrue. Twice I tried to explain the emptiness and
+            twice the explanation was the defect; the sentence now states the fact and stops.
+
+            A `catalogus.test.ts` guard pins that, because a `t(key)` assertion cannot: it moves with the catalogue.
           */}
           {alleenOntbrekende && groepen.length === 0 && cijfer.soort === "cijfer" && (
             <p className="rounded-lg border border-dashed border-border bg-card/70 px-5 py-8 text-center text-sm text-ink">

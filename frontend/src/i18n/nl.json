@@ -609,7 +609,7 @@
     "ontbrekendeTelling": "{aantal} doelen nog niet gedekt",
     "ontbrekendeTellingEnkelvoud": "1 doel nog niet gedekt",
     "allesGedekt": "Elk doel in dit overzicht is gedekt, dus er ontbreekt hier niets meer.",
-    "geenOntbrekendeInBeeld": "Er staan hier geen doelen. Zolang dit overzicht geen cijfer geeft, kan je daar niet uit besluiten dat alles gedekt is."
+    "geenOntbrekendeInBeeld": "Er staan hier geen doelen om te tonen."
   },
   "activiteitType": {
     "experiment": "Experiment",

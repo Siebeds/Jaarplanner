@@ -994,7 +994,9 @@ describe("Dekkingsoverzicht — wat antagonist ronde 1 vond (E5-03)", () => {
 
     expect(await screen.findByText(t("dekking.percentage", { percentage: 60 }))).toBeInTheDocument();
     expect(document.body.textContent).not.toContain("native code");
-    expect(document.body.textContent).not.toContain("doelsoort.");
+    // Keyed on the catalogue-path shape rather than on the bare word, which would misfire on ordinary copy
+    // such as "Kies een doelsoort." (antagonist round 3).
+    expect(document.body.textContent).not.toMatch(/doelsoort\.[A-Za-z[]/);
     expect(screen.queryByText(t("dekking.geenVanDezeSoort"))).not.toBeInTheDocument();
   });
 

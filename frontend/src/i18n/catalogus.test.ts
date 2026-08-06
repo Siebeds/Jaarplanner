@@ -450,3 +450,62 @@ describe("nl.json — no dead keys under themabeheer", () => {
     expect(ongebruikt).toEqual([]);
   });
 });
+
+describe("nl.json — the gaps-only empty state says nothing about coverage", () => {
+  /**
+   * `dekking.geenOntbrekendeInBeeld` fills one slot: the gaps-only view of the dekkingsoverzicht, with no rows, while
+   * the figure is withheld. **Three sentences have occupied it and the first two were false**, each in a different
+   * direction, and each was written to answer an audit finding about the one before it.
+   *
+   * 1. *"Hier staat niets zolang dit overzicht geen cijfer geeft. Los eerst de plaatsingen hierboven op, dan zie je
+   *    welke doelen nog ontbreken."* — false twice. `groepen` never consults `isBetrouwbaar`, so gaps DO render in
+   *    that state and the list is empty only when there are none; and resolving a placement can never reveal a row,
+   *    only cover more doelen.
+   * 2. *"… kan je daar niet uit besluiten dat alles gedekt is."* — false the other way. `DekkingService` excludes
+   *    stale placements from its covering set (`!p.IsVervallen && TeltVoorDekking(p.Status)`), so staleness only ever
+   *    suppresses coverage. The inference it forbade was valid and stable under resolution.
+   *
+   * **The bind that keeps producing this**, recorded so the fourth author does not rediscover it: the one accurate
+   * explanation of the emptiness is *"er ontbreekt niets"*, and that is `gedekt === totaal`, i.e. the figure the
+   * directie ruling of 2026-07-28 withholds. So the slot may state the fact and must say nothing about coverage in
+   * either direction, including denials.
+   *
+   * **Why this is a catalogue guard and not a render test.** A `getByText(t(key))` assertion compares the screen
+   * against the catalogue, so editing the catalogue moves the expectation with it: reverting either false version
+   * failed no test in the suite. Only a guard that reads the VALUE can see this class, which is why this family of
+   * describes exists.
+   *
+   * **Two limits, stated rather than left to be rediscovered** (the E4-06 lesson, already recorded by the
+   * `herzienUitleg` guard above). A keyword guard cannot see a paraphrase: *"hieruit volgt niet dat je klaar bent"*
+   * makes the same false claim and passes. And it cannot decide truth at all; it encodes a rule a human derived once
+   * from `DekkingService` — in this state, no claims about coverage. The structural half lives in
+   * `Dekkingsoverzicht.test.tsx` ("still lists the gaps while the figure is withheld"), which pins the world the
+   * sentence describes. Neither half is sufficient alone.
+   */
+  const SLEUTEL = "dekking.geenOntbrekendeInBeeld";
+
+  it("still exists, so this guard cannot be silently disarmed by a rename", () => {
+    expect(
+      CATALOGUS.get(SLEUTEL),
+      `${SLEUTEL} has been renamed or removed; this guard now checks nothing`,
+    ).toBeDefined();
+  });
+
+  it("makes no claim about coverage, in either direction", () => {
+    const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
+
+    // Version 2's defect: denying an inference the code makes valid is still a claim about coverage.
+    expect(zin).not.toContain("gedekt");
+    expect(zin).not.toContain("dekking");
+  });
+
+  it("promises no reveal and blames no cause", () => {
+    const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
+
+    // Version 1's two defects: a temporal promise ("dan zie je") and a causal tie between the emptiness and the
+    // withheld figure ("zolang ... geen cijfer"). Rows are not hidden here and resolving cannot produce any.
+    expect(zin).not.toMatch(/\bdan zie je\b|\bverschijn/);
+    expect(zin).not.toContain("zolang");
+    expect(zin).not.toContain("cijfer");
+  });
+});
