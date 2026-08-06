@@ -5,6 +5,7 @@ import type {
   DoelKoppeling,
   Subdoel,
   Subthema,
+  SubthemaBestemming,
   SubthemaInvoer,
   Thema,
   ThemaBibliotheekItem,
@@ -60,6 +61,19 @@ export function haalThemaBibliotheek(): Promise<ThemaBibliotheekItem[]> {
  */
 export function haalThemaVoorKlas(themaId: string, klasId: string): Promise<Thema> {
   return apiFetch<Thema>(`/api/themas/${themaId}/voor-klas/${klasId}`);
+}
+
+/**
+ * Every subthema of **one klas**, across all thema's: the destinations an activiteit may move to (E4-08).
+ *
+ * A separate read rather than a widening of {@link haalThemaVoorKlas}, for the reason that read exists: the
+ * detail screen holds one thema, and the owner's ruling of 2026-08-05 lets a move cross a thema while never
+ * crossing a klas. So the picker needs the klas's whole set, and this endpoint is scoped to exactly that. It is
+ * a thin projection (id, naam, leeftijd, thema) rather than the full subtree, so widening the destination list
+ * does not widen how much of a class's content the tab holds.
+ */
+export function haalSubthemaBestemmingen(klasId: string): Promise<SubthemaBestemming[]> {
+  return apiFetch<SubthemaBestemming[]>(`/api/subthemas/voor-klas/${klasId}`);
 }
 
 // --- Thema (school-wide) ---
@@ -145,6 +159,23 @@ export function wijzigActiviteit(activiteitId: string, invoer: ActiviteitInvoer)
 
 export function verwijderActiviteit(activiteitId: string): Promise<void> {
   return apiFetch<void>(`/api/activiteiten/${activiteitId}`, { method: "DELETE" });
+}
+
+/**
+ * Move an activiteit to another subthema of the same klas (E4-08, FR-7.2), keeping its attributes and its
+ * goal links. Its own route rather than a field on {@link wijzigActiviteit}: the edit payload carries the
+ * activiteit's own fields, this one carries its place.
+ *
+ * **The two failure statuses mean different things and callers should branch on them, not on the sentence.**
+ * A **404** is the activiteit itself: it is gone, exactly as after a colleague's delete. A **400** is a reason
+ * to show while the picker stays open (a destination in another klas, a destination that no longer exists, or
+ * the subthema it already sits in).
+ */
+export function verplaatsActiviteit(activiteitId: string, doelSubthemaId: string): Promise<Activiteit> {
+  return apiFetch<Activiteit>(`/api/activiteiten/${activiteitId}/subthema`, {
+    method: "PUT",
+    body: JSON.stringify({ doelSubthemaId }),
+  });
 }
 
 /** Link a leerplandoel to an activiteit (FR-3.2). An activiteit may carry more than one. */

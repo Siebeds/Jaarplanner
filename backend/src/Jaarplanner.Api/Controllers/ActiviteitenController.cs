@@ -27,6 +27,16 @@ public sealed class ActiviteitenController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Moves the activiteit to another subthema (E4-08, FR-7.2) with its attributes and goal links intact.
+    /// A separate route from <c>PUT {activiteitId}</c> on purpose: the edit payload carries the activiteit's
+    /// own fields, while this one carries its <b>place</b>, and folding the parent into the edit form would
+    /// make every rename able to re-parent silently.
+    /// </summary>
+    [HttpPut("{activiteitId:guid}/subthema")]
+    public async Task<ActionResult<ActiviteitWeergave>> Verplaats(Guid activiteitId, [FromBody] ActiviteitVerplaatsingInvoer verplaatsing, CancellationToken cancellationToken) =>
+        Ok(await _service.VerplaatsActiviteitAsync(activiteitId, verplaatsing.DoelSubthemaId, cancellationToken));
+
     [HttpPost("{activiteitId:guid}/doelkoppelingen")]
     public async Task<ActionResult<DoelKoppelingWeergave>> KoppelAanDoel(Guid activiteitId, [FromBody] ThemasController.DoelKoppelingInvoer invoer, CancellationToken cancellationToken) =>
         Ok(await _service.KoppelActiviteitAanDoelAsync(activiteitId, invoer.LeerplandoelCode, cancellationToken));

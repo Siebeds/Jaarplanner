@@ -382,6 +382,92 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<ActiviteitWeergave> VerplaatsActiviteitAsync(Guid activiteitId, Guid doelSubthemaId, CancellationToken cancellationToken = default)
+    {
+        // The links are loaded first and for two reasons: the response carries them, and loading them here is
+        // what makes the "they survive a move" claim observable in the answer rather than only in the database.
+        var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
+
+        // The source is derived, never accepted from the caller: an activiteit knows which subthema it sits in,
+        // so there is no way to submit a mismatched pair.
+        var bron = await LaadSubthemaAsync(activiteit.SubthemaId, cancellationToken);
+
+        // A 400 rather than the loader's 404, and the distinction is what lets the UI answer correctly without
+        // reading Dutch prose: the *addressed* resource here is the activiteit, so a 404 always means "your
+        // activiteit is gone" and the screen can act on it exactly as it does after a delete. A destination that
+        // vanished meanwhile is a *referenced* resource, so it is a validation refusal the picker shows while
+        // staying open with a refreshed list. Same shape as VereisKlasAsync, which refuses a missing klas the
+        // same way rather than 404ing the subthema being created.
+        var doel = await _context.Subthemas
+            .Include(s => s.Activiteiten)
+            .FirstOrDefaultAsync(s => s.Id == doelSubthemaId, cancellationToken)
+            // The sentence states the fact and **not** the remedy, which is a correction a browser pass forced.
+            // It used to end "Kies een ander subthema.", and when the vanished destination was the klas's last
+            // one the panel then read that instruction directly above "Deze klas heeft geen ander subthema om de
+            // activiteit naar te verhuizen": an instruction pointing at nothing, which is the same class of
+            // defect as the one this round fixed one line over. The server owns the diagnosis, the screen owns
+            // what to do about it, and only the screen knows whether an alternative exists.
+            ?? throw new SchoolcontentValidatieFout("Dit subthema bestaat niet meer.");
+
+        try
+        {
+            // The klas boundary and the two no-op refusals live in the domain (Art. IX.2), so every caller
+            // meets them, and their Dutch sentences travel out as a 400 the form renders.
+            bron.VerplaatsActiviteitNaar(activiteit, doel);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapActiviteit(activiteit);
+    }
+
+    public async Task<IReadOnlyList<SubthemaBestemming>> HaalSubthemaBestemmingenAsync(Guid klasId, CancellationToken cancellationToken = default)
+    {
+        // Verified rather than assumed, and the reason is a product one (antagonist round 1). Without it an
+        // unknown or deleted klas answers an empty list, and the picker reads an empty list as "this klas has
+        // nowhere to move to" and hides the control. That renders an infrastructure state as a statement about
+        // the school's content. A refusal makes the screen say it could not load the destinations instead.
+        await VereisKlasAsync(klasId, cancellationToken);
+
+        // Projected to an anonymous type and mapped to the record afterwards, deliberately: ordering happens in
+        // SQL under the database collation (a Dutch name sorted by .NET's ordinal comparer puts "Ijs" in the
+        // wrong place), while the record construction stays out of the translation. Same SelectMany-over-
+        // Subthemas shape EfDekkingOpslag already proves translatable on PostgreSQL.
+        var rijen = await _context.Themas
+            .AsNoTracking()
+            .SelectMany(t => t.Subthemas
+                .Where(s => s.KlasId == klasId)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.Naam,
+                    s.Leeftijd,
+                    ThemaId = t.Id,
+                    ThemaNaam = t.Naam,
+                }))
+            .OrderBy(r => r.ThemaNaam)
+            // ThemaId breaks the tie because `Thema.Naam` carries no unique index: two thema's may share a naam,
+            // and without this their rows interleave by subthema naam, so a reader (or an export) sees one
+            // thema's subthema's split around another's.
+            //
+            // **It is no longer what the picker's correctness depends on** (round 2, MINOR 6). The first fix for
+            // this paired the tie-break with a client that grouped by *consecutive* ThemaId, where interleaving
+            // produced two groups carrying the same id and label; the client now groups on a keyed map, so
+            // adjacency is irrelevant there and this clause is about the order rows arrive in, which is still
+            // worth getting right and is what the integration test pins.
+            .ThenBy(r => r.ThemaId)
+            .ThenBy(r => r.Naam)
+            .ThenBy(r => r.Leeftijd)
+            .ToListAsync(cancellationToken);
+
+        return rijen
+            .Select(r => new SubthemaBestemming(r.Id, r.Naam, r.Leeftijd, r.ThemaId, r.ThemaNaam))
+            .ToList();
+    }
+
     public async Task<DoelKoppelingWeergave> KoppelActiviteitAanDoelAsync(Guid activiteitId, string leerplandoelCode, CancellationToken cancellationToken = default)
     {
         var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);

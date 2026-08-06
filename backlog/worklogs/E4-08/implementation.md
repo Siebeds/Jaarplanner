@@ -1,0 +1,135 @@
+# E4-08 — Een activiteit naar een ander subthema verplaatsen
+
+**Branch:** `story/E4-08-activiteit-verplaatsen`, off `origin/main` `3e646da`
+**Commits:** `950b009` (server), `2c7ea32` (screen), `777f9e6` (browser pass), `afde19d` + `35e2dc1` (fix
+round 1), `1cf91d6` (record), `c697d4f` (two owner rulings), `ce1cadc` (fix round 2)
+**Status:** `[x]`, **closed 2026-08-05 by owner ruling after four antagonist rounds and without a fifth.** Every
+MAJOR is fixed and mutation-checked; fix round 4's own fixes were verified by tests, mutation checks and a
+browser pass, but not independently. The story entry records that plainly, as E5-01's and E4-01's do.
+
+## The ruling, first, because the story forbade guessing it
+
+The entry said: *"Decide and state whether a move is restricted to subthema's of the same thema, or the same
+klas, or is free with the consequence disclosed. Do not guess this one in code."* So it was asked before any
+code existed. Three options; the owner chose **same klas, any thema**. The rejected two are recorded in the
+story entry, because they are what makes the choice legible.
+
+It is enforced as a **domain invariant**: `Subthema.VerplaatsActiviteitNaar` refuses a destination in another
+klas, and `Activiteit.VerhuisNaar` is `internal`, so no caller reaches the FK past that guard. The picker
+agrees with the server rather than being the only thing between a teacher and a refusal.
+
+## What the change actually is
+
+| Layer | Delta |
+| --- | --- |
+| Domain | the move verb on `Subthema`; an `internal` re-parent on `Activiteit` |
+| Application | `VerplaatsActiviteitAsync`, `HaalSubthemaBestemmingenAsync`, `SubthemaBestemming` |
+| Api | `PUT /api/activiteiten/{id}/subthema`, `GET /api/subthemas/voor-klas/{klasId}` |
+| Frontend | a destination picker per activiteit row, a section-level confirmation, seventeen `themabeheer.activiteitVerplaats*` keys |
+
+**The links travel for free**, and that is the whole point: `Doelkoppelingen` is an owned collection keyed on
+the activiteit, so changing `SubthemaId` carries every `Manueel` link with it. Delete-and-retype, the only
+route before this, lost them along with `hoek` and `verwachteUitkomsten`.
+
+**A move can change dekking without leaving the klas.** Layer 4 of `EfDekkingOpslag` counts an
+activiteitkoppeling through the thema its subthema hangs under, so moving into a thema that is not in the
+class's jaarplan takes the doel out of the figure. Driven 1 → 0 in an integration test against real
+PostgreSQL, and stated in the panel where the action is.
+
+## What running it found that reading it did not
+
+1. **An English artefact inside a Dutch sentence, caught by an integration test on its first run.**
+   `ArgumentException(message, paramName)` appends `(Parameter 'doelSubthema')` to `Message`; the service
+   forwards `Message` as the 400's `detail`; E1-14's forms render that `detail` verbatim. E1-14's round-4
+   MAJOR, one screen over. The guard now asserts the property over *every* message the method can refuse
+   with, not over the two sentences. The sibling in `Subthema.Require` is filed as **E7-19**.
+2. **The confirmation has to name the destination and outlive the row.** A cross-thema move takes the
+   activiteit off this screen, so the row that performed it is gone before anyone could read a notice inside
+   it; without a section-level sentence naming the new home, a successful move looks exactly like a delete.
+3. **A refusal that still offered what it said was gone** (browser, not a test). With the destination deleted
+   by a colleague, the panel said *"Dit subthema bestaat niet meer"* while the picker above it still offered
+   that subthema and still had it selected. Fixed on both sides: the shared mutation wrapper refreshes on any
+   failure rather than only on a 404, and the chosen destination is derived from the list rather than trusted
+   from state.
+
+## Four antagonist rounds, and three of them found the next defect inside the previous fix
+
+See [`antagonist.md`](antagonist.md) for all twenty findings and what happened to each.
+
+**Round 1** (2 MAJOR, 6 MINOR, 2 QUESTION): the first MAJOR broke this story's own feedback mechanism **and**
+E1-14's, through a latched TanStack flag that no single-write test could observe.
+
+**Round 2** (2 MAJOR, 7 MINOR, 1 QUESTION) verified every round-1 finding against the code rather than against
+my table, re-ran all four gates itself, and then found that **both new MAJORs were introduced by round 1's
+fixes**: the empty-state sentence had taken the panel's only cancel button with it, and the confirmation was a
+`role="status"` region mounted together with its text, which this codebase forbids in two places after E4-06
+shipped exactly that and found it silent.
+
+The sharpest MINOR is worth more than either MAJOR: **the `geldigeKeuze` fix was untestable in its own
+fixture**, because the refused destination was the klas's only candidate, so the picker vanished and the submit
+was absent whatever the component computed. Reverting the fix left all 459 tests green.
+
+**Round 3** (1 MAJOR, 6 MINOR, 2 QUESTION) confirmed round 2's two MAJOR fixes correct and biting, then found
+its MAJOR in round 2's *third* fix: **a mutation check that passed because the test's own setup had already done
+the thing under test.** The notice-clearing test clicked *Nieuw subthema* first, and that handler already clears
+notices, so it never observed the `onSuccess` site the fix installed.
+
+**Round 4** (1 MAJOR, 6 MINOR, 1 QUESTION) found the **assistive-technology half of round 2's MAJOR 1**, which
+had stood through two further rounds because every test and every browser pass looks at pixels: the trigger
+announced `aria-expanded="true"` and did nothing when pressed in that state. `axe` has no rule for it and the
+panel's axe run passed the whole time. Filed **E7-20**, because three files answer that question three ways.
+
+## The guards needed three rewrites, and that is the transferable part
+
+- A duplicate-name guard comparing **accessible** names passes on two visibly identical buttons, because an
+  `aria-label` keeps the names unique. The same guard at **section** scope fails on correct code, because
+  "Wijzigen" and "Verwijderen" appear twice there by E1-14's deliberate design. Scoped to the row, asserting
+  both properties, with two panels genuinely open.
+- Asserting a `<select>`'s value after setting it to a missing option proves the **DOM**, not the component.
+  The fake now reproduces the race (refuse **and** remove) and the assertion is on the submit's enabled state.
+- A `verplaats.reset()` on the trigger was **removed** after a mutation check showed it changed no test and
+  the close paths showed it cannot fire.
+
+**Twenty-five mutation checks across the story; seven only began biting after being rewritten.** One took three
+attempts: a Tailwind `hidden` class is invisible to jsdom, which loads no CSS, and then a
+first-occurrence replace hit the *delete* panel's identical class list, failing two unrelated tests while
+leaving the code under test untouched. A mutation that fails the wrong test is as uninformative as one that
+fails none.
+
+## Gates on the final commit
+
+575 unit + 201 integration against real PostgreSQL, 471 frontend / 20 files, 0 skipped. `dotnet format`,
+eslint, `tsc`, `pnpm build` clean. **No backend file has changed since `38a64f8`.** Rounds 2, 3 and 4 each
+re-ran all four gates themselves rather than taking them on trust, and every figure reproduced except the story
+entry's own stale one, which was round 3's MINOR 3.
+
+Browser passes at 1440px and exactly 390px against a live API and real PostgreSQL, run **four times**, one after
+the build and one after each fix round. They covered the colleague-deletes-the-destination race, a
+graadklas-shaped scenario, and finally the disclosure semantics plus the list-error state. That last state needed
+`Network.setBlockedURLs` on a **cold** document: the app's own QueryClient retries with backoff, and a warm cache
+hides the state entirely, which is why two earlier attempts measured nothing. Measured: submit **8,90:1**,
+empty-state sentence **5,80:1**, disabled submit **2,16:1** (inactive, outside SC 1.4.3, recorded because it
+is the state the panel opens in). The only elements past 390px are the nav's own `overflow-x:auto` scroller;
+`document.documentElement.scrollWidth` reads 390, which is why that probe is the wrong one.
+
+## What the closing ruling knowingly accepts
+
+**No fifth round.** Rounds 2, 3 and 4 each found defects introduced by the previous fix round, and twice those
+were invisible to a green suite. Fix round 4 is one render condition, one deleted branch, one new control and six
+comment or record edits, which is the surface the owner weighed. Nameable residual risk: the same class, on that
+small surface.
+
+*The two questions round 1 raised are answered:* the owner ruled on 2026-08-05 that the **leeftijd** crossing is
+permitted and must be disclosed in the panel, and that the **subthema re-scope** route stays as it is and is
+filed, which it is, as **E1-19**.
+
+## Three defects handed to their owners rather than fixed here
+
+- **E7-19** — `Subthema.Require` composes an English message, and `ArgumentException(message, paramName)`
+  appends `(Parameter 'naam')` to it, which E1-14's forms render verbatim.
+- **E1-19** — `PUT /api/subthemas/{id}` re-scopes a subthema to another klas and drags every activiteit and
+  doelkoppeling across the class boundary.
+- **E1-20** — a notice on the klaslaag survives a later successful write that has nothing to do with it, which
+  is the case E1-14's round 4 described in a comment and never fixed.
+- **E7-20** — `aria-expanded` on disclosure triggers is answered three different ways in three files, and no
+  gate can catch a wrong call. Round 4 found the third answer as a MAJOR.

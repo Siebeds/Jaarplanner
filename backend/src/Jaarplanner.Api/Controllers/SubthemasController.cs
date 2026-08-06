@@ -17,6 +17,15 @@ public sealed class SubthemasController : ControllerBase
 
     public SubthemasController(ISchoolcontentBeheerService service) => _service = service;
 
+    /// <summary>
+    /// Lists one klas's subthema's across every thema (E4-08), which is what a move's destination picker needs:
+    /// the ruling of 2026-08-05 lets an activiteit cross a thema but not a klas. The klas is in the route rather
+    /// than in a query string because it is the scope of the answer, not a filter on it (Art. IX.2).
+    /// </summary>
+    [HttpGet("voor-klas/{klasId:guid}")]
+    public async Task<ActionResult<IReadOnlyList<SubthemaBestemming>>> VoorKlas(Guid klasId, CancellationToken cancellationToken) =>
+        Ok(await _service.HaalSubthemaBestemmingenAsync(klasId, cancellationToken));
+
     [HttpPut("{subthemaId:guid}")]
     public async Task<ActionResult<SubthemaWeergave>> Wijzig(Guid subthemaId, [FromBody] SubthemaWijzigingInvoer wijziging, CancellationToken cancellationToken) =>
         Ok(await _service.WijzigSubthemaAsync(subthemaId, wijziging, cancellationToken));

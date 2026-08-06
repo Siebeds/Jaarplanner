@@ -87,6 +87,22 @@ export interface Subthema {
 }
 
 /**
+ * One candidate destination for moving an activiteit (E4-08): a subthema of one klas, carrying the naam of the
+ * thema it hangs under.
+ *
+ * Deliberately not a `Subthema`: a picker needs a label, and reusing the full type would mean fetching every
+ * other subthema's subdoelen and activiteiten into the tab to render two words. Same reasoning as
+ * `haalThemaVoorKlas` versus `GET /api/themas`.
+ */
+export interface SubthemaBestemming {
+  id: string;
+  naam: string;
+  leeftijd: string;
+  themaId: string;
+  themaNaam: string;
+}
+
+/**
  * A thema and its whole subtree.
  *
  * `heeftVoldoendeThemadoelen` is the server's own answer to the 2–3 guideline (Art. IX.2). The UI renders it
