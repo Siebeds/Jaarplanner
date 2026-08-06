@@ -473,7 +473,10 @@ describe("Jaarplankalender", () => {
     expect(screen.getByText(/1 bestaande plaatsing bleef staan/)).toBeInTheDocument();
 
     // A run that discarded the previous proposal must say so; see the aantalVervangen assertions below.
-    expect(screen.getByText("2 eerdere voorstellen zijn vervangen.")).toBeInTheDocument();
+    // "verdwenen" since E4-04: the report is E3-02's, but it describes the same event as the disclosure three lines
+    // above it on the same card, and "vervangen" is false whenever the run places nothing back. On an empty answer a
+    // teacher read "De AI stelde geen enkel thema voor." directly above "2 eerdere voorstellen zijn vervangen."
+    expect(screen.getByText("2 eerdere voorstellen zijn verdwenen.")).toBeInTheDocument();
     expect(screen.getByText(/Ruimtevaart/)).toBeInTheDocument();
 
     // And it explicitly disclaims a judgement: no threshold is defined anywhere, so the tool must not imply one.
@@ -674,7 +677,9 @@ describe("Jaarplankalender", () => {
     });
 
     renderKalender();
-    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+    // `hergenereer`, not `genereer`: this fixture holds a placement, so from E4-04 the trigger names itself a
+    // regeneration (FR-8.1). The run this test drives and everything it asserts are unchanged.
+    fireEvent.click(await screen.findByRole("button", { name: t("kalender.hergenereer") }));
     expect(await screen.findByText("Nu gedekt: 0 van 9.")).toBeInTheDocument();
 
     // Narrow to one kleuterjaar AFTER the run. The plan does not change; what the figures are over does.
@@ -721,7 +726,9 @@ describe("Jaarplankalender", () => {
     stubFetch(plan, resultaat, { ...DEKKING_NIETS_ONTBREEKT, beschikbareJaarFasen: [] });
 
     renderKalender();
-    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+    // `hergenereer`, not `genereer`: this fixture holds a placement, so from E4-04 the trigger names itself a
+    // regeneration (FR-8.1). The run this test drives and everything it asserts are unchanged.
+    fireEvent.click(await screen.findByRole("button", { name: t("kalender.hergenereer") }));
 
     expect(await screen.findByText("Nu gedekt: 0 van 9.")).toBeInTheDocument();
     expect(screen.queryByText(/Je meet nu tegen een ander jaar/)).not.toBeInTheDocument();
@@ -1982,7 +1989,9 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     // did load. This is the assertion the story lacked — the old branch failed all four.
     expect(within(bord()).getByText("Water")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: t("kalender.ribbonLabel") })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeInTheDocument();
+    // `hergenereer`, not `genereer`: this fixture has a placement, so from E4-04 the trigger names itself a
+    // regeneration. What this line asserts is unchanged — that the card survived the failed tier.
+    expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeInTheDocument();
     expect(knop("kalender.weergaveGrof")).toBeInTheDocument();
 
     // A real next step, and not "herlaad de pagina": the query client has already retried three times before this
@@ -2067,7 +2076,7 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     expect(samenvatting()).not.toContain("startthema");
 
     // THE regression, stated as the run: a teacher cannot consent to a run whose parameters the screen cannot state.
-    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeDisabled();
+    expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeDisabled();
 
     // And the state is visible, with the one control that can end it. Not silent, and not a tooltip.
     expect(screen.getByText(t("kalender.generatieRoosterFout"))).toBeInTheDocument();
@@ -2117,7 +2126,7 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
 
     // The run is refused, AND the refusal is stated beside the button that carries it — outside the collapse, so it
     // does not depend on a disclosure that is closed by default.
-    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeDisabled();
+    expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeDisabled();
     expect(screen.getByText(t("kalender.generatieRoosterNiveauOnbekend"))).toBeInTheDocument();
 
     // With NO retry anywhere on the screen: this request succeeded and answered something unreadable, so pressing
@@ -2173,7 +2182,7 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
 
     // And the generation tier's grid is untouched, so the run is not refused: this failure cost the teacher nothing,
     // which is the whole reason it gets a different sentence.
-    expect(screen.getByRole("button", { name: t("kalender.genereer") })).toBeEnabled();
+    expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeEnabled();
   });
 
   /**
@@ -4488,5 +4497,192 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
 
     expect(screen.getByRole("status")).toHaveTextContent(t("dekking.laden"));
     expect(screen.queryByText(oudTotaal)).toBeNull();
+  });
+});
+
+/**
+ * E4-04 (FR-8.1): *"De leerkracht kan het volledige jaarplan opnieuw laten genereren."*
+ *
+ * **Nothing about the run itself is new, and that is the story.** The endpoint has always been repeatable, has always
+ * discarded exactly the untouched proposals (`Voorgesteld && !vergrendeld`) and has always reported what it replaced
+ * and kept — `JaarplanPersistentieTests` proves the discard down to the table on real PostgreSQL. What did not exist
+ * was any way for a teacher to know that *before* pressing: the button read "Jaarplan genereren…" on the second press
+ * exactly as on the first, and the only statement about the replacement was `Spreidingsoverzicht`'s past tense,
+ * afterwards. A teacher reviewing proposals over an afternoon, pressing again to see the remaining periods filled,
+ * would have lost the untouched ones with no warning anywhere on the screen.
+ *
+ * So these tests are about the disclosure, and the one design decision worth pinning is what it keys on: **whether the
+ * class has a plan at all**, never whether a *replaceable* placement exists. The second question is
+ * `Themaplaatsing.IsVervangbaar`, which belongs to the server; answering it here would be the second implementation of
+ * one rule that E3-09 spent a story deleting from this screen. The copy is therefore a rule and not a prediction, and
+ * the last test below is what stops a later author "improving" it into one.
+ */
+describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.1)", () => {
+  it("offers a plain first run, and says nothing about replacing, while the class has no plan", async () => {
+    stubFetch(maakJaarplan([]));
+    renderKalender();
+
+    expect(
+      await screen.findByRole("button", { name: t("kalender.genereer") }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t("kalender.genereerUitleg"))).toBeInTheDocument();
+
+    // The regeneration copy must not appear here: there is nothing to replace, and a warning about losing work on a
+    // screen where none exists is the noise this project's design rules cut first.
+    expect(screen.queryByRole("button", { name: t("kalender.hergenereer") })).toBeNull();
+    expect(screen.queryByText(t("kalender.hergenereerUitleg"))).toBeNull();
+  });
+
+  it("names itself a regeneration, and states both halves of the rule, once a plan exists", async () => {
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("kalender.genereer") })).toBeNull();
+
+    // Keyed on the facts rather than on the whole string, so a rewrite that keeps them survives and one that drops
+    // any of them fails. **What is lost**, **what is kept** and **what arrives** are separate assertions on purpose:
+    // E4-06 shipped three rounds of lock copy that got one half right at a time.
+    const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
+    // "verdwijnen", not "worden vervangen" (antagonist round-1 MAJOR-1). The discard is unconditional on a valid parse
+    // and happens before anything is placed, so an empty, fully-skipped or fully-blocked answer deletes the undecided
+    // proposals and puts nothing back. Wording the certain half as a swap understated exactly the risk this sentence
+    // exists to disclose, and it was strictly stronger than `vergrendelUitlegVrij`'s own "kan het vervangen".
+    //
+    // **"De overige", not a second list of conditions** (round-2 MAJOR). The first fix qualified the verb as
+    // "AI-voorstellen waarover je nog niets beslist hebt, verdwijnen", which is false for a **locked** proposal —
+    // undecided by definition, since `vergrendelUitlegVrij` tells the teacher to lock precisely "zonder er nu al over
+    // te beslissen", and kept by `IsVervangbaar`. The paragraph then contradicted itself two clauses later, where
+    // "vastgezet" appears in the survivor list. Defining the losers as the **complement** of the survivors makes the
+    // two halves incapable of disagreeing, which a second list of exclusions could not.
+    expect(uitleg).toHaveTextContent(/De overige AI-voorstellen verdwijnen/);
+    expect(uitleg).toHaveTextContent(/minder of geen voorstelt/);
+    expect(uitleg).toHaveTextContent(/blijft staan/);
+    expect(uitleg).not.toHaveTextContent(/worden vervangen/);
+
+    // The survivor list is asserted term by term, because the round-2 MAJOR was a survivor the sentence promised in
+    // one clause and deleted in another. "vastgezet" is the one that finding turned on.
+    for (const overlever of ["aanvaard", "geweigerd", "zelf geplaatst", "verplaatst", "vastgezet"]) {
+      expect(uitleg, `${overlever} is not named as surviving`).toHaveTextContent(
+        new RegExp(overlever),
+      );
+    }
+    // And it says WHICH regeneration, because E4-05 adds a second one. Pinned here as well as in the catalogue
+    // guard: the guard proves the string is qualified, this proves the qualified string is the one that renders.
+    expect(uitleg).toHaveTextContent(/hele jaarplan/);
+
+    // The first-run sentence is replaced, not supplemented. Two paragraphs of prose beside one button is the wall
+    // this screen keeps cutting, and the assertion is here because "add a second <p>" is the obvious wrong fix.
+    expect(screen.queryByText(t("kalender.genereerUitleg"))).toBeNull();
+  });
+
+  it("runs from a plan that already has placements, and reports what the server replaced and kept", async () => {
+    const resultaat: Generatieresultaat = {
+      isGeslaagd: true,
+      fout: null,
+      jaarplan: null,
+      aantalNieuw: 2,
+      aantalBehouden: 1,
+      aantalVervangen: 1,
+      // E3-03 made this required. `null` is a legal shape (the failure case, and a run whose coverage could not be
+      // measured), and this test asserts nothing about coverage, so the honest fixture is the empty one rather than
+      // an invented figure. Caught by `pnpm build` (`tsc -b`) and NOT by `pnpm lint` (`tsc --noEmit`), which is
+      // E7-17 showing its face on a real merge: the lint gate type-checks nothing here.
+      vooruitzicht: null,
+      onbekendeThemas: [],
+      onbekendeBlokken: [],
+      duplicaten: [],
+      afgewezen: [],
+      parameters: null,
+      spreiding: {
+        aantalBlokken: 2,
+        aantalGebruikteBlokken: 2,
+        blokken: [],
+        legeBlokOrdinalen: [],
+        overbelasteBlokOrdinalen: [],
+        minsteDoelenInEenBlok: 1,
+        meesteDoelenInEenBlok: 3,
+      },
+    };
+    stubFetch(
+      maakJaarplan([
+        maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+        maakPlaatsing({ id: "p2", themaNaam: "Wonen" }),
+      ]),
+      resultaat,
+    );
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.hergenereer") }));
+
+    // The same endpoint and the same report as a first run; E4-04 changed neither. Both figures come from the
+    // server's own `AantalBehouden`/`AantalVervangen` and are asserted in the singular, which is where this file's
+    // plural defects have always surfaced.
+    expect(await screen.findByText("2 thema's voorgesteld.")).toBeInTheDocument();
+    expect(screen.getByText(/1 eerder voorstel is verdwenen/)).toBeInTheDocument();
+    expect(screen.getByText(/1 bestaande plaatsing bleef staan/)).toBeInTheDocument();
+  });
+
+  it("keeps the human-in-the-loop statement on a plan where every card is already decided", async () => {
+    // **The state the first version of this story was wrong about (antagonist MAJOR-2).** Replacing `genereerUitleg`
+    // rather than supplementing it was justified by the board's `beslisUitleg` carrying "jij beslist" instead — but
+    // that sentence is gated on `openBeslissingen > 0` (deliberately, by E4-02's re-audit), so on a fully decided plan
+    // BOTH were absent. That is the likeliest state to regenerate from: a teacher who has worked through every card
+    // and wants the empty periods filled. Nothing then told them the arrivals are proposals they still decide on
+    // (Art. IV.1/IV.2). The clause now lives in the regeneration string itself, which no other component can gate.
+    stubFetch(
+      maakJaarplan([
+        maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+        maakPlaatsing({ id: "p2", themaNaam: "Wonen", status: "Geweigerd" }),
+      ]),
+    );
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    // The precondition, asserted rather than assumed: this really is the state where the board's own explanation is
+    // gone. Without this line the test would still pass if `beslisUitleg` started rendering again, and would then be
+    // proving nothing about the case it was written for.
+    expect(screen.queryByText(t("kalender.beslisUitleg"))).toBeNull();
+
+    const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
+    expect(uitleg).toHaveTextContent(/Voorgesteld/);
+    expect(uitleg).toHaveTextContent(/jij beslist/);
+  });
+
+  it("discloses the rule from a plan in which nothing is replaceable, rather than predicting the outcome", async () => {
+    // Every placement here is decided or locked, so this run would replace **nothing**. The disclosure still stands,
+    // and that is the decision under test rather than an accident: predicting "1 voorstel wordt vervangen" would put
+    // `IsVervangbaar` in the client beside the server's copy of it (the E3-09 defect), and counting what will change
+    // is E4-07's pre-apply diff, not this story's. The sentence is true here too, vacuously in its first half.
+    stubFetch(
+      maakJaarplan([
+        maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+        maakPlaatsing({ id: "p2", themaNaam: "Wonen", status: "Manueel" }),
+        maakPlaatsing({ id: "p3", themaNaam: "Winter", vergrendeld: true }),
+      ]),
+    );
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeInTheDocument();
+    const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
+
+    // **This fixture holds a LOCKED, UNDECIDED proposal, and that is what the round-2 MAJOR turned on** (`p3`). It is
+    // an AI proposal the teacher has decided nothing about — `kalender.vergrendelUitlegVrij` tells them to lock
+    // exactly "zonder er nu al over te beslissen" — and `IsVervangbaar` keeps it. So a sentence phrased as
+    // "AI-voorstellen waarover je nog niets beslist hebt, verdwijnen" is false here, and this test rendered that
+    // fixture while asserting only that *some* sentence appeared, which is why it could not see it.
+    //
+    // The order assertion is the real pin. "De overige" only names the right set if the survivors are listed BEFORE
+    // it: reversed, the sentence would say the undecided proposals disappear and then, too late, that locked ones
+    // stay. A rewrite that keeps both clauses but swaps them re-creates the contradiction, and only this line fails.
+    const tekst = uitleg.textContent ?? "";
+    expect(tekst).toContain("vastgezet hebt, blijft staan");
+    expect(tekst.indexOf("blijft staan")).toBeLessThan(tekst.indexOf("De overige"));
   });
 });

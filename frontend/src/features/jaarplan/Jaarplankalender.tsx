@@ -501,6 +501,22 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
     (plaatsing) => plaatsing.status === "Voorgesteld",
   ).length;
 
+  // Whether pressing the button is a **re**generation (E4-04, FR-8.1 — the requirement's own word is *opnieuw*).
+  //
+  // Deliberately "does this class have any placement at all", and NOT "does it have a replaceable one". The second
+  // question is the server's rule (`Themaplaatsing.IsVervangbaar` = `Voorgesteld && !Vergrendeld`), and answering it
+  // here would put a second implementation of it in the client — which is the defect E3-09 spent a whole story
+  // removing from this very screen, where the kalender guessed a te-vol threshold the server already owned. The copy
+  // below is therefore written as a **rule**, not as a prediction: it states what a run does to each kind of
+  // placement, which is true in every state, including the one where nothing is replaceable and the run only adds.
+  //
+  // Safe to read unconditionally: both the error and the pending branches of `jaarplan` return above, so this card
+  // never renders while the plan is unknown. There is no third state in which the label would have to guess.
+  //
+  // What this must NOT grow into is E4-07: *how many* placements will change, and a cancel, are that story's, and
+  // stating a count here would be the pre-apply diff wearing a different hat.
+  const heeftPlan = plan.plaatsingen.length > 0;
+
   // Which periods each thema already occupies (E4-03), for the hand-placement picker. Derived once for the board
   // because it is a fact about the whole plan: a column sees only its own placements, so it could not tell a teacher
   // that a thema already sits in period 3. Status-blind on purpose — see `themaPeriodeOrdinalen`.
@@ -670,9 +686,16 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
           </div>
         )}
 
-        {/* Generation (FR-5.1) with its spreading report (E3-02, FR-5.2). It only ever ADDS proposals — it
-            never discards a teacher's decision or a locked placement (Art. IV.1, Art. IX.3), which is also why
-            a thema the teacher has dragged survives it: a move sets the placement to `manueel`. */}
+        {/* Generation (FR-5.1) with its spreading report (E3-02, FR-5.2), and from E4-04 also **re**generation
+            (FR-8.1): the same endpoint, pressed on a class that already has a plan.
+
+            It never discards a teacher's decision or a locked placement (Art. IV.1, Art. IX.3), which is also why a
+            thema the teacher has dragged survives it: a move sets the placement to `manueel`. **It does discard the
+            untouched proposals** — `Voorgesteld && !vergrendeld` — and this comment used to read "it only ever ADDS
+            proposals", which is true of the first run and false of every one after it. That sentence was the whole of
+            E4-04: the run has always been repeatable and has always replaced, while the button said "Jaarplan
+            genereren…" both times and nothing said so before the press. The counts afterwards
+            (`Spreidingsoverzicht`) come from the server and always did. */}
         <div className="rounded-lg border border-border bg-card p-4 shadow-card sm:p-5">
           {/* Stacked on a phone, side by side from `sm`. As a single wrapping flex row the explanation
               shrank into a narrow column beside the button and clipped it. */}
@@ -683,10 +706,33 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
               disabled={generatie.isPending || instellingenOnbekend || periodesOnbekend}
               className="w-full sm:w-auto"
             >
-              {generatie.isPending ? t("kalender.genereerBezig") : t("kalender.genereer")}
+              {generatie.isPending
+                ? t("kalender.genereerBezig")
+                : heeftPlan
+                  ? t("kalender.hergenereer")
+                  : t("kalender.genereer")}
             </Button>
+            {/* The explanation is **replaced**, not supplemented, once a plan exists: two paragraphs beside one button
+                is the wall of prose this screen keeps having to cut. So the regeneration sentence has to carry
+                everything the first-run one did, and the audit's second MAJOR is what proves that is not a formality.
+                The first draft justified dropping the human-in-the-loop clause by pointing at the board's own
+                `beslisUitleg` — which is gated on `openBeslissingen > 0` further down, precisely so it disappears once
+                every card is decided. On a **fully decided plan**, the state a teacher most plausibly regenerates
+                from, both sentences were therefore absent and nothing on the screen said that what arrives is a
+                proposal they still decide on (Art. IV.1/IV.2). It is now the third clause of the string itself, which
+                depends on no other component's render condition. Pinned by a test with an all-decided fixture.
+
+                **The sentence names what is lost as the complement of what is kept, and that shape is also a fix**
+                (round-2 MAJOR). Round 1 spelled the losers out as "AI-voorstellen waarover je nog niets beslist hebt",
+                which is false for a **locked** proposal: the teacher decided nothing about it, `vergrendelUitlegVrij`
+                invites exactly that, and `IsVervangbaar` keeps it — so the paragraph contradicted itself two clauses
+                later, where "vastgezet" appears among the survivors. A second list of exclusions can drift from the
+                first; "de overige" cannot. *One edge left standing deliberately:* a drag that ends in the period it
+                started in writes nothing (`VerplaatsPlaatsingAsync` treats it as a normal gesture), so such a
+                placement stays `Voorgesteld` and does disappear, while a teacher might call it "verplaatst". Making
+                the no-op write would cost a standing proposal its motivation, which is the worse trade. */}
             <p className="max-w-2xl text-xs leading-snug text-ink-zacht">
-              {t("kalender.genereerUitleg")}
+              {t(heeftPlan ? "kalender.hergenereerUitleg" : "kalender.genereerUitleg")}
             </p>
           </div>
 

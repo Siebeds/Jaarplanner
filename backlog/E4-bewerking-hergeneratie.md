@@ -50,14 +50,108 @@
 
 ### FR-8 — (Re)generation
 
-- [ ] **E4-04 — Regenerate the whole plan**
+- [x] **E4-04 — Regenerate the whole plan** — *done 2026-08-06 on `story/E4-04-hergeneratie` (off `origin/main` `59183ad`): `ff47067` (the story), `4926852` (fix ronde 1), `381a9c9` (fix ronde 2). **Two antagonist rondes, both VIOLATIONS FOUND (3 MAJOR + 4 MINOR + 2 QUESTION, then 1 MAJOR + 2 MINOR); every finding fixed or routed.** Narrative + full measurements: [`worklogs/E4-04/implementation.md`](worklogs/E4-04/implementation.md).*
+  > **⚠️ Read the `[x]` precisely: it is an owner ruling of 2026-08-06 taken without a third round, so fix ronde 2 has had no independent pass.** Same caveat as E5-01, E4-01, E4-08 and E3-03, and on this story it is a measured risk rather than a formality: **both rounds found their MAJOR in the previous round's fix, in the same paragraph, pointing opposite ways.** What ronde 3 would have attacked is specifically the round-2 rewrite of `kalender.hergenereerUitleg` and the two `genereerVervangen*` keys. Against that: ronde 2 re-ran every gate itself rather than reading them off the worklog, it stated per finding which of round 1's were genuinely closed instead of crediting the attempt, the round-2 fix changed the sentence's **shape** so the failure mode it closes cannot recur by drift, and the state both findings were about was driven in a browser afterwards. Stated because a reader five stories from now cannot tell a ruled `[x]` from an audited one.
+  > **Both rondes found the same class of defect in the same paragraph, pointing opposite ways, and that is the story's
+  > one durable lesson.** Ronde 1: the copy promised replacement where the code guarantees only deletion. Ronde 2: the
+  > fix then said *"AI-voorstellen waarover je nog niets beslist hebt, verdwijnen"*, which is **false for a locked
+  > proposal** — undecided by definition, since `vergrendelUitlegVrij` tells the teacher to lock precisely *"zonder er
+  > nu al over te beslissen"*, and kept by `IsVervangbaar`. The paragraph then contradicted itself two clauses later,
+  > where *"vastgezet"* stands among the survivors, so a teacher who used the lock as advertised read both that their
+  > thema disappears and that it stays. **This story's own test rendered that exact fixture and asserted only that a
+  > sentence appeared.** *Fixed by changing the shape rather than adding a condition:* what is lost is now the
+  > **complement** of what is kept (*"De overige AI-voorstellen verdwijnen…"*, after the survivor list). Two lists can
+  > drift from each other, as these did twice in one day; a complement cannot. Pinned by an **order** assertion, the
+  > single line that fails when the clauses are swapped with nothing else changed.
+  > *One out-of-scope edit, declared rather than slipped in:* `kalender.genereerVervangen` (E3-02's run report, three
+  > lines below the disclosure) still said *"zijn vervangen"*, so on an empty AI answer the card read *"De AI stelde
+  > geen enkel thema voor."* directly above *"6 eerdere voorstellen zijn vervangen."* Both keys now say
+  > *"verdwenen"*. Aligning beat routing: two words for one event on one card is the drift these guards exist to stop.
+  > **All three MAJORs were in the disclosure or in prose about it, which is the whole story, so none was cosmetic.**
+  > *(1)* The copy said untouched proposals *"worden vervangen door nieuwe voorstellen"* while the discard is
+  > **unconditional** on a valid parse and happens before anything is placed: an empty, fully-skipped or fully-blocked
+  > answer deletes them and puts nothing back. **The counterexample was inside the commit** — this story's own new
+  > endpoint test posts `{"plaatsingen":[]}` and asserts `aantalVervangen 1`. It also stated the *certain* half as a
+  > swap and the *uncertain* half flatly, inverting the risk, and was stronger than `vergrendelUitlegVrij`'s
+  > *"kan het vervangen"* two keys away. Now *"verdwijnen, ook als de AI er deze keer minder of geen voorstelt"*.
+  > *(2)* Replacing the first-run sentence was justified by the board's `beslisUitleg` carrying *"jij beslist"* — but
+  > that is gated on `openBeslissingen > 0` by E4-02's own re-audit, so on a **fully decided plan**, the likeliest
+  > state to regenerate from, **neither** sentence rendered and nothing said the arrivals are still proposals
+  > (Art. IV.1/IV.2). The clause now lives in the string, which no other component can gate, plus a fifth test that
+  > asserts its own precondition. *(3)* *"No server test read `aantalVervangen`"* was false in three places (E4-06's
+  > lock test asserts it forty lines above mine) and the risk I drew from it was wrong: only the **serialized** name
+  > was unpinned, since a property rename breaks the build.
+  > *The four MINORs, each a real hole:* the new guard's docblock argued a non-vacuity canary was impossible and then
+  > wrote one; the guard's pattern required adjacency, so **FR-8.1's own phrasing** *"opnieuw laten genereren"* —
+  > quoted twice in this change — escaped it; the copy promises four survivors and the row-level test covered two,
+  > with `Geweigerd` (the survivor a teacher cannot verify by looking) left at the fake-port level; and *"zelf
+  > geplaatst"* did not cover a **dragged** thema, which becomes `Manueel` and survives.
+  > **Two QUESTIONs are the owner's**, both recorded rather than acted on: a directie ruling on E4-07's
+  > preserve/overwrite rule would now falsify a primary-screen sentence as well as E4-06's six card-level ones (this
+  > story adds no new commitment, it keeps the *"hele jaarplan"* qualifier); and the *Te herzien* panel does not say
+  > that regenerating resolves an undecided stale card by deleting it, though the new copy covers the fact.
   Re-run generation for the entire class plan.
   *Done when:* full regeneration produces a new proposal. Ref: FR-8.1.
+  > **The run was already repeatable; what did not exist was any way to know that before pressing.** `GenereerAsync`
+  > has discarded exactly `IsVervangbaar` (`Voorgesteld && !Vergrendeld`) since E3-01, kept every decided or locked
+  > placement, and returned `AantalBehouden`/`AantalVervangen`, which `Spreidingsoverzicht` has always rendered. But the
+  > button read *"Jaarplan genereren…"* on the second press exactly as on the first, and the only statement about the
+  > replacement was **past tense, afterwards**. FR-8.1's own wording is *"het volledige jaarplan **opnieuw** laten
+  > genereren"* and the word *opnieuw* was nowhere on the screen. A teacher reviewing proposals over an afternoon and
+  > pressing again to fill the periods the model skipped would have lost every proposal they had not yet decided on.
+  > **Seventh instance of the reachable-vs-tested pattern** (E2-08, E1-15, E0-10, E4-06, E4-02, E4-03) and the mildest:
+  > the path was reachable *and correct*, it simply misdescribed itself.
+  > **The decision inside the copy, because it is the one a later story could undo.** The disclosure keys on *"does this
+  > class have a plan"*, never on *"is anything replaceable"*. The second question is the server's `IsVervangbaar`, and
+  > answering it in the client would be a second implementation of one rule on the screen E3-09 spent a whole story
+  > de-duplicating. So the sentence states a **rule** (true in every state, including the one where nothing is
+  > replaceable) rather than a **prediction**, and a test pins that deliberately. Counting what will change, and
+  > offering a cancel, stays **E4-07**.
+  > *Two pieces of proof the behaviour never had, and both are E7-16's shape:* a Postgres row-level test that a
+  > **decided** placement survives (only the *lock* half had ever met a real database; the decided half was covered by
+  > unit tests over a fake storage port, where a removal cannot fail to be a DELETE), and the first test anywhere to
+  > read **`aantalVervangen` over the wire** — the frontend read it from a hand-written fixture and no server test read
+  > it at all, so a rename would have emptied a sentence on the anchor screen with every suite green.
+  > *The catalogue guard was widened from the instance to the class:* the two existing guards key on the key **prefix**
+  > and on the word `hergener`, and this story's own copy says *"opnieuw genereren"*, so it was invisible to them by
+  > construction. A third guard now covers every `kalender.*` string that mentions running the generation again, in
+  > either wording. It found a pre-existing gap on its first run: **`kalender.plaatsGevolg`** (E4-03) makes the same
+  > claim from outside both prefixes and nothing pinned it.
+  > **Gates, re-run after each fix round and by the auditor itself in ronde 2:** 577 unit + 205 integration (0 skipped, real PostgreSQL), 501 frontend / 20 files, `dotnet format` / lint
+  > / build clean, every new claim mutation-checked in the failing direction. Browser pass at 1440px and 390px against
+  > a real API and real PostgreSQL with the model stubbed: a class with no plan gets the first-run copy, **the label and
+  > the sentence flip within the same session** the moment the first run lands, and on the demo class an accepted and a
+  > locked placement survived while five untouched proposals were replaced (*"5 eerdere voorstellen zijn vervangen, 2
+  > bestaande plaatsingen bleven staan"*, with the board agreeing). Re-measured after the ronde-2 rewrite on the state both findings were about (a **locked** proposal plus an
+  > **empty** model answer, the run that destroys and creates nothing): the board keeps `Verkeer 🔒 Vast` and the
+  > report reads *"De AI stelde geen enkel thema voor." / "6 eerdere voorstellen zijn verdwenen." / "1 bestaande
+  > plaatsing bleef staan"*, with no *"vervangen"* left on the card. 6 lines / 99px at 390px, composited contrast
+  > 8,90:1 (button), 6,08:1 (disclosure) and 5,73:1 (report), no overflow.
+  > **The near-miss, recorded because no artifact this project reviews would have caught it.** Mid-pass the browser
+  > showed an `Aanvaard` placement being discarded, reproducing over `curl` and over a row inserted straight into the
+  > table, on real PostgreSQL, while the xUnit test asserting the opposite passed on the same tree. **The API was
+  > running a mutation check**: `IsVervangbaar => !Vergrendeld` had been built, the source restored with `cp`, and the
+  > app started with `dotnet run --no-build` — the incremental build did not notice a file restored within the same
+  > second as the previous build's output. `git diff` was clean, the suite was green, and the running process was not
+  > the source. *Rule out of it:* after a mutation check, force a rebuild before running anything; and a defect that
+  > contradicts a passing test on the same tree is a claim about your environment first. The tell was in the first
+  > measurement, unread for half an hour: the **lock** was honoured and the **status** was not, which is the exact shape
+  > of the mutation and the shape of no plausible EF bug.
+  > *Scope boundaries, stated so the next story does not have to infer them:* nothing here claims anything about
+  > **per-period** regeneration (E4-05) — both new strings are scoped to the whole plan, like E4-06's six; there is no
+  > pre-apply diff and no cancel (**E4-07**, FR-8.3); the model round trip is stubbed, the same residual M2 accepted;
+  > and the **`vast moment`** question E4-03 opened (Art. XIV) is untouched.
   > **Inherited obligation from E3-03 (2026-08-05): a new generation path must attach the dekkingsvooruitzicht itself.** FR-5.3's measured half is composed in `JaarplanController.Genereer` rather than inside `JaarplanGeneratieService`, because `DekkingService` reads the plan through `IJaarplanLezer` — which the generation service implements — so a dependency there would close the loop. **If you reuse `POST …/jaarplan/generatie` you inherit it for free; if you add an endpoint, attach it or the panel silently loses its dekking section.** It fails visibly rather than wrongly, which is why the composition was accepted at that layer, but it is an obligation rather than a guarantee. Same note on **E4-05**.
+  > *Where that obligation actually lands, now that E4-04 is closed (added while merging E3-03 in, 2026-08-06):* **E4-04 added no generation path.** It presses the one endpoint that already existed, so the vooruitzicht `JaarplanController.Genereer` composes travels with it unchanged and nothing here had to attach anything. The obligation is therefore **E4-05's** in full, which is the story that adds the second path, and it is repeated on that story below rather than left only here.
 
 - [ ] **E4-05 — Regenerate a single period**
   Regenerate one block/period without touching the rest.
   *Done when:* only the chosen period changes. Ref: FR-8.2.
+  > **Inherited from E3-03 via E4-04 (2026-08-06): your new path must attach the dekkingsvooruitzicht itself.** FR-5.3's
+  > measured half is composed in `JaarplanController.Genereer`, not inside `JaarplanGeneratieService`, so a second
+  > generation route that does not repeat that composition returns a run report with no coverage figures and nothing
+  > fails. E4-04 inherited this and discharged it trivially, because it pressed the endpoint that already existed and
+  > added no path at all; **you are the story that adds one.**
   > **Inherited obligation from E4-06 (2026-08-03) — six strings become false the moment you add a second discard path.** E4-06 could not promise anything about *"een hergeneratie"* in general, because only the whole-plan path exists, so it qualified every claim to **"een hergeneratie van het hele jaarplan"**. Your story adds the path those sentences deliberately say nothing about. Re-read and re-verify all six in `frontend/src/i18n/nl.json`: `kalender.vergrendeldUitleg` (the "Vast" badge tooltip), `kalender.vergrendelUitlegVrij`, `kalender.vergrendelUitlegVast`, `kalender.vergrendelNietNodig`, `kalender.vergrendelUitlegBeslistVast` and `kalender.weigeringUitleg`.
   > *Coverage is split, so know where each one is pinned:* the first five sit in the `kalender.vergrendel*` family and are caught by the guard in `frontend/src/i18n/catalogus.test.ts`; **`weigeringUitleg` is outside that prefix** and is pinned by a literal assertion in `Jaarplankalender.test.tsx` instead. A change that only touches the sixth will not trip the family guard.
   > **A seventh string joined the list on 2026-08-04 (E4-03):** `kalender.plaatsGevolg`, shown in the hand-placement picker, says the thema *"komt als jouw eigen keuze in deze themaperiode, dus een hergeneratie van het hele jaarplan laat het staan"*. Same qualification and the same reason, and **it is outside the `vergrendel*` prefix too**, so the family guard does not see it either. Re-read all seven, not six.
