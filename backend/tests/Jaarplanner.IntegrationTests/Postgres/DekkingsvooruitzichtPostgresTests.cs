@@ -95,7 +95,7 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         Assert.Equal(0, vooruitzicht.AantalGedekt);
         Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
 
-        // The two derived getters, which exist only as computed properties on the record.
+        // The derived getter, which exists only as a computed property on the record.
         Assert.Equal(2, vooruitzicht.AantalOnbereikbaar);
     }
 

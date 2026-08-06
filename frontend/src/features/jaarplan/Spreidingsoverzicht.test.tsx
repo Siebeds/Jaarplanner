@@ -94,10 +94,12 @@ describe("Spreidingsoverzicht en verouderde metingen", () => {
   });
 
   it("laat het parameterrapport staan, en dat rapport doet geen uitspraak over het huidige plan", () => {
-    // Antagonist round 3, MAJOR 2. This block sits OUTSIDE the withholding, so every sentence in it has to survive
-    // an edit. Two did not: the heading claimed a thema stood in no period "nu", and the closing line told the
-    // teacher to give it one — printed unchanged directly below "je hebt het jaarplan aangepast", to a teacher who
-    // had just done exactly that.
+    // Antagonist rounds 3 and 4, MAJOR both times. This block sits OUTSIDE the withholding, so every sentence in it
+    // has to survive an edit. Round 3 fixed the heading ("staat *nu* in geen enkele themaperiode") and the closing
+    // line ("Geef ze zelf een themaperiode"), which printed unchanged below "je hebt het jaarplan aangepast" to a
+    // teacher who had just done exactly that. Round 4 found the replacements were still wrong: a refusal is recorded
+    // per (thema, periode) and says nothing about the rest of the plan, so "deze generatie liet het buiten het plan"
+    // is false whenever the run also placed that thema somewhere else. The claim is now about the PERIOD only.
     render(
       <Spreidingsoverzicht
         resultaat={{
@@ -126,13 +128,17 @@ describe("Spreidingsoverzicht en verouderde metingen", () => {
     );
 
     // Still readable, because the motivation behind a refusal exists nowhere else on the screen.
-    expect(screen.getByText(/Thema dat deze generatie niet kon inplannen/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Thema dat deze generatie niet in de gevraagde themaperiode kreeg/),
+    ).toBeInTheDocument();
 
-    // But phrased as a run fact. No sentence may assert where the thema stands NOW.
+    // Not a claim about where the thema stands now, and not a claim about the plan as a whole. Both of the earlier
+    // wordings are asserted absent, so neither can come back as an apparent improvement.
     expect(screen.queryByText(/in geen enkele themaperiode staat/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Dit thema is niet ingepland\./)).not.toBeInTheDocument();
+    expect(screen.queryByText(/liet het buiten het plan/)).not.toBeInTheDocument();
 
-    // The remedy survives as a conditional: this component cannot see the live plan.
-    expect(screen.getByText(/Staat het er nog altijd niet/)).toBeInTheDocument();
+    // The remedy survives as a conditional on the whole plan: this component cannot see it.
+    expect(screen.getByText(/Staat het nergens anders in je jaarplan/)).toBeInTheDocument();
   });
 });

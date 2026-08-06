@@ -66,6 +66,11 @@ describe("genereerJaarplan", () => {
 
     void genereerJaarplan(KLAS, undefined, "L3");
 
-    expect(aanroep(fetchFake).body).toBeUndefined();
+    // On the **key**, not on the value (antagonist round 4). `expect(init.body).toBeUndefined()` passes for the
+    // likeliest way to break this — dropping the spread and writing `body: JSON.stringify(parameters)`, since
+    // `JSON.stringify(undefined)` is itself `undefined`. That mutation would send a body-less POST that the server
+    // reads as "no body" anyway today, but it stops being harmless the moment anything sets a Content-Type from the
+    // presence of the key. The assertion has to see the shape the caller built.
+    expect(fetchFake.mock.calls[0][1]).not.toHaveProperty("body");
   });
 });

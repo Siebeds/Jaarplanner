@@ -567,6 +567,167 @@ describe("Jaarplankalender", () => {
     await screen.findByText("Nu gedekt: 0 van 9.");
   });
 
+  /**
+   * The **derivation** of `verouderingsreden`, as opposed to its presentation (antagonist round 4).
+   *
+   * `Spreidingsoverzicht.test.tsx` pins what the panel renders for a given `verouderd` prop. That is the easy half.
+   * The half that has produced a MAJOR in two consecutive rounds is the ternary in this component that decides the
+   * prop's value, and until round 4 the only test touching it asserted the notice's **absence** on the happy path.
+   * These three drive the real hooks and the real fetches.
+   */
+  function maakVooruitzicht(gemetenJaarFasen: string[]) {
+    return {
+      bereik: "EigenJaarFase" as const,
+      gemetenJaarFasen,
+      isTerugvalNaarHeelCurriculum: false,
+      aantalBuitenBereik: 0,
+      isBetrouwbaar: true,
+      aantalOnopgelosteVervallenPlaatsingen: 0,
+      aantalGedekt: 0,
+      aantalMogelijkGedekt: 4,
+      aantalLeerplandoelen: 9,
+      aantalOnbereikbaar: 5,
+    };
+  }
+
+  it("meldt verouderde metingen wanneer een AL MANUELE plaatsing naar een andere periode verhuist", async () => {
+    // **Round 3's MAJOR 1, end to end.** The signature used to be blind to `blokStart` on the argument that a move
+    // sets the status to `Manueel` — which is a no-op for a placement that is already `Manueel`, i.e. every kept hand
+    // placement. The panel then went on printing this run's spreading and dekking over a board that had moved.
+    // Nothing but position differs between the two plans here, so this test fails the moment `blokStart` leaves the
+    // signature again.
+    const naPlan = maakJaarplan([
+      maakPlaatsing({ id: "p1", status: "Manueel", blokStart: "2026-09-01", blokOrdinaal: 1 }),
+    ]);
+    const verplaatst = maakJaarplan([
+      maakPlaatsing({ id: "p1", status: "Manueel", blokStart: "2026-11-09", blokOrdinaal: 2 }),
+    ]);
+    const resultaat: Generatieresultaat = {
+      isGeslaagd: true,
+      fout: null,
+      jaarplan: naPlan,
+      aantalNieuw: 1,
+      aantalBehouden: 0,
+      aantalVervangen: 0,
+      onbekendeThemas: [],
+      onbekendeBlokken: [],
+      duplicaten: [],
+      afgewezen: [],
+      parameters: null,
+      spreiding: null,
+      vooruitzicht: maakVooruitzicht(["L3"]),
+    };
+
+    let isGegenereerd = false;
+    stubFetch(maakJaarplan([]), resultaat);
+    const gestubdeFetch = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    const origineel = gestubdeFetch.getMockImplementation()!;
+    gestubdeFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method === "POST" && url.includes("/generatie")) {
+        isGegenereerd = true;
+        return new Response(JSON.stringify(resultaat), { status: 200 });
+      }
+      // The refetch answers the MOVED plan, which is what a colleague's edit or a drag looks like from here.
+      if (isGegenereerd && url.includes("/jaarplan") && !url.includes("/parameters")) {
+        return new Response(JSON.stringify(verplaatst), { status: 200 });
+      }
+
+      return origineel(input, init);
+    });
+
+    renderKalender();
+    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+
+    expect(
+      await screen.findByText(/Je hebt het jaarplan aangepast na deze generatie/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
+  });
+
+  it("meldt een ander gemeten jaar wanneer de leerkracht de kleuterjaarkiezer na de run verzet", async () => {
+    // The second reason, and it needs its own sentence: "je hebt het jaarplan aangepast" is false here. The plan is
+    // untouched; the DENOMINATOR moved, which is the two-denominator state in a second guise.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const resultaat: Generatieresultaat = {
+      isGeslaagd: true,
+      fout: null,
+      jaarplan: plan,
+      aantalNieuw: 1,
+      aantalBehouden: 0,
+      aantalVervangen: 0,
+      onbekendeThemas: [],
+      onbekendeBlokken: [],
+      duplicaten: [],
+      afgewezen: [],
+      parameters: null,
+      spreiding: null,
+      vooruitzicht: maakVooruitzicht(["JK", "K2", "K3"]),
+    };
+
+    stubFetch(plan, resultaat, {
+      ...DEKKING_NIETS_ONTBREEKT,
+      gemetenJaarFasen: ["JK", "K2", "K3"],
+      beschikbareJaarFasen: ["JK", "K2", "K3"],
+      aantalGedekt: 4,
+      aantalLeerplandoelen: 45,
+    });
+
+    renderKalender();
+    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+    expect(await screen.findByText("Nu gedekt: 0 van 9.")).toBeInTheDocument();
+
+    // Narrow to one kleuterjaar AFTER the run. The plan does not change; what the figures are over does.
+    //
+    // `findByRole`, not `getByRole`, and the reason is worth recording: a successful run DROPS the live dekking cache
+    // (E4-01), and the chooser's second gate reads `aantalLeerplandoelen` off that query rather than off the latch, so
+    // the control really does disappear for the length of the refetch and come back. The latch was added to stop
+    // exactly that flicker for the codes; the gate defeats it for the figure. Self-healing, pre-existing and outside
+    // this story, but a test that used `getByRole` here would fail intermittently and look like a flake.
+    const kiezer = await screen.findByRole("group", { name: t("dekking.jaarFaseLabel") });
+    fireEvent.click(within(kiezer).getByRole("button", { name: "K3" }));
+
+    expect(await screen.findByText(/Je meet nu tegen een ander jaar/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Je hebt het jaarplan aangepast na deze generatie/),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
+  });
+
+  it("meldt GEEN ander gemeten jaar zolang de tool niet weet welke jaren deze klas heeft", async () => {
+    // The round-3 guard, and the reason it exists. `beschikbareJaarFasen` is latched from the first /dekking answer,
+    // so it is `[]` until that lands — and permanently `[]` if the call keeps failing. Comparing `[]` against a
+    // server that reported `["L3"]` mismatches, so the panel told a teacher they had changed the measured year while
+    // they had changed nothing and had no chooser on screen to change it with, and suppressed the whole report.
+    // When the current scope is unknown, "not stale" is the honest answer.
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1" })]);
+    const resultaat: Generatieresultaat = {
+      isGeslaagd: true,
+      fout: null,
+      jaarplan: plan,
+      aantalNieuw: 1,
+      aantalBehouden: 0,
+      aantalVervangen: 0,
+      onbekendeThemas: [],
+      onbekendeBlokken: [],
+      duplicaten: [],
+      afgewezen: [],
+      parameters: null,
+      spreiding: null,
+      vooruitzicht: maakVooruitzicht(["L3"]),
+    };
+
+    // A coverage answer that names no available jaar/fasen at all, so the latch never fills.
+    stubFetch(plan, resultaat, { ...DEKKING_NIETS_ONTBREEKT, beschikbareJaarFasen: [] });
+
+    renderKalender();
+    fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
+
+    expect(await screen.findByText("Nu gedekt: 0 van 9.")).toBeInTheDocument();
+    expect(screen.queryByText(/Je meet nu tegen een ander jaar/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/kloppen niet meer/)).not.toBeInTheDocument();
+  });
+
   it("shows Dutch copy on a 422 and never echoes the English diagnostic", async () => {
     stubFetch(maakJaarplan([]), 422);
     renderKalender();

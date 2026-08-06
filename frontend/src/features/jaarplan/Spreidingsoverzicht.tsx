@@ -37,10 +37,17 @@ export interface SpreidingsoverzichtProps {
    * skipped stay (they are facts about the run and remain true forever), and everything measured **over the plan** is
    * withheld together.
    *
-   * **That rule is applied to the parameter report too, and it lands the other way** (antagonist round 3): its
-   * sentences are run facts, so it stays visible, but two of them were phrased as present-tense claims about the plan
-   * and had to be reworded before that was true. A block is not exempt because it sits outside the branch; it is
-   * outside the branch because every sentence in it survives an edit.
+   * **That rule is applied to the parameter report too, and it lands the other way** (antagonist rounds 3 and 4): its
+   * sentences are run facts, so it stays visible, but they had to be *made* run facts before that was true. A block is
+   * not exempt because it sits outside the branch; it is outside the branch because every sentence in it survives an
+   * edit.
+   *
+   * **Round 3 fixed the two the audit named; round 4 had to fix the other six** — `rapportOnbekend`,
+   * `rapportVervallen`, `rapportOnplaatsbaar`, `rapportGeweigerdRegel`, `rapportNietGehonoreerd` and
+   * `rapportTegenstrijdig`, the last of which ended in an unconditional *"Pas een van de twee instellingen aan"* one
+   * string away from the remedy round 3 had just made conditional. The whole `parameters.*` family is now past tense
+   * about what the run met and conditional about what the teacher might still do. **The lesson is the cheap one:
+   * when an audit names two instances of a defect, grep the family before calling it fixed.**
    */
   verouderd?: Verouderingsreden | null;
 }
@@ -113,10 +120,9 @@ export function Spreidingsoverzicht({ resultaat, verouderd = null }: Spreidingso
            **It does not govern the parameter report below it, and saying that it did was wrong** (antagonist round 3).
            That report is outside this branch on purpose: every sentence in it is a fact about the run ("de AI koos een
            ander thema", "vast moment meegenomen"), and a fact about the run stays true no matter what the teacher
-           edits afterwards. The two sentences that were NOT run facts are the reason this comment had to be corrected
-           rather than merely believed: `rapportGeweigerd` said "Thema's die **nu** in geen enkele themaperiode staan"
-           and `rapportGeweigerdWatNu` told the teacher to give it a period, both still printing after the teacher had
-           done exactly that. They are reworded as run facts instead of being withheld, because the refusal block
+           edits afterwards. It took two rounds to make that description accurate rather than merely asserted, and the
+           audit trail is in the `parameters.*` family: round 3 reworded the two sentences the audit named, round 4
+           found six more and swept the family. They are reworded rather than withheld because the refusal block
            carries the model's motivation and is the only place that proposal can still be read. */
         <p className="mt-4 border-t border-border pt-3 text-xs text-ink-zacht">
           {t(verouderd === "bereik" ? "kalender.metingenVerouderdBereik" : "kalender.metingenVerouderd")}

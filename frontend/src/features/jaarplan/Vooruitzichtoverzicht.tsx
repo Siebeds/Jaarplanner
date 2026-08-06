@@ -31,8 +31,11 @@ import type { Dekkingsvooruitzicht } from "./types";
  * switch (E5-02), and repeating the figure here without the control would be a number a teacher cannot act on.
  * Saying which jaar/fase was measured is the disclosure this panel owes, and since the kalender's own kleuterjaar
  * chooser now reaches this computation, the scope named here is the one the teacher chose. The cost the owner
- * accepted, stated so nobody has to rediscover it: a kleuterklas narrowed to K3 reads "3 van 40" on the anchor
- * screen with roughly 118 doelen unmentioned.
+ * accepted, stated so nobody has to rediscover it and stated in the form the code actually implements: **on every
+ * `EigenJaarFase` class**, not only a narrowed kleutergroep, this panel prints a denominator that silently excludes
+ * every other year's doelen, and says which scope it used without saying how much that leaves out. The figure itself
+ * (`aantalBuitenBereik`) travels on the payload and is rendered by `Dekkingsamenvatting` on E5-02's screen, beside
+ * the control that can widen it.
  */
 export interface VooruitzichtoverzichtProps {
   vooruitzicht: Dekkingsvooruitzicht;
