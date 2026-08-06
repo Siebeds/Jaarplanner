@@ -156,6 +156,39 @@ const SUBTHEMA_L3: Subthema = {
   ],
 };
 
+/**
+ * A second subthema for the same klas under a **different** thema (E4-08).
+ *
+ * It exists so a cross-thema move has a destination: the ruling of 2026-08-05 lets an activiteit leave its
+ * thema but never its klas, and with one subthema per klas the picker would correctly render nothing and prove
+ * nothing. It carries no activiteiten of its own, so a moved one is unambiguous.
+ */
+const SUBTHEMA_L3_DERDE: Subthema = {
+  id: "cccccccc-0000-0000-0000-000000000003",
+  themaId: THEMA_VOL,
+  naam: "De regenboog",
+  duurWeken: 2,
+  klasId: KLAS_L3,
+  leeftijd: "9",
+  probleemstelling: null,
+  onderzoeksvraag: null,
+  subdoelen: [],
+  activiteiten: [],
+};
+
+const SUBTHEMA_L3_WATER: Subthema = {
+  id: "cccccccc-0000-0000-0000-000000000002",
+  themaId: THEMA_WATER,
+  naam: "Drijven en zinken",
+  duurWeken: 2,
+  klasId: KLAS_L3,
+  leeftijd: "8",
+  probleemstelling: null,
+  onderzoeksvraag: null,
+  subdoelen: [],
+  activiteiten: [],
+};
+
 /** The per-klas view: the school-wide layer plus only the requested class's subthema's. */
 function themaVoorKlas(item: ThemaBibliotheekItem, klasId: string, opslag: Subthema[]): Thema {
   const subthemas = opslag.filter((sub) => sub.themaId === item.id && sub.klasId === klasId);
@@ -190,6 +223,56 @@ export interface ThemaFakeOpties {
   subthemaAlWeg?: boolean;
   /** Answer a thema PUT with a 404: a colleague deleted the thema while the edit form was open. */
   themaWijzigAlWeg?: boolean;
+  /**
+   * Serve only the klas's *own* thema subthema, so a move has nowhere to go (E4-08). The picker must then not
+   * offer a control at all rather than open on an empty list.
+   */
+  geenBestemming?: boolean;
+  /**
+   * Answer a move with a 404: the activiteit itself is gone. A destination that vanished is a 400 instead, so
+   * this option cannot stand for both (see `verplaatsActiviteit`).
+   */
+  verplaatsActiviteitAlWeg?: boolean;
+  /**
+   * Answer the **first** move with a 404 and let every later one through (E4-08 round 4).
+   *
+   * It exists for one property that needs two notices in sequence: a 404 raises "iemand anders heeft ze
+   * verwijderd", and a later *successful* move has to clear that sentence while raising its own. `subthemaAlWeg`
+   * cannot stand in, because it removes the subthema from the store, so after that notice there is no activiteit
+   * left on this screen to move.
+   */
+  verplaatsActiviteitAlWegEenmaal?: boolean;
+  /** Answer a move with a 400 carrying this `detail`, e.g. a destination a colleague deleted meanwhile. */
+  verplaatsWeigering?: string;
+  /**
+   * Add a **third** subthema for L3, under a third thema and with a different `leeftijd` (E4-08 round 2).
+   *
+   * Opt-in, because the default two-subthema store is what the destination-list test asserts exactly. Two
+   * findings need it: the leeftijd disclosure only renders when a destination with another age is on offer, and
+   * the derived-choice fix can only be observed when the chosen destination vanishes while **another remains**.
+   */
+  extraBestemming?: boolean;
+  /** Fail `GET /api/subthemas/voor-klas/{klasId}`, for the panel's list-error state. */
+  bestemmingenFaalt?: boolean;
+  /**
+   * Never resolve the destinations read, for the panel's **loading** state (E4-08 round 3).
+   *
+   * It exists because a property test named over "every state the panel can be in" drove three of four, and the
+   * missing one hid a real surviving mutation: a submit rendered while there was no picker.
+   */
+  bestemmingenHangt?: boolean;
+  /**
+   * Answer the destinations read once and fail every later one, which is the `isRefetchError` state: `isError`
+   * true while `data` still holds the previous list (E4-08 round 3, MINOR 6). `bestemmingenFaalt` cannot stand
+   * in for it, because failing the first fetch means no data ever exists.
+   */
+  bestemmingenFaaltNaEerste?: boolean;
+  /**
+   * The exact race a browser pass found: the move is refused **and** the destination really is gone, so the
+   * next destinations read no longer contains it. A plain `verplaatsWeigering` cannot stand in for this,
+   * because the list it answers stays unchanged and the picker would look correct either way.
+   */
+  verplaatsBestemmingVerdwijnt?: boolean;
 }
 
 /** One recorded write, so a test can assert the address, the verb and the body the screen sent. */
@@ -211,7 +294,19 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
    * the screen would render the same rows before and after a write. Here a create only becomes visible if the
    * component really refetches, which is the behaviour worth pinning.
    */
-  const subthemaOpslag: Subthema[] = [structuredClone(SUBTHEMA_L3)];
+  const subthemaOpslag: Subthema[] = opties.geenBestemming
+    ? [structuredClone(SUBTHEMA_L3)]
+    : [
+        structuredClone(SUBTHEMA_L3),
+        structuredClone(SUBTHEMA_L3_WATER),
+        ...(opties.extraBestemming ? [structuredClone(SUBTHEMA_L3_DERDE)] : []),
+      ];
+
+  /** How many times the destinations read has been answered, for `bestemmingenFaaltNaEerste`. */
+  let bestemmingenGeleverd = 0;
+
+  /** How many move attempts have arrived, for `verplaatsActiviteitAlWegEenmaal`. */
+  let verplaatspogingen = 0;
   let teller = 0;
 
   const fetchFake = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -384,6 +479,107 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
       const sub = subthemaOpslag.find((kandidaat) => kandidaat.id === subdoelWeg[1]);
       if (sub) sub.subdoelen = sub.subdoelen.filter((doel) => doel.id !== subdoelWeg[2]);
       return new Response(null, { status: 204 });
+    }
+
+    // --- E4-08: the destinations of a move, scoped to one klas across every thema. ---
+    const bestemmingen = url.pathname.match(/^\/api\/subthemas\/voor-klas\/([^/]+)$/);
+    if (bestemmingen && methode === "GET") {
+      if (opties.bestemmingenFaalt) {
+        return json({ title: "Serverfout", status: 500 }, 500);
+      }
+
+      if (opties.bestemmingenHangt) {
+        // Never settles, so the query stays `isPending` and the panel stays in its loading branch.
+        return new Promise<Response>(() => {});
+      }
+
+      bestemmingenGeleverd += 1;
+      if (opties.bestemmingenFaaltNaEerste && bestemmingenGeleverd > 1) {
+        return json({ title: "Serverfout", status: 500 }, 500);
+      }
+
+      return json(
+        subthemaOpslag
+          .filter((sub) => sub.klasId === bestemmingen[1])
+          .map((sub) => ({
+            id: sub.id,
+            naam: sub.naam,
+            leeftijd: sub.leeftijd,
+            themaId: sub.themaId,
+            themaNaam: bibliotheek.find((thema) => thema.id === sub.themaId)?.naam ?? "",
+          }))
+          // The server orders by thema then subthema under the database collation; mirrored so a test can
+          // assert the grouping order without depending on insertion order.
+          .sort((a, b) => a.themaNaam.localeCompare(b.themaNaam) || a.naam.localeCompare(b.naam)),
+      );
+    }
+
+    /*
+      E4-08: the move itself, stateful for the reason `subthemaOpslag` exists. A canned 200 would let a missing
+      invalidation pass, because both subthema's would render the same rows before and after.
+    */
+    const verplaats = url.pathname.match(/^\/api\/activiteiten\/([^/]+)\/subthema$/);
+    if (verplaats && methode === "PUT") {
+      if (opties.verplaatsActiviteitAlWeg) {
+        return json({ title: "Niet gevonden", detail: "Deze activiteit bestaat niet meer.", status: 404 }, 404);
+      }
+
+      verplaatspogingen += 1;
+      if (opties.verplaatsActiviteitAlWegEenmaal && verplaatspogingen === 1) {
+        // Deliberately does NOT remove the activiteit: the row has to survive for the second attempt.
+        return json({ title: "Niet gevonden", detail: "Deze activiteit bestaat niet meer.", status: 404 }, 404);
+      }
+
+      if (opties.verplaatsWeigering) {
+        return json({ title: "Ongeldige aanvraag", detail: opties.verplaatsWeigering, status: 400 }, 400);
+      }
+
+      if (opties.verplaatsBestemmingVerdwijnt) {
+        const { doelSubthemaId } = JSON.parse(String(init?.body)) as { doelSubthemaId: string };
+        const weg = subthemaOpslag.findIndex((sub) => sub.id === doelSubthemaId);
+        if (weg >= 0) subthemaOpslag.splice(weg, 1);
+        return json(
+          {
+            title: "Ongeldige aanvraag",
+            detail: "Dit subthema bestaat niet meer.",
+            status: 400,
+          },
+          400,
+        );
+      }
+
+      const { doelSubthemaId } = JSON.parse(String(init?.body)) as { doelSubthemaId: string };
+      const bron = subthemaOpslag.find((sub) =>
+        sub.activiteiten.some((kandidaat) => kandidaat.id === verplaats[1]),
+      );
+      const activiteit = bron?.activiteiten.find((kandidaat) => kandidaat.id === verplaats[1]);
+      if (!bron || !activiteit) {
+        // 404 is the activiteit itself, which is the only thing this status may mean (see `verplaatsActiviteit`).
+        return json({ title: "Niet gevonden", detail: "onbekende activiteit", status: 404 }, 404);
+      }
+
+      const doel = subthemaOpslag.find((sub) => sub.id === doelSubthemaId);
+      if (!doel) {
+        return json(
+          { title: "Ongeldige aanvraag", detail: "Dit subthema bestaat niet meer.", status: 400 },
+          400,
+        );
+      }
+
+      if (doel.klasId !== bron.klasId) {
+        return json(
+          {
+            title: "Ongeldige aanvraag",
+            detail: "Een activiteit kan alleen verhuizen naar een subthema van dezelfde klas.",
+            status: 400,
+          },
+          400,
+        );
+      }
+
+      bron.activiteiten = bron.activiteiten.filter((kandidaat) => kandidaat.id !== verplaats[1]);
+      doel.activiteiten.push(activiteit);
+      return json(activiteit);
     }
 
     const nieuweActiviteit = url.pathname.match(/^\/api\/subthemas\/([^/]+)\/activiteiten$/);

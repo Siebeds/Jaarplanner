@@ -109,6 +109,69 @@ public sealed class Subthema
     }
 
     /// <summary>
+    /// Moves <paramref name="activiteit"/> out of this subthema and into <paramref name="doelSubthema"/>
+    /// (E4-08, FR-7.2). The activiteit keeps its identity, its attributes and every
+    /// <c>DoelKoppeling</c> it carries, which is what makes this different in kind from deleting it here and
+    /// retyping it there.
+    /// <para>
+    /// <b>The class boundary is the invariant of this verb, and it is enforced here because this is the only
+    /// place both scopes are known</b> (Art. IX.2: a subthema is scoped per klas and leeftijd, an activiteit
+    /// inherits that scope). A move to another klas would silently hand one class's content to another, so it
+    /// is refused. A move to another <b>thema</b> is allowed (owner ruling, 2026-08-05).
+    /// <para>
+    /// <b>Deliberately narrow wording: this guards the move verb, not the system.</b>
+    /// <c>WijzigScope</c> still accepts a different klas, so re-scoping a subthema carries every activiteit in
+    /// it across a class boundary by another route. That is pre-existing E1-10 behaviour which no screen offers.
+    /// <b>The owner ruled on 2026-08-05 to leave that route as it is and file it</b>, so it is <b>E1-19</b>, and
+    /// closing it is that story's decision rather than this method's. Until then the claim above is true of this
+    /// verb and not of the system, which is why it is worded that way.
+    /// </para>
+    /// <para>
+    /// A move to another <b>leeftijd</b> within the same klas is permitted, which is the graadklas
+    /// differentiation Art. IX.2 exists for. <b>Ruled by the owner on 2026-08-05</b>, after an antagonist
+    /// QUESTION established that the earlier ruling had only covered the *thema* boundary and that this half
+    /// had been inferred: permitted, <b>and the panel must say what it means</b> rather than leave it to the
+    /// age printed in an option label (<c>themabeheer.activiteitVerplaatsLeeftijd</c>).
+    /// </para>
+    /// </para>
+    /// </summary>
+    public void VerplaatsActiviteitNaar(Activiteit activiteit, Subthema doelSubthema)
+    {
+        ArgumentNullException.ThrowIfNull(activiteit);
+        ArgumentNullException.ThrowIfNull(doelSubthema);
+
+        if (!_activiteiten.Contains(activiteit))
+        {
+            // Not a teacher's mistake and not reachable through the API, where the source subthema is resolved
+            // from the activiteit itself. English and a 500 rather than a Dutch 400: a caller pairing the wrong
+            // two objects is an operator diagnostic (Art. II.3), and it must not travel to a teacher's screen.
+            throw new InvalidOperationException("Activiteit does not belong to this subthema.");
+        }
+
+        // Both refusals below deliberately pass **no paramName**, and that is not a style choice.
+        // `ArgumentException(message, paramName)` appends "(Parameter 'doelSubthema')" to `Message`, the service
+        // forwards `ex.Message` as the 400's `detail`, and the form renders that detail verbatim. The paramName
+        // overload therefore puts an English developer artefact in a Dutch sentence on a teacher's screen, which
+        // is the defect E1-14's round 4 found on this very screen. Caught here by an integration test asserting
+        // the payload rather than the status code.
+        if (doelSubthema.Id == Id)
+        {
+            throw new ArgumentException("Deze activiteit staat al in dit subthema.");
+        }
+
+        if (doelSubthema.KlasId != KlasId)
+        {
+            // Art. IX.2 makes the class scope structural. The sentence stays free of the article reference and
+            // says what the reader can do, which is the rule E1-14 landed for every message on these screens.
+            throw new ArgumentException("Een activiteit kan alleen verhuizen naar een subthema van dezelfde klas.");
+        }
+
+        _activiteiten.Remove(activiteit);
+        doelSubthema._activiteiten.Add(activiteit);
+        activiteit.VerhuisNaar(doelSubthema.Id);
+    }
+
+    /// <summary>
     /// Removes a subdoel from this subthema. Used by the import overwrite reconciliation (E1-08) to drop
     /// an AI-only <c>voorgesteld</c> link the file no longer carries, or — only on explicit teacher
     /// confirmation — a discarded human decision (Art. IV.2).

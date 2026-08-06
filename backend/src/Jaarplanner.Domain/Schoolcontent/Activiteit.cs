@@ -73,6 +73,22 @@ public sealed class Activiteit
     public void WijzigNaam(string naam) => Naam = Require(naam, nameof(naam));
 
     /// <summary>
+    /// Re-parents this activiteit to another subthema (E4-08, FR-7.2).
+    /// <para>
+    /// <b>Internal on purpose.</b> An activiteit has no class scope of its own, so it cannot check the one rule
+    /// a move has to obey (Art. IX.2: the class scope comes from the subthema). <see cref="Subthema"/> is the
+    /// only type that knows both scopes, so the guard lives there and this setter is reachable only through
+    /// <c>Subthema.VerplaatsActiviteitNaar</c>. Nothing outside the domain can move an activiteit past it.
+    /// </para>
+    /// <para>
+    /// The <see cref="Doelkoppelingen"/> are deliberately untouched: they are owned by this activiteit, so a
+    /// move carries every one of them, including the <c>manueel</c> links a teacher made by hand. That is the
+    /// whole reason this verb exists rather than delete-and-retype.
+    /// </para>
+    /// </summary>
+    internal void VerhuisNaar(Guid subthemaId) => SubthemaId = subthemaId;
+
+    /// <summary>
     /// Updates the activiteit's attributes (mutable autonomous content, Art. III). Used by the
     /// school-content import overwrite path (E1-08); the naam (the match key) and the goal links are
     /// not changed here — links are managed separately via AI matching / CRUD, so an overwrite never

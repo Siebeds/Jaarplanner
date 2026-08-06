@@ -39,17 +39,48 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
    * sentence does.
    */
   const [alWeg, setAlWeg] = useState<"subthema" | "activiteit" | null>(null);
+  /**
+   * "It moved, and here is where it went", raised by an activiteit row and said here (E4-08).
+   *
+   * Same reason as `alWeg` and a sharper case of it: a move to a subthema of **another thema** takes the
+   * activiteit off this screen, because this half shows one thema. So the row that performed the move is gone
+   * by the time anyone could read a confirmation inside it, and without this notice a successful move looks
+   * exactly like a delete. It names the destination for that reason: "it worked" would not tell a teacher
+   * where to look.
+   */
+  const [verplaatst, setVerplaatst] = useState<{ activiteit: string; subthema: string; thema: string } | null>(
+    null,
+  );
 
   const maakSubthema = useMaakSubthema();
-  /*
-    **Cleared by any later successful write, not only by opening the create form** (antagonist round 4).
 
-    It used to be reset on one event, so after a 404 on subthema A a teacher could successfully delete B and
-    still read "iemand anders heeft het verwijderd" above the list, about their own action. Reading it off the
-    mutation state rather than adding a reset to every call site keeps the rule in one place.
+  /*
+    **Both notices are cleared by the *event* of a later successful write, never by reading the mutation's
+    state** (E4-08's antagonist round 1, and it corrects E1-14's round-4 fix rather than adding to it).
+
+    That round replaced a per-call-site reset with a render-phase `if (alWeg && maakSubthema.isSuccess)`, on the
+    reasoning that reading it off the mutation state keeps the rule in one place. The rule is right and the
+    mechanism is not: `isSuccess` is **latched**, not an event, and nothing in this feature calls `.reset()`. So
+    after one successful subthema create it stays `true` for the whole mount, and the guard then fires on the
+    same render that *raises* a notice and throws it away. Concretely: create a subthema, then move an
+    activiteit, and the confirmation never paints, which is the one flow where it is the only feedback there is
+    (a move to another thema takes the row off this screen). Every test wrote once, so the suite could not see
+    it.
+
+    The clearing therefore happens in the create path's `onSuccess`, which is the actual event, and there is
+    exactly one such call site, so the "one place" argument is unaffected.
+
+    **What this does NOT fix, restored here because rewriting this comment deleted the repo's only record of it**
+    (round 2, MINOR 4). Round 4 of E1-14 was about a sharper case: after a 404 on subthema A, a teacher could
+    successfully delete B and still read *"iemand anders heeft het verwijderd"* about their own action. The
+    latched guard never fixed that either, because a successful **delete** clears nothing here; only a successful
+    **create** does, since that is the only write this component owns. Filed as **E1-20** rather than fixed,
+    because the other writes live in {@link Subthemakaart} and hooking five of its call sites is E1-14's change,
+    not E4-08's.
   */
-  if (alWeg && maakSubthema.isSuccess) {
+  function wisMeldingen() {
     setAlWeg(null);
+    setVerplaatst(null);
   }
 
   // The class's own name, so the heading reads "Van L3 derde leerjaar" rather than a GUID. The selector's list
@@ -63,7 +94,15 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
   const subthemas: Subthema[] = thema.data?.subthemas ?? [];
 
   function bewaarNieuw(invoer: SubthemaInvoer) {
-    maakSubthema.mutate({ themaId, invoer }, { onSuccess: () => setNieuw(false) });
+    maakSubthema.mutate(
+      { themaId, invoer },
+      {
+        onSuccess: () => {
+          setNieuw(false);
+          wisMeldingen();
+        },
+      },
+    );
   }
 
   return (
@@ -84,7 +123,7 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
           <button
             type="button"
             onClick={() => {
-              setAlWeg(null);
+              wisMeldingen();
               setNieuw(true);
             }}
             className="rounded-md border border-input px-3 py-1.5 text-sm font-semibold text-ink hover:bg-paper-diep"
@@ -99,6 +138,34 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
           {alWeg === "subthema" ? t("themabeheer.subthemaAlWeg") : t("themabeheer.activiteitAlWeg")}
         </p>
       ) : null}
+
+      {/*
+        `role="status"` rather than `alert`: this is a confirmation of something the teacher just did, so it is
+        announced politely instead of interrupting. Mutually exclusive with `alWeg` by construction, since each
+        setter clears the other: two notices about the same activiteit would contradict each other.
+
+        **The region is mounted with the section and only its *text* is conditional** (round 2, MAJOR 2), which
+        is the rule this codebase wrote down after being burned by it twice: a `role="status"` element that
+        enters the DOM already populated is frequently not announced at all. `Schoolcontentimport.tsx` states it,
+        and `Themakaart.tsx` records that **E4-06 shipped exactly this fix inside a block that unmounted, found
+        it silent in the one case that mattered, and moved it**. The first version of this notice did what both
+        of those had already fixed, and it matters more here than in either: for a cross-thema move the row
+        leaves the screen, so this sentence is the only evidence a teacher gets, and a screen-reader user would
+        otherwise have no way to tell a successful move from a delete.
+
+        `alWeg` above is unaffected: `role="alert"` is assertive and *is* announced on insertion.
+      */}
+      <div role="status" className={verplaatst ? "mt-3" : undefined}>
+        {verplaatst ? (
+          <p className="text-sm text-ink-zacht">
+            {t("themabeheer.activiteitVerplaatstNaar", {
+              activiteit: verplaatst.activiteit,
+              subthema: verplaatst.subthema,
+              thema: verplaatst.thema,
+            })}
+          </p>
+        ) : null}
+      </div>
 
       {heeftKlas ? (
         <>
@@ -122,7 +189,14 @@ export function Klaslaag({ themaId, klasId }: KlaslaagProps) {
                       subthema={subthema}
                       klasId={klasId}
                       klasNaam={klasNaam}
-                      onAlWeg={setAlWeg}
+                      onAlWeg={(soort) => {
+                        setVerplaatst(null);
+                        setAlWeg(soort);
+                      }}
+                      onVerplaatst={(bestemming) => {
+                        setAlWeg(null);
+                        setVerplaatst(bestemming);
+                      }}
                     />
                   ))}
                 </ul>

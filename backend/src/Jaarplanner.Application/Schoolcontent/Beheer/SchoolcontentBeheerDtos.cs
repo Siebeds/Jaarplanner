@@ -59,6 +59,13 @@ public sealed record ActiviteitWijzigingInvoer(
     string? Hoek = null,
     string? VerwachteUitkomsten = null);
 
+/// <summary>
+/// Move payload for an <see cref="Activiteit"/> (E4-08, FR-7.2): the subthema it should end up in. Only the
+/// destination is named, because the source is derived from the activiteit itself and a caller that could
+/// state both could state a pair that does not match.
+/// </summary>
+public sealed record ActiviteitVerplaatsingInvoer(Guid DoelSubthemaId);
+
 // --- Read models (returned by the queries; flattened views with the goal-link status surfaced). ---
 
 /// <summary>Read view of a goal link (Art. IV.2 — status + AI motivation surfaced).</summary>
@@ -91,6 +98,23 @@ public sealed record SubthemaWeergave(
     string? Onderzoeksvraag,
     IReadOnlyList<SubdoelWeergave> Subdoelen,
     IReadOnlyList<ActiviteitWeergave> Activiteiten);
+
+/// <summary>
+/// One candidate destination for moving an activiteit (E4-08, FR-7.2): a subthema of <b>one</b> klas, named
+/// together with the thema it hangs under so a teacher can tell two same-named subthema's apart.
+/// <para>
+/// It is a deliberately thin projection rather than a <see cref="SubthemaWeergave"/>: a picker needs a label,
+/// not another class's worth of subdoelen and activiteiten. The <see cref="Leeftijd"/> is included because a
+/// move may cross it within one klas (the graadklas case, Art. IX.2), and a teacher choosing a destination
+/// should see which age they are moving the activiteit to rather than discover it afterwards.
+/// </para>
+/// </summary>
+public sealed record SubthemaBestemming(
+    Guid Id,
+    string Naam,
+    string Leeftijd,
+    Guid ThemaId,
+    string ThemaNaam);
 
 /// <summary>Read view of a thema and its whole subtree (themadoelen + subthema's).</summary>
 public sealed record ThemaWeergave(

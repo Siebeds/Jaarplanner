@@ -147,12 +147,21 @@ describe("Thema's — het detail en de niveaugrens (Art. IX.2)", () => {
     expect(screen.getByText(/Bladkroon maken/)).toBeInTheDocument();
     expect(screen.getByText(/creahoek/)).toBeInTheDocument();
 
-    // Exactly one class read, for the class in the URL: not the full tree, not every class.
+    // The class read happens for the class in the URL, and **every** per-class read is for that same class:
+    // not the full tree, not another class.
+    //
+    // Asserted as a property over all per-class requests rather than as a literal list of one, because E4-08
+    // added a second legitimately class-scoped read (`/api/subthemas/voor-klas/{klasId}`, the destinations of a
+    // move) and the list form would have to be edited by every story that adds one. The property is what this
+    // guard is actually about, and it now catches a read for a *different* klas even from code written later.
     await waitFor(() =>
-      expect(fake.urls.filter((url) => url.includes("/voor-klas/"))).toEqual([
-        `/api/themas/${THEMA_HERFST}/voor-klas/${KLAS_L3}`,
-      ]),
+      expect(fake.urls).toContain(`/api/themas/${THEMA_HERFST}/voor-klas/${KLAS_L3}`),
     );
+    expect(
+      fake.urls
+        .filter((url) => url.includes("/voor-klas/"))
+        .filter((url) => !url.endsWith(`/voor-klas/${KLAS_L3}`)),
+    ).toEqual([]);
     // And `GET /api/themas` is never called: it would carry every class's content into the tab.
     expect(fake.urls.filter((url) => url === "/api/themas")).toEqual([]);
   });
