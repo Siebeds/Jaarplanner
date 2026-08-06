@@ -491,12 +491,34 @@ describe("nl.json — the gaps-only empty state says nothing about coverage", ()
     ).toBeDefined();
   });
 
+  it("is a single sentence, which is the rule rather than a word list", () => {
+    // THE ASSERTION THAT GENERALISES, and the only one here that catches a paraphrase (antagonist round 4). The rule
+    // this slot has to obey is "state the fact and stop": both false versions were a true first sentence followed by an
+    // explanatory second one, and the explanation was the defect each time. A keyword list can only forbid the wording
+    // already seen; this forbids the *shape* that produced all of it, whatever words the next author reaches for.
+    const zinnen = CATALOGUS.get(SLEUTEL)!
+      .trim()
+      .split(/[.!?]/)
+      .filter((deel) => deel.trim().length > 0);
+
+    expect(zinnen).toHaveLength(1);
+  });
+
   it("makes no claim about coverage, in either direction", () => {
     const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
 
     // Version 2's defect: denying an inference the code makes valid is still a claim about coverage.
     expect(zin).not.toContain("gedekt");
     expect(zin).not.toContain("dekking");
+
+    // **Dutch states coverage by ABSENCE at least as often as by the word `gedekt`** (antagonist round 4), and the
+    // guard did not see that: "Er ontbreekt hier niets meer" is `gedekt === totaal` in words and passed every
+    // assertion above. That is not a hypothetical phrasing — it is already a substring of `dekking.allesGedekt`, six
+    // lines away in this same JSON object, so filling this slot from its neighbour is the likeliest route to a fourth
+    // false version.
+    expect(zin).not.toContain("ontbreek");
+    expect(zin).not.toContain("volledig");
+    expect(zin).not.toContain("compleet");
   });
 
   it("promises no reveal and blames no cause", () => {
@@ -504,6 +526,12 @@ describe("nl.json — the gaps-only empty state says nothing about coverage", ()
 
     // Version 1's two defects: a temporal promise ("dan zie je") and a causal tie between the emptiness and the
     // withheld figure ("zolang ... geen cijfer"). Rows are not hidden here and resolving cannot produce any.
+    //
+    // `zolang` and `cijfer` are banned INDEPENDENTLY, not as one pattern (antagonist round 4 corrected the comment
+    // that said otherwise). `zolang` can only introduce that causal tie in this slot, so it costs nothing. `cijfer`
+    // is mildly broader than the rule needs — it also forecloses a true sentence like "Dit overzicht geeft hier geen
+    // cijfer" — and it is kept anyway, because that sentence would only repeat what `cijferIngehouden` already says
+    // three lines above it on the same screen.
     expect(zin).not.toMatch(/\bdan zie je\b|\bverschijn/);
     expect(zin).not.toContain("zolang");
     expect(zin).not.toContain("cijfer");

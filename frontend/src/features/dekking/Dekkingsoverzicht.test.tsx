@@ -994,9 +994,13 @@ describe("Dekkingsoverzicht — wat antagonist ronde 1 vond (E5-03)", () => {
 
     expect(await screen.findByText(t("dekking.percentage", { percentage: 60 }))).toBeInTheDocument();
     expect(document.body.textContent).not.toContain("native code");
-    // Keyed on the catalogue-path shape rather than on the bare word, which would misfire on ordinary copy
-    // such as "Kies een doelsoort." (antagonist round 3).
-    expect(document.body.textContent).not.toMatch(/doelsoort\.[A-Za-z[]/);
+    // Enumerated, because narrowing was not enough (antagonist round 4). `textContent` concatenates adjacent nodes
+    // with NO separator, so copy ending in lowercase "...doelsoort." followed by an element starting with a letter
+    // still produced a match: the shape guard closed the window without closing the hole. These are the only strings
+    // a real catalogue miss can produce here, so nothing in prose can collide with them.
+    expect(document.body.textContent).not.toMatch(
+      /doelsoort\.(md|gemeenschappelijk|verdieping|precurriculum|specifiek|anderstalige|undefined|function|\[)/,
+    );
     expect(screen.queryByText(t("dekking.geenVanDezeSoort"))).not.toBeInTheDocument();
   });
 
