@@ -288,6 +288,124 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// <b>E4-04 / FR-8.1 on the real stack: what a teacher has <i>decided</i> survives a full regeneration, and the
+    /// untouched proposal beside it does not.</b>
+    /// <para>
+    /// The sibling above isolates the <b>lock</b>; this one isolates the other half of the same rule.
+    /// <c>Themaplaatsing.IsVervangbaar</c> is <c>Voorgesteld &amp;&amp; !Vergrendeld</c>, so it is falsified in two
+    /// independent ways, and until now only one of them had ever met a real database: "a decided placement survives"
+    /// was covered by unit tests over a <i>fake</i> storage port, where a removal from an owned collection cannot fail
+    /// to be a DELETE because there is no table to delete from. That is exactly the class <b>E7-16</b> exists for, and
+    /// the discard here is the same owned-collection removal the in-memory provider has already been caught accepting
+    /// silently. Both surviving statuses are covered: <c>Aanvaard</c> (E4-02's accept) and <c>Manueel</c> (E4-03's
+    /// hand-placement, and what a drag leaves behind).
+    /// </para>
+    /// <para>
+    /// <b>Nothing here is E4-04's own code</b>, and that is the point worth recording rather than hiding: E4-04
+    /// changed only the client, because the server has been able to do this since E3-01 and could not say so to
+    /// anyone. What the story owed was proof at the level a teacher's data lives at, for the half that had none.
+    /// </para>
+    /// <para>
+    /// <b>Full regeneration only.</b> Per-period regeneration is E4-05 and does not exist, so nothing here says
+    /// anything about it.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_beslist_thema_overleeft_een_volledige_hergeneratie_en_het_losse_voorstel_niet()
+    {
+        var (klasId, beslistThemaId, losThemaId, losThemaNaam) = await SeedTweeThemasAsync();
+        var blokken = Blokken(await LaadSchooljaarAsync(klasId));
+        Guid aanvaardId;
+        Guid manueelId;
+        Guid losId;
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = new Jaarplan(klasId);
+
+            // Three placements, none of them locked, so the LOCK cannot be the reason any of them survives — the
+            // status is the only variable. Two blocks are enough: a block may hold several thema's (Art. IX.3), and
+            // only the same thema twice in one block is refused.
+            var aanvaard = jaarplan.VoegPlaatsingToe(
+                beslistThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Aanvaard, "aanvaard door de leerkracht");
+
+            var manueel = jaarplan.VoegPlaatsingToe(
+                losThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Manueel);
+
+            var los = jaarplan.VoegPlaatsingToe(
+                beslistThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Voorgesteld, "los voorstel");
+
+            context.Jaarplannen.Add(jaarplan);
+            await context.SaveChangesAsync();
+            aanvaardId = aanvaard.Id;
+            manueelId = manueel.Id;
+            losId = los.Id;
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // The production service on the production storage port; only the model is stubbed (Art. IV.6). It
+            // proposes into a third period, so the run has something to add as well as something to throw away.
+            var service = new JaarplanGeneratieService(
+                new VastAntwoordAiClient(
+                    $$"""
+                    {"plaatsingen":[{"blokStart":"{{blokken[2].Start:yyyy-MM-dd}}","thema":"{{losThemaNaam}}","motivatie":"nieuw voorstel"}]}
+                    """),
+                new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
+                new EfJaarplanOpslag(context));
+
+            var resultaat = await service.GenereerAsync(klasId);
+
+            Assert.True(resultaat.IsGeslaagd);
+            Assert.Equal(1, resultaat.AantalNieuw);
+
+            // The two the teacher decided on were kept; the one they had not looked at was replaced. These are the
+            // figures the run reports to the screen, so they are asserted here rather than left to the client.
+            Assert.Equal(2, resultaat.AantalBehouden);
+            Assert.Equal(1, resultaat.AantalVervangen);
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
+
+            // Untouched in every field a teacher can see, not merely present: a run that silently reset a status or
+            // dropped a motivation would still satisfy "it survived".
+            var aanvaard = jaarplan.VindPlaatsing(aanvaardId);
+            Assert.NotNull(aanvaard);
+            Assert.Equal(blokken[0].Start, aanvaard!.BlokStart);
+            Assert.Equal(KoppelingStatus.Aanvaard, aanvaard.Status);
+            Assert.False(aanvaard.Vergrendeld);
+            Assert.Equal("aanvaard door de leerkracht", aanvaard.AiMotivatie);
+
+            var manueel = jaarplan.VindPlaatsing(manueelId);
+            Assert.NotNull(manueel);
+            Assert.Equal(blokken[0].Start, manueel!.BlokStart);
+            Assert.Equal(KoppelingStatus.Manueel, manueel.Status);
+
+            // And the untouched proposal is gone from the TABLE. Asserted in SQL for the reason this whole file
+            // exists: an owned element dropped from its parent's backing list is precisely what the in-memory
+            // provider can appear to accept with no DELETE ever issued.
+            Assert.Null(jaarplan.VindPlaatsing(losId));
+            var overlevendeIds = await context.Database
+                .SqlQueryRaw<Guid>("""SELECT "Id" AS "Value" FROM themaplaatsingen""")
+                .ToListAsync();
+            Assert.Contains(aanvaardId, overlevendeIds);
+            Assert.Contains(manueelId, overlevendeIds);
+            Assert.DoesNotContain(losId, overlevendeIds);
+
+            // The run's own proposal landed as an unlocked `voorgesteld` one, which is what makes it replaceable by
+            // the next press (Art. IV.1/IV.2). Without this the test would pass on a run that placed nothing.
+            var nieuw = Assert.Single(
+                jaarplan.Plaatsingen,
+                p => p.Id != aanvaardId && p.Id != manueelId);
+            Assert.Equal(blokken[2].Start, nieuw.BlokStart);
+            Assert.Equal(KoppelingStatus.Voorgesteld, nieuw.Status);
+            Assert.False(nieuw.Vergrendeld);
+        }
+    }
+
+    /// <summary>
     /// <b>E4-03 / FR-7.2 on the real stack: a class with no jaarplan at all gets one from a hand-placement, and the AI
     /// is never reached.</b>
     /// <para>

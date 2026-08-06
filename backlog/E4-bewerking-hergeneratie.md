@@ -50,9 +50,54 @@
 
 ### FR-8 — (Re)generation
 
-- [ ] **E4-04 — Regenerate the whole plan**
+- [~] **E4-04 — Regenerate the whole plan** — *built 2026-08-06 on `story/E4-04-hergeneratie` (off `origin/main` `59183ad`). Gates green; **the antagonist audit has not run** and the `[~]` says so. Narrative + full measurements: [`worklogs/E4-04/implementation.md`](worklogs/E4-04/implementation.md).*
   Re-run generation for the entire class plan.
   *Done when:* full regeneration produces a new proposal. Ref: FR-8.1.
+  > **The run was already repeatable; what did not exist was any way to know that before pressing.** `GenereerAsync`
+  > has discarded exactly `IsVervangbaar` (`Voorgesteld && !Vergrendeld`) since E3-01, kept every decided or locked
+  > placement, and returned `AantalBehouden`/`AantalVervangen`, which `Spreidingsoverzicht` has always rendered. But the
+  > button read *"Jaarplan genereren…"* on the second press exactly as on the first, and the only statement about the
+  > replacement was **past tense, afterwards**. FR-8.1's own wording is *"het volledige jaarplan **opnieuw** laten
+  > genereren"* and the word *opnieuw* was nowhere on the screen. A teacher reviewing proposals over an afternoon and
+  > pressing again to fill the periods the model skipped would have lost every proposal they had not yet decided on.
+  > **Seventh instance of the reachable-vs-tested pattern** (E2-08, E1-15, E0-10, E4-06, E4-02, E4-03) and the mildest:
+  > the path was reachable *and correct*, it simply misdescribed itself.
+  > **The decision inside the copy, because it is the one a later story could undo.** The disclosure keys on *"does this
+  > class have a plan"*, never on *"is anything replaceable"*. The second question is the server's `IsVervangbaar`, and
+  > answering it in the client would be a second implementation of one rule on the screen E3-09 spent a whole story
+  > de-duplicating. So the sentence states a **rule** (true in every state, including the one where nothing is
+  > replaceable) rather than a **prediction**, and a test pins that deliberately. Counting what will change, and
+  > offering a cancel, stays **E4-07**.
+  > *Two pieces of proof the behaviour never had, and both are E7-16's shape:* a Postgres row-level test that a
+  > **decided** placement survives (only the *lock* half had ever met a real database; the decided half was covered by
+  > unit tests over a fake storage port, where a removal cannot fail to be a DELETE), and the first test anywhere to
+  > read **`aantalVervangen` over the wire** — the frontend read it from a hand-written fixture and no server test read
+  > it at all, so a rename would have emptied a sentence on the anchor screen with every suite green.
+  > *The catalogue guard was widened from the instance to the class:* the two existing guards key on the key **prefix**
+  > and on the word `hergener`, and this story's own copy says *"opnieuw genereren"*, so it was invisible to them by
+  > construction. A third guard now covers every `kalender.*` string that mentions running the generation again, in
+  > either wording. It found a pre-existing gap on its first run: **`kalender.plaatsGevolg`** (E4-03) makes the same
+  > claim from outside both prefixes and nothing pinned it.
+  > **Gates:** 577 unit + 205 integration (0 skipped, real PostgreSQL), 500 frontend / 20 files, `dotnet format` / lint
+  > / build clean, every new claim mutation-checked in the failing direction. Browser pass at 1440px and 390px against
+  > a real API and real PostgreSQL with the model stubbed: a class with no plan gets the first-run copy, **the label and
+  > the sentence flip within the same session** the moment the first run lands, and on the demo class an accepted and a
+  > locked placement survived while five untouched proposals were replaced (*"5 eerdere voorstellen zijn vervangen, 2
+  > bestaande plaatsingen bleven staan"*, with the board agreeing). Composited contrast 8,90:1 and 6,08:1, no overflow.
+  > **The near-miss, recorded because no artifact this project reviews would have caught it.** Mid-pass the browser
+  > showed an `Aanvaard` placement being discarded, reproducing over `curl` and over a row inserted straight into the
+  > table, on real PostgreSQL, while the xUnit test asserting the opposite passed on the same tree. **The API was
+  > running a mutation check**: `IsVervangbaar => !Vergrendeld` had been built, the source restored with `cp`, and the
+  > app started with `dotnet run --no-build` — the incremental build did not notice a file restored within the same
+  > second as the previous build's output. `git diff` was clean, the suite was green, and the running process was not
+  > the source. *Rule out of it:* after a mutation check, force a rebuild before running anything; and a defect that
+  > contradicts a passing test on the same tree is a claim about your environment first. The tell was in the first
+  > measurement, unread for half an hour: the **lock** was honoured and the **status** was not, which is the exact shape
+  > of the mutation and the shape of no plausible EF bug.
+  > *Scope boundaries, stated so the next story does not have to infer them:* nothing here claims anything about
+  > **per-period** regeneration (E4-05) — both new strings are scoped to the whole plan, like E4-06's six; there is no
+  > pre-apply diff and no cancel (**E4-07**, FR-8.3); the model round trip is stubbed, the same residual M2 accepted;
+  > and the **`vast moment`** question E4-03 opened (Art. XIV) is untouched.
 
 - [ ] **E4-05 — Regenerate a single period**
   Regenerate one block/period without touching the rest.
