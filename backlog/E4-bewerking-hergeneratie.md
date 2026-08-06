@@ -144,7 +144,7 @@
   > **Inherited obligation from E3-03 (2026-08-05): a new generation path must attach the dekkingsvooruitzicht itself.** FR-5.3's measured half is composed in `JaarplanController.Genereer` rather than inside `JaarplanGeneratieService`, because `DekkingService` reads the plan through `IJaarplanLezer` — which the generation service implements — so a dependency there would close the loop. **If you reuse `POST …/jaarplan/generatie` you inherit it for free; if you add an endpoint, attach it or the panel silently loses its dekking section.** It fails visibly rather than wrongly, which is why the composition was accepted at that layer, but it is an obligation rather than a guarantee. Same note on **E4-05**.
   > *Where that obligation actually lands, now that E4-04 is closed (added while merging E3-03 in, 2026-08-06):* **E4-04 added no generation path.** It presses the one endpoint that already existed, so the vooruitzicht `JaarplanController.Genereer` composes travels with it unchanged and nothing here had to attach anything. The obligation is therefore **E4-05's** in full, which is the story that adds the second path, and it is repeated on that story below rather than left only here.
 
-- [~] **E4-05 — Regenerate a single period** — *built 2026-08-06 on `story/E4-05-periode-hergeneratie` (off `origin/main` `b2401e3`, so E4-04, E4-08 and E3-03 are all in). **Antagonist ronde 1: VIOLATIONS FOUND (2 MAJOR + 7 MINOR + 2 QUESTION), all fixed or routed; ronde 2 is owed and this checkbox says so.** Narrative + full measurements: [`worklogs/E4-05/implementation.md`](worklogs/E4-05/implementation.md).*
+- [~] **E4-05 — Regenerate a single period** — *built 2026-08-06 on `story/E4-05-periode-hergeneratie`, off `origin/main` `b2401e3` and since **merged up to `origin/main` (E5-03 in)**, so the gates ran on the tree that lands. **Three antagonist rondes, all VIOLATIONS FOUND: ronde 1 2 MAJOR + 7 MINOR + 2 QUESTION, ronde 2 no MAJOR + 5 MINOR, ronde 3 1 MAJOR + 3 MINOR — every finding fixed or routed, and ronde 4 is owed, which this checkbox says.** Narrative + full measurements: [`worklogs/E4-05/implementation.md`](worklogs/E4-05/implementation.md).*
   Regenerate one block/period without touching the rest.
   *Done when:* only the chosen period changes. Ref: FR-8.2.
   > **What ronde 1 found, and both MAJORs were in the seam rather than in the new code.** The four things the audit was
@@ -177,11 +177,27 @@
   > ends *"Nothing hard-assumes either reading today"*, which the rulings below made false: the strict reading is
   > compiled in on three paths. `backlog/README.md` was **claimed by another session (E5-06)** when this was found, so
   > it was left untouched and asked for in the groepschat rather than edited around the lock.
-  > **The audit's own open question, for the owner:** the settings form asks *"Mag er een thema in die themaperiode?"*
-  > and its blocking answer reads *"Nee, die themaperiode is bezet"* — generic, so not false, and the reason the column
-  > reuses the word. But that answer's **meaning changed**: it used to constrain the AI and now removes the teacher's
-  > own picker and drop target, and the disclosure lives on the board rather than where the choice is made. Should the
-  > form say so at the point of choosing?
+  > **A third owner ruling, 2026-08-06, on the question ronde 1 raised: the settings form says it at the point of
+  > choosing.** The audit observed that *"Mag er een thema in die themaperiode?"* / *"Nee, die themaperiode is bezet"* is
+  > generic and therefore not false, but that the answer's **meaning changed** — it used to constrain the AI and now
+  > removes the teacher's own picker and drop target, while the only disclosure sat on the board, after the fact.
+  > **Ruled: one sentence beside that answer**, shown only once the blocking option is actually selected, so it explains
+  > a consequence the teacher has chosen rather than warning about one of two options while both are open
+  > (`parameters.momentGeenThemaGevolg`). *It is conditional on the date landing in a themaperiode* (ronde 3, MINOR): the
+  > render condition is the radio, not the date, and a blocking moment on a vakantie blocks nothing at all.
+  > *Recorded here because ronde 3 found it recorded nowhere but in the source comment that implements it* — a
+  > user-facing copy change whose only authority was the code doing it, which an auditor cannot tell apart from a
+  > decision taken unilaterally.
+  > **What ronde 3 found, and it is the sharpest finding of the three rondes because it was inside a fix:** ronde 2's
+  > repair gated the move *picker* and added a sentence, and left the instruction that actually promises a picker gated
+  > on staleness alone. So on a **stale** card in a year where every period is bezet the panel read *"Kies hieronder een
+  > themaperiode … of versleep de kaart"* over no picker, onto a board whose every column is a disabled droppable: both
+  > halves false, **verbatim the state an owner ruling reopened E3-07 over**. The new sentence carried the same defect
+  > class in a second form (*"nergens **anders** heen"* for a card that is in no period, two lines under a paragraph
+  > saying exactly that), which three strings in that same file had already been repaired for. Fixed by gating only the
+  > `kan` branch — the other two say *where* moving works and withholding them would take away the only way forward —
+  > and by giving the sentence a `*Vervallen` variant. Both pinned, and the round also moved a **vacuous assertion**
+  > that appeared to check the claim while standing on a card that could not exercise it.
   > **Inherited from E3-03 via E4-04 (2026-08-06): your new path must attach the dekkingsvooruitzicht itself.** FR-5.3's
   > measured half is composed in `JaarplanController.Genereer`, not inside `JaarplanGeneratieService`, so a second
   > generation route that does not repeat that composition returns a run report with no coverage figures and nothing

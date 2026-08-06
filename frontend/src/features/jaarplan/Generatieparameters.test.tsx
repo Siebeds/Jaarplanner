@@ -692,8 +692,14 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
     // It names BOTH consequences, because the ruling is that one rule binds human and machine, plus the boundary that
     // keeps it honest: nothing already planned is removed.
     const gevolg = t("parameters.momentGeenThemaGevolg");
-    expect(gevolg).toContain("jij kan er zelf ook geen thema in zetten");
+    expect(gevolg).toContain("zelf ook geen thema in zetten");
     expect(gevolg).toContain("blijft staan");
+
+    // **And it is conditional on the date landing in a themaperiode** (antagonist round 3, MINOR). The render
+    // condition here is the RADIO, not the date, and a blocking moment on a vakantie or outside the year blocks
+    // nothing at all: it lands in `OnplaatsbareVasteMomenten`, which `parameters.rapportOnplaatsbaar` reports. An
+    // unconditional promise would therefore assert a consequence its own condition cannot guarantee.
+    expect(gevolg).toContain("Ligt die dag in een themaperiode");
   });
 });
 

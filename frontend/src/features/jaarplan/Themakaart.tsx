@@ -656,9 +656,22 @@ function Bewerkpaneel({
           The other three are the board's three states, paired one-to-one by {@link HERPLAATSUITLEG} rather than by a
           ternary: the unrecognised-tier degrade may not name a view either, since this app does not know which view
           those columns belong to. */}
-      {plaatsing.isVervallen && !isGeweigerd && (
-        <p className="text-xs leading-snug text-attentie-ink">{t(HERPLAATSUITLEG[verplaatsstaat])}</p>
-      )}
+      {/* **`kiesbareDoelen` gates only the `kan` branch, and the asymmetry is the whole point** (antagonist round 3,
+          MAJOR). Round 2 gated the picker and added a sentence, and left THIS instruction — which is the one that
+          actually promises a picker — on staleness alone. On a stale card in a year where every period is bezet the
+          panel therefore read *"Kies hieronder een themaperiode … of versleep de kaart"* over no picker and onto a
+          board whose every column is a disabled droppable: both halves false, which is verbatim the state an owner
+          ruling reopened E3-07 over. My round-2 comment claimed "the instruction and the picker appear and disappear
+          together"; that was true of the sentence I added and false of the instruction already here.
+
+          The other two branches must NOT be gated: they do not offer a picker, they say where re-placing *does* work
+          (`herplaatsAnderNiveau`) or that the view could not be read (`niveauOnbekend`), and withholding those would
+          take away the only way forward — the E3-06 rule, pointing the other way. */}
+      {plaatsing.isVervallen &&
+        !isGeweigerd &&
+        (verplaatsstaat !== "kan" || kiesbareDoelen.length > 0) && (
+          <p className="text-xs leading-snug text-attentie-ink">{t(HERPLAATSUITLEG[verplaatsstaat])}</p>
+        )}
 
       {/* Split on `isVervallen` (E3-07 reopening, 2026-08-04), exactly as the rejected section below already
           splits `weigeringUitleg`.
@@ -696,11 +709,20 @@ function Bewerkpaneel({
       )}
 
       {/* **Gated on a SELECTABLE period, not merely on a listed one** (antagonist round 2, finding C): since a bezet
-          period is kept and disabled, `doelen.length` stopped answering "is there anywhere to move this". The
-          instruction and the picker are one unit, so they appear and disappear together. */}
+          period is kept and disabled, `doelen.length` stopped answering "is there anywhere to move this".
+
+          **Split on `isVervallen` like every other sentence in this panel** (round 3, MAJOR): a stale card is in no
+          period, so *"nergens **anders** heen"* presupposes a themaperiode it does not have, two lines under a
+          paragraph saying it stands in none. Three earlier strings in this file were repaired for exactly that
+          (`weigeringUitlegVervallen`, `herplaatsUitlegVervallen`, `herplaatsAnderNiveau`); this one arrived carrying
+          the defect they were fixed for. */}
       {kiesbareDoelen.length === 0 && doelen.length > 0 && (
         <p className="text-xs leading-snug text-ink-zacht">
-          {t("kalender.verplaatsGeenVrijePeriode")}
+          {t(
+            plaatsing.isVervallen
+              ? "kalender.verplaatsGeenVrijePeriodeVervallen"
+              : "kalender.verplaatsGeenVrijePeriode",
+          )}
         </p>
       )}
 

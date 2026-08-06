@@ -5297,10 +5297,12 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
 
     fireEvent.click(screen.getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }));
 
-    // No instruction and no picker, because neither could be honoured...
+    // No picker, and the sentence that says why. The `herplaatsKies` assertion that used to sit here has moved to the
+    // stale-card test below: it renders only for `isVervallen`, so asserting its absence on a card that HAS a period
+    // passed whether or not the fix existed — a vacuous assertion standing in for the claim it appeared to check
+    // (antagonist round 3, MINOR).
     expect(await screen.findByText(t("kalender.verplaatsGeenVrijePeriode"))).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: t("kalender.verplaatsNaar") })).toBeNull();
-    expect(screen.queryByText(t("kalender.herplaatsKies"))).toBeNull();
   });
 
   it("houdt de bezette periode ook weg uit de kiezer van een vervallen kaart", async () => {
@@ -5340,6 +5342,84 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     });
 
     expect(optie).toBeDisabled();
+  });
+
+  it("belooft een vervallen kaart geen kiezer en geen sleep wanneer elke periode bezet is", async () => {
+    // **The MAJOR of antagonist round 3.** Round 2 gated the picker and added a sentence, and left the instruction
+    // that actually promises a picker gated on staleness alone. So this state read "Kies hieronder een themaperiode …
+    // of versleep de kaart" over no picker, onto a board whose every column is a disabled droppable — both halves
+    // false, which is verbatim the state an owner ruling reopened E3-07 over.
+    const vervallen = maakPlaatsing({
+      id: "kaart-5",
+      blokStart: "2026-08-15",
+      blokEind: null,
+      blokOrdinaal: null,
+      isVervallen: true,
+    });
+    const plan: Jaarplan = {
+      ...maakJaarplan([vervallen]),
+      geblokkeerdePeriodes: rooster.blokken.map((blok) => ({
+        blokStart: blok.start,
+        momentNaam: "Oudercontact",
+      })),
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, rooster.blokken[0].start));
+
+    renderKalender();
+    const melding = await screen.findByRole("region", {
+      name: new RegExp(t("kalender.herzienTitelEnkelvoud")),
+    });
+    fireEvent.click(
+      within(melding).getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }),
+    );
+
+    // The sentence that IS true here, and it does not say "nergens anders": this card is in no period, so there is no
+    // "andere" to speak of — the construction three earlier strings in that file were repaired for.
+    expect(
+      await within(melding).findByText(t("kalender.verplaatsGeenVrijePeriodeVervallen")),
+    ).toBeInTheDocument();
+    expect(within(melding).queryByText(t("kalender.verplaatsGeenVrijePeriode"))).toBeNull();
+
+    // And neither half of the instruction is promised: no picker, and no "kies hieronder / versleep de kaart".
+    expect(within(melding).queryByRole("combobox", { name: t("kalender.verplaatsNaar") })).toBeNull();
+    expect(within(melding).queryByText(t("kalender.herplaatsKies"))).toBeNull();
+  });
+
+  it("blijft een vervallen kaart wel zeggen waar verplaatsen werkt op de fijne weergave", async () => {
+    // The other side of the same gate, and the reason it is not applied to all three branches: `herplaatsAnderNiveau`
+    // does not promise a picker, it says where re-placing DOES work. Withholding it would take away the only way
+    // forward — the E3-06 rule pointing the other way. At the fine tier `doelen` is empty, so a naive gate on
+    // `kiesbareDoelen` alone would have suppressed exactly this sentence.
+    const vervallen = maakPlaatsing({
+      id: "kaart-6",
+      blokStart: "2026-08-15",
+      blokEind: null,
+      blokOrdinaal: null,
+      isVervallen: true,
+    });
+    const plan: Jaarplan = { ...maakJaarplan([vervallen]), geblokkeerdePeriodes: [] };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, rooster.blokken[0].start));
+
+    renderKalender();
+    await waitFor(() =>
+      expect(screen.getByRole("group", { name: t("kalender.weergaveLabel") })).toBeInTheDocument(),
+    );
+    fireEvent.click(
+      within(screen.getByRole("group", { name: t("kalender.weergaveLabel") })).getByRole("button", {
+        name: t("kalender.weergaveFijn"),
+      }),
+    );
+
+    const melding = await screen.findByRole("region", {
+      name: new RegExp(t("kalender.herzienTitelEnkelvoud")),
+    });
+    fireEvent.click(
+      within(melding).getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }),
+    );
+
+    expect(
+      await within(melding).findByText(t("kalender.herplaatsAnderNiveau")),
+    ).toBeInTheDocument();
   });
 
   it("heeft geen axe-schendingen met een bezette periode op het bord", async () => {

@@ -232,3 +232,58 @@ what the guard does.** Both are recorded in the test file itself.
 - **4 more mutation checks, all biting**, one of them a deliberate compile failure.
 - *The lock trap recurred and cost the auditor a gate a second time*: my restarted dev API held this worktree's build
   output, so its integration run failed to build. The servers are stopped now. **Stop the API before any full build.**
+
+## Fix round 3 (antagonist ronde 3: VIOLATIONS FOUND, 1 MAJOR + 3 MINOR)
+
+Ronde 3 ran on the **merged** tree, which is the tree that lands. It answered all four hostile questions with
+measurements, three of them in this story's favour: keeping both catalogue guards provably preserved E5-03's block
+(`+104 / −2`, and the two deleted lines are E4-05's own intended edits); the widened `OPNIEUW` pattern gains exactly two
+genuine members and loses none; and the three-period fixture weakened no existing assertion, since `stubMetPeriodegeneratie`
+defaults to the shared grid.
+
+### The MAJOR, and it was inside fix round 2's own fix
+
+Round 2 gated the move **picker** on a selectable period and added a sentence for the case where none is. It left the
+instruction that *actually promises a picker* — `HERPLAATSUITLEG` — gated on staleness alone, 40 lines above. So on a
+**stale** card in a year where every period is bezet the panel read:
+
+*"Kies hieronder een themaperiode voor dit thema, of versleep de kaart naar een themaperiode in het jaarplan."*
+
+with **no picker** below it and every column a disabled droppable, so both halves were false. That is verbatim the state
+an owner ruling reopened **E3-07** over. My round-2 comment claimed *"the instruction and the picker are one unit, so
+they appear and disappear together"* — true of the sentence I had just added, false of the instruction already there.
+**The diff showed the new gate; it did not show the ungated instruction above it,** which is why the auditor read the
+whole conditional chain instead of the hunk.
+
+The new sentence carried the same defect class in a second form: *"nergens **anders** heen"* presupposes a themaperiode
+a stale card does not have, two lines under a paragraph saying it stands in none — the construction
+`weigeringUitlegVervallen`, `herplaatsUitlegVervallen` and `herplaatsAnderNiveau` had each already been repaired for.
+
+**Fixed by gating only the `kan` branch.** The other two branches must stay: they do not offer a picker, they say where
+re-placing *does* work or that the view could not be read, and withholding those would remove the only way forward —
+the E3-06 rule pointing the other way. A mutation that gates all three bites, which is how that asymmetry is pinned
+rather than merely explained.
+
+### The three MINORs
+
+- **The form's new sentence promised a consequence its render condition could not guarantee** — the E5-03 rule, one day
+  old and added to `CLAUDE.md` by this very merge. Its condition is the radio, not the date, and a blocking moment on a
+  vakantie or outside the year blocks nothing (it lands in `OnplaatsbareVasteMomenten`). Now conditional: *"Ligt die dag
+  in een themaperiode, dan …"*.
+- **The record was missing.** `parameters.momentGeenThemaGevolg`, the form paragraph and its test landed in `1d06a43`
+  with their mandate asserted **only by the source comment that implements them** — not in the commit message, not in
+  the worklog, not on the story. An auditor cannot tell that apart from a decision taken unilaterally. The ruling is now
+  on the story, replacing the open question it answers, and the story header carries all three rondes with their counts.
+- **A vacuous assertion in round 2's own test**: `expect(queryByText(herplaatsKies)).toBeNull()` sat on a card that is
+  **not** stale, and that string renders only for `isVervallen` — so it passed whether or not the fix existed, while
+  appearing to verify the very claim that was false on the stale card. Moved to where it bites.
+
+### Gates after fix round 3
+
+- **593 frontend / 23 files**; `pnpm lint` and `pnpm build` exit 0.
+- **5 more mutation checks, all biting**, including the two that pin the gate's asymmetry in both directions.
+- Backend untouched by rounds 2 and 3 (`git diff` over the backend is empty), so **611 unit + 219 integration**,
+  0 skipped, real PostgreSQL, and `dotnet format` exit 0 stand from the merge measurement.
+
+**Ronde 4 is owed**, and the story entry says so. The Art. XIV line in `backlog/README.md` is still locked by E5-06 and
+still untouched.
