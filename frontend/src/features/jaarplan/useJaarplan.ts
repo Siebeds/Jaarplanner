@@ -8,6 +8,7 @@ import {
 
 import {
   genereerJaarplan,
+  genereerPeriode,
   haalGeneratieparameters,
   haalJaarplan,
   haalRooster,
@@ -182,6 +183,39 @@ export function useGenereerJaarplan(klasId: string, jaarFase?: string) {
       if (parameters) {
         queryClient.setQueryData(generatieparametersKey(klasId), parameters);
       }
+    },
+  });
+}
+
+/**
+ * Regenerates **one themaperiode** (E4-05, FR-8.2).
+ *
+ * Separate from {@link useGenereerJaarplan} for the reason its `api.ts` twin gives: this path submits no settings, so
+ * it must not write the parameters cache. It shares everything else, and deliberately so — the returned plan is put
+ * into the cache rather than only invalidated (the pre-generation plan would otherwise be what the board renders for
+ * the duration of the refetch), and the class's dekking is dropped because the run changed which thema's are placed.
+ *
+ * The period is passed at `mutate()` time rather than captured, so one hook instance serves every column and a stale
+ * closure cannot regenerate the period the teacher pressed a minute ago.
+ */
+export function useGenereerPeriode(klasId: string, jaarFase?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (blokStart: string) => genereerPeriode(klasId, blokStart, jaarFase),
+    onSuccess: (resultaat) => {
+      if (resultaat.jaarplan) {
+        queryClient.setQueryData(jaarplanKey(klasId), resultaat.jaarplan);
+      }
+
+      void queryClient.invalidateQueries({ queryKey: jaarplanKey(klasId) });
+
+      // Scoped to one period, but the figure it invalidates is not: dekking is class-wide, so replacing one period's
+      // proposals changes it exactly as a whole-plan run does.
+      vergeetDekking(queryClient, klasId);
+
+      // No `setQueryData` on the parameters key, unlike the whole-plan run. This path sends no body, so the server read
+      // the kept settings and wrote nothing; writing the cache here would be inventing a save that did not happen.
     },
   });
 }

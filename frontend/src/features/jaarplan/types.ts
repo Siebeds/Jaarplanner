@@ -227,6 +227,20 @@ export interface Generatieresultaat {
   onbekendeBlokken: string[];
   duplicaten: string[];
   afgewezen: string[];
+  /**
+   * Proposals the model returned for a **different period than the one being regenerated** (E4-05, FR-8.2) — skipped,
+   * and neither an unknown thema nor an unknown period: the thema exists and the date is a real period boundary.
+   *
+   * Always empty on a whole-plan run, where nothing can be out of scope.
+   */
+  buitenPeriode: string[];
+  /**
+   * The period this run regenerated, or `null` for a whole-plan run (FR-8.2 vs FR-8.1).
+   *
+   * The report needs it because `aantalNieuw`, `aantalBehouden` and `aantalVervangen` are **scoped to this period** on
+   * a per-period run: showing those figures under the whole-plan sentence would claim the run looked at the whole year.
+   */
+  geregenereerdePeriode: string | null;
   spreiding: Spreidingsrapport | null;
   /** What became of the teacher's pre-generation parameters (E3-04, FR-5.4); absent when none were sent. */
   parameters: Parameterrapport | null;
@@ -365,6 +379,25 @@ export interface Jaarplan {
    * inheriting a mark per sub-column.
    */
   blokken: Blokspreiding[];
+  /**
+   * The periods that accept nothing new because the teacher blocked them with a vast moment (E4-05, FR-5.4/FR-8.2).
+   *
+   * On the plan read so a control can be withheld with its reason stated in place, instead of the board having to
+   * provoke a 409 to discover it (the E3-06 rule). It withholds three things at once: the per-period regeneration, the
+   * hand-placement picker and the drop target.
+   *
+   * **"Nothing new", not "nothing here".** Whatever was already planned in such a period stays where it is, so an
+   * entry here may well name a period that holds thema's, and no copy built on this may call it empty.
+   */
+  geblokkeerdePeriodes: GeblokkeerdePeriode[];
+}
+
+/** One period the teacher blocked, with their own name for the commitment that blocks it. */
+export interface GeblokkeerdePeriode {
+  /** The period's start date: the same key placements use, never an ordinal (ADR-0020 §3). */
+  blokStart: string;
+  /** What the teacher called it ("Oudercontact"), so the reason can name the commitment rather than the rule. */
+  momentNaam: string;
 }
 
 /** Just enough of a thema to offer it in a picker: the name is what the generation contract keys on. */

@@ -281,6 +281,38 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
   });
 
   /**
+   * **The scopes a regeneration promise may name (E4-05).**
+   *
+   * Until this story the assertion above was a literal `toContain("hele jaarplan")`, and that was right for exactly as
+   * long as one regeneration path existed: FR-8.1's whole-plan run was the only thing a promise *could* honestly be
+   * about, so naming it and naming *a* scope were the same act. E4-05 builds FR-8.2, and with it the first `kalender.*`
+   * copy whose scope is one period — for which "hele jaarplan" is not a qualification but a falsehood.
+   *
+   * So the rule is stated as what it always meant: **a string that talks about generating again must say which
+   * regeneration it is talking about.** Two members today, and the list is deliberately an allowlist rather than a
+   * loosened pattern: a string that names no scope at all is the defect this guard exists for, and `/periode/` alone
+   * would let *"een hergeneratie kan dit thema in een andere periode zetten"* through while it names nothing.
+   *
+   * *Why the seven inherited strings still contain "hele jaarplan" after this story:* they name **both** paths now
+   * ("van het hele jaarplan of van deze periode"), because both preserve exactly the same placements — the per-period
+   * discard is `IsVervangbaar` narrowed by position, nothing more. Widening them was not an inference from that: the
+   * survival claim is pinned per status by `Periodehergeneratie_laat_beslissingen_in_die_periode_staan` and
+   * `Een_weigering_in_de_periode_overleeft_de_periodehergeneratie` in the backend suite. **A promise widened by
+   * reasoning alone is how this backlog collected its retractions.**
+   *
+   * *What this guard still cannot see*, unchanged from the note above: a wording that avoids both stems
+   * (*"nog eens door de AI laten doen"*). It narrows the class; it does not close it.
+   */
+  /**
+   * *`themaperiode {ordinaal}` earned its place by this guard failing on E4-05's own aria-label*, which is the guard
+   * working rather than the guard being in the way. "Themaperiode 3 opnieuw genereren" is the **most** precise scope
+   * statement in this whole family: it does not merely say which *kind* of regeneration, it names the period. The
+   * placeholder is matched literally so this branch cannot be satisfied by prose that happens to mention a
+   * themaperiode; only a string that interpolates the period's own label qualifies.
+   */
+  const BEREIK = /hele jaarplan|deze periode|die periode|één periode|themaperiode \{ordinaal\}/;
+
+  /**
    * **The same rule, over the whole `kalender` namespace rather than two prefixes (E4-04).**
    *
    * The two guards above are keyed on the key's *prefix* and on the word `hergener`, and this file already records
@@ -329,9 +361,10 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
       expect(
         waarde.toLowerCase(),
         `${sleutel} promises a regeneration without saying which one`,
-      ).toContain("hele jaarplan");
+      ).toMatch(BEREIK);
     }
   });
+
 });
 
 describe("nl.json — the stale-placement notice does not overclaim about dekking", () => {

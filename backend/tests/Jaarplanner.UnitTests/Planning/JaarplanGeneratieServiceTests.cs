@@ -2138,6 +2138,47 @@ public sealed class JaarplanGeneratieServiceTests
     }
 
     /// <summary>
+    /// <b>A weigering survives a per-period run, and still keeps the AI from re-proposing that thema there.</b>
+    /// <para>
+    /// Pinned because this story <i>widens seven user-facing sentences</i> from "een hergeneratie van het hele
+    /// jaarplan" to a claim that covers both paths, and `kalender.weigeringUitleg` is one of them: it promises a
+    /// teacher that their rejection holds and that the thema is not proposed <i>here</i> again. Reasoning that the
+    /// per-period path shares the code was not enough to justify widening a promise, so the promise gets a test.
+    /// </para>
+    /// <para>
+    /// The re-proposal is reported as <c>Afgewezen</c> rather than as a duplicate, which is the existing distinction:
+    /// calling it a duplicate would blame the AI for a decision the teacher made.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_weigering_in_de_periode_overleeft_de_periodehergeneratie()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var doel = blokken[1].Start;
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Herfst", doel)), schooljaar);
+
+        var na = await service.GenereerAsync(klas.Id);
+        var herfst = Assert.Single(na.Jaarplan!.Plaatsingen);
+        await service.WijzigPlaatsingStatusAsync(klas.Id, herfst.Id, KoppelingStatus.Geweigerd);
+
+        // The same answer again: the model still wants Herfst in this period.
+        var periode = await service.GenereerPeriodeAsync(klas.Id, doel);
+
+        // The rejection stands, in place, with its identity.
+        var nog = Assert.Single(periode.Jaarplan!.Plaatsingen);
+        Assert.Equal(herfst.Id, nog.Id);
+        Assert.Equal("Geweigerd", nog.Status);
+        Assert.Equal(doel, nog.BlokStart);
+
+        // And the re-proposal was suppressed and reported as the teacher's own decision holding, not as AI repetition.
+        Assert.Equal(0, periode.AantalNieuw);
+        Assert.Equal(0, periode.AantalVervangen);
+        Assert.Empty(periode.Duplicaten);
+        Assert.Contains("Herfst", Assert.Single(periode.Afgewezen));
+    }
+
+    /// <summary>
     /// <b>Owner ruling 2026-08-06, clause 1: a blocked period is refused BEFORE the model is called.</b> The evidence
     /// that matters is not the exception — it is <see cref="FakeAiClient.AantalAanroepen"/> staying at the count from
     /// the setup run. "Refused before the AI call" is not evidenced by a refusal that happens to come after one.

@@ -54,6 +54,8 @@ const leegPlan: Jaarplan = {
   schooljaarId: SCHOOLJAAR_ID,
   schooljaarNaam: "2026-2027",
   blokindeling: rooster.blokindeling,
+  // E4-05: no period is blocked in these fixtures; the blocked-period cases build their own.
+  geblokkeerdePeriodes: [],
   // No placements, so no period carries any weeks: the te-vol signal is out of scope for this file (E3-09).
   blokken: rooster.blokken.map((blok) => ({
     ordinaal: blok.ordinaal,
@@ -84,6 +86,9 @@ const leegRapport: Parameterrapport = {
 function resultaat(parameters: Parameterrapport | null): Generatieresultaat {
   return {
     isGeslaagd: true,
+    // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+    buitenPeriode: [],
+    geregenereerdePeriode: null,
     fout: null,
     // No coverage outlook (E3-03): this file is about the parameter report, and a null renders no dekking block.
     vooruitzicht: null,

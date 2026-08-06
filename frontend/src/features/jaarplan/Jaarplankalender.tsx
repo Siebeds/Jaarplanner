@@ -19,7 +19,7 @@ import { t, tAantal, type TranslationKey } from "../../i18n";
 import { ApiError } from "../../lib/api";
 import { useDekking } from "../dekking/useDekking";
 import { Jaarspine } from "./Jaarspine";
-import { Periodekolom, Vakantiegat } from "./Periodekolom";
+import { Periodekolom, Vakantiegat, type Periodefoutsoort } from "./Periodekolom";
 import { Generatieparametersformulier, type Periodestaat } from "./Generatieparametersformulier";
 import { Spreidingsoverzicht, type Verouderingsreden } from "./Spreidingsoverzicht";
 import { Sleepkaart, Themakaart, type Verplaatsstaat } from "./Themakaart";
@@ -39,6 +39,7 @@ import {
 import { GENERATIEBLOKNIVEAU, leesNiveau } from "./types";
 import type {
   Generatieparameters,
+  Generatieresultaat,
   Planningsblok,
   Planningsblokniveau,
   Themaplaatsing,
@@ -46,6 +47,7 @@ import type {
 import {
   useGeneratieparameters,
   useGenereerJaarplan,
+  useGenereerPeriode,
   useJaarplan,
   usePlanningsrooster,
   useVerplaatsPlaatsing,
@@ -161,6 +163,11 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // The chosen kleuterjaar travels with the run, so the panel's dekkingsvooruitzicht and the live dekking line
   // above it are measured against the same set (E3-03, antagonist round 1).
   const generatie = useGenereerJaarplan(klasId, jaarFase ?? undefined);
+
+  // One mutation for every column (E4-05, FR-8.2). The period is a `mutate()` argument rather than a hook parameter,
+  // so `variables` says which column is running and a stale closure cannot regenerate the wrong period. It carries the
+  // same `jaarFase` as the whole-plan run, for the same reason: it narrows the reported dekkingsvooruitzicht only.
+  const periodegeneratie = useGenereerPeriode(klasId, jaarFase ?? undefined);
   const verplaats = useVerplaatsPlaatsing(klasId);
 
   // Whether the teacher has pressed *Opnieuw proberen* on a failed grid fetch.
@@ -480,18 +487,34 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   // mismatches, so the panel told a teacher "je meet nu tegen een ander jaar" while they had changed nothing and had
   // no chooser on screen to change it with, and suppressed the whole report with it. When the current scope is
   // unknown the honest answer is "not stale": a withheld figure needs a reason a teacher can act on.
-  const gemetenBereik = generatie.data?.vooruitzicht?.gemetenJaarFasen;
-  const huidigBereik = jaarFase !== null ? [jaarFase] : beschikbareJaarFasen;
-  const verouderingsreden: Verouderingsreden | null = !generatie.isSuccess
-    ? null
-    : generatie.data.jaarplan !== null &&
-        plaatsingssignatuur(generatie.data.jaarplan.plaatsingen) !== plaatsingssignatuur(plan.plaatsingen)
-      ? "plan"
-      : gemetenBereik !== undefined &&
-          huidigBereik.length > 0 &&
-          gemetenBereik.join(",") !== huidigBereik.join(",")
-        ? "bereik"
+  // **Which run the report describes (E4-05).** There are two buttons now — the whole plan above the board, one period
+  // in every column — and one report area, so the panel shows whichever run finished LAST rather than always the
+  // whole-plan one. Compared by `submittedAt` instead of by "is the newer hook successful", because either mutation may
+  // hold a stale success from ten minutes ago and the question is which answer is current.
+  //
+  // A per-period run wins a tie, which is reachable only if both were submitted in the same millisecond and is
+  // therefore arbitrary either way; it is written down so the next reader does not take it for a considered rule.
+  const laatsteRun: Generatieresultaat | null =
+    periodegeneratie.isSuccess &&
+    (!generatie.isSuccess || periodegeneratie.submittedAt >= generatie.submittedAt)
+      ? periodegeneratie.data
+      : generatie.isSuccess
+        ? generatie.data
         : null;
+
+  const gemetenBereik = laatsteRun?.vooruitzicht?.gemetenJaarFasen;
+  const huidigBereik = jaarFase !== null ? [jaarFase] : beschikbareJaarFasen;
+  const verouderingsreden: Verouderingsreden | null =
+    laatsteRun === null
+      ? null
+      : laatsteRun.jaarplan !== null &&
+          plaatsingssignatuur(laatsteRun.jaarplan.plaatsingen) !== plaatsingssignatuur(plan.plaatsingen)
+        ? "plan"
+        : gemetenBereik !== undefined &&
+            huidigBereik.length > 0 &&
+            gemetenBereik.join(",") !== huidigBereik.join(",")
+          ? "bereik"
+          : null;
 
   // How many placements are still waiting for a teacher's decision (E4-02). Counted over the whole plan rather than
   // over `grid.blokken`, deliberately: a **stale** proposal sits in no block at all, and it is still a decision the
@@ -530,6 +553,17 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
 
   const ordinaalVan = (blokStart: unknown) =>
     grid.blokken.find((blok: Planningsblok) => blok.start === blokStart)?.ordinaal;
+
+  // The periods the teacher blocked with a vast moment (E4-05), as start date to the moment's own name. A Map because
+  // every column looks itself up; built from the plan read rather than from the settings, so the board and the server
+  // agree by construction instead of the client re-deriving which block a date falls in.
+  const bezetteperiodes = new Map(
+    plan.geblokkeerdePeriodes.map((periode) => [periode.blokStart, periode.momentNaam]),
+  );
+
+  // Only the periods on screen. A blocked period that no longer exists in the current grid contributes no column, so
+  // counting it here would make the board explain a marker nobody can see.
+  const bezetOpBord = grid.blokken.some((blok: Planningsblok) => bezetteperiodes.has(blok.start));
 
   function bijSleepStart(event: DragStartEvent) {
     setSleepKaart((event.active.data.current?.plaatsing as Themaplaatsing) ?? null);
@@ -821,8 +855,24 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             </p>
           )}
 
-          {generatie.isSuccess && (
-            <Spreidingsoverzicht resultaat={generatie.data} verouderd={verouderingsreden} />
+          {/* One report area for both runs, showing whichever finished last (see `laatsteRun`). The report names its own
+              scope, so a per-period run cannot be read as a whole-plan one even though it lands in the card whose button
+              says "Hele jaarplan": `periodeOrdinaal` is what lets it say *which* period in the teacher's own numbering.
+
+              Looked up in the GENERATION grid rather than in the board's, because a period run always targets the
+              themaperiode tier: at the fine tier `grid.blokken` holds sub-blocks, and a coincidental start-date match
+              would print the fortnight's ordinal for a five-week period. `undefined` when the grid is unreadable or the
+              period has since vanished, which the report answers with a sentence that names no number. */}
+          {laatsteRun && (
+            <Spreidingsoverzicht
+              resultaat={laatsteRun}
+              verouderd={verouderingsreden}
+              periodeOrdinaal={
+                generatieRooster.data?.blokken.find(
+                  (blok: Planningsblok) => blok.start === laatsteRun.geregenereerdePeriode,
+                )?.ordinaal
+              }
+            />
           )}
         </div>
 
@@ -850,6 +900,39 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             {PLAATSUITLEG[verplaatsstaat] !== null && (
               <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
                 {t(PLAATSUITLEG[verplaatsstaat]!)}
+              </p>
+            )}
+
+            {/* What the per-period button does, said ONCE here rather than beside seven identical buttons (E4-05,
+                FR-8.2). The button itself carries its scope in its label; what it cannot carry is *what it replaces*,
+                and that is a four-clause sentence.
+
+                It names what disappears as **the complement of what stays**, which is E4-04's round-2 shape and not a
+                stylistic echo: two enumerations of the same partition drift apart, and that story's own copy was wrong
+                in both directions within a day before it was rewritten this way. A locked proposal is undecided and
+                survives, so "the AI proposals you have not decided on" is the false version.
+
+                Gated on the button existing at all: at the fine tier and on an unreadable grid there is no per-period
+                control in any column, so the sentence would describe something absent. */}
+            {verplaatsstaat === "kan" && (
+              <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
+                {t("kalender.periodeHergenereerUitleg")}
+              </p>
+            )}
+
+            {/* What "Bezet:" on a column means, once for the board (E4-05, owner rulings 2026-08-06).
+
+                The columns carry the marker and the moment's name; this carries the three consequences, which are the
+                part a teacher cannot infer from the word: the tool places nothing there, they cannot place anything
+                there either, and what already stood in the period stays. That last clause is not filler — it is the
+                clause that keeps the marker from reading as "this period has been emptied".
+
+                Gated on a blocked period being **on screen** rather than merely stored, so the board never explains a
+                marker no column is showing. At the fine tier that is always the case, since a vast moment blocks a
+                themaperiode and the marker is withheld from sub-columns. */}
+            {bezetOpBord && (
+              <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
+                {t("kalender.bezetteperiodesUitleg")}
               </p>
             )}
 
@@ -976,6 +1059,30 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                         ? belasting.get(segment.blok.start)
                         : undefined
                     }
+                    // Which periods the teacher blocked, straight off the plan read (E4-05). Looked up by the block's
+                    // own start date, the same key the server reports and placements are stored under.
+                    //
+                    // **Only at the generation tier**, like `belasting` and for the same reason: a vast moment blocks a
+                    // *themaperiode*, so marking one fine sub-column as bezet would put the label on a fortnight while
+                    // the other sub-columns of the same blocked period looked free.
+                    bezetDoor={
+                      bordNiveau === GENERATIEBLOKNIVEAU
+                        ? (bezetteperiodes.get(segment.blok.start) ?? null)
+                        : null
+                    }
+                    // The mutation is narrowed to this column here, so the column itself never has to ask whether the
+                    // run in flight is its own. `variables` is the block start the teacher last pressed.
+                    hergeneratie={{
+                      start: () => periodegeneratie.mutate(segment.blok.start),
+                      bezig:
+                        periodegeneratie.isPending &&
+                        periodegeneratie.variables === segment.blok.start,
+                      foutsoort:
+                        periodegeneratie.isError &&
+                        periodegeneratie.variables === segment.blok.start
+                          ? periodefoutsoort(periodegeneratie.error)
+                          : null,
+                    }}
                   />
                 ) : (
                   <Vakantiegat
@@ -1095,6 +1202,33 @@ const PLAATSUITLEG: Record<Verplaatsstaat, TranslationKey | null> = {
   anderNiveau: "kalender.plaatsAnderNiveau",
   niveauOnbekend: "kalender.plaatsNiveauOnbekend",
 };
+
+/**
+ * Which of a per-period run's four failures happened (E4-05), decided by **status** and never by the response text.
+ *
+ * The 422 body is an English operator diagnostic about a model parse failure, so it is never echoed to a teacher
+ * (Art. II.3) — the same rule the whole-plan run's error notice follows, and the reason this maps to a key rather than
+ * returning a message.
+ *
+ * The two refusals are told apart because they ask for different things: **409** means the settings changed elsewhere
+ * and the teacher should reload to see what is now fixed, **400** means the school year's grid moved under the page.
+ * Anything that is not one of the three is treated as "the tool is broken", where a retry cannot help.
+ */
+function periodefoutsoort(fout: unknown): Periodefoutsoort {
+  if (!(fout instanceof ApiError)) {
+    return "onbeschikbaar";
+  }
+
+  if (fout.status === 409) {
+    return "bezet";
+  }
+
+  if (fout.status === 400) {
+    return "vervallen";
+  }
+
+  return fout.status === 422 ? "mislukt" : "onbeschikbaar";
+}
 
 /**
  * What a board at a **recognised** tier other than the generation tier offers (E3-08 fix round 4, MINOR-4b).

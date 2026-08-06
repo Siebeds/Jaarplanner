@@ -18,6 +18,9 @@ import type { Generatieresultaat } from "./types";
 describe("Spreidingsoverzicht en verouderde metingen", () => {
   const basis: Generatieresultaat = {
     isGeslaagd: true,
+    // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+    buitenPeriode: [],
+    geregenereerdePeriode: null,
     fout: null,
     jaarplan: null,
     aantalNieuw: 3,

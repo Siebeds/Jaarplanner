@@ -50,6 +50,19 @@ export interface SpreidingsoverzichtProps {
    * when an audit names two instances of a defect, grep the family before calling it fixed.**
    */
   verouderd?: Verouderingsreden | null;
+  /**
+   * The display ordinal of the period a **per-period** run regenerated (E4-05, FR-8.2), or `undefined` when the run was
+   * whole-plan or the period can no longer be named.
+   *
+   * Passed in rather than derived, because this panel holds no grid: `resultaat.geregenereerdePeriode` is the run's own
+   * start date and turning a date into "themaperiode 3" needs the grid the board was drawn from. It is a **display**
+   * label, never the key — the date is the key (ADR-0020 §3), which is exactly why the two are separate values here.
+   *
+   * `undefined` on a per-period run is a real state, not a bug: the grid may have failed to load, or the school may have
+   * edited its vakanties since the run. The report then says a period was regenerated without claiming which one, which
+   * is honest; inventing a number from the response's date would be the guess ADR-0020 forbids.
+   */
+  periodeOrdinaal?: number;
 }
 
 /**
@@ -58,7 +71,11 @@ export interface SpreidingsoverzichtProps {
  */
 export type Verouderingsreden = "plan" | "bereik";
 
-export function Spreidingsoverzicht({ resultaat, verouderd = null }: SpreidingsoverzichtProps) {
+export function Spreidingsoverzicht({
+  resultaat,
+  verouderd = null,
+  periodeOrdinaal,
+}: SpreidingsoverzichtProps) {
   const { spreiding } = resultaat;
 
   // Skipped items, only named when there is something to name. These are the model's misses — a thema the
@@ -72,6 +89,21 @@ export function Spreidingsoverzicht({ resultaat, verouderd = null }: Spreidingso
 
   return (
     <div className="mt-4 rounded-md border border-border bg-paper p-4">
+      {/* **The scope, first, and only for a per-period run** (E4-05, FR-8.2).
+          Every count below it is scoped to that one period — the server measures them that way, deliberately, because
+          "{aantal} bestaande plaatsingen bleven staan" asserts those placements were at stake. Without this line those
+          same figures sit in the card whose button reads "Hele jaarplan opnieuw genereren", where a teacher would
+          reasonably read "2 thema's voorgesteld" as the whole year's result.
+          It also states what did NOT happen, because that is the half a teacher is checking for after pressing a
+          button that replaces work. */}
+      {resultaat.geregenereerdePeriode !== null && (
+        <p className="mb-2 text-xs font-semibold text-petrol">
+          {periodeOrdinaal !== undefined
+            ? t("kalender.periodeRapportKop", { ordinaal: periodeOrdinaal })
+            : t("kalender.periodeRapportKopOnbekend")}
+        </p>
+      )}
+
       <p className="text-sm font-semibold text-ink">
         {resultaat.aantalNieuw === 0
           ? t("kalender.genereerNiets")
@@ -109,6 +141,17 @@ export function Spreidingsoverzicht({ resultaat, verouderd = null }: Spreidingso
       {overgeslagen.length > 0 && (
         <p className="mt-1.5 text-xs text-ink-zacht">
           {t("kalender.genereerOvergeslagen", { details: overgeslagen.join(" · ") })}
+        </p>
+      )}
+
+      {/* A sentence of its own rather than a fifth entry in `overgeslagen` (E4-05). Everything in that list is a miss:
+          a thema the school does not own, a date that starts no period, a repetition. This is not one — the thema
+          exists, the date is a real period boundary, and the only thing wrong with the proposal is that the teacher
+          asked about a different period. Filing it under "Overgeslagen" would tell them the AI answered with something
+          invalid, and it would hide the one fact they might act on: that the model thinks this thema belongs elsewhere. */}
+      {resultaat.buitenPeriode.length > 0 && (
+        <p className="mt-1.5 text-xs text-ink-zacht">
+          {t("kalender.periodeBuitenPeriode", { details: resultaat.buitenPeriode.join(" · ") })}
         </p>
       )}
 

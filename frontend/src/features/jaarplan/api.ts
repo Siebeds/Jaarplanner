@@ -76,6 +76,36 @@ export function genereerJaarplan(
 }
 
 /**
+ * Regenerates **one themaperiode** and leaves the rest of the plan alone (E4-05, FR-8.2).
+ *
+ * A separate call rather than a flag on {@link genereerJaarplan}, because the two differ in what they do with the
+ * class's kept settings: the whole-plan run carries the form and **replaces** them, this one sends no body and only
+ * **reads** them. There is no form on this path, so there is nothing for it to save.
+ *
+ * `blokStart` is the period's **start date**, for the reason given on {@link verplaatsPlaatsing}: an ordinal shifts
+ * when the school edits its vakanties (ADR-0020 §3).
+ *
+ * Three refusals, and the status is how the UI tells them apart without reading Dutch out of a `detail`:
+ * - **409** the period holds a blocking vast moment, refused before the model was called. The board withholds the
+ *   control for such a period and states the reason in place, so a 409 arriving here means the page is out of date.
+ * - **400** the date starts no current period (the grid changed under the page).
+ * - **422** the model's answer was unusable and nothing was persisted (Art. IV.5).
+ */
+export function genereerPeriode(
+  klasId: string,
+  blokStart: string,
+  jaarFase?: string,
+): Promise<Generatieresultaat> {
+  // Same pass-through as the whole-plan run: it narrows the dekkingsvooruitzicht only, never the run (E3-03).
+  const query = jaarFase ? `?jaarFase=${encodeURIComponent(jaarFase)}` : "";
+
+  return apiFetch<Generatieresultaat>(
+    `/api/klassen/${klasId}/jaarplan/periodes/${blokStart}/generatie${query}`,
+    { method: "POST" },
+  );
+}
+
+/**
  * The class's **kept** pre-generation settings (E3-04, FR-5.4) — what the form shows instead of starting empty.
  *
  * A class that has never saved any answers with empty lists rather than a 404, so "nothing set" is a normal state and
