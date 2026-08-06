@@ -1,3 +1,4 @@
+import { DOELSOORT_PARAM, JAARFASE_PARAM } from "../../app/routes";
 import type { Doelsoort, DoelsoortNaam } from "../../components/doelsoort";
 import { doelsoortBadgeSoort } from "../../components/doelsoort";
 import { t } from "../../i18n";
@@ -14,7 +15,19 @@ import type { Doelenfilter } from "./types";
  */
 
 /** The query-string keys this feature owns. Anything else in the URL (`?klas=`, `?schooljaar=`) is left alone. */
-const FILTERSLEUTELS = ["zoek", "discipline", "domein", "subdomein", "doelsoort", "jaarFase"] as const;
+const FILTERSLEUTELS = [
+  "zoek",
+  "discipline",
+  "domein",
+  "subdomein",
+  // **Shared key: import the constant. Own key: a literal is fine.** The four above are this register's alone
+  // and nothing else writes them. These two are written by `/dekking` as well, and `Doeldekkingregel` carries
+  // the whole query string from there to `/doelen/{code}`, so both sides have to agree on the spelling or a
+  // shared link silently stops filtering. Stated because a half-literal, half-constant list otherwise looks
+  // like an oversight (E5-03, antagonist rounds 6 and 7 — round 6 fixed `doelsoort` and left `jaarFase`).
+  DOELSOORT_PARAM,
+  JAARFASE_PARAM,
+] as const;
 
 /** The doelsoort values the API accepts, so an unknown one in a stale link is dropped instead of sent on. */
 const DOELSOORTEN = Object.keys(doelsoortBadgeSoort) as DoelsoortNaam[];
@@ -42,7 +55,8 @@ const DOELSOORT_PER_SPELLING: Record<string, DoelsoortNaam> = Object.fromEntries
 /** Reads the filter out of the URL, ignoring blank and unrecognised values. */
 export function leesFilter(params: URLSearchParams): Doelenfilter {
   const waarde = (sleutel: string) => params.get(sleutel)?.trim() || undefined;
-  const doelsoort = waarde("doelsoort")?.toLowerCase();
+  // The shared constant, not the literal: this is the read half of the contract `/dekking` writes (E5-03).
+  const doelsoort = waarde(DOELSOORT_PARAM)?.toLowerCase();
 
   return {
     zoek: waarde("zoek"),
@@ -54,7 +68,7 @@ export function leesFilter(params: URLSearchParams): Doelenfilter {
     subdomein: waarde("domein") ? waarde("subdomein") : undefined,
     // Normalised to the wire form, so the select shows the right option and the request carries one spelling.
     doelsoort: doelsoort ? DOELSOORT_PER_SPELLING[doelsoort] : undefined,
-    jaarFase: waarde("jaarFase"),
+    jaarFase: waarde(JAARFASE_PARAM),
   };
 }
 

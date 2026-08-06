@@ -25,6 +25,12 @@ export const PAGINA_GROOTTE = 50;
 function filterNaarQuery(filter: Doelenfilter): URLSearchParams {
   const params = new URLSearchParams();
 
+  // **Literals here on purpose, even for the two keys `app/routes.ts` now names** (E5-03, antagonist round 7). These
+  // are the SERVER's query parameters, not the browser's. `doelenfilter.ts` imports `DOELSOORT_PARAM` /
+  // `JAARFASE_PARAM` because the URL is a contract it shares with `/dekking`; importing them here would fuse the two,
+  // and a purely cosmetic front-end rename would then silently change the HTTP query the backend parses. It would
+  // surface as an empty result list rather than as a compile error. The names are identical today by choice (see this
+  // module's header), and that choice is only safe while the two are free to diverge. Do not "fix" this.
   if (filter.zoek) params.set("zoek", filter.zoek);
   if (filter.discipline) params.set("discipline", filter.discipline);
   if (filter.domein) params.set("domein", filter.domein);

@@ -2,9 +2,11 @@ import { Link, useLocation } from "react-router-dom";
 
 import { JAARPLAN_PAD } from "../../app/routes";
 import { t, tAantal } from "../../i18n";
+import { doelsoortLabel } from "../../components/doelsoort";
 import { Bereikschakelaar } from "./Bereikschakelaar";
+import { Doelsoortfilter } from "./Doelsoortfilter";
 import { Jaarfasekiezer } from "./Jaarfasekiezer";
-import { bepaalCijfer } from "./dekkingFormat";
+import type { Dekkingscijfer, Doelsoortkeuze, Doelsoortoptie } from "./dekkingFormat";
 import type { Dekking, Dekkingsbereik } from "./types";
 
 /**
@@ -17,28 +19,50 @@ import type { Dekking, Dekkingsbereik } from "./types";
  * unknown is not demonstrably taught). So the withheld state is not an error banner bolted on: it occupies the same
  * space, at the same weight, and says what to do instead.
  *
- * **No percentage here.** The counts are E5-02's; the percentage, the doelsoort filter and the missing-goals list are
- * **E5-03**, and the gap-analyse presentation is **E5-05**. A percentage would also need the Art. XIV denominator
- * question settled further than it is: the owner ruled the single-leerjaar case on 2026-08-04 and the graadklas is
- * still open, which is exactly the state in which a big "35%" says more than anyone can defend.
+ * **The percentage is E5-03's and it arrived with two conditions attached.** E5-02 declined to show one, on the
+ * grounds that *"a big 35% says more than anyone can defend"* while the Art. XIV denominator question was open. The
+ * owner ruled the single-leerjaar half on 2026-08-04 and the graadklas half is still open, so the figure ships with
+ * the scope sentence directly under it and the terugval notice beside it: a percentage on this screen is never
+ * allowed to appear without saying what it is a percentage *of*. It also never appears where the count would not
+ * (`bepaalCijfer` is the one gate), so the directie ruling of 2026-07-28 governs both figures identically.
+ *
+ * **Still not here:** the gap-analyse grouped by discipline and actionable from the kalender (**E5-05**), and the
+ * minimumdoel level (**E5-04**, blocked on E1-12).
  */
 export interface DekkingsamenvattingProps {
   dekking: Dekking;
+  /**
+   * The figure to render, computed once by the page over the doelsoort-narrowed set.
+   *
+   * **Passed in rather than computed here**, which is a change E5-03 had to make: the summary and the group tallies
+   * must agree about whether a figure may be shown at all, they now both depend on the active filter, and two call
+   * sites deriving that from two argument lists is how they would come to disagree. The single-source property was
+   * already load-bearing (`DekkingPagina`'s `magTellingTonen` exists because the summary once withheld a figure while
+   * every group printed one); a filter multiplies the ways to get it wrong.
+   */
+  cijfer: Dekkingscijfer;
   bereik: Dekkingsbereik;
   onKiesBereik: (bereik: Dekkingsbereik) => void;
   /** The single jaar/fase narrowed to, or null for all of the class's own codes. */
   gekozenJaarFase: string | null;
   onKiesJaarFase: (jaarFase: string | null) => void;
+  /** The doelsoorten present in scope, with counts, for the filter's options. */
+  doelsoortopties: readonly Doelsoortoptie[];
+  gekozenDoelsoort: Doelsoortkeuze;
+  onKiesDoelsoort: (doelsoort: Doelsoortkeuze) => void;
 }
 
 export function Dekkingsamenvatting({
   dekking,
+  cijfer,
   bereik,
   onKiesBereik,
   gekozenJaarFase,
   onKiesJaarFase,
+  doelsoortopties,
+  gekozenDoelsoort,
+  onKiesDoelsoort,
 }: DekkingsamenvattingProps) {
-  const cijfer = bepaalCijfer(dekking);
   // Read through the router rather than `window.location`, so the klas/schooljaar selection travels with the link the
   // way every other cross-screen link in this app carries it (ADR-0021), and so it is testable in jsdom.
   const location = useLocation();
@@ -55,13 +79,65 @@ export function Dekkingsamenvatting({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           {cijfer.soort === "cijfer" && (
-            // The hero. Tabular numerals so the figure does not shift width as it climbs, which it does on every
-            // accept: a jittering total reads as a glitch rather than as progress.
-            <p className="text-2xl font-bold text-ink" data-cijfers>
-              {tAantal(cijfer.totaal, "dekking.cijferEnkelvoud", "dekking.cijfer", {
-                gedekt: cijfer.gedekt,
-              })}
-            </p>
+            // The hero, in two registers: the percentage FR-9.2 asks for, and directly under it the fraction it was
+            // computed from. Never the percentage alone. `bepaalPercentage` clamps 1..99 so a rounded figure can
+            // never contradict the fraction, and printing the fraction is what makes that guarantee checkable by the
+            // person reading it rather than only by a test.
+            //
+            // Tabular numerals on both, so neither shifts width as the figures climb: they move on every accept, and
+            // a jittering total reads as a glitch rather than as progress.
+            <>
+              <p className="text-3xl font-bold leading-none text-ink" data-cijfers>
+                {t("dekking.percentage", { percentage: cijfer.percentage })}
+              </p>
+              <p className="mt-1 text-sm font-medium text-ink" data-cijfers>
+                {tAantal(cijfer.totaal, "dekking.cijferEnkelvoud", "dekking.cijfer", {
+                  gedekt: cijfer.gedekt,
+                })}
+              </p>
+
+              {/*
+                The gap, made visible at a glance. `aria-hidden` and purely presentational: both figures above already
+                carry the meaning, and a bar that announced itself would make a screen reader read the same fact three
+                times. It is the one decorative element on this screen and it earns its place by showing the REMAINDER,
+                which is what a teacher is here to close and what no single number puts in front of them.
+
+                Two existing dekking tokens, no new hue (Art. XII): the covered part is `dekking-gedekt`, the rest is
+                the `dekking-niet-gedekt` wash rather than empty space, so the bar reads as a whole divided in two
+                rather than as a progress bar that has not finished loading. Widths come from the CLAMPED percentage,
+                so the bar cannot look full at 99% either.
+              */}
+              <div
+                aria-hidden="true"
+                className="mt-2 flex h-2 w-full max-w-xs overflow-hidden rounded-full bg-dekking-niet-gedekt/25"
+              >
+                <div
+                  className="h-full rounded-full bg-dekking-gedekt"
+                  style={{ width: `${cijfer.percentage}%` }}
+                />
+              </div>
+            </>
+          )}
+
+          {cijfer.soort === "geenVanDezeSoort" && (
+            // Doelen ARE loaded and in scope; none of them is of the chosen soort. Distinct from `nietMeetbaar`
+            // because the remedy is different and one click away: change the filter, not import a curriculum. Reached
+            // only through the filter, so the sentence names the doelsoort the teacher chose rather than describing
+            // the state in the abstract.
+            //
+            // **The sentence points at the control by its LABEL, not by where it sits, and that is a fix rather than a
+            // style choice.** It first read "Kies hiernaast een andere doelsoort", which is true at 1440px and false at
+            // 390px: the control column stacks under the summary there, measured at 146px BELOW this paragraph rather
+            // than beside it. Naming "Doelsoort" is true at every width and survives any future reflow, which the
+            // per-breakpoint alternative would not.
+            <>
+              <p className="text-2xl font-bold text-ink">{t("dekking.geenVanDezeSoort")}</p>
+              <p className="mt-1 max-w-prose text-sm text-ink">
+                {t("dekking.geenVanDezeSoortUitleg", {
+                  naam: gekozenDoelsoort ? doelsoortLabel(gekozenDoelsoort) : "",
+                })}
+              </p>
+            </>
           )}
 
           {cijfer.soort === "ingehouden" && (
@@ -170,6 +246,39 @@ export function Dekkingsamenvatting({
                   : t("dekking.gemetenTegen", { fasen: dekking.gemetenJaarFasen[0] })}
           </p>
 
+          {/*
+            THE DOELSOORT NARROWING, stated for the same reason as the scope line above it and directly beside it,
+            because it does the same thing: it changes what the figure is a figure of. Filtering to MD makes "40" become
+            "12", and a percentage that rose because the denominator shrank is the single most misleading thing this
+            screen could do silently.
+
+            **Rendered only when there IS a cijfer, which is a correction** (antagonist round 2). The guard was
+            `!== "geenVanDezeSoort"`, so the sentence also reached `ingehouden` and `nietMeetbaar`: the screen said
+            *"Nog geen betrouwbaar cijfer"* and then, directly under it, *"… tellen mee in dit cijfer"*, presupposing
+            the very figure the line above refuses. The fix round made that worse rather than better, because the MD
+            variant is forty-odd words comparing itself to minimumdoelniveau in a state where no dekking is reported at
+            all. The `buitenBereik` sentence eight lines below already carried the right guard for the same reason.
+
+            **MINIMUMDOEL GETS ITS OWN SENTENCE, and that is a correction rather than a nicety** (antagonist round 1,
+            MAJOR-2). The doelsoort is labelled *"Minimumdoel"*, so with that filter on, the screen read, top to bottom:
+            *"Dekking op het niveau van de minimumdoelen, wat de onderwijsinspectie toetst, zit er nog niet in"*, then
+            **63%**, then *"Alleen doelen van de soort Minimumdoel tellen mee in dit cijfer."* A directie reads that as
+            *63% van de minimumdoelen*, on the one screen whose whole job is to be evidence.
+
+            They are genuinely different quantities, not two names for one. Art. V.1 makes a **minimumdoel** covered
+            when **at least one** concorded leerplandoel is covered, aggregated over distinct `minimumdoelRef`; this
+            counts leerplandoelen one by one whose `doelsoort` happens to be MD. The OR alone makes the two numbers
+            differ, so E5-04 will print a different percentage for the same class. Saying so costs one sentence now and
+            avoids retracting a number later.
+          */}
+          {gekozenDoelsoort !== null && cijfer.soort === "cijfer" && (
+            <p className="mt-1 max-w-prose text-sm text-ink-zacht">
+              {gekozenDoelsoort === "Minimumdoel"
+                ? t("dekking.gefilterdOpMinimumdoel")
+                : t("dekking.gefilterdOpDoelsoort", { naam: doelsoortLabel(gekozenDoelsoort) })}
+            </p>
+          )}
+
           {/* The narrowing, stated rather than left implicit: a smaller denominator flatters the figure. Suppressed at
               0 so the whole-curriculum scope does not carry a sentence about nothing. */}
           {dekking.aantalBuitenBereik > 0 && cijfer.soort !== "nietMeetbaar" && (
@@ -195,6 +304,35 @@ export function Dekkingsamenvatting({
 
         <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end">
           <Bereikschakelaar bereik={bereik} onKies={onKiesBereik} />
+
+          {/*
+            Grouped with the scope controls rather than sat above the list, because it belongs to the same question they
+            answer: which doelen this figure is over. The "alleen ontbrekende" toggle deliberately does NOT live here,
+            and that placement is the design carrying the distinction — it changes what is shown, not what is measured,
+            so it sits on the thing it changes.
+
+            Rendered when the scope holds more than one doelsoort **or a narrowing is currently active**, and the second
+            half is a fix (antagonist round 1, MAJOR-1). The first half alone is the kleuterjaar chooser's rule — with
+            one option every choice yields the same screen, so the control would do nothing (E3-06). But the two
+            conditions intersect: a class whose scope holds exactly one doelsoort, plus a `?doelsoort=` naming another,
+            renders *"Kies bij Doelsoort een andere soort"* with **no Doelsoort control on the page at all**. The list
+            header is suppressed in that branch too, so the only ways out were the Back button and the scope switch,
+            which changes the denominator rather than clearing the filter.
+
+            It is reachable by ordinary clicking, not just by a pasted link: `useSelectie.kiesKlas` carries every other
+            query param across a class switch, and `kiesBereik` deliberately keeps `doelsoort` while dropping
+            `jaarFase`. So "Heel curriculum, filter to Verdieping, back to Deze klas" lands in it.
+
+            A control that can clear a live narrowing is emphatically not a control that does nothing, so the E3-06 rule
+            is satisfied by rendering it, not by hiding it.
+          */}
+          {(doelsoortopties.length > 1 || gekozenDoelsoort !== null) && (
+            <Doelsoortfilter
+              opties={doelsoortopties}
+              gekozen={gekozenDoelsoort}
+              onKies={onKiesDoelsoort}
+            />
+          )}
 
           {/* Only for a class that HAS more than one code, which today means a kleutergroep and tomorrow may mean a
               graadklas. A control offering one option would be a control that does nothing (the E3-06 rule). */}
