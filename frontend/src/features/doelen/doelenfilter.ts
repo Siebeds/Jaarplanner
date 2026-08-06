@@ -20,8 +20,11 @@ const FILTERSLEUTELS = [
   "discipline",
   "domein",
   "subdomein",
-  // The two keys another feature also writes, imported rather than spelled again: `/dekking` narrows by both
-  // and `Doeldekkingregel` carries the whole query string here (E5-03, antagonist round 6).
+  // **Shared key: import the constant. Own key: a literal is fine.** The four above are this register's alone
+  // and nothing else writes them. These two are written by `/dekking` as well, and `Doeldekkingregel` carries
+  // the whole query string from there to `/doelen/{code}`, so both sides have to agree on the spelling or a
+  // shared link silently stops filtering. Stated because a half-literal, half-constant list otherwise looks
+  // like an oversight (E5-03, antagonist rounds 6 and 7 — round 6 fixed `doelsoort` and left `jaarFase`).
   DOELSOORT_PARAM,
   JAARFASE_PARAM,
 ] as const;
@@ -65,7 +68,7 @@ export function leesFilter(params: URLSearchParams): Doelenfilter {
     subdomein: waarde("domein") ? waarde("subdomein") : undefined,
     // Normalised to the wire form, so the select shows the right option and the request carries one spelling.
     doelsoort: doelsoort ? DOELSOORT_PER_SPELLING[doelsoort] : undefined,
-    jaarFase: waarde("jaarFase"),
+    jaarFase: waarde(JAARFASE_PARAM),
   };
 }
 
