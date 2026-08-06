@@ -353,7 +353,9 @@ public class ClosedXmlDekkingExportTests
     {
         var bestand = Export().Genereer(Weergave());
 
-        Assert.Equal("dekking-k3-derde-kleuterklas-2026-2027.xlsx", bestand.Bestandsnaam);
+        // Scope and date included, because dekking is recomputed on every read: the same class exports differently
+        // tomorrow and differently again under another scope, and all three used to land under one name.
+        Assert.Equal("dekking-k3-derde-kleuterklas-2026-2027-k3-2026-08-06.xlsx", bestand.Bestandsnaam);
         Assert.Equal(ClosedXmlDekkingExport.XlsxContentType, bestand.ContentType);
     }
 
@@ -364,7 +366,7 @@ public class ClosedXmlDekkingExportTests
         // rather than produce "dekking--.xlsx" or an empty segment.
         var bestand = Export().Genereer(Weergave(klasNaam: "!!! ???"));
 
-        Assert.Equal("dekking-onbekend-2026-2027.xlsx", bestand.Bestandsnaam);
+        Assert.Equal("dekking-onbekend-2026-2027-k3-2026-08-06.xlsx", bestand.Bestandsnaam);
     }
 
     [Fact]
@@ -393,6 +395,36 @@ public class ClosedXmlDekkingExportTests
 
         Assert.Contains(cellen, tekst => tekst.Contains("Nog niets om tegen te meten", StringComparison.Ordinal));
         Assert.DoesNotContain(cellen, tekst => tekst.Contains("gedekt.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void De_bestandsnaam_noemt_het_bereik_waartegen_gemeten_is()
+    {
+        // Two exports of one class under two scopes are two different documents, and the kopblok was the only thing
+        // that said so. `dekking-...-heel-curriculum-...` versus `dekking-...-k3-...` says it in the downloads folder.
+        var eigen = Export().Genereer(Weergave());
+        var alles = Export().Genereer(
+            Weergave(bereik: Dekkingsbereik.HeelCurriculum, gemetenJaarFasen: Array.Empty<string>()));
+
+        Assert.Contains("-k3-", eigen.Bestandsnaam, StringComparison.Ordinal);
+        Assert.Contains("-heel-curriculum-", alles.Bestandsnaam, StringComparison.Ordinal);
+        Assert.NotEqual(eigen.Bestandsnaam, alles.Bestandsnaam);
+    }
+
+    [Fact]
+    public void Er_staat_geen_minimumdoelkolom_in_het_document()
+    {
+        // The antagonist's MAJOR-2, pinned so it cannot come back by accident. A concordance ref beside a Ja/Nee, under
+        // a header naming the level the kopblok declares absent, invites an inference that is wrong in BOTH directions:
+        // Art. V.1 needs only one concorded leerplandoel, so a "Nee" beside a ref does not mean that minimumdoel is
+        // uncovered, and a minimumdoel whose concorded doelen all fall outside the scope appears in no row at all.
+        // E5-04 owns that column. The payload still carries the ref, which is why an absence needs a test.
+        var doelen = new[] { Doel("NC-1.1", minimumdoelRef: "6-14", gedekt: true, themas: new[] { "Herfst" }) };
+
+        var bestand = Export().Genereer(Weergave(doelen));
+
+        Assert.DoesNotContain("6-14", AlleCellen(bestand));
+        Assert.DoesNotContain("Minimumdoel", DekkingKolommen.Alle.Select(DekkingKolommen.Label));
     }
 
     /// <summary>

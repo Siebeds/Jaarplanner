@@ -105,6 +105,9 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
         titel.Style.Font.FontSize = 14;
         rij += 2;
 
+        // These labels sit in column 1, whose width is chosen for the LONGEST LABEL HERE rather than for a goal
+        // code: see the note on `DekkingKolommen.Breedtes`. Excel clips a cell whose neighbour is populated, and
+        // every label here has one.
         rij = SchrijfVeld(sheet, rij, "Klas", dekking.KlasNaam);
         rij = SchrijfVeld(sheet, rij, "Schooljaar", dekking.SchooljaarNaam);
         rij = SchrijfVeld(sheet, rij, "Gemeten tegen", BereikZin(dekking));
@@ -256,18 +259,23 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
     /// printouts is the current one, and "proof of coverage" that cannot be located in time is not proof of much.
     /// </para>
     /// </summary>
-    private string OpgemaaktOp()
+    private string OpgemaaktOp() =>
+        SchoolZone is null
+            ? $"{Nu().ToString("d MMMM yyyy 'om' HH:mm", Nl)} (UTC)"
+            : Nu().ToString("d MMMM yyyy 'om' HH:mm", Nl);
+
+    /// <summary>
+    /// Now, in the school's own zone when the host knows it.
+    /// <para>
+    /// One helper, so the kopblok's stamp and the filename's date cannot name different days for the same document.
+    /// Two separate reads of the clock either side of midnight would do exactly that.
+    /// </para>
+    /// </summary>
+    private DateTimeOffset Nu()
     {
         var nu = _tijd.GetUtcNow();
 
-        if (SchoolZone is null)
-        {
-            return $"{nu.UtcDateTime.ToString("d MMMM yyyy 'om' HH:mm", Nl)} (UTC)";
-        }
-
-        var lokaal = TimeZoneInfo.ConvertTime(nu, SchoolZone);
-
-        return lokaal.ToString("d MMMM yyyy 'om' HH:mm", Nl);
+        return SchoolZone is null ? nu.ToUniversalTime() : TimeZoneInfo.ConvertTime(nu, SchoolZone);
     }
 
     /// <summary>
@@ -297,7 +305,6 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
             sheet.Cell(rij, (int)DekkingKolom.Domein).SetValue(doel.Domein);
             sheet.Cell(rij, (int)DekkingKolom.Subdomein).SetValue(doel.Subdomein);
             sheet.Cell(rij, (int)DekkingKolom.Leerplandoel).SetValue(doel.Tekst);
-            sheet.Cell(rij, (int)DekkingKolom.Minimumdoel).SetValue(doel.MinimumdoelRef ?? string.Empty);
             sheet.Cell(rij, (int)DekkingKolom.Gedekt).SetValue(doel.IsGedekt ? "Ja" : "Nee");
 
             // ';'-separated, the same list convention the import template uses, so a name containing a comma stays
@@ -325,16 +332,41 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
     }
 
     /// <summary>
-    /// The download filename: it names the klas and the schooljaar.
+    /// The download filename: klas, schooljaar, the scope measured, and the date it was made.
     /// <para>
-    /// A school accumulates one of these per class per year, so "dekking.xlsx" in a downloads folder identifies
-    /// nothing. Non-filename characters are replaced rather than stripped, so two classes cannot collapse onto one
-    /// name; accented letters are kept, because ASP.NET Core encodes a non-ASCII <c>Content-Disposition</c> filename
-    /// per RFC 6266/5987 and every target browser reads it.
+    /// <b>All four, because the three-part version contradicted this file's own argument</b> (antagonist
+    /// MINOR-3). <see cref="OpgemaaktOp"/> argues that dekking is recomputed on every read, so two exports of
+    /// one class legitimately disagree and proof that cannot be located in time is not proof of much. The name
+    /// then carried neither the date nor the scope, so the default scope, <c>?bereik=HeelCurriculum</c> and a
+    /// narrowed kleuterjaar all downloaded under one name, and so did the same export a month later. A downloads
+    /// folder distinguished them as "(1)" and "(2)". The argument for naming the file at all is the argument for
+    /// going this one level further.
+    /// </para>
+    /// <para>
+    /// <b>It does not guarantee distinct names, and an earlier version of this comment claimed it did</b>
+    /// (antagonist MINOR-2). It said non-filename characters are "replaced rather than stripped, so two classes
+    /// cannot collapse onto one name". They can: <see cref="Veilig"/> collapses every run of non-alphanumerics
+    /// to one hyphen, so <c>"L3-A"</c>, <c>"L3 A"</c> and <c>"L3 / A"</c> all yield <c>l3-a</c>. Substituting
+    /// rather than stripping buys readability, not injectivity. Two classes whose names differ only in
+    /// punctuation still collide, and the kopblok is what tells them apart.
+    /// </para>
+    /// <para>
+    /// Accented letters are kept: ASP.NET Core encodes a non-ASCII <c>Content-Disposition</c> filename per
+    /// RFC 6266/5987 and every target browser reads it.
     /// </para>
     /// </summary>
-    private static string Bestandsnaam(DekkingWeergave dekking) =>
-        $"dekking-{Veilig(dekking.KlasNaam)}-{Veilig(dekking.SchooljaarNaam)}.xlsx";
+    private string Bestandsnaam(DekkingWeergave dekking) =>
+        $"dekking-{Veilig(dekking.KlasNaam)}-{Veilig(dekking.SchooljaarNaam)}"
+        + $"-{Veilig(BereikKort(dekking))}-{Nu():yyyy-MM-dd}.xlsx";
+
+    /// <summary>
+    /// The scope, short enough for a filename: the measured jaar/fase codes, or that the whole curriculum was
+    /// used.
+    /// </summary>
+    private static string BereikKort(DekkingWeergave dekking) =>
+        dekking.Bereik == Dekkingsbereik.HeelCurriculum || dekking.GemetenJaarFasen.Count == 0
+            ? "heel-curriculum"
+            : string.Join("-", dekking.GemetenJaarFasen);
 
     /// <summary>
     /// One name, reduced to something a filesystem accepts on every platform: letters and digits kept, everything

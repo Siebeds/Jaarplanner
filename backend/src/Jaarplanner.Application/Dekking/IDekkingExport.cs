@@ -50,10 +50,16 @@ public interface IDekkingExport
 /// </summary>
 /// <param name="Inhoud">
 /// The document, as a seekable stream positioned at 0. The caller owns it (let the framework stream and dispose it).
+/// <para>
+/// Typed <see cref="Stream"/> rather than <c>MemoryStream</c> (antagonist note): the whole point of this port is that
+/// a PDF or a streaming implementation can slot in behind it when directie rules on Art. XIV's format question, and
+/// the narrower type would have pinned every implementation to a fully buffered one.
+/// </para>
 /// </param>
 /// <param name="Bestandsnaam">
-/// The download filename, including its extension. Names the klas and the schooljaar, because a school ends up with
-/// one of these per class per year and "dekking.xlsx" in a downloads folder is not evidence of anything.
+/// The download filename, including its extension. Names the klas, the schooljaar, the scope measured and the date,
+/// because a school ends up with one of these per class per year per scope and "dekking.xlsx" in a downloads folder is
+/// not evidence of anything. It is not guaranteed unique: see the implementation's own note on why.
 /// </param>
 /// <param name="ContentType">The media type matching <paramref name="Inhoud"/>.</param>
-public sealed record DekkingExportbestand(MemoryStream Inhoud, string Bestandsnaam, string ContentType);
+public sealed record DekkingExportbestand(Stream Inhoud, string Bestandsnaam, string ContentType);

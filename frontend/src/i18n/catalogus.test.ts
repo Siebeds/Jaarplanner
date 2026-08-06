@@ -663,3 +663,46 @@ describe("nl.json — de exportuitleg belooft het volledige overzicht, niet het 
     // would cry wolf on the correct copy. A guard that fires on the right answer is one somebody deletes.
   });
 });
+
+describe("nl.json — de zin over het minimumdoelniveau blijft zeggen dat het er niet in zit", () => {
+  /**
+   * **Filed by the E5-06 antagonist as an asymmetry, and it is the cheaper half of a real gap.** E5-06 gave
+   * `dekking.exportUitleg` a value-reading guard because it carries an owner ruling. The sentence beside it carries
+   * something heavier: Art. V.2's honesty about the level the **onderwijsinspectie** actually tests, which does not
+   * exist yet (E5-04, blocked on E1-12). That one was asserted only as `t(key)` in `Dekkingsoverzicht.test.tsx`, and
+   * E5-03 proved a `t(key)` assertion cannot bite, because it moves with the catalogue: rewrite the value and the test
+   * still passes.
+   *
+   * It now matters in two places rather than one. The export's kopblok carries the same sentence, composed
+   * server-side, and `ClosedXmlDekkingExportTests` guards that half on substance. This is the browser half.
+   *
+   * **The limit, stated rather than left to be found:** like every keyword guard here it cannot see a paraphrase, and
+   * it cannot decide truth. It encodes one rule a human derived from `DekkingService`, which computes nothing at
+   * minimumdoel level: this screen must not let a reader conclude it does.
+   */
+  const SLEUTEL = "dekking.alleenLeerplandoelen";
+
+  it("still exists, so this guard cannot be silently disarmed by a rename", () => {
+    expect(
+      CATALOGUS.get(SLEUTEL),
+      `${SLEUTEL} has been renamed or removed; this guard now checks nothing`,
+    ).toBeDefined();
+  });
+
+  it("names the minimumdoelen and says they are not in it", () => {
+    const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
+
+    expect(zin).toContain("minimumdoelen");
+    // The negation, in any of the wordings this sentence could reasonably take. Without it the sentence could be
+    // rewritten into one that merely MENTIONS minimumdoelen, which is how a disclaimer becomes a claim.
+    expect(zin).toMatch(/\bniet in\b|\bnog niet\b|\bzit er niet\b|\bontbreek/);
+  });
+
+  it("does not claim the overview covers that level", () => {
+    const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
+
+    // The false versions: any promise that this screen reports minimumdoeldekking, in the present tense.
+    expect(zin).not.toMatch(/\bdekking op minimumdoelniveau (staat|zit) (er)?in\b|\book de minimumdoelen\b/);
+    expect(zin).not.toMatch(/\bvolledig\b|\bcompleet\b|\binspectieklaar\b/);
+  });
+});

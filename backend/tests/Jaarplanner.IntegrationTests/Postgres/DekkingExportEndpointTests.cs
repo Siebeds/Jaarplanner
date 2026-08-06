@@ -62,7 +62,8 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
     {
         var klasId = await ZetKlasOpAsync();
 
-        var response = await _factory.CreateClient().GetAsync($"/api/klassen/{klasId}/dekking/export");
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync($"/api/klassen/{klasId}/dekking/export");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(ClosedXmlDekkingExport.XlsxContentType, response.Content.Headers.ContentType?.MediaType);
@@ -74,6 +75,18 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
         Assert.NotNull(naam);
         Assert.StartsWith("dekking-k3-", naam.Trim('"'), StringComparison.Ordinal);
         Assert.EndsWith(".xlsx", naam.Trim('"'), StringComparison.Ordinal);
+        // The scope is in the name too, so two scopes of one class are two files rather than one name twice. Read out
+        // of the ANSWER rather than assumed: a first version of this line asserted "-l3-" because the helper is called
+        // ZetKlasOpAsync, and the class it seeds has Leerjaar 0, so it is a kleutergroep measured against JK+K2+K3.
+        // Asserting the codes the server says it measured cannot be wrong about that, and it still fails if the scope
+        // stops travelling into the name.
+        var json = await client.GetFromJsonAsync<DekkingDto>($"/api/klassen/{klasId}/dekking");
+        Assert.NotNull(json);
+        Assert.NotEmpty(json.GemetenJaarFasen);
+        foreach (var code in json.GemetenJaarFasen)
+        {
+            Assert.Contains(code.ToLowerInvariant(), naam.Trim('"'), StringComparison.Ordinal);
+        }
     }
 
     [PostgresFact]
@@ -314,6 +327,7 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
         bool IsBetrouwbaar,
         int? AantalGedekt,
         int AantalLeerplandoelen,
+        List<string> GemetenJaarFasen,
         List<DoelDto> Doelen);
 
     private sealed record DoelDto(string Code, bool IsGedekt, List<string> DekkendeThemas);
