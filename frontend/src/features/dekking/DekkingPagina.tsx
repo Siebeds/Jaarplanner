@@ -248,7 +248,19 @@ export function DekkingPagina() {
             required `soort === "cijfer"`, which left the withheld state showing the toggle with silence underneath —
             the exact state the comment claimed to prevent. The `cijfer` guard is nonetheless right and stays: *"Elk
             doel is gedekt"* asserts `gedekt === totaal`, which is the withheld total handed over in words. So the
-            withheld case gets a neutral line that claims no coverage at all.
+            withheld case gets a line that claims no coverage at all.
+
+            **The withheld sentence was rewritten in round 2, because the first attempt at it was false** (antagonist
+            round 2, MAJOR). It read *"Hier staat niets zolang dit overzicht geen cijfer geeft. Los eerst de plaatsingen
+            hierboven op, dan zie je welke doelen nog ontbreken."* Both halves were wrong, and the reason is that
+            **`groepen` never consults `isBetrouwbaar`**: the gaps list renders its rows normally while the figure is
+            withheld, so this branch fires only when there are genuinely zero gaps. So the list is not empty *because*
+            the figure is withheld, and resolving a placement cannot reveal rows — it can only cover more doelen and
+            shrink the set further.
+
+            The bind that produced it is real and worth naming: the only accurate explanation of the emptiness is
+            *"er ontbreekt niets"*, which is `gedekt === totaal`, which is the withheld figure spelled out. The escape
+            is to state the view's standing and **refuse the inference** rather than to explain the emptiness at all.
           */}
           {alleenOntbrekende && groepen.length === 0 && cijfer.soort === "cijfer" && (
             <p className="rounded-lg border border-dashed border-border bg-card/70 px-5 py-8 text-center text-sm text-ink">
@@ -318,12 +330,18 @@ function leesBereik(searchParams: URLSearchParams): Dekkingsbereik {
  * The doelsoort narrowing from the query string, or `null` when there is none or the value is not a doelsoort.
  *
  * Checked against `doelsoortBadgeSoort` rather than against a literal list, so the validation cannot drift from the
- * mapping that the label lookup uses: those are the exact keys for which a Dutch label exists. Anything else falls back
- * to no narrowing, which keeps a teacher who followed a stale link on a working screen instead of showing them a
- * catalogue key (antagonist round 1, MINOR-2).
+ * mapping that the label lookup uses. Anything else falls back to no narrowing, which keeps a teacher who followed a
+ * stale link on a working screen instead of showing them a catalogue key (antagonist round 1, MINOR-2).
+ *
+ * **`Object.hasOwn`, not `in`, and the difference was a live defect** (antagonist round 2). `in` walks the prototype
+ * chain, so `?doelsoort=Foo` was rejected while `toString`, `valueOf`, `constructor`, `hasOwnProperty` and `__proto__`
+ * all passed. `doelsoortBadgeSoort["toString"]` is then a *function*, which the label lookup interpolates into a
+ * template literal, so the screen read *"geen enkel doel van de soort doelsoort.function toString() { [native code] }"*
+ * — the exact Art. II.3 breach the round-1 fix was written to close, in the exact same input class. The round-1 comment
+ * also claimed these were "the exact keys for which a Dutch label exists", which was false for those five.
  */
 function leesDoelsoort(searchParams: URLSearchParams): Doelsoortkeuze {
   const ruw = searchParams.get(DOELSOORT_PARAM);
 
-  return ruw && ruw in doelsoortBadgeSoort ? (ruw as DoelsoortNaam) : null;
+  return ruw && Object.hasOwn(doelsoortBadgeSoort, ruw) ? (ruw as DoelsoortNaam) : null;
 }

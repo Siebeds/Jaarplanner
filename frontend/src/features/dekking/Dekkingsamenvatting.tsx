@@ -252,8 +252,12 @@ export function Dekkingsamenvatting({
             "12", and a percentage that rose because the denominator shrank is the single most misleading thing this
             screen could do silently.
 
-            Suppressed in the `geenVanDezeSoort` state, where the sentence in the slot above already names the doelsoort
-            and there is no figure for anything to count towards.
+            **Rendered only when there IS a cijfer, which is a correction** (antagonist round 2). The guard was
+            `!== "geenVanDezeSoort"`, so the sentence also reached `ingehouden` and `nietMeetbaar`: the screen said
+            *"Nog geen betrouwbaar cijfer"* and then, directly under it, *"… tellen mee in dit cijfer"*, presupposing
+            the very figure the line above refuses. The fix round made that worse rather than better, because the MD
+            variant is forty-odd words comparing itself to minimumdoelniveau in a state where no dekking is reported at
+            all. The `buitenBereik` sentence eight lines below already carried the right guard for the same reason.
 
             **MINIMUMDOEL GETS ITS OWN SENTENCE, and that is a correction rather than a nicety** (antagonist round 1,
             MAJOR-2). The doelsoort is labelled *"Minimumdoel"*, so with that filter on, the screen read, top to bottom:
@@ -267,7 +271,7 @@ export function Dekkingsamenvatting({
             differ, so E5-04 will print a different percentage for the same class. Saying so costs one sentence now and
             avoids retracting a number later.
           */}
-          {gekozenDoelsoort !== null && cijfer.soort !== "geenVanDezeSoort" && (
+          {gekozenDoelsoort !== null && cijfer.soort === "cijfer" && (
             <p className="mt-1 max-w-prose text-sm text-ink-zacht">
               {gekozenDoelsoort === "Minimumdoel"
                 ? t("dekking.gefilterdOpMinimumdoel")

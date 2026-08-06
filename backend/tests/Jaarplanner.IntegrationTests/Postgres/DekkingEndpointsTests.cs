@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Generatie;
@@ -347,11 +347,6 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         return (klasId, thema.Id);
     }
 
-    /// <summary>
-    /// A school year with one class and two leerplandoelen, inserted straight through the DbContext because the point
-    /// of this file is the read path rather than the write endpoints (which have their own tests).
-    /// </summary>
-
     [PostgresFact]
     public async Task Dekking_totalen_komen_overeen_met_de_rijen_die_ze_beschrijven()
     {
@@ -386,6 +381,11 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         // either field reaches the same total.
         Assert.All(dekking.Doelen, doel => Assert.Equal(doel.IsGedekt, doel.DekkendeThemas.Count > 0));
     }
+
+    /// <summary>
+    /// A school year with one class and two leerplandoelen, inserted straight through the DbContext because the point
+    /// of this file is the read path rather than the write endpoints (which have their own tests).
+    /// </summary>
     private async Task<Guid> ZetKlasOpAsync(int leerjaar = 0)
     {
         await using var context = _db.MaakContext();

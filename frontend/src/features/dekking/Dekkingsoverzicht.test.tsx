@@ -985,6 +985,19 @@ describe("Dekkingsoverzicht — wat antagonist ronde 1 vond (E5-03)", () => {
     ).toBeInTheDocument();
   });
 
+  it("rejects a prototype key as a doelsoort, not only an invented word", async () => {
+    // Round 2. `ruw in doelsoortBadgeSoort` walks the prototype chain, so "Foo" was rejected while `toString`,
+    // `valueOf`, `constructor`, `hasOwnProperty` and `__proto__` all validated. The lookup then yields a *function*,
+    // which the label interpolates, and the screen read "geen enkel doel van de soort doelsoort.function toString() {
+    // [native code] }". The round-1 test only tried "Foo", so it could not see it.
+    renderApp(`${MET_KLAS}&doelsoort=toString`, { perBereik: { EigenJaarFase: gemengd() } });
+
+    expect(await screen.findByText(t("dekking.percentage", { percentage: 60 }))).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("native code");
+    expect(document.body.textContent).not.toContain("doelsoort.");
+    expect(screen.queryByText(t("dekking.geenVanDezeSoort"))).not.toBeInTheDocument();
+  });
+
   it("ignores a doelsoort the vocabulary does not know rather than rendering the catalogue key", async () => {
     // MINOR-2. `doelsoortLabel("Foo")` looked up `doelsoortBadgeSoort["Foo"]` → undefined → `t("doelsoort.undefined")`,
     // and `t` returns a missing path verbatim, so the screen read "geen enkel doel van de soort doelsoort.undefined"
@@ -1016,5 +1029,93 @@ describe("Dekkingsoverzicht — wat antagonist ronde 1 vond (E5-03)", () => {
     // And it still claims no coverage: "everything is covered" would be the withheld total, spelled out.
     expect(screen.queryByText(t("dekking.allesGedekt"))).not.toBeInTheDocument();
     expect(screen.queryByText(TOTAALVORM)).not.toBeInTheDocument();
+  });
+});
+
+describe("Dekkingsoverzicht — wat antagonist ronde 2 vond (E5-03)", () => {
+  /** Withheld, with one gap still standing among the measured doelen. */
+  function ingehoudenMetHiaat() {
+    return dekking({
+      doelen: [
+        doel({ code: "A-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+        doel({ code: "A-02" }),
+      ],
+      isBetrouwbaar: false,
+      aantalGedekt: null,
+      aantalOnopgelosteVervallenPlaatsingen: 1,
+    });
+  }
+
+  it("still lists the gaps while the figure is withheld, which is what the empty-state copy must not deny", async () => {
+    // THE INVERSE TEST ROUND 2 ASKED FOR, and the one that would have caught the false sentence. `groepen` never reads
+    // `isBetrouwbaar`, so the gaps-only view renders rows normally in this state. The round-1 copy said the opposite
+    // ("Hier staat niets zolang dit overzicht geen cijfer geeft") and its test could not see it, because it only ever
+    // rendered the zero-gap case where the claim is unobservable.
+    renderApp(`${MET_KLAS}&ontbrekend=1`, { perBereik: { EigenJaarFase: ingehoudenMetHiaat() } });
+
+    expect(await screen.findByText("A-02")).toBeInTheDocument();
+    expect(screen.queryByText("A-01")).not.toBeInTheDocument();
+    // The empty-state sentence must be absent: there is nothing empty about this.
+    expect(screen.queryByText(t("dekking.geenOntbrekendeInBeeld"))).not.toBeInTheDocument();
+    // And no figure has leaked in the process.
+    expect(screen.queryByText(TOTAALVORM)).not.toBeInTheDocument();
+  });
+
+  it("refuses the inference instead of explaining the emptiness, when the withheld view has no gaps", async () => {
+    // The rewritten sentence. It may not claim the rows are hidden (they are not) nor promise that resolving a
+    // placement reveals them (resolving can only cover more doelen and shrink the set), and it may not say "everything
+    // is covered", which is `gedekt === totaal` and therefore the withheld figure in words.
+    const allesGedektMaarOnbetrouwbaar = dekking({
+      doelen: [
+        doel({ code: "A-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+        doel({ code: "A-02", isGedekt: true, dekkendeThemas: ["Winter"] }),
+      ],
+      isBetrouwbaar: false,
+      aantalGedekt: null,
+      aantalOnopgelosteVervallenPlaatsingen: 1,
+    });
+    renderApp(`${MET_KLAS}&ontbrekend=1`, { perBereik: { EigenJaarFase: allesGedektMaarOnbetrouwbaar } });
+
+    expect(await screen.findByText(t("dekking.geenOntbrekendeInBeeld"))).toBeInTheDocument();
+    expect(screen.queryByText(t("dekking.allesGedekt"))).not.toBeInTheDocument();
+    expect(screen.queryByText(TOTAALVORM)).not.toBeInTheDocument();
+  });
+
+  it("does not say what counts towards a cijfer on a screen that gives no cijfer", async () => {
+    // Round 2. The guard excluded only `geenVanDezeSoort`, so under a narrowing the withheld screen read "Nog geen
+    // betrouwbaar cijfer" and then, right under it, forty words about what "tellen mee in dit cijfer". The
+    // `buitenBereik` sentence a few lines below already carried the right guard.
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel`, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: gemengd().doelen,
+          isBetrouwbaar: false,
+          aantalGedekt: null,
+          aantalOnopgelosteVervallenPlaatsingen: 1,
+        }),
+      },
+    });
+
+    expect(await screen.findByText(t("dekking.cijferIngehouden"))).toBeInTheDocument();
+    expect(screen.queryByText(t("dekking.gefilterdOpMinimumdoel"))).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(t("dekking.gefilterdOpDoelsoort", { naam: t("doelsoort.md") })),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says nothing about counting towards a cijfer when there is no scope to measure", async () => {
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel`, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [],
+          aantalGedekt: 0,
+          aantalLeerplandoelen: 0,
+          aantalBuitenBereik: 4,
+        }),
+      },
+    });
+
+    expect(await screen.findByText(t("dekking.nietMeetbaar"))).toBeInTheDocument();
+    expect(screen.queryByText(t("dekking.gefilterdOpMinimumdoel"))).not.toBeInTheDocument();
   });
 });
