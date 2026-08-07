@@ -93,11 +93,24 @@
   Clear missing-goals overview, grouped by discipline/domein, actionable from the calendar.
   *Done when:* a gap can be traced to where it should be planned. Ref: FR-9, Art. XII (gap-analyse).
 
-- [~] **E5-06 — Export coverage overview (proof of coverage)** — *built 2026-08-06 on `story/E5-06-dekking-export`
+- [x] **E5-06 — Export coverage overview (proof of coverage)** — *built 2026-08-06 on `story/E5-06-dekking-export`
   (off `story/E5-03-percentage-filter`, since E5-03 was pushed but unmerged when this started; `origin/main` `fc11503`
-  merged in after PR #35 landed). **Antagonist round 1 returned VIOLATIONS FOUND (3 MAJOR, 5 MINOR, 2 QUESTION); every
-  finding is fixed, ruled on or routed. Round 2 is owed and this `[~]` says so.*** Commits `64ee3ce` (server),
-  `8cbda59` (tests + six mutations), `b97e762` (screen), `47600f1` (`nl.json`), `b8bb91a` (fix round 1).
+  merged in after PR #35 landed). **Three antagonist rounds, all three VIOLATIONS FOUND, every finding
+  fixed, ruled on or routed.*** Commits `64ee3ce` (server), `8cbda59` (tests + six mutations), `b97e762` (screen),
+  `dbaff92` (merge of `origin/main`), `47600f1` (`nl.json`), `b8bb91a` (fix round 1), `7893c87` (the repo record and a
+  stale `CLAUDE.md` clause), `0a1fa9b` (fix round 2), plus fix round 3.
+  > **The audit history, because the shape of it is the story's most transferable result.**
+  > - **Round 1: 3 MAJOR, 5 MINOR, 2 QUESTION.** Two of the three MAJOR were things this repository had *already written
+  >   down* and this story walked past: the per-doel-verdict question whose own entry named E5-06 as its deadline, and
+  >   the unrecorded Art. XIV ruling. The third was the `Minimumdoel` column.
+  > - **Round 2: 1 MAJOR, 5 MINOR, 2 QUESTION.** It confirmed all eight round-1 findings genuinely fixed in the tree,
+  >   and **five of its six new findings were in the fix round's own prose**. The MAJOR was a comment guaranteeing that
+  >   the document's stamp and its filename could not name different days, while `Genereer` read the clock twice.
+  > - **Round 3: 0 MAJOR, 8 MINOR, 3 QUESTION**, and **not one finding in the product's behaviour**. It could not break
+  >   the round-2 fix. All eight were documentation, and **four were figures it re-derived and found short** — a
+  >   register count, a byte-identity claim, a mutation-list entry naming a test that cannot fail, and an absence count
+  >   left over from an earlier version of the same list. The fourth consecutive round in this family whose findings
+  >   live in prose rather than in code. *If anything in E5-06 is wrong, the prose is where to look, not the export.*
   Export the dekkingsoverzicht as evidence.
   *Done when:* an export reproduces the on-screen coverage faithfully. Ref: FR-9.5, FR-11.2.
   > ### **Two owner rulings, taken 2026-08-06 *before any code was written*, because Art. XIV reserves this and E5-07 is `[!]` on it.**
@@ -183,10 +196,16 @@
   > 10. the `Minimumdoel` column added back → `Er_staat_geen_minimumdoelkolom_in_het_document`
   > 11. column 1's width back to 14 → `Elk_kopbloklabel_past_in_de_breedte_van_de_eerste_kolom`
   > 12. the clock read a second time for the filename → `De_klok_wordt_een_keer_per_document_gelezen`
-  > 13. the export link rendered before the read completes → the two absence tests on the screen
+  > 13. the **`dekking.data` half only** of the link's `klasId && dekking.data` guard removed, so the link renders while
+  >     the read is still pending → *"staat er ook niet als de dekking niet berekend kon worden"*, and **only** that one.
+  >     *It read "the two absence tests" until round 3 checked it:* `useSelectie` returns `""` rather than `null` for
+  >     no-klas, so the no-klas test's absence is produced entirely by the `klasId` half and it passes unchanged
+  >     under this mutation. Naming two tests where one bites is exactly the failure a list was written to prevent.
   >
-  > **Two of these assert an ABSENCE**, which no deletion can mutation-check: the no-filter-parameter one was checked by
-  > **adding** the filter a future story would add back, and the no-minimumdoel-column one by adding the column back.
+  > **Four of these assert an ABSENCE**, which no deletion can mutation-check, so each was checked by **adding** the
+  > thing back: the filter parameter on the server (6) and in the link (7), the `Minimumdoel` column (10), and the
+  > link itself (13). *The sentence said "two" and was a leftover from the six-mutation era; it survived the list
+  > growing to eleven and then to thirteen, which is what a count nobody re-derives does.*
   > A **real browser pass** over CDP against a live API and real PostgreSQL, on a throwaway database: two placements
   > accepted through E4-02's own button took dekking **0 → 4 of 14**; the screen was then narrowed to
   > `?doelsoort=Minimumdoel&ontbrekend=1` (showing **80%** and one row) and the downloaded workbook still held **all 14
@@ -194,8 +213,8 @@
   > violations** at 1440px; no horizontal overflow at a true 390px viewport (`Emulation.setDeviceMetricsOverride`, not
   > a clamped `--window-size`).
   > **⚠️ The browser pass predates fix round 1; the Gates figures above do not.** Said plainly rather than presented as
-  > one measurement, because they are not one. Fix round 1 touched no frontend source at all (only `catalogus.test.ts`),
-  > so every *screen* figure above still describes the shipped screen, and every *document* claim survives the fixes and
+  > one measurement, because they are not one. **Neither fix round touched frontend source**: round 1 touched only `catalogus.test.ts`
+  > and round 2 touched no frontend file at all (round-3 audit verified both), so every *screen* figure above still describes the shipped screen, and every *document* claim survives the fixes and
   > is now additionally covered by the HTTP tests on real PostgreSQL. **The one property a browser was the sole witness
   > to, and which the fix changed, is the rendered column width** — and that is honestly unverified in a renderer.
   > `Elk_kopbloklabel_past_in_de_breedte_van_de_eerste_kolom` asserts `Length > Breedte`, which is a **proxy**: Excel's
@@ -231,6 +250,12 @@
   >   than this story's:* the Art. XI ratification log has no row for `e420648`, the 2026-07-30 language amendment that
   >   this story's server-composed Dutch rests on. The amendment text is in Art. II.3, so the authority is sound and it
   >   is only the log that is short.
+  > - **The export route is unauthenticated, and it is accepted E7-11 debt rather than a new breach.** Recorded here
+  >   because round 2 raised it and round 3 found the substance recorded only on `DekkingController` (E5-01's entry
+  >   carries the analogous note for the JSON read). It exposes not one field more than the JSON endpoint beside it and
+  >   FA §3.2 lets all three roles view dekking, so the role matrix demands no gate — but **the blast radius genuinely
+  >   changes**: one guessable URL now yields a portable document of a whole class's planning and coverage, where before
+  >   it yielded a JSON body. **E7-11** owns the app-wide gap and is blocked on E6-01/E6-02.
   > - **axe reports 0 violations and one `incomplete`**: `aria-prohibited-attr` on 14 nodes, all of them the
   >   pre-existing doelsoort badge, a roleless `<span aria-label="Minimumdoel">`. ARIA prohibits that, so a screen
   >   reader may announce *"MD"* and never the expansion. E5-02/E1-16 own the component; **E7-20** is the family.

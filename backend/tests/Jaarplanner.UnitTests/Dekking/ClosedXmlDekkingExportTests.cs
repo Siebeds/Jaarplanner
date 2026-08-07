@@ -459,8 +459,13 @@ public class ClosedXmlDekkingExportTests
         // scope, a withheld figure and a buiten-bereik count all at once.
         //
         // `Length > Breedte` is a PROXY and not the property. Excel's width unit is the default font's digit width and
-        // these labels are bold, so a 22-character label of wide glyphs could fit the test and still clip. It holds
-        // today with room to spare; what it cannot do is replace looking at a rendered sheet.
+        // these labels are bold, so a 22-character label of wide glyphs could fit the test and still clip.
+        //
+        // The margin, in numbers rather than in reassurance (antagonist round 3 struck "room to spare" from here,
+        // which was a fresh unmeasured claim inside the sentence written to remove one): the longest label is
+        // "Buiten dit overzicht" at 20 characters against a width of 22, and the others are 4, 7, 10, 12 and 13.
+        // Two characters of slack BEFORE bold inflation is thin, and this test cannot tell you whether bold Calibri
+        // eats it. Only a rendered sheet can, and nobody has opened one.
         var bestand = Export().Genereer(
             Weergave(aantalBuitenBereik: 132, isBetrouwbaar: false, aantalOnopgeloste: 3, aantalGedekt: null));
 

@@ -85,8 +85,14 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
         // ONE read of the clock for the whole document, and it has to be here rather than inside the two writers.
         // Both the kopblok's stamp and the filename's date come from it, and the guarantee that they name the same day
         // is only true if the instant is captured once: `Nu()` unified the ZONE conversion, not the instant, so two
-        // calls either side of midnight produced a file stamped 6 August and named 2026-08-07. The window is
-        // sub-millisecond and the defect was in the comment claiming it could not happen (antagonist round 2, MAJOR).
+        // calls either side of midnight produced a file stamped 6 August and named 2026-08-07. The defect was in the
+        // comment claiming it could not happen (antagonist round 2, MAJOR).
+        //
+        // **The window was not narrow, and the first attempt at this comment said "sub-millisecond"** (antagonist
+        // round 3). The two reads were separated by the whole table write plus `workbook.SaveAs`, i.e. the full OPC
+        // serialisation: measured at roughly 10 ms for a two-row sheet and growing with row count. Understating it
+        // made the defect look less reachable than it was, in the sentence written to replace one that said it
+        // could not happen at all.
         // A fixed-clock test is blind to this by construction, which is why `StappendeTijd` exists in the tests.
         var nu = Nu();
 
