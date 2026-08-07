@@ -1169,10 +1169,29 @@ describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
     expect(screen.getByText(t("dekking.lacuneRegelGeenThema"))).toBeInTheDocument();
   });
 
-  it("gives a covered doel its evidence and no remedy", async () => {
+  it("gives a covered doel its evidence and no remedy, even when a cause is attached", async () => {
     // The mirror-image rule: one slot, two opposite meanings, never both. A covered row carrying a cause line would
     // read as a contradiction, taught and here is what to do about it.
-    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: VIER_OORZAKEN } });
+    //
+    // **THE FIXTURE DELIBERATELY BREAKS THE SERVER'S INVARIANT, and that is the whole test.** A first version used the
+    // ordinary covered doel, whose `oorzaak` the fixture nulls because the server nulls it — so the assertion held
+    // through the fixture rather than through the component, and a mutation removing `!doel.isGedekt` from the render
+    // condition left the suite green. Caught by running that mutation, not by reading the test. What is under test is
+    // the row's OWN guard, so the row has to be handed the state that guard exists for.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [
+            {
+              ...doel({ code: "NAT-K3-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+              oorzaak: "NietIngepland",
+              kandidaatThemas: ["Winter"],
+            },
+            doel({ code: "NAT-K3-02", oorzaak: "GeenThema" }),
+          ],
+        }),
+      },
+    });
 
     const rij = (await screen.findByText("NAT-K3-01")).closest("li");
     expect(rij).not.toBeNull();
@@ -1180,8 +1199,17 @@ describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
     expect(
       within(rij!).getByText(t("dekking.dekkendeThemas", { themas: "Herfst" })),
     ).toBeInTheDocument();
-    expect(within(rij!).queryByText(/^Wacht op je beslissing/)).not.toBeInTheDocument();
-    expect(within(rij!).queryByText(t("dekking.lacuneRegelGeenThema"))).not.toBeInTheDocument();
+    expect(
+      within(rij!).queryByText(t("dekking.lacuneRegelNietIngepland", { themas: "Winter" })),
+    ).not.toBeInTheDocument();
+
+    // And the contradictory row is not offered as a route either: the count is driven by `isGedekt`, so a goal that
+    // is already taught cannot put work into the block above.
+    expect(
+      within(routeblok()).queryByText(
+        tAantal(1, "dekking.lacuneNietIngeplandEnkelvoud", "dekking.lacuneNietIngepland"),
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("aggregates the routes above the list, one line per cause with its own count", async () => {
