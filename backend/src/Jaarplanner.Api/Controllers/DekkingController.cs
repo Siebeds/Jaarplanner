@@ -11,11 +11,13 @@ namespace Jaarplanner.Api.Controllers;
 /// never stored (Art. V.1), so there is nothing here to write. The GET recomputes on every call.
 /// </para>
 /// <para>
-/// <b>It is an invocation surface for a computation, not yet a screen.</b> This project has withdrawn a milestone
-/// over a service reachable only from its own unit tests (E2-08), so the endpoint ships in the same change as the
-/// computation. It is deliberately <b>not</b> a claim that FR-9 is satisfied: the dekkingsoverzicht itself is
-/// E5-02/E5-03/E5-05, and until one of those ships no teacher can see this. What this surface does buy is that the
-/// figure can be verified against a real database by anyone, including this story's own gates.
+/// <b>It shipped as an invocation surface for a computation before any screen existed</b>, because this project has
+/// withdrawn a milestone over a service reachable only from its own unit tests (E2-08), so the endpoint went out in
+/// the same change as the computation. <i>Written at the time as "not yet a screen" and "not a claim that FR-9 is
+/// satisfied"; E5-02 built the screen, and E5-03, E5-06 and E5-05 the percentage, the export and the gap-analyse, so
+/// that sentence is now history rather than a caveat.</i> What the surface still buys is that the figure can be
+/// verified against a real database by anyone, including a story's own gates. <b>FR-9 remains unsatisfied for one
+/// reason only:</b> minimumdoel level (E5-04) is blocked on E1-12, and that is the level Art. V.2 names.
 /// </para>
 /// <para>
 /// <b>Unauthenticated, like every other read surface here, and that is debt rather than a decision.</b> This adds one

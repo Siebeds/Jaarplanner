@@ -89,9 +89,87 @@
   Surface coverage at minimumdoel level via concordance — the level the onderwijsinspectie tests.
   *Done when:* a minimumdoel shows covered iff ≥1 concorded leerplandoel is covered. Ref: FR-9.3, Art. V.2.
 
-- [ ] **E5-05 — Gap-analyse presentation**
+- [~] **E5-05 — Gap-analyse presentation** — *built 2026-08-07 on `story/E5-05-gap-analyse`, off `origin/main`
+  `96a9060`. Commits `ff911e6` (server), `3b11cb2` (screen), `5ca1ac8` (a test the mutation check exposed as
+  vacuous). **`[~]` and not `[x]`: no antagonist round has run**, and this backlog's own status legend reserves `[x]`
+  for "implemented, tested, Antagonist-clean". The gates and the browser pass below are this session's own evidence;
+  the independent pass is owed and every story here that skipped one says so in its own text.*
   Clear missing-goals overview, grouped by discipline/domein, actionable from the calendar.
   *Done when:* a gap can be traced to where it should be planned. Ref: FR-9, Art. XII (gap-analyse).
+  > ### **OWNER RULING, 2026-08-07: the grouping stays `(domein, subdomein)` and gets no discipline level.**
+  > The line above asks for the list *"grouped by discipline/domein"*, so this narrows the story's own text and is
+  > recorded here rather than quietly not done. The taxonomy really does have three levels (Art. VII.0), the
+  > disciplinenaam is seeded and already user-facing in the Doelen-register, and `Leerplandoel.DisciplineNummer`
+  > exists — so the option was live and was put to the owner with its cost: a third grouping level also touches the
+  > list E5-02 and E5-03 built and the export layout E5-06 had ruled on. **Rejected in favour of leaving those alone.**
+  > The day it is wanted it is a payload field and a group key, not a rework. *Recorded on the screen as well, in
+  > `DekkingPagina`'s list of deliberate absences, so a reader of the code does not have to find this file.*
+  >
+  > **What was built instead is the other half of the same sentence, and it is the half the acceptance criterion
+  > actually names.** `/dekking` has listed *which* doelen are missing since E5-03; this story says **why** each one is
+  > missing and **where** that is closed. Four causes, ordered cheapest-route-first, first match wins:
+  > `WachtOpBeslissing` (a thema carrying it stands in the plan as an unanswered proposal), `NietIngepland` (a thema
+  > carries it and sits in no period: never placed, rejected, or stale), `KoppelingNietBeslist` (only an undecided
+  > doelsuggestie links it, so the decision is a link decision and planning would not help), and `GeenThema`.
+  > **E3-03 wrote the hand-off itself**: `Dekkingsvooruitzicht` counts what accepting the plan would cover and says in
+  > its own type that *which* doelen those are is E5-05's to list. `WachtOpBeslissing` is exactly that set, and a unit
+  > test pins the two against each other rather than leaving the equality to hold by inspection.
+  > **Where each half lives, because the split is the design.** The **row** states the cause, in the same slot and the
+  > same type as the evidence line a covered row has carried since E5-02: one column of reasons either way. The
+  > **routes are aggregated** into one block above the list, at most four lines with a count and one link each. No
+  > control per row, and that is deliberate: in September a class is legitimately uncovered almost everywhere, so a
+  > hundred near-identical buttons is the mistake `Doeldekkingregel`'s own comment already rejects for a solid red
+  > chip. And a teacher does not close gaps one doel at a time. Placing one thema closes fourteen.
+  > **`GeenThema` gets no link** (the E3-06 rule): planning cannot close it, so a link to either screen would be a
+  > control that does not do what it says. The line still renders, because "these cannot be closed by planning" is the
+  > most useful thing this block can tell a directie about Art. V.2.
+  > ### **The one rule that cost thought, and it is a leak this repo has already shipped once.**
+  > The four counts partition the gaps in view, so they add up to `totaal - gedekt` — precisely the figure the directie
+  > ruling of 2026-07-28 withholds while a placement is unresolved. **E5-02 shipped that leak through its group
+  > tallies**: the summary said it would give no figure while every group printed one, and the counts were additive.
+  > So the block **does not render at all** in the withheld state, gated on the same `cijfer.soort` the group tallies
+  > use. Two alternatives were rejected and both are recorded on `Lacuneroutes`: rendering the lines without counts
+  > needs a second copy family saying the same things less precisely (E5-03's rule is to say less, not to say
+  > something else), and rendering with counts plus a caveat is the E4-06 contradiction — a warning that the figure
+  > cannot be trusted, beside figures. The rows keep explaining themselves, because a per-doel cause is not a figure;
+  > that scope was settled by **E5-06's** audit.
+  > **A constraint the storage read imposes on the copy, guarded rather than trusted.** The candidate read excludes
+  > `geweigerd` links entirely, so a goal whose only link the teacher already rejected classifies as `GeenThema`.
+  > That cause may therefore say no thema **covers** the goal and may never say none is **linked** to it. It is the
+  > more natural sentence to write, which is why `catalogus.test.ts` reads the value rather than the key: a `t(key)`
+  > assertion moves with the catalogue and cannot catch a lying sentence (E5-03's lesson).
+  > **What the export does NOT carry, with a test on the absence.** A cause is a *remedy* and the document is
+  > *evidence* (Art. V.4); and Art. XIV reserves export layout for directie, which E5-06 obtained a ruling on
+  > precisely so it would not be settled by implication. Adding two columns on this story's judgement would undo that.
+  > **The duplication this story adds, named rather than hidden.** The four-layer, four-status predicate is now written
+  > out **eight** times across two storage methods, because EF cannot translate a call to a shared one — the
+  > constraint **E1-17** owns. `De_besliste_kandidaten_zeggen_hetzelfde_als_de_dekkende_lezing` pins the two against
+  > each other on real PostgreSQL, because `WachtOpBeslissing` is only sound while they agree: a layer present in one
+  > query and missing from the other becomes a doel reported as one click from covered while the click does nothing.
+  > Merging the two reads is the better fix and is deliberately left to E1-17, whose scope it would otherwise absorb.
+  > **Gates.** 646 unit + 230 integration on real PostgreSQL (0 skipped), `dotnet format` exit 0; 628 frontend / 24
+  > files, eslint + `tsc` + `pnpm build` clean. **Thirteen mutation checks**, and the thirteenth is the one worth
+  > carrying: removing `!doel.isGedekt` from the row's render condition left the whole suite **green**, because the
+  > test used the ordinary covered fixture whose `oorzaak` the fixture nulls exactly as the server does. The assertion
+  > held through the fixture's invariant and never reached the component's own guard. E4-08 recorded this class in its
+  > own words — *a mutation check can pass because the test's own setup already did the thing under test* — and this
+  > is the next instance. Found by running the mutation, not by re-reading the test.
+  > **Browser pass** at 1440px and 390px against a live API and real PostgreSQL, on a fixture holding one instance of
+  > every state (2 gedekt, 6 `WachtOpBeslissing`, 2 `NietIngepland`, 2 `KoppelingNietBeslist`, 2 `GeenThema`).
+  > **axe 0 violations at both widths.** Composited contrast: route sentences **15,42:1**, links **8,90:1** at 24px
+  > tall (SC 2.5.8), cause lines **6,08:1** at 12px — the same token and the same measurement as the evidence line
+  > they mirror. Nothing of this story overflows at 390px; the elements that do are the scrolling nav, pre-existing.
+  > The withheld state was reached by making a placement stale and **the block disappeared while the rows kept their
+  > cause lines**, with no total anywhere on the page including `title`/`aria-*`/`value`/`content` attributes and no
+  > `progress`/`meter`/`[role=progressbar]` element. That same stale placement moved its two doelen from
+  > `WachtOpBeslissing` to `NietIngepland` in front of the browser, which is the classification's sharpest case
+  > driven live rather than only in a `[Theory]`.
+  > **One thing the browser could NOT check, stated rather than implied:** the demo seeder writes a single doelsoort,
+  > so the interaction between the doelsoort filter and the route counts was exercised only by a component test. Same
+  > residual E5-03 carried, same cause.
+  > ***No antagonist round has run yet, which is why the checkbox is `[~]`.*** Every other story in this epic that
+  > closed without a full audit chain recorded that on itself (E5-01, E5-02); this one does not even have a first
+  > round, so it does not get the checkbox at all until it does.
 
 - [x] **E5-06 — Export coverage overview (proof of coverage)** — *built 2026-08-06 on `story/E5-06-dekking-export`
   (off `story/E5-03-percentage-filter`, since E5-03 was pushed but unmerged when this started; `origin/main` `fc11503`

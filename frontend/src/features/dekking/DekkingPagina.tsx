@@ -70,9 +70,14 @@ export { JAARFASE_PARAM };
  * exactly what the teacher was looking at. Written with `replace`, so switching scope does not fill the history.
  *
  * **What this screen deliberately does not do**, so no later story credits itself with it and no reader mistakes an
- * absence for an oversight:
- * - **no percentage, no doelsoort filter, no ontbrekende-doelenlijst** (E5-03);
- * - **no gap-analyse grouped by discipline and actionable from the kalender** (E5-05);
+ * absence for an oversight. *Two entries have been struck because they came true* (E5-03 landed the percentage, the
+ * doelsoort filter and the gaps-only list; E5-05 landed the gap-analyse), which is worth doing rather than leaving:
+ * a list of absences that keeps naming things the screen now has is how a reader stops believing the entries that are
+ * still true.
+ * - **no discipline level in the grouping.** E5-05's story text asked for the gap list *"grouped by
+ *   discipline/domein"* and the **owner ruled on 2026-08-07 that (domein, subdomein) stays**, so this is a decision
+ *   rather than an omission. The taxonomy has three levels (Art. VII.0) and the disciplinenaam is available, so the
+ *   day it is wanted it is a payload field and a group key, not a rework.
  * - **no minimumdoel level**, the level the onderwijsinspectie actually tests (E5-04, blocked on E1-12 because no
  *   `Minimumdoel` row can exist yet). That absence is stated **on screen**, not only here: a directie reading this as
  *   inspectie-proof would otherwise draw a conclusion the data does not support.

@@ -26,8 +26,12 @@ import type { Dekking, Dekkingsbereik } from "./types";
  * allowed to appear without saying what it is a percentage *of*. It also never appears where the count would not
  * (`bepaalCijfer` is the one gate), so the directie ruling of 2026-07-28 governs both figures identically.
  *
- * **Still not here:** the gap-analyse grouped by discipline and actionable from the kalender (**E5-05**), and the
- * minimumdoel level (**E5-04**, blocked on E1-12).
+ * **Still not here:** the minimumdoel level (**E5-04**, blocked on E1-12).
+ *
+ * *This line used to name the gap-analyse too. E5-05 built it (2026-08-07), and it lives one component down in
+ * `Lacuneroutes` rather than in this card, deliberately: this card is where the figure and its scope are stated, and
+ * the routes out of the gaps are gated on that figure being shown at all. Keeping them apart is what lets the gate be
+ * expressed once, in `DekkingPagina`, instead of twice.*
  */
 export interface DekkingsamenvattingProps {
   dekking: Dekking;

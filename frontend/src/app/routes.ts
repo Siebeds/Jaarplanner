@@ -128,13 +128,12 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
     isGebouwd: true,
     magBeheerder: false,
     // Read as precisely as the note on `isGebouwd` asks, because this destination is knowingly partial. **E5-02**
-    // built the per-class overview: every in-scope leerplandoel with gedekt / niet gedekt, the covering thema's as
-    // evidence, a scope switch, and a summary that withholds its figure while a stale placement is unresolved. What
-    // is NOT here: the dekkingspercentage and the doelsoort filter (**E5-03**), the gap-analyse traceable to where a
-    // doel should be planned (**E5-05**), the export (**E5-06**), and **minimumdoel level** (**E5-04**) which is the
-    // level the onderwijsinspectie tests and is blocked on **E1-12**. The screen states that last absence itself, in
-    // visible text rather than in a tooltip, so nobody reads it as inspectie-proof it is not yet.
-    story: "E5-02 (per-class overview); E5-03/E5-04/E5-05/E5-06 complete it",
+    // built the per-class overview, **E5-03** the percentage / doelsoort filter / gaps-only list, **E5-06** the
+    // export, and **E5-05** the gap-analyse: every uncovered doel now names why it is uncovered and one block above
+    // the list says where each kind of gap is closed. What is still NOT here is **minimumdoel level** (**E5-04**),
+    // the level the onderwijsinspectie tests, blocked on **E1-12**. The screen states that absence itself, in visible
+    // text rather than in a tooltip, so nobody reads it as inspectie-proof it is not yet.
+    story: "E5-02/E5-03/E5-05/E5-06 built it; E5-04 completes it",
   },
   {
     pad: "/import",
