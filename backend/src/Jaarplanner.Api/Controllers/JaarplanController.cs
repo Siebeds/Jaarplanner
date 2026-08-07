@@ -168,6 +168,70 @@ public sealed class JaarplanController : ControllerBase
     }
 
     /// <summary>
+    /// Regenerates <b>one themaperiode</b> and leaves the rest of the plan untouched (E4-05, FR-8.2).
+    /// <para>
+    /// A sibling of <c>POST …/generatie</c> rather than a flag on it, because the two differ in what they promise and
+    /// in what a teacher presses: the whole-plan run takes the pre-generation form as its body and <b>replaces</b> the
+    /// kept settings, while this one takes no body at all and only <b>reads</b> them. Folding them together would give
+    /// one endpoint two contracts for the same field.
+    /// </para>
+    /// <para>
+    /// Response contract:
+    /// <list type="bullet">
+    /// <item><b>400</b> — <paramref name="blokStart"/> starts no block of the current grid (refused, never snapped);</item>
+    /// <item><b>409</b> — a blocking vast moment holds that period, so it is refused <i>before</i> the model is called
+    /// (owner ruling 2026-08-06). The client disables the control for such a period and says why, so reaching this
+    /// status means the page is out of date;</item>
+    /// <item><b>422</b> — the model's answer was unusable; nothing persisted, exactly as the whole-plan run;</item>
+    /// <item><b>404</b> — the class does not exist;</item>
+    /// <item><b>200</b> — the run report, whose <c>aantalNieuw</c>, <c>aantalBehouden</c> and <c>aantalVervangen</c>
+    /// are scoped to this period, with <c>geregenereerdePeriode</c> naming it.</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <b>The date is the key, in the route.</b> Not an ordinal: "periode 3" shifts when the school edits its
+    /// vakanties (ADR-0020 §3), and this is the one identifier the placements themselves are stored under.
+    /// </para>
+    /// </summary>
+    /// <param name="klasId">The class whose plan is being changed.</param>
+    /// <param name="blokStart">The start date of the themaperiode to fill.</param>
+    /// <param name="cancellationToken">Cancels an in-flight call.</param>
+    /// <param name="jaarFase">
+    /// The kleuterjaar the teacher has narrowed the screen to, passed through to the dekkingsvooruitzicht only, exactly
+    /// as on the whole-plan run. It changes nothing about the generation.
+    /// </param>
+    [HttpPost("periodes/{blokStart}/generatie")]
+    public async Task<ActionResult<JaarplanGeneratieResultaat>> GenereerPeriode(
+        Guid klasId,
+        DateOnly blokStart,
+        CancellationToken cancellationToken,
+        [FromQuery] string? jaarFase = null)
+    {
+        var resultaat = await _service.GenereerPeriodeAsync(klasId, blokStart, cancellationToken);
+
+        if (!resultaat.IsGeslaagd)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Invalid AI response",
+                Detail = resultaat.Fout,
+            });
+        }
+
+        // FR-5.3's measured half, attached here for the reason spelled out on the whole-plan run above — and this is
+        // the obligation the backlog recorded against this story: a second generation route that does not repeat this
+        // composition returns a run report with no coverage figures, and nothing fails to say so.
+        //
+        // Measured over the WHOLE plan, not over the regenerated period. A dekking figure for one period would be a
+        // new denominator nobody ruled on, and the panel shows it beside the same class-wide figure `/dekking` shows.
+        var vooruitzicht = await _dekking.BerekenVooruitzichtAsync(
+            klasId, jaarFase: jaarFase, cancellationToken: cancellationToken);
+
+        return Ok(resultaat with { Vooruitzicht = vooruitzicht });
+    }
+
+    /// <summary>
     /// The class's <b>kept</b> pre-generation settings (E3-04, FR-5.4) — what the form loads so a teacher sees the
     /// settings they last used instead of starting empty every time (owner ruling, 2026-07-30).
     /// <para>

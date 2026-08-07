@@ -87,6 +87,13 @@
   endpoint that triggers a **billable external call**, and its candidate list is uncapped by default
   (`LeerdoelSelectie.Alles`, see E1-15), so an unauthenticated caller can bill the school in a loop. The
   Art. VI.1 exposure is pre-existing and gated here; what was missing was this line.
+  > *A third billable anonymous route, and the AI-cost dimension changed shape (2026-08-06, E4-05).*
+  > `POST /api/klassen/{klasId}/jaarplan/periodes/{blokStart}/generatie` joins the two above. What is new is not the
+  > count but the **granularity**: until now a billable generation was one call per class, and this is one per
+  > *period*, so a year with seven themaperiodes is seven times the surface at the same authentication level (none).
+  > Recorded here rather than on E4-05 because the gate that must hold before deployment is this one, and because a
+  > route list that stops being complete stops being a blast radius. No code change is asked for: the endpoint is as
+  > anonymous as every other one, which is precisely the condition E7-11 blocks deployment on.
   > *Sharpened 2026-07-31 (E1-15 shipped, owner ruling).* The uncapped candidate list is now **ruled to stay
   > uncapped** (owner: which goals are withheld from the model is pedagogical, not technical — see E2-08's
   > item 2), and the Op.stap import that makes it grow is now triggerable. So the per-call cost of this

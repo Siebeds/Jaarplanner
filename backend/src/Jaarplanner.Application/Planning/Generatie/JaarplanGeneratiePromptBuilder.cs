@@ -159,12 +159,70 @@ public static class JaarplanGeneratiePromptBuilder
         };
     }
 
+    /// <summary>
+    /// Builds the grounded request for regenerating <b>one period only</b> (FR-8.2).
+    /// <para>
+    /// <b>The model is still shown every block, and that is the point.</b> Handing it only the target block would be
+    /// the smaller prompt and the worse one: the Dekking rules ask it to prefer the thema whose leerplandoelen are not
+    /// covered elsewhere, and the Spreiding rules ask for a logical order across the year, neither of which is
+    /// answerable by a model that cannot see the year. So the full grid stays, <see cref="BouwVoorPeriode"/> adds what
+    /// is already planned, and the scope is stated as an instruction at the end.
+    /// </para>
+    /// <para>
+    /// <b>The instruction is not the enforcement.</b> A placement the model returns for another period is refused by
+    /// <see cref="JaarplanGeneratieService"/> and reported, exactly as an unknown thema name is: the prompt asks so the
+    /// answer is usable in one pass, the service enforces so a model that ignores the ask cannot touch a period the
+    /// teacher did not choose. This split is the same one FR-5.4's blocking vast moment already uses.
+    /// </para>
+    /// <para>
+    /// A whole-plan run reaches <see cref="Bouw"/> and produces byte-for-byte the prompt it produced before this story
+    /// existed — none of the sections below are appended to it — which is what keeps the existing snapshot test
+    /// meaningful rather than merely re-recorded.
+    /// </para>
+    /// </summary>
+    /// <param name="doelBlok">The one block to fill. Must be one of <paramref name="blokken"/>.</param>
+    /// <param name="alGeplaatst">
+    /// What is already in the plan and will still be there after this run's discard — see
+    /// <see cref="BestaandePlaatsing"/> for why placements about to be dropped are excluded.
+    /// </param>
+    public static AiRequest BouwVoorPeriode(
+        Klas klas,
+        Schooljaar schooljaar,
+        IReadOnlyCollection<Planningsblok> blokken,
+        IReadOnlyCollection<Thema> themas,
+        Planningsblok doelBlok,
+        IReadOnlyCollection<BestaandePlaatsing> alGeplaatst,
+        JaarplanGeneratieParameters? parameters = null)
+    {
+        ArgumentNullException.ThrowIfNull(klas);
+        ArgumentNullException.ThrowIfNull(schooljaar);
+        ArgumentNullException.ThrowIfNull(blokken);
+        ArgumentNullException.ThrowIfNull(themas);
+        ArgumentNullException.ThrowIfNull(doelBlok);
+        ArgumentNullException.ThrowIfNull(alGeplaatst);
+
+        return new AiRequest
+        {
+            SystemPrompt = SystemPrompt,
+            UserPrompt = BouwUserPrompt(
+                klas,
+                schooljaar,
+                blokken,
+                themas,
+                parameters ?? JaarplanGeneratieParameters.Geen,
+                doelBlok,
+                alGeplaatst),
+        };
+    }
+
     private static string BouwUserPrompt(
         Klas klas,
         Schooljaar schooljaar,
         IReadOnlyCollection<Planningsblok> blokken,
         IReadOnlyCollection<Thema> themas,
-        JaarplanGeneratieParameters parameters)
+        JaarplanGeneratieParameters parameters,
+        Planningsblok? doelBlok = null,
+        IReadOnlyCollection<BestaandePlaatsing>? alGeplaatst = null)
     {
         var sb = new StringBuilder();
 
@@ -174,15 +232,119 @@ public static class JaarplanGeneratiePromptBuilder
         sb.Append(Nl);
         SchrijfThemas(sb, themas);
 
-        // Last, and only when there is something to say. Placed after the data it refers to so the model reads the
-        // thema names and block dates before the constraints that cite them.
+        // Per-period only. Written before the parameters and the scope instruction, on the same reasoning that puts
+        // the parameters after the block list: a section that cites thema names and block dates comes after the
+        // lists that define them.
+        if (doelBlok is not null)
+        {
+            sb.Append(Nl);
+            SchrijfAlGeplaatst(sb, alGeplaatst ?? [], doelBlok);
+        }
+
+        // Only when there is something to say. Placed after the data it refers to so the model reads the thema
+        // names and block dates before the constraints that cite them.
         if (!parameters.IsLeeg)
         {
             sb.Append(Nl);
             SchrijfParameters(sb, parameters, blokken);
         }
 
+        // Last of all, deliberately: it is the one instruction that overrides the reading a model would otherwise take
+        // from the system prompt, which describes distributing thema's over "de planningsblokken van het schooljaar".
+        if (doelBlok is not null)
+        {
+            sb.Append(Nl);
+            SchrijfPeriodeopdracht(sb, doelBlok);
+        }
+
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// What the plan already holds, split into the target period and the rest of the year, because the two mean
+    /// different things to the model: in the target period these are the placements it may <b>not</b> displace or
+    /// repeat, elsewhere they are the coverage and ordering context it should plan around.
+    /// </summary>
+    private static void SchrijfAlGeplaatst(
+        StringBuilder sb,
+        IReadOnlyCollection<BestaandePlaatsing> alGeplaatst,
+        Planningsblok doelBlok)
+    {
+        Line(sb, "# Wat al in het jaarplan staat");
+        Line(sb, string.Empty);
+
+        if (alGeplaatst.Count == 0)
+        {
+            // NOT "het jaarplan is nog leeg", which is what this said first and which is not the same claim. The list
+            // is already filtered: a proposal this run is about to discard is absent, and so is a placement the teacher
+            // rejected. Both leave a plan that holds rows while nothing in it has to be planned around, and a prompt
+            // that called that empty would be telling the model something false about the school's data (Art. IV.4).
+            // Found by the test for the rejected case, which is the whole reason it exists.
+            Line(sb, "- (er staat nog geen thema dat blijft staan)");
+            return;
+        }
+
+        // Ordered by the stable key first, then by name, so caller ordering cannot change the prompt — the same
+        // determinism rule the block and thema lists follow.
+        var geordend = alGeplaatst
+            .OrderBy(p => p.BlokStart)
+            .ThenBy(p => p.ThemaNaam, StringComparer.Ordinal)
+            .ToList();
+
+        var inDoelBlok = geordend.Where(p => p.BlokStart == doelBlok.Start).ToList();
+        if (inDoelBlok.Count > 0)
+        {
+            Line(
+                sb,
+                "In de periode die je nu vult staan deze thema's al, en die blijven staan. Stel ze niet opnieuw " +
+                "voor:");
+            Line(sb, string.Empty);
+            foreach (var plaatsing in inDoelBlok)
+            {
+                Line(sb, $"- {plaatsing.ThemaNaam}");
+            }
+
+            Line(sb, string.Empty);
+        }
+
+        var elders = geordend.Where(p => p.BlokStart != doelBlok.Start).ToList();
+        if (elders.Count == 0)
+        {
+            Line(sb, "In de andere periodes staat nog niets.");
+            return;
+        }
+
+        Line(
+            sb,
+            "In de andere periodes staat dit al. Verander daar niets aan, maar houd er rekening mee: kies voor de " +
+            "periode die je vult bij voorkeur een thema met leerplandoelen die hier nog niet aan bod komen.");
+        Line(sb, string.Empty);
+        foreach (var plaatsing in elders)
+        {
+            Line(sb, $"- startdatum {Datum(plaatsing.BlokStart)}: {plaatsing.ThemaNaam}");
+        }
+    }
+
+    /// <summary>
+    /// The scope instruction for a per-period run: fill exactly this block, and answer with nothing else.
+    /// <para>
+    /// It names the date rather than the label ("periode 3"), for the reason the system prompt already gives: an
+    /// ordinal shifts when the school edits its vakanties (ADR-0020 §3). The label is not printed here at all, so
+    /// there is no second way to refer to the block and therefore no way for the two to disagree.
+    /// </para>
+    /// </summary>
+    private static void SchrijfPeriodeopdracht(StringBuilder sb, Planningsblok doelBlok)
+    {
+        Line(sb, "# Opdracht");
+        Line(sb, string.Empty);
+        Line(
+            sb,
+            $"Vul ENKEL de periode met startdatum {Datum(doelBlok.Start)} (t/m {Datum(doelBlok.Eind)}). Elk " +
+            $"voorstel dat je geeft moet als \"blokStart\" exact {Datum(doelBlok.Start)} hebben. Stel niets voor " +
+            "voor een andere periode: de rest van het jaarplan blijft zoals het is.");
+        Line(
+            sb,
+            "Past er in die periode geen enkel thema, antwoord dan met een lege lijst: {\"plaatsingen\": []}.");
     }
 
     /// <summary>

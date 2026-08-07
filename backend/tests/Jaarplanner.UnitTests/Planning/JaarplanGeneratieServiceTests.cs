@@ -2003,6 +2003,641 @@ public sealed class JaarplanGeneratieServiceTests
             Assert.Single((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen, p => p.Id == handmatig.Id).Status);
     }
 
+    // ---------------------------------------------------------------------------------------------------------------
+    // E4-05 — regenerating ONE period (FR-8.2), and the blocked-period rule the owner ruled on 2026-08-06.
+    // ---------------------------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Seeds the class's kept pre-generation settings the way a teacher does: by running a whole-plan generation with
+    /// them, which is the only path that persists them (there is deliberately no "Bewaren" control). Returns the
+    /// service so a per-period run can then read them.
+    /// </summary>
+    private static async Task BewaarInstellingenAsync(
+        JaarplanGeneratieService service,
+        Guid klasId,
+        JaarplanGeneratieParameters parameters) =>
+        await service.GenereerAsync(klasId, parameters);
+
+    /// <summary>
+    /// <b>Only the chosen period is filled.</b> The model answers with one placement for the target period and one for
+    /// a period it was not asked about. The first is placed; the second is refused and is <b>not</b> relocated into the
+    /// target period, which would be the application inventing a placement the model never proposed (ADR-0020).
+    /// <para>
+    /// The out-of-scope proposal is reported as its own kind. The thema exists and the date is a real period boundary,
+    /// so filing it under <c>OnbekendeThemas</c> or <c>OnbekendeBlokken</c> would tell the teacher the AI answered with
+    /// something invalid when what it did was answer a wider question than it was asked.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Periodehergeneratie_vult_enkel_de_gevraagde_periode()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(
+            Antwoord(("Herfst", blokken[1].Start), ("Water", blokken[3].Start)), schooljaar);
+
+        var periode = await service.GenereerPeriodeAsync(klas.Id, blokken[1].Start);
+
+        Assert.True(periode.IsGeslaagd);
+        Assert.Equal(blokken[1].Start, periode.GeregenereerdePeriode);
+
+        // Placed: only the one for the target period, and as a proposal (Art. IV.1/IV.2).
+        Assert.Equal(1, periode.AantalNieuw);
+        var geplaatst = Assert.Single(periode.Jaarplan!.Plaatsingen);
+        Assert.Equal(blokken[1].Start, geplaatst.BlokStart);
+        Assert.Equal("Herfst", geplaatst.ThemaNaam);
+        Assert.Equal("Voorgesteld", geplaatst.Status);
+
+        // The out-of-scope one is nowhere in the plan, in its own period or in the target one.
+        Assert.DoesNotContain(periode.Jaarplan!.Plaatsingen, p => p.ThemaNaam == "Water");
+
+        // And it is reported as "outside the period", not as an unknown thema or an unknown block.
+        Assert.Empty(periode.OnbekendeThemas);
+        Assert.Empty(periode.OnbekendeBlokken);
+        // Asserted on the FIELD, not on a composed string: the payload is structured since fix round 1, so the
+        // frontend formats the date and names the period (Art. II.3's ratified preference).
+        var buiten = Assert.Single(periode.BuitenPeriode);
+        Assert.Equal("Water", buiten.ThemaNaam);
+        Assert.Equal(blokken[3].Start, buiten.BlokStart);
+    }
+
+    /// <summary>
+    /// A whole-plan run reports an empty <c>BuitenPeriode</c> and no <c>GeregenereerdePeriode</c> — the two fields exist
+    /// for FR-8.2 and must stay inert on FR-8.1, or the client would describe a full run as a partial one.
+    /// </summary>
+    [Fact]
+    public async Task Een_volledige_hergeneratie_meldt_geen_periode_en_niets_buiten_de_periode()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(
+            Antwoord(("Herfst", blokken[1].Start), ("Water", blokken[3].Start)), schooljaar);
+
+        var resultaat = await service.GenereerAsync(klas.Id);
+
+        Assert.Equal(2, resultaat.AantalNieuw);
+        Assert.Empty(resultaat.BuitenPeriode);
+        Assert.Null(resultaat.GeregenereerdePeriode);
+    }
+
+    /// <summary>
+    /// <b>The discard is scoped, and this is the test that would fail if it were not.</b> Two standing proposals, one
+    /// in the target period and one elsewhere. The run replaces the first and leaves the second exactly where it is —
+    /// which is the difference between FR-8.2 and FR-8.1, and the one a whole-plan run cannot show.
+    /// </summary>
+    [Fact]
+    public async Task Periodehergeneratie_gooit_enkel_de_voorstellen_in_die_periode_weg()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(
+            Antwoord(("Herfst", blokken[1].Start), ("Water", blokken[3].Start)), schooljaar);
+
+        var eerste = await service.GenereerAsync(klas.Id);
+        Assert.Equal(2, eerste.AantalNieuw);
+        var elders = Assert.Single(eerste.Jaarplan!.Plaatsingen, p => p.BlokStart == blokken[3].Start);
+
+        var periode = await service.GenereerPeriodeAsync(klas.Id, blokken[1].Start);
+
+        // One proposal discarded and one placed, both in the target period.
+        Assert.Equal(1, periode.AantalVervangen);
+        Assert.Equal(1, periode.AantalNieuw);
+
+        // The proposal elsewhere kept its identity, not merely its position: a run that deleted and re-created it
+        // would look identical by date and status while costing the teacher the row they may have been reviewing.
+        var naElders = Assert.Single(periode.Jaarplan!.Plaatsingen, p => p.BlokStart == blokken[3].Start);
+        Assert.Equal(elders.Id, naElders.Id);
+        Assert.Equal("Water", naElders.ThemaNaam);
+    }
+
+    /// <summary>
+    /// <b>Inside the regenerated period, a decision still survives.</b> This test pins <c>Aanvaard</c> and
+    /// <c>Vergrendeld</c>; <c>Geweigerd</c> and <c>Manueel</c> have their own, one per widened promise.
+    /// <para>
+    /// *An earlier revision of this docstring claimed all four* while the body asserted two, and the antagonist was
+    /// right that it mattered: <c>kalender.plaatsGevolg</c> makes the <c>Manueel</c> promise, so of the seven widened
+    /// strings that one rested on shared-code reasoning rather than on a test. Corrected rather than reworded, because
+    /// a comment claiming coverage that does not exist is the defect class this repo has retracted most often.
+    /// </para>
+    /// Pinned because E4-06 hides the lock control on decided placements precisely on the grounds that locking them
+    /// changes nothing, and this story is the second path that could have falsified it.
+    /// </summary>
+    [Fact]
+    public async Task Periodehergeneratie_laat_beslissingen_in_die_periode_staan()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var doel = blokken[1].Start;
+
+        // Two proposals in the target period; the teacher accepts one and locks the other.
+        var (service, _, _, klas, _, _) = Opzet(
+            Antwoord(("Herfst", doel), ("Water", doel)), schooljaar);
+        var na = await service.GenereerAsync(klas.Id);
+        var herfst = Assert.Single(na.Jaarplan!.Plaatsingen, p => p.ThemaNaam == "Herfst");
+        var water = Assert.Single(na.Jaarplan!.Plaatsingen, p => p.ThemaNaam == "Water");
+
+        await service.WijzigPlaatsingStatusAsync(klas.Id, herfst.Id, KoppelingStatus.Aanvaard);
+        await service.WijzigVergrendelingAsync(klas.Id, water.Id, vergrendeld: true);
+
+        var periode = await service.GenereerPeriodeAsync(klas.Id, doel);
+
+        // Nothing was replaceable, so nothing was replaced — and both are still there with their decisions intact.
+        Assert.Equal(0, periode.AantalVervangen);
+        Assert.Equal(2, periode.AantalBehouden);
+        Assert.Equal("Aanvaard", Assert.Single(periode.Jaarplan!.Plaatsingen, p => p.Id == herfst.Id).Status);
+        Assert.True(Assert.Single(periode.Jaarplan!.Plaatsingen, p => p.Id == water.Id).Vergrendeld);
+    }
+
+    /// <summary>
+    /// <b>A weigering survives a per-period run, and still keeps the AI from re-proposing that thema there.</b>
+    /// <para>
+    /// Pinned because this story <i>widens seven user-facing sentences</i> from "een hergeneratie van het hele
+    /// jaarplan" to a claim that covers both paths, and `kalender.weigeringUitleg` is one of them: it promises a
+    /// teacher that their rejection holds and that the thema is not proposed <i>here</i> again. Reasoning that the
+    /// per-period path shares the code was not enough to justify widening a promise, so the promise gets a test.
+    /// </para>
+    /// <para>
+    /// The re-proposal is reported as <c>Afgewezen</c> rather than as a duplicate, which is the existing distinction:
+    /// calling it a duplicate would blame the AI for a decision the teacher made.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_weigering_in_de_periode_overleeft_de_periodehergeneratie()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var doel = blokken[1].Start;
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Herfst", doel)), schooljaar);
+
+        var na = await service.GenereerAsync(klas.Id);
+        var herfst = Assert.Single(na.Jaarplan!.Plaatsingen);
+        await service.WijzigPlaatsingStatusAsync(klas.Id, herfst.Id, KoppelingStatus.Geweigerd);
+
+        // The same answer again: the model still wants Herfst in this period.
+        var periode = await service.GenereerPeriodeAsync(klas.Id, doel);
+
+        // The rejection stands, in place, with its identity.
+        var nog = Assert.Single(periode.Jaarplan!.Plaatsingen);
+        Assert.Equal(herfst.Id, nog.Id);
+        Assert.Equal("Geweigerd", nog.Status);
+        Assert.Equal(doel, nog.BlokStart);
+
+        // And the re-proposal was suppressed and reported as the teacher's own decision holding, not as AI repetition.
+        Assert.Equal(0, periode.AantalNieuw);
+        Assert.Equal(0, periode.AantalVervangen);
+        Assert.Empty(periode.Duplicaten);
+        Assert.Contains("Herfst", Assert.Single(periode.Afgewezen));
+    }
+
+    /// <summary>
+    /// <b>The parameter report describes this run, not the plan</b> (antagonist round 1, MINOR). A kept startthema for
+    /// <i>another</i> period is not judged by a run that was told not to fill that period.
+    /// <para>
+    /// The defect this pins was a sentence: <c>parameters.rapportNietGehonoreerd</c> ("De AI koos andere thema's voor
+    /// themaperiode 2") printed directly under "Alleen themaperiode 5 is opnieuw gegenereerd". True of the plan,
+    /// false about the run, and the report sits under the run's own heading.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Periodehergeneratie_beoordeelt_geen_startthema_van_een_andere_periode()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Water", blokken[3].Start)), schooljaar);
+
+        // The teacher wants Herfst to open period 1. The run below is asked for period 4.
+        await BewaarInstellingenAsync(
+            service,
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Herfst")],
+            });
+
+        var periode = await service.GenereerPeriodeAsync(klas.Id, blokken[3].Start);
+
+        // No verdict at all about period 1: the only kept preference is out of scope, so there is nothing this run
+        // can honestly say about the teacher's parameters.
+        Assert.Equal(ParameterRapport.Geen, periode.Parameters);
+
+        // And the whole-plan path still judges it, which is the control: the narrowing is per run, not a deletion.
+        var heel = await service.GenereerAsync(klas.Id);
+        Assert.NotEqual(ParameterRapport.Geen, heel.Parameters);
+    }
+
+    /// <summary>
+    /// <b>A stale placement is not described to the model as sitting in a period</b> (antagonist round 1, MINOR).
+    /// <para>
+    /// <c>IsGepland</c> only means "not rejected" and says nothing about the block still existing, so a placement whose
+    /// stored date stopped being a period boundary was printed under "In de andere periodes staat dit al" — naming a
+    /// date absent from the block list the same prompt had just printed (Art. IV.4).
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task De_periodeprompt_noemt_een_vervallen_plaatsing_niet_als_geplande_periode()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, client, klas, _, themas) = Opzet(Antwoord(), schooljaar);
+
+        // A stored BlokStart that starts no block: a date outside the school year, which no derived grid can produce.
+        // Written straight onto the aggregate, because no endpoint can create one — that is what makes it stale.
+        var jaarplan = new Jaarplan(klas.Id);
+        jaarplan.VoegPlaatsingToe(
+            themas[0].Id,
+            JaarplanGeneratieService.GeneratieNiveau,
+            schooljaar.Start.AddMonths(-1),
+            KoppelingStatus.Manueel);
+        opslag.VoegJaarplanToe(jaarplan);
+
+        await service.GenereerPeriodeAsync(klas.Id, blokken[1].Start);
+
+        var prompt = client.LaatsteRequest!.UserPrompt;
+        var kop = prompt.IndexOf("# Wat al in het jaarplan staat", StringComparison.Ordinal);
+        var eind = prompt.IndexOf("# Opdracht", StringComparison.Ordinal);
+        var alGeplaatst = prompt[kop..(eind < 0 ? prompt.Length : eind)];
+
+        Assert.DoesNotContain("Herfst", alGeplaatst, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            schooljaar.Start.AddMonths(-1).ToString("yyyy-MM-dd"), alGeplaatst, StringComparison.Ordinal);
+        Assert.Contains("nog geen thema dat blijft staan", alGeplaatst, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>A hand-placed thema in the regenerated period survives it</b> — the <c>Manueel</c> half of the promise, and
+    /// the one the seven widened strings were resting on reasoning for (antagonist round 1, MINOR).
+    /// <para>
+    /// <c>kalender.plaatsGevolg</c> tells a teacher, in the picker, that a thema they place themselves stays put
+    /// through "een hergeneratie van het hele jaarplan of van deze periode". This is the second half of that sentence.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Een_handmatige_plaatsing_in_de_periode_overleeft_de_periodehergeneratie()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var doel = blokken[1].Start;
+
+        // The AI would place Herfst here; the teacher has already put Water here by hand.
+        var (service, _, _, klas, _, themas) = Opzet(Antwoord(("Herfst", doel)), schooljaar);
+        var handmatig = Assert.Single(
+            (await service.VoegPlaatsingToeAsync(klas.Id, themas[1].Id, doel)).Plaatsingen);
+        Assert.Equal("Manueel", handmatig.Status);
+
+        var periode = await service.GenereerPeriodeAsync(klas.Id, doel);
+
+        // Nothing was replaceable in that period, so nothing was taken, and the hand-placement kept its identity.
+        Assert.Equal(0, periode.AantalVervangen);
+        Assert.Equal(1, periode.AantalBehouden);
+        var nog = Assert.Single(periode.Jaarplan!.Plaatsingen, p => p.Id == handmatig.Id);
+        Assert.Equal("Manueel", nog.Status);
+        Assert.Equal(doel, nog.BlokStart);
+    }
+
+    /// <summary>
+    /// <b>Owner ruling 2026-08-06, clause 1: a blocked period is refused BEFORE the model is called.</b> The evidence
+    /// that matters is not the exception — it is <see cref="FakeAiClient.AantalAanroepen"/> staying at the count from
+    /// the setup run. "Refused before the AI call" is not evidenced by a refusal that happens to come after one.
+    /// </summary>
+    [Fact]
+    public async Task Periodehergeneratie_van_een_bezette_periode_belt_de_ai_niet()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, client, klas, _, _) = Opzet(Antwoord(("Water", blokken[1].Start)), schooljaar);
+
+        // The teacher has spent period 2 on an oudercontact.
+        await BewaarInstellingenAsync(
+            service,
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten =
+                    [new VastMoment("Oudercontact", blokken[1].Start.AddDays(2), BlokkeertPlaatsing: true)],
+            });
+
+        var aanroepenNaOpzet = client.AantalAanroepen;
+        var bewaardNaOpzet = opslag.AantalKeerBewaard;
+
+        var fout = await Assert.ThrowsAsync<PeriodeIsBezetFout>(
+            () => service.GenereerPeriodeAsync(klas.Id, blokken[1].Start));
+
+        // It names the moment the teacher gave it, so they know which commitment to remove.
+        Assert.Contains("Oudercontact", fout.Message);
+
+        // Nothing was called and nothing was written.
+        Assert.Equal(aanroepenNaOpzet, client.AantalAanroepen);
+        Assert.Equal(bewaardNaOpzet, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// A non-blocking vast moment in the target period does <b>not</b> refuse the run. The parameter has two settings
+    /// and only one of them is a prohibition (FR-5.4); treating both as one would silently turn "let op, minder tijd"
+    /// into "niet toegestaan".
+    /// </summary>
+    [Fact]
+    public async Task Periodehergeneratie_gaat_door_bij_een_niet_blokkerend_vast_moment()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(("Water", blokken[1].Start)), schooljaar);
+
+        await BewaarInstellingenAsync(
+            service,
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten = [new VastMoment("Sportdag", blokken[1].Start.AddDays(2), BlokkeertPlaatsing: false)],
+            });
+
+        var periode = await service.GenereerPeriodeAsync(klas.Id, blokken[1].Start);
+
+        Assert.True(periode.IsGeslaagd);
+        Assert.Contains(periode.Jaarplan!.Plaatsingen, p => p.BlokStart == blokken[1].Start);
+    }
+
+    /// <summary>
+    /// A date that starts no block of the current grid is refused, never snapped to the nearest period (ADR-0020,
+    /// directie 2026-07-28) — the same answer the hand-placement and move paths give, and for the same reason.
+    /// </summary>
+    [Fact]
+    public async Task Periodehergeneratie_weigert_een_datum_die_geen_periodebegin_is()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, client, klas, _, _) = Opzet(Antwoord(), schooljaar);
+
+        await Assert.ThrowsAsync<OngeldigePlaatsingFout>(
+            () => service.GenereerPeriodeAsync(klas.Id, blokken[0].Start.AddDays(3)));
+
+        Assert.Equal(0, client.AantalAanroepen);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// <b>A per-period run reads the kept settings and never rewrites them.</b> There is no form on this path, so a run
+    /// that saved anything would be saving something the teacher did not submit — and the obvious wrong behaviour,
+    /// saving <c>Geen</c>, would silently clear the vaste momenten of the whole class.
+    /// </summary>
+    [Fact]
+    public async Task Periodehergeneratie_laat_de_bewaarde_instellingen_ongemoeid()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, opslag, _, klas, _, _) = Opzet(Antwoord(("Water", blokken[1].Start)), schooljaar);
+
+        await BewaarInstellingenAsync(
+            service,
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                GewensteStartthemas = [new Startthemakeuze(blokken[0].Start, "Herfst")],
+                VasteMomenten = [new VastMoment("Sportdag", blokken[2].Start.AddDays(1), BlokkeertPlaatsing: false)],
+            });
+
+        await service.GenereerPeriodeAsync(klas.Id, blokken[1].Start);
+
+        var nog = await service.HaalParametersAsync(klas.Id);
+        Assert.Equal("Herfst", Assert.Single(nog.GewensteStartthemas).ThemaNaam);
+        Assert.Equal("Sportdag", Assert.Single(nog.VasteMomenten).Naam);
+    }
+
+    /// <summary>
+    /// <b>The run figures are scoped to the period, and that is a truthfulness point rather than an optimisation.</b>
+    /// <c>genereerBehouden</c> reads "{aantal} bestaande plaatsingen bleven staan (vast of al beslist)", which asserts
+    /// those placements were at stake. In a per-period run the ones in other periods never were, so counting them
+    /// would credit this run with preserving work it never looked at.
+    /// </summary>
+    [Fact]
+    public async Task Periodehergeneratie_rapporteert_cijfers_van_die_periode_alleen()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var doel = blokken[1].Start;
+        var (service, _, _, klas, _, themas) = Opzet(Antwoord(("Herfst", doel)), schooljaar);
+
+        // The teacher hand-places Water in period 4 (so: decided, elsewhere, and not at stake).
+        await service.VoegPlaatsingToeAsync(klas.Id, themas[1].Id, blokken[3].Start);
+
+        var periode = await service.GenereerPeriodeAsync(klas.Id, doel);
+
+        Assert.Equal(1, periode.AantalNieuw);
+        Assert.Equal(0, periode.AantalVervangen);
+
+        // Zero, not one: the hand-placement in period 4 is untouched, not "preserved by this run".
+        Assert.Equal(0, periode.AantalBehouden);
+
+        // Both are in the plan, which is what proves the figure is about scope rather than about loss.
+        Assert.Equal(2, periode.Jaarplan!.Plaatsingen.Count);
+    }
+
+    /// <summary>
+    /// <b>Owner ruling 2026-08-06, clause 2: the teacher may not hand-place into a blocked period either.</b> One rule
+    /// for human and machine. This is a deliberate narrowing of behaviour E4-03 shipped — before the ruling this call
+    /// succeeded silently — so the test doubles as the record of what changed.
+    /// </summary>
+    [Fact]
+    public async Task Handmatig_plaatsen_in_een_bezette_periode_wordt_geweigerd()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, themas) = Opzet(Antwoord(), schooljaar);
+
+        await BewaarInstellingenAsync(
+            service,
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten = [new VastMoment("Oudercontact", blokken[1].Start.AddDays(2), BlokkeertPlaatsing: true)],
+            });
+
+        var fout = await Assert.ThrowsAsync<PeriodeIsBezetFout>(
+            () => service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, blokken[1].Start));
+        Assert.Contains("Oudercontact", fout.Message);
+
+        // Nothing was placed, and another period still accepts the same thema — the rule is about the period, not
+        // about the thema or about hand-placement as such.
+        Assert.Empty((await service.HaalJaarplanAsync(klas.Id)).Plaatsingen);
+        Assert.Single((await service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, blokken[2].Start)).Plaatsingen);
+    }
+
+    /// <summary>
+    /// The move path, and the three cases that make the rule non-retroactive (owner ruling 2026-08-06):
+    /// <list type="number">
+    /// <item>moving <b>into</b> a blocked period is refused;</item>
+    /// <item>moving <b>out of</b> one is allowed, so a thema planned before the moment was registered is never
+    /// trapped;</item>
+    /// <item>dropping a card back where it started stays a no-op 200 even when its period is blocked, because nothing
+    /// new enters.</item>
+    /// </list>
+    /// </summary>
+    [Fact]
+    public async Task Verplaatsen_naar_een_bezette_periode_wordt_geweigerd_maar_eruit_mag_wel()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var bezet = blokken[1].Start;
+        var (service, _, _, klas, _, themas) = Opzet(Antwoord(), schooljaar);
+
+        // Placed in the period FIRST, and only then is the moment registered — the realistic order, and the one that
+        // creates a placement inside a blocked period.
+        var plaatsing = Assert.Single(
+            (await service.VoegPlaatsingToeAsync(klas.Id, themas[0].Id, bezet)).Plaatsingen);
+        var elders = Assert.Single(
+            (await service.VoegPlaatsingToeAsync(klas.Id, themas[1].Id, blokken[3].Start)).Plaatsingen,
+            p => p.ThemaNaam == "Water");
+
+        await BewaarInstellingenAsync(
+            service,
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten = [new VastMoment("Oudercontact", bezet.AddDays(2), BlokkeertPlaatsing: true)],
+            });
+
+        // 1. Into the blocked period: refused.
+        var fout = await Assert.ThrowsAsync<PeriodeIsBezetFout>(
+            () => service.VerplaatsPlaatsingAsync(klas.Id, elders.Id, bezet));
+        Assert.Contains("Oudercontact", fout.Message);
+
+        // 3. Dropped back where it already is: a no-op, not an error. Asserted BEFORE the move out, while the
+        //    placement is still inside the blocked period, because that is the only state in which it can be wrong.
+        var onveranderd = await service.VerplaatsPlaatsingAsync(klas.Id, plaatsing.Id, bezet);
+        Assert.Equal(bezet, Assert.Single(onveranderd.Plaatsingen, p => p.Id == plaatsing.Id).BlokStart);
+        Assert.Equal("Manueel", Assert.Single(onveranderd.Plaatsingen, p => p.Id == plaatsing.Id).Status);
+
+        // 2. Out of the blocked period: allowed. The rule governs the target, never the origin.
+        var verplaatst = await service.VerplaatsPlaatsingAsync(klas.Id, plaatsing.Id, blokken[4].Start);
+        Assert.Equal(blokken[4].Start, Assert.Single(verplaatst.Plaatsingen, p => p.Id == plaatsing.Id).BlokStart);
+    }
+
+    /// <summary>
+    /// <b>The plan read says which periods are blocked and by what</b>, so the UI can disable a control and state the
+    /// reason in visible text instead of provoking a 409 to find out (the E3-06 rule). Non-blocking moments are absent:
+    /// they change nothing about what may be placed.
+    /// </summary>
+    [Fact]
+    public async Task Het_jaarplan_meldt_welke_periodes_bezet_zijn()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, _, klas, _, _) = Opzet(Antwoord(), schooljaar);
+
+        Assert.Empty((await service.HaalJaarplanAsync(klas.Id)).GeblokkeerdePeriodes);
+
+        await BewaarInstellingenAsync(
+            service,
+            klas.Id,
+            new JaarplanGeneratieParameters
+            {
+                VasteMomenten =
+                [
+                    new VastMoment("Oudercontact", blokken[1].Start.AddDays(2), BlokkeertPlaatsing: true),
+                    new VastMoment("Sportdag", blokken[2].Start.AddDays(1), BlokkeertPlaatsing: false),
+                ],
+            });
+
+        var geblokkeerd = (await service.HaalJaarplanAsync(klas.Id)).GeblokkeerdePeriodes;
+
+        var enige = Assert.Single(geblokkeerd);
+        Assert.Equal(blokken[1].Start, enige.BlokStart);
+        Assert.Equal("Oudercontact", enige.MomentNaam);
+    }
+
+    /// <summary>
+    /// <b>The per-period prompt states its scope, and it states it with the date.</b> Not with the label ("periode 3"),
+    /// which shifts when the school edits its vakanties (ADR-0020 §3) — and the ordinal is the one thing a model would
+    /// be most tempted to echo back.
+    /// </summary>
+    [Fact]
+    public async Task De_periodeprompt_vraagt_enkel_die_periode_en_noemt_de_datum()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, client, klas, _, _) = Opzet(Antwoord(), schooljaar);
+
+        await service.GenereerPeriodeAsync(klas.Id, blokken[2].Start);
+
+        var prompt = client.LaatsteRequest!.UserPrompt;
+        var datum = blokken[2].Start.ToString("yyyy-MM-dd");
+        Assert.Contains("# Opdracht", prompt, StringComparison.Ordinal);
+        Assert.Contains($"Vul ENKEL de periode met startdatum {datum}", prompt, StringComparison.Ordinal);
+        Assert.Contains("Stel niets voor voor een andere periode", prompt, StringComparison.Ordinal);
+
+        // The whole-plan prompt says none of this: a full run must keep producing the prompt it produced before this
+        // story, which is what makes the existing snapshot test meaningful rather than merely re-recorded.
+        await service.GenereerAsync(klas.Id);
+        Assert.DoesNotContain("# Opdracht", client.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "# Wat al in het jaarplan staat", client.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>The prompt's "already planned" list tells the truth about the plan the run is about to leave behind.</b> Two
+    /// distinctions, both of which a naive "list every placement" would get wrong:
+    /// <list type="bullet">
+    /// <item>a <i>replaceable</i> proposal in the <b>target</b> period is <b>not</b> listed — the prompt is built before
+    /// the discard, so listing it would tell the model to work around content that is about to vanish;</item>
+    /// <item>a placement in <b>another</b> period <i>is</i> listed, because that is the coverage and ordering context the
+    /// Spreiding and Dekking rules need in order to mean anything on a single-period run.</item>
+    /// </list>
+    /// </summary>
+    [Fact]
+    public async Task De_periodeprompt_noemt_wat_blijft_staan_en_niet_wat_verdwijnt()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var doel = blokken[1].Start;
+
+        // Herfst is a standing proposal in the TARGET period (so: about to be discarded).
+        // Water is hand-placed elsewhere (so: staying, and worth telling the model about).
+        var (service, _, client, klas, _, themas) = Opzet(Antwoord(("Herfst", doel)), schooljaar);
+        await service.GenereerAsync(klas.Id);
+        await service.VoegPlaatsingToeAsync(klas.Id, themas[1].Id, blokken[4].Start);
+
+        await service.GenereerPeriodeAsync(klas.Id, doel);
+
+        var prompt = client.LaatsteRequest!.UserPrompt;
+        var alGeplaatst = prompt[prompt.IndexOf("# Wat al in het jaarplan staat", StringComparison.Ordinal)..];
+        var opdracht = alGeplaatst.IndexOf("# Opdracht", StringComparison.Ordinal);
+        alGeplaatst = opdracht < 0 ? alGeplaatst : alGeplaatst[..opdracht];
+
+        Assert.Contains("Water", alGeplaatst, StringComparison.Ordinal);
+        Assert.DoesNotContain("Herfst", alGeplaatst, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A <b>rejected</b> placement elsewhere is not presented as something that is planned. Nothing is taught in a
+    /// period because the teacher said no to it, which is the same reason it is left out of the spreading report — and
+    /// telling the model "Herfst staat in periode 5" would make it plan around a rejection.
+    /// </summary>
+    [Fact]
+    public async Task De_periodeprompt_noemt_een_geweigerde_plaatsing_elders_niet()
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var blokken = Blokken(schooljaar);
+        var (service, _, client, klas, _, _) = Opzet(Antwoord(("Herfst", blokken[4].Start)), schooljaar);
+
+        var na = await service.GenereerAsync(klas.Id);
+        var herfst = Assert.Single(na.Jaarplan!.Plaatsingen);
+        await service.WijzigPlaatsingStatusAsync(klas.Id, herfst.Id, KoppelingStatus.Geweigerd);
+
+        await service.GenereerPeriodeAsync(klas.Id, blokken[1].Start);
+
+        var prompt = client.LaatsteRequest!.UserPrompt;
+        var kop = prompt.IndexOf("# Wat al in het jaarplan staat", StringComparison.Ordinal);
+        var eind = prompt.IndexOf("# Opdracht", StringComparison.Ordinal);
+        var alGeplaatst = prompt[kop..(eind < 0 ? prompt.Length : eind)];
+
+        Assert.DoesNotContain("Herfst", alGeplaatst, StringComparison.Ordinal);
+
+        // And it does not call the plan empty, because it is not: it holds the rejected placement. This assertion is
+        // why the test earned its keep — the first version of the prompt said "het jaarplan is nog leeg" here, which is
+        // a different and false claim about the school's own data.
+        Assert.Contains("nog geen thema dat blijft staan", alGeplaatst, StringComparison.Ordinal);
+        Assert.DoesNotContain("jaarplan is nog leeg", alGeplaatst, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Walks up from the test assembly to the repository root, identified by holding both source trees. Walked rather
     /// than assumed as a fixed number of <c>..</c> segments, which breaks on a different target framework or output path.

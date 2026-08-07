@@ -9,6 +9,7 @@ import { DekkingPagina } from "../dekking/DekkingPagina";
 import { dekking as maakDekking } from "../dekking/testdata";
 import { dekkingKlasKey } from "../dekking/useDekking";
 import { Jaarplankalender } from "./Jaarplankalender";
+import { formatteerPeriode } from "./kalenderFormat";
 import type {
   Generatieparameters,
   Generatieresultaat,
@@ -86,6 +87,8 @@ function maakJaarplan(
     schooljaarId: SCHOOLJAAR_ID,
     schooljaarNaam: "2026-2027",
     blokindeling: rooster.blokindeling,
+    // E4-05: no period is blocked in these fixtures; the blocked-period cases build their own.
+    geblokkeerdePeriodes: [],
     plaatsingen,
     blokken,
   };
@@ -424,6 +427,9 @@ describe("Jaarplankalender", () => {
   it("reports the spreading measurement after a generation run, with no verdict attached", async () => {
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
+      // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+      buitenPeriode: [],
+      geregenereerdePeriode: null,
       fout: null,
       // E3-03's outlook is asserted in Vooruitzichtoverzicht.test.tsx; null here renders no dekking block, which
       // keeps these assertions about the spreading report alone.
@@ -496,6 +502,9 @@ describe("Jaarplankalender", () => {
     const naPlan = maakJaarplan([maakPlaatsing({ id: "p-nieuw" })]);
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
+      // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+      buitenPeriode: [],
+      geregenereerdePeriode: null,
       fout: null,
       jaarplan: naPlan,
       aantalNieuw: 1,
@@ -607,6 +616,9 @@ describe("Jaarplankalender", () => {
     ]);
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
+      // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+      buitenPeriode: [],
+      geregenereerdePeriode: null,
       fout: null,
       jaarplan: naPlan,
       aantalNieuw: 1,
@@ -654,6 +666,9 @@ describe("Jaarplankalender", () => {
     const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
+      // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+      buitenPeriode: [],
+      geregenereerdePeriode: null,
       fout: null,
       jaarplan: plan,
       aantalNieuw: 1,
@@ -708,6 +723,9 @@ describe("Jaarplankalender", () => {
     const plan = maakJaarplan([maakPlaatsing({ id: "p1" })]);
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
+      // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+      buitenPeriode: [],
+      geregenereerdePeriode: null,
       fout: null,
       jaarplan: plan,
       aantalNieuw: 1,
@@ -777,6 +795,9 @@ describe("Jaarplankalender", () => {
   it("uses the singular when the year derives a single themaperiode", async () => {
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
+      // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+      buitenPeriode: [],
+      geregenereerdePeriode: null,
       fout: null,
       // E3-03's outlook is asserted in Vooruitzichtoverzicht.test.tsx; null here renders no dekking block, which
       // keeps these assertions about the spreading report alone.
@@ -4407,6 +4428,9 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
     // shared placement hook, which is a claim about one of two call sites presented as a claim about both.
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
+      // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+      buitenPeriode: [],
+      geregenereerdePeriode: null,
       fout: null,
       // E3-03's outlook is asserted in Vooruitzichtoverzicht.test.tsx; null here renders no dekking block, which
       // keeps these assertions about the spreading report alone.
@@ -4581,6 +4605,9 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
   it("runs from a plan that already has placements, and reports what the server replaced and kept", async () => {
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
+      // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+      buitenPeriode: [],
+      geregenereerdePeriode: null,
       fout: null,
       jaarplan: null,
       aantalNieuw: 2,
@@ -4684,5 +4711,728 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     const tekst = uitleg.textContent ?? "";
     expect(tekst).toContain("vastgezet hebt, blijft staan");
     expect(tekst.indexOf("blijft staan")).toBeLessThan(tekst.indexOf("De overige"));
+  });
+});
+
+/**
+ * E4-05 (FR-8.2, owner rulings 2026-08-06): regenerating **one period**, and the "bezet" column state that
+ * withholds three affordances at once.
+ *
+ * The whole point of testing this here rather than trusting the server suite is the gap this repo has now paid for
+ * six times: the endpoint, the hook and the copy can all exist while nothing puts a control on screen. So every test
+ * below starts from a rendered board and either presses something or asserts that there is nothing to press.
+ */
+describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * A **three**-period year, needed because finding C's fix gates the card's picker on a *selectable* period: with the
+   * two-period fixture and one of them bezet, the picker correctly disappears, so a test about what the picker OFFERS
+   * has nowhere to stand. Three periods give one blocked and one free.
+   */
+  const drieRooster: Planningsrooster = {
+    ...rooster,
+    blokken: [
+      ...rooster.blokken,
+      { ordinaal: 3, start: "2027-01-04", eind: "2027-02-14", ouderOrdinaal: null, aantalOpenDagen: 30 },
+    ],
+  };
+
+  /**
+   * The same year subdivided, with the property this section's tier test rests on: **each parent's first sub-block
+   * starts on the parent's own start date**, which is exactly why `bezetteperiodes.has(blok.start)` was true at the
+   * fine tier while the marker was withheld there. Sub-block 5 starts on the blocked themaperiode's start date.
+   */
+  const fijnereRooster: Planningsrooster = {
+    ...rooster,
+    niveau: "Subthemaperiode",
+    blokken: [
+      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-16", ouderOrdinaal: 1, aantalOpenDagen: 16 },
+      { ordinaal: 2, start: "2026-09-17", eind: "2026-10-02", ouderOrdinaal: 1, aantalOpenDagen: 16 },
+      { ordinaal: 3, start: "2026-10-03", eind: "2026-11-01", ouderOrdinaal: 1, aantalOpenDagen: 30 },
+      { ordinaal: 4, start: "2026-11-09", eind: "2026-11-22", ouderOrdinaal: 2, aantalOpenDagen: 14 },
+      { ordinaal: 5, start: "2026-11-23", eind: "2026-12-20", ouderOrdinaal: 2, aantalOpenDagen: 28 },
+    ],
+  };
+
+  /** The per-period trigger of one column, by the accessible name that distinguishes it from its siblings. */
+  const hergenereerknop = (ordinaal: number) =>
+    screen.getByRole("button", { name: t("kalender.periodeHergenereerLabel", { ordinaal }) });
+
+  const zoekHergenereerknop = (ordinaal: number) =>
+    screen.queryByRole("button", { name: t("kalender.periodeHergenereerLabel", { ordinaal }) });
+
+  const zoekToevoegknop = (ordinaal: number) =>
+    screen.queryByRole("button", { name: t("kalender.plaatsToevoegenLabel", { ordinaal }) });
+
+  /**
+   * Like the file's shared stub, but it tells the two POST routes apart and records what was posted.
+   *
+   * A separate stub rather than an extra branch in the shared one, because "/periodes/…/generatie" *contains*
+   * "/generatie": routed by the existing check both buttons would look identical to the test, which is exactly the
+   * confusion these tests exist to rule out.
+   */
+  function stubMetPeriodegeneratie(
+    jaarplan: Jaarplan,
+    antwoord: Generatieresultaat | number,
+    grofRooster: Planningsrooster = rooster,
+  ): { urls: string[] } {
+    const urls: string[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+
+        if (init?.method === "POST" && url.includes("/periodes/")) {
+          urls.push(url);
+
+          if (typeof antwoord === "number") {
+            return new Response(
+              JSON.stringify({ title: "Periode is bezet", detail: "SERVERDETAIL-NIET-TONEN" }),
+              { status: antwoord },
+            );
+          }
+
+          return new Response(JSON.stringify(antwoord), { status: 200 });
+        }
+
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/dekking")) {
+          return new Response(JSON.stringify(DEKKING_NIETS_ONTBREEKT), { status: 200 });
+        }
+        if (url.includes("/rooster")) {
+          // Serves the tier that was ASKED for. A stub that always answers the coarse grid makes a zoom switch a
+          // no-op, and a tier-gated assertion then passes for the wrong reason.
+          return new Response(
+            JSON.stringify(url.includes("niveau=Subthemaperiode") ? fijnereRooster : grofRooster),
+            { status: 200 },
+          );
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(jaarplan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    return { urls };
+  }
+
+  /** A run report for one period, with the counts the server scopes to it. */
+  function periodeResultaat(
+    plan: Jaarplan,
+    blokStart: string,
+    extra: Partial<Generatieresultaat> = {},
+  ): Generatieresultaat {
+    return {
+      isGeslaagd: true,
+      fout: null,
+      jaarplan: plan,
+      aantalNieuw: 1,
+      aantalBehouden: 0,
+      aantalVervangen: 1,
+      onbekendeThemas: [],
+      onbekendeBlokken: [],
+      duplicaten: [],
+      afgewezen: [],
+      buitenPeriode: [],
+      geregenereerdePeriode: blokStart,
+      spreiding: null,
+      parameters: null,
+      vooruitzicht: null,
+      ...extra,
+    };
+  }
+
+  it("geeft elke themaperiode een eigen knop en stuurt de startdatum van precies die periode", async () => {
+    const plan = maakJaarplan([]);
+    const doel = rooster.blokken[1];
+    const { urls } = stubMetPeriodegeneratie(plan, periodeResultaat(plan, doel.start));
+
+    renderKalender();
+    await waitFor(() => expect(hergenereerknop(1)).toBeInTheDocument());
+
+    // Every period offers it, so a teacher can regenerate whichever one they are looking at.
+    for (const blok of rooster.blokken) {
+      expect(hergenereerknop(blok.ordinaal)).toBeInTheDocument();
+    }
+
+    fireEvent.click(hergenereerknop(doel.ordinaal));
+
+    // The DATE is what travels, never the ordinal: an ordinal shifts when the school edits its vakanties.
+    await waitFor(() => expect(urls).toHaveLength(1));
+    expect(urls[0]).toContain("/periodes/" + doel.start + "/generatie");
+  });
+
+  it("zegt in het rapport welke periode opnieuw gegenereerd is, en dat de rest ongemoeid bleef", async () => {
+    const plan = maakJaarplan([]);
+    const doel = rooster.blokken[1];
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, doel.start));
+
+    renderKalender();
+    await waitFor(() => expect(hergenereerknop(doel.ordinaal)).toBeInTheDocument());
+
+    fireEvent.click(hergenereerknop(doel.ordinaal));
+
+    // Without this line the scoped counts sit in the card whose own button says "Hele jaarplan opnieuw genereren".
+    await waitFor(() =>
+      expect(
+        screen.getByText(t("kalender.periodeRapportKop", { ordinaal: doel.ordinaal })),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("noemt een voorstel voor een andere periode apart, niet als overgeslagen", async () => {
+    const plan = maakJaarplan([]);
+    const doel = rooster.blokken[0];
+    stubMetPeriodegeneratie(
+      plan,
+      periodeResultaat(plan, doel.start, {
+        aantalNieuw: 0,
+        aantalVervangen: 0,
+        buitenPeriode: [{ themaNaam: "Water", blokStart: rooster.blokken[1].start }],
+      }),
+    );
+
+    renderKalender();
+    await waitFor(() => expect(hergenereerknop(doel.ordinaal)).toBeInTheDocument());
+
+    fireEvent.click(hergenereerknop(doel.ordinaal));
+
+    // Rendered in Dutch, naming the PERIOD rather than echoing an ISO date: the payload is structured since fix
+    // round 1 and the label is composed by the screen that has the grid (Art. II.3).
+    const verwacht = t("kalender.periodeBuitenPeriodeItem", {
+      thema: "Water",
+      ordinaal: rooster.blokken[1].ordinaal,
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByText(t("kalender.periodeBuitenPeriode", { details: verwacht })),
+      ).toBeInTheDocument(),
+    );
+
+    // No ISO date reaches the teacher anywhere in that sentence.
+    expect(screen.queryByText(new RegExp(rooster.blokken[1].start))).toBeNull();
+
+    // NOT under "Overgeslagen", which is the list of the model's actual misses. The thema exists and the date is a
+    // real boundary; the only thing wrong with it is that the teacher asked about a different period.
+    expect(
+      screen.queryByText(t("kalender.genereerOvergeslagen", { details: verwacht })),
+    ).toBeNull();
+  });
+
+  it("zegt in de kolom zelf waarom een periodehergeneratie geweigerd is", async () => {
+    const plan = maakJaarplan([]);
+    // The fixture year has two periods; the second is the one that is not also the default target elsewhere.
+    const doel = rooster.blokken[1];
+    stubMetPeriodegeneratie(plan, 409);
+
+    renderKalender();
+    await waitFor(() => expect(hergenereerknop(doel.ordinaal)).toBeInTheDocument());
+
+    fireEvent.click(hergenereerknop(doel.ordinaal));
+
+    // In the column the teacher pressed, because the board scrolls sideways and a notice at the top of the page can
+    // be off screen entirely. And it is nl.json copy keyed on the STATUS: the server's own detail is never echoed.
+    const melding = await screen.findByRole("alert");
+    expect(melding.textContent).toContain(t("kalender.periodeBezetGeweigerd"));
+    expect(melding.textContent).not.toContain("SERVERDETAIL-NIET-TONEN");
+
+    // Only the pressed column reports it; the others are untouched.
+    expect(screen.getAllByText(t("kalender.periodeBezetGeweigerd"))).toHaveLength(1);
+  });
+
+  it("houdt knop, kiezer en dropzone weg uit een bezette periode en noemt het vaste moment", async () => {
+    const bezet = rooster.blokken[1];
+    const plan: Jaarplan = {
+      ...maakJaarplan([]),
+      geblokkeerdePeriodes: [{ blokStart: bezet.start, momentNaam: "Oudercontact" }],
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, bezet.start));
+
+    renderKalender();
+    await waitFor(() => expect(hergenereerknop(1)).toBeInTheDocument());
+
+    // The marker names the teacher's own commitment, in the word the settings form used ("bezet").
+    expect(
+      screen.getByText(t("kalender.periodeBezet", { moment: "Oudercontact" })),
+    ).toBeInTheDocument();
+
+    // All three affordances are withheld in that period, and in that period only.
+    expect(zoekHergenereerknop(bezet.ordinaal)).toBeNull();
+    expect(zoekToevoegknop(bezet.ordinaal)).toBeNull();
+    expect(zoekHergenereerknop(1)).toBeInTheDocument();
+    expect(zoekToevoegknop(1)).toBeInTheDocument();
+
+    // The empty well says why nothing comes in, instead of inviting a teacher to plan there.
+    expect(
+      screen.getByText(t("kalender.periodeBezetLeeg", { moment: "Oudercontact" })),
+    ).toBeInTheDocument();
+
+    // And the board explains the three consequences once, rather than in every blocked column.
+    expect(screen.getByText(t("kalender.bezetteperiodesUitleg"))).toBeInTheDocument();
+  });
+
+  it("zegt niets over bezette periodes zolang er geen enkele bezet is", async () => {
+    const plan = maakJaarplan([]);
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, rooster.blokken[0].start));
+
+    renderKalender();
+    await waitFor(() => expect(hergenereerknop(1)).toBeInTheDocument());
+
+    expect(screen.queryByText(t("kalender.bezetteperiodesUitleg"))).toBeNull();
+    expect(screen.queryByText(/^Bezet:/)).toBeNull();
+  });
+
+  it("laat een thema dat al in een bezette periode stond gewoon staan", async () => {
+    // The non-retroactive half of the ruling, which is the one a marker reading "bezet" could easily contradict:
+    // the teacher planned this thema first and registered the moment afterwards.
+    const bezet = rooster.blokken[1];
+    const plaatsing = maakPlaatsing({ id: "bezet-1", blokStart: bezet.start, themaNaam: "Herfst" });
+    const plan: Jaarplan = {
+      ...maakJaarplan([plaatsing]),
+      geblokkeerdePeriodes: [{ blokStart: bezet.start, momentNaam: "Oudercontact" }],
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, bezet.start));
+
+    renderKalender();
+    await waitFor(() => expect(screen.getByText("Herfst")).toBeInTheDocument());
+
+    // The card is there, and the well's "nothing comes in here" sentence is NOT: the period is not empty.
+    expect(
+      screen.getByText(t("kalender.periodeBezet", { moment: "Oudercontact" })),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(t("kalender.periodeBezetLeeg", { moment: "Oudercontact" })),
+    ).toBeNull();
+  });
+
+  it("laat maar één periode tegelijk lopen en laat alleen die periode zich bezig noemen", async () => {
+    // Found in the browser pass rather than by a test, which is why it has one now: a second press while the first
+    // request was still open moved the "Bezig" label to the new column and left the first looking idle mid-run.
+    const plan = maakJaarplan([]);
+    const doel = rooster.blokken[0];
+    // A holder rather than a bare `let`: TypeScript cannot see the assignment inside the fetch callback and narrows
+    // the variable to `null`, so `laatBinnen?.()` is "not callable".
+    const houd: { open: (() => void) | null } = { open: null };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+
+        if (init?.method === "POST" && url.includes("/periodes/")) {
+          // Held open on purpose: the state under test only exists while a request is in flight.
+          await new Promise<void>((resolve) => {
+            houd.open = resolve;
+          });
+
+          return new Response(JSON.stringify(periodeResultaat(plan, doel.start)), { status: 200 });
+        }
+
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
+            status: 200,
+          });
+        }
+        if (url.includes("/dekking")) {
+          return new Response(JSON.stringify(DEKKING_NIETS_ONTBREEKT), { status: 200 });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(plan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    renderKalender();
+    await waitFor(() => expect(hergenereerknop(1)).toBeInTheDocument());
+
+    fireEvent.click(hergenereerknop(doel.ordinaal));
+
+    // The pressed column says so, and it is the ONLY one that does.
+    await waitFor(() =>
+      expect(hergenereerknop(doel.ordinaal).textContent).toContain(t("kalender.genereerBezig")),
+    );
+    const ander = hergenereerknop(2);
+    expect(ander.textContent).toContain(t("kalender.periodeHergenereer"));
+
+    // And no second run can be started underneath it, which is what kept the label honest.
+    expect(ander).toBeDisabled();
+    expect(hergenereerknop(doel.ordinaal)).toBeDisabled();
+
+    houd.open?.();
+    await waitFor(() => expect(hergenereerknop(2)).toBeEnabled());
+  });
+
+  it("biedt een bezette periode niet aan in de verplaatskiezer van een kaart, en zegt waarom", async () => {
+    // **The SC 2.5.7 route** (antagonist round 1, MAJOR). The board withholds the drop target for a blocked period,
+    // but dragging may not be the only way in: this picker is the pointer-and-keyboard alternative. Left un-narrowed
+    // it was the one route that still offered a target the server refuses with a 409.
+    const bezet = drieRooster.blokken[1];
+    const plaatsing = maakPlaatsing({ id: "kaart-1", blokStart: drieRooster.blokken[0].start });
+    const plan: Jaarplan = {
+      ...maakJaarplan([plaatsing]),
+      geblokkeerdePeriodes: [{ blokStart: bezet.start, momentNaam: "Oudercontact" }],
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, bezet.start), drieRooster);
+
+    renderKalender();
+    await waitFor(() => expect(screen.getByText("Thema")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }));
+
+    const keuze = await screen.findByRole("combobox", { name: t("kalender.verplaatsNaar") });
+    const optie = within(keuze).getByRole("option", {
+      name: t("kalender.periodeKeuzeBezet", {
+        ordinaal: bezet.ordinaal,
+        periode: formatteerPeriode(bezet.start, bezet.eind),
+        moment: "Oudercontact",
+      }),
+    });
+
+    // Present and disabled, not silently removed: a shorter list would send a teacher hunting for a period that is
+    // plainly on the board, and the option itself carries the reason in visible text (the E3-06 rule).
+    expect(optie).toBeDisabled();
+  });
+
+  it("vertelt bij een 409 niet dat de tool stuk is, op geen van de twee handmatige routes", async () => {
+    // Before fix round 1 both fell through to "Meld dit aan de beheerder van de tool" — the tool blaming itself, and
+    // sending the teacher to escalate, for a rule it had just applied on the strength of their own setting.
+    const bezet = rooster.blokken[1];
+    const plaatsing = maakPlaatsing({ id: "kaart-2", blokStart: rooster.blokken[0].start });
+    const plan: Jaarplan = {
+      ...maakJaarplan([plaatsing]),
+      // Deliberately EMPTY, so the picker still offers the period and the request really reaches the server: this
+      // test is about the answer to a 409, which a page whose picker already disabled the option cannot produce.
+      geblokkeerdePeriodes: [],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+
+        if (init?.method === "PUT" && url.includes("/blok")) {
+          return new Response(
+            JSON.stringify({ title: "Periode is bezet", detail: "SERVERDETAIL-NIET-TONEN" }),
+            { status: 409 },
+          );
+        }
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), { status: 200 });
+        }
+        if (url.includes("/dekking")) {
+          return new Response(JSON.stringify(DEKKING_NIETS_ONTBREEKT), { status: 200 });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(plan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    renderKalender();
+    await waitFor(() => expect(screen.getByText("Thema")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }));
+    const keuze = await screen.findByRole("combobox", { name: t("kalender.verplaatsNaar") });
+    fireEvent.change(keuze, { target: { value: bezet.start } });
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.verplaatsen") }));
+
+    const melding = await screen.findByText(t("kalender.verplaatsBezet"));
+    expect(melding).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.verplaatsOnbeschikbaar"))).toBeNull();
+    expect(screen.queryByText(/SERVERDETAIL-NIET-TONEN/)).toBeNull();
+  });
+
+  it("legt bezet niet uit op de fijne weergave, waar geen kolom de markering draagt", async () => {
+    // The tier gate (antagonist round 1, MINOR): a themaperiode's own start date is ALSO the start of its first
+    // subthemaperiode, so the naive check was true at the fine tier while the marker is deliberately withheld there.
+    // The board then explained something no column was showing.
+    const bezet = rooster.blokken[1];
+    const plan: Jaarplan = {
+      ...maakJaarplan([]),
+      geblokkeerdePeriodes: [{ blokStart: bezet.start, momentNaam: "Oudercontact" }],
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, bezet.start));
+
+    renderKalender();
+    await waitFor(() => expect(hergenereerknop(1)).toBeInTheDocument());
+    expect(screen.getByText(t("kalender.bezetteperiodesUitleg"))).toBeInTheDocument();
+
+    // The zoom is a group of two buttons, not a select: pressing one acts at once rather than submitting a choice.
+    fireEvent.click(
+      within(screen.getByRole("group", { name: t("kalender.weergaveLabel") })).getByRole("button", {
+        name: t("kalender.weergaveFijn"),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(t("kalender.periodeBezet", { moment: "Oudercontact" }))).toBeNull(),
+    );
+
+    // No marker anywhere, so no explanation of one either. Both halves, because either alone would pass on a board
+    // that simply failed to render.
+    expect(screen.queryByText(t("kalender.bezetteperiodesUitleg"))).toBeNull();
+  });
+
+  it("belooft de periodeknop niet wanneer elke periode bezet is", async () => {
+    // `periodeHergenereerUitleg` says "met de knop onderaan die periode", so it may only render where such a button
+    // exists (antagonist round 1, MINOR). With every derived themaperiode blocked, none does.
+    const plan: Jaarplan = {
+      ...maakJaarplan([]),
+      geblokkeerdePeriodes: rooster.blokken.map((blok) => ({
+        blokStart: blok.start,
+        momentNaam: "Oudercontact",
+      })),
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, rooster.blokken[0].start));
+
+    renderKalender();
+    await waitFor(() =>
+      expect(screen.getAllByText(t("kalender.periodeBezet", { moment: "Oudercontact" }))).toHaveLength(
+        rooster.blokken.length,
+      ),
+    );
+
+    expect(zoekHergenereerknop(1)).toBeNull();
+    expect(screen.queryByText(t("kalender.periodeHergenereerUitleg"))).toBeNull();
+
+    // The bezet explanation DOES still render: those markers are on screen and need explaining.
+    expect(screen.getByText(t("kalender.bezetteperiodesUitleg"))).toBeInTheDocument();
+  });
+
+  it("vertelt ook bij handmatig plaatsen niet dat de tool stuk is bij een 409", async () => {
+    // The second manual route's own 409 branch (antagonist round 1, MAJOR, second half). Reached from a stale page:
+    // the column withholds the picker for a period it knows is blocked, so the plan here reports none.
+    const doel = rooster.blokken[0];
+    const plan: Jaarplan = { ...maakJaarplan([]), geblokkeerdePeriodes: [] };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+
+        if (init?.method === "POST" && url.includes("/plaatsingen")) {
+          return new Response(
+            JSON.stringify({ title: "Periode is bezet", detail: "SERVERDETAIL-NIET-TONEN" }),
+            { status: 409 },
+          );
+        }
+        if (url.includes("/api/themas")) {
+          return new Response(JSON.stringify([{ id: "t0", naam: "Herfst" }]), { status: 200 });
+        }
+        if (url.includes("/jaarplan/parameters")) {
+          return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), { status: 200 });
+        }
+        if (url.includes("/dekking")) {
+          return new Response(JSON.stringify(DEKKING_NIETS_ONTBREEKT), { status: 200 });
+        }
+        if (url.includes("/rooster")) {
+          return new Response(JSON.stringify(rooster), { status: 200 });
+        }
+        if (url.includes("/jaarplan")) {
+          return new Response(JSON.stringify(plan), { status: 200 });
+        }
+
+        return new Response("unexpected request", { status: 404 });
+      }),
+    );
+
+    renderKalender();
+    await waitFor(() =>
+      expect(zoekToevoegknop(doel.ordinaal)).toBeInTheDocument(),
+    );
+
+    fireEvent.click(zoekToevoegknop(doel.ordinaal)!);
+    const keuze = await screen.findByRole("combobox", { name: t("kalender.plaatsKies") });
+    fireEvent.change(keuze, { target: { value: "t0" } });
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.plaatsen") }));
+
+    expect(await screen.findByText(t("kalender.plaatsBezet"))).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.plaatsOnbeschikbaar"))).toBeNull();
+    expect(screen.queryByText(/SERVERDETAIL-NIET-TONEN/)).toBeNull();
+  });
+
+  it("belooft geen keuze wanneer elke andere periode bezet is, en zegt wat er dan wel kan", async () => {
+    // Finding C (antagonist round 2), and it is the same standard as MINOR 8 one round earlier: since a bezet period is
+    // KEPT in the list and disabled, "the list is not empty" stopped meaning "there is somewhere to move this". The
+    // panel used to render "Kies hieronder een themaperiode…" over a placeholder and one unselectable option.
+    const plaatsing = maakPlaatsing({ id: "kaart-3", blokStart: rooster.blokken[0].start });
+    const plan: Jaarplan = {
+      ...maakJaarplan([plaatsing]),
+      // The only other period of this two-period year.
+      geblokkeerdePeriodes: [{ blokStart: rooster.blokken[1].start, momentNaam: "Oudercontact" }],
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, rooster.blokken[1].start));
+
+    renderKalender();
+    await waitFor(() => expect(screen.getByText("Thema")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }));
+
+    // No picker, and the sentence that says why. The `herplaatsKies` assertion that used to sit here has moved to the
+    // stale-card test below: it renders only for `isVervallen`, so asserting its absence on a card that HAS a period
+    // passed whether or not the fix existed — a vacuous assertion standing in for the claim it appeared to check
+    // (antagonist round 3, MINOR).
+    expect(await screen.findByText(t("kalender.verplaatsGeenVrijePeriode"))).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: t("kalender.verplaatsNaar") })).toBeNull();
+  });
+
+  it("houdt de bezette periode ook weg uit de kiezer van een vervallen kaart", async () => {
+    // Finding D (antagonist round 2). The wiring was right, but every other test drove a card inside a period column,
+    // so the assertion existed for the route I had called *less* likely. A stale placement sits in no period at all,
+    // so its picker offers every one of them — which is why the prop doc calls this the likeliest route in.
+    const vervallen = maakPlaatsing({
+      id: "kaart-4",
+      // A date that starts no block of the current grid: the definition of stale.
+      blokStart: "2026-08-15",
+      blokEind: null,
+      blokOrdinaal: null,
+      isVervallen: true,
+    });
+    const bezet = drieRooster.blokken[1];
+    const plan: Jaarplan = {
+      ...maakJaarplan([vervallen]),
+      geblokkeerdePeriodes: [{ blokStart: bezet.start, momentNaam: "Oudercontact" }],
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, bezet.start), drieRooster);
+
+    renderKalender();
+
+    // Inside the "Te herzien" notice, not on the board: a stale placement has no column.
+    const melding = await screen.findByRole("region", { name: new RegExp(t("kalender.herzienTitelEnkelvoud")) });
+    fireEvent.click(
+      within(melding).getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }),
+    );
+
+    const keuze = await within(melding).findByRole("combobox", { name: t("kalender.verplaatsNaar") });
+    const optie = within(keuze).getByRole("option", {
+      name: t("kalender.periodeKeuzeBezet", {
+        ordinaal: bezet.ordinaal,
+        periode: formatteerPeriode(bezet.start, bezet.eind),
+        moment: "Oudercontact",
+      }),
+    });
+
+    expect(optie).toBeDisabled();
+  });
+
+  it("belooft een vervallen kaart geen kiezer en geen sleep wanneer elke periode bezet is", async () => {
+    // **The MAJOR of antagonist round 3.** Round 2 gated the picker and added a sentence, and left the instruction
+    // that actually promises a picker gated on staleness alone. So this state read "Kies hieronder een themaperiode …
+    // of versleep de kaart" over no picker, onto a board whose every column is a disabled droppable — both halves
+    // false, which is the same defect class as the state an owner ruling reopened E3-07 over (there: a stale REJECTED card, where the picker is withheld by the rejection; here: a stale card with every period bezet).
+    const vervallen = maakPlaatsing({
+      id: "kaart-5",
+      blokStart: "2026-08-15",
+      blokEind: null,
+      blokOrdinaal: null,
+      isVervallen: true,
+    });
+    const plan: Jaarplan = {
+      ...maakJaarplan([vervallen]),
+      geblokkeerdePeriodes: rooster.blokken.map((blok) => ({
+        blokStart: blok.start,
+        momentNaam: "Oudercontact",
+      })),
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, rooster.blokken[0].start));
+
+    renderKalender();
+    const melding = await screen.findByRole("region", {
+      name: new RegExp(t("kalender.herzienTitelEnkelvoud")),
+    });
+    fireEvent.click(
+      within(melding).getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }),
+    );
+
+    // The sentence that IS true here, and it does not say "nergens anders": this card is in no period, so there is no
+    // "andere" to speak of — the construction three earlier strings in that file were repaired for.
+    expect(
+      await within(melding).findByText(t("kalender.verplaatsGeenVrijePeriodeVervallen")),
+    ).toBeInTheDocument();
+    expect(within(melding).queryByText(t("kalender.verplaatsGeenVrijePeriode"))).toBeNull();
+
+    // And neither half of the instruction is promised: no picker, and no "kies hieronder / versleep de kaart".
+    expect(within(melding).queryByRole("combobox", { name: t("kalender.verplaatsNaar") })).toBeNull();
+    expect(within(melding).queryByText(t("kalender.herplaatsKies"))).toBeNull();
+  });
+
+  it("blijft een vervallen kaart wel zeggen waar verplaatsen werkt op de fijne weergave", async () => {
+    // The other side of the same gate, and the reason it is not applied to all three branches: `herplaatsAnderNiveau`
+    // does not promise a picker, it says where re-placing DOES work. Withholding it would take away the only way
+    // forward — the E3-06 rule pointing the other way. At the fine tier `doelen` is empty, so a naive gate on
+    // `kiesbareDoelen` alone would have suppressed exactly this sentence.
+    const vervallen = maakPlaatsing({
+      id: "kaart-6",
+      blokStart: "2026-08-15",
+      blokEind: null,
+      blokOrdinaal: null,
+      isVervallen: true,
+    });
+    const plan: Jaarplan = { ...maakJaarplan([vervallen]), geblokkeerdePeriodes: [] };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, rooster.blokken[0].start));
+
+    renderKalender();
+    await waitFor(() =>
+      expect(screen.getByRole("group", { name: t("kalender.weergaveLabel") })).toBeInTheDocument(),
+    );
+    fireEvent.click(
+      within(screen.getByRole("group", { name: t("kalender.weergaveLabel") })).getByRole("button", {
+        name: t("kalender.weergaveFijn"),
+      }),
+    );
+
+    const melding = await screen.findByRole("region", {
+      name: new RegExp(t("kalender.herzienTitelEnkelvoud")),
+    });
+    fireEvent.click(
+      within(melding).getByRole("button", { name: t("kalender.aanpassenLabel", { thema: "Thema" }) }),
+    );
+
+    expect(
+      await within(melding).findByText(t("kalender.herplaatsAnderNiveau")),
+    ).toBeInTheDocument();
+  });
+
+  it("heeft geen axe-schendingen met een bezette periode op het bord", async () => {
+    const bezet = rooster.blokken[1];
+    const plan: Jaarplan = {
+      ...maakJaarplan([]),
+      geblokkeerdePeriodes: [{ blokStart: bezet.start, momentNaam: "Oudercontact" }],
+    };
+    stubMetPeriodegeneratie(plan, periodeResultaat(plan, bezet.start));
+
+    const { container } = renderKalender();
+    await waitFor(() => expect(hergenereerknop(1)).toBeInTheDocument());
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

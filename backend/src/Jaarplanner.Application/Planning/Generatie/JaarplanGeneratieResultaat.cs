@@ -17,6 +17,7 @@ namespace Jaarplanner.Application.Planning.Generatie;
 public sealed record JaarplanGeneratieResultaat
 {
     private static readonly IReadOnlyList<string> LeegTekst = [];
+    private static readonly IReadOnlyList<BuitenPeriodeVoorstel> GeenBuitenPeriode = [];
 
     private JaarplanGeneratieResultaat(
         bool isGeslaagd,
@@ -162,6 +163,34 @@ public sealed record JaarplanGeneratieResultaat
     /// </para>
     /// </summary>
     public Dekkingsvooruitzicht? Vooruitzicht { get; init; }
+
+    /// <summary>
+    /// Placements the model proposed for a <b>different period than the one being regenerated</b> (E4-05, FR-8.2) —
+    /// skipped, and reported as their own kind.
+    /// <para>
+    /// Always empty on a whole-plan run, where nothing can be out of scope. On a per-period run this is a model that
+    /// answered a wider question than it was asked: the thema exists, the date is a real period boundary, and the only
+    /// thing wrong with the proposal is that the teacher did not ask about that period. So it is neither an
+    /// <see cref="OnbekendeThemas"/> nor an <see cref="OnbekendeBlokken"/> case, and reporting it as one would tell a
+    /// teacher the AI produced something invalid.
+    /// </para>
+    /// <para>
+    /// <b>Not relocated into the target period</b> — that would be the application inventing a placement the model did
+    /// not propose, which is the silent relocation ADR-0020 forbids.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<BuitenPeriodeVoorstel> BuitenPeriode { get; init; } = GeenBuitenPeriode;
+
+    /// <summary>
+    /// The start date of the period this run regenerated, or <c>null</c> for a whole-plan run (FR-8.1 vs FR-8.2).
+    /// <para>
+    /// Carried so the client does not have to remember what it asked for in order to describe what came back. It
+    /// matters for honest copy rather than for display: <see cref="AantalNieuw"/>, <see cref="AantalBehouden"/> and
+    /// <see cref="AantalVervangen"/> are scoped to this period on a per-period run, and a report that showed those
+    /// figures under the whole-plan sentence would claim the run had looked at the whole year.
+    /// </para>
+    /// </summary>
+    public DateOnly? GeregenereerdePeriode { get; init; }
 
     /// <summary>Builds a success result.</summary>
     public static JaarplanGeneratieResultaat Geslaagd(

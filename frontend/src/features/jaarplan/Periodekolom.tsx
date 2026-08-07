@@ -1,6 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 
-import { t, tAantal } from "../../i18n";
+import { Button } from "../../components/ui/button";
+import { t, tAantal, type TranslationKey } from "../../i18n";
 import { Themakaart, type Verplaatsstaat } from "./Themakaart";
 import { Themakiezer } from "./Themakiezer";
 import {
@@ -70,7 +71,90 @@ export interface PeriodekolomProps {
    * count disagreed with the server's arithmetic on every period holding three short thema's.
    */
   belasting: Blokspreiding | undefined;
+  /**
+   * The name of the vast moment that makes this period **bezet**, or `null` when nothing blocks it (E4-05, FR-5.4).
+   *
+   * One state with three consequences, all of them withheld affordances: no per-period regeneration, no hand-placement
+   * picker, and no drop target. The teacher said there may be no thema in this period (`parameters.momentGeenThema`
+   * puts it in exactly those words), and since the owner's ruling of 2026-08-06 that answer binds them as well as the
+   * AI, so offering any of the three would be offering something the server refuses.
+   *
+   * **It does not mean the period is empty, and the copy here must never say so.** Nothing is retroactive: a thema
+   * planned before the moment was registered stays where it is and keeps its own card, cards and all. What the column
+   * says is that nothing *new* comes in.
+   *
+   * The name is the teacher's own ("Oudercontact"), because a refusal that cannot say which commitment blocks the
+   * period sends them hunting through the generation settings.
+   */
+  bezetDoor: string | null;
+  /**
+   * **Every** blocked period, by start date, valued with the moment's name — not just this column's.
+   *
+   * The column itself only needs {@link PeriodekolomProps.bezetDoor}; this is for the cards, whose move picker offers
+   * *other* periods and must not offer a blocked one (E4-05). Threaded through rather than fetched twice, so the board
+   * and every card read one answer.
+   */
+  bezettePeriodes: ReadonlyMap<string, string>;
+  /**
+   * Regenerating **this period alone** (E4-05, FR-8.2), or `undefined` where the board does not offer it.
+   *
+   * The mutation lives once on the board rather than per column, so `bezig` and `foutsoort` are already narrowed to
+   * *this* column by the parent: a column never has to work out whether the run in flight is its own.
+   */
+  hergeneratie?: Periodehergeneratie;
 }
+
+/** What a column needs in order to offer, run and report a per-period regeneration. */
+export interface Periodehergeneratie {
+  /** Starts the run for this column's period. */
+  start: () => void;
+  /** True only while *this* period's run is in flight. */
+  bezig: boolean;
+  /**
+   * True while **another** period's run is in flight, which is what makes this button unavailable without it
+   * claiming to be the one that is working.
+   *
+   * **Found in the browser pass, not by a test.** One `useMutation` serves all seven columns, and `variables` holds
+   * only the last period pressed — so a second press while the first request was still open moved the "Bezig met
+   * genereren…" label to the new column and let the first one look idle while its run was still open. Two runs on
+   * different periods are safe on the server (each discards only its own block), so the honest answer is not to
+   * forbid it in principle but to stop the screen from misreporting it: one run at a time, and only the running
+   * column says so. The whole-plan button has always worked this way.
+   */
+  wachten: boolean;
+  /**
+   * Why this period's last run failed, or `null`. Told apart by **status** rather than by message, because the four
+   * cases need four different things from the teacher and the server's `detail` is not theirs to read (Art. II.3).
+   */
+  foutsoort: Periodefoutsoort | null;
+}
+
+/**
+ * The four ways a per-period run can fail, mapped from the response status.
+ *
+ * - `bezet` (409) the period is blocked. Only reachable from a **stale page**: the control is withheld for a blocked
+ *   period, so seeing this means the settings changed in another tab or another session.
+ * - `vervallen` (400) the date starts no period any more, i.e. the grid moved under the page.
+ * - `mislukt` (422) the model answered unusably. Retrying is sensible; nothing was persisted.
+ * - `onbeschikbaar` (anything else) the tool is broken or unconfigured, so a retry cannot help.
+ */
+export type Periodefoutsoort = "bezet" | "vervallen" | "mislukt" | "onbeschikbaar";
+
+/**
+ * The sentence each failure gets, paired here rather than chosen by a ternary at the render — the same device
+ * `PERIODELABEL` and `BORDUITLEG` use in this feature, and for the same reason: a mapping cannot silently lose a case
+ * the way a chain of conditionals can, and `Periodefoutsoort` makes the compiler check the cover is total.
+ *
+ * The two AI failures reuse the whole-plan run's own strings. Deliberate: the model failing and the tool being
+ * unconfigured mean exactly the same thing to a teacher whichever button they pressed, and a second spelling of one
+ * sentence is how the two come to disagree.
+ */
+const PERIODEFOUT: Record<Periodefoutsoort, TranslationKey> = {
+  bezet: "kalender.periodeBezetGeweigerd",
+  vervallen: "kalender.periodeVervallenGeweigerd",
+  mislukt: "kalender.genereerMislukt",
+  onbeschikbaar: "kalender.genereerOnbeschikbaar",
+};
 
 /**
  * A planning period as a board column (owner's choice, 2026-07-29).
@@ -123,15 +207,23 @@ export function Periodekolom({
   ouderIsIngepland,
   alGeplaatst,
   belasting,
+  bezetDoor,
+  bezettePeriodes,
+  hergeneratie,
 }: PeriodekolomProps) {
   const teVol = belasting?.isOverbelast ?? false;
 
   // Disabled rather than absent at the fine tier: hooks cannot be conditional, and dnd-kit's own `disabled` is the
   // supported way to say "this is not a landing place". Nothing is draggable there either, so this is belt and braces.
+  //
+  // **A bezet period is disabled for the same reason and not for a similar one** (E4-05): the server refuses a move
+  // into it with a 409, so an enabled target here would be a control that cannot do what it offers. The disclosure is
+  // the permanent "Bezet:" line below rather than something that appears mid-drag, because a teacher needs to know
+  // before they pick a card up, and a droppable that is disabled reports no hover state to say it during.
   const { setNodeRef, isOver, active } = useDroppable({
     id: blok.start,
     data: { blok },
-    disabled: verplaatsstaat !== "kan",
+    disabled: verplaatsstaat !== "kan" || bezetDoor !== null,
   });
 
   // Only meaningful while something is being dragged, and only for a card coming from *elsewhere*: a thema
@@ -188,6 +280,21 @@ export function Periodekolom({
         {niveau === "Subthemaperiode" && blok.ouderOrdinaal !== null && (
           <p className="mt-1 text-xs font-medium text-petrol">
             {t("kalender.binnenThemaperiode", { ordinaal: blok.ouderOrdinaal })}
+          </p>
+        )}
+
+        {/* Bezet, in the teacher's own vocabulary: the settings form calls this answer "die themaperiode is bezet"
+            (`parameters.momentGeenThema`), so the column uses the word they picked rather than inventing a second one.
+            **Deliberately petrol and not the attentie hue.** Every other marker on this header means something is
+            wrong; this one means the teacher told the tool to keep the period free, and colouring their own decision
+            as a problem would be the tool second-guessing them. It is also not colour alone: the word "Bezet:" is the
+            state (Art. XII, WCAG 2.2 AA).
+
+            It says nothing about the period being empty, which it may well not be: cards already here stay. What it
+            withholds is stated below, once above the board, rather than three times in every blocked column. */}
+        {bezetDoor !== null && (
+          <p className="mt-2 text-xs font-semibold text-petrol">
+            {t("kalender.periodeBezet", { moment: bezetDoor })}
           </p>
         )}
 
@@ -256,8 +363,14 @@ export function Periodekolom({
           // therefore no status chip to qualify it. It was the first full sentence in the product asserting a settled
           // plan where Art. IV says nothing is final until a teacher says so. The key keeps its name; the claim does
           // not. (`Geweigerd`-only parents still correctly read "Nog niets gepland" — that path is untouched.)
+          // A third sentence since E4-05, and it displaces the other two rather than joining them: "Nog niets gepland"
+          // is an invitation to plan, and this is the one period where that invitation is false. The well says what is
+          // true instead, naming the moment, so an empty blocked period does not read as an empty period whose
+          // controls have gone missing.
           <p className="flex min-h-[5rem] items-center justify-center rounded-md border border-dashed border-border bg-paper-diep/50 px-3 text-center text-xs text-ink-zacht">
-            {t(ouderIsIngepland ? "kalender.subperiodeIngepland" : "kalender.legeperiode")}
+            {bezetDoor !== null
+              ? t("kalender.periodeBezetLeeg", { moment: bezetDoor })
+              : t(ouderIsIngepland ? "kalender.subperiodeIngepland" : "kalender.legeperiode")}
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -267,6 +380,7 @@ export function Periodekolom({
                   plaatsing={plaatsing}
                   klasId={klasId}
                   blokken={blokken}
+                  bezettePeriodes={bezettePeriodes}
                   verplaatsstaat={verplaatsstaat}
                 />
               </li>
@@ -286,8 +400,55 @@ export function Periodekolom({
             Below the cards and the empty well, as a footer: the well already reads "there is room here", and the
             action belongs after the content it adds to rather than above it. Hidden while a card hovers, so the
             landing sentence below is the only thing the column says during a drag. */}
-        {verplaatsstaat === "kan" && !isDoelwit && (
+        {/* `bezetDoor` joins the gate for the reason the owner ruled on 2026-08-06: the server answers 409 for a
+            hand-placement into this period, so the picker would open, offer every thema and then fail. The column's
+            "Bezet:" line is the disclosure, and the board says once what it means. */}
+        {verplaatsstaat === "kan" && bezetDoor === null && !isDoelwit && (
           <Themakiezer klasId={klasId} blok={blok} alGeplaatst={alGeplaatst} />
+        )}
+
+        {/* Regenerating this one period (E4-05, FR-8.2), gated exactly like the picker above and for one more reason
+            besides: generation places on the themaperiode tier, so at the fine tier this button would name a fortnight
+            and rewrite five weeks.
+
+            **`ghost`, where the picker's trigger is `outline`.** Two identically weighted buttons stacked in a 288px
+            column is the defect E4-06 was ruled on, one story over, and the hierarchy is real rather than cosmetic:
+            putting a thema here yourself is the certain action, asking the AI to redo the period is the one that
+            replaces work. The label carries the scope ("Deze periode"), so it cannot be read as the board-wide run
+            whose button sits above the board with almost the same words.
+
+            The aria-label names the period by its ordinal, because seven buttons reading "Deze periode opnieuw
+            genereren" are indistinguishable in a screen reader's element list. Same device as the picker's own label. */}
+        {verplaatsstaat === "kan" && bezetDoor === null && !isDoelwit && hergeneratie && (
+          <div className="flex flex-col gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              onClick={hergeneratie.start}
+              // Disabled while ANY period is running, labelled only while this one is: see `wachten`.
+              disabled={hergeneratie.bezig || hergeneratie.wachten}
+              aria-label={t("kalender.periodeHergenereerLabel", { ordinaal: blok.ordinaal })}
+            >
+              {hergeneratie.bezig
+                ? t("kalender.genereerBezig")
+                : t("kalender.periodeHergenereer")}
+            </Button>
+
+            {/* The failure is reported **in the column the teacher pressed**, not only in the panel above the board:
+                the board scrolls horizontally, so a message at the top of the page can be off-screen entirely. Four
+                causes, four sentences, told apart by status — a 422 invites a retry, a 500 does not, and the two
+                refusals mean the page is out of date about different things. */}
+            {hergeneratie.foutsoort !== null && (
+              <p
+                role="alert"
+                className="rounded-md bg-suggestie-geweigerd/10 px-3 py-2 text-xs font-medium leading-snug text-suggestie-geweigerd"
+              >
+                {t(PERIODEFOUT[hergeneratie.foutsoort])}
+              </p>
+            )}
+          </div>
         )}
 
         {/* Words, not just a colour wash: the fill says "something is happening here", the sentence says what.

@@ -144,9 +144,71 @@
   > **Inherited obligation from E3-03 (2026-08-05): a new generation path must attach the dekkingsvooruitzicht itself.** FR-5.3's measured half is composed in `JaarplanController.Genereer` rather than inside `JaarplanGeneratieService`, because `DekkingService` reads the plan through `IJaarplanLezer` — which the generation service implements — so a dependency there would close the loop. **If you reuse `POST …/jaarplan/generatie` you inherit it for free; if you add an endpoint, attach it or the panel silently loses its dekking section.** It fails visibly rather than wrongly, which is why the composition was accepted at that layer, but it is an obligation rather than a guarantee. Same note on **E4-05**.
   > *Where that obligation actually lands, now that E4-04 is closed (added while merging E3-03 in, 2026-08-06):* **E4-04 added no generation path.** It presses the one endpoint that already existed, so the vooruitzicht `JaarplanController.Genereer` composes travels with it unchanged and nothing here had to attach anything. The obligation is therefore **E4-05's** in full, which is the story that adds the second path, and it is repeated on that story below rather than left only here.
 
-- [ ] **E4-05 — Regenerate a single period**
+- [~] **E4-05 — Regenerate a single period** — *built 2026-08-06 on `story/E4-05-periode-hergeneratie`, off `origin/main` `b2401e3` and since **merged up to `origin/main` (E5-03 in)**, so the gates ran on the tree that lands. **Three antagonist rondes, all VIOLATIONS FOUND: ronde 1 2 MAJOR + 7 MINOR + 2 QUESTION, ronde 2 no MAJOR + 5 MINOR, ronde 3 1 MAJOR + 3 MINOR — every finding fixed or routed, and ronde 4 is owed, which this checkbox says.** Narrative + full measurements: [`worklogs/E4-05/implementation.md`](worklogs/E4-05/implementation.md).*
   Regenerate one block/period without touching the rest.
   *Done when:* only the chosen period changes. Ref: FR-8.2.
+  > **What ronde 1 found, and both MAJORs were in the seam rather than in the new code.** The four things the audit was
+  > asked to be hostile about came back clean (nothing auto-applies, no failed run persists, no ordinal is ever a key,
+  > the new write paths do run against real PostgreSQL). What it found instead:
+  > 1. **Ruling 2 was enforced on the drag and not on the drag's mandated alternative.** The board withheld the drop
+  >    target for a blocked period, but the *card's* "Verplaats naar" `<select>` — the control that exists to satisfy
+  >    **WCAG 2.2 SC 2.5.7 (Dragging Movements)** — still offered every period. So the one route a teacher without a
+  >    mouse has was the one route that proposed a target the server refuses, and the 409 fell through to *"Meld dit
+  >    aan de beheerder van de tool"*: the tool blaming itself, for a rule it had just applied on the strength of the
+  >    teacher's own setting. The stale-placement notice is the likeliest way in, because such a card sits in no period
+  >    and its picker offers all of them. Fixed by keeping the blocked period in the list **disabled, naming the
+  >    moment** (a silently shorter list sends a teacher hunting for a period that is plainly on the board), plus a 409
+  >    branch on **both** manual routes.
+  > 2. **The new button failed SC 2.5.3 (Label in Name, Level A).** Visible *"Deze periode opnieuw genereren…"*,
+  >    accessible name *"Themaperiode 3 opnieuw genereren"* — the visible text was not in the name, so speech input
+  >    could not reach it. Every other `aria-label` in this feature *appends*; this one *substituted*. **axe cannot see
+  >    this**, so the browser pass's "0 violations" was silent about it, which is exactly why it is now a
+  >    catalogue-wide guard: any `<key>Label` must contain its visible `<key>`, case-insensitively.
+  > *Also fixed:* the bezet explanation rendered at the fine tier where no column carries the marker (a themaperiode's
+  > start is also its first sub-block's start); the period-button explanation promised a button a fully blocked year has
+  > nowhere; the parameter report was measured plan-wide under a period-scoped heading, so a run on period 5 could
+  > report on period 2; a **stale** placement was described to the model as sitting in a period the same prompt had just
+  > omitted; `BuitenPeriode` shipped `"Water @ 2026-11-02"` to a teacher and is now structured, so the client says
+  > *"Water (themaperiode 4)"*; and the `Manueel` half of the seven widened promises was the one still resting on
+  > shared-code reasoning, so it has its own test and the docstring that overclaimed is corrected.
+  > **Routed, not fixed here:** the third billable anonymous route is recorded on **E7-11**, whose own dimension it
+  > changes (one billable call per *period* rather than per class).
+  > **The Art. XIV entry is closed, by the session that held the file (2026-08-07).** It still read *"Nothing
+  > hard-assumes either reading today"* while the strict reading was compiled in on three paths, and `backlog/README.md`
+  > was **claimed by E5-06** at the moment this was found — so it was left untouched and asked for in the groepschat
+  > rather than edited around the lock. E5-06 answered the ASK and struck the entry themselves (`4624c90`, *"Answer
+  > E4-05's ASK: the vast-moment Art. XIV item was false on main"*). **Recorded because the outcome is the argument for
+  > the protocol:** a refused claim cost this story one paragraph of waiting and produced a correction written by the
+  > session that owned the file, rather than a merge conflict in the one file this repo has retracted counts over.
+  > **A third owner ruling, 2026-08-06, on the question ronde 1 raised: the settings form says it at the point of
+  > choosing.** The audit observed that *"Mag er een thema in die themaperiode?"* / *"Nee, die themaperiode is bezet"* is
+  > generic and therefore not false, but that the answer's **meaning changed** — it used to constrain the AI and now
+  > removes the teacher's own picker and drop target, while the only disclosure sat on the board, after the fact.
+  > **Ruled: one sentence beside that answer**, shown only once the blocking option is actually selected, so it explains
+  > a consequence the teacher has chosen rather than warning about one of two options while both are open
+  > (`parameters.momentGeenThemaGevolg`). *It is conditional on the date landing in a themaperiode* (ronde 3, MINOR): the
+  > render condition is the radio, not the date, and a blocking moment on a vakantie blocks nothing at all.
+  > *Recorded here because ronde 3 found it recorded nowhere but in the source comment that implements it* — a
+  > user-facing copy change whose only authority was the code doing it, which an auditor cannot tell apart from a
+  > decision taken unilaterally.
+  > **What ronde 3 found, and it is the sharpest finding of the three rondes because it was inside a fix:** ronde 2's
+  > repair gated the move *picker* and added a sentence, and left the instruction that actually promises a picker gated
+  > on staleness alone. So on a **stale** card in a year where every period is bezet the panel read *"Kies hieronder een
+  > themaperiode … of versleep de kaart"* over no picker, onto a board whose every column is a disabled droppable: both
+  > halves false, **the same defect class as the state an owner ruling reopened E3-07 over (there: a stale **rejected** card, where the picker is withheld by the rejection; here: a stale card with every period bezet)**. The new sentence carried the same defect
+  > class in a second form (*"nergens **anders** heen"* for a card that is in no period, two lines under a paragraph
+  > saying exactly that), which three strings in that same file had already been repaired for. Fixed by gating only the
+  > `kan` branch, and the reason is **by construction rather than editorial**: at the other two tiers `doelen` is `[]`
+  > by definition (`isGeweigerd || verplaatsstaat !== "kan" ? [] : …`), so `kiesbareDoelen.length === 0` there says
+  > *nothing about blocked periods at all* — gating on it would suppress a true sentence on a premise that is not about
+  > bezet. Those two branches also carry different information (`herplaatsAnderNiveau` says where re-placing **does**
+  > work; `herplaatsNiveauOnbekend` says the view could not be read at all), which is the secondary reason.
+  > *(Two earlier revisions of this line were weaker. The first compressed both branches into "say where moving works",
+  > false of the second, which says where it does **not**. The replacement argued they would leave the card with "no
+  > statement whatsoever" — also not decisive, since the board itself carries `fijnUitleg` at that tier, so the screen
+  > is not silent even when the card is. The entry outlives the branch, so it is the artefact that has to carry the
+  > argument that actually holds.)* Fixed further by giving the sentence a `*Vervallen` variant. Both pinned, and the round also moved a **vacuous assertion**
+  > that appeared to check the claim while standing on a card that could not exercise it.
   > **Inherited from E3-03 via E4-04 (2026-08-06): your new path must attach the dekkingsvooruitzicht itself.** FR-5.3's
   > measured half is composed in `JaarplanController.Genereer`, not inside `JaarplanGeneratieService`, so a second
   > generation route that does not repeat that composition returns a run report with no coverage figures and nothing
@@ -158,6 +220,10 @@
   > **One substantive question arrives with it, and it is not about copy** (E4-03 antagonist audit, 2026-08-04, now an Art. XIV item in [`README.md`](README.md)): **a `vast moment` blocks *generation* from a period and blocks nothing about a manual placement.** E4-03 added the first *creation* route into such a period and E3-07's move path is equally blind, so a teacher can now hand-place a thema into the period they themselves marked as bezet, with no annotation anywhere. **This story is the cheapest place to settle it**, because a per-period regeneration has to decide what it does with that period anyway, and because you are already re-reading the seven strings above. Do not assume either reading in code.
   > *And, from E3-03 (2026-08-05):* a per-period run must attach the dekkingsvooruitzicht to its own response, for the reason spelled out under **E4-04**. A partial regeneration is also the first path that can change coverage for *part* of a year, so its outlook is measured over the whole plan, not over the regenerated period.
   > *And the substantive question, not just the copy:* E4-06 hid the lock control on already-decided placements because `IsVervangbaar` is `Voorgesteld && !Vergrendeld`, so an `Aanvaard`/`Manueel` placement survives a run without a lock. **If your per-period path may replace a decided placement, that reasoning collapses and the hidden control becomes load-bearing.** That is E4-07's ruling to obtain, not yours to assume.
+  > **Two owner rulings, 2026-08-06, taken before any code was written, because the backlog forbids assuming either.**
+  > 1. **A per-period regeneration of a period holding a blocking `vast moment` is refused *before* the AI call, and the reason is visible on the control.** Not a post-hoc report: the teacher does not press a button, wait for the model and receive an empty result. Rejected alternatives, recorded because both were defensible: running anyway and reporting the refusal afterwards (what the whole-plan path does today, but there the run has other periods to fill, so the refusal is a footnote rather than the whole outcome); and treating the explicit choice of that one period as an instruction that overrides the block (which would make the tool ignore an instruction the teacher herself gave, and would make the two generation paths disagree about the same parameter).
+  > 2. **The Art. XIV question is settled the strict way: a teacher may not hand-place or drag a thema into a blocked period either.** One rule for human and machine. This **removes a path E4-03 and E3-07 ship today** — both accept such a target silently — so it is a deliberate narrowing of shipped behaviour, not a gap being filled. *Boundary the ruling does not cover and this story therefore does not touch:* nothing is retroactive. A placement already sitting in such a period stays exactly where it is (a teacher may have planned it and then registered the moment), so **the copy may not say the period is empty or that nothing may be there** — only that nothing *new* can be put there while the moment stands. A placement stranded that way is a signalling question and belongs to **E3-09**, not here.
+  > *What these two rulings do **not** settle, stated so the next story does not read consent into them:* whether a per-period run may replace a **decided** placement. It may not, and this story does not ask — it applies the existing rule (`IsVervangbaar`: untouched, unlocked proposals only) scoped to one period, which is exactly what keeps E4-06's hidden lock control non-load-bearing and its six sentences true. **E4-07 still owns that ruling.**
 
 - [x] **E4-06 — Vergrendelde blokken excluded from regeneration** — *built 2026-07-31, closed 2026-08-03 on `story/E4-06-vergrendeling`, merged into `feature/e4-bewerking-hergeneratie` (`6755c49`). Three fix rounds, three audits, two independent verifications. Final gates on the landing commit (`75f326c`, with `origin/main` merged in first): **test-runner PASS**, **antagonist COMPLIANT**, 496 unit + 154 integration + 205 frontend, **0 skipped**, `dotnet format` / lint / build clean, and all sixteen `(status, vergrendeld, isVervallen)` states read out of a real browser at 1440px and exactly 390px.*
   A `vergrendeld` thema/block is preserved across (re)generation.

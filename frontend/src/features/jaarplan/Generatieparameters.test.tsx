@@ -54,6 +54,8 @@ const leegPlan: Jaarplan = {
   schooljaarId: SCHOOLJAAR_ID,
   schooljaarNaam: "2026-2027",
   blokindeling: rooster.blokindeling,
+  // E4-05: no period is blocked in these fixtures; the blocked-period cases build their own.
+  geblokkeerdePeriodes: [],
   // No placements, so no period carries any weeks: the te-vol signal is out of scope for this file (E3-09).
   blokken: rooster.blokken.map((blok) => ({
     ordinaal: blok.ordinaal,
@@ -84,6 +86,9 @@ const leegRapport: Parameterrapport = {
 function resultaat(parameters: Parameterrapport | null): Generatieresultaat {
   return {
     isGeslaagd: true,
+    // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+    buitenPeriode: [],
+    geregenereerdePeriode: null,
     fout: null,
     // No coverage outlook (E3-03): this file is about the parameter report, and a null renders no dekking block.
     vooruitzicht: null,
@@ -662,6 +667,39 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
 
     expect(await screen.findByText(t("parameters.geenThemas"))).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).toBeNull();
+  });
+  it("zegt bij het blokkerende antwoord wat het de leerkracht zelf kost, en alleen daar", async () => {
+    // Owner ruling 2026-08-06, on the E4-05 antagonist's QUESTION. The question above the radios is generic ("Mag er
+    // een thema in die themaperiode?"), so it was never a promise about the AI alone — but its MEANING changed when a
+    // blocked period started refusing a hand-placement and a drag too, and until this the only disclosure was on the
+    // kalender, i.e. after the fact.
+    stubFetch(resultaat(leegRapport), { instellingen: { gewensteStartthemas: [], vasteMomenten: [] } });
+    renderKalender();
+    await openForm();
+
+    fireEvent.click(await screen.findByRole("button", { name: t("parameters.momentToevoegen") }));
+
+    // Nothing is claimed while the question is unanswered: both options are open, so a warning about one of them
+    // would describe a choice the teacher has not made. This is also the state the form deliberately starts in.
+    expect(screen.queryByText(t("parameters.momentGeenThemaGevolg"))).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: t("parameters.momentMagThema") }));
+    expect(screen.queryByText(t("parameters.momentGeenThemaGevolg"))).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: t("parameters.momentGeenThema") }));
+    expect(screen.getByText(t("parameters.momentGeenThemaGevolg"))).toBeInTheDocument();
+
+    // It names BOTH consequences, because the ruling is that one rule binds human and machine, plus the boundary that
+    // keeps it honest: nothing already planned is removed.
+    const gevolg = t("parameters.momentGeenThemaGevolg");
+    expect(gevolg).toContain("zelf ook geen thema in zetten");
+    expect(gevolg).toContain("blijft staan");
+
+    // **And it is conditional on the date landing in a themaperiode** (antagonist round 3, MINOR). The render
+    // condition here is the RADIO, not the date, and a blocking moment on a vakantie or outside the year blocks
+    // nothing at all: it lands in `OnplaatsbareVasteMomenten`, which `parameters.rapportOnplaatsbaar` reports. An
+    // unconditional promise would therefore assert a consequence its own condition cannot guarantee.
+    expect(gevolg).toContain("Ligt die dag in een themaperiode");
   });
 });
 

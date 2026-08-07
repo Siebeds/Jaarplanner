@@ -218,6 +218,8 @@ function jaarplan(eigen: Themaplaatsing[]): Jaarplan {
     schooljaarId: SCHOOLJAAR_ID,
     schooljaarNaam: "2026-2027",
     blokindeling: rooster.blokindeling,
+    // E4-05: no period is blocked in these fixtures; the blocked-period cases build their own.
+    geblokkeerdePeriodes: [],
     plaatsingen: eigen,
     blokken: belasting(eigen),
   };

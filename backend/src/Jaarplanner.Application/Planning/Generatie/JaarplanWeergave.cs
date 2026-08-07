@@ -54,7 +54,41 @@ public sealed record JaarplanWeergave(
     string SchooljaarNaam,
     string Blokindeling,
     IReadOnlyList<ThemaplaatsingWeergave> Plaatsingen,
-    IReadOnlyList<BlokspreidingWeergave> Blokken);
+    IReadOnlyList<BlokspreidingWeergave> Blokken)
+{
+    /// <summary>
+    /// The periods that accept nothing new because the teacher blocked them with a vast moment (E4-05, FR-5.4/FR-8.2),
+    /// each with the name of the moment doing the blocking.
+    /// <para>
+    /// <b>On the read because a control that cannot work must say so before it is pressed, not after</b> (owner ruling
+    /// 2026-08-06, and the E3-06 rule): the per-period regeneration trigger, the hand-placement picker and the drag
+    /// target all refuse a blocked period, and all three need the reason in visible text rather than as a failed
+    /// request. Without this the UI would have to provoke a 409 to find out.
+    /// </para>
+    /// <para>
+    /// <b>It says "nothing new", not "nothing here".</b> Whatever was planned in such a period before the moment was
+    /// registered stays exactly where it is, so a period in this list may well hold thema's, and copy built on it must
+    /// not call it empty or unavailable. Nothing about the rule is retroactive.
+    /// </para>
+    /// <para>
+    /// An <c>init</c> property rather than a positional parameter: every mutation on this service returns the plan, so
+    /// the alternative was six call sites passing it positionally, where an empty list at any one of them would
+    /// silently re-enable a control the server refuses.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<GeblokkeerdePeriodeWeergave> GeblokkeerdePeriodes { get; init; } = [];
+}
+
+/// <summary>
+/// One period a teacher has blocked with a vast moment, as the API reports it.
+/// </summary>
+/// <param name="BlokStart">The block's start date — the same key placements use, never an ordinal (ADR-0020 §3).</param>
+/// <param name="MomentNaam">
+/// The teacher's own name for the commitment ("oudercontact"), so the refusal can name <i>which</i> one blocks the
+/// period instead of sending them hunting through the generation settings. It is school data, not a server-authored
+/// sentence, so passing it to the client does not breach the Art. II.3 rule against rendering server prose.
+/// </param>
+public sealed record GeblokkeerdePeriodeWeergave(DateOnly BlokStart, string MomentNaam);
 
 /// <summary>
 /// One thema placement as returned by the API: the persisted facts plus the block bounds projected from the

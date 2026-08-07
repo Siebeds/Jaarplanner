@@ -285,6 +285,46 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
   });
 
   /**
+   * **The scopes a regeneration promise may name (E4-05).**
+   *
+   * Until this story the assertion above was a literal `toContain("hele jaarplan")`, and that was right for exactly as
+   * long as one regeneration path existed: FR-8.1's whole-plan run was the only thing a promise *could* honestly be
+   * about, so naming it and naming *a* scope were the same act. E4-05 builds FR-8.2, and with it the first `kalender.*`
+   * copy whose scope is one period — for which "hele jaarplan" is not a qualification but a falsehood.
+   *
+   * So the rule is stated as what it always meant: **a string that talks about generating again must say which
+   * regeneration it is talking about.** Two members today, and the list is deliberately an allowlist rather than a
+   * loosened pattern: a string that names no scope at all is the defect this guard exists for, and `/periode/` alone
+   * would let *"een hergeneratie kan dit thema in een andere periode zetten"* through while it names nothing.
+   *
+   * *Why the seven inherited strings still contain "hele jaarplan" after this story:* they name **both** paths now
+   * ("van het hele jaarplan of van deze periode"), because both preserve exactly the same placements — the per-period
+   * discard is `IsVervangbaar` narrowed by position, nothing more. Widening them was not an inference from that: the
+   * survival claim is pinned per status by `Periodehergeneratie_laat_beslissingen_in_die_periode_staan` and
+   * `Een_weigering_in_de_periode_overleeft_de_periodehergeneratie` in the backend suite. **A promise widened by
+   * reasoning alone is how this backlog collected its retractions.**
+   *
+   * *What this guard still cannot see*, unchanged from the note above: a wording that avoids both stems
+   * (*"nog eens door de AI laten doen"*). It narrows the class; it does not close it.
+   */
+  /**
+   * *`themaperiode {ordinaal}` earned its place by this guard failing on E4-05's own aria-label,* which was the guard
+   * working rather than being in the way: naming the period is the **most** precise scope statement in the family,
+   * since it says not merely which *kind* of regeneration but which period.
+   *
+   * **That aria-label no longer needs the member, and the member is still load-bearing — for a different string**
+   * (antagonist round 2, finding B). Fixing SC 2.5.3 reworded the label to "Deze periode opnieuw genereren… (themaperiode
+   * {ordinaal})", which now matches on *"deze periode"*, so this branch looked dead. It is not:
+   * `kalender.periodeRapportKop` matches on it alone — and it only entered the family at all once the pattern above
+   * learned to read *"gegenereerd"*. Recorded rather than quietly rewritten, because a comment whose stated reason has
+   * expired is the defect class this repo has retracted most often, and here the reason changed while the code was right.
+   *
+   * The placeholder is matched literally, so this branch cannot be satisfied by prose that happens to mention a
+   * themaperiode; only a string that interpolates the period's own label qualifies.
+   */
+  const BEREIK = /hele jaarplan|deze periode|die periode|één periode|themaperiode \{ordinaal\}/;
+
+  /**
    * **The same rule, over the whole `kalender` namespace rather than two prefixes (E4-04).**
    *
    * The two guards above are keyed on the key's *prefix* and on the word `hergener`, and this file already records
@@ -316,7 +356,18 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
     // this pattern required adjacency — so the phrasing most likely to be copied out of the FA was the one phrasing
     // that escaped. Bounded rather than open-ended (`.*`) so an unrelated "probeer het opnieuw" three sentences above
     // a "genereren" cannot drag a string into the family and demand a scope clause it does not need.
-    const OPNIEUW = /hergener|opnieuw(\s+\S+){0,2}\s+gener/i;
+    //
+    // **`(?:ge)?gener` since round 2 of E4-05's audit, and it closed a real hole rather than tidying one.** Dutch puts
+    // "ge" in front of the participle, so `\s+gener` could not see *"opnieuw gegenereerd"* — and
+    // `kalender.periodeRapportKop` ("Alleen themaperiode 3 is opnieuw **gegenereerd**") is exactly that shape. It was
+    // making a regeneration claim outside this family the whole time.
+    //
+    // *Written `ge?gener` at first, which is `g` + optional `e` + `gener` and therefore matches "gegener" but **not**
+    // "gener" — so the "widening" silently dropped three existing members, including `hergenereerUitleg`. The
+    // verification script I checked it with carried the same mistake and duly confirmed the claim. It was caught by the
+    // named-member assertion below, which I had added for an unrelated reason. **A regex fix verified with the same
+    // regex is not verified.**
+    const OPNIEUW = /hergener|opnieuw(\s+\S+){0,2}\s+(?:ge)?gener/i;
 
     const gevonden = [...CATALOGUS].filter(
       ([sleutel, waarde]) => sleutel.startsWith("kalender.") && OPNIEUW.test(waarde),
@@ -326,6 +377,15 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
     // whole namespace, and the button copy E4-04 added keeps it non-empty independently of the lock family's naming.
     expect(gevonden.length).toBeGreaterThan(0);
 
+    // **Two named members, because both entered the family through a pattern change that could silently be undone**
+    // (antagonist round 2, finding B). `periodeRapportKop` says "opnieuw **gegenereerd**", which the pattern could not
+    // read until `ge?gener`; narrowing it back would drop the string from the family with every test still green, and
+    // it is the ONLY member that names its scope through the `themaperiode {ordinaal}` branch — so that branch would
+    // become dead in the same move. Naming them here makes both regressions loud instead of invisible.
+    const sleutels = gevonden.map(([sleutel]) => sleutel);
+    expect(sleutels).toContain("kalender.periodeRapportKop");
+    expect(sleutels).toContain("kalender.hergenereerUitleg");
+
     for (const [sleutel, waarde] of gevonden) {
       // Lower-cased, unlike the guard above, because this family includes a **button label** where the phrase opens
       // the sentence: "Hele jaarplan opnieuw genereren…". The stricter guard's literal `toContain` would have forced
@@ -333,9 +393,10 @@ describe("nl.json — no regeneration promise goes unscoped, in any family", () 
       expect(
         waarde.toLowerCase(),
         `${sleutel} promises a regeneration without saying which one`,
-      ).toContain("hele jaarplan");
+      ).toMatch(BEREIK);
     }
   });
+
 });
 
 describe("nl.json — the stale-placement notice does not overclaim about dekking", () => {
@@ -704,5 +765,46 @@ describe("nl.json — de zin over het minimumdoelniveau blijft zeggen dat het er
     // The false versions: any promise that this screen reports minimumdoeldekking, in the present tense.
     expect(zin).not.toMatch(/\bdekking op minimumdoelniveau (staat|zit) (er)?in\b|\book de minimumdoelen\b/);
     expect(zin).not.toMatch(/\bvolledig\b|\bcompleet\b|\binspectieklaar\b/);
+  });
+});
+
+describe("nl.json — een aria-label bevat het zichtbare label (WCAG 2.2 SC 2.5.3)", () => {
+  /**
+   * **Label in Name (Level A): the accessible name must contain the visible label**, or speech input cannot reach the
+   * control — a user says what they see, and the browser matches what the name says.
+   *
+   * This guard exists because **axe cannot see it**: SC 2.5.3 is not machine-testable from the DOM alone, so E4-05's
+   * browser pass reported "0 violations, 28 rules" while its new button was failing. The convention this codebase
+   * already followed was to *append* (`plaatsToevoegen` "Thema toevoegen" → `plaatsToevoegenLabel` "Thema toevoegen aan
+   * themaperiode {ordinaal}"); E4-05's first version *substituted* ("Deze periode opnieuw genereren…" → "Themaperiode 3
+   * opnieuw genereren"), which is the failure. Pairs are found by the `<key>` / `<key>Label` naming this feature uses,
+   * so a new control inherits the check by naming its keys the way its siblings do.
+   *
+   * A base string carrying its own placeholder is skipped: its rendered text is not the literal, so a literal
+   * containment test would be meaningless rather than strict.
+   */
+  it("keeps every <key>Label a superset of its visible <key>", () => {
+    const paren = [...CATALOGUS].filter(
+      ([sleutel]) => sleutel.endsWith("Label") && CATALOGUS.has(sleutel.slice(0, -"Label".length)),
+    );
+
+    // Non-vacuity: renaming the convention away must fail here rather than silently switch the guard off.
+    expect(paren.length).toBeGreaterThan(0);
+
+    for (const [labelSleutel, label] of paren) {
+      const zichtbaar = CATALOGUS.get(labelSleutel.slice(0, -"Label".length))!;
+      if (zichtbaar.includes("{")) {
+        continue;
+      }
+
+      // **Case-insensitive**, and that is the standard rather than a loosening: speech-input engines match the
+      // spoken text case-insensitively, and this codebase's own convention puts the interpolation first
+      // (`aanvaardenLabel` = "{thema} aanvaarden" over the visible "Aanvaarden"). A case-sensitive version of this
+      // guard failed on that pair on its first run, i.e. it called the *good* precedent a violation.
+      expect(
+        label.toLowerCase(),
+        `${labelSleutel} does not contain its own visible label "${zichtbaar}" (WCAG 2.2 SC 2.5.3)`,
+      ).toContain(zichtbaar.toLowerCase());
+    }
   });
 });

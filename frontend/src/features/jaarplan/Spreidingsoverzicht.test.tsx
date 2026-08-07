@@ -18,6 +18,9 @@ import type { Generatieresultaat } from "./types";
 describe("Spreidingsoverzicht en verouderde metingen", () => {
   const basis: Generatieresultaat = {
     isGeslaagd: true,
+    // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
+    buitenPeriode: [],
+    geregenereerdePeriode: null,
     fout: null,
     jaarplan: null,
     aantalNieuw: 3,
@@ -52,7 +55,7 @@ describe("Spreidingsoverzicht en verouderde metingen", () => {
   };
 
   it("toont spreiding en vooruitzicht zolang de metingen nog kloppen", () => {
-    render(<Spreidingsoverzicht resultaat={basis} />);
+    render(<Spreidingsoverzicht resultaat={basis} buitenPeriodeLabels={[]} />);
 
     expect(screen.getByText(/Nog leeg: themaperiode 3/)).toBeInTheDocument();
     expect(screen.getByText(/Te vol/)).toBeInTheDocument();
@@ -61,7 +64,7 @@ describe("Spreidingsoverzicht en verouderde metingen", () => {
   });
 
   it("houdt elke meting over het plan achter zodra de leerkracht het plan aanpaste", () => {
-    render(<Spreidingsoverzicht resultaat={basis} verouderd="plan" />);
+    render(<Spreidingsoverzicht resultaat={basis} verouderd="plan" buitenPeriodeLabels={[]} />);
 
     expect(
       screen.getByText(/Je hebt het jaarplan aangepast na deze generatie/),
@@ -75,7 +78,7 @@ describe("Spreidingsoverzicht en verouderde metingen", () => {
   });
 
   it("zegt iets anders wanneer alleen het gemeten jaar veranderde", () => {
-    render(<Spreidingsoverzicht resultaat={basis} verouderd="bereik" />);
+    render(<Spreidingsoverzicht resultaat={basis} verouderd="bereik" buitenPeriodeLabels={[]} />);
 
     // "Je hebt het jaarplan aangepast" is simply false for a teacher who only moved the kleuterjaar chooser.
     expect(screen.getByText(/Je meet nu tegen een ander jaar/)).toBeInTheDocument();
@@ -86,7 +89,7 @@ describe("Spreidingsoverzicht en verouderde metingen", () => {
   });
 
   it("blijft de feiten over de run zelf noemen, want die blijven waar", () => {
-    render(<Spreidingsoverzicht resultaat={basis} verouderd="plan" />);
+    render(<Spreidingsoverzicht resultaat={basis} verouderd="plan" buitenPeriodeLabels={[]} />);
 
     // What the run added, kept and replaced is history: no later edit can falsify it, and withholding it would
     // leave a teacher who edited one card with no record of what the run had done at all.
@@ -124,6 +127,7 @@ describe("Spreidingsoverzicht en verouderde metingen", () => {
           },
         }}
         verouderd="plan"
+        buitenPeriodeLabels={[]}
       />,
     );
 

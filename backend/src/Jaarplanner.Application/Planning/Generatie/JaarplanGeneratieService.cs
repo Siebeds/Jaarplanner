@@ -94,10 +94,74 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     /// <returns>A success result carrying the reviewable plan, or an explicit failure with nothing persisted.</returns>
     /// <exception cref="SchoolcontentNietGevondenFout">The class does not exist.</exception>
-    public async Task<JaarplanGeneratieResultaat> GenereerAsync(
+    public Task<JaarplanGeneratieResultaat> GenereerAsync(
         Guid klasId,
         JaarplanGeneratieParameters? parameters = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        UitvoerenAsync(klasId, parameters, doelBlokStart: null, cancellationToken);
+
+    /// <summary>
+    /// Regenerates <b>one themaperiode</b> and leaves the rest of the plan alone (FR-8.2) — E4-05's half of FR-8,
+    /// beside <see cref="GenereerAsync"/>'s whole-plan run.
+    /// <para>
+    /// <b>The same pipeline, narrowed in exactly two places</b>: the prompt asks for one period (and shows the model
+    /// what stands elsewhere, so it can still reason about spread and coverage), and the discard is scoped to that
+    /// period. Everything else — the parameters, the vast-moment enforcement, the resolution rules, the reports — is
+    /// literally the same code, because two regeneration paths that each implement "what may a run replace?" are two
+    /// paths that will eventually answer it differently.
+    /// </para>
+    /// <para>
+    /// <b>What it may replace is unchanged: untouched, unlocked proposals in that period only</b>
+    /// (<see cref="Themaplaatsing.IsVervangbaar"/>). An accepted, rejected, hand-placed, moved or locked placement in
+    /// the regenerated period survives, exactly as in a whole-plan run. This is deliberate and it is not this story's
+    /// to change: E4-06 hides the lock control on decided placements *because* locking them changes nothing for either
+    /// path, and whether a run may ever overwrite a decision is E4-07's ruling to obtain.
+    /// </para>
+    /// <para>
+    /// <b>The class's kept parameters are read, never written.</b> There is no form on this path — the teacher presses
+    /// a period, not a settings panel — so a per-period run cannot silently rewrite the settings a whole-plan run
+    /// saved. It honours them: a start-thema preference for this period still applies, and a blocking vast moment in
+    /// this period refuses the run outright (see below).
+    /// </para>
+    /// <para>
+    /// <b>A blocking vast moment in the target period refuses the run before the model is called</b> (owner ruling
+    /// 2026-08-06, clause 1). Not "run and report nothing placed": the teacher would wait on a model call whose only
+    /// possible outcome is an empty period. The whole-plan path still reports rather than refuses, and that asymmetry
+    /// is the ruling's, not an oversight — there, the blocked period is one of eight and the run has real work to do.
+    /// </para>
+    /// <para>
+    /// <b>Works on a class with no plan yet</b>, which is why it is "generate this period" as much as "regenerate" it:
+    /// the plan is created on first use exactly as a whole-plan run creates it.
+    /// </para>
+    /// </summary>
+    /// <param name="klasId">The class whose plan is being changed.</param>
+    /// <param name="blokStart">
+    /// The start date of the themaperiode to fill. Resolved against the currently derived grid and <b>refused, never
+    /// snapped</b> to a neighbour (ADR-0020, directie 2026-07-28) — the same answer the hand-placement and move paths
+    /// give for a date that is not a period boundary.
+    /// </param>
+    /// <param name="cancellationToken">Cancels an in-flight call.</param>
+    /// <returns>A success result carrying the reviewable plan, or an explicit failure with nothing persisted.</returns>
+    /// <exception cref="SchoolcontentNietGevondenFout">The class does not exist.</exception>
+    /// <exception cref="OngeldigePlaatsingFout">The date starts no block of the current grid.</exception>
+    /// <exception cref="PeriodeIsBezetFout">A blocking vast moment holds that period.</exception>
+    public Task<JaarplanGeneratieResultaat> GenereerPeriodeAsync(
+        Guid klasId,
+        DateOnly blokStart,
+        CancellationToken cancellationToken = default) =>
+        UitvoerenAsync(klasId, parameters: null, doelBlokStart: blokStart, cancellationToken);
+
+    /// <summary>
+    /// The one generation pipeline, run either over the whole year (<paramref name="doelBlokStart"/> is
+    /// <c>null</c>) or over a single themaperiode. See <see cref="GenereerAsync"/> and
+    /// <see cref="GenereerPeriodeAsync"/> for what each promises; every difference between them is marked
+    /// <c>PER-PERIOD</c> below and there are three of them.
+    /// </summary>
+    private async Task<JaarplanGeneratieResultaat> UitvoerenAsync(
+        Guid klasId,
+        JaarplanGeneratieParameters? parameters,
+        DateOnly? doelBlokStart,
+        CancellationToken cancellationToken)
     {
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
 
@@ -116,7 +180,48 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
         var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau);
         var themas = await _opslag.LaadThemasAsync(cancellationToken);
 
-        var request = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas, parameters);
+        // Resolved here, above the model call, because a per-period run has to know whether its target period is
+        // blocked BEFORE it spends one (owner ruling 2026-08-06, clause 1). For a whole-plan run this is a pure move:
+        // the computation reads only the parameters and the grid, writes nothing and cannot fail, so hoisting it
+        // changes the order of two side-effect-free statements and nothing else.
+        var momenten = ResolveerVasteMomenten(parameters, blokken);
+
+        // PER-PERIOD 1 of 3 — resolve the target period and refuse a blocked one, both before the model is called.
+        Planningsblok? doelBlok = null;
+        if (doelBlokStart is not null)
+        {
+            // Refused rather than snapped to the nearest period, the same answer the hand-placement and the move
+            // paths give (ADR-0020, directie 2026-07-28). The realistic cause is a grid that changed after the page
+            // loaded, so the message tells the teacher to reload rather than to choose better.
+            doelBlok = blokken.FirstOrDefault(b => b.Start == doelBlokStart.Value)
+                ?? throw OngeldigePlaatsingFout.GeenPeriodebegin();
+
+            if (momenten.GeblokkeerdeBlokken.TryGetValue(doelBlok.Start, out var blokkerendMoment))
+            {
+                throw PeriodeIsBezetFout.VoorHergeneratie(blokkerendMoment);
+            }
+        }
+
+        // PER-PERIOD 2 of 3 — the prompt. The per-period one is handed the whole grid plus what already stands, so the
+        // model can still honour the Spreiding and Dekking rules, and the scope is stated as an instruction. Read
+        // through LaadJaarplanAsync rather than LaadOfMaak…: this is before the parse check, and a run that fails must
+        // not leave an empty jaarplan behind that nobody asked for.
+        var request = doelBlok is null
+            ? JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas, parameters)
+            : JaarplanGeneratiePromptBuilder.BouwVoorPeriode(
+                klas,
+                schooljaar,
+                blokken,
+                themas,
+                doelBlok,
+                await BestaandePlaatsingenAsync(
+                    klasId,
+                    themas,
+                    doelBlok,
+                    blokken.Select(b => b.Start).ToHashSet(),
+                    cancellationToken),
+                parameters);
+
         var completion = await _aiClient.CompleteAsync(request, cancellationToken);
         var parse = JaarplanGeneratieResponseParser.Parse(completion);
 
@@ -129,12 +234,25 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
 
         var jaarplan = await LaadOfMaakJaarplanAsync(klasId, cancellationToken);
 
+        // PER-PERIOD 3 of 3 — the discard, and the two figures that report it.
+        //
         // Clear the superseded proposal; keep everything locked or decided on by a human (Art. IX.3 / IV.1).
         // Count what the run DISCARDS, not just what it keeps. The superseded proposal is deleted here and
         // persisted below, so a run that then places nothing has still changed the plan — and telling a teacher
         // "er is niets gewijzigd" in that case would be false about their own data.
-        var vervangen = jaarplan.VerwijderVervangbarePlaatsingen().Count;
-        var behouden = jaarplan.Plaatsingen.Count;
+        //
+        // **Both figures are scoped the same way the discard is, and that is a correctness point rather than a
+        // simplification.** `genereerBehouden` reads "{aantal} bestaande plaatsingen bleven staan (vast of al
+        // beslist)", which says these placements were at stake and survived. For a per-period run the placements in the
+        // other seven periods were never at stake, so counting them here would tell a teacher their accepted thema in
+        // June was preserved by a run that never looked at June. The plan-wide view is what `Spreiding` reports.
+        var vervangen = (doelBlok is null
+                ? jaarplan.VerwijderVervangbarePlaatsingen()
+                : jaarplan.VerwijderVervangbarePlaatsingenIn(GeneratieNiveau, doelBlok.Start))
+            .Count;
+        var behouden = doelBlok is null
+            ? jaarplan.Plaatsingen.Count
+            : jaarplan.Plaatsingen.Count(p => p.BlokNiveau == GeneratieNiveau && p.BlokStart == doelBlok.Start);
 
         // Resolvable sets. A name/date outside them is skipped, never fabricated (Art. IV.4).
         var themaPerNaam = themas
@@ -142,42 +260,11 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var blokStarts = blokken.Select(b => b.Start).ToHashSet();
 
-        // Resolve every vast moment to the block that CONTAINS its date (FR-5.4). A date is resolved against the grid
-        // rather than supplied as a block key, so a teacher never has to know where a boundary falls; and a date in a
-        // vakantie or outside the year belongs to no block at all, which is reported rather than ignored — a teacher
-        // who blocked a period and saw nothing refused would otherwise assume it had been honoured.
-        //
-        // EVERY moment is reported, resolved or not, blocking or not. An earlier revision kept only the first name per
-        // period, so a second moment in the same period vanished from the report with no evidence it had been parsed —
-        // the same defect OnplaatsbareVasteMomenten exists to prevent, one case over.
-        var geblokkeerdeBlokken = new Dictionary<DateOnly, string>();
-        var toegepasteMomenten = new List<VastMomentUitkomst>();
-        var onplaatsbareMomenten = new List<VastMomentUitkomst>();
-        foreach (var moment in parameters.GenormaliseerdeVasteMomenten())
-        {
-            var blok = blokken.FirstOrDefault(b => moment.Datum >= b.Start && moment.Datum <= b.Eind);
-            if (blok is null)
-            {
-                onplaatsbareMomenten.Add(
-                    new VastMomentUitkomst(moment.Naam, moment.Datum, moment.BlokkeertPlaatsing, BlokStart: null));
-                continue;
-            }
-
-            toegepasteMomenten.Add(
-                new VastMomentUitkomst(moment.Naam, moment.Datum, moment.BlokkeertPlaatsing, blok.Start));
-
-            if (moment.BlokkeertPlaatsing)
-            {
-                // The refusal sentence names one moment, because one reason explains a refusal; the full list above is
-                // what proves both were applied.
-                geblokkeerdeBlokken.TryAdd(blok.Start, moment.Naam);
-            }
-        }
-
         var onbekendeThemas = new List<string>();
         var onbekendeBlokken = new List<string>();
         var duplicaten = new List<string>();
         var afgewezen = new List<string>();
+        var buitenPeriode = new List<BuitenPeriodeVoorstel>();
         var geweigerdDoorVastMoment = new List<GeweigerdePlaatsing>();
         var nieuw = 0;
 
@@ -195,6 +282,23 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
                 continue;
             }
 
+            // The enforced half of the per-period scope. The prompt asked for one period; this is what makes a model
+            // that answered for another one unable to touch it. Reported rather than dropped in silence, and reported
+            // as its own kind: a thema proposed for the wrong period is neither an unknown name nor an unknown date,
+            // and lumping it in with those would tell the teacher the AI answered with something invalid when what it
+            // did was answer a wider question than it was asked.
+            //
+            // NOT relocated into the target period. Moving it there would be the application choosing a placement the
+            // model did not propose, which is the same silent relocation ADR-0020 forbids for a stale placement.
+            if (doelBlok is not null && suggestie.BlokStart != doelBlok.Start)
+            {
+                // Structured, not a pre-composed sentence: this is presentation rather than diagnosis, and
+                // Art. II.3's ratified consequence prefers structured fields precisely so the client can format the
+                // date and name the period in real Dutch instead of showing a teacher "Water @ 2026-11-02".
+                buitenPeriode.Add(new BuitenPeriodeVoorstel(thema.Naam, suggestie.BlokStart));
+                continue;
+            }
+
             // The enforced half of FR-5.4. The prompt already asked the model to leave this period alone; this is what
             // makes the parameter more than a request. It is NOT placed, and NOT relocated — moving it to a period the
             // teacher never chose is what ADR-0020 forbids for stale placements.
@@ -203,7 +307,12 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
             // exists, the block exists, and the model gave a motivatie. So the refusal keeps all of it, including the
             // motivation, rather than reusing the drop-and-forget path. Throwing it away would leave a thema planned
             // nowhere, lower the dekking Art. V exists to prove, and give the teacher nothing to act on.
-            if (geblokkeerdeBlokken.TryGetValue(suggestie.BlokStart, out var blokkerendMoment))
+            //
+            // Unreachable on a per-period run, and deliberately left in the shared path rather than guarded: that run
+            // refuses a blocked target period before the model is ever called, so a blocked block cannot also be the
+            // target block. Making this branch conditional would encode that reasoning in a second place, where a
+            // later change to either half could make the two disagree.
+            if (momenten.GeblokkeerdeBlokken.TryGetValue(suggestie.BlokStart, out var blokkerendMoment))
             {
                 geweigerdDoorVastMoment.Add(
                     new GeweigerdePlaatsing(
@@ -259,23 +368,41 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
         // spreading report, and — like it — carrying no verdict and triggering no retry (Art. IV.1). The enforced
         // half is handed in because only this method knows what it refused; the advisory half is measured against the
         // plan that came back.
-        var parameterRapport = parameters.IsLeeg
+        // **Scoped the same way the counts are, on a per-period run** (antagonist round 1, MINOR).
+        // `ParameterRapport` judges every kept startthema against the whole plan, so a run on period 5 could print
+        // "De AI koos andere thema's voor themaperiode 2" about a period it was explicitly told not to fill, or claim
+        // credit for compliance a previous whole-plan run produced. Both landed directly under "Alleen themaperiode 5
+        // is opnieuw gegenereerd". This is the call already made for nieuw/behouden/vervangen rather than a new
+        // judgement: a report describes its own run, and this run only ever looked at one period.
+        //
+        // The vaste momenten half is deliberately NOT narrowed: a per-period prompt states every moment too, so
+        // "meegenomen" is true of all of them, and the refusals are handed in explicitly below.
+        var rapportParameters = doelBlok is null
+            ? parameters
+            : parameters with
+            {
+                GewensteStartthemas = parameters.GenormaliseerdeStartthemas()
+                    .Where(keuze => keuze.BlokStart == doelBlok.Start)
+                    .ToList(),
+            };
+
+        var parameterRapport = rapportParameters.IsLeeg
             ? ParameterRapport.Geen
             : ParameterRapport.Meet(
-                parameters,
+                rapportParameters,
                 jaarplan.Plaatsingen.Where(p => p.BlokNiveau == GeneratieNiveau),
                 themas.ToDictionary(t => t.Id),
                 blokStarts,
                 themas.Select(t => t.Naam).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                geblokkeerdeBlokken.Keys.ToHashSet()) with
+                momenten.GeblokkeerdeBlokken.Keys.ToHashSet()) with
             {
                 GeweigerdDoorVastMoment = geweigerdDoorVastMoment,
-                ToegepasteVasteMomenten = toegepasteMomenten,
-                OnplaatsbareVasteMomenten = onplaatsbareMomenten,
+                ToegepasteVasteMomenten = momenten.Toegepast,
+                OnplaatsbareVasteMomenten = momenten.Onplaatsbaar,
             };
 
         return JaarplanGeneratieResultaat.Geslaagd(
-            Projecteer(klas, schooljaar, blokken, themas, jaarplan),
+            await ProjecteerAsync(klas, schooljaar, blokken, themas, jaarplan, cancellationToken),
             nieuw,
             behouden,
             vervangen,
@@ -284,8 +411,140 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
             duplicaten,
             afgewezen,
             spreiding,
-            parameterRapport);
+            parameterRapport) with
+        {
+            // Empty on a whole-plan run by construction: nothing is out of scope when the scope is the year.
+            BuitenPeriode = buitenPeriode,
+            GeregenereerdePeriode = doelBlok?.Start,
+        };
     }
+
+    /// <summary>
+    /// Resolves every vast moment against the derived grid: which blocks it blocks, and which moments landed nowhere.
+    /// <para>
+    /// Extracted from the run itself for the per-period path, which needs the answer <b>before</b> the model is called
+    /// so a blocked target period can be refused rather than generated into (owner ruling 2026-08-06, clause 1). Pure:
+    /// parameters + blocks in, verdict out, no I/O and no mutation, which is what makes hoisting it above the model
+    /// call a reordering of nothing.
+    /// </para>
+    /// <para>
+    /// Also the single source of "is this period blocked?" for the two <i>manual</i> paths (clause 2 of the same
+    /// ruling). One rule for human and machine means one implementation of the rule; before this, the mapping lived
+    /// inline in the generation run and nothing else could see it.
+    /// </para>
+    /// </summary>
+    private static Momentresolutie ResolveerVasteMomenten(
+        JaarplanGeneratieParameters parameters,
+        IReadOnlyList<Planningsblok> blokken)
+    {
+        // Resolve every vast moment to the block that CONTAINS its date (FR-5.4). A date is resolved against the grid
+        // rather than supplied as a block key, so a teacher never has to know where a boundary falls; and a date in a
+        // vakantie or outside the year belongs to no block at all, which is reported rather than ignored — a teacher
+        // who blocked a period and saw nothing refused would otherwise assume it had been honoured.
+        //
+        // EVERY moment is reported, resolved or not, blocking or not. An earlier revision kept only the first name per
+        // period, so a second moment in the same period vanished from the report with no evidence it had been parsed —
+        // the same defect OnplaatsbareVasteMomenten exists to prevent, one case over.
+        var geblokkeerdeBlokken = new Dictionary<DateOnly, string>();
+        var toegepasteMomenten = new List<VastMomentUitkomst>();
+        var onplaatsbareMomenten = new List<VastMomentUitkomst>();
+        foreach (var moment in parameters.GenormaliseerdeVasteMomenten())
+        {
+            var blok = blokken.FirstOrDefault(b => moment.Datum >= b.Start && moment.Datum <= b.Eind);
+            if (blok is null)
+            {
+                onplaatsbareMomenten.Add(
+                    new VastMomentUitkomst(moment.Naam, moment.Datum, moment.BlokkeertPlaatsing, BlokStart: null));
+                continue;
+            }
+
+            toegepasteMomenten.Add(
+                new VastMomentUitkomst(moment.Naam, moment.Datum, moment.BlokkeertPlaatsing, blok.Start));
+
+            if (moment.BlokkeertPlaatsing)
+            {
+                // The refusal sentence names one moment, because one reason explains a refusal; the full list above is
+                // what proves both were applied.
+                geblokkeerdeBlokken.TryAdd(blok.Start, moment.Naam);
+            }
+        }
+
+        return new Momentresolutie(geblokkeerdeBlokken, toegepasteMomenten, onplaatsbareMomenten);
+    }
+
+    /// <summary>
+    /// The class's blocked periods, for the two manual paths and for the read the UI disables its controls from.
+    /// Keyed on block start, valued with the name of the moment the teacher gave — a refusal that cannot say
+    /// <i>which</i> commitment blocks the period sends them hunting through the settings.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<DateOnly, string>> GeblokkeerdePeriodesAsync(
+        Guid klasId,
+        Guid schooljaarId,
+        IReadOnlyList<Planningsblok> blokken,
+        CancellationToken cancellationToken)
+    {
+        var parameters = await LaadBewaardeParametersAsync(klasId, schooljaarId, cancellationToken);
+
+        return ResolveerVasteMomenten(parameters, blokken).GeblokkeerdeBlokken;
+    }
+
+    /// <summary>
+    /// What the plan already holds that a per-period run will <b>not</b> touch — the context its prompt needs.
+    /// <para>
+    /// The target period contributes only the placements that survive the discard (<c>!IsVervangbaar</c>), because the
+    /// prompt is built before the discard runs and the proposals it is about to drop are not "already planned". Every
+    /// other period contributes what is actually taught there: <c>IsGepland</c>, so a rejected placement is left out,
+    /// on the same reasoning that keeps it out of the spreading report — nothing is taught in a period because the
+    /// teacher said no to it.
+    /// </para>
+    /// </summary>
+    private async Task<IReadOnlyCollection<BestaandePlaatsing>> BestaandePlaatsingenAsync(
+        Guid klasId,
+        IReadOnlyList<Thema> themas,
+        Planningsblok doelBlok,
+        IReadOnlySet<DateOnly> blokStarts,
+        CancellationToken cancellationToken)
+    {
+        var jaarplan = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
+        if (jaarplan is null)
+        {
+            return [];
+        }
+
+        var themaPerId = themas.ToDictionary(t => t.Id);
+
+        return jaarplan.Plaatsingen
+            .Where(p => p.BlokNiveau == GeneratieNiveau)
+            // A STALE placement is left out (antagonist round 1, MINOR). `IsGepland` only means "not rejected"; it
+            // says nothing about the block still existing, so a placement whose stored date stopped being a period
+            // boundary after a vakantie edit was printed under "In de andere periodes staat dit al" — naming a period
+            // absent from the block list the same prompt had just printed. Same class as the "het jaarplan is nog leeg"
+            // defect one method over, and Art. IV.4 forbids both.
+            .Where(p => blokStarts.Contains(p.BlokStart))
+            .Where(p => p.BlokStart == doelBlok.Start ? !p.IsVervangbaar : p.IsGepland)
+            // A placement whose thema no longer exists is skipped rather than named: the prompt may only contain
+            // thema names the model is allowed to use (Art. IV.4), and an empty name would be worse than an omission.
+            .Where(p => themaPerId.ContainsKey(p.ThemaId))
+            .Select(p => new BestaandePlaatsing(themaPerId[p.ThemaId].Naam, p.BlokStart))
+            .ToList();
+    }
+
+    /// <summary>
+    /// The resolved vast moments of one run: which blocks are blocked (start date to the blocking moment's name), plus
+    /// every moment that was applied and every one that landed in no block at all.
+    /// </summary>
+    /// <param name="GeblokkeerdeBlokken">
+    /// Block start to the name of the moment blocking it. One name per block: one reason explains a refusal, and
+    /// <paramref name="Toegepast"/> is what proves a second moment in the same period was applied too.
+    /// </param>
+    /// <param name="Toegepast">Every moment that fell inside a block, blocking or not.</param>
+    /// <param name="Onplaatsbaar">
+    /// Every moment that fell in no block at all — a vakantie or a date outside the year. Reported, never ignored.
+    /// </param>
+    private sealed record Momentresolutie(
+        IReadOnlyDictionary<DateOnly, string> GeblokkeerdeBlokken,
+        IReadOnlyList<VastMomentUitkomst> Toegepast,
+        IReadOnlyList<VastMomentUitkomst> Onplaatsbaar);
 
     /// <summary>
     /// The class's kept pre-generation settings (E3-04, FR-5.4) — what the form loads so a teacher sees the settings
@@ -398,7 +657,7 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
         var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau);
         var themas = await _opslag.LaadThemasAsync(cancellationToken);
 
-        return Projecteer(klas, schooljaar, blokken, themas, jaarplan);
+        return await ProjecteerAsync(klas, schooljaar, blokken, themas, jaarplan, cancellationToken);
     }
 
     /// <summary>
@@ -533,10 +792,25 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
             throw OngeldigePlaatsingFout.ThemaStaatErAl();
         }
 
+        // Same rule for the teacher as for the AI: a period the teacher blocked with a vast moment accepts nothing new
+        // (owner ruling 2026-08-06, clause 2, settling the Art. XIV question opened 2026-08-04). Until that ruling this
+        // path accepted such a target in silence, so this is a deliberate narrowing of behaviour E4-03 shipped, not a
+        // gap being filled.
+        //
+        // Checked LAST of the four guards, on purpose. "This period no longer exists" and "this thema is already here"
+        // describe the request; this one describes a setting elsewhere in the app, so a teacher who is both out of date
+        // AND aiming at a blocked period is told the thing they can act on first.
+        var geblokkeerdePeriodes =
+            await GeblokkeerdePeriodesAsync(klasId, schooljaar.Id, blokken, cancellationToken);
+        if (geblokkeerdePeriodes.TryGetValue(blokStart, out var blokkerendMoment))
+        {
+            throw PeriodeIsBezetFout.VoorPlaatsing(blokkerendMoment);
+        }
+
         jaarplan.VoegPlaatsingToe(themaId, GeneratieNiveau, blokStart, KoppelingStatus.Manueel);
         await _opslag.BewaarAsync(cancellationToken);
 
-        return Projecteer(klas, schooljaar, blokken, themas, jaarplan);
+        return await ProjecteerAsync(klas, schooljaar, blokken, themas, jaarplan, cancellationToken);
     }
 
     /// <summary>
@@ -627,13 +901,28 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
                     "Dit thema staat al in die periode. Kies een andere periode.");
             }
 
+            // A blocked period accepts nothing new, dragged or typed (owner ruling 2026-08-06, clause 2). Same rule as
+            // the AI's, which is the point of the ruling.
+            //
+            // **Inside the "actually moving" branch, and that placement is load-bearing in two directions.** Dropping a
+            // card back where it started is the no-op above and stays a 200 even when the period is blocked, because
+            // nothing new enters. And a placement that was already sitting in a blocked period can still be moved OUT
+            // of it: the rule governs the target, never the origin, so it can never trap a thema the teacher planned
+            // before registering the moment. Nothing about this rule is retroactive (same ruling).
+            var geblokkeerdePeriodes =
+                await GeblokkeerdePeriodesAsync(klasId, schooljaar.Id, blokken, cancellationToken);
+            if (geblokkeerdePeriodes.TryGetValue(doelBlokStart, out var blokkerendMoment))
+            {
+                throw PeriodeIsBezetFout.VoorPlaatsing(blokkerendMoment);
+            }
+
             plaatsing.VerplaatsNaar(doelBlokStart);
             await _opslag.BewaarAsync(cancellationToken);
         }
 
         var themas = await _opslag.LaadThemasAsync(cancellationToken);
 
-        return Projecteer(klas, schooljaar, blokken, themas, jaarplan);
+        return await ProjecteerAsync(klas, schooljaar, blokken, themas, jaarplan, cancellationToken);
     }
 
     /// <summary>
@@ -667,7 +956,7 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
         var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau);
         var themas = await _opslag.LaadThemasAsync(cancellationToken);
 
-        return Projecteer(klas, schooljaar, blokken, themas, jaarplan);
+        return await ProjecteerAsync(klas, schooljaar, blokken, themas, jaarplan, cancellationToken);
     }
 
     private async Task<JaarplanWeergave> MuteerPlaatsingAsync(
@@ -691,7 +980,7 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
         var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau);
         var themas = await _opslag.LaadThemasAsync(cancellationToken);
 
-        return Projecteer(klas, schooljaar, blokken, themas, jaarplan);
+        return await ProjecteerAsync(klas, schooljaar, blokken, themas, jaarplan, cancellationToken);
     }
 
     private async Task<(Klas Klas, Schooljaar Schooljaar)> LaadKlasAsync(
@@ -723,14 +1012,23 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
     /// Projects the persisted plan onto the currently derived grid. A stored <c>BlokStart</c> that is no longer any
     /// block's start date yields <c>IsVervallen = true</c> with no period bounds — the placement is reported, never
     /// moved (directie 2026-07-28, ADR-0020 follow-ups).
+    /// <para>
+    /// <b>Async since E4-05, and it reads the blocked periods itself rather than taking them as an argument.</b> Every
+    /// mutation on this service returns the projected plan, so there are six call sites; a parameter would be six
+    /// chances to pass an empty list, and an empty list here silently re-enables a control the server refuses. The
+    /// price is one small extra read per call, including a second read of the parameters row on the generation path,
+    /// which is a duplicate query inside one request and not a duplicate rule.
+    /// </para>
     /// </summary>
-    private JaarplanWeergave Projecteer(
+    private async Task<JaarplanWeergave> ProjecteerAsync(
         Klas klas,
         Schooljaar schooljaar,
         IReadOnlyList<Planningsblok> blokken,
         IReadOnlyList<Thema> themas,
-        Jaarplan? jaarplan)
+        Jaarplan? jaarplan,
+        CancellationToken cancellationToken)
     {
+        var geblokkeerd = await GeblokkeerdePeriodesAsync(klas.Id, schooljaar.Id, blokken, cancellationToken);
         var blokPerStart = blokken.ToDictionary(b => b.Start);
         var themaPerId = themas.ToDictionary(t => t.Id);
 
@@ -773,7 +1071,15 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
             schooljaar.Naam,
             _indeling.Omschrijving,
             plaatsingen,
-            belasting.Blokken);
+            belasting.Blokken)
+        {
+            // Ordered by the block key so the client renders them in year order without sorting, and so two reads of
+            // the same state cannot differ (dictionary enumeration order is not a contract).
+            GeblokkeerdePeriodes = geblokkeerd
+                .OrderBy(entry => entry.Key)
+                .Select(entry => new GeblokkeerdePeriodeWeergave(entry.Key, entry.Value))
+                .ToList(),
+        };
     }
 
     private static string Datum(DateOnly datum) =>

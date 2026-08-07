@@ -265,10 +265,17 @@ export function Themakiezer({ klasId, blok, alGeplaatst }: ThemakiezerProps) {
  * Which sentence a failed hand-placement gets, keyed on the status rather than on `isError`.
  *
  * A named function per {@link Themakaart}'s `statusFoutmelding` precedent, rather than a nested ternary in the JSX:
- * the point of this mapping is that it is **three** cases and readable as three, since collapsing two of them is the
+ * the point of this mapping is that it is **four** cases and readable as four, since collapsing two of them is the
  * defect fix round 1 repaired here and the defect E3-07 repaired on the move path before that.
  */
 function plaatsFoutmelding(fout: unknown): string {
+  // 409 since E4-05: the period is bezet (owner ruling 2026-08-06). The column withholds this control for such a
+  // period, so reaching it means the settings changed elsewhere — which is exactly why it may not fall through to
+  // "meld dit aan de beheerder", the answer for a broken tool.
+  if (fout instanceof ApiError && fout.status === 409) {
+    return t("kalender.plaatsBezet");
+  }
+
   if (fout instanceof ApiError && fout.status === 400) {
     return t("kalender.plaatsMislukt");
   }
