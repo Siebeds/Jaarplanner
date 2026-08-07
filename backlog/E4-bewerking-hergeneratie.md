@@ -173,10 +173,13 @@
   > shared-code reasoning, so it has its own test and the docstring that overclaimed is corrected.
   > **Routed, not fixed here:** the third billable anonymous route is recorded on **E7-11**, whose own dimension it
   > changes (one billable call per *period* rather than per class).
-  > **⚠️ One item is open and this story may not close over it.** The Art. XIV entry for the vast-moment question still
-  > ends *"Nothing hard-assumes either reading today"*, which the rulings below made false: the strict reading is
-  > compiled in on three paths. `backlog/README.md` was **claimed by another session (E5-06)** when this was found, so
-  > it was left untouched and asked for in the groepschat rather than edited around the lock.
+  > **The Art. XIV entry is closed, by the session that held the file (2026-08-07).** It still read *"Nothing
+  > hard-assumes either reading today"* while the strict reading was compiled in on three paths, and `backlog/README.md`
+  > was **claimed by E5-06** at the moment this was found — so it was left untouched and asked for in the groepschat
+  > rather than edited around the lock. E5-06 answered the ASK and struck the entry themselves (`4624c90`, *"Answer
+  > E4-05's ASK: the vast-moment Art. XIV item was false on main"*). **Recorded because the outcome is the argument for
+  > the protocol:** a refused claim cost this story one paragraph of waiting and produced a correction written by the
+  > session that owned the file, rather than a merge conflict in the one file this repo has retracted counts over.
   > **A third owner ruling, 2026-08-06, on the question ronde 1 raised: the settings form says it at the point of
   > choosing.** The audit observed that *"Mag er een thema in die themaperiode?"* / *"Nee, die themaperiode is bezet"* is
   > generic and therefore not false, but that the answer's **meaning changed** — it used to constrain the AI and now

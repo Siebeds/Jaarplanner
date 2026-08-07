@@ -5,6 +5,7 @@ import { DOELSOORT_PARAM, JAARFASE_PARAM } from "../../app/routes";
 import { useSelectie } from "../../app/useSelectie";
 import { doelsoortBadgeSoort, type DoelsoortNaam } from "../../components/doelsoort";
 import { t } from "../../i18n";
+import { Dekkingexport } from "./Dekkingexport";
 import { Dekkinggroep } from "./Dekkinggroep";
 import { Dekkingsamenvatting } from "./Dekkingsamenvatting";
 import { Dekkingslijstkop } from "./Dekkingslijstkop";
@@ -72,8 +73,12 @@ export { JAARFASE_PARAM };
  * - **no gap-analyse grouped by discipline and actionable from the kalender** (E5-05);
  * - **no minimumdoel level**, the level the onderwijsinspectie actually tests (E5-04, blocked on E1-12 because no
  *   `Minimumdoel` row can exist yet). That absence is stated **on screen**, not only here: a directie reading this as
- *   inspectie-proof would otherwise draw a conclusion the data does not support;
- * - **no export** (E5-06).
+ *   inspectie-proof would otherwise draw a conclusion the data does not support.
+ *
+ * **The export exists as of E5-06** and this list used to say it did not. It is an `.xlsx` of the full set in scope,
+ * offered from the header; the format and that "full set" are both owner rulings of 2026-08-06, taken because Art. XIV
+ * reserves export layout for directie and E5-07 is blocked on exactly that. The document repeats the minimumdoel
+ * caveat above in its own kopblok, because a file outlives the screen that produced it.
  */
 export function DekkingPagina() {
   const { klasId } = useSelectie();
@@ -176,19 +181,34 @@ export function DekkingPagina() {
 
   return (
     <section className="flex flex-col gap-4">
-      <header>
-        <h2 className="text-xl font-bold text-ink">{t("dekking.titel")}</h2>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-ink">{t("dekking.titel")}</h2>
+          {/*
+            Two lines of explanation, above the list and never repeated per row: what "gedekt" means, and what this
+            overview is not. Both are load-bearing rather than decorative. The first is the definition every number here
+            rests on, and it is not obvious: a thema being linked to a doel is not enough, the placement has to be one
+            the teacher accepted (Art. V.1, so the AI cannot grant coverage). The second is the honesty an
+            inspectie-facing screen owes about the level it does NOT yet report (Art. V.2, E5-04).
+          */}
+          <p className="mt-1 max-w-prose text-sm text-ink-zacht">{t("dekking.watGedekt")}</p>
+          <p className="mt-1 max-w-prose text-sm text-ink-zacht">
+            {t("dekking.alleenLeerplandoelen")}
+          </p>
+        </div>
+
         {/*
-          Two lines of explanation, above the list and never repeated per row: what "gedekt" means, and what this
-          overview is not. Both are load-bearing rather than decorative. The first is the definition every number here
-          rests on, and it is not obvious: a thema being linked to a doel is not enough, the placement has to be one
-          the teacher accepted (Art. V.1, so the AI cannot grant coverage). The second is the honesty an
-          inspectie-facing screen owes about the level it does NOT yet report (Art. V.2, E5-04).
+          The export (E5-06), a page-level action in the page-level position. Why it is here rather than beside the
+          scope controls it inherits is argued on `Dekkingexport` itself: the short version is that the summary card's
+          controls include the doelsoort filter the export deliberately ignores, and adjacency reads as relationship.
+
+          Rendered only once there is an answer, not merely once a klas is chosen. The document would build for any
+          real klas id, but while the read is pending or has failed this screen does not yet know the id names a class,
+          and a link that hands a teacher an error page is a control that does not do what it says (the E3-06 rule).
         */}
-        <p className="mt-1 max-w-prose text-sm text-ink-zacht">{t("dekking.watGedekt")}</p>
-        <p className="mt-1 max-w-prose text-sm text-ink-zacht">
-          {t("dekking.alleenLeerplandoelen")}
-        </p>
+        {klasId && dekking.data && (
+          <Dekkingexport klasId={klasId} bereik={bereik} gekozenJaarFase={jaarFase} />
+        )}
       </header>
 
       {/* Three states, not two: "no class chosen" is not an error and not an empty result. Getting this wrong is how

@@ -680,6 +680,94 @@ describe("nl.json — the gaps-only empty state says nothing about coverage", ()
   });
 });
 
+describe("nl.json — de exportuitleg belooft het volledige overzicht, niet het gefilterde", () => {
+  /**
+   * The one sentence in E5-06 that carries an owner ruling, so it gets a guard that reads the **value** rather than
+   * the key (the E5-03 rule: a key-existence check cannot see a false sentence).
+   *
+   * The ruling of 2026-08-06 is that the export is always the full set in scope. The URL half of that is pinned in
+   * `Dekkingexport.test.tsx`, which asserts the link carries no `doelsoort` and no `ontbrekend`. That test catches a
+   * future story narrowing the document. **It cannot catch the opposite drift**, which is a future story leaving the
+   * document alone and rewriting this sentence to promise the filtered view. On a screen with two live filters, a
+   * teacher who reads "je krijgt wat je nu ziet" and opens a file with three times the rows has been told something
+   * untrue by the control they used.
+   *
+   * **Two limits, stated rather than left to be rediscovered.** A keyword guard cannot see a paraphrase: *"dit is je
+   * huidige lijst"* makes the same false promise and passes. And it cannot decide truth; it encodes a rule a human
+   * derived once from the endpoint, which takes no filter parameter at all. The structural half is the URL test.
+   */
+  const SLEUTEL = "dekking.exportUitleg";
+
+  it("still exists, so this guard cannot be silently disarmed by a rename", () => {
+    expect(
+      CATALOGUS.get(SLEUTEL),
+      `${SLEUTEL} has been renamed or removed; this guard now checks nothing`,
+    ).toBeDefined();
+  });
+
+  it("claims totality in some wording", () => {
+    // The sentence's whole job. Not a fixed phrase, so a rewrite is free to say "allemaal" or "het volledige
+    // overzicht" instead, but it may not quietly drop the claim and leave a label that promises nothing.
+    expect(CATALOGUS.get(SLEUTEL)!.toLowerCase()).toMatch(/\balle\b|\ballemaal\b|\bvolledige?\b/);
+  });
+
+  it("does not promise the view the teacher is currently looking at", () => {
+    const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
+
+    // The false versions this forecloses, all of which read naturally next to a download link and all of which the
+    // endpoint contradicts: "wat je nu ziet", "deze selectie", "dit gefilterde overzicht", "de doelen hierboven".
+    expect(zin).not.toMatch(/\bwat je (nu |hier )?ziet\b|\bdeze selectie\b|\bhierboven\b/);
+    expect(zin).not.toMatch(/\bdit gefilterde\b|\bdeze lijst\b/);
+
+    // Deliberately NOT banning the word "gefilterd" as such. The honest sentence has to be able to mention filtering
+    // in order to say that filtering does not apply, and a guard broad enough to forbid "wat je hier ook filtert"
+    // would cry wolf on the correct copy. A guard that fires on the right answer is one somebody deletes.
+  });
+});
+
+describe("nl.json — de zin over het minimumdoelniveau blijft zeggen dat het er niet in zit", () => {
+  /**
+   * **Filed by the E5-06 antagonist as an asymmetry, and it is the cheaper half of a real gap.** E5-06 gave
+   * `dekking.exportUitleg` a value-reading guard because it carries an owner ruling. The sentence beside it carries
+   * something heavier: Art. V.2's honesty about the level the **onderwijsinspectie** actually tests, which does not
+   * exist yet (E5-04, blocked on E1-12). That one was asserted only as `t(key)` in `Dekkingsoverzicht.test.tsx`, and
+   * E5-03 proved a `t(key)` assertion cannot bite, because it moves with the catalogue: rewrite the value and the test
+   * still passes.
+   *
+   * It now matters in two places rather than one. The export's kopblok carries the same sentence, composed
+   * server-side, and `ClosedXmlDekkingExportTests` guards that half on substance. This is the browser half.
+   *
+   * **The limit, stated rather than left to be found:** like every keyword guard here it cannot see a paraphrase, and
+   * it cannot decide truth. It encodes one rule a human derived from `DekkingService`, which computes nothing at
+   * minimumdoel level: this screen must not let a reader conclude it does.
+   */
+  const SLEUTEL = "dekking.alleenLeerplandoelen";
+
+  it("still exists, so this guard cannot be silently disarmed by a rename", () => {
+    expect(
+      CATALOGUS.get(SLEUTEL),
+      `${SLEUTEL} has been renamed or removed; this guard now checks nothing`,
+    ).toBeDefined();
+  });
+
+  it("names the minimumdoelen and says they are not in it", () => {
+    const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
+
+    expect(zin).toContain("minimumdoelen");
+    // The negation, in any of the wordings this sentence could reasonably take. Without it the sentence could be
+    // rewritten into one that merely MENTIONS minimumdoelen, which is how a disclaimer becomes a claim.
+    expect(zin).toMatch(/\bniet in\b|\bnog niet\b|\bzit er niet\b|\bontbreek/);
+  });
+
+  it("does not claim the overview covers that level", () => {
+    const zin = CATALOGUS.get(SLEUTEL)!.toLowerCase();
+
+    // The false versions: any promise that this screen reports minimumdoeldekking, in the present tense.
+    expect(zin).not.toMatch(/\bdekking op minimumdoelniveau (staat|zit) (er)?in\b|\book de minimumdoelen\b/);
+    expect(zin).not.toMatch(/\bvolledig\b|\bcompleet\b|\binspectieklaar\b/);
+  });
+});
+
 describe("nl.json — een aria-label bevat het zichtbare label (WCAG 2.2 SC 2.5.3)", () => {
   /**
    * **Label in Name (Level A): the accessible name must contain the visible label**, or speech input cannot reach the

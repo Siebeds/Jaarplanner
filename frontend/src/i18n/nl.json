@@ -583,6 +583,8 @@
     "titel": "Dekking van dit jaarplan",
     "watGedekt": "Een doel is gedekt zodra een thema dat het doel draagt op een periode van dit jaarplan staat en jij die plaatsing hebt aanvaard.",
     "alleenLeerplandoelen": "Dit overzicht gaat over leerplandoelen. Dekking op het niveau van de minimumdoelen, wat de onderwijsinspectie toetst, zit er nog niet in: die doelen moeten eerst ingeladen worden en dat overzicht moet nog gebouwd worden.",
+    "export": "Download als Excel",
+    "exportUitleg": "Je krijgt alle doelen van dit overzicht, wat je hier ook filtert of verbergt.",
     "kiesKlas": "Kies hierboven een klas om de dekking van haar jaarplan te zien.",
     "laden": "De dekking wordt berekend.",
     "fout": "De dekking kon niet berekend worden.",
