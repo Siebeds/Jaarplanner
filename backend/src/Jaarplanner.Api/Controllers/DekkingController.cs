@@ -76,8 +76,13 @@ namespace Jaarplanner.Api.Controllers;
 public sealed class DekkingController : ControllerBase
 {
     private readonly DekkingService _service;
+    private readonly IDekkingExport _export;
 
-    public DekkingController(DekkingService service) => _service = service;
+    public DekkingController(DekkingService service, IDekkingExport export)
+    {
+        _service = service;
+        _export = export;
+    }
 
     /// <summary>
     /// The class's current coverage (FR-9.1): every in-scope leerplandoel with whether this plan covers it and
@@ -103,4 +108,44 @@ public sealed class DekkingController : ControllerBase
         [FromQuery] Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase,
         [FromQuery] string? jaarFase = null) =>
         Ok(await _service.BerekenAsync(klasId, bereik, jaarFase, cancellationToken));
+
+    /// <summary>
+    /// The same coverage, as a downloadable .xlsx: the dekkingsoverzicht as proof of coverage (E5-06, FR-9.5,
+    /// FR-11.2, Art. V.4).
+    /// <para>
+    /// <b>It computes through <see cref="DekkingService"/>, exactly as <see cref="Detail"/> does</b>, so the document
+    /// and the screen are two renderings of one computation rather than two computations that agree today. The export
+    /// generator is handed the finished record and can query nothing.
+    /// </para>
+    /// <para>
+    /// <b>It takes the scope parameters and nothing else, by owner ruling of 2026-08-06: the export is always the
+    /// full set in scope.</b> <c>bereik</c> and <c>jaarFase</c> are part of what the figures <i>mean</i> (the same
+    /// class has two legitimate denominators, and a kleutergroep chooses its kleuterjaar), so they travel. The
+    /// screen's doelsoort filter and its gaps-only toggle are presentation over that set, so they do not, and there
+    /// is deliberately no query parameter for either: a caller cannot narrow this document at all. The consequence
+    /// is stated <i>inside</i> the document as well as beside the link, because the file outlives the screen.
+    /// </para>
+    /// <para>
+    /// <b>Unauthenticated, like every other read here, and that is debt rather than a decision</b> (E7-11, blocked on
+    /// E6-01/E6-02). Worth one extra sentence on this route specifically: it hands out a whole class's planning and
+    /// coverage as a single file to anyone who can guess a klas id, which is a larger blast radius than the JSON read
+    /// beside it even though it exposes not one field more.
+    /// </para>
+    /// </summary>
+    /// <param name="klasId">The class.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <param name="bereik">Which leerplandoelen to measure against; same meaning and default as <see cref="Detail"/>.</param>
+    /// <param name="jaarFase">Narrows the class's own scope to one of its codes; same meaning as <see cref="Detail"/>.</param>
+    [HttpGet("export")]
+    public async Task<IActionResult> Export(
+        Guid klasId,
+        CancellationToken cancellationToken,
+        [FromQuery] Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase,
+        [FromQuery] string? jaarFase = null)
+    {
+        var dekking = await _service.BerekenAsync(klasId, bereik, jaarFase, cancellationToken);
+        var bestand = _export.Genereer(dekking);
+
+        return File(bestand.Inhoud, bestand.ContentType, bestand.Bestandsnaam);
+    }
 }

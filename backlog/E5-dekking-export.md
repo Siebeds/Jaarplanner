@@ -93,9 +93,172 @@
   Clear missing-goals overview, grouped by discipline/domein, actionable from the calendar.
   *Done when:* a gap can be traced to where it should be planned. Ref: FR-9, Art. XII (gap-analyse).
 
-- [ ] **E5-06 — Export coverage overview (proof of coverage)**
+- [x] **E5-06 — Export coverage overview (proof of coverage)** — *built 2026-08-06 on `story/E5-06-dekking-export`
+  (off `story/E5-03-percentage-filter`, since E5-03 was pushed but unmerged when this started; `origin/main` `fc11503`
+  merged in after PR #35 landed). **Three antagonist rounds, all three VIOLATIONS FOUND, every finding
+  fixed, ruled on or routed.*** Commits `64ee3ce` (server), `8cbda59` (tests + six mutations), `b97e762` (screen),
+  `dbaff92` (merge of `origin/main`), `47600f1` (`nl.json`), `b8bb91a` (fix round 1), `7893c87` (the repo record and a
+  stale `CLAUDE.md` clause), `0a1fa9b` (fix round 2), plus fix round 3.
+  > **The audit history, because the shape of it is the story's most transferable result.**
+  > - **Round 1: 3 MAJOR, 5 MINOR, 2 QUESTION.** Two of the three MAJOR were things this repository had *already written
+  >   down* and this story walked past: the per-doel-verdict question whose own entry named E5-06 as its deadline, and
+  >   the unrecorded Art. XIV ruling. The third was the `Minimumdoel` column.
+  > - **Round 2: 1 MAJOR, 5 MINOR, 2 QUESTION.** It confirmed all eight round-1 findings genuinely fixed in the tree,
+  >   and **five of its six new findings were in the fix round's own prose**. The MAJOR was a comment guaranteeing that
+  >   the document's stamp and its filename could not name different days, while `Genereer` read the clock twice.
+  > - **Round 3: 0 MAJOR, 8 MINOR, 3 QUESTION**, and **not one finding in the product's behaviour**. It could not break
+  >   the round-2 fix. All eight were documentation, and **four were figures it re-derived and found short** — a
+  >   register count, a byte-identity claim, a mutation-list entry naming a test that cannot fail, and an absence count
+  >   left over from an earlier version of the same list. The fourth consecutive round in this family whose findings
+  >   live in prose rather than in code. *If anything in E5-06 is wrong, the prose is where to look, not the export.*
   Export the dekkingsoverzicht as evidence.
   *Done when:* an export reproduces the on-screen coverage faithfully. Ref: FR-9.5, FR-11.2.
+  > ### **Two owner rulings, taken 2026-08-06 *before any code was written*, because Art. XIV reserves this and E5-07 is `[!]` on it.**
+  > The Art. XIV bullet reads *"Export formats: PDF, Excel, or both; which layout (inspectie / klassenmap)"*. Asking
+  > first was therefore not caution but the rule, and the alternative would have ratified a page layout by implication.
+  > 1. **The format is Excel (`.xlsx`) via ClosedXML.** Already in the stack for both import paths (MIT, Art. VIII), so
+  >    no dependency is added; and a spreadsheet has **no page layout**, which is the half of the Art. XIV bullet this
+  >    story must not answer. A PDF rides on E5-07's ruling and slots in behind `IDekkingExport` unchanged.
+  > 2. **The export is always the full set in scope.** `bereik` and `jaarFase` travel, because they decide what the
+  >    figures *mean*; the screen's doelsoort filter and its gaps-only toggle do **not**, and the endpoint has no
+  >    parameter for either, so narrowing the document is not a thing a caller can ask for.
+  >
+  > **⚠️ Still owed by the owner, per [Art. XI.1](../CONSTITUTION.md#article-xi--amending-this-constitution):** a
+  > dedicated amendment commit narrowing the Art. XIV *"Export formats"* bullet to the layout question, since the
+  > format half is now decided. The precedent is `efecf73`, which recorded the jaarFase ruling in the backlog and named
+  > the amendment as outstanding rather than making it. Until that lands, **E5-07's `[!]` cites the same bullet** and
+  > this story's code rests on a ruling the constitution still calls open. *Raised by the antagonist as MAJOR-3, and it
+  > was right: a ruling that exists only in a session and a commit message is not a ruling the next story can find.*
+  >
+  > ### **RESOLVED (owner, 2026-08-06): the directie ruling of 2026-07-28 speaks only of *the figure*.**
+  > This closes the question [`README.md`](README.md) had been carrying since E5-02 and widening ever since, and E5-06
+  > is the story that entry named as the deadline: *"Cheap to settle now, because no export reads these verdicts yet
+  > (E5-06)."* The export crossed that line three ways at once, which is what the antagonist's MAJOR-1 established:
+  > the per-doel verdicts now leave the app **as a file with no screen beside it**; the file is the artefact the
+  > ruling's own words are about (*"mislead an inspectie"*); and the AutoFilter over `Gedekt` takes the exposure from
+  > *"one manual count away"* to **zero**, before anyone types `=COUNTIF`.
+  > **Ruled: rows and the `Gedekt` column stay exactly as they are, in every state.** Consistent with what E5-02 chose
+  > for the row chips and E5-03 for the gaps-only toggle, so three artefacts now agree on one reading instead of
+  > inheriting it by default. **Why it is the right answer and not merely the convenient one:** without those columns
+  > the document cannot say *which* placement is the problem, in precisely the state where a teacher has one to fix,
+  > and Art. V's evidence half is the whole reason the file exists. The rejected alternatives are kept because they are
+  > what makes the choice legible: withholding the AutoFilter (half a measure, since one formula defeats it), and
+  > blanking the verdicts (closes the gap, and makes the export useless in the one state that needs it while the screen
+  > keeps showing them, so screen and file would contradict each other).
+  > **What the document does withhold is the figure itself**, and that is measured rather than asserted: with one
+  > accepted placement made stale, a real browser download said *"Nog geen betrouwbaar cijfer. 1 plaatsing in dit
+  > jaarplan wacht nog op een beslissing …"* and printed no total anywhere, while 2 `Ja` / 12 `Nee` rows sat in the
+  > same file.
+  > ### **The `Minimumdoel` column was built and then deleted, and the deletion is the more useful record.**
+  > The payload carries a `minimumdoelRef` per doel, so the first version rendered it, headed *"Minimumdoel"*, directly
+  > beside `Gedekt` and inside the AutoFilter. The antagonist killed it (MAJOR-2) and was right twice over. **It
+  > rendered the level the kopblok declares absent two rows above** (Art. V.2, E5-04, blocked on E1-12), which is the
+  > E4-06 and E3-07 contradiction shape in a new artefact. And the inference it invited is **wrong in both
+  > directions**, not merely unsupported: Art. V.1 makes a minimumdoel gedekt when **at least one** concorded
+  > leerplandoel is, so a `Nee` beside a ref does not mean that minimumdoel is uncovered (another row with the same ref
+  > may say `Ja`, and the document aggregates nothing); and a minimumdoel whose concorded doelen all fall outside the
+  > scope appears in **no row at all**, so filtering that column yields a silently incomplete set. `Doeldekkingregel`
+  > renders no such column either, and this story's criterion is faithful reproduction of the screen. **E5-04 owns it**,
+  > where it can be rolled up correctly instead of insinuated. Pinned by a test, because an absence needs one.
+  > ### What it deliberately does not do, so no later story credits itself with it
+  > - **No percentage.** The rounding rule is documented and non-obvious (`dekkingFormat.ts` `bepaalPercentage`: 0% and
+  >   100% are reserved for a genuinely empty and a genuinely complete numerator, everything between clamped into
+  >   1..99, so a figure can never contradict the fraction beside it). A second implementation server-side would be a
+  >   second authority for one number, which is the defect class E5-01 found when three places disagreed about which
+  >   `DoelKoppeling` layers count. *"4 van 14 doelen gedekt"* cannot disagree with anything. If directie wants a
+  >   percentage in the document, the fix is one shared implementation, never a second.
+  > - **No provenance.** A document titled *Dekkingsoverzicht* does not distinguish an accepted AI suggestion from a
+  >   manual link. The note under E5-07 fires when an export *"claims to explain a coupling's origin"*, and
+  >   `Gedekt door` names the thema rather than the origin, so the condition is not met. It needs a nullable
+  >   `VervangenLeerplandoelCode` and a migration, so it belongs with E5-07's ruling. **Ask directie rather than infer:
+  >   it is plausibly what an audit of decreed-goal coverage asks about first.**
+  > - **No PDF, no page layout.** See ruling 1.
+  > ### Gates
+  > **615 unit + 218 integration on real PostgreSQL, 0 skipped; 586 frontend / 24 files; `dotnet format`, `pnpm lint`
+  > and `pnpm build` clean** (the last of those matters here: E7-17 means `lint` alone type-checks nothing, and a
+  > missing catalogue key is a **compile** error because `t` is typed against `nl.json`, which is how the two new keys
+  > could not have been forgotten). **Thirteen mutation checks, each failing the
+  > intended test and no other, listed because a bare count is not checkable by a later reader** (round-2 audit:
+  > mutations leave no artefact behind, so the claim has to name its evidence).
+  > 1. withheld slot derives the number from the rows → `Een_ingehouden_cijfer_wordt_nooit_als_getal_afgedrukt`
+  > 2. the full-set note deleted → `Het_bestand_zegt_dat_schermfilters_er_niets_aan_veranderen`. **This one passed on
+  >    the first attempt, and the mutation was the weak thing rather than the test:** it replaced *"Dit bestand"* while
+  >    the assertion reads *"alle doelen die in dit overzicht meetellen"*.
+  > 3. an em dash in a document sentence → `Nergens_in_het_bestand_staat_een_kastlijntje`
+  > 4. the singular plaatsing sentence deleted → `Een_enkele_openstaande_plaatsing_krijgt_enkelvoud`
+  > 5. `bereik` ignored by the endpoint → `Het_bereik_reist_mee_naar_de_export`
+  > 6. a doelsoort filter applied to the document → `De_schermfilters_veranderen_de_export_niet` **and** the anti-drift
+  >    test `Het_document_stemt_rij_voor_rij_overeen_met_het_JSON_antwoord`
+  > 7. the link carries `doelsoort` and `ontbrekend` → *"laat de doelsoortfilter en de alleen-ontbrekende-schakelaar er
+  >    BUITEN"*
+  > 8. `dekking.exportUitleg` rewritten to *"Je krijgt precies wat je nu ziet."* → both `catalogus.test.ts` export guards
+  > 9. `dekking.alleenLeerplandoelen` rewritten into a claim → both new `catalogus.test.ts` minimumdoel guards
+  > 10. the `Minimumdoel` column added back → `Er_staat_geen_minimumdoelkolom_in_het_document`
+  > 11. column 1's width back to 14 → `Elk_kopbloklabel_past_in_de_breedte_van_de_eerste_kolom`
+  > 12. the clock read a second time for the filename → `De_klok_wordt_een_keer_per_document_gelezen`
+  > 13. the **`dekking.data` half only** of the link's `klasId && dekking.data` guard removed, so the link renders while
+  >     the read is still pending → *"staat er ook niet als de dekking niet berekend kon worden"*, and **only** that one.
+  >     *It read "the two absence tests" until round 3 checked it:* `useSelectie` returns `""` rather than `null` for
+  >     no-klas, so the no-klas test's absence is produced entirely by the `klasId` half and it passes unchanged
+  >     under this mutation. Naming two tests where one bites is exactly the failure a list was written to prevent.
+  >
+  > **Four of these assert an ABSENCE**, which no deletion can mutation-check, so each was checked by **adding** the
+  > thing back: the filter parameter on the server (6) and in the link (7), the `Minimumdoel` column (10), and the
+  > link itself (13). *The sentence said "two" and was a leftover from the six-mutation era; it survived the list
+  > growing to eleven and then to thirteen, which is what a count nobody re-derives does.*
+  > A **real browser pass** over CDP against a live API and real PostgreSQL, on a throwaway database: two placements
+  > accepted through E4-02's own button took dekking **0 → 4 of 14**; the screen was then narrowed to
+  > `?doelsoort=Minimumdoel&ontbrekend=1` (showing **80%** and one row) and the downloaded workbook still held **all 14
+  > rows, 4 `Ja` / 10 `Nee`**. Contrast composited in the browser: link **8,4:1**, explanation **5,73:1**; axe **0
+  > violations** at 1440px; no horizontal overflow at a true 390px viewport (`Emulation.setDeviceMetricsOverride`, not
+  > a clamped `--window-size`).
+  > **⚠️ The browser pass predates fix round 1; the Gates figures above do not.** Said plainly rather than presented as
+  > one measurement, because they are not one. **Neither fix round touched frontend source**: round 1 touched only `catalogus.test.ts`
+  > and round 2 touched no frontend file at all (round-3 audit verified both), so every *screen* figure above still describes the shipped screen, and every *document* claim survives the fixes and
+  > is now additionally covered by the HTTP tests on real PostgreSQL. **The one property a browser was the sole witness
+  > to, and which the fix changed, is the rendered column width** — and that is honestly unverified in a renderer.
+  > `Elk_kopbloklabel_past_in_de_breedte_van_de_eerste_kolom` asserts `Length > Breedte`, which is a **proxy**: Excel's
+  > width unit is the default font's digit width and these labels are bold, so the assertion holds today with room to
+  > spare and is not the same thing as having looked. **Nobody has opened this workbook in Excel or LibreOffice.**
+  > *An alternative worth naming because it needs no width at all:* a single-cell `"Klas: K3 derde kleuterklas"` layout
+  > has no populated neighbour, so there is nothing for Excel to clip against.
+  > *Playwright MCP was unavailable all story (its profile was in use by another session), so this ran over CDP.*
+  > ### Three results worth carrying to other stories
+  > 1. **A negative behaviour is only observable in the state it forbids.** Ruling 2 is enforced by an *absence* (no
+  >    query parameter), and in the screen's default state a link that honours the filters and one that ignores them
+  >    produce **byte-identical** URLs. Both the browser pass and the HTTP test therefore measure it with the screen
+  >    genuinely narrowed. A default-state check would have proven nothing while looking like proof.
+  > 2. **A mutation that does not bite is a fact about the mutation until you check *which* assertion should have caught
+  >    it.** My first attempt at breaking the full-set note passed, because it replaced *"Dit bestand"* while the
+  >    assertion reads *"alle doelen die in dit overzicht meetellen"*. Same family as E4-08's finding 1.
+  > 3. **`git checkout` to revert a mutation ate two uncommitted fixes**, which is E3-07's round-2 defect exactly, and
+  >    this story had *written a warning about it into its own earlier commit message four hours earlier*. The lesson is
+  >    not "be careful": **commit first, then mutate.** Every later mutation was reverted by a reverse string replace.
+  > ### Two things it measured that are not its own, and neither is filed by it
+  > - **Art. II.5 names *exported documents* explicitly, and imported curriculum text flows into this one unchanged.**
+  >   `DemoDataSeeder` writes an em dash into `Leerplandoel.Tekst`, and it was watched landing in a downloaded `.xlsx`.
+  >   **E7-18** is filed for demo-fixture Dutch, and its blast radius is bigger than the screen it was filed about: it
+  >   reaches a document meant for an onderwijsinspectie. **The general case is not E7-18's and needs an amendment**
+  >   (see the antagonist's QUESTION-1): real Op.stap text will contain em dashes, so the export must either alter
+  >   decreed text (Art. III.1 forbids it) or breach Art. II.5. Art. II.5 needs a clause exempting verbatim decreed
+  >   curriculum text, with the boundary stated.
+  > - **Should `CONSTITUTION.md` carry the directie ruling of 2026-07-28 at all?** *(round-2 audit.)* That ruling now
+  >   governs what an **exported** artefact may contain (Art. V.4), and it appears **nowhere in the constitution**: it
+  >   lives in `DekkingWeergave`'s doc-comment and in this backlog. The format ruling above is flagged as owing an
+  >   amendment while this one is not, which is inconsistent treatment of two rulings taken on the same day. Art. V, or
+  >   the `Dekking` clause of Art. IX.3, is where it would go. Owner/directie call. *Also noted, and pre-existing rather
+  >   than this story's:* the Art. XI ratification log has no row for `e420648`, the 2026-07-30 language amendment that
+  >   this story's server-composed Dutch rests on. The amendment text is in Art. II.3, so the authority is sound and it
+  >   is only the log that is short.
+  > - **The export route is unauthenticated, and it is accepted E7-11 debt rather than a new breach.** Recorded here
+  >   because round 2 raised it and round 3 found the substance recorded only on `DekkingController` (E5-01's entry
+  >   carries the analogous note for the JSON read). It exposes not one field more than the JSON endpoint beside it and
+  >   FA §3.2 lets all three roles view dekking, so the role matrix demands no gate — but **the blast radius genuinely
+  >   changes**: one guessable URL now yields a portable document of a whole class's planning and coverage, where before
+  >   it yielded a JSON body. **E7-11** owns the app-wide gap and is blocked on E6-01/E6-02.
+  > - **axe reports 0 violations and one `incomplete`**: `aria-prohibited-attr` on 14 nodes, all of them the
+  >   pre-existing doelsoort badge, a roleless `<span aria-label="Minimumdoel">`. ARIA prohibits that, so a screen
+  >   reader may announce *"MD"* and never the expansion. E5-02/E1-16 own the component; **E7-20** is the family.
 
 - [!] **E5-07 — Export jaarplan (PDF/Excel, layout)** — *blocked: Art. XIV export formats & layout*
   Export a class year plan for print / klassenmap / inspectie.

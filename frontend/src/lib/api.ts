@@ -10,11 +10,15 @@ const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "";
 /**
  * The absolute URL of an API path, for the cases that must **not** go through {@link apiFetch}.
  *
- * There is exactly one today: the import template download (`GET …/sjabloon`), which answers a binary
- * `.xlsx` with a `Content-Disposition` filename. That belongs in a plain `<a href download>` — the browser
- * then streams it straight to disk with the server's own filename, shows its own progress, and needs no
- * JavaScript at all. Fetching it into a blob and synthesising a click would replace all of that with code,
- * and would put a memory copy of the file in the tab for no gain.
+ * There are two: the import template download (`GET …/sjabloon`) and the coverage export
+ * (`GET …/dekking/export`, E5-06). Both answer a binary `.xlsx` with a `Content-Disposition` filename, and both
+ * belong in a plain `<a href download>` — the browser then streams it straight to disk with the server's own
+ * filename, shows its own progress, and needs no JavaScript at all. Fetching one into a blob and synthesising a
+ * click would replace all of that with code, and would put a memory copy of the file in the tab for no gain.
+ *
+ * *This paragraph said "exactly one today" until E5-06 made it two.* A count of call sites in a comment is a claim
+ * with a shelf life, so the next story to add a download should expect to edit this sentence rather than leave it
+ * quietly wrong.
  *
  * It exists so a caller building such a link does not re-read `VITE_API_BASE_URL` itself, which is how a
  * split-origin deployment ends up with one link pointing at the wrong host.
