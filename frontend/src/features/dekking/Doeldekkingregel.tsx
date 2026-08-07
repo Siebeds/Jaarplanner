@@ -2,8 +2,29 @@ import { Link, useLocation } from "react-router-dom";
 
 import { DoelsoortBadge } from "../../components/DoelsoortBadge";
 import { doelsoortBadgeSoort } from "../../components/doelsoort";
-import { t } from "../../i18n";
-import type { DoelDekking } from "./types";
+import { t, type TranslationKey } from "../../i18n";
+import { leesOorzaak } from "./dekkingFormat";
+import type { DoelDekking, Lacuneoorzaak } from "./types";
+
+/**
+ * The sentence each gap cause gets on its own row (E5-05).
+ *
+ * **An explicit map rather than a template literal**, so every key a teacher can reach is greppable and no cause can
+ * be given a sentence by accident. The row is the only place these appear; the aggregated block above the list has
+ * its own family, because a count sentence and a per-row sentence are different registers and sharing one would make
+ * both worse.
+ *
+ * **`GeenThema` names no thema and its sentence therefore interpolates none.** That is not an omission: the storage
+ * read excludes rejected links, so a goal whose only link a teacher already rejected lands here, and a sentence
+ * saying no thema is *linked* to it would be false in exactly that case. It says no thema *covers* it, which is true
+ * however the links stand.
+ */
+const REGEL_PER_OORZAAK: Record<Lacuneoorzaak, TranslationKey> = {
+  WachtOpBeslissing: "dekking.lacuneRegelWachtOpBeslissing",
+  NietIngepland: "dekking.lacuneRegelNietIngepland",
+  KoppelingNietBeslist: "dekking.lacuneRegelKoppelingNietBeslist",
+  GeenThema: "dekking.lacuneRegelGeenThema",
+};
 
 /**
  * One leerplandoel and whether this class's plan covers it (E5-02, FR-9.1).
@@ -29,6 +50,10 @@ import type { DoelDekking } from "./types";
 export function Doeldekkingregel({ doel }: { doel: DoelDekking }) {
   const soort = doelsoortBadgeSoort[doel.doelsoort];
   const location = useLocation();
+
+  // Null for a covered doel and for a cause this client has no case for; `leesOorzaak` deliberately answers the same
+  // way to both, because the question here is only whether there is a line to render.
+  const oorzaak = leesOorzaak(doel.oorzaak);
 
   return (
     <li
@@ -83,6 +108,27 @@ export function Doeldekkingregel({ doel }: { doel: DoelDekking }) {
         {doel.isGedekt && (
           <span className="mt-0.5 block text-xs text-ink-zacht">
             {t("dekking.dekkendeThemas", { themas: doel.dekkendeThemas.join(", ") })}
+          </span>
+        )}
+
+        {/*
+          THE GAP-ANALYSE, in the same slot and the same type as the evidence line above it (E5-05, FR-9). The two are
+          mirror images and belong in one column: a covered row says what proves it is taught, an uncovered one says
+          why it is not and through which thema that changes. A teacher scanning the list reads one column of reasons
+          either way.
+
+          **No control here, and that is the design rather than an unbuilt half.** In September a class is
+          legitimately uncovered almost everywhere, so a button per row would be a hundred near-identical calls to
+          action — the same mistake the note above rejects for a solid red chip, in a new form. And a teacher does not
+          close a gap one doel at a time: placing one thema closes fourteen. The routes are therefore aggregated once
+          above the list, where the action is stated at the size a teacher actually acts on.
+
+          Rendered only when the cause is one this client can name. An unknown value says nothing rather than
+          something wrong; see `leesOorzaak`.
+        */}
+        {!doel.isGedekt && oorzaak !== null && (
+          <span className="mt-0.5 block text-xs text-ink-zacht">
+            {t(REGEL_PER_OORZAAK[oorzaak], { themas: doel.kandidaatThemas.join(", ") })}
           </span>
         )}
       </span>

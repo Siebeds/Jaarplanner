@@ -60,6 +60,16 @@ export const JAARPLAN_PAD = "/jaarplan";
 export const DEKKING_PAD = "/dekking";
 
 /**
+ * Named for the same reason as the two above, and by the same story that needed the third: the gap-analyse (E5-05)
+ * routes a teacher here when a doel's only link is an undecided doelsuggestie, because that decision is a link
+ * decision and planning the thema would not help while it stands (Art. V.1).
+ *
+ * The literal already sat in the `NAVIGATIE` entry below and in `/dekking`, which is the two-files-one-route shape the
+ * `JAARFASE_PARAM` note calls out. The entry now reads this constant rather than repeating it.
+ */
+export const THEMAS_PAD = "/themas";
+
+/**
  * The search param that narrows the dekkingsoverzicht to one jaar/fase.
  *
  * Here rather than in `features/dekking/DekkingPagina`, because the kalender's knelpunt link carries it (E3-09) and
@@ -99,7 +109,7 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
     story: "E1-16 (register); E1-12 unblocks the minimumdoel half",
   },
   {
-    pad: "/themas",
+    pad: THEMAS_PAD,
     labelKey: "navigatie.themas",
     isGebouwd: true,
     magBeheerder: false,

@@ -9,11 +9,13 @@ import { Dekkingexport } from "./Dekkingexport";
 import { Dekkinggroep } from "./Dekkinggroep";
 import { Dekkingsamenvatting } from "./Dekkingsamenvatting";
 import { Dekkingslijstkop } from "./Dekkingslijstkop";
+import { Lacuneroutes } from "./Lacuneroutes";
 import {
   bepaalCijfer,
   beschikbareDoelsoorten,
   gemetenDoelen,
   groepeerPerSubdomein,
+  telLacuneoorzaken,
   toonbareDoelen,
   type Doelsoortkeuze,
 } from "./dekkingFormat";
@@ -129,6 +131,13 @@ export function DekkingPagina() {
     () => (dekking.data ? beschikbareDoelsoorten(dekking.data.doelen) : []),
     [dekking.data],
   );
+
+  // THE GAP-ANALYSE'S COUNTS (E5-05), over `gemeten` and NOT over `groepen`. The distinction is the same one the
+  // comment above draws for the figure, applied to a different pair: `gemeten` follows the doelsoort narrowing, which
+  // changes what is being measured, and ignores the gaps-only toggle, which changes only what is shown. Counting over
+  // `groepen` would leave these numbers identical in the one view and unexplainable in the other, since with the
+  // toggle off the groups also hold every covered doel.
+  const lacunetellingen = useMemo(() => telLacuneoorzaken(gemeten), [gemeten]);
 
   function kiesBereik(volgende: Dekkingsbereik) {
     const params = new URLSearchParams(searchParams);
@@ -264,6 +273,20 @@ export function DekkingPagina() {
               magTellingTonen={cijfer.soort === "cijfer"}
             />
           )}
+
+          {/*
+            THE ROUTES OUT OF THE GAPS (E5-05), directly under the control that reveals them and above the rows they
+            describe. This is the half that makes E5-05 more than a longer list: `/dekking` has shown WHICH doelen are
+            missing since E5-03, and this says where each kind of gap is closed.
+
+            **Gated on `cijfer.soort === "cijfer"`, which is the same gate the group tallies carry and for exactly the
+            same reason.** These counts partition the gaps in view, so they add up to `totaal - gedekt` — the figure
+            the directie ruling of 2026-07-28 withholds while a placement is unresolved. E5-02 shipped that leak once
+            already: the summary said it would give no figure while every group printed one, and the group counts
+            summed to the withheld total. Passing the gate rather than the counts keeps the decision in one place;
+            `Lacuneroutes` documents why an absence beats a count-free variant.
+          */}
+          {cijfer.soort === "cijfer" && <Lacuneroutes tellingen={lacunetellingen} />}
 
           {/*
             Nothing to list under a pressed "Alleen ontbrekende", said in words: an empty area there is

@@ -20,6 +20,24 @@ export const DEKKINGSBEREIKEN = ["EigenJaarFase", "HeelCurriculum"] as const;
  */
 export type Dekkingsbereik = (typeof DEKKINGSBEREIKEN)[number];
 
+/**
+ * Why a leerplandoel is **not** covered, as the API serialises the backend `Lacuneoorzaak` enum (E5-05, FR-9).
+ *
+ * Ordered cheapest-route-first, matching the server's own ordering, because the aggregated routes above the list are
+ * rendered in this order: a teacher should meet the two-click fix before the one that needs new content.
+ *
+ * Derived from the array rather than written twice, like `DEKKINGSBEREIKEN` above and for the same reason: a fifth
+ * cause added on the server errors here instead of silently rendering nothing.
+ */
+export const LACUNEOORZAKEN = [
+  "WachtOpBeslissing",
+  "NietIngepland",
+  "KoppelingNietBeslist",
+  "GeenThema",
+] as const;
+
+export type Lacuneoorzaak = (typeof LACUNEOORZAKEN)[number];
+
 /** One leerplandoel and whether this class's plan covers it. */
 export interface DoelDekking {
   /** The stable Op.stap code (Art. III.5). */
@@ -42,6 +60,23 @@ export interface DoelDekking {
    * This is the evidence half of Art. V: a screen that claims coverage has to be able to say *through what*.
    */
   dekkendeThemas: string[];
+  /**
+   * Why it is not covered, or null exactly when it is (E5-05).
+   *
+   * Typed as the union rather than `string`, and read through `leesOorzaak` rather than trusted: a value this client
+   * has no case for renders no cause line at all, which says less rather than something wrong. That is the same
+   * failure direction `leesDoelsoort` takes on the URL, and for the sharper reason — the alternative here is a
+   * catalogue key rendered verbatim to a teacher (Art. II.3), which is exactly what `?doelsoort=Foo` once did.
+   */
+  oorzaak: Lacuneoorzaak | null;
+  /**
+   * The thema's that justify `oorzaak`, alphabetically: the ones to act on.
+   *
+   * Empty when the doel is covered, and empty for `GeenThema`, which has nothing to name. It lists only the thema's
+   * belonging to the reported cause, not every thema linked to the goal, so the names and the sentence they sit in
+   * always describe the same action.
+   */
+  kandidaatThemas: string[];
 }
 
 /** One class's computed coverage. */
