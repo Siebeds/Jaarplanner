@@ -3,6 +3,9 @@
     "naam": "Jaarplanner",
     "ondertitel": "Plan en bewijs de dekking van je leerplandoelen."
   },
+  "uitleg": {
+    "schakelaar": "Uitleg tonen"
+  },
   "navigatie": {
     "overslaan": "Ga naar de hoofdinhoud",
     "hoofdnavigatie": "Hoofdnavigatie",

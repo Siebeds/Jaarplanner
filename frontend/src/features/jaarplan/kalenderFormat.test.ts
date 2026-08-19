@@ -29,7 +29,16 @@ import type {
  */
 
 function blok(ordinaal: number, start: string, eind: string, aantalOpenDagen = 30): Planningsblok {
-  return { ordinaal, start, eind, ouderOrdinaal: null, aantalOpenDagen };
+  // `aantalOpenWeekdagen` is derived here rather than parameterised: no test in this file asserts on it, and a second
+  // knob would invite a fixture where the two counts contradict each other — 30 open days can never be 30 school days.
+  return {
+    ordinaal,
+    start,
+    eind,
+    ouderOrdinaal: null,
+    aantalOpenDagen,
+    aantalOpenWeekdagen: Math.round((aantalOpenDagen * 5) / 7),
+  };
 }
 
 function plaatsing(overrides: Partial<Themaplaatsing> & { id: string }): Themaplaatsing {

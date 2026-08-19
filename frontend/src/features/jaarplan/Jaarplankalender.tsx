@@ -926,6 +926,18 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 on it. An instruction nobody can follow is worse than saying plainly that nothing was changed.
                 Paired through {@link BORDUITLEG} since fix round 3, so this sentence and the one a stale card's panel
                 shows are decided by the same three states and cannot drift apart again. */}
+            {/* **`sleepUitleg` is NOT behind the "Uitleg tonen" switch, and a failing test is why** (E9-01).
+                It looks like pure instruction and its first two sentences are, but its third clause is a *consequence*:
+                "Verplaats je een AI-voorstel, dan wordt het jouw eigen keuze en telt het vanaf dan mee voor de
+                dekking." E4-01 put that clause here deliberately, and `Uitleg`'s own rule keeps consequence
+                disclosures unconditional — a teacher must not lose the sentence saying a drag changes what counts for
+                dekking because they switched off help. E9-01 wrapped this and
+                `promises the count-by-moving consequence only on the tier where moving works` went red, which is the
+                test doing exactly its job.
+                *The tempting alternative was to split the string*, instruction behind the switch and consequence
+                outside it. Not done: it would reword a key three audit rounds have worked over, and E9-01 was held to
+                adding keys only while another session held the catalogue. If it is ever split, the consequence half
+                stays out here. */}
             <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
               {t(BORDUITLEG[verplaatsstaat])}
             </p>

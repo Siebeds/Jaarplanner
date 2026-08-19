@@ -5,6 +5,8 @@ import { t } from "../i18n";
 import { KlasKiezer } from "./KlasKiezer";
 import { Merkteken } from "./Merkteken";
 import { Navigatie } from "./Navigatie";
+import { Uitlegschakelaar } from "./Uitlegschakelaar";
+import { UitlegProvider } from "./uitleg";
 
 /** The id the skip-link targets, and the element that takes focus after a navigation. */
 const HOOFDINHOUD_ID = "hoofdinhoud";
@@ -64,6 +66,9 @@ export function AppShell() {
   }, [location.pathname, navigationType]);
 
   return (
+    // The provider wraps the WHOLE shell, header included: the switch and the sentences it governs have to read one
+    // state, and a provider around only the `<Outlet />` would leave the control unable to see what it controls.
+    <UitlegProvider>
     <div className="min-h-screen bg-background">
       {/*
         In flow when focused (`not-sr-only` restores `position: static`), so it pushes the page down
@@ -98,7 +103,20 @@ export function AppShell() {
             <KlasKiezer />
           </div>
 
-          <Navigatie />
+          {/*
+            The switch sits BESIDE the navigation, not inside it, for two reasons. Semantically it is not a
+            destination, so it does not belong in a `<nav>`'s list. Practically, `Navigatie` is a horizontally
+            scrollable strip at narrow widths, and a control placed inside it would scroll out of reach on the very
+            screens where the prose is most in the way.
+            `items-end` keeps the two aligned on the nav's baseline row rather than centring the switch against the
+            navigation's scroll padding, which read as a few pixels too high.
+          */}
+          <div className="flex items-end justify-between gap-4">
+            <Navigatie />
+            <div className="shrink-0 pb-2">
+              <Uitlegschakelaar />
+            </div>
+          </div>
         </div>
       </header>
 
@@ -113,5 +131,6 @@ export function AppShell() {
         <Outlet />
       </main>
     </div>
+    </UitlegProvider>
   );
 }
