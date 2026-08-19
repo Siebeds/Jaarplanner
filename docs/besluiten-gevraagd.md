@@ -4,7 +4,7 @@
 
 Hieronder staan de vragen waarop we een antwoord nodig hebben om verder te kunnen bouwen. Ze staan op volgorde van dringendheid. Bij elke vraag staat waarom ze belangrijk is en wat er gebeurt zolang ze open blijft.
 
-We **gokken niet** op een antwoord. Waar een keuze nog openstaat, bouwen we zo dat ze later zonder herbouw kan worden omgezet, maar sommige zaken (de eerste vraag) kunnen we zonder antwoord helemaal niet maken. Op **vraag 6** geldt die belofte niet meer, en dat staat daar met zoveel woorden bij.
+We **gokken niet** op een antwoord. Waar een keuze nog openstaat, bouwen we zo dat ze later zonder herbouw kan worden omgezet, maar sommige zaken (de eerste vraag) kunnen we zonder antwoord helemaal niet maken. Op twee punten geldt die belofte niet meer: **vraag 6** in zijn geheel, en het uitvoerformaat in **vraag 5**. Bij allebei staat het met zoveel woorden vermeld.
 
 ---
 
@@ -69,11 +69,13 @@ Per rij hebben we vier gegevens nodig:
 
 **Gevolg zolang dit openstaat.** We bouwen de dekking eerst als "behandeld / niet behandeld". Wordt het later fijnmaziger, dan is dat uitbreidbaar, maar dan moet er wel opnieuw ingevuld worden wat al ingevuld was.
 
+**Op het eerste punt hebben we intussen niet gewacht, en dat hoort u te weten.** Op 6 augustus 2026 heeft de projecteigenaar beslist om het dekkingsoverzicht als **Excel** te laten downloaden, en dat is gebouwd. **Uw vraag blijft dus open, maar niet meer op een leeg blad:** wilt u er PDF bij, of in plaats van, of gelden er vormvereisten voor een inspectiebezoek, dan verandert er iets wat er al is. Het diepgangpunt hierboven staat helemaal open en is het punt met de grootste gevolgen.
+
 ---
 
 ## 6. Wat gebeurt er met het werk van de leerkracht als de tool opnieuw genereert?
 
-**Dit is de enige vraag waarop we niet gewacht hebben.** Ze hield het werk tegen, dus de projecteigenaar heeft ze op 19 augustus 2026 beslist, in de voorzichtige richting. **We vragen u die beslissing te bevestigen of om te draaien.** Anders dan bij de vragen hierboven is dit antwoord niet gratis om te draaien: er staan vandaag zinnen op het scherm van de leerkracht die dit met zoveel woorden beloven.
+**Ook op deze vraag hebben we niet gewacht** (de andere is het uitvoerformaat bij vraag 5). Ze hield het werk tegen, dus de projecteigenaar heeft ze op 19 augustus 2026 beslist, in de voorzichtige richting. **We vragen u die beslissing te bevestigen of om te draaien.** Anders dan bij de vragen hierboven is dit antwoord niet gratis om te draaien: er staan vandaag zinnen op het scherm van de leerkracht die dit met zoveel woorden beloven.
 
 - **Wat de leerkracht zelf beslist heeft, blijft staan als de tool het jaarplan opnieuw genereert.** Heeft een leerkracht een thema aanvaard, geweigerd, zelf geplaatst, naar een andere periode verplaatst of vastgezet, dan raakt een hergeneratie het niet aan: niet bij een hergeneratie van het hele jaarplan, en niet bij die van één periode. De AI-voorstellen waar de leerkracht nog niets mee gedaan heeft en die niet vastgezet zijn, verdwijnen wel, en of er nieuwe voor in de plaats komen hangt af van wat de AI die keer voorstelt.
   **Eén randgeval, omdat u de regel bekrachtigt en niet alleen leest:** sleept een leerkracht een kaartje binnen dezelfde periode heen en weer, dan verandert er niets aan de planning en telt dat dus niet als verplaatsen. Zo'n voorstel verdwijnt wél bij een hergeneratie, ook al heeft de leerkracht het aangeraakt.

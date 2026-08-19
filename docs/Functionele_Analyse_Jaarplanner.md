@@ -10,7 +10,7 @@
 | Opdrachtgever | [Naam van de basisschool] — in te vullen |
 | Doelgroep | Kleuter- en lager onderwijs (2,5 – 12 jaar), Vlaanderen |
 | Auteur | Siebe De Saedeleir |
-| Versie | 0.5 — concept ter validatie (v0.4-tekst + Bijlage A) |
+| Versie | 0.6 — concept ter validatie (v0.4-tekst + Bijlage A) |
 | Datum | 20 juni 2026 |
 | Status | Ter review door de directie |
 
@@ -27,11 +27,11 @@ Dit document is een levend document. Wijzigingen worden bijgehouden in onderstaa
 | 0.3 | 20-06-2026 | Siebe De Saedeleir | Bron van de doelen verfijnd naar het leerplan Op.stap (KathOndVla), incl. structuur en concordantie | Concept |
 | 0.4 | 20-06-2026 | Siebe De Saedeleir | Beheerpagina expliciet: klassen instellen + schoolbrede/per-klas overzichten | Concept |
 | 0.5 | 29-06-2026 | (analyse) | Verfijningen op basis van Op.stap-referentiemateriaal — zie **[Bijlage A](#bijlage-a--verfijningen-op-basis-van-opstap-referentiemateriaal-post-v04)**. De v0.4-tekst hierboven blijft ongewijzigd als getrouwe weergave; de verfijningen staan in de bijlage en zijn verwerkt in [`CONSTITUTION.md`](../CONSTITUTION.md). | Concept — ter validatie |
-| 0.6 | 19-08-2026 | (projecteigenaar) | **A.10** toegevoegd: FR-7.3's *"ter beslissing"* over behoud/overschrijven bij een (her)generatie is voorlopig beantwoord, en FR-8.4 wordt in hetzelfde punt verfijnd. Bijlage A bevat vanaf nu ook verfijningen die **niet** uit het Op.stap-referentiemateriaal komen; A.10 vermeldt zijn eigen herkomst. Bevestiging door de directie staat open (vraag 6 in [`besluiten-gevraagd.md`](besluiten-gevraagd.md)). | Concept — ter validatie |
+| 0.6 | 19-08-2026 | (projecteigenaar) | **A.10** toegevoegd: FR-7.3's *"ter beslissing"* over behoud/overschrijven bij een (her)generatie is voorlopig beantwoord, en FR-8.4 wordt in hetzelfde punt verfijnd. Bijlage A bevat vanaf nu ook verfijningen die **niet** uit het Op.stap-referentiemateriaal komen; A.10 vermeldt zijn eigen herkomst. Bevestiging door de directie staat open (vraag 6 in [`besluiten-gevraagd.md`](besluiten-gevraagd.md)). | Concept, ter validatie |
 
 Te valideren door: de directie van de school.
 
-> **Let op:** hoofdstukken 1–12 zijn de getrouwe weergave van v0.4. **[Bijlage A](#bijlage-a--verfijningen-op-basis-van-opstap-referentiemateriaal-post-v04)** bevat verfijningen (post-v0.4) op basis van het Op.stap-referentiemateriaal; bij tegenspraak met de v0.4-tekst geldt de bijlage. Volledige onderbouwing: [`Gap-analyse_Opstap_referentie.md`](Gap-analyse_Opstap_referentie.md).
+> **Let op:** hoofdstukken 1–12 zijn de getrouwe weergave van v0.4. **[Bijlage A](#bijlage-a--verfijningen-op-basis-van-opstap-referentiemateriaal-post-v04)** bevat verfijningen (post-v0.4), grotendeels op basis van het Op.stap-referentiemateriaal en vanaf A.10 ook op basis van eigenaarsbeslissingen (A.10 vermeldt zijn eigen herkomst); bij tegenspraak met de v0.4-tekst geldt de bijlage. Volledige onderbouwing: [`Gap-analyse_Opstap_referentie.md`](Gap-analyse_Opstap_referentie.md).
 
 ## 2. Inleiding
 
@@ -348,7 +348,7 @@ Onderstaande punten bepalen mee de uitwerking. Antwoorden hierop laten toe deze 
 
 ## Bijlage A — Verfijningen op basis van Op.stap-referentiemateriaal (post-v0.4)
 
-> Deze bijlage verfijnt hoofdstukken 1–12 op basis van drie door de school aangeleverde bronnen: `assets/Op.stap_ordeningskader.pdf`, `assets/Uitwerken kennisrijk thema KLEUTER (Haike).pdf` en `assets/Verduidelijking Thema-Subthema-doelen.pdf`. Bij tegenspraak met de v0.4-tekst geldt deze bijlage. Volledige onderbouwing en bronvermelding per punt: [`Gap-analyse_Opstap_referentie.md`](Gap-analyse_Opstap_referentie.md). Deze verfijningen zijn verwerkt in [`CONSTITUTION.md`](../CONSTITUTION.md) (de bindende bron voor de bouw).
+> Deze bijlage verfijnt hoofdstukken 1–12. **A.1 tot en met A.9** doen dat op basis van drie door de school aangeleverde bronnen: `assets/Op.stap_ordeningskader.pdf`, `assets/Uitwerken kennisrijk thema KLEUTER (Haike).pdf` en `assets/Verduidelijking Thema-Subthema-doelen.pdf`; hun onderbouwing en bronvermelding per punt staat in [`Gap-analyse_Opstap_referentie.md`](Gap-analyse_Opstap_referentie.md). **Vanaf A.10 kan een punt een andere herkomst hebben** (een eigenaars- of directiebeslissing), en dan vermeldt het punt die zelf; verwacht zo'n punt dus niet in de gap-analyse. Bij tegenspraak met de v0.4-tekst geldt deze bijlage. De verfijningen zijn verwerkt in [`CONSTITUTION.md`](../CONSTITUTION.md) (de bindende bron voor de bouw).
 
 ### A.1 Juridisch principe — wat ligt vast, wat is vrij
 De Vlaamse overheid bepaalt **enkel** de minimumdoelen, de leerinhouden en dat scholen systematisch kennis opbouwen richting een leerlijn (kennisrijk curriculum). De overheid bepaalt **niet** welke thema's of subthema's een school kiest, noch hoe ze die organiseert — dat is **professionele autonomie**, en de inspectie toetst de themalaag niet. **Dekking wordt bewezen op minimumdoel-niveau, niet op themaniveau.** Dit verklaart waarom Op.stap-doelen read-only zijn en thema's volledig bewerkbaar.
@@ -390,7 +390,7 @@ FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generat
 
 **Voorlopig, en dat woord is niet decoratief.** FR-7.3 behoudt deze beslissing voor aan de **directie**, en hun bevestiging staat open (vraag 6). Ze is toch al vastgelegd omdat het de behoudende van de twee opties is: er kan niets op gebouwd worden dat werk van een leerkracht vernietigt. Draait de directie ze om, dan wijzigen Art. IX.3 en de leerkrachtgerichte zinnen die onder E4-07 opgesomd staan samen.
 
-**Wat dit betekent voor FR-8.4** (§5, dat hierbij verfijnd wordt): dat punt belooft dat een leerkracht *"vastgezette (vergrendelde) **blokken**"* kan uitsluiten van hergeneratie. Het mechanisme is fijner en enger dan dat: vergrendelen gebeurt **per plaatsing**, niet per blok, en het verandert alleen iets voor een plaatsing die nog `Voorgesteld` is. Op een besliste plaatsing is het slot een label.
+**Wat dit betekent voor FR-8.4** (§5, dat hierbij verfijnd wordt): dat punt belooft dat een leerkracht *"vastgezette (vergrendelde) **blokken**"* kan uitsluiten van hergeneratie. Het mechanisme is fijner en enger dan dat: vergrendelen gebeurt **per plaatsing**, niet per blok, en het verandert alleen iets aan de uitkomst van een hergeneratie, en dan nog alleen voor een plaatsing die nog `Voorgesteld` is. Op een besliste plaatsing is het slot een label.
 
 *Waarom dit hier staat en niet enkel in de constitutie:* Art. XI.1 vereist dat een amendement zijn afhankelijke tekst in dezelfde wijziging meeneemt, en de clausule in kwestie is **FR-7.3 in §5**, die *"ter beslissing"* blijft lezen. *(Niet §11: de open-vragenlijst daar heeft dit punt nooit bevat, en juist dat is waarom het elders voor een Art. XIV-item is aangezien.)* De v0.4-tekst wordt niet aangepast, want die is een getrouwe weergave; deze bijlage is de plek om hem te verfijnen, en bij tegenspraak geldt de bijlage.
 
