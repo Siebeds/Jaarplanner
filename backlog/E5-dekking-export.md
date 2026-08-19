@@ -89,7 +89,7 @@
   Surface coverage at minimumdoel level via concordance — the level the onderwijsinspectie tests.
   *Done when:* a minimumdoel shows covered iff ≥1 concorded leerplandoel is covered. Ref: FR-9.3, Art. V.2.
 
-- [~] **E5-05 — Gap-analyse presentation** — *built 2026-08-07 on `story/E5-05-gap-analyse`, off `origin/main`
+- [x] **E5-05 — Gap-analyse presentation** — *built 2026-08-07 on `story/E5-05-gap-analyse`, off `origin/main`
   `96a9060`. Commits `ff911e6` (server), `3b11cb2` (screen), `5ca1ac8` (a test the mutation check exposed as
   vacuous), `e7a29de` (the record), and after twelve idle days `6b4111c` + `9c15019` (**fix round 1** and its record,
   on antagonist ronde 1), `a154604` onwards (**fix round 2**, on ronde 2) and the commit carrying this paragraph
@@ -97,9 +97,25 @@
   **Three antagonist rondes, all VIOLATIONS FOUND — 3 MAJOR + 5 MINOR + 2 QUESTION, then 1 MAJOR + 7 MINOR + 2
   QUESTION, then 1 MAJOR + 7 MINOR + 1 QUESTION. Every MAJOR is fixed and mutation-checked; two MINOR are routed to
   E7 and two QUESTION are the owner's.**
-  **`[~]` and not `[x]`: ronde 4 is owed**, and this backlog's own status legend reserves `[x]` for "implemented,
-  tested, Antagonist-clean". Rondes 2 and 3 each found their MAJOR in the previous round's fix, exactly as three
-  consecutive rounds of E4-08 did, so an unaudited fix round is a named risk here rather than a formality.*
+  **Closed 2026-08-19 by owner ruling, after three rondes and without a fourth** — see the caveat immediately below,
+  which is the same one E5-01, E4-01, E4-08, E3-03 and E4-04 carry.*
+  > **⚠️ Read this `[x]` precisely: it is an owner ruling of 2026-08-19 taken without a fourth round, so fix round 3
+  > has had no independent pass.** What that leaves open is nameable, because three rounds in a row found exactly it:
+  > **defects introduced by the previous fix round.** Rondes 2 and 3 each found their MAJOR inside the round before,
+  > and in both cases the surviving suite said nothing.
+  > **The ground the ruling was taken on, stated so a later reader can judge it rather than trust it.** The
+  > *product behaviour* has been correct and browser-verified since fix round 1: a teacher's screen was driven end to
+  > end against a live API and real PostgreSQL, and the false sentence that started this is gone from the page.
+  > Ronde 2's MAJOR was the test net. **Ronde 3's MAJOR was a missing test on E5-01's code, not wrong behaviour** — the
+  > covering read is correct as written and always was; what was absent was anything that would notice if it stopped
+  > being. And fix round 3 itself is one test fixture plus comments and records: no executable product code, checked
+  > hunk by hunk rather than asserted. So the unaudited surface is **the test net and the record**, which is where the
+  > last four stories' remaining findings lived, and not what a teacher sees.
+  > **Ten mutation checks of my own across the three fix rounds all bite, and the audits ran 40-plus more.** Every
+  > MAJOR from all three rondes is fixed and mutation-checked individually, with the build's error count read in the
+  > same breath, because a failed build plus `--no-build` serves the previous mutation's binary and that bit this story
+  > twice. Two MINOR are routed to **E7-11** and **E7-03**, written on those entries rather than claimed here.
+  > Stated because a reader five stories from now cannot tell a ruled `[x]` from an audited one.
   Clear missing-goals overview, grouped by discipline/domein, actionable from the calendar.
   *Done when:* a gap can be traced to where it should be planned. Ref: FR-9, Art. XII (gap-analyse).
   > ### **OWNER RULING, 2026-08-07: the grouping stays `(domein, subdomein)` and gets no discipline level.**
@@ -222,7 +238,7 @@
   > **MINOR-8 is routed, not fixed:** the unauthenticated dekking read now also returns the names of thema's in no
   > plan. A widening of debt `DekkingController` already records, no pupil data, and it belongs to whichever story adds
   > the role checks (**E7-11**, blocked on E6-01/E6-02) rather than to this one.
-  > ### **Two things left open for the owner, both stated rather than decided here.**
+  > ### **OWNER RULINGS, 2026-08-19. Both questions below were put to the owner and both are now decided.**
   > 1. **`GeenThema`'s line distinguishes nothing** (ronde 1 MINOR-6, sharpened by ronde 2): *"Geen enkel thema dekt
   >    dit doel."* is **true** in every state that renders it, so nothing is being deferred that is false. It is simply
   >    uninformative: it is true of every row in the list. **Ronde 2 corrected this entry's own framing**, which said
@@ -240,6 +256,11 @@
   >    option set I put in front of you. **Accept the short line, or ask for a longer one to be drafted against all
   >    three states.** Third round in a row that an explanatory sentence about this cause turned out to reach past what
   >    its own branch guarantees, which is itself the argument for the short line.
+  >    **RULED 2026-08-19: the short line stays.** The owner took the argument that reaches furthest: three rounds
+  >    running, an explanatory sentence about this cause turned out to claim more than its branch guarantees, so the
+  >    line that is true in every state wins over the line that is more informative in most of them. The rij already
+  >    carries a "Niet gedekt" chip, so the slot is not silent. *If this is ever revisited, the draft has to hold in
+  >    all three states, including a link owned by another class.*
   > 2. **Three route lines now read "Naar de kalender" and go to the same place** (ronde 1 QUESTION-2, which fix round 1
   >    made worse: it was two). SC 2.4.4 is met, because each link's purpose is clear from the sentence in its own
   >    `<li>`, and identical label plus identical destination is the benign duplicate rather than the harmful one. But a
@@ -251,7 +272,11 @@
   >    two controls **within one activiteit's `<li>`** share a name; "drie activiteiten" is its scenario, not the
   >    property under test. So it is guidance, not a ruling that covers this case, and the distinguishing fact still
   >    holds (E4-08's controls had three destinations, these have one). Decide against it rather than around it, but
-  >    knowing it is the weaker precedent. **Not redesigned on this story's own judgement**, because it is a UX call and because
+  >    knowing it is the weaker precedent.
+  >    **RULED 2026-08-19: the three links stay as they are.** Identical label plus identical destination is WCAG's
+  >    benign duplicate, SC 2.4.4 is satisfied by the sentence in each `<li>`, and E4-08's convention addresses three
+  >    controls going to three different places, which is not this case. *Recorded rather than left implicit, so the
+  >    next audit that notices three identical link names finds a decision instead of an omission.* **Not redesigned on this story's own judgement**, because it is a UX call and because
   >    every fix round in this repo that reached past its finding introduced a new defect.
   > ### **Gates on `6b4111c`, all re-run rather than carried forward.**
   > **648 unit + 230 integration** (0 skipped, real PostgreSQL), `dotnet format --verify-no-changes` exit 0;
