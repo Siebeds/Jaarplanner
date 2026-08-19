@@ -42,8 +42,8 @@ const rooster: Planningsrooster = {
   niveau: "Themaperiode",
   blokindeling: "themaperiode 5 wk, subthemaperiode 2 wk",
   blokken: [
-    { ordinaal: 1, start: "2026-09-01", eind: "2026-11-01", ouderOrdinaal: null, aantalOpenDagen: 62 },
-    { ordinaal: 2, start: "2026-11-09", eind: "2026-12-20", ouderOrdinaal: null, aantalOpenDagen: 42 },
+    { ordinaal: 1, start: "2026-09-01", eind: "2026-11-01", ouderOrdinaal: null, aantalOpenDagen: 62, aantalOpenWeekdagen: 44 },
+    { ordinaal: 2, start: "2026-11-09", eind: "2026-12-20", ouderOrdinaal: null, aantalOpenDagen: 42, aantalOpenWeekdagen: 30 },
   ],
   onderbrekingen: [{ naam: "Herfstvakantie", start: "2026-11-02", eind: "2026-11-08" }],
 };
@@ -810,8 +810,8 @@ describe("Generatieparameters — the grid it may read (E3-04)", () => {
     ...rooster,
     niveau: "Subthemaperiode",
     blokken: [
-      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-14", ouderOrdinaal: 1, aantalOpenDagen: 10 },
-      { ordinaal: 2, start: "2026-09-15", eind: "2026-09-28", ouderOrdinaal: 1, aantalOpenDagen: 10 },
+      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-14", ouderOrdinaal: 1, aantalOpenDagen: 10, aantalOpenWeekdagen: 7 },
+      { ordinaal: 2, start: "2026-09-15", eind: "2026-09-28", ouderOrdinaal: 1, aantalOpenDagen: 10, aantalOpenWeekdagen: 7 },
     ],
   };
 
@@ -879,10 +879,10 @@ describe("Generatieparameters — across a zoom switch (E3-08, FR-6.3)", () => {
     ...rooster,
     niveau: "Subthemaperiode",
     blokken: [
-      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-16", ouderOrdinaal: 1, aantalOpenDagen: 16 },
-      { ordinaal: 2, start: "2026-09-17", eind: "2026-10-02", ouderOrdinaal: 1, aantalOpenDagen: 16 },
-      { ordinaal: 3, start: "2026-11-09", eind: "2026-11-22", ouderOrdinaal: 2, aantalOpenDagen: 14 },
-      { ordinaal: 4, start: "2026-11-23", eind: "2026-12-20", ouderOrdinaal: 2, aantalOpenDagen: 28 },
+      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-16", ouderOrdinaal: 1, aantalOpenDagen: 16, aantalOpenWeekdagen: 11 },
+      { ordinaal: 2, start: "2026-09-17", eind: "2026-10-02", ouderOrdinaal: 1, aantalOpenDagen: 16, aantalOpenWeekdagen: 11 },
+      { ordinaal: 3, start: "2026-11-09", eind: "2026-11-22", ouderOrdinaal: 2, aantalOpenDagen: 14, aantalOpenWeekdagen: 10 },
+      { ordinaal: 4, start: "2026-11-23", eind: "2026-12-20", ouderOrdinaal: 2, aantalOpenDagen: 28, aantalOpenWeekdagen: 20 },
     ],
   };
 
