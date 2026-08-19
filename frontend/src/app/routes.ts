@@ -60,6 +60,16 @@ export const JAARPLAN_PAD = "/jaarplan";
 export const DEKKING_PAD = "/dekking";
 
 /**
+ * Named for the same reason as the two above, and by the same story that needed the third: the gap-analyse (E5-05)
+ * routes a teacher here when a doel's only link is an undecided doelsuggestie, because that decision is a link
+ * decision and planning the thema would not help while it stands (Art. V.1).
+ *
+ * The literal already sat in the `NAVIGATIE` entry below and in `/dekking`, which is the two-files-one-route shape the
+ * `JAARFASE_PARAM` note calls out. The entry now reads this constant rather than repeating it.
+ */
+export const THEMAS_PAD = "/themas";
+
+/**
  * The search param that narrows the dekkingsoverzicht to one jaar/fase.
  *
  * Here rather than in `features/dekking/DekkingPagina`, because the kalender's knelpunt link carries it (E3-09) and
@@ -99,7 +109,7 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
     story: "E1-16 (register); E1-12 unblocks the minimumdoel half",
   },
   {
-    pad: "/themas",
+    pad: THEMAS_PAD,
     labelKey: "navigatie.themas",
     isGebouwd: true,
     magBeheerder: false,
@@ -118,13 +128,12 @@ export const NAVIGATIE: readonly Navigatiebestemming[] = [
     isGebouwd: true,
     magBeheerder: false,
     // Read as precisely as the note on `isGebouwd` asks, because this destination is knowingly partial. **E5-02**
-    // built the per-class overview: every in-scope leerplandoel with gedekt / niet gedekt, the covering thema's as
-    // evidence, a scope switch, and a summary that withholds its figure while a stale placement is unresolved. What
-    // is NOT here: the dekkingspercentage and the doelsoort filter (**E5-03**), the gap-analyse traceable to where a
-    // doel should be planned (**E5-05**), the export (**E5-06**), and **minimumdoel level** (**E5-04**) which is the
-    // level the onderwijsinspectie tests and is blocked on **E1-12**. The screen states that last absence itself, in
-    // visible text rather than in a tooltip, so nobody reads it as inspectie-proof it is not yet.
-    story: "E5-02 (per-class overview); E5-03/E5-04/E5-05/E5-06 complete it",
+    // built the per-class overview, **E5-03** the percentage / doelsoort filter / gaps-only list, **E5-06** the
+    // export, and **E5-05** the gap-analyse: every uncovered doel now names why it is uncovered and one block above
+    // the list says where each kind of gap is closed. What is still NOT here is **minimumdoel level** (**E5-04**),
+    // the level the onderwijsinspectie tests, blocked on **E1-12**. The screen states that absence itself, in visible
+    // text rather than in a tooltip, so nobody reads it as inspectie-proof it is not yet.
+    story: "E5-02/E5-03/E5-05/E5-06 built it; E5-04 completes it",
   },
   {
     pad: "/import",

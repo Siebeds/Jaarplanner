@@ -196,7 +196,28 @@ public sealed record DekkingWeergave(
 /// <param name="DekkendeThemas">
 /// The thema's that cover this goal, ordered by name; empty exactly when <paramref name="IsGedekt"/> is
 /// <c>false</c>. This is the evidence half of Art. V: an export that claims coverage has to be able to say
-/// <i>through what</i>, and a teacher looking at a gap wants to know which thema already nearly closes it.
+/// <i>through what</i>.
+/// </param>
+/// <param name="Oorzaak">
+/// Why this goal is not covered, and therefore where closing it happens (E5-05); <c>null</c> exactly when
+/// <paramref name="IsGedekt"/> is <c>true</c>.
+/// <para>
+/// <b>Deliberately a separate field from <paramref name="DekkendeThemas"/> rather than a widening of it.</b> The
+/// two answer opposite questions — what proves this goal is taught, versus what would have to happen for it to be —
+/// and the first is read by the export as evidence (Art. V.4). Folding a gap's candidate thema's into a list named
+/// "dekkende thema's" would put names into a proof-of-coverage document that prove nothing.
+/// </para>
+/// </param>
+/// <param name="KandidaatThemas">
+/// The thema's that justify <paramref name="Oorzaak"/>, ordered by name: the ones a teacher would act on to close
+/// this gap. Empty when the goal is covered, and empty for <see cref="Lacuneoorzaak.GeenThema"/>, which is the one
+/// cause with nothing to name.
+/// <para>
+/// <b>Only the thema's belonging to the reported cause are listed, not every thema with some link to the goal.</b> A
+/// doel can be one accept away through thema A and unplanned through thema B; naming both would present two routes
+/// where the classification has already picked the cheaper one, and a teacher would have no way to tell which name
+/// went with which action.
+/// </para>
 /// </param>
 public sealed record LeerplandoelDekking(
     string Code,
@@ -208,4 +229,6 @@ public sealed record LeerplandoelDekking(
     string? MinimumdoelRef,
     bool NietMeerInOpstap,
     bool IsGedekt,
-    IReadOnlyList<string> DekkendeThemas);
+    IReadOnlyList<string> DekkendeThemas,
+    Lacuneoorzaak? Oorzaak,
+    IReadOnlyList<string> KandidaatThemas);
