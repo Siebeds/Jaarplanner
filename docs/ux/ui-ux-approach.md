@@ -74,7 +74,7 @@ Wireframe-first (E3-10), then built. Key UX:
 - A school-year timeline of **planningsblokken** — **unit-agnostic** (ADR-0013: no "maand" baked in; label comes from the schooljaar's period structure). Zoom: *jaar ↔ periode/blok*.
 - Thema cards show naam, doelsoort mix (colour chips), and a coverage hint; drag between blocks (mouse **and** keyboard).
 - **Knelpunt-signalering:** an over-full block and a goal that appears nowhere are both visibly flagged (FR-6.4).
-- **Vergrendeld** thema's carry a lock affordance (excluded from regeneration, E4-06).
+- **Vergrendeld** thema's carry a lock affordance (E4-06). *The lock is not what protects a placement: a (re)generation discards only a `Voorgesteld` placement that is not locked, so a decided thema survives without one (Art. IX.3, amended 2026-08-19). On a decided placement the lock is a label.*
 - Every edit **saves immediately** and the **dekking updates live** (FR-6.5; query invalidation per ADR-0014).
 - (Re)generation shows a **preview/diff before applying**, with cancel (FR-8.3).
 
