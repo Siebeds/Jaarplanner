@@ -381,3 +381,10 @@ Zie de bijgewerkte open-beslissingenlijst in [`CONSTITUTION.md` Art. XIV](../CON
 
 ### A.9 Nieuwe begrippen
 De glossary (§2.4) wordt aangevuld met: Discipline (genummerd), Leergebied/Wereldoriëntatie, Themadoel, Subdoel, Onderzoeksvraag/probleemstelling, Kernwoordenschat vs. rijke woordenschat, Rijk aanbod/activiteittype, Hoek, Themaperiode/subthemaperiode, Leerlijn (verticale samenhang, ≠ leerroute), Professionele autonomie, Kennisrijk curriculum/kennisrijk thema. Definities: zie [`CONSTITUTION.md` Art. XII](../CONSTITUTION.md#article-xii--glossary-nl--en).
+
+### A.10 FR-7.3's *"ter beslissing"* is voorlopig beantwoord (projecteigenaar, 19-08-2026)
+FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generatie open. Die regel is op 19-08-2026 door de **projecteigenaar** beslist en staat sindsdien in [`CONSTITUTION.md` Art. IX.3](../CONSTITUTION.md#article-ix--core-data-model-functional): een (her)generatie verwijdert **enkel** een plaatsing die `Voorgesteld` is **en** niet `vergrendeld`. Een plaatsing waarover de leerkracht zelf beslist heeft (`Aanvaard`, `Geweigerd` of `Manueel`) blijft staan **zonder** slot, en een hergeneratie van één periode werkt op dezelfde voorwaarden: die versmalt **welke blokken** bezocht worden, nooit **wat vervangbaar is**.
+
+**Voorlopig, en dat woord is niet decoratief.** FR-7.3 behoudt deze beslissing voor aan de **directie**, en hun bevestiging staat open (vraag 6 in [`besluiten-gevraagd.md`](besluiten-gevraagd.md)). Ze is toch al vastgelegd omdat het de behoudende van de twee opties is: er kan niets op gebouwd worden dat werk van een leerkracht vernietigt. Draait de directie ze om, dan wijzigen Art. IX.3 en de leerkrachtgerichte zinnen die onder E4-07 opgesomd staan samen.
+
+*Waarom dit hier staat en niet enkel in de constitutie:* Art. XI.1 vereist dat een amendement zijn afhankelijke tekst in dezelfde wijziging meeneemt, en §11 hierboven blijft *"ter beslissing"* lezen. De v0.4-tekst wordt niet aangepast (die is een getrouwe weergave); deze bijlage is de geratificeerde plek om hem te verfijnen, en bij tegenspraak geldt de bijlage.
