@@ -271,6 +271,8 @@
     "periode": "Themaperiode {ordinaal}",
     "weken": "{aantal} weken",
     "wekenEnkelvoud": "1 week",
+    "schooldagen": "{aantal} schooldagen",
+    "schooldagenEnkelvoud": "1 schooldag",
     "legeperiode": "Nog niets gepland",
     "subperiodeIngepland": "Deel van een themaperiode waarin al een thema staat",
     "plaatsToevoegen": "Thema toevoegen",

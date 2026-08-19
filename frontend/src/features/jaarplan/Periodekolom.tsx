@@ -271,6 +271,28 @@ export function Periodekolom({
         </div>
         <p className="mt-0.5 text-xs text-ink-zacht">
           <time dateTime={blok.start}>{formatteerPeriode(blok.start, blok.eind)}</time>
+          {/* The day figure sits here rather than beside the weeks (E9-02, the owner's request of 2026-08-19 that a
+              period read in days as well as weeks). Two reasons, both from looking at the column: this line already
+              states the span, so the two facts belong together; and the weeks figure shares a fixed 288px row with the
+              "Periode N" heading, where a second number wraps.
+
+              **`aantalOpenWeekdagen`, never `aantalOpenDagen`.** The latter counts weekends — a 5-week period reports
+              35 — so printing it as "schooldagen" would be plainly false. The two counts are separate facts and only
+              the other one may be divided by 7; see the note on the field.
+
+              `· ` as the separator, matching `Doeldetail`'s `discipline · domein · subdomein`. Not an em dash (owner,
+              2026-07-29); the en dash inside the date range is the allowed exception.
+
+              Through `tAantal` because Dutch inflects: "1 schooldagen" is reachable on the short block a long mid-year
+              closure can leave behind, which is the same trap E3-09 hit with the weeks figure. */}
+          <span className="text-ink-zacht"> · </span>
+          <span data-schooldagen>
+            {tAantal(
+              blok.aantalOpenWeekdagen,
+              "kalender.schooldagenEnkelvoud",
+              "kalender.schooldagen",
+            )}
+          </span>
         </p>
 
         {/* Which themaperiode this column is part of, straight from the server's `ouderOrdinaal` — the field exists
