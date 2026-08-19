@@ -43,12 +43,23 @@ export interface DagrijProps {
   klasId: string;
   /** The thema's placed in this period. Their activiteiten are what the picker may offer. */
   themaIds: readonly string[];
+  /**
+   * This day lies outside the period being planned (E9-04, found in a browser).
+   *
+   * A week is anchored on real Mondays, so the first and last week of a period legitimately reach outside it: periode 2
+   * opens on a Friday, and **four of "week 1"'s five days belong to periode 1**. Without this the row looked ordinary
+   * and the only signal came *after* planning, as `valtBuitenThemaperiode` on the card — a correction rather than a
+   * warning.
+   *
+   * **It marks, it does not disable.** Planning there is legitimate (ADR-0023 decision 7) and the server accepts it.
+   */
+  buitenPeriode: boolean;
   bezig: boolean;
   onPlan: (activiteitId: string, volgorde: number) => void;
   onVerwijder: (plaatsingId: string) => void;
 }
 
-export function Dagrij({ dag, klasId, themaIds, bezig, onPlan, onVerwijder }: DagrijProps) {
+export function Dagrij({ dag, klasId, themaIds, buitenPeriode, bezig, onPlan, onVerwijder }: DagrijProps) {
   const [kiesOpen, setKiesOpen] = useState(false);
   const veldId = useId();
 
@@ -113,6 +124,14 @@ export function Dagrij({ dag, klasId, themaIds, bezig, onPlan, onVerwijder }: Da
         {dag.sluitingsnaam !== null && (
           <span className="text-xs font-medium text-attentie-ink">
             {t("weekplanning.dagGesloten", { naam: dag.sluitingsnaam })}
+          </span>
+        )}
+
+        {/* Said before a teacher plans here, not after. A word rather than a colour alone (Art. XII), and quiet
+            (`ink-zacht`): this is a fact about the calendar, not a warning about a mistake. */}
+        {buitenPeriode && dag.sluitingsnaam === null && (
+          <span className="text-xs font-medium text-ink-zacht">
+            {t("weekplanning.dagBuitenPeriode")}
           </span>
         )}
       </div>

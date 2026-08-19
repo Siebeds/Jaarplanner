@@ -199,7 +199,9 @@ export function Weekpaneel({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
+          {/* Capped to match the day list below it: uncapped, "Volgende week" sat ~250px right of the last day card at
+              1440px, which reads as belonging to nothing. */}
+          <div className="flex max-w-3xl items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setMaandag(verschuifWeken(maandag, -1))}
@@ -252,11 +254,19 @@ export function Weekpaneel({
               {t("weekplanning.laden")}
             </p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            /* `max-w-3xl` found by looking at it: at 1440px a day row ran the full ~1100px, leaving its
+               "Van deze dag halen" button stranded at the far right of an otherwise empty card. That is the same
+               stretched-column defect the E3-06 browser pass found on the period columns. */
+            <ul className="flex max-w-3xl flex-col gap-2">
               {zichtbareDagen.map((dag) => (
                 <Dagrij
                   key={dag.datum}
                   dag={dag}
+                  // A week is anchored on real Mondays, so the first and last week of a period legitimately reach
+                  // outside it — periode 2 opens on a Friday, and four of "week 1"'s five days belong to periode 1.
+                  // Said BEFORE a teacher plans on such a day, not only after: the server reports
+                  // `valtBuitenThemaperiode` on the card afterwards, which is a correction rather than a warning.
+                  buitenPeriode={dag.datum < blok.start || dag.datum > blok.eind}
                   klasId={klasId}
                   themaIds={themanamen.length > 0 ? plaatsingen.map((p) => p.themaId) : []}
                   bezig={plannen.isPending || verwijderen.isPending || verplaatsen.isPending}

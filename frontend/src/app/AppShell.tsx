@@ -111,9 +111,17 @@ export function AppShell() {
             `items-end` keeps the two aligned on the nav's baseline row rather than centring the switch against the
             navigation's scroll padding, which read as a few pixels too high.
           */}
-          <div className="flex items-end justify-between gap-4">
+          {/*
+            Stacked below 640px, side by side above it. Found by looking at 390px: side by side at every width, the
+            switch took ~110px off a navigation strip that is already horizontally scrollable, so "Dekking", "Import"
+            and "Beheer" fell behind a scroll track on the smallest screen. Trading one line of height for three
+            visible destinations is the right way round.
+            `items-end` above `sm` keeps the two on the navigation's baseline row rather than centring the switch
+            against its scroll padding, which read as a few pixels too high.
+          */}
+          <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
             <Navigatie />
-            <div className="shrink-0 pb-2">
+            <div className="flex justify-end pb-2 sm:shrink-0">
               <Uitlegschakelaar />
             </div>
           </div>

@@ -450,6 +450,7 @@
     "buitenPeriode": "Deze week valt buiten deze periode.",
     "dagGesloten": "Gesloten: {naam}",
     "dagLeeg": "Nog niets gepland",
+    "dagBuitenPeriode": "Buiten deze periode",
     "dagAria": "{dag} {datum}",
     "plan": "Activiteit inplannen",
     "planAria": "Activiteit inplannen op {dag} {datum}",
