@@ -62,4 +62,32 @@ public sealed record KlasCreatie(string Naam, int Leerjaar);
 /// <param name="Naam">The class name.</param>
 /// <param name="Leerjaar">The leerjaar/leeftijdsgroep ordinal.</param>
 /// <param name="AantalSubthemas">How many subthema's are scoped to this class (0 for a fresh class).</param>
-public sealed record KlasWeergave(Guid Id, Guid SchooljaarId, string Naam, int Leerjaar, int AantalSubthemas);
+/// <param name="JaarFasen">
+/// The Op.stap jaar/fase codes this class teaches, derived from <paramref name="Leerjaar"/> (E9-07).
+/// <para>
+/// <b>Derived server-side and shipped with the class, rather than exposed as an endpoint of its own or re-derived in
+/// the browser.</b> The rule lives in <c>Jaarfasen.VoorLeerjaar</c> and is what <c>Dekkingsbereik.EigenJaarFase</c>
+/// already measures against; a second copy in TypeScript would be a second answer to "what does this class teach?",
+/// and the two would drift the first time the graadklas decision (Art. XIV) changes one of them. Every caller that
+/// has a class now has its fasen for free, which is what the Doelkiezer needs to stop offering an L3 teacher
+/// kleuterdoelen.
+/// </para>
+/// <para>
+/// <b>A kleutergroep yields all three kleuter codes, not one</b> — <c>Leerjaar</c> is <c>0</c> and cannot say which
+/// kleuterjaar. That is the widest honest answer, and E5-02's ruling of 2026-08-04 is the precedent for what to do
+/// with it: let the teacher narrow within the set, on screen, rather than guess.
+/// </para>
+/// <para>
+/// <b>Empty means "cannot be derived", never "teaches nothing"</b>: it is the unresolved graadklas/menggroep case
+/// (Art. XIV), where <c>Jaarfasen.VoorLeerjaar</c> returns null. A caller must widen its scope rather than narrow to
+/// nothing — narrowing a picker to an empty set would make every leerplandoel unreachable, which is worse than the
+/// unscoped search this exists to replace.
+/// </para>
+/// </param>
+public sealed record KlasWeergave(
+    Guid Id,
+    Guid SchooljaarId,
+    string Naam,
+    int Leerjaar,
+    int AantalSubthemas,
+    IReadOnlyList<string> JaarFasen);

@@ -1,5 +1,6 @@
 ﻿using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -43,7 +44,8 @@ public sealed class KlasBeheerService : IKlasBeheerService
                 k.SchooljaarId,
                 k.Naam,
                 k.Leerjaar,
-                subthemaAantallen.TryGetValue(k.Id, out var aantal) ? aantal : 0))
+                subthemaAantallen.TryGetValue(k.Id, out var aantal) ? aantal : 0,
+                JaarFasenVoor(k.Leerjaar)))
             .ToList();
     }
 
@@ -53,7 +55,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
         var klas = await VindKlasAsync(klasId, cancellationToken);
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal);
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas.Leerjaar));
     }
 
     /// <inheritdoc />
@@ -89,7 +91,8 @@ public sealed class KlasBeheerService : IKlasBeheerService
         _context.Klassen.Add(klas);
         await BewaarAsync(naam, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, AantalSubthemas: 0);
+        return new KlasWeergave(
+            klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, AantalSubthemas: 0, JaarFasenVoor(klas.Leerjaar));
     }
 
     /// <inheritdoc />
@@ -108,7 +111,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
 
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal);
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas.Leerjaar));
     }
 
     /// <inheritdoc />
@@ -178,6 +181,21 @@ public sealed class KlasBeheerService : IKlasBeheerService
         _context.Klassen.Remove(klas);
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// The Op.stap jaar/fase codes a class teaches (E9-07), from the one rule that already decides it.
+    /// <para>
+    /// <b>Delegates to <see cref="Jaarfasen.VoorLeerjaar"/> rather than restating the mapping</b>, because
+    /// <c>DekkingService</c> measures <c>Dekkingsbereik.EigenJaarFase</c> against that same function. Two copies would
+    /// be two answers to "what does this class teach?", and they would drift the moment the graadklas/menggroep
+    /// decision (Art. XIV) moves one of them.
+    /// </para>
+    /// <para>
+    /// <b><c>null</c> becomes an empty list, and the contract says what that means</b>: not "teaches nothing" but "we
+    /// cannot derive it" — the unresolved graadklas case. A caller must widen rather than narrow to nothing.
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<string> JaarFasenVoor(int leerjaar) => Jaarfasen.VoorLeerjaar(leerjaar) ?? [];
 
     private async Task<Klas> VindKlasAsync(Guid klasId, CancellationToken cancellationToken)
     {
