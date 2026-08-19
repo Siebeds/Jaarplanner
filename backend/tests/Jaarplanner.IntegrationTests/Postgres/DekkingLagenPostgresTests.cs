@@ -318,9 +318,16 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         //
         // Written as its own test rather than folded into the one above because the failure it guards is a MISSING
         // filter, and a fixture with only one class cannot distinguish a filter that works from one that is absent.
+        //
+        // IT COVERS LAYER 4 AS WELL AS LAYER 3, and that is antagonist ronde 1's MAJOR-2 (2026-08-19): the first
+        // version hung only a subdoel under class B's subthema, so layer 4 was never filled for the foreign class and
+        // the klas filter on it was untested. Proven, not suspected — mutating `st.KlasId == klasId` on the
+        // activiteit branch of the candidate read to `st.KlasId == st.KlasId` left the WHOLE suite green. The
+        // covering read's sibling test above had the activiteit from the start, so the new read got the weaker copy
+        // of a fixture whose own comment says a missing filter is what it exists to catch.
         await using var context = _db.MaakContext();
 
-        await ZorgVoorDoelenAsync(context, ["KAND-THEMADOEL", "KAND-SUBDOEL"]);
+        await ZorgVoorDoelenAsync(context, ["KAND-THEMADOEL", "KAND-SUBDOEL", "KAND-ACTIVITEIT-B"]);
 
         var schooljaar = new Schooljaar(
             $"2026-2027-{Guid.NewGuid():N}"[..20],
@@ -336,13 +343,18 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         var subthemaVanB = thema.VoegSubthemaToe("Bladeren", 2, klasB.Id, "5");
         subthemaVanB.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL", KoppelingStatus.Aanvaard));
 
+        var activiteitVanB = subthemaVanB.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
+        activiteitVanB.VoegDoelkoppelingToe(new DoelKoppeling("KAND-ACTIVITEIT-B", KoppelingStatus.Aanvaard));
+
         context.Themas.Add(thema);
         await context.SaveChangesAsync();
 
         await using var leescontext = _db.MaakContext();
         var kandidaten = await new EfDekkingOpslag(leescontext).HaalKandidaatKoppelingenAsync(klasA.Id);
 
-        // A gets the school-wide themadoel and nothing of B's class-scoped content.
+        // A gets the school-wide themadoel and nothing of B's class-scoped content, at EITHER of the two class-scoped
+        // layers. Asserted as the whole set rather than as two DoesNotContains, so a third class-scoped layer added
+        // later fails here instead of slipping through an enumeration that never heard of it.
         Assert.Equal(["KAND-THEMADOEL"], kandidaten.Select(k => k.LeerplandoelCode));
     }
 
@@ -357,21 +369,38 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         // thema standing in the plan, and that is only sound because a decided link on an ACCEPTED placement would
         // already have made the goal covered by the other read. A layer present in one query and missing from the
         // other turns that into a doel reported as one click from covered while the click does nothing.
+        //
+        // EVERY LAYER CARRIES BOTH DECIDED STATUSES, and that is antagonist ronde 1's MAJOR-3 (2026-08-19). Eight
+        // predicate copies each able to differ on either of two statuses is SIXTEEN (layer, status) pairs to hold, and
+        // the first version of this fixture filled exactly four of them: layer 1 Aanvaard, layer 2 Aanvaard, layer 3
+        // Manueel, layer 4 Manueel. Proven, not suspected: deleting `|| td.Koppeling.Status == Manueel` from layer 1
+        // of the candidate read left the WHOLE suite green. In the product that mutation reads as "De koppeling is nog
+        // niet beslist" plus a link to /themas, for a link the school already decided by hand — the lying-sentence
+        // class this story guards against everywhere else.
         var (klasId, themaId) = await ZetOpAsync(async (context, klas, thema) =>
         {
-            thema.VoegThemadoelToe(new DoelKoppeling("KAND-THEMADOEL", KoppelingStatus.Aanvaard, "anchor"));
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-SUGGESTIE", KoppelingStatus.Voorgesteld, "past"))
+            thema.VoegThemadoelToe(new DoelKoppeling("KAND-THEMADOEL-A", KoppelingStatus.Aanvaard, "anchor"));
+            thema.VoegThemadoelToe(new DoelKoppeling("KAND-THEMADOEL-M", KoppelingStatus.Manueel, "anchor"));
+
+            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-SUGGESTIE-A", KoppelingStatus.Voorgesteld, "past"))
                 .WijzigStatus(KoppelingStatus.Aanvaard);
+            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-SUGGESTIE-M", KoppelingStatus.Voorgesteld, "past"))
+                .WijzigStatus(KoppelingStatus.Manueel);
 
             var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL", KoppelingStatus.Manueel));
+            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-A", KoppelingStatus.Aanvaard));
+            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-M", KoppelingStatus.Manueel));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
-            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("KAND-ACTIVITEIT", KoppelingStatus.Manueel));
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("KAND-ACTIVITEIT-A", KoppelingStatus.Aanvaard));
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("KAND-ACTIVITEIT-M", KoppelingStatus.Manueel));
 
             // An undecided one, so the two reads genuinely have to differ somewhere. Without it this test would pass
-            // for a candidate read that simply forgot to include voorgesteld links at all.
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-GEWEIGERD", KoppelingStatus.Voorgesteld, "?"));
+            // for a candidate read that simply forgot to include voorgesteld links at all. NAMED FOR WHAT IT IS
+            // (ronde 1, MINOR-7): it used to be called KAND-GEWEIGERD while being Voorgesteld, so the assertion below
+            // read as "a rejected link comes back as undecided" — which is the one thing IDekkingOpslag promises never
+            // happens, and the covering read's sibling test really does reject a code of that name.
+            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-ONBESLIST", KoppelingStatus.Voorgesteld, "?"));
 
             await context.SaveChangesAsync();
         });
@@ -393,8 +422,8 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
 
         // And the undecided one is present on the candidate side only, which is what makes the equality above an
         // assertion about the DECIDED subset rather than about two identical queries.
-        Assert.Contains(kandidaten, k => k.LeerplandoelCode == "KAND-GEWEIGERD" && !k.IsBeslist);
-        Assert.DoesNotContain(dekkend, k => k.LeerplandoelCode == "KAND-GEWEIGERD");
+        Assert.Contains(kandidaten, k => k.LeerplandoelCode == "KAND-ONBESLIST" && !k.IsBeslist);
+        Assert.DoesNotContain(dekkend, k => k.LeerplandoelCode == "KAND-ONBESLIST");
     }
 
     /// <summary>
@@ -416,6 +445,11 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
                 "TELT-AANVAARD", "TELT-MANUEEL", "TELT-NIET-VOORGESTELD", "TELT-NIET-GEWEIGERD",
                 "TELT-NIET-SUBDOEL", "TELT-NIET-ACT", "NIET-GEPLAATST", "OOK-NIET",
                 "KAND-THEMADOEL", "KAND-SUGGESTIE", "KAND-SUBDOEL", "KAND-ACTIVITEIT", "KAND-GEWEIGERD",
+                // The pin test's per-layer pairs: every layer once Aanvaard and once Manueel, so all eight decided
+                // predicate copies are exercised on both statuses rather than four of them on one each (ronde 1,
+                // MAJOR-3). KAND-GEWEIGERD above stays, and stays genuinely rejected, in the four-layer test.
+                "KAND-THEMADOEL-A", "KAND-THEMADOEL-M", "KAND-SUGGESTIE-A", "KAND-SUGGESTIE-M",
+                "KAND-SUBDOEL-A", "KAND-SUBDOEL-M", "KAND-ACTIVITEIT-A", "KAND-ACTIVITEIT-M", "KAND-ONBESLIST",
             ]);
 
         // Truncated to fit Schooljaar.Naam's varchar(32) — see the note in the other arrangement.

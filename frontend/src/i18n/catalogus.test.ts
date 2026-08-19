@@ -866,6 +866,38 @@ describe("nl.json — de gap-analyse belooft alleen wat haar oorzaak draagt (E5-
     }
   });
 
+  it("does not tell a teacher a rejected thema sits in no period", () => {
+    // ANTAGONIST RONDE 1, MAJOR-1 (2026-08-19). This is the defect that split PlaatsingGeweigerd off, and it is a
+    // VALUE guard because a t(key) assertion could not see it: the key was right and the sentence was false. A
+    // rejected placement is drawn in its period column (`plaatsingenIn` filters stale placements, not rejected ones),
+    // so any wording about sitting in no period contradicts what the kalender shows a few clicks away, and the route
+    // it implies is one `Themakiezer` refuses in exactly that period.
+    for (const sleutel of [
+      "dekking.lacuneRegelPlaatsingGeweigerd",
+      "dekking.lacunePlaatsingGeweigerd",
+      "dekking.lacunePlaatsingGeweigerdEnkelvoud",
+    ]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      expect(waarde!.toLowerCase()).not.toMatch(/geen enkele periode|in geen periode|niet ingepland/);
+      // And it must name the rejection, or the teacher cannot tell which of the kalender's actions this line is
+      // about. "Undo it" is the remedy; a line that only said "not covered" would send them looking for the wrong one.
+      expect(waarde!.toLowerCase()).toMatch(/geweigerd/);
+    }
+
+    // The mirror half, and the one that rots silently: NietIngepland no longer covers a rejected placement, so a
+    // future edit reintroducing the word there would quietly restore the folded claim this split removed.
+    for (const sleutel of [
+      "dekking.lacuneRegelNietIngepland",
+      "dekking.lacuneNietIngepland",
+      "dekking.lacuneNietIngeplandEnkelvoud",
+    ]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      expect(waarde!.toLowerCase()).not.toMatch(/geweiger/);
+    }
+  });
+
   it("does not send an undecided koppeling to the kalender", () => {
     // The cause exists BECAUSE planning would not help: only aanvaard/manueel links count for dekking (Art. V.1), so
     // a thema carrying an undecided suggestion covers nothing however well it is planned. Its route is /themas, and a

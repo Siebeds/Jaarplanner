@@ -21,6 +21,7 @@ import type { DoelDekking, Lacuneoorzaak } from "./types";
  */
 const REGEL_PER_OORZAAK: Record<Lacuneoorzaak, TranslationKey> = {
   WachtOpBeslissing: "dekking.lacuneRegelWachtOpBeslissing",
+  PlaatsingGeweigerd: "dekking.lacuneRegelPlaatsingGeweigerd",
   NietIngepland: "dekking.lacuneRegelNietIngepland",
   KoppelingNietBeslist: "dekking.lacuneRegelKoppelingNietBeslist",
   GeenThema: "dekking.lacuneRegelGeenThema",

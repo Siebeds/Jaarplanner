@@ -633,16 +633,23 @@ public sealed class DekkingServiceTests
     }
 
     [Theory]
-    [InlineData(KoppelingStatus.Geweigerd, false)]
     [InlineData(KoppelingStatus.Voorgesteld, true)]
     [InlineData(KoppelingStatus.Aanvaard, true)]
+    [InlineData(KoppelingStatus.Geweigerd, true)]
     public async Task Een_thema_dat_in_geen_enkele_periode_meer_staat_maakt_de_lacune_niet_ingepland(
         KoppelingStatus status,
         bool isVervallen)
     {
-        // THE THREE STATES Lacuneoorzaak.NietIngepland DELIBERATELY FOLDS TOGETHER, driven rather than described:
-        // rejected, stale-and-accepted, stale-and-proposed. The remedy is the same in all three — put the thema in a
-        // period — so they must not classify differently. The "never placed" fourth state is the test above.
+        // THE TWO STATES Lacuneoorzaak.NietIngepland DELIBERATELY FOLDS TOGETHER, driven rather than described: all
+        // three rows here are STALE, and a stale placement is drawn in no period column whatever its status, so "sits
+        // in no period" is true of every one of them. The remedy is the same too: put the thema in a period. The
+        // "never placed" state is the test above.
+        //
+        // (Geweigerd, false) IS NOT IN THIS THEORY ANY MORE, and that is the whole of antagonist ronde 1's MAJOR-1:
+        // a rejected, non-stale placement IS drawn in its period, so this sentence was false in front of a visible
+        // card and the route sent the teacher to a picker that disables that thema in exactly that period. It moved to
+        // Een_geweigerde_plaatsing_is_haar_eigen_oorzaak below. The rejected-AND-stale row above is the boundary, and
+        // it is here rather than there on purpose: it is the case where the folded sentence really is true.
         //
         // The stale cases are the ones that could plausibly go wrong: their thema IS in the plan, so a classification
         // that asked "is this thema placed" rather than "is this thema placed in a period that still exists" would
@@ -656,6 +663,57 @@ public sealed class DekkingServiceTests
         var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
 
         Assert.Equal(Lacuneoorzaak.NietIngepland, doel.Oorzaak);
+    }
+
+    [Fact]
+    public async Task Een_geweigerde_plaatsing_is_haar_eigen_oorzaak()
+    {
+        // ANTAGONIST RONDE 1, MAJOR-1 (2026-08-19). The teacher rejected the AI's proposal for Herfst in this period.
+        // The card stays visible in that period column (`plaatsingenIn` excludes stale placements and not rejected
+        // ones), so the folded NietIngepland copy — "staat in geen enkele periode van dit jaarplan" — contradicted
+        // what the kalender was showing, and its route was worse than useless: `Themakiezer` DISABLES this thema in
+        // this very period, so a teacher following "put it in a period" met a control that refuses them. The remedy is
+        // Weigering terugdraaien on the card, which is a different action, so it is a different cause.
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Geweigerd, isVervallen: false)],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten: [Kandidaat("NAT-K3-01", HerfstId, "Herfst")]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.PlaatsingGeweigerd, doel.Oorzaak);
+
+        // The thema is named, because the teacher has to know WHICH rejection to undo, and it is the thema belonging
+        // to this cause rather than every thema linked to the goal.
+        Assert.Equal(["Herfst"], doel.KandidaatThemas);
+    }
+
+    [Fact]
+    public async Task Een_open_voorstel_gaat_voor_op_een_weigering_elders()
+    {
+        // The ordering rule where it can actually be observed: two thema's carry the goal, one standing as an
+        // unanswered proposal and one rejected. Cheapest route wins, so the doel reports WachtOpBeslissing and names
+        // ONLY that thema — a teacher told to undo a rejection when a single "Aanvaarden" click would do is being
+        // sent the long way round.
+        var service = Maak(
+            plaatsingen:
+            [
+                Plaatsing(HerfstId, "Herfst", KoppelingStatus.Geweigerd, isVervallen: false),
+                Plaatsing(WinterId, "Winter", KoppelingStatus.Voorgesteld, isVervallen: false),
+            ],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten:
+            [
+                Kandidaat("NAT-K3-01", HerfstId, "Herfst"),
+                Kandidaat("NAT-K3-01", WinterId, "Winter"),
+            ]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.WachtOpBeslissing, doel.Oorzaak);
+        Assert.Equal(["Winter"], doel.KandidaatThemas);
     }
 
     [Fact]

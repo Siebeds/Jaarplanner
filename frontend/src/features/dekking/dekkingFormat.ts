@@ -164,8 +164,11 @@ export interface Lacunetelling {
  * its group tallies: the numbers were right about a set nobody could see.
  *
  * **Covered doelen and unrecognised causes both fall out**, the first because they are not gaps and the second
- * through {@link leesOorzaak}. That means these counts do NOT necessarily add up to the number of gaps shown, and no
- * caller may present them as a breakdown of a total. It is a list of routes with a size each, not a partition.
+ * through {@link leesOorzaak}. So this is a partition of the *recognised* gaps in the set passed in, and no caller may
+ * present it as a breakdown of a total. **What follows from that for the withheld figure is stated once, on
+ * `Lacuneroutes`** — the component that owns the gate — rather than a second time here: this comment used to say the
+ * counts "do NOT necessarily add up", which reads as the opposite of what that gate is defending against, and a later
+ * reader had two files to choose between (antagonist ronde 1, MINOR-5).
  *
  * Order comes from the vocabulary rather than from the counts, deliberately. Sorting by size would put the biggest
  * pile first, which on a fresh plan is always "no thema covers this" — the one route a teacher cannot walk today.

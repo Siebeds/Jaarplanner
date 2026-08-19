@@ -1135,14 +1135,21 @@ describe("Dekkingsoverzicht — wat antagonist ronde 2 vond (E5-03)", () => {
  * ABSENCE, like every other withholding test in this file.
  */
 describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
-  /** A plan with one gap of each cause, plus one covered doel so the two row states sit side by side. */
-  const VIER_OORZAKEN = dekking({
+  /**
+   * A plan with one gap of each cause, plus one covered doel so the two row states sit side by side.
+   *
+   * It holds all FIVE causes: `PlaatsingGeweigerd` joined them on 2026-08-19 when antagonist ronde 1 proved it could
+   * not stay folded into `NietIngepland`. The fixture is named for "all" rather than for a number on purpose — it was
+   * called `VIER_OORZAKEN`, and a count in a name is a claim that goes stale in silence.
+   */
+  const ALLE_OORZAKEN = dekking({
     doelen: [
       doel({ code: "NAT-K3-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
       doel({ code: "NAT-K3-02", oorzaak: "WachtOpBeslissing", kandidaatThemas: ["Winter"] }),
       doel({ code: "NAT-K3-03", oorzaak: "NietIngepland", kandidaatThemas: ["Lente"] }),
       doel({ code: "NAT-K3-04", oorzaak: "KoppelingNietBeslist", kandidaatThemas: ["Zomer"] }),
       doel({ code: "NAT-K3-05", oorzaak: "GeenThema" }),
+      doel({ code: "NAT-K3-06", oorzaak: "PlaatsingGeweigerd", kandidaatThemas: ["Herfstfeest"] }),
     ],
   });
 
@@ -1152,7 +1159,7 @@ describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
   }
 
   it("tells each uncovered doel why it is uncovered, and names the thema to act on", async () => {
-    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: VIER_OORZAKEN } });
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: ALLE_OORZAKEN } });
 
     expect(
       await screen.findByText(t("dekking.lacuneRegelWachtOpBeslissing", { themas: "Winter" })),
@@ -1167,6 +1174,13 @@ describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
     // The one cause with no thema to name says so without interpolating an empty list, which would otherwise have
     // rendered a sentence ending in a bare colon.
     expect(screen.getByText(t("dekking.lacuneRegelGeenThema"))).toBeInTheDocument();
+
+    // The cause split off on 2026-08-19. Asserted here as well as in the catalogue guard, because the guard proves the
+    // SENTENCE does not claim the thema sits in no period, and this proves the ROW reaches for that sentence at all: a
+    // fifth cause the component had no case for would render no line and no test would have noticed.
+    expect(
+      screen.getByText(t("dekking.lacuneRegelPlaatsingGeweigerd", { themas: "Herfstfeest" })),
+    ).toBeInTheDocument();
   });
 
   it("gives a covered doel its evidence and no remedy, even when a cause is attached", async () => {
@@ -1213,12 +1227,13 @@ describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
   });
 
   it("aggregates the routes above the list, one line per cause with its own count", async () => {
-    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: VIER_OORZAKEN } });
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: ALLE_OORZAKEN } });
 
     await screen.findByRole("region", { name: t("dekking.lacuneKop") });
 
     for (const sleutel of [
       "WachtOpBeslissing",
+      "PlaatsingGeweigerd",
       "NietIngepland",
       "KoppelingNietBeslist",
       "GeenThema",
@@ -1235,7 +1250,7 @@ describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
     // `useSelectie` reads the selection ONLY from the URL (ADR-0021), so a bare path drops the class whose gaps these
     // are and lands the teacher on whichever class the shell falls back to. E5-02 shipped exactly this defect on its
     // Naar-Inladen link, and its own audit enumerated every link on the screen and still missed it.
-    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: VIER_OORZAKEN } });
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: ALLE_OORZAKEN } });
 
     await screen.findByRole("region", { name: t("dekking.lacuneKop") });
 
@@ -1367,7 +1382,7 @@ describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
   });
 
   it("has no axe violations with all four causes and their routes on screen", async () => {
-    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: VIER_OORZAKEN } });
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: ALLE_OORZAKEN } });
 
     await screen.findByRole("region", { name: t("dekking.lacuneKop") });
 

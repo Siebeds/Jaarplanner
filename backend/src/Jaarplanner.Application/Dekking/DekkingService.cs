@@ -112,6 +112,12 @@ public sealed class DekkingService
         // the two cannot drift: WachtOpBeslissing below is the per-doel form of that ceiling's headroom.
         var voorstelbareThemaIds = Themaplaatsingen(plan, IsVoorstelbaar).ToHashSet();
 
+        // The thema's whose placement in a real period of this plan the teacher REJECTED. Read through the same helper,
+        // so this set inherits its `!IsVervallen` filter — which is the whole boundary between PlaatsingGeweigerd and
+        // NietIngepland: a rejected card is drawn in its period column and a stale one is not, so only the first makes
+        // "sits in no period" a false sentence to put on screen. See Lacuneoorzaak.PlaatsingGeweigerd.
+        var geweigerdeThemaIds = Themaplaatsingen(plan, IsGeweigerd).ToHashSet();
+
         var doelen = scope.Leerplandoelen
             .Select(l =>
             {
@@ -119,11 +125,14 @@ public sealed class DekkingService
                 var isGedekt = dekkendeThemas.Count > 0;
 
                 // Classified only for a gap. A covered goal has no cause, and the type says so with a null rather
-                // than with a fifth enum member: "not applicable" and "we could not work out why" would otherwise be
+                // than with an extra enum member: "not applicable" and "we could not work out why" would otherwise be
                 // the same value, and only one of those is ever true here.
                 var lacune = isGedekt
                     ? (Oorzaak: (Lacuneoorzaak?)null, Themas: (IReadOnlyList<string>)[])
-                    : BepaalOorzaak(kandidatenPerCode.GetValueOrDefault(l.Code, []), voorstelbareThemaIds);
+                    : BepaalOorzaak(
+                        kandidatenPerCode.GetValueOrDefault(l.Code, []),
+                        voorstelbareThemaIds,
+                        geweigerdeThemaIds);
 
                 return new LeerplandoelDekking(
                     l.Code,
@@ -285,13 +294,21 @@ public sealed class DekkingService
     /// </summary>
     private static (Lacuneoorzaak Oorzaak, IReadOnlyList<string> Themas) BepaalOorzaak(
         IReadOnlyList<KandidaatKoppeling> kandidaten,
-        IReadOnlySet<Guid> voorstelbareThemaIds)
+        IReadOnlySet<Guid> voorstelbareThemaIds,
+        IReadOnlySet<Guid> geweigerdeThemaIds)
     {
         var wachtend = Themanamen(kandidaten.Where(k => k.IsBeslist && voorstelbareThemaIds.Contains(k.ThemaId)));
 
         if (wachtend.Count > 0)
         {
             return (Lacuneoorzaak.WachtOpBeslissing, wachtend);
+        }
+
+        var geweigerd = Themanamen(kandidaten.Where(k => k.IsBeslist && geweigerdeThemaIds.Contains(k.ThemaId)));
+
+        if (geweigerd.Count > 0)
+        {
+            return (Lacuneoorzaak.PlaatsingGeweigerd, geweigerd);
         }
 
         var ongepland = Themanamen(kandidaten.Where(k => k.IsBeslist));
@@ -301,8 +318,8 @@ public sealed class DekkingService
             return (Lacuneoorzaak.NietIngepland, ongepland);
         }
 
-        // Everything left is an undecided link, because the read excludes rejected ones and the two branches above
-        // took every decided one. Written as "all that remain" rather than as `!k.IsBeslist` so the three branches
+        // Everything left is an undecided link, because the read excludes rejected ones and the three branches above
+        // took every decided one. Written as "all that remain" rather than as `!k.IsBeslist` so the four branches
         // provably partition the input: a fourth link state added to the read later would surface here as a
         // misclassification rather than silently vanish between two negated filters.
         var onbeslist = Themanamen(kandidaten);

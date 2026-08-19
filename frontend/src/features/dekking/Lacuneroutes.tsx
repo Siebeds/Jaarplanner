@@ -14,8 +14,11 @@ import type { Lacuneoorzaak } from "./types";
  * still renders, because "we cannot close these by planning" is the single most useful thing this block can tell a
  * directie about Art. V.2.
  *
- * The two kalender causes keep separate lines despite sharing a destination: the tasks differ (decide a proposal
- * versus put a thema in a period), and one merged sentence would be false for whichever half it did not describe.
+ * The three kalender causes keep separate lines despite sharing a destination: the tasks differ (answer a proposal,
+ * undo a rejection you made yourself, put a thema in a period), and one merged sentence would be false for whichever
+ * half it did not describe. `PlaatsingGeweigerd` is a line of its own for exactly that reason and it was won the hard
+ * way: while it was folded into `NietIngepland` (until 2026-08-19), this block sent a teacher to place a thema that
+ * `Themakiezer` disables in the very period they were looking at. See `Lacuneoorzaak.PlaatsingGeweigerd`.
  */
 const ROUTES: Record<
   Lacuneoorzaak,
@@ -24,6 +27,12 @@ const ROUTES: Record<
   WachtOpBeslissing: {
     meervoud: "dekking.lacuneWachtOpBeslissing",
     enkelvoud: "dekking.lacuneWachtOpBeslissingEnkelvoud",
+    pad: JAARPLAN_PAD,
+    linkKey: "dekking.lacuneNaarKalender",
+  },
+  PlaatsingGeweigerd: {
+    meervoud: "dekking.lacunePlaatsingGeweigerd",
+    enkelvoud: "dekking.lacunePlaatsingGeweigerdEnkelvoud",
     pad: JAARPLAN_PAD,
     linkKey: "dekking.lacuneNaarKalender",
   },
@@ -54,10 +63,14 @@ const ROUTES: Record<
  * every doel that thema carries, so "31 doelen zitten in thema's die in geen enkele periode staan" is both the truer
  * description of the work and one link instead of thirty-one. The row-level argument is on `Doeldekkingregel`.
  *
- * **It renders nothing while the figure is withheld, and that is this component's one real rule.** The four counts
- * are additive over exactly the gaps in view, so printing them hands back a total the directie ruling of 2026-07-28
- * says may not be shown, in the same way E5-02's group tallies did before that defect was found: a teacher could add
- * them up. Two alternatives were rejected. Rendering the lines *without* counts would need a second copy family that
+ * **It renders nothing while the figure is withheld, and that is this component's one real rule.** The counts
+ * partition the *recognised* gaps in view (`telLacuneoorzaken` drops covered doelen and any cause this client cannot
+ * name), so their sum is the number of gaps shown minus the unrecognised ones — which is normally zero and never
+ * more than a rounding error away from the total the directie ruling of 2026-07-28 says may not be shown. That is
+ * enough: a teacher could add them up, exactly as they could with E5-02's group tallies before that defect was
+ * found. **This is the one place that rule is stated**; `telLacuneoorzaken` used to state a weaker version of it and
+ * now points here, because two files describing the same four numbers differently is how a later reader trusts the
+ * wrong one (antagonist ronde 1, MINOR-5). Two alternatives were rejected. Rendering the lines *without* counts would need a second copy family that
  * says the same things less precisely, and E5-03's rule is to say less rather than to say something else, which is
  * what an absence already does. Rendering with counts and a caveat would be the contradiction E4-06 catalogued: a
  * warning that the figure cannot be trusted, beside figures.

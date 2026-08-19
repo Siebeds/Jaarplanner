@@ -324,18 +324,23 @@ describe("telLacuneoorzaken", () => {
       doel({ code: "C", oorzaak: "GeenThema" }),
       doel({ code: "D", oorzaak: "WachtOpBeslissing", kandidaatThemas: ["Herfst"] }),
       doel({ code: "E", oorzaak: "KoppelingNietBeslist", kandidaatThemas: ["Winter"] }),
+      // Fed in LAST and expected SECOND, which is the only way this assertion says anything about ordering: undoing a
+      // rejection is one click on a card that is already on screen, so it ranks above placing a thema and below
+      // answering a proposal the teacher has not looked at yet.
+      doel({ code: "F", oorzaak: "PlaatsingGeweigerd", kandidaatThemas: ["Herfstfeest"] }),
     ]);
 
     expect(tellingen).toEqual([
       { oorzaak: "WachtOpBeslissing", aantal: 1 },
+      { oorzaak: "PlaatsingGeweigerd", aantal: 1 },
       { oorzaak: "KoppelingNietBeslist", aantal: 1 },
       { oorzaak: "GeenThema", aantal: 3 },
     ]);
   });
 
   it("leaves out a cause with nothing behind it", () => {
-    // Four lines every time, three of them saying zero, would turn the block into a legend of the enum instead of a
-    // list of things to do.
+    // A line per cause every time, most of them saying zero, would turn the block into a legend of the enum instead of
+    // a list of things to do.
     expect(telLacuneoorzaken([doel({ oorzaak: "NietIngepland", kandidaatThemas: ["Herfst"] })])).toEqual([
       { oorzaak: "NietIngepland", aantal: 1 },
     ]);
