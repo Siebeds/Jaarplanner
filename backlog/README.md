@@ -33,15 +33,28 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 | E6 — Beheer, rollen & samenwerking | [E6-beheer-rollen-samenwerking.md](E6-beheer-rollen-samenwerking.md) | 6 | 9 | 0 | Todo |
 | E7 — Niet-functioneel & overkoepelend | [E7-niet-functioneel.md](E7-niet-functioneel.md) | cross-cutting | 20 | 0 | ⚠️ E7-11 is a deployment gate; **E7-12** `[~]` — advisory cleared, the two CI clauses that stop it recurring are still open; **E7-13** owns an Art. VIII layering leak (`ISchoolcontentParser` port sits in Infrastructure); **E7-14** owns a Postgres teardown fault that leaks a database ~1 run in 5 and reports as an unrelated test failure; **E7-10** — the app-wide `--input` miss it carried is **fixed** (E3-04's UI half re-tokened it to `40 14% 52%` = 3,40:1 on card / 3,21:1 on paper, re-measured in a browser), so what remains on this story is the `secondary` button variant: **no border at all** and a fill measuring 1,16:1 against the white card. It needs a fill or a boundary, not a token; **E7-15** is the naming/casing + comment-layer sweep, **deliberately scheduled last** so its renames cannot collide with in-flight story branches; **E7-16** is new 2026-08-03 and owns the class behind **six** separately-fixed defects: a write path verified only on the in-memory provider is not verified |
 | E8 — Fast-follow (post-MVP) | [E8-fast-follow.md](E8-fast-follow.md) | post-MVP | 7 | 0 | Todo |
-| **Totaal** | | | **103** | **52** | **50%** |
+| E9 — UX-herwerking na de directie-review | [E9-ux-herwerking.md](E9-ux-herwerking.md) | 3 (parallel to E4/E5) | 8 | 1 | 🚧 **Opened 2026-08-19** from five owner change requests brought back from a directie review. **E9-03 `[x]`**; E9-01, E9-02, E9-04, E9-05, E9-06, E9-07 are `[~]` with real code on `story/E9-03-activiteitplaatsing`; **E9-08 is `[ ]` and is the one that matters for CR1.** **⚠ Read the epic's own "Owner ruling 2026-08-19: this epic builds ahead of its audit" section before trusting any `[~]`: no antagonist round has seen a single E9 commit**, on the owner's explicit decision, and the residual risk is listed there by name. **The headline finding is a measurement that killed the premise of its own story:** CR1 asked for less text, the "Uitleg tonen" switch was built and it hides **716 of 19.490 characters, about 4%** — the other 96% is degrade copy, withheld-figure explanations, E3-06 withheld-control statements and consequence disclosures, none of which may be hidden. E9-08 is the real remedy. **The structural decision the epic rests on is [ADR-0023](../docs/adr/0023-activiteit-day-placement.md):** an activiteit is placed on a calendar **day**, never on a planningsblok, and `Planningsblokniveau` gained no member — pinned by a test. **E9-04/E9-05 were driven in a real browser** at 1440px and 390px against a real API and PostgreSQL, which found four defects tests could not, one of them a navigation regression the epic's own switch had caused. |
+| **Totaal** | | | **111** | **53** | **48%** |
 
 > **Two things this table does not yet include, stated so the next editor does not have to discover them (2026-08-19).**
 > (1) The denominator moved 102 → 103 because **E4-09** was filed the same day, so the percentage fell 51% → 50%
 > while nothing regressed — the fourth time that has happened here, and always for the same healthy reason.
-> (2) **`backlog/E9-ux-herwerking.md` exists on disk, is untracked, and has no row.** It is the `ux-cr` session's
-> epic, from five owner change requests taken 2026-08-19, and **registering it is theirs, not this table's editor's**
-> — this note exists so that a recount over `backlog/E?-*.md` that returns 110 rather than 103 is understood
-> rather than "corrected" back.
+> (2) *Struck 2026-08-19 by the E9-rest session, in the rebase that made it false.* It read: *"`backlog/E9-ux-herwerking.md`
+> exists on disk, is untracked, and has no row — registering it is `ux-cr`'s, not this table's editor's, so a recount
+> returning 110 rather than 103 is understood rather than 'corrected' back."* **`ux-cr` did register it** (`635b03a`),
+> in the same commit that wrote this note, so the note contradicted its own commit from the moment it landed. The row
+> is above and the count below is re-derived over ten epic files. **Kept rather than deleted for the reason this table
+> keeps everything: the prediction was right about the number and wrong about who would write it, and a note that
+> reserves work for another session goes on reserving it after that session has done the work and left.**
+
+> **53 / 111 = 48% when E9 was rebased onto `main` (2026-08-19), recounted from the checkboxes rather than carried
+> across the merge.** The conflict was the E9 row against nothing: `main` had never seen the epic, so no row had two
+> versions and **the `Totaal` cell was the only thing either side got wrong** — it arrived reading `103 / 52`, correct
+> for a tree with nine epic files. Per epic: 10 + 14 + 8 + 9 + 7 + 4 + 0 + 0 + 0 + **1** = **53** of
+> `10+20+9+10+9+9+9+20+7+8 = 111`. The denominator moved 103 → 111 because E9's eight stories entered the count, not
+> because anything regressed; the numerator moved 52 → 53 on **E9-03** alone, the epic's only `[x]`.
+> **Read no audit into that `[x]`:** E9 builds ahead of its antagonist round on the owner's ruling, so it is the one
+> checkbox in this table that means *gates green* rather than *gates green and independently audited*.
 
 > **50 / 102 = 49% when E5-03 landed (2026-08-06), recounted from the checkboxes rather than incremented.**
 > Command, with the **dot** the lead insisted on: `grep -cE '^- \[.\] \*\*E[0-9]-[0-9]{2}' backlog/E*.md`
