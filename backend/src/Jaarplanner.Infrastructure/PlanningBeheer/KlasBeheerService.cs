@@ -147,6 +147,34 @@ public sealed class KlasBeheerService : IKlasBeheerService
                 "het jaarplan van deze klas.");
         }
 
+        // The same guard for the day-level half of the plan (E9-03). Without it, the cascade above destroys every
+        // activiteit a teacher scheduled onto a day while carefully protecting the thema placements beside them —
+        // two different answers to "is this the human's to discard?" about two halves of one plan (Art. IV.2).
+        //
+        // Counted and reported separately rather than folded into the figure above, because the remediation is a
+        // different screen and a different endpoint: a teacher told "3 plaatsingen" who then finds two of them in
+        // the year view and none of the third has been sent looking for something the sentence never described.
+        //
+        // **⚠ A BACKSTOP, NOT THE GUARD A TEACHER WILL MEET — established by a failing test, not by reading.** The
+        // subthema guard above fires FIRST in every ordinary case, and it always will: an activiteitplaatsing requires
+        // an activiteit, which requires a subthema, whose KlasId must equal this plan's klas (the invariant
+        // `Jaarplan.PlaatsActiviteit` enforces). So a class with a scheduled activiteit necessarily has a subthema, and
+        // the count below is unreachable by that route. The integration test that expected this message got the
+        // subthema one instead, which is how this was found.
+        //
+        // It is kept rather than deleted because there IS one route that reaches it: **E1-19**, the open hole where
+        // `Subthema.WijzigScope` re-scopes a subthema (and every activiteit in it) to another klas, leaving this plan
+        // holding a placement whose activiteit now belongs elsewhere. That route also breaks the class-boundary
+        // invariant, so closing E1-19 is what makes this dead rather than merely unreachable — and until then, a
+        // silent cascade here would destroy scheduling work. Do not "simplify" this away without closing E1-19 first.
+        var beslotenDagen = jaarplan?.MenselijkBeslotenActiviteitplaatsingen.Count ?? 0;
+        if (beslotenDagen > 0)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Klas '{klas.Naam}' heeft een jaarplan met {beslotenDagen} ingeplande activiteit(en) en kan niet " +
+                "verwijderd worden. Haal die activiteiten eerst uit de weekplanning van deze klas.");
+        }
+
         _context.Klassen.Remove(klas);
         await _context.SaveChangesAsync(cancellationToken);
     }

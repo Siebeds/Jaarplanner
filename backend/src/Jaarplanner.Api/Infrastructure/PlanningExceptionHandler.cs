@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Planning.Generatie;
+using Jaarplanner.Application.Planning.Weekplanning;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,8 +14,16 @@ namespace Jaarplanner.Api.Infrastructure;
 /// <item><see cref="OngeldigeVerplaatsingFout"/> (E3-07) — a move whose target is not a period boundary, or a thema
 /// moved onto a period it already occupies;</item>
 /// <item><see cref="OngeldigePlaatsingFout"/> (E4-03) — a hand-placement into a period that no longer exists, or of a
-/// thema that is already in it.</item>
+/// thema that is already in it;</item>
+/// <item><see cref="OngeldigeDagplanningFout"/> (E9-03) — scheduling an activiteit onto a day the school is closed on
+/// or outside the school year, onto a day it already sits on, or from another class.</item>
 /// </list>
+/// <para>
+/// <b>The fourth is a separate type rather than a reuse of the third</b>, even though both become 400. Every sentence
+/// <see cref="OngeldigePlaatsingFout"/> holds instructs the teacher to reload the grid or pick another period, which is
+/// wrong advice for a day: a closed day is not a stale grid, it is a vakantie the school entered on purpose. Reusing it
+/// would have made its own summary false.
+/// </para>
 /// <para>
 /// And one becomes <b>409</b>: <see cref="PeriodeIsBezetFout"/> (E4-05) — regenerating, hand-placing into or dragging
 /// onto a period the teacher blocked with a vast moment. It is separated from the three above on purpose: that request
@@ -41,7 +50,8 @@ public sealed class PlanningExceptionHandler : IExceptionHandler
         // status by omission: a new type either appears here with its code or is not handled at all.
         var status = exception switch
         {
-            OngeldigePlaatsingsstatusFout or OngeldigeVerplaatsingFout or OngeldigePlaatsingFout =>
+            OngeldigePlaatsingsstatusFout or OngeldigeVerplaatsingFout or OngeldigePlaatsingFout
+                or OngeldigeDagplanningFout =>
                 StatusCodes.Status400BadRequest,
             PeriodeIsBezetFout => StatusCodes.Status409Conflict,
             _ => (int?)null,
