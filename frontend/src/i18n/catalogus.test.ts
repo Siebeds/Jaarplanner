@@ -879,12 +879,18 @@ describe("nl.json — de gap-analyse belooft alleen wat haar oorzaak draagt (E5-
     ]) {
       const waarde = CATALOGUS.get(sleutel);
       expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
-      // BROADENED BY RONDE 2, which proved the first version guarded three literal phrasings and not the category it
-      // claimed: "Geweigerd, dus dit thema staat nergens in je jaarplan" is the same lie reworded and passed all 28
-      // catalogue tests. A guard whose comment describes a category and whose regex describes three sentences is the
-      // kind that reads as protection and is not.
+      // BROADENED TWICE, AND IT IS A TRIPWIRE RATHER THAN A PROOF. Say that plainly, because two rounds in a row
+      // treated it as a proof and two rounds in a row defeated it in one line: ronde 2 with "Geweigerd, dus dit thema
+      // staat nergens in je jaarplan", ronde 3 with "Geweigerd, dus niet opgenomen in een periode van dit jaarplan".
+      // Both are the same lie MAJOR-1 was about; both passed the version of this regex that existed at the time.
+      //
+      // It now forbids the VOCABULARY rather than a list of sentences, which is a much wider net, and it is still not
+      // a proof: no regex decides whether a Dutch sentence is true. What makes the claim safe is the SPLIT — the cause
+      // only exists for a placement that stands in a period — and that is pinned by
+      // DekkingServiceTests.Een_geweigerde_plaatsing_is_haar_eigen_oorzaak against the classification itself. This line
+      // catches a careless reword on its way past; it does not certify the sentence. Do not read a green run as more.
       expect(waarde!.toLowerCase()).not.toMatch(
-        /geen enkele periode|in geen periode|geen (enkele )?(periode|themaperiode|blok)|niet ingepland|nergens|staat niet in/,
+        /periode|jaarplan|ingepland|gepland|opgenomen|nergens|staat niet in/,
       );
       // And it must name the rejection, or the teacher cannot tell which of the kalender's actions this line is
       // about. "Undo it" is the remedy; a line that only said "not covered" would send them looking for the wrong one.
@@ -936,7 +942,7 @@ describe("nl.json — de gap-analyse belooft alleen wat haar oorzaak draagt (E5-
   });
 
   it("keeps every gap sentence free of a coverage figure", () => {
-    // These sentences render beside a total that is sometimes withheld, and three of the four already carry a count
+    // These sentences render beside a total that is sometimes withheld, and most of them already carry a count
     // of their own. A "van de N doelen" phrasing would put a denominator into a line the withholding gate does not
     // govern, which is how E5-02's group tallies reconstructed the figure the ruling of 2026-07-28 forbids.
     for (const [sleutel, waarde] of [...LACUNEREGELS, ...LACUNEROUTES]) {

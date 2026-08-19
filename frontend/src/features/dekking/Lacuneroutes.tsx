@@ -71,8 +71,9 @@ const ROUTES: Record<
  *
  * What belongs here is the choice *between absences*, which is this component's own. Two alternatives were rejected.
  * Rendering the lines *without* counts would need a second copy family that says the same things less precisely, and
- * E5-03's rule is to say less rather than to say something else, which is what an absence already does. Rendering with counts and a caveat would be the contradiction E4-06 catalogued: a
- * warning that the figure cannot be trusted, beside figures.
+ * E5-03's rule is to say less rather than to say something else, which is what an absence already does. Rendering with
+ * counts and a caveat would be the contradiction E4-06 catalogued: a warning that the figure cannot be trusted, beside
+ * figures.
  *
  * The state is not left silent either: while a placement is unresolved the summary above already states it and links
  * to the one action that matters, which is resolving it. Every route here stays reachable the moment it does.

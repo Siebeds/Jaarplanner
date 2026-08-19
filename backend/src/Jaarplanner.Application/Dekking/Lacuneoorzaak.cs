@@ -74,7 +74,8 @@ public enum Lacuneoorzaak
     /// <b>A third state does reach here, and it would carry the same false sentence MAJOR-1 was about</b> (antagonist
     /// ronde 2, 2026-08-19). A non-stale placement whose status this code cannot parse is in neither
     /// <c>IsVoorstelbaar</c> nor <c>IsGeweigerd</c>, because both are deliberately fail-closed, so it falls through to
-    /// here — while <c>plaatsingenIn</c> filters only <c>!isVervallen</c> and would draw its card in a period. It is
+    /// here — while <c>plaatsingenIn</c> filters on the block start and on <c>!isVervallen</c> and on nothing about
+    /// status at all, so it would draw that card in a period. It is
     /// <b>unreachable today</b> (four enum members, all handled), so this is a note and not a defect; the moment a
     /// fifth <c>KoppelingStatus</c> is added, this is the first place to look, and the honest fix then is a cause whose
     /// sentence does not claim anything about periods. Written down rather than fixed speculatively, because inventing

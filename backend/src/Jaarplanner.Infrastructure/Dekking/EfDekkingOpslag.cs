@@ -139,7 +139,7 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
         //   * no thema-id filter, because "the thema that carries this goal is in no period" is one of the
         //     things the gap-analyse exists to say, and a query restricted to placed thema's could never say it;
         //   * `voorgesteld` links are included beside the decided ones, flagged rather than mixed, because "the link
-        //     itself is still undecided" is another of the four.
+        //     itself is still undecided" is another of them.
         //
         // `geweigerd` is excluded in every layer. That is a status decision this read makes and IDekkingOpslag
         // records the consequence it imposes on the copy: a goal linked only by rejected links reaches the screen as

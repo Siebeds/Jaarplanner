@@ -217,12 +217,28 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
     {
         // Art. V.1's "placed in the plan": the query is only ever asked about placed thema's, so a thema the class
         // did not place must not leak in through a layer that forgot the thema filter.
+        //
+        // ALL FOUR LAYERS, and that is antagonist ronde 3's MAJOR (2026-08-19). This test said in its own words that
+        // it existed to catch "a layer that forgot the thema filter" and then filled layers 1 and 3 only, so layer 2's
+        // copy of `ids.Contains(t.Id)` was pinned by NOTHING: mutating it to `t => true` left the whole backend suite
+        // green. That is ronde 1's MAJOR-2 verbatim — a test naming a filter it never exercises — one file along, and
+        // it is the more dangerous instance of the two. What the mutation does in the product is INVERT Art. V.1: a
+        // goal linked only by an accepted doelsuggestie on a thema the class placed nowhere is reported GEDEKT, the
+        // percentage rises, and the NietIngepland gap this very story exists to show disappears.
+        //
+        // Layer 4 bit only by accident, through ActiviteitVerplaatsenEndpointsTests in another file. It is pinned here
+        // now as well, because a guard that depends on an unrelated feature keeping its test is not a guard.
         var (klasId, _) = await ZetOpAsync(async (context, klas, thema) =>
         {
             thema.VoegThemadoelToe(new DoelKoppeling("NIET-GEPLAATST", KoppelingStatus.Aanvaard, "anchor"));
+            thema.VoegDoelsuggestieToe(new DoelKoppeling("OOK-NIET-SUGGESTIE", KoppelingStatus.Voorgesteld, "past"))
+                .WijzigStatus(KoppelingStatus.Aanvaard);
 
             var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
             subthema.VoegSubdoelToe("5", new DoelKoppeling("OOK-NIET", KoppelingStatus.Aanvaard));
+
+            var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("OOK-NIET-ACTIVITEIT", KoppelingStatus.Manueel));
 
             await context.SaveChangesAsync();
         });
@@ -423,9 +439,16 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         // to /themas, for a link the school already decided by hand — the lying-sentence class this story guards
         // against everywhere else.
         //
-        // THE ARITHMETIC, CORRECTED BY RONDE 2, because round 1 wrote two incompatible numbers six lines apart and the
-        // smaller one flattered its own fix. The grid is 4 layers x 4 statuses x 2 reads = THIRTY-TWO cells, not
-        // sixteen. THIS test owns the sixteen DECIDED cells. The other sixteen belong to each read's own status test —
+        // THE ARITHMETIC, CORRECTED TWICE, and the second correction is the one worth reading. Round 1 wrote two
+        // incompatible numbers six lines apart and the smaller one flattered its own fix. Ronde 2 recounted to 4 layers
+        // x 4 statuses x 2 reads = THIRTY-TWO. Ronde 3 then found that THAT recount had quietly defined the grid to
+        // exclude the SCOPE predicates, and that one of them was empty: the covering read repeats `ids.Contains(t.Id)`
+        // four times and `st.KlasId == klasId` appears four times across both reads, so there are EIGHT more cells, and
+        // layer 2's thema filter was pinned by nothing at all. Fixing a numerator while leaving the denominator's
+        // definition unexamined is the same failure mode, one round along.
+        //
+        // So: 32 STATUS cells + 8 SCOPE cells. THIS test owns the sixteen decided status cells. The other sixteen
+        // belong to each read's own status test —
         // Alleen_aanvaarde_en_manuele_koppelingen_dekken and De_kandidaatlezing_levert_alle_vier_de_lagen_... — which
         // ronde 2 found holding three of eight and which now hold their half; see the note in the first of those for a
         // domain cap that makes layer 1 impossible to fill on a single thema.
@@ -508,6 +531,8 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
                 // And the rejection exclusion plus the undecided flag at the layers that lacked them (ronde 2).
                 "KAND-TD-GEWEIGERD", "KAND-TD-VOORGESTELD", "KAND-SUBDOEL-GEWEIGERD", "KAND-SUBDOEL-VOORGESTELD",
                 "KAND-ACT-GEWEIGERD",
+                // The scope axis: layers 2 and 4 of the unplaced-thema test (ronde 3).
+                "OOK-NIET-SUGGESTIE", "OOK-NIET-ACTIVITEIT",
             ]);
 
         // Truncated to fit Schooljaar.Naam's varchar(32) — see the note in the other arrangement.

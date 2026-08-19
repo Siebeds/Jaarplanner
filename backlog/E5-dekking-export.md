@@ -92,12 +92,14 @@
 - [~] **E5-05 — Gap-analyse presentation** — *built 2026-08-07 on `story/E5-05-gap-analyse`, off `origin/main`
   `96a9060`. Commits `ff911e6` (server), `3b11cb2` (screen), `5ca1ac8` (a test the mutation check exposed as
   vacuous), `e7a29de` (the record), and after twelve idle days `6b4111c` + `9c15019` (**fix round 1** and its record,
-  on antagonist ronde 1) and `a154604` onwards (**fix round 2**, on ronde 2).
-  **Two antagonist rondes, both VIOLATIONS FOUND — 3 MAJOR + 5 MINOR + 2 QUESTION, then 1 MAJOR + 7 MINOR + 2
-  QUESTION. Every MAJOR is fixed and mutation-checked; two MINOR are routed to E7 and two QUESTION are the owner's.**
-  **`[~]` and not `[x]`: ronde 3 is owed**, and this backlog's own status legend reserves `[x]` for "implemented,
-  tested, Antagonist-clean". Ronde 2 found its MAJOR inside fix round 1, exactly as three consecutive rounds of E4-08
-  did, so fix round 2 having no independent pass is a named risk rather than a formality.*
+  on antagonist ronde 1), `a154604` onwards (**fix round 2**, on ronde 2) and the commit carrying this paragraph
+  (**fix round 3**, on ronde 3).
+  **Three antagonist rondes, all VIOLATIONS FOUND — 3 MAJOR + 5 MINOR + 2 QUESTION, then 1 MAJOR + 7 MINOR + 2
+  QUESTION, then 1 MAJOR + 7 MINOR + 1 QUESTION. Every MAJOR is fixed and mutation-checked; two MINOR are routed to
+  E7 and two QUESTION are the owner's.**
+  **`[~]` and not `[x]`: ronde 4 is owed**, and this backlog's own status legend reserves `[x]` for "implemented,
+  tested, Antagonist-clean". Rondes 2 and 3 each found their MAJOR in the previous round's fix, exactly as three
+  consecutive rounds of E4-08 did, so an unaudited fix round is a named risk here rather than a formality.*
   Clear missing-goals overview, grouped by discipline/domein, actionable from the calendar.
   *Done when:* a gap can be traced to where it should be planned. Ref: FR-9, Art. XII (gap-analyse).
   > ### **OWNER RULING, 2026-08-07: the grouping stays `(domein, subdomein)` and gets no discipline level.**
@@ -111,10 +113,15 @@
   >
   > **What was built instead is the other half of the same sentence, and it is the half the acceptance criterion
   > actually names.** `/dekking` has listed *which* doelen are missing since E5-03; this story says **why** each one is
-  > missing and **where** that is closed. Four causes, ordered cheapest-route-first, first match wins:
-  > `WachtOpBeslissing` (a thema carrying it stands in the plan as an unanswered proposal), `NietIngepland` (a thema
-  > carries it and sits in no period: never placed, rejected, or stale), `KoppelingNietBeslist` (only an undecided
-  > doelsuggestie links it, so the decision is a link decision and planning would not help), and `GeenThema`.
+  > missing and **where** that is closed. **Five** causes, ordered cheapest-route-first, first match wins:
+  > `WachtOpBeslissing` (a thema carrying it stands in the plan as an unanswered proposal), **`PlaatsingGeweigerd`** (a
+  > thema carrying it stands in a period and the teacher rejected that placement), `NietIngepland` (a thema carries it
+  > and sits in no period: never placed, or stale), `KoppelingNietBeslist` (only an undecided doelsuggestie links it, so
+  > the decision is a link decision and planning would not help), and `GeenThema`.
+  > *This paragraph said "Four causes" and listed `rejected` inside `NietIngepland` until antagonist ronde 3
+  > (2026-08-19), which is worse than a stale count: it restated **MAJOR-1's folded falsehood as the delivered design**,
+  > unmarked, above the section that corrects it. Two fix rounds swept counts and neither swept the one paragraph a
+  > reader lands on first.*
   > **E3-03 wrote the hand-off itself**: `Dekkingsvooruitzicht` counts what accepting the plan would cover and says in
   > its own type that *which* doelen those are is E5-05's to list. `WachtOpBeslissing` is exactly that set, and a unit
   > test pins the two against each other rather than leaving the equality to hold by inspection.
@@ -128,8 +135,10 @@
   > control that does not do what it says. The line still renders, because "these cannot be closed by planning" is the
   > most useful thing this block can tell a directie about Art. V.2.
   > ### **The one rule that cost thought, and it is a leak this repo has already shipped once.**
-  > The four counts partition the gaps in view, so they add up to `totaal - gedekt` — precisely the figure the directie
-  > ruling of 2026-07-28 withholds while a placement is unresolved. **E5-02 shipped that leak through its group
+  > The counts partition the **recognised** gaps in view, so in the ordinary state they add up to `totaal - gedekt` —
+  > precisely the figure the directie ruling of 2026-07-28 withholds while a placement is unresolved. *(Qualified in
+  > ronde 3: `telLacuneoorzaken` also drops any cause this client cannot name, which is unbounded rather than
+  > negligible. The full statement lives once, on `DekkingPagina`, where the gate is.)* **E5-02 shipped that leak through its group
   > tallies**: the summary said it would give no figure while every group printed one, and the counts were additive.
   > So the block **does not render at all** in the withheld state, gated on the same `cijfer.soort` the group tallies
   > use. Two alternatives were rejected and both are recorded on `Lacuneroutes`: rendering the lines without counts
@@ -222,16 +231,27 @@
   >    hieraan gekoppeld"* would be false for it. A longer truthful sentence does exist, e.g. *"Geen enkel thema is aan
   >    dit doel gekoppeld, of je hebt de koppeling geweigerd."* So **the choice is brevity against informativeness, not
   >    brevity against impossibility**, and it is stated that way because "forbidden" invited an accept without the
-  >    trade being weighed. **Accept the short line, or rule on the longer one.**
+  >    trade being weighed.
+  >    **But do not rule on that sentence as written: ronde 3 found it false in a third state.** A goal linked only
+  >    through a **class-scoped** layer belonging to *another* class also lands in `GeenThema` — layers 3 and 4 filter
+  >    on `st.KlasId` in both reads (Art. IX.2), and `Een_subthema_van_een_andere_klas_is_ook_geen_kandidaat` asserts
+  >    exactly that. There a thema **is** linked and nothing was rejected, so both halves of the offered sentence are
+  >    false. The **shipped** line stays true in that state, so nothing false is on screen; the defect was in the
+  >    option set I put in front of you. **Accept the short line, or ask for a longer one to be drafted against all
+  >    three states.** Third round in a row that an explanatory sentence about this cause turned out to reach past what
+  >    its own branch guarantees, which is itself the argument for the short line.
   > 2. **Three route lines now read "Naar de kalender" and go to the same place** (ronde 1 QUESTION-2, which fix round 1
   >    made worse: it was two). SC 2.4.4 is met, because each link's purpose is clear from the sentence in its own
   >    `<li>`, and identical label plus identical destination is the benign duplicate rather than the harmful one. But a
   >    screen-reader link list shows three identical entries for three genuinely different tasks. **The precedent ronde
   >    2 put on the table, which this entry owed you:** E4-08 already ruled and *tested* the opposite convention for its
   >    own case, *"geeft elke verplaatsknop een eigen naam, zodat drie activiteiten niet drie keer hetzelfde heten"*
-  >    (`frontend/src/features/themas/Klaslaag.test.tsx`). It is not the same case, because E4-08's three controls had
-  >    three different destinations and these have one, but it is the nearest ruling and you should decide against it
-  >    rather than around it. **Not redesigned on this story's own judgement**, because it is a UX call and because
+  >    (`frontend/src/features/themas/Klaslaag.test.tsx`). **Ronde 3 sharpened what that precedent actually is**, and the
+  >    correction matters because I was about to hand you a stronger one than exists: that test's *assertion* is that no
+  >    two controls **within one activiteit's `<li>`** share a name; "drie activiteiten" is its scenario, not the
+  >    property under test. So it is guidance, not a ruling that covers this case, and the distinguishing fact still
+  >    holds (E4-08's controls had three destinations, these have one). Decide against it rather than around it, but
+  >    knowing it is the weaker precedent. **Not redesigned on this story's own judgement**, because it is a UX call and because
   >    every fix round in this repo that reached past its finding introduced a new defect.
   > ### **Gates on `6b4111c`, all re-run rather than carried forward.**
   > **648 unit + 230 integration** (0 skipped, real PostgreSQL), `dotnet format --verify-no-changes` exit 0;
@@ -309,14 +329,66 @@
   > mixed LF into CRLF files, which the build does not notice and the formatter does), **629 frontend / 24 files**,
   > eslint + `tsc` clean. **No `nl.json` value changed in this round**, verified with a diff, so the browser evidence
   > above still describes the shipped copy. **Fix round 2 changed no executable product code at all** — the diff is
-  > comments, tests and records, which is checkable and was checked (`git diff 9c15019..a154604` filtered to
-  > `backend/src` and `frontend/src` minus comment lines comes back empty).
+  > comments, tests and records. *Stated more carefully than fix round 2 first stated it, because ronde 3 checked the
+  > method and not only the claim: the filtered diff does **not** come back literally empty (two `it(...)` titles are
+  > non-comment changes). What is true, and what ronde 3 verified hunk by hunk, is that every change in `backend/src`
+  > and `frontend/src` sits inside a comment block. Describe the check you ran, not the check that would have been
+  > tidier.*
   > *One slip of my own, found by checking rather than by an audit, and fixed in the commit carrying this
   > paragraph:* writing files from a
   > python script with `encoding='utf-8-sig'` **added a BOM to six files that had none**. The build does not notice,
-  > `dotnet format` does not notice, and the repo's convention is clearly no BOM (246 of 280 `.cs` files). Stripped.
+  > `dotnet format` does not notice, and the repo's convention is clearly no BOM. *Ronde 3 caught the figure I used to
+  > establish that: I wrote "246 of 280", which is the count measured **after** my own defect had added four. The
+  > baseline at `9c15019` is **250 of 280**. A number cited to prove a convention, inflated by the very defect it was
+  > describing.* Stripped.
   > The general lesson is the one this round keeps producing: a tool that round-trips a file changes more than the
   > characters you were aiming at, so diff the bytes and not only the lines you meant to edit.
+  > ### **ANTAGONIST RONDE 3, 2026-08-19: VIOLATIONS FOUND (1 MAJOR + 7 MINOR + 1 QUESTION), and the MAJOR is older
+  > than this story.**
+  > *The prior held again: ronde 3 found its MAJOR partly inside fix round 2's own reasoning. It also ran **44
+  > mutations** of its own, filled and checked the entire 32-cell status grid (all 32 bite), re-ran both of ronde 2's,
+  > and re-derived every gate figure.*
+  > **The MAJOR: the covering read's thema filter at layer 2 was pinned by nothing, and neutralising it inverts
+  > Art. V.1.** `ids.Contains(t.Id)` is written out four times, exactly like the status predicate, and mutating layer
+  > 2's copy to `t => true` left the **whole backend suite green**. What that does in the product is the opposite of
+  > what this story is for: a goal linked only by an accepted doelsuggestie on a thema the class placed **nowhere**
+  > reports as *gedekt*, the percentage rises, and the `NietIngepland` gap disappears.
+  > `Een_niet_geplaatst_thema_dekt_niet` says in its own words that it exists to catch *"a layer that forgot the thema
+  > filter"* and filled two of four layers, which is **ronde 1's MAJOR-2 verbatim, one test file along**. Layer 4 bit
+  > only by accident, through a test in another feature. *Fixed:* the test now fills all four layers, and each of the
+  > four filters was mutated **individually** with the build's error count read in the same breath; all four fail.
+  > **Why this is a finding against fix round 2 and not only against E5-01's code:** ronde 2's recount to "32 cells"
+  > silently defined the grid as status-only, and fix round 2 wrote that definition down as the corrected arithmetic.
+  > There are **eight more cells** on a scope axis nobody had counted, and one was empty. *Fixing a numerator while
+  > leaving the denominator's definition unexamined is the same failure mode one round along*, and it is the third
+  > time on this story that a number describing my own work was the thing to recheck.
+  > **The seven MINOR, and three are the same class again.** (a) **The broadened catalogue guard was defeated in one
+  > line**, by *"Geweigerd, dus niet opgenomen in een periode van dit jaarplan"*: the same lie, reworded, for the
+  > second round running. It now forbids the **vocabulary** rather than a list of sentences, **and it says in its own
+  > comment that it is a tripwire and not a proof**, because two rounds in a row read a green run as evidence the
+  > sentence was true. Ronde 3's defeating sentence and its three variants were re-run against the new pattern and all
+  > four now fail. (b) The stale cause count survived in **five more places**, one of them *two lines below* a line fix
+  > round 2 corrected, and one of them the paragraph a reader lands on first, which still described `rejected` as
+  > folded into `NietIngepland`: **MAJOR-1's falsehood restated as the delivered design**, unmarked, above the section
+  > correcting it. (c) `backlog/README.md` still said *"no antagonist round"* in a second paragraph; ronde 2 raised
+  > exactly this and the fix repaired one of the **two** places that sentence lives.
+  > (d) `leesOorzaak`'s renamed guard still over-claimed: *"every cause the server can send"* is unprovable in a file
+  > whose sibling comment says nothing compares the array to the C# enum. Renamed again, to what it proves.
+  > (e) Two record figures did not re-derive: **"246 of 280 `.cs` files carry no BOM"** was measured *after* my own
+  > defect added four, so the baseline is **250**, and the mutation count did not follow from the entry. (f) The
+  > *method* claim about the filtered diff was tidier than the check actually run. (g) The withheld-figure rule was
+  > still stated unqualified in two test-file comments that fix round 2 had touched.
+  > **Both owner questions were corrected rather than merely forwarded**, and that is the part worth reading: the
+  > "longer truthful sentence" ronde 2 offered for `GeenThema` is **false in a third state** (a link on another class's
+  > subthema), and the E4-08 precedent for the duplicate links is **weaker** than this entry claimed. Both are fixed in
+  > the questions above, because handing you a false option or an overstated precedent is worse than handing you
+  > nothing.
+  > **Gates on fix round 3:** **648 unit + 230 integration** (0 skipped, real PostgreSQL), `dotnet format` exit 0,
+  > **629 frontend / 24 files**, eslint + `tsc` clean, no BOM anywhere on the branch, `nl.json` still unchanged since
+  > the browser pass. **Ten mutation checks of my own across the three fix rounds, all biting.**
+  > *Carried from ronde 3 and not mine to fix:* the frontend suite is **nondeterministic under load** (three runs on an
+  > unmodified tree gave 9, 0 and 6 failures, all `waitFor`/axe timeouts, none in the dekking feature), so "629
+  > frontend" is a figure that needs a rerun to be trusted. That belongs with **E7-12/E7-16**, not here.
 
 - [x] **E5-06 — Export coverage overview (proof of coverage)** — *built 2026-08-06 on `story/E5-06-dekking-export`
   (off `story/E5-03-percentage-filter`, since E5-03 was pushed but unmerged when this started; `origin/main` `fc11503`

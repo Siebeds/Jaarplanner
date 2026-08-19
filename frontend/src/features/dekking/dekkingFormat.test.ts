@@ -291,7 +291,13 @@ describe("beschikbareDoelsoorten", () => {
 });
 
 describe("leesOorzaak", () => {
-  it("accepts every cause the server can send, and nothing else", () => {
+  it("accepts exactly the vocabulary this client knows", () => {
+    // RENAMED BY RONDE 3, because the old title ("accepts every cause the server can send, and nothing else") claimed
+    // two things this test cannot reach: `types.ts` says in the same commit that NOTHING compares this array to the C#
+    // enum, so "the server can send" is unprovable here, and "nothing else" is the sibling test below. What this one
+    // proves is narrower and still worth proving: `leesOorzaak` accepts the whole vocabulary and does not drift from
+    // it. A guard whose name over-claims is what ronde 2's own MINOR-6 was about.
+    //
     // DERIVED FROM THE VOCABULARY, not hand-listed, and that is antagonist ronde 2 (2026-08-19): the hand-written
     // version still listed four causes after this story added a fifth, so `leesOorzaak` — the ONE function that decides
     // whether a cause renders at all on the client — had no assertion for the cause the story is about. The suite was
