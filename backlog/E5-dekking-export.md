@@ -91,9 +91,12 @@
 
 - [~] **E5-05 — Gap-analyse presentation** — *built 2026-08-07 on `story/E5-05-gap-analyse`, off `origin/main`
   `96a9060`. Commits `ff911e6` (server), `3b11cb2` (screen), `5ca1ac8` (a test the mutation check exposed as
-  vacuous). **`[~]` and not `[x]`: no antagonist round has run**, and this backlog's own status legend reserves `[x]`
-  for "implemented, tested, Antagonist-clean". The gates and the browser pass below are this session's own evidence;
-  the independent pass is owed and every story here that skipped one says so in its own text.*
+  vacuous), `e7a29de` (the record), and after twelve idle days `6b4111c` (**fix round 1**, on antagonist ronde 1).
+  **Ronde 1 returned VIOLATIONS FOUND: 3 MAJOR + 5 MINOR + 2 QUESTION; every MAJOR and three of the MINOR are fixed
+  here, one MINOR is routed and one is an owner question below.** **`[~]` and not `[x]`: ronde 2 is owed**, and this
+  backlog's own status legend reserves `[x]` for "implemented, tested, Antagonist-clean" — with fix round 1 audited by
+  nobody but its author, this story has exactly the gap that three consecutive rounds of E4-08 found in the previous
+  round's fix.*
   Clear missing-goals overview, grouped by discipline/domein, actionable from the calendar.
   *Done when:* a gap can be traced to where it should be planned. Ref: FR-9, Art. XII (gap-analyse).
   > ### **OWNER RULING, 2026-08-07: the grouping stays `(domein, subdomein)` and gets no discipline level.**
@@ -167,9 +170,90 @@
   > **One thing the browser could NOT check, stated rather than implied:** the demo seeder writes a single doelsoort,
   > so the interaction between the doelsoort filter and the route counts was exercised only by a component test. Same
   > residual E5-03 carried, same cause.
-  > ***No antagonist round has run yet, which is why the checkbox is `[~]`.*** Every other story in this epic that
-  > closed without a full audit chain recorded that on itself (E5-01, E5-02); this one does not even have a first
-  > round, so it does not get the checkbox at all until it does.
+  > ### **ANTAGONIST RONDE 1, 2026-08-19: VIOLATIONS FOUND (3 MAJOR + 5 MINOR + 2 QUESTION), and it ran twelve days
+  > after the code was written because the session that wrote it never came back.**
+  > *Two of the three MAJOR were found by RUNNING MUTATIONS that the whole 876-test backend suite survived. That is
+  > the headline of this round: the story shipped thirteen mutation checks and none of them touched the storage layer's
+  > status or scope surface, which is exactly where both defects were.*
+  > **MAJOR-1 — the copy contradicted the kalender, and this is the one that reached a teacher.** `NietIngepland`
+  > folded three states together (never placed, placed and **rejected**, placed against a period that no longer
+  > exists) on the stated ground that the remedy was identical. **Both halves of that ground were false.** A rejected
+  > placement is not stale, and `plaatsingenIn` filters `!isVervallen` and nothing about rejection, so the card **is**
+  > drawn in its period column: `/dekking` told a teacher a thema *"staat in geen enkele periode van dit jaarplan"*
+  > while a card for it stood visible in one with a "Geweigerd" chip. And the remedy differs: this one is closed with
+  > *Weigering terugdraaien* on the card, while `Themakiezer` deliberately **disables** that thema in exactly the
+  > period the teacher is looking at, so the folded route sent them to a control that refuses them (the E3-06 rule).
+  > `Themakiezer`'s own comment describes the scenario, one file away from the copy that contradicted it.
+  > *Fixed by splitting `PlaatsingGeweigerd` out as its own cause*, ordered second (one click on a card already on
+  > screen ranks above placing a thema and below answering a proposal nobody has looked at yet). **A rejected AND
+  > stale placement stays `NietIngepland`**, because a stale card is drawn in no period, so there the folded sentence
+  > is true: the boundary is the render rule rather than a preference, and `DekkingServiceTests` drives both sides of
+  > it. Three value-reading guards added, because a `t(key)` assertion could not have seen this — the key was right and
+  > the sentence was false.
+  > **MAJOR-2 — a test that named a filter it never exercised.** `Een_subthema_van_een_andere_klas_is_ook_geen_kandidaat`
+  > said it scoped layers **3 and 4** per class and only ever filled layer 3 for the foreign class. Mutating layer 4's
+  > `st.KlasId == klasId` to `st.KlasId == st.KlasId` left the whole suite green. The covering read's sibling test had
+  > the activiteit from the start, so the new read got the **weaker copy** of a fixture whose own comment says a
+  > missing filter is what it exists to catch. *Fixed, and the mutation now fails it.*
+  > **MAJOR-3 — the pin held four of sixteen pairs.** Eight predicate copies each able to differ on either of two
+  > decided statuses is **sixteen** (layer, status) pairs, and the fixture filled exactly four: layer 1 `Aanvaard`,
+  > layer 2 `Aanvaard`, layer 3 `Manueel`, layer 4 `Manueel`. Deleting `|| Status == Manueel` from layer 1 of the
+  > candidate read left the whole suite green. **This matters more than a coverage gap** because the pin is the entire
+  > stated reason the eightfold duplication was accepted instead of routed to E1-17: in the product that mutation reads
+  > as *"De koppeling is nog niet beslist"* plus a link to `/themas`, for a link the school already decided by hand.
+  > *Every layer now carries both decided statuses.* The eight copies were also re-read character by character in the
+  > audit and **the code as written was correct** — the finding was about the net, not the code.
+  > **MINOR-4** the controller claimed FR-9 was unsatisfied *"for one reason only"* while FR-9.4's directie overviews
+  > (E6-06) are unbuilt too, written in the very commit that swept six other comments for describing E5-05 as unbuilt:
+  > *if you correct one absence, that is when you are least likely to check the next.* **MINOR-5** `Lacuneroutes` and
+  > `telLacuneoorzaken` asserted opposite things about the same four counts; now said once, on the component that owns
+  > the withholding gate, with the other pointing at it. **MINOR-7** `KAND-GEWEIGERD` in the pin fixture was
+  > `Voorgesteld`, so its assertion read as a claim about rejected links that would be a bug if true.
+  > **MINOR-8 is routed, not fixed:** the unauthenticated dekking read now also returns the names of thema's in no
+  > plan. A widening of debt `DekkingController` already records, no pupil data, and it belongs to whichever story adds
+  > the role checks (**E7-11**, blocked on E6-01/E6-02) rather than to this one.
+  > ### **Two things left open for the owner, both stated rather than decided here.**
+  > 1. **`GeenThema`'s line distinguishes nothing** (ronde 1, MINOR-6): *"niet gedekt door enig thema"* is true of
+  >    every row in this list. The useful sentence would be *the school has no content for this*, and it is
+  >    **forbidden**: the candidate read excludes rejected links, so a doel whose only link the teacher already threw
+  >    away lands in this cause, and any wording about a missing *koppeling* would be false for it. This is the
+  >    E5-03 corollary working as designed (say less, never say something else), and the audit graded it *no fix needed
+  >    if the owner accepts the trade*. **Accept, or rule on a wording.**
+  > 2. **Three route lines now read "Naar de kalender" and go to the same place** (ronde 1, QUESTION-2, which this fix
+  >    round made worse: it was two). SC 2.4.4 is met, because each link's purpose is clear from the sentence in its own
+  >    `<li>`, and identical label plus identical destination is the benign duplicate rather than the harmful one. But a
+  >    screen-reader link list shows three identical entries for three genuinely different tasks. **Not redesigned on
+  >    this story's own judgement**, because it is a UX call and because every fix round in this repo that reached past
+  >    its finding introduced a new defect.
+  > ### **Gates on `6b4111c`, all re-run rather than carried forward.**
+  > **648 unit + 230 integration** (0 skipped, real PostgreSQL), `dotnet format --verify-no-changes` exit 0;
+  > **629 frontend / 24 files**, `eslint` + `tsc --noEmit` + `vite build` clean.
+  > **Four mutation checks, and all four bite** — each one run, not reasoned about: (1) layer 4's klas filter
+  > neutralised → `Een_subthema_van_een_andere_klas_is_ook_geen_kandidaat` **FAILS**; (2) `Manueel` dropped from layer
+  > 1 of the candidate read → `De_besliste_kandidaten_zeggen_hetzelfde_als_de_dekkende_lezing` **FAILS**; (3) the whole
+  > `PlaatsingGeweigerd` branch deleted → `Een_geweigerde_plaatsing_is_haar_eigen_oorzaak` **FAILS**; (4) the new cause
+  > line rewritten to the exact false claim MAJOR-1 was about → the new catalogue guard **FAILS**.
+  > *Two things went wrong while running these and both are worth carrying:* a `sed` line number was off by one and
+  > **silently mutated nothing** while the tests went green, which would have read as "the mutation does not bite" —
+  > the fix is an assertion on the line's content before touching it, which caught the next off-by-one immediately. And
+  > a failed build followed by `dotnet test --no-build` **served the previous mutation's binary**, so a "1 failed"
+  > appeared that proved nothing about the mutation under test. Check the build's error count in the same breath.
+  > **Browser pass, 2026-08-19, real API and real PostgreSQL on a throw-away database**, driving the actual user path
+  > rather than a fixture: rejected the AI's proposal for *Herfst en oogst* on the kalender, confirmed against the API
+  > that the placement was `Geweigerd` **and** `isVervallen: false` **and** still drawn in its period column, then read
+  > `/dekking`. The row says *"Geweigerd op de kalender, dus telt niet mee voor de dekking: Herfst en oogst."*, the
+  > route block carries its own line and link, and the false sentence appears **nowhere on the page**. **axe 0
+  > violations at 1528px and at exactly 390px** (`innerWidth === 390`). Composited contrast, measured not argued:
+  > cause line **6,08:1** at 12px, route sentence **15,42:1**, link **8,90:1** at 24px tall (SC 2.5.8) — the same three
+  > figures the first browser pass recorded, because the new copy reuses those tokens rather than introducing any. The
+  > links carry `klas` and `schooljaar` (ADR-0021). Nothing of this story overflows at 390px; the five elements that do
+  > are the scrolling nav, pre-existing and already recorded above.
+  > **What the browser did NOT re-check, said rather than implied:** the **withheld** state was not re-driven for the
+  > new cause. It renders inside the same `<ul>` behind the same `cijfer.soort` gate as the other four, a component
+  > test asserts the block's absence, and the gate itself was mutation-checked by the first pass — but the sentence
+  > "every state was seen in a browser" is not one this fix round has earned, and the fifth state is the one it added.
+  > *Also observed while cleaning up, and it is not mine:* **26 leaked `jp_test_*` databases** on the local instance,
+  > which is exactly what **E7-14** describes.
 
 - [x] **E5-06 — Export coverage overview (proof of coverage)** — *built 2026-08-06 on `story/E5-06-dekking-export`
   (off `story/E5-03-percentage-filter`, since E5-03 was pushed but unmerged when this started; `origin/main` `fc11503`
