@@ -1,4 +1,4 @@
-﻿using Jaarplanner.Application.Dekking;
+using Jaarplanner.Application.Dekking;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;

@@ -92,7 +92,7 @@
 - [~] **E5-05 — Gap-analyse presentation** — *built 2026-08-07 on `story/E5-05-gap-analyse`, off `origin/main`
   `96a9060`. Commits `ff911e6` (server), `3b11cb2` (screen), `5ca1ac8` (a test the mutation check exposed as
   vacuous), `e7a29de` (the record), and after twelve idle days `6b4111c` + `9c15019` (**fix round 1** and its record,
-  on antagonist ronde 1) and `TBD` (**fix round 2**, on ronde 2).
+  on antagonist ronde 1) and `a154604` onwards (**fix round 2**, on ronde 2).
   **Two antagonist rondes, both VIOLATIONS FOUND — 3 MAJOR + 5 MINOR + 2 QUESTION, then 1 MAJOR + 7 MINOR + 2
   QUESTION. Every MAJOR is fixed and mutation-checked; two MINOR are routed to E7 and two QUESTION are the owner's.**
   **`[~]` and not `[x]`: ronde 3 is owed**, and this backlog's own status legend reserves `[x]` for "implemented,
@@ -269,7 +269,7 @@
   > MAJOR in the previous round's fix. This one did too.* Ronde 2 also **re-ran all four of fix round 1's mutations
   > itself** and confirmed each bites, added two of its own that bite (swapping the branch order fails
   > `Een_open_voorstel_gaat_voor_op_een_weigering_elders`; deleting `!p.IsVervallen` from the shared helper fails three
-  > theory rows including the rejected-and-stale one), and re-derived every gate figure. Fix round 2 is `TBD`.
+  > theory rows including the rejected-and-stale one), and re-derived every gate figure.
   > **The MAJOR — I closed one axis of my own grid and called it the whole grid.** MAJOR-3's fix filled the sixteen
   > *decided* cells and the comment claimed that was "SIXTEEN (layer, status) pairs", six lines below the same comment
   > calling it a "four-layer, **four-status** predicate". Both cannot be true: the grid is 4 layers × 4 statuses × 2
@@ -308,7 +308,15 @@
   > `dotnet format --verify-no-changes` exit 0 (it took an explicit `dotnet format` first: writing files from a script
   > mixed LF into CRLF files, which the build does not notice and the formatter does), **629 frontend / 24 files**,
   > eslint + `tsc` clean. **No `nl.json` value changed in this round**, verified with a diff, so the browser evidence
-  > above still describes the shipped copy.
+  > above still describes the shipped copy. **Fix round 2 changed no executable product code at all** — the diff is
+  > comments, tests and records, which is checkable and was checked (`git diff 9c15019..a154604` filtered to
+  > `backend/src` and `frontend/src` minus comment lines comes back empty).
+  > *One slip of my own, found by checking rather than by an audit, and fixed in the commit carrying this
+  > paragraph:* writing files from a
+  > python script with `encoding='utf-8-sig'` **added a BOM to six files that had none**. The build does not notice,
+  > `dotnet format` does not notice, and the repo's convention is clearly no BOM (246 of 280 `.cs` files). Stripped.
+  > The general lesson is the one this round keeps producing: a tool that round-trips a file changes more than the
+  > characters you were aiming at, so diff the bytes and not only the lines you meant to edit.
 
 - [x] **E5-06 — Export coverage overview (proof of coverage)** — *built 2026-08-06 on `story/E5-06-dekking-export`
   (off `story/E5-03-percentage-filter`, since E5-03 was pushed but unmerged when this started; `origin/main` `fc11503`

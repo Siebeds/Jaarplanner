@@ -1,4 +1,4 @@
-﻿using Jaarplanner.Domain.Curriculum;
+using Jaarplanner.Domain.Curriculum;
 
 namespace Jaarplanner.Application.Dekking;
 
