@@ -39,14 +39,34 @@ export const dekkingKlasKey = (klasId: string) => [...DEKKING_KEY, klasId] as co
  * - `resetQueries` clears the data **and refetches every active observer**, so a figure on the same screen as the write
  *   moves, every time.
  *
- * That difference was invisible for as long as every dekking consumer sat on a *different route* from the write, which
- * is exactly E4-01's case: the teacher edits on the kalender and then navigates to `/dekking`, so the component mounts
- * fresh and fetches. E9-06 put a coverage figure on `/themas` and on the board **beside the controls that change it**,
- * the first consumer mounted when the write happens, and under `removeQueries` that bar sat perfectly still through a
- * teacher's afternoon of linking doelen: CR4's complaint, reproduced by the fix for CR4.
+ * **What that difference actually cost, corrected 2026-08-20 after an audit refuted the first version of this note.**
+ * The `/themas` bar was frozen: nothing else on that screen re-renders on a dekking-affecting write, so the remove was
+ * never followed by the re-render that would have rebuilt the query, and the figure sat still through exactly the
+ * afternoon of linking CR4 exists to make visible. That is the defect, and it is enough on its own.
+ *
+ * **It is *not* true that the kalender was previously unaffected, and this note used to say so.** That screen's own
+ * `useDekking` has been mounted beside the accept/reject/drag controls since E3-09, and every placement mutation calls
+ * `setQueryData(jaarplanKey(...))`, which re-renders it -- so remove *plus a guaranteed re-render* already blanked
+ * `dekking.data` there for the length of a refetch. `main`'s own test comment records it and calls it *"self-healing,
+ * pre-existing and outside this story"*. So `heeftDoelenLatch` fixes an **older** defect that a reset makes routine
+ * (every edit rather than only a generation run) rather than one this change introduced. Claiming otherwise credited
+ * this story with someone else's bug, which is the kind of self-flattering causality this repo audits hardest.
  *
  * The behaviour E4-01 verified in a browser is unchanged, because the clearing still happens; what is added is the
  * refetch it never needed. *`useThemas` carries a refinement of the same mechanism for its own delete path.*
+ *
+ * **What it costs, recorded because an audit had to ask and the answer is not free.** Refetching active observers means
+ * that on the kalender — which mounts `useDekking` unconditionally, for the jaarfasekiezer and the fallback caveat —
+ * every accept, reject, lock and drag now re-reads the **whole in-scope dekking payload**, which is the very thing the
+ * `…/dekking/voortgang` endpoint was added to avoid fetching per keystroke. Under `removeQueries` that read waited for
+ * the next mount instead.
+ *
+ * **Accepted rather than optimised away, and here is the reasoning so a later reader can overturn it deliberately.**
+ * Narrowing the reset to the voortgang sub-key and merely *invalidating* the heavy one would put the two figures on
+ * different clocks: the fraction would move while the caveat that keeps a narrowed denominator honest lagged behind it,
+ * which is a correctness problem rather than a performance one, and it is exactly the defect the terugval sentence was
+ * fixed for. One clock for one screen is worth one refetch. If the payload ever becomes large enough for this to hurt,
+ * the fix is to make `/dekking` paged, not to desynchronise the two reads.
  *
  * Nothing behind the API needs a counterpart: dekking is computed on every read and never stored (Art. V.1). These
  * functions exist purely because the browser is allowed to remember.

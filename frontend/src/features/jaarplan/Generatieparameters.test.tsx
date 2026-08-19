@@ -188,6 +188,15 @@ function stubFetch(
       // unrouted URL, so every render in this file resolved `useDekking` to its error state and painted
       // `kalender.ongeplandeDoelenOnbekend` — including the axe assertion, which was then measuring a permanent error
       // state nobody meant to put there. Exactly the defect the sibling file's own comment warns about.
+      // Longer path FIRST: `/dekking/voortgang` extends `/dekking`, and since the kalender itself reads the
+      // voortgang figures (for the whole-curriculum caveat) an unrouted one falls through to this branch and hands it a
+      // payload with no ceiling, which reads as a withheld figure.
+      if (url.includes("/dekking/voortgang")) {
+        return new Response(
+          '{"bereik":"EigenJaarFase","gemetenJaarFasen":["L3"],"isTerugvalNaarHeelCurriculum":false,"aantalBuitenBereik":0,"isBetrouwbaar":true,"aantalOnopgelosteVervallenPlaatsingen":0,"aantalGedekt":8,"aantalMogelijkGedekt":8,"aantalLeerplandoelen":8,"aantalOnbereikbaar":0}',
+          { status: 200 },
+        );
+      }
       if (url.includes("/dekking")) {
         return new Response(
           JSON.stringify({

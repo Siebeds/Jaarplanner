@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useDroppable } from "@dnd-kit/core";
 
@@ -232,6 +232,30 @@ export function Periodekolom({
     open the confirmation in whichever column re-rendered, and the sentence names "deze periode".
   */
   const [vraagtBevestiging, setVraagtBevestiging] = useState(false);
+  const periodeTrigger = useRef<HTMLButtonElement>(null);
+  const periodeBevestig = useRef<HTMLButtonElement>(null);
+  const bevestigingWasOpen = useRef(false);
+  /**
+   * Focus follows the confirmation, on the pattern `Themakiezer` documents (audit finding, 2026-08-20).
+   *
+   * The trigger is **replaced** by the confirmation and back again, so without this the keyboard user who opened it
+   * lands on `<body>` and loses their place. `Themakiezer` measured exactly that in a browser and records that no test
+   * caught it; the epic entry for this story claimed these confirmations "do not trap focus or lose it", which was half
+   * true. They do not trap it.
+   *
+   * **Guarded on the PREVIOUS value rather than called from the handler**, which is the part that is easy to get wrong:
+   * `setState` is batched, so at the moment the click handler runs the element being focused is still unmounted and the
+   * ref is null. `Themakiezer` shipped that bug first and its comment is the record.
+   */
+  useEffect(() => {
+    if (vraagtBevestiging && !bevestigingWasOpen.current) {
+      periodeBevestig.current?.focus();
+    } else if (!vraagtBevestiging && bevestigingWasOpen.current) {
+      periodeTrigger.current?.focus();
+    }
+
+    bevestigingWasOpen.current = vraagtBevestiging;
+  }, [vraagtBevestiging]);
   const teVol = belasting?.isOverbelast ?? false;
 
   // Disabled rather than absent at the fine tier: hooks cannot be conditional, and dnd-kit's own `disabled` is the
@@ -509,6 +533,7 @@ export function Periodekolom({
                   {t("kalender.periodeHergenereerGevolg")}
                 </p>
                 <Button
+                  ref={periodeBevestig}
                   type="button"
                   variant="destructive"
                   size="sm"
@@ -541,6 +566,7 @@ export function Periodekolom({
               </>
             ) : (
               <Button
+                ref={periodeTrigger}
                 type="button"
                 variant="ghost"
                 size="sm"

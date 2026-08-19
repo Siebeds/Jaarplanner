@@ -164,7 +164,7 @@ export interface Doelenfilter {
    * URL; the Doelkiezer scopes to everything a class teaches, and a kleutergroep teaches three codes because
    * `Leerjaar = 0` cannot say which kleuterjaar it is. A second field (`jaarFasen`) would be two names for one
    * dimension and would drift the first time only one of them was updated, so this is a union that
-   * {@link buildParams} serialises as a repeatable `?jaarFase=`, which is exactly what the endpoint accepts.
+   * `filterNaarQuery` (this feature's `api.ts`) serialises as a repeatable `?jaarFase=`, which is exactly what the endpoint accepts.
    *
    * `schrijfFilter` and `actieveDimensies` both test `typeof === "string"`, so the list form is deliberately invisible
    * to the URL: the picker has no shareable state to write, and a repeated parameter in a filter chip would be a

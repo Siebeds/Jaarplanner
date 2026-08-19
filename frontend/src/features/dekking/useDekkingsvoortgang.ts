@@ -22,9 +22,11 @@ import type { Dekkingsbereik } from "./types";
  * because it is the same one the dekkingsoverzicht already cannot work without.
  *
  * **One thing did have to change in those writers, and pretending otherwise would have shipped CR4 broken.** They used
- * `removeQueries`, which clears the entry without notifying observers, so this bar — the first dekking consumer mounted
- * on the same screen as the write — sat perfectly still through exactly the work CR4 exists to make visible. The five
- * now share one helper that uses `resetQueries`. The full measurement is on `vernieuwDekking`.
+ * `removeQueries`, which clears the entry without notifying observers, so on `/themas` — where nothing else re-renders
+ * on a dekking-affecting write — this bar sat perfectly still through exactly the work CR4 exists to make visible. The
+ * five now share one helper that uses `resetQueries`. The full measurement, and the correction to the first version of
+ * this claim, are on `vernieuwDekking`: the kalender was **not** previously unaffected, so this bar was never "the
+ * first consumer mounted beside a write".
  *
  * **Contrast `weekplanning`, which deliberately is its own family.** That one answers a different question over a
  * different range and a day-level edit cannot move a coverage figure at all (Art. V.1). This is the *same*

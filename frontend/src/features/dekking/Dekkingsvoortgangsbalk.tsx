@@ -114,7 +114,9 @@ export function Dekkingsvoortgangsbalk({
     yet, and a skeleton bar would be a shape a teacher reads as a figure of zero. Every write that moves this figure
     DROPS the cache entry rather than invalidating it (see `useDekkingsvoortgang`), so this branch is also what a
     teacher sees for the length of the refetch after they link a doel, which is the alternative to showing them the
-    pre-edit number.
+    pre-edit number. Every such write goes through `vernieuwDekking`, which **resets** rather than removes: a remove
+    would clear the entry without notifying this observer, and on `/themas` nothing else re-renders to rebuild it, so
+    the bar would never move at all.
   */
   if (voortgang.data === undefined) {
     return null;

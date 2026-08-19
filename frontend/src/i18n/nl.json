@@ -767,6 +767,7 @@
     "doelBereikGemeten": "Je zoekt in de doelen van {fasen}.",
     "doelBereikGemetenAlles": "Je zoekt in alle ingeladen doelen, dus ook die van andere jaren en fases.",
     "doelBereikOnbekend": "Van deze klas is geen jaar of fase bekend, dus zoek je in alle ingeladen doelen.",
+    "doelBereikNietGeladen": "De gegevens van deze klas konden niet geladen worden, dus zoek je nu in alle ingeladen doelen.",
     "doelZoekKort": "Typ minstens twee tekens om te zoeken.",
     "doelZoekBezig": "Er wordt gezocht.",
     "doelZoekFout": "De leerplandoelen konden niet geladen worden. Probeer het opnieuw.",

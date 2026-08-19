@@ -85,6 +85,40 @@ Per rij hebben we vier gegevens nodig:
 
 ---
 
+## 7. Blijft er náást de weekweergave ook een jaarbrede fijne weergave bestaan?
+
+**Deze vraag stond al opgeschreven in onze eigen planning, met de mededeling dat ze hier stond. Dat was niet zo, en dat is precies het probleem dat we u willen voorleggen.** Ze is hier bijgevoegd op 20 augustus 2026, nadat een controleronde vaststelde dat ze nergens terechtgekomen was waar u ze kon zien. Ondertussen is het scherm dat van het antwoord afhangt al gebouwd.
+
+De kalender kan een jaarplan op twee grofheden tonen: per **themaperiode** (4–6 weken) en per **subthemaperiode** (ongeveer 2 weken). Sinds deze maand kan een leerkracht daarnaast **in** één themaperiode duiken en die week per week plannen, met de activiteiten op een concrete dag.
+
+- **De vraag:** is die jaarbrede subthemaperiode-weergave nog nodig nu de leerkracht in een periode kan duiken? Of zijn er nu twee manieren om hetzelfde te zien, waarvan er één weg mag?
+- **Waarom wij het niet beslissen:** het is een onderwijskundige keuze over hoe een leerkracht plant, niet een technische. Beide bestaan vandaag naast elkaar, en dat is de toestand die onze eigen notitie *"kies expliciet, laat niet beide staan en hoop maar"* verbiedt — we staan er dus nu in.
+- **Wat het kost om te laten zoals het is:** twee weergaven onderhouden die grotendeels hetzelfde vertellen, en een leerkracht die moet uitzoeken welke van de twee ze nodig heeft.
+
+---
+
+## 8. Mag de doelenkiezer zich richten op de klas, ook waar het thema van de hele school is?
+
+Sinds deze maand krijgt een leerkracht die een leerplandoel opzoekt standaard de doelen van **haar eigen leerjaar** te zien, met een knop om het hele curriculum erbij te halen. Dat is wat u vroeg: een leerkracht van het derde leerjaar kreeg kleuterdoelen voorgeschoteld.
+
+**Er zit één plek waar dat wringt en die willen we u niet stil laten passeren.** Een **thema** en zijn twee of drie overkoepelende doelen zijn van de **hele school**, niet van één klas: elke klas werkt hetzelfde thema op haar eigen manier uit. Toch hangt de standaardselectie op dat niveau nu af van welke klas er bovenaan het scherm gekozen staat. Twee leerkrachten die hetzelfde schoolthema bewerken, zien dus een andere beginlijst.
+
+- **De vraag:** mag dat zo, of moet de kiezer op het schoolbrede niveau (thema en themadoel) juist het hele curriculum aanbieden, en alleen op klasniveau (subthema en activiteit) versmallen?
+- **Wat er al voor pleit om het te laten:** wie een doel van een ander jaar zoekt, ziet een knop *"Heel curriculum"* en een zin die vertelt in welke doelen er gezocht is. Er verdwijnt niets, het staat alleen niet vooraan.
+- **Waarom we het toch vragen:** een schoolbreed gegeven dat er per klas anders uitziet, is precies het soort verschil waar niemand aan denkt tot twee mensen elkaar tegenspreken.
+
+---
+
+## 9. Moet het verwijderen van een klas tegengehouden worden als er nog dagplanning aan hangt?
+
+**Dit is een technische vraag met een onderwijskundige kern, en beide antwoorden hebben een prijs.** Een controleronde vond op 20 augustus 2026 dat een beveiliging die dit had moeten tegenhouden, in werkelijkheid nooit afgaat: een klas verwijderen kan vandaag de weekplanning die eraan hangt stil meenemen.
+
+- **Antwoord A — tegenhouden.** De tool weigert de klas te verwijderen zolang er nog activiteiten op dagen staan, en zegt wat er eerst weg moet. Nadeel: er is een omweg waarlangs inhoud van een *andere* klas onder deze klas terecht kan komen, en dan kan een directie een klas niet meer verwijderen om iets wat ze zelf niet heeft gepland en misschien niet ziet.
+- **Antwoord B — laten gebeuren, maar het zeggen.** Verwijderen mag, en de tool waarschuwt vooraf hoeveel ingeplande activiteiten daarmee verdwijnen. Nadeel: werk van een leerkracht verdwijnt op één bevestiging.
+- **Wat wij zouden doen als u niets zegt:** antwoord A, want de tool hoort nooit uit zichzelf werk van een leerkracht weg te gooien. Maar de omweg hierboven maakt dat minder duidelijk dan het klinkt, en daarom leggen we het voor.
+
+---
+
 ## Ter info: wat we zelf beslist hebben
 
 Deze keuzes hebben we genomen zonder ze aan u voor te leggen, omdat ze het bouwen betreffen en niet het onderwijs. Ze zijn omkeerbaar. Laat weten als u er anders over denkt.

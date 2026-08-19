@@ -252,6 +252,13 @@ export interface ThemaFakeOpties {
   /** Serve an empty Op.stap register, so the picker must say "nothing imported" rather than "not found". */
   geenCurriculum?: boolean;
   /**
+   * Fail the klas read outright, so the picker cannot tell what this class teaches.
+   *
+   * Distinct from {@link onbepaaldeKlas}: that one is an answer ("could not be derived"), this one is the absence of an
+   * answer ("could not be loaded"). Both widen the search, and only the second is a degrade the screen must announce.
+   */
+  klasLeesFaalt?: boolean;
+  /**
    * Answer the klas read with an **empty** `jaarFasen`: the unresolved graadklas whose own set cannot be derived.
    *
    * The picker must WIDEN on this and say why, never narrow to nothing -- a search scoped to an empty set makes every
@@ -389,6 +396,10 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
     //     search back into the unscoped one this story exists to replace. That is the "reachable but not tested" gap
     //     this repo has paid for six times; here it would have made the whole story untestable while green. ---
     if (KLAS_DETAIL_PAD.test(url.pathname)) {
+      if (opties.klasLeesFaalt) {
+        return json({ detail: "stuk" }, 500);
+      }
+
       const klasId = url.pathname.slice("/api/klassen/".length);
       const klas = SCHOOLJAREN[0].klassen.find((k) => k.id === klasId);
 

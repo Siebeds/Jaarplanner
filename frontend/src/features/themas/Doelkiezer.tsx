@@ -114,6 +114,15 @@ export function Doelkiezer({ waaraan, klasId, gekoppeldeCodes, onKoppel, bezig }
    * from it: a screen whose worst case is a wider search must not have a worst case of a missing screen.
    */
   const eigenFasen = klas.data?.jaarFasen ?? [];
+  /**
+   * The class's own set could not be **loaded**, which is a different fact from could not be **derived**.
+   *
+   * Both end in an unscoped search, because widening is the safe direction. But only one of them is a state the teacher
+   * asked for: a failed read silently restores exactly the whole-register search CR5 exists to remove, and without this
+   * flag the screen said nothing at all, since `doelBereikOnbekend` is gated on `klas.data` and so is unreachable here.
+   * Every other degrade in this app says so; this one did not.
+   */
+  const klasOnbekend = klas.isError;
   const kanScopen = eigenFasen.length > 0;
   /*
     `!kanScopen` here is **belt and braces, and a mutation check proved it** rather than my reading it.
@@ -187,17 +196,25 @@ export function Doelkiezer({ waaraan, klasId, gekoppeldeCodes, onKoppel, bezig }
         with a class whose codes could not be derived, both positions would search the whole curriculum and the control
         would do nothing (the E3-06 rule).
 
-        A two-button group with `aria-pressed`, matching the shape of `Bereikschakelaar` and `Jaarfasekiezer` on
-        `/dekking` so the vocabulary a teacher learns on one screen holds on the other. State on `aria-pressed` and on
-        weight, never on colour alone (Art. XII).
+        A two-button group with `aria-pressed`, borrowing the *vocabulary* of `Bereikschakelaar` and `Jaarfasekiezer`
+        on `/dekking` so what a teacher learns on one screen holds on the other. **Not the same treatment, and an
+        earlier version of this comment claimed it was:** that control fills its pressed option with a solid `bg-petrol`
+        and `text-petrol-foreground`; this one uses `bg-petrol-wash` with `text-ink`, because it sits inside a form panel
+        where a solid fill competes with the primary action beside it. Art. XII holds on `aria-pressed` plus
+        `font-semibold`, two non-colour carriers; the fill is a third and a weaker one here than on the sibling.
       */}
       {kanScopen && (
         <div
           role="group"
-          aria-label={t("themabeheer.doelBereikLabel")}
+          // `aria-labelledby` rather than a second copy of the string: with both, a screen reader announced "Zoeken in"
+          // twice, once as the group's own name and once as its first child. `Themakiezer` records fixing the same
+          // thing on the board.
+          aria-labelledby={`${veldId}-bereik`}
           className="mt-2 flex flex-wrap items-center gap-1.5"
         >
-          <span className="text-xs font-medium text-ink-zacht">{t("themabeheer.doelBereikLabel")}</span>
+          <span id={`${veldId}-bereik`} className="text-xs font-medium text-ink-zacht">
+            {t("themabeheer.doelBereikLabel")}
+          </span>
           {[false, true].map((alles) => (
             <button
               key={String(alles)}
@@ -230,13 +247,15 @@ export function Doelkiezer({ waaraan, klasId, gekoppeldeCodes, onKoppel, bezig }
         third branch fires only for a class that HAS an answer and whose answer is empty, which is why it can say "geen
         jaar of fase bekend" rather than "not loaded yet".
       */}
-      {klasId && klas.data && (
+      {klasId && (klas.data || klasOnbekend) && (
         <p className="mt-2 text-xs text-ink-zacht">
-          {!kanScopen
-            ? t("themabeheer.doelBereikOnbekend")
-            : gescopedeFasen
-              ? t("themabeheer.doelBereikGemeten", { fasen: gescopedeFasen.join(", ") })
-              : t("themabeheer.doelBereikGemetenAlles")}
+          {klasOnbekend
+            ? t("themabeheer.doelBereikNietGeladen")
+            : !kanScopen
+              ? t("themabeheer.doelBereikOnbekend")
+              : gescopedeFasen
+                ? t("themabeheer.doelBereikGemeten", { fasen: gescopedeFasen.join(", ") })
+                : t("themabeheer.doelBereikGemetenAlles")}
         </p>
       )}
 

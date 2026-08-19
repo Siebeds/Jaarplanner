@@ -365,8 +365,20 @@ describe("Jaarplankalender", () => {
     // The count says GEKOPPELD, not "gedekt": doelcodes are links, and Art. V.1 makes a doel gedekt only
     // once its thema is placed. Asserting the exact word is the point — "gedekt" here would be a false
     // coverage claim in the product whose purpose is provable coverage.
-    expect(screen.getByText("2 doelen gekoppeld")).toBeInTheDocument();
-    expect(screen.queryByText(/gedekt/)).toBeNull();
+    //
+    // **Scoped to the CARD, which is a correction rather than a weakening** (E9-06 fix round, 2026-08-20). The negative
+    // assertion used to be document-wide, and that was only ever true because nothing on the board reported coverage.
+    // E9-06 put a coverage bar in the knelpunt slot, so *"8 van 8 doelen gedekt"* is now a legitimate sentence a few
+    // hundred pixels away, and a document-wide `/gedekt/` would forbid the very figure CR4 asked for. What the claim was
+    // always about is this card: a link count must not call itself coverage. Scoping it says that, and keeps it able to
+    // fail — the document-wide version would now fail on correct behaviour, which is worse than not asserting at all.
+    //
+    // *It survived the E9-06 commit on timing rather than on truth,* which is worth recording: the bar renders `null`
+    // until its own request resolves, so the assertion ran in the window before it. A negative assertion that depends on
+    // a request not having answered yet is the same defect this branch corrected twice in E4-01's cache tests.
+    const themakaart = screen.getByText("Ik en mijn klas").closest("article") as HTMLElement;
+    expect(within(themakaart).getByText("2 doelen gekoppeld")).toBeInTheDocument();
+    expect(within(themakaart).queryByText(/gedekt/)).toBeNull();
 
     expect(screen.getByText(/past bij het begin van het schooljaar/)).toBeInTheDocument();
   });
@@ -772,8 +784,10 @@ describe("Jaarplankalender", () => {
     // Narrow to one kleuterjaar AFTER the run. The plan does not change; what the figures are over does.
     //
     // `findByRole`, not `getByRole`, and the reason is worth recording: a successful run DROPS the live dekking cache
-    // (E4-01), and the chooser's second gate reads `aantalLeerplandoelen` off that query rather than off the latch, so
-    // the control really does disappear for the length of the refetch and come back. The latch was added to stop
+    // (E4-01), and the chooser's second gate USED TO read `aantalLeerplandoelen` off that query rather than off the
+    // latch, so the control really did disappear for the length of the refetch and came back. *Since E9-06 latched that
+    // gate too it no longer does, and `findByRole` is kept here only because the FIGURE below still arrives late.* The
+    // latch two blocks up in the component was added to stop
     // exactly that flicker for the codes; the gate defeats it for the figure. Self-healing, pre-existing and outside
     // this story, but a test that used `getByRole` here would fail intermittently and look like a flake.
     const kiezer = await screen.findByRole("group", { name: t("dekking.jaarFaseLabel") });
@@ -973,7 +987,21 @@ function aanpassen(themaNaam: string) {
  * Serves the reads and records every write, answering each write with `naPlan` so the board re-renders from
  * the response, exactly as it does against the real API.
  */
-function stubBewerking(plan: Jaarplan, naPlan: Jaarplan = plan, mislukStatus?: number) {
+/**
+ * A stub for the placement writes.
+ *
+ * **`dekking` is optional and, when omitted, deliberately NOT routed.** Most tests here are about the write and its
+ * effect on the board, and leaving the coverage reads to 404 keeps them out of the assertions. Pass it when the test is
+ * about something that depends on the figure -- the kleuterjaar chooser, for instance, which only exists for a class
+ * with more than one code to choose between.
+ */
+function stubBewerking(
+  plan: Jaarplan,
+  naPlan: Jaarplan = plan,
+  mislukStatus?: number,
+  dekking?: Record<string, unknown>,
+  dekkingVertraging = 0,
+) {
   const verzoeken: { method: string; url: string; body: unknown }[] = [];
 
   vi.stubGlobal(
@@ -1006,6 +1034,22 @@ function stubBewerking(plan: Jaarplan, naPlan: Jaarplan = plan, mislukStatus?: n
       if (url.includes("/jaarplan/parameters")) {
         return new Response(
           JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }),
+          { status: 200 },
+        );
+      }
+      // Only when the test asked for it, and the longer path first: `/dekking/voortgang` extends `/dekking`.
+      //
+      // `dekkingVertraging` makes the refetch window WIDE enough to observe. Without it the stub answers within the same
+      // microtask queue, so the interval in which a coverage read has been cleared and not yet answered is too short for
+      // any assertion to land inside -- which is exactly why the chooser flicker went unpinned. Same device E4-01 used
+      // in the browser, where it slowed the dekking read by three seconds to make the stale window look-at-able.
+      if (dekking !== undefined && url.includes("/dekking")) {
+        if (dekkingVertraging > 0) {
+          await new Promise((klaar) => setTimeout(klaar, dekkingVertraging));
+        }
+
+        return new Response(
+          JSON.stringify(url.includes("/dekking/voortgang") ? voortgangUit(dekking) : dekking),
           { status: 200 },
         );
       }
@@ -4470,6 +4514,26 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
   const VOOR_BEWERKING = { aantalGedekt: 0, aantalLeerplandoelen: 2 };
 
   /**
+   * Seeds the pre-edit figure **after** the mount fetch has resolved, and returns it.
+   *
+   * **Why this exists, and it is a correction to my own fix** (audit MAJOR, mutation-proven). `zetDekkingInCache` writes
+   * immediately after `renderKalender()`. That is fine under `stubBewerking`, which does not route `/dekking`, so the
+   * seeded value is the only one there. It is **not** fine under `stubFetch`, which *does* route it: the mount refetch
+   * overwrites the seed before the button is ever pressed, so an assertion that the seed is gone afterwards passes
+   * whether or not the edit cleared anything. The generation test was exactly that shape, and deleting
+   * `vergeetDekking` from `useGenereerJaarplan` left the `EIGEN_SCOPE` assertion green -- the same call site E4-01's
+   * round-1 audit filed for being pinned by nothing.
+   *
+   * Waiting for the mount's own answer first, then seeding over it, makes the seed the value the cache actually holds
+   * at the moment of the press, so its disappearance is evidence again.
+   */
+  async function zaaiNaEersteAntwoord(queryClient: QueryClient) {
+    await waitFor(() => expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeDefined());
+    zetDekkingInCache(queryClient);
+    expect(queryClient.getQueryData(EIGEN_SCOPE)).toEqual(VOOR_BEWERKING);
+  }
+
+  /**
    * E4-01's promise, asserted as the promise rather than as one mechanism's side effect.
    *
    * **Rewritten by E9-06 (2026-08-19), and the reason is worth more than the assertion.** These three tests used to
@@ -4589,7 +4653,9 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
     };
     stubFetch(maakJaarplan([]), resultaat);
     const { queryClient } = renderKalender();
-    zetDekkingInCache(queryClient);
+    // Seeded AFTER the mount fetch, or the assertion below is vacuous: `stubFetch` routes `/dekking`, so a seed written
+    // before the mount is overwritten by the mount itself. See `zaaiNaEersteAntwoord`.
+    await zaaiNaEersteAntwoord(queryClient);
 
     fireEvent.click(await screen.findByRole("button", { name: "Jaarplan genereren…" }));
 
@@ -4600,6 +4666,69 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
     // Scoped: another class's figure is untouched, asserted on its VALUE so "defined" cannot be satisfied by a refetch
     // that overwrote it.
     expect(queryClient.getQueryData(ANDERE_KLAS)).toEqual({ aantalGedekt: 3, aantalLeerplandoelen: 12 });
+  });
+
+  it("keeps the kleuterjaar chooser on screen across an edit, instead of blinking out with the refetch", async () => {
+    /*
+      **The one behavioural guard E9-06 added to this screen, and nothing pinned it** (audit MAJOR, mutation-proven:
+      reverting the latch left all 695 tests green).
+
+      The chooser's second gate asks whether there is a figure for it to govern. That answer lives on a query which every
+      placement edit now clears and refetches, so read straight off `dekking.data` the control vanishes for the length of
+      the request and comes back -- from under the cursor that just clicked it, on a board that scrolls sideways. The
+      latch holds the fact that this class HAS doelen to measure, which cannot become false by refetching.
+
+      **The flicker itself is older than E9-06 and that matters for who owns it:** `main`'s own test comment records the
+      chooser disappearing across a generation run under `removeQueries`, calling it self-healing and pre-existing. What
+      E9-06 changed is that a reset makes it happen on every accept, reject and drag rather than only on a run, which is
+      what turned a documented curiosity into something worth fixing.
+
+      Asserted with `getByRole` inside `waitFor`, deliberately: `findByRole` would wait for the control to come BACK and
+      pass on exactly the blink this test exists to forbid.
+    */
+    const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
+    const naPlan = maakJaarplan([
+      maakPlaatsing({ id: "p1", themaNaam: "Water", status: "Aanvaard" }),
+    ]);
+    // A kleutergroep, because the chooser only exists for a class with more than one code to choose between.
+    stubBewerking(
+      plan,
+      naPlan,
+      undefined,
+      {
+        ...DEKKING_NIETS_ONTBREEKT,
+        gemetenJaarFasen: ["JK", "K2", "K3"],
+        beschikbareJaarFasen: ["JK", "K2", "K3"],
+        aantalGedekt: 4,
+        aantalLeerplandoelen: 45,
+      },
+      // Wide enough to assert inside. Without it the refetch resolves in the same microtask queue and the window this
+      // test is about does not exist to observe -- which is how the guard shipped unpinned.
+      150,
+    );
+    renderKalender();
+
+    await screen.findByText("Water");
+    const kiezer = () => screen.queryByRole("group", { name: t("dekking.jaarFaseLabel") });
+    await waitFor(() => expect(kiezer()).toBeInTheDocument(), { timeout: 3000 });
+
+    fireEvent.click(
+      within(kaart("Water")).getByRole("button", {
+        name: t("kalender.aanvaardenLabel", { thema: "Water" }),
+      }),
+    );
+
+    // INSIDE the refetch window: the figures are cleared and not yet answered, which is the only moment the unlatched
+    // expression evaluates to `undefined ?? 0` and hides the control.
+    expect(
+      await within(kaart("Water")).findByText(t("suggestieStatus.aanvaard"), undefined, {
+        timeout: 3000,
+      }),
+    ).toBeInTheDocument();
+    expect(kiezer()).toBeInTheDocument();
+
+    // And still there once the answer lands, so the assertion above cannot pass by having run too late.
+    await waitFor(() => expect(kiezer()).toBeInTheDocument(), { timeout: 3000 });
   });
 
   it("gives the dekkingsoverzicht its own loading line after an edit, never the figure from before it", async () => {
@@ -5652,6 +5781,58 @@ describe("Jaarplankalender — de gevolgtekst staat bij de druk, niet boven het 
 
     // ONE confirmation, not seven: the sentence says "deze periode", so a shared one would be false in six columns.
     expect(screen.getAllByText(t("kalender.periodeHergenereerGevolg"))).toHaveLength(1);
+  });
+
+  it("houdt de focus bij de bevestiging en geeft ze terug bij annuleren", async () => {
+    /*
+      **Pinned because the audit found it missing, and because the epic entry claimed the opposite.** That entry said
+      these confirmations "do not trap focus or lose it"; they do not trap it, and they did lose it. The trigger is
+      *replaced* by the confirmation, so a keyboard user who opened it landed on `<body>` and lost their place on a board
+      that scrolls sideways.
+
+      `Themakiezer` measured exactly this in a browser and records that no test caught it. This is that test, for the
+      other two places the pattern now lives.
+    */
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    const trigger = screen.getByRole("button", { name: t("kalender.hergenereer") });
+    fireEvent.click(trigger);
+
+    // Onto the answer, not the cancel: the teacher pressed a button meaning "yes", so the affirmative is where they are.
+    const bevestig = screen.getByRole("button", { name: t("kalender.hergenereerBevestig") });
+    await waitFor(() => expect(bevestig).toHaveFocus());
+
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.annuleren") }));
+
+    // And back to the trigger, which by then is a NEWLY mounted element — hence the fresh query rather than `trigger`.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toHaveFocus(),
+    );
+    expect(document.body).not.toHaveFocus();
+  });
+
+  it("houdt de focus bij de periodebevestiging en geeft ze terug aan de kolom", async () => {
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+    const knoppen = screen.getAllByRole("button", {
+      name: new RegExp(t("kalender.periodeHergenereer")),
+    });
+    fireEvent.click(knoppen[0]);
+
+    const bevestig = screen.getByRole("button", { name: t("kalender.periodeHergenereerBevestig") });
+    await waitFor(() => expect(bevestig).toHaveFocus());
+
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.annuleren") }));
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: new RegExp(t("kalender.periodeHergenereer")) })[0],
+      ).toHaveFocus(),
+    );
   });
 
   it("draait niets wanneer de leerkracht de bevestiging annuleert", async () => {

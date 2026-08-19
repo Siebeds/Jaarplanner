@@ -1438,6 +1438,31 @@ describe("Klaslaag — de Doelkiezer scoopt op de klas (E9-07, CR5)", () => {
     ).toBe(true);
   });
 
+  it("zegt het wanneer de klasgegevens niet geladen konden worden, in plaats van stil te verbreden", async () => {
+    /*
+      **A failed read is not the same fact as an undeducible class, and the screen must not conflate them** (audit
+      finding, 2026-08-20). Both widen the search, because widening is the safe direction. But an undeducible graadklas
+      is an *answer*, while a 500 is the absence of one, and only the second silently restores exactly the
+      whole-register search CR5 exists to remove. Before this the picker said nothing at all in that state:
+      `doelBereikOnbekend` is gated on the payload having arrived, so it was unreachable.
+    */
+    const fake = await opendPicker(L3_PAD, { klasLeesFaalt: true });
+
+    // Widened: a kleuterdoel is offered to an L3 class, which is the pre-CR5 behaviour and the honest fallback here.
+    expect(await screen.findByText("De kleuter observeert planten in de omgeving.")).toBeInTheDocument();
+    expect(screen.getByText(DOEL_L3.tekst)).toBeInTheDocument();
+
+    // And it SAYS so, with the degrade rather than the graadklas sentence.
+    expect(screen.getByText(t("themabeheer.doelBereikNietGeladen"))).toBeInTheDocument();
+    expect(screen.queryByText(t("themabeheer.doelBereikOnbekend"))).toBeNull();
+
+    // No scope control, because there is nothing to switch between.
+    expect(screen.queryByRole("group", { name: t("themabeheer.doelBereikLabel") })).toBeNull();
+
+    const zoekvragen = fake.urls.filter((url) => url.startsWith("/api/leerplandoelen?"));
+    expect(zoekvragen.every((url) => !url.includes("jaarFase="))).toBe(true);
+  });
+
   it("verbreedt in plaats van naar niets te versmallen wanneer de klas geen jaar of fase heeft", async () => {
     /*
       The unresolved graadklas. An empty `jaarFasen` means the set COULD NOT BE DERIVED, never "teaches nothing", and a

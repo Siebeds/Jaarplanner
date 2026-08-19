@@ -9,7 +9,10 @@
   never spoke to.
 - **Realises:** FR-6.2 (the "en activiteiten" half), FR-6.3 (which left the view levels undecided), FR-7.2.
   **Constitution:** Art. IX.2 (class/age scoping), Art. IX.3 (planningsblok granularity), Art. IV.2 (human-in-the-loop),
-  Art. V.1 (coverage computed, never stored).
+  Art. V.1 (coverage computed, never stored), Art. VIII (layering: the placement is a domain member, its mapping lives in
+  Infrastructure, and the read model is reached through a port). *Art. VIII was listed in the traceability matrix and not
+  here until 2026-08-20, so the two disagreed about what this decision claims; reconciled towards the matrix, because the
+  layering argument is genuinely part of decision 5 below.*
 - **Backlog:** E9-03 (built), E9-04 / E9-05 (build on it).
 
 ## Context
@@ -34,7 +37,9 @@ it is what anyone reaching for "a finer view" will reach for first.
 
 **1. An activiteit is placed on a `DateOnly`.** `Activiteitplaatsing { Id, JaarplanId, ActiviteitId, Datum, Status,
 Volgorde }` hangs off the `Jaarplan` aggregate. There is no block key, no tier and no ordinal on it, and a test asserts
-the absence of all four.
+the absence of each. *(This read "all four" until 2026-08-20 while naming three; the test itself asserts six absences
+plus the `DateOnly` type, so the prose was the only thing that could not count. Corrected on an audit finding, and
+worth the line because a number in a decision record is the kind of detail a later reader trusts without checking.)*
 
 **2. `Planningsblokniveau` gains no member.** The planning grid stays the ratified two-tier themaperiode /
 subthemaperiode pair, configurable behind the E3-05 seam (Art. IX.3, ADR-0013). A test pins the enum's membership.

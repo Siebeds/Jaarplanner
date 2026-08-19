@@ -9,13 +9,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Uitleg } from "../../app/uitleg";
 import { Jaarfasekiezer } from "../dekking/Jaarfasekiezer";
 import { Button } from "../../components/ui/button";
 import { t, tAantal, type TranslationKey } from "../../i18n";
 import { ApiError } from "../../lib/api";
 import { Dekkingsvoortgangsbalk } from "../dekking/Dekkingsvoortgangsbalk";
+import { useDekkingsvoortgang } from "../dekking/useDekkingsvoortgang";
 import { useDekking } from "../dekking/useDekking";
 import { Jaarspine } from "./Jaarspine";
 import { Periodekolom, Vakantiegat, type Periodefoutsoort } from "./Periodekolom";
@@ -133,6 +134,30 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
   const heeftDoelenLatch = useRef(false);
   // E9-08: the regeneration press asks first, so its consequence paragraph does not have to live above the board.
   const [vraagtHergeneratie, setVraagtHergeneratie] = useState(false);
+  const hergenereerTrigger = useRef<HTMLButtonElement>(null);
+  const hergenereerBevestig = useRef<HTMLButtonElement>(null);
+  const hergeneratieWasOpen = useRef(false);
+  /**
+   * Focus follows the confirmation, on the pattern `Themakiezer` documents (audit finding, 2026-08-20).
+   *
+   * The trigger is **replaced** by the confirmation and back again, so without this the keyboard user who opened it
+   * lands on `<body>` and loses their place. `Themakiezer` measured exactly that in a browser and records that no test
+   * caught it; the epic entry for this story claimed these confirmations "do not trap focus or lose it", which was half
+   * true. They do not trap it.
+   *
+   * **Guarded on the PREVIOUS value rather than called from the handler**, which is the part that is easy to get wrong:
+   * `setState` is batched, so at the moment the click handler runs the element being focused is still unmounted and the
+   * ref is null. `Themakiezer` shipped that bug first and its comment is the record.
+   */
+  useEffect(() => {
+    if (vraagtHergeneratie && !hergeneratieWasOpen.current) {
+      hergenereerBevestig.current?.focus();
+    } else if (!vraagtHergeneratie && hergeneratieWasOpen.current) {
+      hergenereerTrigger.current?.focus();
+    }
+
+    hergeneratieWasOpen.current = vraagtHergeneratie;
+  }, [vraagtHergeneratie]);
 
   const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId, niveau);
 
@@ -148,6 +173,15 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
    * offering it here would put a second scope control on the board for a figure that is about *this class*.
    */
   const dekking = useDekking(klasId, "EigenJaarFase", jaarFase);
+
+  /**
+   * The same figures the coverage bar draws, for the fallback caveat below (E9-06 fix round, audit MAJOR).
+   *
+   * **The identical query key to the bar's, so this is the same cache entry and not a second request.** Declared here
+   * beside `useDekking` rather than next to the caveat it feeds, because everything below this point sits after an early
+   * return and a hook cannot be called conditionally.
+   */
+  const voortgang = useDekkingsvoortgang(klasId, "EigenJaarFase", jaarFase);
 
   // The GENERATION tier's grid, fetched independently of the zoom (E3-08 fix round 1, antagonist finding 1).
   //
@@ -451,12 +485,17 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
   }
   const beschikbareJaarFasen = beschikbaarLatch.current;
 
-  // **Latched for the same reason `beschikbareJaarFasen` is, and E9-06 is what made it necessary.** The condition used to
-  // read `dekking.data?.aantalLeerplandoelen ?? 0`, which is `undefined` for the length of any refetch. That was
-  // harmless while a placement edit merely REMOVED the cache entry, because a remove leaves a mounted observer holding
-  // its last answer; since the dekking family switched to `resetQueries` so the coverage bar actually moves, the data
-  // really does go away and back. Without the latch this chooser vanished from under the cursor that had just clicked
-  // it on every accept, reject and drag, which is the exact defect the latch two blocks up was written for.
+  // **Latched for the same reason `beschikbareJaarFasen` is. E9-06 did not create this defect; it made it routine.**
+  //
+  // The condition used to read `aantalLeerplandoelen` straight off the query, which is `undefined` for the length of any
+  // refetch, so the control vanished from under the cursor that had just clicked it — the exact defect the latch two
+  // blocks up was written for. *An earlier version of this comment blamed the switch to `resetQueries`, and that was
+  // wrong:* this file's own test comment already recorded the chooser disappearing across a generation run under
+  // `removeQueries`, calling it self-healing and pre-existing, because every placement mutation writes
+  // `setQueryData(jaarplanKey(...))` and that re-render was enough to rebuild the emptied query. What the reset changed
+  // is the frequency — every accept, reject and drag rather than only a run — which is what made it worth fixing.
+  // Pinned by `keeps the kleuterjaar chooser on screen across an edit`, which needs a deliberately slowed stub because
+  // the window is otherwise too short for any assertion to land inside.
   if ((dekking.data?.aantalLeerplandoelen ?? 0) > 0) {
     heeftDoelenLatch.current = true;
   }
@@ -468,12 +507,22 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
   // reach `isTerugvalNaarHeelCurriculum` with no line under it — a stale placement (`aantalGedekt === null`) and a fully
   // covered scope — and the sentence then points at nothing. Same gating discipline as `teVolUitleg` and `beslisUitleg`
   // below, and the same defect they were each fixed for.
+  //
+  // **Read off the VOORTGANG payload, which is the same query the figure it qualifies comes from** (E9-06 fix round,
+  // audit MAJOR). It used to read `dekking.data`, and that became wrong the moment the figure moved: the fraction now
+  // comes from `…/dekking/voortgang`, a handful of integers, while `/dekking` is the whole in-scope curriculum
+  // unpaged. Both are cleared by every accept, reject and drag, and the cheap one resolves first — so the number
+  // painted while its caveat was still `undefined`, and if `/dekking` errored while voortgang succeeded the caveat was
+  // absent for good. The comment at the render site says exactly what that costs: *the teacher reads a number several
+  // times too large with no way to tell.* A caveat must not be able to outlive or lag the figure it qualifies, and the
+  // only way to guarantee that is to derive both from one answer.
+  //
   const ongedektAantal =
-    dekking.data !== undefined && dekking.data.aantalGedekt !== null
-      ? dekking.data.aantalLeerplandoelen - dekking.data.aantalGedekt
+    voortgang.data !== undefined && voortgang.data.aantalGedekt !== null
+      ? voortgang.data.aantalLeerplandoelen - voortgang.data.aantalGedekt
       : null;
   const toonDekkingTerugval =
-    dekking.data?.isTerugvalNaarHeelCurriculum === true && (ongedektAantal ?? 0) > 0;
+    voortgang.data?.isTerugvalNaarHeelCurriculum === true && (ongedektAantal ?? 0) > 0;
 
   // **Te vol is a themaperiode property, so the board marks columns only at that tier** (owner ruling, 2026-07-31).
   // The arithmetic applied to a fortnight flags every filled sub-column — a thema's whole 4 to 6 weeks against the ~2
@@ -788,6 +837,7 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button
+                    ref={hergenereerBevestig}
                     type="button"
                     variant="destructive"
                     onClick={() => {
@@ -812,6 +862,7 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
               </div>
             ) : (
               <Button
+                ref={hergenereerTrigger}
                 type="button"
                 onClick={() =>
                   heeftPlan ? setVraagtHergeneratie(true) : generatie.mutate(parameters)
