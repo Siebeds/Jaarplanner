@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
 import { Dekkingsvoortgangsbalk } from "./Dekkingsvoortgangsbalk";
 import { vernieuwDekking } from "./useDekking";
+import { dekkingsvoortgangKey } from "./useDekkingsvoortgang";
 
 /**
  * Pins the coverage progress bar (E9-06, CR4).
@@ -208,9 +209,26 @@ describe("Dekkingsvoortgangsbalk — de toestanden zonder cijfer", () => {
         aantalOnopgelosteVervallenPlaatsingen: 2,
       },
     ]);
-    const { container } = renderBalk({ ingehoudenElders: true });
+    const { container, queryClient } = renderBalk({ ingehoudenElders: true });
 
-    await waitFor(() => expect(container).toBeEmptyDOMElement());
+    /*
+      **Waits for the ANSWER before asserting the absence, and the first version of this test did not.**
+
+      `waitFor(() => expect(container).toBeEmptyDOMElement())` passes on the very first poll, because the component
+      renders `null` while the request is in flight. So it asserted the LOADING state and would have gone green with the
+      `ingehoudenElders` guard deleted outright — proven by a mutation check, which is the only reason it was caught.
+
+      That is the same defect this story had just finished correcting in E4-01's cache tests one file over: an assertion
+      about an absence, made against a screen that had not answered yet. Waiting on the cache entry is deterministic
+      where waiting on the DOM is not, because the entry appears exactly once and never goes back.
+    */
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData(dekkingsvoortgangKey(KLAS_ID, "EigenJaarFase", null)),
+      ).toBeDefined(),
+    );
+
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("zegt dat de dekking niet berekend kon worden in plaats van te zwijgen", async () => {
