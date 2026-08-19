@@ -7,7 +7,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../../App";
 import { t } from "../../i18n";
-import { KLAS_K3, KLAS_L3, THEMA_HERFST, maakThemaFetchFake, type ThemaFakeOpties } from "./testdata";
+import {
+  DOEL_L3,
+  KLAS_K3,
+  KLAS_L3,
+  THEMA_HERFST,
+  maakThemaFetchFake,
+  type ThemaFakeOpties,
+} from "./testdata";
 
 /**
  * Pins the **class-scoped writes** of the beheer screens (E1-14 landing 2, FR-3.1/3.2, Art. IX.2).
@@ -218,6 +225,14 @@ describe("Klaslaag — activiteiten (FR-3.1)", () => {
   });
 });
 
+/**
+ * *These three tests search `WIS-L3-01` and used to search `MUZ-L2-01` / `NAT-K3-02` (changed 2026-08-19, E9-07).*
+ *
+ * Not a rename: the picker now scopes its search to the jaar/fase codes the class teaches, and `L3_PAD` is an L3 class,
+ * so an L2 or K3 code is no longer offered by default. That is CR5 working rather than a fixture detail, and searching
+ * the class's own code is what keeps these tests about what they are about (which endpoint a link posts to) instead of
+ * about the scope. The scope itself has its own block below.
+ */
 describe("Klaslaag — leerdoelen koppelen op klasniveau (FR-3.2)", () => {
   it("koppelt aan een subthema via doelkoppelingen en ontkoppelt via subdoelen", async () => {
     const fake = renderApp(L3_PAD);
@@ -229,12 +244,12 @@ describe("Klaslaag — leerdoelen koppelen op klasniveau (FR-3.2)", () => {
       }),
     );
     fireEvent.change(screen.getByLabelText(t("themabeheer.doelZoekLabel")), {
-      target: { value: "MUZ-L2-01" },
+      target: { value: "WIS-L3-01" },
     });
     fireEvent.click(
       await screen.findByRole("button", {
         name: t("themabeheer.doelKoppelAria", {
-          code: "MUZ-L2-01",
+          code: "WIS-L3-01",
           waaraan: t("themabeheer.niveauSubthema"),
         }),
       }),
@@ -248,7 +263,7 @@ describe("Klaslaag — leerdoelen koppelen op klasniveau (FR-3.2)", () => {
     const bijgewerkt = await klassectie();
     const ontkoppel = within(bijgewerkt).getAllByRole("button", {
       name: t("themabeheer.ontkoppelAria", {
-        code: "MUZ-L2-01",
+        code: "WIS-L3-01",
         waaraan: t("themabeheer.niveauSubthema"),
       }),
     });
@@ -269,7 +284,7 @@ describe("Klaslaag — leerdoelen koppelen op klasniveau (FR-3.2)", () => {
       }),
     );
     fireEvent.change(screen.getByLabelText(t("themabeheer.doelZoekLabel")), {
-      target: { value: "NAT-K3-02" },
+      target: { value: "WIS-L3-01" },
     });
 
     // Three pickers can be open on one screen (thema, subthema, activiteit). Identical labels would leave a
@@ -277,7 +292,7 @@ describe("Klaslaag — leerdoelen koppelen op klasniveau (FR-3.2)", () => {
     expect(
       await screen.findByRole("button", {
         name: t("themabeheer.doelKoppelAria", {
-          code: "NAT-K3-02",
+          code: "WIS-L3-01",
           waaraan: t("themabeheer.niveauSubthema"),
         }),
       }),
@@ -297,12 +312,12 @@ describe("Klaslaag — leerdoelen koppelen op klasniveau (FR-3.2)", () => {
       }),
     );
     fireEvent.change(screen.getByLabelText(t("themabeheer.doelZoekLabel")), {
-      target: { value: "MUZ-L2-01" },
+      target: { value: "WIS-L3-01" },
     });
     fireEvent.click(
       await screen.findByRole("button", {
         name: t("themabeheer.doelKoppelAria", {
-          code: "MUZ-L2-01",
+          code: "WIS-L3-01",
           waaraan: t("themabeheer.niveauActiviteit"),
         }),
       }),
@@ -313,7 +328,7 @@ describe("Klaslaag — leerdoelen koppelen op klasniveau (FR-3.2)", () => {
 
     const ontkoppel = await screen.findByRole("button", {
       name: t("themabeheer.ontkoppelAria", {
-        code: "MUZ-L2-01",
+        code: "WIS-L3-01",
         waaraan: t("themabeheer.niveauActiviteit"),
       }),
     });
@@ -1327,5 +1342,118 @@ describe("Klaslaag — een activiteit naar een ander subthema verplaatsen (E4-08
       defect it was written for (the trigger toggling to "Annuleren" beside the panel's own "Annuleren").
     */
     expect(new Set(zichtbaar).size).toBe(zichtbaar.length);
+  });
+});
+
+/**
+ * The Doelkiezer's scope (E9-07, CR5): a teacher is offered their own class's doelen, not the whole register.
+ *
+ * **What makes these tests worth having is what they can catch.** The scoping is a query parameter, so a screen that
+ * dropped it looks identical and simply offers too much; and a screen that scoped to an empty set looks identical and
+ * offers nothing. Both are silent. So each test here asserts on the RESULTS and, where it matters, on the request.
+ */
+describe("Klaslaag — de Doelkiezer scoopt op de klas (E9-07, CR5)", () => {
+  /** Opens the subthema picker on a class page and types a term that matches every doel in the fixture. */
+  async function opendPicker(pad: string, opties: ThemaFakeOpties = {}) {
+    const fake = renderApp(pad, opties);
+    const sectie = await klassectie();
+
+    fireEvent.click(
+      within(sectie).getByRole("button", {
+        name: t("themabeheer.subdoelKoppelAria", { naam: "Bladeren" }),
+      }),
+    );
+    // Matches on the shared "-0" in every fixture code, so the SCOPE is the only thing narrowing the result.
+    fireEvent.change(screen.getByLabelText(t("themabeheer.doelZoekLabel")), {
+      target: { value: "-0" },
+    });
+
+    return fake;
+  }
+
+  it("biedt een L3-klas alleen de doelen van L3 aan", async () => {
+    const fake = await opendPicker(L3_PAD);
+
+    expect(await screen.findByText(DOEL_L3.tekst)).toBeInTheDocument();
+
+    // The complaint CR5 was raised about: an L3 teacher was offered kleuterdoelen.
+    expect(screen.queryByText("De kleuter observeert planten in de omgeving.")).toBeNull();
+    expect(screen.queryByText("De leerling herkent een puls in muziek.")).toBeNull();
+
+    // Scoped server-side, not in the browser: after a full import the register is thousands of rows.
+    const zoekvragen = fake.urls.filter((url) => url.startsWith("/api/leerplandoelen?"));
+    expect(zoekvragen.some((url) => url.includes("jaarFase=L3"))).toBe(true);
+  });
+
+  it("zegt in welke doelen er gezocht is", async () => {
+    await opendPicker(L3_PAD);
+
+    await screen.findByText(DOEL_L3.tekst);
+
+    // A picker that narrowed silently would make a teacher who knows a doel exists doubt the import, not the filter.
+    expect(
+      screen.getByText(t("themabeheer.doelBereikGemeten", { fasen: "L3" })),
+    ).toBeInTheDocument();
+  });
+
+  it("verbreedt naar het hele curriculum op vraag, en zegt dat ook", async () => {
+    await opendPicker(L3_PAD);
+    await screen.findByText(DOEL_L3.tekst);
+
+    const groep = screen.getByRole("group", { name: t("themabeheer.doelBereikLabel") });
+    fireEvent.click(within(groep).getByRole("button", { name: t("themabeheer.doelBereikAlles") }));
+
+    // Never HIDDEN, only ranked away by default: a graadklas legitimately teaches across fasen, and E5-02's ruling is
+    // that the teacher narrows on screen rather than the tool deciding.
+    expect(
+      await screen.findByText("De kleuter observeert planten in de omgeving."),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t("themabeheer.doelBereikGemetenAlles"))).toBeInTheDocument();
+    expect(screen.queryByText(t("themabeheer.doelBereikGemeten", { fasen: "L3" }))).toBeNull();
+  });
+
+  it("biedt een kleutergroep alle drie de kleuterjaren aan, want welk jaar het is staat niet vast", async () => {
+    // `Leerjaar = 0` cannot say WHICH kleuterjaar, so the widest honest answer is all three (E5-02, 2026-08-04). A tool
+    // that guessed K3 would hide two thirds of what a derde kleuterklas may legitimately teach.
+    /*
+      Driven through the THEMA-level picker rather than the subthema one, because the kleuter fixture deliberately has no
+      subthema's of its own (another test pins that a class sees only its own). The scope is a property of the picker
+      wherever it is mounted, and the thema level is the one reachable on this class's page.
+    */
+    const fake = renderApp(`/themas/${THEMA_HERFST}?klas=${KLAS_K3}`);
+
+    fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.doelKiezerTitel") }));
+    fireEvent.change(screen.getByLabelText(t("themabeheer.doelZoekLabel")), {
+      target: { value: "-0" },
+    });
+
+    expect(await screen.findByText("De kleuter observeert planten in de omgeving.")).toBeInTheDocument();
+    expect(screen.queryByText(DOEL_L3.tekst)).toBeNull();
+
+    const zoekvragen = fake.urls.filter((url) => url.startsWith("/api/leerplandoelen?"));
+    expect(
+      zoekvragen.some(
+        (url) => url.includes("jaarFase=JK") && url.includes("jaarFase=K2") && url.includes("jaarFase=K3"),
+      ),
+    ).toBe(true);
+  });
+
+  it("verbreedt in plaats van naar niets te versmallen wanneer de klas geen jaar of fase heeft", async () => {
+    /*
+      The unresolved graadklas. An empty `jaarFasen` means the set COULD NOT BE DERIVED, never "teaches nothing", and a
+      search scoped to an empty set makes every leerplandoel unreachable -- worse than the unscoped search this story
+      replaces. So it widens, and it says why, because this is the one unscoped state the teacher did not ask for.
+    */
+    const fake = await opendPicker(L3_PAD, { onbepaaldeKlas: true });
+
+    expect(await screen.findByText(DOEL_L3.tekst)).toBeInTheDocument();
+    expect(screen.getByText("De kleuter observeert planten in de omgeving.")).toBeInTheDocument();
+    expect(screen.getByText(t("themabeheer.doelBereikOnbekend"))).toBeInTheDocument();
+
+    // No scope control, because both positions would search the whole curriculum (the E3-06 rule).
+    expect(screen.queryByRole("group", { name: t("themabeheer.doelBereikLabel") })).toBeNull();
+
+    const zoekvragen = fake.urls.filter((url) => url.startsWith("/api/leerplandoelen?"));
+    expect(zoekvragen.every((url) => !url.includes("jaarFase="))).toBe(true);
   });
 });

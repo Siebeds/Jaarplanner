@@ -391,6 +391,7 @@ function Themadetailinhoud() {
           {doelKiezen ? (
             <div className="mt-3">
               <Doelkiezer
+            klasId={klasId}
                 waaraan={t("themabeheer.niveauThema")}
                 gekoppeldeCodes={gekoppeldeCodes}
                 bezig={voegThemadoelToe.isPending}
