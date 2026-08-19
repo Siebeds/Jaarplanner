@@ -88,10 +88,48 @@ Two self-inflicted slips were caught by diffing my own work rather than by an au
 script that round-tripped them, and a paragraph cited a commit hash before that commit existed (E4-08's recorded
 defect, in a new form). Both fixed; see the story entry.
 
-## Ronde 3 — owed
+## Ronde 3 — 2026-08-19 — **VIOLATIONS FOUND**
 
-Fix round 2 has been audited by nobody but its author. **What that leaves open is narrower than last time and worth
-stating precisely:** ronde 2's MAJOR was about the test net rather than product behaviour, and ronde 2 itself
-recorded that the code as written is correct and that no teacher can reach the unpinned states today. So the risk in
-fix round 2 is concentrated in the **record and the tests** — which is exactly where rondes 2 and 3 of the last three
-stories found their remaining findings, so it is not a reason to skip the round.
+*(A first attempt died on an API error before doing any work; the worktree was verified clean and HEAD unchanged, so
+nothing from it exists. The round was re-run from scratch.)*
+
+Audited `git diff 9c15019..e4f3b70` plus the branch for ripple. **1 MAJOR + 7 MINOR + 1 QUESTION.** It ran **44
+mutations** of its own, filled and checked the whole 32-cell status grid (all 32 bite), re-ran both of ronde 2's, and
+re-derived every gate figure.
+
+| # | Severity | Article | What | Disposition |
+| --- | --- | --- | --- | --- |
+| 1 | **MAJOR** | Art. V.1, Art. V.6 | The covering read's **thema filter at layer 2** was pinned by nothing: mutating it to `t => true` left the whole backend suite green, and in the product it reports an **unplaced** thema's accepted doelsuggestie as covering. `Een_niet_geplaatst_thema_dekt_niet` claimed to catch exactly this and filled two of four layers | **Fixed** — all four layers filled, all four filters mutated individually, all four fail |
+| 2 | MINOR | Art. II.3, Art. V.6 | The broadened catalogue guard was defeated in one line, second round running | **Fixed** — forbids the vocabulary, and states in its own comment that it is a tripwire and not a proof |
+| 3 | MINOR | Art. X.5 | The stale cause count survived in five more places, one two lines below a corrected line, one in the paragraph a reader lands on first — restating MAJOR-1's falsehood as the delivered design | **Fixed** |
+| 4 | MINOR | Art. X.5, CLAUDE.md | `backlog/README.md` still said "no antagonist round" in a **second** paragraph | **Fixed** |
+| 5 | MINOR | Art. X.5 | `leesOorzaak`'s renamed guard still over-claimed ("every cause the server can send") | **Fixed** — renamed to what it proves |
+| 6 | MINOR | Art. X.5 | Two record figures did not re-derive: the BOM baseline was measured after the defect that changed it (250, not 246), and the mutation count did not follow from the entry | **Fixed** |
+| 7 | MINOR | Art. X.5 | The *method* claim about the filtered diff was tidier than the check actually run | **Fixed** — describes the check that ran |
+| 8 | MINOR | Art. X.5, Art. V.3 | The withheld-figure rule still stated unqualified in two test-file comments fix round 2 had touched | **Fixed** |
+| Q1 | (correction) | FR-9, Art. V.3 | The "longer truthful sentence" ronde 2 offered the owner for `GeenThema` is **false in a third state**: a link on another class's subthema | **Withdrawn from the option set**; the owner question now names the third state |
+| Q2 | QUESTION | SC 2.4.4 | The E4-08 precedent is real but its **assertion** is about controls within one `<li>`, not about three activiteiten | **Gloss sharpened**; still the owner's |
+
+**What ronde 3 cleared:** the whole 32-cell status grid bites; the second thema in
+`Alleen_aanvaarde_en_manuele_koppelingen_dekken` is load-bearing rather than ornament, and its Art. IX.2 justification
+checks out; the BOM strip removed exactly the six that had gained one and nothing rode along; the E7-03 and E7-11
+paragraphs exist and say what the entry claims; `nl.json` last changed in `6b4111c`, the commit the browser pass ran
+against, so "unchanged since the browser pass" holds; and every substantive claim fix round 2 wrote about
+`telLacuneoorzaken`, the unbounded drop and the unreachable third state is true.
+
+**Carried, not mine:** the frontend suite is **nondeterministic under load** — three runs on an unmodified tree gave
+9, 0 and 6 failures, all `waitFor`/axe timeouts, none in the dekking feature. "629 frontend" therefore needs a rerun
+to be trusted. Belongs with **E7-12/E7-16**.
+
+### Fix round 3 — `7fe45c1`
+
+Gates and the four scope-axis mutations are on the story entry. Ronde 3's own defeating sentence and its three
+variants were re-run against the broadened guard; all four now fail.
+
+## Ronde 4 — owed
+
+Fix round 3 has been audited by nobody but its author. **Three rounds in a row have found their MAJOR in the previous
+round's fix**, so this is the named risk on this story rather than a formality. What is different this time is where
+the risk sits: fix round 3's product-code change is one test fixture plus comments, and its MAJOR was a **missing
+test** rather than wrong behaviour, so a reader deciding whether to run ronde 4 is deciding about the test net and the
+record, not about what a teacher sees.
