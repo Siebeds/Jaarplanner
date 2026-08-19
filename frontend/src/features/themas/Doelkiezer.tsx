@@ -207,7 +207,12 @@ export function Doelkiezer({ waaraan, klasId, gekoppeldeCodes, onKoppel, bezig }
               className={`rounded-md border px-2.5 py-1 text-xs ${
                 heelCurriculum === alles
                   ? "border-petrol bg-petrol-wash font-semibold text-ink"
-                  : "border-border text-ink-zacht hover:text-ink"
+                  : // `border-input`, not `border-border`, and this came out of the browser pass rather than a review.
+                    // `border-border` measures **1.33:1** against the card, so the unpressed option had no perceivable
+                    // boundary: its text was legible at 6.08 but it did not read as a control a teacher could press.
+                    // `--input` was re-tokened to 3.40:1 by E7-10 for exactly this reason, and this is the same defect
+                    // one component over. SC 1.4.11 asks 3:1 for the visual information that identifies a component.
+                    "border-input text-ink-zacht hover:text-ink"
               }`}
             >
               {t(alles ? "themabeheer.doelBereikAlles" : "themabeheer.doelBereikEigen")}
