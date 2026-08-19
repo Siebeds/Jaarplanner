@@ -10,13 +10,11 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useId, useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
-
-import { DEKKING_PAD, JAARFASE_PARAM } from "../../app/routes";
 import { Jaarfasekiezer } from "../dekking/Jaarfasekiezer";
 import { Button } from "../../components/ui/button";
 import { t, tAantal, type TranslationKey } from "../../i18n";
 import { ApiError } from "../../lib/api";
+import { Dekkingsvoortgangsbalk } from "../dekking/Dekkingsvoortgangsbalk";
 import { useDekking } from "../dekking/useDekking";
 import { Jaarspine } from "./Jaarspine";
 import { Periodekolom, Vakantiegat, type Periodefoutsoort } from "./Periodekolom";
@@ -131,13 +129,14 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
    * See the latching note further down for why the value is held at all rather than read off the current answer.
    */
   const beschikbaarLatch = useRef<readonly string[]>([]);
+  const heeftDoelenLatch = useRef(false);
 
   const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId, niveau);
 
   /**
    * The coverage read behind the knelpunt line and behind the chooser above it (E3-09).
    *
-   * **One query for both**, lifted out of `OngeplandeDoelen` in the fix round: the control needs
+   * **One query for both**, lifted out of `OngeplandeDoelen` (since removed) in the fix round: the control needs
    * `beschikbareJaarFasen` and the sentence needs the counts, and they must be the *same* answer or the chooser could
    * offer a code the figure was not measured against. TanStack would dedupe two identical keys, but "they happen to
    * share a cache entry" is a weaker guarantee than "there is one call".
@@ -449,9 +448,18 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
   }
   const beschikbareJaarFasen = beschikbaarLatch.current;
 
+  // **Latched for the same reason `beschikbareJaarFasen` is, and E9-06 is what made it necessary.** The condition used to
+  // read `dekking.data?.aantalLeerplandoelen ?? 0`, which is `undefined` for the length of any refetch. That was
+  // harmless while a placement edit merely REMOVED the cache entry, because a remove leaves a mounted observer holding
+  // its last answer; since the dekking family switched to `resetQueries` so the coverage bar actually moves, the data
+  // really does go away and back. Without the latch this chooser vanished from under the cursor that had just clicked
+  // it on every accept, reject and drag, which is the exact defect the latch two blocks up was written for.
+  if ((dekking.data?.aantalLeerplandoelen ?? 0) > 0) {
+    heeftDoelenLatch.current = true;
+  }
+
   const toonJaarfasekiezer =
-    beschikbareJaarFasen.length > 1 &&
-    (jaarFase !== null || (dekking.data?.aantalLeerplandoelen ?? 0) > 0);
+    beschikbareJaarFasen.length > 1 && (jaarFase !== null || heeftDoelenLatch.current);
 
   // Gated on the figure it describes actually rendering, not on the fallback flag alone (antagonist round 2). Two states
   // reach `isTerugvalNaarHeelCurriculum` with no line under it — a stale placement (`aantalGedekt === null`) and a fully
@@ -1050,7 +1058,8 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
             )}
 
             {/* KNELPUNT 2 — goals that appear nowhere (FR-6.4).
-                See {@link OngeplandeDoelen} for why this is a count and a route rather than a list.
+                A figure and a route rather than a list, and the note below the removed `OngeplandeDoelen` keeps the
+                four decisions that still bind.
 
                 **Inside the zero-block gate, and that is a decision rather than an accident** (filed to this story by
                 E4-02's round-3 audit). With a grid of no blocks this whole section is skipped, so neither te vol nor
@@ -1061,7 +1070,12 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
                 even when the grid it no longer fits has collapsed. All of this is unreachable until E6-03 lets someone
                 configure a year that derives no blocks; it is written down so the next reader does not have to
                 rediscover which of the three placements were chosen and which were inherited. */}
-            <OngeplandeDoelen dekking={dekking} jaarFase={jaarFase} />
+            <Dekkingsvoortgangsbalk
+              klasId={klasId}
+              jaarFase={jaarFase}
+              className={KNELPUNT_DEKKING}
+              ingehoudenElders
+            />
 
             {/* A refused move (a date that is no longer a period boundary, or a thema already in the target
                 period). Stated at board level because a drop has no panel to report into, and it says the plan
@@ -1535,110 +1549,36 @@ function TeHerzien({
 }
 
 /**
- * KNELPUNT 2 — how many leerplandoelen this plan does not yet cover (E3-09, FR-6.4).
+ * **`OngeplandeDoelen` lived here and was replaced by `Dekkingsvoortgangsbalk` on the owner's ruling of 2026-08-19**
+ * (E9-06, CR4). It rendered one sentence, *"N doelen zijn nog niet gedekt door dit jaarplan"*, plus a route to
+ * `/dekking`. The bar states the same fact as a fraction and adds the quantity that sentence could not: what accepting
+ * the placements standing in the plan would reach.
  *
- * **The sentence says "nog niet gedekt", and getting that wrong was this story's worst defect** (antagonist MAJOR,
- * fixed here). It first read *"komen in geen enkel thema van dit jaarplan voor"*, which is a claim about **placement**
- * while the number is a claim about **coverage**, and the two part company in the single commonest state on this
- * screen: `DekkingService` requires the *placement* to be `Aanvaard`/`Manueel` on top of the link (Art. V.1), so a
- * freshly generated plan is entirely `Voorgesteld` and reports 0 covered. The demo seed makes that concrete — 7 thema's
- * carrying 14 codes, every card announcing *"2 doelen gekoppeld"*, beside a line claiming those 14 goals appeared in no
- * thema at all. **That contradiction was on screen during this story's own browser pass and read as a pass**, which is
- * the useful part of the lesson: looking at a screen only finds what you are looking for, and I was checking the
- * treatment rather than the truth of the sentence.
+ * **The ruling knowingly reverses a decision this file's browser pass had made**, and that is recorded rather than
+ * quietly absorbed. E3-09 built this signal as a tinted band with a bar, looked at it, and took both away: the fill
+ * composited to the loudest element on the page, so the coverage *fact* shouted while te vol, the thing a teacher may
+ * actually need to act on today, murmured. The bar is back because the owner asked for it; the treatment below keeps
+ * the weight E3-09 settled on, so what returns is the figure and not the volume.
  *
- * No extra clause explains *why* the figure is high, deliberately: `kalender.beslisUitleg` already sits above this line
- * whenever a decision is outstanding and says *"Zolang een thema een AI-voorstel blijft, telt het niet mee voor de
- * dekking"*, and `/dekking` states the full rule. Repeating it here is the prose this screen exists to cut.
+ * **Four of its recorded decisions still bind and are kept here, because the component that carried them is gone:**
  *
- * **A count and a route, not a list** (owner ruling, 2026-08-04). The approved E3-10 wireframe drew this as its own
- * tray beside the board, and that was the right answer on 2026-07-28, when nothing else could show it. E5-02 has since
- * shipped `/dekking`, which lists every leerplandoel with its coverage, its doelsoort and the thema's that cover it,
- * and E5-03/E5-05 own that presentation. A tray here would be a second, poorer rendering of the same rows on a screen
- * whose standing problem is too much prose above the board, and it would grow to hundreds of entries after a full
- * import. So the board states the fact and names where to act on it. The deviation from the approved wireframe is
- * recorded on the story; the wireframe itself is deliberately not retouched, since it is the record of what directie
- * reviewed.
+ * 1. **A count and a route, not a list** (owner ruling 2026-08-04). The approved E3-10 wireframe drew a tray beside
+ *    the board; `/dekking` has since shipped and E5-02/03/05 own that presentation. A tray here would be a second,
+ *    poorer rendering of the same rows on the screen whose standing problem is too much prose above the board, and it
+ *    would grow to hundreds of entries after a full import.
+ * 2. **The scope matches what the link leads to.** Both ask `EigenJaarFase`, which is `DekkingPagina`'s own default, so
+ *    the number here is the number there. The narrowing travels on the link for the same reason.
+ * 3. **Nothing is said while dekking is untrustworthy.** A plan that cannot report dekking cannot report a gap in it
+ *    either, and the "Te herzien" notice above already says what has to happen first. The bar honours this through
+ *    `ingehoudenElders`, which is passed here and nowhere else.
+ * 4. **A failed load says so rather than showing nothing**, because silence reads as "no goals are missing" and that is
+ *    the one direction this signal must never fail in. The bar keeps that branch.
  *
- * **The scope matches what the link leads to.** It asks for `EigenJaarFase`, which is `DekkingPagina`'s own default, so
- * the number here is the number there. Measuring the whole curriculum instead would state a much larger figure and
- * send the teacher to a screen showing a smaller one, with nothing on either explaining the difference.
- *
- * **It says nothing while dekking is untrustworthy, on purpose.** An unresolved stale placement makes `aantalGedekt`
- * null (directie 2026-07-28, point 4), and a plan that cannot report dekking cannot report a gap in it either. The
- * "Te herzien" notice above is already saying what has to happen first, so a second sentence here would be noise
- * pointing at the same fix.
- *
- * **A failed load says so rather than showing nothing.** Silence here reads as "no goals are missing", which is the
- * one direction this signal must never fail in.
+ * **What deliberately changed, beyond the shape.** The old line rendered *nothing* once every doel was covered and
+ * nothing when the scope was empty unless a jaarFase had been chosen. The bar reports in both states: a fully covered
+ * plan now says so, and an unmeasurable one says that instead of falling silent. Both follow from the same rule the old
+ * component wrote down and then applied only partly.
  */
-function OngeplandeDoelen({
-  dekking,
-  jaarFase,
-}: {
-  dekking: ReturnType<typeof useDekking>;
-  /**
-   * The narrowing currently applied, threaded into the link so the two screens agree.
-   *
-   * **This is what makes "the number here is the number there" actually true.** The claim was in this file before the
-   * fix round and it only held until the teacher touched anything: `DekkingPagina` keeps its scope in search params and
-   * this link went to the bare route, so a kalender narrowed to K3 sent the teacher to a screen measuring all three
-   * kleuterjaren, with nothing on either explaining the different figure.
-   */
-  jaarFase: string | null;
-}) {
-  // Carries the narrowing, so following the link does not silently widen the scope back out.
-  const doel = jaarFase
-    ? `${DEKKING_PAD}?${JAARFASE_PARAM}=${encodeURIComponent(jaarFase)}`
-    : DEKKING_PAD;
-
-  if (dekking.isError) {
-    return (
-      <p className={KNELPUNT_DEKKING}>
-        {t("kalender.ongeplandeDoelenOnbekend")}{" "}
-        <Link to={doel} className="font-semibold text-petrol underline">
-          {t("kalender.ongeplandeDoelenLink")}
-        </Link>
-      </p>
-    );
-  }
-
-  const data = dekking.data;
-
-  // Nothing to say: still loading, or dekking withheld because a placement is stale (directie 2026-07-28, point 4).
-  if (data === undefined || data.aantalGedekt === null) {
-    return null;
-  }
-
-  // Nothing in scope to measure against.
-  //
-  // **Silent only when the teacher did not ask for this scope** (antagonist round 2). Unnarrowed it means no curriculum
-  // is loaded at all, which is the ordinary state until E1-12 and which the import screen is the place to say something
-  // about. But once a kleuterjaar has been CHOSEN, the same emptiness is the direct result of a click, and answering a
-  // click with nothing violates this component's own rule that silence here reads as "no goals are missing". `/dekking`
-  // renders `dekking.nietMeetbaar` for exactly this state; this is the same fact, worded for one line.
-  if (data.aantalLeerplandoelen === 0) {
-    return jaarFase === null ? null : <p className={KNELPUNT_DEKKING}>{t("kalender.geenDoelenInJaar")}</p>;
-  }
-
-  const ongedekt = data.aantalLeerplandoelen - data.aantalGedekt;
-  if (ongedekt <= 0) {
-    return null;
-  }
-
-  return (
-    <p className={KNELPUNT_DEKKING}>
-      <span data-cijfers>
-        {tAantal(ongedekt, "kalender.ongeplandeDoelenEnkelvoud", "kalender.ongeplandeDoelen", {
-          aantal: ongedekt,
-        })}
-      </span>{" "}
-      <Link to={doel} className="font-semibold text-petrol underline">
-        {t("kalender.ongeplandeDoelenLink")}
-      </Link>
-    </p>
-  );
-}
 
 /**
  * The coverage knelpunt's own treatment: a rule in the dekking colour, and **no fill**.
@@ -1654,8 +1594,11 @@ function OngeplandeDoelen({
  * the dekking token doing the semantic work, while leaving it visibly lighter than the te-vol band, which is the
  * ordering the three signals were designed to have: the stale-placement notice heaviest (a human must resolve it), te
  * vol in the middle (a judgement a teacher may accept), this lightest (a fact, and it points off-screen). The SC 1.4.1
- * carrier is now the **sentence itself** — *"zijn nog niet gedekt door dit jaarplan"* needs no glyph to be understood in
- * monochrome, which is a stronger guarantee than an icon nobody can see.
+ * carrier is a **sentence** rather than a glyph, which is a stronger guarantee than an icon nobody can see. *Which*
+ * sentence changed on 2026-08-19: it used to be *"zijn nog niet gedekt door dit jaarplan"*, and since
+ * `Dekkingsvoortgangsbalk` took this slot it is the fraction *"7 van 14 doelen gedekt"* plus the increment under it.
+ * Both read in monochrome, which is what the requirement asks. The bar the component draws inside this treatment is
+ * `aria-hidden` and adds no carrier at all, deliberately: it is the third channel, never the only one.
  *
  * *Two corrections by antagonist round 2:* this quoted the copy the fix round **deleted as a falsehood**, stating it as
  * the present carrier — the fifth false doc comment on this story, and the first authored by the round that fixed the

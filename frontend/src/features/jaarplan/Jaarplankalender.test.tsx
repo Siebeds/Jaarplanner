@@ -147,10 +147,41 @@ const DEKKING_NIETS_ONTBREEKT = {
   doelen: [],
 };
 
+/**
+ * The progress bar's payload (E9-06), DERIVED from whatever coverage answer the test arranged.
+ *
+ * Derived rather than a second fixture, because the bar and the `/dekking` read are the same computation server-side: a
+ * test that arranges "3 of 11 covered" must not be able to get a bar saying something else, and two independent
+ * fixtures is exactly how that would happen.
+ *
+ * **The ceiling defaults to the covered count**, so nothing is standing and the increment sentence stays silent unless
+ * a test asks for one. Same reasoning as `DEKKING_NIETS_ONTBREEKT` being the quiet default: a fixture with proposals
+ * outstanding would put an extra sentence on every screen this file asserts about.
+ */
+function voortgangUit(dekking: Record<string, unknown>, mogelijk?: number | null) {
+  const gedekt = dekking.aantalGedekt as number | null;
+  const totaal = dekking.aantalLeerplandoelen as number;
+  const plafond = mogelijk === undefined ? gedekt : mogelijk;
+
+  return {
+    bereik: dekking.bereik,
+    gemetenJaarFasen: dekking.gemetenJaarFasen,
+    isTerugvalNaarHeelCurriculum: dekking.isTerugvalNaarHeelCurriculum,
+    aantalBuitenBereik: dekking.aantalBuitenBereik,
+    isBetrouwbaar: dekking.isBetrouwbaar,
+    aantalOnopgelosteVervallenPlaatsingen: dekking.aantalOnopgelosteVervallenPlaatsingen,
+    aantalGedekt: gedekt,
+    aantalMogelijkGedekt: plafond,
+    aantalLeerplandoelen: totaal,
+    aantalOnbereikbaar: gedekt === null ? null : totaal - gedekt,
+  };
+}
+
 function stubFetch(
   jaarplan: Jaarplan,
   generatie?: Generatieresultaat | number,
   dekking?: unknown,
+  mogelijkGedekt?: number | null,
 ) {
   vi.stubGlobal(
     "fetch",
@@ -190,6 +221,21 @@ function stubFetch(
       // file, not only the ones about it, because an unrouted URL falls through to the 404 below and the knelpunt line
       // then renders its "could not be checked" state on every screen this file asserts against — including the axe
       // runs, which would be measuring a permanent error state nobody meant to put there.
+      // E9-06's progress bar. **Routed BEFORE the plain /dekking branch, which its URL extends** — the same trap
+      // `/jaarplan/parameters` documents four branches up. Falling through would hand the bar a `Dekking` payload with
+      // no `aantalMogelijkGedekt`, which `bepaalVoortgangsbalk` reads as a withheld figure, so every test in this file
+      // would silently render no bar at all and the suite would go green on a screen with the signal missing.
+      if (url.includes("/dekking/voortgang")) {
+        return new Response(
+          JSON.stringify(
+            voortgangUit(
+              (dekking ?? DEKKING_NIETS_ONTBREEKT) as Record<string, unknown>,
+              mogelijkGedekt,
+            ),
+          ),
+          { status: 200 },
+        );
+      }
       if (url.includes("/dekking")) {
         return new Response(JSON.stringify(dekking ?? DEKKING_NIETS_ONTBREEKT), { status: 200 });
       }
@@ -4001,7 +4047,7 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     expect(screen.queryByText("!", { exact: true })).toBeNull();
   });
 
-  it("states how many leerplandoelen the plan teaches nowhere, and links to the overview", async () => {
+  it("states the coverage fraction on the board, and links to the overview", async () => {
     stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, {
       ...DEKKING_NIETS_ONTBREEKT,
       aantalGedekt: 3,
@@ -4011,39 +4057,67 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
 
     await screen.findByText("Water");
 
+    // E9-06 replaced the gap SENTENCE with the fraction (owner ruling 2026-08-19). The quantity a teacher acts on is
+    // the same; what changed is that the figure now states its own denominator instead of only the remainder.
     expect(
-      await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 8 })),
+      await screen.findByText(t("dekking.cijfer", { gedekt: 3, aantal: 11 })),
     ).toBeInTheDocument();
 
     // A real route, not a dead control (the E3-06 rule): the list lives on the dekkingsoverzicht, which E5-02 built.
-    expect(screen.getByRole("link", { name: t("kalender.ongeplandeDoelenLink") })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: t("dekking.voortgangLink") })).toHaveAttribute(
       "href",
       "/dekking",
     );
   });
 
-  it("uses the singular for exactly one uncovered leerplandoel", async () => {
-    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, {
-      ...DEKKING_NIETS_ONTBREEKT,
-      aantalGedekt: 7,
-      aantalLeerplandoelen: 8,
-    });
+  it("names the increment separately when placements are standing, and never sums the two", async () => {
+    // The quantity E9-06 exists for and the one the old sentence could not report: what accepting the standing
+    // placements would add. 3 covered now, 7 if everything standing were accepted, so the increment is FOUR.
+    stubFetch(
+      maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]),
+      undefined,
+      { ...DEKKING_NIETS_ONTBREEKT, aantalGedekt: 3, aantalLeerplandoelen: 11 },
+      7,
+    );
     renderKalender();
 
-    expect(await screen.findByText(t("kalender.ongeplandeDoelenEnkelvoud"))).toBeInTheDocument();
+    await screen.findByText("Water");
+
+    expect(await screen.findByText(t("dekking.cijfer", { gedekt: 3, aantal: 11 }))).toBeInTheDocument();
+    expect(
+      screen.getByText(t("dekking.voortgangTeAanvaarden", { aantal: 4 })),
+    ).toBeInTheDocument();
+
+    // Art. IV.1: the ceiling is not coverage, so 7 must never appear as the covered figure. An unanswered proposal
+    // presented as taught is the one thing the whole accept/reject flow exists to prevent.
+    expect(screen.queryByText(t("dekking.cijfer", { gedekt: 7, aantal: 11 }))).toBeNull();
   });
 
-  it("says nothing about uncovered goals when every goal in scope is taught", async () => {
+  it("uses the singular for an increment of exactly one placement", async () => {
+    stubFetch(
+      maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]),
+      undefined,
+      { ...DEKKING_NIETS_ONTBREEKT, aantalGedekt: 7, aantalLeerplandoelen: 9 },
+      8,
+    );
+    renderKalender();
+
+    expect(
+      await screen.findByText(t("dekking.voortgangTeAanvaardenEnkelvoud")),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing about an increment when no placement is standing", async () => {
     stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
     renderKalender();
 
     await screen.findByText("Water");
 
-    // Matched on the copy the line ACTUALLY renders. An earlier revision of these two assertions searched for
-    // "geen enkel thema van dit jaarplan", which the antagonist fix then removed from nl.json — so they would have
-    // passed with the line fully on screen. A negative assertion against a string the product no longer contains is
-    // the most expensive kind of green.
-    expect(screen.queryByText(/nog niet gedekt door dit jaarplan/)).toBeNull();
+    // The old assertion here checked that the GAP SENTENCE stayed away when everything was covered. That sentence is
+    // gone and the fraction is unconditional now, so what is worth pinning is the other half of the same rule: a plan
+    // with nothing outstanding carries no sentence about nothing.
+    expect(await screen.findByText(t("dekking.cijfer", { gedekt: 8, aantal: 8 }))).toBeInTheDocument();
+    expect(screen.queryByText(/als je de voorgestelde plaatsing/)).toBeNull();
   });
 
   it("withholds the gap count while dekking itself is untrustworthy", async () => {
@@ -4060,12 +4134,12 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
 
     await screen.findByText("Water");
 
-    // Matched on the copy the line ACTUALLY renders. An earlier revision of these two assertions searched for
-    // "geen enkel thema van dit jaarplan", which the antagonist fix then removed from nl.json — so they would have
-    // passed with the line fully on screen. A negative assertion against a string the product no longer contains is
-    // the most expensive kind of green.
-    expect(screen.queryByText(/nog niet gedekt door dit jaarplan/)).toBeNull();
-    expect(screen.queryByText(t("kalender.ongeplandeDoelenOnbekend"))).toBeNull();
+    // Nothing at all: not the fraction, not the withheld headline, and not an error. `ingehoudenElders` is passed on
+    // this mount precisely because the Te herzien notice above already counts these placements and offers the fix, and
+    // two statements of one fact a few hundred pixels apart is the E4-06 defect.
+    expect(screen.queryByText(new RegExp(t("dekking.cijfer", { gedekt: 8, aantal: 8 })))).toBeNull();
+    expect(screen.queryByText(t("dekking.cijferIngehouden"))).toBeNull();
+    expect(screen.queryByText(t("dekking.fout"))).toBeNull();
   });
 
   it("says the gap could not be checked rather than implying there is none", async () => {
@@ -4102,7 +4176,7 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     );
     renderKalender();
 
-    expect(await screen.findByText(t("kalender.ongeplandeDoelenOnbekend"))).toBeInTheDocument();
+    expect(await screen.findByText(t("dekking.fout"))).toBeInTheDocument();
   });
 
   /**
@@ -4135,8 +4209,16 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
         if (url.includes("/dekking")) {
           urls.push(url);
           const match = /[?&]jaarFase=([^&]*)/.exec(url);
+          const antwoord = antwoordVoor(match ? decodeURIComponent(match[1]) : null);
+
+          // Both reads answer from ONE per-jaarFase fixture, so the bar and the chooser cannot disagree about what a
+          // narrowing measured. Matched on the longer path first, since `/dekking/voortgang` extends `/dekking`.
           return new Response(
-            JSON.stringify(antwoordVoor(match ? decodeURIComponent(match[1]) : null)),
+            JSON.stringify(
+              url.includes("/dekking/voortgang")
+                ? voortgangUit(antwoord as Record<string, unknown>)
+                : antwoord,
+            ),
             { status: 200 },
           );
         }
@@ -4173,9 +4255,9 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     );
     renderKalender();
 
-    // Unnarrowed: measured against all three kleuterjaren, so 41 of 45 are not yet covered.
+    // Unnarrowed: measured against all three kleuterjaren, so the denominator is 45.
     expect(
-      await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 41 })),
+      await screen.findByText(t("dekking.cijfer", { gedekt: 4, aantal: 45 })),
     ).toBeInTheDocument();
 
     const groep = screen.getByRole("group", { name: t("dekking.jaarFaseLabel") });
@@ -4187,10 +4269,11 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
 
     fireEvent.click(within(groep).getByRole("button", { name: "K3" }));
 
-    // Narrowed: 11 of 15. The DENOMINATOR moved, which is the whole point — a narrowing that only refiltered the rows
-    // would leave the figure unchanged and the control would be decoration.
+    // Narrowed: 4 of 15. The DENOMINATOR moved, which is the whole point — a narrowing that only refiltered the rows
+    // would leave the figure unchanged and the control would be decoration. Reading the denominator straight off the
+    // screen is a stronger assertion than the old remainder was: 41 and 11 were both consistent with a filter.
     expect(
-      await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 11 })),
+      await screen.findByText(t("dekking.cijfer", { gedekt: 4, aantal: 15 })),
     ).toBeInTheDocument();
 
     // And it reached the server as a scope argument rather than being applied in the browser.
@@ -4205,9 +4288,9 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     );
     renderKalender();
 
-    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 41 }));
+    await screen.findByText(t("dekking.cijfer", { gedekt: 4, aantal: 45 }));
     // Unnarrowed the link is bare, which is `/dekking`'s own default.
-    expect(screen.getByRole("link", { name: t("kalender.ongeplandeDoelenLink") })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: t("dekking.voortgangLink") })).toHaveAttribute(
       "href",
       "/dekking",
     );
@@ -4217,9 +4300,9 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
         name: "K3",
       }),
     );
-    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 11 }));
+    await screen.findByText(t("dekking.cijfer", { gedekt: 4, aantal: 15 }));
 
-    expect(screen.getByRole("link", { name: t("kalender.ongeplandeDoelenLink") })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: t("dekking.voortgangLink") })).toHaveAttribute(
       "href",
       "/dekking?jaarFase=K3",
     );
@@ -4252,13 +4335,16 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     );
     renderKalender();
 
-    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 41 }));
+    await screen.findByText(t("dekking.cijfer", { gedekt: 4, aantal: 45 }));
     const groep = screen.getByRole("group", { name: t("dekking.jaarFaseLabel") });
     fireEvent.click(within(groep).getByRole("button", { name: "JK" }));
 
-    // The figure is gone, because there is nothing to measure in JK...
+    // The FRACTION is gone, because there is nothing to measure in JK, and what stands in its place says so rather
+    // than falling silent. `0 van 0` would satisfy "everything covered" and draw a full bar, which is the one reading
+    // this state must never have — so `bepaalVoortgangsbalk` gates it before any figure.
+    expect(await screen.findByText(t("dekking.nietMeetbaar"))).toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.queryByText(/nog niet gedekt door dit jaarplan/)).toBeNull(),
+      expect(screen.queryByText(t("dekking.cijfer", { gedekt: 4, aantal: 45 }))).toBeNull(),
     );
     // ...and the way back is still on screen, with "Alle drie" selectable.
     const nogSteeds = screen.getByRole("group", { name: t("dekking.jaarFaseLabel") });
@@ -4268,7 +4354,7 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     );
     fireEvent.click(within(nogSteeds).getByRole("button", { name: t("dekking.jaarFaseAlle") }));
     expect(
-      await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 41 })),
+      await screen.findByText(t("dekking.cijfer", { gedekt: 4, aantal: 45 })),
     ).toBeInTheDocument();
   });
 
@@ -4281,7 +4367,7 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     });
     renderKalender();
 
-    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 8 }));
+    await screen.findByText(t("dekking.cijfer", { gedekt: 3, aantal: 11 }));
 
     expect(screen.queryByRole("group", { name: t("dekking.jaarFaseLabel") })).toBeNull();
     expect(screen.queryByText(t("kalender.jaarFaseUitleg"))).toBeNull();
@@ -4326,8 +4412,10 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     const { container } = renderKalender();
 
     await screen.findByText("Licht en donker");
-    await screen.findByText(t("kalender.ongeplandeDoelen", { aantal: 8 }));
+    await screen.findByText(t("dekking.cijfer", { gedekt: 3, aantal: 11 }));
 
+    // The axe run now covers the progress bar too, which is the point of leaving it in this test rather than giving the
+    // bar its own: the three knelpunten share a stacking context and this is the only place they are all on screen.
     expect(await axe(container)).toHaveNoViolations();
   });
 });
@@ -4353,6 +4441,30 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
     queryClient.setQueryData(ANDERE_KLAS, { aantalGedekt: 3, aantalLeerplandoelen: 12 });
   }
 
+  const VOOR_BEWERKING = { aantalGedekt: 0, aantalLeerplandoelen: 2 };
+
+  /**
+   * E4-01's promise, asserted as the promise rather than as one mechanism's side effect.
+   *
+   * **Rewritten by E9-06 (2026-08-19), and the reason is worth more than the assertion.** These three tests used to
+   * assert `getQueryData(EIGEN_SCOPE)` was `undefined`, which pinned `removeQueries` **literally** rather than pinning
+   * what a teacher is owed. When the dekking family switched to `resetQueries` — so that a coverage figure sitting on
+   * the same screen as the write actually moves — an entry with a mounted observer is cleared *and refetched*, so it is
+   * `undefined` only for the length of that request.
+   *
+   * **One of the three was already passing by a race and nobody could have known.** `waitFor(…toBeUndefined())`
+   * succeeds on the first poll that catches the gap, so two of these tests kept passing while the third failed, purely
+   * on whether the refetch had resolved yet. A test that can be true or false depending on request timing was reporting
+   * on cache mechanics, not on behaviour.
+   *
+   * What E4-01 actually promised is that **the figure computed before the edit is never what the cache hands out
+   * after it.** That holds under both mechanisms and cannot pass by a race: the pre-edit value is a distinct object, so
+   * either it is gone or it has been replaced by a fresh answer, and both are correct.
+   */
+  async function verwachtGeenVoorBewerkingsCijfer(queryClient: QueryClient, key: readonly unknown[]) {
+    await waitFor(() => expect(queryClient.getQueryData(key)).not.toEqual(VOOR_BEWERKING));
+  }
+
   it("drops every cached figure for this class when a proposal is accepted", async () => {
     const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
     const naPlan = maakJaarplan([
@@ -4371,7 +4483,8 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
 
     // Both scopes, not just the default one: the acceptance changed the numerator of every denominator, and a
     // teacher who had switched to the whole curriculum would otherwise come back to the stale one of the two.
-    await waitFor(() => expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeUndefined());
+    await verwachtGeenVoorBewerkingsCijfer(queryClient, EIGEN_SCOPE);
+    // The whole-curriculum entry has no observer, so nothing refetches it and it stays empty outright.
     expect(queryClient.getQueryData(HEEL_CURRICULUM)).toBeUndefined();
 
     // And the removal is scoped: another class's figure is not affected by an edit to this plan, and the plan the
@@ -4397,8 +4510,8 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
     fireEvent.change(keuze, { target: { value: "2026-11-09" } });
     fireEvent.click(within(kaart("Water")).getByRole("button", { name: t("kalender.verplaatsen") }));
 
-    await waitFor(() => expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeUndefined());
-    expect(queryClient.getQueryData(ANDERE_KLAS)).toBeDefined();
+    await verwachtGeenVoorBewerkingsCijfer(queryClient, EIGEN_SCOPE);
+    expect(queryClient.getQueryData(ANDERE_KLAS)).toEqual({ aantalGedekt: 3, aantalLeerplandoelen: 12 });
   });
 
   it("keeps the figure when the edit was refused, because the plan did not change", async () => {
@@ -4419,7 +4532,9 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
 
     // Wait for the failure to be on screen, so this is not asserting on a request that had not finished yet.
     expect(await within(kaart("Water")).findByText(t("kalender.verplaatsMislukt"))).toBeInTheDocument();
-    expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeDefined();
+    // Asserted on the VALUE, not on "defined": a refetch would also leave it defined, so the old assertion could not
+    // tell "the figure was correctly kept" from "the figure was thrown away and fetched again".
+    expect(queryClient.getQueryData(EIGEN_SCOPE)).toEqual(VOOR_BEWERKING);
   });
 
   it("drops the figure after a generation run, which replaces the placements it was computed from", async () => {
@@ -4454,9 +4569,11 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
 
     // A run discards every replaceable placement and proposes new ones, so the figure it produced describes a plan
     // that no longer exists. `aantalVervangen: 1` above is that case in the fixture rather than only in prose.
-    await waitFor(() => expect(queryClient.getQueryData(EIGEN_SCOPE)).toBeUndefined());
+    await verwachtGeenVoorBewerkingsCijfer(queryClient, EIGEN_SCOPE);
     expect(queryClient.getQueryData(HEEL_CURRICULUM)).toBeUndefined();
-    expect(queryClient.getQueryData(ANDERE_KLAS)).toBeDefined();
+    // Scoped: another class's figure is untouched, asserted on its VALUE so "defined" cannot be satisfied by a refetch
+    // that overwrote it.
+    expect(queryClient.getQueryData(ANDERE_KLAS)).toEqual({ aantalGedekt: 3, aantalLeerplandoelen: 12 });
   });
 
   it("gives the dekkingsoverzicht its own loading line after an edit, never the figure from before it", async () => {
@@ -4806,6 +4923,11 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
           return new Response(JSON.stringify({ gewensteStartthemas: [], vasteMomenten: [] }), {
             status: 200,
           });
+        }
+        // Longer path first: `/dekking/voortgang` extends `/dekking`, and falling through hands the progress bar a
+        // payload with no ceiling, which it reads as a withheld figure and renders as nothing.
+        if (url.includes("/dekking/voortgang")) {
+          return new Response(JSON.stringify(voortgangUit(DEKKING_NIETS_ONTBREEKT)), { status: 200 });
         }
         if (url.includes("/dekking")) {
           return new Response(JSON.stringify(DEKKING_NIETS_ONTBREEKT), { status: 200 });
@@ -5432,6 +5554,10 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
 
     const { container } = renderKalender();
     await waitFor(() => expect(hergenereerknop(1)).toBeInTheDocument());
+    // Awaited before axe runs, because the progress bar (E9-06) resolves on its own request: without this the axe
+    // assertion measured the board with the bar still absent, and React reported the late render as an unwrapped
+    // act(). A settled screen is also the only one worth running axe against.
+    await screen.findByText(t("dekking.cijfer", { gedekt: 8, aantal: 8 }));
 
     expect(await axe(container)).toHaveNoViolations();
   });

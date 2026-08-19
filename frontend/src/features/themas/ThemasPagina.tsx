@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation, useMatch, useNavigate } from "react-router-dom";
 
+import { useSelectie } from "../../app/useSelectie";
 import { t } from "../../i18n";
+import { Dekkingsvoortgangsbalk } from "../dekking/Dekkingsvoortgangsbalk";
 import { OngekoppeldeDoelenLijst } from "../matching/OngekoppeldeDoelenLijst";
 import { Themaformulier } from "./Themaformulier";
 import { Themalijst } from "./Themalijst";
@@ -27,6 +29,7 @@ export function ThemasPagina() {
   const { search } = useLocation();
   const gekozenThemaId = useMatch("/themas/:themaId")?.params.themaId;
   const maakThema = useMaakThema();
+  const { klasId } = useSelectie();
 
   /*
     **A click on a thema wins over an open create form** (antagonist round 1).
@@ -74,6 +77,22 @@ export function ThemasPagina() {
             </button>
           )}
         </header>
+
+        {/*
+          THE LIVE COVERAGE BAR (E9-06, CR4). Above the panes rather than inside the detail, because the figure is
+          about the whole class and a teacher moves between thema's while linking: repeating it per thema would be the
+          "never repeat per row what once above the list will do" rule broken on the screen CR1 complained about.
+
+          It renders nothing at all until a klas is chosen (`useDekkingsvoortgang` is disabled without one), so the
+          school-wide half of this screen still works with no class selected. That is deliberate rather than incidental:
+          thema's and themadoelen are school-wide (Art. IX.2) and a teacher may legitimately be here without a class,
+          and a bar that demanded one would be a control the screen does not need.
+        */}
+        <Dekkingsvoortgangsbalk
+          klasId={klasId}
+          jaarFase={null}
+          className="rounded-lg border border-border bg-card px-5 py-4"
+        />
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
           {/* The list hides at phone width while a thema is open, for the reason in the doc comment. */}

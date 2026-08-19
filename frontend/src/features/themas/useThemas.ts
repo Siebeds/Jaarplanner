@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 
-import { DEKKING_KEY } from "../dekking/useDekking";
+import { vernieuwDekking } from "../dekking/useDekking";
 import { ONGEKOPPELDE_DOELEN_KEY } from "../matching/useDoelsuggesties";
 import {
   haalSubthemaBestemmingen,
@@ -117,8 +117,10 @@ function useBeheerMutatie<TVars, TResult>(
       void queryClient.invalidateQueries({ queryKey: key });
     }
 
-    // Item 4 above: dropped, not invalidated, and school-wide rather than per klas.
-    queryClient.removeQueries({ queryKey: DEKKING_KEY });
+    // Item 4 above: cleared rather than merely invalidated, and school-wide rather than per klas. **Cleared AND
+    // refetched since E9-06**: `/themas` now carries a coverage bar, so this is the first writer whose figure is on
+    // screen at the moment of the write, and a plain remove would have left it frozen. See `vernieuwDekking`.
+    vernieuwDekking(queryClient);
   }
 
   return useMutation({
@@ -189,9 +191,18 @@ export function useWijzigThema() {
  * immediately after a delete that in fact succeeded.
  *
  * So a delete refreshes **only the two lists that changed** and deliberately leaves the deleted thema's own
- * cache entries alone. `removeQueries` was the first fix and it was the wrong one: removing a query that still
- * has a mounted observer makes that observer fetch again immediately, so it reproduced the very 404 it was
- * meant to prevent. Leaving a stale entry for a thema nothing will mount again costs nothing, and a fresh
+ * cache entries alone. `removeQueries` was the first fix and it was the wrong one: it reproduced the very 404 it
+ * was meant to prevent.
+ *
+ * *Refined 2026-08-19 by E9-06, which measured the mechanism and found this sentence half right.* It read
+ * "removing a query that still has a mounted observer makes that observer fetch again immediately", and that
+ * is not unconditional: `removeQueries` does **not** notify observers, so a mounted component whose tree is
+ * otherwise idle goes on rendering its last result and never refetches (measured, 1 request). It refetches
+ * only once something **else** re-renders it, which in a delete is guaranteed, since the same handler
+ * invalidates two lists. So the 404 was real and the fix is right; what was wrong was reading it as a property
+ * of `removeQueries` alone rather than of a remove plus a re-render. **The distinction is load-bearing
+ * elsewhere:** it means a remove is a nondeterministic refresh for any figure sitting on the screen that
+ * writes, which is why the dekking family now uses `resetQueries` instead. Leaving a stale entry for a thema nothing will mount again costs nothing, and a fresh
  * visit to that URL is answered from the bibliotheek with "dit thema bestaat niet".
  *
  * **It also does not drop the dekking cache, and that is a claim about the server rather than an omission**

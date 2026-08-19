@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { haalDekking } from "./api";
 import type { Dekkingsbereik } from "./types";
@@ -25,6 +25,46 @@ export const DEKKING_KEY = ["dekking"] as const;
 
 /** Everything cached about **one** class's dekking, whatever scope or narrowing it was asked under (E4-01). */
 export const dekkingKlasKey = (klasId: string) => [...DEKKING_KEY, klasId] as const;
+
+/**
+ * Throw away a cached dekking answer **and go get the new one** — the one function every writer should call.
+ *
+ * **`reset`, not `remove`, and E9-06 is the story that found out why.** Both clear the data, so both satisfy E4-01's
+ * requirement that a pre-edit figure is never painted on arrival. They differ on a query that is **mounted** at the
+ * moment of the write:
+ *
+ * - `removeQueries` deletes the cache entry and **does not notify observers**. Measured, not assumed: a mounted
+ *   component whose tree is otherwise idle goes on rendering its last result and never refetches. It refetches only if
+ *   something *else* re-renders it, which makes a remove a **nondeterministic** refresh for anything on screen.
+ * - `resetQueries` clears the data **and refetches every active observer**, so a figure on the same screen as the write
+ *   moves, every time.
+ *
+ * That difference was invisible for as long as every dekking consumer sat on a *different route* from the write, which
+ * is exactly E4-01's case: the teacher edits on the kalender and then navigates to `/dekking`, so the component mounts
+ * fresh and fetches. E9-06 put a coverage figure on `/themas` and on the board **beside the controls that change it**,
+ * the first consumer mounted when the write happens, and under `removeQueries` that bar sat perfectly still through a
+ * teacher's afternoon of linking doelen: CR4's complaint, reproduced by the fix for CR4.
+ *
+ * The behaviour E4-01 verified in a browser is unchanged, because the clearing still happens; what is added is the
+ * refetch it never needed. *`useThemas` carries a refinement of the same mechanism for its own delete path.*
+ *
+ * Nothing behind the API needs a counterpart: dekking is computed on every read and never stored (Art. V.1). These
+ * functions exist purely because the browser is allowed to remember.
+ */
+export function vernieuwDekking(queryClient: QueryClient) {
+  void queryClient.resetQueries({ queryKey: DEKKING_KEY });
+}
+
+/**
+ * The same, narrowed to one class, for a **plan** edit.
+ *
+ * A link edit must use {@link vernieuwDekking} instead: a `DoelKoppeling` hangs off a school-wide thema that may sit in
+ * any number of classes' plans, so narrowing to the class the teacher happens to have selected would leave every other
+ * class's figure stale. See {@link DEKKING_KEY}.
+ */
+export function vernieuwDekkingVanKlas(queryClient: QueryClient, klasId: string) {
+  void queryClient.resetQueries({ queryKey: dekkingKlasKey(klasId) });
+}
 
 const dekkingKey = (klasId: string, bereik: Dekkingsbereik, jaarFase: string | null) =>
   [...dekkingKlasKey(klasId), bereik, jaarFase] as const;

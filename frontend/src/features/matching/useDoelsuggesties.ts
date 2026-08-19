@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { DEKKING_KEY } from "../dekking/useDekking";
+import { vernieuwDekking } from "../dekking/useDekking";
 import {
   genereerDoelsuggesties,
   haalDoelsuggesties,
@@ -70,7 +70,7 @@ export function useWijzigSuggestieStatus(themaId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: suggestiesKey(themaId) });
       void queryClient.invalidateQueries({ queryKey: ongekoppeldeDoelenKey });
-      queryClient.removeQueries({ queryKey: DEKKING_KEY });
+      vernieuwDekking(queryClient);
     },
   });
 }
@@ -113,7 +113,7 @@ export function useVervangSuggestieDoel(themaId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: suggestiesKey(themaId) });
       void queryClient.invalidateQueries({ queryKey: ongekoppeldeDoelenKey });
-      queryClient.removeQueries({ queryKey: DEKKING_KEY });
+      vernieuwDekking(queryClient);
     },
   });
 }

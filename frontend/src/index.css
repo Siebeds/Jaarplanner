@@ -199,6 +199,32 @@
     background-color: hsl(var(--ink-zacht));
   }
 
+  /*
+   * The *provisional* half of the coverage progress bar (E9-06): diagonal stripes in the dekking-gedekt hue on the
+   * card, for the goals that would be covered if the teacher accepted the placements standing in their plan.
+   *
+   * **A texture rather than a second colour, and that is the constitution rather than taste.** Art. XII spends the
+   * palette on doelsoort, suggestiestatus and dekking, and the chrome gets one structural hue — so there is no fourth
+   * colour available to mean "not yet". More to the point, Art. IV.1 says an unanswered AI proposal is not coverage,
+   * and a lighter *tint* of the covered green would say "coverage, a bit less so", which is the one reading this
+   * segment must not have. Stripes read as provisional in a way no tint does, and they survive greyscale.
+   *
+   * The bar carrying it is `aria-hidden`: both quantities are printed as text beside it, so this is the third carrier
+   * rather than the only one, and Art. XII's "never colour alone" is satisfied by the sentence, not by the hatch.
+   *
+   * 45deg and a 6px period were settled by looking at it. Finer than ~4px shimmers against the rounded mask at the
+   * segment edge; coarser than ~8px reads as two or three chevrons rather than as a texture on a 8px-high bar.
+   */
+  .dekking-arcering {
+    background-image: repeating-linear-gradient(
+      45deg,
+      hsl(var(--dekking-gedekt)) 0,
+      hsl(var(--dekking-gedekt)) 2px,
+      hsl(var(--card)) 2px,
+      hsl(var(--card)) 6px
+    );
+  }
+
   /* Respect the OS setting rather than animating regardless (ADR-0017 §7, WCAG 2.3.3). */
   @media (prefers-reduced-motion: reduce) {
     *,
