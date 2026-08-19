@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { useDroppable } from "@dnd-kit/core";
 
 import { Button } from "../../components/ui/button";
@@ -221,6 +223,15 @@ export function Periodekolom({
   bezettePeriodes,
   hergeneratie,
 }: PeriodekolomProps) {
+  /*
+    Whether this column's regeneration press has been confirmed yet (E9-08).
+
+    **Per column, and reset by nothing but the teacher**, which is the safe direction: an outstanding question that
+    survives a re-render is a question still on screen, while one cleared by a refetch would let a press land without
+    its warning ever having been read. It is deliberately NOT lifted into `Jaarplankalender`: a single shared flag would
+    open the confirmation in whichever column re-rendered, and the sentence names "deze periode".
+  */
+  const [vraagtBevestiging, setVraagtBevestiging] = useState(false);
   const teVol = belasting?.isOverbelast ?? false;
 
   // Disabled rather than absent at the fine tier: hooks cannot be conditional, and dnd-kit's own `disabled` is the
@@ -476,20 +487,74 @@ export function Periodekolom({
             genereren" are indistinguishable in a screen reader's element list. Same device as the picker's own label. */}
         {verplaatsstaat === "kan" && bezetDoor === null && !isDoelwit && hergeneratie && (
           <div className="flex flex-col gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-full"
-              onClick={hergeneratie.start}
-              // Disabled while ANY period is running, labelled only while this one is: see `wachten`.
-              disabled={hergeneratie.bezig || hergeneratie.wachten}
-              aria-label={t("kalender.periodeHergenereerLabel", { ordinaal: blok.ordinaal })}
-            >
-              {hergeneratie.bezig
-                ? t("kalender.genereerBezig")
-                : t("kalender.periodeHergenereer")}
-            </Button>
+            {/*
+              **The press asks first, and that is what let the board stop explaining it** (E9-08).
+
+              What this button replaces used to be a 278-character paragraph above the board, rendered whenever any
+              column showed the control -- so on a healthy plan a teacher read it every time, and pressed it rarely. The
+              consequence half now appears in the column they pressed, at the moment it applies, and the instruction
+              half stays above the board behind the Uitleg switch.
+
+              **Per column rather than lifted to the board**, because the sentence names "deze periode" and there are up
+              to seven of these. A single shared confirmation would have to name the ordinal to stay true, which is the
+              same "one message for seven buttons" problem the aria-label above already solves by not being shared.
+
+              `role="alert"` so it is announced rather than merely appearing. The confirming button repeats the verb and
+              its scope, because "Ja" alone in a screen reader's element list is seven identical answers to seven
+              different questions.
+            */}
+            {vraagtBevestiging ? (
+              <>
+                <p role="alert" className="text-xs font-medium leading-snug text-ink">
+                  {t("kalender.periodeHergenereerGevolg")}
+                </p>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setVraagtBevestiging(false);
+                    hergeneratie.start();
+                  }}
+                  disabled={hergeneratie.bezig || hergeneratie.wachten}
+                  // **No `aria-label` here, deliberately, and that is SC 2.5.3 rather than an omission.** The trigger
+                  // needs one because seven columns carry seven identical "Deze periode" buttons; this one carries its
+                  // own visible sentence, and overriding it with the trigger's wording would make the accessible name
+                  // disagree with the label a speech-input user reads aloud. Only one confirmation is open at a time, so
+                  // there is nothing to disambiguate it from.
+                >
+                  {hergeneratie.bezig
+                    ? t("kalender.genereerBezig")
+                    : t("kalender.periodeHergenereerBevestig")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setVraagtBevestiging(false)}
+                  disabled={hergeneratie.bezig}
+                >
+                  {t("kalender.annuleren")}
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                onClick={() => setVraagtBevestiging(true)}
+                // Disabled while ANY period is running, labelled only while this one is: see `wachten`.
+                disabled={hergeneratie.bezig || hergeneratie.wachten}
+                aria-label={t("kalender.periodeHergenereerLabel", { ordinaal: blok.ordinaal })}
+              >
+                {hergeneratie.bezig
+                  ? t("kalender.genereerBezig")
+                  : t("kalender.periodeHergenereer")}
+              </Button>
+            )}
 
             {/* The failure is reported **in the column the teacher pressed**, not only in the panel above the board:
                 the board scrolls horizontally, so a message at the top of the page can be off-screen entirely. Four

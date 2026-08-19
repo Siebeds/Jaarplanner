@@ -10,6 +10,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useId, useRef, useState, type ReactNode } from "react";
+import { Uitleg } from "../../app/uitleg";
 import { Jaarfasekiezer } from "../dekking/Jaarfasekiezer";
 import { Button } from "../../components/ui/button";
 import { t, tAantal, type TranslationKey } from "../../i18n";
@@ -130,6 +131,8 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
    */
   const beschikbaarLatch = useRef<readonly string[]>([]);
   const heeftDoelenLatch = useRef(false);
+  // E9-08: the regeneration press asks first, so its consequence paragraph does not have to live above the board.
+  const [vraagtHergeneratie, setVraagtHergeneratie] = useState(false);
 
   const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId, niveau);
 
@@ -765,18 +768,64 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
           {/* Stacked on a phone, side by side from `sm`. As a single wrapping flex row the explanation
               shrank into a narrow column beside the button and clipped it. */}
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-5">
-            <Button
-              type="button"
-              onClick={() => generatie.mutate(parameters)}
-              disabled={generatie.isPending || instellingenOnbekend || periodesOnbekend}
-              className="w-full sm:w-auto"
-            >
-              {generatie.isPending
-                ? t("kalender.genereerBezig")
-                : heeftPlan
-                  ? t("kalender.hergenereer")
-                  : t("kalender.genereer")}
-            </Button>
+            {/*
+              **A confirmation step, but only when the press replaces something** (E9-08).
+
+              On a first run nothing is destroyed, so the button fires directly and `genereerUitleg` stays where it is:
+              it explains what the tool will do, which is not a warning about loss. Once a plan exists the same press
+              discards every undecided, unlocked proposal, and E4-04's whole finding was that nothing said so
+              beforehand. It said so afterwards by putting a 330-character paragraph permanently above the board, which
+              is what CR1 came back about.
+
+              So the sentence is not deleted and not hidden: it moves to the one moment it is unavoidable. `role="alert"`
+              so it is announced rather than merely appearing, and the confirming button carries the verb rather than
+              "Ja" alone (SC 2.4.6 and this repo's rule that an action keeps its name through the flow).
+            */}
+            {heeftPlan && vraagtHergeneratie ? (
+              <div className="flex w-full flex-col gap-2">
+                <p role="alert" className="max-w-2xl text-xs font-medium leading-snug text-ink">
+                  {t("kalender.hergenereerUitleg")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => {
+                      setVraagtHergeneratie(false);
+                      generatie.mutate(parameters);
+                    }}
+                    disabled={generatie.isPending || instellingenOnbekend || periodesOnbekend}
+                  >
+                    {generatie.isPending
+                      ? t("kalender.genereerBezig")
+                      : t("kalender.hergenereerBevestig")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setVraagtHergeneratie(false)}
+                    disabled={generatie.isPending}
+                  >
+                    {t("kalender.annuleren")}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                onClick={() =>
+                  heeftPlan ? setVraagtHergeneratie(true) : generatie.mutate(parameters)
+                }
+                disabled={generatie.isPending || instellingenOnbekend || periodesOnbekend}
+                className="w-full sm:w-auto"
+              >
+                {generatie.isPending
+                  ? t("kalender.genereerBezig")
+                  : heeftPlan
+                    ? t("kalender.hergenereer")
+                    : t("kalender.genereer")}
+              </Button>
+            )}
             {/* The explanation is **replaced**, not supplemented, once a plan exists: two paragraphs beside one button
                 is the wall of prose this screen keeps having to cut. So the regeneration sentence has to carry
                 everything the first-run one did, and the audit's second MAJOR is what proves that is not a formality.
@@ -796,9 +845,20 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
                 started in writes nothing (`VerplaatsPlaatsingAsync` treats it as a normal gesture), so such a
                 placement stays `Voorgesteld` and does disappear, while a teacher might call it "verplaatst". Making
                 the no-op write would cost a standing proposal its motivation, which is the worse trade. */}
-            <p className="max-w-2xl text-xs leading-snug text-ink-zacht">
-              {t(heeftPlan ? "kalender.hergenereerUitleg" : "kalender.genereerUitleg")}
-            </p>
+            {/*
+              **Only the first-run explanation is left here** (E9-08). The regeneration sentence moved into the
+              confirmation above, because its subject is what the press destroys and that belongs at the press.
+
+              The comment block above this one argued that the explanation is *replaced* rather than supplemented once a
+              plan exists, so that the regeneration sentence had to carry everything the first-run one did. That still
+              holds and is now carried in the confirmation, which is where the whole string went, verbatim: the
+              human-in-the-loop clause the audit's second MAJOR put there travels with it rather than being left behind.
+            */}
+            {!heeftPlan && (
+              <p className="max-w-2xl text-xs leading-snug text-ink-zacht">
+                {t("kalender.genereerUitleg")}
+              </p>
+            )}
           </div>
 
           {/* Why the button above is refused, beside the button. **Rendered for BOTH causes** (fix round 3, MINOR-1).
@@ -976,10 +1036,21 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
 
                 Gated on the button existing at all: at the fine tier and on an unreadable grid there is no per-period
                 control in any column, so the sentence would describe something absent. */}
+            {/*
+              **Reduced to the instruction half and put behind the Uitleg switch** (E9-08 + E9-01).
+
+              The three consequence sentences moved into each column's own confirmation, where they apply. What is left
+              points at a control ("de knop onderaan die periode") and states the one fact a teacher needs before they go
+              looking for it, that the rest of the plan is untouched -- so it is help, and E9-01's switch is where help
+              lives. It stays gated on the button existing, because an instruction pointing at an absent control is the
+              E3-06 defect whether or not help is switched on.
+            */}
             {periodeknopOpBord && (
-              <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
-                {t("kalender.periodeHergenereerUitleg")}
-              </p>
+              <Uitleg>
+                <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
+                  {t("kalender.periodeHergenereerUitleg")}
+                </p>
+              </Uitleg>
             )}
 
             {/* What "Bezet:" on a column means, once for the board (E4-05, owner rulings 2026-08-06).

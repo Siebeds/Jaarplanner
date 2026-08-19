@@ -252,6 +252,32 @@ function stubFetch(
 }
 
 /**
+ * Presses the whole-plan regeneration through its confirmation (E9-08).
+ *
+ * The trigger no longer runs anything: from E9-08 it opens a confirmation carrying the sentence about what the run
+ * discards, which is what let that sentence stop living permanently above the board. So every test that wants a
+ * regeneration to actually happen goes through both presses, and a test that wants the DISCLOSURE only presses once.
+ */
+/**
+ * Opens the regeneration disclosure **without running anything** (E9-08), and returns the paragraph.
+ *
+ * The four tests below are about the disclosure, not about the run: what E4-04 promised is that a teacher learns what
+ * the press discards *before* it happens. E9-08 moved that sentence from "permanently above the board" to "the moment
+ * of the press", so these tests now open the confirmation and read it there. The promise is unchanged and is in fact
+ * stronger, since the sentence can no longer be scrolled past days before the press it describes.
+ */
+async function opentHergeneratieUitleg() {
+  fireEvent.click(await screen.findByRole("button", { name: t("kalender.hergenereer") }));
+
+  return screen.getByText(t("kalender.hergenereerUitleg"));
+}
+
+async function drukHergenereer() {
+  fireEvent.click(await screen.findByRole("button", { name: t("kalender.hergenereer") }));
+  fireEvent.click(screen.getByRole("button", { name: t("kalender.hergenereerBevestig") }));
+}
+
+/**
  * The list of period cards.
  *
  * Needed because the year spine repeats two of the card labels by design — it carries a legend so its
@@ -740,7 +766,7 @@ describe("Jaarplankalender", () => {
     renderKalender();
     // `hergenereer`, not `genereer`: this fixture holds a placement, so from E4-04 the trigger names itself a
     // regeneration (FR-8.1). The run this test drives and everything it asserts are unchanged.
-    fireEvent.click(await screen.findByRole("button", { name: t("kalender.hergenereer") }));
+    await drukHergenereer();
     expect(await screen.findByText("Nu gedekt: 0 van 9.")).toBeInTheDocument();
 
     // Narrow to one kleuterjaar AFTER the run. The plan does not change; what the figures are over does.
@@ -792,7 +818,7 @@ describe("Jaarplankalender", () => {
     renderKalender();
     // `hergenereer`, not `genereer`: this fixture holds a placement, so from E4-04 the trigger names itself a
     // regeneration (FR-8.1). The run this test drives and everything it asserts are unchanged.
-    fireEvent.click(await screen.findByRole("button", { name: t("kalender.hergenereer") }));
+    await drukHergenereer();
 
     expect(await screen.findByText("Nu gedekt: 0 van 9.")).toBeInTheDocument();
     expect(screen.queryByText(/Je meet nu tegen een ander jaar/)).not.toBeInTheDocument();
@@ -4672,6 +4698,9 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     // screen where none exists is the noise this project's design rules cut first.
     expect(screen.queryByRole("button", { name: t("kalender.hergenereer") })).toBeNull();
     expect(screen.queryByText(t("kalender.hergenereerUitleg"))).toBeNull();
+    // And no confirmation to reach it through either (E9-08): with no plan there is nothing to replace, so the press
+    // runs directly and the disclosure does not exist in any state of this screen.
+    expect(screen.queryByRole("button", { name: t("kalender.hergenereerBevestig") })).toBeNull();
   });
 
   it("names itself a regeneration, and states both halves of the rule, once a plan exists", async () => {
@@ -4686,7 +4715,7 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     // Keyed on the facts rather than on the whole string, so a rewrite that keeps them survives and one that drops
     // any of them fails. **What is lost**, **what is kept** and **what arrives** are separate assertions on purpose:
     // E4-06 shipped three rounds of lock copy that got one half right at a time.
-    const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
+    const uitleg = await opentHergeneratieUitleg();
     // "verdwijnen", not "worden vervangen" (antagonist round-1 MAJOR-1). The discard is unconditional on a valid parse
     // and happens before anything is placed, so an empty, fully-skipped or fully-blocked answer deletes the undecided
     // proposals and puts nothing back. Wording the certain half as a swap understated exactly the risk this sentence
@@ -4760,9 +4789,10 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     renderKalender();
 
     await screen.findByText("Water");
-    fireEvent.click(screen.getByRole("button", { name: t("kalender.hergenereer") }));
+    await drukHergenereer();
 
-    // The same endpoint and the same report as a first run; E4-04 changed neither. Both figures come from the
+    // The same endpoint and the same report as a first run; E4-04 changed neither, and E9-08 changed only how many
+    // presses reach it. Both figures come from the
     // server's own `AantalBehouden`/`AantalVervangen` and are asserted in the singular, which is where this file's
     // plural defects have always surfaced.
     expect(await screen.findByText("2 thema's voorgesteld.")).toBeInTheDocument();
@@ -4792,7 +4822,7 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     // proving nothing about the case it was written for.
     expect(screen.queryByText(t("kalender.beslisUitleg"))).toBeNull();
 
-    const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
+    const uitleg = await opentHergeneratieUitleg();
     expect(uitleg).toHaveTextContent(/Voorgesteld/);
     expect(uitleg).toHaveTextContent(/jij beslist/);
   });
@@ -4814,7 +4844,7 @@ describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.
     await screen.findByText("Water");
 
     expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeInTheDocument();
-    const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
+    const uitleg = await opentHergeneratieUitleg();
 
     // **This fixture holds a LOCKED, UNDECIDED proposal, and that is what the round-2 MAJOR turned on** (`p3`). It is
     // an AI proposal the teacher has decided nothing about — `kalender.vergrendelUitlegVrij` tells them to lock
@@ -4877,6 +4907,18 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
   /** The per-period trigger of one column, by the accessible name that distinguishes it from its siblings. */
   const hergenereerknop = (ordinaal: number) =>
     screen.getByRole("button", { name: t("kalender.periodeHergenereerLabel", { ordinaal }) });
+
+  /**
+   * Presses one column's regeneration through its confirmation (E9-08).
+   *
+   * The trigger opens a confirmation carrying the sentence about what that period loses; the answer is found by its
+   * VISIBLE text, because the confirming button deliberately carries no `aria-label` (SC 2.5.3 — its own sentence is its
+   * accessible name, and only one confirmation is open at a time so there is nothing to disambiguate).
+   */
+  const drukHergenereerknop = (ordinaal: number) => {
+    fireEvent.click(hergenereerknop(ordinaal));
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.periodeHergenereerBevestig") }));
+  };
 
   const zoekHergenereerknop = (ordinaal: number) =>
     screen.queryByRole("button", { name: t("kalender.periodeHergenereerLabel", { ordinaal }) });
@@ -4990,7 +5032,7 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
       expect(hergenereerknop(blok.ordinaal)).toBeInTheDocument();
     }
 
-    fireEvent.click(hergenereerknop(doel.ordinaal));
+    drukHergenereerknop(doel.ordinaal);
 
     // The DATE is what travels, never the ordinal: an ordinal shifts when the school edits its vakanties.
     await waitFor(() => expect(urls).toHaveLength(1));
@@ -5005,7 +5047,7 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     renderKalender();
     await waitFor(() => expect(hergenereerknop(doel.ordinaal)).toBeInTheDocument());
 
-    fireEvent.click(hergenereerknop(doel.ordinaal));
+    drukHergenereerknop(doel.ordinaal);
 
     // Without this line the scoped counts sit in the card whose own button says "Hele jaarplan opnieuw genereren".
     await waitFor(() =>
@@ -5030,7 +5072,7 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     renderKalender();
     await waitFor(() => expect(hergenereerknop(doel.ordinaal)).toBeInTheDocument());
 
-    fireEvent.click(hergenereerknop(doel.ordinaal));
+    drukHergenereerknop(doel.ordinaal);
 
     // Rendered in Dutch, naming the PERIOD rather than echoing an ISO date: the payload is structured since fix
     // round 1 and the label is composed by the screen that has the grid (Art. II.3).
@@ -5063,7 +5105,7 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     renderKalender();
     await waitFor(() => expect(hergenereerknop(doel.ordinaal)).toBeInTheDocument());
 
-    fireEvent.click(hergenereerknop(doel.ordinaal));
+    drukHergenereerknop(doel.ordinaal);
 
     // In the column the teacher pressed, because the board scrolls sideways and a notice at the top of the page can
     // be off screen entirely. And it is nl.json copy keyed on the STATUS: the server's own detail is never echoed.
@@ -5188,7 +5230,7 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     renderKalender();
     await waitFor(() => expect(hergenereerknop(1)).toBeInTheDocument());
 
-    fireEvent.click(hergenereerknop(doel.ordinaal));
+    drukHergenereerknop(doel.ordinaal);
 
     // The pressed column says so, and it is the ONLY one that does.
     await waitFor(() =>
@@ -5560,5 +5602,76 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     await screen.findByText(t("dekking.cijfer", { gedekt: 8, aantal: 8 }));
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+/**
+ * E9-08 (CR1): the consequence copy lives at the press, not permanently above the board.
+ *
+ * **These tests are the story's acceptance criterion turned into assertions**, and they are written to fail in both
+ * directions. A screen that kept the paragraph at rest fails the first pair; a screen that moved it somewhere the
+ * teacher never sees fails the second; and a confirmation that fires the run on the wrong press fails the third. That
+ * last one matters most, because the failure mode of adding a confirmation step is a destructive action that now runs
+ * from a button labelled "Annuleren".
+ */
+describe("Jaarplankalender — de gevolgtekst staat bij de druk, niet boven het bord (E9-08, CR1)", () => {
+  it("houdt de hergeneratie-uitleg van het bord tot de leerkracht drukt", async () => {
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    // At rest: the trigger is there and the 330-character warning is not. This is the whole of CR1 for this paragraph.
+    expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeInTheDocument();
+    expect(screen.queryByText(t("kalender.hergenereerUitleg"))).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.hergenereer") }));
+
+    // And it reaches the teacher before they commit, announced rather than merely present.
+    const uitleg = screen.getByText(t("kalender.hergenereerUitleg"));
+    expect(uitleg).toBeInTheDocument();
+    expect(uitleg).toHaveAttribute("role", "alert");
+  });
+
+  it("houdt de periode-gevolgtekst van het bord en zet ze in de kolom die je drukt", async () => {
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    renderKalender();
+
+    await screen.findByText("Water");
+
+    // The three consequence sentences are nowhere on a resting board.
+    expect(screen.queryByText(t("kalender.periodeHergenereerGevolg"))).toBeNull();
+
+    const knoppen = screen.getAllByRole("button", {
+      name: new RegExp(t("kalender.periodeHergenereer")),
+    });
+    fireEvent.click(knoppen[0]);
+
+    const gevolg = screen.getByText(t("kalender.periodeHergenereerGevolg"));
+    expect(gevolg).toHaveAttribute("role", "alert");
+
+    // ONE confirmation, not seven: the sentence says "deze periode", so a shared one would be false in six columns.
+    expect(screen.getAllByText(t("kalender.periodeHergenereerGevolg"))).toHaveLength(1);
+  });
+
+  it("draait niets wanneer de leerkracht de bevestiging annuleert", async () => {
+    // The failure mode of adding a confirmation is a destructive run that happens anyway. Asserted on the REQUESTS,
+    // because a screen that returned to rest while having already fired would look identical.
+    stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
+    const gestubdeFetch = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    renderKalender();
+
+    await screen.findByText("Water");
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.hergenereer") }));
+    fireEvent.click(screen.getByRole("button", { name: t("kalender.annuleren") }));
+
+    // Back to rest, warning gone, and nothing was generated.
+    expect(screen.queryByText(t("kalender.hergenereerUitleg"))).toBeNull();
+    expect(screen.getByRole("button", { name: t("kalender.hergenereer") })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        gestubdeFetch.mock.calls.filter(([input]) => String(input).includes("/generatie")),
+      ).toHaveLength(0),
+    );
   });
 });
