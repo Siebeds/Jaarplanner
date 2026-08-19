@@ -11,9 +11,10 @@ import type { Dekkingsgroep } from "./dekkingFormat";
  *
  * **The per-group tally is the closest this story comes to a percentage, and it stops there on purpose.** "3 van 8
  * gedekt" is a count over rows the group itself renders, so it cannot disagree with them. The dekkingspercentage, the
- * doelsoort filter and the ontbrekende-doelenlijst are **E5-03**; tracing a gap to where it should be planned is
- * **E5-05**. Neither is anticipated here, because both need the Art. XIV denominator question settled further than
- * the 2026-08-04 ruling settles it.
+ * doelsoort filter and the ontbrekende-doelenlijst landed in **E5-03**, and tracing a gap to where it should be
+ * planned in **E5-05**; neither was anticipated here, and both ended up elsewhere — the first in the summary card, the
+ * second split between the row and a block of its own. So the sentence above still describes this component
+ * accurately, which is why it is corrected rather than deleted.
  *
  * **The tally disappears when the summary withholds its figure, and that is a fix rather than a refinement.** Found by
  * opening the screen with a stale placement: the summary said *"Zolang dat zo is, geeft dit overzicht geen cijfer"* and

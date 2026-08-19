@@ -9,11 +9,13 @@ import { Dekkingexport } from "./Dekkingexport";
 import { Dekkinggroep } from "./Dekkinggroep";
 import { Dekkingsamenvatting } from "./Dekkingsamenvatting";
 import { Dekkingslijstkop } from "./Dekkingslijstkop";
+import { Lacuneroutes } from "./Lacuneroutes";
 import {
   bepaalCijfer,
   beschikbareDoelsoorten,
   gemetenDoelen,
   groepeerPerSubdomein,
+  telLacuneoorzaken,
   toonbareDoelen,
   type Doelsoortkeuze,
 } from "./dekkingFormat";
@@ -68,9 +70,14 @@ export { JAARFASE_PARAM };
  * exactly what the teacher was looking at. Written with `replace`, so switching scope does not fill the history.
  *
  * **What this screen deliberately does not do**, so no later story credits itself with it and no reader mistakes an
- * absence for an oversight:
- * - **no percentage, no doelsoort filter, no ontbrekende-doelenlijst** (E5-03);
- * - **no gap-analyse grouped by discipline and actionable from the kalender** (E5-05);
+ * absence for an oversight. *Two entries have been struck because they came true* (E5-03 landed the percentage, the
+ * doelsoort filter and the gaps-only list; E5-05 landed the gap-analyse), which is worth doing rather than leaving:
+ * a list of absences that keeps naming things the screen now has is how a reader stops believing the entries that are
+ * still true.
+ * - **no discipline level in the grouping.** E5-05's story text asked for the gap list *"grouped by
+ *   discipline/domein"* and the **owner ruled on 2026-08-07 that (domein, subdomein) stays**, so this is a decision
+ *   rather than an omission. The taxonomy has three levels (Art. VII.0) and the disciplinenaam is available, so the
+ *   day it is wanted it is a payload field and a group key, not a rework.
  * - **no minimumdoel level**, the level the onderwijsinspectie actually tests (E5-04, blocked on E1-12 because no
  *   `Minimumdoel` row can exist yet). That absence is stated **on screen**, not only here: a directie reading this as
  *   inspectie-proof would otherwise draw a conclusion the data does not support.
@@ -129,6 +136,13 @@ export function DekkingPagina() {
     () => (dekking.data ? beschikbareDoelsoorten(dekking.data.doelen) : []),
     [dekking.data],
   );
+
+  // THE GAP-ANALYSE'S COUNTS (E5-05), over `gemeten` and NOT over `groepen`. The distinction is the same one the
+  // comment above draws for the figure, applied to a different pair: `gemeten` follows the doelsoort narrowing, which
+  // changes what is being measured, and ignores the gaps-only toggle, which changes only what is shown. Counting over
+  // `groepen` would leave these numbers identical in the one view and unexplainable in the other, since with the
+  // toggle off the groups also hold every covered doel.
+  const lacunetellingen = useMemo(() => telLacuneoorzaken(gemeten), [gemeten]);
 
   function kiesBereik(volgende: Dekkingsbereik) {
     const params = new URLSearchParams(searchParams);
@@ -264,6 +278,29 @@ export function DekkingPagina() {
               magTellingTonen={cijfer.soort === "cijfer"}
             />
           )}
+
+          {/*
+            THE ROUTES OUT OF THE GAPS (E5-05), directly under the control that reveals them and above the rows they
+            describe. This is the half that makes E5-05 more than a longer list: `/dekking` has shown WHICH doelen are
+            missing since E5-03, and this says where each kind of gap is closed.
+
+            **Gated on `cijfer.soort === "cijfer"`, which is the same gate the group tallies carry and for exactly the
+            same reason.** THIS IS THE ONE PLACE THAT RULE IS STATED, because the gate is here: the line below is what
+            withholds the block, and `Lacuneroutes` cannot withhold itself. (Fix round 1 wrote the rule a second time
+            on `Lacuneroutes`, claiming that component "owns the gate"; ronde 2 found it, and it was MINOR-5 — two
+            files describing the same numbers differently — repeated one file along by the fix for MINOR-5.)
+
+            The counts partition the **recognised** gaps in view: `telLacuneoorzaken` drops covered doelen, and it
+            drops any cause this client cannot name, which is unbounded rather than negligible — a server that adds a
+            cause makes every gap of that cause vanish from these counts, exactly as this story's fifth cause would
+            have before `LACUNEOORZAKEN` learned about it. In the ordinary state nothing is dropped and they add up to
+            `totaal - gedekt`, the figure the directie ruling of 2026-07-28 withholds while a placement is unresolved.
+            That ordinary state is what the gate is for. E5-02 shipped this leak once already: the summary said it
+            would give no figure while every group printed one, and the group counts summed to the withheld total.
+            Passing the gate rather than the counts keeps the decision in one place; `Lacuneroutes` documents why an
+            absence beats a count-free variant.
+          */}
+          {cijfer.soort === "cijfer" && <Lacuneroutes tellingen={lacunetellingen} />}
 
           {/*
             Nothing to list under a pressed "Alleen ontbrekende", said in words: an empty area there is

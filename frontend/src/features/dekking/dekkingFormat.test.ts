@@ -6,9 +6,12 @@ import {
   beschikbareDoelsoorten,
   gemetenDoelen,
   groepeerPerSubdomein,
+  leesOorzaak,
+  telLacuneoorzaken,
   toonbareDoelen,
 } from "./dekkingFormat";
 import { dekking, doel } from "./testdata";
+import { LACUNEOORZAKEN, type DoelDekking } from "./types";
 
 /**
  * The dekkingsoverzicht's pure rules (E5-02, E5-03), tested without rendering.
@@ -284,5 +287,97 @@ describe("beschikbareDoelsoorten", () => {
 
   it("returns nothing for an empty scope", () => {
     expect(beschikbareDoelsoorten([])).toEqual([]);
+  });
+});
+
+describe("leesOorzaak", () => {
+  it("accepts exactly the vocabulary this client knows", () => {
+    // RENAMED BY RONDE 3, because the old title ("accepts every cause the server can send, and nothing else") claimed
+    // two things this test cannot reach: `types.ts` says in the same commit that NOTHING compares this array to the C#
+    // enum, so "the server can send" is unprovable here, and "nothing else" is the sibling test below. What this one
+    // proves is narrower and still worth proving: `leesOorzaak` accepts the whole vocabulary and does not drift from
+    // it. A guard whose name over-claims is what ronde 2's own MINOR-6 was about.
+    //
+    // DERIVED FROM THE VOCABULARY, not hand-listed, and that is antagonist ronde 2 (2026-08-19): the hand-written
+    // version still listed four causes after this story added a fifth, so `leesOorzaak` — the ONE function that decides
+    // whether a cause renders at all on the client — had no assertion for the cause the story is about. The suite was
+    // green because the row and route tests cover it indirectly, which is exactly how a named guard stops guarding.
+    for (const oorzaak of LACUNEOORZAKEN) {
+      expect(leesOorzaak(oorzaak), `${oorzaak} is not accepted`).toBe(oorzaak);
+    }
+
+    // The list is not empty, so the loop cannot pass by iterating nothing.
+    expect(LACUNEOORZAKEN).toContain("PlaatsingGeweigerd");
+  });
+
+  it("refuses anything else, so an unknown cause renders no sentence rather than a wrong one", () => {
+    // The failure this prevents is not a crash. `?doelsoort=Foo` once reached a teacher as "geen enkel doel van de
+    // soort doelsoort.undefined", because an unvalidated value was used to build a catalogue key and `t` returns a
+    // missing key verbatim (Art. II.3). The same shape is available here on every row of the list.
+    expect(leesOorzaak("Onbekend")).toBeNull();
+    expect(leesOorzaak("")).toBeNull();
+    expect(leesOorzaak(null)).toBeNull();
+
+    // Prototype members specifically: `in` would let these through, which is the exact defect E5-03's round-2 audit
+    // found in `leesDoelsoort` after round 1 had "fixed" it. `find` over the vocabulary cannot, and this pins that
+    // the implementation stays a lookup over the list rather than a property test on an object.
+    expect(leesOorzaak("toString")).toBeNull();
+    expect(leesOorzaak("__proto__")).toBeNull();
+  });
+});
+
+describe("telLacuneoorzaken", () => {
+  it("counts the gaps per cause, in cheapest-route-first order rather than by size", () => {
+    // Order comes from the vocabulary, not from the counts. Sorting by size would put the biggest pile first, and on
+    // a fresh plan that is always "no thema covers this" — the one route a teacher cannot walk today.
+    const tellingen = telLacuneoorzaken([
+      doel({ code: "A", oorzaak: "GeenThema" }),
+      doel({ code: "B", oorzaak: "GeenThema" }),
+      doel({ code: "C", oorzaak: "GeenThema" }),
+      doel({ code: "D", oorzaak: "WachtOpBeslissing", kandidaatThemas: ["Herfst"] }),
+      doel({ code: "E", oorzaak: "KoppelingNietBeslist", kandidaatThemas: ["Winter"] }),
+      // Fed in LAST and expected SECOND, which is the only way this assertion says anything about ordering: undoing a
+      // rejection is one click on a card that is already on screen, so it ranks above placing a thema and below
+      // answering a proposal the teacher has not looked at yet.
+      doel({ code: "F", oorzaak: "PlaatsingGeweigerd", kandidaatThemas: ["Herfstfeest"] }),
+    ]);
+
+    expect(tellingen).toEqual([
+      { oorzaak: "WachtOpBeslissing", aantal: 1 },
+      { oorzaak: "PlaatsingGeweigerd", aantal: 1 },
+      { oorzaak: "KoppelingNietBeslist", aantal: 1 },
+      { oorzaak: "GeenThema", aantal: 3 },
+    ]);
+  });
+
+  it("leaves out a cause with nothing behind it", () => {
+    // A line per cause every time, most of them saying zero, would turn the block into a legend of the enum instead of
+    // a list of things to do.
+    expect(telLacuneoorzaken([doel({ oorzaak: "NietIngepland", kandidaatThemas: ["Herfst"] })])).toEqual([
+      { oorzaak: "NietIngepland", aantal: 1 },
+    ]);
+  });
+
+  it("ignores covered doelen even when one carries a cause", () => {
+    // A covered doel has no cause from the server, and this pins that the count is driven by `isGedekt` rather than by
+    // the cause field alone: a route offered for a goal that is already taught is work invented out of nothing.
+    const tegenstrijdig = { ...doel({ code: "A", isGedekt: true }), oorzaak: "NietIngepland" } as DoelDekking;
+
+    expect(telLacuneoorzaken([tegenstrijdig])).toEqual([]);
+  });
+
+  it("ignores a cause it cannot name, and says so by counting nothing", () => {
+    // The counterpart of `leesOorzaak`'s refusal. A fifth cause added on the server must not appear here as an
+    // unlabelled line or inflate a neighbouring one; it simply is not offered as a route until this client knows what
+    // to say about it. The consequence is stated on `telLacuneoorzaken`: these counts are NOT a partition of the gaps.
+    const onbekend = { ...doel({ code: "A" }), oorzaak: "IetsNieuws" } as unknown as DoelDekking;
+
+    expect(telLacuneoorzaken([onbekend, doel({ code: "B", oorzaak: "GeenThema" })])).toEqual([
+      { oorzaak: "GeenThema", aantal: 1 },
+    ]);
+  });
+
+  it("returns nothing when every doel is covered", () => {
+    expect(telLacuneoorzaken([doel({ code: "A", isGedekt: true, dekkendeThemas: ["Herfst"] })])).toEqual([]);
   });
 });

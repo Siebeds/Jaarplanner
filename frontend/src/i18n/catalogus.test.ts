@@ -808,3 +808,145 @@ describe("nl.json — een aria-label bevat het zichtbare label (WCAG 2.2 SC 2.5.
     }
   });
 });
+
+/**
+ * The gap-analyse copy (E5-05), read for what it **says** rather than for which key it came from.
+ *
+ * This file exists because a `t(key)` assertion in a component test cannot catch a lying sentence: the expectation
+ * moves with the catalogue, so rewriting the string rewrites the assertion. Every guard below is therefore a claim
+ * about the Dutch, and each one is a constraint the code or a ruling actually imposes — not a style preference.
+ */
+const LACUNEREGELS = [...CATALOGUS].filter(([sleutel]) =>
+  sleutel.startsWith("dekking.lacuneRegel"),
+);
+
+const LACUNEROUTES = [...CATALOGUS].filter(
+  ([sleutel]) =>
+    sleutel.startsWith("dekking.lacune") && !sleutel.startsWith("dekking.lacuneRegel"),
+);
+
+describe("nl.json — de gap-analyse belooft alleen wat haar oorzaak draagt (E5-05)", () => {
+  it("has both families, so none of the guards below can pass vacuously", () => {
+    // Per family, never over the union. The note on SLOTTEKSTEN records what a combined list did to E4-02's rename
+    // canary: `length > 0` satisfied by whichever family survived, and the other one silently unguarded.
+    expect(LACUNEREGELS.length).toBeGreaterThan(0);
+    expect(LACUNEROUTES.length).toBeGreaterThan(0);
+  });
+
+  it("never says a doel without a thema is a doel without a koppeling", () => {
+    // THE CONSTRAINT THE STORAGE READ IMPOSES ON THE COPY, and it is invisible from the sentence alone.
+    // `HaalKandidaatKoppelingenAsync` excludes `geweigerd` links entirely, so a goal whose only link the teacher
+    // already rejected classifies as GeenThema. It is therefore true that no thema COVERS it, and false that none is
+    // LINKED to it — and the second is the more natural sentence to write, which is why this is guarded rather than
+    // trusted. Getting it wrong tells a teacher to go make a link they already made and threw away.
+    const geenThema = CATALOGUS.get("dekking.lacuneRegelGeenThema");
+    expect(geenThema, "dekking.lacuneRegelGeenThema is gone or renamed").toBeTruthy();
+    expect(geenThema!.toLowerCase()).not.toMatch(/koppel/);
+
+    // The aggregated line makes the same claim about the same set and is the copy most likely to drift from it,
+    // because it is written in a different register one file away.
+    for (const sleutel of ["dekking.lacuneGeenThema", "dekking.lacuneGeenThemaEnkelvoud"]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      expect(waarde!.toLowerCase()).not.toMatch(/koppel/);
+    }
+  });
+
+  it("names a thema in exactly the cause lines that have one to name", () => {
+    // `KandidaatThemas` is empty for GeenThema and non-empty for the other three (DekkingWeergave). A line that
+    // interpolated `{themas}` there would render its own sentence ending in a bare colon; a line that omitted it
+    // elsewhere would state a cause and withhold the one thing a teacher acts on.
+    for (const [sleutel, waarde] of LACUNEREGELS) {
+      const noemtThemas = waarde.includes("{themas}");
+
+      expect(
+        noemtThemas,
+        `${sleutel} ("${waarde}") must interpolate {themas} unless it is the GeenThema line`,
+      ).toBe(sleutel !== "dekking.lacuneRegelGeenThema");
+    }
+  });
+
+  it("does not tell a teacher a rejected thema sits in no period", () => {
+    // ANTAGONIST RONDE 1, MAJOR-1 (2026-08-19). This is the defect that split PlaatsingGeweigerd off, and it is a
+    // VALUE guard because a t(key) assertion could not see it: the key was right and the sentence was false. A
+    // rejected placement is drawn in its period column (`plaatsingenIn` filters stale placements, not rejected ones),
+    // so any wording about sitting in no period contradicts what the kalender shows a few clicks away, and the route
+    // it implies is one `Themakiezer` refuses in exactly that period.
+    for (const sleutel of [
+      "dekking.lacuneRegelPlaatsingGeweigerd",
+      "dekking.lacunePlaatsingGeweigerd",
+      "dekking.lacunePlaatsingGeweigerdEnkelvoud",
+    ]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      // BROADENED TWICE, AND IT IS A TRIPWIRE RATHER THAN A PROOF. Say that plainly, because two rounds in a row
+      // treated it as a proof and two rounds in a row defeated it in one line: ronde 2 with "Geweigerd, dus dit thema
+      // staat nergens in je jaarplan", ronde 3 with "Geweigerd, dus niet opgenomen in een periode van dit jaarplan".
+      // Both are the same lie MAJOR-1 was about; both passed the version of this regex that existed at the time.
+      //
+      // It now forbids the VOCABULARY rather than a list of sentences, which is a much wider net, and it is still not
+      // a proof: no regex decides whether a Dutch sentence is true. What makes the claim safe is the SPLIT — the cause
+      // only exists for a placement that stands in a period — and that is pinned by
+      // DekkingServiceTests.Een_geweigerde_plaatsing_is_haar_eigen_oorzaak against the classification itself. This line
+      // catches a careless reword on its way past; it does not certify the sentence. Do not read a green run as more.
+      expect(waarde!.toLowerCase()).not.toMatch(
+        /periode|jaarplan|ingepland|gepland|opgenomen|nergens|staat niet in/,
+      );
+      // And it must name the rejection, or the teacher cannot tell which of the kalender's actions this line is
+      // about. "Undo it" is the remedy; a line that only said "not covered" would send them looking for the wrong one.
+      expect(waarde!.toLowerCase()).toMatch(/geweigerd/);
+    }
+
+    // The mirror half. WHAT IT ACTUALLY GUARDS, corrected by ronde 2: not a re-fold, which is a server change that
+    // would add no word to this catalogue and is pinned by DekkingServiceTests.Een_geweigerde_plaatsing_is_haar_eigen_
+    // oorzaak. What it guards is the reverse drift — NietIngepland's copy growing a clause about a weigering it no
+    // longer describes, which would make the two cause lines say the same thing about different states and put the
+    // teacher back to guessing which of two remedies applies.
+    for (const sleutel of [
+      "dekking.lacuneRegelNietIngepland",
+      "dekking.lacuneNietIngepland",
+      "dekking.lacuneNietIngeplandEnkelvoud",
+    ]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      expect(waarde!.toLowerCase()).not.toMatch(/geweiger/);
+    }
+  });
+
+  it("does not send an undecided koppeling to the kalender", () => {
+    // The cause exists BECAUSE planning would not help: only aanvaard/manueel links count for dekking (Art. V.1), so
+    // a thema carrying an undecided suggestion covers nothing however well it is planned. Its route is /themas, and a
+    // sentence mentioning a periode or the kalender beside that link would describe a different action from the one
+    // the link performs. That mismatch is precisely the E3-06 class of defect this repo keeps rediscovering.
+    for (const sleutel of [
+      "dekking.lacuneRegelKoppelingNietBeslist",
+      "dekking.lacuneKoppelingNietBeslist",
+      "dekking.lacuneKoppelingNietBeslistEnkelvoud",
+    ]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      expect(waarde!.toLowerCase()).not.toMatch(/periode|kalender|inplan|plaats/);
+    }
+  });
+
+  it("gives the two destinations two different labels", () => {
+    // Two links, two screens, and they sit within a few lines of each other under one heading. Identical labels would
+    // make the block look like one repeated control and leave a keyboard or screen-reader user with two entries that
+    // read the same and go somewhere different.
+    const kalender = CATALOGUS.get("dekking.lacuneNaarKalender");
+    const themas = CATALOGUS.get("dekking.lacuneNaarThemas");
+
+    expect(kalender, "dekking.lacuneNaarKalender is gone or renamed").toBeTruthy();
+    expect(themas, "dekking.lacuneNaarThemas is gone or renamed").toBeTruthy();
+    expect(kalender).not.toEqual(themas);
+  });
+
+  it("keeps every gap sentence free of a coverage figure", () => {
+    // These sentences render beside a total that is sometimes withheld, and most of them already carry a count
+    // of their own. A "van de N doelen" phrasing would put a denominator into a line the withholding gate does not
+    // govern, which is how E5-02's group tallies reconstructed the figure the ruling of 2026-07-28 forbids.
+    for (const [sleutel, waarde] of [...LACUNEREGELS, ...LACUNEROUTES]) {
+      expect(waarde, `${sleutel} states a fraction`).not.toMatch(/\bvan de\b|\bvan\s*\{/);
+    }
+  });
+});
