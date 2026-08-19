@@ -67,8 +67,18 @@ public enum Lacuneoorzaak
     /// <para>
     /// "Sits in no period" folds two states together, because the remedy really is identical for both and because
     /// the sentence is true of both: never placed at all, or placed against a period that no longer exists (a stale
-    /// placement, which the kalender does not draw in any period). The third state this used to fold in — placed and
-    /// rejected — was split out into <see cref="PlaatsingGeweigerd"/>; see there for why.
+    /// placement, which the kalender does not draw in any period). The state this used to fold in and no longer
+    /// does — placed and rejected — was split out into <see cref="PlaatsingGeweigerd"/>; see there for why.
+    /// </para>
+    /// <para>
+    /// <b>A third state does reach here, and it would carry the same false sentence MAJOR-1 was about</b> (antagonist
+    /// ronde 2, 2026-08-19). A non-stale placement whose status this code cannot parse is in neither
+    /// <c>IsVoorstelbaar</c> nor <c>IsGeweigerd</c>, because both are deliberately fail-closed, so it falls through to
+    /// here — while <c>plaatsingenIn</c> filters only <c>!isVervallen</c> and would draw its card in a period. It is
+    /// <b>unreachable today</b> (four enum members, all handled), so this is a note and not a defect; the moment a
+    /// fifth <c>KoppelingStatus</c> is added, this is the first place to look, and the honest fix then is a cause whose
+    /// sentence does not claim anything about periods. Written down rather than fixed speculatively, because inventing
+    /// a cause for a state that cannot occur would be a screen a teacher can never see.
     /// </para>
     /// </summary>
     NietIngepland = 2,

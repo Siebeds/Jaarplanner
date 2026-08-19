@@ -1,4 +1,4 @@
-using Jaarplanner.Domain.Curriculum;
+﻿using Jaarplanner.Domain.Curriculum;
 
 namespace Jaarplanner.Application.Dekking;
 
@@ -64,7 +64,7 @@ public interface IDekkingOpslag
     /// from (E5-05).
     /// <para>
     /// <b>Wider than <see cref="HaalDekkendeKoppelingenAsync"/> on two axes, and narrower on none.</b> It is not
-    /// restricted to placed thema's, because "no thema carrying this goal is in the plan" is one of the four things
+    /// restricted to placed thema's, because "no thema carrying this goal is in the plan" is one of the things
     /// the gap-analyse has to be able to say; and it carries <c>voorgesteld</c> links as well as decided ones, because
     /// "the link itself has not been decided yet" is another. The four layers and the class scoping are identical
     /// (owner ruling 2026-08-03) — see <see cref="HaalDekkendeKoppelingenAsync"/> for the reasoning, which is not

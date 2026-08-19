@@ -285,11 +285,20 @@ export function DekkingPagina() {
             missing since E5-03, and this says where each kind of gap is closed.
 
             **Gated on `cijfer.soort === "cijfer"`, which is the same gate the group tallies carry and for exactly the
-            same reason.** These counts partition the gaps in view, so they add up to `totaal - gedekt` — the figure
-            the directie ruling of 2026-07-28 withholds while a placement is unresolved. E5-02 shipped that leak once
-            already: the summary said it would give no figure while every group printed one, and the group counts
-            summed to the withheld total. Passing the gate rather than the counts keeps the decision in one place;
-            `Lacuneroutes` documents why an absence beats a count-free variant.
+            same reason.** THIS IS THE ONE PLACE THAT RULE IS STATED, because the gate is here: the line below is what
+            withholds the block, and `Lacuneroutes` cannot withhold itself. (Fix round 1 wrote the rule a second time
+            on `Lacuneroutes`, claiming that component "owns the gate"; ronde 2 found it, and it was MINOR-5 — two
+            files describing the same numbers differently — repeated one file along by the fix for MINOR-5.)
+
+            The counts partition the **recognised** gaps in view: `telLacuneoorzaken` drops covered doelen, and it
+            drops any cause this client cannot name, which is unbounded rather than negligible — a server that adds a
+            cause makes every gap of that cause vanish from these counts, exactly as this story's fifth cause would
+            have before `LACUNEOORZAKEN` learned about it. In the ordinary state nothing is dropped and they add up to
+            `totaal - gedekt`, the figure the directie ruling of 2026-07-28 withholds while a placement is unresolved.
+            That ordinary state is what the gate is for. E5-02 shipped this leak once already: the summary said it
+            would give no figure while every group printed one, and the group counts summed to the withheld total.
+            Passing the gate rather than the counts keeps the decision in one place; `Lacuneroutes` documents why an
+            absence beats a count-free variant.
           */}
           {cijfer.soort === "cijfer" && <Lacuneroutes tellingen={lacunetellingen} />}
 

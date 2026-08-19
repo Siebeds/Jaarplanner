@@ -63,16 +63,15 @@ const ROUTES: Record<
  * every doel that thema carries, so "31 doelen zitten in thema's die in geen enkele periode staan" is both the truer
  * description of the work and one link instead of thirty-one. The row-level argument is on `Doeldekkingregel`.
  *
- * **It renders nothing while the figure is withheld, and that is this component's one real rule.** The counts
- * partition the *recognised* gaps in view (`telLacuneoorzaken` drops covered doelen and any cause this client cannot
- * name), so their sum is the number of gaps shown minus the unrecognised ones — which is normally zero and never
- * more than a rounding error away from the total the directie ruling of 2026-07-28 says may not be shown. That is
- * enough: a teacher could add them up, exactly as they could with E5-02's group tallies before that defect was
- * found. **This is the one place that rule is stated**; `telLacuneoorzaken` used to state a weaker version of it and
- * now points here, because two files describing the same four numbers differently is how a later reader trusts the
- * wrong one (antagonist ronde 1, MINOR-5). Two alternatives were rejected. Rendering the lines *without* counts would need a second copy family that
- * says the same things less precisely, and E5-03's rule is to say less rather than to say something else, which is
- * what an absence already does. Rendering with counts and a caveat would be the contradiction E4-06 catalogued: a
+ * **It is not rendered at all while the figure is withheld, and the gate that does that lives on `DekkingPagina`**,
+ * which is also where the rule is stated: this component cannot withhold itself, and a rule written beside the
+ * behaviour it does not control is how a reader ends up trusting the wrong of two files (antagonist ronde 1 MINOR-5,
+ * and ronde 2 catching the fix for MINOR-5 doing it again). Read `DekkingPagina` for why these counts hand back the
+ * total the directie ruling of 2026-07-28 withholds.
+ *
+ * What belongs here is the choice *between absences*, which is this component's own. Two alternatives were rejected.
+ * Rendering the lines *without* counts would need a second copy family that says the same things less precisely, and
+ * E5-03's rule is to say less rather than to say something else, which is what an absence already does. Rendering with counts and a caveat would be the contradiction E4-06 catalogued: a
  * warning that the figure cannot be trusted, beside figures.
  *
  * The state is not left silent either: while a placement is unresolved the summary above already states it and links

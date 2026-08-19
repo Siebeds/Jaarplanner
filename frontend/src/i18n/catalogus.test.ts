@@ -879,14 +879,23 @@ describe("nl.json — de gap-analyse belooft alleen wat haar oorzaak draagt (E5-
     ]) {
       const waarde = CATALOGUS.get(sleutel);
       expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
-      expect(waarde!.toLowerCase()).not.toMatch(/geen enkele periode|in geen periode|niet ingepland/);
+      // BROADENED BY RONDE 2, which proved the first version guarded three literal phrasings and not the category it
+      // claimed: "Geweigerd, dus dit thema staat nergens in je jaarplan" is the same lie reworded and passed all 28
+      // catalogue tests. A guard whose comment describes a category and whose regex describes three sentences is the
+      // kind that reads as protection and is not.
+      expect(waarde!.toLowerCase()).not.toMatch(
+        /geen enkele periode|in geen periode|geen (enkele )?(periode|themaperiode|blok)|niet ingepland|nergens|staat niet in/,
+      );
       // And it must name the rejection, or the teacher cannot tell which of the kalender's actions this line is
       // about. "Undo it" is the remedy; a line that only said "not covered" would send them looking for the wrong one.
       expect(waarde!.toLowerCase()).toMatch(/geweigerd/);
     }
 
-    // The mirror half, and the one that rots silently: NietIngepland no longer covers a rejected placement, so a
-    // future edit reintroducing the word there would quietly restore the folded claim this split removed.
+    // The mirror half. WHAT IT ACTUALLY GUARDS, corrected by ronde 2: not a re-fold, which is a server change that
+    // would add no word to this catalogue and is pinned by DekkingServiceTests.Een_geweigerde_plaatsing_is_haar_eigen_
+    // oorzaak. What it guards is the reverse drift — NietIngepland's copy growing a clause about a weigering it no
+    // longer describes, which would make the two cause lines say the same thing about different states and put the
+    // teacher back to guessing which of two remedies applies.
     for (const sleutel of [
       "dekking.lacuneRegelNietIngepland",
       "dekking.lacuneNietIngepland",

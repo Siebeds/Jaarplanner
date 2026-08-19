@@ -1,4 +1,4 @@
-using Jaarplanner.Application.Dekking;
+﻿using Jaarplanner.Application.Dekking;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
@@ -101,6 +101,13 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
     [PostgresFact]
     public async Task Alleen_aanvaarde_en_manuele_koppelingen_dekken()
     {
+        // A SECOND THEMA, and the reason is a domain invariant rather than a preference: Art. IX.2 caps a thema at
+        // THREE themadoelen (Thema.VoegThemadoelToe throws), and layer 1 needs four statuses to be fully pinned. So
+        // the grid ronde 2 asked for is not fillable on one thema at all — the two counting statuses plus one negative
+        // exhaust the cap, and the fourth cell has to live on a thema of its own. Worth stating, because ronde 2's
+        // suggested fix ("add a voorgesteld and a geweigerd link at each layer") is impossible as written at layer 1.
+        Guid tweedeThemaId = Guid.Empty;
+
         var (klasId, themaId) = await ZetOpAsync(async (context, klas, thema) =>
         {
             thema.VoegThemadoelToe(new DoelKoppeling("TELT-AANVAARD", KoppelingStatus.Aanvaard, "anchor"));
@@ -111,21 +118,42 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegDoelsuggestieToe(new DoelKoppeling("TELT-NIET-GEWEIGERD", KoppelingStatus.Voorgesteld, "nee"))
                 .WijzigStatus(KoppelingStatus.Geweigerd);
 
+            // EVERY LAYER GETS BOTH NON-COUNTING STATUSES, and that is antagonist ronde 2's MAJOR (2026-08-19).
+            // Round 1 filled the DECIDED axis of this grid (four layers x aanvaard/manueel) and left the
+            // NON-counting axis at three of eight: layer 1 had neither negative, layer 3 had no geweigerd and layer 4
+            // no voorgesteld. Proven, not suspected — widening layer 1 of this read to `!= Geweigerd || == Manueel`,
+            // which lets the AI grant dekking off a voorgesteld themadoel and is Art. IV.1's headline, left the whole
+            // suite green. Unreachable today (nothing writes a voorgesteld themadoel; E8 adds themadoel-level AI
+            // matching), which is exactly when a missing test is cheapest to add and hardest to notice.
+            // Status set directly, unlike the doelsuggesties above: a Themadoel is not an AI suggestion, so the
+            // domain does not require it to START as voorgesteld, and VoegThemadoelToe returns the Themadoel rather
+            // than its koppeling. The two layers genuinely differ here and the fixture has to say so.
+            thema.VoegThemadoelToe(new DoelKoppeling("TELT-NIET-TD-VOORGESTELD", KoppelingStatus.Voorgesteld, "?"));
+
+            var tweedeThema = new Thema($"Winter-{Guid.NewGuid():N}", duurWeken: 4);
+            tweedeThema.VoegThemadoelToe(new DoelKoppeling("TELT-NIET-TD-GEWEIGERD", KoppelingStatus.Geweigerd, "nee"));
+            context.Themas.Add(tweedeThema);
+            tweedeThemaId = tweedeThema.Id;
+
             var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
             subthema.VoegSubdoelToe("5", new DoelKoppeling("TELT-NIET-SUBDOEL", KoppelingStatus.Voorgesteld));
+            subthema.VoegSubdoelToe("5", new DoelKoppeling("TELT-NIET-SUBDOEL-GEWEIGERD", KoppelingStatus.Geweigerd));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
             activiteit.VoegDoelkoppelingToe(new DoelKoppeling("TELT-NIET-ACT", KoppelingStatus.Geweigerd));
+            activiteit.VoegDoelkoppelingToe(
+                new DoelKoppeling("TELT-NIET-ACT-VOORGESTELD", KoppelingStatus.Voorgesteld));
 
             await context.SaveChangesAsync();
         });
 
         await using var leescontext = _db.MaakContext();
         var koppelingen = await new EfDekkingOpslag(leescontext)
-            .HaalDekkendeKoppelingenAsync(klasId, [themaId]);
+            .HaalDekkendeKoppelingenAsync(klasId, [themaId, tweedeThemaId]);
 
-        // The status filter is applied in ALL FOUR layers, which is what the four negatives above pin: an inline
-        // predicate repeated four times is exactly the kind of thing that gets added to three of them.
+        // The status filter is applied in ALL FOUR layers on BOTH non-counting statuses, which is what the six
+        // negatives above pin: an inline predicate repeated four times is exactly the kind of thing that gets added to
+        // three of them. Asserted as the whole set, so a leak shows up as an extra code rather than as a silent pass.
         Assert.Equal(
             ["TELT-AANVAARD", "TELT-MANUEEL"],
             koppelingen.Select(k => k.LeerplandoelCode).OrderBy(c => c, StringComparer.Ordinal));
@@ -276,7 +304,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         // REJECTED one does not come back at all.
         //
         // The thema is deliberately never placed in a plan, which is the other difference: this read takes no thema
-        // ids, because "the thema carrying this goal is in no period" is one of the four things E5-05 must be able to
+        // ids, because "the thema carrying this goal is in no period" is one of the things E5-05 must be able to
         // say and a query narrowed to placed thema's could never say it.
         var (klasId, _) = await ZetOpAsync(async (context, klas, thema) =>
         {
@@ -285,11 +313,23 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-GEWEIGERD", KoppelingStatus.Voorgesteld, "nee"))
                 .WijzigStatus(KoppelingStatus.Geweigerd);
 
+            // THE REJECTION EXCLUSION AT THE OTHER THREE LAYERS, and the flag on an undecided link at the two layers
+            // that had only a decided one. Antagonist ronde 2's MAJOR (2026-08-19): `IDekkingOpslag` promises
+            // "geweigerd is excluded in every layer", and only layer 2 held it — deleting the exclusion from layers 1,
+            // 3 and 4 of this read left the whole suite green. That mutation reads, in the product, as "De koppeling is
+            // nog niet beslist" plus a link to /themas for a link the teacher explicitly threw away, which is the
+            // lying-sentence class this whole story exists to remove.
+            thema.VoegThemadoelToe(new DoelKoppeling("KAND-TD-GEWEIGERD", KoppelingStatus.Geweigerd, "nee"));
+            thema.VoegThemadoelToe(new DoelKoppeling("KAND-TD-VOORGESTELD", KoppelingStatus.Voorgesteld, "?"));
+
             var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
             subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL", KoppelingStatus.Manueel));
+            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-GEWEIGERD", KoppelingStatus.Geweigerd));
+            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-VOORGESTELD", KoppelingStatus.Voorgesteld));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
             activiteit.VoegDoelkoppelingToe(new DoelKoppeling("KAND-ACTIVITEIT", KoppelingStatus.Voorgesteld));
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("KAND-ACT-GEWEIGERD", KoppelingStatus.Geweigerd));
 
             await context.SaveChangesAsync();
         });
@@ -298,13 +338,19 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         var kandidaten = await new EfDekkingOpslag(leescontext).HaalKandidaatKoppelingenAsync(klasId);
 
         Assert.Equal(
-            ["KAND-ACTIVITEIT", "KAND-SUBDOEL", "KAND-SUGGESTIE", "KAND-THEMADOEL"],
+            [
+                "KAND-ACTIVITEIT", "KAND-SUBDOEL", "KAND-SUBDOEL-VOORGESTELD", "KAND-SUGGESTIE",
+                "KAND-TD-VOORGESTELD", "KAND-THEMADOEL",
+            ],
             kandidaten.Select(k => k.LeerplandoelCode).OrderBy(c => c, StringComparer.Ordinal));
 
-        // The flag decides which of the four causes a doel gets, so a read that returned every row with the same
-        // value would still satisfy the assertion above while making three of the four causes unreachable.
+        // The flag decides which cause a doel gets, so a read that returned every row with the same value would still
+        // satisfy the assertion above while making most of the causes unreachable. Both values at every layer that can
+        // carry both, which is the other half of ronde 2's grid.
         Assert.True(kandidaten.Single(k => k.LeerplandoelCode == "KAND-THEMADOEL").IsBeslist);
         Assert.True(kandidaten.Single(k => k.LeerplandoelCode == "KAND-SUBDOEL").IsBeslist);
+        Assert.False(kandidaten.Single(k => k.LeerplandoelCode == "KAND-TD-VOORGESTELD").IsBeslist);
+        Assert.False(kandidaten.Single(k => k.LeerplandoelCode == "KAND-SUBDOEL-VOORGESTELD").IsBeslist);
         Assert.False(kandidaten.Single(k => k.LeerplandoelCode == "KAND-SUGGESTIE").IsBeslist);
         Assert.False(kandidaten.Single(k => k.LeerplandoelCode == "KAND-ACTIVITEIT").IsBeslist);
     }
@@ -370,13 +416,19 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         // already have made the goal covered by the other read. A layer present in one query and missing from the
         // other turns that into a doel reported as one click from covered while the click does nothing.
         //
-        // EVERY LAYER CARRIES BOTH DECIDED STATUSES, and that is antagonist ronde 1's MAJOR-3 (2026-08-19). Eight
-        // predicate copies each able to differ on either of two statuses is SIXTEEN (layer, status) pairs to hold, and
-        // the first version of this fixture filled exactly four of them: layer 1 Aanvaard, layer 2 Aanvaard, layer 3
-        // Manueel, layer 4 Manueel. Proven, not suspected: deleting `|| td.Koppeling.Status == Manueel` from layer 1
-        // of the candidate read left the WHOLE suite green. In the product that mutation reads as "De koppeling is nog
-        // niet beslist" plus a link to /themas, for a link the school already decided by hand — the lying-sentence
-        // class this story guards against everywhere else.
+        // EVERY LAYER CARRIES BOTH DECIDED STATUSES, and that is antagonist ronde 1's MAJOR-3 (2026-08-19). Round 1's
+        // fixture filled exactly four of them: layer 1 Aanvaard, layer 2 Aanvaard, layer 3 Manueel, layer 4 Manueel.
+        // Proven, not suspected: deleting `|| td.Koppeling.Status == Manueel` from layer 1 of the candidate read left
+        // the WHOLE suite green. In the product that mutation reads as "De koppeling is nog niet beslist" plus a link
+        // to /themas, for a link the school already decided by hand — the lying-sentence class this story guards
+        // against everywhere else.
+        //
+        // THE ARITHMETIC, CORRECTED BY RONDE 2, because round 1 wrote two incompatible numbers six lines apart and the
+        // smaller one flattered its own fix. The grid is 4 layers x 4 statuses x 2 reads = THIRTY-TWO cells, not
+        // sixteen. THIS test owns the sixteen DECIDED cells. The other sixteen belong to each read's own status test —
+        // Alleen_aanvaarde_en_manuele_koppelingen_dekken and De_kandidaatlezing_levert_alle_vier_de_lagen_... — which
+        // ronde 2 found holding three of eight and which now hold their half; see the note in the first of those for a
+        // domain cap that makes layer 1 impossible to fill on a single thema.
         var (klasId, themaId) = await ZetOpAsync(async (context, klas, thema) =>
         {
             thema.VoegThemadoelToe(new DoelKoppeling("KAND-THEMADOEL-A", KoppelingStatus.Aanvaard, "anchor"));
@@ -444,12 +496,18 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
                 "L1-THEMADOEL", "L1-TWEEDE", "L2-SUGGESTIE", "L3-SUBDOEL", "L4-ACTIVITEIT",
                 "TELT-AANVAARD", "TELT-MANUEEL", "TELT-NIET-VOORGESTELD", "TELT-NIET-GEWEIGERD",
                 "TELT-NIET-SUBDOEL", "TELT-NIET-ACT", "NIET-GEPLAATST", "OOK-NIET",
+                // Ronde 2's other axis: both non-counting statuses at every layer of the covering read.
+                "TELT-NIET-TD-VOORGESTELD", "TELT-NIET-TD-GEWEIGERD", "TELT-NIET-SUBDOEL-GEWEIGERD",
+                "TELT-NIET-ACT-VOORGESTELD",
                 "KAND-THEMADOEL", "KAND-SUGGESTIE", "KAND-SUBDOEL", "KAND-ACTIVITEIT", "KAND-GEWEIGERD",
                 // The pin test's per-layer pairs: every layer once Aanvaard and once Manueel, so all eight decided
                 // predicate copies are exercised on both statuses rather than four of them on one each (ronde 1,
                 // MAJOR-3). KAND-GEWEIGERD above stays, and stays genuinely rejected, in the four-layer test.
                 "KAND-THEMADOEL-A", "KAND-THEMADOEL-M", "KAND-SUGGESTIE-A", "KAND-SUGGESTIE-M",
                 "KAND-SUBDOEL-A", "KAND-SUBDOEL-M", "KAND-ACTIVITEIT-A", "KAND-ACTIVITEIT-M", "KAND-ONBESLIST",
+                // And the rejection exclusion plus the undecided flag at the layers that lacked them (ronde 2).
+                "KAND-TD-GEWEIGERD", "KAND-TD-VOORGESTELD", "KAND-SUBDOEL-GEWEIGERD", "KAND-SUBDOEL-VOORGESTELD",
+                "KAND-ACT-GEWEIGERD",
             ]);
 
         // Truncated to fit Schooljaar.Naam's varchar(32) — see the note in the other arrangement.

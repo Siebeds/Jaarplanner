@@ -1,4 +1,4 @@
-using Jaarplanner.Application.Dekking;
+﻿using Jaarplanner.Application.Dekking;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
@@ -136,7 +136,7 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
         // 2026-08-03), and the same four round trips for the same untranslatable-UNION reason. What differs is only
         // what is let through:
         //
-        //   * no thema-id filter, because "the thema that carries this goal is in no period" is one of the four
+        //   * no thema-id filter, because "the thema that carries this goal is in no period" is one of the
         //     things the gap-analyse exists to say, and a query restricted to placed thema's could never say it;
         //   * `voorgesteld` links are included beside the decided ones, flagged rather than mixed, because "the link
         //     itself is still undecided" is another of the four.

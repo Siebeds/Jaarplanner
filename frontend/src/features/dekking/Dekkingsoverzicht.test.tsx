@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+﻿import { StrictMode } from "react";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -1130,7 +1130,7 @@ describe("Dekkingsoverzicht — wat antagonist ronde 2 vond (E5-03)", () => {
  * The gap-analyse (E5-05, FR-9): why each uncovered doel is uncovered, and where that is closed.
  *
  * **What these tests are written to catch** is not "does the sentence appear". It is the two ways this feature can
- * mislead: a route offered for a goal that needs none (or none offered for a goal that has one), and the four counts
+ * mislead: a route offered for a goal that needs none (or none offered for a goal that has one), and the counts
  * handing back the total the directie ruling of 2026-07-28 withholds. The withheld case therefore asserts an
  * ABSENCE, like every other withholding test in this file.
  */
@@ -1289,7 +1289,7 @@ describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
   });
 
   it("shows no route counts at all while the figure is withheld", async () => {
-    // THE LEAK THIS BLOCK COULD BE. The four counts partition the gaps in view, so they add up to totaal minus gedekt,
+    // THE LEAK THIS BLOCK COULD BE. The counts partition the gaps in view, so they add up to totaal minus gedekt,
     // the number the ruling of 2026-07-28 withholds. E5-02 shipped this once already through its group tallies, where
     // the summary said it would give no figure while every group printed one and the group counts summed to exactly
     // the withheld total. A teacher can add.
@@ -1381,7 +1381,7 @@ describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
     expect(screen.queryByRole("region", { name: t("dekking.lacuneKop") })).not.toBeInTheDocument();
   });
 
-  it("has no axe violations with all four causes and their routes on screen", async () => {
+  it("has no axe violations with every cause and its routes on screen", async () => {
     renderApp(MET_KLAS, { perBereik: { EigenJaarFase: ALLE_OORZAKEN } });
 
     await screen.findByRole("region", { name: t("dekking.lacuneKop") });

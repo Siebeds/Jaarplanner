@@ -91,12 +91,13 @@
 
 - [~] **E5-05 — Gap-analyse presentation** — *built 2026-08-07 on `story/E5-05-gap-analyse`, off `origin/main`
   `96a9060`. Commits `ff911e6` (server), `3b11cb2` (screen), `5ca1ac8` (a test the mutation check exposed as
-  vacuous), `e7a29de` (the record), and after twelve idle days `6b4111c` (**fix round 1**, on antagonist ronde 1).
-  **Ronde 1 returned VIOLATIONS FOUND: 3 MAJOR + 5 MINOR + 2 QUESTION; every MAJOR and three of the MINOR are fixed
-  here, one MINOR is routed and one is an owner question below.** **`[~]` and not `[x]`: ronde 2 is owed**, and this
-  backlog's own status legend reserves `[x]` for "implemented, tested, Antagonist-clean" — with fix round 1 audited by
-  nobody but its author, this story has exactly the gap that three consecutive rounds of E4-08 found in the previous
-  round's fix.*
+  vacuous), `e7a29de` (the record), and after twelve idle days `6b4111c` + `9c15019` (**fix round 1** and its record,
+  on antagonist ronde 1) and `TBD` (**fix round 2**, on ronde 2).
+  **Two antagonist rondes, both VIOLATIONS FOUND — 3 MAJOR + 5 MINOR + 2 QUESTION, then 1 MAJOR + 7 MINOR + 2
+  QUESTION. Every MAJOR is fixed and mutation-checked; two MINOR are routed to E7 and two QUESTION are the owner's.**
+  **`[~]` and not `[x]`: ronde 3 is owed**, and this backlog's own status legend reserves `[x]` for "implemented,
+  tested, Antagonist-clean". Ronde 2 found its MAJOR inside fix round 1, exactly as three consecutive rounds of E4-08
+  did, so fix round 2 having no independent pass is a named risk rather than a formality.*
   Clear missing-goals overview, grouped by discipline/domein, actionable from the calendar.
   *Done when:* a gap can be traced to where it should be planned. Ref: FR-9, Art. XII (gap-analyse).
   > ### **OWNER RULING, 2026-08-07: the grouping stays `(domein, subdomein)` and gets no discipline level.**
@@ -213,18 +214,25 @@
   > plan. A widening of debt `DekkingController` already records, no pupil data, and it belongs to whichever story adds
   > the role checks (**E7-11**, blocked on E6-01/E6-02) rather than to this one.
   > ### **Two things left open for the owner, both stated rather than decided here.**
-  > 1. **`GeenThema`'s line distinguishes nothing** (ronde 1, MINOR-6): *"niet gedekt door enig thema"* is true of
-  >    every row in this list. The useful sentence would be *the school has no content for this*, and it is
-  >    **forbidden**: the candidate read excludes rejected links, so a doel whose only link the teacher already threw
-  >    away lands in this cause, and any wording about a missing *koppeling* would be false for it. This is the
-  >    E5-03 corollary working as designed (say less, never say something else), and the audit graded it *no fix needed
-  >    if the owner accepts the trade*. **Accept, or rule on a wording.**
-  > 2. **Three route lines now read "Naar de kalender" and go to the same place** (ronde 1, QUESTION-2, which this fix
-  >    round made worse: it was two). SC 2.4.4 is met, because each link's purpose is clear from the sentence in its own
+  > 1. **`GeenThema`'s line distinguishes nothing** (ronde 1 MINOR-6, sharpened by ronde 2): *"Geen enkel thema dekt
+  >    dit doel."* is **true** in every state that renders it, so nothing is being deferred that is false. It is simply
+  >    uninformative: it is true of every row in the list. **Ronde 2 corrected this entry's own framing**, which said
+  >    the useful sentence was *forbidden*. What is forbidden is the **short** version: the candidate read excludes
+  >    rejected links, so a doel whose only link the teacher already threw away lands in this cause, and *"geen thema is
+  >    hieraan gekoppeld"* would be false for it. A longer truthful sentence does exist, e.g. *"Geen enkel thema is aan
+  >    dit doel gekoppeld, of je hebt de koppeling geweigerd."* So **the choice is brevity against informativeness, not
+  >    brevity against impossibility**, and it is stated that way because "forbidden" invited an accept without the
+  >    trade being weighed. **Accept the short line, or rule on the longer one.**
+  > 2. **Three route lines now read "Naar de kalender" and go to the same place** (ronde 1 QUESTION-2, which fix round 1
+  >    made worse: it was two). SC 2.4.4 is met, because each link's purpose is clear from the sentence in its own
   >    `<li>`, and identical label plus identical destination is the benign duplicate rather than the harmful one. But a
-  >    screen-reader link list shows three identical entries for three genuinely different tasks. **Not redesigned on
-  >    this story's own judgement**, because it is a UX call and because every fix round in this repo that reached past
-  >    its finding introduced a new defect.
+  >    screen-reader link list shows three identical entries for three genuinely different tasks. **The precedent ronde
+  >    2 put on the table, which this entry owed you:** E4-08 already ruled and *tested* the opposite convention for its
+  >    own case, *"geeft elke verplaatsknop een eigen naam, zodat drie activiteiten niet drie keer hetzelfde heten"*
+  >    (`frontend/src/features/themas/Klaslaag.test.tsx`). It is not the same case, because E4-08's three controls had
+  >    three different destinations and these have one, but it is the nearest ruling and you should decide against it
+  >    rather than around it. **Not redesigned on this story's own judgement**, because it is a UX call and because
+  >    every fix round in this repo that reached past its finding introduced a new defect.
   > ### **Gates on `6b4111c`, all re-run rather than carried forward.**
   > **648 unit + 230 integration** (0 skipped, real PostgreSQL), `dotnet format --verify-no-changes` exit 0;
   > **629 frontend / 24 files**, `eslint` + `tsc --noEmit` + `vite build` clean.
@@ -253,7 +261,54 @@
   > test asserts the block's absence, and the gate itself was mutation-checked by the first pass — but the sentence
   > "every state was seen in a browser" is not one this fix round has earned, and the fifth state is the one it added.
   > *Also observed while cleaning up, and it is not mine:* **26 leaked `jp_test_*` databases** on the local instance,
-  > which is exactly what **E7-14** describes.
+  > which is exactly what **E7-14** describes. *(Ronde 2 reproduced the count and confirmed it stayed 26 across six
+  > full suite runs of its own, so "not mine" is measured rather than asserted.)*
+  > ### **ANTAGONIST RONDE 2, 2026-08-19: VIOLATIONS FOUND (1 MAJOR + 7 MINOR + 2 QUESTION), and the MAJOR was in fix
+  > round 1.**
+  > *That is why the round was run rather than the story closed on a ruling: rounds 2, 3 and 4 of E4-08 each found their
+  > MAJOR in the previous round's fix. This one did too.* Ronde 2 also **re-ran all four of fix round 1's mutations
+  > itself** and confirmed each bites, added two of its own that bite (swapping the branch order fails
+  > `Een_open_voorstel_gaat_voor_op_een_weigering_elders`; deleting `!p.IsVervallen` from the shared helper fails three
+  > theory rows including the rejected-and-stale one), and re-derived every gate figure. Fix round 2 is `TBD`.
+  > **The MAJOR — I closed one axis of my own grid and called it the whole grid.** MAJOR-3's fix filled the sixteen
+  > *decided* cells and the comment claimed that was "SIXTEEN (layer, status) pairs", six lines below the same comment
+  > calling it a "four-layer, **four-status** predicate". Both cannot be true: the grid is 4 layers × 4 statuses × 2
+  > reads = **thirty-two** cells, and the **non-counting** axis was at three of eight. Proven by mutation, not by
+  > reading: widening the *covering* read's layer 1 to `!= Geweigerd || == Manueel` — which lets a `voorgesteld`
+  > themadoel grant dekking and is Art. IV.1's headline — left the whole suite green, and so did deleting the
+  > rejection exclusion from the *candidate* read's layers 1, 3 **and** 4 while `IDekkingOpslag` promises it holds in
+  > every layer. *Fixed:* both status tests now carry both non-counting statuses at every layer, and both mutations now
+  > fail. **A domain invariant made ronde 2's own suggested fix impossible as written:** Art. IX.2 caps a thema at
+  > **three** themadoelen, so layer 1's four statuses do not fit on one thema and the fourth cell had to move to a
+  > second thema. Recorded in the fixture, because the next person to extend that grid will hit the same wall.
+  > *The arithmetic in the comment is corrected too, and that is the part worth carrying:* **a number that flatters
+  > your own fix is the one to recount.**
+  > **The seven MINOR, and three of them are fix round 1 repeating a defect it was fixing.** (a) `NietIngepland`'s
+  > rewritten doc says two states where the code allows three: an **unparseable placement status** falls through to it
+  > and would carry MAJOR-1's false sentence again, unreachable today and now written down at the enum rather than
+  > fixed speculatively. (b) **MINOR-5's fix repeated MINOR-5**: it claimed `Lacuneroutes` "owns the gate" and is "the
+  > one place that rule is stated" when the gate is on `DekkingPagina`, which stated the rule a third time and more
+  > strongly; the rule now lives once, next to the gate, and it dropped the "never more than a rounding error away"
+  > bound, which was unbounded rather than negligible. (c) **`types.ts` kept a false half-sentence** while the fix
+  > corrected the count beside it: nothing compares `LACUNEOORZAKEN` to the C# enum, so a server-added cause renders
+  > **nothing** rather than erroring, and the array is hand-kept in step. (d) The **catalogue guard was narrower than
+  > its own comment**: ronde 2 rewrote the string to *"Geweigerd, dus dit thema staat nergens in je jaarplan"* — the
+  > same lie, reworded — and all 28 catalogue tests passed; the pattern is broadened and the mirror loop's rationale
+  > corrected to what it actually checks. (e) The cause count went **stale in nine places**, one written by fix round 1,
+  > including `it("accepts the four causes the server can send")` — the named guard for `leesOorzaak`, the single
+  > function deciding whether a cause renders at all, **with no assertion for the new cause**; it now iterates
+  > `LACUNEOORZAKEN` so it cannot go stale again. (f) **`backlog/README.md` was not updated at all**, and `CLAUDE.md`
+  > designates it the source of truth for live progress, so it stated three false things at `9c15019`: four causes, the
+  > pre-fix gate figures, and *"no antagonist round has run"* at a commit where one had. (g) **MINOR-8's routing to
+  > E7-11 was asserted and never written** — the exact defect E7-03's own note and the E4-08 precedent both record.
+  > Now written on E7-11, together with a **second, unrecorded widening** ronde 2 found: E5-05 widened every row of the
+  > payload E7-03's first performance item is about, so that item's 226 ms is a floor rather than a reading. Both are
+  > on E7's entries, which outlive this story.
+  > **Gates on fix round 2, all re-run:** **648 unit + 230 integration** (0 skipped, real PostgreSQL),
+  > `dotnet format --verify-no-changes` exit 0 (it took an explicit `dotnet format` first: writing files from a script
+  > mixed LF into CRLF files, which the build does not notice and the formatter does), **629 frontend / 24 files**,
+  > eslint + `tsc` clean. **No `nl.json` value changed in this round**, verified with a diff, so the browser evidence
+  > above still describes the shipped copy.
 
 - [x] **E5-06 — Export coverage overview (proof of coverage)** — *built 2026-08-06 on `story/E5-06-dekking-export`
   (off `story/E5-03-percentage-filter`, since E5-03 was pushed but unmerged when this started; `origin/main` `fc11503`

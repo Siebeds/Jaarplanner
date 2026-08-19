@@ -26,9 +26,16 @@ export type Dekkingsbereik = (typeof DEKKINGSBEREIKEN)[number];
  * Ordered cheapest-route-first, matching the server's own ordering, because the aggregated routes above the list are
  * rendered in this order: a teacher should meet the two-click fix before the one that needs new content.
  *
- * Derived from the array rather than written twice, like `DEKKINGSBEREIKEN` above and for the same reason: a cause
- * added on the server errors here instead of silently rendering nothing. Written without a count on purpose, because
- * the count was "four" until 2026-08-19 and the sentence outlived it.
+ * The type is derived from the array rather than written twice, like `DEKKINGSBEREIKEN` above: that much is real, and
+ * it is what makes every `Record<Lacuneoorzaak, …>` in this feature fail to compile when a cause is added here.
+ *
+ * **It does NOT catch a cause added on the server**, and this comment claimed it did until antagonist ronde 2 (fix
+ * round 1 edited the sentence and corrected only the count in it, which is MINOR-4's lesson happening inside the
+ * commit that quotes MINOR-4). Nothing compares this array to the C# enum. A cause this array has not learned about
+ * reaches `leesOorzaak`, comes back `null`, and renders **no line at all** — deliberately, because the alternative is
+ * a catalogue key shown to a teacher, but it is silence rather than an error. **This array is hand-kept in step with
+ * `Lacuneoorzaak.cs`; the enum is the source.** Written without a count on purpose, because the count was "four" until
+ * 2026-08-19 and the sentence outlived it.
  */
 export const LACUNEOORZAKEN = [
   "WachtOpBeslissing",

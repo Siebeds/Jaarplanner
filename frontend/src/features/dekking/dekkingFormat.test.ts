@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 
 import {
   bepaalCijfer,
@@ -11,7 +11,7 @@ import {
   toonbareDoelen,
 } from "./dekkingFormat";
 import { dekking, doel } from "./testdata";
-import type { DoelDekking } from "./types";
+import { LACUNEOORZAKEN, type DoelDekking } from "./types";
 
 /**
  * The dekkingsoverzicht's pure rules (E5-02, E5-03), tested without rendering.
@@ -291,11 +291,17 @@ describe("beschikbareDoelsoorten", () => {
 });
 
 describe("leesOorzaak", () => {
-  it("accepts the four causes the server can send", () => {
-    expect(leesOorzaak("WachtOpBeslissing")).toBe("WachtOpBeslissing");
-    expect(leesOorzaak("NietIngepland")).toBe("NietIngepland");
-    expect(leesOorzaak("KoppelingNietBeslist")).toBe("KoppelingNietBeslist");
-    expect(leesOorzaak("GeenThema")).toBe("GeenThema");
+  it("accepts every cause the server can send, and nothing else", () => {
+    // DERIVED FROM THE VOCABULARY, not hand-listed, and that is antagonist ronde 2 (2026-08-19): the hand-written
+    // version still listed four causes after this story added a fifth, so `leesOorzaak` — the ONE function that decides
+    // whether a cause renders at all on the client — had no assertion for the cause the story is about. The suite was
+    // green because the row and route tests cover it indirectly, which is exactly how a named guard stops guarding.
+    for (const oorzaak of LACUNEOORZAKEN) {
+      expect(leesOorzaak(oorzaak), `${oorzaak} is not accepted`).toBe(oorzaak);
+    }
+
+    // The list is not empty, so the loop cannot pass by iterating nothing.
+    expect(LACUNEOORZAKEN).toContain("PlaatsingGeweigerd");
   });
 
   it("refuses anything else, so an unknown cause renders no sentence rather than a wrong one", () => {

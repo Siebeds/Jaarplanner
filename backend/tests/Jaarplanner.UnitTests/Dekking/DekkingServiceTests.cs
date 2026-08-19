@@ -1,4 +1,4 @@
-using Jaarplanner.Application.Dekking;
+﻿using Jaarplanner.Application.Dekking;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
@@ -594,8 +594,8 @@ public sealed class DekkingServiceTests
     // ---------------------------------------------------------------------------------------------------------
     // THE GAP-ANALYSE (E5-05, FR-9): why an uncovered goal is uncovered, and which thema's a teacher acts on.
     //
-    // Art. V.6 puts this file's subject among the two highest-risk pieces of logic in the system, so each of the
-    // four causes and the order between them gets its own named test. The order is the part worth testing hardest:
+    // Art. V.6 puts this file's subject among the two highest-risk pieces of logic in the system, so every cause and
+    // the order between them gets its own named test. The order is the part worth testing hardest:
     // a doel can sit in several states at once, and reporting the wrong one sends a teacher to the wrong screen.
     // ---------------------------------------------------------------------------------------------------------
 

@@ -166,9 +166,8 @@ export interface Lacunetelling {
  * **Covered doelen and unrecognised causes both fall out**, the first because they are not gaps and the second
  * through {@link leesOorzaak}. So this is a partition of the *recognised* gaps in the set passed in, and no caller may
  * present it as a breakdown of a total. **What follows from that for the withheld figure is stated once, on
- * `Lacuneroutes`** — the component that owns the gate — rather than a second time here: this comment used to say the
- * counts "do NOT necessarily add up", which reads as the opposite of what that gate is defending against, and a later
- * reader had two files to choose between (antagonist ronde 1, MINOR-5).
+ * `DekkingPagina`, where the gate that withholds the block actually is** — not here, and not on `Lacuneroutes`, which
+ * fix round 1 wrongly named as the gate's owner (antagonist ronde 1 MINOR-5, and ronde 2 on the fix for it).
  *
  * Order comes from the vocabulary rather than from the counts, deliberately. Sorting by size would put the biggest
  * pile first, which on a fresh plan is always "no thema covers this" — the one route a teacher cannot walk today.
