@@ -21,6 +21,15 @@ import type {
 /** One column of the board. Fixed width, so every period is equally readable. */
 export interface PeriodekolomProps {
   blok: Planningsblok;
+  /**
+   * Open this period week by week (E9-04), or `undefined` where that has no meaning.
+   *
+   * **Undefined at the fine tier, and the control is then absent rather than disabled.** A subthemaperiode holds no
+   * thema of its own — a thema sits at the start of its *themaperiode* — so drilling into a fortnight would open a week
+   * view for content that is not there. That is the same mismatch keeping `belasting` coarse-only, and unlike the move
+   * affordance it needs no sentence in its place: the coarse tier is one click away and already carries the control.
+   */
+  onOpenPeriode?: (blokStart: string) => void;
   plaatsingen: Themaplaatsing[];
   /** The class whose plan this is, threaded to the cards' edit actions. */
   klasId: string;
@@ -199,6 +208,7 @@ const PERIODEFOUT: Record<Periodefoutsoort, TranslationKey> = {
  */
 export function Periodekolom({
   blok,
+  onOpenPeriode,
   plaatsingen,
   klasId,
   blokken,
@@ -294,6 +304,29 @@ export function Periodekolom({
             )}
           </span>
         </p>
+
+        {/* Into the week view (E9-04, CR2). **On the period header rather than on a card**, because a period is what a
+            teacher opens: its weeks hold the activiteiten of whatever thema's are in it, and hanging this off one card
+            would ask which thema's week it is when the answer is "the period's".
+
+            A button rather than making the whole header clickable: the header carries a heading, a date and two
+            figures, and a click target that large has no discoverable edge and swallows text selection. It states its
+            own purpose in visible text, so nothing here relies on a tooltip (the E3-06 rule).
+
+            Absent, not disabled, at the fine tier — see the note on `onOpenPeriode`. */}
+        {onOpenPeriode !== undefined && (
+          <button
+            type="button"
+            onClick={() => onOpenPeriode(blok.start)}
+            // The ordinal is in the accessible name because seven identical "Week per week plannen" buttons on one
+            // board are indistinguishable to a screen reader. The visible text is contained in it, so Label in Name
+            // (SC 2.5.3) holds.
+            aria-label={t("weekplanning.openenAria", { ordinaal: blok.ordinaal })}
+            className="mt-2 rounded-md border border-input bg-card px-2.5 py-1 text-xs font-medium text-petrol hover:bg-petrol-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            {t("weekplanning.openen")}
+          </button>
+        )}
 
         {/* Which themaperiode this column is part of, straight from the server's `ouderOrdinaal` — the field exists
             for exactly this. It is the fact that makes the fine view readable: a thema sits at the start of its

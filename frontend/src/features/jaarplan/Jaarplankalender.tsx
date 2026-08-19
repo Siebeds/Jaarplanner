@@ -76,9 +76,16 @@ import {
  */
 export interface JaarplankalenderProps {
   klasId: string;
+  /**
+   * Open one themaperiode week by week (E9-04).
+   *
+   * Passed in rather than read from the URL here, because the page owns the board-versus-panel decision: a component
+   * that could both request the drill-down and be replaced by it would be deciding its own unmounting.
+   */
+  onOpenPeriode: (blokStart: string) => void;
 }
 
-export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
+export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProps) {
   const jaarplan = useJaarplan(klasId);
 
   // The zoom level (E3-08, FR-6.3).
@@ -1089,6 +1096,10 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                   <Periodekolom
                     key={`blok-${segment.blok.start}`}
                     blok={segment.blok}
+                    // Only at the tier a thema is actually placed on. At the fine tier a "plan this period week by
+                    // week" control would open a fortnight that holds no thema of its own, which is the same
+                    // mismatch that keeps `belasting` coarse-only two lines down.
+                    onOpenPeriode={bordNiveau === GENERATIEBLOKNIVEAU ? onOpenPeriode : undefined}
                     plaatsingen={plaatsingenIn(plan.plaatsingen, segment.blok)}
                     klasId={klasId}
                     blokken={grid.blokken}

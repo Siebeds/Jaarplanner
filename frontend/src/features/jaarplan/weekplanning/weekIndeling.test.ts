@@ -10,6 +10,7 @@ import {
   verschuifMaand,
   verschuifWeken,
   weekVan,
+  wekenInPeriode,
 } from "./weekIndeling";
 import type { Dag } from "./types";
 
@@ -230,5 +231,34 @@ describe("inSchooljaar", () => {
   it("excludes days outside it", () => {
     expect(inSchooljaar("2026-08-31", "2026-09-01", "2027-06-30")).toBe(false);
     expect(inSchooljaar("2027-07-14", "2026-09-01", "2027-06-30")).toBe(false);
+  });
+});
+
+describe("wekenInPeriode", () => {
+  /**
+   * A five-week period that starts mid-week touches **six** Mondays, and the first one precedes the period. That is
+   * the honest answer: the period's first days really do sit in a week that began earlier, and a teacher looking at it
+   * expects to find them there rather than in a synthetic window starting on the period's own first day.
+   */
+  it("anchors on real Mondays, including one before the period starts", () => {
+    // 2026-09-02 is a Wednesday.
+    const weken = wekenInPeriode("2026-09-02", "2026-10-04");
+
+    expect(weken[0]).toBe("2026-08-31");
+    expect(weken).toEqual([
+      "2026-08-31",
+      "2026-09-07",
+      "2026-09-14",
+      "2026-09-21",
+      "2026-09-28",
+    ]);
+  });
+
+  it("gives one week for a period inside a single week", () => {
+    expect(wekenInPeriode("2026-09-08", "2026-09-11")).toEqual(["2026-09-07"]);
+  });
+
+  it("starts on the period's own Monday when it begins on one", () => {
+    expect(wekenInPeriode("2026-09-07", "2026-09-20")).toEqual(["2026-09-07", "2026-09-14"]);
   });
 });

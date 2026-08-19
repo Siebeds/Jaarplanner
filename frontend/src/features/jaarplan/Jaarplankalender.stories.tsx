@@ -291,7 +291,7 @@ type Story = StoryObj<typeof meta>;
 
 /** The review case: a full year, a crowded periode 3, an empty periode 4, a locked accepted thema. */
 export const VolledigJaarplan: Story = {
-  args: { klasId: "11111111-1111-1111-1111-111111111111" },
+  args: { onOpenPeriode: () => {}, klasId: "11111111-1111-1111-1111-111111111111" },
   decorators: [metGestubdeApi(jaarplan(plaatsingen))],
 };
 
@@ -301,7 +301,7 @@ export const VolledigJaarplan: Story = {
  * figure, because a thema in no period demonstrably covers nothing (directie 2026-07-28, Art. V.1/V.2).
  */
 export const MetVervallenPlaatsing: Story = {
-  args: { klasId: "11111111-1111-1111-1111-111111111111" },
+  args: { onOpenPeriode: () => {}, klasId: "11111111-1111-1111-1111-111111111111" },
   decorators: [
     metGestubdeApi(
       jaarplan([
@@ -319,6 +319,6 @@ export const MetVervallenPlaatsing: Story = {
 
 /** A class that has not been generated for yet: every period empty, nothing invented to fill them. */
 export const NogNietGegenereerd: Story = {
-  args: { klasId: "11111111-1111-1111-1111-111111111111" },
+  args: { onOpenPeriode: () => {}, klasId: "11111111-1111-1111-1111-111111111111" },
   decorators: [metGestubdeApi(jaarplan([]))],
 };

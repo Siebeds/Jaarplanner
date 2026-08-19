@@ -234,7 +234,7 @@ function renderKalender() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <Jaarplankalender klasId={KLAS_ID} />
+        <Jaarplankalender klasId={KLAS_ID} onOpenPeriode={() => {}} />
       </MemoryRouter>
     </QueryClientProvider>,
   );

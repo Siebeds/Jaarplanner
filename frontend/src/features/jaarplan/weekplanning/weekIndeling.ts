@@ -129,6 +129,26 @@ export function groepeerInWeken(dagen: readonly Dag[]): Week[] {
     }));
 }
 
+/**
+ * The Mondays of every week a period touches, in order (E9-04).
+ *
+ * **Anchored on Mondays rather than counted off the period's start**, because a themaperiode rarely begins on one: a
+ * period opening on a Wednesday shares its first week with the previous period, and a teacher looking at "week 1" of
+ * this period expects to see that Wednesday in its real week rather than in a synthetic seven-day window starting on it.
+ *
+ * The last entry may be a week the period only partly occupies, for the same reason. Both edges are the school's
+ * calendar, not this function's to tidy.
+ */
+export function wekenInPeriode(start: string, eind: string): string[] {
+  const mondays: string[] = [];
+
+  for (let maandag = weekVan(start).van; maandag <= eind; maandag = verschuifWeken(maandag, 1)) {
+    mondays.push(maandag);
+  }
+
+  return mondays;
+}
+
 /** One cell of the mini calendar's month grid (E9-05). */
 export interface Maanddag {
   datum: string;
