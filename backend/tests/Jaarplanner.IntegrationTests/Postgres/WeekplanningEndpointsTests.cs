@@ -245,6 +245,171 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// <b>The day-level guard actually fires — through the one route that reaches it, and against the production load
+    /// path.</b> Written for the 2026-08-20 audit's sharpest finding.
+    /// <para>
+    /// The guard shipped unable to fire at all. <c>KlasBeheerService</c> loaded the jaarplan without
+    /// <c>Include("_activiteitplaatsingen")</c>, and unlike <c>Themaplaatsing</c> — an EF <i>owned</i> collection that
+    /// arrives with its owner — <c>Activiteitplaatsing</c> is a regular navigation that does not. So
+    /// <c>MenselijkBeslotenActiviteitplaatsingen</c> counted an empty list, the refusal never happened, and the delete
+    /// cascaded through to <c>activiteitplaatsingen</c> at the database level: a teacher's scheduled term destroyed
+    /// silently by the very operation a guard was written to refuse.
+    /// </para>
+    /// <para>
+    /// <b>Why no test caught it, corrected — because the first version of this paragraph got it wrong.</b> It said
+    /// <c>KlasVerwijderenTests</c> was a domain test that never touched the production load path, and concluded that
+    /// only a Postgres integration test could catch a missing <c>Include</c>. Neither half holds: that class builds a
+    /// real <c>KlasBeheerService</c> over the in-memory provider, and it missed this because <b>not one of its cases ever
+    /// placed an activiteit</b>. A single added case fails in milliseconds, and it now exists as
+    /// <c>KlasVerwijderenTests.Klas_met_een_ingeplande_activiteit_kan_niet_verwijderd_worden</c>. <i>Publishing "only an
+    /// integration test can catch this" is how the next missing navigation ships.</i>
+    /// </para>
+    /// <para>
+    /// <b>This test still earns its place, for the two things the cheap one cannot reach:</b> the E1-19 re-scoping route,
+    /// which is the only route that reaches this guard in production, and the real database <c>ON DELETE</c> cascade
+    /// that the in-memory provider does not enforce.
+    /// </para>
+    /// <para>
+    /// <b>Reached over the E1-19 hole, because nothing else reaches it.</b> The subthema guard fires first in every
+    /// ordinary case (see the test above): an activiteitplaatsing needs an activiteit, which needs a subthema of this
+    /// same klas. <c>Subthema.WijzigScope</c> moves that subthema — and every activiteit in it — to another klas,
+    /// leaving this plan holding a placement whose activiteit now belongs elsewhere and this klas holding no subthema
+    /// at all. That is exactly the state the guard exists for, and it is why the guard is kept rather than deleted.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_klas_zonder_subthemas_maar_met_dagplanning_kan_niet_verwijderd_worden()
+    {
+        var opzet = await ZetOpAsync();
+        var client = _factory.CreateClient();
+        var inhoud = await MaakActiviteitMetIdsAsync(client, opzet, "Bladeren zoeken");
+        await PlanAsync(client, opzet.KlasId, inhoud.ActiviteitId, opzet.EersteLesdag);
+
+        // The E1-19 route, applied directly because no screen offers it: the subthema (and its activiteit) move to the
+        // other klas, so this klas keeps the day placement and loses the subthema that shielded it.
+        await using (var context = _db.MaakContext())
+        {
+            var subthema = await context.Subthemas.FirstAsync(s => s.Id == inhoud.SubthemaId);
+            subthema.WijzigScope(opzet.AndereKlasId, "K3");
+            await context.SaveChangesAsync();
+        }
+
+        // Precondition, asserted rather than assumed: the subthema guard can no longer be the one that answers.
+        await using (var context = _db.MaakContext())
+        {
+            Assert.Equal(0, await context.Subthemas.CountAsync(s => s.KlasId == opzet.KlasId));
+        }
+
+        var resp = await client.DeleteAsync($"/api/klassen/{opzet.KlasId}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        var probleem = await resp.Content.ReadFromJsonAsync<ProbleemDto>();
+
+        // The day-level sentence, named: it points at the weekplanning, which is where the remediation lives. Asserting
+        // "a 400" alone would have passed on the subthema message too, which is the mistake the sibling test records.
+        Assert.Contains("weekplanning", probleem!.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("subthema", probleem.Detail, StringComparison.OrdinalIgnoreCase);
+
+        // **The assertion the missing Include actually broke.** Reverting it turns the delete into a 204 and takes the
+        // row with it; a status-only assertion would catch that, but this says what was at stake.
+        await using (var context = _db.MaakContext())
+        {
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/klassen/{opzet.KlasId}")).StatusCode);
+            Assert.Equal(1, await context.Activiteitplaatsingen.CountAsync());
+        }
+
+        // **And the remediation the Dutch message names actually works from this state**, which is not free: the
+        // orphaned placement is only still reachable because `ProjecteerAsync` applies no klas filter and `Bevraag`
+        // resolves the activiteit by id whatever its subthema now says. A guard whose instruction cannot be followed is
+        // the trap `ActiviteitplaatsingConfiguration` records shipping once already, so the sentence is proven end to
+        // end rather than trusted.
+        var week = await client.GetFromJsonAsync<WeekDto>(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning?van={opzet.EersteLesdag:yyyy-MM-dd}&tot={opzet.EersteLesdag:yyyy-MM-dd}");
+        var plaatsingId = Assert.Single(Assert.Single(week!.Dagen).Activiteiten).PlaatsingId;
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.DeleteAsync($"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning/{plaatsingId}")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await client.DeleteAsync($"/api/klassen/{opzet.KlasId}")).StatusCode);
+    }
+
+    /// <summary>
+    /// <b>A day card lists the doelen the teacher stands behind, and no others</b> (Art. IV.1/IV.2) — the second backend
+    /// MAJOR of the 2026-08-20 audit.
+    /// <para>
+    /// <c>EfWeekplanningOpslag</c> projected <c>Doelkoppelingen</c> unfiltered, so a <c>Geweigerd</c> link arrived on the
+    /// card beside an accepted one with nothing to tell them apart. The link's status is the whole record of a teacher
+    /// decision; presenting a rejected doel as one this activiteit works toward tells them their rejection did nothing.
+    /// </para>
+    /// <para>
+    /// Three statuses in one activiteit, so the assertion is a real partition rather than one code surviving: mutating
+    /// the predicate in either direction (dropping it, or narrowing it to <c>Aanvaard</c> alone) changes this list.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_geweigerde_of_voorgestelde_doelkoppeling_staat_niet_op_de_dagkaart()
+    {
+        var opzet = await ZetOpAsync();
+        var client = _factory.CreateClient();
+        var inhoud = await MaakActiviteitMetIdsAsync(client, opzet, "Bladeren zoeken");
+        await PlanAsync(client, opzet.KlasId, inhoud.ActiviteitId, opzet.EersteLesdag);
+
+        // **Written through the DbContext, against this class's own "seed over the API" rule, and that bypass IS the
+        // evidence.** Two of these three statuses are unreachable over the API by construction:
+        // `KoppelActiviteitAanDoelAsync` hard-codes `Manueel` and `ActiviteitenController` has no status route. So the
+        // defect being fixed is latent — the filter lands before E8's activiteit-level matching makes `Voorgesteld` and
+        // `Geweigerd` reachable — and there is no screen-producible row that could exercise it. Disclosed the way the
+        // klas test above discloses its own E1-19 bypass, rather than left for a reader to notice.
+        //
+        // MaakActiviteitMetIdsAsync leaves one Manueel link on VER-01. Three more, one per remaining status, so every
+        // branch of the predicate is populated.
+        await using (var context = _db.MaakContext())
+        {
+            foreach (var code in new[] { "BLA-02", "VER-03", "VER-04" })
+            {
+                if (!await context.Leerplandoelen.AnyAsync(l => l.Code == code))
+                {
+                    context.Leerplandoelen.Add(new Leerplandoel(
+                        code,
+                        Doelsoort.Gemeenschappelijk,
+                        "K3",
+                        "Natuur",
+                        "Levende natuur",
+                        "9.1",
+                        tekst: $"Tekst van {code}"));
+                }
+            }
+
+            await context.SaveChangesAsync();
+
+            var activiteit = await context.Activiteiten
+                .Include(a => a.Doelkoppelingen)
+                .FirstAsync(a => a.Id == inhoud.ActiviteitId);
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("BLA-02", KoppelingStatus.Aanvaard));
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("VER-03", KoppelingStatus.Geweigerd));
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("VER-04", KoppelingStatus.Voorgesteld));
+            await context.SaveChangesAsync();
+        }
+
+        var week = await client.GetFromJsonAsync<WeekDto>(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning?van={opzet.EersteLesdag:yyyy-MM-dd}&tot={opzet.EersteLesdag:yyyy-MM-dd}");
+
+        var kaart = Assert.Single(Assert.Single(week!.Dagen).Activiteiten);
+
+        // **This pins the STATUS filter. It does NOT pin the `OrderBy`, and the comment says so rather than implying
+        // otherwise.** Two attempts to pin it both stayed green with the `OrderBy` deleted, and the second one explains
+        // the first: `DoelKoppeling.Id` is a fresh `Guid`, so the unordered projection's row order is *already*
+        // arbitrary — it came out sorted here by luck, and a test asserting a specific order would pass or fail on a
+        // coin flip per run. A flaky guard is worse than an absent one. `BLA-02` is nonetheless kept over `VER-02`
+        // because it makes the expected list differ from the insertion order, so the assertion is at least not a
+        // tautology. The `OrderBy` stays for determinism on screen; its justification is the comment at the projection,
+        // not this test.
+        Assert.Equal(["BLA-02", "VER-01"], kaart.Doelcodes);
+    }
+
+    /// <summary>
     /// A subthema whose activiteiten are scheduled onto days cannot be deleted, because the cascade to its activiteiten
     /// would hit the Restrict FK on <c>activiteitplaatsingen</c>.
     /// <para>

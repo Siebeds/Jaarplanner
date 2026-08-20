@@ -81,8 +81,19 @@ public interface IWeekplanningOpslag
 /// <param name="ThemaId">The thema the subthema belongs to.</param>
 /// <param name="ThemaNaam">The thema's name.</param>
 /// <param name="Doelcodes">
-/// The leerplandoel codes the activiteit carries through its own links. <b>Display only</b> — coverage runs through the
-/// thema's placement, never through this (Art. V.1).
+/// The leerplandoel codes the activiteit carries through its own <b>accepted or manual</b> links.
+/// <para>
+/// <b>Two bounds, and reading only the first one is what went wrong.</b> <i>Display only</i> — coverage runs through
+/// the thema's placement, never through this (Art. V.1). And <i>decided links only</i>: a <c>Voorgesteld</c> link is
+/// an AI suggestion nobody has answered and a <c>Geweigerd</c> one is a doel the teacher rejected, so neither may be
+/// presented as a doel this activiteit works toward (Art. IV.1/IV.2). The first version filtered on nothing; no route
+/// produces those statuses on an activiteit link yet, so the widening was latent rather than visible.
+/// </para>
+/// <para>
+/// <b>No order is promised here</b>, deliberately. The EF implementation does sort by code, but nothing verifies it and
+/// the sort is collation-dependent, so promising it on the interface would bind every implementer to something the
+/// suite cannot check. See <c>EfWeekplanningOpslag.Bevraag</c> for the reasoning and the failed attempts to pin it.
+/// </para>
 /// </param>
 public sealed record Activiteitinhoud(
     Guid ActiviteitId,

@@ -82,10 +82,46 @@ export function Minikalender({
    * is browsing, choosing a day is acting. Initialised from the chosen day so the grid opens on the week it highlights.
    */
   const [maand, setMaand] = useState(() => maandVan(gekozenDag));
+
+  /**
+   * **The month follows the week when the week moves from outside** (the 2026-08-20 audit's fourth frontend MAJOR).
+   *
+   * `useState`'s initialiser runs once, so the month was pinned to whatever `gekozenDag` was on first render. Stepping
+   * the week view with *"Volgende week"* or the period's own week list — the primary navigation of this screen — changed
+   * `gekozenDag` and left the grid on the old month. Week 3 of October then rendered under a **September** header, and
+   * because no cell fell inside the chosen week, **not one `gridcell` carried `aria-selected`**: the highlight that is
+   * this grid's whole contribution disappeared, and a screen reader was told nothing was selected.
+   *
+   * **Adjusted during render on a changed prop, not in an effect** — React's own documented pattern for exactly this.
+   * An effect would paint the wrong month first and then correct it, and the E9-06 audit already recorded what goes
+   * wrong when this kind of sync is written as one: the guard has to compare against the *previous* value, because
+   * `setState` is batched and a handler-time ref reads null.
+   *
+   * **It keys on `gekozenDag`, so browsing still works.** Stepping the month changes `maand` alone and this branch does
+   * not fire; only a new chosen day pulls the grid back. That leaves one honest state — browsed away from the shown
+   * week, nothing selected — which the notice below names rather than leaving it to look like the defect above.
+   */
+  const [vorigeGekozenDag, setVorigeGekozenDag] = useState(gekozenDag);
+  if (gekozenDag !== vorigeGekozenDag) {
+    setVorigeGekozenDag(gekozenDag);
+    setMaand(maandVan(gekozenDag));
+  }
+
   const labelId = useId();
 
   const rooster = bouwMaandrooster(maand.jaar, maand.maand);
   const gekozenWeek = weekVan(gekozenDag);
+
+  /**
+   * Whether the shown week overlaps the month on screen at all.
+   *
+   * A week straddling a month boundary counts as inside **both**, which is why this is an overlap test rather than a
+   * comparison of month numbers: the grid draws neighbouring months' days too, so half of such a week is genuinely
+   * visible and selected here.
+   */
+  const weekIsZichtbaar = rooster.some(
+    (cel) => cel.datum >= gekozenWeek.van && cel.datum <= gekozenWeek.tot,
+  );
 
   return (
     <div className="rounded-lg border border-border bg-card p-3" role="group" aria-labelledby={labelId}>
@@ -179,6 +215,23 @@ export function Minikalender({
           </div>
         ))}
       </div>
+
+      {/* Reachable **only** by stepping the month away from the shown week, which is a thing a teacher did on purpose.
+          Said rather than left implicit, because the alternative is a grid with no highlight in it — indistinguishable
+          from the defect this component just had. The sentence asserts exactly what the condition guarantees (the E5-03
+          rule): that the shown week is not in this month, and nothing about which week that is. */}
+      {!weekIsZichtbaar && (
+        <div className="mt-2 border-t border-border pt-2">
+          <p className="text-[0.6875rem] text-ink-zacht">{t("minikalender.andereMaand")}</p>
+          <button
+            type="button"
+            onClick={() => setMaand(maandVan(gekozenDag))}
+            className="mt-1 rounded px-1.5 py-0.5 text-[0.6875rem] font-medium text-petrol hover:bg-petrol-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            {t("minikalender.terugNaarWeek")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

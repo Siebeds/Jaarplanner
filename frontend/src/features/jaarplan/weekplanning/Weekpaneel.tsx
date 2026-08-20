@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { ApiError } from "../../../lib/api";
 import { t, tAantal } from "../../../i18n";
 import { formatteerDatum, formatteerPeriode, wekenInBlok } from "../kalenderFormat";
 import type { Planningsblok, Themaplaatsing } from "../types";
@@ -36,6 +37,54 @@ import type { Dag } from "./types";
  * through the API, and hiding a row that holds something would make a teacher's own work invisible. So: weekdays always,
  * weekend only when occupied. That is the honest version of both.
  */
+
+/**
+ * What a **failed scheduling edit** tells the teacher (E9-04, the 2026-08-20 audit's first frontend MAJOR).
+ *
+ * The three mutations shipped with no error surface at all: a refused plan, move or removal rendered *nothing*, so the
+ * card simply did not appear and the screen looked like it had ignored the click. Worse, it threw away the one thing
+ * built to be shown — `OngeldigeDagplanningFout` composes four **Dutch, teacher-actionable** sentences that name the
+ * day and the reason ("Op 2 november 2026 is de school gesloten (Herfstvakantie). Kies een andere dag."), which is
+ * exactly the Dutch side of the ratified Art. II.3 split and exactly what `api.ts` says the caller may render.
+ *
+ * **A 400 shows the server's own sentence; nothing else does.** Following `Opstapimport`'s precedent, and for the
+ * reason the kalender's `verplaatsFoutmelding` maps status → key instead. Four distinct refusals share the 400 here —
+ * closed day, outside the school year, duplicate, another class's activiteit — so a status → key map genuinely
+ * **cannot** say which one happened, which is why this branch reads `detail`. Every one of the four is Dutch,
+ * teacher-actionable and names the day (`OngeldigeDagplanningFout`), which is the Dutch side of the ratified Art. II.3
+ * split.
+ *
+ * *An earlier version of this paragraph justified the restriction by saying the other statuses carry "an English
+ * operator diagnostic or no body at all". That is **not** true of the likeliest one: `SchoolcontentNietGevondenFout`
+ * produces a **Dutch** 404 detail. Withholding it is still right — those sentences are built around a raw GUID
+ * ("Activiteit 3f2a… is niet gevonden") and are not actionable — but the honest reason is that the body is either an
+ * operator diagnostic, absent, or a Dutch sentence about an internal id, and none of the three belongs on a teacher's
+ * screen.*
+ *
+ * **404 gets its own sentence**, because it is the ordinary concurrent case — another session removed the placement —
+ * and *"probeer het opnieuw"* cannot succeed on it. Same shape as `themabeheer.subthemaAlWeg`.
+ *
+ * **⚠ This is safe on today's throw sites and pinned by nothing.** I traced every throw reachable from the three
+ * endpoints: the only 400 carrying a `detail` is `OngeldigeDagplanningFout`. But `PlanningExceptionHandler` also maps
+ * `OngeldigePlaatsingFout` and two siblings to 400 with their own message, and its docstring says those sentences give
+ * *wrong advice for a day*; `SchoolcontentExceptionHandler` is registered first and maps `SchoolcontentValidatieFout`
+ * to 400 with `exception.Message` from a dozen throw sites. **Nothing asserts that only `OngeldigeDagplanningFout` can
+ * 400 on these routes.** A `type`-URI discriminator is the mechanism for that (`ApiError.type` and
+ * `OPSTAP_WEIGERINGSOORT` already exist); until then this restriction is a property of today's server, not a guarantee.
+ */
+function wijzigingsfout(fout: unknown): string {
+  if (fout instanceof ApiError && fout.status === 400) {
+    // `detail` is undefined for an empty or non-JSON body, which a proxy 400 can produce — so the fallback is not
+    // theoretical (see `apiFetch`'s three-envelope note).
+    return fout.detail ?? t("weekplanning.wijzigGeweigerd");
+  }
+
+  if (fout instanceof ApiError && fout.status === 404) {
+    return t("weekplanning.wijzigVerdwenen");
+  }
+
+  return t("weekplanning.wijzigOnbeschikbaar");
+}
 
 export interface WeekpaneelProps {
   klasId: string;
@@ -107,6 +156,38 @@ export function Weekpaneel({
       ),
     [plaatsingen],
   );
+
+  /**
+   * The most recent of the three edits to have failed, or nothing.
+   *
+   * **Picked by `submittedAt` rather than by the order of this array**, and that is not fussiness: a mutation's `error`
+   * survives until its *own* next call, so after a refused plan and then a refused removal **both** are in error, and a
+   * first-match-wins lookup would show the older sentence — about a different day, naming a reason that no longer
+   * applies. Newest wins is the only answer that is always about what the teacher just did.
+   */
+  const mislukt = useMemo(() => {
+    const gefaald = [plannen, verplaatsen, verwijderen].filter((mutatie) => mutatie.isError);
+
+    return gefaald.reduce<(typeof gefaald)[number] | undefined>(
+      (nieuwste, mutatie) =>
+        nieuwste === undefined || mutatie.submittedAt > nieuwste.submittedAt ? mutatie : nieuwste,
+      undefined,
+    );
+  }, [plannen, verplaatsen, verwijderen]);
+
+  /**
+   * Dismiss clears **all three**, not just the one on show.
+   *
+   * The first version reset only `mislukt`, which reintroduced the exact defect the newest-wins lookup above exists to
+   * prevent: with two edits in error, closing the notice did not close it — it re-rendered with the *older* sentence,
+   * about a different day and an action the teacher had moved on from. A control that says "Melding sluiten" and
+   * reveals another message is the E3-06 rule broken by the fix for a copy defect. Pinned by a two-failure test.
+   */
+  const sluitMelding = () => {
+    plannen.reset();
+    verplaatsen.reset();
+    verwijderen.reset();
+  };
 
   const positieVanWeek = wekenVanPeriode.indexOf(maandag);
   const eersteWeek = wekenVanPeriode[0];
@@ -233,6 +314,48 @@ export function Weekpaneel({
               <span aria-hidden="true"> ›</span>
             </button>
           </div>
+
+          {/* A refused or failed edit, above the days rather than on the row it concerns: the sentence names its own
+              day, and a message inside a row would be invisible for the one case that matters most — a plan refused on
+              a day whose row is not on screen because the week stepped. Dismissed by the teacher rather than by a
+              timer or by a week change, so it cannot vanish before it is read. */}
+          {mislukt !== undefined && (
+            <div
+              className="flex max-w-3xl items-start justify-between gap-3 rounded-lg border border-suggestie-geweigerd/30 bg-suggestie-geweigerd/5 px-4 py-3"
+            >
+              {/* `role="alert"` because it appears in response to the teacher's own action and must be announced
+                  without them going looking for it. */}
+              <p role="alert" className="text-sm font-medium text-suggestie-geweigerd">
+                {wijzigingsfout(mislukt.error)}
+              </p>
+
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                {/* `wijzigOnbeschikbaar` says we do not know whether the write landed, so the way to find out has to be
+                    on screen beside it rather than described (the E3-06 rule). Only on that branch: after a 400 or a
+                    404 nothing was written and a reload would say nothing new. */}
+                {mislukt.error instanceof ApiError && mislukt.error.status !== 400 && mislukt.error.status !== 404 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void weekplanning.refetch();
+                      sluitMelding();
+                    }}
+                    className="rounded-md border border-input bg-card px-2.5 py-1 text-xs font-medium text-ink hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  >
+                    {t("weekplanning.wijzigHerlaad")}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={sluitMelding}
+                  className="rounded-md px-2 py-1 text-xs font-medium text-ink-zacht hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  {t("weekplanning.wijzigFoutSluiten")}
+                </button>
+              </div>
+            </div>
+          )}
 
           {weekplanning.isError ? (
             /* A degrade, so unconditional and never behind the uitleg switch. It also says nothing changed, because a

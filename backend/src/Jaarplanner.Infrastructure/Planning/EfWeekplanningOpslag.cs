@@ -1,5 +1,6 @@
 using Jaarplanner.Application.Planning.Weekplanning;
 using Jaarplanner.Domain.Planning;
+using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,6 +53,11 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
     public Task<Jaarplan?> LaadJaarplanAsync(Guid klasId, CancellationToken cancellationToken = default) =>
         _context.Jaarplannen
             .Include("_activiteitplaatsingen")
+            // Two collection navigations in one statement is a cartesian product, because the owned `_plaatsingen`
+            // already load with the owner. Split here as well as in `KlasBeheerService` rather than only there: this is
+            // the hotter of the two paths (every week read against a delete), and fixing the cold one alone is the
+            // shape of defect this file's own audit record keeps finding.
+            .AsSplitQuery()
             .FirstOrDefaultAsync(j => j.KlasId == klasId, cancellationToken);
 
     /// <inheritdoc />
@@ -106,9 +112,64 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
     /// <c>Doelcodes</c> subquery reads the activiteit's own owned links only, which is the display set — <b>not</b> a
     /// coverage computation, and it must never be used as one (Art. V.1; see <c>Activiteitplaatsing</c>).
     /// </para>
+    /// <para>
+    /// <b>Filtered to <c>Aanvaard</c>/<c>Manueel</c>, which it was not</b> (found by the 2026-08-20 audit). The
+    /// <b>same</b> predicate as every other place in this codebase that treats a link as real:
+    /// <c>JaarplanGeneratiePromptBuilder.ThemaDoelcodes</c> (the kalender card's own display set, documented as
+    /// "themadoelen + accepted/manual links"), <c>EfDekkingOpslag</c>'s four layers and
+    /// <c>OngekoppeldeDoelenQuery</c>. "Display only" was never a licence to widen the set: it bounds what the codes
+    /// may be <i>counted into</i>, not which links exist.
+    /// </para>
+    /// <para>
+    /// <b>The defect was latent, and saying so is the point.</b> No route reaches those statuses on an
+    /// <i>activiteit</i> link today: the only creation site is
+    /// <c>SchoolcontentBeheerService.KoppelActiviteitAanDoelAsync</c>, hard-coded <c>Manueel</c>;
+    /// <c>ActiviteitenController</c> offers POST and DELETE and no status route; and
+    /// <c>DoelMatchingService</c> resolves a suggestion out of <c>Thema.Doelsuggesties</c> only. Nor does any component
+    /// read this field yet. So nothing was ever mis-shown to a teacher — the predicate is fixed <b>before</b> E8's
+    /// activiteit-level matching makes those statuses reachable.
+    /// <i>An earlier version of this paragraph said a rejected link "arrived on the day card" and told a teacher their
+    /// rejection did nothing. That dressed a contract fix as a repaired harm, which is the same class of overclaim the
+    /// rest of this commit removes.</i>
+    /// </para>
+    /// <para>
+    /// <b>When E8 lands, widen the <i>shape</i> and not this predicate.</b> These are bare codes with no per-code
+    /// status, so an AI suggestion at activiteit level needs code+status pairs on the contract; loosening the filter
+    /// instead would put unanswered suggestions on the card as fact (Art. IV.1).
+    /// </para>
+    /// <para>
+    /// Ordered in SQL so two reads of one week can never present the same activiteit's doelen in two orders. Without an
+    /// <c>ORDER BY</c> the row order is simply <b>unspecified</b> — that is the whole of the justification, and no more
+    /// than it.
+    /// <para>
+    /// <b>Unpinnable by a test, and recorded rather than papered over:</b> two mutation attempts on 2026-08-20 both left
+    /// the assertion green, because the unordered read happened to come back sorted by code. An assertion that flips per
+    /// run is worse than none, so the claim was deleted instead of the guard weakened. <b>This line is guarded by nothing
+    /// but this sentence, and so is the ordering note on <c>Activiteitinhoud.Doelcodes</c>.</b> Do not delete either on
+    /// the strength of a green suite.
+    /// </para>
+    /// <para>
+    /// *A first version of this paragraph blamed <c>DoelKoppeling.Id</c> being a fresh <c>Guid</c>. That was a cause
+    /// invented to fit the observation: unordered is unordered whatever the key, and the sorted output is better
+    /// explained by a scan of <c>DoelKoppelingMapping</c>'s own index on <c>leerplandoel_code</c>. Left as a note
+    /// because reaching for a mechanism when "unspecified" is the honest answer is the same move as the overclaim this
+    /// commit removes elsewhere.*
+    /// </para>
+    /// <para>
+    /// <b>It sorts in the database collation</b>, whereas the sibling it matches on the <i>predicate</i>
+    /// (<c>JaarplanGeneratiePromptBuilder.ThemaDoelcodes</c>) sorts <c>StringComparer.Ordinal</c>. For today's codes the
+    /// two agree; for codes differing in case or punctuation they need not. The parity claim below is about the filter
+    /// and not about the order.
+    /// </para>
+    /// <para>
+    /// No <c>Distinct</c>, deliberately: the sibling needs one because it concatenates two sources, this reads a single
+    /// activiteit's own links, and a duplicate code on one activiteit would be a data defect to surface rather than to
+    /// hide behind a projection.
+    /// </para>
+    /// </para>
     /// </summary>
     private IQueryable<Activiteitinhoud> Bevraag(
-        System.Linq.Expressions.Expression<Func<Domain.Schoolcontent.Activiteit, bool>> filter) =>
+        System.Linq.Expressions.Expression<Func<Activiteit, bool>> filter) =>
         from activiteit in _context.Activiteiten.Where(filter)
         join subthema in _context.Subthemas on activiteit.SubthemaId equals subthema.Id
         join thema in _context.Themas on subthema.ThemaId equals thema.Id
@@ -122,5 +183,9 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
             subthema.Leeftijd,
             thema.Id,
             thema.Naam,
-            activiteit.Doelkoppelingen.Select(k => k.LeerplandoelCode).ToList());
+            activiteit.Doelkoppelingen
+                .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
+                .OrderBy(k => k.LeerplandoelCode)
+                .Select(k => k.LeerplandoelCode)
+                .ToList());
 }

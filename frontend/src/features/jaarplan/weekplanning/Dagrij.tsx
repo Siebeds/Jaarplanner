@@ -86,25 +86,65 @@ export function Dagrij({ dag, klasId, themaIds, buitenPeriode, bezig, onPlan, on
     })),
   });
 
+  /**
+   * Every activiteit the successful reads returned, **before** anything is filtered out.
+   *
+   * Split from `keuzes` because `keuzes.length === 0` has three causes and the teacher needs a different sentence for
+   * each: nothing exists, everything that exists is already on this day, or the read failed. Collapsing them is what
+   * produced the false claim the 2026-08-20 audit found.
+   */
+  const aanwezig = useMemo(
+    () =>
+      themas
+        .flatMap((query) => query.data?.subthemas ?? [])
+        .flatMap((subthema) =>
+          subthema.activiteiten.map((activiteit) => ({
+            id: activiteit.id,
+            naam: activiteit.naam,
+            subthemaNaam: subthema.naam,
+          })),
+        ),
+    [themas],
+  );
+
   const keuzes = useMemo(() => {
     const alGepland = new Set(dag.activiteiten.map((a) => a.activiteitId));
 
-    return themas
-      .flatMap((query) => query.data?.subthemas ?? [])
-      .flatMap((subthema) =>
-        subthema.activiteiten.map((activiteit) => ({
-          id: activiteit.id,
-          naam: activiteit.naam,
-          subthemaNaam: subthema.naam,
-        })),
-      )
-      // Already on this day, so offering it again would produce the duplicate the server refuses with a 400. Filtered
-      // rather than shown-and-disabled: the list is short and a disabled row here explains nothing a teacher needs.
-      .filter((keuze) => !alGepland.has(keuze.id))
-      .sort((a, b) => a.naam.localeCompare(b.naam, "nl"));
-  }, [themas, dag.activiteiten]);
+    return (
+      aanwezig
+        // Already on this day, so offering it again would produce the duplicate the server refuses with a 400. Filtered
+        // rather than shown-and-disabled: the list is short and a disabled row here explains nothing a teacher needs.
+        .filter((keuze) => !alGepland.has(keuze.id))
+        .sort((a, b) => a.naam.localeCompare(b.naam, "nl"))
+    );
+  }, [aanwezig, dag.activiteiten]);
 
   const laadt = themas.some((query) => query.isPending && query.fetchStatus !== "idle");
+
+  /**
+   * **A failed read is its own state, and conflating it with an empty one was an Art. II.3 / E5-03-rule violation**
+   * (the 2026-08-20 audit's second frontend MAJOR).
+   *
+   * `useQueries` leaves `data` undefined on failure, so `keuzes` came out empty, `laadt` came out false, and the picker
+   * rendered *"Deze klas heeft nog geen activiteiten in de thema's van deze periode. Maak ze eerst aan bij Thema's."* —
+   * a claim about the school's content that a failed HTTP request cannot possibly support, and one that sends a teacher
+   * off to create activiteiten they may already have. **A conditional sentence may assert only what its own render
+   * condition guarantees**, and this branch guarantees nothing about how many activiteiten exist.
+   *
+   * **There is one query per placed thema, so failure is not all-or-nothing** — and the first fix for this treated it as
+   * if it were. It fired on `some(isError)`, said *"de activiteiten van deze thema's"* in the plural, and **threw away
+   * the choices that had loaded**: with two thema's and one failed read, a teacher lost access to activiteiten the app
+   * was holding. The retry button refetched only the errored queries, which proves partial failure was foreseen in the
+   * mechanism and missed in the copy. Now the two cases are separate: everything failed, or something did.
+   */
+  const mislukt = themas.filter((query) => query.isError);
+  const allesMislukt = themas.length > 0 && mislukt.length === themas.length;
+
+  const opnieuwProberen = () => {
+    for (const query of mislukt) {
+      void query.refetch();
+    }
+  };
 
   return (
     <li
@@ -192,16 +232,64 @@ export function Dagrij({ dag, klasId, themaIds, buitenPeriode, bezig, onPlan, on
               {t("weekplanning.planKies")}
             </label>
 
-            {themaIds.length === 0 || (!laadt && keuzes.length === 0) ? (
-              // States the reason and where to fix it. An empty picker with no explanation is the defect E1-14's
-              // rounds kept finding on these screens.
-              <p className="mt-1.5 text-xs text-ink-zacht">{t("weekplanning.planGeenKeuze")}</p>
+            {allesMislukt ? (
+              /* Every read failed, so there is nothing to offer and nothing true to say about the school's content. */
+              <div className="mt-1.5">
+                <p role="alert" className="text-xs font-medium text-suggestie-geweigerd">
+                  {t("weekplanning.planFout")}
+                </p>
+                <button
+                  type="button"
+                  onClick={opnieuwProberen}
+                  // Each Dagrij owns its own picker, so up to seven of these can be on screen at once. The name carries
+                  // the day, the way `Periodekolom` names its period for the same reason — and it leads with the
+                  // visible text, so SC 2.5.3 holds.
+                  aria-label={t("weekplanning.opnieuwAria", { dag: naam, datum: gesproken })}
+                  className="mt-1.5 rounded-md border border-input bg-card px-2.5 py-1 text-xs font-medium text-ink hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  {t("weekplanning.opnieuw")}
+                </button>
+              </div>
             ) : laadt ? (
               <p role="status" className="mt-1.5 text-xs text-ink-zacht">
                 {t("weekplanning.planBezig")}
               </p>
+            ) : keuzes.length === 0 ? (
+              /* Nothing offerable, and the reason decides the sentence. Three causes, three answers — collapsing them
+                 is what made this branch assert something false. `aanwezig` is what the successful reads returned, so
+                 "already on this day" is only claimed when something really did load. */
+              <p className="mt-1.5 text-xs text-ink-zacht">
+                {mislukt.length > 0
+                  ? t("weekplanning.planFoutGedeeltelijkLeeg")
+                  : aanwezig.length > 0
+                    ? t("weekplanning.planAlGepland")
+                    : themaIds.length === 0
+                      ? // No thema in the period, so `planGeenKeuze`'s "in de thema's van deze periode" would
+                        // quantify over an empty set and its "maak ze aan bij Thema's" would be the wrong errand.
+                        t("weekplanning.planGeenThema")
+                      : t("weekplanning.planGeenKeuze")}
+              </p>
             ) : (
-              <ul id={veldId} className="mt-1.5 flex flex-col gap-1">
+              <>
+                {/* Some reads worked and some did not, so the list is real but may be short. Said above it rather than
+                    instead of it: the first version of this fix dropped the whole list on one failed thema. */}
+                {mislukt.length > 0 && (
+                  <div className="mt-1.5">
+                    <p role="alert" className="text-xs font-medium text-attentie-ink">
+                      {t("weekplanning.planFoutGedeeltelijk")}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={opnieuwProberen}
+                      aria-label={t("weekplanning.opnieuwAria", { dag: naam, datum: gesproken })}
+                      className="mt-1 rounded-md border border-input bg-card px-2.5 py-1 text-xs font-medium text-ink hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                      {t("weekplanning.opnieuw")}
+                    </button>
+                  </div>
+                )}
+
+                <ul id={veldId} className="mt-1.5 flex flex-col gap-1">
                 {keuzes.map((keuze) => (
                   <li key={keuze.id}>
                     <button
@@ -221,8 +309,9 @@ export function Dagrij({ dag, klasId, themaIds, buitenPeriode, bezig, onPlan, on
                       </span>
                     </button>
                   </li>
-                ))}
-              </ul>
+                  ))}
+                </ul>
+              </>
             )}
 
             <button

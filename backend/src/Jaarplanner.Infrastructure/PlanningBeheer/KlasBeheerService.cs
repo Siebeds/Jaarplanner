@@ -139,7 +139,35 @@ public sealed class KlasBeheerService : IKlasBeheerService
         // The remediation this message names is REAL: DELETE /api/klassen/{klasId}/jaarplan/plaatsingen/{id} removes
         // a placement whatever its status or lock. The first version of this guard shipped without that endpoint, so
         // one accepted placement made the class undeletable forever and this message instructed the impossible.
+        //
+        // **The `Include` is load-bearing and its absence is silent** — the defect the 2026-08-20 audit measured
+        // against real PostgreSQL rather than argued. `Themaplaatsing` is an EF *owned* collection and arrives with its
+        // owner; `Activiteitplaatsing` is a **regular navigation** and does not. Without this line the day-level guard
+        // below reads an empty backing list, counts 0, never fires, and the class delete cascades straight through to
+        // `activiteitplaatsingen` at the database level — destroying exactly the scheduling work that guard exists to
+        // refuse. Measured: no-include 0 versus with-include 1 on the same row.
+        //
+        // Why the tests did not see it, stated plainly because the first version of this comment got it wrong in a way
+        // that pointed at the expensive gate: `KlasVerwijderenTests` **does** exercise this method — it builds a real
+        // `KlasBeheerService` over the in-memory provider — and it missed this for the dull reason that **not one of its
+        // cases ever placed an activiteit**. Every one of them adds a `Themaplaatsing` only. Since it seeds through a
+        // separate context, in-memory would not have populated a non-owned navigation either, so a single added case
+        // fails in milliseconds. That case now exists
+        // (`KlasVerwijderenTests.Klas_met_een_ingeplande_activiteit_kan_niet_verwijderd_worden`), alongside the
+        // Postgres one that also pins the E1-19 route and the real DB cascade
+        // (`WeekplanningEndpointsTests.Een_klas_zonder_subthemas_maar_met_dagplanning_kan_niet_verwijderd_worden`).
+        //
+        // *An earlier version of this paragraph called the unit test a domain test and concluded that only an
+        // integration test could catch a missing `Include`. Both halves were false, and the second is the harmful one:
+        // believing it is how the next missing navigation ships.*
+        //
+        // `AsSplitQuery` because `Jaarplan` already auto-loads its **owned** `_plaatsingen`, so a second collection
+        // navigation in one statement is a cartesian product — tens of themaplaatsingen times hundreds of
+        // activiteitplaatsingen — for a guard that wants two counts. No semantic change; it is two round trips instead
+        // of one multiplied row set.
         var jaarplan = await _context.Jaarplannen
+            .Include("_activiteitplaatsingen")
+            .AsSplitQuery()
             .FirstOrDefaultAsync(j => j.KlasId == klasId, cancellationToken);
         var besloten = jaarplan?.MenselijkBeslotenPlaatsingen.Count ?? 0;
         if (besloten > 0)
@@ -170,6 +198,13 @@ public sealed class KlasBeheerService : IKlasBeheerService
         // holding a placement whose activiteit now belongs elsewhere. That route also breaks the class-boundary
         // invariant, so closing E1-19 is what makes this dead rather than merely unreachable — and until then, a
         // silent cascade here would destroy scheduling work. Do not "simplify" this away without closing E1-19 first.
+        // **The remediation this sentence names is load-bearing and only conditionally true.** In the E1-19 state where
+        // this guard actually fires, the activiteit's subthema belongs to another klas — and the week view still shows
+        // the placement only because `WeekplanningService.ProjecteerAsync` applies **no klas filter** and `Bevraag`
+        // resolves the activiteit by id whatever its subthema now says. Adding a klas filter to the week view (an
+        // obvious hardening) would turn this message into the trap `ActiviteitplaatsingConfiguration` records shipping
+        // once already: a Restrict whose remediation does not exist. Pinned end to end by the Postgres test named above,
+        // which deletes the orphaned placement over the API and then completes the klas delete.
         var beslotenDagen = jaarplan?.MenselijkBeslotenActiviteitplaatsingen.Count ?? 0;
         if (beslotenDagen > 0)
         {

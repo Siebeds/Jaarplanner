@@ -73,7 +73,14 @@ public sealed record Dagweergave(
 /// <param name="Volgorde">Position within the day.</param>
 /// <param name="Status">The human-in-the-loop status, as the API serialises the enum (Art. IV.2).</param>
 /// <param name="Doelcodes">
-/// The leerplandoel codes this activiteit carries, through its own <c>DoelKoppeling</c>s.
+/// The leerplandoel codes this activiteit carries, through its own <b>accepted or manual</b> <c>DoelKoppeling</c>s.
+/// <para>
+/// <b>A <c>Voorgesteld</c> or <c>Geweigerd</c> link is not in here</b>, and that is Art. IV.1/IV.2 rather than tidying:
+/// one is a suggestion nobody has answered, the other is a doel the teacher said no to, and neither is a doel this
+/// activiteit works toward. The 2026-08-20 audit found this shipping unfiltered — <b>latently</b>: no route reaches
+/// those statuses on an activiteit link today and no component reads this field, so the fix lands before E8's
+/// activiteit-level matching makes them reachable rather than after anyone saw a wrong card.
+/// </para>
 /// <para>
 /// <b>Present for display, and it must not be read as coverage.</b> Art. V.1 makes a doel gedekt through the
 /// <i>thema's</i> placement in the plan; scheduling the activiteit onto a Tuesday changes nothing in that computation.
