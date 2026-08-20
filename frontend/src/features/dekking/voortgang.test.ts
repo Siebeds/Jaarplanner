@@ -130,6 +130,13 @@ describe("gate order matches bepaalCijfer", () => {
     nietMeerInOpstap: false,
     isGedekt,
     dekkendeThemas: isGedekt ? ["Water"] : [],
+    // E5-05 made these two REQUIRED on `DoelDekking` while this branch was building, and the merge that brought them
+    // in produced no conflict here — only `tsc -b` caught it, which is the whole point of E7-17's fix to `pnpm lint`.
+    // Filled by `types.ts`'s own contract and `testdata.ts`'s convention: `oorzaak` is null exactly when covered, and
+    // `kandidaatThemas` is empty both when covered and for `GeenThema`, which has nothing to name. This test is about
+    // gate order and asserts nothing about the cause, so the neutral cause is the honest one to use.
+    oorzaak: isGedekt ? null : "GeenThema",
+    kandidaatThemas: [],
   });
 
   const dekking = (overrides: Partial<Dekking> = {}): Dekking => ({
