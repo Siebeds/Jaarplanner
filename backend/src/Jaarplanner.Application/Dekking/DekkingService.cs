@@ -101,10 +101,38 @@ public sealed class DekkingService
         // two can never be over different sets of goals. See BepaalBereikAsync for the ruling it implements.
         var scope = await BepaalBereikAsync(klasId, bereik, jaarFase, cancellationToken);
 
+        // THE GAP-ANALYSE'S INPUT (E5-05). Every thema linked to a goal for this class, placed or not, decided or
+        // proposed — see IDekkingOpslag for how it differs from the covering read above and why the two are separate.
+        var kandidatenPerCode = (await _opslag.HaalKandidaatKoppelingenAsync(klasId, cancellationToken))
+            .GroupBy(k => k.LeerplandoelCode, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<KandidaatKoppeling>)g.ToList(), StringComparer.Ordinal);
+
+        // The thema's standing in the plan that a teacher could still say yes to, INCLUDING the ones they already
+        // accepted. Exactly the set BerekenVooruitzichtAsync counts its ceiling over, read through the same helper so
+        // the two cannot drift: WachtOpBeslissing below is the per-doel form of that ceiling's headroom.
+        var voorstelbareThemaIds = Themaplaatsingen(plan, IsVoorstelbaar).ToHashSet();
+
+        // The thema's whose placement in a real period of this plan the teacher REJECTED. Read through the same helper,
+        // so this set inherits its `!IsVervallen` filter — which is the whole boundary between PlaatsingGeweigerd and
+        // NietIngepland: a rejected card is drawn in its period column and a stale one is not, so only the first makes
+        // "sits in no period" a false sentence to put on screen. See Lacuneoorzaak.PlaatsingGeweigerd.
+        var geweigerdeThemaIds = Themaplaatsingen(plan, IsGeweigerd).ToHashSet();
+
         var doelen = scope.Leerplandoelen
             .Select(l =>
             {
                 var dekkendeThemas = themasPerCode.GetValueOrDefault(l.Code, []);
+                var isGedekt = dekkendeThemas.Count > 0;
+
+                // Classified only for a gap. A covered goal has no cause, and the type says so with a null rather
+                // than with an extra enum member: "not applicable" and "we could not work out why" would otherwise be
+                // the same value, and only one of those is ever true here.
+                var lacune = isGedekt
+                    ? (Oorzaak: (Lacuneoorzaak?)null, Themas: (IReadOnlyList<string>)[])
+                    : BepaalOorzaak(
+                        kandidatenPerCode.GetValueOrDefault(l.Code, []),
+                        voorstelbareThemaIds,
+                        geweigerdeThemaIds);
 
                 return new LeerplandoelDekking(
                     l.Code,
@@ -118,8 +146,10 @@ public sealed class DekkingService
                     // Covered exactly when at least one placed thema carries it. The two halves of the record can
                     // therefore never disagree, which matters because an export reads IsGedekt and a teacher reads
                     // the thema list.
-                    IsGedekt: dekkendeThemas.Count > 0,
-                    dekkendeThemas);
+                    IsGedekt: isGedekt,
+                    dekkendeThemas,
+                    lacune.Oorzaak,
+                    lacune.Themas);
             })
             // Ordinal throughout, deliberately. CurrentCulture would make the server's output depend on the host's
             // culture, and it still would not reproduce the gap list's order, which Postgres produces under the
@@ -243,6 +273,72 @@ public sealed class DekkingService
             AantalMogelijkGedekt: isBetrouwbaar ? mogelijkGedekt : null,
             scope.Leerplandoelen.Count);
     }
+
+    /// <summary>
+    /// Why an uncovered goal is uncovered, and which thema's a teacher would act on (E5-05). See
+    /// <see cref="Lacuneoorzaak"/> for what each cause means and why the order is the one it is.
+    /// <para>
+    /// <b>First match wins, and the order is cheapest-route-first rather than arbitrary.</b> A goal can genuinely sit
+    /// in several of these states at once — thema A carries it and stands in the plan as a proposal, thema B carries
+    /// it and is nowhere — and reporting every route at once would leave a teacher to work out which name goes with
+    /// which action. So each cause names only the thema's that belong to <i>it</i>.
+    /// </para>
+    /// <para>
+    /// <b>The first branch is sound only because this method is never called for a covered goal.</b> A decided link on
+    /// a thema in <paramref name="voorstelbareThemaIds"/> could in principle be one whose placement is
+    /// <c>aanvaard</c>/<c>manueel</c> rather than <c>voorgesteld</c> — but that combination is exactly what makes a
+    /// goal covered, so inside a gap it can only be an open proposal. That inference rests on the two storage reads
+    /// applying the same layer and status rules, which is stated as a contract on <c>IDekkingOpslag</c> and pinned by
+    /// a Postgres test rather than left to hold by inspection.
+    /// </para>
+    /// </summary>
+    private static (Lacuneoorzaak Oorzaak, IReadOnlyList<string> Themas) BepaalOorzaak(
+        IReadOnlyList<KandidaatKoppeling> kandidaten,
+        IReadOnlySet<Guid> voorstelbareThemaIds,
+        IReadOnlySet<Guid> geweigerdeThemaIds)
+    {
+        var wachtend = Themanamen(kandidaten.Where(k => k.IsBeslist && voorstelbareThemaIds.Contains(k.ThemaId)));
+
+        if (wachtend.Count > 0)
+        {
+            return (Lacuneoorzaak.WachtOpBeslissing, wachtend);
+        }
+
+        var geweigerd = Themanamen(kandidaten.Where(k => k.IsBeslist && geweigerdeThemaIds.Contains(k.ThemaId)));
+
+        if (geweigerd.Count > 0)
+        {
+            return (Lacuneoorzaak.PlaatsingGeweigerd, geweigerd);
+        }
+
+        var ongepland = Themanamen(kandidaten.Where(k => k.IsBeslist));
+
+        if (ongepland.Count > 0)
+        {
+            return (Lacuneoorzaak.NietIngepland, ongepland);
+        }
+
+        // Everything left is an undecided link, because the read excludes rejected ones and the three branches above
+        // took every decided one. Written as "all that remain" rather than as `!k.IsBeslist` so the four branches
+        // provably partition the input: a fourth link state added to the read later would surface here as a
+        // misclassification rather than silently vanish between two negated filters.
+        var onbeslist = Themanamen(kandidaten);
+
+        return onbeslist.Count > 0
+            ? (Lacuneoorzaak.KoppelingNietBeslist, onbeslist)
+            : (Lacuneoorzaak.GeenThema, []);
+    }
+
+    /// <summary>
+    /// The distinct thema names of the given links, ordinally ordered — the same ordering rule the covering evidence
+    /// list uses, so the two lines a teacher reads on this screen sort their names the same way.
+    /// </summary>
+    private static IReadOnlyList<string> Themanamen(IEnumerable<KandidaatKoppeling> kandidaten) =>
+        kandidaten
+            .Select(k => k.ThemaNaam)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(naam => naam, StringComparer.Ordinal)
+            .ToList();
 
     /// <summary>
     /// The distinct thema's placed in a real period of this plan whose placement status satisfies

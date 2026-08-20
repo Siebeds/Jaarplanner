@@ -75,7 +75,13 @@ public class ClosedXmlDekkingExportTests
         string jaarFase = "K3",
         string? minimumdoelRef = null,
         bool nietMeerInOpstap = false,
-        IReadOnlyList<string>? themas = null) =>
+        IReadOnlyList<string>? themas = null,
+        // Defaulted to the cause a gap has when nothing links it, so every pre-E5-05 case in this file keeps
+        // describing the same document it described before. The export does not read these two fields — the owner
+        // ruled on 2026-08-06 that the document carries the figures and the evidence, not the remedies — and a test
+        // in this file asserts that absence rather than leaving it to the default's silence.
+        Lacuneoorzaak? oorzaak = Lacuneoorzaak.GeenThema,
+        IReadOnlyList<string>? kandidaten = null) =>
         new(
             code,
             doelsoort,
@@ -86,7 +92,9 @@ public class ClosedXmlDekkingExportTests
             minimumdoelRef,
             nietMeerInOpstap,
             gedekt,
-            themas ?? Array.Empty<string>());
+            themas ?? Array.Empty<string>(),
+            gedekt ? null : oorzaak,
+            kandidaten ?? Array.Empty<string>());
 
     private static DekkingWeergave Weergave(
         IReadOnlyList<LeerplandoelDekking>? doelen = null,
@@ -515,6 +523,35 @@ public class ClosedXmlDekkingExportTests
 
         Assert.DoesNotContain("6-14", AlleCellen(bestand));
         Assert.DoesNotContain("Minimumdoel", DekkingKolommen.Alle.Select(DekkingKolommen.Label));
+    }
+
+    [Fact]
+    public void Er_staat_geen_oorzaakkolom_in_het_document()
+    {
+        // E5-05 CLASSIFIES EVERY GAP AND THE EXPORT DELIBERATELY DOES NOT CARRY IT, which is a scope boundary rather
+        // than an oversight and therefore needs a test instead of a sentence.
+        //
+        // Two reasons, and the second is the binding one. A cause is a REMEDY — go accept this, go plan that — while
+        // this document is evidence under Art. V.4: a proof of coverage states what is taught and through what, and
+        // what a school still has to do about the rest is not evidence of anything. And Art. XIV reserves export
+        // LAYOUT for directie; E5-06 obtained a ruling on the format precisely so it would not ratify a layout by
+        // implication, so adding two columns on this story's own judgement would undo that.
+        //
+        // The candidate thema's are the sharper half: they are thema names in the same document as the covering thema
+        // names, one column apart, and the second column proves coverage while the first proves its absence.
+        var doelen = new[]
+        {
+            Doel("NC-1.1", oorzaak: Lacuneoorzaak.NietIngepland, kandidaten: new[] { "Winterthema" }),
+        };
+
+        var bestand = Export().Genereer(Weergave(doelen));
+
+        Assert.DoesNotContain("Winterthema", AlleCellen(bestand));
+
+        // No header names a cause either, in any spelling the enum could reach a cell through.
+        var labels = DekkingKolommen.Alle.Select(DekkingKolommen.Label).ToList();
+        Assert.DoesNotContain("Oorzaak", labels);
+        Assert.DoesNotContain(AlleCellen(bestand), cel => cel.Contains("NietIngepland", StringComparison.Ordinal));
     }
 
     /// <summary>

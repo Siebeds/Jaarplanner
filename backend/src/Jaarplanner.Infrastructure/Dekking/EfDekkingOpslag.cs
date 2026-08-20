@@ -128,6 +128,99 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<KandidaatKoppeling>> HaalKandidaatKoppelingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default)
+    {
+        // THE SAME FOUR LAYERS AND THE SAME CLASS SCOPING as HaalDekkendeKoppelingenAsync above (owner ruling
+        // 2026-08-03), and the same four round trips for the same untranslatable-UNION reason. What differs is only
+        // what is let through:
+        //
+        //   * no thema-id filter, because "the thema that carries this goal is in no period" is one of the
+        //     things the gap-analyse exists to say, and a query restricted to placed thema's could never say it;
+        //   * `voorgesteld` links are included beside the decided ones, flagged rather than mixed, because "the link
+        //     itself is still undecided" is another of them.
+        //
+        // `geweigerd` is excluded in every layer. That is a status decision this read makes and IDekkingOpslag
+        // records the consequence it imposes on the copy: a goal linked only by rejected links reaches the screen as
+        // "no thema covers this", which is true, and must never be worded as "no thema is linked to this", which is
+        // not.
+        //
+        // The predicate is written out four times because EF cannot translate a call to a shared one. That is E1-17's
+        // problem rather than this story's; what this story owes is that these four agree with the covering read's
+        // four, which DekkingLagenPostgresTests asserts directly rather than leaving to inspection.
+
+        // Layer 1 — themadoelen, school-wide.
+        var themadoelen = await _context.Themas
+            .AsNoTracking()
+            .SelectMany(t => t.Themadoelen
+                .Where(td => td.Koppeling.Status != KoppelingStatus.Geweigerd)
+                .Select(td => new KandidaatKoppeling(
+                    td.Koppeling.LeerplandoelCode,
+                    t.Id,
+                    t.Naam,
+                    td.Koppeling.Status == KoppelingStatus.Aanvaard
+                        || td.Koppeling.Status == KoppelingStatus.Manueel)))
+            .ToListAsync(cancellationToken);
+
+        // Layer 2 — the thema's AI doelsuggesties, school-wide. Undecided ones are the whole point here: this is the
+        // layer that produces the KoppelingNietBeslist cause, the state a thema is in right after FR-4 matching.
+        var suggesties = await _context.Themas
+            .AsNoTracking()
+            .SelectMany(t => t.Doelsuggesties
+                .Where(k => k.Status != KoppelingStatus.Geweigerd)
+                .Select(k => new KandidaatKoppeling(
+                    k.LeerplandoelCode,
+                    t.Id,
+                    t.Naam,
+                    k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)))
+            .ToListAsync(cancellationToken);
+
+        // Layer 3 — subdoelen, scoped to this class's subthema's (Art. IX.2).
+        var subdoelen = await _context.Themas
+            .AsNoTracking()
+            .SelectMany(t => t.Subthemas
+                .Where(st => st.KlasId == klasId)
+                .SelectMany(st => st.Subdoelen
+                    .Where(sd => sd.Koppeling.Status != KoppelingStatus.Geweigerd)
+                    .Select(sd => new KandidaatKoppeling(
+                        sd.Koppeling.LeerplandoelCode,
+                        t.Id,
+                        t.Naam,
+                        sd.Koppeling.Status == KoppelingStatus.Aanvaard
+                            || sd.Koppeling.Status == KoppelingStatus.Manueel))))
+            .ToListAsync(cancellationToken);
+
+        // Layer 4 — activiteit links, scoped by the SUBTHEMA's klas, as above.
+        var activiteiten = await _context.Themas
+            .AsNoTracking()
+            .SelectMany(t => t.Subthemas
+                .Where(st => st.KlasId == klasId)
+                .SelectMany(st => st.Activiteiten
+                    .SelectMany(a => a.Doelkoppelingen
+                        .Where(k => k.Status != KoppelingStatus.Geweigerd)
+                        .Select(k => new KandidaatKoppeling(
+                            k.LeerplandoelCode,
+                            t.Id,
+                            t.Naam,
+                            k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)))))
+            .ToListAsync(cancellationToken);
+
+        // Distinct, like the covering read, because one thema may carry one code in two layers. Here the duplication
+        // would matter more than there: the same thema name twice in a cause line reads as two separate reasons.
+        //
+        // A code carried by one thema BOTH as a decided link and as an undecided suggestion survives as two rows,
+        // deliberately: they are different facts, and DekkingService's classification takes the decided one first, so
+        // collapsing them would have to pick a winner here — in the layer that knows least about why.
+        return themadoelen
+            .Concat(suggesties)
+            .Concat(subdoelen)
+            .Concat(activiteiten)
+            .Distinct()
+            .ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
         IReadOnlyCollection<string>? jaarFasen = null,
         CancellationToken cancellationToken = default)

@@ -18,6 +18,15 @@
   Plan generation within seconds–tens of seconds; snappy calendar.
   *Done when:* generation and calendar interactions meet the target on representative data.
   > **First concrete item, filed 2026-08-05 by E3-09's antagonist round 2: the kalender downloads the whole per-goal coverage list to render one integer.** E3-09's knelpunt line needs `aantalLeerplandoelen - aantalGedekt`, and gets it from `GET /api/klassen/{id}/dekking`, whose `DekkingWeergave.Doelen` carries **one record per in-scope leerplandoel** with its `tekst` and its covering thema's. The kalender discards all of it. On the demo seed that is 14 rows and measured 226 ms; a real Op.stap import puts hundreds behind a single jaar/fase, and this is the **anchor screen**. Three multipliers, all verified in code rather than assumed: `useDekking` sets **no `staleTime`** (E5-02's deliberate choice, because dekking must never be stale), `main.tsx` uses a bare `new QueryClient()` so `refetchOnWindowFocus` is on and the full payload is re-fetched on **every window focus**, and every narrowing through the kleuterjaar chooser is a **new query key** with no kept previous data. **The fix is a count-only projection** (a `?vorm=samenvatting` shape, or a dedicated endpoint) so the board asks for two numbers instead of a list.
+  > **Second concrete item, filed 2026-08-19 by E5-05's antagonist ronde 2, and it makes the first one bigger.**
+  > E5-05 added `oorzaak` and `kandidaatThemas` to **every row** of the same `DekkingWeergave.Doelen` payload the item
+  > above is about, and it did so on the anchor screen. So the row the kalender downloads to render one integer is now
+  > wider than when that measurement was taken, and the 226 ms figure above is a floor rather than a current reading.
+  > Nothing here is a defect in E5-05: the dekkingsoverzicht genuinely needs both fields, and the waste is entirely on
+  > the kalender's side of the same endpoint. It is filed because *"the kalender downloads the whole list"* is a claim
+  > whose cost changes every time a story widens the row, and nobody re-measures a number recorded on someone else's
+  > entry.
+
   > *Filed here rather than left on E3-09, and that is the point:* E3-09's own entry claimed this was "routed", when it had only been *written down inside the story that closes*. The **E4-08 precedent** in [`README.md`](README.md) is the same mistake one story earlier — an item routed to a closed story was owned by nothing. A concern is routed when it lives somewhere that outlives the entry that found it.
 
 - [ ] **E7-04 — Cloud hosting, EU region (NFR-4, Art. VI.3)**
@@ -114,6 +123,17 @@
   routes sit behind the single named policy `Curriculumbeheer` ([ADR-0022](../docs/adr/0022-curriculum-administration-authorisation-seam.md)),
   whose body is a documented no-op precisely because this gate is open. Binding that policy to the directie
   role is E6-02's one-line job; until then these two routes are as open as the rest.
+  *Blast radius grew, without a new route (2026-08-19, E5-05 antagonist ronde 1).* The already-anonymous
+  `GET /api/klassen/{klasId}/dekking` now discloses **more than it did**: E5-05's gap-analyse added a second link
+  read that is deliberately *not* narrowed to placed thema's, so `LeerplandoelDekking.KandidaatThemas` names every
+  thema in the school-wide library carrying a non-rejected link to a goal in scope. Before, this endpoint could name
+  only thema's the class had actually placed. No pupil data is involved (Art. VI.2 intact) and no new route exists,
+  which is why E5-05 was not itself judged a violation — but it is the first growth of this gate's radius along the
+  **payload** axis rather than the route axis, and a reader sizing the exposure needs that: the surface is not fully
+  described by counting endpoints. *Written here, on the story that outlives E5-05, because E5-05's own entry first
+  claimed this was "routed to E7-11" while nothing had been written on E7-11 — the same defect this file's E7-03 note
+  and the E4-08 precedent in [`README.md`](README.md) both already record. Ronde 2 caught it.*
+
   *Blast radius grew (2026-07-29, E3-01 audit).* E3-01 added four anonymous routes: `POST /api/schooljaren`, and on a class's jaarplan `POST …/generatie`, the status/vergrendeling PUTs and `DELETE …/plaatsingen/{id}`. The last one destroys an accepted, locked placement — and there is **no soft-delete and no audit trail anywhere**, so it is unrecoverable. More precisely, and worth knowing when sizing this gate: **the strongest anonymous stop in the codebase is now two calls instead of one.** Before E3-01's fix round, `DELETE /api/klassen/{id}` was a hard refusal while any placement held a human decision; now an anonymous caller deletes the placements first, then the class. That is not a security *regression* — the guard was never access control, it exists to stop incidental loss — but this enumeration is what a reader uses to judge the exposure, so it must say so.
 
 - [~] **E7-12 — Dependency vulnerability hygiene: nothing owns it today** — *added 2026-07-29 (surfaced by the E3-01 test-runner); clause 1 of 3 landed 2026-07-29*
