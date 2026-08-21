@@ -241,7 +241,10 @@ export function maakDoelenFetchFake(opties: FakeOpties = {}) {
       domein: params.get("domein") ?? undefined,
       subdomein: params.get("subdomein") ?? undefined,
       doelsoort: params.get("doelsoort") ?? undefined,
-      jaarFase: params.get("jaarFase") ?? undefined,
+      // `getAll`, because `?jaarFase=` is repeatable and matched as "any of" (E9-07). `get` returns only the FIRST
+      // value, so a fake using it would answer a scoped picker with one of the three kleuterjaren and every assertion
+      // about the class's own set would pass for the wrong reason.
+      jaarFasen: params.getAll("jaarFase").filter((f) => f.length > 0),
     };
   }
 
@@ -259,7 +262,7 @@ export function maakDoelenFetchFake(opties: FakeOpties = {}) {
       .filter((doel) => (f.domein ? doel.domein === f.domein : true))
       .filter((doel) => (f.subdomein ? doel.subdomein === f.subdomein : true))
       .filter((doel) => (f.doelsoort ? doel.doelsoort === f.doelsoort : true))
-      .filter((doel) => (f.jaarFase ? doel.jaarFase === f.jaarFase : true))
+      .filter((doel) => (f.jaarFasen.length > 0 ? f.jaarFasen.includes(doel.jaarFase) : true))
       .sort(
         (a, b) =>
           a.domein.localeCompare(b.domein) ||
@@ -282,7 +285,7 @@ export function maakDoelenFetchFake(opties: FakeOpties = {}) {
     const perDiscipline = zonder({ discipline: undefined });
     const perTaxonomie = zonder({ domein: undefined, subdomein: undefined });
     const perDoelsoort = zonder({ doelsoort: undefined });
-    const perJaarFase = zonder({ jaarFase: undefined });
+    const perJaarFase = zonder({ jaarFasen: [] });
 
     return {
       // Deliberately the UNFILTERED total, like the server: it is what tells "nothing imported" from

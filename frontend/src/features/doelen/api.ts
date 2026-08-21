@@ -36,7 +36,18 @@ function filterNaarQuery(filter: Doelenfilter): URLSearchParams {
   if (filter.domein) params.set("domein", filter.domein);
   if (filter.domein && filter.subdomein) params.set("subdomein", filter.subdomein);
   if (filter.doelsoort) params.set("doelsoort", filter.doelsoort);
-  if (filter.jaarFase) params.set("jaarFase", filter.jaarFase);
+  // Repeatable, because the endpoint matches it as "any of" and a class can teach more than one code (E9-07).
+  // `append` per entry rather than one comma-joined value: the server binds a repeated parameter into an array, and a
+  // joined string would arrive as one nonsense code and match nothing.
+  if (typeof filter.jaarFase === "string") {
+    if (filter.jaarFase) params.set("jaarFase", filter.jaarFase);
+  } else if (filter.jaarFase) {
+    // A blank entry is dropped rather than sent. The server treats an all-blank list as "no filter" anyway, but sending
+    // one would make the request say something the caller did not mean.
+    for (const fase of filter.jaarFase.filter((f) => f.trim().length > 0)) {
+      params.append("jaarFase", fase);
+    }
+  }
 
   return params;
 }

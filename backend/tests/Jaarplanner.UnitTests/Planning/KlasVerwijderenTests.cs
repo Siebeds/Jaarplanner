@@ -217,6 +217,75 @@ public sealed class KlasVerwijderenTests
     /// "is this a human decision?" test is exactly how a plan ends up protected against regeneration but not against
     /// deletion — which is the bug this whole file exists for.
     /// </summary>
+    /// <summary>
+    /// <b>The day-level half of the same guard, and the case whose absence let a real defect ship.</b>
+    /// <para>
+    /// Every other test in this class places a <see cref="Themaplaatsing"/>. None placed an
+    /// <see cref="Activiteitplaatsing"/> — so when <c>VerwijderKlasAsync</c> loaded the jaarplan without
+    /// <c>Include("_activiteitplaatsingen")</c>, the day-level count was always 0, the refusal never fired, and deleting
+    /// a klas destroyed a teacher's scheduled term through the database cascade. This class exercises the **real
+    /// service** over the in-memory provider, and it seeds through a separate context, so a non-owned navigation is not
+    /// populated without the <c>Include</c> here either: **this test would have failed, in milliseconds, from the day
+    /// the guard was written.**
+    /// </para>
+    /// <para>
+    /// It exists because the fix's first write-up claimed the opposite — that a missing <c>Include</c> on a regular
+    /// navigation is only catchable by a Postgres integration test. That was wrong, and the wrong version is the
+    /// dangerous one: it tells the next reader the cheap gate does not exist. The Postgres sibling
+    /// (<c>WeekplanningEndpointsTests.Een_klas_zonder_subthemas_maar_met_dagplanning_kan_niet_verwijderd_worden</c>)
+    /// stays, because it pins two things this cannot: the E1-19 re-scoping route that is the only way to reach this
+    /// guard in production, and the real <c>ON DELETE</c> cascade.
+    /// </para>
+    /// <para>
+    /// The subthema guard is deliberately left unsatisfied-by-content here: this klas has no subthema rows, so the
+    /// message asserted below can only be the day-level one.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Klas_met_een_ingeplande_activiteit_kan_niet_verwijderd_worden()
+    {
+        var (klasId, _) = await SeedAsync();
+        var activiteitId = Guid.NewGuid();
+
+        await MetJaarplanAsync(klasId, plan =>
+            plan.PlaatsActiviteit(activiteitId, klasId, new DateOnly(2026, 9, 7), KoppelingStatus.Manueel));
+
+        await using var context = Context();
+        var service = new KlasBeheerService(context);
+
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(() => service.VerwijderKlasAsync(klasId));
+
+        // The day-level sentence, not the thema one: it must send the teacher to the weekplanning, which is where the
+        // remediation lives. Asserting only "it threw" would pass on either message.
+        Assert.Contains("weekplanning", fout.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("1", fout.Message);
+
+        // And nothing was destroyed.
+        await using var na = Context();
+        Assert.NotNull(await na.Klassen.FirstOrDefaultAsync(k => k.Id == klasId));
+        Assert.Equal(1, await na.Activiteitplaatsingen.CountAsync());
+    }
+
+    /// <summary>
+    /// The complement, so the guard above is a boundary rather than a blanket refusal: a <c>Voorgesteld</c> day
+    /// placement is replaceable (<see cref="Activiteitplaatsing.IsVervangbaar"/>) and must not block the delete. Without
+    /// this, widening the guard to "any placement at all" would go unnoticed.
+    /// </summary>
+    [Fact]
+    public async Task Klas_met_alleen_een_voorgestelde_dagplaatsing_kan_wel_verwijderd_worden()
+    {
+        var (klasId, _) = await SeedAsync();
+
+        await MetJaarplanAsync(klasId, plan =>
+            plan.PlaatsActiviteit(Guid.NewGuid(), klasId, new DateOnly(2026, 9, 7), KoppelingStatus.Voorgesteld));
+
+        await using var context = Context();
+        await new KlasBeheerService(context).VerwijderKlasAsync(klasId);
+
+        await using var na = Context();
+        Assert.Null(await na.Klassen.FirstOrDefaultAsync(k => k.Id == klasId));
+    }
+
     [Fact]
     public void De_verwijdergrens_is_precies_het_complement_van_de_hergeneratiegrens()
     {

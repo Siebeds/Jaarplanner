@@ -166,6 +166,18 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                 "worden. Verwijder het thema eerst uit die jaarplannen.");
         }
 
+        // E9-03: that same cascade reaches the activiteiten, whose `activiteitplaatsingen.ActiviteitId` is a RESTRICT
+        // FK — so a thema whose activiteiten are scheduled onto days threw a raw 23503 two levels below this call.
+        // Reported separately from the placement count above, because the remediation is a different screen: a teacher
+        // told one combined figure would clear the year view and still be refused.
+        var aantalIngepland = await AantalActiviteitplaatsingenVoorThemaAsync(themaId, cancellationToken);
+        if (aantalIngepland > 0)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Thema '{thema.Naam}' heeft nog {aantalIngepland} activiteit(en) in de weekplanning staan en kan " +
+                "niet verwijderd worden. Haal die activiteiten eerst uit de weekplanning.");
+        }
+
         // The EF cascade (ThemaConfiguration) deletes themadoelen + subthema's (and, through the
         // subthema cascade, subdoelen + activiteiten + their owned goal links) with the thema.
         _context.Themas.Remove(thema);
@@ -298,11 +310,57 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
 
+        // E9-03: the cascade below reaches the activiteiten, and `activiteitplaatsingen.ActiviteitId` is a RESTRICT FK
+        // — so deleting a subthema whose activiteiten are scheduled onto days threw a raw 23503 that no handler maps,
+        // i.e. an unhandled 500 for an ordinary teacher action. Exactly the shape `VerwijderThemaAsync` already guards
+        // against for themaplaatsingen, and it is guarded the same way rather than differently.
+        //
+        // **The Restrict is deliberate and this guard is what makes it honest** (Art. IV.2): scheduling work is a
+        // persisted human decision, so it is refused loudly rather than emptied silently. The remediation is real —
+        // DELETE /api/klassen/{klasId}/jaarplan/weekplanning/{id} takes a placement off its day.
+        var aantalIngepland = await AantalActiviteitplaatsingenVoorSubthemaAsync(subthemaId, cancellationToken);
+        if (aantalIngepland > 0)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Subthema '{subthema.Naam}' heeft nog {aantalIngepland} activiteit(en) in de weekplanning staan en " +
+                "kan niet verwijderd worden. Haal die activiteiten eerst uit de weekplanning.");
+        }
+
         // Removing the subthema cascades to its subdoelen + activiteiten (SubthemaConfiguration); it never
         // touches the school-wide thema attributes (level scoping, Art. IX.2).
         _context.Subthemas.Remove(subthema);
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// How many day-level placements hang off the activiteiten of this subthema (E9-03).
+    /// <para>
+    /// A server-side count, unlike <see cref="AantalThemaplaatsingenAsync"/> which counts in memory: that one has to,
+    /// because <c>Themaplaatsing</c> is an owned type with no queryable navigation. <c>Activiteitplaatsing</c> is a
+    /// plain entity with its own <c>DbSet</c> precisely so counts like this are one query — see the note on
+    /// <c>AppDbContext.Activiteitplaatsingen</c>.
+    /// </para>
+    /// </summary>
+    private Task<int> AantalActiviteitplaatsingenVoorSubthemaAsync(Guid subthemaId, CancellationToken cancellationToken) =>
+        _context.Activiteitplaatsingen
+            .CountAsync(
+                p => _context.Activiteiten.Any(a => a.Id == p.ActiviteitId && a.SubthemaId == subthemaId),
+                cancellationToken);
+
+    /// <summary>
+    /// The same count one level up: every day-level placement under any subthema of this thema (E9-03).
+    /// <para>
+    /// Needed because a thema delete cascades through its subthema's to their activiteiten, so the Restrict FK is
+    /// reachable from here too — two levels away from the row that actually refuses.
+    /// </para>
+    /// </summary>
+    private Task<int> AantalActiviteitplaatsingenVoorThemaAsync(Guid themaId, CancellationToken cancellationToken) =>
+        _context.Activiteitplaatsingen
+            .CountAsync(
+                p => _context.Activiteiten.Any(a =>
+                    a.Id == p.ActiviteitId
+                    && _context.Subthemas.Any(s => s.Id == a.SubthemaId && s.ThemaId == themaId)),
+                cancellationToken);
 
     public async Task<SubdoelWeergave> KoppelSubthemaAanDoelAsync(Guid subthemaId, string leerplandoelCode, CancellationToken cancellationToken = default)
     {
@@ -377,6 +435,27 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     public async Task VerwijderActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken = default)
     {
         var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
+
+        // The activiteitplaatsingen FK is Restrict (ActiviteitplaatsingConfiguration), so without this guard the
+        // delete of a scheduled activiteit surfaces as a raw FK violation — an opaque 500 on an ordinary teacher
+        // action. That is the exact trap the Klas guard's own comment records having shipped once: a Restrict whose
+        // remediation is not reachable is worse than no Restrict at all.
+        //
+        // Refusing rather than cascading is the deliberate half (Art. IV.2): scheduling work is a persisted human
+        // decision, and the alternative silently empties days a teacher filled. The remediation this message names
+        // is REAL — DELETE /api/klassen/{klasId}/jaarplan/activiteitplaatsingen/{id} takes a placement off its day.
+        //
+        // Queried directly rather than through the Jaarplan aggregate, which is the whole reason
+        // Activiteitplaatsing is a plain entity instead of an owned collection: counting one activiteit's
+        // placements through an owned collection would mean loading every plan in the school.
+        var ingeplandeDagen = await _context.Activiteitplaatsingen
+            .CountAsync(p => p.ActiviteitId == activiteitId, cancellationToken);
+        if (ingeplandeDagen > 0)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Activiteit '{activiteit.Naam}' staat nog op {ingeplandeDagen} dag(en) in de weekplanning en kan " +
+                "niet verwijderd worden. Haal ze eerst uit de weekplanning.");
+        }
 
         _context.Activiteiten.Remove(activiteit);
         await _context.SaveChangesAsync(cancellationToken);

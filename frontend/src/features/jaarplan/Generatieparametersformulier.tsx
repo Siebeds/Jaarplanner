@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "../../components/ui/button";
+import { Uitleg } from "../../app/uitleg";
 import { t, tAantal } from "../../i18n";
 import { haalThemanamen } from "./api";
 import { formatteerDatum, formatteerPeriode } from "./kalenderFormat";
@@ -519,7 +520,7 @@ export function Generatieparametersformulier({
 
       {open && (
         <div id={paneelId} className="mt-4 flex flex-col gap-6">
-          <p className="text-xs leading-snug text-ink-zacht">{t("parameters.uitleg")}</p>
+          <Uitleg><p className="text-xs leading-snug text-ink-zacht">{t("parameters.uitleg")}</p></Uitleg>
 
           {/* ---- Startthema's, one row per period ---- */}
           <fieldset className="flex flex-col gap-2" disabled={disabled}>
@@ -598,7 +599,7 @@ export function Generatieparametersformulier({
               {t("parameters.momentenTitel")}
             </legend>
 
-            <p className="text-xs leading-snug text-ink-zacht">{t("parameters.momentenUitleg")}</p>
+            <Uitleg><p className="text-xs leading-snug text-ink-zacht">{t("parameters.momentenUitleg")}</p></Uitleg>
 
             {momenten.map((moment, index) => (
               <div

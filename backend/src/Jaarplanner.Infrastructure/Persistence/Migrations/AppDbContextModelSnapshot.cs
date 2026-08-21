@@ -206,10 +206,45 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("minimumdoelen", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Activiteitplaatsing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActiviteitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Datum")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("JaarplanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("Volgorde")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiviteitId");
+
+                    b.HasIndex("JaarplanId", "Datum");
+
+                    b.HasIndex("JaarplanId", "ActiviteitId", "Datum")
+                        .IsUnique();
+
+                    b.ToTable("activiteitplaatsingen", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Generatieparameters", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("KlasId")
@@ -231,7 +266,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("KlasId")
@@ -248,7 +282,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Klas", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("Leerjaar")
@@ -275,7 +308,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Schooljaar", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateOnly>("Eind")
@@ -300,7 +332,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Activiteit", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("ActiviteitType")
@@ -334,7 +365,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subdoel", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("Leeftijd")
@@ -355,7 +385,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subthema", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("DuurWeken")
@@ -395,7 +424,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Thema", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("DuurWeken")
@@ -425,7 +453,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Themadoel", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ThemaId")
@@ -458,6 +485,21 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("MinimumdoelRef")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Activiteitplaatsing", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Activiteit", null)
+                        .WithMany()
+                        .HasForeignKey("ActiviteitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Planning.Jaarplan", null)
+                        .WithMany("_activiteitplaatsingen")
+                        .HasForeignKey("JaarplanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Generatieparameters", b =>
@@ -661,7 +703,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                                 .HasColumnType("uuid");
 
                             b1.Property<Guid>("Id")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("uuid");
 
                             b1.Property<string>("AiMotivatie")
@@ -774,7 +815,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                                 .HasColumnType("uuid");
 
                             b1.Property<Guid>("Id")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("uuid");
 
                             b1.Property<string>("AiMotivatie")
@@ -862,6 +902,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Koppeling")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>
+                {
+                    b.Navigation("_activiteitplaatsingen");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Schooljaar", b =>

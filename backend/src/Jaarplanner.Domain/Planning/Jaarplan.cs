@@ -28,6 +28,7 @@ namespace Jaarplanner.Domain.Planning;
 public sealed class Jaarplan
 {
     private readonly List<Themaplaatsing> _plaatsingen = [];
+    private readonly List<Activiteitplaatsing> _activiteitplaatsingen = [];
 
     // EF Core materialisation only.
     private Jaarplan()
@@ -62,6 +63,130 @@ public sealed class Jaarplan
             .ThenBy(p => p.BlokNiveau)
             .ThenBy(p => p.ThemaId)
             .ToList();
+
+    /// <summary>
+    /// The activiteiten placed on days of this plan (E9-03, FR-6.2/FR-7.2), ordered by day and then by their
+    /// position within it.
+    /// <para>
+    /// <b>A second, independent placement axis, and deliberately not a finer tier of the first.</b>
+    /// <see cref="Plaatsingen"/> answers "in which stretch of the year does this thema live?" and keys on a derived
+    /// block boundary; this answers "what am I doing on Tuesday?" and keys on a calendar date. See
+    /// <see cref="Activiteitplaatsing"/> for why that separation is load-bearing rather than stylistic.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Activiteitplaatsing> Activiteitplaatsingen =>
+        _activiteitplaatsingen
+            .OrderBy(p => p.Datum)
+            .ThenBy(p => p.Volgorde)
+            .ThenBy(p => p.ActiviteitId)
+            .ToList();
+
+    /// <summary>
+    /// Places an activiteit on one day (E9-03, FR-7.2).
+    /// <para>
+    /// <b>The class boundary is this method's invariant, and it is enforced here because this is the only place both
+    /// classes are known.</b> An <see cref="Activiteit"/> inherits its subthema's <c>KlasId</c> (Art. IX.2, where class
+    /// scoping is structural), and this plan has a <see cref="KlasId"/> of its own; nothing below this can compare
+    /// them. Without the check, one class's plan could schedule another class's content — the same boundary
+    /// <c>Subthema.VerplaatsActiviteitNaar</c> guards, and it is guarded here rather than assumed because <b>E1-19
+    /// exists precisely because that boundary was left open by a second route</b>.
+    /// </para>
+    /// <para>
+    /// <b>A day may hold several activiteiten</b> — that is the normal case, not an edge one — so only the exact
+    /// duplicate is refused: the same activiteit twice on the same day. The same activiteit on two different days is
+    /// legitimate and common (a reading moment that recurs on Monday and Thursday).
+    /// </para>
+    /// <para>
+    /// <b>Whether <paramref name="datum"/> is a teaching day is not checked here.</b> Closures live on the
+    /// <see cref="Schooljaar"/> and this aggregate does not hold one; the service checks it and refuses with a Dutch
+    /// sentence naming the closure. Splitting it that way keeps this type free of a calendar it would have to be handed
+    /// on every call.
+    /// </para>
+    /// </summary>
+    /// <param name="activiteitId">The activiteit to place.</param>
+    /// <param name="activiteitKlasId">
+    /// The klas the activiteit belongs to, resolved by the caller from its subthema. Passed in rather than looked up
+    /// because a domain aggregate does not reach across to another one.
+    /// </param>
+    /// <param name="datum">The day it happens.</param>
+    /// <param name="status">The human-in-the-loop status (Art. IV.2); a teacher's own placement is Manueel.</param>
+    /// <param name="volgorde">Position within the day.</param>
+    /// <exception cref="ArgumentException">
+    /// The activiteit belongs to another klas. <b>Dutch, and deliberately with no <c>paramName</c></b>: the overload
+    /// that takes one appends "(Parameter '…')" to <c>Message</c>, the service forwards that message as the 400's
+    /// <c>detail</c>, and the form renders it verbatim — which is how an English developer artefact ends up inside a
+    /// Dutch sentence on a teacher's screen. That exact defect was found on these screens in E1-14's round 4.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The activiteit is already on that day. A caller that has not checked <see cref="IsAlGeplaatstOp"/> is a
+    /// programmer error rather than teacher input, so this one is English (Art. II.2) and no handler maps it.
+    /// </exception>
+    public Activiteitplaatsing PlaatsActiviteit(
+        Guid activiteitId,
+        Guid activiteitKlasId,
+        DateOnly datum,
+        KoppelingStatus status,
+        int volgorde = 0)
+    {
+        if (activiteitKlasId != KlasId)
+        {
+            throw new ArgumentException("Een activiteit kan alleen in het jaarplan van haar eigen klas gepland worden.");
+        }
+
+        if (IsAlGeplaatstOp(activiteitId, datum))
+        {
+            throw new InvalidOperationException(
+                $"Activiteit {activiteitId} is already placed on {datum:yyyy-MM-dd}.");
+        }
+
+        var plaatsing = new Activiteitplaatsing(Id, activiteitId, datum, status, volgorde);
+        _activiteitplaatsingen.Add(plaatsing);
+
+        return plaatsing;
+    }
+
+    /// <summary>
+    /// The activiteit placements a human has committed to — the day-level counterpart of
+    /// <see cref="MenselijkBeslotenPlaatsingen"/>, and expressed the same way, as the complement of
+    /// <see cref="Activiteitplaatsing.IsVervangbaar"/> so the two can never drift apart.
+    /// <para>
+    /// Used by the <c>Klas</c> delete guard. Without it, deleting a class would cascade through the jaarplan and
+    /// silently destroy a fully planned term — every activiteit a teacher had scheduled onto a day — while the guard
+    /// beside it carefully protected the thema placements. <b>The two halves of one plan cannot have two different
+    /// answers to "is this the human's to discard?"</b> (Art. IV.2).
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Activiteitplaatsing> MenselijkBeslotenActiviteitplaatsingen =>
+        _activiteitplaatsingen.Where(p => !p.IsVervangbaar).ToList();
+
+    /// <summary>Whether this activiteit is already on that day. Keeps a repeated call idempotent rather than stacking.</summary>
+    public bool IsAlGeplaatstOp(Guid activiteitId, DateOnly datum) =>
+        _activiteitplaatsingen.Any(p => p.ActiviteitId == activiteitId && p.Datum == datum);
+
+    /// <summary>The activiteit placement with this id, or null.</summary>
+    public Activiteitplaatsing? VindActiviteitplaatsing(Guid plaatsingId) =>
+        _activiteitplaatsingen.FirstOrDefault(p => p.Id == plaatsingId);
+
+    /// <summary>
+    /// Takes an activiteit off its day (FR-7.2).
+    /// <para>
+    /// Like <see cref="VerwijderPlaatsing"/> it checks no status: this is only ever reached from an explicit teacher
+    /// action, and Art. IV.2 reserves the disposal of a human decision to the human rather than making it permanent.
+    /// </para>
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// The placement belongs to another jaarplan. Refused rather than silently ignored, for the reason spelled out on
+    /// <see cref="VerwijderPlaatsing"/>: a no-op the API still answers 200 OK is worse than an error.
+    /// </exception>
+    public void VerwijderActiviteitplaatsing(Activiteitplaatsing plaatsing)
+    {
+        ArgumentNullException.ThrowIfNull(plaatsing);
+
+        if (!_activiteitplaatsingen.Remove(plaatsing))
+        {
+            throw new InvalidOperationException("The placement does not belong to this jaarplan.");
+        }
+    }
 
     /// <summary>
     /// Places a thema in the block starting on <paramref name="blokStart"/>.

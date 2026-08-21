@@ -282,6 +282,7 @@ export function Subthemakaart({ subthema, klasId, klasNaam, onAlWeg, onVerplaats
       {subdoelKiezen ? (
         <div className="mt-2">
           <Doelkiezer
+            klasId={klasId}
             waaraan={t("themabeheer.niveauSubthema")}
             gekoppeldeCodes={gekoppeldeSubdoelen}
             bezig={koppelSubdoel.isPending}
@@ -886,6 +887,7 @@ function Activiteitregel({
       {doelKiezen ? (
         <div className="mt-2">
           <Doelkiezer
+            klasId={klasId}
             waaraan={t("themabeheer.niveauActiviteit")}
             gekoppeldeCodes={codes}
             bezig={koppel.isPending}

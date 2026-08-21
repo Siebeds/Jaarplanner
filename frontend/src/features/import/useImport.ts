@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { DEKKING_KEY } from "../dekking/useDekking";
+import { vernieuwDekking } from "../dekking/useDekking";
 
 import {
   importeerOpstap,
@@ -49,7 +49,7 @@ export function useImporteerSchoolcontent() {
     mutationFn: (invoer: SchoolcontentInvoer) => importeerSchoolcontent(invoer),
     onSuccess: () => {
       void queryClient.invalidateQueries();
-      queryClient.removeQueries({ queryKey: DEKKING_KEY });
+      vernieuwDekking(queryClient);
     },
   });
 }
@@ -69,7 +69,7 @@ export function useImporteerOpstap() {
     mutationFn: (invoer: OpstapInvoer) => importeerOpstap(invoer),
     onSuccess: () => {
       void queryClient.invalidateQueries();
-      queryClient.removeQueries({ queryKey: DEKKING_KEY });
+      vernieuwDekking(queryClient);
     },
   });
 }

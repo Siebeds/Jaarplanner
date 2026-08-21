@@ -19,7 +19,7 @@ import {
   wijzigPlaatsingStatus,
   wijzigPlaatsingVergrendeling,
 } from "./api";
-import { dekkingKlasKey } from "../dekking/useDekking";
+import { vernieuwDekkingVanKlas } from "../dekking/useDekking";
 import type {
   Generatieparameters,
   Jaarplan,
@@ -75,7 +75,10 @@ const roosterKey = (schooljaarId: string, niveau: Planningsblokniveau) =>
  * to invalidate behind the API. This function exists purely because the browser is allowed to remember.
  */
 function vergeetDekking(queryClient: QueryClient, klasId: string) {
-  queryClient.removeQueries({ queryKey: dekkingKlasKey(klasId) });
+  // Delegated so there is ONE definition of "throw the figure away and go get the new one". E9-06 changed it from a
+  // remove to a reset, because a remove leaves a MOUNTED observer rendering its last answer forever, and this screen
+  // now carries a coverage bar beside the controls that change it. See `vernieuwDekkingVanKlas`.
+  vernieuwDekkingVanKlas(queryClient, klasId);
 }
 
 /** Loads a class's jaarplan; disabled until a class id is present. */

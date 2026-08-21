@@ -1,4 +1,5 @@
 import { DOELEN } from "../doelen/testdata";
+import type { DoelRegel } from "../doelen/types";
 import type { SchooljaarKeuze } from "../../app/schooljaren";
 import type { Activiteit, Subthema, Thema, ThemaBibliotheekItem } from "./types";
 
@@ -13,6 +14,41 @@ import type { Activiteit, Subthema, Thema, ThemaBibliotheekItem } from "./types"
  * The leerplandoelen come from the **Doelen register's own fixtures**, so the picker is exercised against the
  * same rows and the same server-side filtering as `/doelen`.
  */
+
+/**
+ * The register the picker searches: the shared `DOELEN` plus **one L3 goal**.
+ *
+ * The shared fixture holds K3, K3, L2, L2 and K2 rows and no L3 row at all, which was invisible while the picker
+ * searched unscoped. Once it scopes to the class's own jaar/fase (E9-07), an L3 class could find nothing whatsoever, so
+ * every test about linking would have been testing the empty state. Added here rather than to `doelen/testdata`, because
+ * that fixture's counts are asserted by the register's own suite.
+ */
+export const DOEL_L3: DoelRegel = {
+  code: "WIS-L3-01",
+  doelsoort: "Minimumdoel",
+  jaarFase: "L3",
+  domein: "Wiskunde",
+  subdomein: "Getallen",
+  tekst: "De leerling splitst getallen tot twintig.",
+  minimumdoelRef: "4-03",
+  nietMeerInOpstap: false,
+};
+
+export const PICKER_DOELEN: DoelRegel[] = [...DOELEN, DOEL_L3];
+
+/** Matches `/api/klassen/{guid}` and nothing longer, so `/api/klassen/{id}/dekking` falls through to its own branch. */
+const KLAS_DETAIL_PAD = /^\/api\/klassen\/[^/]+$/;
+
+/**
+ * The server's own rule (`Jaarfasen.VoorLeerjaar`), mirrored in the fake ONLY.
+ *
+ * Deliberately not exported and deliberately not used by the app: the production code reads the codes off the klas
+ * payload precisely so this mapping exists once, on the server. A copy here is a test double, not a second source of
+ * truth, and it stays in this file so nothing can import it by accident.
+ */
+function jaarFasenVoorLeerjaar(leerjaar: number): string[] {
+  return leerjaar === 0 ? ["JK", "K2", "K3"] : [`L${leerjaar}`];
+}
 
 export const KLAS_L3 = "44444444-4444-4444-4444-444444444444";
 export const KLAS_K3 = "44444444-4444-4444-4444-444444444445";
@@ -215,6 +251,20 @@ export interface ThemaFakeOpties {
   verwijderWeigering?: string;
   /** Serve an empty Op.stap register, so the picker must say "nothing imported" rather than "not found". */
   geenCurriculum?: boolean;
+  /**
+   * Fail the klas read outright, so the picker cannot tell what this class teaches.
+   *
+   * Distinct from {@link onbepaaldeKlas}: that one is an answer ("could not be derived"), this one is the absence of an
+   * answer ("could not be loaded"). Both widen the search, and only the second is a degrade the screen must announce.
+   */
+  klasLeesFaalt?: boolean;
+  /**
+   * Answer the klas read with an **empty** `jaarFasen`: the unresolved graadklas whose own set cannot be derived.
+   *
+   * The picker must WIDEN on this and say why, never narrow to nothing -- a search scoped to an empty set makes every
+   * leerplandoel unreachable, which is worse than the unscoped search E9-07 replaces.
+   */
+  onbepaaldeKlas?: boolean;
   /** Answer a thema delete with a bare 500 that carries no `detail`, so the framing sentence must stand alone. */
   verwijderZonderReden?: boolean;
   /** Answer a thema delete with a 404: a colleague deleted it first. */
@@ -341,6 +391,35 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
       return json([]);
     }
 
+    // --- One class's own facts. Routed because the Doelkiezer scopes its search to the jaar/fase codes the class
+    //     teaches (E9-07), and an unrouted URL would 404 into an empty `jaarFasen`, silently turning every scoped
+    //     search back into the unscoped one this story exists to replace. That is the "reachable but not tested" gap
+    //     this repo has paid for six times; here it would have made the whole story untestable while green. ---
+    if (KLAS_DETAIL_PAD.test(url.pathname)) {
+      if (opties.klasLeesFaalt) {
+        return json({ detail: "stuk" }, 500);
+      }
+
+      const klasId = url.pathname.slice("/api/klassen/".length);
+      const klas = SCHOOLJAREN[0].klassen.find((k) => k.id === klasId);
+
+      if (!klas) {
+        return json({ detail: "onbekende klas" }, 404);
+      }
+
+      return json({
+        id: klas.id,
+        schooljaarId: SCHOOLJAREN[0].id,
+        naam: klas.naam,
+        leerjaar: klas.leerjaar,
+        aantalSubthemas: 0,
+        // Derived the way the server derives it (`Jaarfasen.VoorLeerjaar`), rather than hard-coded per fixture: a
+        // kleutergroep has `Leerjaar = 0` and cannot say WHICH kleuterjaar, so it teaches all three. `onbepaaldeKlas`
+        // forces the unresolved-graadklas answer, which is an EMPTY list and means "could not be derived".
+        jaarFasen: opties.onbepaaldeKlas ? [] : jaarFasenVoorLeerjaar(klas.leerjaar),
+      });
+    }
+
     // --- The picker's two reads: the unfiltered total (is there a curriculum at all?) and the search. ---
     if (url.pathname === "/api/leerplandoelen/facetten") {
       return json({
@@ -349,18 +428,24 @@ export function maakThemaFetchFake(opties: ThemaFakeOpties = {}) {
         subdomeinen: [],
         doelsoorten: [],
         jaarFasen: [],
-        totaalAantalDoelen: opties.geenCurriculum ? 0 : DOELEN.length,
+        totaalAantalDoelen: opties.geenCurriculum ? 0 : PICKER_DOELEN.length,
       });
     }
 
     // --- The picker searches the register, server-side, exactly as /doelen does. ---
     if (url.pathname === "/api/leerplandoelen") {
       const zoek = url.searchParams.get("zoek")?.toLowerCase() ?? "";
-      const gevonden = (opties.geenCurriculum ? [] : DOELEN).filter(
+      // `getAll`, because the parameter is repeatable and matched as "any of" (E9-07). `get` would keep only the first
+      // of a kleutergroep's three codes and every assertion about the class's own set would pass for the wrong reason.
+      const fasen = url.searchParams.getAll("jaarFase").filter((f) => f.length > 0);
+      const gevonden = (opties.geenCurriculum ? [] : PICKER_DOELEN).filter(
         (doel) =>
-          zoek === "" ||
-          doel.code.toLowerCase().includes(zoek) ||
-          doel.tekst.toLowerCase().includes(zoek),
+          (zoek === "" ||
+            doel.code.toLowerCase().includes(zoek) ||
+            doel.tekst.toLowerCase().includes(zoek)) &&
+          // Empty means "no filter", never "match nothing": the server treats it that way and a fake that did not
+          // would hide the difference between a widened search and a broken one.
+          (fasen.length === 0 || fasen.includes(doel.jaarFase)),
       );
       const aantal = Number(url.searchParams.get("aantal") ?? "50");
       return json({ regels: gevonden.slice(0, aantal), totaal: gevonden.length, overslaan: 0, aantal });

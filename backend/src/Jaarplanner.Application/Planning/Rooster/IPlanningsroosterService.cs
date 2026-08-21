@@ -100,12 +100,36 @@ public sealed record PlanningsroosterWeergave(
 /// counting would give, which is part of what the teachers are being asked about.
 /// </para>
 /// </param>
+/// <param name="AantalOpenWeekdagen">
+/// The same days, minus Saturdays and Sundays: <b>the figure a teacher recognises as "schooldagen"</b> (E9-02, the
+/// owner's request of 2026-08-19 that a period's length read in days as well as weeks).
+/// <para>
+/// <b>Display only. It must never be divided by 7 and it must never reach a weeks figure.</b>
+/// <see cref="AantalOpenDagen"/> is what <c>BlokspreidingWeergave.BeschikbareWeken</c> divides, and that is the sole
+/// definition of <c>te vol</c> (owner ruling 2026-07-31). Substituting this one turns a 5-week period into
+/// <c>ceil(25/7) = 4</c> weeks and makes every nominal 5-week thema overload the period built for it. A domain test
+/// pins the separation.
+/// </para>
+/// <para>
+/// <b>Two counts, two questions, and that is why both ship.</b> <see cref="AantalOpenDagen"/> answers "how long is
+/// this block?" and is what the ribbon sizes on; this answers "how many days will I stand in front of this class?".
+/// The E3-02 review centralised day counting precisely because two callers counted differently for the <i>same</i>
+/// question — that lesson holds, and this is not a second answer to it.
+/// </para>
+/// <para>
+/// <b>It does not answer the open question one paragraph up.</b> Whether <c>Schooljaar.IsLesdag</c> should exclude
+/// weekends is still a question for the school; this adds a fact rather than changing that one, so nothing depending
+/// on <c>IsLesdag</c> moves. And <b>half days are not modelled</b>: Flemish primary schools do not teach Wednesday
+/// afternoons, so a teacher counting contact hours will find this generous. That needs a ruling, not a guess.
+/// </para>
+/// </param>
 public sealed record PlanningsblokWeergave(
     int Ordinaal,
     DateOnly Start,
     DateOnly Eind,
     int? OuderOrdinaal,
-    int AantalOpenDagen);
+    int AantalOpenDagen,
+    int AantalOpenWeekdagen);
 
 /// <summary>One vacation, rendered as a gap in the ribbon.</summary>
 /// <param name="Naam">The school's own Dutch name for it ("Herfstvakantie") — shown in the gap.</param>

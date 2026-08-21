@@ -5,6 +5,7 @@ import { doelsoortBadgeSoort } from "../../components/doelsoort";
 import { Badge, type BadgeProps } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { t, type TranslationKey } from "../../i18n";
+import { Uitleg } from "../../app/uitleg";
 import { ApiError } from "../../lib/api";
 import {
   useDoelsuggesties,
@@ -116,9 +117,21 @@ export function DoelsuggestieLijst({ themaId }: DoelsuggestieLijstProps) {
       <p className="mb-2 text-xs text-muted-foreground">
         {t("matching.manueelUitleg")}
       </p>
-      <p className="mb-2 text-xs text-muted-foreground">
-        {t("matching.vervangenUitleg")}
-      </p>
+      {/*
+        **Reduced to the invitation and put behind the Uitleg switch** (E9-08 + E9-01, CR1).
+
+        The consequence half moved into the row the teacher is acting on, where it appears the moment they have typed a
+        code. What is left tells them the field below exists and what to put in it, which is help.
+
+        **Not moved per row, which was the tempting reading of E9-08 and is wrong here.** The replacement field is
+        rendered for EVERY suggestion, so a 256-character warning beside each one would repeat itself down the whole
+        list -- the exact thing CR1 complained about, and the rule in `CLAUDE.md` that explanatory prose never gets
+        repeated per row when once above the list will do. Gating it on a typed code is what makes "at the action"
+        possible without "on every row".
+      */}
+      <Uitleg>
+        <p className="mb-2 text-xs text-muted-foreground">{t("matching.vervangenUitleg")}</p>
+      </Uitleg>
       <ul aria-busy={bezig} className="flex flex-col gap-3">
         {suggesties.map((suggestie) => (
           <SuggestieRij
@@ -249,6 +262,24 @@ function SuggestieRij({ suggestie, bezig, onBeslis, onVervang }: SuggestieRijPro
           {t("matching.vervangenActie")}
         </Button>
       </div>
+
+      {/*
+        WHAT REPLACING DESTROYS, said in the row it will happen to and only once the teacher has typed something
+        (E9-08). It is irreversible and it discards the AI motivation, which is the kind of sentence that may never be
+        hidden -- so it is not behind the Uitleg switch and never will be.
+
+        **Gated on a typed code rather than always rendered**, because this field exists on every suggestion in the list:
+        unconditional, this paragraph would appear as many times as there are rows. Typing is the first act that makes
+        the button live, so it is the earliest honest moment, and it is still strictly before the commit.
+
+        `role="alert"` so it is announced when it appears rather than only being present for a reader who happens to
+        travel past it.
+      */}
+      {nieuweCode.trim().length > 0 && (
+        <p role="alert" className="mt-2 max-w-prose text-xs leading-snug text-ink">
+          {t("matching.vervangenGevolg")}
+        </p>
+      )}
     </li>
   );
 }

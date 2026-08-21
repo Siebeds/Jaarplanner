@@ -34,7 +34,22 @@ namespace Jaarplanner.Application.Curriculum;
 /// <param name="Domein">A domein name; exact, case-insensitive.</param>
 /// <param name="Subdomein">A subdomein name; exact, case-insensitive, and only meaningful with <paramref name="Domein"/>.</param>
 /// <param name="Doelsoort">One Op.stap goal type (MD/G/+/P/S/A).</param>
-/// <param name="JaarFase">A jaar/fase code (JK, K2, K3, L1–L6, or a fase for P/S); exact, case-insensitive.</param>
+/// <param name="JaarFasen">
+/// The jaar/fase codes to keep (JK, K2, K3, L1–L6, or a fase for P/S); exact, case-insensitive, matched as
+/// "any of". <c>null</c> or empty means "no filter on this dimension".
+/// <para>
+/// <b>A list rather than one code, because a class does not always teach one</b> (E9-07). A kleutergroep has
+/// <c>Leerjaar = 0</c>, which cannot say which kleuterjaar it is, so <c>Jaarfasen.VoorLeerjaar</c> answers JK,
+/// K2 <i>and</i> K3, and the same holds for an unresolved graadklas. A single-valued filter forces a caller
+/// scoping to a class to pick one of them, and picking one is exactly what the E5-02 ruling of 2026-08-04
+/// forbids: let the teacher narrow on screen, never guess which year a kleutergroep is.
+/// </para>
+/// <para>
+/// The query-string name stays <c>jaarFase</c> and is simply repeatable
+/// (<c>?jaarFase=JK&amp;jaarFase=K2</c>), so the register's own single-select filter keeps working unchanged
+/// and arrives here as a one-element list. One dimension, one representation.
+/// </para>
+/// </param>
 /// <param name="Overslaan">How many rows to skip (paging offset); never negative.</param>
 /// <param name="Aantal">How many rows to return; between 1 and <see cref="MaxPaginaGrootte"/>.</param>
 public sealed record LeerplandoelFilter(
@@ -43,7 +58,7 @@ public sealed record LeerplandoelFilter(
     string? Domein = null,
     string? Subdomein = null,
     Doelsoort? Doelsoort = null,
-    string? JaarFase = null,
+    IReadOnlyList<string>? JaarFasen = null,
     int Overslaan = 0,
     int Aantal = LeerplandoelFilter.StandaardPaginaGrootte)
 {

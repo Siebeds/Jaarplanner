@@ -116,6 +116,49 @@ public sealed class DekkingController : ControllerBase
         Ok(await _service.BerekenAsync(klasId, bereik, jaarFase, cancellationToken));
 
     /// <summary>
+    /// The two coverage figures on their own, with no per-doel list (E9-06, FR-9.1): what this class covers
+    /// <b>today</b> and what it would cover if every standing proposal were accepted.
+    /// <para>
+    /// <b>Why a second read rather than a field on <see cref="Detail"/>.</b> This answers a progress bar that refetches
+    /// every time a teacher links a doel, and <see cref="Detail"/>'s payload is the whole in-scope curriculum, unpaged
+    /// — thousands of rows to move a bar by one. This one is a handful of integers whatever the school has loaded.
+    /// </para>
+    /// <para>
+    /// <b>Why the ceiling has to be here at all, and it is the point of the story.</b> A doel is covered when a link
+    /// the teacher stands behind hangs off a thema that is <i>placed in the plan</i> (Art. V.1). So while a teacher
+    /// links doelen to a thema that is not placed yet, honest coverage does not move — and a bar that sat still through
+    /// twenty minutes of work would read as broken. <c>AantalMogelijkGedekt</c> is what makes the work visible without
+    /// lying about it.
+    /// </para>
+    /// <para>
+    /// <b>The ceiling is not coverage and no screen may present it as such</b> (Art. IV.1). It counts placements the
+    /// teacher could still say yes to, including AI proposals they have not answered; calling that "gedekt" would let
+    /// the model grant coverage. The two figures are reported separately, and a screen must label them separately —
+    /// they may never be added together into a third number.
+    /// </para>
+    /// <para>
+    /// <b>Both figures are withheld together while a placement is stale</b> (directie 2026-07-28): they are
+    /// <c>null</c> and <c>isBetrouwbaar</c> is <c>false</c>. Withholding only one would let a screen print a ceiling
+    /// beside a blank, which reads as coverage of zero.
+    /// </para>
+    /// <para>
+    /// <b>It is the same computation as <see cref="Detail"/>'s</b>, through the same service and the same scope rules,
+    /// rather than a cheaper approximation that would drift from the number on the dekkingsoverzicht.
+    /// </para>
+    /// </summary>
+    /// <param name="klasId">The class.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <param name="bereik">Which leerplandoelen to measure against; same meaning and default as <see cref="Detail"/>.</param>
+    /// <param name="jaarFase">Narrows the class's own scope to one of its codes; same meaning as <see cref="Detail"/>.</param>
+    [HttpGet("voortgang")]
+    public async Task<ActionResult<Dekkingsvooruitzicht>> Voortgang(
+        Guid klasId,
+        CancellationToken cancellationToken,
+        [FromQuery] Dekkingsbereik bereik = Dekkingsbereik.EigenJaarFase,
+        [FromQuery] string? jaarFase = null) =>
+        Ok(await _service.BerekenVooruitzichtAsync(klasId, bereik, jaarFase, cancellationToken));
+
+    /// <summary>
     /// The same coverage, as a downloadable .xlsx: the dekkingsoverzicht as proof of coverage (E5-06, FR-9.5,
     /// FR-11.2, Art. V.4).
     /// <para>

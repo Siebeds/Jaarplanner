@@ -23,8 +23,21 @@ export interface Planningsblok {
   eind: string;
   /** For a subthemaperiode, the themaperiode it nests in; null for a themaperiode. */
   ouderOrdinaal: number | null;
-  /** Days the school is open in this block — what the ribbon sizes blocks on. */
+  /** Days the school is open in this block — what the ribbon sizes blocks on. **Counts weekends.** */
   aantalOpenDagen: number;
+  /**
+   * The same days minus Saturdays and Sundays: **the figure a teacher recognises as "schooldagen"** (E9-02).
+   *
+   * **Display only. Never divide it by 7 and never let it reach a weeks figure.** `aantalOpenDagen` is what the te-vol
+   * arithmetic uses (`ceil(openDagen / 7)`, the sole definition since the owner ruling of 2026-07-31); substituting this
+   * turns a 5-week period into 4 weeks and makes every nominal 5-week thema overload the period built for it. Use
+   * `wekenInBlok(aantalOpenDagen)` for weeks and this for days, and never the other way round.
+   *
+   * Two counts because there are two questions: how long is this block (the ribbon's width and the te-vol verdict), and
+   * how many days will I stand in front of this class. Half days are not modelled, so a teacher counting contact hours
+   * will find this generous — Flemish primary schools do not teach Wednesday afternoons, and that needs a ruling.
+   */
+  aantalOpenWeekdagen: number;
 }
 
 /**
