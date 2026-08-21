@@ -131,6 +131,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
         }
 
         var koppelingen = await HaalKoppelingenAsync(doel.Doel.Code, zichtbaarheid, cancellationToken);
+        var gerelateerdeDoelen = await HaalGerelateerdeDoelenAsync(doel.Doel.Code, doel.Doel.MinimumdoelRef, cancellationToken);
 
         return new LeerplandoelDetailWeergave(
             doel.Doel.Code,
@@ -148,7 +149,32 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
             doel.Doel.MinimumdoelRef,
             doel.Minimumdoel,
             doel.Doel.NietMeerInOpstap,
-            koppelingen);
+            koppelingen,
+            gerelateerdeDoelen);
+    }
+
+    /// <summary>
+    /// Other leerplandoelen concorded to the same minimumdoel as <paramref name="code"/> (excluding itself),
+    /// so the detail screen can show "which other goals does this government target also cover?". Empty when
+    /// <paramref name="minimumdoelRef"/> is null — an unconcorded goal has nothing to relate through.
+    /// </summary>
+    private async Task<IReadOnlyList<GerelateerdLeerplandoelWeergave>> HaalGerelateerdeDoelenAsync(
+        string code,
+        string? minimumdoelRef,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(minimumdoelRef))
+        {
+            return [];
+        }
+
+        return await _context.Leerplandoelen
+            .AsNoTracking()
+            .Where(l => l.MinimumdoelRef == minimumdoelRef && l.Code != code)
+            .OrderBy(l => l.JaarFase)
+            .ThenBy(l => l.Code)
+            .Select(l => new GerelateerdLeerplandoelWeergave(l.Code, l.Tekst, l.JaarFase, l.Domein, l.Subdomein))
+            .ToListAsync(cancellationToken);
     }
 
     /// <inheritdoc />

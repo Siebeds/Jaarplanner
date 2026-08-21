@@ -142,14 +142,26 @@ public static class ThemaOpbouwPromptBuilder
             Line(sb, $"Duur (weken): {duur}");
         }
 
-        if (!string.IsNullOrWhiteSpace(subthema.Probleemstelling))
-        {
-            Line(sb, $"Probleemstelling: {subthema.Probleemstelling}");
-        }
+        var ovLijst = subthema.Onderzoeksvragen is { Count: > 0 } lijst
+            ? lijst
+            : BuildLegacyOnderzoeksvragen(subthema);
 
-        if (!string.IsNullOrWhiteSpace(subthema.Onderzoeksvraag))
+        var nummer = 1;
+        foreach (var ov in ovLijst)
         {
-            Line(sb, $"Onderzoeksvraag: {subthema.Onderzoeksvraag}");
+            if (ovLijst.Count > 1)
+            {
+                Line(sb, $"Onderzoeksvraag {nummer++}: {ov.Vraag}");
+            }
+            else
+            {
+                Line(sb, $"Onderzoeksvraag: {ov.Vraag}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(ov.Probleemstelling))
+            {
+                Line(sb, $"Probleemstelling: {ov.Probleemstelling}");
+            }
         }
 
         var activiteiten = (subthema.Activiteiten ?? [])
@@ -163,6 +175,17 @@ public static class ThemaOpbouwPromptBuilder
                 SchrijfActiviteit(sb, activiteit);
             }
         }
+    }
+
+    /// <summary>Adapts the legacy single Probleemstelling/Onderzoeksvraag fields to the multi-ov list shape.</summary>
+    private static IReadOnlyList<OnderzoeksvraagOpbouwContext> BuildLegacyOnderzoeksvragen(SubthemaOpbouwContext subthema)
+    {
+        if (!string.IsNullOrWhiteSpace(subthema.Onderzoeksvraag))
+        {
+            return [new OnderzoeksvraagOpbouwContext { Vraag = subthema.Onderzoeksvraag, Probleemstelling = subthema.Probleemstelling }];
+        }
+
+        return [];
     }
 
     private static void SchrijfActiviteit(StringBuilder sb, ActiviteitOpbouwContext activiteit)

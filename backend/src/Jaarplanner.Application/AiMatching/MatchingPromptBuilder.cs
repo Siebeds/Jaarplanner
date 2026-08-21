@@ -156,14 +156,22 @@ public static class MatchingPromptBuilder
     private static void SchrijfSubthema(StringBuilder sb, Subthema subthema)
     {
         Line(sb, $"- Subthema: {subthema.Naam} (leeftijd {subthema.Leeftijd}, duur {subthema.DuurWeken} wk)");
-        if (subthema.Probleemstelling is not null)
+        var nummer = 1;
+        foreach (var ov in subthema.Onderzoeksvragen)
         {
-            Line(sb, $"  Probleemstelling: {subthema.Probleemstelling}");
-        }
+            if (subthema.Onderzoeksvragen.Count > 1)
+            {
+                Line(sb, $"  Onderzoeksvraag {nummer++}: {ov.Vraag}");
+            }
+            else
+            {
+                Line(sb, $"  Onderzoeksvraag: {ov.Vraag}");
+            }
 
-        if (subthema.Onderzoeksvraag is not null)
-        {
-            Line(sb, $"  Onderzoeksvraag: {subthema.Onderzoeksvraag}");
+            if (ov.Probleemstelling is not null)
+            {
+                Line(sb, $"  Probleemstelling: {ov.Probleemstelling}");
+            }
         }
 
         if (subthema.Activiteiten.Count > 0)

@@ -196,7 +196,8 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
 
         // Edit class A's subthema heavily: rename, re-scope age, change duur + driving questions.
         await NieuweService().WijzigSubthemaAsync(subA.Id, new SubthemaWijzigingInvoer(
-            "Stortbui (A)", DuurWeken: 3, _klasA.Id, "K2", Probleemstelling: "Waarom regent het?"));
+            "Stortbui (A)", DuurWeken: 3, _klasA.Id, "K2",
+            Onderzoeksvragen: [new("Waarom regent het?")]));
 
         // The shared (school-wide) thema is byte-for-byte unchanged.
         var biblioItem = Assert.Single(await NieuweService().HaalThemaBibliotheekOpAsync());

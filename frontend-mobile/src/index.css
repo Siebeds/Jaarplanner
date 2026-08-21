@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens for "Jaarplanner Onderweg" — the mobile-first sibling of the desktop app.
+ * Deliberately its own palette (a warm terracotta "terra" structural hue on a cream canvas)
+ * rather than the desktop app's petrol/paper system, so the two never read as one re-skinned
+ * product mid-comparison. The doelsoort/suggestie/dekking hues are copied byte-for-byte from
+ * `frontend/src/index.css` (Art. XII): meaning must travel across apps even when chrome does not.
+ */
+@layer base {
+  :root {
+    --canvas: 32 45% 96%;
+    --surface: 0 0% 100%;
+    --surface-verhoogd: 32 38% 98%;
+    --ink: 20 35% 14%;
+    --ink-zacht: 20 18% 38%;
+    --ink-zwak: 20 12% 55%;
+    --rand: 28 24% 87%;
+
+    --terra: 14 72% 45%;
+    --terra-foreground: 0 0% 100%;
+    --terra-zacht: 20 85% 95%;
+    --terra-diep: 14 68% 32%;
+
+    /* doelsoort — Op.stap goal types (Art. XII), same values as the desktop app */
+    --doelsoort-md: 217 91% 40%;
+    --doelsoort-md-foreground: 0 0% 100%;
+    --doelsoort-gemeenschappelijk: 215 19% 35%;
+    --doelsoort-gemeenschappelijk-foreground: 0 0% 100%;
+    --doelsoort-verdieping: 142 72% 29%;
+    --doelsoort-verdieping-foreground: 0 0% 100%;
+    --doelsoort-precurriculum: 330 81% 42%;
+    --doelsoort-precurriculum-foreground: 0 0% 100%;
+    --doelsoort-specifiek: 330 70% 45%;
+    --doelsoort-specifiek-foreground: 0 0% 100%;
+    --doelsoort-anderstalige: 36 100% 30%;
+    --doelsoort-anderstalige-foreground: 0 0% 100%;
+
+    --suggestie-voorgesteld: 217 91% 40%;
+    --suggestie-voorgesteld-foreground: 0 0% 100%;
+    --suggestie-aanvaard: 142 72% 29%;
+    --suggestie-aanvaard-foreground: 0 0% 100%;
+    --suggestie-geweigerd: 0 72% 42%;
+    --suggestie-geweigerd-foreground: 0 0% 100%;
+    --suggestie-manueel: 262 52% 47%;
+    --suggestie-manueel-foreground: 0 0% 100%;
+
+    --dekking-gedekt: 142 72% 29%;
+    --dekking-gedekt-foreground: 0 0% 100%;
+    --dekking-niet-gedekt: 0 72% 42%;
+    --dekking-niet-gedekt-foreground: 0 0% 100%;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    /* Respect the notch/home-indicator on a real phone (viewport-fit=cover in index.html). */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  button,
+  a[role="button"] {
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+}

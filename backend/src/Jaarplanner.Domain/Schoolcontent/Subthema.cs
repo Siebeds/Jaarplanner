@@ -6,9 +6,9 @@ namespace Jaarplanner.Domain.Schoolcontent;
 /// A subthema (Art. IX.2) — <b>class/age-scoped: per <see cref="KlasId"/> &amp; <see cref="Leeftijd"/></b>.
 /// It belongs to a school-wide <see cref="Thema"/> but may differ per klas/leeftijd, so its
 /// <see cref="KlasId"/> (FK to <see cref="Klas"/>) and <see cref="Leeftijd"/> are <b>required</b>:
-/// a subthema cannot exist school-wide. It carries the driving question(s) of a kennisrijk thema
-/// (<see cref="Probleemstelling"/> / <see cref="Onderzoeksvraag"/>) and a <see cref="DuurWeken"/>
-/// (≈ 2 wk, the subthemaperiode). Mutable autonomous school content (Art. III).
+/// a subthema cannot exist school-wide. It carries zero or more driving questions
+/// (<see cref="Onderzoeksvragen"/>, each with its own <c>Vraag</c> and optional <c>Probleemstelling</c>)
+/// and a <see cref="DuurWeken"/> (≈ 2 wk, the subthemaperiode). Mutable autonomous school content (Art. III).
 /// <para>
 /// The class/age scope flows down: <see cref="Subdoelen"/> and <see cref="Activiteiten"/> belong to
 /// this subthema and therefore inherit its <see cref="KlasId"/>, while a subdoel additionally pins
@@ -19,6 +19,7 @@ public sealed class Subthema
 {
     private readonly List<Subdoel> _subdoelen = [];
     private readonly List<Activiteit> _activiteiten = [];
+    private readonly List<Onderzoeksvraag> _onderzoeksvragen = [];
 
     // EF Core materialisation only.
     private Subthema()
@@ -45,11 +46,8 @@ public sealed class Subthema
     /// <summary>The subthema name.</summary>
     public string Naam { get; private set; }
 
-    /// <summary>The driving problem statement of a kennisrijk thema; optional.</summary>
-    public string? Probleemstelling { get; private set; }
-
-    /// <summary>The driving research question of a kennisrijk thema; optional.</summary>
-    public string? Onderzoeksvraag { get; private set; }
+    /// <summary>The driving questions of this kennisrijk subthema (zero or more; Art. IX.2).</summary>
+    public IReadOnlyList<Onderzoeksvraag> Onderzoeksvragen => _onderzoeksvragen;
 
     /// <summary>The subthemaperiode duration in weeks (≈ 2).</summary>
     public int DuurWeken { get; private set; }
@@ -66,11 +64,25 @@ public sealed class Subthema
     /// <summary>The activiteiten that realise this subthema (Art. IX.2).</summary>
     public IReadOnlyList<Activiteit> Activiteiten => _activiteiten;
 
-    /// <summary>Sets the kennisrijk-thema driving question(s).</summary>
-    public void StelVraagstellingIn(string? probleemstelling, string? onderzoeksvraag)
+    /// <summary>
+    /// Adds a driving question to this subthema. Only adds when <paramref name="vraag"/> is non-blank;
+    /// returns the new <see cref="Onderzoeksvraag"/>.
+    /// </summary>
+    public Onderzoeksvraag VoegOnderzoeksvraagToe(string vraag, string? probleemstelling = null)
     {
-        Probleemstelling = Optional(probleemstelling);
-        Onderzoeksvraag = Optional(onderzoeksvraag);
+        var ov = new Onderzoeksvraag(Id, vraag, probleemstelling);
+        _onderzoeksvragen.Add(ov);
+        return ov;
+    }
+
+    /// <summary>
+    /// Removes a driving question from this subthema (CRUD, E1-10). Used when a teacher deletes an
+    /// onderzoeksvraag; the removal is a deliberate human decision, so the caller persists it (Art. IV.2).
+    /// </summary>
+    public void VerwijderOnderzoeksvraag(Onderzoeksvraag ov)
+    {
+        ArgumentNullException.ThrowIfNull(ov);
+        _onderzoeksvragen.Remove(ov);
     }
 
     /// <summary>
@@ -223,6 +235,4 @@ public sealed class Subthema
     private static int RequirePositive(int value, string paramName) =>
         value > 0 ? value : throw new ArgumentOutOfRangeException(paramName, value, "Duur in weken moet positief zijn.");
 
-    private static string? Optional(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

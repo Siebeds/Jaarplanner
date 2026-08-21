@@ -54,4 +54,24 @@ public sealed class SubthemasController : ControllerBase
         var activiteit = await _service.MaakActiviteitAsync(subthemaId, creatie, cancellationToken);
         return Created($"/api/activiteiten/{activiteit.Id}", activiteit);
     }
+
+    // --- Onderzoeksvragen per subthema. ---
+
+    [HttpPost("{subthemaId:guid}/onderzoeksvragen")]
+    public async Task<ActionResult<OnderzoeksvraagWeergave>> VoegOnderzoeksvraagToe(Guid subthemaId, [FromBody] OnderzoeksvraagCreatie creatie, CancellationToken cancellationToken)
+    {
+        var ov = await _service.VoegOnderzoeksvraagToeAsync(subthemaId, creatie, cancellationToken);
+        return Created($"/api/subthemas/{subthemaId}/onderzoeksvragen/{ov.Id}", ov);
+    }
+
+    [HttpPut("{subthemaId:guid}/onderzoeksvragen/{ovId:guid}")]
+    public async Task<ActionResult<OnderzoeksvraagWeergave>> WijzigOnderzoeksvraag(Guid subthemaId, Guid ovId, [FromBody] OnderzoeksvraagCreatie invoer, CancellationToken cancellationToken) =>
+        Ok(await _service.WijzigOnderzoeksvraagAsync(subthemaId, ovId, invoer, cancellationToken));
+
+    [HttpDelete("{subthemaId:guid}/onderzoeksvragen/{ovId:guid}")]
+    public async Task<IActionResult> VerwijderOnderzoeksvraag(Guid subthemaId, Guid ovId, CancellationToken cancellationToken)
+    {
+        await _service.VerwijderOnderzoeksvraagAsync(subthemaId, ovId, cancellationToken);
+        return NoContent();
+    }
 }

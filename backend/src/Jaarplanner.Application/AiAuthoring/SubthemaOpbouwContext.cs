@@ -18,18 +18,24 @@ public sealed record SubthemaOpbouwContext
     /// <summary>The subthemaperiode duration in weeks (≈ 2); optional while authoring.</summary>
     public int? DuurWeken { get; init; }
 
-    /// <summary>The driving problem statement of the kennisrijk subthema; optional.</summary>
+    /// <summary>The driving problem statement of the kennisrijk subthema; optional. Use <see cref="Onderzoeksvragen"/> for the full list.</summary>
     public string? Probleemstelling { get; init; }
 
-    /// <summary>The driving research question of the kennisrijk subthema; optional.</summary>
+    /// <summary>The driving research question of the kennisrijk subthema; optional. Use <see cref="Onderzoeksvragen"/> for the full list.</summary>
     public string? Onderzoeksvraag { get; init; }
+
+    /// <summary>
+    /// Zero or more driving questions for the subthema. When set, this takes precedence over the legacy
+    /// <see cref="Probleemstelling"/>/<see cref="Onderzoeksvraag"/> pair; the prompt builder renders these.
+    /// </summary>
+    public IReadOnlyList<OnderzoeksvraagOpbouwContext>? Onderzoeksvragen { get; init; }
 
     /// <summary>The (planned) activiteiten that realise this subthema; optional grounding context.</summary>
     public IReadOnlyCollection<ActiviteitOpbouwContext>? Activiteiten { get; init; }
 }
 
 /// <summary>
-/// A single (planned) activiteit as the wizard describes it during authoring. Free-text
+/// A single activiteit as the wizard describes it during authoring. Free-text
 /// <see cref="Type"/> keeps the transient wizard input decoupled from the persisted
 /// <c>ActiviteitType</c> enum — the assist only reads it as extra grounding context.
 /// </summary>
@@ -46,4 +52,16 @@ public sealed record ActiviteitOpbouwContext
 
     /// <summary>The optional expected outcomes of the activiteit.</summary>
     public string? VerwachteUitkomsten { get; init; }
+}
+
+/// <summary>
+/// One driving question as the wizard describes it during subthema authoring.
+/// </summary>
+public sealed record OnderzoeksvraagOpbouwContext
+{
+    /// <summary>The question text. Required.</summary>
+    public required string Vraag { get; init; }
+
+    /// <summary>The optional problem statement contextualising the question.</summary>
+    public string? Probleemstelling { get; init; }
 }

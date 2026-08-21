@@ -33,6 +33,15 @@ public sealed class ActiviteitConfiguration : IEntityTypeConfiguration<Activitei
         builder.Property(a => a.Hoek).HasMaxLength(128);
         builder.Property(a => a.VerwachteUitkomsten);
 
+        // Optional link to one onderzoeksvraag of the same subthema. SetNull on delete: losing the
+        // onderzoeksvraag-tag is not data loss of the activiteit itself (Art. IX.2).
+        builder.Property(a => a.OnderzoeksvraagId);
+        builder.HasOne<Onderzoeksvraag>()
+            .WithMany()
+            .HasForeignKey(a => a.OnderzoeksvraagId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Zero or more goal links — owned collection in its own table.
         builder.OwnsMany(a => a.Doelkoppelingen, DoelKoppelingMapping.Configure);
         builder.Navigation(a => a.Doelkoppelingen)

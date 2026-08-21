@@ -49,8 +49,14 @@ public sealed class Activiteit
     /// <summary>The optional expected outcomes.</summary>
     public string? VerwachteUitkomsten { get; private set; }
 
+    /// <summary>The optional onderzoeksvraag this activiteit addresses. Null means no specific onderzoeksvraag is targeted.</summary>
+    public Guid? OnderzoeksvraagId { get; private set; }
+
     /// <summary>The goal links for this activiteit (zero or more leerdoelen; Art. IX.2).</summary>
     public IReadOnlyList<DoelKoppeling> Doelkoppelingen => _doelkoppelingen;
+
+    /// <summary>Links (or unlinks) this activiteit to an onderzoeksvraag. Null clears the link.</summary>
+    public void KoppelAanOnderzoeksvraag(Guid? onderzoeksvraagId) => OnderzoeksvraagId = onderzoeksvraagId;
 
     /// <summary>Links this activiteit to a leerdoel.</summary>
     public void VoegDoelkoppelingToe(DoelKoppeling koppeling)

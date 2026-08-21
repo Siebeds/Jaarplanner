@@ -115,10 +115,39 @@ public class SchoolContentEntitiesTests
     {
         var thema = new Thema("Water", duurWeken: 4);
         var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
-        subthema.StelVraagstellingIn("Waar komt regen vandaan?", "Hoe ontstaat een plas?");
+        var ov = subthema.VoegOnderzoeksvraagToe("Hoe ontstaat een plas?", "Waar komt regen vandaan?");
 
-        Assert.Equal("Waar komt regen vandaan?", subthema.Probleemstelling);
-        Assert.Equal("Hoe ontstaat een plas?", subthema.Onderzoeksvraag);
+        Assert.Single(subthema.Onderzoeksvragen);
+        Assert.Equal("Hoe ontstaat een plas?", ov.Vraag);
+        Assert.Equal("Waar komt regen vandaan?", ov.Probleemstelling);
+    }
+
+    [Fact]
+    public void Subthema_can_hold_multiple_onderzoeksvragen()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        var subthema = thema.VoegSubthemaToe("Planten", 2, Guid.NewGuid(), "2K");
+
+        var ov1 = subthema.VoegOnderzoeksvraagToe("Wat gebeurt er als planten geen water krijgen?", "Planten hebben water nodig.");
+        var ov2 = subthema.VoegOnderzoeksvraagToe("Hoe zuigen planten water op?");
+
+        Assert.Equal(2, subthema.Onderzoeksvragen.Count);
+        Assert.Equal("Wat gebeurt er als planten geen water krijgen?", ov1.Vraag);
+        Assert.Equal("Planten hebben water nodig.", ov1.Probleemstelling);
+        Assert.Equal("Hoe zuigen planten water op?", ov2.Vraag);
+        Assert.Null(ov2.Probleemstelling);
+    }
+
+    [Fact]
+    public void Subthema_verwijder_onderzoeksvraag_removes_it()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var ov = subthema.VoegOnderzoeksvraagToe("Hoe ontstaat een plas?");
+        Assert.Single(subthema.Onderzoeksvragen);
+
+        subthema.VerwijderOnderzoeksvraag(ov);
+        Assert.Empty(subthema.Onderzoeksvragen);
     }
 
     [Fact]

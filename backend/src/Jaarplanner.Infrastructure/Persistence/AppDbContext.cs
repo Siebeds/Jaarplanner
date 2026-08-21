@@ -78,6 +78,9 @@ public class AppDbContext : DbContext
     /// <summary>The class/age-scoped activiteiten (Art. IX.2).</summary>
     public DbSet<Activiteit> Activiteiten => Set<Activiteit>();
 
+    /// <summary>The driving questions per class/age-scoped subthema (Art. IX.2).</summary>
+    public DbSet<Onderzoeksvraag> Onderzoeksvragen => Set<Onderzoeksvraag>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

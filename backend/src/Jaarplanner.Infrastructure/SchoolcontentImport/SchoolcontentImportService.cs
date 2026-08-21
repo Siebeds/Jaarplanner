@@ -806,15 +806,35 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
             // Preview: build a detached instance purely so the activiteit walk has a parent to read from.
             var voorbeeld = new Thema(thema.Naam, thema.DuurWeken).VoegSubthemaToe(
                 rij.SubthemaNaam, rij.SubthemaDuurWeken, klasId, rij.SubthemaLeeftijd);
-            voorbeeld.StelVraagstellingIn(rij.SubthemaProbleemstelling, rij.SubthemaOnderzoeksvraag);
+            VoegOnderzoeksvraagToeVanuitRij(voorbeeld, rij);
             nieuw = null;
             return voorbeeld;
         }
 
         var subthema = thema.VoegSubthemaToe(rij.SubthemaNaam, rij.SubthemaDuurWeken, klasId, rij.SubthemaLeeftijd);
-        subthema.StelVraagstellingIn(rij.SubthemaProbleemstelling, rij.SubthemaOnderzoeksvraag);
+        VoegOnderzoeksvraagToeVanuitRij(subthema, rij);
         nieuw = subthema;
         return subthema;
+    }
+
+    /// <summary>
+    /// Adds an onderzoeksvraag from an import row if the row carries a non-blank vraag text and the
+    /// subthema does not already have an onderzoeksvraag with the same vraag text (idempotent
+    /// reconciliation, matching the subdoel/activiteit pattern).
+    /// </summary>
+    private static void VoegOnderzoeksvraagToeVanuitRij(Subthema subthema, SchoolcontentRij rij)
+    {
+        var vraag = Genormaliseerd(rij.SubthemaOnderzoeksvraag);
+        if (vraag is null)
+        {
+            return;
+        }
+
+        // Idempotent: only add if no onderzoeksvraag with this exact vraag text already exists.
+        if (!subthema.Onderzoeksvragen.Any(v => string.Equals(v.Vraag, vraag, StringComparison.Ordinal)))
+        {
+            subthema.VoegOnderzoeksvraagToe(vraag, Genormaliseerd(rij.SubthemaProbleemstelling));
+        }
     }
 
     // --- Attribute overwrite helpers (return whether anything changed). ---
@@ -839,15 +859,22 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
 
     private static bool WerkSubthemaBij(Subthema subthema, SchoolcontentRij rij, bool toepassen)
     {
-        var gewijzigd =
-            subthema.DuurWeken != rij.SubthemaDuurWeken ||
-            !string.Equals(subthema.Probleemstelling, Genormaliseerd(rij.SubthemaProbleemstelling), StringComparison.Ordinal) ||
-            !string.Equals(subthema.Onderzoeksvraag, Genormaliseerd(rij.SubthemaOnderzoeksvraag), StringComparison.Ordinal);
+        var vraag = Genormaliseerd(rij.SubthemaOnderzoeksvraag);
+        var probleemstelling = Genormaliseerd(rij.SubthemaProbleemstelling);
+
+        // Changed if duration changed OR if the row carries an onderzoeksvraag the subthema does not have yet.
+        var nieuwOv = vraag is not null &&
+            !subthema.Onderzoeksvragen.Any(v => string.Equals(v.Vraag, vraag, StringComparison.Ordinal));
+
+        var gewijzigd = subthema.DuurWeken != rij.SubthemaDuurWeken || nieuwOv;
 
         if (gewijzigd && toepassen)
         {
             subthema.WerkBasisGegevensBij(rij.SubthemaDuurWeken);
-            subthema.StelVraagstellingIn(rij.SubthemaProbleemstelling, rij.SubthemaOnderzoeksvraag);
+            if (nieuwOv)
+            {
+                subthema.VoegOnderzoeksvraagToe(vraag!, probleemstelling);
+            }
         }
 
         return gewijzigd;

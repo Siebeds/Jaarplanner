@@ -25,7 +25,7 @@ public sealed class MatchingPromptBuilderTests
             new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past bij natuurobservatie"));
 
         var subthema = thema.VoegSubthemaToe("Bladeren", duurWeken: 2, klasId: Guid.NewGuid(), leeftijd: "K3");
-        subthema.StelVraagstellingIn("Waarom vallen bladeren?", "Welke kleuren zien we?");
+        subthema.VoegOnderzoeksvraagToe("Welke kleuren zien we?", "Waarom vallen bladeren?");
         subthema.VoegActiviteitToe(
             "Bladeren verzamelen",
             ActiviteitType.Waarneming,
@@ -90,8 +90,8 @@ public sealed class MatchingPromptBuilderTests
             "",
             "### Subthema's",
             "- Subthema: Bladeren (leeftijd K3, duur 2 wk)",
-            "  Probleemstelling: Waarom vallen bladeren?",
             "  Onderzoeksvraag: Welke kleuren zien we?",
+            "  Probleemstelling: Waarom vallen bladeren?",
             "  Activiteiten:",
             "  - Bladeren verzamelen (waarneming)",
             "    Hoek: ontdektafel",
@@ -126,7 +126,7 @@ public sealed class MatchingPromptBuilderTests
         foreach (var datum in new[]
         {
             "Herfst", "natuur en seizoenen", "blad", "boom", "bladverliezende boom",
-            "Bladeren", "Waarom vallen bladeren?", "Welke kleuren zien we?", "ontdektafel",
+            "Bladeren", "Welke kleuren zien we?", "Waarom vallen bladeren?", "ontdektafel",
             "sorteren op kleur", "NAT-K3-01", "NAT-K3-02", "De kleuter herkent bomen.",
             "eik, beuk", "K-12", "De leerling herkent levende wezens.",
         })

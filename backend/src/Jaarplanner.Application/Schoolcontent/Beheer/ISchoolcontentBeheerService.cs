@@ -103,4 +103,21 @@ public interface ISchoolcontentBeheerService
     Task<DoelKoppelingWeergave> KoppelActiviteitAanDoelAsync(Guid activiteitId, string leerplandoelCode, CancellationToken cancellationToken = default);
 
     Task OntkoppelActiviteitDoelAsync(Guid activiteitId, Guid koppelingId, CancellationToken cancellationToken = default);
+
+    // --- Onderzoeksvraag (per subthema). ---
+
+    /// <summary>Adds one onderzoeksvraag to a subthema; returns the new entry.</summary>
+    Task<OnderzoeksvraagWeergave> VoegOnderzoeksvraagToeAsync(Guid subthemaId, OnderzoeksvraagCreatie creatie, CancellationToken cancellationToken = default);
+
+    /// <summary>Updates the vraag text and probleemstelling of one onderzoeksvraag.</summary>
+    Task<OnderzoeksvraagWeergave> WijzigOnderzoeksvraagAsync(Guid subthemaId, Guid ovId, OnderzoeksvraagCreatie invoer, CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes one onderzoeksvraag. Activiteiten that referenced it have their OnderzoeksvraagId cleared.</summary>
+    Task VerwijderOnderzoeksvraagAsync(Guid subthemaId, Guid ovId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Links or unlinks an activiteit to an onderzoeksvraag. Pass null to clear the link.
+    /// Validates that the onderzoeksvraag (when non-null) belongs to the same subthema as the activiteit.
+    /// </summary>
+    Task<ActiviteitWeergave> KoppelActiviteitAanOnderzoeksvraagAsync(Guid activiteitId, Guid? onderzoeksvraagId, CancellationToken cancellationToken = default);
 }

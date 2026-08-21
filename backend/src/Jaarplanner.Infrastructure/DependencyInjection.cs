@@ -1,4 +1,4 @@
-﻿using Jaarplanner.Application.Ai;
+using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Application.Curriculum;
@@ -62,6 +62,11 @@ public static class DependencyInjection
 
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
+
+        // The Op.stap minimumdoelen register behind the "Bekijk minimumdoelen" toggle (FR-2.4): filter,
+        // search and page through decreed minimumdoelen grouped by (discipline, domein, subdomein) derived
+        // from concorded leerplandoelen. Pure read over read-only reference data (Art. III.1).
+        services.AddScoped<IMinimumdoelenQuery, MinimumdoelenQuery>();
 
         // Bidirectional concordance read access (Art. V — enables minimumdoel-level coverage; E5).
         services.AddScoped<IConcordantieQuery, ConcordantieQuery>();

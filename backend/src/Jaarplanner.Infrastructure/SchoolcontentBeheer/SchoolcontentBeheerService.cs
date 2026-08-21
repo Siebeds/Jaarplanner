@@ -263,7 +263,13 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             throw new SchoolcontentValidatieFout(ex.Message);
         }
 
-        subthema.StelVraagstellingIn(creatie.Probleemstelling, creatie.Onderzoeksvraag);
+        foreach (var ov in creatie.Onderzoeksvragen ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(ov.Vraag))
+            {
+                subthema.VoegOnderzoeksvraagToe(ov.Vraag, ov.Probleemstelling);
+            }
+        }
 
         _context.Subthemas.Add(subthema);
         await _context.SaveChangesAsync(cancellationToken);
@@ -288,7 +294,20 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             throw new SchoolcontentValidatieFout(ex.Message);
         }
 
-        subthema.StelVraagstellingIn(wijziging.Probleemstelling, wijziging.Onderzoeksvraag);
+        // Reconcile onderzoeksvragen: replace the whole collection with the payload.
+        foreach (var existing in subthema.Onderzoeksvragen.ToList())
+        {
+            subthema.VerwijderOnderzoeksvraag(existing);
+            _context.Onderzoeksvragen.Remove(existing);
+        }
+
+        foreach (var ov in wijziging.Onderzoeksvragen ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(ov.Vraag))
+            {
+                subthema.VoegOnderzoeksvraagToe(ov.Vraag, ov.Probleemstelling);
+            }
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
         return MapSubthema(subthema);
@@ -350,6 +369,12 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             throw new SchoolcontentValidatieFout(ex.Message);
         }
 
+        if (creatie.OnderzoeksvraagId is { } ovId)
+        {
+            ValideerOnderzoeksvraagHoortBijSubthema(ovId, subthema);
+            activiteit.KoppelAanOnderzoeksvraag(ovId);
+        }
+
         _context.Activiteiten.Add(activiteit);
         await _context.SaveChangesAsync(cancellationToken);
         return MapActiviteit(activiteit);
@@ -368,6 +393,17 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
             throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        if (wijziging.OnderzoeksvraagId is { } ovId)
+        {
+            var subthema = await LaadSubthemaAsync(activiteit.SubthemaId, cancellationToken);
+            ValideerOnderzoeksvraagHoortBijSubthema(ovId, subthema);
+            activiteit.KoppelAanOnderzoeksvraag(ovId);
+        }
+        else
+        {
+            activiteit.KoppelAanOnderzoeksvraag(null);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -495,13 +531,99 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    // --- Onderzoeksvraag (per subthema). ---
+
+    public async Task<OnderzoeksvraagWeergave> VoegOnderzoeksvraagToeAsync(Guid subthemaId, OnderzoeksvraagCreatie creatie, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(creatie);
+        var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
+
+        Onderzoeksvraag ov;
+        try
+        {
+            ov = subthema.VoegOnderzoeksvraagToe(creatie.Vraag, creatie.Probleemstelling);
+        }
+        catch (Exception ex) when (ex is ArgumentException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapOnderzoeksvraag(ov);
+    }
+
+    public async Task<OnderzoeksvraagWeergave> WijzigOnderzoeksvraagAsync(Guid subthemaId, Guid ovId, OnderzoeksvraagCreatie invoer, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(invoer);
+        var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
+        var ov = subthema.Onderzoeksvragen.FirstOrDefault(v => v.Id == ovId)
+            ?? throw new SchoolcontentNietGevondenFout("Deze onderzoeksvraag bestaat niet meer. Vernieuw de pagina om te zien wat er nu staat.");
+
+        try
+        {
+            ov.Wijzig(invoer.Vraag, invoer.Probleemstelling);
+        }
+        catch (Exception ex) when (ex is ArgumentException)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapOnderzoeksvraag(ov);
+    }
+
+    public async Task VerwijderOnderzoeksvraagAsync(Guid subthemaId, Guid ovId, CancellationToken cancellationToken = default)
+    {
+        var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
+        var ov = subthema.Onderzoeksvragen.FirstOrDefault(v => v.Id == ovId)
+            ?? throw new SchoolcontentNietGevondenFout("Deze onderzoeksvraag bestaat niet meer. Vernieuw de pagina om te zien wat er nu staat.");
+
+        // Clear the FK on any activiteiten that reference this onderzoeksvraag (SetNull semantics — an
+        // activiteit losing its tag is not data loss of the activiteit itself).
+        foreach (var activiteit in subthema.Activiteiten.Where(a => a.OnderzoeksvraagId == ovId))
+        {
+            activiteit.KoppelAanOnderzoeksvraag(null);
+        }
+
+        subthema.VerwijderOnderzoeksvraag(ov);
+        _context.Onderzoeksvragen.Remove(ov);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<ActiviteitWeergave> KoppelActiviteitAanOnderzoeksvraagAsync(Guid activiteitId, Guid? onderzoeksvraagId, CancellationToken cancellationToken = default)
+    {
+        var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
+
+        if (onderzoeksvraagId is { } ovId)
+        {
+            var subthema = await LaadSubthemaAsync(activiteit.SubthemaId, cancellationToken);
+            ValideerOnderzoeksvraagHoortBijSubthema(ovId, subthema);
+        }
+
+        activiteit.KoppelAanOnderzoeksvraag(onderzoeksvraagId);
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapActiviteit(activiteit);
+    }
+
+    private static void ValideerOnderzoeksvraagHoortBijSubthema(Guid onderzoeksvraagId, Subthema subthema)
+    {
+        if (!subthema.Onderzoeksvragen.Any(v => v.Id == onderzoeksvraagId))
+        {
+            // The onderzoeksvraag must belong to the same subthema as the activiteit (structural invariant,
+            // Art. IX.2). The sentence says what the reader can do: pick a vraag that belongs to this subthema.
+            throw new SchoolcontentValidatieFout(
+                "De onderzoeksvraag hoort niet bij dit subthema. Kies een onderzoeksvraag die bij hetzelfde subthema hoort.");
+        }
+    }
+
     // --- Loading helpers (graph-loaded so the read views are complete and the domain mutators see the subtree). ---
 
     private IQueryable<Thema> ThemasMetSubtreeQuery() =>
         _context.Themas
             .Include(t => t.Themadoelen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Subdoelen)
-            .Include(t => t.Subthemas).ThenInclude(s => s.Activiteiten);
+            .Include(t => t.Subthemas).ThenInclude(s => s.Activiteiten)
+            .Include(t => t.Subthemas).ThenInclude(s => s.Onderzoeksvragen);
 
     private async Task<Thema> LaadThemaAsync(Guid themaId, CancellationToken cancellationToken)
     {
@@ -514,6 +636,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         var subthema = await _context.Subthemas
             .Include(s => s.Subdoelen)
             .Include(s => s.Activiteiten)
+            .Include(s => s.Onderzoeksvragen)
             .FirstOrDefaultAsync(s => s.Id == subthemaId, cancellationToken);
         return subthema ?? throw new SchoolcontentNietGevondenFout("Dit subthema bestaat niet meer. Iemand anders heeft het verwijderd.");
     }
@@ -615,10 +738,12 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         subthema.DuurWeken,
         subthema.KlasId,
         subthema.Leeftijd,
-        subthema.Probleemstelling,
-        subthema.Onderzoeksvraag,
+        subthema.Onderzoeksvragen.Select(MapOnderzoeksvraag).ToList(),
         subthema.Subdoelen.Select(MapSubdoel).ToList(),
         subthema.Activiteiten.Select(MapActiviteit).ToList());
+
+    private static OnderzoeksvraagWeergave MapOnderzoeksvraag(Onderzoeksvraag ov) =>
+        new(ov.Id, ov.Vraag, ov.Probleemstelling);
 
     private static SubdoelWeergave MapSubdoel(Subdoel subdoel) =>
         new(subdoel.Id, subdoel.Leeftijd, MapKoppeling(subdoel.Koppeling));
@@ -629,6 +754,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         activiteit.ActiviteitType,
         activiteit.Hoek,
         activiteit.VerwachteUitkomsten,
+        activiteit.OnderzoeksvraagId,
         activiteit.Doelkoppelingen.Select(MapKoppeling).ToList());
 
     private static DoelKoppelingWeergave MapKoppeling(DoelKoppeling koppeling) =>

@@ -7,6 +7,17 @@ namespace Jaarplanner.Application.Schoolcontent.Beheer;
 // explicit about the level scoping (Art. IX.2): thema/themadoel inputs carry no klas/leeftijd, while
 // subthema inputs require both. Dutch domain language for the concepts; English for plumbing (Art. II).
 
+/// <summary>Create/update payload for one <see cref="Onderzoeksvraag"/> on a subthema.</summary>
+public sealed record OnderzoeksvraagCreatie(
+    string Vraag,
+    string? Probleemstelling = null);
+
+/// <summary>Read view of one <see cref="Onderzoeksvraag"/>.</summary>
+public sealed record OnderzoeksvraagWeergave(
+    Guid Id,
+    string Vraag,
+    string? Probleemstelling);
+
 /// <summary>Create payload for a school-wide <see cref="Thema"/> (Art. IX.2 — no klas/leeftijd; scope is school-wide).</summary>
 public sealed record ThemaCreatie(
     string Naam,
@@ -33,8 +44,7 @@ public sealed record SubthemaCreatie(
     int DuurWeken,
     Guid KlasId,
     string Leeftijd,
-    string? Probleemstelling = null,
-    string? Onderzoeksvraag = null);
+    IReadOnlyList<OnderzoeksvraagCreatie>? Onderzoeksvragen = null);
 
 /// <summary>Update payload for a <see cref="Subthema"/> — the class/age scope may be re-pointed but never cleared.</summary>
 public sealed record SubthemaWijzigingInvoer(
@@ -42,22 +52,23 @@ public sealed record SubthemaWijzigingInvoer(
     int DuurWeken,
     Guid KlasId,
     string Leeftijd,
-    string? Probleemstelling = null,
-    string? Onderzoeksvraag = null);
+    IReadOnlyList<OnderzoeksvraagCreatie>? Onderzoeksvragen = null);
 
 /// <summary>Create payload for a class/age-scoped <see cref="Activiteit"/> (inherits its subthema's scope, Art. IX.2).</summary>
 public sealed record ActiviteitCreatie(
     string Naam,
     ActiviteitType ActiviteitType,
     string? Hoek = null,
-    string? VerwachteUitkomsten = null);
+    string? VerwachteUitkomsten = null,
+    Guid? OnderzoeksvraagId = null);
 
 /// <summary>Update payload for an <see cref="Activiteit"/>.</summary>
 public sealed record ActiviteitWijzigingInvoer(
     string Naam,
     ActiviteitType ActiviteitType,
     string? Hoek = null,
-    string? VerwachteUitkomsten = null);
+    string? VerwachteUitkomsten = null,
+    Guid? OnderzoeksvraagId = null);
 
 /// <summary>
 /// Move payload for an <see cref="Activiteit"/> (E4-08, FR-7.2): the subthema it should end up in. Only the
@@ -84,6 +95,7 @@ public sealed record ActiviteitWeergave(
     ActiviteitType ActiviteitType,
     string? Hoek,
     string? VerwachteUitkomsten,
+    Guid? OnderzoeksvraagId,
     IReadOnlyList<DoelKoppelingWeergave> Doelkoppelingen);
 
 /// <summary>Read view of a subthema with its subdoelen + activiteiten.</summary>
@@ -94,8 +106,7 @@ public sealed record SubthemaWeergave(
     int DuurWeken,
     Guid KlasId,
     string Leeftijd,
-    string? Probleemstelling,
-    string? Onderzoeksvraag,
+    IReadOnlyList<OnderzoeksvraagWeergave> Onderzoeksvragen,
     IReadOnlyList<SubdoelWeergave> Subdoelen,
     IReadOnlyList<ActiviteitWeergave> Activiteiten);
 

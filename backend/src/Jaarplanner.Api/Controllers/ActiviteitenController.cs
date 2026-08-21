@@ -47,4 +47,15 @@ public sealed class ActiviteitenController : ControllerBase
         await _service.OntkoppelActiviteitDoelAsync(activiteitId, koppelingId, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>Links or unlinks an activiteit to an onderzoeksvraag. Send null to clear.</summary>
+    [HttpPut("{activiteitId:guid}/onderzoeksvraag")]
+    public async Task<ActionResult<ActiviteitWeergave>> KoppelAanOnderzoeksvraag(
+        Guid activiteitId,
+        [FromBody] OnderzoeksvraagKoppelingInvoer invoer,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.KoppelActiviteitAanOnderzoeksvraagAsync(activiteitId, invoer.OnderzoeksvraagId, cancellationToken));
+
+    /// <summary>Payload for linking/unlinking an activiteit to an onderzoeksvraag.</summary>
+    public sealed record OnderzoeksvraagKoppelingInvoer(Guid? OnderzoeksvraagId);
 }

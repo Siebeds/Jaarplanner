@@ -136,6 +136,24 @@ public sealed record DoelKoppelingWeergave(
     KoppelingStatus Status);
 
 /// <summary>
+/// Another leerplandoel concorded to the <b>same</b> minimumdoel as the one being viewed (mobile-frontend
+/// comparison build, FR-2.4-adjacent): a teacher opening one doel can see at a glance which other goals a
+/// government minimumdoel groups together, without leaving the detail screen. Deliberately narrow — the
+/// same fields as a register row, since this is a browse pointer, not a second copy of the detail.
+/// </summary>
+/// <param name="Code">The related leerplandoel's code.</param>
+/// <param name="Tekst">Its goal text.</param>
+/// <param name="JaarFase">Its jaar/fase, since two goals sharing one minimumdoel often sit at different jaar/fases.</param>
+/// <param name="Domein">Its domein.</param>
+/// <param name="Subdomein">Its subdomein.</param>
+public sealed record GerelateerdLeerplandoelWeergave(
+    string Code,
+    string Tekst,
+    string JaarFase,
+    string Domein,
+    string Subdomein);
+
+/// <summary>
 /// Everything one leerplandoel holds (E1-16 clause 3): the official Op.stap content, its place in the
 /// taxonomy, its concordance, and the school content that links to it. Read-only throughout (Art. III.1) —
 /// there is no write counterpart to this record anywhere.
@@ -161,7 +179,8 @@ public sealed record LeerplandoelDetailWeergave(
     string? MinimumdoelRef,
     MinimumdoelWeergave? Minimumdoel,
     bool NietMeerInOpstap,
-    IReadOnlyList<DoelKoppelingWeergave> Koppelingen);
+    IReadOnlyList<DoelKoppelingWeergave> Koppelingen,
+    IReadOnlyList<GerelateerdLeerplandoelWeergave> GerelateerdeDoelen);
 
 /// <summary>
 /// One discipline that carries loaded leerplandoelen, with how many the <b>rest of the active filter</b>

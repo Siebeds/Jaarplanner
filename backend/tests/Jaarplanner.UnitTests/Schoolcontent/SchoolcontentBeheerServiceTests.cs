@@ -284,11 +284,14 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
 
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie(
-            "Regen", DuurWeken: 2, _klas.Id, "K3", Probleemstelling: "Waarom regent het?", Onderzoeksvraag: "Waar komt regen vandaan?"));
+            "Regen", DuurWeken: 2, _klas.Id, "K3",
+            Onderzoeksvragen: [new("Waar komt regen vandaan?", "Waarom regent het?")]));
 
         Assert.Equal(_klas.Id, subthema.KlasId);
         Assert.Equal("K3", subthema.Leeftijd);
-        Assert.Equal("Waarom regent het?", subthema.Probleemstelling);
+        Assert.Single(subthema.Onderzoeksvragen);
+        Assert.Equal("Waar komt regen vandaan?", subthema.Onderzoeksvragen[0].Vraag);
+        Assert.Equal("Waarom regent het?", subthema.Onderzoeksvragen[0].Probleemstelling);
         Assert.Equal(thema.Id, subthema.ThemaId);
     }
 
@@ -471,5 +474,56 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         Assert.Empty(await NieuwContext().Activiteiten.ToListAsync());
         // The subthema survives the activiteit delete.
         Assert.NotNull(await NieuwContext().Subthemas.FirstOrDefaultAsync(s => s.Id == subthema.Id));
+    }
+
+    // --- Onderzoeksvraag CRUD and activiteit link. ---
+
+    [Fact]
+    public async Task Voeg_onderzoeksvraag_toe_en_haal_op_bij_subthema()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Planten", 2, _klas.Id, "K3"));
+
+        var ov = await NieuweService().VoegOnderzoeksvraagToeAsync(subthema.Id,
+            new OnderzoeksvraagCreatie("Wat gebeurt er als planten geen water krijgen?", "Planten hebben water nodig."));
+
+        Assert.Equal("Wat gebeurt er als planten geen water krijgen?", ov.Vraag);
+        Assert.Equal("Planten hebben water nodig.", ov.Probleemstelling);
+
+        var themaNa = await NieuweService().HaalThemaOpAsync(thema.Id);
+        var subNa = themaNa.Subthemas.Single();
+        Assert.Single(subNa.Onderzoeksvragen);
+        Assert.Equal(ov.Id, subNa.Onderzoeksvragen[0].Id);
+    }
+
+    [Fact]
+    public async Task Activiteit_koppelen_aan_onderzoeksvraag_en_weer_loskoppelen()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Planten", 2, _klas.Id, "K3"));
+        var ov = await NieuweService().VoegOnderzoeksvraagToeAsync(subthema.Id, new OnderzoeksvraagCreatie("Hoe zuigen planten water op?"));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Planten observeren", ActiviteitType.Waarneming));
+
+        // Link
+        var actNa = await NieuweService().KoppelActiviteitAanOnderzoeksvraagAsync(activiteit.Id, ov.Id);
+        Assert.Equal(ov.Id, actNa.OnderzoeksvraagId);
+
+        // Unlink
+        var actOntkoppeld = await NieuweService().KoppelActiviteitAanOnderzoeksvraagAsync(activiteit.Id, null);
+        Assert.Null(actOntkoppeld.OnderzoeksvraagId);
+    }
+
+    [Fact]
+    public async Task Activiteit_koppelen_aan_onderzoeksvraag_van_ander_subthema_wordt_geweigerd()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        var subthemaA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthemaB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Ijs", 2, _klas.Id, "K2"));
+        var ovB = await NieuweService().VoegOnderzoeksvraagToeAsync(subthemaB.Id, new OnderzoeksvraagCreatie("Wanneer bevriest water?"));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthemaA.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+
+        // Activiteit belongs to subthemaA, but ovB belongs to subthemaB — must be refused.
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => NieuweService().KoppelActiviteitAanOnderzoeksvraagAsync(activiteit.Id, ovB.Id));
     }
 }

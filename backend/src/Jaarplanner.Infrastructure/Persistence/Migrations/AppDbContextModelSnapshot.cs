@@ -209,7 +209,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Generatieparameters", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("KlasId")
@@ -231,7 +230,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("KlasId")
@@ -248,7 +246,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Klas", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("Leerjaar")
@@ -275,7 +272,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Schooljaar", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateOnly>("Eind")
@@ -300,7 +296,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Activiteit", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("ActiviteitType")
@@ -318,6 +313,9 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<Guid?>("OnderzoeksvraagId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("SubthemaId")
                         .HasColumnType("uuid");
 
@@ -326,15 +324,38 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OnderzoeksvraagId");
+
                     b.HasIndex("SubthemaId");
 
                     b.ToTable("activiteiten", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Onderzoeksvraag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Probleemstelling")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SubthemaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Vraag")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubthemaId");
+
+                    b.ToTable("onderzoeksvragen", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subdoel", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("Leeftijd")
@@ -355,7 +376,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subthema", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("DuurWeken")
@@ -374,12 +394,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<string>("Onderzoeksvraag")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Probleemstelling")
-                        .HasColumnType("text");
-
                     b.Property<Guid>("ThemaId")
                         .HasColumnType("uuid");
 
@@ -395,7 +409,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Thema", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("DuurWeken")
@@ -425,7 +438,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Themadoel", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ThemaId")
@@ -649,6 +661,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Activiteit", b =>
                 {
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Onderzoeksvraag", null)
+                        .WithMany()
+                        .HasForeignKey("OnderzoeksvraagId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Jaarplanner.Domain.Schoolcontent.Subthema", null)
                         .WithMany("Activiteiten")
                         .HasForeignKey("SubthemaId")
@@ -661,7 +678,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                                 .HasColumnType("uuid");
 
                             b1.Property<Guid>("Id")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("uuid");
 
                             b1.Property<string>("AiMotivatie")
@@ -697,6 +713,15 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Doelkoppelingen");
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Onderzoeksvraag", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Subthema", null)
+                        .WithMany("Onderzoeksvragen")
+                        .HasForeignKey("SubthemaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subdoel", b =>
@@ -774,7 +799,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                                 .HasColumnType("uuid");
 
                             b1.Property<Guid>("Id")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("uuid");
 
                             b1.Property<string>("AiMotivatie")
@@ -872,6 +896,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subthema", b =>
                 {
                     b.Navigation("Activiteiten");
+
+                    b.Navigation("Onderzoeksvragen");
 
                     b.Navigation("Subdoelen");
                 });

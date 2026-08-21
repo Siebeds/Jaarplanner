@@ -21,8 +21,6 @@ public sealed class SubthemaConfiguration : IEntityTypeConfiguration<Subthema>
 
         builder.Property(s => s.ThemaId).IsRequired();
         builder.Property(s => s.Naam).HasMaxLength(256).IsRequired();
-        builder.Property(s => s.Probleemstelling);
-        builder.Property(s => s.Onderzoeksvraag);
         builder.Property(s => s.DuurWeken).IsRequired();
 
         // Class/age scoping is structural and required (Art. IX.2).
@@ -51,6 +49,14 @@ public sealed class SubthemaConfiguration : IEntityTypeConfiguration<Subthema>
             .OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(s => s.Activiteiten)
             .HasField("_activiteiten")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(s => s.Onderzoeksvragen)
+            .WithOne()
+            .HasForeignKey(ov => ov.SubthemaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(s => s.Onderzoeksvragen)
+            .HasField("_onderzoeksvragen")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
