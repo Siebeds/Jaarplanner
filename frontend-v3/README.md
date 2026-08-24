@@ -27,10 +27,13 @@ of in `nl.json`.
 
 ## Status
 
-Built: the shell, the navigation, and the Doelen screen (leerplandoelen, minimumdoelen, filters,
-detail). Thema's, Plan and Dekking are listed in the navigation and each routes to a page that says
-in visible text that it is not built yet.
+All four destinations are built: Doelen (leerplandoelen, minimumdoelen, filters, detail), Thema's
+(library, detail, AI suggestion review), Plan (year strip, periods, placement handling, generation)
+and Dekking (fraction, gap list, export).
 
-There is no klas or schooljaar picker. That is deliberate rather than missing: nothing on Doelen is
-scoped to a class, so a class chip here would imply a filter that is not being applied. It arrives
-with the first screen that is class scoped.
+Reads are complete. Writes are the ones that carry a decision: accepting or rejecting a doelsuggestie
+and a themaplaatsing, locking, moving, removing, and generating a plan. Creating and editing thema's,
+subthema's and activiteiten is not here yet, and neither is the Excel import.
+
+The klas picker appears only on Plan and Dekking. That is deliberate: nothing on Doelen or Thema's is
+scoped to a class, and a class chip there would show a filter that is not being applied.
