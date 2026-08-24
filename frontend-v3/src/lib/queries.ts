@@ -1,7 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import { get, naarQuery } from "./api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { del, get, naarQuery, post, put } from "./api";
 import type {
+  DekkingWeergave,
+  Dekkingsbereik,
+  DoelMatchResultaat,
+  DoelMatchSuggestie,
+  JaarplanGeneratieResultaat,
+  JaarplanWeergave,
   KlasWeergave,
+  KoppelingStatus,
+  Planningsrooster,
   LeerplandoelDetail,
   LeerplandoelFacetten,
   LeerplandoelFilterQuery,
@@ -10,6 +18,8 @@ import type {
   MinimumdoelFilterQuery,
   MinimumdoelenPagina,
   SchooljaarSamenvatting,
+  ThemaBibliotheekItem,
+  ThemaWeergave,
 } from "./types";
 
 /**
@@ -116,13 +126,172 @@ export function useSchooljaren() {
   });
 }
 
-export function useKlassen(schooljaarId: string | null) {
+/**
+ * Every klas, across school years.
+ *
+ * `/api/schooljaren/{id}/klassen` looks like the scoped version of this and is NOT: that route is
+ * POST only, for creating a klas, and a GET against it answers 405. Measured, not assumed. Each klas
+ * carries its own `schooljaarId`, so the caller narrows to one school year itself.
+ */
+export function useKlassen() {
   return useQuery({
-    queryKey: ["klassen", schooljaarId],
-    queryFn: () =>
-      schooljaarId
-        ? get<KlasWeergave[]>(`/api/schooljaren/${schooljaarId}/klassen`)
-        : get<KlasWeergave[]>("/api/klassen"),
+    queryKey: ["klassen"],
+    queryFn: () => get<KlasWeergave[]>("/api/klassen"),
     staleTime: 5 * 60_000,
+  });
+}
+
+// --- Schoolcontent ---
+
+export const themaSleutels = {
+  bibliotheek: () => ["thema-bibliotheek"] as const,
+  detail: (id: string) => ["thema", id] as const,
+  suggesties: (id: string) => ["doelsuggesties", id] as const,
+};
+
+export function useThemabibliotheek() {
+  return useQuery({
+    queryKey: themaSleutels.bibliotheek(),
+    queryFn: () => get<ThemaBibliotheekItem[]>("/api/themas/bibliotheek"),
+  });
+}
+
+export function useThema(themaId: string | undefined) {
+  return useQuery({
+    queryKey: themaSleutels.detail(themaId ?? ""),
+    queryFn: () => get<ThemaWeergave>(`/api/themas/${themaId}`),
+    enabled: Boolean(themaId),
+  });
+}
+
+export function useDoelsuggesties(themaId: string | undefined) {
+  return useQuery({
+    queryKey: themaSleutels.suggesties(themaId ?? ""),
+    queryFn: () => get<DoelMatchSuggestie[]>(`/api/themas/${themaId}/doelsuggesties`),
+    enabled: Boolean(themaId),
+  });
+}
+
+/**
+ * Asks the model for goal matches on one thema (FR-4.1).
+ *
+ * Everything it returns lands as `Voorgesteld` and nothing is applied (Art. IV): the mutation
+ * refreshes the suggestion list and the thema, and the teacher decides one by one.
+ */
+export function useGenereerDoelsuggesties(themaId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => post<DoelMatchResultaat>(`/api/themas/${themaId}/doelsuggesties/genereer`, {}),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: themaSleutels.suggesties(themaId) });
+      void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });
+    },
+  });
+}
+
+/** Records the teacher's verdict on one suggestion. The verdict is the point, so it is persisted. */
+export function useBeoordeelSuggestie(themaId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ suggestieId, status }: { suggestieId: string; status: KoppelingStatus }) =>
+      put<DoelMatchSuggestie>(`/api/themas/${themaId}/doelsuggesties/${suggestieId}/status`, { status }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: themaSleutels.suggesties(themaId) });
+      void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });
+      // Accepting a suggestion can make a leerplandoel covered, so the coverage figures move too.
+      void qc.invalidateQueries({ queryKey: ["dekking"] });
+    },
+  });
+}
+
+// --- Jaarplan ---
+
+export const jaarplanSleutels = {
+  plan: (klasId: string) => ["jaarplan", klasId] as const,
+  rooster: (schooljaarId: string, niveau: string) => ["rooster", schooljaarId, niveau] as const,
+};
+
+export function useJaarplan(klasId: string | null) {
+  return useQuery({
+    queryKey: jaarplanSleutels.plan(klasId ?? ""),
+    queryFn: () => get<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan`),
+    enabled: Boolean(klasId),
+  });
+}
+
+export function useRooster(schooljaarId: string | null, niveau = "Themaperiode") {
+  return useQuery({
+    queryKey: jaarplanSleutels.rooster(schooljaarId ?? "", niveau),
+    queryFn: () => get<Planningsrooster>(`/api/schooljaren/${schooljaarId}/rooster${naarQuery({ niveau })}`),
+    enabled: Boolean(schooljaarId),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * The four ways a teacher changes one placement, behind one hook.
+ *
+ * They share an invalidation because they share a consequence: every one of them can change which
+ * leerplandoelen the plan covers, so the dekking figures are refetched alongside the plan. Doing it
+ * here rather than at four call sites is what keeps a fifth caller from forgetting.
+ */
+export function usePlaatsingacties(klasId: string) {
+  const qc = useQueryClient();
+  const ververs = () => {
+    void qc.invalidateQueries({ queryKey: jaarplanSleutels.plan(klasId) });
+    void qc.invalidateQueries({ queryKey: ["dekking"] });
+  };
+
+  const beoordeel = useMutation({
+    mutationFn: ({ plaatsingId, status }: { plaatsingId: string; status: KoppelingStatus }) =>
+      put<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/status`, { status }),
+    onSuccess: ververs,
+  });
+
+  const vergrendel = useMutation({
+    mutationFn: ({ plaatsingId, vergrendeld }: { plaatsingId: string; vergrendeld: boolean }) =>
+      put<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/vergrendeling`, { vergrendeld }),
+    onSuccess: ververs,
+  });
+
+  const verplaats = useMutation({
+    mutationFn: ({ plaatsingId, blokStart }: { plaatsingId: string; blokStart: string }) =>
+      put<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/blok`, { blokStart }),
+    onSuccess: ververs,
+  });
+
+  const verwijder = useMutation({
+    mutationFn: (plaatsingId: string) => del<void>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}`),
+    onSuccess: ververs,
+  });
+
+  return { beoordeel, vergrendel, verplaats, verwijder };
+}
+
+/**
+ * Generates a year plan (FR-5).
+ *
+ * A run discards only placements that are still `Voorgesteld` and unlocked; anything the teacher has
+ * decided on survives (Art. IX.3). That is the server's rule, not this hook's, and the screen states
+ * it before the teacher presses the button.
+ */
+export function useGenereerJaarplan(klasId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => post<JaarplanGeneratieResultaat>(`/api/klassen/${klasId}/jaarplan/generatie`, {}),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: jaarplanSleutels.plan(klasId) });
+      void qc.invalidateQueries({ queryKey: ["dekking"] });
+    },
+  });
+}
+
+// --- Dekking ---
+
+export function useDekking(klasId: string | null, bereik: Dekkingsbereik) {
+  return useQuery({
+    queryKey: ["dekking", klasId, bereik],
+    queryFn: () => get<DekkingWeergave>(`/api/klassen/${klasId}/dekking${naarQuery({ bereik })}`),
+    enabled: Boolean(klasId),
   });
 }

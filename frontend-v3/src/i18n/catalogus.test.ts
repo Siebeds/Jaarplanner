@@ -87,6 +87,11 @@ describe("de componenten", () => {
       const inhoud = readFileSync(pad, "utf8");
       for (const [, tekst] of inhoud.matchAll(jsxTekst)) {
         if (/^[A-Za-z]+(\.[a-z]+)+$/.test(tekst)) continue; // a dotted identifier, not a sentence
+        // The surrounding \s* is allowed to cross a newline while the captured text is not, so a
+        // JSX expression that opens on one line and returns an element on the next gets caught as
+        // "text": `{(id) =>` / `klassen.length === 0 ? (` / `<p ...`. Dutch copy contains no "=" and
+        // never ends on an opening bracket, so those two exclusions cost the guard nothing.
+        if (tekst.includes("=") || tekst.endsWith("(")) continue;
         overtredingen.push(`${relative(SRC, pad)}: ${tekst}`);
       }
     }

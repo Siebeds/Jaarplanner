@@ -211,3 +211,237 @@ export interface SchooljaarSamenvatting {
   start: string;
   eind: string;
 }
+
+// --- Schoolcontent (thema, subthema, activiteit) ---
+
+export type ActiviteitType =
+  | "Experiment"
+  | "Prentenboek"
+  | "Hoek"
+  | "Uitstap"
+  | "Spel"
+  | "Waarneming"
+  | "Beweging"
+  | "Onderzoek";
+
+export interface DoelKoppelingWeergave {
+  id: string;
+  leerplandoelCode: string;
+  status: KoppelingStatus;
+  aiMotivatie: string | null;
+}
+
+export interface ThemadoelWeergave {
+  id: string;
+  koppeling: DoelKoppelingWeergave;
+}
+
+export interface SubdoelWeergave {
+  id: string;
+  leeftijd: string;
+  koppeling: DoelKoppelingWeergave;
+}
+
+export interface OnderzoeksvraagWeergave {
+  id: string;
+  vraag: string;
+  probleemstelling: string | null;
+}
+
+export interface ActiviteitWeergave {
+  id: string;
+  naam: string;
+  activiteitType: ActiviteitType;
+  hoek: string | null;
+  verwachteUitkomsten: string | null;
+  onderzoeksvraagId: string | null;
+  doelkoppelingen: DoelKoppelingWeergave[];
+}
+
+export interface SubthemaWeergave {
+  id: string;
+  themaId: string;
+  naam: string;
+  duurWeken: number;
+  klasId: string;
+  leeftijd: string;
+  onderzoeksvragen: OnderzoeksvraagWeergave[];
+  subdoelen: SubdoelWeergave[];
+  activiteiten: ActiviteitWeergave[];
+}
+
+export interface ThemaWeergave {
+  id: string;
+  naam: string;
+  duurWeken: number;
+  invalshoeken: string | null;
+  kernwoordenschat: string[];
+  rijkeWoordenschat: string[];
+  heeftVoldoendeThemadoelen: boolean;
+  themadoelen: ThemadoelWeergave[];
+  subthemas: SubthemaWeergave[];
+}
+
+export interface ThemaBibliotheekItem {
+  id: string;
+  naam: string;
+  duurWeken: number;
+  invalshoeken: string | null;
+  kernwoordenschat: string[];
+  rijkeWoordenschat: string[];
+  heeftVoldoendeThemadoelen: boolean;
+  themadoelen: ThemadoelWeergave[];
+  aantalAfgeleideKlassen: number;
+}
+
+// --- AI matching (FR-4). Advisory only: everything lands as Voorgesteld (Art. IV). ---
+
+export interface DoelMatchSuggestie {
+  id: string;
+  leerplandoelCode: string;
+  status: KoppelingStatus;
+  aiMotivatie: string | null;
+  tekst: string | null;
+  doelsoort: Doelsoort | null;
+}
+
+export interface DoelMatchResultaat {
+  isGeslaagd: boolean;
+  fout: string | null;
+  bewaard: DoelMatchSuggestie[];
+  overgeslagenOnbekend: string[];
+  overgeslagenDuplicaat: string[];
+  aantalKandidaten: number;
+}
+
+// --- Jaarplan (FR-5 to FR-8) ---
+
+export interface Themaplaatsing {
+  id: string;
+  themaId: string;
+  themaNaam: string;
+  blokNiveau: string;
+  blokStart: string;
+  blokEind: string | null;
+  blokOrdinaal: number | null;
+  isVervallen: boolean;
+  status: KoppelingStatus;
+  aiMotivatie: string | null;
+  vergrendeld: boolean;
+  doelcodes: string[];
+  duurWeken: number;
+}
+
+/**
+ * How full one planning period is.
+ *
+ * The key is `start`, NOT `blokStart` like every other jaarplan shape. Measured against the running
+ * API rather than copied from the other frontend, whose type says `blokStart` here and therefore
+ * silently matches nothing: every period renders as empty while the plan underneath is full.
+ */
+export interface Blokspreiding {
+  ordinaal: number;
+  start: string;
+  aantalThemas: number;
+  aantalDoelen: number;
+  benodigdeWeken: number;
+  beschikbareWeken: number;
+  isOverbelast: boolean;
+}
+
+export interface GeblokkeerdePeriode {
+  blokStart: string;
+  momentNaam: string;
+}
+
+export interface JaarplanWeergave {
+  klasId: string;
+  klasNaam: string;
+  schooljaarId: string;
+  schooljaarNaam: string;
+  blokindeling: string;
+  plaatsingen: Themaplaatsing[];
+  blokken: Blokspreiding[];
+  geblokkeerdePeriodes: GeblokkeerdePeriode[];
+}
+
+export interface Dekkingsvooruitzicht {
+  aantalGedektNu: number | null;
+  aantalGedektNaAanvaarding: number | null;
+  aantalLeerplandoelen: number;
+}
+
+export interface JaarplanGeneratieResultaat {
+  isGeslaagd: boolean;
+  fout: string | null;
+  jaarplan: JaarplanWeergave | null;
+  aantalNieuw: number;
+  aantalBehouden: number;
+  aantalVervangen: number;
+  onbekendeThemas: string[];
+  onbekendeBlokken: string[];
+  duplicaten: string[];
+  afgewezen: string[];
+  vooruitzicht: Dekkingsvooruitzicht | null;
+}
+
+// --- Planningsrooster: the periods a school year is cut into ---
+
+export interface Planningsblok {
+  ordinaal: number;
+  start: string;
+  eind: string;
+  ouderOrdinaal: number | null;
+  aantalOpenDagen: number;
+}
+
+export interface Planningsonderbreking {
+  naam: string;
+  start: string;
+  eind: string;
+}
+
+export interface Planningsrooster {
+  schooljaarId: string;
+  schooljaarNaam: string;
+  start: string;
+  eind: string;
+  niveau: string;
+  blokindeling: string;
+  blokken: Planningsblok[];
+  onderbrekingen: Planningsonderbreking[];
+}
+
+// --- Dekking (FR-9) ---
+
+export type Dekkingsbereik = "EigenJaarFase" | "HeelCurriculum";
+
+export interface LeerplandoelDekking {
+  code: string;
+  doelsoort: Doelsoort;
+  jaarFase: string;
+  domein: string;
+  subdomein: string;
+  tekst: string;
+  minimumdoelRef: string | null;
+  nietMeerInOpstap: boolean;
+  isGedekt: boolean;
+  dekkendeThemas: string[];
+}
+
+export interface DekkingWeergave {
+  klasId: string;
+  klasNaam: string;
+  schooljaarId: string;
+  schooljaarNaam: string;
+  bereik: Dekkingsbereik;
+  gemetenJaarFasen: string[];
+  beschikbareJaarFasen: string[];
+  isTerugvalNaarHeelCurriculum: boolean;
+  aantalBuitenBereik: number;
+  isBetrouwbaar: boolean;
+  aantalOnopgelosteVervallenPlaatsingen: number;
+  aantalGedekt: number | null;
+  aantalLeerplandoelen: number;
+  doelen: LeerplandoelDekking[];
+}
