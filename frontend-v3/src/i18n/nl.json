@@ -1,0 +1,80 @@
+{
+  "app": {
+    "naam": "Jaarplanner",
+    "naarInhoud": "Ga naar de inhoud"
+  },
+  "navigatie": {
+    "aria": "Hoofdnavigatie",
+    "doelen": "Doelen",
+    "themas": "Thema's",
+    "plan": "Plan",
+    "dekking": "Dekking",
+    "nogNietGebouwd": "Nog niet gebouwd"
+  },
+  "doelen": {
+    "titel": "Doelen",
+    "zoeken": "Zoek op code of tekst",
+    "zoekWissen": "Zoekterm wissen",
+    "filters": "Filters",
+    "filtersActief": "Filters, {aantal} actief",
+    "filtersTitel": "Filteren",
+    "filtersWissen": "Alles wissen",
+    "filtersToepassen": "Toon resultaten",
+    "toon": "Toon",
+    "leerplandoelen": "Leerplandoelen",
+    "minimumdoelen": "Minimumdoelen",
+    "jaarFase": "Jaar of fase",
+    "domein": "Domein",
+    "subdomein": "Subdomein",
+    "alle": "Alle",
+    "eenDoel": "1 doel",
+    "aantalDoelen": "{aantal} doelen",
+    "eenMinimumdoel": "1 minimumdoel",
+    "aantalMinimumdoelen": "{aantal} minimumdoelen",
+    "leegTitel": "Nog geen leerplandoelen",
+    "leegActie": "Importeer eerst de Op.stap-bestanden",
+    "geenTreffersTitel": "Geen doelen voor deze filters",
+    "geenTreffersActie": "Wis de filters",
+    "geenMinimumdoelenTitel": "Nog geen minimumdoelen",
+    "geenMinimumdoelenActie": "Die komen uit het decretale bestand",
+    "foutTitel": "Doelen niet geladen"
+  },
+  "doel": {
+    "titel": "Leerplandoel",
+    "kies": "Kies een doel",
+    "vervallen": "Vervallen in Op.stap",
+    "minimumdoel": "Minimumdoel",
+    "voorbeelden": "Voorbeelden",
+    "toelichting": "Toelichting",
+    "woordenschat": "Woordenschat",
+    "cluster": "Cluster",
+    "gerelateerd": "Zelfde minimumdoel",
+    "gebruiktIn": "Gebruikt in",
+    "nergensGebruikt": "Nog nergens gebruikt",
+    "koppelingKlas": "Klas {klas}",
+    "fout": "Doel niet geladen"
+  },
+  "doelsoort": {
+    "Minimumdoel": "Minimumdoel",
+    "Gemeenschappelijk": "Gemeenschappelijk",
+    "Verdieping": "Verdieping",
+    "Precurriculum": "Precurriculum",
+    "Specifiek": "Specifiek",
+    "AnderstaligeNieuwkomers": "Anderstalige nieuwkomers"
+  },
+  "status": {
+    "Voorgesteld": "Voorgesteld",
+    "Aanvaard": "Aanvaard",
+    "Geweigerd": "Geweigerd",
+    "Manueel": "Manueel"
+  },
+  "herkomst": {
+    "Themadoel": "Themadoel",
+    "Doelsuggestie": "Doelsuggestie",
+    "Subdoel": "Subdoel",
+    "Activiteit": "Activiteit"
+  },
+  "algemeen": {
+    "sluiten": "Sluiten"
+  }
+}
