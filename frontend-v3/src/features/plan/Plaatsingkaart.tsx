@@ -91,14 +91,14 @@ export function Plaatsingkaart({
           onClick={() => onVergrendel(!plaatsing.vergrendeld)}
           className={cn(
             "flex h-9 items-center gap-2 rounded-veld border px-3 text-meta transition-colors duration-150",
-            plaatsing.vergrendeld ? "border-inkt bg-vlak-diep text-inkt" : "border-lijn text-inkt-zacht hover:border-lijn-veld",
+            plaatsing.vergrendeld ? "border-accent bg-accent-zacht text-accent" : "border-lijn text-inkt-zacht hover:border-lijn-veld",
           )}
         >
           <span
             aria-hidden="true"
             className={cn(
               "h-2.5 w-2.5 rounded-full border",
-              plaatsing.vergrendeld ? "border-inkt bg-inkt" : "border-lijn-veld bg-transparent",
+              plaatsing.vergrendeld ? "border-accent bg-accent" : "border-lijn-veld bg-transparent",
             )}
           />
           {t("plan.vergrendeld")}

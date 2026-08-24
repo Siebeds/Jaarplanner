@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { del, get, naarQuery, post, put } from "./api";
 import type {
   DekkingWeergave,
@@ -20,6 +20,7 @@ import type {
   SchooljaarSamenvatting,
   ThemaBibliotheekItem,
   ThemaWeergave,
+  Weekplanning,
 } from "./types";
 
 /**
@@ -294,4 +295,82 @@ export function useDekking(klasId: string | null, bereik: Dekkingsbereik) {
     queryFn: () => get<DekkingWeergave>(`/api/klassen/${klasId}/dekking${naarQuery({ bereik })}`),
     enabled: Boolean(klasId),
   });
+}
+
+// --- Weekplanning (day level) ---
+
+export const weekplanningSleutel = (klasId: string, van: string, tot: string) =>
+  ["weekplanning", klasId, van, tot] as const;
+
+export function useWeekplanning(klasId: string | null, van: string, tot: string) {
+  return useQuery({
+    queryKey: weekplanningSleutel(klasId ?? "", van, tot),
+    queryFn: () => get<Weekplanning>(`/api/klassen/${klasId}/jaarplan/weekplanning${naarQuery({ van, tot })}`),
+    enabled: Boolean(klasId) && van.length > 0 && tot.length > 0,
+  });
+}
+
+/** One thema as it exists for one class: only that class's subthema's, with their activiteiten. */
+export function useThemaVoorKlas(themaId: string, klasId: string | null) {
+  return useQuery({
+    queryKey: ["thema-voor-klas", themaId, klasId],
+    queryFn: () => get<ThemaWeergave>(`/api/themas/${themaId}/voor-klas/${klasId}`),
+    enabled: Boolean(themaId) && Boolean(klasId),
+  });
+}
+
+/**
+ * Several thema's at once, each scoped to one class.
+ *
+ * `useQueries` rather than a loop of `useThemaVoorKlas`, because the number of thema's planned in a
+ * period is data and a hook count may not be. The set is small by construction: it is the thema's
+ * of ONE period, not of the year.
+ */
+export function useThemasVoorKlas(themaIds: string[], klasId: string | null) {
+  const resultaten = useQueries({
+    queries: themaIds.map((themaId) => ({
+      queryKey: ["thema-voor-klas", themaId, klasId],
+      queryFn: () => get<ThemaWeergave>(`/api/themas/${themaId}/voor-klas/${klasId}`),
+      enabled: Boolean(klasId),
+    })),
+  });
+  return {
+    themas: resultaten.map((r) => r.data).filter((t): t is ThemaWeergave => t !== undefined),
+    laadt: resultaten.some((r) => r.isPending),
+  };
+}
+
+/**
+ * Scheduling an activiteit onto a day, moving it, and taking it off again.
+ *
+ * Every one of the three invalidates the whole weekplanning family rather than one date range: a
+ * move takes an activiteit out of one week and puts it in another, and the week it left is usually
+ * not the week on screen.
+ */
+export function useDagacties(klasId: string) {
+  const qc = useQueryClient();
+  const ververs = () => {
+    void qc.invalidateQueries({ queryKey: ["weekplanning"] });
+    void qc.invalidateQueries({ queryKey: ["dekking"] });
+  };
+  const basis = `/api/klassen/${klasId}/jaarplan/weekplanning`;
+
+  const plaats = useMutation({
+    mutationFn: ({ activiteitId, datum, volgorde }: { activiteitId: string; datum: string; volgorde?: number }) =>
+      post<Weekplanning>(basis, { activiteitId, datum, volgorde: volgorde ?? 0 }),
+    onSuccess: ververs,
+  });
+
+  const verplaats = useMutation({
+    mutationFn: ({ plaatsingId, datum, volgorde }: { plaatsingId: string; datum: string; volgorde?: number }) =>
+      put<Weekplanning>(`${basis}/${plaatsingId}/dag`, { datum, volgorde: volgorde ?? 0 }),
+    onSuccess: ververs,
+  });
+
+  const verwijder = useMutation({
+    mutationFn: (plaatsingId: string) => del<void>(`${basis}/${plaatsingId}`),
+    onSuccess: ververs,
+  });
+
+  return { plaats, verplaats, verwijder };
 }

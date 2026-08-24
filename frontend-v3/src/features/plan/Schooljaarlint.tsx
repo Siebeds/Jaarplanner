@@ -45,7 +45,7 @@ export function Schooljaarlint({
                 aria-current={gekozen ? "true" : undefined}
                 className={cn(
                   "flex w-full flex-col gap-1.5 rounded-veld border px-2 py-2 text-left transition-colors duration-150",
-                  gekozen ? "border-inkt bg-vlak-diep" : "border-lijn bg-kaart hover:border-lijn-veld",
+                  gekozen ? "border-accent bg-accent-zacht" : "border-lijn bg-kaart hover:border-lijn-veld",
                 )}
               >
                 <span className="flex items-baseline justify-between gap-1">
@@ -59,7 +59,7 @@ export function Schooljaarlint({
                   <span
                     aria-hidden="true"
                     style={{ width: `${Math.min(100, Math.round(bezet * 100))}%` }}
-                    className={cn("h-full rounded-full", overbelast ? "bg-attentie" : "bg-inkt")}
+                    className={cn("h-full rounded-full", overbelast ? "bg-attentie" : "bg-accent")}
                   />
                 </span>
 

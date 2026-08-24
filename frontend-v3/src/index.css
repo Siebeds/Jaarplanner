@@ -44,6 +44,22 @@
      lightness measures 3.04:1 and is the lightest value that clears the floor. */
   --color-lijn-veld: hsl(220 10% 58%);
 
+  /* ── the one accent ────────────────────────────────────────────────────────────────── */
+  /* A deep teal, and the hue was chosen by elimination rather than by taste. Nine hues are
+     already spoken for by meaning, and the only two free arcs on the wheel are around 188
+     and around 295. 295 is 28 degrees from the Manueel purple, and that purple appears as a
+     dot on the very cards this accent would sit on, so it goes. 188 is 29 degrees from MD
+     blue, which always carries its own letters, and it happens to be the same family as the
+     desktop app's petrol, so the three frontends read as one product.
+
+     It is spent on exactly five things: the primary action, the active destination, the
+     focus ring, the fill of the year strip, and a selected row. Anywhere else and it starts
+     competing with the domain colours again, which is the whole thing this palette avoids. */
+  --color-accent: hsl(187 74% 27%);
+  --color-accent-op: hsl(0 0% 100%);
+  --color-accent-diep: hsl(187 78% 21%);
+  --color-accent-zacht: hsl(186 52% 94%);
+
   --color-inkt: hsl(220 18% 10%);
   --color-inkt-op: hsl(0 0% 100%);
   --color-inkt-zacht: hsl(220 9% 38%);
@@ -149,10 +165,10 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* One focus treatment everywhere, and it is the ink itself: on an achromatic interface a
-     coloured focus ring would be the only stray hue on the page. */
+  /* One focus treatment everywhere. It is the accent rather than the ink, so that a keyboard
+     user's position on the page is the same colour as the thing they are about to press. */
   :focus-visible {
-    outline: 2px solid var(--color-inkt);
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
     border-radius: 4px;
   }

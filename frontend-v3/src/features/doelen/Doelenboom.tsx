@@ -318,7 +318,7 @@ function Doelrij({
       aria-current={gekozen ? "true" : undefined}
       className={cn(
         "flex w-full gap-3 rounded-veld border-l-2 px-3 py-2.5 text-left transition-colors duration-150",
-        gekozen ? "border-inkt bg-vlak-diep" : "border-transparent hover:bg-vlak-diep/60",
+        gekozen ? "border-accent bg-accent-zacht" : "border-transparent hover:bg-vlak-diep/60",
       )}
     >
       <Doelsoortmerk soort={regel.doelsoort} className="mt-0.5" />

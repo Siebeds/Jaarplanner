@@ -24,7 +24,7 @@ export function Schil() {
       */}
       <a
         href="#inhoud"
-        className="sr-only focus:not-sr-only focus:m-4 focus:inline-block focus:rounded-veld focus:bg-inkt focus:px-4 focus:py-2.5 focus:text-body focus:font-medium focus:text-inkt-op"
+        className="sr-only focus:not-sr-only focus:m-4 focus:inline-block focus:rounded-veld focus:bg-accent focus:px-4 focus:py-2.5 focus:text-body focus:font-medium focus:text-accent-op"
       >
         {t("app.naarInhoud")}
       </a>

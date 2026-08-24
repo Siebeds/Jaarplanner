@@ -124,7 +124,31 @@
     "annuleer": "Annuleer",
     "bezig": "Bezig",
     "generatieGevolg": "Voorstellen die je nog niet beoordeelde en niet vergrendelde, verdwijnen uit het plan van {klas}. Wat je aanvaardde, weigerde of zelf plaatste blijft staan.",
-    "generatieMislukt": "Genereren niet gelukt"
+    "generatieMislukt": "Genereren niet gelukt",
+    "openPeriode": "Open periode"
+  },
+  "periode": {
+    "titel": "Periode",
+    "terug": "Heel het jaar",
+    "weergave": "Weergave",
+    "maand": "Maand",
+    "week": "Week",
+    "dag": "Dag",
+    "vorige": "Vorige",
+    "volgende": "Volgende",
+    "voegToe": "Toevoegen",
+    "geenLesdag": "Geen lesdag",
+    "gesloten": "Gesloten",
+    "nogMeer": "nog {aantal}",
+    "geenThemaInPeriode": "In deze periode staat nog geen thema gepland",
+    "geenActiviteiten": "Dit thema heeft nog geen activiteiten voor deze klas",
+    "buitenPeriode": "Dit thema loopt in een andere periode",
+    "doelen": "Doelen",
+    "andereDag": "Naar een andere dag",
+    "verplaats": "Verplaats",
+    "haalWeg": "Haal weg",
+    "mislukt": "Niet gelukt",
+    "voegToeOp": "Activiteit toevoegen op {dag}"
   },
   "dekking": {
     "titel": "Dekking",

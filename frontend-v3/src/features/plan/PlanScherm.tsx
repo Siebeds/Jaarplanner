@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Klaskiezer } from "../../app/Klaskiezer";
 import { Knop } from "../../components/ui/Knop";
 import { Blad } from "../../components/ui/Blad";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
+import { IcoonPijlRechts } from "../../components/Iconen";
 import { useGenereerJaarplan, useJaarplan, usePlaatsingacties, useRooster } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
 import { ApiError } from "../../lib/api";
@@ -104,13 +106,23 @@ export function PlanScherm() {
                 return (
                   <li key={blok.start} id={`periode-${blok.start}`} className="scroll-mt-44">
                     <header className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                      <h2
-                        className={cn(
-                          "font-display text-sectie",
-                          gekozenBlok === blok.start ? "text-inkt" : "text-inkt-zacht",
-                        )}
-                      >
-                        {periode(blok.start, blok.eind)}
+                      {/* The heading is the way into the period. A separate "open" button beside it
+                          would be a second control for the thing the teacher already pressed. */}
+                      <h2>
+                        <Link
+                          to={`/plan/periode/${blok.start}`}
+                          className={cn(
+                            "group inline-flex items-baseline gap-1.5 font-display text-sectie transition-colors duration-150 hover:text-accent",
+                            gekozenBlok === blok.start ? "text-inkt" : "text-inkt-zacht",
+                          )}
+                        >
+                          {periode(blok.start, blok.eind)}
+                          <IcoonPijlRechts
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5"
+                          />
+                          <span className="sr-only">{t("plan.openPeriode")}</span>
+                        </Link>
                       </h2>
                       {moment ? (
                         <span className="rounded bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-medium text-attentie-inkt">

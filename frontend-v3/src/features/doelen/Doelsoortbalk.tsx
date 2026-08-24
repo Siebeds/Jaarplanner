@@ -71,7 +71,7 @@ export function Doelsoortbalk({
                 onClick={() => onKies(gekozen ? undefined : soort)}
                 className={cn(
                   "flex h-8 items-center gap-1.5 rounded-full border px-2 transition-colors duration-150",
-                  gekozen ? "border-inkt bg-vlak-diep" : "border-lijn bg-kaart hover:border-lijn-veld",
+                  gekozen ? "border-accent bg-accent-zacht" : "border-lijn bg-kaart hover:border-lijn-veld",
                 )}
               >
                 <Doelsoortmerk soort={soort} />

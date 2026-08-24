@@ -90,6 +90,23 @@ export function IcoonFilter(props: IconProps) {
   );
 }
 
+export function IcoonPlus(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M12 6v12M6 12h12" />
+    </Icoon>
+  );
+}
+
+/** Rotated by the caller to point the other way; one shape, so the direction reads as a direction. */
+export function IcoonPijlLinks(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="m14.5 5.5-6.5 6.5 6.5 6.5" />
+    </Icoon>
+  );
+}
+
 export function IcoonKruis(props: IconProps) {
   return (
     <Icoon {...props}>

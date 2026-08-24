@@ -445,3 +445,44 @@ export interface DekkingWeergave {
   aantalLeerplandoelen: number;
   doelen: LeerplandoelDekking[];
 }
+
+// --- Weekplanning: activiteiten on individual teaching days (E9-03, FR-6.2/FR-7.2) ---
+
+export interface GeplandeActiviteit {
+  plaatsingId: string;
+  activiteitId: string;
+  activiteitNaam: string;
+  activiteitType: string;
+  subthemaId: string;
+  subthemaNaam: string;
+  themaId: string;
+  themaNaam: string;
+  volgorde: number;
+  status: string;
+  doelcodes: string[];
+  /**
+   * The activiteit's thema is not planned in the themaperiode this day falls in.
+   *
+   * Not an error and not blocked: a teacher may deliberately run one activity outside its own
+   * period. It is surfaced because it is the kind of thing that happens by accident far more often
+   * than on purpose.
+   */
+  valtBuitenThemaperiode: boolean;
+}
+
+export interface Dagweergave {
+  datum: string;
+  isLesdag: boolean;
+  sluitingsnaam: string | null;
+  activiteiten: GeplandeActiviteit[];
+}
+
+export interface Weekplanning {
+  klasId: string;
+  klasNaam: string;
+  schooljaarId: string;
+  schooljaarNaam: string;
+  van: string;
+  tot: string;
+  dagen: Dagweergave[];
+}

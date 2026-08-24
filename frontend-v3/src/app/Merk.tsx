@@ -14,7 +14,7 @@ export function Merk() {
         {t("app.naam")}
       </span>
       <span aria-hidden="true" className="flex h-[3px] w-[104px] gap-[3px]">
-        <span className="h-full flex-[4] rounded-full bg-inkt" />
+        <span className="h-full flex-[4] rounded-full bg-accent" />
         <span className="h-full flex-[3] rounded-full bg-lijn-sterk" />
         <span className="h-full flex-[5] rounded-full bg-lijn-sterk" />
       </span>

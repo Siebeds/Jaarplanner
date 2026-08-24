@@ -40,7 +40,7 @@ export function Navigatie() {
                   "group relative flex min-h-14 flex-col items-center justify-center gap-1 text-micro tracking-normal",
                   "lg:min-h-11 lg:flex-row lg:justify-start lg:gap-3 lg:rounded-veld lg:px-3 lg:text-body lg:font-medium",
                   "transition-colors duration-150",
-                  isActive ? "text-inkt lg:bg-vlak-diep" : "text-inkt-zacht hover:text-inkt lg:hover:bg-vlak",
+                  isActive ? "text-accent lg:bg-accent-zacht" : "text-inkt-zacht hover:text-inkt lg:hover:bg-vlak",
                 )
               }
             >
@@ -51,7 +51,7 @@ export function Navigatie() {
                   <span
                     aria-hidden="true"
                     className={cn(
-                      "absolute rounded-full bg-inkt transition-opacity duration-150",
+                      "absolute rounded-full bg-accent transition-opacity duration-150",
                       "inset-x-5 top-0 h-[2px] lg:inset-x-auto lg:inset-y-1.5 lg:left-0 lg:h-auto lg:w-[2px]",
                       isActive ? "opacity-100" : "opacity-0",
                     )}

@@ -123,7 +123,7 @@ export function DoelenScherm() {
               {aantalFilters > 0 ? (
                 <span
                   aria-hidden="true"
-                  className="mono pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-inkt px-1 text-[0.625rem] font-medium text-inkt-op"
+                  className="mono pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[0.625rem] font-medium text-accent-op"
                 >
                   {aantalFilters}
                 </span>

@@ -5,6 +5,7 @@ import { DoelenScherm } from "./features/doelen/DoelenScherm";
 import { ThemasScherm } from "./features/themas/ThemasScherm";
 import { ThemadetailScherm } from "./features/themas/ThemadetailScherm";
 import { PlanScherm } from "./features/plan/PlanScherm";
+import { Periodescherm } from "./features/plan/Periodescherm";
 import { DekkingScherm } from "./features/dekking/DekkingScherm";
 
 const queryClient = new QueryClient({
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="themas" element={<ThemasScherm />} />
             <Route path="themas/:themaId" element={<ThemadetailScherm />} />
             <Route path="plan" element={<PlanScherm />} />
+            <Route path="plan/periode/:datum" element={<Periodescherm />} />
             <Route path="dekking" element={<DekkingScherm />} />
             <Route path="*" element={<Navigate to="/doelen" replace />} />
           </Route>

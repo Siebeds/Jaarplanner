@@ -11,7 +11,7 @@ import { cn } from "../../lib/cn";
 type Rang = "hoofd" | "rustig" | "stil";
 
 const RANG: Record<Rang, string> = {
-  hoofd: "bg-inkt text-inkt-op hover:bg-inkt/90 active:bg-inkt",
+  hoofd: "bg-accent text-accent-op hover:bg-accent-diep active:bg-accent-diep",
   rustig: "bg-kaart text-inkt border border-lijn-veld hover:border-inkt hover:bg-vlak active:bg-vlak-diep",
   stil: "text-inkt-zacht hover:bg-vlak-diep hover:text-inkt active:bg-vlak-diep",
 };
