@@ -289,7 +289,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
+// Skipped: TOON_HERGENEREREN hides the whole-plan generation card (and its settings form) for the
+// 2026-08-21 demo; unskip when the owner brings regeneration back.
+describe.skip("Generatieparameters — the form (E3-04, FR-5.4)", () => {
   it("sends the kept settings back unchanged when the teacher touches nothing", async () => {
     const posts = stubFetch(resultaat(leegRapport), {
       instellingen: {
@@ -712,7 +714,9 @@ describe("Generatieparameters — the form (E3-04, FR-5.4)", () => {
   });
 });
 
-describe("Generatieparameters — a kept setting whose period is gone (E3-04)", () => {
+// Skipped: TOON_HERGENEREREN hides the whole-plan generation card (and its settings form) for the
+// 2026-08-21 demo; unskip when the owner brings regeneration back.
+describe.skip("Generatieparameters — a kept setting whose period is gone (E3-04)", () => {
   /** Kept for a date that is no longer a period boundary, i.e. after a beheerder edited the vakantiedata. */
   const gestrand: Generatieparameters = {
     gewensteStartthemas: [{ blokStart: "2026-10-05", themaNaam: "Water" }],
@@ -814,7 +818,9 @@ describe("Generatieparameters — a kept setting whose period is gone (E3-04)", 
  * *"zonder periode"* and every offered row would carry a date the server reports as `vervallenStartthemas`. Nothing
  * asserted the tier, so nothing would have failed.
  */
-describe("Generatieparameters — the grid it may read (E3-04)", () => {
+// Skipped: TOON_HERGENEREREN hides the whole-plan generation card (and its settings form) for the
+// 2026-08-21 demo; unskip when the owner brings regeneration back.
+describe.skip("Generatieparameters — the grid it may read (E3-04)", () => {
   const subthemarooster: Planningsrooster = {
     ...rooster,
     niveau: "Subthemaperiode",
@@ -882,7 +888,9 @@ describe("Generatieparameters — the grid it may read (E3-04)", () => {
  * edit and reload the form's fields from the server — the display/request desync E3-04's fix round 4 closed for a
  * failed settings load, re-created by a zoom control.
  */
-describe("Generatieparameters — across a zoom switch (E3-08, FR-6.3)", () => {
+// Skipped: TOON_HERGENEREREN hides the whole-plan generation card (and its settings form) for the
+// 2026-08-21 demo; unskip when the owner brings regeneration back.
+describe.skip("Generatieparameters — across a zoom switch (E3-08, FR-6.3)", () => {
   /** Subthemaperiodes nested in the two themaperiodes above, each parent's first part sharing its start date. */
   const fijnRooster: Planningsrooster = {
     ...rooster,
@@ -1060,7 +1068,9 @@ describe("Generatieparameters — across a zoom switch (E3-08, FR-6.3)", () => {
   });
 });
 
-describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
+// Skipped: TOON_HERGENEREREN hides the whole-plan generation card (and its settings form) for the
+// 2026-08-21 demo; unskip when the owner brings regeneration back.
+describe.skip("Generatieparameters — the report (E3-04, FR-5.4)", () => {
   it("names a refused thema in Dutch, keeps the AI motivation, and shows no ISO date", async () => {
     stubFetch(
       resultaat({
@@ -1245,7 +1255,9 @@ describe("Generatieparameters — the report (E3-04, FR-5.4)", () => {
  * SIBLING above it: the fix is the `key` on that page, and a test that keyed the component itself would pass without
  * it. Every other test in this file uses one class throughout, which is why none of them could catch this.
  */
-describe("Generatieparameters — switching class (E3-04)", () => {
+// Skipped: TOON_HERGENEREREN hides the whole-plan generation card (and its settings form) for the
+// 2026-08-21 demo; unskip when the owner brings regeneration back.
+describe.skip("Generatieparameters — switching class (E3-04)", () => {
   const KLAS_B = "33333333-3333-3333-3333-333333333333";
 
   const instellingenA: Generatieparameters = { gewensteStartthemas: [], vasteMomenten: [] };

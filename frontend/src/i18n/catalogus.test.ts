@@ -543,13 +543,22 @@ describe("nl.json — no dead keys under themabeheer", () => {
    * `activiteitType.*` is deliberately **not** covered: its keys are reached by template
    * (`t(`activiteitType.${...}`)`), so a text scan cannot see them. That union is pinned by the compiler
    * instead, in `Subthemakaart`'s `typeSleutel`.
+   *
+   * **Widened to `jaarplan/` too (2026-08-23, antagonist MINOR-4).** `ThemakaartSubthemas.tsx` renders this
+   * namespace's doelkoppeling copy from a second screen (the jaarplan board), reusing the same components and
+   * hooks `/themas` does — see its own docstring. Scoped to `themas/` alone, the guard's premise ("this
+   * namespace lives in this feature") stopped being true of the product without the guard noticing, which
+   * would have let a future `/themas`-only removal call a key dead while the jaarplan board still rendered it.
    */
   it("renders every themabeheer.* key somewhere in the feature", async () => {
-    const bestanden = import.meta.glob("../features/themas/*.{ts,tsx}", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    }) as Record<string, string>;
+    const bestanden = import.meta.glob(
+      ["../features/themas/*.{ts,tsx}", "../features/jaarplan/*.{ts,tsx}"],
+      {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      },
+    ) as Record<string, string>;
 
     const bron = Object.entries(bestanden)
       .filter(([pad]) => !pad.includes(".test.") && !pad.includes("testdata"))

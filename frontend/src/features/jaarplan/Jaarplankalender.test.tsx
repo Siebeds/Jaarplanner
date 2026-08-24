@@ -442,11 +442,18 @@ describe("Jaarplankalender", () => {
     // rather than weaker: the FULL set of controls is pinned, so a dismiss, close or "later" affordance added
     // as a button changes the set and fails. The link check stays for the same reason it was written: a
     // dismiss control smuggled in as an <a>.
+    //
+    // "Subthema's" joins the set (2026-08-23): it is not a dismiss/close/later affordance — it opens the
+    // class's own subthema's for doelkoppeling, a fact about the KLAS rather than about this placement's
+    // staleness, and `Themakaart.tsx` deliberately does not gate it on `isVervallen` (antagonist MAJOR-4).
     expect(
       within(melding)
         .getAllByRole("button")
         .map((control) => control.getAttribute("aria-label") ?? control.textContent),
-    ).toEqual([t("kalender.aanpassenLabel", { thema: "Feesten in december" })]);
+    ).toEqual([
+      t("kalender.aanpassenLabel", { thema: "Feesten in december" }),
+      t("kalender.subthemasLabel", { thema: "Feesten in december" }),
+    ]);
     expect(within(melding).queryByRole("link")).toBeNull();
 
     // It must NOT claim a coverage figure: this thema sits in no period, so under Art. V.1 nothing it
@@ -508,7 +515,8 @@ describe("Jaarplankalender", () => {
     expect(screen.getByText("Geweigerd")).toBeInTheDocument();
   });
 
-  it("reports the spreading measurement after a generation run, with no verdict attached", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("reports the spreading measurement after a generation run, with no verdict attached", async () => {
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
       // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
@@ -573,7 +581,8 @@ describe("Jaarplankalender", () => {
     expect(screen.getByText(/Wat een goede spreiding is, beslist de school/)).toBeInTheDocument();
   });
 
-  it("toont de dekkingscijfers meteen na een geslaagde generatie, niet de verouderingsmelding", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("toont de dekkingscijfers meteen na een geslaagde generatie, niet de verouderingsmelding", async () => {
     // **The regression test for the defect fix round 1 introduced** (antagonist round 2). The panel withholds its
     // measurements when the plan has changed since the run, compared by signature against `jaarplan.data`. But
     // `useGenereerJaarplan` only INVALIDATED that query, and TanStack keeps the previous data for the whole refetch —
@@ -686,7 +695,8 @@ describe("Jaarplankalender", () => {
     };
   }
 
-  it("meldt verouderde metingen wanneer een AL MANUELE plaatsing naar een andere periode verhuist", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("meldt verouderde metingen wanneer een AL MANUELE plaatsing naar een andere periode verhuist", async () => {
     // **Round 3's MAJOR 1, end to end.** The signature used to be blind to `blokStart` on the argument that a move
     // sets the status to `Manueel` — which is a no-op for a placement that is already `Manueel`, i.e. every kept hand
     // placement. The panel then went on printing this run's spreading and dekking over a board that had moved.
@@ -744,7 +754,8 @@ describe("Jaarplankalender", () => {
     expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
   });
 
-  it("meldt een ander gemeten jaar wanneer de leerkracht de kleuterjaarkiezer na de run verzet", async () => {
+  // Skipped: the kleuterjaar-chooser (Jaarfasekiezer) was removed from this screen for the 2026-08-21 demo.
+  it.skip("meldt een ander gemeten jaar wanneer de leerkracht de kleuterjaarkiezer na de run verzet", async () => {
     // The second reason, and it needs its own sentence: "je hebt het jaarplan aangepast" is false here. The plan is
     // untouched; the DENOMINATOR moved, which is the two-denominator state in a second guise.
     const plan = maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]);
@@ -800,7 +811,8 @@ describe("Jaarplankalender", () => {
     expect(screen.queryByText(/Nu gedekt/)).not.toBeInTheDocument();
   });
 
-  it("meldt GEEN ander gemeten jaar zolang de tool niet weet welke jaren deze klas heeft", async () => {
+  // Skipped: the kleuterjaar-chooser (Jaarfasekiezer) was removed from this screen for the 2026-08-21 demo.
+  it.skip("meldt GEEN ander gemeten jaar zolang de tool niet weet welke jaren deze klas heeft", async () => {
     // The round-3 guard, and the reason it exists. `beschikbareJaarFasen` is latched from the first /dekking answer,
     // so it is `[]` until that lands — and permanently `[]` if the call keeps failing. Comparing `[]` against a
     // server that reported `["L3"]` mismatches, so the panel told a teacher they had changed the measured year while
@@ -839,7 +851,8 @@ describe("Jaarplankalender", () => {
     expect(screen.queryByText(/kloppen niet meer/)).not.toBeInTheDocument();
   });
 
-  it("shows Dutch copy on a 422 and never echoes the English diagnostic", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("shows Dutch copy on a 422 and never echoes the English diagnostic", async () => {
     stubFetch(maakJaarplan([]), 422);
     renderKalender();
 
@@ -855,7 +868,8 @@ describe("Jaarplankalender", () => {
     expect(screen.queryByText(/Invalid AI response/)).toBeNull();
   });
 
-  it("distinguishes an unconfigured tool from a bad AI answer", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("distinguishes an unconfigured tool from a bad AI answer", async () => {
     // With no AzureAI:ApiKey the client throws and this surfaces as a 500. Telling the teacher "de AI gaf geen
     // bruikbaar antwoord" would blame the model for a configuration fault and invite a pointless retry loop.
     stubFetch(maakJaarplan([]), 500);
@@ -878,7 +892,8 @@ describe("Jaarplankalender", () => {
    * singular and rendered it through `tAantal`; **this test is what stops the call site regressing**, because the guard
    * only proves a singular EXISTS, never that anything calls it, so reverting to `t(...)` would leave the suite green.
    */
-  it("uses the singular when the year derives a single themaperiode", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("uses the singular when the year derives a single themaperiode", async () => {
     const resultaat: Generatieresultaat = {
       isGeslaagd: true,
       // E4-05: a whole-plan run, so nothing is out of scope and no period is named.
@@ -1919,7 +1934,8 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
       name: new RegExp(`^(${t("kalender.ribbonLabel")}|${t("kalender.ribbonLabelFijn")})$`),
     });
 
-  it("asks the API for the chosen tier and draws the whole screen from that one answer", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("asks the API for the chosen tier and draws the whole screen from that one answer", async () => {
     const roosterUrls = stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
     renderKalender();
 
@@ -1968,7 +1984,8 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     expect(knop("kalender.weergaveFijn")).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("caches the two tiers apart, so switching back is instant and never shows the wrong grain", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("caches the two tiers apart, so switching back is instant and never shows the wrong grain", async () => {
     const roosterUrls = stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
     renderKalender();
 
@@ -2110,7 +2127,8 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
    * button and their year plan vanished with nothing left to press, recoverable only by reloading. Reproduced in a
    * browser against a 500 for `?niveau=Subthemaperiode` before being fixed here.
    */
-  it("keeps the plan and a way forward when the chosen tier fails to load", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("keeps the plan and a way forward when the chosen tier fails to load", async () => {
     stubZoom(
       maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]),
       (url) => url.includes("niveau=Subthemaperiode"),
@@ -2180,7 +2198,8 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
    * failed first load of the coarse tier sends the teacher to the fine one, which is where the lie lived. Hence the
    * asymmetric fault — only `niveau=Themaperiode` fails — which neither of the round-1 failure tests exercises.
    */
-  it("refuses to state the settings, and to generate, when the generation tier's grid is the one that failed", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("refuses to state the settings, and to generate, when the generation tier's grid is the one that failed", async () => {
     stubZoom(
       maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]),
       (url) => url.includes("niveau=Themaperiode"),
@@ -2245,7 +2264,8 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
    * refusal and its explanation now share one condition, and this test asserts both halves, having previously asserted
    * neither while driving straight through the branch.
    */
-  it("says nothing was changed, rather than where to go, when the tier is one it cannot recognise", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("says nothing was changed, rather than where to go, when the tier is one it cannot recognise", async () => {
     stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), undefined, undefined, {
       ...rooster,
       niveau: "Kwartaal",
@@ -2283,7 +2303,8 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
    * "Je ziet nog de themaperiodes" over nineteen subthemaperiode columns: both clauses false, and a regression in
    * honesty on the version that merely blanked the screen.
    */
-  it("does not claim the other tier is showing when a refresh of the current one failed", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("does not claim the other tier is showing when a refresh of the current one failed", async () => {
     let faal = false;
     stubZoom(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]), () => faal);
     const { queryClient } = renderKalender();
@@ -2377,6 +2398,10 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
 
     // Still not dismissible, at this tier either: the full set of controls in the notice is the card's own disclosure
     // plus what its open panel offers, and nothing that closes, hides or defers the notice itself.
+    //
+    // "Subthema's" joins the set (2026-08-23, antagonist MAJOR-4) for the same reason the coarse-tier test
+    // gives: it is a fact about the klas, not about this placement's staleness, and is deliberately not gated
+    // on `isVervallen`.
     expect(
       within(melding)
         .getAllByRole("button")
@@ -2384,6 +2409,7 @@ describe("Jaarplankalender — zoomniveaus (E3-08, FR-6.3)", () => {
     ).toEqual([
       t("kalender.aanpassenLabel", { thema: "Feesten in december" }),
       t("kalender.uitJaarplanHalen"),
+      t("kalender.subthemasLabel", { thema: "Feesten in december" }),
     ]);
     expect(within(melding).queryByRole("link")).toBeNull();
   });
@@ -4100,7 +4126,8 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
    * exactly the kind of detail Art. XII's "never colour alone" depends on and exactly the kind a passing suite was
    * silent about.
    */
-  it("marks te vol on the year strip with the same glyph the board uses, plus a word for screen readers", async () => {
+  // Skipped: the Jaarspine periode-balk was removed from this screen for the 2026-08-21 demo.
+  it.skip("marks te vol on the year strip with the same glyph the board uses, plus a word for screen readers", async () => {
     stubFetch(maakJaarplan(teVolPlaatsingen()));
     renderKalender();
 
@@ -4317,7 +4344,8 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     return urls;
   }
 
-  it("offers the kleuterjaar choice when the class has more than one, and narrows what is measured", async () => {
+  // Skipped: the kleuterjaar-chooser (Jaarfasekiezer) was removed from this screen for the 2026-08-21 demo.
+  it.skip("offers the kleuterjaar choice when the class has more than one, and narrows what is measured", async () => {
     const urls = stubMetDekking((jaarFase) =>
       jaarFase === "K3"
         ? { ...KLEUTERDEKKING, gemetenJaarFasen: ["K3"], aantalGedekt: 4, aantalLeerplandoelen: 15 }
@@ -4350,7 +4378,8 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     expect(urls.some((url) => url.includes("jaarFase=K3"))).toBe(true);
   });
 
-  it("carries the narrowing into the link, so the two screens cannot report different numbers", async () => {
+  // Skipped: the kleuterjaar-chooser (Jaarfasekiezer) was removed from this screen for the 2026-08-21 demo.
+  it.skip("carries the narrowing into the link, so the two screens cannot report different numbers", async () => {
     stubMetDekking((jaarFase) =>
       jaarFase === "K3"
         ? { ...KLEUTERDEKKING, gemetenJaarFasen: ["K3"], aantalGedekt: 4, aantalLeerplandoelen: 15 }
@@ -4395,7 +4424,8 @@ describe("Jaarplankalender — knelpunt-signalering (E3-09, FR-6.4)", () => {
     expect(screen.queryByText(/nog niet gedekt door dit jaarplan/)).toBeNull();
   });
 
-  it("keeps the chooser once narrowed, even if the chosen year turns out to hold no goals", async () => {
+  // Skipped: the kleuterjaar-chooser (Jaarfasekiezer) was removed from this screen for the 2026-08-21 demo.
+  it.skip("keeps the chooser once narrowed, even if the chosen year turns out to hold no goals", async () => {
     // The trap version of the test above: if the control vanished on the state it produced, there would be no way back
     // to "Alle drie" and the teacher would be stuck measuring an empty year.
     stubMetDekking((jaarFase) =>
@@ -4627,7 +4657,8 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
     expect(queryClient.getQueryData(EIGEN_SCOPE)).toEqual(VOOR_BEWERKING);
   });
 
-  it("drops the figure after a generation run, which replaces the placements it was computed from", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("drops the figure after a generation run, which replaces the placements it was computed from", async () => {
     // Antagonist round 1 [MINOR]: this branch of the change was pinned by nothing. Deleting the call in
     // `useGenereerJaarplan` left all 439 tests green, and the mutation check in the worklog only ever covered the
     // shared placement hook, which is a claim about one of two call sites presented as a claim about both.
@@ -4668,7 +4699,8 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
     expect(queryClient.getQueryData(ANDERE_KLAS)).toEqual({ aantalGedekt: 3, aantalLeerplandoelen: 12 });
   });
 
-  it("keeps the kleuterjaar chooser on screen across an edit, instead of blinking out with the refetch", async () => {
+  // Skipped: the kleuterjaar-chooser (Jaarfasekiezer) was removed from this screen for the 2026-08-21 demo.
+  it.skip("keeps the kleuterjaar chooser on screen across an edit, instead of blinking out with the refetch", async () => {
     /*
       **The one behavioural guard E9-06 added to this screen, and nothing pinned it** (audit MAJOR, mutation-proven:
       reverting the latch left all 695 tests green).
@@ -4813,7 +4845,9 @@ describe("Jaarplankalender — de dekking volgt de bewerking (E4-01, FR-6.5/FR-7
  * one rule that E3-09 spent a story deleting from this screen. The copy is therefore a rule and not a prediction, and
  * the last test below is what stops a later author "improving" it into one.
  */
-describe("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.1)", () => {
+// Skipped: TOON_HERGENEREREN hides the whole-plan generation card for the 2026-08-21 demo; unskip when the
+// owner brings regeneration back.
+describe.skip("Jaarplankalender — het hele jaarplan opnieuw genereren (E4-04, FR-8.1)", () => {
   it("offers a plain first run, and says nothing about replacing, while the class has no plan", async () => {
     stubFetch(maakJaarplan([]));
     renderKalender();
@@ -5148,7 +5182,8 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     };
   }
 
-  it("geeft elke themaperiode een eigen knop en stuurt de startdatum van precies die periode", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("geeft elke themaperiode een eigen knop en stuurt de startdatum van precies die periode", async () => {
     const plan = maakJaarplan([]);
     const doel = rooster.blokken[1];
     const { urls } = stubMetPeriodegeneratie(plan, periodeResultaat(plan, doel.start));
@@ -5168,7 +5203,8 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     expect(urls[0]).toContain("/periodes/" + doel.start + "/generatie");
   });
 
-  it("zegt in het rapport welke periode opnieuw gegenereerd is, en dat de rest ongemoeid bleef", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("zegt in het rapport welke periode opnieuw gegenereerd is, en dat de rest ongemoeid bleef", async () => {
     const plan = maakJaarplan([]);
     const doel = rooster.blokken[1];
     stubMetPeriodegeneratie(plan, periodeResultaat(plan, doel.start));
@@ -5186,7 +5222,8 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     );
   });
 
-  it("noemt een voorstel voor een andere periode apart, niet als overgeslagen", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("noemt een voorstel voor een andere periode apart, niet als overgeslagen", async () => {
     const plan = maakJaarplan([]);
     const doel = rooster.blokken[0];
     stubMetPeriodegeneratie(
@@ -5225,7 +5262,8 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     ).toBeNull();
   });
 
-  it("zegt in de kolom zelf waarom een periodehergeneratie geweigerd is", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("zegt in de kolom zelf waarom een periodehergeneratie geweigerd is", async () => {
     const plan = maakJaarplan([]);
     // The fixture year has two periods; the second is the one that is not also the default target elsewhere.
     const doel = rooster.blokken[1];
@@ -5246,7 +5284,8 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     expect(screen.getAllByText(t("kalender.periodeBezetGeweigerd"))).toHaveLength(1);
   });
 
-  it("houdt knop, kiezer en dropzone weg uit een bezette periode en noemt het vaste moment", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("houdt knop, kiezer en dropzone weg uit een bezette periode en noemt het vaste moment", async () => {
     const bezet = rooster.blokken[1];
     const plan: Jaarplan = {
       ...maakJaarplan([]),
@@ -5277,7 +5316,8 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     expect(screen.getByText(t("kalender.bezetteperiodesUitleg"))).toBeInTheDocument();
   });
 
-  it("zegt niets over bezette periodes zolang er geen enkele bezet is", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("zegt niets over bezette periodes zolang er geen enkele bezet is", async () => {
     const plan = maakJaarplan([]);
     stubMetPeriodegeneratie(plan, periodeResultaat(plan, rooster.blokken[0].start));
 
@@ -5311,7 +5351,8 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     ).toBeNull();
   });
 
-  it("laat maar één periode tegelijk lopen en laat alleen die periode zich bezig noemen", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("laat maar één periode tegelijk lopen en laat alleen die periode zich bezig noemen", async () => {
     // Found in the browser pass rather than by a test, which is why it has one now: a second press while the first
     // request was still open moved the "Bezig" label to the new column and left the first looking idle mid-run.
     const plan = maakJaarplan([]);
@@ -5464,7 +5505,8 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     expect(screen.queryByText(/SERVERDETAIL-NIET-TONEN/)).toBeNull();
   });
 
-  it("legt bezet niet uit op de fijne weergave, waar geen kolom de markering draagt", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("legt bezet niet uit op de fijne weergave, waar geen kolom de markering draagt", async () => {
     // The tier gate (antagonist round 1, MINOR): a themaperiode's own start date is ALSO the start of its first
     // subthemaperiode, so the naive check was true at the fine tier while the marker is deliberately withheld there.
     // The board then explained something no column was showing.
@@ -5715,7 +5757,8 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
     ).toBeInTheDocument();
   });
 
-  it("heeft geen axe-schendingen met een bezette periode op het bord", async () => {
+  // Skipped: TOON_HERGENEREREN hides this UI for the 2026-08-21 demo; unskip when the owner brings regeneration back.
+  it.skip("heeft geen axe-schendingen met een bezette periode op het bord", async () => {
     const bezet = rooster.blokken[1];
     const plan: Jaarplan = {
       ...maakJaarplan([]),
@@ -5743,7 +5786,9 @@ describe("Jaarplankalender — één periode opnieuw genereren (E4-05, FR-8.2)",
  * last one matters most, because the failure mode of adding a confirmation step is a destructive action that now runs
  * from a button labelled "Annuleren".
  */
-describe("Jaarplankalender — de gevolgtekst staat bij de druk, niet boven het bord (E9-08, CR1)", () => {
+// Skipped: TOON_HERGENEREREN hides the (re)generation buttons and confirmations for the 2026-08-21 demo;
+// unskip when the owner brings regeneration back.
+describe.skip("Jaarplankalender — de gevolgtekst staat bij de druk, niet boven het bord (E9-08, CR1)", () => {
   it("houdt de hergeneratie-uitleg van het bord tot de leerkracht drukt", async () => {
     stubFetch(maakJaarplan([maakPlaatsing({ id: "p1", themaNaam: "Water" })]));
     renderKalender();

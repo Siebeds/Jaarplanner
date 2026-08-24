@@ -11,14 +11,12 @@ import {
 } from "@dnd-kit/core";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Uitleg } from "../../app/uitleg";
-import { Jaarfasekiezer } from "../dekking/Jaarfasekiezer";
 import { Button } from "../../components/ui/button";
 import { t, tAantal, type TranslationKey } from "../../i18n";
 import { ApiError } from "../../lib/api";
 import { Dekkingsvoortgangsbalk } from "../dekking/Dekkingsvoortgangsbalk";
 import { useDekkingsvoortgang } from "../dekking/useDekkingsvoortgang";
 import { useDekking } from "../dekking/useDekking";
-import { Jaarspine } from "./Jaarspine";
 import { Periodekolom, Vakantiegat, type Periodefoutsoort } from "./Periodekolom";
 import { Generatieparametersformulier, type Periodestaat } from "./Generatieparametersformulier";
 import { Spreidingsoverzicht, type Verouderingsreden } from "./Spreidingsoverzicht";
@@ -52,6 +50,14 @@ import {
   usePlanningsrooster,
   useVerplaatsPlaatsing,
 } from "./useJaarplan";
+
+/**
+ * Whether the board offers (re)generation at all — the whole-plan button, its settings accordion, its report,
+ * and every column's own "Deze periode opnieuw genereren" (owner request, 2026-08-21, for a directie/leerkracht
+ * demo). Hooks and mutations underneath stay wired up; only the rendering is gated, so nothing here has to be
+ * re-threaded when the owner says where and when the control comes back.
+ */
+const TOON_HERGENEREREN = false;
 
 /**
  * The kalender: a class's jaarplan over the school year's derived periods (E3-06, FR-6.1).
@@ -118,7 +124,10 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
    * first was the unlabelled, threefold one. The antagonist audit raised it as a QUESTION and the owner ruled the
    * chooser belongs here too.
    */
-  const [jaarFase, setJaarFase] = useState<string | null>(null);
+  // The setter is unused while the JK/K2/K3 chooser (`Jaarfasekiezer`) is withheld from this board (owner
+  // request 2026-08-21); `jaarFase` itself stays read everywhere it already was, always "Alle drie" (`null`)
+  // until the control returns.
+  const [jaarFase] = useState<string | null>(null);
 
   /**
    * The class's available jaar/fase codes, remembered across a narrowing.
@@ -131,7 +140,6 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
    * See the latching note further down for why the value is held at all rather than read off the current answer.
    */
   const beschikbaarLatch = useRef<readonly string[]>([]);
-  const heeftDoelenLatch = useRef(false);
   // E9-08: the regeneration press asks first, so its consequence paragraph does not have to live above the board.
   const [vraagtHergeneratie, setVraagtHergeneratie] = useState(false);
   const hergenereerTrigger = useRef<HTMLButtonElement>(null);
@@ -437,13 +445,10 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
   // teaching its parent's thema that fortnight, the tool simply does not record which weeks of the parent the thema
   // occupies. Without it, two of the three sub-columns of a filled 5-week themaperiode read "Nog niets gepland", which
   // is false about the plan while being true about the column (antagonist finding 10).
-  const gevuldeOrdinalen = new Set<number>();
   const gevuldeOuderOrdinalen = new Set<number>();
   for (const blok of grid.blokken) {
     const inBlok = plaatsingenIn(plan.plaatsingen, blok);
     if (geplandeIn(inBlok).length > 0) {
-      gevuldeOrdinalen.add(blok.ordinaal);
-
       if (blok.ouderOrdinaal !== null) {
         gevuldeOuderOrdinalen.add(blok.ouderOrdinaal);
       }
@@ -485,24 +490,6 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
   }
   const beschikbareJaarFasen = beschikbaarLatch.current;
 
-  // **Latched for the same reason `beschikbareJaarFasen` is. E9-06 did not create this defect; it made it routine.**
-  //
-  // The condition used to read `aantalLeerplandoelen` straight off the query, which is `undefined` for the length of any
-  // refetch, so the control vanished from under the cursor that had just clicked it — the exact defect the latch two
-  // blocks up was written for. *An earlier version of this comment blamed the switch to `resetQueries`, and that was
-  // wrong:* this file's own test comment already recorded the chooser disappearing across a generation run under
-  // `removeQueries`, calling it self-healing and pre-existing, because every placement mutation writes
-  // `setQueryData(jaarplanKey(...))` and that re-render was enough to rebuild the emptied query. What the reset changed
-  // is the frequency — every accept, reject and drag rather than only a run — which is what made it worth fixing.
-  // Pinned by `keeps the kleuterjaar chooser on screen across an edit`, which needs a deliberately slowed stub because
-  // the window is otherwise too short for any assertion to land inside.
-  if ((dekking.data?.aantalLeerplandoelen ?? 0) > 0) {
-    heeftDoelenLatch.current = true;
-  }
-
-  const toonJaarfasekiezer =
-    beschikbareJaarFasen.length > 1 && (jaarFase !== null || heeftDoelenLatch.current);
-
   // Gated on the figure it describes actually rendering, not on the fallback flag alone (antagonist round 2). Two states
   // reach `isTerugvalNaarHeelCurriculum` with no line under it — a stale placement (`aantalGedekt === null`) and a fully
   // covered scope — and the sentence then points at nothing. Same gating discipline as `teVolUitleg` and `beslisUitleg`
@@ -532,12 +519,6 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
   const teVolleThemaperiodes = plan.blokken
     .filter((blok) => blok.isOverbelast)
     .map((blok) => blok.ordinaal);
-  // Keyed on the block START, not the ordinal: this set crosses from the jaarplan response into the `/rooster` one the
-  // strip is drawn from, and those are two caches. See the note on `JaarspineProps.teVolleStarts`.
-  const teVolleStarts =
-    bordNiveau === GENERATIEBLOKNIVEAU
-      ? new Set(plan.blokken.filter((blok) => blok.isOverbelast).map((blok) => blok.start))
-      : new Set<string>();
 
   // Whether the last run's MEASUREMENTS still describe what is on screen, and if not, why (E3-03).
   //
@@ -644,6 +625,7 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
   // blocking moment offers the button nowhere, and the sentence still promised "de knop onderaan die periode".
   // Reachable on a short school year with two periods and two oudercontacten.
   const periodeknopOpBord =
+    TOON_HERGENEREREN &&
     verplaatsstaat === "kan" &&
     grid.blokken.some((blok: Planningsblok) => !bezetteperiodes.has(blok.start));
 
@@ -699,7 +681,7 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
 
   return (
     <section className="flex flex-col gap-6" aria-labelledby="kalender-titel">
-      <Kalenderkop klasNaam={plan.klasNaam} schooljaarNaam={plan.schooljaarNaam} concept />
+      <Kalenderkop klasNaam={plan.klasNaam} schooljaarNaam={plan.schooljaarNaam} />
 
       <DndContext
         sensors={sensors}
@@ -748,27 +730,6 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
               bezig={rooster.isPlaceholderData}
             />
 
-            {/* Which jaar/fase the coverage figure below is measured against (owner ruling, 2026-08-05).
-                See the `jaarFase` state for why the kalender needs this and not only `/dekking`.
-
-                **The same component `/dekking` uses, imported rather than reimplemented.** It is already written to the
-                right condition — it renders on "this class has more than one available code", not on "is this a
-                kleutergroep", which is a question the data model cannot answer and which the still-open graadklas
-                decision would answer differently while producing exactly this shape. A second copy here would be the
-                two-implementations-of-one-rule problem this whole story exists to end, one layer up.
-
-                **Gated on there being something to choose.** With a single code (every L1–L6 class) the control would be
-                one button that cannot change anything, which is the E3-06 rule. With `HeelCurriculum` in force
-                `beschikbareJaarFasen` is empty and it likewise does not render. */}
-            {toonJaarfasekiezer && (
-              <Jaarfasekiezer
-                beschikbaar={beschikbareJaarFasen}
-                gekozen={jaarFase}
-                onKies={setJaarFase}
-                uitlegKey="kalender.jaarFaseUitleg"
-              />
-            )}
-
             {/* Nothing to choose, and the figure below is not about this class's own year (owner: the chosen option left
                 this case unlabelled; I am labelling it anyway and saying so, because an unlabelled number here is the
                 same defect as the one the audit's first MAJOR was about). A class whose `Leerjaar` maps to no jaar/fase
@@ -794,12 +755,6 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
               />
             )}
 
-            <Jaarspine
-              segmenten={segmenten}
-              gevuldeOrdinalen={gevuldeOrdinalen}
-              teVolleStarts={teVolleStarts}
-              niveau={bordNiveau}
-            />
           </div>
         )}
 
@@ -812,7 +767,11 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
             proposals", which is true of the first run and false of every one after it. That sentence was the whole of
             E4-04: the run has always been repeatable and has always replaced, while the button said "Jaarplan
             genereren…" both times and nothing said so before the press. The counts afterwards
-            (`Spreidingsoverzicht`) come from the server and always did. */}
+            (`Spreidingsoverzicht`) come from the server and always did.
+
+            **Withheld for now** ({@link TOON_HERGENEREREN}, owner request 2026-08-21): the mutations, settings and
+            report below still run and stay in step with the board, only the card itself is not rendered. */}
+        {TOON_HERGENEREREN && (
         <div className="rounded-lg border border-border bg-card p-4 shadow-card sm:p-5">
           {/* Stacked on a phone, side by side from `sm`. As a single wrapping flex row the explanation
               shrank into a narrow column beside the button and clipped it. */}
@@ -1036,6 +995,7 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
             />
           )}
         </div>
+        )}
 
         {grid.blokken.length > 0 && (
           <div className="flex flex-col gap-3">
@@ -1270,20 +1230,24 @@ export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProp
                     bezettePeriodes={bezetteperiodes}
                     // The mutation is narrowed to this column here, so the column itself never has to ask whether the
                     // run in flight is its own. `variables` is the block start the teacher last pressed.
-                    hergeneratie={{
-                      start: () => periodegeneratie.mutate(segment.blok.start),
-                      bezig:
-                        periodegeneratie.isPending &&
-                        periodegeneratie.variables === segment.blok.start,
-                      wachten:
-                        periodegeneratie.isPending &&
-                        periodegeneratie.variables !== segment.blok.start,
-                      foutsoort:
-                        periodegeneratie.isError &&
-                        periodegeneratie.variables === segment.blok.start
-                          ? periodefoutsoort(periodegeneratie.error)
-                          : null,
-                    }}
+                    hergeneratie={
+                      TOON_HERGENEREREN
+                        ? {
+                            start: () => periodegeneratie.mutate(segment.blok.start),
+                            bezig:
+                              periodegeneratie.isPending &&
+                              periodegeneratie.variables === segment.blok.start,
+                            wachten:
+                              periodegeneratie.isPending &&
+                              periodegeneratie.variables !== segment.blok.start,
+                            foutsoort:
+                              periodegeneratie.isError &&
+                              periodegeneratie.variables === segment.blok.start
+                                ? periodefoutsoort(periodegeneratie.error)
+                                : null,
+                          }
+                        : undefined
+                    }
                   />
                 ) : (
                   <Vakantiegat

@@ -281,10 +281,17 @@ export function Doelkiezer({ waaraan, klasId, gekoppeldeCodes, onKoppel, bezig }
               return (
                 <li
                   key={doel.code}
-                  className="flex items-start justify-between gap-3 rounded-md border border-border/70 px-3 py-2"
+                  // `flex-wrap`, not a plain non-wrapping row (antagonist MAJOR-6, confirmed in a browser
+                  // 2026-08-23): this picker is also opened from a 288px jaarplan column
+                  // (`ThemakaartSubthemas`), where a fixed-width text block squeezed to ~120px beside the
+                  // "Koppelen" button wrapped `doel.tekst` one or two words per line. The text column now
+                  // claims a `basis-40` minimum before the button is asked to give way, so it drops to its
+                  // own line instead of starving the text — cosmetic-only in the wide `/themas` panel, where
+                  // there is always room for both on one line.
+                  className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5 rounded-md border border-border/70 px-3 py-2"
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1 basis-40">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <DoelsoortBadge doelsoort={badgeSoort(doel.doelsoort)} />
                       <span className="font-mono text-xs font-semibold text-ink">{doel.code}</span>
                       <span className="text-xs text-ink-zacht">{doel.jaarFase}</span>

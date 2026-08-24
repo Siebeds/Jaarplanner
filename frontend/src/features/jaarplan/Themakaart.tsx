@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/button";
 import { t, type TranslationKey } from "../../i18n";
 import { ApiError } from "../../lib/api";
 import { formatteerDatum, formatteerPeriode } from "./kalenderFormat";
+import { ThemakaartSubthemas } from "./ThemakaartSubthemas";
 import type { Planningsblok, Themaplaatsing } from "./types";
 import {
   useVerplaatsPlaatsing,
@@ -171,6 +172,10 @@ export function Themakaart({
 }: ThemakaartProps) {
   const [paneelOpen, setPaneelOpen] = useState(false);
   const paneelId = useId();
+  // The subthema/activiteit doelkoppeling disclosure (2026-08-21 redesign, Fase A) — independent of `paneelOpen`,
+  // so a teacher can have "Aanpassen" and "Subthema's" open at once without one closing the other.
+  const [subthemasOpen, setSubthemasOpen] = useState(false);
+  const subthemasId = useId();
 
   // Hoisted to the card and passed down, rather than one instance here and another in the panel. One placement has
   // one status, so two instances could each hold their own `isPending` over the same row, and it puts the pending
@@ -398,6 +403,40 @@ export function Themakaart({
             verplaatsstaat={verplaatsstaat}
             onKlaar={() => setPaneelOpen(false)}
           />
+        )}
+
+        {/* This class's own subthema's under this (school-wide) thema, with doelkoppeling — reused from
+            `/themas` rather than rebuilt here (see `ThemakaartSubthemas`). A separate disclosure from
+            "Aanpassen": one is adjusting the placement, this is planning what happens inside it, and a
+            teacher may want both open while comparing.
+
+            **Offered on a stale placement too, unlike the lock/move controls below** (antagonist MAJOR-4,
+            2026-08-23, correcting this story's own first attempt at withholding it). A stale placement means
+            the THEMA sits in no themaperiode; the class's subthema's, subdoelen and activiteiten belong to the
+            klas and are untouched by that, exactly like `magWeigeren` above, which is deliberately not gated
+            on `isVervallen` either (see its note). Withholding it here would have been silent on top of being
+            wrong: every other control this card actually withholds says why in visible text
+            (`beslisVervallen`, `vergrendelUitlegVervallen`), and this one would not have.
+
+            Label pattern matches `ThemakaartSubthemas`'s own toggles (drop the `aria-label` while open, so
+            the visible "Subthema's sluiten" becomes the accessible name) rather than `aanpassenLabel`'s: that
+            one keeps a stale label through both states and is a known, deferred SC 2.5.3 gap (E7-10), not a
+            precedent to repeat in new code. */}
+        <button
+          type="button"
+          onClick={() => setSubthemasOpen((open) => !open)}
+          aria-expanded={subthemasOpen}
+          aria-controls={subthemasId}
+          aria-label={subthemasOpen ? undefined : t("kalender.subthemasLabel", { thema: plaatsing.themaNaam })}
+          className="ml-3 rounded text-xs font-semibold text-petrol underline decoration-petrol/40 underline-offset-2 hover:decoration-petrol focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          {subthemasOpen ? t("kalender.subthemasSluiten") : t("kalender.subthemas")}
+        </button>
+
+        {subthemasOpen && (
+          <div id={subthemasId} className="mt-2.5">
+            <ThemakaartSubthemas themaId={plaatsing.themaId} klasId={klasId} />
+          </div>
         )}
       </div>
     </article>
