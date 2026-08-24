@@ -116,7 +116,7 @@ public sealed class ActiviteitplaatsingTests
         jaarplan.PlaatsActiviteit(activiteitId, klasId, Donderdag, KoppelingStatus.Manueel);
 
         Assert.Equal(2, jaarplan.Activiteitplaatsingen.Count);
-        Assert.True(jaarplan.IsAlGeplaatstOp(activiteitId, Maandag));
+        Assert.True(jaarplan.IsAlGeplaatstOp(activiteitId, Maandag, 0));
         Assert.Throws<InvalidOperationException>(() =>
             jaarplan.PlaatsActiviteit(activiteitId, klasId, Maandag, KoppelingStatus.Manueel));
     }

@@ -3,6 +3,7 @@ import { del, get, naarQuery, post, put } from "./api";
 import type {
   DekkingWeergave,
   Dekkingsbereik,
+  Dekkingsvoortgang,
   DoelMatchResultaat,
   DoelMatchSuggestie,
   JaarplanGeneratieResultaat,
@@ -311,6 +312,20 @@ export function useDekking(klasId: string | null, bereik: Dekkingsbereik) {
   return useQuery({
     queryKey: ["dekking", klasId, bereik],
     queryFn: () => get<DekkingWeergave>(`/api/klassen/${klasId}/dekking${naarQuery({ bereik })}`),
+    enabled: Boolean(klasId),
+  });
+}
+
+/**
+ * The same coverage, as counts only, for the bar at the top of the agenda.
+ *
+ * Keyed UNDER "dekking" on purpose: every writer in this app already invalidates that prefix, so the
+ * bar refreshes with the screen rather than needing every one of them to learn a second key.
+ */
+export function useDekkingsvoortgang(klasId: string | null, bereik: Dekkingsbereik) {
+  return useQuery({
+    queryKey: ["dekking", "voortgang", klasId, bereik],
+    queryFn: () => get<Dekkingsvoortgang>(`/api/klassen/${klasId}/dekking/voortgang${naarQuery({ bereik })}`),
     enabled: Boolean(klasId),
   });
 }

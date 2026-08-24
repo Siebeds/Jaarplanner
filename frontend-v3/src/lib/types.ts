@@ -214,15 +214,24 @@ export interface SchooljaarSamenvatting {
 
 // --- Schoolcontent (thema, subthema, activiteit) ---
 
-export type ActiviteitType =
-  | "Experiment"
-  | "Prentenboek"
-  | "Hoek"
-  | "Uitstap"
-  | "Spel"
-  | "Waarneming"
-  | "Beweging"
-  | "Onderzoek";
+/**
+ * The activiteit kinds the server accepts, as a value rather than only as a type.
+ *
+ * A picker needs the list at runtime, and deriving the type FROM the list keeps the two from
+ * drifting: adding a kind here is the only edit needed, and removing one breaks every use.
+ */
+export const ACTIVITEIT_TYPES = [
+  "Experiment",
+  "Prentenboek",
+  "Hoek",
+  "Uitstap",
+  "Spel",
+  "Waarneming",
+  "Beweging",
+  "Onderzoek",
+] as const;
+
+export type ActiviteitType = (typeof ACTIVITEIT_TYPES)[number];
 
 export interface DoelKoppelingWeergave {
   id: string;
@@ -248,6 +257,18 @@ export interface OnderzoeksvraagWeergave {
   probleemstelling: string | null;
 }
 
+/**
+ * The six colours a teacher may put on an activiteit.
+ *
+ * Here rather than beside the Tailwind classes that paint them, because this is part of what the
+ * server stores and sends: it travels on an activiteit AND on a weekplanning row. `features/
+ * activiteiten/kleuren.ts` owns how each one looks and re-exports these two names, so nothing else
+ * had to move.
+ */
+export const ACTIVITEITKLEUREN = ["Klei", "Olijf", "Zee", "Indigo", "Pruim", "Zand"] as const;
+
+export type Activiteitkleur = (typeof ACTIVITEITKLEUREN)[number];
+
 export interface ActiviteitWeergave {
   id: string;
   naam: string;
@@ -255,6 +276,7 @@ export interface ActiviteitWeergave {
   hoek: string | null;
   verwachteUitkomsten: string | null;
   onderzoeksvraagId: string | null;
+  kleur: Activiteitkleur | null;
   doelkoppelingen: DoelKoppelingWeergave[];
 }
 
@@ -429,6 +451,27 @@ export interface LeerplandoelDekking {
   dekkendeThemas: string[];
 }
 
+/**
+ * The coverage figures without the goals themselves (`GET .../dekking/voortgang`).
+ *
+ * The server computes it through the same service and the same scope rules as the full read, so the
+ * two cannot drift: a bar and the screen it links to are one number rendered twice, not two numbers
+ * that agree today.
+ */
+export interface Dekkingsvoortgang {
+  bereik: Dekkingsbereik;
+  gemetenJaarFasen: string[];
+  isTerugvalNaarHeelCurriculum: boolean;
+  aantalBuitenBereik: number;
+  isBetrouwbaar: boolean;
+  aantalOnopgelosteVervallenPlaatsingen: number;
+  /** Null together with `aantalMogelijkGedekt` while a stale placement makes the figure unsound. */
+  aantalGedekt: number | null;
+  aantalMogelijkGedekt: number | null;
+  aantalLeerplandoelen: number;
+  aantalOnbereikbaar: number;
+}
+
 export interface DekkingWeergave {
   klasId: string;
   klasNaam: string;
@@ -459,6 +502,9 @@ export interface GeplandeActiviteit {
   themaNaam: string;
   volgorde: number;
   status: string;
+  /** The teacher's own colour, if they gave it one. Sent on the weekplanning row as well as on the
+   *  activiteit, so a calendar can paint it without fetching the thema. */
+  kleur: Activiteitkleur | null;
   doelcodes: string[];
   /**
    * The activiteit's thema is not planned in the themaperiode this day falls in.

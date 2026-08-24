@@ -13,12 +13,15 @@ import { t } from "../../i18n";
  * that do not belong on that day, and the server's own "valt buiten themaperiode" flag exists
  * precisely because doing it anyway is a decision worth marking.
  *
- * Nothing is filtered out for already being scheduled. The server refuses the same activiteit twice
- * on one day (a unique index on jaarplan, activiteit and date) and returns a Dutch refusal, and
- * hiding the row would leave a teacher wondering where their activiteit went.
+ * Nothing is filtered out for already being scheduled. The server refuses only the same activiteit
+ * twice in the same LESUUR (a unique index on jaarplan, activiteit, date and volgorde) and returns a
+ * Dutch refusal naming that hour, and hiding the row would leave a teacher wondering where their
+ * activiteit went. Twice on one day in two different hours is allowed and normal: that is what a hoek
+ * running two hours looks like.
  */
 export function Activiteitkiezer({
   datum,
+  lesuur,
   klasId,
   themaIds,
   bezig,
@@ -26,6 +29,12 @@ export function Activiteitkiezer({
   onSluit,
 }: {
   datum: string | null;
+  /**
+   * The lesuur this will land in, 1-based, or undefined when the caller does not mean a particular
+   * one. Named in the title: a teacher who pressed the plus on the fourth hour has to be able to see
+   * that the fourth hour is where it goes, and the day alone does not say that.
+   */
+  lesuur?: number;
   klasId: string | null;
   themaIds: string[];
   bezig: boolean;
@@ -38,7 +47,13 @@ export function Activiteitkiezer({
     <Blad
       open={datum !== null}
       onOpenChange={(open) => !open && onSluit()}
-      titel={datum ? volleDag(datum) : t("periode.voegToe")}
+      titel={
+        datum
+          ? lesuur === undefined
+            ? volleDag(datum)
+            : t("lesuur.kiezerTitel", { dag: volleDag(datum), nummer: lesuur })
+          : t("periode.voegToe")
+      }
     >
       {themaIds.length === 0 ? (
         <p className="text-body text-inkt-zacht">{t("periode.geenThemaInPeriode")}</p>

@@ -52,11 +52,74 @@ public sealed class Activiteit
     /// <summary>The optional onderzoeksvraag this activiteit addresses. Null means no specific onderzoeksvraag is targeted.</summary>
     public Guid? OnderzoeksvraagId { get; private set; }
 
+    /// <summary>
+    /// The teacher's own colour label (<see cref="Activiteitkleur"/>). Null means none, which is the
+    /// normal state and the only one the import can produce.
+    /// </summary>
+    public Activiteitkleur? Kleur { get; private set; }
+
+    /// <summary>
+    /// How many consecutive lesuren this activiteit takes. One by default.
+    ///
+    /// <para>
+    /// <b>On the activiteit rather than on each placement, which is what makes it one number.</b> A
+    /// hoek that runs two lesuren runs two lesuren every time it is scheduled; putting the length on
+    /// the placement would ask the teacher the same question again on every day it appears, and let
+    /// two placements of one activiteit disagree about how long it is.
+    /// </para>
+    /// <para>
+    /// It is a count of lesuren and not minutes. Nothing in this model stores a clock time: a school
+    /// day is a row of numbered lesmomenten (<see cref="Planning.Activiteitplaatsing.Volgorde"/> is
+    /// the slot), so "two lesuren" is the only duration the plan can actually honour.
+    /// </para>
+    /// </summary>
+    public int LengteInLesuren { get; private set; } = 1;
+
     /// <summary>The goal links for this activiteit (zero or more leerdoelen; Art. IX.2).</summary>
     public IReadOnlyList<DoelKoppeling> Doelkoppelingen => _doelkoppelingen;
 
     /// <summary>Links (or unlinks) this activiteit to an onderzoeksvraag. Null clears the link.</summary>
     public void KoppelAanOnderzoeksvraag(Guid? onderzoeksvraagId) => OnderzoeksvraagId = onderzoeksvraagId;
+
+    /// <summary>
+    /// Sets (or clears) the teacher's colour label.
+    ///
+    /// <para>
+    /// Separate from <see cref="WerkGegevensBij"/> on purpose. That method is what the school-content
+    /// import calls when it overwrites an existing activiteit, and the workbook carries no colour, so
+    /// including kleur there would silently discard a teacher's choice on every re-import. The same
+    /// reasoning that keeps the goal links out of that method keeps this out of it (Art. IV.2).
+    /// </para>
+    /// </summary>
+    /// <summary>
+    /// Sets how many consecutive lesuren this activiteit takes.
+    ///
+    /// <para>
+    /// Separate from <see cref="WerkGegevensBij"/> for the same reason <see cref="KiesKleur"/> is: that
+    /// method is the school-content import's overwrite path, and the workbook carries no length, so
+    /// folding this into it would reset a teacher's choice on every re-import (Art. IV.2).
+    /// </para>
+    /// </summary>
+    public void StelLengteIn(int lengteInLesuren)
+    {
+        if (lengteInLesuren < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(lengteInLesuren), lengteInLesuren, "An activiteit takes at least one lesuur.");
+        }
+
+        LengteInLesuren = lengteInLesuren;
+    }
+
+    public void KiesKleur(Activiteitkleur? kleur)
+    {
+        if (kleur is { } gekozen && !Enum.IsDefined(gekozen))
+        {
+            throw new ArgumentOutOfRangeException(nameof(kleur), kleur, "Unknown activiteit colour.");
+        }
+
+        Kleur = kleur;
+    }
 
     /// <summary>Links this activiteit to a leerdoel.</summary>
     public void VoegDoelkoppelingToe(DoelKoppeling koppeling)

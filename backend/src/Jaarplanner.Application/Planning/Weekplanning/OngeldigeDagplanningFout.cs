@@ -52,11 +52,16 @@ public sealed class OngeldigeDagplanningFout : Exception
         new($"{Dagnotatie.Formatteer(datum)} valt buiten schooljaar {schooljaarNaam}. Kies een dag binnen dit schooljaar.");
 
     /// <summary>
-    /// That activiteit is already on that day. A day holds several activiteiten — that is the normal case — so only
-    /// the exact duplicate is refused, and the same activiteit on another day stays legitimate.
+    /// That activiteit already sits in that <b>lesuur</b> of that day.
+    /// <para>
+    /// A day holds several activiteiten and the same activiteit may fill several lesuren, so only the exact
+    /// slot collision is refused. The sentence names the lesuur rather than the day for that reason: telling a
+    /// teacher to pick another day when picking the next hour would do sends them away from the fix.
+    /// </para>
     /// </summary>
-    public static OngeldigeDagplanningFout ActiviteitStaatErAl(DateOnly datum) =>
-        new($"Deze activiteit staat al op {Dagnotatie.Formatteer(datum)}. Kies een andere dag of een andere activiteit.");
+    public static OngeldigeDagplanningFout ActiviteitStaatErAl(DateOnly datum, int lesuur) =>
+        new($"Deze activiteit staat al in lesuur {lesuur} op {Dagnotatie.Formatteer(datum)}. "
+            + "Kies een ander lesuur of een andere activiteit.");
 
     /// <summary>
     /// The activiteit belongs to another class. Art. IX.2 makes the class scope structural, so this is refused rather

@@ -92,10 +92,27 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             {
                 Thema = t,
                 AantalAfgeleideKlassen = t.Subthemas.Select(s => s.KlasId).Distinct().Count(),
+                // Counts, not content. The same reasoning that already allows AantalAfgeleideKlassen
+                // here: a number tells the reader how much has been built on this thema without
+                // exposing any class's subthema's, activiteiten or goal choices (Art. IX.2).
+                // School-wide totals on purpose, because this IS the school-wide library view.
+                AantalSubthemas = t.Subthemas.Count,
+                AantalActiviteiten = t.Subthemas.SelectMany(s => s.Activiteiten).Count(),
+                AantalDoelkoppelingen =
+                    t.Themadoelen.Count
+                    + t.Subthemas.SelectMany(s => s.Subdoelen).Count()
+                    + t.Subthemas.SelectMany(s => s.Activiteiten).SelectMany(a => a.Doelkoppelingen).Count(),
             })
             .ToListAsync(cancellationToken);
 
-        return themas.Select(x => MapBibliotheekItem(x.Thema, x.AantalAfgeleideKlassen)).ToList();
+        return themas
+            .Select(x => MapBibliotheekItem(
+                x.Thema,
+                x.AantalAfgeleideKlassen,
+                x.AantalSubthemas,
+                x.AantalActiviteiten,
+                x.AantalDoelkoppelingen))
+            .ToList();
     }
 
     public async Task<ThemaWeergave> HaalThemaVoorKlasAsync(Guid themaId, Guid klasId, CancellationToken cancellationToken = default)
@@ -415,12 +432,15 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     public async Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(creatie);
+        VereisGeldigeLengte(creatie.LengteInLesuren);
         var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
 
         Activiteit activiteit;
         try
         {
             activiteit = subthema.VoegActiviteitToe(creatie.Naam, creatie.ActiviteitType, creatie.Hoek, creatie.VerwachteUitkomsten);
+            activiteit.KiesKleur(creatie.Kleur);
+            activiteit.StelLengteIn(creatie.LengteInLesuren);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -441,12 +461,18 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     public async Task<ActiviteitWeergave> WijzigActiviteitAsync(Guid activiteitId, ActiviteitWijzigingInvoer wijziging, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(wijziging);
+        VereisGeldigeLengte(wijziging.LengteInLesuren);
         var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
 
         try
         {
             activiteit.WijzigNaam(wijziging.Naam);
             activiteit.WerkGegevensBij(wijziging.ActiviteitType, wijziging.Hoek, wijziging.VerwachteUitkomsten);
+            // A separate call by design: WerkGegevensBij is also the import's overwrite path, which
+            // carries no colour. Here the caller is a teacher, so a null means "no colour" and is
+            // applied as such.
+            activiteit.KiesKleur(wijziging.Kleur);
+            activiteit.StelLengteIn(wijziging.LengteInLesuren);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -796,7 +822,12 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         thema.Themadoelen.Select(MapThemadoel).ToList(),
         thema.Subthemas.Select(MapSubthema).ToList());
 
-    private static ThemaBibliotheekItem MapBibliotheekItem(Thema thema, int aantalAfgeleideKlassen) => new(
+    private static ThemaBibliotheekItem MapBibliotheekItem(
+        Thema thema,
+        int aantalAfgeleideKlassen,
+        int aantalSubthemas,
+        int aantalActiviteiten,
+        int aantalDoelkoppelingen) => new(
         thema.Id,
         thema.Naam,
         thema.DuurWeken,
@@ -805,7 +836,10 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         thema.RijkeWoordenschat.ToList(),
         thema.HeeftVoldoendeThemadoelen,
         thema.Themadoelen.Select(MapThemadoel).ToList(),
-        aantalAfgeleideKlassen);
+        aantalAfgeleideKlassen,
+        aantalSubthemas,
+        aantalActiviteiten,
+        aantalDoelkoppelingen);
 
     private static ThemadoelWeergave MapThemadoel(Themadoel themadoel) =>
         new(themadoel.Id, MapKoppeling(themadoel.Koppeling));
@@ -827,6 +861,25 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     private static SubdoelWeergave MapSubdoel(Subdoel subdoel) =>
         new(subdoel.Id, subdoel.Leeftijd, MapKoppeling(subdoel.Koppeling));
 
+    /// <summary>
+    /// Refuses a length a teacher could not have meant, in Dutch and before the aggregate sees it.
+    ///
+    /// <para>
+    /// The aggregate's own guard throws an English <see cref="ArgumentOutOfRangeException"/> whose
+    /// message the catch below forwards verbatim, so without this a teacher would read
+    /// "(Parameter 'lengteInLesuren')". Same division of labour as the weekplanning service: the
+    /// aggregate refuses programmer error, the service refuses teacher input (Art. II.3).
+    /// </para>
+    /// </summary>
+    private static void VereisGeldigeLengte(int lengteInLesuren)
+    {
+        if (lengteInLesuren < 1)
+        {
+            throw new SchoolcontentValidatieFout(
+                "Een activiteit duurt minstens één lesuur. Kies een aantal van 1 of meer.");
+        }
+    }
+
     private static ActiviteitWeergave MapActiviteit(Activiteit activiteit) => new(
         activiteit.Id,
         activiteit.Naam,
@@ -834,6 +887,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         activiteit.Hoek,
         activiteit.VerwachteUitkomsten,
         activiteit.OnderzoeksvraagId,
+        activiteit.Kleur,
+        activiteit.LengteInLesuren,
         activiteit.Doelkoppelingen.Select(MapKoppeling).ToList());
 
     private static DoelKoppelingWeergave MapKoppeling(DoelKoppeling koppeling) =>

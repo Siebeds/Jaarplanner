@@ -59,7 +59,10 @@ public sealed class ActiviteitplaatsingConfiguration : IEntityTypeConfiguration<
         // The domain invariant, held in the database too: one activiteit at most once per day. The same activiteit
         // on two different days is legitimate and common (a reading moment on Monday and again on Thursday), which
         // is why the day is part of the key rather than the activiteit alone.
-        builder.HasIndex(p => new { p.JaarplanId, p.ActiviteitId, p.Datum }).IsUnique();
+        // Volgorde is part of the key because the slot is the unit of placement, not the day: the same
+        // activiteit may fill two consecutive lesuren, or run once in the morning and once after noon.
+        // Mirrors Jaarplan.IsAlGeplaatstOp, which is where the rule is stated.
+        builder.HasIndex(p => new { p.JaarplanId, p.ActiviteitId, p.Datum, p.Volgorde }).IsUnique();
 
         // Reading one week — or one period — of days is this feature's entire access pattern (E9-04).
         builder.HasIndex(p => new { p.JaarplanId, p.Datum });

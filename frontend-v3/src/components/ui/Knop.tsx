@@ -1,37 +1,51 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
 import { cn } from "../../lib/cn";
+import { knopklassen, type Rang } from "./knopklassen";
 
 /**
- * Buttons. Three ranks, and the ranking is carried by weight and surface rather than by hue: this
- * interface has no brand colour to spend on a call to action (see the note at the top of index.css).
- *
- * `hoofd` is the ink itself, which makes it the darkest thing on the page and therefore the most
- * obviously pressable. Everything else steps back.
+ * Buttons. Three ranks, described where they are defined: `knopklassen.ts`.
  */
-type Rang = "hoofd" | "rustig" | "stil";
-
-const RANG: Record<Rang, string> = {
-  hoofd: "bg-accent text-accent-op hover:bg-accent-diep active:bg-accent-diep",
-  rustig: "bg-kaart text-inkt border border-lijn-veld hover:border-inkt hover:bg-vlak active:bg-vlak-diep",
-  stil: "text-inkt-zacht hover:bg-vlak-diep hover:text-inkt active:bg-vlak-diep",
-};
-
 export function Knop({
   rang = "rustig",
   vol,
   className,
+  type = "button",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { rang?: Rang; vol?: boolean }) {
   return (
     <button
-      className={cn(
-        "inline-flex min-h-raak items-center justify-center gap-2 rounded-veld px-4 text-body font-medium",
-        "transition-colors duration-150",
-        "disabled:pointer-events-none disabled:opacity-45",
-        RANG[rang],
-        vol && "w-full",
-        className,
-      )}
+      // `button`, not the HTML default of `submit`. A <button> with no type submits whatever form it
+      // happens to sit in, and these are dropped into forms by callers who never see the <form> tag:
+      // "Doel koppelen" inside the activiteit sheet silently saved the activiteit and closed the
+      // sheet instead of opening the goal picker. Submitting is now something a caller asks for, and
+      // the three forms that want it already pass type="submit" explicitly.
+      type={type}
+      className={cn(knopklassen(rang, vol), "disabled:pointer-events-none disabled:opacity-45", className)}
+      {...props}
+    />
+  );
+}
+
+/**
+ * A link that looks like a button.
+ *
+ * Separate from `Knop` and not a prop on it: this renders an `<a>`, and the difference is not
+ * cosmetic. A destination belongs in the address bar, gets a middle-click and a right-click menu,
+ * and reads to a screen reader as a link rather than as something that acts on this page. Anything
+ * that navigates uses this; anything that changes data uses `Knop`.
+ *
+ * `href` stays untyped on purpose: some of these go to a router path and some to an API download,
+ * and the caller is the only one that knows which.
+ */
+export function Knoplink({
+  rang = "rustig",
+  vol,
+  className,
+  ...props
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { rang?: Rang; vol?: boolean }) {
+  return (
+    <a
+      className={cn(knopklassen(rang, vol), className)}
       {...props}
     />
   );
@@ -43,11 +57,13 @@ export function Knop({
  */
 export function IcoonKnop({
   className,
+  type = "button",
   "aria-label": label,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { "aria-label": string }) {
   return (
     <button
+      type={type}
       aria-label={label}
       className={cn(
         "inline-flex h-raak w-raak shrink-0 items-center justify-center rounded-veld",

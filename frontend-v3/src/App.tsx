@@ -5,8 +5,9 @@ import { DoelenScherm } from "./features/doelen/DoelenScherm";
 import { ThemasScherm } from "./features/themas/ThemasScherm";
 import { ThemadetailScherm } from "./features/themas/ThemadetailScherm";
 import { PlanScherm } from "./features/plan/PlanScherm";
-import { Periodescherm } from "./features/plan/Periodescherm";
+import { Agendascherm } from "./features/plan/Agendascherm";
 import { DekkingScherm } from "./features/dekking/DekkingScherm";
+import { ImportScherm } from "./features/import/ImportScherm";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,9 +31,12 @@ export default function App() {
             <Route path="doelen" element={<DoelenScherm />} />
             <Route path="themas" element={<ThemasScherm />} />
             <Route path="themas/:themaId" element={<ThemadetailScherm />} />
-            <Route path="plan" element={<PlanScherm />} />
-            <Route path="plan/periode/:datum" element={<Periodescherm />} />
+            <Route path="agenda" element={<Agendascherm />} />
+            <Route path="agenda/dag/:datum" element={<Agendascherm />} />
+            <Route path="agenda/periodes" element={<PlanScherm />} />
             <Route path="dekking" element={<DekkingScherm />} />
+            {/* Not in the bottom bar: see the note in ImportScherm. Reached from Doelen and Thema's. */}
+            <Route path="inladen" element={<ImportScherm />} />
             <Route path="*" element={<Navigate to="/doelen" replace />} />
           </Route>
         </Routes>

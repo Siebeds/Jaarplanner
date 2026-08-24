@@ -11,7 +11,7 @@ import { useGenereerJaarplan, useJaarplan, usePlaatsingacties, usePlaatsThema, u
 import { useActieveSelectie } from "../../lib/selectie";
 import { ApiError } from "../../lib/api";
 import type { KoppelingStatus, Planningsblok } from "../../lib/types";
-import { periode } from "../../lib/datum";
+import { periode, valtBinnen, vandaag } from "../../lib/datum";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { Schooljaarlint } from "./Schooljaarlint";
@@ -51,6 +51,16 @@ export function PlanScherm() {
     return kaart;
   }, [plan, blokken]);
 
+  // The period a teacher is actually in, if the schooljaar is running. Nothing is offered when today
+  // falls outside it: in augustus every period is "later", and a control that has to guess which one
+  // the teacher meant is a control that guesses wrong.
+  const periodeVanVandaag = useMemo(() => {
+    const nu = vandaag();
+    return blokken.find((blok) => valtBinnen(nu, blok.start, blok.eind)) ?? null;
+  }, [blokken]);
+  // The agenda anchors on a DAY, so this link hands it today rather than the period's first day.
+  const nuOfStart = vandaag();
+
   const geblokkeerd = useMemo(
     () => new Map((plan?.geblokkeerdePeriodes ?? []).map((p) => [p.blokStart, p.momentNaam])),
     [plan],
@@ -66,7 +76,20 @@ export function PlanScherm() {
 
   return (
     <>
-      <Schermkop titel={t("plan.titel")} rechts={<Klaskiezer />} />
+      <Schermkop
+        titel={t("plan.titel")}
+        rechts={<Klaskiezer />}
+        onder={
+          /* The way back. This screen is no longer the agenda's front door, so it needs one: the
+             sidebar item leads here too and pressing it again is not an obvious exit. */
+          <Link
+            to="/agenda"
+            className="inline-flex h-9 items-center rounded-full border border-lijn px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
+          >
+            {t("navigatie.agenda")}
+          </Link>
+        }
+      />
 
       <Schermvlak>
         {!klasId ? (
@@ -91,9 +114,19 @@ export function PlanScherm() {
               <p className="mono text-meta text-inkt-zwak">
                 {telWoord(plan.plaatsingen.length, "plan.eenPlaatsing", "plan.aantalPlaatsingen")}
               </p>
-              <Knop rang="hoofd" className="h-9 min-h-9 px-4 text-meta" onClick={() => setGeneratieOpen(true)}>
-                {t("plan.genereer")}
-              </Knop>
+              <div className="flex items-center gap-2">
+                {periodeVanVandaag ? (
+                  <Link
+                    to={`/agenda/dag/${nuOfStart}`}
+                    className="inline-flex h-9 items-center rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
+                  >
+                    {t("plan.periodeVanVandaag")}
+                  </Link>
+                ) : null}
+                <Knop rang="hoofd" className="h-9 min-h-9 px-4 text-meta" onClick={() => setGeneratieOpen(true)}>
+                  {t("plan.genereer")}
+                </Knop>
+              </div>
             </div>
 
             {generatie.isError ? (
@@ -142,7 +175,7 @@ export function PlanScherm() {
                         </button>
 
                         <Link
-                          to={`/plan/periode/${blok.start}`}
+                          to={`/agenda/dag/${blok.start}`}
                           className="group inline-flex h-9 items-center gap-1.5 rounded-full bg-accent px-3 text-meta font-medium text-accent-op transition-colors duration-150 hover:bg-accent-diep"
                         >
                           {t("plan.openPeriode")}

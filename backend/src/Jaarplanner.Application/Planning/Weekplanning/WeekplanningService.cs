@@ -68,9 +68,10 @@ public sealed class WeekplanningService : IWeekplanningService
         // Checked here rather than letting the aggregate's own guard fire, which throws an English
         // InvalidOperationException that no handler maps — it would reach a teacher as a 500. Same division of labour
         // as the thema path: the aggregate refuses programmer error, the service refuses teacher input.
-        if (jaarplan.IsAlGeplaatstOp(activiteitId, datum))
+        if (jaarplan.IsAlGeplaatstOp(activiteitId, datum, volgorde))
         {
-            throw OngeldigeDagplanningFout.ActiviteitStaatErAl(datum);
+            // Volgorde is 0-based; a teacher counts lesuren from one.
+            throw OngeldigeDagplanningFout.ActiviteitStaatErAl(datum, volgorde + 1);
         }
 
         jaarplan.PlaatsActiviteit(activiteitId, inhoud.KlasId, datum, KoppelingStatus.Manueel, volgorde);
@@ -94,11 +95,14 @@ public sealed class WeekplanningService : IWeekplanningService
         VereisLesdag(schooljaar, datum);
 
         // A no-op move is allowed through: the placement is already there, so `IsAlGeplaatstOp` would be true and
-        // refusing would make dropping a card back where it came from an error. Only a *different* placement on the
-        // target day is a genuine duplicate.
-        if (plaatsing.Datum != datum && jaarplan.IsAlGeplaatstOp(plaatsing.ActiviteitId, datum))
+        // refusing would make dropping a card back where it came from an error. Only a *different* placement in the
+        // target SLOT is a genuine duplicate, which is why both halves of the target are compared: the same
+        // activiteit may sit in two lesuren of one day, so a move within the day is only a duplicate when it lands
+        // on a slot that already holds it.
+        var blijftStaan = plaatsing.Datum == datum && plaatsing.Volgorde == volgorde;
+        if (!blijftStaan && jaarplan.IsAlGeplaatstOp(plaatsing.ActiviteitId, datum, volgorde))
         {
-            throw OngeldigeDagplanningFout.ActiviteitStaatErAl(datum);
+            throw OngeldigeDagplanningFout.ActiviteitStaatErAl(datum, volgorde + 1);
         }
 
         plaatsing.VerplaatsNaar(datum, volgorde);
@@ -322,7 +326,9 @@ public sealed class WeekplanningService : IWeekplanningService
             Volgorde: plaatsing.Volgorde,
             Status: plaatsing.Status.ToString(),
             Doelcodes: inhoud.Doelcodes,
-            ValtBuitenThemaperiode: buiten);
+            ValtBuitenThemaperiode: buiten,
+            Kleur: inhoud.Kleur,
+            LengteInLesuren: inhoud.LengteInLesuren);
     }
 
     private async Task<(Klas Klas, Schooljaar Schooljaar)> LaadKlasAsync(

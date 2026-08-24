@@ -18,6 +18,6 @@ export interface Bestemming {
 export const BESTEMMINGEN: Bestemming[] = [
   { pad: "/doelen", labelSleutel: "navigatie.doelen", Icoon: IcoonDoelen },
   { pad: "/themas", labelSleutel: "navigatie.themas", Icoon: IcoonThemas },
-  { pad: "/plan", labelSleutel: "navigatie.plan", Icoon: IcoonPlan },
+  { pad: "/agenda", labelSleutel: "navigatie.agenda", Icoon: IcoonPlan },
   { pad: "/dekking", labelSleutel: "navigatie.dekking", Icoon: IcoonDekking },
 ];

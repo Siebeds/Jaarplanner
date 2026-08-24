@@ -1,5 +1,7 @@
 using Jaarplanner.Domain.Planning;
 
+using Jaarplanner.Domain.Schoolcontent;
+
 namespace Jaarplanner.Application.Planning.Weekplanning;
 
 /// <summary>
@@ -105,4 +107,8 @@ public sealed record Activiteitinhoud(
     string Leeftijd,
     Guid ThemaId,
     string ThemaNaam,
-    IReadOnlyList<string> Doelcodes);
+    IReadOnlyList<string> Doelcodes,
+    /// <summary>The teacher's colour label, or null. A label they chose, never a signal the app reads.</summary>
+    Activiteitkleur? Kleur = null,
+    /// <summary>How many consecutive lesuren the activiteit takes. One unless the teacher said otherwise.</summary>
+    int LengteInLesuren = 1);

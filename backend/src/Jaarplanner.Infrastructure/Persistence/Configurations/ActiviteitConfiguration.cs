@@ -33,6 +33,20 @@ public sealed class ActiviteitConfiguration : IEntityTypeConfiguration<Activitei
         builder.Property(a => a.Hoek).HasMaxLength(128);
         builder.Property(a => a.VerwachteUitkomsten);
 
+        // Stored by NAME, like ActiviteitType above: a column reading "Olijf" survives a reordering of
+        // the enum, where a stored 1 would silently become another colour.
+        var kleurConverter = new ValueConverter<Activiteitkleur, string>(
+            k => k.ToString(),
+            k => Enum.Parse<Activiteitkleur>(k));
+        // Defaulted in the database as well as in the entity, so every row that predates the column
+        // reads back as one lesuur rather than as zero.
+        builder.Property(a => a.LengteInLesuren).IsRequired().HasDefaultValue(1).HasColumnName("lengte_in_lesuren");
+
+        builder.Property(a => a.Kleur)
+            .HasConversion(kleurConverter)
+            .HasColumnName("kleur")
+            .HasMaxLength(32);
+
         // Optional link to one onderzoeksvraag of the same subthema. SetNull on delete: losing the
         // onderzoeksvraag-tag is not data loss of the activiteit itself (Art. IX.2).
         builder.Property(a => a.OnderzoeksvraagId);

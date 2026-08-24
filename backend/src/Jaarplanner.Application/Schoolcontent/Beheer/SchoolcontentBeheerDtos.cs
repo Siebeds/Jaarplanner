@@ -60,7 +60,9 @@ public sealed record ActiviteitCreatie(
     ActiviteitType ActiviteitType,
     string? Hoek = null,
     string? VerwachteUitkomsten = null,
-    Guid? OnderzoeksvraagId = null);
+    Guid? OnderzoeksvraagId = null,
+    Activiteitkleur? Kleur = null,
+    int LengteInLesuren = 1);
 
 /// <summary>Update payload for an <see cref="Activiteit"/>.</summary>
 public sealed record ActiviteitWijzigingInvoer(
@@ -68,7 +70,9 @@ public sealed record ActiviteitWijzigingInvoer(
     ActiviteitType ActiviteitType,
     string? Hoek = null,
     string? VerwachteUitkomsten = null,
-    Guid? OnderzoeksvraagId = null);
+    Activiteitkleur? Kleur = null,
+    Guid? OnderzoeksvraagId = null,
+    int LengteInLesuren = 1);
 
 /// <summary>
 /// Move payload for an <see cref="Activiteit"/> (E4-08, FR-7.2): the subthema it should end up in. Only the
@@ -96,6 +100,8 @@ public sealed record ActiviteitWeergave(
     string? Hoek,
     string? VerwachteUitkomsten,
     Guid? OnderzoeksvraagId,
+    Activiteitkleur? Kleur,
+    int LengteInLesuren,
     IReadOnlyList<DoelKoppelingWeergave> Doelkoppelingen);
 
 /// <summary>Read view of a subthema with its subdoelen + activiteiten.</summary>
@@ -156,4 +162,7 @@ public sealed record ThemaBibliotheekItem(
     IReadOnlyList<string> RijkeWoordenschat,
     bool HeeftVoldoendeThemadoelen,
     IReadOnlyList<ThemadoelWeergave> Themadoelen,
-    int AantalAfgeleideKlassen);
+    int AantalAfgeleideKlassen,
+    int AantalSubthemas,
+    int AantalActiviteiten,
+    int AantalDoelkoppelingen);

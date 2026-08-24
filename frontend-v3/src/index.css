@@ -165,6 +165,24 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* A control hovers like a control.
+
+     Tailwind 4's preflight leaves a <button> on the user agent's arrow, so in this app every link
+     hovered like a link and every BUTTON hovered like plain text: the view switch, the arrows, the
+     day cells, the class picker. Measured in a browser, where each of those reported
+     `cursor: default`.
+
+     One base rule rather than a utility per button, because the exceptions are the ones that already
+     carry a utility: a draggable activiteit says `cursor-grab`, and a utility beats the base layer.
+     Disabled controls are left alone deliberately, since offering a hand for something that cannot be
+     pressed is the same lie in the other direction. */
+  button:not(:disabled),
+  select:not(:disabled),
+  summary,
+  [role="button"] {
+    cursor: pointer;
+  }
+
   /* One focus treatment everywhere. It is the accent rather than the ink, so that a keyboard
      user's position on the page is the same colour as the thing they are about to press. */
   :focus-visible {

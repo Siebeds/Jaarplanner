@@ -187,5 +187,7 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
                 .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
                 .OrderBy(k => k.LeerplandoelCode)
                 .Select(k => k.LeerplandoelCode)
-                .ToList());
+                .ToList(),
+            activiteit.Kleur,
+            activiteit.LengteInLesuren);
 }

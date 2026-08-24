@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { useId } from "react";
 import { cn } from "../../lib/cn";
 import { IcoonChevron } from "../Iconen";
@@ -45,5 +45,21 @@ export function Keuze({ className, children, ...props }: SelectHTMLAttributes<HT
       </select>
       <IcoonChevron className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-inkt-zwak" />
     </div>
+  );
+}
+
+/** A multi-line field. Three rows and free to grow: two rows hides most of what is already typed. */
+export function Tekstvlak({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      rows={3}
+      className={cn(
+        "w-full rounded-veld border border-lijn-veld bg-kaart px-3 py-2 text-body text-inkt",
+        "placeholder:text-inkt-zwak",
+        "transition-colors duration-150 hover:border-inkt-zacht",
+        className,
+      )}
+      {...props}
+    />
   );
 }

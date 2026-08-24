@@ -1,3 +1,5 @@
+using Jaarplanner.Domain.Schoolcontent;
+
 namespace Jaarplanner.Application.Planning.Weekplanning;
 
 /// <summary>
@@ -108,4 +110,12 @@ public sealed record GeplandeActiviteitWeergave(
     int Volgorde,
     string Status,
     IReadOnlyList<string> Doelcodes,
-    bool ValtBuitenThemaperiode);
+    bool ValtBuitenThemaperiode,
+    /// <summary>The teacher's colour label on the activiteit, or null. Rendered as a wash plus its name.</summary>
+    Activiteitkleur? Kleur = null,
+    /// <summary>
+    /// How many consecutive lesuren this occupies, starting at <c>Volgorde</c>. The day grid draws it
+    /// over that many rows; nothing here is stored per placement, so every placement of one activiteit
+    /// is the same length.
+    /// </summary>
+    int LengteInLesuren = 1);

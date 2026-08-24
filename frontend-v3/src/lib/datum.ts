@@ -39,6 +39,17 @@ export function isoVan(datum: Date): string {
   return `${datum.getFullYear()}-${maand}-${dag}`;
 }
 
+/**
+ * Today, as the same `yyyy-MM-dd` the backend speaks.
+ *
+ * Read during render rather than held in state: a session that spans midnight is not worth a timer,
+ * and every screen asking the same question the same way is worth more than the last hour of a day
+ * being exact.
+ */
+export function vandaag(): string {
+  return isoVan(new Date());
+}
+
 export function verschuif(isoDatum: string, dagen: number): string {
   const d = lokaleDatum(isoDatum);
   d.setDate(d.getDate() + dagen);
@@ -104,4 +115,31 @@ export function datumsTussen(vanIso: string, totIso: string): string[] {
 
 export function valtBinnen(isoDatum: string, vanIso: string, totIso: string): boolean {
   return isoDatum >= vanIso && isoDatum <= totIso;
+}
+
+/**
+ * The ISO 8601 week number, which is the one a Belgian calendar prints.
+ *
+ * Thursday decides: the week belongs to the year that its Thursday falls in, which is why the first
+ * of January can sit in week 52 or 53 of the year before. Counted from that Thursday's own 4 January
+ * anchor rather than from 1 January, so the turn of the year needs no special case.
+ */
+export function weeknummer(isoDatum: string): number {
+  const donderdag = lokaleDatum(isoDatum);
+  donderdag.setDate(donderdag.getDate() + 3 - ((donderdag.getDay() + 6) % 7));
+  const vierJanuari = new Date(donderdag.getFullYear(), 0, 4);
+  const eersteDonderdag = new Date(vierJanuari);
+  eersteDonderdag.setDate(vierJanuari.getDate() + 3 - ((vierJanuari.getDay() + 6) % 7));
+  const dag = 24 * 60 * 60 * 1000;
+  return 1 + Math.round((donderdag.getTime() - eersteDonderdag.getTime()) / (7 * dag));
+}
+
+/** `isoDatum` pulled into [van, tot]. Both ends inclusive; the strings compare as they read. */
+export function klem(isoDatum: string, vanIso: string, totIso: string): string {
+  return isoDatum < vanIso ? vanIso : isoDatum > totIso ? totIso : isoDatum;
+}
+
+/** Monday 0 … Sunday 6. The order a Belgian calendar column runs in, not JavaScript's Sunday-first. */
+export function weekdagIndex(isoDatum: string): number {
+  return (lokaleDatum(isoDatum).getDay() + 6) % 7;
 }

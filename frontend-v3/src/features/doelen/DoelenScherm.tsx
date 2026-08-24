@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Segment } from "../../components/ui/Segment";
 import { Invoer } from "../../components/ui/Veld";
@@ -6,6 +7,8 @@ import { IcoonKnop } from "../../components/ui/Knop";
 import { Blad } from "../../components/ui/Blad";
 import { Leegte } from "../../components/ui/Leegte";
 import { Knop } from "../../components/ui/Knop";
+import { knopklassen } from "../../components/ui/knopklassen";
+import { cn } from "../../lib/cn";
 import { IcoonFilter, IcoonKruis, IcoonZoek } from "../../components/Iconen";
 import { useLeerplandoelFacetten, useMinimumdoelFacetten } from "../../lib/queries";
 import { useMediaQuery, BREED } from "../../lib/scherm";
@@ -86,6 +89,11 @@ export function DoelenScherm() {
     <>
       <Schermkop
         titel={t("doelen.titel")}
+        rechts={
+          <Link to="/inladen" className={cn(knopklassen(), "h-9 min-h-9 px-3 text-meta")}>
+            {t("navigatie.inladen")}
+          </Link>
+        }
         onder={
           <div className="flex gap-2">
             <div className="relative flex-1">

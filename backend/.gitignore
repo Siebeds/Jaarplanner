@@ -5,3 +5,7 @@ obj/
 # IDE / tooling
 .vs/
 *.user
+
+# Custom BaseOutputPath dirs used by parallel sessions (-p:BaseOutputPath=bin-v3/ etc.)
+# so two sessions can build the same tree without fighting over bin/.
+bin-*/

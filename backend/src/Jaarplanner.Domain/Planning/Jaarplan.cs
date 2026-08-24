@@ -133,10 +133,10 @@ public sealed class Jaarplan
             throw new ArgumentException("Een activiteit kan alleen in het jaarplan van haar eigen klas gepland worden.");
         }
 
-        if (IsAlGeplaatstOp(activiteitId, datum))
+        if (IsAlGeplaatstOp(activiteitId, datum, volgorde))
         {
             throw new InvalidOperationException(
-                $"Activiteit {activiteitId} is already placed on {datum:yyyy-MM-dd}.");
+                $"Activiteit {activiteitId} is already placed on {datum:yyyy-MM-dd} in slot {volgorde}.");
         }
 
         var plaatsing = new Activiteitplaatsing(Id, activiteitId, datum, status, volgorde);
@@ -159,9 +159,20 @@ public sealed class Jaarplan
     public IReadOnlyList<Activiteitplaatsing> MenselijkBeslotenActiviteitplaatsingen =>
         _activiteitplaatsingen.Where(p => !p.IsVervangbaar).ToList();
 
-    /// <summary>Whether this activiteit is already on that day. Keeps a repeated call idempotent rather than stacking.</summary>
-    public bool IsAlGeplaatstOp(Guid activiteitId, DateOnly datum) =>
-        _activiteitplaatsingen.Any(p => p.ActiviteitId == activiteitId && p.Datum == datum);
+    /// <summary>
+    /// Whether this activiteit already sits in that <b>slot</b> of that day. Keeps a repeated call idempotent
+    /// rather than stacking.
+    /// <para>
+    /// <b>The unit is the lesuur, not the day, and that widening is deliberate.</b> A school day is a row of
+    /// numbered lesmomenten (<see cref="Activiteitplaatsing.Volgorde"/> is the slot), and two real cases need the
+    /// same activiteit twice on one day: a hoek that runs two consecutive hours, and something a class does in the
+    /// morning and again in the afternoon. Keying the guard on the day alone refused both, and the refusal was not
+    /// protecting anything: the plan has always been able to hold several activiteiten on one day.
+    /// </para>
+    /// </summary>
+    public bool IsAlGeplaatstOp(Guid activiteitId, DateOnly datum, int volgorde) =>
+        _activiteitplaatsingen.Any(p =>
+            p.ActiviteitId == activiteitId && p.Datum == datum && p.Volgorde == volgorde);
 
     /// <summary>The activiteit placement with this id, or null.</summary>
     public Activiteitplaatsing? VindActiviteitplaatsing(Guid plaatsingId) =>

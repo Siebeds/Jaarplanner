@@ -60,7 +60,7 @@ describe("de Nederlandse catalogus", () => {
     // A key nothing references is a key nobody maintains, and it is the one that goes stale.
     // Doelsoort, status and herkomst keys are reached through a template literal, so they are
     // matched on their last segment instead of the whole path.
-    const viaSjabloon = /^(doelsoort|status|herkomst)\./;
+    const viaSjabloon = /^(doelsoort|status|herkomst|activiteitsoort|activiteitkleur)\./;
     const dood = SLEUTELS.filter(([sleutel]) => {
       if (viaSjabloon.test(sleutel)) {
         const groep = sleutel.split(".")[0];

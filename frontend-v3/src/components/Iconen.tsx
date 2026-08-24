@@ -131,3 +131,12 @@ export function IcoonChevron(props: IconProps) {
     </Icoon>
   );
 }
+
+/** A drag handle: two short rules, the universal "this row can be picked up". */
+export function IcoonGreep(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M5 9.5h14M5 14.5h14" />
+    </Icoon>
+  );
+}

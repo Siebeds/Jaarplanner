@@ -236,7 +236,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("JaarplanId", "Datum");
 
-                    b.HasIndex("JaarplanId", "ActiviteitId", "Datum")
+                    b.HasIndex("JaarplanId", "ActiviteitId", "Datum", "Volgorde")
                         .IsUnique();
 
                     b.ToTable("activiteitplaatsingen", (string)null);
@@ -343,6 +343,17 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<string>("Hoek")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Kleur")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kleur");
+
+                    b.Property<int>("LengteInLesuren")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("lengte_in_lesuren");
 
                     b.Property<string>("Naam")
                         .IsRequired()
