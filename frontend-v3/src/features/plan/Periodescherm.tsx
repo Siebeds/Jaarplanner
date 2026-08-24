@@ -4,7 +4,7 @@ import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Segment } from "../../components/ui/Segment";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak } from "../../components/ui/Laadvlak";
-import { IcoonPijlLinks, IcoonPijlRechts } from "../../components/Iconen";
+import { IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
 import { useDagacties, useJaarplan, useRooster, useWeekplanning } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
 import { ApiError } from "../../lib/api";
@@ -26,6 +26,7 @@ import { Dagcel } from "./Dagcel";
 import { Maandrooster } from "./Maandrooster";
 import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Activiteitblad } from "./Activiteitblad";
+import { Subthemaplanner, type Voorstel } from "./Subthemaplanner";
 
 type Weergave = "maand" | "week" | "dag";
 
@@ -46,6 +47,10 @@ export function Periodescherm() {
   const [anker, setAnker] = useState<string>(periodeStart ?? "");
   const [kiezerDatum, setKiezerDatum] = useState<string | null>(null);
   const [geopend, setGeopend] = useState<GeplandeActiviteit | null>(null);
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [plannerResultaat, setPlannerResultaat] = useState<{ gelukt: number; totaal: number; fouten: string[] } | null>(
+    null,
+  );
 
   const { data: rooster } = useRooster(schooljaarId);
   const { data: plan } = useJaarplan(klasId);
@@ -75,6 +80,11 @@ export function Periodescherm() {
   }, [anker, weergave]);
 
   const { data: planning, isPending } = useWeekplanning(klasId, van, tot);
+
+  // The planner spreads over the whole period, so it needs every day of it rather than the days the
+  // current view happens to be showing. A separate query with its own key: asking the view's query
+  // for a wider range would refetch the grid every time the teacher changed week.
+  const { data: heelDePeriode } = useWeekplanning(klasId, blok?.start ?? "", blok?.eind ?? "");
 
   // The thema's running in this period are what the activity picker may offer.
   const themaIdsInPeriode = useMemo(() => {
@@ -145,6 +155,18 @@ export function Periodescherm() {
               </button>
               <span className="ml-1 text-meta text-inkt-zacht">{ankerLabel}</span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPlannerResultaat(null);
+                setPlannerOpen(true);
+              }}
+              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full bg-accent px-3 text-meta font-medium text-accent-op transition-colors duration-150 hover:bg-accent-diep"
+            >
+              <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+              {t("periode.planSubthema")}
+            </button>
           </div>
         }
       />
@@ -208,6 +230,34 @@ export function Periodescherm() {
             { activiteitId, datum: kiezerDatum },
             { onSuccess: () => setKiezerDatum(null) },
           );
+        }}
+      />
+
+      <Subthemaplanner
+        open={plannerOpen}
+        klasId={klasId}
+        themaIds={themaIdsInPeriode}
+        dagen={heelDePeriode?.dagen ?? []}
+        bezig={acties.plaats.isPending}
+        resultaat={plannerResultaat}
+        onSluit={() => setPlannerOpen(false)}
+        onPlan={async (voorstellen: Voorstel[]) => {
+          // One POST per activiteit, in order, and the failures are collected rather than thrown.
+          // Sequential on purpose: the server enforces one activiteit per day per plan, and firing
+          // them in parallel makes the order in which two of them collide a matter of chance.
+          const fouten: string[] = [];
+          let gelukt = 0;
+          for (const voorstel of voorstellen) {
+            try {
+              await acties.plaats.mutateAsync({ activiteitId: voorstel.activiteitId, datum: voorstel.datum });
+              gelukt += 1;
+            } catch (fout) {
+              const reden = fout instanceof ApiError && fout.detail ? fout.detail : t("periode.mislukt");
+              fouten.push(`${voorstel.activiteitNaam}: ${reden}`);
+            }
+          }
+          setPlannerResultaat({ gelukt, totaal: voorstellen.length, fouten });
+          if (fouten.length === 0) setPlannerOpen(false);
         }}
       />
 
