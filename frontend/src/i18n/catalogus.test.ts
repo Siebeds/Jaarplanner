@@ -770,6 +770,14 @@ describe("nl.json — de zin over het minimumdoelniveau blijft zeggen dat het er
 
 describe("nl.json — een aria-label bevat het zichtbare label (WCAG 2.2 SC 2.5.3)", () => {
   /**
+   * The key suffixes this codebase uses for "the accessible name of the control whose visible text is `<key>`".
+   *
+   * Shared by both tests below on purpose: one checks that every pair *satisfies* SC 2.5.3, the other checks that
+   * this list is *complete*. Split across two lists they would drift, and the drift is the whole defect guarded.
+   */
+  const SUFFIXEN = ["Label", "Aria"] as const;
+
+  /**
    * **Label in Name (Level A): the accessible name must contain the visible label**, or speech input cannot reach the
    * control — a user says what they see, and the browser matches what the name says.
    *
@@ -782,17 +790,39 @@ describe("nl.json — een aria-label bevat het zichtbare label (WCAG 2.2 SC 2.5.
    *
    * A base string carrying its own placeholder is skipped: its rendered text is not the literal, so a literal
    * containment test would be meaningless rather than strict.
+   *
+   * **Both suffixes, and the second one is why this guard missed three violations.** E9-04/E9-05 introduced a
+   * `<key>Aria` convention for the thing `<key>Label` already meant, and this test paired only on `Label` — so it was
+   * **structurally blind** to every control that feature named, and to `themabeheer`'s two `…Aria` pairs from E1-14
+   * beside them. It reported green while `weekplanning.verwijderAria` ("{activiteit} van {dag} {datum} halen", visible
+   * "Van deze dag halen"), `themabeheer.activiteitVerplaatsBevestigAria` and
+   * `themabeheer.activiteitVerplaatsOpnieuwAria` all failed. Found by the 2026-08-20 audit, which flagged the
+   * blindness rather than only the one violation it had seen — and the blindness was worth three times as much.
+   *
+   * **The lesson is the shape, not the suffix:** a guard keyed on a naming convention silently stops covering whatever
+   * the next feature names differently, and goes on passing. Non-vacuity is asserted **per suffix**, so a suffix that
+   * matches nothing fails here — but that alone would *not* have caught the original hole, because removing `"Aria"`
+   * from the list just checks fewer keys and stays green. The sibling test below closes that: it reads the source for
+   * what is actually passed to `aria-label` and fails on any key this list cannot reach. **Neither test is sufficient
+   * alone**, which is why both exist.
    */
-  it("keeps every <key>Label a superset of its visible <key>", () => {
-    const paren = [...CATALOGUS].filter(
-      ([sleutel]) => sleutel.endsWith("Label") && CATALOGUS.has(sleutel.slice(0, -"Label".length)),
-    );
+  it("keeps every <key>Label and <key>Aria a superset of its visible <key>", () => {
+    const paren = SUFFIXEN.flatMap((suffix) => {
+      const vanSuffix = [...CATALOGUS].filter(
+        ([sleutel]) => sleutel.endsWith(suffix) && CATALOGUS.has(sleutel.slice(0, -suffix.length)),
+      );
 
-    // Non-vacuity: renaming the convention away must fail here rather than silently switch the guard off.
-    expect(paren.length).toBeGreaterThan(0);
+      // Per suffix, not over the total: a total keeps passing when one convention stops matching anything.
+      expect(
+        vanSuffix.length,
+        `no <key>${suffix} pairs found — has the convention been renamed?`,
+      ).toBeGreaterThan(0);
 
-    for (const [labelSleutel, label] of paren) {
-      const zichtbaar = CATALOGUS.get(labelSleutel.slice(0, -"Label".length))!;
+      return vanSuffix.map(([sleutel, waarde]) => [sleutel, waarde, suffix] as const);
+    });
+
+    for (const [labelSleutel, label, suffix] of paren) {
+      const zichtbaar = CATALOGUS.get(labelSleutel.slice(0, -suffix.length))!;
       if (zichtbaar.includes("{")) {
         continue;
       }
@@ -805,6 +835,256 @@ describe("nl.json — een aria-label bevat het zichtbare label (WCAG 2.2 SC 2.5.
         label.toLowerCase(),
         `${labelSleutel} does not contain its own visible label "${zichtbaar}" (WCAG 2.2 SC 2.5.3)`,
       ).toContain(zichtbaar.toLowerCase());
+    }
+  });
+
+  /**
+   * **The guard above cannot check its own coverage, so this one does.**
+   *
+   * That is the actual defect the 2026-08-20 audit found. The SC 2.5.3 check paired on `<key>Label`; E9-04/E9-05 named
+   * the same thing `<key>Aria`; nothing failed, and three real violations shipped. Adding `"Aria"` to `SUFFIXEN` fixes
+   * *those three* and fixes nothing about the next feature that invents `<key>Toegankelijk`.
+   *
+   * So this reads the **source** instead of the catalogue: every key handed to an `aria-label` whose bare twin also
+   * exists in the catalogue is a control whose visible text and accessible name must satisfy SC 2.5.3, and it must
+   * therefore be reachable through `SUFFIXEN`. A new naming convention now fails **here**, in the commit that
+   * introduces it, naming the key and the suffix it needs.
+   *
+   * **It brace-matches the attribute rather than pattern-matching one idiom, and the first version did not — which made
+   * it blind to the exact key it was written for.** That version required the literal `aria-label={t(`. This repo's
+   * dominant form for these very controls is `aria-label={bezig ? undefined : t("…")}` (six sites), so five keys were
+   * invisible, `weekplanning.verwijderAria` among them: renaming it to `…Toegankelijk` would have left **both** guards
+   * green, which is precisely the hole this test exists to close. Its glob was `{features,components,pages}` as well —
+   * `pages` does not exist in this repo, and `app/` and `src/App.tsx` do, so `navigatie.hoofdnavigatie` was outside the
+   * scan while the docstring said "repo-wide". *A guard that reads as complete but is not is worse than the blind one it
+   * replaces, and this one was both for a few hours.*
+   *
+   * Repo-wide, genuinely: everything under `src/` bar tests, stories and fixtures.
+   *
+   * **What it does not cover, exhaustively as far as I can establish it.** (1) A key assembled by template or
+   * concatenation — `t(`doelsoort.${soort}`)` is not a literal and cannot be resolved statically. (2) A name supplied
+   * through `aria-labelledby`, which points at an element rather than a key. (3) A control whose visible text comes from
+   * a key that is *not* its own name minus a suffix; that pairing is a convention, not something the source states. (4)
+   * A literal `{` or `}` inside a string in the attribute expression would miscount the brace depth. There is none in
+   * this repo today — asserted below rather than assumed, by checking two keys that only the brace-matching reaches.
+   * Those four need a browser and a human. This closes the mechanical hole.
+   */
+  it("covers every aria-label key whose visible twin exists (the suffix list is complete)", () => {
+    const bestanden = import.meta.glob("../**/*.{ts,tsx}", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
+
+    const bronnen = Object.entries(bestanden).filter(
+      ([pad]) => !pad.includes(".test.") && !pad.includes(".stories.") && !pad.includes("testdata"),
+    );
+    const bron = bronnen.map(([, inhoud]) => inhoud).join("\n");
+
+    /**
+     * Every catalogue key reached from an `aria-label`, whatever the expression around it.
+     *
+     * Brace-matched rather than pattern-matched, so a ternary, a nested call and a template hole all resolve. See the
+     * docstring for the one input shape this miscounts and why it does not occur here.
+     */
+    const ariaLabelSleutels = (inhoud: string): string[] => {
+      const marker = "aria-label={";
+      const gevonden: string[] = [];
+
+      for (let start = inhoud.indexOf(marker); start !== -1; start = inhoud.indexOf(marker, start + 1)) {
+        let diepte = 1;
+        let eind = start + marker.length;
+        while (eind < inhoud.length && diepte > 0) {
+          if (inhoud[eind] === "{") {
+            diepte += 1;
+          } else if (inhoud[eind] === "}") {
+            diepte -= 1;
+          }
+          eind += 1;
+        }
+
+        const expressie = inhoud.slice(start + marker.length, eind - 1);
+        for (const match of expressie.matchAll(/t\(\s*"([^"]+)"/g)) {
+          gevonden.push(match[1]);
+        }
+      }
+
+      return gevonden;
+    };
+
+    // Non-vacuity on the SCAN, not just on the catalogue: a glob that stops matching, or a brace-matcher that stops
+    // matching, would make this test pass by reading nothing — the same silent-zero failure it exists to prevent.
+    expect(bronnen.length, "the source glob matched nothing — has the layout moved?").toBeGreaterThan(40);
+
+    const gebruikt = ariaLabelSleutels(bron);
+    expect(gebruikt.length, "no aria-label keys found — has the idiom changed?").toBeGreaterThan(30);
+
+    // The two shapes the first version of this test could not see, pinned by name so neither regression is silent:
+    // a key behind a ternary, and a key outside `features/` and `components/`.
+    expect(gebruikt, "the ternary form is invisible again").toContain("weekplanning.verwijderAria");
+    expect(gebruikt, "the glob no longer reaches src/app").toContain("navigatie.hoofdnavigatie");
+
+    const onbedekt = [...new Set(gebruikt)]
+      // Only keys that HAVE a visible twin are in scope: `minikalender.vorigeMaand` is an icon button with no visible
+      // text, and SC 2.5.3 has nothing to say about it.
+      .filter((sleutel) => {
+        if (SUFFIXEN.some((kandidaat) => sleutel.endsWith(kandidaat))) {
+          return false;
+        }
+
+        // No known suffix. It breaks this convention only if another catalogue key is this one minus a suffix-shaped
+        // tail — i.e. a visible twin exists that the pair check above would have compared it against.
+        return [...CATALOGUS.keys()].some(
+          (ander) => ander !== sleutel && sleutel.startsWith(ander) && sleutel.length > ander.length,
+        );
+      });
+
+    expect(
+      onbedekt,
+      `these keys name a control that also has visible text, but no suffix in [${SUFFIXEN.join(", ")}] reaches ` +
+        "them — add the suffix to SUFFIXEN (and fix whatever SC 2.5.3 failures that reveals)",
+    ).toEqual([]);
+  });
+});
+
+/**
+ * The gap-analyse copy (E5-05), read for what it **says** rather than for which key it came from.
+ *
+ * This file exists because a `t(key)` assertion in a component test cannot catch a lying sentence: the expectation
+ * moves with the catalogue, so rewriting the string rewrites the assertion. Every guard below is therefore a claim
+ * about the Dutch, and each one is a constraint the code or a ruling actually imposes — not a style preference.
+ */
+const LACUNEREGELS = [...CATALOGUS].filter(([sleutel]) =>
+  sleutel.startsWith("dekking.lacuneRegel"),
+);
+
+const LACUNEROUTES = [...CATALOGUS].filter(
+  ([sleutel]) =>
+    sleutel.startsWith("dekking.lacune") && !sleutel.startsWith("dekking.lacuneRegel"),
+);
+
+describe("nl.json — de gap-analyse belooft alleen wat haar oorzaak draagt (E5-05)", () => {
+  it("has both families, so none of the guards below can pass vacuously", () => {
+    // Per family, never over the union. The note on SLOTTEKSTEN records what a combined list did to E4-02's rename
+    // canary: `length > 0` satisfied by whichever family survived, and the other one silently unguarded.
+    expect(LACUNEREGELS.length).toBeGreaterThan(0);
+    expect(LACUNEROUTES.length).toBeGreaterThan(0);
+  });
+
+  it("never says a doel without a thema is a doel without a koppeling", () => {
+    // THE CONSTRAINT THE STORAGE READ IMPOSES ON THE COPY, and it is invisible from the sentence alone.
+    // `HaalKandidaatKoppelingenAsync` excludes `geweigerd` links entirely, so a goal whose only link the teacher
+    // already rejected classifies as GeenThema. It is therefore true that no thema COVERS it, and false that none is
+    // LINKED to it — and the second is the more natural sentence to write, which is why this is guarded rather than
+    // trusted. Getting it wrong tells a teacher to go make a link they already made and threw away.
+    const geenThema = CATALOGUS.get("dekking.lacuneRegelGeenThema");
+    expect(geenThema, "dekking.lacuneRegelGeenThema is gone or renamed").toBeTruthy();
+    expect(geenThema!.toLowerCase()).not.toMatch(/koppel/);
+
+    // The aggregated line makes the same claim about the same set and is the copy most likely to drift from it,
+    // because it is written in a different register one file away.
+    for (const sleutel of ["dekking.lacuneGeenThema", "dekking.lacuneGeenThemaEnkelvoud"]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      expect(waarde!.toLowerCase()).not.toMatch(/koppel/);
+    }
+  });
+
+  it("names a thema in exactly the cause lines that have one to name", () => {
+    // `KandidaatThemas` is empty for GeenThema and non-empty for the other three (DekkingWeergave). A line that
+    // interpolated `{themas}` there would render its own sentence ending in a bare colon; a line that omitted it
+    // elsewhere would state a cause and withhold the one thing a teacher acts on.
+    for (const [sleutel, waarde] of LACUNEREGELS) {
+      const noemtThemas = waarde.includes("{themas}");
+
+      expect(
+        noemtThemas,
+        `${sleutel} ("${waarde}") must interpolate {themas} unless it is the GeenThema line`,
+      ).toBe(sleutel !== "dekking.lacuneRegelGeenThema");
+    }
+  });
+
+  it("does not tell a teacher a rejected thema sits in no period", () => {
+    // ANTAGONIST RONDE 1, MAJOR-1 (2026-08-19). This is the defect that split PlaatsingGeweigerd off, and it is a
+    // VALUE guard because a t(key) assertion could not see it: the key was right and the sentence was false. A
+    // rejected placement is drawn in its period column (`plaatsingenIn` filters stale placements, not rejected ones),
+    // so any wording about sitting in no period contradicts what the kalender shows a few clicks away, and the route
+    // it implies is one `Themakiezer` refuses in exactly that period.
+    for (const sleutel of [
+      "dekking.lacuneRegelPlaatsingGeweigerd",
+      "dekking.lacunePlaatsingGeweigerd",
+      "dekking.lacunePlaatsingGeweigerdEnkelvoud",
+    ]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      // BROADENED TWICE, AND IT IS A TRIPWIRE RATHER THAN A PROOF. Say that plainly, because two rounds in a row
+      // treated it as a proof and two rounds in a row defeated it in one line: ronde 2 with "Geweigerd, dus dit thema
+      // staat nergens in je jaarplan", ronde 3 with "Geweigerd, dus niet opgenomen in een periode van dit jaarplan".
+      // Both are the same lie MAJOR-1 was about; both passed the version of this regex that existed at the time.
+      //
+      // It now forbids the VOCABULARY rather than a list of sentences, which is a much wider net, and it is still not
+      // a proof: no regex decides whether a Dutch sentence is true. What makes the claim safe is the SPLIT — the cause
+      // only exists for a placement that stands in a period — and that is pinned by
+      // DekkingServiceTests.Een_geweigerde_plaatsing_is_haar_eigen_oorzaak against the classification itself. This line
+      // catches a careless reword on its way past; it does not certify the sentence. Do not read a green run as more.
+      expect(waarde!.toLowerCase()).not.toMatch(
+        /periode|jaarplan|ingepland|gepland|opgenomen|nergens|staat niet in/,
+      );
+      // And it must name the rejection, or the teacher cannot tell which of the kalender's actions this line is
+      // about. "Undo it" is the remedy; a line that only said "not covered" would send them looking for the wrong one.
+      expect(waarde!.toLowerCase()).toMatch(/geweigerd/);
+    }
+
+    // The mirror half. WHAT IT ACTUALLY GUARDS, corrected by ronde 2: not a re-fold, which is a server change that
+    // would add no word to this catalogue and is pinned by DekkingServiceTests.Een_geweigerde_plaatsing_is_haar_eigen_
+    // oorzaak. What it guards is the reverse drift — NietIngepland's copy growing a clause about a weigering it no
+    // longer describes, which would make the two cause lines say the same thing about different states and put the
+    // teacher back to guessing which of two remedies applies.
+    for (const sleutel of [
+      "dekking.lacuneRegelNietIngepland",
+      "dekking.lacuneNietIngepland",
+      "dekking.lacuneNietIngeplandEnkelvoud",
+    ]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      expect(waarde!.toLowerCase()).not.toMatch(/geweiger/);
+    }
+  });
+
+  it("does not send an undecided koppeling to the kalender", () => {
+    // The cause exists BECAUSE planning would not help: only aanvaard/manueel links count for dekking (Art. V.1), so
+    // a thema carrying an undecided suggestion covers nothing however well it is planned. Its route is /themas, and a
+    // sentence mentioning a periode or the kalender beside that link would describe a different action from the one
+    // the link performs. That mismatch is precisely the E3-06 class of defect this repo keeps rediscovering.
+    for (const sleutel of [
+      "dekking.lacuneRegelKoppelingNietBeslist",
+      "dekking.lacuneKoppelingNietBeslist",
+      "dekking.lacuneKoppelingNietBeslistEnkelvoud",
+    ]) {
+      const waarde = CATALOGUS.get(sleutel);
+      expect(waarde, `${sleutel} is gone or renamed`).toBeTruthy();
+      expect(waarde!.toLowerCase()).not.toMatch(/periode|kalender|inplan|plaats/);
+    }
+  });
+
+  it("gives the two destinations two different labels", () => {
+    // Two links, two screens, and they sit within a few lines of each other under one heading. Identical labels would
+    // make the block look like one repeated control and leave a keyboard or screen-reader user with two entries that
+    // read the same and go somewhere different.
+    const kalender = CATALOGUS.get("dekking.lacuneNaarKalender");
+    const themas = CATALOGUS.get("dekking.lacuneNaarThemas");
+
+    expect(kalender, "dekking.lacuneNaarKalender is gone or renamed").toBeTruthy();
+    expect(themas, "dekking.lacuneNaarThemas is gone or renamed").toBeTruthy();
+    expect(kalender).not.toEqual(themas);
+  });
+
+  it("keeps every gap sentence free of a coverage figure", () => {
+    // These sentences render beside a total that is sometimes withheld, and most of them already carry a count
+    // of their own. A "van de N doelen" phrasing would put a denominator into a line the withholding gate does not
+    // govern, which is how E5-02's group tallies reconstructed the figure the ruling of 2026-07-28 forbids.
+    for (const [sleutel, waarde] of [...LACUNEREGELS, ...LACUNEROUTES]) {
+      expect(waarde, `${sleutel} states a fraction`).not.toMatch(/\bvan de\b|\bvan\s*\{/);
     }
   });
 });

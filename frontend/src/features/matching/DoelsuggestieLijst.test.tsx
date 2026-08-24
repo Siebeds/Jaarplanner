@@ -229,9 +229,27 @@ describe("DoelsuggestieLijst", () => {
     expect(
       screen.getByText(/telt dat even zwaar als “Aanvaarden”/),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/niet bewaard: je kan dit niet ongedaan maken/),
-    ).toBeInTheDocument();
+
+    /*
+      **The irreversibility warning is now at the action rather than above the list** (E9-08).
+
+      It used to sit permanently above every suggestion; the field it warns about is rendered on EVERY row, so it could
+      not simply move down without repeating itself down the whole list. It appears the moment a replacement code is
+      typed, which is the first act that makes the button live and still strictly before the commit.
+
+      Asserted in both directions on purpose. The first half is what CR1 asked for and the second is what must never be
+      traded away for it: a warning that is quieter is fine, a warning that never arrives is not.
+    */
+    expect(screen.queryByText(/niet bewaard: je kan dit niet ongedaan maken/)).toBeNull();
+
+    fireEvent.change(
+      screen.getByLabelText(t("matching.vervangenLabel", { code: "NAT-K3-01" })),
+      { target: { value: "WIS-L3-01" } },
+    );
+
+    const waarschuwing = screen.getByText(/niet bewaard: je kan dit niet ongedaan maken/);
+    expect(waarschuwing).toBeInTheDocument();
+    expect(waarschuwing).toHaveAttribute("role", "alert");
   });
 
   it("renders local Dutch copy when a substitution is refused, never the server message", async () => {

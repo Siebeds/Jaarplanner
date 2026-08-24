@@ -168,9 +168,10 @@ describe("App shell — navigation (E0-10 clause 2)", () => {
     }
   });
 
-  // Was `/import` until **E1-13** built that screen; moved to `/dekking`, which is still a placeholder
-  // (E5-02/E5-03/E5-05 own it). The route is read from `NAVIGATIE` rather than hard-coded so the next story to
-  // build a screen finds this assertion instead of silently testing a page that has since grown controls.
+  // Was `/import` until **E1-13** built that screen, then `/dekking` until **E5-02** built that one. The route is
+  // read from `NAVIGATIE` rather than hard-coded precisely so this keeps happening without anyone editing the test:
+  // it finds whichever destination is still unbuilt today. Two comments here have had to be corrected after their
+  // named placeholder shipped, which is the argument for not naming one at all.
   it("says plainly that an unbuilt screen does not work yet, and offers no controls", async () => {
     const ongebouwd = NAVIGATIE.find((item) => !item.isGebouwd && item.binnenkortKey);
     expect(ongebouwd).toBeDefined();

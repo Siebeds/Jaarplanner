@@ -24,6 +24,16 @@ export const SCHOOLJAREN = [
 ];
 
 export function doel(overschrijving: Partial<DoelDekking> = {}): DoelDekking {
+  // The cause DEFAULTS FROM `isGedekt` rather than being a constant, because the server's invariant is that a covered
+  // doel carries no cause and an uncovered one always carries one (E5-05). A fixture that broke it would let a
+  // component test assert a sentence no server can produce — "gedekt" beside a line telling the teacher what to do
+  // about it — and the covered case is the one every existing test in this file builds.
+  //
+  // `GeenThema` for the uncovered default, matching the rest of these defaults: no covering thema, nothing planned.
+  // An explicit `oorzaak` in the override still wins, so a test about an impossible pairing can still build one on
+  // purpose; the guard against doing it by accident is that it has to be written out.
+  const isGedekt = overschrijving.isGedekt ?? false;
+
   return {
     code: "NAT-K3-01",
     doelsoort: "Gemeenschappelijk",
@@ -33,8 +43,10 @@ export function doel(overschrijving: Partial<DoelDekking> = {}): DoelDekking {
     tekst: "De kleuters verkennen levende natuur in de eigen omgeving.",
     minimumdoelRef: null,
     nietMeerInOpstap: false,
-    isGedekt: false,
+    isGedekt,
     dekkendeThemas: [],
+    oorzaak: isGedekt ? null : "GeenThema",
+    kandidaatThemas: [],
     ...overschrijving,
   };
 }

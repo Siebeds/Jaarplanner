@@ -117,6 +117,19 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
             plaatsing.HasIndex(p => new { p.JaarplanId, p.BlokStart });
         });
 
+        // The day-level placements (E9-03) hang off the plan as a REGULAR relationship, not an owned collection
+        // like the thema placements above. Their own mapping lives in ActiviteitplaatsingConfiguration; what is
+        // configured here is only the aggregate's navigation and the cascade, so that deleting a plan still takes
+        // its days with it exactly as ownership would have.
+        //
+        // Why not owned: EF refuses to query an owned type independently of its owner, and this feature needs two
+        // such queries — one week's days without loading a year, and one activiteit's placements for the delete
+        // guard. That limitation is what E5-01's worklog records paying for; there is no reason to buy it again.
+        builder.HasMany<Activiteitplaatsing>("_activiteitplaatsingen")
+            .WithOne()
+            .HasForeignKey(p => p.JaarplanId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // The backing field is the source of truth; `Plaatsingen` and `MenselijkBeslotenPlaatsingen` are computed
         // projections over it and must both be ignored — EF otherwise reads either as a second navigation to
         // Themaplaatsing and fails to build the model at all ("Unable to determine the relationship represented by
@@ -124,5 +137,10 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
         builder.Navigation("_plaatsingen").UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Ignore(j => j.Plaatsingen);
         builder.Ignore(j => j.MenselijkBeslotenPlaatsingen);
+
+        // Exactly the same treatment for the day-level pair, and for exactly the same startup-crash reason.
+        builder.Navigation("_activiteitplaatsingen").UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Ignore(j => j.Activiteitplaatsingen);
+        builder.Ignore(j => j.MenselijkBeslotenActiviteitplaatsingen);
     }
 }

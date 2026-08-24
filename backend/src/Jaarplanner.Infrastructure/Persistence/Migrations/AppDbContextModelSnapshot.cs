@@ -206,6 +206,42 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("minimumdoelen", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Activiteitplaatsing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActiviteitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Datum")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("JaarplanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("Volgorde")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiviteitId");
+
+                    b.HasIndex("JaarplanId", "Datum");
+
+                    b.HasIndex("JaarplanId", "ActiviteitId", "Datum")
+                        .IsUnique();
+
+                    b.ToTable("activiteitplaatsingen", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Generatieparameters", b =>
                 {
                     b.Property<Guid>("Id")
@@ -470,6 +506,21 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("MinimumdoelRef")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Activiteitplaatsing", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Activiteit", null)
+                        .WithMany()
+                        .HasForeignKey("ActiviteitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Planning.Jaarplan", null)
+                        .WithMany("_activiteitplaatsingen")
+                        .HasForeignKey("JaarplanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Generatieparameters", b =>
@@ -886,6 +937,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Koppeling")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>
+                {
+                    b.Navigation("_activiteitplaatsingen");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Schooljaar", b =>

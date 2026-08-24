@@ -81,6 +81,20 @@ public class AppDbContext : DbContext
     /// <summary>The driving questions per class/age-scoped subthema (Art. IX.2).</summary>
     public DbSet<Onderzoeksvraag> Onderzoeksvragen => Set<Onderzoeksvraag>();
 
+    /// <summary>
+    /// The activiteiten scheduled onto individual teaching days (E9-03, FR-6.2/FR-7.2) — the day-level half of a
+    /// jaarplan, keyed on a real calendar date rather than on a derived planningsblok.
+    /// <para>
+    /// <b>A set of its own, unlike <c>Themaplaatsing</c>, and the difference is deliberate.</b> Thema placements are
+    /// an <i>owned</i> collection of <see cref="Jaarplan"/>, which EF will not let anyone query independently — the
+    /// limitation E5-01's worklog records paying for. Two things this story needs are exactly such queries: the week
+    /// view reads one date range instead of a whole year of days, and the activiteit delete guard has to count the
+    /// placements of one activiteit without loading every plan in the school. Ownership is not free here and buys
+    /// nothing that <c>OnDelete(Cascade)</c> does not already give, so this one is a plain entity.
+    /// </para>
+    /// </summary>
+    public DbSet<Activiteitplaatsing> Activiteitplaatsingen => Set<Activiteitplaatsing>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

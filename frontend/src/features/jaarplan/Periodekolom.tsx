@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 import { useDroppable } from "@dnd-kit/core";
 
 import { Button } from "../../components/ui/button";
@@ -21,6 +23,15 @@ import type {
 /** One column of the board. Fixed width, so every period is equally readable. */
 export interface PeriodekolomProps {
   blok: Planningsblok;
+  /**
+   * Open this period week by week (E9-04), or `undefined` where that has no meaning.
+   *
+   * **Undefined at the fine tier, and the control is then absent rather than disabled.** A subthemaperiode holds no
+   * thema of its own — a thema sits at the start of its *themaperiode* — so drilling into a fortnight would open a week
+   * view for content that is not there. That is the same mismatch keeping `belasting` coarse-only, and unlike the move
+   * affordance it needs no sentence in its place: the coarse tier is one click away and already carries the control.
+   */
+  onOpenPeriode?: (blokStart: string) => void;
   plaatsingen: Themaplaatsing[];
   /** The class whose plan this is, threaded to the cards' edit actions. */
   klasId: string;
@@ -199,6 +210,7 @@ const PERIODEFOUT: Record<Periodefoutsoort, TranslationKey> = {
  */
 export function Periodekolom({
   blok,
+  onOpenPeriode,
   plaatsingen,
   klasId,
   blokken,
@@ -211,6 +223,39 @@ export function Periodekolom({
   bezettePeriodes,
   hergeneratie,
 }: PeriodekolomProps) {
+  /*
+    Whether this column's regeneration press has been confirmed yet (E9-08).
+
+    **Per column, and reset by nothing but the teacher**, which is the safe direction: an outstanding question that
+    survives a re-render is a question still on screen, while one cleared by a refetch would let a press land without
+    its warning ever having been read. It is deliberately NOT lifted into `Jaarplankalender`: a single shared flag would
+    open the confirmation in whichever column re-rendered, and the sentence names "deze periode".
+  */
+  const [vraagtBevestiging, setVraagtBevestiging] = useState(false);
+  const periodeTrigger = useRef<HTMLButtonElement>(null);
+  const periodeBevestig = useRef<HTMLButtonElement>(null);
+  const bevestigingWasOpen = useRef(false);
+  /**
+   * Focus follows the confirmation, on the pattern `Themakiezer` documents (audit finding, 2026-08-20).
+   *
+   * The trigger is **replaced** by the confirmation and back again, so without this the keyboard user who opened it
+   * lands on `<body>` and loses their place. `Themakiezer` measured exactly that in a browser and records that no test
+   * caught it; the epic entry for this story claimed these confirmations "do not trap focus or lose it", which was half
+   * true. They do not trap it.
+   *
+   * **Guarded on the PREVIOUS value rather than called from the handler**, which is the part that is easy to get wrong:
+   * `setState` is batched, so at the moment the click handler runs the element being focused is still unmounted and the
+   * ref is null. `Themakiezer` shipped that bug first and its comment is the record.
+   */
+  useEffect(() => {
+    if (vraagtBevestiging && !bevestigingWasOpen.current) {
+      periodeBevestig.current?.focus();
+    } else if (!vraagtBevestiging && bevestigingWasOpen.current) {
+      periodeTrigger.current?.focus();
+    }
+
+    bevestigingWasOpen.current = vraagtBevestiging;
+  }, [vraagtBevestiging]);
   const teVol = belasting?.isOverbelast ?? false;
 
   // Disabled rather than absent at the fine tier: hooks cannot be conditional, and dnd-kit's own `disabled` is the
@@ -271,7 +316,52 @@ export function Periodekolom({
         </div>
         <p className="mt-0.5 text-xs text-ink-zacht">
           <time dateTime={blok.start}>{formatteerPeriode(blok.start, blok.eind)}</time>
+          {/* The day figure sits here rather than beside the weeks (E9-02, the owner's request of 2026-08-19 that a
+              period read in days as well as weeks). Two reasons, both from looking at the column: this line already
+              states the span, so the two facts belong together; and the weeks figure shares a fixed 288px row with the
+              "Periode N" heading, where a second number wraps.
+
+              **`aantalOpenWeekdagen`, never `aantalOpenDagen`.** The latter counts weekends — a 5-week period reports
+              35 — so printing it as "schooldagen" would be plainly false. The two counts are separate facts and only
+              the other one may be divided by 7; see the note on the field.
+
+              `· ` as the separator, matching `Doeldetail`'s `discipline · domein · subdomein`. Not an em dash (owner,
+              2026-07-29); the en dash inside the date range is the allowed exception.
+
+              Through `tAantal` because Dutch inflects: "1 schooldagen" is reachable on the short block a long mid-year
+              closure can leave behind, which is the same trap E3-09 hit with the weeks figure. */}
+          <span className="text-ink-zacht"> · </span>
+          <span data-schooldagen>
+            {tAantal(
+              blok.aantalOpenWeekdagen,
+              "kalender.schooldagenEnkelvoud",
+              "kalender.schooldagen",
+            )}
+          </span>
         </p>
+
+        {/* Into the week view (E9-04, CR2). **On the period header rather than on a card**, because a period is what a
+            teacher opens: its weeks hold the activiteiten of whatever thema's are in it, and hanging this off one card
+            would ask which thema's week it is when the answer is "the period's".
+
+            A button rather than making the whole header clickable: the header carries a heading, a date and two
+            figures, and a click target that large has no discoverable edge and swallows text selection. It states its
+            own purpose in visible text, so nothing here relies on a tooltip (the E3-06 rule).
+
+            Absent, not disabled, at the fine tier — see the note on `onOpenPeriode`. */}
+        {onOpenPeriode !== undefined && (
+          <button
+            type="button"
+            onClick={() => onOpenPeriode(blok.start)}
+            // The ordinal is in the accessible name because seven identical "Week per week plannen" buttons on one
+            // board are indistinguishable to a screen reader. The visible text is contained in it, so Label in Name
+            // (SC 2.5.3) holds.
+            aria-label={t("weekplanning.openenAria", { ordinaal: blok.ordinaal })}
+            className="mt-2 rounded-md border border-input bg-card px-2.5 py-1 text-xs font-medium text-petrol hover:bg-petrol-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            {t("weekplanning.openen")}
+          </button>
+        )}
 
         {/* Which themaperiode this column is part of, straight from the server's `ouderOrdinaal` — the field exists
             for exactly this. It is the fact that makes the fine view readable: a thema sits at the start of its
@@ -421,20 +511,76 @@ export function Periodekolom({
             genereren" are indistinguishable in a screen reader's element list. Same device as the picker's own label. */}
         {verplaatsstaat === "kan" && bezetDoor === null && !isDoelwit && hergeneratie && (
           <div className="flex flex-col gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-full"
-              onClick={hergeneratie.start}
-              // Disabled while ANY period is running, labelled only while this one is: see `wachten`.
-              disabled={hergeneratie.bezig || hergeneratie.wachten}
-              aria-label={t("kalender.periodeHergenereerLabel", { ordinaal: blok.ordinaal })}
-            >
-              {hergeneratie.bezig
-                ? t("kalender.genereerBezig")
-                : t("kalender.periodeHergenereer")}
-            </Button>
+            {/*
+              **The press asks first, and that is what let the board stop explaining it** (E9-08).
+
+              What this button replaces used to be a 278-character paragraph above the board, rendered whenever any
+              column showed the control -- so on a healthy plan a teacher read it every time, and pressed it rarely. The
+              consequence half now appears in the column they pressed, at the moment it applies, and the instruction
+              half stays above the board behind the Uitleg switch.
+
+              **Per column rather than lifted to the board**, because the sentence names "deze periode" and there are up
+              to seven of these. A single shared confirmation would have to name the ordinal to stay true, which is the
+              same "one message for seven buttons" problem the aria-label above already solves by not being shared.
+
+              `role="alert"` so it is announced rather than merely appearing. The confirming button repeats the verb and
+              its scope, because "Ja" alone in a screen reader's element list is seven identical answers to seven
+              different questions.
+            */}
+            {vraagtBevestiging ? (
+              <>
+                <p role="alert" className="text-xs font-medium leading-snug text-ink">
+                  {t("kalender.periodeHergenereerGevolg")}
+                </p>
+                <Button
+                  ref={periodeBevestig}
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setVraagtBevestiging(false);
+                    hergeneratie.start();
+                  }}
+                  disabled={hergeneratie.bezig || hergeneratie.wachten}
+                  // **No `aria-label` here, deliberately, and that is SC 2.5.3 rather than an omission.** The trigger
+                  // needs one because seven columns carry seven identical "Deze periode" buttons; this one carries its
+                  // own visible sentence, and overriding it with the trigger's wording would make the accessible name
+                  // disagree with the label a speech-input user reads aloud. Only one confirmation is open at a time, so
+                  // there is nothing to disambiguate it from.
+                >
+                  {hergeneratie.bezig
+                    ? t("kalender.genereerBezig")
+                    : t("kalender.periodeHergenereerBevestig")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setVraagtBevestiging(false)}
+                  disabled={hergeneratie.bezig}
+                >
+                  {t("kalender.annuleren")}
+                </Button>
+              </>
+            ) : (
+              <Button
+                ref={periodeTrigger}
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                onClick={() => setVraagtBevestiging(true)}
+                // Disabled while ANY period is running, labelled only while this one is: see `wachten`.
+                disabled={hergeneratie.bezig || hergeneratie.wachten}
+                aria-label={t("kalender.periodeHergenereerLabel", { ordinaal: blok.ordinaal })}
+              >
+                {hergeneratie.bezig
+                  ? t("kalender.genereerBezig")
+                  : t("kalender.periodeHergenereer")}
+              </Button>
+            )}
 
             {/* The failure is reported **in the column the teacher pressed**, not only in the panel above the board:
                 the board scrolls horizontally, so a message at the top of the page can be off-screen entirely. Four

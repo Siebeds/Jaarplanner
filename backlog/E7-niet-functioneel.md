@@ -18,6 +18,15 @@
   Plan generation within seconds–tens of seconds; snappy calendar.
   *Done when:* generation and calendar interactions meet the target on representative data.
   > **First concrete item, filed 2026-08-05 by E3-09's antagonist round 2: the kalender downloads the whole per-goal coverage list to render one integer.** E3-09's knelpunt line needs `aantalLeerplandoelen - aantalGedekt`, and gets it from `GET /api/klassen/{id}/dekking`, whose `DekkingWeergave.Doelen` carries **one record per in-scope leerplandoel** with its `tekst` and its covering thema's. The kalender discards all of it. On the demo seed that is 14 rows and measured 226 ms; a real Op.stap import puts hundreds behind a single jaar/fase, and this is the **anchor screen**. Three multipliers, all verified in code rather than assumed: `useDekking` sets **no `staleTime`** (E5-02's deliberate choice, because dekking must never be stale), `main.tsx` uses a bare `new QueryClient()` so `refetchOnWindowFocus` is on and the full payload is re-fetched on **every window focus**, and every narrowing through the kleuterjaar chooser is a **new query key** with no kept previous data. **The fix is a count-only projection** (a `?vorm=samenvatting` shape, or a dedicated endpoint) so the board asks for two numbers instead of a list.
+  > **Second concrete item, filed 2026-08-19 by E5-05's antagonist ronde 2, and it makes the first one bigger.**
+  > E5-05 added `oorzaak` and `kandidaatThemas` to **every row** of the same `DekkingWeergave.Doelen` payload the item
+  > above is about, and it did so on the anchor screen. So the row the kalender downloads to render one integer is now
+  > wider than when that measurement was taken, and the 226 ms figure above is a floor rather than a current reading.
+  > Nothing here is a defect in E5-05: the dekkingsoverzicht genuinely needs both fields, and the waste is entirely on
+  > the kalender's side of the same endpoint. It is filed because *"the kalender downloads the whole list"* is a claim
+  > whose cost changes every time a story widens the row, and nobody re-measures a number recorded on someone else's
+  > entry.
+
   > *Filed here rather than left on E3-09, and that is the point:* E3-09's own entry claimed this was "routed", when it had only been *written down inside the story that closes*. The **E4-08 precedent** in [`README.md`](README.md) is the same mistake one story earlier — an item routed to a closed story was owned by nothing. A concern is routed when it lives somewhere that outlives the entry that found it.
 
 - [ ] **E7-04 — Cloud hosting, EU region (NFR-4, Art. VI.3)**
@@ -114,6 +123,17 @@
   routes sit behind the single named policy `Curriculumbeheer` ([ADR-0022](../docs/adr/0022-curriculum-administration-authorisation-seam.md)),
   whose body is a documented no-op precisely because this gate is open. Binding that policy to the directie
   role is E6-02's one-line job; until then these two routes are as open as the rest.
+  *Blast radius grew, without a new route (2026-08-19, E5-05 antagonist ronde 1).* The already-anonymous
+  `GET /api/klassen/{klasId}/dekking` now discloses **more than it did**: E5-05's gap-analyse added a second link
+  read that is deliberately *not* narrowed to placed thema's, so `LeerplandoelDekking.KandidaatThemas` names every
+  thema in the school-wide library carrying a non-rejected link to a goal in scope. Before, this endpoint could name
+  only thema's the class had actually placed. No pupil data is involved (Art. VI.2 intact) and no new route exists,
+  which is why E5-05 was not itself judged a violation — but it is the first growth of this gate's radius along the
+  **payload** axis rather than the route axis, and a reader sizing the exposure needs that: the surface is not fully
+  described by counting endpoints. *Written here, on the story that outlives E5-05, because E5-05's own entry first
+  claimed this was "routed to E7-11" while nothing had been written on E7-11 — the same defect this file's E7-03 note
+  and the E4-08 precedent in [`README.md`](README.md) both already record. Ronde 2 caught it.*
+
   *Blast radius grew (2026-07-29, E3-01 audit).* E3-01 added four anonymous routes: `POST /api/schooljaren`, and on a class's jaarplan `POST …/generatie`, the status/vergrendeling PUTs and `DELETE …/plaatsingen/{id}`. The last one destroys an accepted, locked placement — and there is **no soft-delete and no audit trail anywhere**, so it is unrecoverable. More precisely, and worth knowing when sizing this gate: **the strongest anonymous stop in the codebase is now two calls instead of one.** Before E3-01's fix round, `DELETE /api/klassen/{id}` was a hard refusal while any placement held a human decision; now an anonymous caller deletes the placements first, then the class. That is not a security *regression* — the guard was never access control, it exists to stop incidental loss — but this enumeration is what a reader uses to judge the exposure, so it must say so.
 
 - [~] **E7-12 — Dependency vulnerability hygiene: nothing owns it today** — *added 2026-07-29 (surfaced by the E3-01 test-runner); clause 1 of 3 landed 2026-07-29*
@@ -209,7 +229,7 @@
 
 <a id="e7-17"></a>
 
-- [ ] **E7-17 — `pnpm lint`'s type check checks nothing, and `CLAUDE.md` tells every session to rely on it** — *added 2026-08-03 by the technical lead; **found by E3-08's fix-round-4 agent**, which proved it and correctly refused to change a shared script*
+- [~] **E7-17 — `pnpm lint`'s type check checks nothing, and `CLAUDE.md` tells every session to rely on it** — *added 2026-08-03 by the technical lead; **found by E3-08's fix-round-4 agent**, which proved it and correctly refused to change a shared script. **Clauses 1, 2 and 4 done 2026-08-19 by the E9 session (`5df8eb3`); clause 3 is outstanding and is the owner's.***
   `frontend/package.json` defines `"lint": "eslint . --max-warnings 0 && tsc --noEmit"`. But `frontend/tsconfig.json` is **solution-style** — `"files": []` plus `"references"` to `tsconfig.app.json` and `tsconfig.node.json` — so a bare `tsc --noEmit` has **zero files in its program** and type-checks nothing. It exits 0 on a deliberate `const x: number = "nope"`. The type check that really runs is `"build": "tsc -b && vite build"`, because `-b` follows project references.
   **So "lint clean" is not evidence of a clean type check, and it has been offered as exactly that.**
   *Verified by the technical lead from configuration rather than taken on report (2026-08-03):* `tsconfig.json` does carry `"files": []` and `"references"`, `lint` does call bare `tsc --noEmit`, and `build` does call `tsc -b`. The mechanism follows from those three facts alone.
@@ -221,6 +241,11 @@
   2. **Proven by construction**: a deliberate type error makes `pnpm lint` fail, and the proof is recorded. A fix to a gate that is verified only by the gate passing is not verified.
   3. **`CLAUDE.md` line 50 names whatever command actually type-checks.** One line, and it is the reason this recurred rather than a cosmetic edit. *(Not done by the lead: a working agreement is the owner's to change, unlike the Status paragraph.)*
   4. No behavioural change in `frontend/src`, and the full suite still green.
+  > **Fixed 2026-08-19 (E9 session, `5df8eb3`): `lint` is now `eslint . --max-warnings 0 && tsc -b --noEmit`.**
+  > **Clause 2's inverse is proven by construction, not inferred**, which is what the clause asked for: `const bewustFout: number = "dit is een string"` appended to a real source file makes `pnpm lint` **fail** with TS2322, and removing it makes it pass. Both directions were run. TS 5.9.3 accepts `-b --noEmit`.
+  > **Clause 4 holds:** 672 frontend tests / 28 files green, no behavioural change in `frontend/src`.
+  > **Clause 3 is deliberately not done.** `CLAUDE.md` line 50 still names `pnpm lint` as the gate and never names `pnpm build`; this entry says a working agreement is the owner's to change, and that is respected rather than quietly overridden.
+  > **⚠ Recorded because the manner of the fix is itself an instance of the problem this backlog exists to prevent.** The E9 session **re-derived this defect from scratch** — solution-style tsconfig, `--noEmit` not following references, the deliberate-error proof — and reported it to the owner and the groepschat as a **new discovery**. It had been filed here for sixteen days, with the same diagnosis and half the same proof. Nothing was lost but the time; what it cost was a false claim of novelty, corrected in the chat the same day. The transferable half: **it searched the code and not the backlog.** The prospective-defect prediction in this entry also held exactly — that session hit the gap twice on one branch (a required prop missing at three call sites, a required field missing in a `.ts` fixture), both invisible to `lint` and both caught by `build`.
   *Ref:* Art. X.1 (a gate must prove what it claims), and the same principle as **E7-12** — an ignorable warning is ignored, and a gate that cannot fail is worse. **Related:** [E7-16](#e7-16) is the same class one layer down (a test that cannot observe the defect); this is a *gate* that cannot observe the defect.
 
 - [ ] **E7-18 — Demo-fixture Dutch reaches teachers, and Art. II.5 binds it** — *filed 2026-08-04 by E5-02, on its antagonist audit's instruction to file it or waive it explicitly*

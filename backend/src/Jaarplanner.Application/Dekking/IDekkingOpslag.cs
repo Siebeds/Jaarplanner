@@ -59,6 +59,43 @@ public interface IDekkingOpslag
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Every thema that carries a link to a leerplandoel <b>for this class</b>, whether or not the thema is in the
+    /// plan, as (code, thema id, thema naam, is the link decided) rows. The input the gap-analyse classifies a lacune
+    /// from (E5-05).
+    /// <para>
+    /// <b>Wider than <see cref="HaalDekkendeKoppelingenAsync"/> on two axes, and narrower on none.</b> It is not
+    /// restricted to placed thema's, because "no thema carrying this goal is in the plan" is one of the things
+    /// the gap-analyse has to be able to say; and it carries <c>voorgesteld</c> links as well as decided ones, because
+    /// "the link itself has not been decided yet" is another. The four layers and the class scoping are identical
+    /// (owner ruling 2026-08-03) — see <see cref="HaalDekkendeKoppelingenAsync"/> for the reasoning, which is not
+    /// repeated here precisely because these two must not drift apart.
+    /// </para>
+    /// <para>
+    /// <b><c>geweigerd</c> links are excluded entirely</b>, and that is the one status decision this read makes on its
+    /// own. A rejected link is a decision the teacher already took, so surfacing the thema as a candidate would invite
+    /// them to redo it; and no cause in <see cref="Lacuneoorzaak"/> has a remedy for it. The consequence is a
+    /// constraint on copy rather than on code: a goal linked <i>only</i> by rejected links classifies as
+    /// <see cref="Lacuneoorzaak.GeenThema"/>, so that cause may say no thema <b>covers</b> the goal and may never say
+    /// none is <b>linked</b> to it.
+    /// </para>
+    /// <para>
+    /// <b>The decided rows of this read and <see cref="HaalDekkendeKoppelingenAsync"/> must agree.</b> The gap-analyse
+    /// leans on that: <see cref="Lacuneoorzaak.WachtOpBeslissing"/> is derived by finding a decided link on a thema
+    /// that stands in the plan as a proposal, which is only sound if a decided link on a thema standing there as an
+    /// <i>accepted</i> placement would have made the goal covered by the other read. Two queries applying one rule is
+    /// the duplication EF forces and E1-17 owns (a shared predicate does not translate to SQL), so the two are pinned
+    /// against each other by a Postgres test rather than by extraction — the same remedy this port already documents
+    /// one method up. <b>Merging them into one read would be the better fix and it is deliberately not taken here:</b>
+    /// the covering read has a second caller in the vooruitzicht path with a different signature, so rewriting it is
+    /// E1-17's scope rather than this story's.
+    /// </para>
+    /// </summary>
+    /// <param name="klasId">The class whose gaps are being explained; scopes layers 3 and 4.</param>
+    Task<IReadOnlyList<KandidaatKoppeling>> HaalKandidaatKoppelingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The in-scope leerplandoelen — the denominator of the coverage figure and the source of the gap list.
     /// <para>
     /// Returned as the domain entity rather than a fourth near-identical read DTO, following
@@ -136,3 +173,22 @@ public interface IDekkingOpslag
 /// <param name="LeerplandoelCode">The covered goal's code.</param>
 /// <param name="ThemaNaam">The name of the placed thema that carries it — the evidence a proof of coverage needs.</param>
 public sealed record DekkendeKoppeling(string LeerplandoelCode, string ThemaNaam);
+
+/// <summary>
+/// One thema that could account for a leerplandoel, and how far the link to it has been decided (E5-05).
+/// </summary>
+/// <param name="LeerplandoelCode">The goal the link points at.</param>
+/// <param name="ThemaId">
+/// The thema's id, needed because the classification asks whether <b>this</b> thema stands in the plan and the
+/// jaarplan projection identifies placements by thema id. The name alone would not do: two thema's may share a name.
+/// </param>
+/// <param name="ThemaNaam">The thema's name — what a teacher is shown and acts on.</param>
+/// <param name="IsBeslist">
+/// <c>true</c> for an <c>aanvaard</c>/<c>manueel</c> link, <c>false</c> for a <c>voorgesteld</c> one. Rejected links
+/// never reach this record at all, so the flag is a two-state fact rather than a collapsed three-state one.
+/// </param>
+public sealed record KandidaatKoppeling(
+    string LeerplandoelCode,
+    Guid ThemaId,
+    string ThemaNaam,
+    bool IsBeslist);

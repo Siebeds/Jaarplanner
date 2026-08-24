@@ -9,14 +9,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useId, useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
-
-import { DEKKING_PAD, JAARFASE_PARAM } from "../../app/routes";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Uitleg } from "../../app/uitleg";
 import { Jaarfasekiezer } from "../dekking/Jaarfasekiezer";
 import { Button } from "../../components/ui/button";
 import { t, tAantal, type TranslationKey } from "../../i18n";
 import { ApiError } from "../../lib/api";
+import { Dekkingsvoortgangsbalk } from "../dekking/Dekkingsvoortgangsbalk";
+import { useDekkingsvoortgang } from "../dekking/useDekkingsvoortgang";
 import { useDekking } from "../dekking/useDekking";
 import { Jaarspine } from "./Jaarspine";
 import { Periodekolom, Vakantiegat, type Periodefoutsoort } from "./Periodekolom";
@@ -76,9 +76,16 @@ import {
  */
 export interface JaarplankalenderProps {
   klasId: string;
+  /**
+   * Open one themaperiode week by week (E9-04).
+   *
+   * Passed in rather than read from the URL here, because the page owns the board-versus-panel decision: a component
+   * that could both request the drill-down and be replaced by it would be deciding its own unmounting.
+   */
+  onOpenPeriode: (blokStart: string) => void;
 }
 
-export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
+export function Jaarplankalender({ klasId, onOpenPeriode }: JaarplankalenderProps) {
   const jaarplan = useJaarplan(klasId);
 
   // The zoom level (E3-08, FR-6.3).
@@ -124,13 +131,40 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
    * See the latching note further down for why the value is held at all rather than read off the current answer.
    */
   const beschikbaarLatch = useRef<readonly string[]>([]);
+  const heeftDoelenLatch = useRef(false);
+  // E9-08: the regeneration press asks first, so its consequence paragraph does not have to live above the board.
+  const [vraagtHergeneratie, setVraagtHergeneratie] = useState(false);
+  const hergenereerTrigger = useRef<HTMLButtonElement>(null);
+  const hergenereerBevestig = useRef<HTMLButtonElement>(null);
+  const hergeneratieWasOpen = useRef(false);
+  /**
+   * Focus follows the confirmation, on the pattern `Themakiezer` documents (audit finding, 2026-08-20).
+   *
+   * The trigger is **replaced** by the confirmation and back again, so without this the keyboard user who opened it
+   * lands on `<body>` and loses their place. `Themakiezer` measured exactly that in a browser and records that no test
+   * caught it; the epic entry for this story claimed these confirmations "do not trap focus or lose it", which was half
+   * true. They do not trap it.
+   *
+   * **Guarded on the PREVIOUS value rather than called from the handler**, which is the part that is easy to get wrong:
+   * `setState` is batched, so at the moment the click handler runs the element being focused is still unmounted and the
+   * ref is null. `Themakiezer` shipped that bug first and its comment is the record.
+   */
+  useEffect(() => {
+    if (vraagtHergeneratie && !hergeneratieWasOpen.current) {
+      hergenereerBevestig.current?.focus();
+    } else if (!vraagtHergeneratie && hergeneratieWasOpen.current) {
+      hergenereerTrigger.current?.focus();
+    }
+
+    hergeneratieWasOpen.current = vraagtHergeneratie;
+  }, [vraagtHergeneratie]);
 
   const rooster = usePlanningsrooster(jaarplan.data?.schooljaarId, niveau);
 
   /**
    * The coverage read behind the knelpunt line and behind the chooser above it (E3-09).
    *
-   * **One query for both**, lifted out of `OngeplandeDoelen` in the fix round: the control needs
+   * **One query for both**, lifted out of `OngeplandeDoelen` (since removed) in the fix round: the control needs
    * `beschikbareJaarFasen` and the sentence needs the counts, and they must be the *same* answer or the chooser could
    * offer a code the figure was not measured against. TanStack would dedupe two identical keys, but "they happen to
    * share a cache entry" is a weaker guarantee than "there is one call".
@@ -139,6 +173,15 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
    * offering it here would put a second scope control on the board for a figure that is about *this class*.
    */
   const dekking = useDekking(klasId, "EigenJaarFase", jaarFase);
+
+  /**
+   * The same figures the coverage bar draws, for the fallback caveat below (E9-06 fix round, audit MAJOR).
+   *
+   * **The identical query key to the bar's, so this is the same cache entry and not a second request.** Declared here
+   * beside `useDekking` rather than next to the caveat it feeds, because everything below this point sits after an early
+   * return and a hook cannot be called conditionally.
+   */
+  const voortgang = useDekkingsvoortgang(klasId, "EigenJaarFase", jaarFase);
 
   // The GENERATION tier's grid, fetched independently of the zoom (E3-08 fix round 1, antagonist finding 1).
   //
@@ -442,20 +485,44 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
   }
   const beschikbareJaarFasen = beschikbaarLatch.current;
 
+  // **Latched for the same reason `beschikbareJaarFasen` is. E9-06 did not create this defect; it made it routine.**
+  //
+  // The condition used to read `aantalLeerplandoelen` straight off the query, which is `undefined` for the length of any
+  // refetch, so the control vanished from under the cursor that had just clicked it — the exact defect the latch two
+  // blocks up was written for. *An earlier version of this comment blamed the switch to `resetQueries`, and that was
+  // wrong:* this file's own test comment already recorded the chooser disappearing across a generation run under
+  // `removeQueries`, calling it self-healing and pre-existing, because every placement mutation writes
+  // `setQueryData(jaarplanKey(...))` and that re-render was enough to rebuild the emptied query. What the reset changed
+  // is the frequency — every accept, reject and drag rather than only a run — which is what made it worth fixing.
+  // Pinned by `keeps the kleuterjaar chooser on screen across an edit`, which needs a deliberately slowed stub because
+  // the window is otherwise too short for any assertion to land inside.
+  if ((dekking.data?.aantalLeerplandoelen ?? 0) > 0) {
+    heeftDoelenLatch.current = true;
+  }
+
   const toonJaarfasekiezer =
-    beschikbareJaarFasen.length > 1 &&
-    (jaarFase !== null || (dekking.data?.aantalLeerplandoelen ?? 0) > 0);
+    beschikbareJaarFasen.length > 1 && (jaarFase !== null || heeftDoelenLatch.current);
 
   // Gated on the figure it describes actually rendering, not on the fallback flag alone (antagonist round 2). Two states
   // reach `isTerugvalNaarHeelCurriculum` with no line under it — a stale placement (`aantalGedekt === null`) and a fully
   // covered scope — and the sentence then points at nothing. Same gating discipline as `teVolUitleg` and `beslisUitleg`
   // below, and the same defect they were each fixed for.
+  //
+  // **Read off the VOORTGANG payload, which is the same query the figure it qualifies comes from** (E9-06 fix round,
+  // audit MAJOR). It used to read `dekking.data`, and that became wrong the moment the figure moved: the fraction now
+  // comes from `…/dekking/voortgang`, a handful of integers, while `/dekking` is the whole in-scope curriculum
+  // unpaged. Both are cleared by every accept, reject and drag, and the cheap one resolves first — so the number
+  // painted while its caveat was still `undefined`, and if `/dekking` errored while voortgang succeeded the caveat was
+  // absent for good. The comment at the render site says exactly what that costs: *the teacher reads a number several
+  // times too large with no way to tell.* A caveat must not be able to outlive or lag the figure it qualifies, and the
+  // only way to guarantee that is to derive both from one answer.
+  //
   const ongedektAantal =
-    dekking.data !== undefined && dekking.data.aantalGedekt !== null
-      ? dekking.data.aantalLeerplandoelen - dekking.data.aantalGedekt
+    voortgang.data !== undefined && voortgang.data.aantalGedekt !== null
+      ? voortgang.data.aantalLeerplandoelen - voortgang.data.aantalGedekt
       : null;
   const toonDekkingTerugval =
-    dekking.data?.isTerugvalNaarHeelCurriculum === true && (ongedektAantal ?? 0) > 0;
+    voortgang.data?.isTerugvalNaarHeelCurriculum === true && (ongedektAantal ?? 0) > 0;
 
   // **Te vol is a themaperiode property, so the board marks columns only at that tier** (owner ruling, 2026-07-31).
   // The arithmetic applied to a fortnight flags every filled sub-column — a thema's whole 4 to 6 weeks against the ~2
@@ -750,18 +817,66 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
           {/* Stacked on a phone, side by side from `sm`. As a single wrapping flex row the explanation
               shrank into a narrow column beside the button and clipped it. */}
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-5">
-            <Button
-              type="button"
-              onClick={() => generatie.mutate(parameters)}
-              disabled={generatie.isPending || instellingenOnbekend || periodesOnbekend}
-              className="w-full sm:w-auto"
-            >
-              {generatie.isPending
-                ? t("kalender.genereerBezig")
-                : heeftPlan
-                  ? t("kalender.hergenereer")
-                  : t("kalender.genereer")}
-            </Button>
+            {/*
+              **A confirmation step, but only when the press replaces something** (E9-08).
+
+              On a first run nothing is destroyed, so the button fires directly and `genereerUitleg` stays where it is:
+              it explains what the tool will do, which is not a warning about loss. Once a plan exists the same press
+              discards every undecided, unlocked proposal, and E4-04's whole finding was that nothing said so
+              beforehand. It said so afterwards by putting a 330-character paragraph permanently above the board, which
+              is what CR1 came back about.
+
+              So the sentence is not deleted and not hidden: it moves to the one moment it is unavoidable. `role="alert"`
+              so it is announced rather than merely appearing, and the confirming button carries the verb rather than
+              "Ja" alone (SC 2.4.6 and this repo's rule that an action keeps its name through the flow).
+            */}
+            {heeftPlan && vraagtHergeneratie ? (
+              <div className="flex w-full flex-col gap-2">
+                <p role="alert" className="max-w-2xl text-xs font-medium leading-snug text-ink">
+                  {t("kalender.hergenereerUitleg")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    ref={hergenereerBevestig}
+                    type="button"
+                    variant="destructive"
+                    onClick={() => {
+                      setVraagtHergeneratie(false);
+                      generatie.mutate(parameters);
+                    }}
+                    disabled={generatie.isPending || instellingenOnbekend || periodesOnbekend}
+                  >
+                    {generatie.isPending
+                      ? t("kalender.genereerBezig")
+                      : t("kalender.hergenereerBevestig")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setVraagtHergeneratie(false)}
+                    disabled={generatie.isPending}
+                  >
+                    {t("kalender.annuleren")}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                ref={hergenereerTrigger}
+                type="button"
+                onClick={() =>
+                  heeftPlan ? setVraagtHergeneratie(true) : generatie.mutate(parameters)
+                }
+                disabled={generatie.isPending || instellingenOnbekend || periodesOnbekend}
+                className="w-full sm:w-auto"
+              >
+                {generatie.isPending
+                  ? t("kalender.genereerBezig")
+                  : heeftPlan
+                    ? t("kalender.hergenereer")
+                    : t("kalender.genereer")}
+              </Button>
+            )}
             {/* The explanation is **replaced**, not supplemented, once a plan exists: two paragraphs beside one button
                 is the wall of prose this screen keeps having to cut. So the regeneration sentence has to carry
                 everything the first-run one did, and the audit's second MAJOR is what proves that is not a formality.
@@ -781,9 +896,20 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 started in writes nothing (`VerplaatsPlaatsingAsync` treats it as a normal gesture), so such a
                 placement stays `Voorgesteld` and does disappear, while a teacher might call it "verplaatst". Making
                 the no-op write would cost a standing proposal its motivation, which is the worse trade. */}
-            <p className="max-w-2xl text-xs leading-snug text-ink-zacht">
-              {t(heeftPlan ? "kalender.hergenereerUitleg" : "kalender.genereerUitleg")}
-            </p>
+            {/*
+              **Only the first-run explanation is left here** (E9-08). The regeneration sentence moved into the
+              confirmation above, because its subject is what the press destroys and that belongs at the press.
+
+              The comment block above this one argued that the explanation is *replaced* rather than supplemented once a
+              plan exists, so that the regeneration sentence had to carry everything the first-run one did. That still
+              holds and is now carried in the confirmation, which is where the whole string went, verbatim: the
+              human-in-the-loop clause the audit's second MAJOR put there travels with it rather than being left behind.
+            */}
+            {!heeftPlan && (
+              <p className="max-w-2xl text-xs leading-snug text-ink-zacht">
+                {t("kalender.genereerUitleg")}
+              </p>
+            )}
           </div>
 
           {/* Why the button above is refused, beside the button. **Rendered for BOTH causes** (fix round 3, MINOR-1).
@@ -926,6 +1052,18 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 on it. An instruction nobody can follow is worse than saying plainly that nothing was changed.
                 Paired through {@link BORDUITLEG} since fix round 3, so this sentence and the one a stale card's panel
                 shows are decided by the same three states and cannot drift apart again. */}
+            {/* **`sleepUitleg` is NOT behind the "Uitleg tonen" switch, and a failing test is why** (E9-01).
+                It looks like pure instruction and its first two sentences are, but its third clause is a *consequence*:
+                "Verplaats je een AI-voorstel, dan wordt het jouw eigen keuze en telt het vanaf dan mee voor de
+                dekking." E4-01 put that clause here deliberately, and `Uitleg`'s own rule keeps consequence
+                disclosures unconditional — a teacher must not lose the sentence saying a drag changes what counts for
+                dekking because they switched off help. E9-01 wrapped this and
+                `promises the count-by-moving consequence only on the tier where moving works` went red, which is the
+                test doing exactly its job.
+                *The tempting alternative was to split the string*, instruction behind the switch and consequence
+                outside it. Not done: it would reword a key three audit rounds have worked over, and E9-01 was held to
+                adding keys only while another session held the catalogue. If it is ever split, the consequence half
+                stays out here. */}
             <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
               {t(BORDUITLEG[verplaatsstaat])}
             </p>
@@ -949,10 +1087,21 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
 
                 Gated on the button existing at all: at the fine tier and on an unreadable grid there is no per-period
                 control in any column, so the sentence would describe something absent. */}
+            {/*
+              **Reduced to the instruction half and put behind the Uitleg switch** (E9-08 + E9-01).
+
+              The three consequence sentences moved into each column's own confirmation, where they apply. What is left
+              points at a control ("de knop onderaan die periode") and states the one fact a teacher needs before they go
+              looking for it, that the rest of the plan is untouched -- so it is help, and E9-01's switch is where help
+              lives. It stays gated on the button existing, because an instruction pointing at an absent control is the
+              E3-06 defect whether or not help is switched on.
+            */}
             {periodeknopOpBord && (
-              <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
-                {t("kalender.periodeHergenereerUitleg")}
-              </p>
+              <Uitleg>
+                <p className="max-w-4xl text-xs leading-snug text-ink-zacht">
+                  {t("kalender.periodeHergenereerUitleg")}
+                </p>
+              </Uitleg>
             )}
 
             {/* What "Bezet:" on a column means, once for the board (E4-05, owner rulings 2026-08-06).
@@ -1031,7 +1180,8 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
             )}
 
             {/* KNELPUNT 2 — goals that appear nowhere (FR-6.4).
-                See {@link OngeplandeDoelen} for why this is a count and a route rather than a list.
+                A figure and a route rather than a list, and the note below the removed `OngeplandeDoelen` keeps the
+                four decisions that still bind.
 
                 **Inside the zero-block gate, and that is a decision rather than an accident** (filed to this story by
                 E4-02's round-3 audit). With a grid of no blocks this whole section is skipped, so neither te vol nor
@@ -1042,7 +1192,12 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                 even when the grid it no longer fits has collapsed. All of this is unreachable until E6-03 lets someone
                 configure a year that derives no blocks; it is written down so the next reader does not have to
                 rediscover which of the three placements were chosen and which were inherited. */}
-            <OngeplandeDoelen dekking={dekking} jaarFase={jaarFase} />
+            <Dekkingsvoortgangsbalk
+              klasId={klasId}
+              jaarFase={jaarFase}
+              className={KNELPUNT_DEKKING}
+              ingehoudenElders
+            />
 
             {/* A refused move (a date that is no longer a period boundary, or a thema already in the target
                 period). Stated at board level because a drop has no panel to report into, and it says the plan
@@ -1077,6 +1232,10 @@ export function Jaarplankalender({ klasId }: JaarplankalenderProps) {
                   <Periodekolom
                     key={`blok-${segment.blok.start}`}
                     blok={segment.blok}
+                    // Only at the tier a thema is actually placed on. At the fine tier a "plan this period week by
+                    // week" control would open a fortnight that holds no thema of its own, which is the same
+                    // mismatch that keeps `belasting` coarse-only two lines down.
+                    onOpenPeriode={bordNiveau === GENERATIEBLOKNIVEAU ? onOpenPeriode : undefined}
                     plaatsingen={plaatsingenIn(plan.plaatsingen, segment.blok)}
                     klasId={klasId}
                     blokken={grid.blokken}
@@ -1512,110 +1671,36 @@ function TeHerzien({
 }
 
 /**
- * KNELPUNT 2 — how many leerplandoelen this plan does not yet cover (E3-09, FR-6.4).
+ * **`OngeplandeDoelen` lived here and was replaced by `Dekkingsvoortgangsbalk` on the owner's ruling of 2026-08-19**
+ * (E9-06, CR4). It rendered one sentence, *"N doelen zijn nog niet gedekt door dit jaarplan"*, plus a route to
+ * `/dekking`. The bar states the same fact as a fraction and adds the quantity that sentence could not: what accepting
+ * the placements standing in the plan would reach.
  *
- * **The sentence says "nog niet gedekt", and getting that wrong was this story's worst defect** (antagonist MAJOR,
- * fixed here). It first read *"komen in geen enkel thema van dit jaarplan voor"*, which is a claim about **placement**
- * while the number is a claim about **coverage**, and the two part company in the single commonest state on this
- * screen: `DekkingService` requires the *placement* to be `Aanvaard`/`Manueel` on top of the link (Art. V.1), so a
- * freshly generated plan is entirely `Voorgesteld` and reports 0 covered. The demo seed makes that concrete — 7 thema's
- * carrying 14 codes, every card announcing *"2 doelen gekoppeld"*, beside a line claiming those 14 goals appeared in no
- * thema at all. **That contradiction was on screen during this story's own browser pass and read as a pass**, which is
- * the useful part of the lesson: looking at a screen only finds what you are looking for, and I was checking the
- * treatment rather than the truth of the sentence.
+ * **The ruling knowingly reverses a decision this file's browser pass had made**, and that is recorded rather than
+ * quietly absorbed. E3-09 built this signal as a tinted band with a bar, looked at it, and took both away: the fill
+ * composited to the loudest element on the page, so the coverage *fact* shouted while te vol, the thing a teacher may
+ * actually need to act on today, murmured. The bar is back because the owner asked for it; the treatment below keeps
+ * the weight E3-09 settled on, so what returns is the figure and not the volume.
  *
- * No extra clause explains *why* the figure is high, deliberately: `kalender.beslisUitleg` already sits above this line
- * whenever a decision is outstanding and says *"Zolang een thema een AI-voorstel blijft, telt het niet mee voor de
- * dekking"*, and `/dekking` states the full rule. Repeating it here is the prose this screen exists to cut.
+ * **Four of its recorded decisions still bind and are kept here, because the component that carried them is gone:**
  *
- * **A count and a route, not a list** (owner ruling, 2026-08-04). The approved E3-10 wireframe drew this as its own
- * tray beside the board, and that was the right answer on 2026-07-28, when nothing else could show it. E5-02 has since
- * shipped `/dekking`, which lists every leerplandoel with its coverage, its doelsoort and the thema's that cover it,
- * and E5-03/E5-05 own that presentation. A tray here would be a second, poorer rendering of the same rows on a screen
- * whose standing problem is too much prose above the board, and it would grow to hundreds of entries after a full
- * import. So the board states the fact and names where to act on it. The deviation from the approved wireframe is
- * recorded on the story; the wireframe itself is deliberately not retouched, since it is the record of what directie
- * reviewed.
+ * 1. **A count and a route, not a list** (owner ruling 2026-08-04). The approved E3-10 wireframe drew a tray beside
+ *    the board; `/dekking` has since shipped and E5-02/03/05 own that presentation. A tray here would be a second,
+ *    poorer rendering of the same rows on the screen whose standing problem is too much prose above the board, and it
+ *    would grow to hundreds of entries after a full import.
+ * 2. **The scope matches what the link leads to.** Both ask `EigenJaarFase`, which is `DekkingPagina`'s own default, so
+ *    the number here is the number there. The narrowing travels on the link for the same reason.
+ * 3. **Nothing is said while dekking is untrustworthy.** A plan that cannot report dekking cannot report a gap in it
+ *    either, and the "Te herzien" notice above already says what has to happen first. The bar honours this through
+ *    `ingehoudenElders`, which is passed here and nowhere else.
+ * 4. **A failed load says so rather than showing nothing**, because silence reads as "no goals are missing" and that is
+ *    the one direction this signal must never fail in. The bar keeps that branch.
  *
- * **The scope matches what the link leads to.** It asks for `EigenJaarFase`, which is `DekkingPagina`'s own default, so
- * the number here is the number there. Measuring the whole curriculum instead would state a much larger figure and
- * send the teacher to a screen showing a smaller one, with nothing on either explaining the difference.
- *
- * **It says nothing while dekking is untrustworthy, on purpose.** An unresolved stale placement makes `aantalGedekt`
- * null (directie 2026-07-28, point 4), and a plan that cannot report dekking cannot report a gap in it either. The
- * "Te herzien" notice above is already saying what has to happen first, so a second sentence here would be noise
- * pointing at the same fix.
- *
- * **A failed load says so rather than showing nothing.** Silence here reads as "no goals are missing", which is the
- * one direction this signal must never fail in.
+ * **What deliberately changed, beyond the shape.** The old line rendered *nothing* once every doel was covered and
+ * nothing when the scope was empty unless a jaarFase had been chosen. The bar reports in both states: a fully covered
+ * plan now says so, and an unmeasurable one says that instead of falling silent. Both follow from the same rule the old
+ * component wrote down and then applied only partly.
  */
-function OngeplandeDoelen({
-  dekking,
-  jaarFase,
-}: {
-  dekking: ReturnType<typeof useDekking>;
-  /**
-   * The narrowing currently applied, threaded into the link so the two screens agree.
-   *
-   * **This is what makes "the number here is the number there" actually true.** The claim was in this file before the
-   * fix round and it only held until the teacher touched anything: `DekkingPagina` keeps its scope in search params and
-   * this link went to the bare route, so a kalender narrowed to K3 sent the teacher to a screen measuring all three
-   * kleuterjaren, with nothing on either explaining the different figure.
-   */
-  jaarFase: string | null;
-}) {
-  // Carries the narrowing, so following the link does not silently widen the scope back out.
-  const doel = jaarFase
-    ? `${DEKKING_PAD}?${JAARFASE_PARAM}=${encodeURIComponent(jaarFase)}`
-    : DEKKING_PAD;
-
-  if (dekking.isError) {
-    return (
-      <p className={KNELPUNT_DEKKING}>
-        {t("kalender.ongeplandeDoelenOnbekend")}{" "}
-        <Link to={doel} className="font-semibold text-petrol underline">
-          {t("kalender.ongeplandeDoelenLink")}
-        </Link>
-      </p>
-    );
-  }
-
-  const data = dekking.data;
-
-  // Nothing to say: still loading, or dekking withheld because a placement is stale (directie 2026-07-28, point 4).
-  if (data === undefined || data.aantalGedekt === null) {
-    return null;
-  }
-
-  // Nothing in scope to measure against.
-  //
-  // **Silent only when the teacher did not ask for this scope** (antagonist round 2). Unnarrowed it means no curriculum
-  // is loaded at all, which is the ordinary state until E1-12 and which the import screen is the place to say something
-  // about. But once a kleuterjaar has been CHOSEN, the same emptiness is the direct result of a click, and answering a
-  // click with nothing violates this component's own rule that silence here reads as "no goals are missing". `/dekking`
-  // renders `dekking.nietMeetbaar` for exactly this state; this is the same fact, worded for one line.
-  if (data.aantalLeerplandoelen === 0) {
-    return jaarFase === null ? null : <p className={KNELPUNT_DEKKING}>{t("kalender.geenDoelenInJaar")}</p>;
-  }
-
-  const ongedekt = data.aantalLeerplandoelen - data.aantalGedekt;
-  if (ongedekt <= 0) {
-    return null;
-  }
-
-  return (
-    <p className={KNELPUNT_DEKKING}>
-      <span data-cijfers>
-        {tAantal(ongedekt, "kalender.ongeplandeDoelenEnkelvoud", "kalender.ongeplandeDoelen", {
-          aantal: ongedekt,
-        })}
-      </span>{" "}
-      <Link to={doel} className="font-semibold text-petrol underline">
-        {t("kalender.ongeplandeDoelenLink")}
-      </Link>
-    </p>
-  );
-}
 
 /**
  * The coverage knelpunt's own treatment: a rule in the dekking colour, and **no fill**.
@@ -1631,8 +1716,11 @@ function OngeplandeDoelen({
  * the dekking token doing the semantic work, while leaving it visibly lighter than the te-vol band, which is the
  * ordering the three signals were designed to have: the stale-placement notice heaviest (a human must resolve it), te
  * vol in the middle (a judgement a teacher may accept), this lightest (a fact, and it points off-screen). The SC 1.4.1
- * carrier is now the **sentence itself** — *"zijn nog niet gedekt door dit jaarplan"* needs no glyph to be understood in
- * monochrome, which is a stronger guarantee than an icon nobody can see.
+ * carrier is a **sentence** rather than a glyph, which is a stronger guarantee than an icon nobody can see. *Which*
+ * sentence changed on 2026-08-19: it used to be *"zijn nog niet gedekt door dit jaarplan"*, and since
+ * `Dekkingsvoortgangsbalk` took this slot it is the fraction *"7 van 14 doelen gedekt"* plus the increment under it.
+ * Both read in monochrome, which is what the requirement asks. The bar the component draws inside this treatment is
+ * `aria-hidden` and adds no carrier at all, deliberately: it is the third channel, never the only one.
  *
  * *Two corrections by antagonist round 2:* this quoted the copy the fix round **deleted as a falsehood**, stating it as
  * the present carrier — the fifth false doc comment on this story, and the first authored by the round that fixed the

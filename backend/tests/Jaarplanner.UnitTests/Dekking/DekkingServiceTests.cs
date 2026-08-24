@@ -591,6 +591,295 @@ public sealed class DekkingServiceTests
         Assert.Equal("2026-2027", dekking.SchooljaarNaam);
     }
 
+    // ---------------------------------------------------------------------------------------------------------
+    // THE GAP-ANALYSE (E5-05, FR-9): why an uncovered goal is uncovered, and which thema's a teacher acts on.
+    //
+    // Art. V.6 puts this file's subject among the two highest-risk pieces of logic in the system, so every cause and
+    // the order between them gets its own named test. The order is the part worth testing hardest:
+    // a doel can sit in several states at once, and reporting the wrong one sends a teacher to the wrong screen.
+    // ---------------------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Een_doel_in_een_voorgesteld_geplaatst_thema_wacht_op_een_beslissing()
+    {
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)],
+            // No covering link: a voorgesteld placement grants no dekking (Art. IV.1), which is what makes this a gap.
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten: [Kandidaat("NAT-K3-01", HerfstId, "Herfst")]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.False(doel.IsGedekt);
+        Assert.Equal(Lacuneoorzaak.WachtOpBeslissing, doel.Oorzaak);
+        Assert.Equal(["Herfst"], doel.KandidaatThemas);
+    }
+
+    [Fact]
+    public async Task Een_doel_waarvan_het_thema_nergens_staat_is_niet_ingepland()
+    {
+        var service = Maak(
+            // The thema exists and carries a decided link; it is simply in no period of this plan.
+            plaatsingen: [],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten: [Kandidaat("NAT-K3-01", HerfstId, "Herfst")]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.NietIngepland, doel.Oorzaak);
+        Assert.Equal(["Herfst"], doel.KandidaatThemas);
+    }
+
+    [Theory]
+    [InlineData(KoppelingStatus.Voorgesteld, true)]
+    [InlineData(KoppelingStatus.Aanvaard, true)]
+    [InlineData(KoppelingStatus.Geweigerd, true)]
+    public async Task Een_thema_dat_in_geen_enkele_periode_meer_staat_maakt_de_lacune_niet_ingepland(
+        KoppelingStatus status,
+        bool isVervallen)
+    {
+        // THE TWO STATES Lacuneoorzaak.NietIngepland DELIBERATELY FOLDS TOGETHER, driven rather than described: all
+        // three rows here are STALE, and a stale placement is drawn in no period column whatever its status, so "sits
+        // in no period" is true of every one of them. The remedy is the same too: put the thema in a period. The
+        // "never placed" state is the test above.
+        //
+        // (Geweigerd, false) IS NOT IN THIS THEORY ANY MORE, and that is the whole of antagonist ronde 1's MAJOR-1:
+        // a rejected, non-stale placement IS drawn in its period, so this sentence was false in front of a visible
+        // card and the route sent the teacher to a picker that disables that thema in exactly that period. It moved to
+        // Een_geweigerde_plaatsing_is_haar_eigen_oorzaak below. The rejected-AND-stale row above is the boundary, and
+        // it is here rather than there on purpose: it is the case where the folded sentence really is true.
+        //
+        // The stale cases are the ones that could plausibly go wrong: their thema IS in the plan, so a classification
+        // that asked "is this thema placed" rather than "is this thema placed in a period that still exists" would
+        // report WachtOpBeslissing and send a teacher to accept a card that sits nowhere.
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", status, isVervallen: isVervallen)],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten: [Kandidaat("NAT-K3-01", HerfstId, "Herfst")]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.NietIngepland, doel.Oorzaak);
+    }
+
+    [Fact]
+    public async Task Een_geweigerde_plaatsing_is_haar_eigen_oorzaak()
+    {
+        // ANTAGONIST RONDE 1, MAJOR-1 (2026-08-19). The teacher rejected the AI's proposal for Herfst in this period.
+        // The card stays visible in that period column (`plaatsingenIn` excludes stale placements and not rejected
+        // ones), so the folded NietIngepland copy — "staat in geen enkele periode van dit jaarplan" — contradicted
+        // what the kalender was showing, and its route was worse than useless: `Themakiezer` DISABLES this thema in
+        // this very period, so a teacher following "put it in a period" met a control that refuses them. The remedy is
+        // Weigering terugdraaien on the card, which is a different action, so it is a different cause.
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Geweigerd, isVervallen: false)],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten: [Kandidaat("NAT-K3-01", HerfstId, "Herfst")]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.PlaatsingGeweigerd, doel.Oorzaak);
+
+        // The thema is named, because the teacher has to know WHICH rejection to undo, and it is the thema belonging
+        // to this cause rather than every thema linked to the goal.
+        Assert.Equal(["Herfst"], doel.KandidaatThemas);
+    }
+
+    [Fact]
+    public async Task Een_open_voorstel_gaat_voor_op_een_weigering_elders()
+    {
+        // The ordering rule where it can actually be observed: two thema's carry the goal, one standing as an
+        // unanswered proposal and one rejected. Cheapest route wins, so the doel reports WachtOpBeslissing and names
+        // ONLY that thema — a teacher told to undo a rejection when a single "Aanvaarden" click would do is being
+        // sent the long way round.
+        var service = Maak(
+            plaatsingen:
+            [
+                Plaatsing(HerfstId, "Herfst", KoppelingStatus.Geweigerd, isVervallen: false),
+                Plaatsing(WinterId, "Winter", KoppelingStatus.Voorgesteld, isVervallen: false),
+            ],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten:
+            [
+                Kandidaat("NAT-K3-01", HerfstId, "Herfst"),
+                Kandidaat("NAT-K3-01", WinterId, "Winter"),
+            ]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.WachtOpBeslissing, doel.Oorzaak);
+        Assert.Equal(["Winter"], doel.KandidaatThemas);
+    }
+
+    [Fact]
+    public async Task Een_doel_met_alleen_een_onbesliste_koppeling_wacht_op_die_koppeling()
+    {
+        // The ordinary state right after FR-4 matching: the AI proposed a link and nobody has answered it. Planning
+        // the thema would not help, because only aanvaard/manueel links count (Art. V.1) — so this cause routes to
+        // the thema-screen and not to the kalender, and the placement below is there to prove the classification is
+        // driven by the LINK rather than by where the thema sits.
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten: [Kandidaat("NAT-K3-01", HerfstId, "Herfst", isBeslist: false)]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.KoppelingNietBeslist, doel.Oorzaak);
+        Assert.Equal(["Herfst"], doel.KandidaatThemas);
+    }
+
+    [Fact]
+    public async Task Een_doel_dat_geen_enkel_thema_draagt_krijgt_geen_kandidaat()
+    {
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten: []);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.GeenThema, doel.Oorzaak);
+
+        // Empty rather than "the thema's that are linked but rejected": the port never returns a rejected link, so
+        // this cause has nothing it could name. The copy constraint that follows from it is on IDekkingOpslag.
+        Assert.Empty(doel.KandidaatThemas);
+    }
+
+    [Fact]
+    public async Task Een_gedekt_doel_heeft_geen_oorzaak_en_geen_kandidaten()
+    {
+        // Null rather than a fifth enum member: "not applicable" and "we could not work out why" would otherwise be
+        // the same value, and only one of them is ever true. The candidate list is deliberately non-empty in the
+        // fixture, so this asserts the covered branch ignores it rather than that there was nothing to ignore.
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)],
+            koppelingen: [new DekkendeKoppeling("NAT-K3-01", "Herfst")],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten: [Kandidaat("NAT-K3-01", HerfstId, "Herfst")]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.True(doel.IsGedekt);
+        Assert.Null(doel.Oorzaak);
+        Assert.Empty(doel.KandidaatThemas);
+        Assert.Equal(["Herfst"], doel.DekkendeThemas);
+    }
+
+    [Fact]
+    public async Task De_goedkoopste_route_wint_en_noemt_alleen_de_themas_van_die_oorzaak()
+    {
+        // One doel, two thema's, two different situations: Herfst stands in the plan awaiting an answer, Winter
+        // carries the same goal and is nowhere. Both are true; only one is worth doing first.
+        //
+        // The second assertion is the one that matters. Naming both thema's would leave a teacher unable to tell
+        // which name goes with the action the line describes, which is the failure this classification exists to
+        // prevent — and it is the assertion that would still pass if the ordering were right and the filtering wrong.
+        var service = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten:
+            [
+                Kandidaat("NAT-K3-01", HerfstId, "Herfst"),
+                Kandidaat("NAT-K3-01", WinterId, "Winter"),
+            ]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.WachtOpBeslissing, doel.Oorzaak);
+        Assert.Equal(["Herfst"], doel.KandidaatThemas);
+    }
+
+    [Fact]
+    public async Task Een_beslist_thema_verslaat_een_onbesliste_koppeling_op_hetzelfde_doel()
+    {
+        // The other ordering pair, and the one a single-thema fixture cannot reach: the SAME thema carries the goal
+        // both as a decided link and as an undecided suggestion, which the storage read returns as two rows on
+        // purpose. NietIngepland is the honest answer — the decided link already exists, so telling the teacher to go
+        // decide a link would send them to a screen where the work is done.
+        var service = Maak(
+            plaatsingen: [],
+            koppelingen: [],
+            doelen: [Doel("NAT-K3-01")],
+            kandidaten:
+            [
+                Kandidaat("NAT-K3-01", HerfstId, "Herfst", isBeslist: false),
+                Kandidaat("NAT-K3-01", HerfstId, "Herfst"),
+            ]);
+
+        var doel = Doelvan(await service.BerekenAsync(KlasId), "NAT-K3-01");
+
+        Assert.Equal(Lacuneoorzaak.NietIngepland, doel.Oorzaak);
+        Assert.Equal(["Herfst"], doel.KandidaatThemas);
+    }
+
+    [Fact]
+    public async Task Wachtend_op_een_beslissing_is_precies_het_verschil_tussen_vooruitzicht_en_dekking()
+    {
+        // THE PIN BETWEEN THE TWO STORIES. E3-03 counts what accepting every standing proposal would cover and says
+        // in its own type that WHICH doelen those are is E5-05's to list. If these two ever compute different sets, a
+        // teacher reads "accepting this plan would cover 3 more doelen" beside a list naming a different number of
+        // them, and neither figure is believable afterwards.
+        //
+        // The fixture makes the difference non-trivial in both directions: one doel is already covered (so it is in
+        // neither set), one is one accept away, one is carried only by an unplanned thema, and one by nothing at all.
+        var service = Maak(
+            plaatsingen:
+            [
+                Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard),
+                Plaatsing(WinterId, "Winter", KoppelingStatus.Voorgesteld),
+            ],
+            koppelingen: [new DekkendeKoppeling("NAT-K3-01", "Herfst")],
+            doelen: [Doel("NAT-K3-01"), Doel("NAT-K3-02"), Doel("NAT-K3-03"), Doel("NAT-K3-04")],
+            kandidaten:
+            [
+                Kandidaat("NAT-K3-01", HerfstId, "Herfst"),
+                Kandidaat("NAT-K3-02", WinterId, "Winter"),
+                Kandidaat("NAT-K3-03", Guid.NewGuid(), "Lente"),
+            ]);
+
+        // The vooruitzicht's own fake has to answer per thema for its two reads to differ at all; see
+        // FakeDekkingOpslag.KoppelingenPerThema for why an unfiltered fake makes that figure equal by construction.
+        var opslag = new FakeDekkingOpslag(
+            [new DekkendeKoppeling("NAT-K3-01", "Herfst")],
+            [Doel("NAT-K3-01"), Doel("NAT-K3-02"), Doel("NAT-K3-03"), Doel("NAT-K3-04")])
+        {
+            Leerjaar = KleuterLeerjaar,
+            KoppelingenPerThema = new Dictionary<Guid, IReadOnlyList<DekkendeKoppeling>>
+            {
+                [HerfstId] = [new DekkendeKoppeling("NAT-K3-01", "Herfst")],
+                [WinterId] = [new DekkendeKoppeling("NAT-K3-02", "Winter")],
+            },
+        };
+
+        var metVooruitzicht = new DekkingService(
+            new FakeJaarplanLezer(Plan(
+            [
+                Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard),
+                Plaatsing(WinterId, "Winter", KoppelingStatus.Voorgesteld),
+            ])),
+            opslag);
+
+        var vooruitzicht = await metVooruitzicht.BerekenVooruitzichtAsync(KlasId);
+        var dekking = await service.BerekenAsync(KlasId);
+
+        var wachtend = dekking.Doelen
+            .Where(d => d.Oorzaak == Lacuneoorzaak.WachtOpBeslissing)
+            .Select(d => d.Code)
+            .ToList();
+
+        Assert.Equal(["NAT-K3-02"], wachtend);
+        Assert.Equal(vooruitzicht.AantalMogelijkGedekt - vooruitzicht.AantalGedekt, wachtend.Count);
+    }
+
     /// <summary>
     /// The service under test, with a class that <b>can</b> state its own jaar/fase.
     /// <para>
@@ -606,10 +895,18 @@ public sealed class DekkingServiceTests
         IReadOnlyList<ThemaplaatsingWeergave> plaatsingen,
         IReadOnlyList<DekkendeKoppeling> koppelingen,
         IReadOnlyList<Leerplandoel> doelen,
-        int? leerjaar = 0) =>
+        int? leerjaar = 0,
+        IReadOnlyList<KandidaatKoppeling>? kandidaten = null) =>
         new(
             new FakeJaarplanLezer(Plan(plaatsingen)),
-            new FakeDekkingOpslag(koppelingen, doelen) { Leerjaar = leerjaar });
+            new FakeDekkingOpslag(koppelingen, doelen)
+            {
+                Leerjaar = leerjaar,
+                // Empty unless a test says otherwise, which classifies every gap as GeenThema. That is the honest
+                // default rather than a convenient one: a school with no linked content is exactly the state in which
+                // no thema accounts for any goal.
+                Kandidaten = kandidaten ?? [],
+            });
 
     private static JaarplanWeergave Plan(IReadOnlyList<ThemaplaatsingWeergave> plaatsingen) =>
         new(
@@ -670,6 +967,18 @@ public sealed class DekkingServiceTests
             "9.1",
             tekst: $"Tekst van {code}",
             minimumdoelRef: minimumdoelRef);
+
+    /// <summary>
+    /// One candidate link for the gap-analyse. <c>isBeslist</c> defaults to <c>true</c> because a decided link is the
+    /// ordinary case: an undecided one is the specific state FR-4 matching leaves behind, and a test about it should
+    /// have to say so.
+    /// </summary>
+    private static KandidaatKoppeling Kandidaat(
+        string code,
+        Guid themaId,
+        string themaNaam,
+        bool isBeslist = true) =>
+        new(code, themaId, themaNaam, isBeslist);
 
     private static LeerplandoelDekking Doelvan(DekkingWeergave dekking, string code) =>
         dekking.Doelen.Single(d => d.Code == code);

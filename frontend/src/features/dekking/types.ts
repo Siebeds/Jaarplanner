@@ -20,6 +20,33 @@ export const DEKKINGSBEREIKEN = ["EigenJaarFase", "HeelCurriculum"] as const;
  */
 export type Dekkingsbereik = (typeof DEKKINGSBEREIKEN)[number];
 
+/**
+ * Why a leerplandoel is **not** covered, as the API serialises the backend `Lacuneoorzaak` enum (E5-05, FR-9).
+ *
+ * Ordered cheapest-route-first, matching the server's own ordering, because the aggregated routes above the list are
+ * rendered in this order: a teacher should meet the two-click fix before the one that needs new content.
+ *
+ * The type is derived from the array rather than written twice, like `DEKKINGSBEREIKEN` above: that much is real, and
+ * it is what makes every `Record<Lacuneoorzaak, …>` in this feature fail to compile when a cause is added here.
+ *
+ * **It does NOT catch a cause added on the server**, and this comment claimed it did until antagonist ronde 2 (fix
+ * round 1 edited the sentence and corrected only the count in it, which is MINOR-4's lesson happening inside the
+ * commit that quotes MINOR-4). Nothing compares this array to the C# enum. A cause this array has not learned about
+ * reaches `leesOorzaak`, comes back `null`, and renders **no line at all** — deliberately, because the alternative is
+ * a catalogue key shown to a teacher, but it is silence rather than an error. **This array is hand-kept in step with
+ * `Lacuneoorzaak.cs`; the enum is the source.** Written without a count on purpose, because the count was "four" until
+ * 2026-08-19 and the sentence outlived it.
+ */
+export const LACUNEOORZAKEN = [
+  "WachtOpBeslissing",
+  "PlaatsingGeweigerd",
+  "NietIngepland",
+  "KoppelingNietBeslist",
+  "GeenThema",
+] as const;
+
+export type Lacuneoorzaak = (typeof LACUNEOORZAKEN)[number];
+
 /** One leerplandoel and whether this class's plan covers it. */
 export interface DoelDekking {
   /** The stable Op.stap code (Art. III.5). */
@@ -42,6 +69,23 @@ export interface DoelDekking {
    * This is the evidence half of Art. V: a screen that claims coverage has to be able to say *through what*.
    */
   dekkendeThemas: string[];
+  /**
+   * Why it is not covered, or null exactly when it is (E5-05).
+   *
+   * Typed as the union rather than `string`, and read through `leesOorzaak` rather than trusted: a value this client
+   * has no case for renders no cause line at all, which says less rather than something wrong. That is the same
+   * failure direction `leesDoelsoort` takes on the URL, and for the sharper reason — the alternative here is a
+   * catalogue key rendered verbatim to a teacher (Art. II.3), which is exactly what `?doelsoort=Foo` once did.
+   */
+  oorzaak: Lacuneoorzaak | null;
+  /**
+   * The thema's that justify `oorzaak`, alphabetically: the ones to act on.
+   *
+   * Empty when the doel is covered, and empty for `GeenThema`, which has nothing to name. It lists only the thema's
+   * belonging to the reported cause, not every thema linked to the goal, so the names and the sentence they sit in
+   * always describe the same action.
+   */
+  kandidaatThemas: string[];
 }
 
 /** One class's computed coverage. */

@@ -64,7 +64,11 @@ public sealed class LeerplandoelenController : ControllerBase
     /// <param name="domein">A domein name.</param>
     /// <param name="subdomein">A subdomein name; only meaningful together with <paramref name="domein"/> (Art. VII.0).</param>
     /// <param name="doelsoort">A doelsoort by enum name or Op.stap short code ("Minimumdoel" or "MD").</param>
-    /// <param name="jaarFase">A jaar/fase code (JK, K2, K3, L1–L6, or a fase for P/S).</param>
+    /// <param name="jaarFase">
+    /// A jaar/fase code (JK, K2, K3, L1–L6, or a fase for P/S). <b>Repeatable</b>
+    /// (<c>?jaarFase=JK&amp;jaarFase=K2</c>) and matched as "any of", so a caller can scope to everything one
+    /// class teaches; a kleutergroep and an unresolved graadklas legitimately have more than one (E9-07).
+    /// </param>
     /// <param name="overslaan">Paging offset; must be zero or positive.</param>
     /// <param name="aantal">Page size; 1 to <see cref="LeerplandoelFilter.MaxPaginaGrootte"/>.</param>
     [HttpGet]
@@ -75,7 +79,7 @@ public sealed class LeerplandoelenController : ControllerBase
         [FromQuery] string? domein = null,
         [FromQuery] string? subdomein = null,
         [FromQuery] string? doelsoort = null,
-        [FromQuery] string? jaarFase = null,
+        [FromQuery] string[]? jaarFase = null,
         [FromQuery] int overslaan = 0,
         [FromQuery] int aantal = LeerplandoelFilter.StandaardPaginaGrootte)
     {
@@ -111,7 +115,7 @@ public sealed class LeerplandoelenController : ControllerBase
         [FromQuery] string? domein = null,
         [FromQuery] string? subdomein = null,
         [FromQuery] string? doelsoort = null,
-        [FromQuery] string? jaarFase = null,
+        [FromQuery] string[]? jaarFase = null,
         [FromQuery] int overslaan = 0,
         [FromQuery] int aantal = LeerplandoelFilter.StandaardPaginaGrootte)
     {
@@ -164,7 +168,7 @@ public sealed class LeerplandoelenController : ControllerBase
         string? domein,
         string? subdomein,
         string? doelsoort,
-        string? jaarFase,
+        string[]? jaarFase,
         int overslaan,
         int aantal,
         out LeerplandoelFilter? filter,

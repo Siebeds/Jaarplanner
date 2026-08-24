@@ -305,7 +305,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
             Facetdimensie.Discipline => filter with { Discipline = null },
             Facetdimensie.Taxonomie => filter with { Domein = null, Subdomein = null },
             Facetdimensie.Doelsoort => filter with { Doelsoort = null },
-            Facetdimensie.JaarFase => filter with { JaarFase = null },
+            Facetdimensie.JaarFase => filter with { JaarFasen = null },
             _ => filter,
         };
 
@@ -362,9 +362,22 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
             query = query.Where(l => l.Doelsoort == doelsoort);
         }
 
-        if (Genormaliseerd(filter.JaarFase) is { } jaarFase)
+        // Matched as "any of". Normalised into a plain List first, because the comparison is case-insensitive and
+        // `Contains` over a materialised list is what EF translates into a SQL `IN`; the sibling in
+        // `EfDekkingOpslag` does the same for the coverage scope.
+        if (filter.JaarFasen is { Count: > 0 })
         {
-            query = query.Where(l => l.JaarFase.ToLower() == jaarFase);
+            var fasen = filter.JaarFasen
+                .Select(Genormaliseerd)
+                .OfType<string>()
+                .ToList();
+
+            // Every entry was blank, which is "no filter" rather than "match nothing". A list of one empty string
+            // would otherwise return zero rows and read to a teacher as an empty curriculum.
+            if (fasen.Count > 0)
+            {
+                query = query.Where(l => fasen.Contains(l.JaarFase.ToLower()));
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(filter.Zoekterm))

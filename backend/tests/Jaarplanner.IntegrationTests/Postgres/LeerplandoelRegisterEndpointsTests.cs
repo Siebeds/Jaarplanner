@@ -337,6 +337,68 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// <c>?jaarFase=</c> is <b>repeatable and matched as "any of"</b> (E9-07), which is what lets a caller scope to
+    /// everything one class teaches.
+    /// <para>
+    /// <b>The Doelkiezer needs this and a single-valued filter cannot give it.</b> A kleutergroep has
+    /// <c>Leerjaar = 0</c>, so <c>Jaarfasen.VoorLeerjaar</c> answers JK, K2 <i>and</i> K3, and the same holds for an
+    /// unresolved graadklas. Forcing such a caller to send one code means guessing which kleuterjaar the class is,
+    /// which the E5-02 ruling of 2026-08-04 forbids in as many words.
+    /// </para>
+    /// <para>
+    /// Asserted as a union rather than only on the row contents, because "every row is K2 or K3" is also satisfied by
+    /// a filter that silently dropped one of the two codes and returned half the answer. The totals are what catch
+    /// that, and a scoped picker returning half the curriculum it promised is the failure that would be hardest to
+    /// notice on screen.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Jaarfase_mag_herhaald_worden_en_matcht_als_een_van()
+    {
+        var client = _factory.CreateClient();
+
+        var k2 = await Haal(client, "/api/leerplandoelen?jaarFase=K2&aantal=200");
+        var k3 = await Haal(client, "/api/leerplandoelen?jaarFase=K3&aantal=200");
+        Assert.NotEmpty(k2.Regels);
+        Assert.NotEmpty(k3.Regels);
+
+        var samen = await Haal(client, "/api/leerplandoelen?jaarFase=K2&jaarFase=K3&aantal=200");
+
+        Assert.Equal(k2.Totaal + k3.Totaal, samen.Totaal);
+        Assert.All(samen.Regels, r => Assert.Contains(r.JaarFase, new[] { "K2", "K3" }));
+
+        // Both codes really are represented, so this cannot pass on a filter that kept only the last value it bound.
+        Assert.Contains(samen.Regels, r => r.JaarFase == "K2");
+        Assert.Contains(samen.Regels, r => r.JaarFase == "K3");
+
+        // Case-insensitive per entry, not only on a single value: a caller assembling the list from a klas payload has
+        // no reason to have normalised it.
+        var gemengd = await Haal(client, "/api/leerplandoelen?jaarFase=k2&jaarFase=K3&aantal=200");
+        Assert.Equal(samen.Totaal, gemengd.Totaal);
+    }
+
+    /// <summary>
+    /// An <b>empty</b> jaar/fase value is "no filter", never "match nothing".
+    /// <para>
+    /// This is the failure mode a scoped picker has to be safe against, and E9-07's backend half named it: an empty
+    /// <c>JaarFasen</c> means the class's own set <i>could not be derived</i>, and a search narrowed to nothing makes
+    /// every leerplandoel unreachable, which is worse than the unscoped search the story exists to replace. So the
+    /// query must widen rather than return zero rows.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_leeg_jaarfase_argument_filtert_niet()
+    {
+        var client = _factory.CreateClient();
+
+        var ongefilterd = await Haal(client, "/api/leerplandoelen?aantal=200");
+        var leeg = await Haal(client, "/api/leerplandoelen?jaarFase=&aantal=200");
+
+        Assert.Equal(ongefilterd.Totaal, leeg.Totaal);
+        Assert.NotEmpty(leeg.Regels);
+    }
+
+    /// <summary>
     /// The facets come from the loaded rows, not from a compiled-in list: the domeinen the seed created show
     /// up with their own subdomeinen nested under them, the repeated subdomein name appears once per domein,
     /// and only the doelsoorten/jaarFasen that actually occur are offered. This is the Art. XIV guard — a

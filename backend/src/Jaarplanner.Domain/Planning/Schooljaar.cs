@@ -164,6 +164,57 @@ public sealed class Schooljaar
     }
 
     /// <summary>
+    /// Days between <paramref name="start"/> and <paramref name="eind"/> (inclusive) that are <b>both</b> open and a
+    /// weekday — Monday to Friday, minus every closure. The figure a teacher recognises as "schooldagen" (E9-02).
+    /// <para>
+    /// <b>This is display-only and must never feed a weeks figure.</b> <see cref="TelOpenDagen"/> is what
+    /// <c>BlokspreidingWeergave.BeschikbareWeken</c> divides by 7, and that is the <i>sole</i> definition of
+    /// <c>te vol</c> (owner ruling 2026-07-31). Substituting this count there would turn a 5-week period into
+    /// <c>ceil(25/7) = 4</c> weeks and make every nominal 5-week thema overload the period built for it. Pinned by a
+    /// test; if you find yourself reaching for this in an arithmetic that produces weeks, you want the other one.
+    /// </para>
+    /// <para>
+    /// <b>Why a second count exists at all, and why it is here rather than in a mapper.</b> The owner asked
+    /// (2026-08-19) for a period's length to read in days as well as weeks, and <see cref="TelOpenDagen"/> cannot be
+    /// printed as "schooldagen": it counts weekends, so a 5-week period reports 35. <c>PlanningsblokWeergave</c>'s own
+    /// documentation warns that answering this with "a second, weekend-aware definition living in that mapper" is the
+    /// drift this project keeps paying for — so it lives in the domain, next to the count it must not be confused
+    /// with, and both say what they are for.
+    /// </para>
+    /// <para>
+    /// <b>It does not answer the open question about <see cref="IsLesdag"/>.</b> That method still excludes only
+    /// closures, and whether it <i>should</i> exclude weekends stays a question for the school. This adds a second
+    /// fact ("how many days will I stand in front of this class?") rather than changing the first ("how long is this
+    /// block?"), so nothing that depends on <see cref="IsLesdag"/> moves.
+    /// </para>
+    /// <para>
+    /// <b>Half days are not modelled and this counts none.</b> Flemish primary schools do not teach Wednesday
+    /// afternoons, so a teacher counting contact hours will find this figure generous. Whether a half day counts is a
+    /// school question with no ruling, and inventing an answer in code would be exactly the kind of assumption
+    /// Art. XIV reserves for the school.
+    /// </para>
+    /// <para>
+    /// Named for what it counts rather than for what a screen calls it. <c>TelLesdagen</c> would sit beside
+    /// <see cref="IsLesdag"/> meaning something narrower, which is one word with two meanings in one class; the Dutch
+    /// word "schooldagen" belongs in <c>nl.json</c>, not here.
+    /// </para>
+    /// </summary>
+    public int TelOpenWeekdagen(DateOnly start, DateOnly eind)
+    {
+        var open = 0;
+
+        for (var datum = start; datum <= eind; datum = datum.AddDays(1))
+        {
+            if (datum.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday) && IsLesdag(datum))
+            {
+                open++;
+            }
+        }
+
+        return open;
+    }
+
+    /// <summary>
     /// The teaching stretches between <b>vacations</b> — the raw material the indeling seam turns into blocks.
     /// Returned as (start, eind) pairs; a year with no vacations yields a single stretch.
     /// <para>

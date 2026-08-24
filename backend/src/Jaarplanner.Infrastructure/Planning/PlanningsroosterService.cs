@@ -43,7 +43,11 @@ public sealed class PlanningsroosterService : IPlanningsroosterService
                 blok.Start,
                 blok.Eind,
                 blok.OuderOrdinaal,
-                TelOpenDagen(schooljaar, blok)))
+                TelOpenDagen(schooljaar, blok),
+                // The display figure, from the domain rather than recomputed here: `PlanningsblokWeergave`'s own
+                // documentation warns that a second weekend-aware definition living in this mapper is the drift this
+                // project keeps paying for, so both counts are the schooljaar's and this only asks.
+                schooljaar.TelOpenWeekdagen(blok.Start, blok.Eind)))
             .ToList();
 
         // Vakanties only — a VrijeDag sits inside a block and must not be drawn as a gap (ADR-0020 §5).

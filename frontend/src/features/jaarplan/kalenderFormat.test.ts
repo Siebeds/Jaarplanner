@@ -29,7 +29,16 @@ import type {
  */
 
 function blok(ordinaal: number, start: string, eind: string, aantalOpenDagen = 30): Planningsblok {
-  return { ordinaal, start, eind, ouderOrdinaal: null, aantalOpenDagen };
+  // `aantalOpenWeekdagen` is derived here rather than parameterised: no test in this file asserts on it, and a second
+  // knob would invite a fixture where the two counts contradict each other — 30 open days can never be 30 school days.
+  return {
+    ordinaal,
+    start,
+    eind,
+    ouderOrdinaal: null,
+    aantalOpenDagen,
+    aantalOpenWeekdagen: Math.round((aantalOpenDagen * 5) / 7),
+  };
 }
 
 function plaatsing(overrides: Partial<Themaplaatsing> & { id: string }): Themaplaatsing {
@@ -401,5 +410,39 @@ describe("plaatsingssignatuur", () => {
     const na = [plaatsing({ id: "p1" })];
 
     expect(plaatsingssignatuur(voor)).not.toBe(plaatsingssignatuur(na));
+  });
+});
+
+/**
+ * E9-02: the period header states its length in **school days** as well as in weeks (owner request 2026-08-19).
+ *
+ * These live beside the weeks arithmetic on purpose. The whole risk in that story is that the two day counts get
+ * swapped, and the two functions that consume them sit in this file.
+ */
+describe("schooldagen naast weken", () => {
+  /**
+   * **The claim the screen makes, as arithmetic.** A block of five calendar weeks with no closures has 35 open days and
+   * 25 school days: `wekenInBlok` must read the first and the header must print the second. Printing
+   * `aantalOpenDagen` as "schooldagen" would tell a teacher their autumn thema has 35 school days.
+   */
+  it("keeps the weeks figure on open days and the day figure on weekdays", () => {
+    const vijfWeken = blok(1, "2026-09-07", "2026-10-11", 35);
+
+    expect(wekenInBlok(vijfWeken.aantalOpenDagen)).toBe(5);
+    expect(vijfWeken.aantalOpenWeekdagen).toBe(25);
+  });
+
+  /**
+   * **The substitution, spelled out.** If anyone ever feeds the weekday count into the weeks arithmetic, a nominal
+   * 5-week thema starts overloading the period built for it. `ceil(25/7)` is 4, not 5 — the same assertion the domain
+   * test makes on the server side, repeated here because this is where the client could make the swap.
+   */
+  it("would produce the wrong week count if the two were swapped", () => {
+    const vijfWeken = blok(1, "2026-09-07", "2026-10-11", 35);
+
+    expect(wekenInBlok(vijfWeken.aantalOpenWeekdagen)).toBe(4);
+    expect(wekenInBlok(vijfWeken.aantalOpenDagen)).not.toBe(
+      wekenInBlok(vijfWeken.aantalOpenWeekdagen),
+    );
   });
 });

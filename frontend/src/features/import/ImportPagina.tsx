@@ -1,3 +1,4 @@
+import { Uitleg } from "../../app/uitleg";
 import { t } from "../../i18n";
 import { Opstapimport } from "./Opstapimport";
 import { Schoolcontentimport } from "./Schoolcontentimport";
@@ -23,7 +24,7 @@ export function ImportPagina() {
     <section className="flex flex-col gap-6">
       <header>
         <h2 className="text-xl font-bold text-ink">{t("import.titel")}</h2>
-        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-zacht">{t("import.uitleg")}</p>
+        <Uitleg><p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-zacht">{t("import.uitleg")}</p></Uitleg>
       </header>
 
       <Schoolcontentimport />

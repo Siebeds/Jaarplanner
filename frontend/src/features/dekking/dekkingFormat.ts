@@ -1,5 +1,5 @@
 import type { DoelsoortNaam } from "../../components/doelsoort";
-import type { Dekking, DoelDekking } from "./types";
+import { LACUNEOORZAKEN, type Dekking, type DoelDekking, type Lacuneoorzaak } from "./types";
 
 /**
  * The dekkingsoverzicht's pure derivations (E5-02, E5-03): what the summary may say, how the flat list of doelen
@@ -133,6 +133,64 @@ export function groepeerPerSubdomein(doelen: readonly DoelDekking[]): Dekkingsgr
   }
 
   return [...groepen.values()];
+}
+
+/**
+ * The cause as this client may use it, or `null` when the server sent one it has no case for (E5-05).
+ *
+ * **A value this screen cannot name renders no cause line at all**, rather than a fallback sentence or the raw value.
+ * The alternative is what `?doelsoort=Foo` produced before E5-03's audit: a catalogue key interpolated into Dutch and
+ * shown to a teacher (Art. II.3). Saying less is the honest degrade; saying something else is the defect.
+ *
+ * `null` also arrives legitimately, for every covered doel, and the two are deliberately not distinguished here: the
+ * caller's question is "is there a cause line to render", and the answer is no in both cases.
+ */
+export function leesOorzaak(oorzaak: string | null): Lacuneoorzaak | null {
+  return LACUNEOORZAKEN.find((bekend) => bekend === oorzaak) ?? null;
+}
+
+/** One gap cause present in the current view, with how many of the shown doelen have it. */
+export interface Lacunetelling {
+  oorzaak: Lacuneoorzaak;
+  aantal: number;
+}
+
+/**
+ * The gap causes present in a set of doelen, in {@link LACUNEOORZAKEN} order, skipping the ones with nothing in them
+ * (E5-05, FR-9).
+ *
+ * **Counted over whatever the caller passes, and the caller must pass the doelsoort-narrowed gaps.** These counts sit
+ * beside a list, and a count that describes a different set from the rows underneath it is the defect E5-02 found in
+ * its group tallies: the numbers were right about a set nobody could see.
+ *
+ * **Covered doelen and unrecognised causes both fall out**, the first because they are not gaps and the second
+ * through {@link leesOorzaak}. So this is a partition of the *recognised* gaps in the set passed in, and no caller may
+ * present it as a breakdown of a total. **What follows from that for the withheld figure is stated once, on
+ * `DekkingPagina`, where the gate that withholds the block actually is** — not here, and not on `Lacuneroutes`, which
+ * fix round 1 wrongly named as the gate's owner (antagonist ronde 1 MINOR-5, and ronde 2 on the fix for it).
+ *
+ * Order comes from the vocabulary rather than from the counts, deliberately. Sorting by size would put the biggest
+ * pile first, which on a fresh plan is always "no thema covers this" — the one route a teacher cannot walk today.
+ */
+export function telLacuneoorzaken(doelen: readonly DoelDekking[]): Lacunetelling[] {
+  const aantallen = new Map<Lacuneoorzaak, number>();
+
+  for (const doel of doelen) {
+    if (doel.isGedekt) {
+      continue;
+    }
+
+    const oorzaak = leesOorzaak(doel.oorzaak);
+
+    if (oorzaak !== null) {
+      aantallen.set(oorzaak, (aantallen.get(oorzaak) ?? 0) + 1);
+    }
+  }
+
+  return LACUNEOORZAKEN.filter((oorzaak) => aantallen.has(oorzaak)).map((oorzaak) => ({
+    oorzaak,
+    aantal: aantallen.get(oorzaak)!,
+  }));
 }
 
 /**

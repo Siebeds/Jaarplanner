@@ -98,6 +98,29 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     }
 
     /// <summary>
+    /// The candidate links the gap-analyse classifies from (E5-05). Empty by default, which is the state every
+    /// pre-E5-05 test was written in and which classifies every gap as <c>GeenThema</c>.
+    /// </summary>
+    public IReadOnlyList<KandidaatKoppeling> Kandidaten { get; set; } = [];
+
+    /// <summary>The klas the service scoped the candidate read to, or null when it never asked.</summary>
+    public Guid? GevraagdeKandidaatKlasId { get; private set; }
+
+    /// <summary>
+    /// Unfiltered, like <see cref="HaalDekkendeKoppelingenAsync"/> and for a stronger reason than there: the whole
+    /// point of this read is that it is <b>not</b> narrowed to the placed thema's, so a fake that narrowed it would
+    /// make the <c>NietIngepland</c> cause unreachable and its tests vacuous.
+    /// </summary>
+    public Task<IReadOnlyList<KandidaatKoppeling>> HaalKandidaatKoppelingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default)
+    {
+        GevraagdeKandidaatKlasId = klasId;
+
+        return Task.FromResult(Kandidaten);
+    }
+
+    /// <summary>
     /// The jaar/fase scope the service asked for: the codes for <c>Dekkingsbereik.EigenJaarFase</c>, null for
     /// <c>HeelCurriculum</c>. This is where E5-02's ruling is observable as a <b>request</b>, independently of what
     /// comes back.

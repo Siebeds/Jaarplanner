@@ -42,8 +42,8 @@ const rooster: Planningsrooster = {
   niveau: "Themaperiode",
   blokindeling: "themaperiode 5 wk, subthemaperiode 2 wk",
   blokken: [
-    { ordinaal: 1, start: "2026-09-01", eind: "2026-11-01", ouderOrdinaal: null, aantalOpenDagen: 62 },
-    { ordinaal: 2, start: "2026-11-09", eind: "2026-12-20", ouderOrdinaal: null, aantalOpenDagen: 42 },
+    { ordinaal: 1, start: "2026-09-01", eind: "2026-11-01", ouderOrdinaal: null, aantalOpenDagen: 62, aantalOpenWeekdagen: 44 },
+    { ordinaal: 2, start: "2026-11-09", eind: "2026-12-20", ouderOrdinaal: null, aantalOpenDagen: 42, aantalOpenWeekdagen: 30 },
   ],
   onderbrekingen: [{ naam: "Herfstvakantie", start: "2026-11-02", eind: "2026-11-08" }],
 };
@@ -188,6 +188,15 @@ function stubFetch(
       // unrouted URL, so every render in this file resolved `useDekking` to its error state and painted
       // `kalender.ongeplandeDoelenOnbekend` — including the axe assertion, which was then measuring a permanent error
       // state nobody meant to put there. Exactly the defect the sibling file's own comment warns about.
+      // Longer path FIRST: `/dekking/voortgang` extends `/dekking`, and since the kalender itself reads the
+      // voortgang figures (for the whole-curriculum caveat) an unrouted one falls through to this branch and hands it a
+      // payload with no ceiling, which reads as a withheld figure.
+      if (url.includes("/dekking/voortgang")) {
+        return new Response(
+          '{"bereik":"EigenJaarFase","gemetenJaarFasen":["L3"],"isTerugvalNaarHeelCurriculum":false,"aantalBuitenBereik":0,"isBetrouwbaar":true,"aantalOnopgelosteVervallenPlaatsingen":0,"aantalGedekt":8,"aantalMogelijkGedekt":8,"aantalLeerplandoelen":8,"aantalOnbereikbaar":0}',
+          { status: 200 },
+        );
+      }
       if (url.includes("/dekking")) {
         return new Response(
           JSON.stringify({
@@ -234,7 +243,7 @@ function renderKalender() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <Jaarplankalender klasId={KLAS_ID} />
+        <Jaarplankalender klasId={KLAS_ID} onOpenPeriode={() => {}} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -810,8 +819,8 @@ describe("Generatieparameters — the grid it may read (E3-04)", () => {
     ...rooster,
     niveau: "Subthemaperiode",
     blokken: [
-      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-14", ouderOrdinaal: 1, aantalOpenDagen: 10 },
-      { ordinaal: 2, start: "2026-09-15", eind: "2026-09-28", ouderOrdinaal: 1, aantalOpenDagen: 10 },
+      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-14", ouderOrdinaal: 1, aantalOpenDagen: 10, aantalOpenWeekdagen: 7 },
+      { ordinaal: 2, start: "2026-09-15", eind: "2026-09-28", ouderOrdinaal: 1, aantalOpenDagen: 10, aantalOpenWeekdagen: 7 },
     ],
   };
 
@@ -879,10 +888,10 @@ describe("Generatieparameters — across a zoom switch (E3-08, FR-6.3)", () => {
     ...rooster,
     niveau: "Subthemaperiode",
     blokken: [
-      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-16", ouderOrdinaal: 1, aantalOpenDagen: 16 },
-      { ordinaal: 2, start: "2026-09-17", eind: "2026-10-02", ouderOrdinaal: 1, aantalOpenDagen: 16 },
-      { ordinaal: 3, start: "2026-11-09", eind: "2026-11-22", ouderOrdinaal: 2, aantalOpenDagen: 14 },
-      { ordinaal: 4, start: "2026-11-23", eind: "2026-12-20", ouderOrdinaal: 2, aantalOpenDagen: 28 },
+      { ordinaal: 1, start: "2026-09-01", eind: "2026-09-16", ouderOrdinaal: 1, aantalOpenDagen: 16, aantalOpenWeekdagen: 11 },
+      { ordinaal: 2, start: "2026-09-17", eind: "2026-10-02", ouderOrdinaal: 1, aantalOpenDagen: 16, aantalOpenWeekdagen: 11 },
+      { ordinaal: 3, start: "2026-11-09", eind: "2026-11-22", ouderOrdinaal: 2, aantalOpenDagen: 14, aantalOpenWeekdagen: 10 },
+      { ordinaal: 4, start: "2026-11-23", eind: "2026-12-20", ouderOrdinaal: 2, aantalOpenDagen: 28, aantalOpenWeekdagen: 20 },
     ],
   };
 

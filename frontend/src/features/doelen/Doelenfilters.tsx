@@ -137,7 +137,10 @@ export function Doelenfilters({
           <Keuze
             id={`${id}-jaarfase`}
             label={t("doelen.jaarFaseLabel")}
-            waarde={filter.jaarFase ?? ""}
+            // Single-valued on this screen, for the reason spelled out in `chipTekst`: the list form of
+            // `Doelenfilter.jaarFase` belongs to the Doelkiezer's class scope (E9-07) and never reaches the register,
+            // whose value comes from a URL that carries one code.
+            waarde={typeof filter.jaarFase === "string" ? filter.jaarFase : ""}
             onKies={(jaarFase) => onWijzig({ ...filter, jaarFase: jaarFase || undefined })}
             opties={facetten.jaarFasen.map((j) => ({
               waarde: j.jaarFase,
@@ -282,7 +285,17 @@ function chipTekst(
   dimensie: keyof Doelenfilter,
   facetten?: DoelenFacetten,
 ): string {
-  const waarde = filter[dimensie] ?? "";
+  /*
+    Narrowed to the single-valued form, which is the only one this screen can produce.
+
+    `Doelenfilter.jaarFase` became `string | readonly string[]` for the Doelkiezer's class scope (E9-07), but the
+    register's own filter is a single select and its value comes from the URL, which carries one. `actieveDimensies`
+    already tests `typeof === "string"`, so a list form never reaches a chip at all — this keeps the compiler agreeing
+    with that guarantee instead of casting past it. Joining a list here would render a chip for a filter this screen has
+    no control to clear.
+  */
+  const rauw = filter[dimensie];
+  const waarde = typeof rauw === "string" ? rauw : "";
 
   switch (dimensie) {
     case "zoek":

@@ -7,6 +7,7 @@ using Jaarplanner.Application.Dekking;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Planning.Generatie;
+using Jaarplanner.Application.Planning.Weekplanning;
 using Jaarplanner.Application.Planning.Rooster;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Infrastructure.Ai;
@@ -202,6 +203,16 @@ public static class DependencyInjection
         // computes dekking sees one DbContext and one projection — two instances could answer differently about
         // staleness within a single request, which is exactly the disagreement IJaarplanLezer exists to prevent.
         services.AddScoped<IJaarplanLezer>(sp => sp.GetRequiredService<JaarplanGeneratieService>());
+
+        // Day-level planning inside the plan (E9-03, FR-6.2/FR-7.2). A SECOND seam beside IJaarplanOpslag rather than
+        // four more methods on it: that port documents itself as the generation flow's, and a fake for one flow that
+        // has to implement the other's methods is how a test ends up asserting against a stub it never exercises.
+        //
+        // It shares IPlanningsblokIndeling with generation on purpose — that is what makes "this activiteit falls
+        // outside its thema's period" measured against the same grid the board draws, rather than a second opinion
+        // about which tier a thema lives on. Reachable through WeekplanningController, not only from tests.
+        services.AddScoped<IWeekplanningOpslag, EfWeekplanningOpslag>();
+        services.AddScoped<IWeekplanningService, WeekplanningService>();
 
         // Coverage computation (E5-01, FR-9.1, Art. V.1). Computed on read, never stored: there is no dekking
         // table to register, no cache and no invalidation. The service depends only on IJaarplanLezer and this

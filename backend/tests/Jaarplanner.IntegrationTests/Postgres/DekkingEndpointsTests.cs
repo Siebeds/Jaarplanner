@@ -288,6 +288,74 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [PostgresFact]
+    public async Task Een_voorgesteld_geplaatst_thema_maakt_van_zijn_doel_een_wachtende_lacune()
+    {
+        // E5-05'S OWN SENTENCE OVER HTTP: "a gap can be traced to where it should be planned". The same fixture the
+        // Art. IV.1 test above uses — an AI proposal, persisted exactly as generation persists it — and the point here
+        // is what it does to the OTHER half of the payload. DEK-01 is not covered, and the reason is not "nothing
+        // covers it" but "you have not answered the proposal yet", which is a two-click fix on a different screen.
+        //
+        // Asserted at this layer and not only in the unit tests because the classification travels through JSON
+        // serialisation of a nullable enum, and a converter that emitted 0 instead of a name would leave the screen
+        // reading a cause it has no case for.
+        var (klasId, _) = await ZetGeplaatstThemaOpAsync(KoppelingStatus.Voorgesteld, vervallen: false);
+
+        var dekking = await HaalDekkingAsync(klasId);
+
+        var wachtend = dekking.Doelen.Single(d => d.Code == "DEK-01");
+        Assert.False(wachtend.IsGedekt);
+        Assert.Equal("WachtOpBeslissing", wachtend.Oorzaak);
+        Assert.Equal(["Herfstthema"], wachtend.KandidaatThemas);
+
+        // The second goal is in the same scope and no thema carries it at all, so the two causes are distinguishable
+        // in one answer. Without it this test would pass for a server that stamped every gap with the same cause.
+        var geenThema = dekking.Doelen.Single(d => d.Code == "DEK-02");
+        Assert.Equal("GeenThema", geenThema.Oorzaak);
+        Assert.Empty(geenThema.KandidaatThemas);
+    }
+
+    [PostgresFact]
+    public async Task Een_vervallen_plaatsing_maakt_van_haar_doel_een_niet_ingeplande_lacune()
+    {
+        // The state E3-07 calls stale, read as a gap: the thema IS in the plan and its link IS accepted, but the
+        // period it points at no longer exists, so nothing is taught on its account. The remedy is to put it back in a
+        // period, which is NietIngepland's route and not WachtOpBeslissing's.
+        //
+        // This is the case a classification keyed on "is this thema in the plan" gets wrong, and it gets it wrong in
+        // the worst direction: it would tell a teacher to go accept a card that sits nowhere.
+        var (klasId, _) = await ZetGeplaatstThemaOpAsync(KoppelingStatus.Aanvaard, vervallen: true);
+
+        var dekking = await HaalDekkingAsync(klasId);
+
+        var lacune = dekking.Doelen.Single(d => d.Code == "DEK-01");
+        Assert.Equal("NietIngepland", lacune.Oorzaak);
+        Assert.Equal(["Herfstthema"], lacune.KandidaatThemas);
+
+        // And the figure is still withheld, because the two rules are independent: a cause a teacher can act on does
+        // not make an unresolved plan measurable (directie 2026-07-28).
+        Assert.Null(dekking.AantalGedekt);
+    }
+
+    [PostgresFact]
+    public async Task Een_gedekt_doel_draagt_over_HTTP_geen_oorzaak()
+    {
+        // The complement, and worth its own assertion because "null" is the one value a serialiser can produce by
+        // accident. A covered goal with a cause attached would put a remedy on a row that needs none, and on this
+        // screen that reads as a contradiction: covered, and here is what to do about it.
+        var (klasId, _) = await ZetGeplaatstThemaOpAsync(KoppelingStatus.Aanvaard, vervallen: false);
+
+        var dekking = await HaalDekkingAsync(klasId);
+
+        var gedekt = dekking.Doelen.Single(d => d.Code == "DEK-01");
+        Assert.True(gedekt.IsGedekt);
+        Assert.Null(gedekt.Oorzaak);
+        Assert.Empty(gedekt.KandidaatThemas);
+
+        // Every row obeys it, not just this one: a cause is present exactly when the goal is a gap.
+        Assert.All(dekking.Doelen, doel => Assert.Equal(doel.IsGedekt, doel.Oorzaak is null));
+    }
+
     private Task<DekkingDto> HaalDekkingAsync(Guid klasId) => HaalDekkingAsync($"{klasId}/dekking");
 
     /// <summary>The same read, with the path tail spelled out so a test can add a query string.</summary>
@@ -436,5 +504,12 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         int AantalLeerplandoelen,
         List<DoelDto> Doelen);
 
-    private sealed record DoelDto(string Code, bool IsGedekt, List<string> DekkendeThemas);
+    private sealed record DoelDto(
+        string Code,
+        bool IsGedekt,
+        List<string> DekkendeThemas,
+        // A string rather than the enum, like `Bereik` above: this is the shape a JavaScript client actually
+        // receives, so a test typed on the C# enum would agree with the server about a name neither of them sends.
+        string? Oorzaak,
+        List<string> KandidaatThemas);
 }

@@ -1125,3 +1125,267 @@ describe("Dekkingsoverzicht — wat antagonist ronde 2 vond (E5-03)", () => {
     expect(screen.queryByText(t("dekking.gefilterdOpMinimumdoel"))).not.toBeInTheDocument();
   });
 });
+
+/**
+ * The gap-analyse (E5-05, FR-9): why each uncovered doel is uncovered, and where that is closed.
+ *
+ * **What these tests are written to catch** is not "does the sentence appear". It is the two ways this feature can
+ * mislead: a route offered for a goal that needs none (or none offered for a goal that has one), and the counts
+ * handing back the total the directie ruling of 2026-07-28 withholds. The withheld case therefore asserts an
+ * ABSENCE, like every other withholding test in this file.
+ */
+describe("Dekkingsoverzicht — de gap-analyse (E5-05, FR-9)", () => {
+  /**
+   * A plan with one gap of each cause, plus one covered doel so the two row states sit side by side.
+   *
+   * It holds all FIVE causes: `PlaatsingGeweigerd` joined them on 2026-08-19 when antagonist ronde 1 proved it could
+   * not stay folded into `NietIngepland`. The fixture is named for "all" rather than for a number on purpose — it was
+   * called `VIER_OORZAKEN`, and a count in a name is a claim that goes stale in silence.
+   */
+  const ALLE_OORZAKEN = dekking({
+    doelen: [
+      doel({ code: "NAT-K3-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+      doel({ code: "NAT-K3-02", oorzaak: "WachtOpBeslissing", kandidaatThemas: ["Winter"] }),
+      doel({ code: "NAT-K3-03", oorzaak: "NietIngepland", kandidaatThemas: ["Lente"] }),
+      doel({ code: "NAT-K3-04", oorzaak: "KoppelingNietBeslist", kandidaatThemas: ["Zomer"] }),
+      doel({ code: "NAT-K3-05", oorzaak: "GeenThema" }),
+      doel({ code: "NAT-K3-06", oorzaak: "PlaatsingGeweigerd", kandidaatThemas: ["Herfstfeest"] }),
+    ],
+  });
+
+  /** The route block, which is the only place on this screen where a gap count may appear. */
+  function routeblok() {
+    return screen.getByRole("region", { name: t("dekking.lacuneKop") });
+  }
+
+  it("tells each uncovered doel why it is uncovered, and names the thema to act on", async () => {
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: ALLE_OORZAKEN } });
+
+    expect(
+      await screen.findByText(t("dekking.lacuneRegelWachtOpBeslissing", { themas: "Winter" })),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(t("dekking.lacuneRegelNietIngepland", { themas: "Lente" })),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(t("dekking.lacuneRegelKoppelingNietBeslist", { themas: "Zomer" })),
+    ).toBeInTheDocument();
+
+    // The one cause with no thema to name says so without interpolating an empty list, which would otherwise have
+    // rendered a sentence ending in a bare colon.
+    expect(screen.getByText(t("dekking.lacuneRegelGeenThema"))).toBeInTheDocument();
+
+    // The cause split off on 2026-08-19. Asserted here as well as in the catalogue guard, because the guard proves the
+    // SENTENCE does not claim the thema sits in no period, and this proves the ROW reaches for that sentence at all: a
+    // fifth cause the component had no case for would render no line and no test would have noticed.
+    expect(
+      screen.getByText(t("dekking.lacuneRegelPlaatsingGeweigerd", { themas: "Herfstfeest" })),
+    ).toBeInTheDocument();
+  });
+
+  it("gives a covered doel its evidence and no remedy, even when a cause is attached", async () => {
+    // The mirror-image rule: one slot, two opposite meanings, never both. A covered row carrying a cause line would
+    // read as a contradiction, taught and here is what to do about it.
+    //
+    // **THE FIXTURE DELIBERATELY BREAKS THE SERVER'S INVARIANT, and that is the whole test.** A first version used the
+    // ordinary covered doel, whose `oorzaak` the fixture nulls because the server nulls it — so the assertion held
+    // through the fixture rather than through the component, and a mutation removing `!doel.isGedekt` from the render
+    // condition left the suite green. Caught by running that mutation, not by reading the test. What is under test is
+    // the row's OWN guard, so the row has to be handed the state that guard exists for.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [
+            {
+              ...doel({ code: "NAT-K3-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+              oorzaak: "NietIngepland",
+              kandidaatThemas: ["Winter"],
+            },
+            doel({ code: "NAT-K3-02", oorzaak: "GeenThema" }),
+          ],
+        }),
+      },
+    });
+
+    const rij = (await screen.findByText("NAT-K3-01")).closest("li");
+    expect(rij).not.toBeNull();
+
+    expect(
+      within(rij!).getByText(t("dekking.dekkendeThemas", { themas: "Herfst" })),
+    ).toBeInTheDocument();
+    expect(
+      within(rij!).queryByText(t("dekking.lacuneRegelNietIngepland", { themas: "Winter" })),
+    ).not.toBeInTheDocument();
+
+    // And the contradictory row is not offered as a route either: the count is driven by `isGedekt`, so a goal that
+    // is already taught cannot put work into the block above.
+    expect(
+      within(routeblok()).queryByText(
+        tAantal(1, "dekking.lacuneNietIngeplandEnkelvoud", "dekking.lacuneNietIngepland"),
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("aggregates the routes above the list, one line per cause with its own count", async () => {
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: ALLE_OORZAKEN } });
+
+    await screen.findByRole("region", { name: t("dekking.lacuneKop") });
+
+    for (const sleutel of [
+      "WachtOpBeslissing",
+      "PlaatsingGeweigerd",
+      "NietIngepland",
+      "KoppelingNietBeslist",
+      "GeenThema",
+    ] as const) {
+      expect(
+        within(routeblok()).getByText(
+          tAantal(1, `dekking.lacune${sleutel}Enkelvoud`, `dekking.lacune${sleutel}`),
+        ),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("carries the klas and schooljaar through every route link", async () => {
+    // `useSelectie` reads the selection ONLY from the URL (ADR-0021), so a bare path drops the class whose gaps these
+    // are and lands the teacher on whichever class the shell falls back to. E5-02 shipped exactly this defect on its
+    // Naar-Inladen link, and its own audit enumerated every link on the screen and still missed it.
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: ALLE_OORZAKEN } });
+
+    await screen.findByRole("region", { name: t("dekking.lacuneKop") });
+
+    const links = within(routeblok()).getAllByRole("link");
+    expect(links.length).toBeGreaterThan(0);
+
+    for (const link of links) {
+      expect(link.getAttribute("href")).toContain(`klas=${KLAS_ID}`);
+      expect(link.getAttribute("href")).toContain(`schooljaar=${SCHOOLJAAR_ID}`);
+    }
+  });
+
+  it("offers no link for the one cause planning cannot close", async () => {
+    // The E3-06 rule. No thema covers these doelen, so neither the kalender nor the thema-screen has anything to
+    // offer, and a link to either would be a control that does not do what it says. The line still renders: that
+    // these cannot be closed by planning is what a directie most needs to hear about Art. V.2.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [
+            doel({ code: "NAT-K3-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+            doel({ code: "NAT-K3-05", oorzaak: "GeenThema" }),
+          ],
+        }),
+      },
+    });
+
+    await screen.findByRole("region", { name: t("dekking.lacuneKop") });
+
+    expect(
+      within(routeblok()).getByText(
+        tAantal(1, "dekking.lacuneGeenThemaEnkelvoud", "dekking.lacuneGeenThema"),
+      ),
+    ).toBeInTheDocument();
+    expect(within(routeblok()).queryAllByRole("link")).toHaveLength(0);
+  });
+
+  it("shows no route counts at all while the figure is withheld", async () => {
+    // THE LEAK THIS BLOCK COULD BE. The counts partition the gaps in view, so they add up to totaal minus gedekt,
+    // the number the ruling of 2026-07-28 withholds. E5-02 shipped this once already through its group tallies, where
+    // the summary said it would give no figure while every group printed one and the group counts summed to exactly
+    // the withheld total. A teacher can add.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [
+            doel({ code: "NAT-K3-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+            doel({ code: "NAT-K3-02", oorzaak: "WachtOpBeslissing", kandidaatThemas: ["Winter"] }),
+            doel({ code: "NAT-K3-03", oorzaak: "GeenThema" }),
+          ],
+          isBetrouwbaar: false,
+          aantalGedekt: null,
+          aantalOnopgelosteVervallenPlaatsingen: 1,
+        }),
+      },
+    });
+
+    // The rows are still there and still explain themselves: a per-doel cause is not a figure, which is what E5-06's
+    // audit established about the scope of the ruling.
+    expect(
+      await screen.findByText(t("dekking.lacuneRegelWachtOpBeslissing", { themas: "Winter" })),
+    ).toBeInTheDocument();
+
+    // The aggregate block is what carries counts, and it is simply absent.
+    expect(screen.queryByRole("region", { name: t("dekking.lacuneKop") })).not.toBeInTheDocument();
+    expect(screen.queryByText(TOTAALVORM)).not.toBeInTheDocument();
+  });
+
+  it("counts only the doelsoort the teacher narrowed to", async () => {
+    // The routes describe the rows underneath them, so they follow the narrowing that changes what is measured and
+    // not the toggle that changes what is shown. Counting over the unnarrowed list would put three doelen above a
+    // list holding one.
+    renderApp(`${MET_KLAS}&doelsoort=Minimumdoel`, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [
+            doel({
+              code: "MD-01",
+              doelsoort: "Minimumdoel",
+              isGedekt: true,
+              dekkendeThemas: ["Herfst"],
+            }),
+            doel({ code: "MD-02", doelsoort: "Minimumdoel", oorzaak: "GeenThema" }),
+            doel({ code: "G-01", oorzaak: "GeenThema" }),
+            doel({ code: "G-02", oorzaak: "GeenThema" }),
+          ],
+        }),
+      },
+    });
+
+    await screen.findByRole("region", { name: t("dekking.lacuneKop") });
+
+    expect(
+      within(routeblok()).getByText(
+        tAantal(1, "dekking.lacuneGeenThemaEnkelvoud", "dekking.lacuneGeenThema"),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(routeblok()).queryByText(
+        tAantal(3, "dekking.lacuneGeenThemaEnkelvoud", "dekking.lacuneGeenThema"),
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says nothing about a cause it does not know, rather than something wrong", async () => {
+    // A fifth cause shipped on the server before this client knows what to call it. The row keeps its verdict and its
+    // text; only the explanation is withheld. The alternative is a catalogue key rendered verbatim to a teacher
+    // (Art. II.3), which this screen has produced once before through the doelsoort parameter.
+    renderApp(MET_KLAS, {
+      perBereik: {
+        EigenJaarFase: dekking({
+          doelen: [
+            doel({ code: "NAT-K3-01", isGedekt: true, dekkendeThemas: ["Herfst"] }),
+            { ...doel({ code: "NAT-K3-02" }), oorzaak: "IetsNieuws" } as never,
+          ],
+        }),
+      },
+    });
+
+    expect(await screen.findByText("NAT-K3-02")).toBeInTheDocument();
+    expect(screen.getByText(t("dekking.nietGedekt"))).toBeInTheDocument();
+
+    // No catalogue key reached the page, in either family: `t` returns an unknown key verbatim, so this is the shape
+    // an unvalidated cause would take on screen.
+    expect(screen.queryByText(/dekking\.lacune/)).not.toBeInTheDocument();
+
+    // And the unknown cause is offered as no route either, so the block holds nothing and does not render.
+    expect(screen.queryByRole("region", { name: t("dekking.lacuneKop") })).not.toBeInTheDocument();
+  });
+
+  it("has no axe violations with every cause and its routes on screen", async () => {
+    renderApp(MET_KLAS, { perBereik: { EigenJaarFase: ALLE_OORZAKEN } });
+
+    await screen.findByRole("region", { name: t("dekking.lacuneKop") });
+
+    expect(await axe(document.body)).toHaveNoViolations();
+  });
+});

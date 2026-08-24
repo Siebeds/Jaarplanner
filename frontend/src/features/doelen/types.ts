@@ -157,5 +157,18 @@ export interface Doelenfilter {
   domein?: string;
   subdomein?: string;
   doelsoort?: DoelsoortNaam;
-  jaarFase?: string;
+  /**
+   * One jaar/fase code, or **several** matched as "any of".
+   *
+   * **Two shapes, one dimension** (E9-07). The register's own filter is a single select and keeps a single value in the
+   * URL; the Doelkiezer scopes to everything a class teaches, and a kleutergroep teaches three codes because
+   * `Leerjaar = 0` cannot say which kleuterjaar it is. A second field (`jaarFasen`) would be two names for one
+   * dimension and would drift the first time only one of them was updated, so this is a union that
+   * `filterNaarQuery` (this feature's `api.ts`) serialises as a repeatable `?jaarFase=`, which is exactly what the endpoint accepts.
+   *
+   * `schrijfFilter` and `actieveDimensies` both test `typeof === "string"`, so the list form is deliberately invisible
+   * to the URL: the picker has no shareable state to write, and a repeated parameter in a filter chip would be a
+   * control the register does not have.
+   */
+  jaarFase?: string | readonly string[];
 }
