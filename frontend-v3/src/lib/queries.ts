@@ -270,6 +270,24 @@ export function usePlaatsingacties(klasId: string) {
 }
 
 /**
+ * Puts one thema into one period by hand (FR-7.1).
+ *
+ * It lands as `Manueel`, which is the whole point: the teacher decided it, so there is no proposal
+ * for anyone to review, and a regeneration leaves it alone (Art. IX.3).
+ */
+export function usePlaatsThema(klasId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ themaId, blokStart }: { themaId: string; blokStart: string }) =>
+      post<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen`, { themaId, blokStart }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: jaarplanSleutels.plan(klasId) });
+      void qc.invalidateQueries({ queryKey: ["dekking"] });
+    },
+  });
+}
+
+/**
  * Generates a year plan (FR-5).
  *
  * A run discards only placements that are still `Voorgesteld` and unlocked; anything the teacher has

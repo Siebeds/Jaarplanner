@@ -107,7 +107,6 @@
     "fout": "Jaarplan niet geladen",
     "eenPlaatsing": "1 thema gepland",
     "aantalPlaatsingen": "{aantal} thema's gepland",
-    "leegPeriode": "Nog niets gepland",
     "tevol": "Te vol",
     "eenWeek": "1 week",
     "weken": "{aantal} weken",
@@ -125,7 +124,11 @@
     "bezig": "Bezig",
     "generatieGevolg": "Voorstellen die je nog niet beoordeelde en niet vergrendelde, verdwijnen uit het plan van {klas}. Wat je aanvaardde, weigerde of zelf plaatste blijft staan.",
     "generatieMislukt": "Genereren niet gelukt",
-    "openPeriode": "Open periode"
+    "openPeriode": "Kalender",
+    "voegThemaToe": "Thema toevoegen",
+    "kiesThema": "Kies een thema",
+    "alGepland": "Staat al in deze periode",
+    "geenThemas": "Er zijn nog geen thema's"
   },
   "periode": {
     "titel": "Periode",
