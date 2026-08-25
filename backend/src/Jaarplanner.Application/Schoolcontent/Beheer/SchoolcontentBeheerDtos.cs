@@ -55,6 +55,21 @@ public sealed record SubthemaWijzigingInvoer(
     IReadOnlyList<OnderzoeksvraagCreatie>? Onderzoeksvragen = null);
 
 /// <summary>Create payload for a class/age-scoped <see cref="Activiteit"/> (inherits its subthema's scope, Art. IX.2).</summary>
+/// <param name="LeerplandoelCodes">
+/// Goals to link in the same request, each landing as a <see cref="KoppelingStatus.Manueel"/>
+/// <see cref="DoelKoppeling"/> because a code in a create payload is a teacher deciding, never the model
+/// proposing (Art. IV.2).
+/// <para>
+/// It is on the create payload rather than left to the per-link endpoint because that endpoint keys on the
+/// activiteit's id, which does not exist until this request returns. The form therefore could not offer the
+/// goal picker while creating at all, and a teacher making an activiteit from the agenda had to save it,
+/// find it again and open it before the section appeared.
+/// </para>
+/// <para>
+/// Null and empty mean the same thing and are both allowed: most activiteiten are created without goals and
+/// linked later, which is why the per-link endpoints stay.
+/// </para>
+/// </param>
 public sealed record ActiviteitCreatie(
     string Naam,
     ActiviteitType ActiviteitType,
@@ -62,7 +77,8 @@ public sealed record ActiviteitCreatie(
     string? VerwachteUitkomsten = null,
     Guid? OnderzoeksvraagId = null,
     Activiteitkleur? Kleur = null,
-    int LengteInLesuren = 1);
+    int LengteInLesuren = 1,
+    IReadOnlyList<string>? LeerplandoelCodes = null);
 
 /// <summary>Update payload for an <see cref="Activiteit"/>.</summary>
 public sealed record ActiviteitWijzigingInvoer(

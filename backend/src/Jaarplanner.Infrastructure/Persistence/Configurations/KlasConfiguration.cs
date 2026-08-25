@@ -24,6 +24,11 @@ public sealed class KlasConfiguration : IEntityTypeConfiguration<Klas>
         builder.Property(k => k.Naam).HasMaxLength(128).IsRequired();
         builder.Property(k => k.Leerjaar).IsRequired();
 
+        // Nullable, and short: one of nine codes (JK, K2, K3, L1-L6). Absent means "the school has not said", which
+        // keeps every existing class on the ordinal fallback rather than silently narrowing a plan already being
+        // taught. `Klas` refuses a code that contradicts a real leerjaar, so the column cannot hold a second answer.
+        builder.Property(k => k.Jaarfase).HasMaxLength(8);
+
         // The school-content Excel import resolves a class BY NAME, so a duplicate name would make
         // that resolution arbitrary. Enforced in the database so the guarantee survives the
         // concurrent-POST race an in-memory check cannot cover.

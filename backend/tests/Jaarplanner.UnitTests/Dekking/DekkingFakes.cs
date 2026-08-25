@@ -185,10 +185,16 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     /// <summary>Whether the service asked for the leerjaar at all: the whole-curriculum path must not.</summary>
     public bool HeeftLeerjaarGevraagd { get; private set; }
 
-    public Task<int?> HaalLeerjaarAsync(Guid klasId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The class's own recorded jaar/fase, when a test is exercising the narrowing rather than the ordinal fallback
+    /// (owner ruling, 2026-08-25). Null keeps the pre-existing behaviour, which is what every older test expects.
+    /// </summary>
+    public string? Jaarfase { get; set; }
+
+    public Task<Klasscope?> HaalKlasscopeAsync(Guid klasId, CancellationToken cancellationToken = default)
     {
         HeeftLeerjaarGevraagd = true;
 
-        return Task.FromResult(Leerjaar);
+        return Task.FromResult(Leerjaar is null ? null : (Klasscope?)new Klasscope(Leerjaar.Value, Jaarfase));
     }
 }

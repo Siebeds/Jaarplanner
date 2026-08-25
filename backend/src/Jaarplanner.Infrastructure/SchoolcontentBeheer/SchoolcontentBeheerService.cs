@@ -453,9 +453,59 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             activiteit.KoppelAanOnderzoeksvraag(ovId);
         }
 
+        // The goals travel with the activiteit, in ONE SaveChanges, so a create either lands whole or not at
+        // all. The alternative the frontend would otherwise be forced into is a create followed by N calls to
+        // the per-link endpoint, where a failure halfway leaves an activiteit carrying some of the goals a
+        // teacher chose and no record of which ones are missing.
+        //
+        // Every code is resolved through the same check the per-link endpoint uses, so an unknown code is
+        // refused here with the same Dutch sentence rather than a second wording for the same mistake.
+        foreach (var code in await VereisLeerplandoelenAsync(creatie.LeerplandoelCodes, cancellationToken))
+        {
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling(code, KoppelingStatus.Manueel));
+        }
+
         _context.Activiteiten.Add(activiteit);
         await _context.SaveChangesAsync(cancellationToken);
         return MapActiviteit(activiteit);
+    }
+
+    /// <summary>
+    /// Resolves a create payload's goal codes, in order, refusing an unknown one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A code repeated inside one payload is collapsed rather than refused. The request says "link these
+    /// goals"; saying one of them twice asks for the state that one link already produces, and the response
+    /// carries the activiteit's actual koppelingen so a caller can see exactly what it got. Refusing would
+    /// need a sentence for a condition no screen in this app can produce, since the picker already hides what
+    /// is linked.
+    /// </para>
+    /// <para>
+    /// Sequential on purpose: <see cref="VereisLeerplandoelAsync"/> reads the same DbContext, which is not
+    /// safe to use concurrently, and this is a handful of codes on one activiteit.
+    /// </para>
+    /// </remarks>
+    private async Task<List<string>> VereisLeerplandoelenAsync(
+        IReadOnlyList<string>? codes,
+        CancellationToken cancellationToken)
+    {
+        var uit = new List<string>();
+        if (codes is null)
+        {
+            return uit;
+        }
+
+        foreach (var ruw in codes)
+        {
+            var code = await VereisLeerplandoelAsync(ruw, cancellationToken);
+            if (!uit.Contains(code, StringComparer.Ordinal))
+            {
+                uit.Add(code);
+            }
+        }
+
+        return uit;
     }
 
     public async Task<ActiviteitWeergave> WijzigActiviteitAsync(Guid activiteitId, ActiviteitWijzigingInvoer wijziging, CancellationToken cancellationToken = default)

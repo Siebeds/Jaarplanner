@@ -73,10 +73,23 @@ export const put = <T>(path: string, body?: unknown) =>
 export const del = <T>(path: string) => apiFetch<T>(path, { method: "DELETE" });
 
 /** Builds a query string from the entries that carry a value. Returns "" rather than a bare "?". */
-export function naarQuery(params: Record<string, string | number | boolean | undefined | null>): string {
+export function naarQuery(
+  params: Record<string, string | number | boolean | readonly string[] | undefined | null>,
+): string {
   const zoek = new URLSearchParams();
   for (const [sleutel, waarde] of Object.entries(params)) {
     if (waarde === undefined || waarde === null || waarde === "") continue;
+
+    // An array becomes a REPEATED parameter (`?jaarFase=JK&jaarFase=K2`), which is what the backend's
+    // multi-valued dimensions expect: `LeerplandoelFilter.JaarFasen` is a list because a class does not
+    // always teach one jaar. Joining with a comma would send one value nobody parses.
+    if (Array.isArray(waarde)) {
+      for (const deel of waarde) {
+        if (deel !== "") zoek.append(sleutel, deel);
+      }
+      continue;
+    }
+
     zoek.set(sleutel, String(waarde));
   }
   const tekst = zoek.toString();

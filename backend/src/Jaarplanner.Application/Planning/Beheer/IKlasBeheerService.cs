@@ -54,7 +54,16 @@ public interface IKlasBeheerService
 /// </summary>
 /// <param name="Naam">The class name (e.g. "L3 — derde leerjaar"). Required, unique school-wide.</param>
 /// <param name="Leerjaar">The leerjaar/leeftijdsgroep ordinal (e.g. 3 for L3); 0 for kleuter groepen.</param>
-public sealed record KlasCreatie(string Naam, int Leerjaar);
+/// <param name="Jaarfase">
+/// The Op.stap jaar/fase this class teaches (JK, K2, K3, L1-L6), or null when the school does not state one.
+/// <para>
+/// <b>What it is for: kleuterklassen are split per jaar</b> (owner ruling, 2026-08-25). <paramref name="Leerjaar"/>
+/// already names the code for L1-L6, but <c>0</c> only says "een kleutergroep", so a third kleuterklas was measured
+/// against JK, K2 and K3 together: 1288 goals where 554 are its own. Recording the year removes the guess. A value
+/// that contradicts a real leerjaar is refused, so the two cannot give a class two denominators.
+/// </para>
+/// </param>
+public sealed record KlasCreatie(string Naam, int Leerjaar, string? Jaarfase = null);
 
 /// <summary>A class group as returned by the API.</summary>
 /// <param name="Id">Surrogate identity.</param>
@@ -62,8 +71,15 @@ public sealed record KlasCreatie(string Naam, int Leerjaar);
 /// <param name="Naam">The class name.</param>
 /// <param name="Leerjaar">The leerjaar/leeftijdsgroep ordinal.</param>
 /// <param name="AantalSubthemas">How many subthema's are scoped to this class (0 for a fresh class).</param>
+/// <param name="Jaarfase">
+/// The class's own recorded jaar/fase, or null when the school has not stated one. Distinct from
+/// <paramref name="JaarFasen"/>, which is what the class is MEASURED against: the two differ exactly when this is
+/// null, where the ordinal fallback answers a set instead of a code.
+/// </param>
 /// <param name="JaarFasen">
-/// The Op.stap jaar/fase codes this class teaches, derived from <paramref name="Leerjaar"/> (E9-07).
+/// The Op.stap jaar/fase codes this class teaches, from <c>Jaarfasen.VoorKlas</c>: the recorded
+/// <paramref name="Jaarfase"/> when there is one, and otherwise whatever <paramref name="Leerjaar"/> can say (E9-07,
+/// narrowed by the owner ruling of 2026-08-25).
 /// <para>
 /// <b>Derived server-side and shipped with the class, rather than exposed as an endpoint of its own or re-derived in
 /// the browser.</b> The rule lives in <c>Jaarfasen.VoorLeerjaar</c> and is what <c>Dekkingsbereik.EigenJaarFase</c>
@@ -73,9 +89,10 @@ public sealed record KlasCreatie(string Naam, int Leerjaar);
 /// kleuterdoelen.
 /// </para>
 /// <para>
-/// <b>A kleutergroep yields all three kleuter codes, not one</b> — <c>Leerjaar</c> is <c>0</c> and cannot say which
-/// kleuterjaar. That is the widest honest answer, and E5-02's ruling of 2026-08-04 is the precedent for what to do
-/// with it: let the teacher narrow within the set, on screen, rather than guess.
+/// <b>A kleutergroep that records no jaar/fase still yields all three kleuter codes</b> — <c>Leerjaar</c> is <c>0</c>
+/// and cannot say which kleuterjaar. That remains the widest honest answer for a class nobody has told us about, and
+/// E5-02's ruling of 2026-08-04 is why it is not narrowed by guessing. What changed on 2026-08-25 is that a school
+/// can now say, and then this is one code.
 /// </para>
 /// <para>
 /// <b>Empty means "cannot be derived", never "teaches nothing"</b>: it is the unresolved graadklas/menggroep case
@@ -90,4 +107,5 @@ public sealed record KlasWeergave(
     string Naam,
     int Leerjaar,
     int AantalSubthemas,
-    IReadOnlyList<string> JaarFasen);
+    IReadOnlyList<string> JaarFasen,
+    string? Jaarfase = null);

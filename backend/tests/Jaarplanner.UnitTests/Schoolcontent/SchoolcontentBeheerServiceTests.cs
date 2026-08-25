@@ -431,6 +431,69 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Maak_activiteit_links_the_codes_it_was_given_as_manueel()
+    {
+        // The reason this endpoint carries codes at all: the per-link endpoint keys on the activiteit's id,
+        // so before this call returns there is nothing to link to, and the form could not offer the picker
+        // while creating. Everything lands in one request.
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
+            "Meten", ActiviteitType.Onderzoek, LeerplandoelCodes: ["NL-001", "WIS-001"]));
+
+        Assert.Equal(["NL-001", "WIS-001"], activiteit.Doelkoppelingen.Select(k => k.LeerplandoelCode));
+        Assert.All(activiteit.Doelkoppelingen, k => Assert.Equal(KoppelingStatus.Manueel, k.Status));
+
+        // And it is really persisted, not just mapped onto the response.
+        var opnieuw = (await NieuweService().HaalThemaOpAsync(thema.Id)).Subthemas.Single().Activiteiten.Single();
+        Assert.Equal(2, opnieuw.Doelkoppelingen.Count);
+    }
+
+    [Fact]
+    public async Task Maak_activiteit_without_codes_links_nothing()
+    {
+        // Null and empty are both "no goals yet", which is how most activiteiten are made.
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+
+        var zonder = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+        var leeg = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
+            "Wegen", ActiviteitType.Onderzoek, LeerplandoelCodes: []));
+
+        Assert.Empty(zonder.Doelkoppelingen);
+        Assert.Empty(leeg.Doelkoppelingen);
+    }
+
+    [Fact]
+    public async Task Maak_activiteit_collapses_a_code_repeated_in_one_payload()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
+            "Meten", ActiviteitType.Onderzoek, LeerplandoelCodes: ["NL-001", "NL-001"]));
+
+        Assert.Equal(["NL-001"], activiteit.Doelkoppelingen.Select(k => k.LeerplandoelCode));
+    }
+
+    [Fact]
+    public async Task Maak_activiteit_with_an_unknown_code_creates_nothing_at_all()
+    {
+        // THE POINT OF PUTTING THE CODES ON THE CREATE PAYLOAD. One SaveChanges, so a bad code cannot leave
+        // an activiteit behind carrying half of what the teacher chose. Art. III.5 refuses the code itself.
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
+                "Meten", ActiviteitType.Onderzoek, LeerplandoelCodes: ["NL-001", "BESTAAT-NIET"])));
+
+        Assert.Empty((await NieuweService().HaalThemaOpAsync(thema.Id)).Subthemas.Single().Activiteiten);
+        Assert.Equal(3, await NieuwContext().Leerplandoelen.CountAsync());
+    }
+
+    [Fact]
     public async Task Ontkoppel_activiteit_doel_removes_only_that_link()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));

@@ -45,7 +45,8 @@ public sealed class KlasBeheerService : IKlasBeheerService
                 k.Naam,
                 k.Leerjaar,
                 subthemaAantallen.TryGetValue(k.Id, out var aantal) ? aantal : 0,
-                JaarFasenVoor(k.Leerjaar)))
+                JaarFasenVoor(k),
+                k.Jaarfase))
             .ToList();
     }
 
@@ -55,7 +56,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
         var klas = await VindKlasAsync(klasId, cancellationToken);
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas.Leerjaar));
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase);
     }
 
     /// <inheritdoc />
@@ -67,6 +68,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
         ArgumentNullException.ThrowIfNull(creatie);
 
         var naam = VereisNaam(creatie.Naam);
+        VereisGeldigeJaarfase(creatie.Jaarfase, creatie.Leerjaar);
         await VereisVrijeNaamAsync(naam, uitgezonderd: null, cancellationToken);
 
         // A klas must live in an existing school year (Art. IX.3 containment, E3-01). Checked here so a bad id is
@@ -76,7 +78,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
             .FirstOrDefaultAsync(s => s.Id == schooljaarId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout($"Schooljaar {schooljaarId} is niet gevonden.");
 
-        var klas = schooljaar.VoegKlasToe(naam, creatie.Leerjaar);
+        var klas = schooljaar.VoegKlasToe(naam, creatie.Leerjaar, creatie.Jaarfase);
 
         // Registered explicitly as Added. This used to be load-bearing: reaching a new entity only through a
         // navigation of an already-tracked principal made EF apply its "key is set, so it must already exist"
@@ -92,7 +94,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
         await BewaarAsync(naam, cancellationToken);
 
         return new KlasWeergave(
-            klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, AantalSubthemas: 0, JaarFasenVoor(klas.Leerjaar));
+            klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, AantalSubthemas: 0, JaarFasenVoor(klas), klas.Jaarfase);
     }
 
     /// <inheritdoc />
@@ -101,17 +103,18 @@ public sealed class KlasBeheerService : IKlasBeheerService
         ArgumentNullException.ThrowIfNull(wijziging);
 
         var klas = await VindKlasAsync(klasId, cancellationToken);
+        VereisGeldigeJaarfase(wijziging.Jaarfase, wijziging.Leerjaar);
         await VereisVrijeNaamAsync(wijziging.Naam, uitgezonderd: klasId, cancellationToken);
 
         // The domain owns the invariant (Klas.Wijzig validates naam once) — the service does not
         // re-implement it, and does not write through EF property metadata, which is a technique
         // reserved for keeping read-only curriculum content unmutatable (Art. III.1).
-        klas.Wijzig(wijziging.Naam, wijziging.Leerjaar);
+        klas.Wijzig(wijziging.Naam, wijziging.Leerjaar, wijziging.Jaarfase);
         await BewaarAsync(klas.Naam, cancellationToken);
 
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas.Leerjaar));
+        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase);
     }
 
     /// <inheritdoc />
@@ -230,7 +233,25 @@ public sealed class KlasBeheerService : IKlasBeheerService
     /// cannot derive it" — the unresolved graadklas case. A caller must widen rather than narrow to nothing.
     /// </para>
     /// </summary>
-    private static IReadOnlyList<string> JaarFasenVoor(int leerjaar) => Jaarfasen.VoorLeerjaar(leerjaar) ?? [];
+    /// <summary>
+    /// Refuses a jaar/fase a class cannot claim, before the aggregate does.
+    /// <para>
+    /// The aggregate's own guard throws a bare <c>ArgumentException</c> that no handler maps, so it reached a teacher
+    /// as an unhandled 500 (measured, 2026-08-25). Both use <c>Jaarfasen.WatIsErMisMet</c>, so the rule exists once
+    /// and only the reaction differs.
+    /// </para>
+    /// </summary>
+    private static void VereisGeldigeJaarfase(string? jaarfase, int leerjaar)
+    {
+        var mis = Jaarfasen.WatIsErMisMet(jaarfase, leerjaar);
+        if (mis is not null)
+        {
+            throw new SchoolcontentValidatieFout(mis);
+        }
+    }
+
+    private static IReadOnlyList<string> JaarFasenVoor(Klas klas) =>
+        Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase) ?? [];
 
     private async Task<Klas> VindKlasAsync(Guid klasId, CancellationToken cancellationToken)
     {

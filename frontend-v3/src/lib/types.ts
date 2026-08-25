@@ -151,7 +151,14 @@ export interface LeerplandoelFilterQuery {
   domein?: string;
   subdomein?: string;
   doelsoort?: Doelsoort;
-  jaarFase?: string;
+  /**
+   * One jaar/fase, or several.
+   *
+   * Several, because a class does not always teach one: a kleutergroep that has not recorded its year is measured
+   * against JK, K2 and K3 together. The backend takes the parameter repeated (`?jaarFase=JK&jaarFase=K2`), so this is
+   * one dimension with one representation rather than two fields.
+   */
+  jaarFase?: string | readonly string[];
   overslaan?: number;
   aantal?: number;
 }

@@ -52,4 +52,72 @@ public static class Jaarfasen
         >= 1 and <= 6 => [Lager[leerjaar - 1]],
         _ => null,
     };
+
+    /// <summary>Every code this vocabulary knows: the three kleuter jaren and the six leerjaren.</summary>
+    public static IReadOnlyList<string> Alle { get; } = [.. Kleuter, .. Lager];
+
+    /// <summary>Whether <paramref name="code"/> is one of the nine known jaar/fase codes.</summary>
+    /// <remarks>
+    /// P/S goals carry a fase that is none of the nine (Art. VII.1 column F), so this is deliberately NOT a
+    /// validator for <c>Leerplandoel.JaarFase</c>. It validates what a <b>class</b> may claim to teach, and a class
+    /// teaches a jaar, never a fase.
+    /// </remarks>
+    public static bool IsBekend(string? code) => code is not null && Alle.Contains(code, StringComparer.Ordinal);
+
+    /// <summary>
+    /// The jaar/fase codes a class should be measured against: its OWN recorded jaar/fase when it has one, and
+    /// otherwise whatever its <c>Leerjaar</c> ordinal can say (owner ruling, 2026-08-25).
+    /// <para>
+    /// <b>This is the narrowing the ordinal could not do.</b> <see cref="VoorLeerjaar"/> answers all three kleuter
+    /// codes for <c>Leerjaar = 0</c>, because the ordinal cannot say which kleuterjaar a group is, and a coverage
+    /// figure measured against all three is more than twice the size of the real one: a third kleuterklas was being
+    /// held to 1288 goals where 554 are its own. The 2026-08-04 ruling forbade GUESSING which year a kleutergroep is,
+    /// and this does not guess: the year is recorded on the class, by the school, or it is absent and the old
+    /// behaviour stands unchanged.
+    /// </para>
+    /// <para>
+    /// <b>Still one code at most, and still no graadklas answer.</b> A class spanning several leerjaren needs a SET
+    /// here, which is the Art. XIV decision this does not settle. Until then such a class records no jaar/fase and
+    /// falls through to the ordinal, which refuses with <c>null</c> and makes <c>DekkingService</c> widen and say so.
+    /// </para>
+    /// </summary>
+    /// <param name="leerjaar">The class's <c>Leerjaar</c> ordinal.</param>
+    /// <param name="jaarfase">Its recorded jaar/fase, or null when the school has not stated one.</param>
+    public static IReadOnlyList<string>? VoorKlas(int leerjaar, string? jaarfase) =>
+        IsBekend(jaarfase) ? [jaarfase!] : VoorLeerjaar(leerjaar);
+
+    /// <summary>
+    /// What is wrong with a class claiming <paramref name="jaarfase"/> next to <paramref name="leerjaar"/>, in Dutch,
+    /// or null when nothing is.
+    /// <para>
+    /// <b>The rule lives here so both layers can apply it without restating it.</b> The idiom this codebase already
+    /// uses (see <c>WeekplanningService</c>) is that the aggregate refuses programmer error and the service refuses
+    /// teacher input, which means the check happens twice; what must not happen twice is the RULE. So the domain
+    /// throws on this sentence and the beheerservice raises a mapped 400 with it, and a change here reaches both.
+    /// </para>
+    /// <para>
+    /// Blank is not an error: it means the school has not said, which is the normal state of every class that existed
+    /// before this field did.
+    /// </para>
+    /// </summary>
+    public static string? WatIsErMisMet(string? jaarfase, int leerjaar)
+    {
+        if (string.IsNullOrWhiteSpace(jaarfase))
+        {
+            return null;
+        }
+
+        var code = jaarfase.Trim();
+        if (!IsBekend(code))
+        {
+            return $"'{code}' is geen bekende jaar/fase. Kies JK, K2, K3 of L1 tot L6.";
+        }
+
+        // A real leerjaar already names its own code, so a value that disagrees is a mistake rather than a
+        // refinement. A kleutergroep has no code to contradict, which is the whole reason the field exists.
+        var uitLeerjaar = leerjaar is >= 1 and <= 6 ? Lager[leerjaar - 1] : null;
+        return uitLeerjaar is not null && !string.Equals(code, uitLeerjaar, StringComparison.Ordinal)
+            ? $"Jaar/fase '{code}' hoort niet bij leerjaar {leerjaar}, dat '{uitLeerjaar}' is."
+            : null;
+    }
 }

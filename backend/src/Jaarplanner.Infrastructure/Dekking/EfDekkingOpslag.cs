@@ -244,7 +244,7 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
         _context.Leerplandoelen.AsNoTracking().CountAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task<int?> HaalLeerjaarAsync(Guid klasId, CancellationToken cancellationToken = default)
+    public async Task<Klasscope?> HaalKlasscopeAsync(Guid klasId, CancellationToken cancellationToken = default)
     {
         // Projected to a nullable int rather than loading the Klas: this needs one column, and materialising the
         // entity would put a mutable aggregate in reach of a read-only computation.
@@ -257,10 +257,14 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
         // DekkingService reads the jaarplan first and a missing class 404s there, so the only way to reach this
         // branch is a class deleted BETWEEN the two reads. The `null` path itself is pinned at the port boundary by
         // DekkingServiceTests (`Leerjaar = null`); what has no test is the race that produces it.
+        // Two columns now, in one projection, and still not the entity. A nullable STRUCT keeps the
+        // "no such class" signal the `(int?)` cast used to carry: `FirstOrDefaultAsync` on a
+        // `Klasscope` sequence would yield `default` for a missing class, and `default.Leerjaar` is 0,
+        // which is a VALID leerjaar here. So the projection is to `Klasscope?` rather than `Klasscope`.
         return await _context.Klassen
             .AsNoTracking()
             .Where(k => k.Id == klasId)
-            .Select(k => (int?)k.Leerjaar)
+            .Select(k => (Klasscope?)new Klasscope(k.Leerjaar, k.Jaarfase))
             .FirstOrDefaultAsync(cancellationToken);
     }
 }

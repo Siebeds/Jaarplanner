@@ -18,6 +18,7 @@ import { Doelenboom } from "./Doelenboom";
 import { Doeldetail } from "./Doeldetail";
 import { Minimumdoelenlijst } from "./Minimumdoelenlijst";
 import { Filterblad, type Doelenfilter } from "./Filterblad";
+import { useActieveSelectie } from "../../lib/selectie";
 import { Doelsoortbalk } from "./Doelsoortbalk";
 
 type Bron = "leerplandoelen" | "minimumdoelen";
@@ -34,7 +35,29 @@ type Bron = "leerplandoelen" | "minimumdoelen";
 export function DoelenScherm() {
   const [zoekInvoer, setZoekInvoer] = useState("");
   const [zoek, setZoek] = useState("");
+  /**
+   * THE REGISTER OPENS ON THE SELECTED CLASS'S JAAR/FASE (owner ruling, 2026-08-25).
+   *
+   * A naslagwerk over 2491 doelen of which 554 apply to the class you have open is a naslagwerk you have to filter
+   * before it says anything, and the teacher already told the app which class they are working in. So the filter
+   * starts there, and it starts VISIBLE: it counts towards `aantalFilters` and clears with "Alles wissen" like any
+   * other, because a preset the teacher cannot see is a preset they will read as missing data.
+   *
+   * Only when the class has exactly ONE code. A kleutergroep that has not recorded its year answers three, and this
+   * dimension is single-select on purpose (its facet list is a count per code); presetting one of the three would be
+   * the guess the 2026-08-04 ruling forbids, and presetting none is the honest widest answer.
+   */
+  const { klas } = useActieveSelectie();
+  const eigenFase = klas?.jaarFasen.length === 1 ? klas.jaarFasen[0] : undefined;
   const [filter, setFilter] = useState<Doelenfilter>({});
+  const [faseVanKlas, setFaseVanKlas] = useState<string | undefined>(undefined);
+
+  // Applied when the class arrives or changes, not at mount: `useActieveSelectie` resolves its fallback after the
+  // klassen query lands, so a `useState` initialiser would run before there is a class to read.
+  if (eigenFase !== faseVanKlas) {
+    setFaseVanKlas(eigenFase);
+    setFilter((vorige) => ({ ...vorige, jaarFase: eigenFase }));
+  }
   const [filterOpen, setFilterOpen] = useState(false);
   const [bron, setBron] = useState<Bron>("leerplandoelen");
   const [gekozenCode, setGekozenCode] = useState<string | null>(null);

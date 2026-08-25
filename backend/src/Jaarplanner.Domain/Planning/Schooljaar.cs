@@ -91,9 +91,13 @@ public sealed class Schooljaar
     /// </summary>
     /// <param name="naam">The class name (e.g. "L3 — derde leerjaar").</param>
     /// <param name="leerjaar">The leerjaar/leeftijdsgroep ordinal; 0 for kleuter groepen.</param>
-    public Klas VoegKlasToe(string naam, int leerjaar)
+    /// <param name="jaarfase">
+    /// The Op.stap jaar/fase the class teaches, or null. See <see cref="Klas.Jaarfase"/>: it is what lets a
+    /// kleuterklas be measured against its own kleuterjaar instead of all three.
+    /// </param>
+    public Klas VoegKlasToe(string naam, int leerjaar, string? jaarfase = null)
     {
-        var klas = new Klas(Id, naam, leerjaar);
+        var klas = new Klas(Id, naam, leerjaar, jaarfase);
         _klassen.Add(klas);
 
         return klas;

@@ -462,9 +462,11 @@ public sealed class DekkingService
         Guid klasId,
         CancellationToken cancellationToken)
     {
-        var leerjaar = await _opslag.HaalLeerjaarAsync(klasId, cancellationToken);
+        var scope = await _opslag.HaalKlasscopeAsync(klasId, cancellationToken);
 
-        return leerjaar is null ? null : Jaarfasen.VoorLeerjaar(leerjaar.Value);
+        // `VoorKlas` rather than `VoorLeerjaar`: a class that records its own jaar/fase is measured against that one
+        // code, which is the narrowing the ordinal could not do for a kleutergroep (owner ruling, 2026-08-25).
+        return scope is null ? null : Jaarfasen.VoorKlas(scope.Value.Leerjaar, scope.Value.Jaarfase);
     }
 
     /// <summary>

@@ -238,6 +238,8 @@
     "gedekteDoelen": "Gedekte leerplandoelen",
     "geenCijfer": "Geen betrouwbaar cijfer",
     "balkAria": "Dekking: {gedekt} van {totaal} leerplandoelen gedekt",
+    "balkAriaBereik": "Dekking: {gedekt} van {totaal} leerplandoelen van {fasen} gedekt. {buiten} doelen vallen buiten dit bereik.",
+    "balkFasen": "van {fasen}",
     "balkAriaGeenCijfer": "Dekking: geen betrouwbaar cijfer",
     "export": "Exporteren",
     "gedekt": "Gedekt",
@@ -394,7 +396,9 @@
     "eenDoel": "1 doel",
     "aantalDoelen": "{aantal} doelen",
     "geenDoel": "Nog geen doel",
-    "koppelAan": "Doel koppelen aan {naam}"
+    "koppelAan": "Doel koppelen aan {naam}",
+    "doelenBijBewaren": "Deze doelen worden samen met de activiteit bewaard.",
+    "codeWeg": "{code} uit de lijst halen"
   },
   "activiteitsoort": {
     "Experiment": "Experiment",
@@ -418,6 +422,12 @@
     "zoek": "Zoek op code of tekst",
     "zoeken": "Zoeken",
     "niets": "Geen doel gevonden",
+    "nietsInBereik": "Geen doel gevonden binnen {fasen}",
+    "beperktTot": "Alleen {fasen}",
+    "toonAlle": "Toon alle jaren",
+    "alleJaren": "Alle jaren en fases",
+    "beperkWeer": "Beperk tot {fasen}",
+    "buitenBereik": "Dit doel valt buiten {fasen} en telt niet mee in de dekking van deze klas",
     "koppel": "Doel koppelen"
   },
   "lesuur": {

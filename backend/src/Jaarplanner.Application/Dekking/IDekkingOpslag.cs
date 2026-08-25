@@ -164,7 +164,7 @@ public interface IDekkingOpslag
     /// whole curriculum and say so, never to an empty denominator.
     /// </para>
     /// </summary>
-    Task<int?> HaalLeerjaarAsync(Guid klasId, CancellationToken cancellationToken = default);
+    Task<Klasscope?> HaalKlasscopeAsync(Guid klasId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -192,3 +192,14 @@ public sealed record KandidaatKoppeling(
     Guid ThemaId,
     string ThemaNaam,
     bool IsBeslist);
+
+/// <summary>
+/// What a class says about which jaar/fase it teaches: its ordinal and, since the owner's ruling of 2026-08-25, its
+/// own recorded code.
+/// </summary>
+/// <param name="Leerjaar">The <c>Leerjaar</c> ordinal. <c>0</c> is a kleutergroep and a valid value, not "unset".</param>
+/// <param name="Jaarfase">
+/// The class's own jaar/fase (JK, K2, K3, L1–L6), or null when the school has not recorded one. When present it is
+/// the answer; <c>Jaarfasen.VoorKlas</c> combines the two so no caller has to decide which wins.
+/// </param>
+public readonly record struct Klasscope(int Leerjaar, string? Jaarfase);

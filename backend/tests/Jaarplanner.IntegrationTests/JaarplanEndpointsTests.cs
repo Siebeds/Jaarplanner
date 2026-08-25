@@ -1095,8 +1095,15 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             /// against an L3 class every value of the query parameter, valid or not, yields the same answer.
             /// </para>
             /// </summary>
-            public Task<int?> HaalLeerjaarAsync(Guid klasId, CancellationToken cancellationToken = default) =>
-                Task.FromResult<int?>(_leerjaar());
+            public Task<Klasscope?> HaalKlasscopeAsync(Guid klasId, CancellationToken cancellationToken = default)
+            {
+                var leerjaar = _leerjaar();
+
+                // A recorded jaar/fase is deliberately NOT faked here: these tests exercise the ordinal fallback,
+                // which is the branch a kleutergroep without a recorded year still takes. The narrowing itself is
+                // pinned where it belongs, on `Jaarfasen.VoorKlas` and on the endpoint tests that set it.
+                return Task.FromResult(leerjaar is null ? null : (Klasscope?)new Klasscope(leerjaar.Value, null));
+            }
         }
 
         private sealed class StubAiClient : IAiClient

@@ -33,6 +33,14 @@ export interface ActiviteitInvoer {
   onderzoeksvraagId: string | null;
   kleur: Activiteitkleur | null;
   lengteInLesuren: number;
+  /**
+   * Goals to link in the same request, and ONLY sent while creating.
+   *
+   * A link needs an activiteit id, and while creating there is none, so the per-link endpoints cannot
+   * be reached yet: the create payload carries the codes instead and the server links them inside the
+   * same save. Absent while editing, where the picker writes through those endpoints on the spot.
+   */
+  leerplandoelCodes?: string[];
 }
 
 /**
@@ -96,6 +104,10 @@ export function Activiteitformulier({
   const [lengte, setLengte] = useState(activiteit?.lengteInLesuren ?? 1);
   const [naamFout, setNaamFout] = useState(false);
 
+  // Only used while creating. Held here rather than written through, because there is nothing to write
+  // to yet: they travel with the create request. See `ActiviteitInvoer.leerplandoelCodes`.
+  const [nieuweCodes, setNieuweCodes] = useState<string[]>([]);
+
   const isHoek = soort === "Hoek";
 
   function verstuur(event: FormEvent) {
@@ -114,6 +126,9 @@ export function Activiteitformulier({
       onderzoeksvraagId: vraagId === "" ? null : vraagId,
       kleur,
       lengteInLesuren: lengte,
+      // Left off entirely while editing rather than sent empty: the update endpoint has no such field,
+      // and an empty list there would read like "remove every goal" to the next person who adds one.
+      ...(activiteit ? {} : { leerplandoelCodes: nieuweCodes }),
     });
   }
 
@@ -311,36 +326,67 @@ export function Activiteitformulier({
 
         {extra ? <section className="border-t border-lijn pt-5">{extra}</section> : null}
 
-        {activiteit && onKoppel && onOntkoppel ? (
-          <section className="border-t border-lijn pt-5">
-            <div className="flex items-baseline justify-between gap-2">
-              <h3 className="text-micro uppercase text-inkt-zwak">{t("activiteit.doelen")}</h3>
-              <span className="mono shrink-0 text-micro text-inkt-zwak">{koppelingen.length}</span>
-            </div>
-            {/* Said once, because these two endpoints commit on the spot while the fields above wait
-                for Bewaren, and a teacher has no way to know that from the layout. */}
-            <p className="mt-1 text-meta text-inkt-zacht">{t("activiteit.doelenDirect")}</p>
+        {/* DOELEN, IN BEIDE RICHTINGEN, and the two branches do not behave the same.
+            While EDITING, the picker writes through its own endpoints on the spot, because it can: the
+            activiteit has an id. While CREATING there is no id yet, so the codes are held here and travel
+            with the create request, which the server links inside the same save.
+            The explaining line therefore differs per branch. It has to: one of them would be false in the
+            other, and a sentence may only assert what its own branch guarantees. */}
+        {activiteit ? (
+          onKoppel && onOntkoppel ? (
+            <section className="border-t border-lijn pt-5">
+              <Doelenkop aantal={koppelingen.length} uitleg={t("activiteit.doelenDirect")} />
 
-            {koppelingen.length > 0 ? (
+              {koppelingen.length > 0 ? (
+                <ul className="mt-2 flex flex-col gap-1">
+                  {koppelingen.map((koppeling) => (
+                    <li
+                      key={koppeling.id}
+                      className="flex items-center gap-2 rounded-veld border border-lijn bg-kaart px-3 py-1.5"
+                    >
+                      <span className="mono min-w-0 truncate text-meta font-medium text-inkt">
+                        {koppeling.leerplandoelCode}
+                      </span>
+                      <Statusmerk status={koppeling.status} className="ml-auto" />
+                      <Weg
+                        label={t("activiteit.ontkoppel", { code: koppeling.leerplandoelCode })}
+                        bezig={koppelenBezig}
+                        onClick={() => onOntkoppel(koppeling.id)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <div className="mt-3">
+                <Doelkoppelaar
+                  onKies={onKoppel}
+                  bezig={koppelenBezig}
+                  alGekozen={koppelingen.map((k) => k.leerplandoelCode)}
+                />
+              </div>
+            </section>
+          ) : null
+        ) : (
+          <section className="border-t border-lijn pt-5">
+            <Doelenkop aantal={nieuweCodes.length} uitleg={t("activiteit.doelenBijBewaren")} />
+
+            {nieuweCodes.length > 0 ? (
               <ul className="mt-2 flex flex-col gap-1">
-                {koppelingen.map((koppeling) => (
+                {nieuweCodes.map((code) => (
                   <li
-                    key={koppeling.id}
+                    key={code}
                     className="flex items-center gap-2 rounded-veld border border-lijn bg-kaart px-3 py-1.5"
                   >
-                    <span className="mono min-w-0 truncate text-meta font-medium text-inkt">
-                      {koppeling.leerplandoelCode}
-                    </span>
-                    <Statusmerk status={koppeling.status} className="ml-auto" />
-                    <button
-                      type="button"
-                      disabled={koppelenBezig}
-                      aria-label={t("activiteit.ontkoppel", { code: koppeling.leerplandoelCode })}
-                      onClick={() => onOntkoppel(koppeling.id)}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
-                    >
-                      <IcoonKruis aria-hidden="true" className="h-4 w-4" />
-                    </button>
+                    {/* No Statusmerk here. Nothing has a status yet: it becomes Manueel when the server
+                        stores it, and printing that beforehand would state a fact this row does not have. */}
+                    <span className="mono min-w-0 truncate text-meta font-medium text-inkt">{code}</span>
+                    <Weg
+                      label={t("activiteit.codeWeg", { code })}
+                      bezig={bezig}
+                      className="ml-auto"
+                      onClick={() => setNieuweCodes((vorige) => vorige.filter((c) => c !== code))}
+                    />
                   </li>
                 ))}
               </ul>
@@ -348,13 +394,13 @@ export function Activiteitformulier({
 
             <div className="mt-3">
               <Doelkoppelaar
-                onKies={onKoppel}
-                bezig={koppelenBezig}
-                alGekozen={koppelingen.map((k) => k.leerplandoelCode)}
+                onKies={(code) => setNieuweCodes((vorige) => (vorige.includes(code) ? vorige : [...vorige, code]))}
+                bezig={bezig}
+                alGekozen={nieuweCodes}
               />
             </div>
           </section>
-        ) : null}
+        )}
 
         {fout ? (
           <div role="alert" className="rounded-veld border border-attentie/40 bg-attentie-zacht p-3">
@@ -364,5 +410,48 @@ export function Activiteitformulier({
         ) : null}
       </form>
     </Blad>
+  );
+}
+
+/** The heading of the doelen section: what it is, how many, and when they are saved. */
+function Doelenkop({ aantal, uitleg }: { aantal: number; uitleg: string }) {
+  return (
+    <>
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-micro uppercase text-inkt-zwak">{t("activiteit.doelen")}</h3>
+        <span className="mono shrink-0 text-micro text-inkt-zwak">{aantal}</span>
+      </div>
+      {/* Said once, above the list, because when these are written is the one thing the layout cannot show. */}
+      <p className="mt-1 text-meta text-inkt-zacht">{uitleg}</p>
+    </>
+  );
+}
+
+/** Takes one goal off the list, wherever that list lives. */
+function Weg({
+  label,
+  bezig,
+  className,
+  onClick,
+}: {
+  label: string;
+  bezig?: boolean;
+  className?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={bezig}
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak",
+        "transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt disabled:opacity-45",
+        className,
+      )}
+    >
+      <IcoonKruis aria-hidden="true" className="h-4 w-4" />
+    </button>
   );
 }
