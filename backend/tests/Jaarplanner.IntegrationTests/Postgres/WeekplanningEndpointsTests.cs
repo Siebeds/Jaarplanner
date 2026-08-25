@@ -100,11 +100,49 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// The unique index on <c>(JaarplanId, ActiviteitId, Datum)</c> holds in the database, and the service refuses the
-    /// duplicate <b>before</b> it gets there — a raw 23505 would surface as a 500 with an English detail.
+    /// The unique index on <c>(JaarplanId, ActiviteitId, Datum, Volgorde)</c> holds in the database, and the service
+    /// refuses the duplicate <b>before</b> it gets there — a raw 23505 would surface as a 500 with an English detail.
+    /// <para>
+    /// <b>The SLOT, not the day.</b> This test asserted the day-level rule, and went on asserting it after
+    /// <c>ActiviteitplaatsingPerLesuur</c> put <c>Volgorde</c> in that index: it planned lesuur 1, asked for lesuur 2,
+    /// and called the resulting <c>200</c> a failure. That is the one test that had CI red on this branch for two
+    /// commits, and it is worth recording rather than quietly rewriting, because a stale test does not read as stale.
+    /// It reads as a rule, and the rule it stated is one a teacher would have noticed was gone. The companion below
+    /// covers the half the change exists for.
+    /// </para>
     /// </summary>
     [PostgresFact]
-    public async Task Dezelfde_activiteit_twee_keer_op_een_dag_wordt_geweigerd_met_400()
+    public async Task Dezelfde_activiteit_twee_keer_in_hetzelfde_lesuur_wordt_geweigerd_met_400()
+    {
+        var opzet = await ZetOpAsync();
+        var client = _factory.CreateClient();
+        var activiteitId = await MaakActiviteitAsync(client, opzet, "Bladeren zoeken");
+
+        // PlanAsync takes volgorde 0, so this asks for the slot that is already occupied.
+        await PlanAsync(client, opzet.KlasId, activiteitId, opzet.EersteLesdag);
+        var tweede = await client.PostAsJsonAsync(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning",
+            new { activiteitId, datum = opzet.EersteLesdag, volgorde = 0 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, tweede.StatusCode);
+        var probleem = await tweede.Content.ReadFromJsonAsync<ProbleemDto>();
+        Assert.Contains("staat al", probleem!.Detail, StringComparison.Ordinal);
+
+        // The refusal names the LESUUR and counts it from one. Asserted because that wording is the whole point of
+        // the per-slot rule: telling a teacher to pick another day when picking the next hour would do sends them
+        // away from the fix.
+        Assert.Contains("lesuur 1", probleem.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same activiteit in two lesuren of one day is allowed, which is what a hoek running two hours looks like.
+    /// <para>
+    /// Two rows for one activiteit on one day is by itself proof that they sit in different slots: the unique index
+    /// includes <c>Volgorde</c>, so a second row in the same lesuur cannot exist to be counted.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Dezelfde_activiteit_in_een_ander_lesuur_van_dezelfde_dag_mag()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
@@ -115,9 +153,9 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
             $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning",
             new { activiteitId, datum = opzet.EersteLesdag, volgorde = 1 });
 
-        Assert.Equal(HttpStatusCode.BadRequest, tweede.StatusCode);
-        var probleem = await tweede.Content.ReadFromJsonAsync<ProbleemDto>();
-        Assert.Contains("staat al", probleem!.Detail, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, tweede.StatusCode);
+        var week = await tweede.Content.ReadFromJsonAsync<WeekDto>();
+        Assert.Equal(2, week!.Dagen.SelectMany(d => d.Activiteiten).Count(a => a.ActiviteitId == activiteitId));
     }
 
     /// <summary>
