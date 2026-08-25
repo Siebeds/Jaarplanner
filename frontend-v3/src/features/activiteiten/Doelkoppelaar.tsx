@@ -20,24 +20,43 @@ export function Doelkoppelaar({
   onKies,
   bezig,
   alGekozen,
+  toelichting,
 }: {
   onKies: (leerplandoelCode: string) => void;
   bezig?: boolean;
   alGekozen: string[];
+  /**
+   * What this particular koppelaar links a doel to, for assistive technology.
+   *
+   * One subthemakaart can carry six of these: one for its subdoelen and one per activiteit. They all
+   * read "Doel koppelen", so without this a screen reader announces the same button six times and
+   * none of them says which activiteit it belongs to. Sighted users get that from position; this is
+   * the same information through the other channel. The visible label is unchanged and is contained
+   * in the spoken one, which is what WCAG 2.5.3 asks for.
+   */
+  toelichting?: string;
 }) {
   const [open, setOpen] = useState(false);
 
   if (!open) {
     return (
-      <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={() => setOpen(true)}>
+      <Knop
+        rang="stil"
+        className="h-9 min-h-9 px-3 text-meta"
+        aria-label={toelichting}
+        onClick={() => setOpen(true)}
+      >
         <IcoonPlus aria-hidden="true" className="h-4 w-4" />
         {t("doelkiezer.koppel")}
       </Knop>
     );
   }
 
+  // Full width on purpose: this sits in a wrapping flex row next to the doelmerk and the codes, and
+  // a search field sharing a line with them would be a 120px input. As a full-width child it takes
+  // its own line, and the row above it stays readable.
   return (
-    <div className="rounded-veld border border-lijn bg-vlak-diep/40 p-2">
+    <div className="w-full rounded-veld border border-lijn bg-vlak-diep/40 p-2">
       <Doelkiezer
         onKies={(code) => {
           onKies(code);

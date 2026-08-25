@@ -177,6 +177,10 @@
     "openDag": "Open {dag}",
     "openDagMet": "Open {dag}, {aantal} gepland",
     "openDagGesloten": "Open {dag}, {naam}",
+    "dagSubthema": "subthema {naam}",
+    "dagSubthemas": "subthema's {namen}",
+    "subthemaVervolg": "… {naam}",
+    "subthemaMeer": "+{aantal}",
     "subthema": "Subthema",
     "kiesSubthema": "Kies een subthema",
     "eersteDag": "Eerste dag",
@@ -194,7 +198,20 @@
     "eenLesdag": "1 lesdag tussen deze twee dagen",
     "aantalLesdagen": "{aantal} lesdagen tussen deze twee dagen",
     "planEen": "Plan 1 activiteit in",
-    "planIn": "Plan in"
+    "planIn": "Plan in",
+    "nieuweActiviteit": "Nieuwe activiteit maken",
+    "nieuweActiviteitUitleg": "Meteen op deze dag, in een subthema van deze periode",
+    "komtHier": "Waar het komt",
+    "subthemaInThema": "{subthema} · {thema}",
+    "enOpDeze": "Bewaren maakt de activiteit en plant ze meteen op {dag}.",
+    "enOpDezeLesuur": "Bewaren maakt de activiteit en plant ze meteen op {dag}, lesuur {nummer}.",
+    "gemaaktNietGepland": "De activiteit is gemaakt maar niet ingepland.",
+    "geenSubthemaOmIn": "De thema's van deze periode hebben nog geen subthema. Maak er eerst een bij het thema.",
+    "geenThema": "Nog geen thema",
+    "themaVervolg": "… {naam}",
+    "dagThema": "thema {naam}",
+    "dagThemas": "thema's {namen}",
+    "dagGeenThema": "nog geen thema in deze periode"
   },
   "slepen": {
     "uitleg": "Druk op de spatiebalk om op te pakken, verplaats met de pijltjestoetsen en druk opnieuw op de spatiebalk om neer te zetten.",
@@ -372,7 +389,11 @@
     "verwijderGevolg": "Hiermee verdwijnen ook {doelen} gekoppelde doelen. Dat is niet terug te draaien.",
     "lengte": "Hoeveel lesuren",
     "eenLesuur": "1 lesuur",
-    "aantalLesuren": "{aantal} lesuren"
+    "aantalLesuren": "{aantal} lesuren",
+    "eenDoel": "1 doel",
+    "aantalDoelen": "{aantal} doelen",
+    "geenDoel": "Nog geen doel",
+    "koppelAan": "Doel koppelen aan {naam}"
   },
   "activiteitsoort": {
     "Experiment": "Experiment",

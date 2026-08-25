@@ -1,8 +1,10 @@
 import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
+import { Doelmerk } from "../../components/ui/Doelmerk";
 import { useThemasVoorKlas } from "../../lib/queries";
 import { volleDag } from "../../lib/datum";
 import { t } from "../../i18n";
+import { IcoonPlus } from "../../components/Iconen";
 
 /**
  * The activiteiten a teacher can put on one day.
@@ -12,6 +14,12 @@ import { t } from "../../i18n";
  * thema, and a thema runs in a period. Offering the whole library here would mostly offer things
  * that do not belong on that day, and the server's own "valt buiten themaperiode" flag exists
  * precisely because doing it anyway is a decision worth marking.
+ *
+ * **It also offers the way out of itself.** What the school owns is not what a teacher does, and the
+ * list used to be the whole answer: an activiteit that was not in it had to be made on the thema
+ * page, three navigations away from the day it was needed on, after which the calendar had forgotten
+ * where you were standing. The row at the bottom makes it here instead, in the subthema this period
+ * is running, and plans it on the day in the same press.
  *
  * Nothing is filtered out for already being scheduled. The server refuses only the same activiteit
  * twice in the same LESUUR (a unique index on jaarplan, activiteit, date and volgorde) and returns a
@@ -26,6 +34,7 @@ export function Activiteitkiezer({
   themaIds,
   bezig,
   onKies,
+  onNieuw,
   onSluit,
 }: {
   datum: string | null;
@@ -39,9 +48,17 @@ export function Activiteitkiezer({
   themaIds: string[];
   bezig: boolean;
   onKies: (activiteitId: string) => void;
+  /** Make one that does not exist yet. The screen owns the sheet that does it. */
+  onNieuw: () => void;
   onSluit: () => void;
 }) {
   const { themas, laadt } = useThemasVoorKlas(themaIds, klasId);
+
+  // Offered only when there is somewhere to put it. An activiteit belongs to a subthema, so a period
+  // whose thema's have none cannot take one, and a row that opens a sheet with an empty dropdown is a
+  // control that does nothing. It also keeps the sentence under the row true: it promises a subthema
+  // of this period, and this is the condition that makes one exist.
+  const kanNieuw = themas.some((thema) => thema.subthemas.length > 0);
 
   return (
     <Blad
@@ -87,11 +104,14 @@ export function Activiteitkiezer({
                                   {activiteit.activiteitType}
                                 </span>
                               </span>
-                              {activiteit.doelkoppelingen.length > 0 ? (
-                                <span className="mono shrink-0 text-[0.625rem] text-inkt-zwak">
-                                  {activiteit.doelkoppelingen.length}
-                                </span>
-                              ) : null}
+                              {/* Unconditional, and labelled. This used to be a bare mono figure
+                                  rendered only when it was above zero, so an activiteit with no
+                                  doelen looked exactly like one whose count happened to be off
+                                  screen, and the number itself said nothing about what it counted.
+                                  Placing an activiteit with no doelen is allowed and sometimes
+                                  right; it just cannot contribute to dekking, which is worth
+                                  knowing before you place it rather than after. */}
+                              <Doelmerk aantal={activiteit.doelkoppelingen.length} />
                             </button>
                           </li>
                         ))}
@@ -102,6 +122,27 @@ export function Activiteitkiezer({
               )}
             </section>
           ))}
+
+          {kanNieuw ? (
+            <div className="border-t border-lijn pt-4">
+              {/* A dashed edge and the plus, so it reads as "make one" rather than as the last row of
+                  the list above it. Full width and at the bottom: in a period this is a handful of
+                  activiteiten, so the end of the list is on screen, and putting it first would put
+                  the rarer intention above the choice a teacher came here to make. */}
+              <button
+                type="button"
+                disabled={bezig}
+                onClick={onNieuw}
+                className="flex w-full items-center gap-3 rounded-veld border border-dashed border-lijn-veld bg-kaart px-3 py-2.5 text-left transition-colors duration-150 hover:border-accent hover:bg-accent-zacht/40 disabled:opacity-50"
+              >
+                <IcoonPlus aria-hidden="true" className="h-4 w-4 shrink-0 text-accent" />
+                <span className="min-w-0">
+                  <span className="block truncate text-body font-medium text-accent">{t("periode.nieuweActiviteit")}</span>
+                  <span className="block text-meta text-inkt-zacht">{t("periode.nieuweActiviteitUitleg")}</span>
+                </span>
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
     </Blad>

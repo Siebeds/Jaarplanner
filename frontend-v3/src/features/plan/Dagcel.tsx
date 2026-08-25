@@ -6,6 +6,10 @@ import { t } from "../../i18n";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
 import { cn } from "../../lib/cn";
 import { Dagplus } from "./Dagplus";
+import { Subthemastroken } from "./Subthemastroken";
+import { Themastroken } from "./Themastroken";
+import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
+import { themaZin, type Themavak } from "./themavakken";
 
 /**
  * One teaching day, with what is scheduled on it.
@@ -33,6 +37,8 @@ export function Dagcel({
   kop,
   bovenkop,
   groot,
+  reeksen = LEEG,
+  vak,
   onVoegToe,
   onOpen,
   onKiesDag,
@@ -41,6 +47,10 @@ export function Dagcel({
   kop: string;
   bovenkop?: string;
   groot?: boolean;
+  /** The subthema runs covering this day. */
+  reeksen?: readonly Subthemareeks[];
+  /** The themaperiode this day sits in, or undefined between two periods. */
+  vak?: Themavak;
   onVoegToe: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit) => void;
   /** Opens this day on its own. Left out in the day view, which is already that. */
@@ -49,12 +59,19 @@ export function Dagcel({
   const isVandaag = dag.datum === vandaag();
   const { setNodeRef, isOver } = useDroppable({ id: dag.datum, disabled: !dag.isLesdag });
 
+  // See the month cell: a day the school year does not contain has nothing running on it, and a
+  // strip there would contradict the sentence the column itself prints.
+  const stroken = dag.buitenSchooljaar ? LEEG : reeksen;
+  const periode = dag.buitenSchooljaar ? undefined : vak;
+
   return (
     <div
       ref={setNodeRef}
       aria-current={isVandaag ? "date" : undefined}
       className={cn(
-        "group/cel relative flex h-full min-w-0 flex-col rounded-kaart border bg-kaart transition-colors duration-100",
+        // `overflow-hidden` for the subthema strip along the top edge, which runs to both sides of
+        // the card and therefore has to be cut by the card's own corners.
+        "group/cel relative flex h-full min-w-0 flex-col overflow-hidden rounded-kaart border bg-kaart transition-colors duration-100",
         dag.isLesdag ? "border-lijn" : "border-lijn bg-vlak-diep/60",
         isVandaag && "border-inkt",
         // The target says so while the pointer is over it. Fill AND border, because a border alone
@@ -69,13 +86,24 @@ export function Dagcel({
           type="button"
           onClick={() => onKiesDag(dag.datum)}
           aria-label={
-            dag.activiteiten.length > 0
+            (dag.activiteiten.length > 0
               ? t("periode.openDagMet", { dag: volleDag(dag.datum), aantal: dag.activiteiten.length })
-              : t("periode.openDag", { dag: volleDag(dag.datum) })
+              : t("periode.openDag", { dag: volleDag(dag.datum) })) +
+            themaZin(periode) +
+            subthemaZin(stroken)
           }
           className="absolute inset-0 z-0 rounded-kaart transition-colors duration-150 hover:bg-vlak-diep/50"
         />
       ) : null}
+
+      {/* What is running on this day, above the date rather than on each card. The cards name their
+          own subthema, which answers "what is this activiteit part of"; the strip answers the other
+          question, which is which days the subthema covers. On an empty Wednesday in the middle of a
+          run the cards say nothing and the strip is the only thing that does. */}
+      <div className="relative z-10 flex flex-col gap-px">
+        <Themastroken vak={periode} datum={dag.datum} />
+        <Subthemastroken reeksen={stroken} datum={dag.datum} />
+      </div>
 
       {/* Weekday over date, the way a calendar has always written it. One line of "ma 28" fits in
           less room and is harder to scan, which is the trade an agenda should not take. */}
@@ -115,6 +143,9 @@ export function Dagcel({
     </div>
   );
 }
+
+/** A stable empty list, so a day with nothing running does not hand a new array down every render. */
+const LEEG: Subthemareeks[] = [];
 
 /**
  * One activiteit on a day: a button that opens it, and a handle that drags it to another day.

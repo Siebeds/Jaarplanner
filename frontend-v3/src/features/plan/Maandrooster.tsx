@@ -1,9 +1,13 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { GeplandeActiviteit } from "../../lib/types";
 import type { Agendadag } from "./roosterdagen";
-import { dagNummer, maandVan, maandagVan, valtBinnen, vandaag, verschuif, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
+import { dagNummer, maandVan, maandagVan, vandaag, verschuif, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
 import { t } from "../../i18n";
 import { Dagplus } from "./Dagplus";
+import { Subthemastroken } from "./Subthemastroken";
+import { Themastroken } from "./Themastroken";
+import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
+import { themaZin, vakOpDag, type Themavak } from "./themavakken";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
 import { cn } from "../../lib/cn";
 
@@ -25,16 +29,25 @@ import { cn } from "../../lib/cn";
 export function Maandrooster({
   dagen,
   ankerMaand,
-  periodeVan,
-  periodeTot,
+  vakken,
+  reeksenPerDag,
   onKiesDag,
   onOpen,
   onVoegToe,
 }: {
   dagen: Agendadag[];
   ankerMaand: string;
-  periodeVan: string;
-  periodeTot: string;
+  /**
+   * Every themaperiode of the school year with the thema's in it.
+   *
+   * The WHOLE year rather than the one the teacher stands in, because each cell answers for its own
+   * day. This prop used to be `periodeVan`/`periodeTot`, a single range derived from the anchored
+   * day, and a month grid then dimmed every one of its cells as "outside the period" whenever that
+   * anchor had drifted into the period before it. See `themavakken`.
+   */
+  vakken: readonly Themavak[];
+  /** Which subthema runs cover each day, so a cell can name what is running on it. */
+  reeksenPerDag: Map<string, Subthemareeks[]>;
   onKiesDag: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   /** Asked for an activiteit on this day, straight from the month. Lands in lesuur 1. */
@@ -75,8 +88,9 @@ export function Maandrooster({
             <Maandcel
               dag={dag}
               buitenMaand={maandVan(dag.datum) !== maand}
-              inPeriode={valtBinnen(dag.datum, periodeVan, periodeTot)}
+              vak={vakOpDag(vakken, dag.datum)}
               isVandaag={dag.datum === nu}
+              reeksen={reeksenPerDag.get(dag.datum) ?? LEEG}
               onKiesDag={onKiesDag}
               onVoegToe={onVoegToe}
               onOpen={onOpen}
@@ -88,31 +102,47 @@ export function Maandrooster({
   );
 }
 
+/** A stable empty list, so a day with nothing running does not hand a new array down every render. */
+const LEEG: Subthemareeks[] = [];
+
 function Maandcel({
   dag,
   buitenMaand,
-  inPeriode,
+  vak,
   isVandaag,
+  reeksen,
   onKiesDag,
   onVoegToe,
   onOpen,
 }: {
   dag: Agendadag;
   buitenMaand: boolean;
-  inPeriode: boolean;
+  vak: Themavak | undefined;
   isVandaag: boolean;
+  reeksen: readonly Subthemareeks[];
   onKiesDag: (datum: string) => void;
   onVoegToe: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dag.datum, disabled: !dag.isLesdag });
 
+  // Outside the school year there is nothing running, and a strip on a cell that reads "Buiten het
+  // schooljaar" would contradict it. The runs are derived from placements, so this cannot happen
+  // from the data; it is stated because the derivation is one query away from changing.
+  const stroken = dag.buitenSchooljaar ? LEEG : reeksen;
+
+  // Same reasoning one line up: outside the school year there is no themaperiode to report either.
+  const periode = dag.buitenSchooljaar ? undefined : vak;
+  const inPeriode = periode !== undefined;
+
   return (
     <div
       ref={setNodeRef}
       aria-current={isVandaag ? "date" : undefined}
       className={cn(
-        "group/cel relative flex h-16 w-full flex-col gap-1 rounded-veld border p-1.5 transition-colors duration-100 sm:h-28",
+        // `overflow-hidden` for the subthema strip: it runs to both edges of the cell, so the cell's
+        // own rounded corners have to be the ones that cut it.
+        "group/cel relative flex h-16 w-full flex-col gap-1 overflow-hidden rounded-veld border p-1.5 transition-colors duration-100 sm:h-28",
         // A day outside the month recedes by losing its card, NOT by opacity. `opacity-45` dimmed
         // the text with the surface and took the day number to 2.2:1, and it does it invisibly to
         // any check that reads colour without composing the alpha of every ancestor. Measured after
@@ -135,17 +165,30 @@ function Maandcel({
         type="button"
         onClick={() => onKiesDag(dag.datum)}
         aria-label={
-          !dag.isLesdag
+          (!dag.isLesdag
             ? t("periode.openDagGesloten", {
                 dag: volleDag(dag.datum),
                 naam: dag.sluitingsnaam ?? t("periode.gesloten"),
               })
             : dag.activiteiten.length > 0
               ? t("periode.openDagMet", { dag: volleDag(dag.datum), aantal: dag.activiteiten.length })
-              : t("periode.openDag", { dag: volleDag(dag.datum) })
+              : t("periode.openDag", { dag: volleDag(dag.datum) })) +
+          themaZin(periode) +
+          subthemaZin(stroken)
         }
         className="absolute inset-0 z-0 rounded-veld transition-colors duration-150 hover:bg-vlak-diep/60"
       />
+
+      {/* What is running here, along the top edge. Full bleed, so a run reads as a band across the
+          days rather than as a chip inside each of them.
+
+          Not on a phone: a column there is about 44 pixels, where a subthema name truncates to three
+          letters, and a strip with no room for its name would carry its identity in hue alone. The
+          week and day views print it in full, and the day's own button says it out loud. */}
+      <div className="relative z-10 -mx-1.5 -mt-1.5 hidden flex-col gap-px sm:flex">
+        <Themastroken vak={periode} datum={dag.datum} dicht />
+        <Subthemastroken reeksen={stroken} datum={dag.datum} dicht />
+      </div>
 
       {/* Adding straight from the month, without the detour through the day.
 
@@ -153,9 +196,10 @@ function Maandcel({
           cell is hovered or the plus itself has focus: a grid of 30 always-loud plusses would be the
           first thing the eye lands on, and what a month is for is reading.
 
-          Not on a phone. There a cell is about 44 pixels tall and already carries the day number and
-          a dot per activiteit; a third control in that space would be a target nobody can hit. The
-          day view's own per-lesuur plus is one tap away and knows which hour it means. */}
+          On a phone it is visible rather than revealed, because there is no hover to reveal it with;
+          `Dagplus` owns that switch. *This paragraph used to say the opposite* ("not on a phone"),
+          and went on saying it after the plus was made unconditional, which is the failure mode a
+          comment about layout has: nothing rechecks it. */}
       {dag.isLesdag ? <Dagplus datum={dag.datum} onVoegToe={onVoegToe} className="absolute right-1 top-1 z-20" /> : null}
 
       {/* Today is a filled pill, not another hue: this grid already spends colour on the activiteiten

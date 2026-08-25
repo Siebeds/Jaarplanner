@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { del, post, put } from "../../lib/api";
 import { themaSleutels } from "../../lib/queries";
-import type { SubthemaWeergave, ThemaWeergave } from "../../lib/types";
+import type { ActiviteitWeergave, SubthemaWeergave, ThemaWeergave } from "../../lib/types";
 import type { ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
 
 /**
@@ -116,9 +116,15 @@ export function useVerwijderSubthema(themaId: string) {
 // The payload shape lives with the form that produces it, so the two cannot drift.
 export type { ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
 
+/**
+ * The server answers with the activiteit it just made, so the type says so.
+ *
+ * It used to say `unknown`, which was true and useless: the agenda creates an activiteit in order to
+ * plan it on a day straight after, and it needs the id to do that. Nothing else changes.
+ */
 export function useMaakActiviteit(themaId: string) {
-  return useSchoolcontentMutatie<{ subthemaId: string; invoer: ActiviteitInvoer }, unknown>(
-    ({ subthemaId, invoer }) => post(`/api/subthemas/${subthemaId}/activiteiten`, invoer),
+  return useSchoolcontentMutatie<{ subthemaId: string; invoer: ActiviteitInvoer }, ActiviteitWeergave>(
+    ({ subthemaId, invoer }) => post<ActiviteitWeergave>(`/api/subthemas/${subthemaId}/activiteiten`, invoer),
     themaId,
   );
 }

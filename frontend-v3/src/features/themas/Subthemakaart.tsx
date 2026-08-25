@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Knop } from "../../components/ui/Knop";
 import { Statusmerk } from "../../components/ui/Statusmerk";
+import { Doelmerk } from "../../components/ui/Doelmerk";
 import { IcoonPlus } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -32,6 +33,7 @@ export function Subthemakaart({
   onVerwijderActiviteit,
   onKoppelSubdoel,
   onOntkoppelSubdoel,
+  onKoppelActiviteitdoel,
   koppelenBezig,
 }: {
   subthema: SubthemaWeergave;
@@ -44,6 +46,7 @@ export function Subthemakaart({
   onVerwijderActiviteit: (activiteit: ActiviteitMetKleur) => void;
   onKoppelSubdoel: (leerplandoelCode: string) => void;
   onOntkoppelSubdoel: (subdoelId: string) => void;
+  onKoppelActiviteitdoel: (activiteitId: string, leerplandoelCode: string) => void;
   koppelenBezig?: boolean;
 }) {
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
@@ -132,6 +135,8 @@ export function Subthemakaart({
                   activiteit={activiteit}
                   onBewerk={() => onBewerkActiviteit(activiteit)}
                   onVerwijder={() => onVerwijderActiviteit(activiteit)}
+                  onKoppelDoel={(code) => onKoppelActiviteitdoel(activiteit.id, code)}
+                  koppelenBezig={koppelenBezig}
                 />
               </li>
             ))}
@@ -164,47 +169,71 @@ function Blok({ titel, actie, children }: { titel: string; actie?: ReactNode; ch
  * One activiteit.
  *
  * The teacher's colour is a wash on the row plus its name in words, never the wash alone. The soort
- * and the goal codes are plain text: they are facts about the activiteit, and only the two controls
- * on the right do anything.
+ * and the goal codes are plain text: they are facts about the activiteit, and only the controls do
+ * anything.
+ *
+ * **The doelen live in their own zone below a hairline, and that zone is always there.** It used to
+ * be a line of codes that appeared when there were codes and vanished when there were not, which
+ * made the question a teacher actually scans this list for ("which of these still needs a doel?")
+ * the one question the list refused to answer. Now the state is stated in both directions, in a
+ * fixed place, and the control that fixes it stands next to it: noticing the gap and closing it are
+ * the same glance, instead of a trip through the bewerk-blad.
  */
 function Activiteitregel({
   activiteit,
   onBewerk,
   onVerwijder,
+  onKoppelDoel,
+  koppelenBezig,
 }: {
   activiteit: ActiviteitMetKleur;
   onBewerk: () => void;
   onVerwijder: () => void;
+  onKoppelDoel: (leerplandoelCode: string) => void;
+  koppelenBezig?: boolean;
 }) {
   const kleur = activiteit.kleur as Activiteitkleur | null;
+  const codes = activiteit.doelkoppelingen.map((k) => k.leerplandoelCode);
 
   return (
     <div
       className={cn(
-        "flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5 rounded-veld border px-3 py-2",
+        "rounded-veld border px-3 py-2",
         kleur ? KLEURVLAK[kleur] : "border-lijn bg-vlak-diep/40",
       )}
     >
-      <div className="min-w-0 flex-1">
-        <p className="text-body font-medium text-inkt">{activiteit.naam}</p>
-        <p className="mt-0.5 text-meta text-inkt-zacht">
-          {t(`activiteitsoort.${activiteit.activiteitType}`)}
-          {activiteit.hoek ? ` · ${activiteit.hoek}` : ""}
-          {kleur ? ` · ${t(kleurSleutel(kleur))}` : ""}
-        </p>
-        {activiteit.doelkoppelingen.length > 0 ? (
-          <p className="mono mt-1 text-meta text-inkt-zacht">
-            {activiteit.doelkoppelingen.map((k) => k.leerplandoelCode).join(" · ")}
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+        <div className="min-w-0 flex-1">
+          <p className="text-body font-medium text-inkt">{activiteit.naam}</p>
+          <p className="mt-0.5 text-meta text-inkt-zacht">
+            {t(`activiteitsoort.${activiteit.activiteitType}`)}
+            {activiteit.hoek ? ` · ${activiteit.hoek}` : ""}
+            {kleur ? ` · ${t(kleurSleutel(kleur))}` : ""}
           </p>
-        ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
+            {t("themabeheer.bewerk")}
+          </Knop>
+          <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
+            {t("themabeheer.verwijder")}
+          </Knop>
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
-          {t("themabeheer.bewerk")}
-        </Knop>
-        <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
-          {t("themabeheer.verwijder")}
-        </Knop>
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-lijn/70 pt-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <Doelmerk aantal={codes.length} />
+          {codes.length > 0 ? (
+            <span className="mono min-w-0 truncate text-meta text-inkt-zacht">{codes.join(" · ")}</span>
+          ) : null}
+        </div>
+        <Doelkoppelaar
+          onKies={onKoppelDoel}
+          bezig={koppelenBezig}
+          alGekozen={codes}
+          toelichting={t("activiteit.koppelAan", { naam: activiteit.naam })}
+        />
       </div>
     </div>
   );

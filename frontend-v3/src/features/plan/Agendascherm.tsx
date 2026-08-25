@@ -39,8 +39,11 @@ import { Lesurenraster } from "../activiteiten/Lesurenraster";
 import { leesSlotId } from "../activiteiten/lesuren";
 import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Activiteitblad } from "./Activiteitblad";
+import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner, type Voorstel } from "./Subthemaplanner";
 import { roosterdagen } from "./roosterdagen";
+import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
+import { themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
 import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
 
@@ -84,6 +87,8 @@ export function Agendascherm() {
   // month view and the week cells use: they add to the first hour and the teacher moves it from there.
   const [kiezer, setKiezer] = useState<{ datum: string; slot: number } | null>(null);
   const [geopend, setGeopend] = useState<{ activiteit: GeplandeActiviteit; datum: string } | null>(null);
+  // Making an activiteit that does not exist yet, for the day and the lesuur the picker was on.
+  const [nieuw, setNieuw] = useState<{ datum: string; slot: number } | null>(null);
   const [sleepNaam, setSleepNaam] = useState<string | null>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerResultaat, setPlannerResultaat] = useState<{ gelukt: number; totaal: number; fouten: string[] } | null>(
@@ -161,6 +166,50 @@ export function Agendascherm() {
   // for a wider range would refetch the grid every time the teacher changed week.
   const { data: heelDePeriode } = useWeekplanning(klasId, blok?.start ?? "", blok?.eind ?? "");
 
+  /**
+   * THE RUNS ARE DERIVED OVER WHOLE PERIODES, NOT OVER WHAT IS ON SCREEN.
+   *
+   * A subthema run is measured from the first and last day carrying one of its activiteiten, so the
+   * window it is measured in decides where it appears to start. Measured over the visible month, a
+   * run that began in the last week of september would be reported as starting on 1 october, and the
+   * strip on that cell would say a period begins on a day it does not.
+   *
+   * So the window is the union of every themaperiode the view touches. That is a superset of the
+   * grid, which is what makes the answer for every visible day the same answer it would get from a
+   * whole year. When the union adds nothing the range is identical to the grid's own and TanStack
+   * hands back the same cached response rather than a second request.
+   */
+  const [reeksVan, reeksTot] = useMemo<[string, string]>(() => {
+    if (van.length === 0) return ["", ""];
+    const raken = (rooster?.blokken ?? []).filter((blok) => blok.start <= tot && blok.eind >= van);
+    return [
+      [van, ...raken.map((blok) => blok.start)].reduce((a, b) => (a < b ? a : b)),
+      [tot, ...raken.map((blok) => blok.eind)].reduce((a, b) => (a > b ? a : b)),
+    ];
+  }, [van, tot, rooster]);
+
+  const { data: reeksbron } = useWeekplanning(klasId, reeksVan, reeksTot);
+
+  const reeksen = useMemo(
+    () => subthemareeksen(reeksbron?.dagen ?? [], rooster?.blokken ?? []),
+    [reeksbron, rooster],
+  );
+  const stroken = useMemo(() => reeksenPerDag(reeksen), [reeksen]);
+
+  /**
+   * EVERY THEMAPERIODE OF THE YEAR, WITH THE THEMA'S PLACED IN IT.
+   *
+   * Not "the period the teacher is in": that is what went wrong. `blok` is the period containing the
+   * ANCHORED DAY, and the month grid shows a whole month, so as soon as the anchor drifted into the
+   * neighbouring period the header described days that were not on screen. Paging a month keeps the
+   * day of the month and this year's periods end on the 1st, so the drift was systematic rather than
+   * a corner case. The cells now each look their own day up. See `themavakken`.
+   */
+  const vakken = useMemo(
+    () => themavakken(rooster?.blokken ?? [], plan?.plaatsingen ?? []),
+    [rooster, plan],
+  );
+
   // The thema's running in this period are what the activity picker may offer.
   const themaIdsInPeriode = useMemo(() => {
     const ids = (plan?.plaatsingen ?? [])
@@ -172,15 +221,15 @@ export function Agendascherm() {
   const bezig = acties.plaats.isPending || acties.verplaats.isPending || acties.verwijder.isPending;
 
   /**
-   * What is running: the thema this period holds, and the subthema if the days on screen agree on
-   * one.
+   * The thema this period holds, once above the grid rather than on every card.
    *
-   * Once above the grid rather than on every card. A month cell is forty pixels of activiteit name
-   * and a week card has two lines; repeating the thema in each of them would spend the cell on a
-   * fact that is the same in all of them.
+   * A themaperiode is period-wide, so a chip is the right shape for it: it is the same fact on every
+   * cell in view, and a month cell is forty pixels of activiteit name.
    *
-   * The subthema is named only when EVERY activiteit in view belongs to it. Anything else would be
-   * one of several presented as the one, and a chip cannot show which.
+   * **The subthema used to be here too and is not any more.** It was appended only when EVERY
+   * activiteit in view belonged to one subthema, which meant that in any month holding two of them
+   * the line naming the subthema simply vanished, and when it did appear it said nothing about which
+   * days it covered. That is a per-day fact, so it is drawn on the days: see `Subthemastroken`.
    */
   const themaNamen = useMemo(() => {
     const namen = (plan?.plaatsingen ?? [])
@@ -222,11 +271,6 @@ export function Agendascherm() {
         zichtbareDagen.filter((dag) => maandVan(dag.datum) === maandVan(anker))
       : zichtbareDagen;
   const heelBereikBuiten = eenheidsdagen.length > 0 && eenheidsdagen.every((dag) => dag.buitenSchooljaar);
-
-  const enigeSubthema = useMemo(() => {
-    const namen = new Set((planning?.dagen ?? []).flatMap((dag) => dag.activiteiten.map((a) => a.subthemaNaam)));
-    return namen.size === 1 ? [...namen][0] : null;
-  }, [planning]);
 
   // Every activiteit on screen, by plaatsingId, so a drag announcement can name the thing it moved
   // after the grid has already re-rendered without it.
@@ -376,21 +420,34 @@ export function Agendascherm() {
                   </span>
                 ) : null}
 
-                {/* Which period this day belongs to, beside the day rather than in the page title: the
-                    calendar now spans the whole year, so the period changes while the screen does not. */}
-                <span className="shrink-0 rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
-                  {blok
-                    ? `${t("periode.periodeLabel")} ${periodeTekst(blok.start, blok.eind)}`
-                    : t("periode.tussenPeriodes")}
-                </span>
+                {/* THE PERIOD AND ITS THEMA ARE FACTS ABOUT ONE DAY, so they are only printed where
+                    the view IS one day.
 
-                {themaNamen.length > 0 ? (
-                  <span className="min-w-0 max-w-64 truncate rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
-                    {themaNamen.length === 1
-                      ? themaNamen[0]
-                      : t("periode.themaMeer", { naam: themaNamen[0], aantal: themaNamen.length - 1 })}
-                    {enigeSubthema ? ` · ${enigeSubthema}` : ""}
-                  </span>
+                    They used to be printed always, derived from the anchored day, above a grid
+                    showing a whole month. On this school year the periods end on the 1st and paging
+                    a month keeps the day of the month, so a teacher who paged from september stood
+                    on 1 november and read "Periode 2 okt - 1 nov" over a grid of which that period
+                    owned not one day, with the thema chip gone because that period holds none. In
+                    october the same drift printed september's thema as a fact.
+
+                    In the month and week views the answer is on the days instead, where it can differ
+                    per day: `Themastroken`. */}
+                {weergave === "dag" ? (
+                  <>
+                    <span className="shrink-0 rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
+                      {blok
+                        ? `${t("periode.periodeLabel")} ${periodeTekst(blok.start, blok.eind)}`
+                        : t("periode.tussenPeriodes")}
+                    </span>
+
+                    <span className="min-w-0 max-w-64 truncate rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
+                      {themaNamen.length === 0
+                        ? t("periode.geenThema")
+                        : themaNamen.length === 1
+                          ? themaNamen[0]
+                          : t("periode.themaMeer", { naam: themaNamen[0], aantal: themaNamen.length - 1 })}
+                    </span>
+                  </>
                 ) : null}
               </div>
 
@@ -443,8 +500,8 @@ export function Agendascherm() {
               <Maandrooster
                 dagen={zichtbareDagen}
                 ankerMaand={anker}
-                periodeVan={blok?.start ?? van}
-                periodeTot={blok?.eind ?? tot}
+                vakken={vakken}
+                reeksenPerDag={stroken}
                 onKiesDag={openDag}
                 onVoegToe={(datum) => setKiezer({ datum, slot: 0 })}
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
@@ -477,6 +534,8 @@ export function Agendascherm() {
                       dag={dag}
                       bovenkop={weekdagKort(dag.datum)}
                       kop={String(dagNummer(dag.datum))}
+                      reeksen={stroken.get(dag.datum)}
+                      vak={vakOpDag(vakken, dag.datum)}
                       onVoegToe={(datum) => setKiezer({ datum, slot: 0 })}
                       onOpen={(activiteit) => setGeopend({ activiteit, datum: dag.datum })}
                       onKiesDag={openDag}
@@ -509,7 +568,7 @@ export function Agendascherm() {
         datum={kiezer?.datum ?? null}
         lesuur={kiezer ? kiezer.slot + 1 : undefined}
         klasId={klasId}
-        themaIds={themaIdsInPeriode}
+        themaIds={kiezer ? themaIdsOpDag(vakken, kiezer.datum) : []}
         bezig={bezig}
         onSluit={() => setKiezer(null)}
         onKies={(activiteitId) => {
@@ -517,6 +576,44 @@ export function Agendascherm() {
           acties.plaats.mutate(
             { activiteitId, datum: kiezer.datum, volgorde: kiezer.slot },
             { onSuccess: () => setKiezer(null) },
+          );
+        }}
+        onNieuw={() => {
+          if (!kiezer) return;
+          // The picker closes rather than staying underneath. Two sheets deep for one intention is a
+          // stack the teacher has to unwind afterwards, and the new sheet names the day and the lesuur
+          // the picker was standing on, so nothing is lost by leaving it.
+          setKiezer(null);
+          // A refusal left over from an earlier placement would otherwise be sitting inside the new
+          // sheet, attached to a request nobody has made yet.
+          acties.plaats.reset();
+          setNieuw(kiezer);
+        }}
+      />
+
+      <Nieuweactiviteitblad
+        // Keyed on the day and the hour: the form fills its fields at mount, so reopening it for
+        // another day without a remount would offer the previous day's half-typed activiteit.
+        // Not "leeg": the sheet beside this one uses that fallback, and two siblings sharing a key is
+        // a React warning and, one refactor later, two sheets sharing state.
+        key={nieuw ? `nieuw-${nieuw.datum}-${nieuw.slot}` : "geen-nieuwe"}
+        datum={nieuw?.datum ?? null}
+        lesuur={nieuw ? nieuw.slot + 1 : undefined}
+        klasId={klasId}
+        // The same day scoping the picker uses, so the sheet cannot offer a subthema of a thema that
+        // the list the teacher just came from did not show.
+        themaIds={nieuw ? themaIdsOpDag(vakken, nieuw.datum) : []}
+        // What the day already knows. A teacher pressing the plus in the middle of a subthema means
+        // that subthema far more often than not, and the dropdown is there for when they do not.
+        voorstelSubthemaId={nieuw ? voorstelReeks(reeksen, nieuw.datum, rooster?.blokken ?? [])?.subthemaId : undefined}
+        planBezig={acties.plaats.isPending}
+        planFout={acties.plaats.isError ? foutTekst(acties.plaats.error) : null}
+        onSluit={() => setNieuw(null)}
+        onPlan={(activiteitId) => {
+          if (!nieuw) return;
+          acties.plaats.mutate(
+            { activiteitId, datum: nieuw.datum, volgorde: nieuw.slot },
+            { onSuccess: () => setNieuw(null) },
           );
         }}
       />
