@@ -52,7 +52,14 @@ export function Subthemaplanner({
   dagen: Dagweergave[];
   bezig: boolean;
   resultaat: { gelukt: number; totaal: number; fouten: string[] } | null;
-  onPlan: (voorstellen: Voorstel[]) => void;
+  /**
+   * The chosen activiteiten AND the window they were chosen in.
+   *
+   * The window travels separately because it is not derivable from the voorstellen: a subthema with one activiteit
+   * over five marked-off days yields one voorstel, and the four remaining days are exactly what the caller has to
+   * store. That was the defect the owner reported.
+   */
+  onPlan: (voorstellen: Voorstel[], venster: { subthemaId: string; van: string; tot: string }) => void;
   onSluit: () => void;
 }) {
   const { themas, laadt } = useThemasVoorKlas(themaIds, klasId);
@@ -71,13 +78,16 @@ export function Subthemaplanner({
   // days instead of five calendar days across a holiday.
   const lesdagen = useMemo(() => dagen.filter((dag) => dag.isLesdag).map((dag) => dag.datum), [dagen]);
 
+  /**
+   * EVERY subthema of the period, including the ones with no activiteiten yet.
+   *
+   * They used to be filtered out, on the reasoning that a subthema with nothing in it has nothing to plan. That
+   * stopped being true when the chosen window became something the plan stores (owner ruling, 2026-08-25): marking off
+   * a fortnight for a subthema whose activiteiten do not exist yet is now a real outcome, and it is the ordinary order
+   * of work. Filtering them out made the one subthema a teacher most needs to reach the one they could not.
+   */
   const subthemas = useMemo(
-    () =>
-      themas.flatMap((thema) =>
-        thema.subthemas
-          .filter((sub) => sub.activiteiten.length > 0)
-          .map((sub) => ({ ...sub, themaNaam: thema.naam })),
-      ),
+    () => themas.flatMap((thema) => thema.subthemas.map((sub) => ({ ...sub, themaNaam: thema.naam }))),
     [themas],
   );
 
@@ -134,17 +144,24 @@ export function Subthemaplanner({
           <Knop
             rang="hoofd"
             vol
-            disabled={bezig || voorstellen.length === 0 || tekort > 0}
-            onClick={() => onPlan(voorstellen)}
+            // NOT disabled for having nothing to place. Marking off the days is now an outcome of its own, so a
+            // subthema with no activiteiten yet is plannable, which is the whole point of storing the window. What
+            // still blocks is a subthema not chosen (nothing to mark off), a window with no teaching day in it, and a
+            // tekort: five activiteiten into three days would silently drop two, and widening the window is the fix.
+            disabled={bezig || gekozen === null || beschikbaar.length === 0 || tekort > 0}
+            onClick={() => onPlan(voorstellen, { subthemaId, van: eersteDag, tot: laatsteDag })}
           >
             {bezig
               ? t("periode.bezig")
-              : voorstellen.length === 0 || tekort > 0
-                ? // The verb alone, in the two states where a count would lie: before a subthema is
-                  // chosen there is nothing to count, and with a window too small the count is of
-                  // what fits rather than of what this button plans, which is all of it or nothing.
+              : tekort > 0
+                ? // The count would be of what FITS rather than of what this button does, which is all of it or
+                  // nothing. The tekort notice beside it says how many days short the window is.
                   t("periode.planIn")
-                : telWoord(voorstellen.length, "periode.planEen", "periode.planAantal")}
+                : voorstellen.length === 0
+                  ? // Nothing to place, and something to do all the same: the days get marked off so the subthema has
+                    // a period before it has content.
+                    t("periode.markeerPeriode")
+                  : telWoord(voorstellen.length, "periode.planEen", "periode.planAantal")}
           </Knop>
         )
       }

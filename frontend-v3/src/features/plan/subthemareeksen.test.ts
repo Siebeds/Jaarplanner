@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
-import type { Dagweergave, GeplandeActiviteit } from "../../lib/types";
+import type { Dagweergave, GeplandeActiviteit, Subthemaperiode } from "../../lib/types";
 
 /**
  * A run is DERIVED, and that is exactly why it needs a test: a band drawn across a calendar looks
@@ -137,5 +137,61 @@ describe("voorstelReeks", () => {
 
   it("stelt niets voor tussen twee periodes", () => {
     expect(voorstelReeks(reeksen, "2026-11-08", tweePeriodes)).toBeUndefined();
+  });
+});
+
+describe("subthemareeksen met bewaarde vensters", () => {
+  const venster = (subthemaId: string, van: string, tot: string): Subthemaperiode => ({
+    subthemaId,
+    subthemaNaam: subthemaId === "s1" ? "de speelhoek" : "dieren in de herfst",
+    themaId: "t",
+    themaNaam: "Ik en mijn klas",
+    van,
+    tot,
+  });
+
+  it("toont het hele venster ook als er maar een activiteit in staat", () => {
+    // The reported defect: five days marked off, one activiteit ready, and the band covered one day.
+    const reeksen = subthemareeksen([dag("2027-03-01", "s1")], september, [venster("s1", "2027-03-01", "2027-03-05")]);
+
+    expect(reeksen).toHaveLength(1);
+    expect(reeksen[0]).toMatchObject({ van: "2027-03-01", tot: "2027-03-05", aantalDagen: 1 });
+  });
+
+  it("toont een venster waar nog geen enkele activiteit in staat", () => {
+    const reeksen = subthemareeksen([], september, [venster("s1", "2027-03-01", "2027-03-05")]);
+
+    expect(reeksen).toHaveLength(1);
+    expect(reeksen[0]).toMatchObject({ subthemaNaam: "de speelhoek", van: "2027-03-01", tot: "2027-03-05", aantalDagen: 0 });
+  });
+
+  it("verbreedt naar de activiteit die buiten het venster ligt in plaats van hem te verbergen", () => {
+    // The union, in the direction that matters: an activiteit dragged past the end of its window widens the band.
+    // Hiding it would put a card on a day the band says the subthema does not run.
+    const reeksen = subthemareeksen(
+      [dag("2026-09-02", "s1"), dag("2026-09-20", "s1")],
+      september,
+      [venster("s1", "2026-09-01", "2026-09-05")],
+    );
+
+    expect(reeksen[0]).toMatchObject({ van: "2026-09-01", tot: "2026-09-20" });
+  });
+
+  it("laat een venster in een andere periode los staan", () => {
+    const reeksen = subthemareeksen(
+      [dag("2026-09-02", "s1")],
+      tweePeriodes,
+      [venster("s1", "2026-10-05", "2026-10-09")],
+    );
+
+    expect(reeksen).toHaveLength(2);
+    expect(reeksen.map((r) => r.van)).toEqual(["2026-09-02", "2026-10-05"]);
+  });
+
+  it("verandert niets zonder vensters", () => {
+    const zonder = subthemareeksen([dag("2026-09-01", "s1"), dag("2026-09-03", "s1")], september);
+    const leeg = subthemareeksen([dag("2026-09-01", "s1"), dag("2026-09-03", "s1")], september, []);
+
+    expect(leeg).toEqual(zonder);
   });
 });

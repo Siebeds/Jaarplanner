@@ -9,7 +9,7 @@ import { Leegte } from "../../components/ui/Leegte";
 import { Knop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
 import { IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
-import { useDagacties, useJaarplan, useRooster, useWeekplanning } from "../../lib/queries";
+import { useDagacties, useJaarplan, usePlaatsSubthemaperiode, useRooster, useWeekplanning } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
 import { ApiError } from "../../lib/api";
 import type { GeplandeActiviteit } from "../../lib/types";
@@ -40,7 +40,7 @@ import { leesSlotId } from "../activiteiten/lesuren";
 import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
-import { Subthemaplanner, type Voorstel } from "./Subthemaplanner";
+import { Subthemaplanner } from "./Subthemaplanner";
 import { roosterdagen } from "./roosterdagen";
 import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
 import { themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
@@ -98,6 +98,7 @@ export function Agendascherm() {
   const { data: rooster } = useRooster(schooljaarId);
   const { data: plan } = useJaarplan(klasId);
   const acties = useDagacties(klasId ?? "");
+  const plaatsSubthema = usePlaatsSubthemaperiode(klasId);
   const sensors = useSleepSensors();
 
   const nu = vandaag();
@@ -191,7 +192,7 @@ export function Agendascherm() {
   const { data: reeksbron } = useWeekplanning(klasId, reeksVan, reeksTot);
 
   const reeksen = useMemo(
-    () => subthemareeksen(reeksbron?.dagen ?? [], rooster?.blokken ?? []),
+    () => subthemareeksen(reeksbron?.dagen ?? [], rooster?.blokken ?? [], reeksbron?.subthemaperiodes ?? []),
     [reeksbron, rooster],
   );
   const stroken = useMemo(() => reeksenPerDag(reeksen), [reeksen]);
@@ -626,11 +627,23 @@ export function Agendascherm() {
         bezig={acties.plaats.isPending}
         resultaat={plannerResultaat}
         onSluit={() => setPlannerOpen(false)}
-        onPlan={async (voorstellen: Voorstel[]) => {
+        onPlan={async (voorstellen, venster) => {
+          const fouten: string[] = [];
+
+          // THE WINDOW FIRST, and it is not conditional on the activiteiten landing. Marking off the days is the
+          // thing the teacher asked for; the activiteiten are what happens to be ready to go in them. Doing it
+          // second would mean a subthema with one activiteit and a failed placement kept no period at all, which is
+          // the state the owner reported as a bug in the first place.
+          try {
+            await plaatsSubthema.mutateAsync({ subthemaId: venster.subthemaId, van: venster.van, tot: venster.tot });
+          } catch (fout) {
+            const reden = fout instanceof ApiError && fout.detail ? fout.detail : t("periode.mislukt");
+            fouten.push(`${t("periode.periodeLabel")}: ${reden}`);
+          }
+
           // One POST per activiteit, in order, and the failures are collected rather than thrown.
           // Sequential on purpose: the server enforces one activiteit per day per plan, and firing
           // them in parallel makes the order in which two of them collide a matter of chance.
-          const fouten: string[] = [];
           let gelukt = 0;
           for (const voorstel of voorstellen) {
             try {

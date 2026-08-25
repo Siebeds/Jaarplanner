@@ -53,6 +53,13 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
     public Task<Jaarplan?> LaadJaarplanAsync(Guid klasId, CancellationToken cancellationToken = default) =>
         _context.Jaarplannen
             .Include("_activiteitplaatsingen")
+            // The subthema windows, for exactly the same reason and with exactly the same failure mode. Added
+            // 2026-08-25 AFTER shipping the feature without it: the endpoint stored a window, the database held it,
+            // every unit test passed against the fake, and the calendar drew nothing because this collection came back
+            // empty. The paragraph above had already written down that this line is the one thing that can silently
+            // break the feature, and the next navigation broke it anyway, so it is worth stating plainly: adding a
+            // collection to this aggregate means adding it here.
+            .Include("_subthemaplaatsingen")
             // Two collection navigations in one statement is a cartesian product, because the owned `_plaatsingen`
             // already load with the owner. Split here as well as in `KlasBeheerService` rather than only there: this is
             // the hotter of the two paths (every week read against a delete), and fixing the cold one alone is the
@@ -92,6 +99,31 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
         }
 
         return await Bevraag(a => activiteitIds.Contains(a.Id)).ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Subthemainhoud>> LaadSubthemainhoudAsync(
+        IReadOnlyCollection<Guid> subthemaIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(subthemaIds);
+
+        // Short-circuited for the same reason as the activiteit overload: `WHERE id IN ()` still costs a round trip,
+        // and a plan with no marked-off windows is the common case.
+        if (subthemaIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await _context.Subthemas
+            .AsNoTracking()
+            .Where(sub => subthemaIds.Contains(sub.Id))
+            .Join(
+                _context.Themas.AsNoTracking(),
+                sub => sub.ThemaId,
+                thema => thema.Id,
+                (sub, thema) => new Subthemainhoud(sub.Id, sub.Naam, thema.Id, thema.Naam, sub.KlasId))
+            .ToListAsync(cancellationToken);
     }
 
     /// <inheritdoc />

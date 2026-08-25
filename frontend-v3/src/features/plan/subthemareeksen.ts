@@ -1,4 +1,4 @@
-import type { Dagweergave } from "../../lib/types";
+import type { Dagweergave, Subthemaperiode } from "../../lib/types";
 import { t } from "../../i18n";
 import { datumsTussen, valtBinnen, weekdagIndex } from "../../lib/datum";
 
@@ -39,6 +39,16 @@ export interface Subthemareeks {
 export function subthemareeksen(
   dagen: Dagweergave[],
   blokken: readonly { start: string; eind: string }[],
+  /**
+   * The windows the teacher marked off, from the server.
+   *
+   * **Folded in as a widening, never as a replacement.** A run keeps every day it derived from an activiteit and
+   * gains the days of the window that covers it, so the two sources cannot contradict each other: an activiteit
+   * dragged past the end of its window widens the band instead of sitting outside it, and shortening a window can
+   * never hide an activiteit that is already planned. A window with no activiteiten under it yet becomes a run of its
+   * own with `aantalDagen` 0, which is the case the whole feature exists for.
+   */
+  periodes: readonly Subthemaperiode[] = [],
 ): Subthemareeks[] {
   const reeksen = new Map<string, Subthemareeks>();
 
@@ -69,6 +79,27 @@ export function subthemareeksen(
           aantalDagen: 1,
         });
       }
+    }
+  }
+
+  for (const periode of periodes) {
+    const blok = blokken.findIndex((b) => valtBinnen(periode.van, b.start, b.eind));
+    const sleutel = `${blok}|${periode.subthemaId}`;
+    const lopend = reeksen.get(sleutel);
+
+    if (lopend) {
+      if (periode.van < lopend.van) lopend.van = periode.van;
+      if (periode.tot > lopend.tot) lopend.tot = periode.tot;
+    } else {
+      reeksen.set(sleutel, {
+        subthemaId: periode.subthemaId,
+        subthemaNaam: periode.subthemaNaam,
+        van: periode.van,
+        tot: periode.tot,
+        // Nothing has touched down in it yet. That is a window waiting for its activiteiten, not an error, and it is
+        // why `aantalDagen` is a separate figure from the length of the range.
+        aantalDagen: 0,
+      });
     }
   }
 

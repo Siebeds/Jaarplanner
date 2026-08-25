@@ -80,6 +80,48 @@ public sealed class WeekplanningService : IWeekplanningService
         return await ProjecteerWeekAsync(klas, schooljaar, jaarplan, datum, cancellationToken);
     }
 
+    public async Task<Weekplanningweergave> PlaatsSubthemaAsync(
+        Guid klasId,
+        Guid subthemaId,
+        DateOnly van,
+        DateOnly tot,
+        CancellationToken cancellationToken = default)
+    {
+        var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
+
+        var inhoud = (await _opslag.LaadSubthemainhoudAsync([subthemaId], cancellationToken)).FirstOrDefault()
+            ?? throw new SchoolcontentNietGevondenFout($"Subthema {subthemaId} is niet gevonden.");
+
+        // The class first, as in PlanActiviteitAsync and for the same reason: a subthema belonging to another class is
+        // wrong whatever dates are picked, while the dates are only wrong for this attempt.
+        if (inhoud.KlasId != klas.Id)
+        {
+            throw OngeldigeDagplanningFout.SubthemaHoortBijAndereKlas();
+        }
+
+        if (tot < van)
+        {
+            throw OngeldigeDagplanningFout.PeriodeLooptAchteruit();
+        }
+
+        // Clamped into the school year rather than refused. Both dates come from two fields on a screen bounded by the
+        // year already, so a value outside it is a client that got the bounds wrong, and silently marking off days
+        // that cannot hold anything is worse than marking off the days the teacher can actually use.
+        van = Klem(schooljaar, van);
+        tot = Klem(schooljaar, tot);
+
+        // DELIBERATELY NO LESDAG CHECK, unlike the day-level path. A window spans whole stretches and a stretch of any
+        // length contains weekends, and usually a vakantie: refusing a window that touches a closure would make the
+        // ordinary two-week subthemaperiode unplannable. What a closed day inside a window means is already answered
+        // elsewhere — no activiteit can be placed on it — so the window says "this subthema runs here" without
+        // claiming every day in it is a teaching day.
+        var jaarplan = await LaadOfMaakJaarplanAsync(klasId, cancellationToken);
+        jaarplan.PlaatsSubthema(subthemaId, inhoud.KlasId, van, tot);
+        await _opslag.BewaarAsync(cancellationToken);
+
+        return await ProjecteerAsync(klas, schooljaar, jaarplan, van, tot, cancellationToken);
+    }
+
     public async Task<Weekplanningweergave> VerplaatsActiviteitAsync(
         Guid klasId,
         Guid plaatsingId,
@@ -243,6 +285,35 @@ public sealed class WeekplanningService : IWeekplanningService
                 Activiteiten: opDezeDag));
         }
 
+        // The marked-off subthema windows touching this range. Loaded here rather than per day: a window is a range,
+        // and a day is the wrong place to hang it because most days of a window carry nothing (owner ruling,
+        // 2026-08-25).
+        var vensters = jaarplan is null
+            ? []
+            : jaarplan.Subthemaplaatsingen.Where(p => p.Van <= tot && p.Tot >= van).ToList();
+
+        var subthemainhoud = (await _opslag.LaadSubthemainhoudAsync(
+                vensters.Select(p => p.SubthemaId).Distinct().ToList(),
+                cancellationToken))
+            .ToDictionary(i => i.SubthemaId);
+
+        var subthemaperiodes = vensters
+            // A window whose subthema could not be resolved is dropped rather than drawn nameless, exactly as an
+            // unresolvable activiteit placement is. Unreachable while the FK is Restrict; this is hardening.
+            .Where(p => subthemainhoud.ContainsKey(p.SubthemaId))
+            .Select(p =>
+            {
+                var inhoud = subthemainhoud[p.SubthemaId];
+                return new Subthemaperiodeweergave(
+                    SubthemaId: p.SubthemaId,
+                    SubthemaNaam: inhoud.SubthemaNaam,
+                    ThemaId: inhoud.ThemaId,
+                    ThemaNaam: inhoud.ThemaNaam,
+                    Van: p.Van,
+                    Tot: p.Tot);
+            })
+            .ToList();
+
         return new Weekplanningweergave(
             KlasId: klas.Id,
             KlasNaam: klas.Naam,
@@ -250,7 +321,8 @@ public sealed class WeekplanningService : IWeekplanningService
             SchooljaarNaam: schooljaar.Naam,
             Van: van,
             Tot: tot,
-            Dagen: dagen);
+            Dagen: dagen,
+            Subthemaperiodes: subthemaperiodes);
     }
 
     /// <summary>

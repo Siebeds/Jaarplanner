@@ -343,6 +343,25 @@ export function useWeekplanning(klasId: string | null, van: string, tot: string)
   });
 }
 
+/**
+ * Marks off a stretch of days for a subthema, so its band survives having fewer activiteiten than days.
+ *
+ * Its own hook rather than a fifth member of `useDagacties`: those four all move ONE activiteit and share an
+ * invalidation because they share a consequence. This moves no activiteit at all, and it has to invalidate every
+ * weekplanning range rather than one day's, because a window can reach into months the current view is not showing.
+ */
+export function usePlaatsSubthemaperiode(klasId: string | null) {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ subthemaId, van, tot }: { subthemaId: string; van: string; tot: string }) =>
+      post<Weekplanning>(`/api/klassen/${klasId}/jaarplan/subthemaperiodes`, { subthemaId, van, tot }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["weekplanning"] });
+    },
+  });
+}
+
 /** One thema as it exists for one class: only that class's subthema's, with their activiteiten. */
 export function useThemaVoorKlas(themaId: string, klasId: string | null) {
   return useQuery({

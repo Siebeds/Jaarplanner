@@ -64,6 +64,20 @@ public interface IWeekplanningOpslag
         CancellationToken cancellationToken = default);
 
     /// <summary>Persists the pending changes as a single unit of work.</summary>
+    /// <summary>
+    /// The naming tree of the given subthema's, for labelling a marked-off window.
+    /// <para>
+    /// <b>Not derivable from <see cref="Activiteitinhoud"/>, and that is the point of the whole feature.</b> A window
+    /// may exist for a subthema with no activiteiten at all, so there is nothing to read its name off; the caller has
+    /// to be able to ask about a subthema directly.
+    /// </para>
+    /// </summary>
+    /// <param name="subthemaIds">The subthema's to resolve. An empty collection returns empty without a round trip.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    Task<IReadOnlyList<Subthemainhoud>> LaadSubthemainhoudAsync(
+        IReadOnlyCollection<Guid> subthemaIds,
+        CancellationToken cancellationToken = default);
+
     Task BewaarAsync(CancellationToken cancellationToken = default);
 }
 
@@ -112,3 +126,21 @@ public sealed record Activiteitinhoud(
     Activiteitkleur? Kleur = null,
     /// <summary>How many consecutive lesuren the activiteit takes. One unless the teacher said otherwise.</summary>
     int LengteInLesuren = 1);
+
+/// <summary>
+/// A subthema's identity and the names above it, for a screen that has to label a period it holds no content for.
+/// </summary>
+/// <param name="SubthemaId">The subthema.</param>
+/// <param name="SubthemaNaam">Its name.</param>
+/// <param name="ThemaId">The owning thema.</param>
+/// <param name="ThemaNaam">Its name.</param>
+/// <param name="KlasId">
+/// The class it belongs to. A subthema inherits its thema's klas (Art. IX.2), and the write path compares it against
+/// the plan's before marking off days.
+/// </param>
+public sealed record Subthemainhoud(
+    Guid SubthemaId,
+    string SubthemaNaam,
+    Guid ThemaId,
+    string ThemaNaam,
+    Guid KlasId);

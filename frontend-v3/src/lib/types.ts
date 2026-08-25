@@ -523,6 +523,22 @@ export interface Dagweergave {
   activiteiten: GeplandeActiviteit[];
 }
 
+/**
+ * A stretch of days a teacher marked off for a subthema.
+ *
+ * It exists independently of what is scheduled inside it, which is the whole reason the server stores it: a subthema
+ * with one activiteit ready still runs the five days that were marked off. The calendar draws the UNION of these
+ * ranges and the days that carry an activiteit of the same subthema, so the two can never contradict each other.
+ */
+export interface Subthemaperiode {
+  subthemaId: string;
+  subthemaNaam: string;
+  themaId: string;
+  themaNaam: string;
+  van: string;
+  tot: string;
+}
+
 export interface Weekplanning {
   klasId: string;
   klasNaam: string;
@@ -531,4 +547,5 @@ export interface Weekplanning {
   van: string;
   tot: string;
   dagen: Dagweergave[];
+  subthemaperiodes: Subthemaperiode[];
 }

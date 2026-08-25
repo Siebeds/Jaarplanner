@@ -32,9 +32,14 @@ namespace Jaarplanner.Domain.Planning;
 /// "two views disagree about the same period" defect the E3-02/E3-06 review had to repair twice.
 /// </para>
 /// <para>
-/// <b>A subthema is deliberately not placed at all.</b> It has no placement type and no row: its span is derived from
-/// the activiteiten placed under it. A second placed thing would be a second thing to keep in step with the first, and
-/// the two would eventually disagree about the same fortnight.
+/// <b>A subthema IS placed, since 2026-08-25.</b> This paragraph used to say the opposite: that a subthema has no
+/// placement type and no row, its span being derived from the activiteiten under it, because a second placed thing
+/// would be a second thing to keep in step. The owner overruled it on a ground the note did not weigh, that a period
+/// has to be able to exist before its content does: five days marked off for a subthema with one activiteit ready is a
+/// five-day plan, and a calendar drawing one day shows a different plan rather than a smaller one. The objection was
+/// still right, and <see cref="Subthemaplaatsing"/> answers it by reading less rather than storing more: the calendar
+/// draws the UNION of the stored window and the days that carry an activiteit, so the two cannot contradict each other
+/// by construction.
 /// </para>
 /// <para>
 /// <b>This does not affect dekking, and that is not an oversight.</b> Art. V.1 makes a leerplandoel gedekt when a link

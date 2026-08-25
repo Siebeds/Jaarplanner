@@ -138,9 +138,19 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
         builder.Ignore(j => j.Plaatsingen);
         builder.Ignore(j => j.MenselijkBeslotenPlaatsingen);
 
+        // The subthema windows (owner ruling 2026-08-25) hang off the plan the same way, for the same reason: the
+        // calendar reads one range of them without loading a year.
+        builder.HasMany<Subthemaplaatsing>("_subthemaplaatsingen")
+            .WithOne()
+            .HasForeignKey(p => p.JaarplanId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Exactly the same treatment for the day-level pair, and for exactly the same startup-crash reason.
         builder.Navigation("_activiteitplaatsingen").UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Ignore(j => j.Activiteitplaatsingen);
         builder.Ignore(j => j.MenselijkBeslotenActiviteitplaatsingen);
+
+        builder.Navigation("_subthemaplaatsingen").UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Ignore(j => j.Subthemaplaatsingen);
     }
 }

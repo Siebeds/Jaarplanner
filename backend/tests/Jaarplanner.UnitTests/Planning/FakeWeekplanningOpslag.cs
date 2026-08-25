@@ -62,6 +62,29 @@ internal sealed class FakeWeekplanningOpslag : IWeekplanningOpslag
         Task.FromResult<IReadOnlyList<Activiteitinhoud>>(
             _inhoud.Where(i => activiteitIds.Contains(i.ActiviteitId)).ToList());
 
+    /// <summary>
+    /// The subthema naming tree the fake knows about. Populated from <see cref="Activiteitinhoud"/> plus anything a
+    /// test adds by hand, because a marked-off window may name a subthema that carries no activiteit at all — which is
+    /// exactly the case the feature exists for and therefore the one a fake must be able to represent.
+    /// </summary>
+    public List<Subthemainhoud> Subthemainhoud { get; } = [];
+
+    public Task<IReadOnlyList<Subthemainhoud>> LaadSubthemainhoudAsync(
+        IReadOnlyCollection<Guid> subthemaIds,
+        CancellationToken cancellationToken = default)
+    {
+        var uitActiviteiten = _inhoud
+            .Select(i => new Subthemainhoud(i.SubthemaId, i.SubthemaNaam, i.ThemaId, i.ThemaNaam, i.KlasId));
+
+        return Task.FromResult<IReadOnlyList<Subthemainhoud>>(
+            Subthemainhoud
+                .Concat(uitActiviteiten)
+                .GroupBy(i => i.SubthemaId)
+                .Select(g => g.First())
+                .Where(i => subthemaIds.Contains(i.SubthemaId))
+                .ToList());
+    }
+
     public Task BewaarAsync(CancellationToken cancellationToken = default)
     {
         AantalKeerBewaard++;

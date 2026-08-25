@@ -159,6 +159,96 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// A marked-off subthemaperiode is stored and comes back on the read (owner ruling, 2026-08-25).
+    /// <para>
+    /// <b>This test exists because the feature shipped broken in exactly the way the fake cannot see.</b> The endpoint
+    /// stored the window, the row was in the database, every unit test passed, and the calendar drew nothing:
+    /// <c>EfWeekplanningOpslag.LaadJaarplanAsync</c> had no <c>Include</c> for the new collection, so it came back
+    /// empty. That file's own docstring had already written down that the <c>Include</c> is the one thing which can
+    /// silently break the feature. Only a real-database round trip catches it, which is why this asserts the READ and
+    /// not the write.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_subthemaperiode_wordt_bewaard_en_komt_terug_op_de_weekplanning()
+    {
+        var opzet = await ZetOpAsync();
+        var client = _factory.CreateClient();
+        var inhoud = await MaakActiviteitMetIdsAsync(client, opzet, "Bladeren zoeken");
+
+        var van = opzet.EersteLesdag;
+        var tot = van.AddDays(4);
+
+        var gezet = await client.PostAsJsonAsync(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/subthemaperiodes",
+            new { subthemaId = inhoud.SubthemaId, van, tot });
+        Assert.Equal(HttpStatusCode.OK, gezet.StatusCode);
+
+        // A SECOND request, not the response of the first: the write path holds the aggregate it just mutated in
+        // memory, so it would have answered correctly even with the Include missing. The read is the thing under test.
+        var week = await client.GetFromJsonAsync<WeekDto>(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning?van={van:yyyy-MM-dd}&tot={tot:yyyy-MM-dd}");
+
+        var periode = Assert.Single(week!.Subthemaperiodes);
+        Assert.Equal(inhoud.SubthemaId, periode.SubthemaId);
+        Assert.Equal(van, periode.Van);
+        Assert.Equal(tot, periode.Tot);
+
+        // The window carries its own names, so a calendar can label a band for a subthema it holds no content for.
+        Assert.Equal("De plas", periode.SubthemaNaam);
+        Assert.StartsWith("Water", periode.ThemaNaam, StringComparison.Ordinal);
+
+        // And it says nothing about activiteiten: five days are marked off with none placed in them at all.
+        Assert.All(week.Dagen, dag => Assert.Empty(dag.Activiteiten));
+    }
+
+    /// <summary>
+    /// Re-planning a subthema over an overlapping stretch MOVES its window instead of adding a second one.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_overlappende_subthemaperiode_verplaatst_het_venster()
+    {
+        var opzet = await ZetOpAsync();
+        var client = _factory.CreateClient();
+        var inhoud = await MaakActiviteitMetIdsAsync(client, opzet, "Bladeren zoeken");
+
+        var van = opzet.EersteLesdag;
+        await client.PostAsJsonAsync(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/subthemaperiodes",
+            new { subthemaId = inhoud.SubthemaId, van, tot = van.AddDays(4) });
+
+        // Two days later and two days shorter: the teacher saying "these days instead".
+        await client.PostAsJsonAsync(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/subthemaperiodes",
+            new { subthemaId = inhoud.SubthemaId, van = van.AddDays(2), tot = van.AddDays(4) });
+
+        var week = await client.GetFromJsonAsync<WeekDto>(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning?van={van:yyyy-MM-dd}&tot={van.AddDays(10):yyyy-MM-dd}");
+
+        var periode = Assert.Single(week!.Subthemaperiodes);
+        Assert.Equal(van.AddDays(2), periode.Van);
+    }
+
+    /// <summary>
+    /// A subthemaperiode running backwards is a Dutch 400, not the aggregate's bare ArgumentException as a 500.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_subthemaperiode_die_achteruit_loopt_wordt_geweigerd_met_400()
+    {
+        var opzet = await ZetOpAsync();
+        var client = _factory.CreateClient();
+        var inhoud = await MaakActiviteitMetIdsAsync(client, opzet, "Bladeren zoeken");
+
+        var resp = await client.PostAsJsonAsync(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/subthemaperiodes",
+            new { subthemaId = inhoud.SubthemaId, van = opzet.EersteLesdag.AddDays(4), tot = opzet.EersteLesdag });
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        var probleem = await resp.Content.ReadFromJsonAsync<ProbleemDto>();
+        Assert.Contains("voor de eerste dag", probleem!.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A vakantie day is refused with the closure named, and the day is written in Dutch rather than as an ISO string —
     /// this <c>detail</c> is teacher-facing (Art. II.3).
     /// </summary>
@@ -638,7 +728,19 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
 
     private sealed record ProbleemDto(string Detail);
 
-    private sealed record WeekDto(DateOnly Van, DateOnly Tot, IReadOnlyList<DagDto> Dagen);
+    private sealed record WeekDto(
+        DateOnly Van,
+        DateOnly Tot,
+        IReadOnlyList<DagDto> Dagen,
+        IReadOnlyList<SubthemaperiodeDto> Subthemaperiodes);
+
+    private sealed record SubthemaperiodeDto(
+        Guid SubthemaId,
+        string SubthemaNaam,
+        Guid ThemaId,
+        string ThemaNaam,
+        DateOnly Van,
+        DateOnly Tot);
 
     private sealed record DagDto(
         DateOnly Datum,

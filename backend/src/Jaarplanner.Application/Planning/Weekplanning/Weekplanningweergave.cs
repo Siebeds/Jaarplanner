@@ -25,6 +25,16 @@ namespace Jaarplanner.Application.Planning.Weekplanning;
 /// <param name="Van">First day of the requested range, inclusive.</param>
 /// <param name="Tot">Last day of the requested range, inclusive.</param>
 /// <param name="Dagen">Every day in the range in chronological order, open and closed alike.</param>
+/// <param name="Subthemaperiodes">
+/// The stretches of days a teacher marked off for a subthema that touch this range (owner ruling, 2026-08-25).
+/// <para>
+/// <b>Sent beside the days rather than folded into them.</b> A window exists independently of what is scheduled
+/// inside it, which is the entire reason it is stored: a subthema with one activiteit ready still runs the five days
+/// the teacher marked off, and hanging the window off the days would make it disappear on every day that happens to
+/// be empty. A client draws the union of these ranges and the days that carry an activiteit of the same subthema, so
+/// the two can never contradict each other.
+/// </para>
+/// </param>
 public sealed record Weekplanningweergave(
     Guid KlasId,
     string KlasNaam,
@@ -32,7 +42,28 @@ public sealed record Weekplanningweergave(
     string SchooljaarNaam,
     DateOnly Van,
     DateOnly Tot,
-    IReadOnlyList<Dagweergave> Dagen);
+    IReadOnlyList<Dagweergave> Dagen,
+    IReadOnlyList<Subthemaperiodeweergave> Subthemaperiodes);
+
+/// <summary>
+/// One stretch of days marked off for a subthema, with the names a screen needs to label it.
+/// </summary>
+/// <param name="SubthemaId">The subthema that runs in this window.</param>
+/// <param name="SubthemaNaam">Its name, so a calendar never has to fetch the thema to draw a band.</param>
+/// <param name="ThemaId">The owning thema.</param>
+/// <param name="ThemaNaam">
+/// Its name. Carried because two thema's in one period can both have a subthema called "de speelhoek", and a band
+/// labelled with the bare subthema name would leave the teacher guessing which.
+/// </param>
+/// <param name="Van">First day, inclusive.</param>
+/// <param name="Tot">Last day, inclusive. Equal to <paramref name="Van"/> for a one-day window.</param>
+public sealed record Subthemaperiodeweergave(
+    Guid SubthemaId,
+    string SubthemaNaam,
+    Guid ThemaId,
+    string ThemaNaam,
+    DateOnly Van,
+    DateOnly Tot);
 
 /// <summary>One day of the range.</summary>
 /// <param name="Datum">The day.</param>

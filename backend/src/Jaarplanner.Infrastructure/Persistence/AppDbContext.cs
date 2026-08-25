@@ -95,6 +95,12 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<Activiteitplaatsing> Activiteitplaatsingen => Set<Activiteitplaatsing>();
 
+    /// <summary>
+    /// The stretches of days marked off for a subthema (owner ruling, 2026-08-25). Queried independently of the
+    /// plan for the same reason as the day placements: the calendar reads one range, not a year.
+    /// </summary>
+    public DbSet<Subthemaplaatsing> Subthemaplaatsingen => Set<Subthemaplaatsing>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

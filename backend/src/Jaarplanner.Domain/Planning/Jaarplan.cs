@@ -29,6 +29,7 @@ public sealed class Jaarplan
 {
     private readonly List<Themaplaatsing> _plaatsingen = [];
     private readonly List<Activiteitplaatsing> _activiteitplaatsingen = [];
+    private readonly List<Subthemaplaatsing> _subthemaplaatsingen = [];
 
     // EF Core materialisation only.
     private Jaarplan()
@@ -80,6 +81,69 @@ public sealed class Jaarplan
             .ThenBy(p => p.Volgorde)
             .ThenBy(p => p.ActiviteitId)
             .ToList();
+
+    /// <summary>
+    /// The subthema windows a teacher marked off, ordered chronologically.
+    /// <para>
+    /// <b>A third axis, and the only one that can be empty for content that exists.</b> A subthema with no
+    /// window here is not unplanned: its span is still derived from the activiteiten under it, which is how
+    /// every plan made before this existed still reads. The window is additive, so the calendar draws the
+    /// union of the two and neither can contradict the other. See <see cref="Subthemaplaatsing"/> for why
+    /// this reverses the note in <see cref="Activiteitplaatsing"/>.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Subthemaplaatsing> Subthemaplaatsingen =>
+        _subthemaplaatsingen
+            .OrderBy(p => p.Van)
+            .ThenBy(p => p.Tot)
+            .ThenBy(p => p.SubthemaId)
+            .ToList();
+
+    /// <summary>
+    /// Marks off a stretch of days for a subthema, or moves the stretch it already had.
+    /// <para>
+    /// <b>An overlapping window of the same subthema is MOVED, not added.</b> Re-planning a subthema the
+    /// teacher had already marked off is them saying "these days instead", so the newest answer replaces the
+    /// old one whole; merging the two would make a shortened period impossible to express. A window that
+    /// shares no day with any existing one is a second period for the same subthema, which is legal: a
+    /// subthema may come back later in the year.
+    /// </para>
+    /// <para>
+    /// <b>The class boundary is enforced here for the same reason as in
+    /// <see cref="PlaatsActiviteit"/>:</b> a subthema inherits its thema's <c>KlasId</c> (Art. IX.2) and this
+    /// plan has one, and nothing below this method knows both.
+    /// </para>
+    /// </summary>
+    /// <param name="subthemaId">The subthema to mark off days for.</param>
+    /// <param name="subthemaKlasId">Its class, as loaded by the caller.</param>
+    /// <param name="van">First day, inclusive.</param>
+    /// <param name="tot">Last day, inclusive.</param>
+    /// <exception cref="ArgumentException">
+    /// The subthema belongs to another class, or the window ends before it starts. Dutch: both reach a
+    /// teacher (Art. II.3).
+    /// </exception>
+    public Subthemaplaatsing PlaatsSubthema(Guid subthemaId, Guid subthemaKlasId, DateOnly van, DateOnly tot)
+    {
+        if (subthemaKlasId != KlasId)
+        {
+            throw new ArgumentException(
+                "Een subthema kan alleen in het jaarplan van haar eigen klas ingepland worden.");
+        }
+
+        var bestaand = _subthemaplaatsingen
+            .FirstOrDefault(p => p.SubthemaId == subthemaId && p.Overlapt(van, tot));
+
+        if (bestaand is not null)
+        {
+            bestaand.Herzet(van, tot);
+            return bestaand;
+        }
+
+        var plaatsing = new Subthemaplaatsing(Id, subthemaId, van, tot);
+        _subthemaplaatsingen.Add(plaatsing);
+
+        return plaatsing;
+    }
 
     /// <summary>
     /// Places an activiteit on one day (E9-03, FR-7.2).

@@ -64,6 +64,23 @@ public sealed class OngeldigeDagplanningFout : Exception
             + "Kies een ander lesuur of een andere activiteit.");
 
     /// <summary>
+    /// The subthema belongs to another class. The subthema counterpart of
+    /// <see cref="ActiviteitHoortBijAndereKlas"/>, refused for the same structural reason (Art. IX.2).
+    /// </summary>
+    public static OngeldigeDagplanningFout SubthemaHoortBijAndereKlas() =>
+        new("Dit subthema hoort bij een andere klas. Kies een subthema van deze klas.");
+
+    /// <summary>
+    /// The two dates of a marked-off subthemaperiode are the wrong way round.
+    /// <para>
+    /// Reachable from a screen with two date fields, so it is a Dutch 400 rather than the aggregate's bare
+    /// <c>ArgumentException</c>, which no handler maps and which would reach a teacher as a 500.
+    /// </para>
+    /// </summary>
+    public static OngeldigeDagplanningFout PeriodeLooptAchteruit() =>
+        new("De laatste dag van de periode ligt voor de eerste dag. Kies een latere laatste dag.");
+
+    /// <summary>
     /// The activiteit belongs to another class. Art. IX.2 makes the class scope structural, so this is refused rather
     /// than silently copied.
     /// <para>

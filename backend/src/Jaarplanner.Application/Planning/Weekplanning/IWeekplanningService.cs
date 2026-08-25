@@ -53,6 +53,26 @@ public interface IWeekplanningService
     /// application must never have to guess a position for something it is repairing.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Marks off a stretch of days for a subthema, or moves the stretch it already had (owner ruling, 2026-08-25).
+    /// <para>
+    /// The window is what a calendar draws when the subthema has fewer activiteiten than days, which is the normal
+    /// state of a plan being built: activiteiten are added later. Nothing here places or moves an activiteit, and
+    /// nothing here moves a dekkingscijfer.
+    /// </para>
+    /// </summary>
+    /// <param name="klasId">The class whose plan is being edited.</param>
+    /// <param name="subthemaId">The subthema to mark off days for. Must belong to that class.</param>
+    /// <param name="van">First day, inclusive. Clamped into the school year.</param>
+    /// <param name="tot">Last day, inclusive. Clamped into the school year.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    Task<Weekplanningweergave> PlaatsSubthemaAsync(
+        Guid klasId,
+        Guid subthemaId,
+        DateOnly van,
+        DateOnly tot,
+        CancellationToken cancellationToken = default);
+
     Task<Weekplanningweergave> VerplaatsActiviteitAsync(
         Guid klasId,
         Guid plaatsingId,

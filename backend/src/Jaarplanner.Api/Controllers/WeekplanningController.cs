@@ -62,6 +62,36 @@ public sealed class WeekplanningController : ControllerBase
             klasId, planning.ActiviteitId, planning.Datum, planning.Volgorde, cancellationToken));
 
     /// <summary>
+    /// Marks off a stretch of days for a subthema, or moves the stretch it already had (owner ruling, 2026-08-25).
+    /// <b>400</b> when the subthema belongs to another class or the dates run backwards, <b>404</b> when it does not
+    /// exist, <b>200</b> with the affected range otherwise.
+    /// <para>
+    /// <b>What this is for.</b> A subthema's band used to be derived purely from the days its activiteiten sat on, so
+    /// a teacher who marked off five days and had one activiteit ready saw a one-day band. Activiteiten are added
+    /// later, which is the ordinary order of work, so the window has to be able to exist before its content does.
+    /// </para>
+    /// <para>
+    /// <b>Deliberately no DELETE beside it.</b> The owner asked for the window to be stored, not for a control to
+    /// clear it, and a route nobody calls is worse than one that does not exist (the E3-06 rule). Re-planning the
+    /// subthema moves its window, which is how a teacher changes it today.
+    /// </para>
+    /// </summary>
+    // ABSOLUTE ROUTE, deliberately. This controller is mounted on `.../jaarplan/weekplanning`, and relative to that
+    // the window would live at `.../jaarplan/weekplanning/subthemaperiodes`, which says a subthema period is part of
+    // one week's planning. It is not: it is a range on the plan, and it commonly outlives and outspans the week a
+    // teacher happens to be looking at. The code stays here because it shares the service and the returned view;
+    // only the URL is corrected. The first version of this used the relative form and the frontend called the
+    // absolute one, so the endpoint existed and nothing reached it — a 404 the browser pass caught and no test would
+    // have, which is the reachable-vs-tested gap this repo has recorded five times.
+    [HttpPost("~/api/klassen/{klasId:guid}/jaarplan/subthemaperiodes")]
+    public async Task<ActionResult<Weekplanningweergave>> PlaatsSubthema(
+        Guid klasId,
+        [FromBody] Subthemaperiode periode,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.PlaatsSubthemaAsync(
+            klasId, periode.SubthemaId, periode.Van, periode.Tot, cancellationToken));
+
+    /// <summary>
     /// Moves a scheduled activiteit to another day and/or position — the teacher dragging a card within the week view
     /// (FR-6.2), persisted immediately (FR-6.5).
     /// <para>
@@ -108,6 +138,16 @@ public sealed class WeekplanningController : ControllerBase
 /// that does not care about order must still get a defined one.
 /// </param>
 public sealed record Dagplanning(Guid ActiviteitId, DateOnly Datum, int Volgorde = 0);
+
+/// <summary>The body of a request to mark off days for a subthema.</summary>
+/// <param name="SubthemaId">The subthema. Must belong to the class in the path (Art. IX.2).</param>
+/// <param name="Van">First day, inclusive. Clamped into the school year rather than refused.</param>
+/// <param name="Tot">
+/// Last day, inclusive. May equal <paramref name="Van"/> for a single day. <b>Neither date has to be a teaching
+/// day</b>: a stretch of any length contains weekends and usually a vakantie, and refusing those would make the
+/// ordinary two-week subthemaperiode unplannable.
+/// </param>
+public sealed record Subthemaperiode(Guid SubthemaId, DateOnly Van, DateOnly Tot);
 
 /// <summary>The body of a move.</summary>
 /// <param name="Datum">The target day. Must be a teaching day; the placement's current day is not validated.</param>
