@@ -1,0 +1,3 @@
+# Fresh dumps are written here by wis-verzonnen-curriculum.sh before every run.
+# They are a rollback net for a one-off operation on throwaway dev data, not source.
+backup/
