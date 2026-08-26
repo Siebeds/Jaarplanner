@@ -16,6 +16,7 @@ import { t, telWoord } from "../../i18n";
 import type { LeerplandoelFilterQuery, MinimumdoelFilterQuery } from "../../lib/types";
 import { Doelenboom } from "./Doelenboom";
 import { Doeldetail } from "./Doeldetail";
+import { Bestemmingsblad } from "../koppelen/Bestemmingsblad";
 import { Minimumdoelenlijst } from "./Minimumdoelenlijst";
 import { Filterblad, type Doelenfilter } from "./Filterblad";
 import { useActieveSelectie } from "../../lib/selectie";
@@ -61,6 +62,17 @@ export function DoelenScherm() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [bron, setBron] = useState<Bron>("leerplandoelen");
   const [gekozenCode, setGekozenCode] = useState<string | null>(null);
+
+  /**
+   * WHICH SHEET IS SHOWING, and never both.
+   *
+   * Up to `lg` the doel detail is itself a `Blad`, so the destination sheet cannot be opened from
+   * inside it: two bottom sheets stacked, the phone showed two titles and two close buttons, and the
+   * destinations were behind the detail. Both sheets live here instead, and the detail closes while
+   * the destination sheet is up. Closing that one brings the detail back, because `gekozenCode` is
+   * untouched by all of this.
+   */
+  const [koppelenOpen, setKoppelenOpen] = useState(false);
 
   const breed = useMediaQuery(BREED);
 
@@ -226,7 +238,7 @@ export function DoelenScherm() {
           {/* The detail column. `top` clears the sticky screen header above it. */}
           <aside className="hidden lg:sticky lg:top-[13.5rem] lg:block">
             <div className="max-h-[calc(100dvh-15rem)] overflow-y-auto rounded-kaart border border-lijn bg-kaart p-5 shadow-licht">
-              <Doeldetail code={gekozenCode} onKies={setGekozenCode} />
+              <Doeldetail code={gekozenCode} onKies={setGekozenCode} onKoppel={() => setKoppelenOpen(true)} />
             </div>
           </aside>
         </div>
@@ -235,10 +247,16 @@ export function DoelenScherm() {
       {/* Up to lg the same detail is a sheet. Mounted only on a narrow screen, so the detail never
           exists twice in the accessibility tree. */}
       {!breed ? (
-        <Blad open={gekozenCode !== null} onOpenChange={(open) => !open && setGekozenCode(null)} titel={t("doel.titel")}>
-          <Doeldetail code={gekozenCode} onKies={setGekozenCode} />
+        <Blad
+          open={gekozenCode !== null && !koppelenOpen}
+          onOpenChange={(open) => !open && setGekozenCode(null)}
+          titel={t("doel.titel")}
+        >
+          <Doeldetail code={gekozenCode} onKies={setGekozenCode} onKoppel={() => setKoppelenOpen(true)} />
         </Blad>
       ) : null}
+
+      <Bestemmingsblad code={gekozenCode} open={koppelenOpen} onOpenChange={setKoppelenOpen} />
 
       <Filterblad open={filterOpen} onOpenChange={setFilterOpen} filter={filter} onWijzig={setFilter} facetten={facetten} />
     </>

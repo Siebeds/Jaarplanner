@@ -98,6 +98,15 @@ export function IcoonPlus(props: IconProps) {
   );
 }
 
+/** Done: a tick. Always beside the word it reinforces, never carrying the state on its own. */
+export function IcoonVink(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M5 12.5l4.5 4.5L19 7" />
+    </Icoon>
+  );
+}
+
 /** Rotated by the caller to point the other way; one shape, so the direction reads as a direction. */
 export function IcoonPijlLinks(props: IconProps) {
   return (

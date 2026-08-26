@@ -4,6 +4,8 @@ import type { DoelKoppelingContext, KoppelingStatus } from "../../lib/types";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Laadvlak } from "../../components/ui/Laadvlak";
 import { Leegte } from "../../components/ui/Leegte";
+import { Knop } from "../../components/ui/Knop";
+import { IcoonPlus } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 
@@ -17,7 +19,23 @@ import { cn } from "../../lib/cn";
  * a teacher came for. Everything that places it in the curriculum follows, and the school's own use
  * of it comes last, since it is the only part that changes from week to week.
  */
-export function Doeldetail({ code, onKies }: { code: string | null; onKies: (code: string) => void }) {
+export function Doeldetail({
+  code,
+  onKies,
+  onKoppel,
+}: {
+  code: string | null;
+  onKies: (code: string) => void;
+  /**
+   * Open the destination sheet for this doel.
+   *
+   * A callback rather than a sheet rendered here, because up to `lg` THIS component is already
+   * inside one: `DoelenScherm` puts it in a `Blad` on a narrow screen. A second sheet opened from
+   * in here stacked on the first, and the phone showed two headers, two close buttons, and none of
+   * the destinations. The screen owns both sheets so it can show one at a time.
+   */
+  onKoppel: () => void;
+}) {
   const { data, isPending, isError } = useLeerplandoel(code);
 
   if (!code) return <Leegte titel={t("doel.kies")} />;
@@ -101,6 +119,10 @@ export function Doeldetail({ code, onKies }: { code: string | null; onKies: (cod
         </Sectie>
       ) : null}
 
+      {/* The school's own use of the doel, and the way to add to it.
+          The button lives in this section rather than beside the goal text at the top, because it
+          is the answer to what this section reports: an empty list is an invitation to act, and a
+          full one is the place a teacher checks before adding a fourth. */}
       <Sectie titel={t("doel.gebruiktIn")}>
         {data.koppelingen.length === 0 ? (
           <p className="text-meta text-inkt-zwak">{t("doel.nergensGebruikt")}</p>
@@ -113,6 +135,11 @@ export function Doeldetail({ code, onKies }: { code: string | null; onKies: (cod
             ))}
           </ul>
         )}
+
+        <Knop rang="rustig" className="mt-1 self-start" onClick={onKoppel}>
+          <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+          {t("doel.koppelAan")}
+        </Knop>
       </Sectie>
     </article>
   );
