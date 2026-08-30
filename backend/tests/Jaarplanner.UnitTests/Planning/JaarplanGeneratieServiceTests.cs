@@ -1782,18 +1782,25 @@ public sealed class JaarplanGeneratieServiceTests
     }
 
     /// <summary>
-    /// <b>The frontend's <c>GENERATIEBLOKNIVEAU</c> is the same tier as <see cref="JaarplanGeneratieService.GeneratieNiveau"/>,
-    /// and this test is the only thing that binds them.</b>
+    /// <b>Wherever the frontend keeps its own copy of <c>GENERATIEBLOKNIVEAU</c>, it is the same tier as
+    /// <see cref="JaarplanGeneratieService.GeneratieNiveau"/>, and this test is the only thing that binds them.</b>
     /// <para>
-    /// The constant is duplicated across the wire: the parameter form compares the grid's <c>niveau</c> against its own
-    /// copy, and the two halves were coupled by a doc comment. Move generation to another tier and, with nothing
-    /// asserting the pair, the form degrades <i>silently and permanently</i> to its "another tier" branch: startthema's
-    /// become unsettable and no test fails. <c>PlanningsroosterEndpointTests</c> does not cover this — it pins the
-    /// <i>rooster</i> default, which is a different decision that merely happens to agree today.
+    /// The hazard is a value duplicated across the wire: a parameter form that compares the grid's <c>niveau</c>
+    /// against its own copy, coupled to the backend by nothing but a doc comment. Move generation to another tier and,
+    /// with nothing asserting the pair, the form degrades <i>silently and permanently</i> to its "another tier" branch:
+    /// startthema's become unsettable and no test fails. <c>PlanningsroosterEndpointTests</c> does not cover this — it
+    /// pins the <i>rooster</i> default, which is a different decision that merely happens to agree today.
+    /// </para>
+    /// <para>
+    /// This searches <c>frontend/src</c> rather than naming one file, and that is the point (ADR-0024, 2026-08-30).
+    /// It used to assert <c>features/jaarplan/types.ts</c> exists; the frontend that held it was retired, so the guard
+    /// failed on a missing path while saying nothing about the value it exists to protect. The frontend that replaced
+    /// it has no generatieparameters form and therefore <b>no copy of the constant at all</b>, which is the one state
+    /// in which there is genuinely nothing to bind. So: zero declarations passes, and the moment the form is rebuilt
+    /// and reintroduces the constant, this arms itself again and pins every copy to the backend.
     /// </para>
     /// <para>
     /// Reading the TypeScript is the point: an assertion on the C# value alone would pass while the halves disagreed.
-    /// The failure message names the file to change, because whoever moves the tier has to move both.
     /// </para>
     /// </summary>
     [Fact]
@@ -1805,17 +1812,24 @@ public sealed class JaarplanGeneratieServiceTests
             $"repository root not found above {AppContext.BaseDirectory}; expected a directory holding both " +
             "backend/src and frontend/src");
 
-        var typesPad = Path.Combine(repoRoot!, "frontend", "src", "features", "jaarplan", "types.ts");
-        Assert.True(File.Exists(typesPad), $"{typesPad} does not exist");
+        var frontendSrc = Path.Combine(repoRoot!, "frontend", "src");
 
-        var match = System.Text.RegularExpressions.Regex.Match(
-            File.ReadAllText(typesPad),
+        // The one precondition worth asserting: if this walks a directory that is not there, the loop below finds
+        // nothing and the guard would pass for the wrong reason. That is exactly how this test failed on 2026-08-30.
+        Assert.True(Directory.Exists(frontendSrc), $"{frontendSrc} does not exist");
+
+        var patroon = new System.Text.RegularExpressions.Regex(
             """GENERATIEBLOKNIVEAU\s*=\s*"(?<niveau>[^"]+)"\s*;""");
-        Assert.True(match.Success, $"GENERATIEBLOKNIVEAU is not declared as a string literal in {typesPad}");
+        var verwacht = JaarplanGeneratieService.GeneratieNiveau.ToString();
 
-        Assert.Equal(
-            JaarplanGeneratieService.GeneratieNiveau.ToString(),
-            match.Groups["niveau"].Value);
+        // Every copy the frontend keeps is pinned. No copies is the legitimate "no form, no constant" state.
+        foreach (var bestand in Directory.EnumerateFiles(frontendSrc, "*.ts*", SearchOption.AllDirectories))
+        {
+            foreach (System.Text.RegularExpressions.Match match in patroon.Matches(File.ReadAllText(bestand)))
+            {
+                Assert.Equal(verwacht, match.Groups["niveau"].Value);
+            }
+        }
     }
 
     // --- E4-03: placing a thema by hand, with no AI involved (FR-7.2). ---
