@@ -44,7 +44,9 @@ public sealed class ClosedXmlSchoolcontentTemplateGenerator : ISchoolcontentTemp
             // a stored `Klas.Naam`, so it becomes product data rather than a caption. E1-13 is the story that
             // makes this file downloadable from a screen, which is what brought it inside the rule.
             [SchoolcontentKolom.SubthemaKlas] = "K3 derde kleuterklas",
-            [SchoolcontentKolom.SubthemaLeeftijd] = "5-6",
+            // An Op.stap jaar/fase code, which is what a subthema is scoped by since 2026-08-30 (Art. IX.2).
+            // It used to read "5-6", and a school copying that example now produces rows the importer refuses.
+            [SchoolcontentKolom.SubthemaLeeftijd] = "K3",
             [SchoolcontentKolom.SubthemaProbleemstelling] = "Waarom vallen de bladeren in de herfst?",
             [SchoolcontentKolom.SubthemaOnderzoeksvraag] = "Welke bomen verliezen hun bladeren?",
             [SchoolcontentKolom.Subdoelen] = "WO-2.3",

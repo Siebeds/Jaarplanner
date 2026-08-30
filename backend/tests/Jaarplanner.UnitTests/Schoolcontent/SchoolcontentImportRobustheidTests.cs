@@ -250,7 +250,7 @@ public sealed class SchoolcontentImportRobustheidTests
     {
         // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
         var schooljaar = TestSchooljaar.Maak();
-        schooljaar.VoegKlasToe("K3", leerjaar: 0);
+        schooljaar.VoegKlasToe("K3", "K3");
         context.Schooljaren.Add(schooljaar);
         foreach (var code in codes)
         {

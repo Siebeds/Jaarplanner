@@ -599,7 +599,7 @@ public sealed class GeneratieparametersPersistentieTests : IAsyncLifetime
         await using var context = _db.MaakContext();
 
         var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("genparams"));
-        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", "L3");
         context.Schooljaren.Add(schooljaar);
 
         await context.SaveChangesAsync();

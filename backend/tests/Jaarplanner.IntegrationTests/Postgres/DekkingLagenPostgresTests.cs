@@ -73,7 +73,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegDoelsuggestieToe(new DoelKoppeling("L2-SUGGESTIE", KoppelingStatus.Voorgesteld, "past"))
                 .WijzigStatus(KoppelingStatus.Aanvaard);
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, "5");
             subthema.VoegSubdoelToe("5", new DoelKoppeling("L3-SUBDOEL", KoppelingStatus.Aanvaard));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
@@ -135,7 +135,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             context.Themas.Add(tweedeThema);
             tweedeThemaId = tweedeThema.Id;
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, "5");
             subthema.VoegSubdoelToe("5", new DoelKoppeling("TELT-NIET-SUBDOEL", KoppelingStatus.Voorgesteld));
             subthema.VoegSubdoelToe("5", new DoelKoppeling("TELT-NIET-SUBDOEL-GEWEIGERD", KoppelingStatus.Geweigerd));
 
@@ -183,14 +183,14 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
                 $"2026-2027-{Guid.NewGuid():N}"[..20],
                 new DateOnly(2026, 9, 1),
                 new DateOnly(2027, 6, 30));
-            var klasA = schooljaar.VoegKlasToe($"K3A-{Guid.NewGuid():N}", leerjaar: 0);
-            var klasB = schooljaar.VoegKlasToe($"K3B-{Guid.NewGuid():N}", leerjaar: 0);
+            var klasA = schooljaar.VoegKlasToe($"K3A-{Guid.NewGuid():N}", "K3");
+            var klasB = schooljaar.VoegKlasToe($"K3B-{Guid.NewGuid():N}", "K3");
             context.Schooljaren.Add(schooljaar);
 
             var thema = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);
             thema.VoegThemadoelToe(new DoelKoppeling("SCHOOLBREED", KoppelingStatus.Aanvaard, "anchor"));
 
-            var subthemaVanB = thema.VoegSubthemaToe("Bladeren", 2, klasB.Id, "5");
+            var subthemaVanB = thema.VoegSubthemaToe("Bladeren", 2, "5");
             subthemaVanB.VoegSubdoelToe("5", new DoelKoppeling("VAN-KLAS-B-SUBDOEL", KoppelingStatus.Aanvaard));
 
             var activiteitVanB = subthemaVanB.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
@@ -234,7 +234,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegDoelsuggestieToe(new DoelKoppeling("OOK-NIET-SUGGESTIE", KoppelingStatus.Voorgesteld, "past"))
                 .WijzigStatus(KoppelingStatus.Aanvaard);
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, "5");
             subthema.VoegSubdoelToe("5", new DoelKoppeling("OOK-NIET", KoppelingStatus.Aanvaard));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
@@ -338,7 +338,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegThemadoelToe(new DoelKoppeling("KAND-TD-GEWEIGERD", KoppelingStatus.Geweigerd, "nee"));
             thema.VoegThemadoelToe(new DoelKoppeling("KAND-TD-VOORGESTELD", KoppelingStatus.Voorgesteld, "?"));
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, "5");
             subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL", KoppelingStatus.Manueel));
             subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-GEWEIGERD", KoppelingStatus.Geweigerd));
             subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-VOORGESTELD", KoppelingStatus.Voorgesteld));
@@ -395,14 +395,18 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             $"2026-2027-{Guid.NewGuid():N}"[..20],
             new DateOnly(2026, 9, 1),
             new DateOnly(2027, 6, 30));
-        var klasA = schooljaar.VoegKlasToe($"A-{Guid.NewGuid():N}", leerjaar: 0);
-        var klasB = schooljaar.VoegKlasToe($"B-{Guid.NewGuid():N}", leerjaar: 0);
+        // Two classes at two DIFFERENT ages, where these used to be two kleutergroepen at the same one. Since
+        // 2026-08-30 a subthema is scoped by leeftijd (Art. IX.2), so two classes at the same age share every
+        // subthema by design and could not demonstrate the isolation this test exists to prove. The age is now
+        // what separates them, and that is the separation the dekking layers actually filter on.
+        var klasA = schooljaar.VoegKlasToe($"A-{Guid.NewGuid():N}", "K3");
+        var klasB = schooljaar.VoegKlasToe($"B-{Guid.NewGuid():N}", "L1");
         context.Schooljaren.Add(schooljaar);
 
         var thema = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);
         thema.VoegThemadoelToe(new DoelKoppeling("KAND-THEMADOEL", KoppelingStatus.Aanvaard, "anchor"));
 
-        var subthemaVanB = thema.VoegSubthemaToe("Bladeren", 2, klasB.Id, "5");
+        var subthemaVanB = thema.VoegSubthemaToe("Bladeren", 2, "5");
         subthemaVanB.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL", KoppelingStatus.Aanvaard));
 
         var activiteitVanB = subthemaVanB.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
@@ -462,7 +466,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-SUGGESTIE-M", KoppelingStatus.Voorgesteld, "past"))
                 .WijzigStatus(KoppelingStatus.Manueel);
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, "5");
             subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-A", KoppelingStatus.Aanvaard));
             subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-M", KoppelingStatus.Manueel));
 
@@ -540,7 +544,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             $"2026-2027-{Guid.NewGuid():N}"[..20],
             new DateOnly(2026, 9, 1),
             new DateOnly(2027, 6, 30));
-        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", leerjaar: 0);
+        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", "K3");
         context.Schooljaren.Add(schooljaar);
 
         var thema = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);

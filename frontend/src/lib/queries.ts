@@ -144,6 +144,25 @@ export function useKlassen() {
 }
 
 /**
+ * The jaar/fase codes a klas may teach: JK, K2, K3 and L1 to L6.
+ *
+ * **Its own endpoint, and not read off a klas, because a form needs the list before the first klas exists.** They
+ * used to be taken from `KlasWeergave.mogelijkeJaarfasen`, which works while editing a klas and fails on a fresh
+ * school: with no klas to read them off, the leeftijd field offered nothing, disabled itself and made creating a
+ * klas impossible. The same hole made the subthema form dead until a klas existed, which is a dependency a subthema
+ * does not have any more.
+ *
+ * Reference data that changes when the curriculum does, so it is cached for the session rather than refetched.
+ */
+export function useJaarfasen() {
+  return useQuery({
+    queryKey: ["jaarfasen"],
+    queryFn: () => get<string[]>("/api/jaarfasen"),
+    staleTime: Infinity,
+  });
+}
+
+/**
  * Recording which jaar/fase a klas actually teaches.
  *
  * `PUT /api/klassen/{id}` replaces the whole class, so naam and leerjaar are sent back unchanged rather than omitted:
@@ -160,9 +179,11 @@ export function useWijzigKlas() {
 
   return useMutation({
     mutationFn: ({ klas, jaarfase }: { klas: KlasWeergave; jaarfase: string | null }) =>
+      // No leerjaar: it left KlasCreatie on 2026-08-30 and is derived from the jaarfase server-side. Sending
+      // it was harmless to the binder and read as if it were still settable, which is worse than useless in a
+      // payload someone will copy.
       put<KlasWeergave>(`/api/klassen/${klas.id}`, {
         naam: klas.naam,
-        leerjaar: klas.leerjaar,
         jaarfase,
       }),
     onSuccess: () => {

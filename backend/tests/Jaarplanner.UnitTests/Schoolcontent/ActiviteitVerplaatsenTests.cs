@@ -36,8 +36,8 @@ public class ActiviteitVerplaatsenTests
     {
         var bronThema = new Thema("Water", duurWeken: 4);
         var doelThema = new Thema("Lucht", duurWeken: 4);
-        var bron = bronThema.VoegSubthemaToe("De plas", duurWeken: 2, Klas, leeftijd: "K3");
-        var doel = doelThema.VoegSubthemaToe("De wind", duurWeken: 2, Klas, leeftijd: "K3");
+        var bron = bronThema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: "K3");
+        var doel = doelThema.VoegSubthemaToe("De wind", duurWeken: 2, leeftijd: "K3");
         var activiteit = MetVolleInhoud(bron);
         var id = activiteit.Id;
 
@@ -64,8 +64,8 @@ public class ActiviteitVerplaatsenTests
         // The graadklas case: one klas, two ages, the same thema. Art. IX.2 scopes a subthema per klas AND
         // leeftijd, so this is the differentiation the model exists for rather than a boundary crossing.
         var thema = new Thema("Water", duurWeken: 4);
-        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, Klas, leeftijd: "K3");
-        var doel = thema.VoegSubthemaToe("De plas", duurWeken: 2, Klas, leeftijd: "L1");
+        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: "K3");
+        var doel = thema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: "L1");
         var activiteit = MetVolleInhoud(bron);
 
         bron.VerplaatsActiviteitNaar(activiteit, doel);
@@ -73,28 +73,37 @@ public class ActiviteitVerplaatsenTests
         Assert.Equal(doel.Id, activiteit.SubthemaId);
     }
 
+    /// <summary>
+    /// <b>A move to a subthema at another age is allowed now.</b> The class guard this test used to assert went
+    /// with the class itself on 2026-08-30 (Art. IX.2): a subthema is scoped by leeftijd, and moving an activiteit
+    /// from a K3 subthema to an L1 one is a teacher making an unusual choice rather than one class taking
+    /// another's content.
+    /// <para>
+    /// What keeps the offer sensible is <c>HaalSubthemaBestemmingenAsync</c>, which lists only subthema's at an
+    /// age the asking klas teaches. That is now the ONLY thing scoping this verb, which is worth knowing when
+    /// reading it here.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void Verplaatsen_naar_een_andere_klas_wordt_geweigerd_en_verandert_niets()
+    public void Verplaatsen_naar_een_andere_leeftijd_mag()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, Klas, leeftijd: "K3");
-        var doel = thema.VoegSubthemaToe("De plas", duurWeken: 2, AndereKlas, leeftijd: "K3");
+        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: "K3");
+        var doel = thema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: "L1");
         var activiteit = MetVolleInhoud(bron);
 
-        Assert.Throws<ArgumentException>(() => bron.VerplaatsActiviteitNaar(activiteit, doel));
+        bron.VerplaatsActiviteitNaar(activiteit, doel);
 
-        // A refusal that half-moved the activiteit would be worse than no move at all, so the non-destructive
-        // half is asserted rather than assumed: both collections and the FK are untouched.
-        Assert.Same(activiteit, Assert.Single(bron.Activiteiten));
-        Assert.Empty(doel.Activiteiten);
-        Assert.Equal(bron.Id, activiteit.SubthemaId);
+        Assert.Empty(bron.Activiteiten);
+        Assert.Same(activiteit, Assert.Single(doel.Activiteiten));
+        Assert.Equal(doel.Id, activiteit.SubthemaId);
     }
 
     [Fact]
     public void Verplaatsen_naar_hetzelfde_subthema_wordt_geweigerd()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, Klas, leeftijd: "K3");
+        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: "K3");
         var activiteit = MetVolleInhoud(bron);
 
         Assert.Throws<ArgumentException>(() => bron.VerplaatsActiviteitNaar(activiteit, bron));
@@ -116,15 +125,17 @@ public class ActiviteitVerplaatsenTests
         // (round 2, MINOR 7). The list below is hand-written, so a third refusal is covered only if someone adds
         // a third line, which is exactly what that claim told the next author was unnecessary. Stated plainly
         // instead: today's coverage is total, tomorrow's needs a line.
+        //
+        // **There is one refusal left where there were two.** The class refusal went with the class scope on
+        // 2026-08-30 (Art. IX.2); see `Verplaatsen_naar_een_andere_leeftijd_mag`. The set shape is kept rather
+        // than collapsed to a single assertion, because the property being asserted is about the set.
         var thema = new Thema("Water", duurWeken: 4);
-        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, Klas, leeftijd: "K3");
-        var andereKlas = thema.VoegSubthemaToe("De plas", duurWeken: 2, AndereKlas, leeftijd: "K3");
+        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: "K3");
         var activiteit = MetVolleInhoud(bron);
 
         var weigeringen = new[]
         {
             Assert.Throws<ArgumentException>(() => bron.VerplaatsActiviteitNaar(activiteit, bron)),
-            Assert.Throws<ArgumentException>(() => bron.VerplaatsActiviteitNaar(activiteit, andereKlas)),
         };
 
         Assert.All(weigeringen, fout =>
@@ -144,9 +155,9 @@ public class ActiviteitVerplaatsenTests
         // exceptions and turns them into a Dutch 400 a teacher reads, and this case is neither reachable from
         // the API nor actionable by a teacher (Art. II.3).
         var thema = new Thema("Water", duurWeken: 4);
-        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, Klas, leeftijd: "K3");
-        var vreemd = thema.VoegSubthemaToe("De wolk", duurWeken: 2, Klas, leeftijd: "K3");
-        var doel = thema.VoegSubthemaToe("De wind", duurWeken: 2, Klas, leeftijd: "K3");
+        var bron = thema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: "K3");
+        var vreemd = thema.VoegSubthemaToe("De wolk", duurWeken: 2, leeftijd: "K3");
+        var doel = thema.VoegSubthemaToe("De wind", duurWeken: 2, leeftijd: "K3");
         var activiteit = MetVolleInhoud(vreemd);
 
         Assert.Throws<InvalidOperationException>(() => bron.VerplaatsActiviteitNaar(activiteit, doel));

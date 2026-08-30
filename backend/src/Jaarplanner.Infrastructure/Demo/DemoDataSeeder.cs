@@ -125,7 +125,7 @@ public sealed class DemoDataSeeder : IHostedService
         }
 
         var schooljaar = BouwSchooljaar();
-        var klas = schooljaar.VoegKlasToe(KlasNaam, leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe(KlasNaam, "L3");
         context.Schooljaren.Add(schooljaar);
 
         // Thema.Naam is NOT uniquely indexed, so a collision throws nothing — it silently creates a second

@@ -117,7 +117,6 @@ public sealed record Activiteitinhoud(
     string ActiviteitType,
     Guid SubthemaId,
     string SubthemaNaam,
-    Guid KlasId,
     string Leeftijd,
     Guid ThemaId,
     string ThemaNaam,
@@ -134,13 +133,13 @@ public sealed record Activiteitinhoud(
 /// <param name="SubthemaNaam">Its name.</param>
 /// <param name="ThemaId">The owning thema.</param>
 /// <param name="ThemaNaam">Its name.</param>
-/// <param name="KlasId">
-/// The class it belongs to. A subthema inherits its thema's klas (Art. IX.2), and the write path compares it against
-/// the plan's before marking off days.
+/// <param name="Leeftijd">
+/// The jaar/fase it is scoped to (Art. IX.2 as amended 2026-08-30). The write path checks that the plan's klas
+/// teaches this age before marking off days — the check that used to compare two <c>KlasId</c>s.
 /// </param>
 public sealed record Subthemainhoud(
     Guid SubthemaId,
     string SubthemaNaam,
     Guid ThemaId,
     string ThemaNaam,
-    Guid KlasId);
+    string Leeftijd);

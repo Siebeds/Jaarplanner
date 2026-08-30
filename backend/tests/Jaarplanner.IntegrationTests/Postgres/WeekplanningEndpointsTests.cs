@@ -413,19 +413,23 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
         var inhoud = await MaakActiviteitMetIdsAsync(client, opzet, "Bladeren zoeken");
         await PlanAsync(client, opzet.KlasId, inhoud.ActiviteitId, opzet.EersteLesdag);
 
-        // The E1-19 route, applied directly because no screen offers it: the subthema (and its activiteit) move to the
-        // other klas, so this klas keeps the day placement and loses the subthema that shielded it.
+        // The E1-19 route, applied directly because no screen offers it: the subthema (and its activiteit) move to
+        // ANOTHER LEEFTIJD, so this klas keeps the day placement and loses the subthema that shielded it.
+        //
+        // It moved to another KLAS until 2026-08-30. Since a subthema is scoped by leeftijd alone (Art. IX.2), the
+        // way to take it away from this K3 class is to give it the age the other class teaches. The state under
+        // test is identical: a plan holding a placement whose activiteit its class no longer reaches.
         await using (var context = _db.MaakContext())
         {
             var subthema = await context.Subthemas.FirstAsync(s => s.Id == inhoud.SubthemaId);
-            subthema.WijzigScope(opzet.AndereKlasId, "K3");
+            subthema.WijzigScope("L1");
             await context.SaveChangesAsync();
         }
 
         // Precondition, asserted rather than assumed: the subthema guard can no longer be the one that answers.
         await using (var context = _db.MaakContext())
         {
-            Assert.Equal(0, await context.Subthemas.CountAsync(s => s.KlasId == opzet.KlasId));
+            Assert.Equal(0, await context.Subthemas.CountAsync(s => s.Leeftijd == "K3"));
         }
 
         var resp = await client.DeleteAsync($"/api/klassen/{opzet.KlasId}");
@@ -658,8 +662,8 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
         schooljaar.VoegSluitingToe(
             new Schoolsluiting("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
 
-        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", leerjaar: 0);
-        var andere = schooljaar.VoegKlasToe($"L1-{Guid.NewGuid():N}", leerjaar: 1);
+        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", "K3");
+        var andere = schooljaar.VoegKlasToe($"L1-{Guid.NewGuid():N}", "L1");
         context.Schooljaren.Add(schooljaar);
 
         await context.SaveChangesAsync();

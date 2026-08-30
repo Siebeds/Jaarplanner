@@ -22,7 +22,7 @@ public sealed class DoelMatchingServiceTests
     private static Thema EenThema()
     {
         var thema = new Thema("Herfst", duurWeken: 4, invalshoeken: "natuur");
-        thema.VoegSubthemaToe("Bladeren", duurWeken: 2, klasId: Guid.NewGuid(), leeftijd: "K3");
+        thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
         return thema;
     }
 

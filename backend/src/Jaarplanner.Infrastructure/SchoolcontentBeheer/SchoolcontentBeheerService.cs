@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -10,12 +11,13 @@ namespace Jaarplanner.Infrastructure.SchoolcontentBeheer;
 /// (E1-10, FR-3.1/3.2). It is the CRUD sibling of the import service: it drives the same domain mutators
 /// (<c>Thema.VoegThemadoelToe</c>, <c>Subthema.VoegSubdoelToe</c>, <c>Activiteit.VoegDoelkoppelingToe</c>, …)
 /// rather than reaching into the entities, so every invariant — the 2–3 themadoel bound, the required
-/// klas/leeftijd scope — is enforced in one place (the domain, Art. IX.2).
+/// leeftijd scope — is enforced in one place (the domain, Art. IX.2).
 /// <para>
-/// <b>Level scoping (Art. IX.2).</b> Thema/Themadoel inputs carry no klas/leeftijd (school-wide).
-/// Subthema creation requires a real <c>KlasId</c> that resolves to a persisted <c>Klas</c> and a
-/// non-blank leeftijd; the domain ctor rejects an empty klas, and this service additionally verifies the
-/// klas exists. A subthema can therefore never become school-wide.
+/// <b>Level scoping (Art. IX.2, amended 2026-08-30).</b> Thema/Themadoel inputs carry no leeftijd (school-wide).
+/// Subthema creation requires a non-blank leeftijd and no klas at all: a subthema belongs to an AGE and holds
+/// for every class that teaches it. The domain ctor rejects a blank leeftijd, and this service additionally
+/// refuses a leeftijd that is not one of the nine Op.stap jaar/fase codes — the same vocabulary a klas records,
+/// which is what makes the two matchable at all.
 /// </para>
 /// <para>
 /// <b>Goal links (Art. III + IV.2).</b> Every link references a read-only <c>Leerplandoel</c> by its
@@ -81,9 +83,14 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     public async Task<IReadOnlyList<ThemaBibliotheekItem>> HaalThemaBibliotheekOpAsync(CancellationToken cancellationToken = default)
     {
         // The bibliotheek view is the school-wide layer ONLY: themadoelen + woordenschat, no subthema's.
-        // We deliberately do NOT Include the subthema's so a class's per-class derivations can never leak
-        // into the shared-library view (no cross-class bleed, Art. IX.2 / Gap A.5). AantalAfgeleideKlassen
-        // is a distinct-class count over the subthema's, computed in SQL without materialising their content.
+        // We deliberately do NOT Include the subthema's so their content never leaks into the shared-library
+        // view (Art. IX.2 / Gap A.5). AantalAfgeleideLeeftijden is a distinct-AGE count over the subthema's,
+        // computed in SQL without materialising any of them.
+        //
+        // It counted distinct KLASSEN until 2026-08-30. That number no longer exists to be counted: a subthema
+        // names an age, and how many classes teach that age is a fact about the klassenlijst, not about this
+        // thema. Ages are what this view can honestly report, and they are the more useful number anyway —
+        // "built out for three ages" is what tells a teacher whether a thema is ready for theirs.
         var themas = await _context.Themas
             .AsNoTracking()
             .Include(t => t.Themadoelen)
@@ -91,10 +98,10 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             .Select(t => new
             {
                 Thema = t,
-                AantalAfgeleideKlassen = t.Subthemas.Select(s => s.KlasId).Distinct().Count(),
-                // Counts, not content. The same reasoning that already allows AantalAfgeleideKlassen
+                AantalAfgeleideLeeftijden = t.Subthemas.Select(s => s.Leeftijd).Distinct().Count(),
+                // Counts, not content. The same reasoning that already allows AantalAfgeleideLeeftijden
                 // here: a number tells the reader how much has been built on this thema without
-                // exposing any class's subthema's, activiteiten or goal choices (Art. IX.2).
+                // exposing any subthema's activiteiten or goal choices (Art. IX.2).
                 // School-wide totals on purpose, because this IS the school-wide library view.
                 AantalSubthemas = t.Subthemas.Count,
                 AantalActiviteiten = t.Subthemas.SelectMany(s => s.Activiteiten).Count(),
@@ -108,7 +115,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         return themas
             .Select(x => MapBibliotheekItem(
                 x.Thema,
-                x.AantalAfgeleideKlassen,
+                x.AantalAfgeleideLeeftijden,
                 x.AantalSubthemas,
                 x.AantalActiviteiten,
                 x.AantalDoelkoppelingen))
@@ -117,16 +124,29 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     public async Task<ThemaWeergave> HaalThemaVoorKlasAsync(Guid themaId, Guid klasId, CancellationToken cancellationToken = default)
     {
-        await VereisKlasAsync(klasId, cancellationToken);
+        var leeftijden = await Klasleeftijden.VoorKlasAsync(_context, klasId, cancellationToken);
+        if (!leeftijden.Bestaat)
+        {
+            // A 400 and not a 404, unchanged from before this method stopped using VereisKlasAsync: the resource
+            // this endpoint ADDRESSES is the thema, so a 404 here would tell the screen the thema is gone and send
+            // it back to the list. The klas is a referenced resource, and a missing one is a bad request.
+            throw new SchoolcontentValidatieFout("Die klas bestaat niet meer. Kies een klas uit de lijst.");
+        }
 
-        // The shared thema (school-wide layer) plus ONLY this klas's subthema-derivations and their
-        // subtree. Filtering the subthema Include by KlasId guarantees class A's subthema's never appear
-        // under class B even though both derive from the same shared thema (Art. IX.2). Read-only graph.
+        var codes = leeftijden.Waarden;
+
+        // The shared thema (school-wide layer) plus the subthema's for the AGES this klas teaches, and their
+        // subtree. Two K3 classes now see the same subthema's here, which is the point of the 2026-08-30 ruling;
+        // what still differs per class is the jaarplan, not this. Read-only graph.
+        //
+        // A class whose jaar/fase cannot be derived (the graadklas, Art. XIV) is NOT narrowed to nothing: it sees
+        // every subthema of the thema, because "we cannot tell which ages this class teaches" must never render as
+        // "this class has no content".
         var thema = await _context.Themas
             .AsNoTracking()
             .Include(t => t.Themadoelen)
-            .Include(t => t.Subthemas.Where(s => s.KlasId == klasId)).ThenInclude(s => s.Subdoelen)
-            .Include(t => t.Subthemas.Where(s => s.KlasId == klasId)).ThenInclude(s => s.Activiteiten)
+            .Include(t => t.Subthemas.Where(s => codes == null || codes.Contains(s.Leeftijd))).ThenInclude(s => s.Subdoelen)
+            .Include(t => t.Subthemas.Where(s => codes == null || codes.Contains(s.Leeftijd))).ThenInclude(s => s.Activiteiten)
             .FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken);
 
         if (thema is null)
@@ -279,13 +299,13 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         ArgumentNullException.ThrowIfNull(creatie);
         var thema = await LaadThemaAsync(themaId, cancellationToken);
-        await VereisKlasAsync(creatie.KlasId, cancellationToken);
+        VereisLeeftijd(creatie.Leeftijd);
 
         Subthema subthema;
         try
         {
-            // The domain ctor enforces the structural scope: non-empty klas + non-blank leeftijd (Art. IX.2).
-            subthema = thema.VoegSubthemaToe(creatie.Naam, creatie.DuurWeken, creatie.KlasId, creatie.Leeftijd);
+            // The domain ctor enforces the structural scope: a non-blank leeftijd (Art. IX.2).
+            subthema = thema.VoegSubthemaToe(creatie.Naam, creatie.DuurWeken, creatie.Leeftijd);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -309,14 +329,14 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         ArgumentNullException.ThrowIfNull(wijziging);
         var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
-        await VereisKlasAsync(wijziging.KlasId, cancellationToken);
+        VereisLeeftijd(wijziging.Leeftijd);
 
         try
         {
             subthema.WijzigNaam(wijziging.Naam);
             subthema.WerkBasisGegevensBij(wijziging.DuurWeken);
-            // Re-scoping stays structural: a subthema can never become school-wide (Art. IX.2).
-            subthema.WijzigScope(wijziging.KlasId, wijziging.Leeftijd);
+            // Re-scoping stays structural: a subthema can never become ageless (Art. IX.2).
+            subthema.WijzigScope(wijziging.Leeftijd);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -587,8 +607,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         // reading Dutch prose: the *addressed* resource here is the activiteit, so a 404 always means "your
         // activiteit is gone" and the screen can act on it exactly as it does after a delete. A destination that
         // vanished meanwhile is a *referenced* resource, so it is a validation refusal the picker shows while
-        // staying open with a refreshed list. Same shape as VereisKlasAsync, which refuses a missing klas the
-        // same way rather than 404ing the subthema being created.
+        // staying open with a refreshed list. Same shape as the klas check in HaalSubthemaBestemmingenAsync,
+        // which refuses a missing klas the same way rather than 404ing the subthema being addressed.
         var doel = await _context.Subthemas
             .Include(s => s.Activiteiten)
             .FirstOrDefaultAsync(s => s.Id == doelSubthemaId, cancellationToken)
@@ -621,7 +641,13 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         // unknown or deleted klas answers an empty list, and the picker reads an empty list as "this klas has
         // nowhere to move to" and hides the control. That renders an infrastructure state as a statement about
         // the school's content. A refusal makes the screen say it could not load the destinations instead.
-        await VereisKlasAsync(klasId, cancellationToken);
+        var leeftijden = await Klasleeftijden.VoorKlasAsync(_context, klasId, cancellationToken);
+        if (!leeftijden.Bestaat)
+        {
+            throw new SchoolcontentNietGevondenFout("Deze klas bestaat niet.");
+        }
+
+        var codes = leeftijden.Waarden;
 
         // Projected to an anonymous type and mapped to the record afterwards, deliberately: ordering happens in
         // SQL under the database collation (a Dutch name sorted by .NET's ordinal comparer puts "Ijs" in the
@@ -630,7 +656,10 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         var rijen = await _context.Themas
             .AsNoTracking()
             .SelectMany(t => t.Subthemas
-                .Where(s => s.KlasId == klasId)
+                // Every subthema at an age this klas teaches. A class whose ages cannot be derived sees them
+                // all rather than none: a picker narrowed to nothing offers no destination at all, which is worse
+                // than offering one the teacher has to read the leeftijd on. The leeftijd IS on every row.
+                .Where(s => codes == null || codes.Contains(s.Leeftijd))
                 .Select(s => new
                 {
                     s.Id,
@@ -841,21 +870,21 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     }
 
     /// <summary>Verifies the klas exists; class scoping is structural for a subthema (Art. IX.2).</summary>
-    private async Task VereisKlasAsync(Guid klasId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Refuses a leeftijd that is not one of the nine Op.stap jaar/fase codes.
+    /// <para>
+    /// <b>This validation is new and it is what replaced the foreign key.</b> While a subthema named its klas,
+    /// a nonsense leeftijd was merely untidy: the KlasId still said whose it was. Now the leeftijd is the entire
+    /// scope, so a subthema stored as "5-6" is not a subthema with an odd label, it is a subthema no class can
+    /// ever reach. Refusing it at the door is the only place that costs nothing.
+    /// </para>
+    /// </summary>
+    private static void VereisLeeftijd(string leeftijd)
     {
-        if (klasId == Guid.Empty)
+        if (!Jaarfasen.IsBekend(leeftijd?.Trim()))
         {
-            // Art. IX.2 makes the class scope structural for a subthema. Same reasoning as above: the rule
-            // stays in the comment, the sentence says what the reader has to do.
-            throw new SchoolcontentValidatieFout("Een subthema hoort altijd bij één klas. Kies eerst een klas.");
-        }
-
-        var bestaat = await _context.Klassen.AsNoTracking().AnyAsync(k => k.Id == klasId, cancellationToken);
-        if (!bestaat)
-        {
-            // The id is deliberately left out: a raw GUID is not a sentence a teacher can act on, and the
-            // caller already knows which id it sent. Same correction as the 404-on-delete case in the UI.
-            throw new SchoolcontentValidatieFout("Die klas bestaat niet meer. Kies een klas uit de lijst.");
+            throw new SchoolcontentValidatieFout(
+                $"'{leeftijd}' is geen geldige leeftijd. Kies er een uit: {string.Join(", ", Jaarfasen.Alle)}.");
         }
     }
 
@@ -899,7 +928,6 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         subthema.ThemaId,
         subthema.Naam,
         subthema.DuurWeken,
-        subthema.KlasId,
         subthema.Leeftijd,
         subthema.Onderzoeksvragen.Select(MapOnderzoeksvraag).ToList(),
         subthema.Subdoelen.Select(MapSubdoel).ToList(),

@@ -1,6 +1,6 @@
 # Beslissingen die we nodig hebben van de directie
 
-*Bijgewerkt: 19 augustus 2026. Bedoeld om door te sturen: geen technische kennis vereist.*
+*Bijgewerkt: 30 augustus 2026. Bedoeld om door te sturen: geen technische kennis vereist.*
 
 Hieronder staan de vragen waarop we een antwoord nodig hebben om verder te kunnen bouwen. Ze staan op volgorde van dringendheid. Bij elke vraag staat waarom ze belangrijk is en wat er gebeurt zolang ze open blijft.
 
@@ -116,6 +116,32 @@ Sinds deze maand krijgt een leerkracht die een leerplandoel opzoekt standaard de
 - **Antwoord A — tegenhouden.** De tool weigert de klas te verwijderen zolang er nog activiteiten op dagen staan, en zegt wat er eerst weg moet. Nadeel: er is een omweg waarlangs inhoud van een *andere* klas onder deze klas terecht kan komen, en dan kan een directie een klas niet meer verwijderen om iets wat ze zelf niet heeft gepland en misschien niet ziet.
 - **Antwoord B — laten gebeuren, maar het zeggen.** Verwijderen mag, en de tool waarschuwt vooraf hoeveel ingeplande activiteiten daarmee verdwijnen. Nadeel: werk van een leerkracht verdwijnt op één bevestiging.
 - **Wat wij zouden doen als u niets zegt:** antwoord A, want de tool hoort nooit uit zichzelf werk van een leerkracht weg te gooien. Maar de omweg hierboven maakt dat minder duidelijk dan het klinkt, en daarom leggen we het voor.
+
+---
+
+## 10. Streefwoordenschat: is dat een derde lijst, of de rijke woordenschat per leeftijd?
+
+**Deze vraag is er een voor de leerkrachten zelf.** Ze gaat niet over de tool maar over wat u met een woord bedoelt, en dat kunnen alleen zij beantwoorden. U mag ze gerust doorgeven aan het team.
+
+**Waar het over gaat.** In de vergadering vroeg u om *streefwoordenschat*: de woordenschat die je nastreeft, aangeduid op het **subthema**, aanklikbaar vanuit de agenda en daar ook meteen aanpasbaar. Wij kunnen dat bouwen. Wat we niet zelf kunnen invullen, is of streefwoordenschat een **nieuw soort lijst** is, of een **andere naam** voor iets wat er al staat.
+
+**Wat de tool vandaag al bijhoudt.** Per **thema** staan er twee woordenlijsten, en die gelden allebei voor de hele school:
+
+| Lijst | Betekent vandaag |
+| --- | --- |
+| Kernwoordenschat | de basiswoorden waar elk kind mee eindigt |
+| Rijke woordenschat | de rijkere themawoorden, de uitdaging |
+
+Onder een thema hangen de **subthema's**, en die zijn per **leeftijd**: een subthema van K3 geldt voor elke klas die K3 geeft. Op dat niveau staat vandaag nog geen woordenlijst.
+
+- **Antwoord A: het is een derde lijst.** Kernwoordenschat is waar iedereen mee eindigt, rijke woordenschat is de uitdaging van het thema, en streefwoordenschat is wat u in deze twee weken bij deze leeftijd echt wil bereiken. Drie lijsten dus, met drie verschillende betekenissen.
+- **Antwoord B: het is de rijke woordenschat, maar dan fijner.** Er komt geen lijst bij. De rijke woordenschat verhuist van het thema naar het subthema, zodat elke leeftijd zijn eigen versie krijgt. Het thema houdt alleen kernwoordenschat over.
+
+**Wat wij intussen bouwen, en waarom.** De projecteigenaar koos op 30 augustus voor **antwoord A**, en wij bouwen daarop verder. Dat is met opzet de voorzichtige keuze: antwoord A zet er iets bij en raakt niets aan, dus als u later B zegt, is er niets kwijt. Bij B zouden we elke bestaande rijke woordenschat moeten uitsplitsen over de subthema's, en dat is niet meer terug te draaien.
+
+**Eén gevolg willen we u niet stil laten passeren.** Sinds eind augustus hangt een subthema aan een **leeftijd**, niet meer aan één klas. Dat was een verbetering: twee K3-klassen moesten daarvoor elk hun eigen kopie van hetzelfde subthema maken. Maar het betekent ook dat de streefwoordenschat van een K3-subthema **gedeeld** is. Past de juf van K3 groen de lijst aan in haar agenda, dan verandert ze ook voor K3 blauw. De tool zal dat op het scherm zeggen voor er iets bewaard wordt.
+
+- **De vraag daarbij:** is dat wat u wil? Een gedeelde lijst betekent dat het team samen afspreekt welke woorden een leeftijd nastreeft. Wil u in de plaats daarvan dat elke leerkracht een **eigen** lijst heeft, zeg dat dan nu: dat is een andere opbouw en die is achteraf een pak duurder dan vooraf.
 
 ---
 

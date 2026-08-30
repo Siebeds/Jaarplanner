@@ -95,9 +95,9 @@ public sealed class Schooljaar
     /// The Op.stap jaar/fase the class teaches, or null. See <see cref="Klas.Jaarfase"/>: it is what lets a
     /// kleuterklas be measured against its own kleuterjaar instead of all three.
     /// </param>
-    public Klas VoegKlasToe(string naam, int leerjaar, string? jaarfase = null)
+    public Klas VoegKlasToe(string naam, string jaarfase)
     {
-        var klas = new Klas(Id, naam, leerjaar, jaarfase);
+        var klas = new Klas(Id, naam, jaarfase);
         _klassen.Add(klas);
 
         return klas;

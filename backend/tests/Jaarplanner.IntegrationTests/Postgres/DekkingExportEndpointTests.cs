@@ -291,7 +291,20 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
     /// A school year with one kleutergroep and three leerplandoelen: two in the class's own scope and one L6, so the
     /// scope is observable over HTTP rather than only in a unit test.
     /// </summary>
-    private async Task<Guid> ZetKlasOpAsync(int leerjaar = 0)
+    /// <param name="jaarfase">
+    /// The jaar/fase the class records, or <c>null</c> for a class that records none.
+    /// <para>
+    /// <b>Null builds a row the constructor can no longer produce, deliberately.</b> Since 2026-08-30 a
+    /// <c>Klas</c> requires one of the nine codes, so the ordinal fallback (<c>Jaarfasen.VoorLeerjaar</c>) is
+    /// reachable only for rows that predate that rule. Those rows exist: the migration left a class whose age
+    /// could not be derived exactly as it was, and the Instellingen screen has a state that calls them out. The
+    /// fallback is therefore still live code and still has to be tested, and the honest way to reach it is to
+    /// write the legacy shape the way the database holds it rather than to keep a constructor overload alive
+    /// for the tests.
+    /// </para>
+    /// </param>
+    /// <param name="legacyLeerjaar">The ordinal such a row carries. Ignored unless <paramref name="jaarfase"/> is null.</param>
+    private async Task<Guid> ZetKlasOpAsync(string? jaarfase = null, int legacyLeerjaar = 0)
     {
         await using var context = _db.MaakContext();
 
@@ -315,10 +328,19 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
             $"2026-2027-{Guid.NewGuid():N}"[..20],
             new DateOnly(2026, 9, 1),
             new DateOnly(2027, 6, 30));
-        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", leerjaar);
+        // A placeholder when the caller wants the legacy shape: the row is written through the domain, then
+        // put back into the state a pre-2026-08-30 class is in. Writing it any other way would mean bypassing
+        // the constructor's own validation for every class in this file, not just the two that need it.
+        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", jaarfase ?? "K3");
         context.Schooljaren.Add(schooljaar);
 
         await context.SaveChangesAsync();
+
+        if (jaarfase is null)
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"""UPDATE klassen SET "Jaarfase" = NULL, "Leerjaar" = {legacyLeerjaar} WHERE "Id" = {klas.Id}""");
+        }
 
         return klas.Id;
     }

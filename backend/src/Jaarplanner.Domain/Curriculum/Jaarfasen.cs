@@ -87,8 +87,13 @@ public static class Jaarfasen
         IsBekend(jaarfase) ? [jaarfase!] : VoorLeerjaar(leerjaar);
 
     /// <summary>
-    /// What is wrong with a class claiming <paramref name="jaarfase"/> next to <paramref name="leerjaar"/>, in Dutch,
-    /// or null when nothing is.
+    /// What is wrong with a class claiming <paramref name="jaarfase"/>, in Dutch, or null when nothing is.
+    /// <para>
+    /// <b>Blank is now an error, and the contradiction check is gone</b> (owner ruling, 2026-08-30). Both changes
+    /// follow from the same thing: the jaar/fase is the only level a class states, and <c>Leerjaar</c> is derived
+    /// from it. There is nothing left for it to contradict, and "the school has not said" stopped being a state a
+    /// new or edited class may be in.
+    /// </para>
     /// <para>
     /// <b>The rule lives here so both layers can apply it without restating it.</b> The idiom this codebase already
     /// uses (see <c>WeekplanningService</c>) is that the aggregate refuses programmer error and the service refuses
@@ -100,24 +105,45 @@ public static class Jaarfasen
     /// before this field did.
     /// </para>
     /// </summary>
-    public static string? WatIsErMisMet(string? jaarfase, int leerjaar)
+    /// <summary>
+    /// The <c>Leerjaar</c> ordinal a jaar/fase code implies: <c>0</c> for the three kleuter jaren, 1 to 6 for L1
+    /// to L6.
+    /// <para>
+    /// <b>The direction of derivation reversed on 2026-08-30, and that is the point of this method.</b> A klas used
+    /// to be told its leerjaar and the code was worked out from it, which could not say WHICH kleuterjaar a
+    /// kleutergroep was and is why <c>Klas.Jaarfase</c> had to exist alongside it. The school now states the age and
+    /// the ordinal follows, so the two can no longer disagree: for L1 to L6 they were the same fact twice, and for
+    /// kleuter the ordinal was strictly the weaker half.
+    /// </para>
+    /// <para>
+    /// The ordinal is kept because things other than scoping still use it: the klassenlijst sorts on it and the
+    /// generation prompt names it. Nothing asks a human for it any more.
+    /// </para>
+    /// </summary>
+    /// <exception cref="ArgumentException">The code is not one of the nine. Callers validate first.</exception>
+    public static int LeerjaarVoor(string jaarfase)
+    {
+        var code = jaarfase?.Trim() ?? string.Empty;
+        if (Kleuter.Contains(code, StringComparer.Ordinal))
+        {
+            return 0;
+        }
+
+        var index = Lager.ToList().IndexOf(code);
+        return index >= 0
+            ? index + 1
+            : throw new ArgumentException($"'{jaarfase}' is geen bekende jaar/fase.", nameof(jaarfase));
+    }
+
+    public static string? WatIsErMisMet(string? jaarfase)
     {
         if (string.IsNullOrWhiteSpace(jaarfase))
         {
-            return null;
+            return "Kies een leeftijd: JK, K2, K3 of L1 tot L6.";
         }
 
-        var code = jaarfase.Trim();
-        if (!IsBekend(code))
-        {
-            return $"'{code}' is geen bekende jaar/fase. Kies JK, K2, K3 of L1 tot L6.";
-        }
-
-        // A real leerjaar already names its own code, so a value that disagrees is a mistake rather than a
-        // refinement. A kleutergroep has no code to contradict, which is the whole reason the field exists.
-        var uitLeerjaar = leerjaar is >= 1 and <= 6 ? Lager[leerjaar - 1] : null;
-        return uitLeerjaar is not null && !string.Equals(code, uitLeerjaar, StringComparison.Ordinal)
-            ? $"Jaar/fase '{code}' hoort niet bij leerjaar {leerjaar}, dat '{uitLeerjaar}' is."
-            : null;
+        return IsBekend(jaarfase.Trim())
+            ? null
+            : $"'{jaarfase.Trim()}' is geen bekende leeftijd. Kies JK, K2, K3 of L1 tot L6.";
     }
 }

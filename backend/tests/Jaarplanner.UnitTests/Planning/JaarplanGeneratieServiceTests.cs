@@ -48,7 +48,7 @@ public sealed class JaarplanGeneratieServiceTests
             Jaarplan? jaarplan = null)
     {
         schooljaar ??= TestSchooljaar.MetVakanties();
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var themas = new List<Thema> { Herfst(), Water() };
         var opslag = new FakeJaarplanOpslag(klas, schooljaar, themas, jaarplan);
         var client = new FakeAiClient(antwoord);
@@ -127,7 +127,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
 
         var jaarplan = new Jaarplan(klas.Id);
@@ -197,7 +197,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
         var water = Water();
         var vast = new Thema("Kerst", duurWeken: 4);
@@ -243,7 +243,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
         var water = Water();
 
@@ -301,7 +301,7 @@ public sealed class JaarplanGeneratieServiceTests
         // A block whose start date does not survive the edit at all — the case a stored date genuinely goes stale.
         var verdwenen = origineleBlokken.First(o => nieuweBlokken.All(n => n.Start != o.Start));
 
-        var klas = gewijzigd.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = gewijzigd.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
         var jaarplan = new Jaarplan(klas.Id);
         var plaatsing = jaarplan.VoegPlaatsingToe(
@@ -654,7 +654,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
 
         var jaarplan = new Jaarplan(klas.Id);
@@ -681,7 +681,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
 
         var jaarplan = new Jaarplan(klas.Id);
@@ -806,7 +806,7 @@ public sealed class JaarplanGeneratieServiceTests
 
         var verdwenen = origineleBlokken.First(o => nieuweBlokken.All(n => n.Start != o.Start));
 
-        var klas = gewijzigd.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = gewijzigd.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
         var jaarplan = new Jaarplan(klas.Id);
         var plaatsing = jaarplan.VoegPlaatsingToe(
@@ -863,7 +863,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
 
         var jaarplan = new Jaarplan(klas.Id);
@@ -928,7 +928,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
 
         var jaarplan = new Jaarplan(klas.Id);
@@ -970,7 +970,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var herfst = Herfst();
 
         var jaarplan = new Jaarplan(klas.Id);
@@ -1500,7 +1500,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L4 vierde leerjaar", leerjaar: 4);
+        var klas = schooljaar.VoegKlasToe("L4 vierde leerjaar", "L4");
         var opslag = new FakeJaarplanOpslag(klas, schooljaar, [Herfst(), Water()]);
         var service = new JaarplanGeneratieService(new StukkeAiClient(), Indeling, opslag);
 
@@ -1594,7 +1594,7 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Blokken(schooljaar);
-        var klas = schooljaar.VoegKlasToe("L5 vijfde leerjaar", leerjaar: 5);
+        var klas = schooljaar.VoegKlasToe("L5 vijfde leerjaar", "L5");
 
         // Settings written for the same klas but a DIFFERENT school year — the shape a rollover (E8-03) would leave.
         var vorigJaar = new Generatieparameters(klas.Id, Guid.NewGuid());

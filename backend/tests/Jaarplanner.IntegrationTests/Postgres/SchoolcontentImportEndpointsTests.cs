@@ -48,7 +48,7 @@ public sealed class SchoolcontentImportEndpointsTests : IAsyncLifetime
             .ReadFromJsonAsync<Application.Planning.Beheer.SchooljaarWeergave>())!.Id;
 
         var response = await client.PostAsJsonAsync(
-            $"/api/schooljaren/{schooljaarId}/klassen", new { naam = KlasNaam, leerjaar = 1 });
+            $"/api/schooljaren/{schooljaarId}/klassen", new { naam = KlasNaam, jaarfase = "L1" });
         response.EnsureSuccessStatusCode();
     }
 

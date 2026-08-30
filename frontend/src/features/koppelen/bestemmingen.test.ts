@@ -35,7 +35,6 @@ function subthema(naam: string, activiteiten: ActiviteitWeergave[], codes: strin
     themaId: "thema-1",
     naam,
     duurWeken: 2,
-    klasId: "klas-1",
     leeftijd: "K3",
     onderzoeksvragen: [],
     subdoelen: codes.map((code, i) => ({

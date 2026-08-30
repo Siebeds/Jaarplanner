@@ -82,7 +82,7 @@ public sealed class OngekoppeldeDoelenQueryTests
 
             // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
             var schooljaar = TestSchooljaar.Maak();
-            schooljaar.VoegKlasToe("L3", leerjaar: 3);
+            schooljaar.VoegKlasToe("L3", "L3");
             ctx.Schooljaren.Add(schooljaar);
 
             var thema = new Thema("Water", duurWeken: 5);
@@ -91,7 +91,7 @@ public sealed class OngekoppeldeDoelenQueryTests
             thema.VoegThemadoelToe(new DoelKoppeling("VIA-THEMADOEL", KoppelingStatus.Aanvaard, "anchor"));
 
             // A subthema with a manueel subdoel and an aanvaard activiteit link.
-            var subthema = thema.VoegSubthemaToe("Regen", duurWeken: 2, klasId, "K3");
+            var subthema = thema.VoegSubthemaToe("Regen", duurWeken: 2, "K3");
             subthema.VoegSubdoelToe("K3", new DoelKoppeling("VIA-SUBDOEL", KoppelingStatus.Manueel));
             var activiteit = subthema.VoegActiviteitToe("Regenmeter", ActiviteitType.Onderzoek);
             activiteit.VoegDoelkoppelingToe(new DoelKoppeling("VIA-ACTIVITEIT", KoppelingStatus.Aanvaard, "meten"));

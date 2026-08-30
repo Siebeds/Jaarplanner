@@ -36,19 +36,18 @@ public class SchoolContentModelConfigurationTests
         Assert.NotNull(model.FindEntityType(typeof(Activiteit)));
     }
 
+    /// <summary>
+    /// The inverse of the test this replaced, and it is worth having as an assertion rather than as an absence:
+    /// a subthema must have NO foreign key to a klas (Art. IX.2 as amended 2026-08-30). Re-adding one is exactly
+    /// how a well-meaning change would quietly make content one class's again.
+    /// </summary>
     [Fact]
-    public void Subthema_klasId_is_a_required_foreign_key_to_klas()
+    public void Subthema_has_no_foreign_key_to_klas()
     {
         var entity = BuildModel().FindEntityType(typeof(Subthema))!;
 
-        var klasId = entity.FindProperty(nameof(Subthema.KlasId))!;
-        Assert.False(klasId.IsNullable); // class scope cannot be absent (Art. IX.2)
-
-        var fkToKlas = entity.GetForeignKeys()
-            .FirstOrDefault(fk => fk.PrincipalEntityType.ClrType == typeof(Klas));
-        Assert.NotNull(fkToKlas);
-        Assert.Equal(nameof(Subthema.KlasId), fkToKlas!.Properties[0].Name);
-        Assert.True(fkToKlas.IsRequired);
+        Assert.Null(entity.FindProperty("KlasId"));
+        Assert.DoesNotContain(entity.GetForeignKeys(), fk => fk.PrincipalEntityType.ClrType == typeof(Klas));
     }
 
     [Fact]
@@ -59,13 +58,12 @@ public class SchoolContentModelConfigurationTests
     }
 
     [Fact]
-    public void Subthema_has_a_klas_age_scoping_index()
+    public void Subthema_has_an_age_scoping_index()
     {
         var entity = BuildModel().FindEntityType(typeof(Subthema))!;
         var index = entity.GetIndexes().FirstOrDefault(i =>
-            i.Properties.Count == 2 &&
-            i.Properties[0].Name == nameof(Subthema.KlasId) &&
-            i.Properties[1].Name == nameof(Subthema.Leeftijd));
+            i.Properties.Count == 1 &&
+            i.Properties[0].Name == nameof(Subthema.Leeftijd));
         Assert.NotNull(index);
     }
 

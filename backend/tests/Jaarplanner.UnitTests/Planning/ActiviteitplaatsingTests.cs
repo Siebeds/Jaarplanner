@@ -26,7 +26,7 @@ public sealed class ActiviteitplaatsingTests
         var jaarplan = PlanVoor(klasId);
         var activiteitId = Guid.NewGuid();
 
-        var plaatsing = jaarplan.PlaatsActiviteit(activiteitId, klasId, Maandag, KoppelingStatus.Manueel, volgorde: 2);
+        var plaatsing = jaarplan.PlaatsActiviteit(activiteitId, Maandag, KoppelingStatus.Manueel, volgorde: 2);
 
         Assert.Equal(activiteitId, plaatsing.ActiviteitId);
         Assert.Equal(Maandag, plaatsing.Datum);
@@ -76,29 +76,31 @@ public sealed class ActiviteitplaatsingTests
     }
 
     /// <summary>
-    /// Art. IX.2 makes the class scope structural, and this is the only place both classes are known — an
-    /// <c>Activiteit</c> knows its subthema, and the klas lives one level up.
+    /// <b>The aggregate accepts any activiteit now, and that is the change rather than a gap in this suite.</b>
+    /// Art. IX.2 was amended on 2026-08-30: an activiteit inherits its subthema's LEEFTIJD and no longer belongs
+    /// to a klas, so there is nothing here for <c>Jaarplan</c> to compare against its own <c>KlasId</c>. Deciding
+    /// whether this plan's class teaches that age needs <c>Jaarfasen</c> and the <c>Klas</c> row, which an
+    /// aggregate may not reach for.
     /// <para>
-    /// Guarded here rather than assumed because <b>E1-19 exists precisely because this boundary was left open by a
-    /// second route</b>: <c>Subthema.WijzigScope</c> still carries every activiteit across a class boundary.
+    /// The check therefore lives only in <c>WeekplanningService</c>, and
+    /// <c>WeekplanningServiceTests.Een_activiteit_van_een_andere_leeftijd_wordt_geweigerd_voor_de_dagcontrole</c>
+    /// is the test that holds it. This one asserts the removal deliberately, so that re-adding a klas comparison
+    /// here fails rather than passes quietly.
+    /// </para>
+    /// <para>
+    /// <b>E1-19 is closed by the same amendment</b>, not by a fix: it was filed because
+    /// <c>Subthema.WijzigScope</c> carried activiteiten across a class boundary. There is no class boundary left.
     /// </para>
     /// </summary>
     [Fact]
-    public void Een_activiteit_van_een_andere_klas_wordt_geweigerd()
+    public void Een_activiteit_wordt_niet_meer_op_klas_geweigerd()
     {
         var jaarplan = PlanVoor(Guid.NewGuid());
 
-        var fout = Assert.Throws<ArgumentException>(() =>
-            jaarplan.PlaatsActiviteit(Guid.NewGuid(), Guid.NewGuid(), Maandag, KoppelingStatus.Manueel));
+        var plaatsing = jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel);
 
-        Assert.Empty(jaarplan.Activiteitplaatsingen);
-
-        // Dutch, and with NO "(Parameter '...')" suffix: the service forwards `Message` as a 400's detail and the form
-        // renders it verbatim, so the paramName overload would put an English developer artefact inside a Dutch
-        // sentence on a teacher's screen. That exact defect was found on these screens in E1-14's round 4, which is
-        // why this asserts the payload rather than only the exception type.
-        Assert.DoesNotContain("Parameter", fout.Message, StringComparison.Ordinal);
-        Assert.Contains("eigen klas", fout.Message, StringComparison.Ordinal);
+        Assert.NotNull(plaatsing);
+        Assert.Single(jaarplan.Activiteitplaatsingen);
     }
 
     /// <summary>
@@ -112,13 +114,13 @@ public sealed class ActiviteitplaatsingTests
         var jaarplan = PlanVoor(klasId);
         var activiteitId = Guid.NewGuid();
 
-        jaarplan.PlaatsActiviteit(activiteitId, klasId, Maandag, KoppelingStatus.Manueel);
-        jaarplan.PlaatsActiviteit(activiteitId, klasId, Donderdag, KoppelingStatus.Manueel);
+        jaarplan.PlaatsActiviteit(activiteitId, Maandag, KoppelingStatus.Manueel);
+        jaarplan.PlaatsActiviteit(activiteitId, Donderdag, KoppelingStatus.Manueel);
 
         Assert.Equal(2, jaarplan.Activiteitplaatsingen.Count);
         Assert.True(jaarplan.IsAlGeplaatstOp(activiteitId, Maandag, 0));
         Assert.Throws<InvalidOperationException>(() =>
-            jaarplan.PlaatsActiviteit(activiteitId, klasId, Maandag, KoppelingStatus.Manueel));
+            jaarplan.PlaatsActiviteit(activiteitId, Maandag, KoppelingStatus.Manueel));
     }
 
     /// <summary>
@@ -132,8 +134,8 @@ public sealed class ActiviteitplaatsingTests
         var jaarplan = PlanVoor(klasId);
         var laatstIngevoerd = Guid.NewGuid();
 
-        jaarplan.PlaatsActiviteit(Guid.NewGuid(), klasId, Maandag, KoppelingStatus.Manueel, volgorde: 5);
-        jaarplan.PlaatsActiviteit(laatstIngevoerd, klasId, Maandag, KoppelingStatus.Manueel, volgorde: 1);
+        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel, volgorde: 5);
+        jaarplan.PlaatsActiviteit(laatstIngevoerd, Maandag, KoppelingStatus.Manueel, volgorde: 1);
 
         Assert.Equal(laatstIngevoerd, jaarplan.Activiteitplaatsingen[0].ActiviteitId);
     }
@@ -153,7 +155,7 @@ public sealed class ActiviteitplaatsingTests
         var klasId = Guid.NewGuid();
         var jaarplan = PlanVoor(klasId);
         var plaatsing = jaarplan.PlaatsActiviteit(
-            Guid.NewGuid(), klasId, Maandag, KoppelingStatus.Voorgesteld, volgorde: 3);
+            Guid.NewGuid(), Maandag, KoppelingStatus.Voorgesteld, volgorde: 3);
 
         plaatsing.VerplaatsNaar(Donderdag, volgorde: 1);
 
@@ -176,7 +178,7 @@ public sealed class ActiviteitplaatsingTests
 
         // 2 November is an ordinary Monday until the school says otherwise.
         var plaatsing = jaarplan.PlaatsActiviteit(
-            Guid.NewGuid(), klasId, new DateOnly(2026, 11, 2), KoppelingStatus.Manueel);
+            Guid.NewGuid(), new DateOnly(2026, 11, 2), KoppelingStatus.Manueel);
         Assert.False(plaatsing.IsOpGeslotenDag(schooljaar));
 
         schooljaar.VoegSluitingToe(
@@ -200,9 +202,9 @@ public sealed class ActiviteitplaatsingTests
         var klasId = Guid.NewGuid();
         var jaarplan = PlanVoor(klasId);
 
-        jaarplan.PlaatsActiviteit(Guid.NewGuid(), klasId, Maandag, KoppelingStatus.Manueel);
-        jaarplan.PlaatsActiviteit(Guid.NewGuid(), klasId, Maandag, KoppelingStatus.Aanvaard, volgorde: 1);
-        jaarplan.PlaatsActiviteit(Guid.NewGuid(), klasId, Donderdag, KoppelingStatus.Voorgesteld);
+        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel);
+        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Aanvaard, volgorde: 1);
+        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Donderdag, KoppelingStatus.Voorgesteld);
 
         Assert.Equal(2, jaarplan.MenselijkBeslotenActiviteitplaatsingen.Count);
     }
@@ -218,7 +220,7 @@ public sealed class ActiviteitplaatsingTests
         var klasId = Guid.NewGuid();
         var eigen = PlanVoor(klasId);
         var ander = PlanVoor(Guid.NewGuid());
-        var vreemde = ander.PlaatsActiviteit(Guid.NewGuid(), ander.KlasId, Maandag, KoppelingStatus.Manueel);
+        var vreemde = ander.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel);
 
         Assert.Throws<InvalidOperationException>(() => eigen.VerwijderActiviteitplaatsing(vreemde));
     }

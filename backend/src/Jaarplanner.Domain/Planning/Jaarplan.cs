@@ -109,27 +109,24 @@ public sealed class Jaarplan
     /// subthema may come back later in the year.
     /// </para>
     /// <para>
-    /// <b>The class boundary is enforced here for the same reason as in
-    /// <see cref="PlaatsActiviteit"/>:</b> a subthema inherits its thema's <c>KlasId</c> (Art. IX.2) and this
-    /// plan has one, and nothing below this method knows both.
+    /// <b>THE CLASS GUARD THAT USED TO BE HERE IS GONE, and this is where a reader should learn it</b>
+    /// (Art. IX.2 as amended 2026-08-30). A subthema used to carry a <c>KlasId</c>, so this plan could compare it
+    /// against its own and refuse another class's content. A subthema now carries a <b>leeftijd</b>, and whether
+    /// this plan's klas teaches that age is a question only <c>Jaarfasen</c> and the <c>Klas</c> row can answer —
+    /// neither of which an aggregate may reach for.
+    /// </para>
+    /// <para>
+    /// <b>The check therefore lives in <c>WeekplanningService</c> alone, and it is no longer backstopped here.</b>
+    /// That is a real reduction in defence and it is deliberate: the alternative was to have the caller pass both
+    /// sides of the comparison, which looks like a guard and cannot fail.
     /// </para>
     /// </summary>
     /// <param name="subthemaId">The subthema to mark off days for.</param>
-    /// <param name="subthemaKlasId">Its class, as loaded by the caller.</param>
     /// <param name="van">First day, inclusive.</param>
     /// <param name="tot">Last day, inclusive.</param>
-    /// <exception cref="ArgumentException">
-    /// The subthema belongs to another class, or the window ends before it starts. Dutch: both reach a
-    /// teacher (Art. II.3).
-    /// </exception>
-    public Subthemaplaatsing PlaatsSubthema(Guid subthemaId, Guid subthemaKlasId, DateOnly van, DateOnly tot)
+    /// <exception cref="ArgumentException">The window ends before it starts. Dutch: it reaches a teacher (Art. II.3).</exception>
+    public Subthemaplaatsing PlaatsSubthema(Guid subthemaId, DateOnly van, DateOnly tot)
     {
-        if (subthemaKlasId != KlasId)
-        {
-            throw new ArgumentException(
-                "Een subthema kan alleen in het jaarplan van haar eigen klas ingepland worden.");
-        }
-
         var bestaand = _subthemaplaatsingen
             .FirstOrDefault(p => p.SubthemaId == subthemaId && p.Overlapt(van, tot));
 
@@ -168,35 +165,24 @@ public sealed class Jaarplan
     /// </para>
     /// </summary>
     /// <param name="activiteitId">The activiteit to place.</param>
-    /// <param name="activiteitKlasId">
-    /// The klas the activiteit belongs to, resolved by the caller from its subthema. Passed in rather than looked up
-    /// because a domain aggregate does not reach across to another one.
-    /// </param>
     /// <param name="datum">The day it happens.</param>
     /// <param name="status">The human-in-the-loop status (Art. IV.2); a teacher's own placement is Manueel.</param>
     /// <param name="volgorde">Position within the day.</param>
-    /// <exception cref="ArgumentException">
-    /// The activiteit belongs to another klas. <b>Dutch, and deliberately with no <c>paramName</c></b>: the overload
-    /// that takes one appends "(Parameter '…')" to <c>Message</c>, the service forwards that message as the 400's
-    /// <c>detail</c>, and the form renders it verbatim — which is how an English developer artefact ends up inside a
-    /// Dutch sentence on a teacher's screen. That exact defect was found on these screens in E1-14's round 4.
-    /// </exception>
     /// <exception cref="InvalidOperationException">
     /// The activiteit is already on that day. A caller that has not checked <see cref="IsAlGeplaatstOp"/> is a
     /// programmer error rather than teacher input, so this one is English (Art. II.2) and no handler maps it.
     /// </exception>
+    /// <remarks>
+    /// <b>No class guard, since 2026-08-30.</b> An activiteit inherits its subthema's leeftijd rather than a klas
+    /// (Art. IX.2), so there is nothing here to compare against <see cref="KlasId"/>. <c>WeekplanningService</c>
+    /// checks that this plan's klas teaches that age; see the note on <see cref="PlaatsSubthema"/>.
+    /// </remarks>
     public Activiteitplaatsing PlaatsActiviteit(
         Guid activiteitId,
-        Guid activiteitKlasId,
         DateOnly datum,
         KoppelingStatus status,
         int volgorde = 0)
     {
-        if (activiteitKlasId != KlasId)
-        {
-            throw new ArgumentException("Een activiteit kan alleen in het jaarplan van haar eigen klas gepland worden.");
-        }
-
         if (IsAlGeplaatstOp(activiteitId, datum, volgorde))
         {
             throw new InvalidOperationException(

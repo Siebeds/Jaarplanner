@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 
@@ -52,13 +53,14 @@ public sealed class WeekplanningService : IWeekplanningService
         // the thing they can act on: the activiteit is the wrong one whatever day they pick, while the day is only
         // wrong for this one attempt. Same ordering logic as the four guards in `VoegPlaatsingToeAsync`.
         //
-        // The comparison itself is the aggregate's invariant too (`Jaarplan.PlaatsActiviteit` refuses it), and it is
-        // checked here as well rather than relying on that: the aggregate throws a bare ArgumentException, and letting
-        // it through would hand the teacher whichever sentence the domain happened to carry instead of this feature's
-        // own. The domain guard stays as the backstop for a caller that skips this service.
-        if (inhoud.KlasId != klas.Id)
+        // **THIS IS NOW THE ONLY PLACE THE SCOPE IS CHECKED.** It used to be doubled by
+        // `Jaarplan.PlaatsActiviteit`, which compared two KlasIds; a subthema carries a leeftijd rather than a klas
+        // since 2026-08-30 (Art. IX.2), and whether this klas teaches that age needs `Jaarfasen` and the Klas row,
+        // neither of which an aggregate may reach for. So the domain backstop is gone and this check carries it
+        // alone.
+        if (!GeeftLeeftijd(klas, inhoud.Leeftijd))
         {
-            throw OngeldigeDagplanningFout.ActiviteitHoortBijAndereKlas();
+            throw OngeldigeDagplanningFout.ActiviteitHoortBijAndereLeeftijd(inhoud.Leeftijd);
         }
 
         VereisLesdag(schooljaar, datum);
@@ -74,7 +76,7 @@ public sealed class WeekplanningService : IWeekplanningService
             throw OngeldigeDagplanningFout.ActiviteitStaatErAl(datum, volgorde + 1);
         }
 
-        jaarplan.PlaatsActiviteit(activiteitId, inhoud.KlasId, datum, KoppelingStatus.Manueel, volgorde);
+        jaarplan.PlaatsActiviteit(activiteitId, datum, KoppelingStatus.Manueel, volgorde);
         await _opslag.BewaarAsync(cancellationToken);
 
         return await ProjecteerWeekAsync(klas, schooljaar, jaarplan, datum, cancellationToken);
@@ -92,11 +94,11 @@ public sealed class WeekplanningService : IWeekplanningService
         var inhoud = (await _opslag.LaadSubthemainhoudAsync([subthemaId], cancellationToken)).FirstOrDefault()
             ?? throw new SchoolcontentNietGevondenFout($"Subthema {subthemaId} is niet gevonden.");
 
-        // The class first, as in PlanActiviteitAsync and for the same reason: a subthema belonging to another class is
-        // wrong whatever dates are picked, while the dates are only wrong for this attempt.
-        if (inhoud.KlasId != klas.Id)
+        // The age first, as in PlanActiviteitAsync and for the same reason: a subthema for an age this class does
+        // not teach is wrong whatever dates are picked, while the dates are only wrong for this attempt.
+        if (!GeeftLeeftijd(klas, inhoud.Leeftijd))
         {
-            throw OngeldigeDagplanningFout.SubthemaHoortBijAndereKlas();
+            throw OngeldigeDagplanningFout.SubthemaHoortBijAndereLeeftijd(inhoud.Leeftijd);
         }
 
         if (tot < van)
@@ -116,7 +118,7 @@ public sealed class WeekplanningService : IWeekplanningService
         // elsewhere — no activiteit can be placed on it — so the window says "this subthema runs here" without
         // claiming every day in it is a teaching day.
         var jaarplan = await LaadOfMaakJaarplanAsync(klasId, cancellationToken);
-        jaarplan.PlaatsSubthema(subthemaId, inhoud.KlasId, van, tot);
+        jaarplan.PlaatsSubthema(subthemaId, van, tot);
         await _opslag.BewaarAsync(cancellationToken);
 
         return await ProjecteerAsync(klas, schooljaar, jaarplan, van, tot, cancellationToken);
@@ -176,6 +178,22 @@ public sealed class WeekplanningService : IWeekplanningService
     /// each: a closure has a name and a remedy ("pick another day"), while a date outside the year means they are
     /// looking at the wrong school year.
     /// </summary>
+    /// <summary>
+    /// Whether <paramref name="klas"/> teaches <paramref name="leeftijd"/>, and therefore whether content scoped to
+    /// that age may go into its plan (Art. IX.2 as amended 2026-08-30).
+    /// <para>
+    /// <b>A class whose ages cannot be derived teaches all of them here.</b> <c>Jaarfasen.VoorKlas</c> answers
+    /// <c>null</c> for the unresolved graadklas ordinal (Art. XIV), and refusing everything for such a class would
+    /// make its plan unfillable — a far worse failure than letting a teacher place something odd. It is the same
+    /// widening the thema view and the dekking layers make for the same class, so the three agree.
+    /// </para>
+    /// </summary>
+    private static bool GeeftLeeftijd(Klas klas, string leeftijd)
+    {
+        var codes = Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase);
+        return codes is null || codes.Contains(leeftijd, StringComparer.Ordinal);
+    }
+
     private static void VereisLesdag(Schooljaar schooljaar, DateOnly datum)
     {
         if (datum < schooljaar.Start || datum > schooljaar.Eind)

@@ -27,11 +27,16 @@ public sealed class KlasBeheerService : IKlasBeheerService
     /// <inheritdoc />
     public async Task<IReadOnlyList<KlasWeergave>> HaalKlassenOpAsync(CancellationToken cancellationToken = default)
     {
-        // One grouped count instead of N+1: the subthema tallies for every class in a single query.
-        var subthemaAantallen = await _context.Subthemas
-            .GroupBy(s => s.KlasId)
-            .Select(g => new { KlasId = g.Key, Aantal = g.Count() })
-            .ToDictionaryAsync(x => x.KlasId, x => x.Aantal, cancellationToken);
+        // One grouped count instead of N+1, now keyed on LEEFTIJD rather than on klas.
+        //
+        // A subthema stopped naming a klas on 2026-08-30 (Art. IX.2), so "how many subthema's does this class
+        // have" has no row to count any more. What the klassenlijst can still answer, and what a reader of it
+        // actually wants, is how much content this class INHERITS from the age it teaches. Two K3 classes now
+        // report the same number, which is the correct answer and would have been wrong yesterday.
+        var perLeeftijd = await _context.Subthemas
+            .GroupBy(s => s.Leeftijd)
+            .Select(g => new { Leeftijd = g.Key, Aantal = g.Count() })
+            .ToDictionaryAsync(x => x.Leeftijd, x => x.Aantal, cancellationToken);
 
         var klassen = await _context.Klassen
             .OrderBy(k => k.Leerjaar)
@@ -44,7 +49,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
                 k.SchooljaarId,
                 k.Naam,
                 k.Leerjaar,
-                subthemaAantallen.TryGetValue(k.Id, out var aantal) ? aantal : 0,
+                TelVoor(k, perLeeftijd),
                 JaarFasenVoor(k),
                 k.Jaarfase,
                 MogelijkeJaarfasenVoor(k)))
@@ -55,7 +60,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
     public async Task<KlasWeergave> HaalKlasOpAsync(Guid klasId, CancellationToken cancellationToken = default)
     {
         var klas = await VindKlasAsync(klasId, cancellationToken);
-        var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
+        var aantal = await TelSubthemasAsync(klas, cancellationToken);
 
         return new KlasWeergave(
             klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase, MogelijkeJaarfasenVoor(klas));
@@ -70,7 +75,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
         ArgumentNullException.ThrowIfNull(creatie);
 
         var naam = VereisNaam(creatie.Naam);
-        VereisGeldigeJaarfase(creatie.Jaarfase, creatie.Leerjaar);
+        VereisGeldigeJaarfase(creatie.Jaarfase);
         await VereisVrijeNaamAsync(naam, uitgezonderd: null, cancellationToken);
 
         // A klas must live in an existing school year (Art. IX.3 containment, E3-01). Checked here so a bad id is
@@ -80,7 +85,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
             .FirstOrDefaultAsync(s => s.Id == schooljaarId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout($"Schooljaar {schooljaarId} is niet gevonden.");
 
-        var klas = schooljaar.VoegKlasToe(naam, creatie.Leerjaar, creatie.Jaarfase);
+        var klas = schooljaar.VoegKlasToe(naam, creatie.Jaarfase!);
 
         // Registered explicitly as Added. This used to be load-bearing: reaching a new entity only through a
         // navigation of an already-tracked principal made EF apply its "key is set, so it must already exist"
@@ -112,16 +117,16 @@ public sealed class KlasBeheerService : IKlasBeheerService
         ArgumentNullException.ThrowIfNull(wijziging);
 
         var klas = await VindKlasAsync(klasId, cancellationToken);
-        VereisGeldigeJaarfase(wijziging.Jaarfase, wijziging.Leerjaar);
+        VereisGeldigeJaarfase(wijziging.Jaarfase);
         await VereisVrijeNaamAsync(wijziging.Naam, uitgezonderd: klasId, cancellationToken);
 
         // The domain owns the invariant (Klas.Wijzig validates naam once) — the service does not
         // re-implement it, and does not write through EF property metadata, which is a technique
         // reserved for keeping read-only curriculum content unmutatable (Art. III.1).
-        klas.Wijzig(wijziging.Naam, wijziging.Leerjaar, wijziging.Jaarfase);
+        klas.Wijzig(wijziging.Naam, wijziging.Jaarfase!);
         await BewaarAsync(klas.Naam, cancellationToken);
 
-        var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
+        var aantal = await TelSubthemasAsync(klas, cancellationToken);
 
         return new KlasWeergave(
             klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase, MogelijkeJaarfasenVoor(klas));
@@ -132,15 +137,15 @@ public sealed class KlasBeheerService : IKlasBeheerService
     {
         var klas = await VindKlasAsync(klasId, cancellationToken);
 
-        // Report the blocking references as a 400 with a count, rather than letting the Restrict FK
-        // surface as an opaque 500 (in the spirit of ADR-0006 §4 — clear diagnostics rather than raw plumbing).
-        var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
-        if (aantal > 0)
-        {
-            throw new SchoolcontentValidatieFout(
-                $"Klas '{klas.Naam}' heeft nog {aantal} subthema('s) en kan niet verwijderd worden. " +
-                "Verwijder of verplaats eerst die klasgebonden inhoud.");
-        }
+        // **THE SUBTHEMA GUARD IS GONE, AND IT WAS REMOVED RATHER THAN LOST** (Art. IX.2 as amended 2026-08-30).
+        // It refused the delete while any subthema named this klas, because the FK was `Restrict` and deleting
+        // would have orphaned one class's content. A subthema now names an age. Deleting a class takes nothing
+        // from it: the subthema's, their activiteiten and their goal links all survive, and the next class at
+        // that age inherits them. There is nothing left to protect, so refusing would only be a habit.
+        //
+        // What still refuses is the guard below, and it is the one that always mattered more: a class's own
+        // JAARPLAN, with the placements a teacher decided on. That work belongs to nobody else and cascades away
+        // with the row.
 
         // The jaarplan is a CASCADE dependent (JaarplanConfiguration), so without this guard deleting the class
         // would silently destroy the plan and every Themaplaatsing in it — including ones the teacher explicitly
@@ -251,9 +256,9 @@ public sealed class KlasBeheerService : IKlasBeheerService
     /// and only the reaction differs.
     /// </para>
     /// </summary>
-    private static void VereisGeldigeJaarfase(string? jaarfase, int leerjaar)
+    private static void VereisGeldigeJaarfase(string? jaarfase)
     {
-        var mis = Jaarfasen.WatIsErMisMet(jaarfase, leerjaar);
+        var mis = Jaarfasen.WatIsErMisMet(jaarfase);
         if (mis is not null)
         {
             throw new SchoolcontentValidatieFout(mis);
@@ -264,17 +269,21 @@ public sealed class KlasBeheerService : IKlasBeheerService
         Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase) ?? [];
 
     /// <summary>
-    /// The codes a form may offer for this class's <c>Jaarfase</c>, or empty when it must not ask.
+    /// The codes a form may offer for a class's leeftijd: <b>all nine, always</b>.
     /// <para>
-    /// From the <b>leerjaar alone</b>, deliberately: unlike <see cref="JaarFasenVoor"/> this must not narrow to what
-    /// is already recorded, or the field would offer exactly the value it holds and a wrong choice could never be
-    /// corrected. A single answer is not a choice either — an L3 class has "L3" and nothing to pick from — so only a
-    /// set of more than one is offered, which today is the kleutergroep and is precisely the case the field exists
-    /// for.
+    /// <b>It used to depend on the leerjaar and is now constant, which is the visible half of the 2026-08-30
+    /// ruling.</b> While the leerjaar was stated first, an L1 to L6 class had nothing left to choose (its ordinal
+    /// already named the code) and only a kleutergroep was asked, so this answered a set for one case and empty for
+    /// the other. The leerjaar is now DERIVED from the leeftijd, so the leeftijd is what every class is asked and
+    /// every code is on offer.
+    /// </para>
+    /// <para>
+    /// Still served from here rather than spelled out in the browser, for the reason it always was: <c>Jaarfasen</c>
+    /// is domain vocabulary, and a list of nine strings in TypeScript would be a second answer to what a class may
+    /// teach.
     /// </para>
     /// </summary>
-    private static IReadOnlyList<string> MogelijkeJaarfasenVoor(Klas klas) =>
-        Jaarfasen.VoorLeerjaar(klas.Leerjaar) is { Count: > 1 } keuzes ? keuzes : [];
+    private static IReadOnlyList<string> MogelijkeJaarfasenVoor(Klas klas) => Jaarfasen.Alle;
 
     private async Task<Klas> VindKlasAsync(Guid klasId, CancellationToken cancellationToken)
     {
@@ -326,6 +335,31 @@ public sealed class KlasBeheerService : IKlasBeheerService
     /// Saves, translating a unique-index violation on the class name into the same friendly validation
     /// fault the pre-check raises. Covers the concurrent-POST race the pre-check cannot.
     /// </summary>
+    /// <summary>
+    /// How many subthema's a klas inherits: the ones at the ages it teaches.
+    /// <para>
+    /// A class whose ages cannot be derived (the graadklas, Art. XIV) counts <b>every</b> subthema, matching what
+    /// its thema view will actually show it. A count that disagreed with the screen it labels would be worse than
+    /// no count.
+    /// </para>
+    /// </summary>
+    private async Task<int> TelSubthemasAsync(Klas klas, CancellationToken cancellationToken)
+    {
+        var codes = Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase);
+        return codes is null
+            ? await _context.Subthemas.CountAsync(cancellationToken)
+            : await _context.Subthemas.CountAsync(s => codes.Contains(s.Leeftijd), cancellationToken);
+    }
+
+    /// <summary>The same tally as <see cref="TelSubthemasAsync"/>, read out of one grouped query.</summary>
+    private static int TelVoor(Klas klas, IReadOnlyDictionary<string, int> perLeeftijd)
+    {
+        var codes = Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase);
+        return codes is null
+            ? perLeeftijd.Values.Sum()
+            : codes.Sum(code => perLeeftijd.TryGetValue(code, out var aantal) ? aantal : 0);
+    }
+
     private async Task BewaarAsync(string naam, CancellationToken cancellationToken)
     {
         try

@@ -50,6 +50,23 @@ export function IcoonThemas(props: IconProps) {
   );
 }
 
+/**
+ * Instellingen: two rails with a knob on each, not a cog.
+ *
+ * A cog says "machinery", and nothing behind this destination is machinery: it is where the school
+ * states what its klassen are. Rails set to different positions say "these are the values you set
+ * here", which is what the screen does.
+ */
+export function IcoonInstellingen(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4 8.5h16M4 15.5h16" />
+      <circle cx="9.5" cy="8.5" r="2.25" />
+      <circle cx="15" cy="15.5" r="2.25" />
+    </Icoon>
+  );
+}
+
 /** Plan: a year band with one period marked. The signature of this app, at 24px. */
 export function IcoonPlan(props: IconProps) {
   return (

@@ -80,7 +80,9 @@ internal sealed class SchoolcontentWorkbookBuilder
         string? subthemaNaam = "Bladeren",
         string? subthemaDuurWeken = "2",
         string? klas = "K3",
-        string? leeftijd = "5-6",
+        // A real Op.stap jaar/fase code, not the "5-6" this used to be. A subthema is scoped by leeftijd alone
+        // since 2026-08-30 (Art. IX.2), so free text no longer identifies anything and the importer refuses it.
+        string? leeftijd = "K3",
         string? probleemstelling = null,
         string? onderzoeksvraag = null,
         string? subdoelen = null,

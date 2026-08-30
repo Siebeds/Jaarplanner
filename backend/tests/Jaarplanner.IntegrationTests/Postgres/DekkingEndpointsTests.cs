@@ -81,7 +81,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         // The owner ruling of 2026-08-04 over the wire, and specifically that the DEFAULT does the scoping: an
         // omitted parameter must give the ruled answer, not E5-01's unscoped one. Asserted here rather than only in
         // the unit tests because the thing that can silently be wrong is the model binding of the default.
-        var klasId = await ZetKlasOpAsync(leerjaar: 0);
+        var klasId = await ZetKlasOpAsync();
 
         var dekking = await HaalDekkingAsync(klasId);
 
@@ -100,7 +100,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     public async Task Het_hele_curriculum_is_over_HTTP_een_expliciete_keuze()
     {
         // The escape hatch a directie needs: what the SCHOOL loaded, not what this class is measured against.
-        var klasId = await ZetKlasOpAsync(leerjaar: 0);
+        var klasId = await ZetKlasOpAsync();
 
         var response = await _factory.CreateClient()
             .GetAsync($"/api/klassen/{klasId}/dekking?bereik=HeelCurriculum");
@@ -122,7 +122,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         // The unresolved half of the Art. XIV decision, against a real class row: leerjaar 7 exists in the database
         // (Klas takes any int) and maps to no jaar/fase. The scope must WIDEN, and the payload must admit that the
         // caller did not choose it.
-        var klasId = await ZetKlasOpAsync(leerjaar: 7);
+        var klasId = await ZetKlasOpAsync(legacyLeerjaar: 7);
 
         var dekking = await HaalDekkingAsync(klasId);
 
@@ -138,7 +138,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         // An L3 class in a school that has loaded only kleuterdoelen plus one L6 goal. 0 of 0 is truthful and it is
         // the state a screen could most easily misread as success, so what distinguishes it from an empty database is
         // asserted at the boundary a screen actually reads.
-        var klasId = await ZetKlasOpAsync(leerjaar: 3);
+        var klasId = await ZetKlasOpAsync("L3");
 
         var dekking = await HaalDekkingAsync(klasId);
 
@@ -216,7 +216,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         // JK+K2+K3; DEK-01/DEK-02 are K3 and DEK-L6 is out of scope either way. Narrowing to JK must therefore measure
         // against NOTHING of the two K3 doelen, which is a stronger assertion than narrowing to K3 would be: it proves
         // the parameter reached the query rather than that the answer happened to look right.
-        var klasId = await ZetKlasOpAsync(leerjaar: 0);
+        var klasId = await ZetKlasOpAsync();
 
         var response = await _factory.CreateClient()
             .GetAsync($"/api/klassen/{klasId}/dekking?bereik=EigenJaarFase&jaarFase=JK");
@@ -244,7 +244,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     {
         // A stale or hand-edited link: ignored rather than refused, so the teacher stays on a working screen, and the
         // response says what it actually measured so nothing can claim a narrowing that did not happen.
-        var klasId = await ZetKlasOpAsync(leerjaar: 0);
+        var klasId = await ZetKlasOpAsync();
 
         var dekking = await HaalDekkingAsync($"{klasId}/dekking?bereik=EigenJaarFase&jaarFase=L6");
 
@@ -454,7 +454,20 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     /// A school year with one class and two leerplandoelen, inserted straight through the DbContext because the point
     /// of this file is the read path rather than the write endpoints (which have their own tests).
     /// </summary>
-    private async Task<Guid> ZetKlasOpAsync(int leerjaar = 0)
+    /// <param name="jaarfase">
+    /// The jaar/fase the class records, or <c>null</c> for a class that records none.
+    /// <para>
+    /// <b>Null builds a row the constructor can no longer produce, deliberately.</b> Since 2026-08-30 a
+    /// <c>Klas</c> requires one of the nine codes, so the ordinal fallback (<c>Jaarfasen.VoorLeerjaar</c>) is
+    /// reachable only for rows that predate that rule. Those rows exist: the migration left a class whose age
+    /// could not be derived exactly as it was, and the Instellingen screen has a state that calls them out. The
+    /// fallback is therefore still live code and still has to be tested, and the honest way to reach it is to
+    /// write the legacy shape the way the database holds it rather than to keep a constructor overload alive
+    /// for the tests.
+    /// </para>
+    /// </param>
+    /// <param name="legacyLeerjaar">The ordinal such a row carries. Ignored unless <paramref name="jaarfase"/> is null.</param>
+    private async Task<Guid> ZetKlasOpAsync(string? jaarfase = null, int legacyLeerjaar = 0)
     {
         await using var context = _db.MaakContext();
 
@@ -482,10 +495,19 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
             $"2026-2027-{Guid.NewGuid():N}"[..20],
             new DateOnly(2026, 9, 1),
             new DateOnly(2027, 6, 30));
-        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", leerjaar);
+        // A placeholder when the caller wants the legacy shape: the row is written through the domain, then
+        // put back into the state a pre-2026-08-30 class is in. Writing it any other way would mean bypassing
+        // the constructor's own validation for every class in this file, not just the two that need it.
+        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", jaarfase ?? "K3");
         context.Schooljaren.Add(schooljaar);
 
         await context.SaveChangesAsync();
+
+        if (jaarfase is null)
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"""UPDATE klassen SET "Jaarfase" = NULL, "Leerjaar" = {legacyLeerjaar} WHERE "Id" = {klas.Id}""");
+        }
 
         return klas.Id;
     }

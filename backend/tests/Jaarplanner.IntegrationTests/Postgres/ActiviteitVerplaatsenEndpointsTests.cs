@@ -304,8 +304,8 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
             $"2026-2027-{Guid.NewGuid():N}"[..20],
             new DateOnly(2026, 9, 1),
             new DateOnly(2027, 6, 30));
-        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", leerjaar: 0);
-        var andere = schooljaar.VoegKlasToe($"L1-{Guid.NewGuid():N}", leerjaar: 1);
+        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", "K3");
+        var andere = schooljaar.VoegKlasToe($"L1-{Guid.NewGuid():N}", "L1");
         context.Schooljaren.Add(schooljaar);
 
         await context.SaveChangesAsync();

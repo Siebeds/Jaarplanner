@@ -4,7 +4,7 @@ import { Knop } from "../../components/ui/Knop";
 import { Invoer, Keuze } from "../../components/ui/Veld";
 import { IcoonKruis, IcoonPlus } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
-import { useKlassen } from "../../lib/queries";
+import { useJaarfasen } from "../../lib/queries";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import type { SubthemaWeergave } from "../../lib/types";
@@ -13,14 +13,28 @@ import type { OnderzoeksvraagInvoer, SubthemaInvoer } from "./mutaties";
 /**
  * Making or changing a subthema (FR-3.2).
  *
- * **Klas and leeftijd are required and they are the first thing asked.** A subthema cannot exist
- * school-wide (Art. IX.2): it is one class's derivation of a thema, at one age. The server rejects a
- * blank scope, so the form asks for it before anything else rather than letting a teacher fill in a
- * name and then discover the subthema had nowhere to live.
+ * **The leeftijd is required and it is the first thing asked.** A subthema cannot exist without an
+ * age (Art. IX.2 as amended 2026-08-30): it is the school's content FOR a year group, and it holds
+ * for every klas that teaches that year. The server rejects a blank or unknown age, so the form asks
+ * for it before anything else rather than letting a teacher fill in a name and then discover the
+ * subthema had nowhere to live.
  *
- * **The leeftijd options come from the chosen klas.** A klas carries the jaar/fasen it covers, so a
- * graadklas offers more than one and a single-year class offers one. Listing all nine everywhere
- * would invite a subthema at an age the class does not have.
+ * **The klas field is gone, and its absence is the change** (owner, 2026-08-30). It used to sit
+ * beside the leeftijd and made the subthema one class's, so a teacher who built "de speelhoek" under
+ * K3 groen found it unreachable from K3 blauw. A klas is now what a teacher plans IN, on the agenda,
+ * and no longer what content belongs to.
+ *
+ * **That change is NOT explained on the screen**, and the attempt to do so was cut by the owner the
+ * same day: two sentences under this select saying a subthema belongs to an age rather than a class.
+ * They were written for teachers used to the old field, which is a need that lasts a week, and they
+ * were sitting permanently under a nine-option control that already carries its own label inside a
+ * fieldset headed VOOR WIE. Explanatory prose is the first thing this interface cuts.
+ *
+ * **The nine codes come from `GET /api/jaarfasen`**, for the same reason Jaarfasen is not restated
+ * anywhere else in this frontend: a list spelled out here would be a second answer to what a year
+ * group can be. Deliberately NOT read off a klas, which is where they used to come from: a subthema
+ * stopped depending on a klas on 2026-08-30, and a form that needed one to offer its ages would have
+ * kept that dependency alive in the one place it is hardest to see.
  *
  * **Onderzoeksvragen are edited as a whole list.** The API takes them as part of the subthema payload
  * rather than one at a time, so a removed row is removed by saving the subthema. Adding a row that
@@ -45,14 +59,13 @@ export function Subthemaformulier({
   fout?: unknown;
 }) {
   const id = useId();
-  const { data: klassen } = useKlassen();
+  const { data: jaarfasen } = useJaarfasen();
   const [naam, setNaam] = useState(subthema?.naam ?? "");
   const [duur, setDuur] = useState(subthema?.duurWeken ?? 2);
   const [andereDuur, setAndereDuur] = useState(
     subthema && !GEWONE_DUUR.includes(subthema.duurWeken) ? String(subthema.duurWeken) : "",
   );
   const [anders, setAnders] = useState(subthema ? !GEWONE_DUUR.includes(subthema.duurWeken) : false);
-  const [klasId, setKlasId] = useState(subthema?.klasId ?? "");
   const [leeftijd, setLeeftijd] = useState(subthema?.leeftijd ?? "");
   const [vragen, setVragen] = useState<OnderzoeksvraagInvoer[]>(
     (subthema?.onderzoeksvragen ?? []).map((vraag) => ({
@@ -64,15 +77,13 @@ export function Subthemaformulier({
   const [scopeFout, setScopeFout] = useState(false);
 
   const weken = anders ? Number.parseInt(andereDuur, 10) : duur;
-  const gekozenKlas = (klassen ?? []).find((klas) => klas.id === klasId) ?? null;
-  const fasen = gekozenKlas?.jaarFasen ?? [];
+
+  const fasen = jaarfasen ?? [];
 
   function verstuur(event: FormEvent) {
     event.preventDefault();
     const naamLeeg = naam.trim().length === 0;
-    // One check for both halves of the scope: they are one decision, and reporting them separately
-    // would put two sentences under one pair of fields that are always filled in together.
-    const scopeLeeg = klasId === "" || leeftijd.trim().length === 0;
+    const scopeLeeg = leeftijd.trim().length === 0;
     setNaamFout(naamLeeg);
     setScopeFout(scopeLeeg);
     if (naamLeeg || scopeLeeg || !Number.isFinite(weken) || weken < 1) return;
@@ -80,7 +91,6 @@ export function Subthemaformulier({
     onBewaar({
       naam: naam.trim(),
       duurWeken: weken,
-      klasId,
       leeftijd: leeftijd.trim(),
       // A row whose question was emptied is a row the teacher deleted by clearing it.
       onderzoeksvragen: vragen
@@ -115,66 +125,39 @@ export function Subthemaformulier({
       }
     >
       <form id={id} onSubmit={verstuur} className="flex flex-col gap-5">
-        {/* The scope first, because it is the thing that makes this a subthema and not a thema. */}
+        {/* The scope first, because it is the thing that makes this a subthema and not a thema. One field
+            where there were two: the klas left this fieldset on 2026-08-30, so what is left is the age. */}
         <fieldset className="rounded-veld bg-vlak-diep/60 p-3">
           <legend className="px-1 text-micro uppercase text-inkt-zwak">
             {t("subthemabeheer.voorWie")}
           </legend>
-          {/* @md and not @sm: the query container is the panel, but these fields sit inside its 20px
-              padding on both sides, so a breakpoint set at the panel width puts two 192px fields into
-              152px less than that. Measured at 390, where @sm matched and seven elements ran off the
-              right edge. */}
-          <div className="flex flex-col gap-3 @md:flex-row">
-            <div className="min-w-48 flex-1">
-              <label htmlFor={`${id}-klas`} className="text-meta font-medium text-inkt">
-                {t("subthemabeheer.klas")}
-              </label>
-              <Keuze
-                id={`${id}-klas`}
-                value={klasId}
-                disabled={bezig}
-                onChange={(e) => {
-                  setKlasId(e.target.value);
-                  // The old leeftijd may not exist in the new klas, so it is cleared rather than
-                  // carried over into a scope the server would refuse.
-                  setLeeftijd("");
-                  setScopeFout(false);
-                }}
-                className="mt-1.5"
-              >
-                <option value="">{t("subthemabeheer.kiesKlas")}</option>
-                {(klassen ?? []).map((klas) => (
-                  <option key={klas.id} value={klas.id}>
-                    {klas.naam}
-                  </option>
-                ))}
-              </Keuze>
-            </div>
-
-            <div className="min-w-48 flex-1">
-              <label htmlFor={`${id}-leeftijd`} className="text-meta font-medium text-inkt">
-                {t("subthemabeheer.leeftijd")}
-              </label>
+          <div className="min-w-48">
+            <label htmlFor={`${id}-leeftijd`} className="text-meta font-medium text-inkt">
+              {t("subthemabeheer.leeftijd")}
+            </label>
+            {fasen.length === 0 ? (
+              <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
+                {t("klasbeheer.leeftijdenOnbekend")}
+              </p>
+            ) : (
               <Keuze
                 id={`${id}-leeftijd`}
                 value={leeftijd}
-                disabled={bezig || klasId === ""}
+                disabled={bezig}
                 onChange={(e) => {
                   setLeeftijd(e.target.value);
                   setScopeFout(false);
                 }}
                 className="mt-1.5"
               >
-                <option value="">
-                  {klasId === "" ? t("subthemabeheer.eerstKlas") : t("subthemabeheer.kiesLeeftijd")}
-                </option>
+                <option value="">{t("subthemabeheer.kiesLeeftijd")}</option>
                 {fasen.map((fase) => (
                   <option key={fase} value={fase}>
                     {fase}
                   </option>
                 ))}
               </Keuze>
-            </div>
+            )}
           </div>
           {scopeFout ? (
             <p role="alert" className="mt-2 text-meta font-medium text-attentie-inkt">

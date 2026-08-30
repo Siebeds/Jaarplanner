@@ -81,7 +81,7 @@ export function Agendascherm() {
   const { datum: routeDatum } = useParams<{ datum: string }>();
   const [zoek] = useSearchParams();
   const navigeer = useNavigate();
-  const { klasId, schooljaarId } = useActieveSelectie();
+  const { klasId, klas, schooljaarId } = useActieveSelectie();
 
   // The day AND the lesuur the picker was opened from. A slot of 0 is lesuur 1, which is what the
   // month view and the week cells use: they add to the first hour and the teacher moves it from there.
@@ -622,6 +622,8 @@ export function Agendascherm() {
       <Subthemaplanner
         open={plannerOpen}
         klasId={klasId}
+        // The sheet's empty state is about THIS klas, so it needs the name and not just the id.
+        klasNaam={klas?.naam ?? null}
         themaIds={themaIdsInPeriode}
         dagen={heelDePeriode?.dagen ?? []}
         bezig={acties.plaats.isPending}

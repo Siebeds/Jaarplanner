@@ -52,29 +52,38 @@ public interface IKlasBeheerService
 /// which is a copy (E8-03), not a rename. A <c>SchooljaarId</c> in this record would have made "rename" able to
 /// silently do that.
 /// </summary>
-/// <param name="Naam">The class name (e.g. "L3 — derde leerjaar"). Required, unique school-wide.</param>
-/// <param name="Leerjaar">The leerjaar/leeftijdsgroep ordinal (e.g. 3 for L3); 0 for kleuter groepen.</param>
+/// <param name="Naam">The class name (e.g. "L3 derde leerjaar"). Required, unique school-wide.</param>
 /// <param name="Jaarfase">
-/// The Op.stap jaar/fase this class teaches (JK, K2, K3, L1-L6), or null when the school does not state one.
+/// The Op.stap jaar/fase this class teaches (JK, K2, K3, L1-L6). <b>Required, and the only level a caller states</b>
+/// (owner ruling, 2026-08-30).
 /// <para>
-/// <b>What it is for: kleuterklassen are split per jaar</b> (owner ruling, 2026-08-25). <paramref name="Leerjaar"/>
-/// already names the code for L1-L6, but <c>0</c> only says "een kleutergroep", so a third kleuterklas was measured
-/// against JK, K2 and K3 together: 1288 goals where 554 are its own. Recording the year removes the guess. A value
-/// that contradicts a real leerjaar is refused, so the two cannot give a class two denominators.
+/// <b>There is no Leerjaar here any more, and its absence is the change.</b> The ordinal used to be the input and
+/// the jaar/fase an optional refinement on top, which meant two fields for one fact in the lager onderwijs and a
+/// kleutergroep that could only say "kleuter" unless someone filled in the second one as well. The derivation now
+/// runs the other way: the school states the age, <c>Klas.Leerjaar</c> follows from it, and the two cannot disagree
+/// because only one of them is ever written.
+/// </para>
+/// <para>
+/// The age also stopped being merely a coverage denominator on 2026-08-30: it is the key <c>Subthema</c> hangs on
+/// (Art. IX.2), so this decides which content a class gets at all.
 /// </para>
 /// </param>
-public sealed record KlasCreatie(string Naam, int Leerjaar, string? Jaarfase = null);
+public sealed record KlasCreatie(string Naam, string? Jaarfase = null);
 
 /// <summary>A class group as returned by the API.</summary>
 /// <param name="Id">Surrogate identity.</param>
 /// <param name="SchooljaarId">The school year that contains this class (Art. IX.3).</param>
 /// <param name="Naam">The class name.</param>
-/// <param name="Leerjaar">The leerjaar/leeftijdsgroep ordinal.</param>
-/// <param name="AantalSubthemas">How many subthema's are scoped to this class (0 for a fresh class).</param>
+/// <param name="Leerjaar">The leerjaar/leeftijdsgroep ordinal, derived from <paramref name="Jaarfase"/>.</param>
+/// <param name="AantalSubthemas">
+/// How many subthema's this class INHERITS: the ones at the ages it teaches (Art. IX.2 as amended 2026-08-30).
+/// Two classes at the same age report the same number, because they hold the same content.
+/// </param>
 /// <param name="Jaarfase">
-/// The class's own recorded jaar/fase, or null when the school has not stated one. Distinct from
-/// <paramref name="JaarFasen"/>, which is what the class is MEASURED against: the two differ exactly when this is
-/// null, where the ordinal fallback answers a set instead of a code.
+/// The class's own recorded jaar/fase. Null only for a class written before 2026-08-30 that nobody has edited
+/// since; every create and update now sets it. Distinct from <paramref name="JaarFasen"/>, which is what the class
+/// is MEASURED against: the two differ exactly when this is null, where the ordinal fallback answers a set instead
+/// of a code.
 /// </param>
 /// <param name="JaarFasen">
 /// The Op.stap jaar/fase codes this class teaches, from <c>Jaarfasen.VoorKlas</c>: the recorded
@@ -102,8 +111,9 @@ public sealed record KlasCreatie(string Naam, int Leerjaar, string? Jaarfase = n
 /// </para>
 /// </param>
 /// <param name="MogelijkeJaarfasen">
-/// The jaar/fase codes the school may record on this class, for a UI that offers the choice. Empty when there is no
-/// choice to make.
+/// The jaar/fase codes the school may record on this class, for a UI that offers the choice. <b>All nine, always,
+/// since 2026-08-30</b>: the leeftijd is the only level a class states, so there is no case left in which a form
+/// should not ask.
 /// <para>
 /// <b>It exists because nothing was writing <paramref name="Jaarfase"/>.</b> The field, its validation and
 /// <c>PUT /api/klassen/{id}</c> all shipped on 2026-08-25 and no screen ever set it, so every kleutergroep in the

@@ -175,7 +175,7 @@ function Koppelingsregel({ koppeling }: { koppeling: DoelKoppelingContext }) {
           {[
             t(`herkomst.${koppeling.herkomst}`),
             koppeling.onderdeel,
-            koppeling.klasNaam ? t("doel.koppelingKlas", { klas: koppeling.klasNaam }) : null,
+            koppeling.leeftijd ? t("doel.koppelingLeeftijd", { leeftijd: koppeling.leeftijd }) : null,
             t(`status.${koppeling.status}`),
           ]
             .filter(Boolean)

@@ -85,7 +85,7 @@ export interface OnderzoeksvraagInvoer {
 export interface SubthemaInvoer {
   naam: string;
   duurWeken: number;
-  klasId: string;
+  /** The age it is for. No klas: a subthema holds for every class teaching this age (Art. IX.2). */
   leeftijd: string;
   onderzoeksvragen: OnderzoeksvraagInvoer[];
 }

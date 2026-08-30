@@ -59,7 +59,7 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
     {
         var client = _factory.CreateClient();
 
-        var created = await client.PostAsJsonAsync(KlassenRoute, new { naam = "L3 — derde leerjaar", leerjaar = 3 });
+        var created = await client.PostAsJsonAsync(KlassenRoute, new { naam = "L3 — derde leerjaar", jaarfase = "L3" });
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
 
         var klas = await created.Content.ReadFromJsonAsync<KlasWeergave>();
@@ -81,12 +81,12 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
     {
         var client = _factory.CreateClient();
 
-        var eerste = await client.PostAsJsonAsync(KlassenRoute, new { naam = "L1 — eerste leerjaar", leerjaar = 1 });
+        var eerste = await client.PostAsJsonAsync(KlassenRoute, new { naam = "L1 — eerste leerjaar", jaarfase = "L1" });
         Assert.Equal(HttpStatusCode.Created, eerste.StatusCode);
 
         // Case-variant: caught by the ILIKE pre-check, which is evaluated in Postgres precisely because
         // an OrdinalIgnoreCase comparer in LINQ translates to a case-sensitive SQL predicate.
-        var tweede = await client.PostAsJsonAsync(KlassenRoute, new { naam = "l1 — EERSTE leerjaar", leerjaar = 1 });
+        var tweede = await client.PostAsJsonAsync(KlassenRoute, new { naam = "l1 — EERSTE leerjaar", jaarfase = "L1" });
         Assert.Equal(HttpStatusCode.BadRequest, tweede.StatusCode);
     }
 
@@ -99,22 +99,22 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
     {
         var client = _factory.CreateClient();
 
-        var klas = await Maak(client, "L4 — vierde leerjaar", 4);
-        var ander = await Maak(client, "L5 — vijfde leerjaar", 5);
+        var klas = await Maak(client, "L4 — vierde leerjaar", "L4");
+        var ander = await Maak(client, "L5 — vijfde leerjaar", "L5");
 
         // Rename to a free name.
-        var hernoemd = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = "L4A — vierde leerjaar A", leerjaar = 4 });
+        var hernoemd = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = "L4A — vierde leerjaar A", jaarfase = "L4" });
         Assert.Equal(HttpStatusCode.OK, hernoemd.StatusCode);
         var na = await hernoemd.Content.ReadFromJsonAsync<KlasWeergave>();
         Assert.Equal("L4A — vierde leerjaar A", na!.Naam);
 
         // Keeping its own name must be allowed — the uniqueness check excludes the class itself.
-        var zelfde = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = "L4A — vierde leerjaar A", leerjaar = 5 });
+        var zelfde = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = "L4A — vierde leerjaar A", jaarfase = "L5" });
         Assert.Equal(HttpStatusCode.OK, zelfde.StatusCode);
         Assert.Equal(5, (await zelfde.Content.ReadFromJsonAsync<KlasWeergave>())!.Leerjaar);
 
         // Taking another class's name must be refused.
-        var conflict = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = ander.Naam, leerjaar = 4 });
+        var conflict = await client.PutAsJsonAsync($"/api/klassen/{klas.Id}", new { naam = ander.Naam, jaarfase = "L4" });
         Assert.Equal(HttpStatusCode.BadRequest, conflict.StatusCode);
     }
 
@@ -127,7 +127,7 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
     public async Task Klas_met_beoordeeld_jaarplan_kan_niet_verwijderd_worden()
     {
         var client = _factory.CreateClient();
-        var klas = await Maak(client, "L3B — jaarplanklas", 3);
+        var klas = await Maak(client, "L3B — jaarplanklas", "L3");
 
         var thema = await (await client.PostAsJsonAsync("/api/themas", new
         {
@@ -152,7 +152,7 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
             await context.SaveChangesAsync();
         }
 
-        var verwijder = await client.DeleteAsync($"/api/klassen/{klas.Id}");
+        var verwijder = await client.DeleteAsync($"/api/klassen/{klas!.Id}");
         Assert.Equal(HttpStatusCode.BadRequest, verwijder.StatusCode);
 
         // Still there, plan intact.
@@ -168,7 +168,7 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
     public async Task Lege_klas_kan_verwijderd_worden()
     {
         var client = _factory.CreateClient();
-        var klas = await Maak(client, "L6 — zesde leerjaar", 6);
+        var klas = await Maak(client, "L6 — zesde leerjaar", "L6");
 
         var verwijderd = await client.DeleteAsync($"/api/klassen/{klas.Id}");
         Assert.Equal(HttpStatusCode.NoContent, verwijderd.StatusCode);
@@ -188,20 +188,24 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
     {
         var client = _factory.CreateClient();
 
-        await Maak(client, "K3-groen", 0);
+        await Maak(client, "K3-groen", "K3");
 
         // Differs from the existing name only in the character an unescaped LIKE pattern would wildcard.
-        var response = await client.PostAsJsonAsync(KlassenRoute, new { naam = "K3_groen", leerjaar = 0 });
+        var response = await client.PostAsJsonAsync(KlassenRoute, new { naam = "K3_groen", jaarfase = "K3" });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         // A 100%-literal name must also survive.
-        var procent = await client.PostAsJsonAsync(KlassenRoute, new { naam = "100% instroom", leerjaar = 0 });
+        var procent = await client.PostAsJsonAsync(KlassenRoute, new { naam = "100% instroom", jaarfase = "K3" });
         Assert.Equal(HttpStatusCode.Created, procent.StatusCode);
     }
 
-    private async Task<KlasWeergave> Maak(HttpClient client, string naam, int leerjaar)
+    /// <param name="jaarfase">
+    /// The jaar/fase the class teaches. It replaced the leerjaar ordinal in the request body on 2026-08-30: a
+    /// klas now states its age and the leerjaar is derived from it, so posting an ordinal is a 400.
+    /// </param>
+    private async Task<KlasWeergave> Maak(HttpClient client, string naam, string jaarfase)
     {
-        var response = await client.PostAsJsonAsync(KlassenRoute, new { naam, leerjaar });
+        var response = await client.PostAsJsonAsync(KlassenRoute, new { naam, jaarfase });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         return (await response.Content.ReadFromJsonAsync<KlasWeergave>())!;
@@ -226,10 +230,12 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
     {
         var client = _factory.CreateClient();
 
-        var klas = await (await client.PostAsJsonAsync(KlassenRoute, new { naam = "L2 — tweede leerjaar", leerjaar = 2 }))
+        var klas = await (await client.PostAsJsonAsync(KlassenRoute, new { naam = "L2 — tweede leerjaar", jaarfase = "L2" }))
             .Content.ReadFromJsonAsync<KlasWeergave>();
 
-        // A thema is school-scoped; its subthema is class-scoped and pins the klas.
+        // A thema is school-scoped; its subthema pins a LEEFTIJD, and a class holds the subthema's of the age
+        // it teaches (Art. IX.2, 2026-08-30). So the guard fires on "L2" matching this class's jaar/fase, not on
+        // a foreign key it no longer has.
         var thema = await (await client.PostAsJsonAsync("/api/themas", new
         {
             naam = "Water",
@@ -242,12 +248,11 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
         {
             naam = "Regen",
             duurWeken = 2,
-            klasId = klas!.Id,
-            leeftijd = "7",
+            leeftijd = "L2",
         });
         Assert.Equal(HttpStatusCode.Created, subthema.StatusCode);
 
-        var verwijder = await client.DeleteAsync($"/api/klassen/{klas.Id}");
+        var verwijder = await client.DeleteAsync($"/api/klassen/{klas!.Id}");
         Assert.Equal(HttpStatusCode.BadRequest, verwijder.StatusCode);
     }
 }

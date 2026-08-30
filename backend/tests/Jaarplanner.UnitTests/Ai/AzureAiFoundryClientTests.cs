@@ -133,7 +133,7 @@ public sealed class AzureAiFoundryClientTests
     public async Task Een_azure_antwoord_levert_via_de_echte_client_een_beoordeelbaar_voorstel()
     {
         var schooljaar = TestSchooljaar.MetVakanties();
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var thema = new Thema("Herfst", duurWeken: 5, invalshoeken: "natuur");
 
         IPlanningsblokIndeling indeling =

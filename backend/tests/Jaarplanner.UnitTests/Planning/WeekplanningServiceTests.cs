@@ -27,15 +27,18 @@ public sealed class WeekplanningServiceTests
     /// <summary>A Wednesday well inside the school year, and open in every fixture here.</summary>
     private static readonly DateOnly Woensdag = new(2026, 9, 9);
 
-    private static Activiteitinhoud Inhoud(Guid klasId, Guid? activiteitId = null, Guid? themaId = null) =>
+    /// <param name="leeftijd">
+    /// The subthema's age, which is the whole of its scope since 2026-08-30 (Art. IX.2). It replaced a klasId
+    /// here: what the service checks is now whether the plan's klas TEACHES this age.
+    /// </param>
+    private static Activiteitinhoud Inhoud(string leeftijd, Guid? activiteitId = null, Guid? themaId = null) =>
         new(
             ActiviteitId: activiteitId ?? ActiviteitId,
             Naam: "Bladeren zoeken",
             ActiviteitType: nameof(ActiviteitType.Hoek),
             SubthemaId: SubthemaId,
             SubthemaNaam: "Herfstbladeren",
-            KlasId: klasId,
-            Leeftijd: "K3",
+            Leeftijd: leeftijd,
             ThemaId: themaId ?? ThemaId,
             ThemaNaam: "Herfst",
             Doelcodes: ["NAT-K3-01"]);
@@ -46,8 +49,8 @@ public sealed class WeekplanningServiceTests
         IEnumerable<Activiteitinhoud>? inhoud = null)
     {
         var jaar = schooljaar ?? TestSchooljaar.MetVakanties();
-        var klas = jaar.VoegKlasToe("K3 derde kleuterklas", 0);
-        var opslag = new FakeWeekplanningOpslag(klas, jaar, inhoud ?? [Inhoud(klas.Id)], jaarplan);
+        var klas = jaar.VoegKlasToe("K3 derde kleuterklas", "K3");
+        var opslag = new FakeWeekplanningOpslag(klas, jaar, inhoud ?? [Inhoud("K3")], jaarplan);
 
         return (new WeekplanningService(opslag, Indeling), opslag, klas, jaar);
     }
@@ -132,20 +135,22 @@ public sealed class WeekplanningServiceTests
     /// class's activiteit at a closed day should be told the thing that is wrong whatever day they pick.
     /// </summary>
     [Fact]
-    public async Task Een_activiteit_van_een_andere_klas_wordt_geweigerd_voor_de_dagcontrole()
+    public async Task Een_activiteit_van_een_andere_leeftijd_wordt_geweigerd_voor_de_dagcontrole()
     {
         var vreemdeActiviteit = Guid.NewGuid();
         var schooljaar = TestSchooljaar.MetVakanties();
-        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", 0);
+        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
+        // L3 is an age this kleuterklas does not teach, which since 2026-08-30 is what "someone else's content"
+        // means (Art. IX.2). It used to be another klasId.
         var opslag = new FakeWeekplanningOpslag(
-            klas, schooljaar, [Inhoud(klas.Id), Inhoud(Guid.NewGuid(), vreemdeActiviteit)]);
+            klas, schooljaar, [Inhoud("K3"), Inhoud("L3", vreemdeActiviteit)]);
         var service = new WeekplanningService(opslag, Indeling);
 
-        // A vakantie day AND a foreign activiteit: the class error is the one reported.
+        // A vakantie day AND an activiteit for another age: the age error is the one reported.
         var fout = await Assert.ThrowsAsync<OngeldigeDagplanningFout>(() =>
             service.PlanActiviteitAsync(klas.Id, vreemdeActiviteit, new DateOnly(2026, 11, 3), volgorde: 0));
 
-        Assert.Contains("andere klas", fout.Message, StringComparison.Ordinal);
+        Assert.Contains("geeft die leeftijd niet", fout.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("Herfstvakantie", fout.Message, StringComparison.Ordinal);
         Assert.Equal(0, opslag.AantalKeerBewaard);
     }
@@ -264,10 +269,10 @@ public sealed class WeekplanningServiceTests
         // The thema sits in the SECOND themaperiode; the activiteit is scheduled in the first.
         jaarplan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Aanvaard);
 
-        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", 0);
+        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
         var eigenPlan = new Jaarplan(klas.Id);
         eigenPlan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Aanvaard);
-        var opslag = new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud(klas.Id)], eigenPlan);
+        var opslag = new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], eigenPlan);
         var service = new WeekplanningService(opslag, Indeling);
 
         var dagInEerstePeriode = blokken[0].Start.AddDays(2);
@@ -285,11 +290,11 @@ public sealed class WeekplanningServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
-        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", 0);
+        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
         var plan = new Jaarplan(klas.Id);
         plan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Aanvaard);
         var service = new WeekplanningService(
-            new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud(klas.Id)], plan), Indeling);
+            new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan), Indeling);
 
         var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[0].Start.AddDays(2), volgorde: 0);
 
@@ -311,11 +316,11 @@ public sealed class WeekplanningServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
-        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", 0);
+        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
         var plan = new Jaarplan(klas.Id);
         plan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Geweigerd);
         var service = new WeekplanningService(
-            new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud(klas.Id)], plan), Indeling);
+            new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan), Indeling);
 
         var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[0].Start.AddDays(2), volgorde: 0);
 
@@ -331,12 +336,12 @@ public sealed class WeekplanningServiceTests
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var blokken = Indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
-        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", 0);
+        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
         var plan = new Jaarplan(klas.Id);
         plan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Aanvaard);
         plan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[2].Start, KoppelingStatus.Aanvaard);
         var service = new WeekplanningService(
-            new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud(klas.Id)], plan), Indeling);
+            new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan), Indeling);
 
         var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[1].Start.AddDays(1), volgorde: 0);
 

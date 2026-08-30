@@ -154,7 +154,7 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
         var item = Assert.Single(bibliotheek!, b => b.Naam == "Bibliotheek-Water");
         Assert.Equal(5, item.DuurWeken);
         Assert.Equal(new[] { "plas" }, item.Kernwoordenschat);
-        Assert.Equal(1, item.AantalAfgeleideKlassen);
+        Assert.Equal(1, item.AantalAfgeleideLeeftijden);
 
         // Per-klas derivation: the shared thema + this klas's single subthema.
         var voorKlas = await client.GetFromJsonAsync<ThemaDto>($"/api/themas/{thema.Id}/voor-klas/{klasId}");
@@ -182,7 +182,7 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
 
     private sealed record KoppelingDto(Guid Id, string LeerplandoelCode, string Status);
 
-    private sealed record BibliotheekItemDto(Guid Id, string Naam, int DuurWeken, IReadOnlyList<string> Kernwoordenschat, int AantalAfgeleideKlassen);
+    private sealed record BibliotheekItemDto(Guid Id, string Naam, int DuurWeken, IReadOnlyList<string> Kernwoordenschat, int AantalAfgeleideLeeftijden);
 
     /// <summary>
     /// WebApplicationFactory that swaps the Npgsql <see cref="AppDbContext"/> for the in-memory provider
@@ -246,7 +246,7 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
                 {
                     // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
                     var schooljaar = TestSchooljaar.Maak();
-                    klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
+                    klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", "L1");
                     db.Schooljaren.Add(schooljaar);
                     db.Leerplandoelen.AddRange(
                         Leerdoel("NL-001"),

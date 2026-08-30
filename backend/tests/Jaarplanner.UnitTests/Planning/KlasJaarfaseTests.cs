@@ -4,13 +4,20 @@ using Jaarplanner.Domain.Planning;
 namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
-/// A class's own jaar/fase, and what it does to the coverage denominator (owner ruling, 2026-08-25).
+/// A class's leeftijd: the only level it states, and what it decides.
 /// <para>
-/// <b>The defect these exist for, measured:</b> "K3 groen" has <c>Leerjaar = 0</c>, which says "een kleutergroep" and
+/// <b>The defect these exist for, measured:</b> "K3 groen" had <c>Leerjaar = 0</c>, which says "een kleutergroep" and
 /// not which one, so <c>Jaarfasen.VoorLeerjaar</c> answered JK, K2 <i>and</i> K3 and the class was held to 1288
 /// leerplandoelen where 554 are its own. That is the figure the onderwijsinspectie reads, off by more than a factor
-/// two. Recording the year removes the guess rather than making it, which is why this does not contradict the E5-02
-/// ruling of 2026-08-04: that one forbade guessing, and a school stating the year is not a guess.
+/// two. The 2026-08-25 ruling added a jaar/fase beside the ordinal to remove the guess.
+/// </para>
+/// <para>
+/// <b>On 2026-08-30 the owner asked why a class was coupled to a leerjaar at all, and the derivation was reversed.</b>
+/// The school states the leeftijd; <c>Klas.Leerjaar</c> follows from it. Two consequences run through every test
+/// below. The two values can no longer contradict each other, so the test that pinned that refusal is now a test
+/// that the contradiction is unconstructible. And blank stopped being a legal state: "the school has not said" was
+/// the normal condition of every class before the field existed, and it is now a refusal, because a class with no
+/// leeftijd would have no subthema's either (Art. IX.2).
 /// </para>
 /// </summary>
 public sealed class KlasJaarfaseTests
@@ -18,61 +25,70 @@ public sealed class KlasJaarfaseTests
     private static readonly Guid Schooljaar = Guid.NewGuid();
 
     [Fact]
-    public void Een_kleutergroep_zonder_jaarfase_wordt_nog_tegen_alle_drie_gemeten()
+    public void Een_kleuterklas_noemt_haar_eigen_jaar_en_wordt_daartegen_gemeten()
     {
-        var klas = new Klas(Schooljaar, "K3 groen", leerjaar: 0);
-
-        Assert.Null(klas.Jaarfase);
-
-        // Unchanged on purpose: a class nobody has told us about keeps the widest honest answer, so nothing
-        // regresses on a plan already being taught.
-        Assert.Equal(["JK", "K2", "K3"], Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase));
-    }
-
-    [Fact]
-    public void Een_kleutergroep_met_een_jaarfase_wordt_tegen_dat_ene_jaar_gemeten()
-    {
-        var klas = new Klas(Schooljaar, "K3 groen", leerjaar: 0, jaarfase: "K3");
+        var klas = new Klas(Schooljaar, "K3 groen", "K3");
 
         Assert.Equal("K3", klas.Jaarfase);
         Assert.Equal(["K3"], Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase));
+
+        // And the ordinal follows from it rather than being stated beside it.
+        Assert.Equal(0, klas.Leerjaar);
     }
 
-    [Fact]
-    public void Een_leeg_veld_betekent_niet_gezegd_en_niet_lege_string()
+    [Theory]
+    [InlineData("JK", 0)]
+    [InlineData("K2", 0)]
+    [InlineData("K3", 0)]
+    [InlineData("L1", 1)]
+    [InlineData("L3", 3)]
+    [InlineData("L6", 6)]
+    public void Het_leerjaar_wordt_afgeleid_uit_de_leeftijd(string leeftijd, int leerjaar)
     {
-        var klas = new Klas(Schooljaar, "K3 groen", leerjaar: 0, jaarfase: "   ");
+        var klas = new Klas(Schooljaar, "Een klas", leeftijd);
 
-        // Stored as null, not "": otherwise `IsBekend("")` is the only thing between a form that submits an empty
-        // field and a coverage denominator of zero.
-        Assert.Null(klas.Jaarfase);
-        Assert.Equal(["JK", "K2", "K3"], Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase));
+        Assert.Equal(leerjaar, klas.Leerjaar);
+        Assert.Equal(leeftijd, klas.Jaarfase);
+        Assert.Equal([leeftijd], Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase));
     }
 
-    [Fact]
-    public void Een_jaarfase_die_het_leerjaar_tegenspreekt_wordt_geweigerd()
+    /// <summary>
+    /// The 2026-08-25 refusal, inverted. There used to be a test that a jaar/fase contradicting the leerjaar was
+    /// rejected, because two answers for one class is how a denominator starts depending on which one a reader
+    /// picked. A caller can no longer state both, so the property is now asserted as unconstructible: whatever
+    /// leeftijd goes in, the ordinal that comes out agrees with it.
+    /// </summary>
+    [Theory]
+    [InlineData("JK")]
+    [InlineData("K3")]
+    [InlineData("L2")]
+    [InlineData("L6")]
+    public void Leerjaar_en_leeftijd_kunnen_elkaar_niet_meer_tegenspreken(string leeftijd)
     {
-        var fout = Assert.Throws<ArgumentException>(() => new Klas(Schooljaar, "L3", leerjaar: 3, jaarfase: "K2"));
+        var klas = new Klas(Schooljaar, "Een klas", leeftijd);
 
-        // Two answers for one class is how a denominator starts depending on which one a reader picked.
-        Assert.Contains("hoort niet bij leerjaar 3", fout.Message, StringComparison.Ordinal);
+        Assert.Equal(leeftijd, Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase)!.Single());
     }
 
-    [Fact]
-    public void Een_jaarfase_die_bij_het_leerjaar_hoort_mag()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Een_klas_zonder_leeftijd_wordt_geweigerd(string? leeftijd)
     {
-        var klas = new Klas(Schooljaar, "L3", leerjaar: 3, jaarfase: "L3");
+        // Blank used to be stored as null and mean "not said". It is a refusal now: the leeftijd is what hands a
+        // class its subthema's and activiteiten (Art. IX.2), so a class without one holds nothing.
+        var fout = Assert.Throws<ArgumentException>(() => new Klas(Schooljaar, "K3 groen", leeftijd!));
 
-        Assert.Equal("L3", klas.Jaarfase);
-        Assert.Equal(["L3"], Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase));
+        Assert.Contains("Kies een leeftijd", fout.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Een_onbekende_code_wordt_geweigerd()
     {
-        var fout = Assert.Throws<ArgumentException>(() => new Klas(Schooljaar, "K3 groen", leerjaar: 0, jaarfase: "K9"));
+        var fout = Assert.Throws<ArgumentException>(() => new Klas(Schooljaar, "K3 groen", "K9"));
 
-        Assert.Contains("geen bekende jaar/fase", fout.Message, StringComparison.Ordinal);
+        Assert.Contains("geen bekende leeftijd", fout.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -82,26 +98,42 @@ public sealed class KlasJaarfaseTests
         // thing for a class to claim: a class teaches a jaar, never a route fase. Those two vocabularies overlapping
         // is what let a kleuterklas link three `Fase 1` doelen that could never count for it.
         Assert.False(Jaarfasen.IsBekend("Fase 1"));
-        Assert.Throws<ArgumentException>(() => new Klas(Schooljaar, "K3 groen", leerjaar: 0, jaarfase: "Fase 1"));
+        Assert.Throws<ArgumentException>(() => new Klas(Schooljaar, "K3 groen", "Fase 1"));
     }
 
     [Fact]
-    public void Wijzigen_kan_de_jaarfase_zetten_en_weer_weghalen()
+    public void Wijzigen_verzet_de_leeftijd_en_het_leerjaar_samen()
     {
-        var klas = new Klas(Schooljaar, "K3 groen", leerjaar: 0);
+        var klas = new Klas(Schooljaar, "K3 groen", "K3");
 
-        klas.Wijzig("K3 groen", 0, "K3");
-        Assert.Equal("K3", klas.Jaarfase);
+        klas.Wijzig("L1 rood", "L1");
 
-        klas.Wijzig("K3 groen", 0, null);
-        Assert.Null(klas.Jaarfase);
+        Assert.Equal("L1", klas.Jaarfase);
+        Assert.Equal(1, klas.Leerjaar);
+
+        // And it cannot be cleared, for the same reason it cannot be omitted at construction.
+        Assert.Throws<ArgumentException>(() => klas.Wijzig("L1 rood", "  "));
+        Assert.Equal("L1", klas.Jaarfase);
+    }
+
+    /// <summary>
+    /// The fallback that keeps rows written before the leeftijd was required from measuring against nothing. It is
+    /// no longer reachable through the domain — every <c>Klas</c> now states a leeftijd — so it is asserted against
+    /// <c>Jaarfasen</c> directly, which is where those rows are read.
+    /// </summary>
+    [Fact]
+    public void Een_oude_rij_zonder_leeftijd_valt_terug_op_het_ordinaal()
+    {
+        Assert.Equal(["JK", "K2", "K3"], Jaarfasen.VoorKlas(0, null));
+        Assert.Equal(["L3"], Jaarfasen.VoorKlas(3, null));
     }
 
     [Fact]
     public void Een_graadklas_krijgt_nog_altijd_geen_antwoord()
     {
         // Leerjaar 7 maps to nothing, and no jaar/fase is recorded, so this refuses rather than guesses and
-        // DekkingService widens to the whole curriculum and says it did. The graadklas half is still Art. XIV's.
+        // DekkingService widens to the whole curriculum and says it did. The graadklas half is still Art. XIV's,
+        // and the 2026-08-30 amendment did not touch it: one leeftijd per klas cannot express a menggroep either.
         Assert.Null(Jaarfasen.VoorKlas(7, null));
     }
 }

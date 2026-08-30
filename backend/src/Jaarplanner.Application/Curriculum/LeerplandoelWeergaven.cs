@@ -80,10 +80,9 @@ public sealed record MinimumdoelWeergave(
 /// <para>
 /// The scope is <b>not</b> uniform across these four, and the difference is load-bearing:
 /// <see cref="Themadoel"/> and <see cref="Doelsuggestie"/> are school-wide, while <see cref="Subdoel"/> and
-/// <see cref="Activiteit"/> belong to <b>one klas and one leeftijd</b>. A reader who cannot tell them apart
-/// would take another class's planning for a school-wide fact, which is why a class-scoped link always
-/// carries <see cref="DoelKoppelingWeergave.KlasNaam"/> and why
-/// <see cref="Koppelingzichtbaarheid"/> exists.
+/// <see cref="Activiteit"/> belong to <b>one leeftijd</b>. A reader who cannot tell them apart would take one
+/// year group's planning for a school-wide fact, which is why an age-scoped link always carries
+/// <see cref="DoelKoppelingWeergave.Leeftijd"/> and why <see cref="Koppelingzichtbaarheid"/> exists.
 /// </para>
 /// </summary>
 public enum KoppelingHerkomst
@@ -112,27 +111,33 @@ public enum KoppelingHerkomst
 /// reader can tell the two apart.
 /// </para>
 /// <para>
-/// <b><see cref="KlasNaam"/> is what keeps a class-scoped link from posing as a school-wide one.</b> A subdoel
-/// or an activiteit belongs to one klas and one leeftijd (Art. IX.2); rendering it next to a themadoel with no
-/// distinction would tell a teacher that "this doel is used in thema Herfst" when what is true is "L3 uses it
-/// in Herfst". It is null exactly when the layer is school-scoped, so the two cannot be confused by omission
-/// either.
+/// <b><see cref="Leeftijd"/> is what keeps an age-scoped link from posing as a school-wide one.</b> A subdoel
+/// or an activiteit belongs to one leeftijd (Art. IX.2 as amended 2026-08-30); rendering it next to a themadoel
+/// with no distinction would tell a teacher that "this doel is used in thema Herfst" when what is true is "K3
+/// uses it in Herfst". It is null exactly when the layer is school-scoped, so the two cannot be confused by
+/// omission either.
+/// </para>
+/// <para>
+/// <b>It named the KLAS until 2026-08-30, and the replacement is not a rename.</b> "L3 uses it in Herfst" was a
+/// statement about one class; "K3 uses it in Herfst" is a statement about every class teaching that age. The
+/// second is the one that is now true, and it is also the one a reader of a school-wide register wants: which
+/// year group this doel is worked on, not which of two parallel classes happens to hold the row.
 /// </para>
 /// </summary>
 /// <param name="Herkomst">Which content layer the link lives in, and therefore its scope.</param>
 /// <param name="ThemaNaam">The owning thema's name (every link resolves to exactly one thema).</param>
-/// <param name="Onderdeel">The subthema or activiteit name for a class/age-scoped link; null at thema level.</param>
-/// <param name="KlasNaam">
-/// The klas a class/age-scoped link belongs to (Art. IX.2); null for the school-wide layers. Null is also
-/// possible in principle for a class-scoped row whose klas row has gone, which the <c>Restrict</c> FK on
-/// <c>subthemas.KlasId</c> prevents; the frontend still degrades to naming no klas rather than crashing.
+/// <param name="Onderdeel">The subthema or activiteit name for an age-scoped link; null at thema level.</param>
+/// <param name="Leeftijd">
+/// The jaar/fase an age-scoped link belongs to (Art. IX.2); null for the school-wide layers. Read straight off
+/// the subthema rather than looked up, so unlike the klas name it preceded there is no second row that can go
+/// missing and no correlated subquery to keep translatable.
 /// </param>
 /// <param name="Status">The persisted link status (Art. IV.2).</param>
 public sealed record DoelKoppelingWeergave(
     KoppelingHerkomst Herkomst,
     string ThemaNaam,
     string? Onderdeel,
-    string? KlasNaam,
+    string? Leeftijd,
     KoppelingStatus Status);
 
 /// <summary>

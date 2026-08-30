@@ -64,11 +64,13 @@ public sealed class OngeldigeDagplanningFout : Exception
             + "Kies een ander lesuur of een andere activiteit.");
 
     /// <summary>
-    /// The subthema belongs to another class. The subthema counterpart of
-    /// <see cref="ActiviteitHoortBijAndereKlas"/>, refused for the same structural reason (Art. IX.2).
+    /// The subthema is for an age this class does not teach. The subthema counterpart of
+    /// <see cref="ActiviteitHoortBijAndereLeeftijd"/>, refused for the same structural reason (Art. IX.2).
     /// </summary>
-    public static OngeldigeDagplanningFout SubthemaHoortBijAndereKlas() =>
-        new("Dit subthema hoort bij een andere klas. Kies een subthema van deze klas.");
+    /// <param name="leeftijd">The subthema's own age, named so the sentence says what is wrong rather than that
+    /// something is.</param>
+    public static OngeldigeDagplanningFout SubthemaHoortBijAndereLeeftijd(string leeftijd) =>
+        new($"Dit subthema is voor {leeftijd}. Deze klas geeft die leeftijd niet, dus kies een subthema van deze klas.");
 
     /// <summary>
     /// The two dates of a marked-off subthemaperiode are the wrong way round.
@@ -84,13 +86,18 @@ public sealed class OngeldigeDagplanningFout : Exception
     /// The activiteit belongs to another class. Art. IX.2 makes the class scope structural, so this is refused rather
     /// than silently copied.
     /// <para>
-    /// <b>Reachable only by a hand-built request</b> — every screen offers a teacher the activiteiten of the class
-    /// whose plan they are editing. It is still a Dutch 400 rather than an English 500, because the alternative is
-    /// deciding on a caller's behalf that they could not possibly be a teacher.
+    /// <b>Reachable only by a hand-built request</b> — every screen offers a teacher the activiteiten at the ages
+    /// the class teaches. It is still a Dutch 400 rather than an English 500, because the alternative is deciding on
+    /// a caller's behalf that they could not possibly be a teacher.
+    /// <para>
+    /// <b>It also carries more weight than it used to.</b> Since 2026-08-30 this service check is the only one:
+    /// <c>Jaarplan.PlaatsActiviteit</c> no longer has a klas to compare against, so nothing behind this refuses a
+    /// mismatched pair.
+    /// </para>
     /// </para>
     /// </summary>
-    public static OngeldigeDagplanningFout ActiviteitHoortBijAndereKlas() =>
-        new("Deze activiteit hoort bij een andere klas en kan niet in dit jaarplan gepland worden.");
+    public static OngeldigeDagplanningFout ActiviteitHoortBijAndereLeeftijd(string leeftijd) =>
+        new($"Deze activiteit is voor {leeftijd}. Deze klas geeft die leeftijd niet, dus ze kan hier niet ingepland worden.");
 }
 
 /// <summary>

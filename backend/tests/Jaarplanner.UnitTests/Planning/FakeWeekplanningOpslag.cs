@@ -74,7 +74,7 @@ internal sealed class FakeWeekplanningOpslag : IWeekplanningOpslag
         CancellationToken cancellationToken = default)
     {
         var uitActiviteiten = _inhoud
-            .Select(i => new Subthemainhoud(i.SubthemaId, i.SubthemaNaam, i.ThemaId, i.ThemaNaam, i.KlasId));
+            .Select(i => new Subthemainhoud(i.SubthemaId, i.SubthemaNaam, i.ThemaId, i.ThemaNaam, i.Leeftijd));
 
         return Task.FromResult<IReadOnlyList<Subthemainhoud>>(
             Subthemainhoud
