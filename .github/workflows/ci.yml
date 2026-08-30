@@ -60,7 +60,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Honour the SDK pinned in repo-root global.json (10.0.201) — do not hardcode here.
+      # Honour the SDK pinned in repo-root global.json (10.0.400) — do not hardcode here.
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:

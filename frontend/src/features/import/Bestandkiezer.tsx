@@ -1,79 +1,87 @@
-import { useId } from "react";
-
+import { useId, useRef, useState, type DragEvent } from "react";
+import { IcoonPlus } from "../../components/Iconen";
 import { t } from "../../i18n";
+import { cn } from "../../lib/cn";
 
 /**
- * The file control, for both importers (E1-13 clause 1).
+ * Picking one .xlsx.
  *
- * **Deliberately not a dropzone**, which is the default answer for every upload UI and the wrong one here.
- * The file comes out of Excel through the file explorer; the users are non-technical; and dragging already
- * means one specific thing in this application — moving a thema to a period (E3-07). One gesture, one
- * meaning. So this is a plain, large, labelled file button.
+ * A real `<input type="file">` does the work, and the drop zone is layered on top rather than
+ * replacing it: dropping is the fastest route on a desktop and does not exist on a phone, so the
+ * button has to be the thing that is always there. The input keeps its own keyboard behaviour, which
+ * is why it is a visible control here and not an `sr-only` element behind a fake button.
  *
- * It is the **native** `<input type="file">` restyled through the `file:` variants rather than a button that
- * clicks a hidden input. The native control is already a labelled form control: it is keyboard reachable, it
- * announces its own accessible name, and the browser's own file dialog is the one the reader knows. Hiding it
- * behind a `<button>` means re-implementing all three and getting one of them wrong.
- *
- * **The chosen filename appears twice on purpose, and the lower line is the one to keep.** The native control
- * renders it too, so a reader sees "Bestand kiezen | herfst.xlsx" and then "Gekozen bestand: herfst.xlsx" below
- * it, which looks like exactly the repeated prose this project's design rule says to cut first. It is not:
- * - everything inside the control is **the browser's** rendering. Its button label is UA copy in the UA's own
- *   locale, verified in E1-13's browser check by diffing the same page under `--lang=en-US` and `--lang=nl-BE`
- *   (it reads "Choose File" on an `en-US` browser), and it truncates a long name with no `title`. So the only
- *   Dutch, complete statement of which file is about to be uploaded is ours;
- * - it is also the only one a test or a screen reader can rely on: the filename inside the control is not
- *   exposed as text content.
- *
- * **Do not "tidy" it away.** Cutting the lower line leaves a Dutch screen whose only statement of the chosen
- * file is an English-labelled, truncating, unreadable-by-test browser widget. Cutting the *control's* rendering
- * instead means hiding the input behind a custom button, which re-implements labelling, keyboard reach and the
- * file dialog to save one line of text.
- *
- * `accept` filters the dialog; it does not validate, so the server's own `.xlsx` check stays the only guarantee
- * (a renamed file reaches it either way).
+ * The chosen file is named back to the reader with its size. That line is the only confirmation the
+ * browser gives that the right file was picked, and picking the wrong xlsx out of a folder of them
+ * is the mistake this screen cannot otherwise catch.
  */
 export function Bestandkiezer({
-  label,
   bestand,
   onKies,
-  disabled,
+  uitgeschakeld,
 }: {
-  /** The visible label. Each importer names its own file, so this is not shared copy. */
-  label: string;
   bestand: File | null;
-  /** Called with the chosen file, or null when the reader cleared the field. */
   onKies: (bestand: File | null) => void;
-  disabled: boolean;
+  uitgeschakeld?: boolean;
 }) {
   const id = useId();
+  const invoer = useRef<HTMLInputElement>(null);
+  const [sleept, setSleept] = useState(false);
+
+  function neem(bestanden: FileList | null) {
+    const eerste = bestanden?.[0] ?? null;
+    if (eerste) onKies(eerste);
+  }
+
+  function opDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setSleept(false);
+    if (uitgeschakeld) return;
+    neem(e.dataTransfer.files);
+  }
 
   return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-semibold text-ink">
-        {label}
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!uitgeschakeld) setSleept(true);
+      }}
+      onDragLeave={() => setSleept(false)}
+      onDrop={opDrop}
+      className={cn(
+        "rounded-kaart border border-dashed p-4 transition-colors duration-150",
+        sleept ? "border-accent bg-accent-zacht" : "border-lijn-sterk bg-kaart",
+        uitgeschakeld && "opacity-45",
+      )}
+    >
+      <label htmlFor={id} className="flex items-center gap-2 text-meta font-medium text-inkt">
+        <IcoonPlus aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zwak" />
+        {t("importeren.kiesBestand")}
       </label>
+
       <input
+        ref={invoer}
         id={id}
         type="file"
-        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        disabled={disabled}
-        onChange={(event) => onKies(event.target.files?.[0] ?? null)}
-        className={[
-          "mt-1.5 block w-full cursor-pointer rounded-md border border-input bg-card text-sm text-ink",
-          "file:mr-3 file:cursor-pointer file:rounded-l-md file:border-0 file:bg-petrol file:px-4 file:py-3",
-          "file:text-sm file:font-semibold file:text-petrol-foreground file:transition-colors",
-          "file:duration-150 file:ease-uit hover:file:bg-petrol-helder",
-          // No focus utilities here: `index.css` gives every element one `:focus-visible` ring for the whole
-          // app precisely so nothing has to remember, and adding an outline on top of it renders two rings.
-          "disabled:cursor-not-allowed disabled:text-ink-zacht disabled:file:bg-muted disabled:file:text-ink-zacht",
-        ].join(" ")}
+        accept=".xlsx"
+        disabled={uitgeschakeld}
+        onChange={(e) => neem(e.target.files)}
+        className={cn(
+          "mt-2 block w-full cursor-pointer text-meta text-inkt-zacht",
+          "file:mr-3 file:min-h-raak file:cursor-pointer file:rounded-veld file:border file:border-lijn-veld",
+          "file:bg-kaart file:px-4 file:text-body file:font-medium file:text-inkt",
+          "hover:file:border-inkt hover:file:bg-vlak",
+        )}
       />
-      <p className="mt-1.5 text-xs text-ink-zacht">
-        {bestand
-          ? t("import.bestandGekozen", { naam: bestand.name })
-          : t("import.geenBestandGekozen")}
-      </p>
+
+      {bestand ? (
+        <p className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-meta text-inkt">
+          <span className="min-w-0 break-all font-medium">{bestand.name}</span>
+          <span className="mono shrink-0 text-micro text-inkt-zwak">
+            {t("importeren.grootte", { kb: Math.max(1, Math.round(bestand.size / 1024)) })}
+          </span>
+        </p>
+      ) : null}
     </div>
   );
 }

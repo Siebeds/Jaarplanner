@@ -1,59 +1,64 @@
-import { NavLink, useLocation } from "react-router-dom";
-
+import { NavLink } from "react-router-dom";
+import { BESTEMMINGEN } from "./routes";
+import { Merk } from "./Merk";
 import { t } from "../i18n";
-import { NAVIGATIE } from "./routes";
+import { cn } from "../lib/cn";
 
 /**
- * The primary navigation (E0-10 clause 2), per the information architecture in
- * `docs/ux/ui-ux-approach.md` §3.
+ * One navigation element, two shapes.
  *
- * Three properties worth stating, because each is easy to lose later:
+ * On a phone it is a bottom bar in the thumb zone; from `lg` it is a sidebar. Deliberately the same
+ * DOM rather than two components behind a media query: duplicating the nav would put every
+ * destination in the accessibility tree twice, and a screen reader would read the whole app's
+ * navigation, then read it again.
  *
- * 1. **Every link preserves the query string.** The klas/schooljaar selection lives there (ADR-0021), so a
- *    raw `<Link to="/dekking">` would silently drop the chosen class. Routing all nav through this one
- *    component is what keeps that rule in a single place.
- * 2. **An unbuilt destination says so, in visible text.** Not a tooltip: E3-06's audit found a `title`
- *    disclosure was invisible on touch, unreachable by keyboard and unread by most screen readers, while
- *    the story claimed the UI "said it out loud".
- * 3. **The active tab is a filled `petrol-wash` pill, and unbuilt items are quieter than built ones.**
- *    Both matter for honesty as much as looks: the first draft made the active tab the heaviest object on
- *    the page, so on `/dekking` the boldest thing on screen advertised a screen that does not work.
- *
- * `NavLink` supplies `aria-current="page"`, so the active state is never carried by styling alone
- * (Art. XII, WCAG 2.2 AA, E7-10).
+ * The active destination is marked three ways over the two shapes: `aria-current`, ink weight, and
+ * a rule (above the tab on a phone, beside the item in the sidebar). Never colour, since this
+ * interface has none to spend.
  */
 export function Navigatie() {
-  const location = useLocation();
-
   return (
-    <nav aria-label={t("navigatie.hoofdnavigatie")} className="subtle-scrollbar -mx-1.5 overflow-x-auto pb-2">
-      <ul className="flex items-center gap-0.5">
-        {NAVIGATIE.map((bestemming) => (
-          <li key={bestemming.pad}>
+    <nav
+      aria-label={t("navigatie.aria")}
+      className={cn(
+        "fixed inset-x-0 bottom-0 z-30 border-t border-lijn bg-kaart/95 backdrop-blur-md",
+        "pb-[env(safe-area-inset-bottom)]",
+        "lg:inset-y-0 lg:right-auto lg:w-60 lg:flex-col lg:border-r lg:border-t-0 lg:pb-0 lg:backdrop-blur-none",
+      )}
+    >
+      <div className="hidden px-5 pb-5 pt-6 lg:block">
+        <Merk />
+      </div>
+
+      <ul className="flex items-stretch lg:flex-col lg:gap-0.5 lg:px-3">
+        {BESTEMMINGEN.map(({ pad, labelSleutel, Icoon }) => (
+          <li key={pad} className="flex-1 lg:flex-none">
             <NavLink
-              // Carrying `search` is what keeps the chosen class across screens.
-              to={{ pathname: bestemming.pad, search: location.search }}
+              to={pad}
               className={({ isActive }) =>
-                [
-                  "flex items-baseline gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm",
-                  "transition-colors duration-150 ease-uit",
-                  isActive
-                    ? "bg-petrol-wash font-semibold text-petrol"
-                    : bestemming.isGebouwd
-                      ? "font-medium text-ink-zacht hover:bg-muted hover:text-ink"
-                      // Unbuilt items are quieter by WEIGHT, not by a lighter colour:
-                      // `text-ink-zacht/80` measures 3.66:1 on paper, under the 4.5:1
-                      // floor at this size. Opacity on already-muted text is the exact
-                      // trap E3-06's audit caught, and jsdom/axe cannot see it.
-                      : "font-normal text-ink-zacht hover:bg-muted hover:text-ink",
-                ].join(" ")
+                cn(
+                  "group relative flex min-h-14 flex-col items-center justify-center gap-1 text-micro tracking-normal",
+                  "lg:min-h-11 lg:flex-row lg:justify-start lg:gap-3 lg:rounded-veld lg:px-3 lg:text-body lg:font-medium",
+                  "transition-colors duration-150",
+                  isActive ? "text-accent lg:bg-accent-zacht" : "text-inkt-zacht hover:text-inkt lg:hover:bg-vlak",
+                )
               }
             >
-              {t(bestemming.labelKey)}
-              {bestemming.isGebouwd ? null : (
-                <span className="text-[0.6875rem] font-normal">
-                  {t("navigatie.binnenkort")}
-                </span>
+              {({ isActive }) => (
+                <>
+                  {/* The rule. On a phone it caps the tab; in the sidebar it sits on the leading
+                      edge. Hidden from assistive technology because aria-current already says it. */}
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "absolute rounded-full bg-accent transition-opacity duration-150",
+                      "inset-x-5 top-0 h-[2px] lg:inset-x-auto lg:inset-y-1.5 lg:left-0 lg:h-auto lg:w-[2px]",
+                      isActive ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  <Icoon className={cn("h-[22px] w-[22px] shrink-0 lg:h-5 lg:w-5", isActive && "[&_*]:stroke-[1.9]")} />
+                  {t(labelSleutel)}
+                </>
               )}
             </NavLink>
           </li>

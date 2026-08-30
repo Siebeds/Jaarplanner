@@ -1,81 +1,46 @@
-import nl from "./nl.json";
+import catalogus from "./nl.json";
 
 /**
- * Minimal, dependency-free i18n lookup for the MVP scaffold (ADR-0005, Art. II.3).
+ * The Dutch string catalogue (Art. II.3). Every word a teacher reads that this frontend authors
+ * lives in nl.json; components reference keys.
  *
- * The app is Dutch-only for now, so there is no runtime language switching and no
- * need for a full i18n library (react-i18next). `nl.json` is the single source of
- * Dutch UI text; this helper resolves a dot-notation key against it and returns the
- * string. Keys are typed against the JSON so a typo or a missing key is a compile error.
- *
- * Convention: nested JSON grouped by feature/area (`app`, `zijbalk`, …). Callers use
- * the flattened dot path, e.g. `t("zijbalk.open")`. Catalogue values are Dutch; keys
- * are stable technical identifiers (English/Dutch mix is fine — they are not user-facing).
+ * Typed by dot path, so a key that does not exist is a compile error rather than a "doelen.titl"
+ * rendered verbatim on screen. `catalogus.test.ts` guards the rules a type cannot: no em dashes,
+ * no dead keys, no Dutch literal smuggled into a component.
  */
+type Blad = string;
 
-type NlCatalogue = typeof nl;
+type Paden<T> = T extends Blad
+  ? ""
+  : {
+      [K in keyof T & string]: T[K] extends Blad ? K : `${K}.${Paden<T[K]>}`;
+    }[keyof T & string];
 
-/** Recursively builds the union of dot-notation paths whose leaves are strings. */
-type DotKeys<T> = {
-  [K in keyof T & string]: T[K] extends string
-    ? K
-    : T[K] extends object
-      ? `${K}.${DotKeys<T[K]>}`
-      : never;
-}[keyof T & string];
-
-export type TranslationKey = DotKeys<NlCatalogue>;
-
-/** Values substituted into `{placeholder}` slots of a catalogue string. */
-export type TranslationParams = Record<string, string | number>;
+export type Vertaalsleutel = Paden<typeof catalogus>;
 
 /**
- * Resolve a translation key to its Dutch string from `nl.json`.
+ * Looks up `sleutel` and substitutes every `{naam}` placeholder from `waarden`.
  *
- * Optional `params` fill `{placeholder}` slots in the catalogue value (simple, dependency-free
- * interpolation), e.g. `t("matching.aanvaardenAria", { code: "NAT-K3-01" })` against
- * `"Leerplandoel {code} aanvaarden"`. Missing slots are left untouched.
- *
- * @throws never at runtime for valid keys; an unknown key is rejected at compile time.
- *         As a defensive runtime fallback (e.g. catalogue edited out of sync) the key
- *         itself is returned so the UI degrades visibly rather than crashing.
+ * A missing key returns the key itself. That is deliberate: rendering "doelen.titl" is ugly on
+ * screen and therefore gets noticed and fixed, where an empty string silently ships a blank label.
  */
-/**
- * Resolve a count-dependent string, picking the singular catalogue entry when `aantal === 1`.
- *
- * Dutch inflects both the noun and the verb ("1 thema **staat**" vs "2 thema's **staan**"), so a single
- * template with an `{aantal}` slot cannot be correct for both — it produces "1 thema's staan", which is what
- * a teacher would read on screen. Rather than a ternary at each call site, the choice lives here: the same
- * bug appeared in five separate strings during E3-02/E3-06 and was fixed one instance at a time until this
- * helper existed. `aantal` is passed into both entries, so the singular text may use it or ignore it.
- */
-export function tAantal(
-  aantal: number,
-  enkelvoud: TranslationKey,
-  meervoud: TranslationKey,
-  params?: TranslationParams,
-): string {
-  return t(aantal === 1 ? enkelvoud : meervoud, { aantal, ...params });
-}
-
-export function t(key: TranslationKey, params?: TranslationParams): string {
-  const value = key
+export function t(sleutel: Vertaalsleutel, waarden?: Record<string, string | number>): string {
+  const tekst = sleutel
     .split(".")
-    .reduce<unknown>(
-      (node, segment) =>
-        node && typeof node === "object"
-          ? (node as Record<string, unknown>)[segment]
-          : undefined,
-      nl,
-    );
+    .reduce<unknown>((knoop, deel) => (typeof knoop === "object" && knoop !== null ? (knoop as Record<string, unknown>)[deel] : undefined), catalogus);
 
-  let result = typeof value === "string" ? value : key;
+  if (typeof tekst !== "string") return sleutel;
+  if (!waarden) return tekst;
 
-  if (params) {
-    for (const [name, replacement] of Object.entries(params)) {
-      result = result.replaceAll(`{${name}}`, String(replacement));
-    }
-  }
-
-  return result;
+  return tekst.replace(/\{(\w+)\}/g, (heel, naam: string) => {
+    const waarde = waarden[naam];
+    return waarde === undefined ? heel : String(waarde);
+  });
 }
+
+/** "1 doel" / "7 doelen": Dutch needs the singular spelled out, not an appended "(en)". */
+export function telWoord(aantal: number, enkelvoud: Vertaalsleutel, meervoud: Vertaalsleutel): string {
+  return aantal === 1 ? t(enkelvoud) : t(meervoud, { aantal });
+}
+
+export { catalogus };

@@ -1,231 +1,197 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@import "@fontsource-variable/schibsted-grotesk";
+@import "@fontsource-variable/ibm-plex-sans";
+/* Latin subsets only for the mono face: it sets doelcodes, counts and dates, which are ASCII by
+   construction. The two variable faces ship every subset in one file and let unicode-range decide
+   what a browser actually downloads. */
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
 
 /*
- * Design tokens (E0-09, ADR-0017, Art. XII) as CSS variables — the shadcn/ui pattern.
- * Defined once here, referenced by the Tailwind `theme.extend.colors` tokens in
- * tailwind.config.js, and reused everywhere. Never inline a hex value in a component.
+ * Design tokens for the Jaarplanner frontend, direction "Inkt en Signaal".
  *
- * Values are HSL channels (without the `hsl()` wrapper) so Tailwind can compose them
- * with opacity modifiers, e.g. `bg-doelsoort-md/10`.
+ * ── The one decision everything else follows ────────────────────────────────────────────
+ * Art. XII already spends nine hues on MEANING: six doelsoorten, four suggestiestatussen,
+ * two dekkingstoestanden and one attentiekleur. Every remaining hue on the wheel sits within
+ * roughly 25 degrees of one that is already taken, so a brand hue here would not be a free
+ * choice: it would compete with a signal a teacher has to read.
  *
- * ── The palette has a hard constraint most apps do not have ──────────────────────────
- * Art. XII already spends six hues on doelsoort (MD blue, G neutral, + green, P/S pink,
- * A yellow), and suggestiestatus and dekking spend more. Those colours *mean* something
- * to a teacher, so the interface chrome may not compete with them. Hence exactly ONE
- * structural hue — `petrol` — for brand, navigation and primary actions, one attention
- * hue for knelpunten, and warm neutrals for everything else. Categorical colour stays
- * reserved for the domain.
+ * So this interface has NO brand hue. The chrome is achromatic - paper, ink, and one
+ * near-black for primary actions - and every saturated pixel on screen carries domain
+ * meaning. Colour is not decoration here; it is the vocabulary.
  *
- * Semantic groups, all paired in the UI with a label/icon (colour is never the sole
- * signal — WCAG 2.2 AA, ADR-0017 §4):
- *   1. doelsoort        — Op.stap goal types (Art. XII colour conventions)
- *   2. suggestiestatus  — DoelKoppeling AI-suggestion lifecycle (Art. IV)
- *   3. dekking          — coverage state of a (minimum)doel (FR-9)
+ * Consequence for anyone adding to this file: if you find yourself reaching for a colour to
+ * make something look nicer, you are about to break the rule the whole design rests on.
+ * Reach for weight, size, spacing or elevation instead.
+ *
+ * Never colour alone (Art. XII, WCAG 2.2 AA): every coloured state also carries a letter,
+ * label or icon. The doelsoort swatch is a square AND its letter, never the square alone.
  */
+@theme {
+  /* ── paper and ink ─────────────────────────────────────────────────────────────────── */
+  /* A whisper of blue in the neutrals (hue 220 at very low saturation) so white cards read
+     as objects lying on the page rather than as holes in it. Not enough to be a hue. */
+  --color-vlak: hsl(220 20% 97%);
+  --color-vlak-diep: hsl(220 16% 93%);
+  --color-kaart: hsl(0 0% 100%);
+  --color-lijn: hsl(220 14% 89%);
+  --color-lijn-sterk: hsl(220 12% 80%);
+  /* The border of anything a teacher can type in or press.
+     WCAG 2.2 AA 1.4.11 wants 3:1 against the adjacent colour for the boundary that identifies a
+     control, and on a white field that boundary is the ONLY thing identifying it. Measured against
+     white: `lijn` gives 1.25:1 and `lijn-sterk` 1.61:1, so neither can carry a control. 58%
+     lightness measures 3.04:1 and is the lightest value that clears the floor. */
+  --color-lijn-veld: hsl(220 10% 58%);
+
+  /* ── the one accent ────────────────────────────────────────────────────────────────── */
+  /* A deep teal, and the hue was chosen by elimination rather than by taste. Nine hues are
+     already spoken for by meaning, and the only two free arcs on the wheel are around 188
+     and around 295. 295 is 28 degrees from the Manueel purple, and that purple appears as a
+     dot on the very cards this accent would sit on, so it goes. 188 is 29 degrees from MD
+     blue, which always carries its own letters, and it happens to be the same family as the
+     desktop app's petrol, so the three frontends read as one product.
+
+     It is spent on exactly five things: the primary action, the active destination, the
+     focus ring, the fill of the year strip, and a selected row. Anywhere else and it starts
+     competing with the domain colours again, which is the whole thing this palette avoids. */
+  --color-accent: hsl(187 74% 27%);
+  --color-accent-op: hsl(0 0% 100%);
+  --color-accent-diep: hsl(187 78% 21%);
+  --color-accent-zacht: hsl(186 52% 94%);
+
+  --color-inkt: hsl(220 18% 10%);
+  --color-inkt-op: hsl(0 0% 100%);
+  --color-inkt-zacht: hsl(220 9% 38%);
+  --color-inkt-zwak: hsl(220 8% 45%);
+
+  /* ── doelsoort - Op.stap goal types (Art. XII) ─────────────────────────────────────── */
+  /* Copied byte for byte from frontend/src/index.css. The chrome around them differs per
+     app; the meaning may not. */
+  --color-doelsoort-md: hsl(217 91% 40%);
+  --color-doelsoort-md-op: hsl(0 0% 100%);
+  --color-doelsoort-gemeenschappelijk: hsl(215 19% 35%);
+  --color-doelsoort-gemeenschappelijk-op: hsl(0 0% 100%);
+  --color-doelsoort-verdieping: hsl(142 72% 29%);
+  --color-doelsoort-verdieping-op: hsl(0 0% 100%);
+  --color-doelsoort-precurriculum: hsl(330 81% 42%);
+  --color-doelsoort-precurriculum-op: hsl(0 0% 100%);
+  --color-doelsoort-specifiek: hsl(330 70% 45%);
+  --color-doelsoort-specifiek-op: hsl(0 0% 100%);
+  --color-doelsoort-anderstalige: hsl(36 100% 30%);
+  --color-doelsoort-anderstalige-op: hsl(0 0% 100%);
+
+  /* ── suggestiestatus - DoelKoppeling lifecycle (Art. IV) ───────────────────────────── */
+  --color-suggestie-voorgesteld: hsl(217 91% 40%);
+  --color-suggestie-aanvaard: hsl(142 72% 29%);
+  --color-suggestie-geweigerd: hsl(0 72% 42%);
+  --color-suggestie-manueel: hsl(262 52% 47%);
+
+  /* ── dekking - binary for the MVP (Art. IX.3) ──────────────────────────────────────── */
+  --color-dekking-gedekt: hsl(142 72% 29%);
+  --color-dekking-niet-gedekt: hsl(0 72% 42%);
+
+  /* ── attentie - knelpunten. Warm, never alarming (FR-6.4) ──────────────────────────── */
+  --color-attentie: hsl(30 85% 38%);
+  --color-attentie-zacht: hsl(40 90% 96%);
+  --color-attentie-inkt: hsl(25 68% 24%);
+
+  /* ── type ──────────────────────────────────────────────────────────────────────────── */
+  /* Three roles, three faces, each doing one job. Schibsted Grotesk is the voice: tight,
+     editorial, used only for headings and the screen title. IBM Plex Sans is the workhorse
+     and carries every sentence a teacher reads. IBM Plex Mono sets what is a CODE rather
+     than a word - doelcodes, counts, dates - so a teacher can tell an identifier from a
+     name without reading it. */
+  --font-display: "Schibsted Grotesk Variable", "Schibsted Grotesk", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans Variable", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  --text-scherm: 1.75rem;
+  --text-scherm--line-height: 1.05;
+  --text-scherm--letter-spacing: -0.03em;
+  --text-scherm--font-weight: 700;
+
+  --text-sectie: 1.0625rem;
+  --text-sectie--line-height: 1.3;
+  --text-sectie--letter-spacing: -0.012em;
+  --text-sectie--font-weight: 600;
+
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.55;
+
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.4;
+
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.25;
+  --text-micro--letter-spacing: 0.06em;
+  --text-micro--font-weight: 600;
+
+  /* ── shape and depth ───────────────────────────────────────────────────────────────── */
+  --radius-veld: 0.75rem;
+  --radius-kaart: 1rem;
+  --radius-blad: 1.5rem;
+
+  /* Shadows stay almost invisible: on an achromatic page, elevation is what replaces the
+     accent colour, so it has to be believable rather than loud. */
+  --shadow-licht: 0 1px 2px hsl(220 30% 10% / 0.05);
+  --shadow-kaart: 0 1px 2px hsl(220 30% 10% / 0.04), 0 6px 16px -6px hsl(220 30% 10% / 0.08);
+  --shadow-zweef: 0 12px 32px -10px hsl(220 30% 10% / 0.22);
+
+  /* 44px: the smallest target iOS and WCAG 2.2 AA (2.5.8) both accept. */
+  --spacing-raak: 2.75rem;
+}
+
 @layer base {
-  :root {
-    /* doelsoort — MD blue, G neutral, + green, P/S pink, A yellow (Art. XII) */
-    --doelsoort-md: 217 91% 40%; /* minimumdoel — blue (inspection-level) */
-    --doelsoort-md-foreground: 0 0% 100%;
-    --doelsoort-gemeenschappelijk: 215 19% 35%; /* G — neutral/grey */
-    --doelsoort-gemeenschappelijk-foreground: 0 0% 100%;
-    --doelsoort-verdieping: 142 72% 29%; /* + — green */
-    --doelsoort-verdieping-foreground: 0 0% 100%;
-    --doelsoort-precurriculum: 330 81% 42%; /* P — pink (illustratief) */
-    --doelsoort-precurriculum-foreground: 0 0% 100%;
-    --doelsoort-specifiek: 330 70% 45%; /* S — pink (illustratief) */
-    --doelsoort-specifiek-foreground: 0 0% 100%;
-    --doelsoort-anderstalige: 36 100% 30%; /* A — yellow/amber (anderstalige nieuwkomers) */
-    --doelsoort-anderstalige-foreground: 0 0% 100%;
-
-    /* suggestiestatus — DoelKoppeling lifecycle (Art. IV, advisory AI) */
-    --suggestie-voorgesteld: 217 91% 40%; /* provisional — blue */
-    --suggestie-voorgesteld-foreground: 0 0% 100%;
-    --suggestie-aanvaard: 142 72% 29%; /* confirmed — green */
-    --suggestie-aanvaard-foreground: 0 0% 100%;
-    --suggestie-geweigerd: 0 72% 42%; /* rejected — red */
-    --suggestie-geweigerd-foreground: 0 0% 100%;
-    --suggestie-manueel: 262 52% 47%; /* teacher-made — purple marker */
-    --suggestie-manueel-foreground: 0 0% 100%;
-
-    /* dekking — coverage state (FR-9). BINARY for the MVP (Art. IX.3): only
-     * gedekt / niet-gedekt. A graded "deels" state is an Art. XIV open decision
-     * (herhaling/opbouw) and is deliberately NOT pre-defined here. */
-    --dekking-gedekt: 142 72% 29%; /* covered — green */
-    --dekking-gedekt-foreground: 0 0% 100%;
-    --dekking-niet-gedekt: 0 72% 42%; /* not covered — red */
-    --dekking-niet-gedekt-foreground: 0 0% 100%;
-
-    /* ── chrome ──────────────────────────────────────────────────────────────────────
-     * `paper` is the page, `card` is a raised surface on it. The page is deliberately
-     * NOT pure white: a warm off-white lets white cards read as objects lying on it,
-     * which is what makes a planning surface feel like a planning surface. */
-    --paper: 40 33% 97%; /* warm off-white page */
-    --paper-diep: 40 20% 94%; /* recessed wells (empty period, scroll track) */
-    --card: 0 0% 100%;
-    --ink: 196 38% 13%; /* deep petrol-black — body text */
-    --ink-zacht: 200 14% 38%; /* secondary text; 5.74:1 on paper, 6.08:1 on card (was recorded as 6.4:1) */
-
-    /* The single structural hue. Dark enough for white text at 8.9:1. */
-    --petrol: 188 60% 22%;
-    --petrol-foreground: 0 0% 100%;
-    --petrol-helder: 187 52% 32%; /* hover / active accent */
-    --petrol-wash: 186 38% 94%; /* tinted surface, selected nav, chips */
-
-    /* Attention — knelpunten (te vol, vervallen plaatsing). Warm, never alarming: an
-     * over-full period is a judgement call, not an error (FR-6.4).
-     *
-     * Darkened from 33 88% 45% after measuring it: as a bar on the year strip it came out at
-     * 2.89:1 against the page, just under the 3:1 WCAG 1.4.11 floor for a graphic that carries
-     * state. This value clears it. The miss was invisible to axe (jsdom cannot evaluate colour)
-     * and to the eye — it looked fine, and was 0.11 short. */
-    --attentie: 30 85% 38%;
-    --attentie-zacht: 40 90% 96%;
-    --attentie-ink: 25 68% 24%; /* text on attentie-zacht */
-
-    /* base UI tokens (shadcn baseline) for the copied-in primitives, remapped onto the
-     * palette above so a primitive dropped in anywhere inherits the same language. */
-    --background: var(--paper);
-    --foreground: var(--ink);
-    --primary: var(--petrol);
-    --primary-foreground: var(--petrol-foreground);
-    --secondary: 40 20% 93%;
-    --secondary-foreground: var(--ink);
-    --muted: 40 20% 94%;
-    --muted-foreground: var(--ink-zacht);
-    --accent: var(--petrol-wash);
-    --accent-foreground: var(--petrol);
-    --border: 40 14% 87%;
-    /* Form-control boundary. 3,40:1 on card and 3,21:1 on paper, i.e. it clears WCAG 2.2 AA SC 1.4.11's 3:1
-       floor for the boundary of a user-interface component. Deliberately darker than --border (87%): --border
-       separates surfaces, where no minimum applies, while this one is the ONLY thing that says "this is a
-       field" — every control using it is bg-card on a bg-card panel, so the fill offers no fallback boundary.
-       Was 40 14% 84%, which measured 1,42:1 / 1,34:1 and failed on every input in the app. Two candidate
-       values that look plausible and do NOT clear the floor: 62% (2,50 / 2,36) and 55% (3,08 / 2,91 — passes
-       on card, fails on paper). Measure both surfaces before changing this. */
-    --input: 40 14% 52%;
-    --ring: var(--petrol);
-    --radius: 0.75rem;
-  }
-
   html {
-    /* Anchor jumps (the skip-link) should not slam the target under a sticky header. */
-    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
-    /* 15px base rather than 14: the users are non-technical adults reading dense Dutch
-     * curriculum text, and the first draft of this UI was reviewed as "hard to read". */
-    font-size: 0.9375rem;
-    line-height: 1.6;
+    background-color: var(--color-vlak);
+    color: var(--color-inkt);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Headings carry the hierarchy, so they get the tightening once, here. */
-  h1,
-  h2,
-  h3,
-  h4 {
-    @apply text-balance tracking-tight;
-    line-height: 1.25;
-  }
-
-  /* Dates and counts sit in columns all over the kalender; proportional digits make them
-   * visibly ragged. */
-  time,
-  [data-cijfers] {
+  /* Numbers that sit above one another in a list have to line up, or the eye cannot compare
+     them. Every count in this app is tabular. */
+  .mono,
+  code,
+  kbd {
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
 
-  /* One focus treatment for the whole app, so nothing has to remember to add it. */
+  /* A control hovers like a control.
+
+     Tailwind 4's preflight leaves a <button> on the user agent's arrow, so in this app every link
+     hovered like a link and every BUTTON hovered like plain text: the view switch, the arrows, the
+     day cells, the class picker. Measured in a browser, where each of those reported
+     `cursor: default`.
+
+     One base rule rather than a utility per button, because the exceptions are the ones that already
+     carry a utility: a draggable activiteit says `cursor-grab`, and a utility beats the base layer.
+     Disabled controls are left alone deliberately, since offering a hand for something that cannot be
+     pressed is the same lie in the other direction. */
+  button:not(:disabled),
+  select:not(:disabled),
+  summary,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  /* One focus treatment everywhere. It is the accent rather than the ink, so that a keyboard
+     user's position on the page is the same colour as the thing they are about to press. */
   :focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
-  }
-}
-
-@layer utilities {
-  /*
-   * A thin, quiet scrollbar for the horizontal scroll regions (the jaarplan board, the nav strip).
-   *
-   * The default Windows/Chromium scrollbar is a 17px grey trough, which on the board read as a piece of
-   * chrome heavier than the period columns above it. This keeps the affordance — a scrollbar has to stay
-   * *visible*, because it is the only hint that the year continues past the right edge — but sizes and
-   * colours it like part of the design.
-   *
-   * Both syntaxes are needed: `scrollbar-color`/`scrollbar-width` is the standard (Firefox, Chromium 121+),
-   * `::-webkit-scrollbar` covers older Chromium/Edge/Safari. The thumb keeps a border-box padding trick so
-   * it reads as a rounded bar inside a transparent track rather than filling the gutter.
-   */
-  .subtle-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
-  .subtle-scrollbar::-webkit-scrollbar {
-    height: 0.625rem;
-    width: 0.625rem;
-  }
-
-  .subtle-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  /*
-   * Must be explicit. The moment a page styles `::-webkit-scrollbar` at all, Chromium drops its modern
-   * overlay scrollbar and renders the legacy one — which brings back the little step arrows at both ends.
-   * So styling the bar to be subtler without this rule makes it look *older*, not quieter.
-   */
-  .subtle-scrollbar::-webkit-scrollbar-button {
-    display: none;
-    height: 0;
-    width: 0;
-  }
-
-  .subtle-scrollbar::-webkit-scrollbar-corner {
-    background: transparent;
-  }
-
-  .subtle-scrollbar::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--border));
-    border: 3px solid transparent;
-    background-clip: content-box;
-    border-radius: 9999px;
-  }
-
-  .subtle-scrollbar:hover::-webkit-scrollbar-thumb,
-  .subtle-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--ink-zacht));
-  }
-
-  /*
-   * The *provisional* half of the coverage progress bar (E9-06): diagonal stripes in the dekking-gedekt hue on the
-   * card, for the goals that would be covered if the teacher accepted the placements standing in their plan.
-   *
-   * **A texture rather than a second colour, and that is the constitution rather than taste.** Art. XII spends the
-   * palette on doelsoort, suggestiestatus and dekking, and the chrome gets one structural hue — so there is no fourth
-   * colour available to mean "not yet". More to the point, Art. IV.1 says an unanswered AI proposal is not coverage,
-   * and a lighter *tint* of the covered green would say "coverage, a bit less so", which is the one reading this
-   * segment must not have. Stripes read as provisional in a way no tint does, and they survive greyscale.
-   *
-   * The bar carrying it is `aria-hidden`: both quantities are printed as text beside it, so this is the third carrier
-   * rather than the only one, and Art. XII's "never colour alone" is satisfied by the sentence, not by the hatch.
-   *
-   * 45deg and a 6px period were settled by looking at it. Finer than ~4px shimmers against the rounded mask at the
-   * segment edge; coarser than ~8px reads as two or three chevrons rather than as a texture on a 8px-high bar.
-   */
-  .dekking-arcering {
-    background-image: repeating-linear-gradient(
-      45deg,
-      hsl(var(--dekking-gedekt)) 0,
-      hsl(var(--dekking-gedekt)) 2px,
-      hsl(var(--card)) 2px,
-      hsl(var(--card)) 6px
-    );
-  }
-
-  /* Respect the OS setting rather than animating regardless (ADR-0017 §7, WCAG 2.3.3). */
+  /* The quality floor, not a feature. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -236,4 +202,39 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+/*
+ * Motion. Three short entrances and nothing else: the overlay fades, the sheet rises on a phone,
+ * the panel slides in on a desktop. Anything more would be decoration, and the reduced-motion
+ * block above already switches all of it off for anyone who asked.
+ */
+@keyframes waas-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes blad-op {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes blad-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@utility waas-in {
+  animation: waas-in 160ms ease-out;
+}
+
+@utility blad-op {
+  animation: blad-op 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@utility blad-in {
+  animation: blad-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
 }

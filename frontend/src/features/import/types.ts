@@ -1,22 +1,20 @@
 /**
- * The import feature's wire types (E1-13, FR-1.1…1.5 and FR-2.5).
+ * The import feature's wire types (FR-1.1..1.5 and FR-2.5).
  *
  * Names mirror the two controllers' response records (`SchoolcontentImportController.ImportAntwoord`,
- * `OpstapImportController.OpstapImportAntwoord`) and their diffs. Enums are serialised **by name**
- * (`Program.cs` registers `JsonStringEnumConverter` with no naming policy), so every enum string here is
- * PascalCase exactly as the API sends it — the same convention `DoelsoortNaam` and `SuggestieStatus` follow.
+ * `OpstapImportController.OpstapImportAntwoord`) and their diffs. Enums travel **by name**: the API
+ * registers `JsonStringEnumConverter` with no naming policy, so every enum string here is PascalCase
+ * exactly as the API sends it, the same convention `KoppelingStatus` follows.
  *
- * **Two importers, two contracts, and they are deliberately not unified.** They share the shape
- * `{ isBestandGeldig, isVolledigVerwerkt, problemen[], diff, toegepast }` and nothing else: one describes the
- * school's own editable content, the other the decreed curriculum, and their per-row problem records differ in
- * both fields *and* in language (see {@link OpstapRijProbleem}). A common base type would hide exactly the
- * distinction the screen exists to show.
+ * **Two importers, two contracts, deliberately not unified.** They share the outer shape
+ * `{ isBestandGeldig, isVolledigVerwerkt, problemen[], diff, toegepast }` and nothing else. One
+ * describes the school's own editable content, the other the decreed curriculum, and their per-row
+ * problem records differ in fields AND in language (see `OpstapRijProbleem`). A common base type
+ * would hide exactly the distinction this screen exists to show.
  */
-import type { SuggestieStatus } from "../matching/types";
+import type { KoppelingStatus } from "../../lib/types";
 
-// ---------------------------------------------------------------------------------------------------
-// School content (thema / subthema / activiteit) — FR-1
-// ---------------------------------------------------------------------------------------------------
+// --- School content (thema / subthema / activiteit), FR-1 --------------------------------------
 
 /** What a re-import does with content whose match key already exists (FR-1.4). */
 export type SchoolcontentImportModus = "Toevoegen" | "Bijwerken";
@@ -30,31 +28,17 @@ export type KoppelingNiveau = "Themadoel" | "Subdoel" | "Activiteit";
 /**
  * One per-row (or file-level) validation problem from the school-content parser (FR-1.2).
  *
- * `melding` is **Dutch and rendered verbatim**. The file was written by a teacher and only a teacher can fix
- * it, which is the actionable side of the Art. II.3 split as amended 2026-07-30; and a sentence naming a row,
- * a column and the offending value cannot be assembled from a static catalogue.
+ * `melding` is Dutch and rendered verbatim. The file was written by a teacher and only a teacher can
+ * fix it, which is the actionable side of the Art. II.3 split: a sentence naming a row, a column and
+ * the offending value cannot be assembled from a static catalogue.
  */
 export interface SchoolcontentRijProbleem {
-  /**
-   * The 1-based Excel row, or **0** for a problem that belongs to the file rather than to a row (no
-   * worksheet, no header row). A renderer must not print "rij 0" — see `Rijproblemen`.
-   */
+  /** The 1-based Excel row, or 0 for a problem about the file rather than a row. Never print "rij 0". */
   rijNummer: number;
   melding: string;
-  /**
-   * The offending column as the enum member name. Present for completeness of the contract and
-   * **deliberately not rendered**: it is a technical identifier, and its Dutch header label arrives ready-made
-   * in {@link kolomLabel}.
-   */
+  /** The offending column as an enum member name: a technical identifier, so it is not rendered. */
   kolom: string | null;
-  /**
-   * The Dutch header label of that column, exactly as it appears in row 1 of the sheet.
-   *
-   * Derived server-side from `SchoolcontentKolommen`, which is the single source the parser and the template
-   * generator also read (Art. III.3). That is why this field exists at all: naming the column on screen from
-   * a table in the frontend would have put a second copy of the Excel layout outside that source, and it
-   * would drift silently the first time a column moves.
-   */
+  /** The Dutch header label of that column, derived server-side from the one column table (Art. III.3). */
   kolomLabel: string | null;
 }
 
@@ -64,7 +48,7 @@ export interface ThemaWijziging {
   soort: WijzigingSoort;
 }
 
-/** One subthema in the diff. `klas` and `leeftijd` are part of its identity: it is class/age-scoped. */
+/** One subthema in the diff. `klas` and `leeftijd` are part of its identity: it is class/age scoped. */
 export interface SubthemaWijziging {
   themaNaam: string;
   naam: string;
@@ -82,18 +66,18 @@ export interface ActiviteitWijziging {
 }
 
 /**
- * A teacher-set goal link that an overwrite would discard, because the re-imported file no longer carries
+ * A teacher-set goal link an overwrite would discard, because the re-imported file no longer carries
  * it (Art. IV.2).
  *
- * The server **keeps** these unless the caller explicitly opts in, so the list is a warning and not a
- * report of something already lost. That distinction is the whole reason the opt-in lives after the preview
- * rather than beside the upload: only a preview can say how many decisions are at stake.
+ * The server KEEPS these unless the caller opts in, so this list is a warning and not a report of
+ * something already lost. That is why the opt-in belongs after the preview and not beside the
+ * upload: only a preview can say how many decisions are at stake.
  */
 export interface BedreigdeBeslissing {
   niveau: KoppelingNiveau;
   contentNaam: string;
   leerplandoelCode: string;
-  status: SuggestieStatus;
+  status: KoppelingStatus;
 }
 
 /** What an import did, or would do, per level (FR-1.3). */
@@ -106,10 +90,9 @@ export interface SchoolcontentImportDiff {
   /** True when the import was deliberately skipped as a whole (an empty or unusable file). */
   overgeslagen: boolean;
   /**
-   * Dutch notices about content that was **dropped** although the file parsed: an unknown leerplandoel code,
-   * a 4th themadoel, a subthema naming a klas that does not exist. This is the FR-1.2 payload that
-   * `isVolledigVerwerkt` turns false for, and it is a different thing from {@link SchoolcontentRijProbleem}:
-   * a probleem means the row could not be read, an opmerking means it was read and something was still lost.
+   * Dutch notices about content that was DROPPED although the file parsed: an unknown leerplandoel
+   * code, a fourth themadoel, a subthema naming a klas that does not exist. A probleem means the row
+   * could not be read; an opmerking means it was read and something was still lost.
    */
   opmerkingen: string[];
   isLeeg: boolean;
@@ -120,26 +103,23 @@ export interface SchoolcontentImportDiff {
 export interface SchoolcontentImportAntwoord {
   /** True when the file parsed with no per-row or file-level problems. */
   isBestandGeldig: boolean;
-  /** True when the import *additionally* discarded nothing: no problems **and** no opmerkingen. */
+  /** True when the import additionally discarded nothing: no problemen AND no opmerkingen. */
   isVolledigVerwerkt: boolean;
   problemen: SchoolcontentRijProbleem[];
   diff: SchoolcontentImportDiff;
-  /** False for a preview; true once the changes were committed. */
+  /** False for a preview, true once the changes were committed. */
   toegepast: boolean;
 }
 
-// ---------------------------------------------------------------------------------------------------
-// Op.stap curriculum — FR-2.1 / FR-2.5
-// ---------------------------------------------------------------------------------------------------
+// --- Op.stap curriculum, FR-2.1 / FR-2.5 -------------------------------------------------------
 
 /**
- * One per-row parse problem from the **official** Op.stap goal file.
+ * One per-row parse problem from the OFFICIAL Op.stap goal file.
  *
- * `reden` is **English on purpose**, and must not be translated. A malformed row in a file the school
- * downloaded from Op.stap is not something any user of this application can fix, so it is an operator
- * diagnostic — the mirror image of {@link SchoolcontentRijProbleem}, whose Dutch `melding` describes a row
- * the teacher wrote themselves. That asymmetry is the first worked example of the Art. II.3 ruling
- * classifying two row-level diagnostics differently based on **who authored the file**.
+ * `reden` is English on purpose and must not be translated. A malformed row in a file the school
+ * downloaded from Op.stap is not something any user of this application can fix, so it is an
+ * operator diagnostic: the mirror image of `SchoolcontentRijProbleem`, whose Dutch `melding`
+ * describes a row the teacher wrote themselves.
  */
 export interface OpstapRijProbleem {
   rijNummer: number;
@@ -162,7 +142,7 @@ export interface LeerplandoelWijziging {
   velden: VeldWijziging[];
 }
 
-/** A leerplandoel gone from Op.stap that school content still links, so it is flagged and kept (Art. III.4). */
+/** A leerplandoel gone from Op.stap that school content still links, so it is flagged and kept. */
 export interface VerdwenenGekoppeldDoel {
   code: string;
   aantalKoppelingen: number;
@@ -185,11 +165,10 @@ export interface OpstapHerimportDiff {
   /**
    * True when this run produced something a human should look at.
    *
-   * **It is not a durable "needs review" state and must not be rendered as one.** It is true whenever
-   * `verdwenen`/`verdwenenMaarGekoppeld` is non-empty, and a flag-and-keep row stays absent from every later
-   * file, so once a discipline has lost a goal every subsequent re-import reports it again, forever. Keying a
-   * standing, undismissable banner on it would be the E3-09 mistake in another flow. See `Opstapimport` for
-   * how this screen scopes the notice to the run in front of the reader.
+   * NOT a durable "needs review" state, and it must not be rendered as one: a flag-and-keep row
+   * stays absent from every later file, so once a discipline has lost a goal every subsequent
+   * re-import reports it again, forever. This screen scopes the notice to the run in front of the
+   * reader.
    */
   vereistReview: boolean;
 }

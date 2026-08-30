@@ -30,13 +30,14 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0014](0014-frontend-state-and-dnd.md) | Frontend state management & drag-and-drop | Accepted |
 | [0015](0015-testing-strategy.md) | Testing strategy & high-risk coverage | Accepted |
 | [0016](0016-azure-hosting-eu-residency.md) | Azure hosting & EU data residency | Accepted |
-| [0017](0017-ui-ux-design-system.md) | UI/UX approach & design system (shadcn/ui + Radix, WCAG 2.2 AA) | Accepted |
+| [0017](0017-ui-ux-design-system.md) | UI/UX approach & design system (shadcn/ui + Radix, WCAG 2.2 AA) | Accepted (decisions 1, 2, 3 and 5 superseded by 0024) |
 | [0018](0018-concordance-one-to-many-fk.md) | Concordance is a one-to-many nullable FK (M:N rejected; supersedes 0007 concordance clause) | Accepted |
 | [0019](0019-discipline-selection-config-seam.md) | Discipline-selection config seam for an open decision (Art. XIV; data-driven, not compiled in) | Accepted |
 | [0020](0020-planningsblok-derivation-rules.md) | Planningsblok derivation rules — even distribution, nested tiers, identity = (niveau, start), lengths per deployment (refines 0013) | Accepted |
 | [0021](0021-frontend-routing-and-url-selection.md) | Frontend routing (`react-router-dom`, declarative) and the URL as the single source of truth for the klas/schooljaar selection | Accepted |
 | [0022](0022-curriculum-administration-authorisation-seam.md) | Curriculum-administration authorisation seam (one named policy `Curriculumbeheer`, a documented no-op until E6-02) and one endpoint per import source (complements 0011) | Accepted |
 | [0023](0023-activiteit-day-placement.md) | An activiteit is placed on a calendar **day**, never on a planningsblok; `Planningsblokniveau` gains no week/day member and a week is a rendering grouping (relates to 0013/0020, supersedes neither) | Accepted |
+| [0024](0024-single-frontend-inkt-en-signaal.md) | One frontend at `frontend/` (frontend-v3 renamed in, the old frontend and frontend-mobile deleted); design direction "Inkt en Signaal": near-achromatic chrome (one rationed accent), Radix primitives without shadcn, tokens in CSS, mobile-first (supersedes 0017 decisions 1/2/3/5) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -66,6 +67,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0021 | Art. VIII, II.3, XII, IX.3 | E0-10; enables E1-13/14/15, E2-08, E5-02, E6-03/04 | FR-6, FR-9, FR-10/§3.2; NFR-2/7 |
 | 0022 | Art. VI.1/VI.5, XIV, VIII, III.1/III.4, II.3 | E1-15; E1-12, E6-01/02, E7-11, E7-13 | FR-2.1/2.5, FR-10/§3.2; NFR-5 |
 | 0023 | Art. IX.3, IX.2, IV.2, V.1, VIII | E9-03; enables E9-04/05 | FR-6.2/6.3, FR-7.2 |
+| 0024 | Art. VIII, XII, II, X | E9 | NFR-1/2/7 |
 
 ## Open decisions referenced by ADRs
 
