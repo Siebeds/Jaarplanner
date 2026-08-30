@@ -132,6 +132,17 @@
   --text-scherm--letter-spacing: -0.03em;
   --text-scherm--font-weight: 700;
 
+  /* A chapter head, between the screen title and a section label.
+     It exists because the thema fiche has four ranks of heading and this scale had three: a subthema
+     is a CHAPTER of that document, it was set at `sectie`, and it landed two pixels away from the
+     body text underneath it. That two pixel gap is why the screen kept reading as one flat column
+     however the elements inside it were arranged. The display face at this size is the step that
+     makes three levels legible without spending a single hue. */
+  --text-hoofdstuk: 1.375rem;
+  --text-hoofdstuk--line-height: 1.15;
+  --text-hoofdstuk--letter-spacing: -0.02em;
+  --text-hoofdstuk--font-weight: 600;
+
   --text-sectie: 1.0625rem;
   --text-sectie--line-height: 1.3;
   --text-sectie--letter-spacing: -0.012em;

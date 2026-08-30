@@ -19,6 +19,19 @@ import { IcoonPlus } from "../Iconen";
  * control on the heading line reads as part of the heading, floats far from the list it acts on at
  * desktop widths, and wraps into the heading on a phone. Under it, it reads as the first thing you
  * can do to the list below.
+ *
+ * **It is borderless (2026-08-30, second pass).** It was outlined, and on the redesigned thema fiche
+ * that made it the loudest object on the screen: a thema page carries four to six of these, they are
+ * the only bordered boxes on a page of text, and they sit at exactly the x where the eye goes
+ * looking for content. That is the "chrome outranks content" half of why the screen kept reading
+ * badly however the elements inside it were arranged.
+ *
+ * The plus is what says "this adds", and it stays. What goes is the box around it. The rule above is
+ * untouched: there is still exactly ONE shape for adding or linking, and it is still this component.
+ * The cost is that it now carries the same weight as "Vraag suggesties", so the difference in KIND
+ * between adding a thing and asking the model for candidates rests on the words and the plus rather
+ * than on the outline. That is the cheaper of the two losses: a teacher meets six add-controls per
+ * page and one suggestion request, so the repeated one is the one that has to be quiet.
  */
 export function Toevoegknop({
   label,
@@ -41,8 +54,8 @@ export function Toevoegknop({
 }) {
   return (
     <Knop
-      rang="rustig"
-      className="h-9 min-h-9 px-3 text-meta"
+      rang="stil"
+      className="h-9 min-h-9 px-2.5 text-meta"
       disabled={disabled}
       aria-label={ariaLabel}
       onClick={onClick}
