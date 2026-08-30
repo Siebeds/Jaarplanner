@@ -18,11 +18,10 @@ import { Doelenboom } from "./Doelenboom";
 import { Doeldetail } from "./Doeldetail";
 import { Bestemmingsblad } from "../koppelen/Bestemmingsblad";
 import { Minimumdoelenlijst } from "./Minimumdoelenlijst";
-import { Filterblad, type Doelenfilter } from "./Filterblad";
+import { Filterblad } from "./Filterblad";
 import { useActieveSelectie } from "../../lib/selectie";
+import { useDoelenfilter } from "../../state/doelenfilter";
 import { Doelsoortbalk } from "./Doelsoortbalk";
-
-type Bron = "leerplandoelen" | "minimumdoelen";
 
 /**
  * The curriculum register: Op.stap's leerplandoelen, and the decreed minimumdoelen behind the same
@@ -34,8 +33,11 @@ type Bron = "leerplandoelen" | "minimumdoelen";
  * reason to have a wide screen. Same component, two presentations, one selection state.
  */
 export function DoelenScherm() {
-  const [zoekInvoer, setZoekInvoer] = useState("");
-  const [zoek, setZoek] = useState("");
+  // Filter, search and view live in a store rather than in this component, because this component
+  // unmounts on every navigation and the teacher's narrowing should not. See `state/doelenfilter.ts`.
+  const { filter, zoek, bron, faseVanKlas, stelFilter, stelZoek, stelBron, volgKlasFase, wisAlles: wisFilter } =
+    useDoelenfilter();
+  const [zoekInvoer, setZoekInvoer] = useState(zoek);
   /**
    * THE REGISTER OPENS ON THE SELECTED CLASS'S JAAR/FASE (owner ruling, 2026-08-25).
    *
@@ -48,19 +50,17 @@ export function DoelenScherm() {
    * dimension is single-select on purpose (its facet list is a count per code); presetting one of the three would be
    * the guess the 2026-08-04 ruling forbids, and presetting none is the honest widest answer.
    */
-  const { klas } = useActieveSelectie();
-  const eigenFase = klas?.jaarFasen.length === 1 ? klas.jaarFasen[0] : undefined;
-  const [filter, setFilter] = useState<Doelenfilter>({});
-  const [faseVanKlas, setFaseVanKlas] = useState<string | undefined>(undefined);
+  const { klas, laadt: selectieLaadt } = useActieveSelectie();
+  const eigenFase = (klas?.jaarFasen.length === 1 ? klas.jaarFasen[0] : undefined) ?? null;
 
   // Applied when the class arrives or changes, not at mount: `useActieveSelectie` resolves its fallback after the
-  // klassen query lands, so a `useState` initialiser would run before there is a class to read.
-  if (eigenFase !== faseVanKlas) {
-    setFaseVanKlas(eigenFase);
-    setFilter((vorige) => ({ ...vorige, jaarFase: eigenFase }));
+  // klassen query lands, so a `useState` initialiser would run before there is a class to read. Held off entirely
+  // while that query is in flight, because a pending klassen list also reads as "no class": acting on it would clear
+  // a jaar/fase the teacher chose themselves and then replace it with the class's own, one render later.
+  if (!selectieLaadt && eigenFase !== faseVanKlas) {
+    volgKlasFase(eigenFase);
   }
   const [filterOpen, setFilterOpen] = useState(false);
-  const [bron, setBron] = useState<Bron>("leerplandoelen");
   const [gekozenCode, setGekozenCode] = useState<string | null>(null);
 
   /**
@@ -79,9 +79,9 @@ export function DoelenScherm() {
   // Debounced rather than applied per keystroke: every character would otherwise be a request, and
   // on a phone keyboard that is a request per thumb press.
   useEffect(() => {
-    const timer = setTimeout(() => setZoek(zoekInvoer.trim()), 300);
+    const timer = setTimeout(() => stelZoek(zoekInvoer.trim()), 300);
     return () => clearTimeout(timer);
-  }, [zoekInvoer]);
+  }, [zoekInvoer, stelZoek]);
 
   const doelenFilter = useMemo<LeerplandoelFilterQuery>(
     () => ({ ...filter, zoek: zoek || undefined }),
@@ -110,9 +110,8 @@ export function DoelenScherm() {
   const geenTreffers = bron === "leerplandoelen" && !leegRegister && facetten !== undefined && aantalDoelen === 0;
 
   function wisAlles() {
-    setFilter({});
+    wisFilter();
     setZoekInvoer("");
-    setZoek("");
   }
 
   const telling =
@@ -181,7 +180,7 @@ export function DoelenScherm() {
           <Segment
             label={t("doelen.toon")}
             waarde={bron}
-            onKies={setBron}
+            onKies={stelBron}
             opties={[
               { waarde: "leerplandoelen", label: t("doelen.leerplandoelen") },
               { waarde: "minimumdoelen", label: t("doelen.minimumdoelen") },
@@ -199,7 +198,7 @@ export function DoelenScherm() {
             <Doelsoortbalk
               facetten={facetten}
               actief={filter.doelsoort}
-              onKies={(doelsoort) => setFilter((huidig) => ({ ...huidig, doelsoort }))}
+              onKies={(doelsoort) => stelFilter({ ...filter, doelsoort })}
             />
           </div>
         ) : null}
@@ -258,7 +257,7 @@ export function DoelenScherm() {
 
       <Bestemmingsblad code={gekozenCode} open={koppelenOpen} onOpenChange={setKoppelenOpen} />
 
-      <Filterblad open={filterOpen} onOpenChange={setFilterOpen} filter={filter} onWijzig={setFilter} facetten={facetten} />
+      <Filterblad open={filterOpen} onOpenChange={setFilterOpen} filter={filter} onWijzig={stelFilter} facetten={facetten} />
     </>
   );
 }
