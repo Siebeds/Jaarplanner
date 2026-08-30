@@ -11,6 +11,7 @@ import { ApiError } from "../../lib/api";
 import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Klasformulier } from "./Klasformulier";
+import { Hoekensectie } from "./Hoekensectie";
 import { useMaakKlas, useVerwijderKlas, useWijzigKlasVolledig } from "./mutaties";
 
 /**
@@ -46,6 +47,10 @@ export function InstellingenScherm() {
       <Schermkop titel={t("instellingen.titel")} />
 
       <Schermvlak>
+        {/* Sections, separated by space rather than by a rule. Each already opens with its own
+            uppercase micro heading, and a hairline between two of them would be a second answer to a
+            question the headings have already answered. */}
+        <div className="flex flex-col gap-8">
         <section className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-micro uppercase text-inkt-zwak">{t("instellingen.klassen")}</h2>
@@ -120,6 +125,9 @@ export function InstellingenScherm() {
             </p>
           ) : null}
         </section>
+
+        <Hoekensectie klassen={klassen} laadt={laadt} />
+        </div>
       </Schermvlak>
 
       {formulier ? (

@@ -163,7 +163,7 @@
     "naarHetSchooljaar": "Naar {datum}",
     "gesloten": "Gesloten",
     "nogMeer": "nog {aantal}",
-    "geenThemaInPeriode": "In deze periode staat nog geen thema gepland",
+    "geenThemaInPeriode": "Deze periode heeft nog geen thema.",
     "geenActiviteiten": "Dit thema heeft nog geen activiteiten voor deze klas",
     "buitenPeriode": "Dit thema loopt in een andere periode",
     "opDag": "Dag",
@@ -201,7 +201,6 @@
     "subthemaHoortBijLeeftijd": "Een subthema hoort bij een leeftijd. Maak er een bij het thema voor de leeftijd van deze klas, dan staat het hier klaar om in te plannen.",
     "maakSubthemaBij": "Subthema maken bij {thema}",
     "dezeKlas": "Deze klas",
-    "geenThemaInPeriode": "Deze periode heeft nog geen thema.",
     "geenThemaUitleg": "Een subthema plan je binnen een thema, dus plaats hier eerst een thema.",
     "geenLesdagen": "Tussen deze twee dagen ligt geen lesdag",
     "pastNiet": "Er zijn {tekort} lesdagen te weinig. Kies een vroegere eerste dag of een latere laatste dag.",
@@ -334,7 +333,8 @@
   "instellingen": {
     "titel": "Instellingen",
     "klassen": "Klassen",
-    "schooljaar": "Schooljaar"
+    "schooljaar": "Schooljaar",
+    "hoeken": "Hoeken"
   },
   "klasbeheer": {
     "toevoegen": "Klas toevoegen",
@@ -518,5 +518,36 @@
     "nogEenOp": "Nog een activiteit in lesuur {nummer}",
     "pastNietEen": "1 lesuur valt na het laatste lesuur",
     "pastNietMeer": "{aantal} lesuren vallen na het laatste lesuur"
+  },
+  "hoeken": {
+    "toevoegen": "Hoek toevoegen",
+    "klas": "Klas",
+    "geenKlassen": "Maak eerst een klas aan. Een hoek hoort bij één klaslokaal.",
+    "geenHoeken": "Deze klas heeft nog geen hoeken.",
+    "nieuwTitel": "Nieuwe hoek",
+    "wijzigTitel": "Hoek bewerken",
+    "naam": "Naam",
+    "naamVoorbeeld": "boekenhoek",
+    "naamVerplicht": "Geef de hoek een naam.",
+    "omschrijving": "Wat staat hier het hele jaar?",
+    "omschrijvingVoorbeeld": "vaste kast met prentenboeken en een zitzak",
+    "eenPlaatsing": "Staat 1 keer in de agenda",
+    "aantalPlaatsingen": "Staat {aantal} keer in de agenda",
+    "verwijderTitel": "{naam} verwijderen?",
+    "verwijderMislukt": "Verwijderen is niet gelukt.",
+    "overnemen": "Hoeken overnemen",
+    "overnemenBezig": "Bezig met overnemen",
+    "overnemenTitel": "Hoeken overnemen",
+    "overnemenVan": "Van welke klas?",
+    "kiesKlas": "Kies een klas",
+    "kiesKlasVerplicht": "Kies eerst een klas.",
+    "overnemenUitleg": "De hoeken worden gekopieerd naar deze klas. Wat je hier daarna aanpast, verandert niets in de andere klas.",
+    "overnemenMislukt": "Overnemen is niet gelukt.",
+    "geenAndereKlas": "Er is nog geen andere klas om hoeken van over te nemen.",
+    "overnameNiets": "{klas} heeft nog geen hoeken.",
+    "overnameAlAanwezig": "Je had alle hoeken van {klas} al.",
+    "overnameEen": "1 hoek overgenomen.",
+    "overnameAantal": "{aantal} hoeken overgenomen.",
+    "overnameOvergeslagen": "Deze had je al: {namen}."
   }
 }

@@ -139,6 +139,11 @@ public static class DependencyInjection
         // prerequisite for that epic, not a convenience.
         services.AddScoped<IKlasBeheerService, KlasBeheerService>();
 
+        // The corners of each classroom (owner, meeting 2026-08-30). Registered beside klas CRUD rather than
+        // with the thema services because that is where it belongs: a hoek is the one piece of school content
+        // that hangs off a klas directly instead of reaching one through a thema.
+        services.AddScoped<IHoekBeheerService, HoekBeheerService>();
+
         // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
         // multiple klassen"), so the container needs a creation path in the same change that makes it required —
         // otherwise class creation, and jaarplan generation with it, would be unreachable. Deliberately no update
