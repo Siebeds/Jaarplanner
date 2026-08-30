@@ -43,6 +43,9 @@ import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
 import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
+import { leesFicheId } from "../hoeken/fiche";
+import { Hoekplaatsingblad } from "../hoeken/Hoekplaatsingblad";
+import { useHoekplaatsingen, usePlaatsHoek, useHoeken } from "../hoeken/gegevens";
 import { roosterdagen } from "./roosterdagen";
 import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
 import { themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
@@ -99,6 +102,9 @@ export function Agendascherm() {
 
   const hoekenOpen = useHoekenpaneel((s) => s.open);
   const wisselHoeken = useHoekenpaneel((s) => s.wissel);
+  const zetHoekenpaneel = useHoekenpaneel((s) => s.zet);
+  // The fiche that was dropped and the day it landed on. Null means no sheet.
+  const [gevallenFiche, setGevallenFiche] = useState<{ hoekId: string; datum: string } | null>(null);
 
   const { data: rooster } = useRooster(schooljaarId);
   const { data: plan } = useJaarplan(klasId);
@@ -167,6 +173,12 @@ export function Agendascherm() {
 
   const { data: planning, isPending } = useWeekplanning(klasId, van, tot);
 
+  // The hoeken running in the visible range, read separately from the weekplanning: a hoekplaatsing
+  // is not part of the jaarplan, so it is not part of the read model that projects one.
+  const { data: hoekplaatsingen } = useHoekplaatsingen(klasId, van, tot);
+  const { data: hoeken } = useHoeken(klasId);
+  const plaatsHoek = usePlaatsHoek(klasId);
+
   // The planner spreads over the whole period, so it needs every day of it rather than the days the
   // current view happens to be showing. A separate query with its own key: asking the view's query
   // for a wider range would refetch the grid every time the teacher changed week.
@@ -201,6 +213,38 @@ export function Agendascherm() {
     [reeksbron, rooster],
   );
   const stroken = useMemo(() => reeksenPerDag(reeksen), [reeksen]);
+
+  /**
+   * The subthema runs as the placement sheet wants them: a name and a window.
+   *
+   * Derived from the same `reeksen` the calendar draws, so the sheet cannot tell a teacher a subthema
+   * runs on days the grid behind it leaves blank.
+   */
+  /**
+   * Which hoeken take which lesuur on the anchored day.
+   *
+   * Built from the placements' own momenten rather than from their windows: a moment is a row a
+   * teacher can move on its own, so a hoek running all fortnight can genuinely sit at the third
+   * lesuur on Monday and the fifth on Thursday. Deriving it from the window would draw the same hour
+   * every day and quietly contradict what is stored.
+   */
+  const hoekenPerSlot = useMemo(() => {
+    const kaart = new Map<number, string[]>();
+    for (const plaatsing of hoekplaatsingen ?? []) {
+      for (const moment of plaatsing.momenten) {
+        if (moment.datum !== anker) continue;
+        const rij = kaart.get(moment.volgorde) ?? [];
+        rij.push(plaatsing.hoekNaam);
+        kaart.set(moment.volgorde, rij);
+      }
+    }
+    return kaart;
+  }, [hoekplaatsingen, anker]);
+
+  const looptSubthema = useMemo(
+    () => reeksen.map((reeks) => ({ naam: reeks.subthemaNaam, van: reeks.van, tot: reeks.tot })),
+    [reeksen],
+  );
 
   /**
    * EVERY THEMAPERIODE OF THE YEAR, WITH THE THEMA'S PLACED IN IT.
@@ -301,6 +345,18 @@ export function Agendascherm() {
   function laatLos({ active, over }: DragEndEvent) {
     setSleepNaam(null);
     if (!over) return;
+
+    // TWO KINDS OF DRAGGED THING, and the id says which. A hoekfiche comes from the panel and has no
+    // placement yet, so it opens the sheet instead of moving anything: which days, with what in it
+    // and at which lesuur are three questions a drop cannot answer.
+    const hoekId = leesFicheId(String(active.id));
+    if (hoekId !== null) {
+      const doelDag = leesSlotId(String(over.id))?.datum ?? String(over.id);
+      plaatsHoek.reset();
+      setGevallenFiche({ hoekId, datum: doelDag });
+      return;
+    }
+
     const plaatsingId = String(active.id);
 
     // Two kinds of target. The day grid drops onto a LESUUR, so its id carries the slot; the month
@@ -507,8 +563,6 @@ export function Agendascherm() {
 
         <div className="border-t border-lijn" />
 
-        <Hoekenpaneel klasId={klasId} />
-
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -517,6 +571,21 @@ export function Agendascherm() {
           onDragEnd={laatLos}
           onDragCancel={() => setSleepNaam(null)}
         >
+          {/* INSIDE the context, and it has to be: a fiche is dragged FROM here ONTO the grid below,
+              and dnd-kit registers a draggable through React context rather than through the DOM. The
+              panel is `fixed`, so where it sits on screen owes nothing to where it sits in this tree. */}
+          <Hoekenpaneel
+            klasId={klasId}
+            onKies={(hoekId) => {
+              // The phone path: no landing point, so the window opens on the day the agenda is
+              // standing on. The sheet closes because it is covering the calendar she is about to
+              // look at while choosing the days.
+              plaatsHoek.reset();
+              zetHoekenpaneel(false);
+              setGevallenFiche({ hoekId, datum: anker });
+            }}
+          />
+
           <div className="mt-3">
             {isPending || !planning ? (
               <Laadvlak className="h-72" />
@@ -537,6 +606,7 @@ export function Agendascherm() {
                 ankerMaand={anker}
                 vakken={vakken}
                 reeksenPerDag={stroken}
+                hoekplaatsingen={hoekplaatsingen ?? []}
                 onKiesDag={openDag}
                 onVoegToe={(datum) => setKiezer({ datum, slot: 0 })}
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
@@ -546,6 +616,7 @@ export function Agendascherm() {
                  deciding WHEN inside that Tuesday, and Volgorde already carried that. */
               <Lesurenraster
                 dag={zichtbareDagen[0] ?? leegteDag(anker)}
+                hoekenPerSlot={hoekenPerSlot}
                 onVoegToe={(datum, slot) => setKiezer({ datum, slot })}
                 onOpen={(activiteit) => setGeopend({ activiteit, datum: anker })}
               />
@@ -625,6 +696,31 @@ export function Agendascherm() {
           setNieuw(kiezer);
         }}
       />
+
+      {/* WHAT A DROPPED FICHE OPENS.
+
+          Keyed on the fiche and the day, so dropping a second corner refills the sheet instead of
+          showing the first one's half-made window. Mounted only while a fiche has actually landed:
+          the sheet's own state (which days, what text, which lesuur) is per drop and must not survive
+          one. */}
+      {gevallenFiche && rooster ? (
+        <Hoekplaatsingblad
+          open
+          key={`${gevallenFiche.hoekId}-${gevallenFiche.datum}`}
+          hoekId={gevallenFiche.hoekId}
+          hoekNaam={(hoeken ?? []).find((h) => h.id === gevallenFiche.hoekId)?.naam ?? ""}
+          startdag={gevallenFiche.datum}
+          loopt={looptSubthema}
+          schooljaarVan={rooster.start}
+          schooljaarTot={rooster.eind}
+          bezig={plaatsHoek.isPending}
+          fout={plaatsHoek.error}
+          onSluit={() => setGevallenFiche(null)}
+          onPlaats={(invoer) =>
+            plaatsHoek.mutate(invoer, { onSuccess: () => setGevallenFiche(null) })
+          }
+        />
+      ) : null}
 
       <Nieuweactiviteitblad
         // Keyed on the day and the hour: the form fills its fields at mount, so reopening it for

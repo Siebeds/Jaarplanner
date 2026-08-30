@@ -101,3 +101,105 @@ export function useNeemHoekenOver(klasId: string | null) {
     onSuccess: ververs,
   });
 }
+
+/* ------------------------------------------------------------------------------------------------
+   PLACING A HOEK ON THE AGENDA
+
+   A separate read from the weekplanning, over its own range, because a hoekplaatsing is not part of
+   the jaarplan and must not be part of the read model that projects one. One extra request buys the
+   property the model exists for: a (re)generation cannot reach what it cannot see.
+   ------------------------------------------------------------------------------------------------ */
+
+/** One appearance in the timetable: this day, this lesuur. */
+export interface HoekmomentWeergave {
+  id: string;
+  datum: string;
+  volgorde: number;
+}
+
+/** What is in the corner over a stretch of days. */
+export interface HoekverrijkingWeergave {
+  id: string;
+  van: string;
+  tot: string;
+  tekst: string;
+}
+
+/** A placed hoek as the agenda reads it. */
+export interface HoekplaatsingWeergave {
+  id: string;
+  hoekId: string;
+  hoekNaam: string;
+  van: string;
+  tot: string;
+  verrijkingen: HoekverrijkingWeergave[];
+  momenten: HoekmomentWeergave[];
+}
+
+/** What the teacher answered in the sheet after dropping a fiche on a day. */
+export interface HoekplaatsingInvoer {
+  hoekId: string;
+  van: string;
+  tot: string;
+  /** What the corner gets over this window. Null when she left it blank, which is an ordinary answer. */
+  verrijking: string | null;
+  /** The zero-based lesuur it takes on every teaching day, or null for "not in the uurrooster". */
+  lesuur: number | null;
+}
+
+const plaatsingSleutel = (klasId: string | null, van: string, tot: string) =>
+  ["hoekplaatsingen", klasId, van, tot] as const;
+
+/**
+ * The placements overlapping one date range.
+ *
+ * Keyed on the range like the weekplanning beside it, so paging a month does not re-read a year, and
+ * so the two answers on screen were fetched for the same window.
+ */
+export function useHoekplaatsingen(klasId: string | null, van: string, tot: string) {
+  return useQuery({
+    queryKey: plaatsingSleutel(klasId, van, tot),
+    queryFn: () =>
+      get<HoekplaatsingWeergave[]>(
+        `/api/klassen/${klasId}/hoekplaatsingen?van=${van}&tot=${tot}`,
+      ),
+    enabled: klasId !== null && van.length > 0 && tot.length > 0,
+  });
+}
+
+/**
+ * Invalidates every range at once.
+ *
+ * The keys carry a range, and a placement made in september changes what a screen showing november
+ * must draw whenever the window spans both. Matching on the prefix refetches whichever ranges are
+ * actually mounted, which is one or two, rather than trying to work out which of them overlap.
+ */
+function usePlaatsingVerversing() {
+  const qc = useQueryClient();
+  return () => void qc.invalidateQueries({ queryKey: ["hoekplaatsingen"] });
+}
+
+export function usePlaatsHoek(klasId: string | null) {
+  const ververs = usePlaatsingVerversing();
+
+  return useMutation({
+    mutationFn: (invoer: HoekplaatsingInvoer) =>
+      post<HoekplaatsingWeergave>(`/api/klassen/${klasId}/hoekplaatsingen`, invoer),
+    onSuccess: ververs,
+  });
+}
+
+/**
+ * Removes a placement, with its enrichments and its timetable rows.
+ *
+ * The way back out of a mistake, which is what makes placing safe to offer at all: a teacher who
+ * drags a fiche onto the wrong fortnight can undo it without a support call.
+ */
+export function useVerwijderHoekplaatsing() {
+  const ververs = usePlaatsingVerversing();
+
+  return useMutation({
+    mutationFn: (plaatsingId: string) => del(`/api/hoekplaatsingen/${plaatsingId}`),
+    onSuccess: ververs,
+  });
+}

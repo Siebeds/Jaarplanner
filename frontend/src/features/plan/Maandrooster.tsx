@@ -1,10 +1,12 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { GeplandeActiviteit } from "../../lib/types";
+import type { HoekplaatsingWeergave } from "../hoeken/gegevens";
 import type { Agendadag } from "./roosterdagen";
 import { dagNummer, maandVan, maandagVan, vandaag, verschuif, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
 import { t } from "../../i18n";
 import { Dagplus } from "./Dagplus";
 import { Subthemastroken } from "./Subthemastroken";
+import { Hoekstroken } from "../hoeken/Hoekstroken";
 import { Themastroken } from "./Themastroken";
 import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
 import { themaZin, vakOpDag, type Themavak } from "./themavakken";
@@ -31,6 +33,7 @@ export function Maandrooster({
   ankerMaand,
   vakken,
   reeksenPerDag,
+  hoekplaatsingen,
   onKiesDag,
   onOpen,
   onVoegToe,
@@ -48,6 +51,14 @@ export function Maandrooster({
   vakken: readonly Themavak[];
   /** Which subthema runs cover each day, so a cell can name what is running on it. */
   reeksenPerDag: Map<string, Subthemareeks[]>;
+  /**
+   * The hoeken running in the visible range.
+   *
+   * A flat list rather than a map per day, unlike the subthema runs beside it: a hoekplaatsing is
+   * already a window, so a cell answers "am I inside it" with a comparison instead of a lookup, and
+   * there is no derivation step that could disagree with the calendar.
+   */
+  hoekplaatsingen: readonly HoekplaatsingWeergave[];
   onKiesDag: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   /** Asked for an activiteit on this day, straight from the month. Lands in lesuur 1. */
@@ -91,6 +102,7 @@ export function Maandrooster({
               vak={vakOpDag(vakken, dag.datum)}
               isVandaag={dag.datum === nu}
               reeksen={reeksenPerDag.get(dag.datum) ?? LEEG}
+              hoekplaatsingen={hoekplaatsingen}
               onKiesDag={onKiesDag}
               onVoegToe={onVoegToe}
               onOpen={onOpen}
@@ -111,6 +123,7 @@ function Maandcel({
   vak,
   isVandaag,
   reeksen,
+  hoekplaatsingen,
   onKiesDag,
   onVoegToe,
   onOpen,
@@ -120,6 +133,7 @@ function Maandcel({
   vak: Themavak | undefined;
   isVandaag: boolean;
   reeksen: readonly Subthemareeks[];
+  hoekplaatsingen: readonly HoekplaatsingWeergave[];
   onKiesDag: (datum: string) => void;
   onVoegToe: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
@@ -188,6 +202,7 @@ function Maandcel({
       <div className="relative z-10 -mx-1.5 -mt-1.5 hidden flex-col gap-px sm:flex">
         <Themastroken vak={periode} datum={dag.datum} dicht />
         <Subthemastroken reeksen={stroken} datum={dag.datum} dicht />
+        <Hoekstroken plaatsingen={hoekplaatsingen} datum={dag.datum} dicht />
       </div>
 
       {/* Adding straight from the month, without the detour through the day.

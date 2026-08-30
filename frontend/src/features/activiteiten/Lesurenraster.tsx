@@ -1,5 +1,5 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { IcoonPlus } from "../../components/Iconen";
+import { IcoonHoek, IcoonPlus } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import type { Dagweergave, GeplandeActiviteit } from "../../lib/types";
@@ -22,6 +22,9 @@ export type GeplandMetKleur = GeplandeActiviteit & {
 const RIJ_VAN_MIDDAG = LESUREN.findIndex((l) => l.naMiddag) + 1;
 const gridRij = (slot: number) => (slot < RIJ_VAN_MIDDAG ? slot + 1 : slot + 2);
 const AANTAL_RIJEN = LESUREN.length + 1;
+
+/** One frozen empty list, so an hour without hoeken does not hand a new array to every render. */
+const GEEN_HOEKEN: readonly string[] = [];
 
 /**
  * One day, divided into lesuren.
@@ -47,10 +50,20 @@ const AANTAL_RIJEN = LESUREN.length + 1;
  */
 export function Lesurenraster({
   dag,
+  hoekenPerSlot,
   onVoegToe,
   onOpen,
 }: {
   dag: Dagweergave;
+  /**
+   * Which hoeken take which lesuur on this day, by slot.
+   *
+   * **A hoek does not occupy the hour the way an activiteit does.** It is drawn as a line inside
+   * the hour rather than as a block filling it, and an hour holding nothing but a hoek still offers
+   * its "vrij" button: hoekenwerk is what the class does, not what the teacher has finished planning.
+   * Treating a corner as a full block would make the day look booked and take the invitation away.
+   */
+  hoekenPerSlot: ReadonlyMap<number, readonly string[]>;
   /** Asked for an activiteit in this lesuur. `slot` is what goes into `volgorde`. */
   onVoegToe: (datum: string, slot: number) => void;
   onOpen: (activiteit: GeplandeActiviteit) => void;
@@ -132,13 +145,16 @@ export function Lesurenraster({
 
         {LESUREN.map((lesuur) => {
           const start = begintIn.get(lesuur.slot) ?? [];
-          if (start.length === 0 && bedekt.has(lesuur.slot)) return null; // the block above owns it
+          // The block above owns this hour. A hoek in it is not lost: it is drawn on the hour it
+          // starts in, and this hour has no column of its own to draw anything in.
+          if (start.length === 0 && bedekt.has(lesuur.slot)) return null;
           return (
             <Uurvak
               key={`vak-${lesuur.slot}`}
               datum={dag.datum}
               slot={lesuur.slot}
               start={start}
+              hoeken={hoekenPerSlot.get(lesuur.slot) ?? GEEN_HOEKEN}
               lengteVan={lengteVan}
               onVoegToe={onVoegToe}
               onOpen={onOpen}
@@ -173,6 +189,7 @@ function Uurvak({
   datum,
   slot,
   start,
+  hoeken,
   lengteVan,
   onVoegToe,
   onOpen,
@@ -180,6 +197,7 @@ function Uurvak({
   datum: string;
   slot: number;
   start: GeplandMetKleur[];
+  hoeken: readonly string[];
   lengteVan: (a: GeplandMetKleur) => number;
   onVoegToe: (datum: string, slot: number) => void;
   onOpen: (activiteit: GeplandeActiviteit) => void;
@@ -201,6 +219,18 @@ function Uurvak({
         isOver && "bg-accent-zacht",
       )}
     >
+      {/* The corners open in this hour, above whatever else is in it. A line and not a block: see
+          the prop's own note on why a hoek must not make the hour look booked. */}
+      {hoeken.map((naam) => (
+        <p
+          key={naam}
+          className="flex items-center gap-1.5 rounded-veld border border-lijn bg-kaart px-2 py-1 text-micro text-inkt-zacht"
+        >
+          <IcoonHoek aria-hidden="true" className="h-3 w-3 shrink-0" />
+          <span className="truncate">{naam}</span>
+        </p>
+      ))}
+
       {start.length === 0 ? (
         <button
           type="button"

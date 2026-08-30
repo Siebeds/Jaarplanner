@@ -1,3 +1,4 @@
+import { useDraggable } from "@dnd-kit/core";
 import { Link } from "react-router-dom";
 import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
@@ -7,6 +8,7 @@ import { useMediaQuery, BREED } from "../../lib/scherm";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
 import { useHoeken, type HoekWeergave } from "./gegevens";
+import { FICHE_VOORVOEGSEL } from "./fiche";
 
 /**
  * The hoekenfiches, beside the agenda: the corners this class has, while she plans (owner, 2026-08-30).
@@ -22,20 +24,37 @@ import { useHoeken, type HoekWeergave } from "./gegevens";
  * the sheet's overlay dimmed the whole agenda behind the column. Found by looking at it, not by a
  * test.
  *
- * **The fiches are cards and not yet controls, and that is a deliberate half-step.** A hoek is placed
- * on the agenda by dragging its fiche onto a day, and that flow (the drag, the period, the verrijking,
- * the uurrooster question) is the next story. Rendering them as draggable now would put a control on
- * screen that leads nowhere, which this repository's own rule forbids. As a list they already do
- * something honest: they tell a teacher what her room holds while she is planning what happens in it.
+ * **A fiche is dragged onto a day of the agenda.** That is why this component is mounted inside the
+ * agenda's `DndContext` even though it is `fixed` and paints nowhere near it: dnd-kit registers a
+ * draggable through React context, not through the DOM tree.
  */
-export function Hoekenpaneel({ klasId }: { klasId: string | null }) {
+export function Hoekenpaneel({
+  klasId,
+  onKies,
+}: {
+  klasId: string | null;
+  /**
+   * A fiche was CHOSEN rather than dragged: the phone path.
+   *
+   * Below `lg` the panel is a sheet over the calendar, so there is nothing to drag onto and a
+   * draggable fiche would be a control that does nothing. A tap opens the same placement sheet, with
+   * the day the agenda is standing on as the start, which is the one thing a tap can say that a drag
+   * says with its landing point.
+   */
+  onKies: (hoekId: string) => void;
+}) {
   const open = useHoekenpaneel((s) => s.open);
   const zet = useHoekenpaneel((s) => s.zet);
   const breed = useMediaQuery(BREED);
   const { data: hoeken, isPending } = useHoeken(open ? klasId : null);
 
   const inhoud = (
-    <Fichelijst hoeken={hoeken} laadt={klasId !== null && isPending} heeftKlas={klasId !== null} />
+    <Fichelijst
+      hoeken={hoeken}
+      laadt={klasId !== null && isPending}
+      heeftKlas={klasId !== null}
+      onKies={breed ? undefined : onKies}
+    />
   );
 
   if (!breed) {
@@ -91,10 +110,13 @@ function Fichelijst({
   hoeken,
   laadt,
   heeftKlas,
+  onKies,
 }: {
   hoeken?: HoekWeergave[];
   laadt: boolean;
   heeftKlas: boolean;
+  /** Set only where the fiche is tapped rather than dragged. */
+  onKies?: (hoekId: string) => void;
 }) {
   if (!heeftKlas) {
     return <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>;
@@ -124,7 +146,7 @@ function Fichelijst({
     <ul className="flex flex-col gap-2">
       {(hoeken ?? []).map((hoek) => (
         <li key={hoek.id}>
-          <Fiche hoek={hoek} />
+          <Fiche hoek={hoek} onKies={onKies} />
         </li>
       ))}
     </ul>
@@ -132,19 +154,48 @@ function Fichelijst({
 }
 
 /**
- * One hoekfiche.
+ * One hoekfiche: the thing a teacher drags onto a day.
  *
  * Deliberately quiet: a card in the chrome column, not a card competing with the calendar beside it.
  * The description is clamped to two lines, because a corner described in four sentences would push
  * the next fiche off the panel, and the whole point of the list is seeing the corners together.
+ *
+ * **A button, so it works without a mouse.** The pointer sensor needs a few pixels of travel before a
+ * press counts as a drag, and on a keyboard Space picks the fiche up: the same two jobs on one
+ * element that every draggable in this agenda already has (see `sleep.ts`). On a phone the panel is a
+ * sheet over the calendar, so there is nothing to drag onto; the sheet is a reference there and the
+ * fiche does not pretend otherwise.
+ *
+ * The id is prefixed because the agenda's drop handler receives ids from two sources: a plaatsingId
+ * for an activiteit already on the grid, and this. Without the prefix a drop would have to guess
+ * which it got.
  */
-function Fiche({ hoek }: { hoek: HoekWeergave }) {
+function Fiche({ hoek, onKies }: { hoek: HoekWeergave; onKies?: (hoekId: string) => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `${FICHE_VOORVOEGSEL}${hoek.id}`,
+  });
+
+  // The two paths are exclusive on purpose. A fiche that both dragged and opened a sheet on click
+  // would fire the sheet at the end of every drag, and dnd-kit's pointer sensor deliberately lets a
+  // press that does not travel through as a click.
+  const tikt = onKies !== undefined;
+
   return (
-    <div className="rounded-veld border border-lijn bg-vlak px-3 py-2.5">
+    <button
+      type="button"
+      ref={tikt ? undefined : setNodeRef}
+      {...(tikt ? { onClick: () => onKies(hoek.id) } : listeners)}
+      {...(tikt ? {} : attributes)}
+      className={cn(
+        "w-full rounded-veld border border-lijn bg-vlak px-3 py-2.5 text-left",
+        "transition-colors duration-150 hover:border-accent",
+        isDragging && "opacity-40",
+      )}
+    >
       <p className="text-meta font-medium text-inkt">{hoek.naam}</p>
       {hoek.omschrijving ? (
         <p className="mt-0.5 line-clamp-2 text-micro leading-snug text-inkt-zacht">{hoek.omschrijving}</p>
       ) : null}
-    </div>
+    </button>
   );
 }

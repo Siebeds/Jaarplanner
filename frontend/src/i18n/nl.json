@@ -560,5 +560,26 @@
     "geenKlas": "Kies eerst een klas.",
     "geenHoeken": "Deze klas heeft nog geen hoeken.",
     "naarInstellingen": "Hoeken instellen"
+  },
+  "periodekiezer": {
+    "vorigeMaand": "Vorige maand",
+    "volgendeMaand": "Volgende maand",
+    "loopt": "{van} tot {tot}",
+    "geenSubthema": "In deze maand loopt er geen subthema."
+  },
+  "hoekplaatsing": {
+    "titel": "{naam} inplannen",
+    "periode": "Periode",
+    "kiesEinddag": "Kies de laatste dag.",
+    "einddagVerplicht": "Kies eerst de laatste dag.",
+    "verrijking": "Hoe verrijk je de hoek?",
+    "verrijkingVoorbeeld": "prentenboeken over de herfst, bladerenpers op tafel",
+    "uurrooster": "In het uurrooster",
+    "nietInUurrooster": "Niet in het uurrooster",
+    "lesuurN": "Lesuur {nummer}",
+    "lesuurUitleg": "De hoek komt op dit lesuur op elke schooldag van de periode.",
+    "plaats": "Inplannen",
+    "bezig": "Bezig met inplannen",
+    "mislukt": "Inplannen is niet gelukt."
   }
 }
