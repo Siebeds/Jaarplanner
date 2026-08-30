@@ -101,6 +101,33 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<Subthemaplaatsing> Subthemaplaatsingen => Set<Subthemaplaatsing>();
 
+    /// <summary>
+    /// The learning corners of each class (owner, meeting 2026-08-30). Autonomous school content (Art. III), and
+    /// the only school-content table that reaches a klas without going through a thema, because a hoek belongs to
+    /// a room rather than to a subject.
+    /// </summary>
+    public DbSet<Hoek> Hoeken => Set<Hoek>();
+
+    /// <summary>
+    /// The stretches of days a hoek runs in a class, each owning its <see cref="Hoekverrijking"/>en. Queried
+    /// independently of the jaarplan because it does not belong to one: see <see cref="Hoekplaatsing"/> for why a
+    /// (re)generation must not be able to reach these.
+    /// </summary>
+    public DbSet<Hoekplaatsing> Hoekplaatsingen => Set<Hoekplaatsing>();
+
+    /// <summary>
+    /// What is in each corner, per stretch of days. A set of its own so a day can be read without loading a whole
+    /// placement graph; the aggregate still owns them and still enforces their two window rules.
+    /// </summary>
+    public DbSet<Hoekverrijking> Hoekverrijkingen => Set<Hoekverrijking>();
+
+    /// <summary>
+    /// Where each placed hoek appears in the timetable, one row per day it takes a lesuur on. A set of its own
+    /// because the day and week views read a date range across every placement, which is not a question the
+    /// owning aggregate can be asked.
+    /// </summary>
+    public DbSet<Hoekmoment> Hoekmomenten => Set<Hoekmoment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
