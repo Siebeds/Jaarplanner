@@ -199,8 +199,26 @@ function Maandcel({
           On a phone it is visible rather than revealed, because there is no hover to reveal it with;
           `Dagplus` owns that switch. *This paragraph used to say the opposite* ("not on a phone"),
           and went on saying it after the plus was made unconditional, which is the failure mode a
-          comment about layout has: nothing rechecks it. */}
-      {dag.isLesdag ? <Dagplus datum={dag.datum} onVoegToe={onVoegToe} className="absolute right-1 top-1 z-20" /> : null}
+          comment about layout has: nothing rechecks it.
+
+          WHICH CORNER, and why it differs by breakpoint. From `sm` it is the bottom right, because
+          the top right is where the thema band is: the band is full bleed and 16 pixels tall, the
+          plus is 28, so hovering a cell put the plus straight over the name of the running thema.
+          Below `sm` there is no band (the strip above is `hidden sm:flex`), so the top corner is the
+          free one there and the plus stays in it.
+
+          `sm:bg-kaart` because the bottom of a cell is where the activiteit chips sit. The plus is
+          revealed over them rather than beside them, and a transparent 28 pixel square laid on a
+          chip reads as one smudged label instead of two things. It masks instead. The cost is that
+          on a full day the tail of the bottom chip is hidden WHILE the pointer is in the cell; the
+          chip is still there, and the day button's own label carries the count either way. */}
+      {dag.isLesdag ? (
+        <Dagplus
+          datum={dag.datum}
+          onVoegToe={onVoegToe}
+          className="absolute right-1 top-1 z-20 sm:bottom-1 sm:top-auto sm:bg-kaart"
+        />
+      ) : null}
 
       {/* Today is a filled pill, not another hue: this grid already spends colour on the activiteiten
           inside the cells, and a shape reads at 40 pixels where a tint does not. The word itself does

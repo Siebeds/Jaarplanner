@@ -17,6 +17,10 @@
     "klas": "Klas",
     "geenKlas": "Kies een klas",
     "geenKlassen": "Dit schooljaar heeft nog geen klassen",
+    "jaarFase": "Jaar/fase",
+    "jaarFaseLeeg": "Nog niet opgegeven",
+    "jaarFaseHulp": "Bepaalt welke leerplandoelen meetellen in de dekking van deze klas. Zonder keuze meet de dekking tegen {fasen} samen.",
+    "jaarFaseMislukt": "De jaar/fase is niet bewaard. Probeer het opnieuw.",
     "bevestig": "Klaar"
   },
   "doelen": {

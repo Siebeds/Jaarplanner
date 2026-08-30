@@ -46,7 +46,8 @@ public sealed class KlasBeheerService : IKlasBeheerService
                 k.Leerjaar,
                 subthemaAantallen.TryGetValue(k.Id, out var aantal) ? aantal : 0,
                 JaarFasenVoor(k),
-                k.Jaarfase))
+                k.Jaarfase,
+                MogelijkeJaarfasenVoor(k)))
             .ToList();
     }
 
@@ -56,7 +57,8 @@ public sealed class KlasBeheerService : IKlasBeheerService
         var klas = await VindKlasAsync(klasId, cancellationToken);
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase);
+        return new KlasWeergave(
+            klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase, MogelijkeJaarfasenVoor(klas));
     }
 
     /// <inheritdoc />
@@ -94,7 +96,14 @@ public sealed class KlasBeheerService : IKlasBeheerService
         await BewaarAsync(naam, cancellationToken);
 
         return new KlasWeergave(
-            klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, AantalSubthemas: 0, JaarFasenVoor(klas), klas.Jaarfase);
+            klas.Id,
+            klas.SchooljaarId,
+            klas.Naam,
+            klas.Leerjaar,
+            AantalSubthemas: 0,
+            JaarFasenVoor(klas),
+            klas.Jaarfase,
+            MogelijkeJaarfasenVoor(klas));
     }
 
     /// <inheritdoc />
@@ -114,7 +123,8 @@ public sealed class KlasBeheerService : IKlasBeheerService
 
         var aantal = await _context.Subthemas.CountAsync(s => s.KlasId == klasId, cancellationToken);
 
-        return new KlasWeergave(klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase);
+        return new KlasWeergave(
+            klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase, MogelijkeJaarfasenVoor(klas));
     }
 
     /// <inheritdoc />
@@ -252,6 +262,19 @@ public sealed class KlasBeheerService : IKlasBeheerService
 
     private static IReadOnlyList<string> JaarFasenVoor(Klas klas) =>
         Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase) ?? [];
+
+    /// <summary>
+    /// The codes a form may offer for this class's <c>Jaarfase</c>, or empty when it must not ask.
+    /// <para>
+    /// From the <b>leerjaar alone</b>, deliberately: unlike <see cref="JaarFasenVoor"/> this must not narrow to what
+    /// is already recorded, or the field would offer exactly the value it holds and a wrong choice could never be
+    /// corrected. A single answer is not a choice either — an L3 class has "L3" and nothing to pick from — so only a
+    /// set of more than one is offered, which today is the kleutergroep and is precisely the case the field exists
+    /// for.
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<string> MogelijkeJaarfasenVoor(Klas klas) =>
+        Jaarfasen.VoorLeerjaar(klas.Leerjaar) is { Count: > 1 } keuzes ? keuzes : [];
 
     private async Task<Klas> VindKlasAsync(Guid klasId, CancellationToken cancellationToken)
     {

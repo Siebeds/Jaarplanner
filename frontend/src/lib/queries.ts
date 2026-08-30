@@ -143,6 +143,35 @@ export function useKlassen() {
   });
 }
 
+/**
+ * Recording which jaar/fase a klas actually teaches.
+ *
+ * `PUT /api/klassen/{id}` replaces the whole class, so naam and leerjaar are sent back unchanged rather than omitted:
+ * leaving them out would rename the class to nothing and the server would refuse it. The caller therefore hands over
+ * the class it read, not a patch.
+ *
+ * **The dekking has to be invalidated with it, and that is the point of the mutation.** The jaar/fase IS the
+ * denominator: `Dekkingsbereik.EigenJaarFase` measures against `Jaarfasen.VoorKlas`, so a class that goes from "een
+ * kleutergroep" to K3 goes from 1288 goals to its own few hundred in the same breath. A bar left showing the old
+ * fraction would look like the save had not worked.
+ */
+export function useWijzigKlas() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ klas, jaarfase }: { klas: KlasWeergave; jaarfase: string | null }) =>
+      put<KlasWeergave>(`/api/klassen/${klas.id}`, {
+        naam: klas.naam,
+        leerjaar: klas.leerjaar,
+        jaarfase,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["klassen"] });
+      void qc.invalidateQueries({ queryKey: ["dekking"] });
+    },
+  });
+}
+
 // --- Schoolcontent ---
 
 export const themaSleutels = {

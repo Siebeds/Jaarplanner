@@ -4,6 +4,8 @@ import { Knop } from "../components/ui/Knop";
 import { Veld, Keuze } from "../components/ui/Veld";
 import { IcoonChevron } from "../components/Iconen";
 import { useActieveSelectie } from "../lib/selectie";
+import { useWijzigKlas } from "../lib/queries";
+import type { KlasWeergave } from "../lib/types";
 import { t } from "../i18n";
 
 /**
@@ -71,8 +73,83 @@ export function Klaskiezer() {
               )
             }
           </Veld>
+
+          {klas ? <Jaarfaseveld klas={klas} /> : null}
         </div>
       </Blad>
     </>
+  );
+}
+
+/**
+ * Which jaar/fase this class actually teaches, when its leerjaar cannot say.
+ *
+ * **It sits under the klas and not beside it, because it is a property OF that class rather than a third context to
+ * choose.** Schooljaar and klas narrow what the screens are about; this one narrows what the class IS, and putting it
+ * on the same footing would read as a filter a teacher could set differently per visit.
+ *
+ * **It is here rather than on a klasbeheer screen because there is no klasbeheer screen.** `Klas.Jaarfase`, its
+ * validation and `PUT /api/klassen/{id}` shipped on 2026-08-25 and nothing ever wrote the field, so every kleutergroep
+ * went on being measured against JK, K2 and K3 together. The owner reported the symptom on 2026-08-30 from the agenda:
+ * a class named "K3 groen" whose dekkingsbalk read "van JK, K2, K3". This is the smallest surface that can fix it,
+ * and it is where a teacher already goes to say which class they mean.
+ *
+ * **The server decides whether to ask.** `mogelijkeJaarfasen` is empty for an L1-L6 class, whose leerjaar already
+ * names its code, and for a leerjaar that maps to nothing, which is the unresolved graadklas (Art. XIV). Both mean
+ * "do not ask", and neither is something this component may work out for itself.
+ */
+function Jaarfaseveld({ klas }: { klas: KlasWeergave }) {
+  const wijzig = useWijzigKlas();
+
+  // `?? []` although the type says the field is always there. It is always there from a server that has this change,
+  // and the browser reloads on its own while the API does not: an API still running the previous build answers a klas
+  // without the field, and `.length` on that is a crash of the whole sheet rather than a field that fails to appear.
+  const keuzes = klas.mogelijkeJaarfasen ?? [];
+
+  if (keuzes.length === 0) return null;
+
+  return (
+    <Veld label={t("context.jaarFase")}>
+      {(id) => (
+        <>
+          <Keuze
+            id={id}
+            aria-describedby={`${id}-hulp`}
+            value={klas.jaarfase ?? ""}
+            disabled={wijzig.isPending}
+            // Saved on change rather than behind a button. The sheet's own button says "Klaar" and closes it, so a
+            // second one here would be two saves to reason about; and the klas and schooljaar above it already commit
+            // the moment they are picked.
+            onChange={(e) => wijzig.mutate({ klas, jaarfase: e.target.value || null })}
+          >
+            <option value="">{t("context.jaarFaseLeeg")}</option>
+            {keuzes.map((code) => (
+              <option key={code} value={code}>
+                {code}
+              </option>
+            ))}
+          </Keuze>
+
+          {/* The consequence, not the mechanism. What made the 1288 unarguable was that nothing on screen connected
+              the denominator to this class never having been told which kleuterjaar it is.
+
+              The codes are interpolated rather than written out, because this sentence may assert only what its own
+              render condition guarantees (the E5-03 rule): the branch knows the server offered THESE codes, and it
+              does not know that they are the three kleuterjaren. */}
+          <p id={`${id}-hulp`} className="text-meta text-inkt-zacht">
+            {t("context.jaarFaseHulp", { fasen: keuzes.join(", ") })}
+          </p>
+
+          {/* `attentie-inkt` and not `attentie`: the readable ink of that pair, which is what the other error lines
+              in this app use on a plain surface. `role="alert"` because the select keeps focus after a failed save,
+              so nothing else would announce it. */}
+          {wijzig.isError ? (
+            <p role="alert" className="text-meta font-medium text-attentie-inkt">
+              {t("context.jaarFaseMislukt")}
+            </p>
+          ) : null}
+        </>
+      )}
+    </Veld>
   );
 }

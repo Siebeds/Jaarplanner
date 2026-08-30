@@ -101,6 +101,30 @@ public sealed record KlasCreatie(string Naam, int Leerjaar, string? Jaarfase = n
 /// unscoped search this exists to replace.
 /// </para>
 /// </param>
+/// <param name="MogelijkeJaarfasen">
+/// The jaar/fase codes the school may record on this class, for a UI that offers the choice. Empty when there is no
+/// choice to make.
+/// <para>
+/// <b>It exists because nothing was writing <paramref name="Jaarfase"/>.</b> The field, its validation and
+/// <c>PUT /api/klassen/{id}</c> all shipped on 2026-08-25 and no screen ever set it, so every kleutergroep in the
+/// app still measured its dekking against JK, K2 and K3 together — which is exactly the reading the owner reported
+/// on 2026-08-30 for a class named "K3 groen". A form cannot offer the three codes without knowing them, and the
+/// standing rule (see <paramref name="JaarFasen"/>) is that the browser does not restate <c>Jaarfasen</c>. So the
+/// server says which codes are on offer, the same way it already says which ones are measured.
+/// </para>
+/// <para>
+/// <b>Empty means "do not ask", and it covers two unrelated states.</b> An L1-L6 class already names its own code
+/// through <paramref name="Leerjaar"/> and <c>Jaarfasen.WatIsErMisMet</c> refuses anything else, so there is nothing
+/// to choose; and a leerjaar that maps to nothing is the unresolved graadklas case (Art. XIV), where a list of
+/// choices would be an invented answer. Both mean the same thing to a form, which is why they are not distinguished.
+/// </para>
+/// <para>
+/// <b>It does not shrink once a choice is made.</b> Unlike <paramref name="JaarFasen"/>, this is derived from the
+/// <paramref name="Leerjaar"/> alone, so a kleutergroep recorded as K3 still offers all three: a teacher who picked
+/// the wrong one has to be able to pick another, and a field whose options collapse to the value already in it is a
+/// field that cannot be corrected.
+/// </para>
+/// </param>
 public sealed record KlasWeergave(
     Guid Id,
     Guid SchooljaarId,
@@ -108,4 +132,5 @@ public sealed record KlasWeergave(
     int Leerjaar,
     int AantalSubthemas,
     IReadOnlyList<string> JaarFasen,
-    string? Jaarfase = null);
+    string? Jaarfase = null,
+    IReadOnlyList<string>? MogelijkeJaarfasen = null);

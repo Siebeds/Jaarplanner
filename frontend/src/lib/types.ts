@@ -209,7 +209,17 @@ export interface KlasWeergave {
   naam: string;
   leerjaar: number;
   aantalSubthemas: number;
+  /** What this class is MEASURED against: one code once the school records one, otherwise what the leerjaar can say. */
   jaarFasen: string[];
+  /** What the school has recorded, or null when it has not. */
+  jaarfase: string | null;
+  /**
+   * The codes a form may offer for `jaarfase`, empty when there is nothing to ask.
+   *
+   * From the server, deliberately: `Jaarfasen` is domain vocabulary and a list spelled out here would be a second
+   * answer to "what may this class teach?". Same rule as `jaarFasen` itself.
+   */
+  mogelijkeJaarfasen: string[];
 }
 
 export interface SchooljaarSamenvatting {
