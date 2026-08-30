@@ -1,0 +1,246 @@
+using Jaarplanner.Application.Planning.Hoeken;
+using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Domain.Planning;
+using Jaarplanner.Domain.Schoolcontent;
+using Jaarplanner.Infrastructure.Persistence;
+using Jaarplanner.Infrastructure.Planning;
+using Microsoft.EntityFrameworkCore;
+
+namespace Jaarplanner.UnitTests.Planning;
+
+/// <summary>
+/// <see cref="HoekplaatsingService"/> against a real service over the in-memory provider (owner, 2026-08-30).
+/// <para>
+/// <b>The test that carries the feature is the one about which days get a timetable row.</b> A hoek that takes
+/// the third lesuur takes it on the days the class is in front of the teacher, so a placement over a fortnight
+/// must skip the weekends and the vakantie inside it. Writing one row per calendar day would put a lesson on a
+/// Saturday, and nothing else in this file would notice.
+/// </para>
+/// </summary>
+public sealed class HoekplaatsingServiceTests
+{
+    // A Monday, so the arithmetic in the assertions below is readable.
+    private static readonly DateOnly Start = new(2026, 8, 31);
+    private static readonly DateOnly Eind = new(2027, 6, 30);
+
+    private readonly DbContextOptions<AppDbContext> _options;
+    private readonly Guid _klasId;
+    private readonly Guid _andereKlasId;
+    private readonly Guid _hoekId;
+    private readonly Guid _hoekVanAndereKlasId;
+
+    public HoekplaatsingServiceTests()
+    {
+        _options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase($"hoekplaatsing_{Guid.NewGuid():N}")
+            .Options;
+
+        using var seed = new AppDbContext(_options);
+
+        var schooljaar = new Schooljaar("2026-2027", Start, Eind);
+        // A week off in the middle of the first placement window below, so "open weekdays" has something to skip
+        // besides the weekend.
+        schooljaar.VoegSluitingToe(new Schoolsluiting("Herfst", new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 11)));
+
+        var klas = schooljaar.VoegKlasToe("K3 groen", "K3");
+        var andere = schooljaar.VoegKlasToe("K3 blauw", "K3");
+        seed.Schooljaren.Add(schooljaar);
+
+        var hoek = new Hoek(klas.Id, "boekenhoek", "vaste kast");
+        var vreemde = new Hoek(andere.Id, "bouwhoek");
+        seed.Hoeken.AddRange(hoek, vreemde);
+        seed.SaveChanges();
+
+        _klasId = klas.Id;
+        _andereKlasId = andere.Id;
+        _hoekId = hoek.Id;
+        _hoekVanAndereKlasId = vreemde.Id;
+    }
+
+    private HoekplaatsingService Service() => new(new AppDbContext(_options));
+
+    [Fact]
+    public async Task Een_plaatsing_bewaart_de_periode_en_de_naam_van_de_hoek()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
+
+        Assert.Equal("boekenhoek", plaatsing.HoekNaam);
+        Assert.Equal(new DateOnly(2026, 9, 1), plaatsing.Van);
+        Assert.Equal(new DateOnly(2026, 9, 18), plaatsing.Tot);
+        Assert.Empty(plaatsing.Verrijkingen);
+        Assert.Empty(plaatsing.Momenten);
+    }
+
+    [Fact]
+    public async Task Een_lesuur_levert_een_rij_per_open_weekdag_en_slaat_weekends_en_vakantie_over()
+    {
+        // 1 september 2026 is a Tuesday. The window runs to Friday 18 september, so on a calendar it is 18 days:
+        // 14 weekdays, of which 5 fall in the Herfst closure seeded above. Nine lessons remain.
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18), Lesuur: 2));
+
+        Assert.Equal(9, plaatsing.Momenten.Count);
+        Assert.All(plaatsing.Momenten, m => Assert.Equal(2, m.Volgorde));
+
+        // No weekend, and nothing inside the closure.
+        Assert.All(plaatsing.Momenten, m => Assert.NotEqual(DayOfWeek.Saturday, m.Datum.DayOfWeek));
+        Assert.All(plaatsing.Momenten, m => Assert.NotEqual(DayOfWeek.Sunday, m.Datum.DayOfWeek));
+        Assert.DoesNotContain(plaatsing.Momenten, m => m.Datum >= new DateOnly(2026, 9, 7) && m.Datum <= new DateOnly(2026, 9, 11));
+
+        // The first and the last are the days a teacher would name.
+        Assert.Equal(new DateOnly(2026, 9, 1), plaatsing.Momenten[0].Datum);
+        Assert.Equal(new DateOnly(2026, 9, 18), plaatsing.Momenten[^1].Datum);
+    }
+
+    [Fact]
+    public async Task Zonder_lesuur_loopt_de_hoek_wel_maar_staat_hij_in_geen_enkel_uurrooster()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
+
+        Assert.Empty(plaatsing.Momenten);
+        Assert.Equal(new DateOnly(2026, 9, 18), plaatsing.Tot);
+    }
+
+    [Fact]
+    public async Task De_verrijking_uit_het_blad_loopt_over_het_hele_venster()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(
+                _hoekId,
+                new DateOnly(2026, 9, 1),
+                new DateOnly(2026, 9, 18),
+                Verrijking: "prentenboeken over de herfst"));
+
+        var verrijking = Assert.Single(plaatsing.Verrijkingen);
+        Assert.Equal("prentenboeken over de herfst", verrijking.Tekst);
+        Assert.Equal(plaatsing.Van, verrijking.Van);
+        Assert.Equal(plaatsing.Tot, verrijking.Tot);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Een_lege_verrijking_is_geen_verrijking(string tekst)
+    {
+        // Blank is an ordinary answer: the corner runs in december with nothing special in it. Storing "" would
+        // record that she described it as nothing.
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4), Verrijking: tekst));
+
+        Assert.Empty(plaatsing.Verrijkingen);
+    }
+
+    [Fact]
+    public async Task Een_hoek_van_een_andere_klas_wordt_geweigerd_met_een_zin_die_dat_zegt()
+    {
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().PlaatsAsync(
+                _klasId,
+                new HoekplaatsingInvoer(_hoekVanAndereKlasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4))));
+
+        // Not a 404: the corner exists, it is in another classroom, and saying so lets the screen explain itself
+        // rather than claim the row was deleted.
+        Assert.Contains("andere klas", fout.Message);
+    }
+
+    [Fact]
+    public async Task Een_periode_buiten_het_schooljaar_wordt_geweigerd()
+    {
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().PlaatsAsync(
+                _klasId,
+                new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 8, 1), new DateOnly(2026, 9, 4))));
+
+        Assert.Contains("schooljaar", fout.Message);
+    }
+
+    [Fact]
+    public async Task Een_venster_dat_eindigt_voor_het_begint_wordt_geweigerd_als_een_400()
+    {
+        // The domain says it in Dutch; the service turns it into the app's own fault type so the shared handler
+        // answers 400 rather than letting an ArgumentException become a 500.
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().PlaatsAsync(
+                _klasId,
+                new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 18), new DateOnly(2026, 9, 1))));
+    }
+
+    [Fact]
+    public async Task Het_bereik_leest_op_overlap_en_niet_op_startdatum()
+    {
+        await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30)));
+
+        // A week in november, months after the placement began. Reading placements that START in the range would
+        // draw nothing here, which is almost every screen.
+        var gevonden = await Service().HaalVoorBereikAsync(
+            _klasId, new DateOnly(2026, 11, 16), new DateOnly(2026, 11, 22));
+
+        var plaatsing = Assert.Single(gevonden);
+        Assert.Equal("boekenhoek", plaatsing.HoekNaam);
+    }
+
+    [Fact]
+    public async Task Een_bereik_naast_de_plaatsing_levert_niets()
+    {
+        await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
+
+        var gevonden = await Service().HaalVoorBereikAsync(
+            _klasId, new DateOnly(2026, 9, 19), new DateOnly(2026, 9, 25));
+
+        Assert.Empty(gevonden);
+    }
+
+    [Fact]
+    public async Task Het_bereik_van_een_andere_klas_ziet_deze_plaatsing_niet()
+    {
+        await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
+
+        Assert.Empty(await Service().HaalVoorBereikAsync(
+            _andereKlasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
+    }
+
+    [Fact]
+    public async Task Verwijderen_neemt_de_verrijkingen_en_de_uurroosterrijen_mee()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(
+                _hoekId,
+                new DateOnly(2026, 9, 1),
+                new DateOnly(2026, 9, 4),
+                Verrijking: "prentenboeken",
+                Lesuur: 1));
+
+        Assert.NotEmpty(plaatsing.Momenten);
+
+        await Service().VerwijderAsync(plaatsing.Id);
+
+        await using var na = new AppDbContext(_options);
+        Assert.Empty(await na.Hoekplaatsingen.ToListAsync());
+        Assert.Empty(await na.Hoekverrijkingen.ToListAsync());
+        Assert.Empty(await na.Hoekmomenten.ToListAsync());
+
+        // And the hoek itself is untouched: she removed a run, not a corner.
+        Assert.Equal(1, await na.Hoeken.CountAsync(h => h.Id == _hoekId));
+    }
+
+    [Fact]
+    public async Task Een_onbekende_klas_geeft_niet_gevonden()
+    {
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => Service().HaalVoorBereikAsync(Guid.NewGuid(), Start, Eind));
+    }
+}

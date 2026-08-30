@@ -203,19 +203,35 @@ public sealed class Schooljaar
     /// word "schooldagen" belongs in <c>nl.json</c>, not here.
     /// </para>
     /// </summary>
-    public int TelOpenWeekdagen(DateOnly start, DateOnly eind)
+    public int TelOpenWeekdagen(DateOnly start, DateOnly eind) => OpenWeekdagen(start, eind).Count;
+
+    /// <summary>
+    /// The open weekdays between <paramref name="start"/> and <paramref name="eind"/>, inclusive: the days
+    /// themselves rather than how many there are.
+    /// <para>
+    /// <b><see cref="TelOpenWeekdagen"/> delegates to this rather than counting its own.</b> Two loops applying
+    /// "not a weekend and not a closure" is one rule in two places, and the first thing that would drift is the
+    /// half-day question this class deliberately leaves open: a school ruling on Wednesday afternoons would have
+    /// to be applied twice and would be applied once.
+    /// </para>
+    /// <para>
+    /// Added for the hoekplaatsingen (owner, 2026-08-30): a hoek that takes a lesuur takes it on every day the
+    /// class is actually in front of the teacher, so the placement needs the list to write a row per day.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<DateOnly> OpenWeekdagen(DateOnly start, DateOnly eind)
     {
-        var open = 0;
+        var dagen = new List<DateOnly>();
 
         for (var datum = start; datum <= eind; datum = datum.AddDays(1))
         {
             if (datum.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday) && IsLesdag(datum))
             {
-                open++;
+                dagen.Add(datum);
             }
         }
 
-        return open;
+        return dagen;
     }
 
     /// <summary>
