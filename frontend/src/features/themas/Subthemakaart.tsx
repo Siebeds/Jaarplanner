@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Doelmerk } from "../../components/ui/Doelmerk";
-import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
+import { Verwijderknop } from "../../components/ui/Rijknoppen";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -54,8 +54,22 @@ export function Subthemakaart({
 
   return (
     <article className="rounded-kaart border border-lijn bg-kaart p-4 shadow-licht">
-      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div className="min-w-0">
+      {/* THE HEADER OPENS THE SUBTHEMA (owner, 2026-08-30: "ik wil niet telkens op dat potloodje
+          klikken"). Same overlay construction as the activiteit row, and the pencil is gone with it:
+          two routes to one sheet, one of them a 16 pixel icon, is the thing that made him ask.
+
+          The HEADER and not the whole card, deliberately. A card holds its own subdoelen, its own
+          activiteiten and three controls, each of which is a different object with a different
+          editor; a card-wide target would mean that pressing next to an activiteit opens the
+          SUBTHEMA. The name and its leeftijd are the subthema itself, so they are what you press. */}
+      <header className="relative flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <button
+          type="button"
+          onClick={onBewerk}
+          aria-label={t("subthemabeheer.bewerkAria", { naam: subthema.naam })}
+          className="absolute -inset-x-1 -inset-y-1 z-0 rounded-veld transition-colors duration-150 hover:bg-inkt/[0.035]"
+        />
+        <div className="pointer-events-none relative z-10 min-w-0">
           <h3 className="font-display text-sectie text-inkt">{subthema.naam}</h3>
           {/* The leeftijd alone, and NAMED. It used to be preceded by a klas name, which stopped
               existing on 2026-08-30: a subthema is scoped by age and holds for every klas that
@@ -78,13 +92,11 @@ export function Subthemakaart({
             </span>
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <Bewerkknop label={t("subthemabeheer.bewerkAria", { naam: subthema.naam })} onClick={onBewerk} />
-          <Verwijderknop
-            label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })}
-            onClick={onVerwijder}
-          />
-        </div>
+        <Verwijderknop
+          className="relative z-10"
+          label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })}
+          onClick={onVerwijder}
+        />
       </header>
 
       {subthema.onderzoeksvragen.length > 0 ? (
