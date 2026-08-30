@@ -1,6 +1,8 @@
 import { Outlet } from "react-router-dom";
 import { Navigatie } from "./Navigatie";
+import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { t } from "../i18n";
+import { cn } from "../lib/cn";
 
 /**
  * The frame every screen sits in.
@@ -8,10 +10,25 @@ import { t } from "../i18n";
  * The bottom bar is fixed, so the main region reserves its height plus the safe area; from `lg` the
  * bar becomes a sidebar and the reservation moves to the inline start. Without the reservation the
  * last row of every list sits under the navigation and cannot be tapped, which no test notices.
+ *
+ * **The reservation grows when the agenda's hoekenpaneel is open** (owner, 2026-08-30): the fixed
+ * column is then a 56px rail plus a 240px panel, and a screen that kept reserving 240 would run its
+ * first inches underneath the panel. It is computed here rather than in the panel because this is the
+ * one element that already owns the reservation, and two places computing it is how they drift.
+ *
+ * *Reserved even on a screen that renders no panel, since only the agenda does.* The store is false
+ * everywhere else, so the wider padding only ever applies while the panel is actually up.
  */
 export function Schil() {
+  const paneelOpen = useHoekenpaneel((s) => s.open);
+
   return (
-    <div className="min-h-dvh lg:pl-60">
+    <div
+      className={cn(
+        "min-h-dvh transition-[padding] duration-200 ease-out motion-reduce:transition-none",
+        paneelOpen ? "lg:pl-[18.5rem]" : "lg:pl-60",
+      )}
+    >
       {/*
         The skip link is IN THE FLOW when it is focused, not floating over the page: it takes up
         space and pushes the screen down by its own height for as long as it has focus.

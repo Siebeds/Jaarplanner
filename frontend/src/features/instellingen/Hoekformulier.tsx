@@ -4,7 +4,7 @@ import { Knop } from "../../components/ui/Knop";
 import { Invoer, Tekstvlak } from "../../components/ui/Veld";
 import { ApiError } from "../../lib/api";
 import { t } from "../../i18n";
-import type { HoekInvoer, HoekWeergave } from "./hoeken";
+import type { HoekInvoer, HoekWeergave } from "../hoeken/gegevens";
 
 /**
  * Making or changing a corner: what it is called, and what is permanently in it.

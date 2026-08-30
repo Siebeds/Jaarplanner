@@ -222,7 +222,8 @@
     "themaVervolg": "… {naam}",
     "dagThema": "thema {naam}",
     "dagThemas": "thema's {namen}",
-    "dagGeenThema": "nog geen thema in deze periode"
+    "dagGeenThema": "nog geen thema in deze periode",
+    "hoekenfiches": "Hoekenfiches"
   },
   "slepen": {
     "uitleg": "Druk op de spatiebalk om op te pakken, verplaats met de pijltjestoetsen en druk opnieuw op de spatiebalk om neer te zetten.",
@@ -549,5 +550,12 @@
     "overnameEen": "1 hoek overgenomen.",
     "overnameAantal": "{aantal} hoeken overgenomen.",
     "overnameOvergeslagen": "Deze had je al: {namen}."
+  },
+  "hoekenpaneel": {
+    "titel": "Hoekenfiches",
+    "sluiten": "Hoekenfiches sluiten",
+    "geenKlas": "Kies eerst een klas.",
+    "geenHoeken": "Deze klas heeft nog geen hoeken.",
+    "naarInstellingen": "Hoeken instellen"
   }
 }

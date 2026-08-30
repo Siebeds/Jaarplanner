@@ -4,10 +4,11 @@ import { del, get, post, put } from "../../lib/api";
 /**
  * The corners of one classroom, read and written from the one screen that defines them.
  *
- * **Local to this feature rather than in `lib/queries.ts`.** That file is shared with every other
- * screen; these four are used here and nowhere else, and the same argument the klas mutations make
- * applies. The agenda will need to READ hoeken later, and when it does the read moves to the shared
- * file rather than being copied into a second one.
+ * **Its own feature module rather than `lib/queries.ts` or a file under `instellingen/`.** It began
+ * under `instellingen/`, where the only screen that used it lived. The agenda now reads the same
+ * hoeken to draw its fiches, so a second screen depends on it, and the two honest homes were the
+ * shared query file or a module of its own. A module of its own wins on the repo's own rule to
+ * organise by feature: these types and hooks are about hoeken, not about queries in general.
  *
  * **Nothing here invalidates `dekking`, unlike the klas mutations.** A hoek carries no
  * doelkoppelingen (owner ruling, 2026-08-30), so no corner can move a coverage figure. Invalidating

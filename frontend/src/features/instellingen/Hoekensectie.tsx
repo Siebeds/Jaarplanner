@@ -17,7 +17,7 @@ import {
   useWijzigHoek,
   type HoekOvername,
   type HoekWeergave,
-} from "./hoeken";
+} from "../hoeken/gegevens";
 
 /**
  * The corners of one classroom: the boekenhoek, the bouwhoek, the zandtafel (owner, 2026-08-30).

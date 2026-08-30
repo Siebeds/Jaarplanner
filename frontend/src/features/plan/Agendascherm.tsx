@@ -8,9 +8,10 @@ import { Segment } from "../../components/ui/Segment";
 import { Leegte } from "../../components/ui/Leegte";
 import { Knop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
-import { IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
+import { IcoonHoek, IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
 import { useDagacties, useJaarplan, usePlaatsSubthemaperiode, useRooster, useWeekplanning } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
+import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import { ApiError } from "../../lib/api";
 import type { GeplandeActiviteit } from "../../lib/types";
 import {
@@ -41,6 +42,7 @@ import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
+import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
 import { roosterdagen } from "./roosterdagen";
 import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
 import { themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
@@ -94,6 +96,9 @@ export function Agendascherm() {
   const [plannerResultaat, setPlannerResultaat] = useState<{ gelukt: number; totaal: number; fouten: string[] } | null>(
     null,
   );
+
+  const hoekenOpen = useHoekenpaneel((s) => s.open);
+  const wisselHoeken = useHoekenpaneel((s) => s.wissel);
 
   const { data: rooster } = useRooster(schooljaarId);
   const { data: plan } = useJaarplan(klasId);
@@ -372,6 +377,33 @@ export function Agendascherm() {
                 {t("periode.themasPerPeriode")}
               </Link>
 
+              {/*
+                THE HOEKENFICHES SWITCH SITS HERE AND NOT IN THE SIDEBAR, WHICH IS A DEPARTURE FROM
+                WHAT WAS ASKED FOR, SO IT SAYS WHY.
+
+                The owner described a switch in the sidepane. A sidepane exists only from `lg`: below
+                it the navigation is a bottom bar of five tabs with no room for a sixth, and the
+                panel still has to be reachable on a phone, where it opens as a sheet. Putting the
+                switch here gives one control at every width, next to the other two that act on the
+                whole agenda. Two switches for one panel, one per viewport, would be worse than one
+                in a slightly different place. Moving it into the sidebar is one component away if
+                the owner still wants it there at `lg`.
+              */}
+              <button
+                type="button"
+                onClick={wisselHoeken}
+                aria-pressed={hoekenOpen}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-meta font-medium transition-colors duration-150",
+                  hoekenOpen
+                    ? "border-accent bg-accent-zacht text-accent"
+                    : "border-lijn text-inkt-zacht hover:border-accent hover:text-accent",
+                )}
+              >
+                <IcoonHoek aria-hidden="true" className="h-4 w-4" />
+                {t("periode.hoekenfiches")}
+              </button>
+
               {/* No period, no planner: the sheet spreads a subthema over the days of a themaperiode,
                   and between two periods there are none to spread it over. */}
               {blok ? (
@@ -474,6 +506,8 @@ export function Agendascherm() {
         <Dekkingsbalk klasId={klasId} />
 
         <div className="border-t border-lijn" />
+
+        <Hoekenpaneel klasId={klasId} />
 
         <DndContext
           sensors={sensors}

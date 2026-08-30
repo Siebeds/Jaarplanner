@@ -51,6 +51,22 @@ export function IcoonThemas(props: IconProps) {
 }
 
 /**
+ * Hoek: a corner of a room, drawn as a corner.
+ *
+ * Two walls meeting, with what stands in the corner between them. Not a box and not a bookshelf: a
+ * box is every other icon in every other app, and a bookshelf would name ONE corner while the
+ * boekenhoek, the bouwhoek and the zandtafel are all hoeken. What they share is the geometry.
+ */
+export function IcoonHoek(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4.5 4.5v15h15" />
+      <path d="M8.5 15.5v-4.5h4.5v4.5z" />
+    </Icoon>
+  );
+}
+
+/**
  * Instellingen: two rails with a knob on each, not a cog.
  *
  * A cog says "machinery", and nothing behind this destination is machinery: it is where the school
