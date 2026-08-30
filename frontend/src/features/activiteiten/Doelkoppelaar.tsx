@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Knop } from "../../components/ui/Knop";
+import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { IcoonPlus } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { Doelkiezer } from "./Doelkiezer";
@@ -65,15 +66,16 @@ export function Doelkoppelaar({
         <IcoonPlus aria-hidden="true" className="h-4 w-4" />
       </Knop>
     ) : (
-      <Knop
-        rang="stil"
-        className="h-9 min-h-9 px-3 text-meta"
+      // `Toevoegknop`, the one shape every add-or-link control on this app wears. It used to be a
+      // borderless `stil` button sitting two sections above an outlined "Subthema toevoegen", which
+      // is the inconsistency the owner reported on 2026-08-30: same intention, different weight, and
+      // the difference tracked nothing.
+      <Toevoegknop
+        label={t("doelkiezer.koppel")}
         aria-label={toelichting}
+        disabled={bezig}
         onClick={() => setOpen(true)}
-      >
-        <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-        {t("doelkiezer.koppel")}
-      </Knop>
+      />
     );
   }
 

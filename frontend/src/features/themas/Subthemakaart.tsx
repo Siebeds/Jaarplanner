@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
-import { Knop } from "../../components/ui/Knop";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
-import { IcoonPlus } from "../../components/Iconen";
+import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import type { SubthemaWeergave } from "../../lib/types";
@@ -134,12 +133,7 @@ export function Subthemakaart({
 
       <Blok
         titel={telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}
-        actie={
-          <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={onNieuweActiviteit}>
-            <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-            {t("activiteit.toevoegen")}
-          </Knop>
-        }
+        actie={<Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} />}
       >
         {activiteiten.length === 0 ? (
           <p className="text-meta text-inkt-zwak">{t("activiteit.geen")}</p>
@@ -172,10 +166,12 @@ export function Subthemakaart({
 function Blok({ titel, actie, children }: { titel: string; actie?: ReactNode; children: ReactNode }) {
   return (
     <section className="mt-4 border-t border-lijn pt-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="mono text-meta text-inkt-zwak">{titel}</h4>
-        {actie}
-      </div>
+      <h4 className="mono text-meta text-inkt-zwak">{titel}</h4>
+      {/* Under the title, like the sections on the screen around it. It was right-aligned on the
+          title row, which put "Activiteit toevoegen" a full card width away from the words it
+          belongs to and made every block header a two-object line to parse. Same change, same
+          reason, as `Sectie`: heading, then what you can do, then what is there. */}
+      {actie ? <div className="mt-2 flex flex-wrap items-center gap-2">{actie}</div> : null}
       <div className="mt-2">{children}</div>
     </section>
   );

@@ -8,7 +8,7 @@ import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { Bevestiging } from "../../components/ui/Bevestiging";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
-import { IcoonPlus } from "../../components/Iconen";
+import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import {
   useBeoordeelSuggestie,
   useDoelsuggesties,
@@ -191,7 +191,23 @@ export function ThemadetailScherm() {
 
             `dl` and not a `div`: these ARE term and description, and a screen reader reading the
             page in order should get them paired rather than as eight loose strings. */}
-        <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+        {/* NO COLUMNS. Each label sits directly in front of its own value (owner, 2026-08-30:
+            "die duur 5 weken is slordig").
+
+            A two column table was the first answer and it was wrong in both directions: with `auto`
+            the column shrank to the widest label present, so a thema carrying nothing but a duur
+            jammed "5 weken" against "DUUR", and with a fixed width that same thema got one lonely
+            label and a value floating a hundred and sixty pixels away. A table needs rows to look
+            like a table, and most thema's have one or two facts.
+
+            The shape it takes instead is the one already on the subthema card a few lines down
+            ("LEEFTIJD L3 · 2 weken"), which is the version the owner read without complaint. One
+            pattern for label-and-value on this screen, and it degrades to a single clean line.
+
+            Still a `dl`: these ARE term and description, and a screen reader should get them paired
+            rather than as eight loose strings. The `div` wrapper around each pair is what HTML5
+            allows for exactly this. */}
+        <dl className="mt-4 flex flex-col gap-1.5">
           <Feit label={t("themabeheer.duur")}>
             {telWoord(thema.duurWeken, "thema.eenWeek", "thema.weken")}
           </Feit>
@@ -227,8 +243,17 @@ export function ThemadetailScherm() {
         <Sectie
           titel={t("thema.themadoelen")}
           telling={telWoord(thema.themadoelen.length, "thema.eenDoel", "thema.doelen")}
-          actie={
+          acties={
             <>
+              <Doelkoppelaar
+                onKies={(code) => koppelThemadoel.mutate(code)}
+                bezig={koppelThemadoel.isPending}
+                alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
+              />
+              {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
+                  legible: this does not add a themadoel, it asks the model for candidates that a
+                  teacher then has to accept one by one (Art. IV). One outlined add-control per
+                  section, and everything that is a different kind of act looks different. */}
               <Knop
                 rang="stil"
                 className="h-9 min-h-9 px-3 text-meta"
@@ -237,11 +262,6 @@ export function ThemadetailScherm() {
               >
                 {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
               </Knop>
-              <Doelkoppelaar
-                onKies={(code) => koppelThemadoel.mutate(code)}
-                bezig={koppelThemadoel.isPending}
-                alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
-              />
             </>
           }
         >
@@ -331,18 +351,14 @@ export function ThemadetailScherm() {
         <Sectie
           titel={t("thema.subthemasTitel")}
           telling={telWoord(thema.subthemas.length, "thema.eenSubthema", "thema.subthemas")}
-          actie={
-            <Knop
-              rang="rustig"
-              className="h-9 min-h-9 px-3 text-meta"
+          acties={
+            <Toevoegknop
+              label={t("subthemabeheer.toevoegen")}
               onClick={() => {
                 maakSubthema.reset();
                 setSubthemaBlad({});
               }}
-            >
-              <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-              {t("subthemabeheer.toevoegen")}
-            </Knop>
+            />
           }
         >
           {thema.subthemas.length === 0 ? (
@@ -591,24 +607,34 @@ function Terug() {
 function Sectie({
   titel,
   telling,
-  actie,
+  acties,
   children,
 }: {
   titel: string;
   /** How many of the thing this section is about, when the section is a list of countable things. */
   telling?: string;
-  actie?: ReactNode;
+  /** What can be done to this section. Rendered UNDER the heading; see below. */
+  acties?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="mt-8 flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-lijn pb-2">
+      <div className="border-b border-lijn pb-2">
         <h2 className="flex items-baseline gap-2">
           <span className="text-meta font-semibold uppercase tracking-wide text-inkt-zacht">{titel}</span>
           {telling ? <span className="mono text-meta text-inkt-zwak">{telling}</span> : null}
         </h2>
-        <div className="flex flex-wrap items-center gap-1">{actie}</div>
       </div>
+
+      {/* THE ACTIONS SIT UNDER THE HEADING, NOT AT THE RIGHT END OF IT (owner, 2026-08-30: "ik vind
+          het zo onduidelijk als knop rechts in de subtitel").
+
+          On a 1440 screen the old placement put "Subthema toevoegen" eleven hundred pixels away from
+          the word SUBTHEMA'S, with nothing between them, so the two read as unrelated; and it made
+          the heading a row that was sometimes tall and sometimes not. Here it reads in the order a
+          teacher thinks: this is the section, this is what you can do to it, this is what is in it. */}
+      {acties ? <div className="flex flex-wrap items-center gap-2">{acties}</div> : null}
+
       {children}
     </section>
   );
@@ -626,10 +652,10 @@ function Sectie({
  */
 function Feit({ label, zacht, children }: { label: string; zacht?: boolean; children: ReactNode }) {
   return (
-    <>
-      <dt className="pt-0.5 text-micro uppercase tracking-wide text-inkt-zwak">{label}</dt>
-      <dd className={cn("text-body", zacht ? "text-inkt-zacht" : "text-inkt")}>{children}</dd>
-    </>
+    <div className="flex flex-wrap items-baseline gap-x-2">
+      <dt className="text-micro uppercase tracking-wide text-inkt-zwak">{label}</dt>
+      <dd className={cn("min-w-0 text-body", zacht ? "text-inkt-zacht" : "text-inkt")}>{children}</dd>
+    </div>
   );
 }
 
