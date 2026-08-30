@@ -96,6 +96,27 @@
   --color-attentie-zacht: hsl(40 90% 96%);
   --color-attentie-inkt: hsl(25 68% 24%);
 
+  /* ── gevaar - the one destructive control (owner, 2026-08-30: "verwijderen = rood") ── */
+  /* NO NEW HUE. It is `suggestie-geweigerd` and `dekking-niet-gedekt` byte for byte, given a
+     name for the third thing that red already means here. Adding a second red would put two
+     nearly identical hues on one screen carrying three meanings, which is worse than one red
+     doing all three, and the rule at the top of this file forbids the free choice anyway.
+
+     They do not collide, because they never occupy the same slot: the two statuses are text
+     on a labelled merk, this is an icon control that always carries an aria-label. Never
+     colour alone, either way.
+
+     `gevaar` is worn ON HOVER AND FOCUS, not at rest. A thema page carries one trash per
+     activiteit and one per subthema, so a dozen red icons would be the loudest thing on a
+     screen whose job is reading, and the red that IS resting on it means "geweigerd" and
+     "niet gedekt". At rest the icon is ink; the colour arrives with the pointer, at the
+     moment it is about to matter.
+
+     Measured on white: 4.83:1, which clears AA for the icon's own stroke (1.4.11 asks 3:1 of a
+     graphical control) and for text set in it. */
+  --color-gevaar: hsl(0 72% 42%);
+  --color-gevaar-zacht: hsl(0 80% 97%);
+
   /* ── type ──────────────────────────────────────────────────────────────────────────── */
   /* Three roles, three faces, each doing one job. Schibsted Grotesk is the voice: tight,
      editorial, used only for headings and the screen title. IBM Plex Sans is the workhorse

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Knop } from "../../components/ui/Knop";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Doelmerk } from "../../components/ui/Doelmerk";
+import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
 import { IcoonPlus } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -11,12 +12,16 @@ import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
 
 /**
- * One class's derivation of a thema, with everything that hangs under it.
+ * One age's derivation of a thema, with everything that hangs under it.
  *
- * **Nothing static is shaped like a button.** Codes, soorten and words are text; only the two
- * controls at the bottom of a row and the card's own actions carry an outline. The previous version
- * put woordenschat, activiteiten and doelcodes all in rounded pills, which made a card of read-only
- * facts look like a toolbar.
+ * **Nothing static is shaped like a button.** Codes, soorten and words are text; only what acts
+ * carries a surface. An earlier version put woordenschat, activiteiten and doelcodes all in rounded
+ * pills, which made a card of read-only facts look like a toolbar.
+ *
+ * **And then the controls themselves became the wall** (owner, 2026-08-30: "veel te veel knoppen").
+ * Six buttons spelling "Bewerken" and "Verwijderen" ran down one card, in the same type size as the
+ * content between them. They are now the two icons every other tool uses for those two verbs, with
+ * the words moved into `aria-label`, and an activiteit is edited by pressing the activiteit.
  *
  * **The nesting is the information.** A subthema owns onderzoeksvragen, and an activiteit may point
  * at one of them; an activiteit owns its own goal links, and the subthema owns its subdoelen. Those
@@ -25,7 +30,6 @@ import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
  */
 export function Subthemakaart({
   subthema,
-  klasNaam,
   onBewerk,
   onVerwijder,
   onNieuweActiviteit,
@@ -37,8 +41,6 @@ export function Subthemakaart({
   koppelenBezig,
 }: {
   subthema: SubthemaWeergave;
-  /** The class this derivation belongs to, resolved by the caller: the subthema carries only an id. */
-  klasNaam: string | null;
   onBewerk: () => void;
   onVerwijder: () => void;
   onNieuweActiviteit: () => void;
@@ -56,19 +58,33 @@ export function Subthemakaart({
       <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
           <h3 className="font-display text-sectie text-inkt">{subthema.naam}</h3>
-          {/* Klas and leeftijd together, because neither alone identifies the derivation. */}
-          <p className="mono mt-0.5 text-meta text-inkt-zwak">
-            {klasNaam ? `${klasNaam} · ` : ""}
-            {subthema.leeftijd} · {telWoord(subthema.duurWeken, "thema.eenWeek", "thema.weken")}
+          {/* The leeftijd alone, and NAMED. It used to be preceded by a klas name, which stopped
+              existing on 2026-08-30: a subthema is scoped by age and holds for every klas that
+              teaches it (Art. IX.2), so naming one of those classes here would have picked a winner.
+
+              What is new is the label in front of it. The line read "5-6 · 2 weken" in one grey
+              monospace run, in which "5-6" is indistinguishable from a second count sitting next to
+              "2 weken", and the values really are free text, from "K3" to "8-9". Four small letters
+              remove the only genuine ambiguity on this card. */}
+          <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="text-micro uppercase tracking-wide text-inkt-zwak">
+              {t("subthemabeheer.leeftijd")}
+            </span>
+            <span className="mono text-meta font-medium text-inkt">{subthema.leeftijd}</span>
+            <span aria-hidden="true" className="text-inkt-zwak">
+              ·
+            </span>
+            <span className="text-meta text-inkt-zacht">
+              {telWoord(subthema.duurWeken, "thema.eenWeek", "thema.weken")}
+            </span>
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
-            {t("themabeheer.bewerk")}
-          </Knop>
-          <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
-            {t("themabeheer.verwijder")}
-          </Knop>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Bewerkknop label={t("subthemabeheer.bewerkAria", { naam: subthema.naam })} onClick={onBewerk} />
+          <Verwijderknop
+            label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })}
+            onClick={onVerwijder}
+          />
         </div>
       </header>
 
@@ -168,6 +184,15 @@ function Blok({ titel, actie, children }: { titel: string; actie?: ReactNode; ch
 /**
  * One activiteit.
  *
+ * **The row itself opens the activiteit** (owner, 2026-08-30). It used to carry a "Bewerken" button
+ * beside a "Verwijderen" one, so a list a teacher scans put two words on every line, and the obvious
+ * gesture, pressing the thing you want to change, did nothing at all.
+ *
+ * It is an overlay button BEHIND the content rather than a button wrapped around it, the same
+ * construction the month cell uses and for the same reason: this row contains a delete control and a
+ * goal picker, a button inside a button is invalid and unreachable by keyboard, and everything above
+ * the overlay that is not itself pressable lets its clicks fall through to it.
+ *
  * The teacher's colour is a wash on the row plus its name in words, never the wash alone. The soort
  * and the goal codes are plain text: they are facts about the activiteit, and only the controls do
  * anything.
@@ -198,11 +223,23 @@ function Activiteitregel({
   return (
     <div
       className={cn(
-        "rounded-veld border px-3 py-2",
+        "relative rounded-veld border px-3 py-2",
         kleur ? KLEURVLAK[kleur] : "border-lijn bg-vlak-diep/40",
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+      {/* The hover fill is deliberately faint. This list runs to twenty rows on a real thema, and a
+          row that lights up under a pointer merely passing over it is a row that keeps claiming to
+          be the one you were looking for. Ink at 3.5% reads as "this responds" and no more. */}
+      <button
+        type="button"
+        onClick={onBewerk}
+        aria-label={t("activiteit.bewerkAria", { naam: activiteit.naam })}
+        className="absolute inset-0 z-0 rounded-veld transition-colors duration-150 hover:bg-inkt/[0.035]"
+      />
+
+      {/* `pointer-events-none` so the name, the soort and the codes hand their clicks down to the
+          overlay; every control above it turns them back on for itself. */}
+      <div className="pointer-events-none relative z-10 flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
         <div className="min-w-0 flex-1">
           <p className="text-body font-medium text-inkt">{activiteit.naam}</p>
           <p className="mt-0.5 text-meta text-inkt-zacht">
@@ -211,29 +248,31 @@ function Activiteitregel({
             {kleur ? ` · ${t(kleurSleutel(kleur))}` : ""}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
-            {t("themabeheer.bewerk")}
-          </Knop>
-          <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
-            {t("themabeheer.verwijder")}
-          </Knop>
-        </div>
+        <Verwijderknop
+          className="pointer-events-auto"
+          label={t("activiteit.verwijderAria", { naam: activiteit.naam })}
+          onClick={onVerwijder}
+        />
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-lijn/70 pt-2">
+      <div className="pointer-events-none relative z-10 mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-lijn/70 pt-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <Doelmerk aantal={codes.length} />
           {codes.length > 0 ? (
             <span className="mono min-w-0 truncate text-meta text-inkt-zacht">{codes.join(" · ")}</span>
           ) : null}
         </div>
-        <Doelkoppelaar
-          onKies={onKoppelDoel}
-          bezig={koppelenBezig}
-          alGekozen={codes}
-          toelichting={t("activiteit.koppelAan", { naam: activiteit.naam })}
-        />
+        {/* `contents` so the wrapper adds no box of its own: the koppelaar's open state is a
+            full-width panel that has to stay a direct flex child to take its own line. */}
+        <div className="pointer-events-auto contents">
+          <Doelkoppelaar
+            compact
+            onKies={onKoppelDoel}
+            bezig={koppelenBezig}
+            alGekozen={codes}
+            toelichting={t("activiteit.koppelAan", { naam: activiteit.naam })}
+          />
+        </div>
       </div>
     </div>
   );

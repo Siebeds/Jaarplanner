@@ -98,6 +98,32 @@ export function IcoonPlus(props: IconProps) {
   );
 }
 
+/**
+ * Bewerken: a pencil. The owner's word for it is "penseeltje" (2026-08-30) and it is drawn as a
+ * pencil rather than a brush, because a brush at 16 pixels is a smudge on a stick and every other
+ * tool this teacher uses spells "edit" this way.
+ */
+export function IcoonPotlood(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M5 19l.9-3.6 9.2-9.2a1.9 1.9 0 0 1 2.7 2.7L8.6 18.1 5 19z" />
+      <path d="M14.2 7.1l2.7 2.7" />
+    </Icoon>
+  );
+}
+
+/** Verwijderen: a bin. Its colour, and why it only wears it on hover, is `--color-gevaar`. */
+export function IcoonVuilbak(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4.5 7h15" />
+      <path d="M9.5 7V5.2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7" />
+      <path d="M6.6 7l.8 11.3a1.6 1.6 0 0 0 1.6 1.5h6.2a1.6 1.6 0 0 0 1.6-1.5L17.4 7" />
+      <path d="M10.5 11v5M13.5 11v5" />
+    </Icoon>
+  );
+}
+
 /** Done: a tick. Always beside the word it reinforces, never carrying the state on its own. */
 export function IcoonVink(props: IconProps) {
   return (

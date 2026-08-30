@@ -7,15 +7,16 @@ import { Knop } from "../../components/ui/Knop";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { Bevestiging } from "../../components/ui/Bevestiging";
+import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
 import { IcoonPlus } from "../../components/Iconen";
 import {
   useBeoordeelSuggestie,
   useDoelsuggesties,
   useGenereerDoelsuggesties,
-  useKlassen,
   useThema,
 } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
+import { cn } from "../../lib/cn";
 import type { SubthemaWeergave } from "../../lib/types";
 import { t, telWoord } from "../../i18n";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
@@ -41,22 +42,27 @@ import {
 } from "./mutaties";
 
 /**
- * One thema, top to bottom: what it is, which goals hang on it, and what each class built under it.
+ * One thema, top to bottom: what it is, which goals hang on it, and what was built under it per age.
  *
  * **All three levels a goal can hang on are reachable here, and each says which level it is.** A
- * themadoel is school-wide, a subdoel belongs to one class's subthema, an activiteit's link belongs to
+ * themadoel is school-wide, a subdoel belongs to one age's subthema, an activiteit's link belongs to
  * one activiteit (Art. IX.2). Those layers all count towards dekking, but only for a thema that is
  * placed in the plan, which is why nothing on this screen claims anything about coverage.
  *
- * **Read-only facts are text.** Woordenschat is a sentence, goal codes and soorten are text. Only
- * what acts carries an outline, so a card of facts stops looking like a toolbar.
+ * **Read-only facts are text.** Goal codes and soorten are text; what the thema IS is a label and
+ * value table. Only what acts carries a surface, so a page of facts stops looking like a toolbar.
+ *
+ * **The 2026-08-30 pass was one complaint from the owner: everything was the same size.** Section
+ * headings sat below the body text they introduced, the four counts were the faintest line on the
+ * screen, an unlabelled sentence floated between them, and DOELSUGGESTIES took a heading, an empty
+ * state and a button to report that nothing had been suggested. What each of those became, and why,
+ * is written at the place it happened.
  */
 export function ThemadetailScherm() {
   const { themaId } = useParams<{ themaId: string }>();
   const id = themaId ?? "";
   const { data: thema, isPending, isError } = useThema(themaId);
   const { data: suggesties } = useDoelsuggesties(themaId);
-  const { data: klassen } = useKlassen();
   const genereer = useGenereerDoelsuggesties(id);
   const beoordeel = useBeoordeelSuggestie(id);
   const navigeer = useNavigate();
@@ -114,11 +120,12 @@ export function ThemadetailScherm() {
   // A verdict has been recorded on everything that is no longer Voorgesteld, so only the open ones
   // are waiting for the teacher.
   const openSuggesties = (suggesties ?? []).filter((s) => s.status === "Voorgesteld");
-  const klasNaam = (klasId: string) => (klassen ?? []).find((k) => k.id === klasId)?.naam ?? null;
 
-  // The at-a-glance figures, summed here rather than fetched: they are sums over data this screen
-  // already holds, and a second endpoint would be a second thing that can disagree with it.
-  const aantalActiviteiten = thema.subthemas.reduce((som, s) => som + s.activiteiten.length, 0);
+  // Every doel hanging anywhere under this thema, summed here rather than fetched: it is a sum over
+  // data this screen already holds, and a second endpoint would be a second thing that can disagree
+  // with it. Only the delete confirmation uses it now, to say what a delete takes with it; the
+  // activiteit tally that used to sit beside it went with the counts line, because every card
+  // already counts its own.
   const aantalDoelen =
     thema.themadoelen.length +
     thema.subthemas.reduce(
@@ -145,27 +152,21 @@ export function ThemadetailScherm() {
       <Schermkop
         titel={thema.naam}
         rechts={
-          <div className="flex shrink-0 items-center gap-2">
-            <Knop
-              rang="rustig"
-              className="h-9 min-h-9 px-3 text-meta"
+          <div className="flex shrink-0 items-center gap-0.5">
+            <Bewerkknop
+              label={t("themabeheer.bewerkAria", { naam: thema.naam })}
               onClick={() => {
                 wijzig.reset();
                 setBewerkOpen(true);
               }}
-            >
-              {t("themabeheer.bewerk")}
-            </Knop>
-            <Knop
-              rang="stil"
-              className="h-9 min-h-9 px-3 text-meta"
+            />
+            <Verwijderknop
+              label={t("themabeheer.verwijderAria", { naam: thema.naam })}
               onClick={() => {
                 verwijder.reset();
                 setVerwijderOpen(true);
               }}
-            >
-              {t("themabeheer.verwijder")}
-            </Knop>
+            />
           </div>
         }
       />
@@ -173,38 +174,75 @@ export function ThemadetailScherm() {
       <Schermvlak>
         <Terug />
 
-        <p className="mono mt-3 text-meta text-inkt-zwak">
-          {telWoord(thema.duurWeken, "thema.eenWeek", "thema.weken")} ·{" "}
-          {telWoord(thema.subthemas.length, "thema.eenSubthema", "thema.subthemas")} ·{" "}
-          {telWoord(aantalActiviteiten, "thema.eenActiviteit", "thema.activiteiten")} ·{" "}
-          {telWoord(aantalDoelen, "thema.eenDoel", "thema.doelen")}
-        </p>
+        {/* WHAT THIS THEMA IS, as one label-and-value table (owner, 2026-08-30: this whole block
+            was "super onduidelijk").
 
-        {thema.invalshoeken ? <p className="mt-3 text-body text-inkt">{thema.invalshoeken}</p> : null}
+            It was four separate shapes stacked: a grey monospace count line, an unlabelled sentence,
+            and a WOORDENSCHAT section whose two rows each began with the word "woordenschat" again.
+            Nothing said which parts were labels and which were content, because label and content
+            were the same size and nearly the same colour.
 
-        {thema.kernwoordenschat.length > 0 || thema.rijkeWoordenschat.length > 0 ? (
-          <Sectie titel={t("themabeheer.woordenschat")}>
-            {thema.kernwoordenschat.length > 0 ? (
-              <Woordenregel
-                label={t("themabeheer.kernwoordenschat")}
-                woorden={thema.kernwoordenschat}
-                sterk
-              />
-            ) : null}
-            {thema.rijkeWoordenschat.length > 0 ? (
-              <Woordenregel label={t("themabeheer.rijkeWoordenschat")} woorden={thema.rijkeWoordenschat} />
-            ) : null}
-          </Sectie>
-        ) : null}
+            Now every fact is a label in the quiet column and its value in the loud one, so the eye
+            can run down either column alone. Three of the old four counts are gone from here
+            entirely: "1 subthema" sat directly above the list of subthema's and "1 activiteit" above
+            the activiteiten, so they restated what they introduced. Each now lives on the section
+            heading that counts it. Duur stays because nothing else on the page says how long this
+            thema runs.
 
+            `dl` and not a `div`: these ARE term and description, and a screen reader reading the
+            page in order should get them paired rather than as eight loose strings. */}
+        <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+          <Feit label={t("themabeheer.duur")}>
+            {telWoord(thema.duurWeken, "thema.eenWeek", "thema.weken")}
+          </Feit>
+
+          {thema.invalshoeken ? (
+            <Feit label={t("themabeheer.invalshoeken")}>{thema.invalshoeken}</Feit>
+          ) : null}
+
+          {/* The two vocabulary lists keep their full names rather than being shortened to "Kern"
+              and "Rijk": they are Op.stap's own terms and a teacher meets them in the thema form
+              under exactly these words. What was repetitive was the SECTION heading above them
+              saying "Woordenschat" a third time, and that heading is what went. */}
+          {thema.kernwoordenschat.length > 0 ? (
+            <Feit label={t("themabeheer.kernwoordenschat")}>{thema.kernwoordenschat.join(" · ")}</Feit>
+          ) : null}
+          {thema.rijkeWoordenschat.length > 0 ? (
+            <Feit label={t("themabeheer.rijkeWoordenschat")} zacht>
+              {thema.rijkeWoordenschat.join(" · ")}
+            </Feit>
+          ) : null}
+        </dl>
+
+        {/* THEMADOELEN AND DOELSUGGESTIES ARE ONE SECTION NOW.
+            A doelsuggestie is a proposed themadoel: accepting one makes it a themadoel, in this very
+            list. As a sibling section it cost a second heading, a second empty state and a permanent
+            "Geen open suggesties" line under it, so a thema with nothing suggested spent four lines
+            and a button saying nothing had been suggested.
+
+            The AI half is unchanged where it counts (Art. IV): every suggestion is still shown with
+            its motivation and still has to be accepted or rejected by hand, and "Vraag suggesties"
+            is still always reachable rather than appearing only when the list is empty: a teacher
+            with two themadoelen may well want more. */}
         <Sectie
           titel={t("thema.themadoelen")}
+          telling={telWoord(thema.themadoelen.length, "thema.eenDoel", "thema.doelen")}
           actie={
-            <Doelkoppelaar
-              onKies={(code) => koppelThemadoel.mutate(code)}
-              bezig={koppelThemadoel.isPending}
-              alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
-            />
+            <>
+              <Knop
+                rang="stil"
+                className="h-9 min-h-9 px-3 text-meta"
+                disabled={genereer.isPending}
+                onClick={() => genereer.mutate()}
+              >
+                {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
+              </Knop>
+              <Doelkoppelaar
+                onKies={(code) => koppelThemadoel.mutate(code)}
+                bezig={koppelThemadoel.isPending}
+                alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
+              />
+            </>
           }
         >
           {thema.themadoelen.length === 0 ? (
@@ -229,33 +267,24 @@ export function ThemadetailScherm() {
               ))}
             </ul>
           )}
-        </Sectie>
 
-        <Sectie
-          titel={t("thema.suggesties")}
-          actie={
-            <Knop
-              rang="rustig"
-              className="h-9 min-h-9 px-3 text-meta"
-              disabled={genereer.isPending}
-              onClick={() => genereer.mutate()}
-            >
-              {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
-            </Knop>
-          }
-        >
           {genereer.isError ? (
-            <p className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+            <p className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
               {genereer.error instanceof ApiError && genereer.error.detail
                 ? genereer.error.detail
                 : t("thema.suggestiesMislukt")}
             </p>
           ) : null}
 
-          {openSuggesties.length === 0 ? (
-            <p className="text-meta text-inkt-zwak">{t("thema.geenSuggesties")}</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
+          {/* Open suggestions, when there are any. No empty state of their own: the section above
+              already says whether there are themadoelen, and a second "nothing here" under it was
+              the line the owner was looking at. */}
+          {openSuggesties.length > 0 ? (
+            <>
+              <h3 className="mt-4 text-micro uppercase tracking-wide text-inkt-zwak">
+                {t("thema.suggesties")}
+              </h3>
+              <ul className="mt-2 flex flex-col gap-2">
               {openSuggesties.map((suggestie) => (
                 <li key={suggestie.id} className="rounded-kaart border border-lijn bg-kaart p-3">
                   <div className="flex items-center gap-2">
@@ -294,12 +323,14 @@ export function ThemadetailScherm() {
                   </div>
                 </li>
               ))}
-            </ul>
-          )}
+              </ul>
+            </>
+          ) : null}
         </Sectie>
 
         <Sectie
           titel={t("thema.subthemasTitel")}
+          telling={telWoord(thema.subthemas.length, "thema.eenSubthema", "thema.subthemas")}
           actie={
             <Knop
               rang="rustig"
@@ -322,7 +353,6 @@ export function ThemadetailScherm() {
                 <li key={subthema.id}>
                   <Subthemakaart
                     subthema={subthema}
-                    klasNaam={klasNaam(subthema.klasId)}
                     koppelenBezig={
                       koppelSubdoel.isPending ||
                       ontkoppelSubdoel.isPending ||
@@ -544,12 +574,40 @@ function Terug() {
   );
 }
 
-function Sectie({ titel, actie, children }: { titel: string; actie?: ReactNode; children: ReactNode }) {
+/**
+ * A section heading, its count, and whatever acts on it.
+ *
+ * **The heading was almost invisible and it is the page's own structure.** `text-micro` in
+ * `inkt-zwak` put WOORDENSCHAT, THEMADOELEN and SUBTHEMA'S below the body text they introduced, so
+ * five sections read as one undifferentiated column (owner, 2026-08-30). They are a step up in size
+ * and ink now, and still uppercase and unbold: enough to be found, not enough to compete with the
+ * content, which is the thing being looked for.
+ *
+ * **The count is a separate slot here and a phrase inside the card.** They are two different things:
+ * `Blok` titles a list of three subdoelen and its whole title IS the sentence "3 subdoelen", while
+ * this titles a named section that happens to hold a number. Putting "0 doelen" in the heading text
+ * would have made the heading change its own name as content is added.
+ */
+function Sectie({
+  titel,
+  telling,
+  actie,
+  children,
+}: {
+  titel: string;
+  /** How many of the thing this section is about, when the section is a list of countable things. */
+  telling?: string;
+  actie?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <section className="mt-7 flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-micro uppercase text-inkt-zwak">{titel}</h2>
-        {actie}
+    <section className="mt-8 flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-lijn pb-2">
+        <h2 className="flex items-baseline gap-2">
+          <span className="text-meta font-semibold uppercase tracking-wide text-inkt-zacht">{titel}</span>
+          {telling ? <span className="mono text-meta text-inkt-zwak">{telling}</span> : null}
+        </h2>
+        <div className="flex flex-wrap items-center gap-1">{actie}</div>
       </div>
       {children}
     </section>
@@ -557,18 +615,21 @@ function Sectie({ titel, actie, children }: { titel: string; actie?: ReactNode; 
 }
 
 /**
- * One vocabulary list, as a sentence.
+ * One fact about the thema: what it is called, and what it says.
  *
- * Words are read, not clicked, so they are text with a separator rather than a row of pills. The two
- * lists differ in weight: kernwoordenschat is what every child ends up with, rijke woordenschat is
- * the stretch, which is the same distinction the form's chips carry.
+ * A `dt`/`dd` pair in a two column grid, so the labels line up and the values start at one edge.
+ * Everything above was previously label and value at the same size in the same line, which is the
+ * reading the owner objected to: nothing said which half was the question.
+ *
+ * `zacht` is the one distinction the values carry. Kernwoordenschat is what every child ends up
+ * with and rijke woordenschat is the stretch, the same distinction the thema form's chips make.
  */
-function Woordenregel({ label, woorden, sterk }: { label: string; woorden: string[]; sterk?: boolean }) {
+function Feit({ label, zacht, children }: { label: string; zacht?: boolean; children: ReactNode }) {
   return (
-    <p className="text-body">
-      <span className="text-micro uppercase text-inkt-zwak">{label}</span>{" "}
-      <span className={sterk ? "text-inkt" : "text-inkt-zacht"}>{woorden.join(" · ")}</span>
-    </p>
+    <>
+      <dt className="pt-0.5 text-micro uppercase tracking-wide text-inkt-zwak">{label}</dt>
+      <dd className={cn("text-body", zacht ? "text-inkt-zacht" : "text-inkt")}>{children}</dd>
+    </>
   );
 }
 
