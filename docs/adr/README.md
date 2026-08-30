@@ -21,7 +21,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0005](0005-dutch-ubiquitous-language-i18n.md) | Dutch ubiquitous language & centralised i18n | Accepted |
 | [0006](0006-opstap-readonly-import-closedxml.md) | Op.stap as read-only reference data via single-source ClosedXML import | Accepted |
 | [0007](0007-curriculum-taxonomy-concordance.md) | Curriculum taxonomy & concordance model | Accepted (concordance clause superseded by 0018) |
-| [0008](0008-themalaag-level-scoping.md) | Two-tier themalaag with level-based ownership/scoping | Accepted |
+| [0008](0008-themalaag-level-scoping.md) | Two-tier themalaag with level-based ownership/scoping | Accepted (per-class scoping of Subthema/Subdoel/Activiteit superseded by 0025) |
 | [0009](0009-dekking-computed-not-stored.md) | Dekking is computed, never stored | Accepted |
 | [0010](0010-ai-advisory-architecture.md) | AI advisory architecture (injectable client, server-side, structured+validated) | Accepted |
 | [0011](0011-authn-authz-rbac-gdpr.md) | AuthN/AuthZ, RBAC & GDPR data minimisation | Accepted |
@@ -38,7 +38,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0022](0022-curriculum-administration-authorisation-seam.md) | Curriculum-administration authorisation seam (one named policy `Curriculumbeheer`, a documented no-op until E6-02) and one endpoint per import source (complements 0011) | Accepted |
 | [0023](0023-activiteit-day-placement.md) | An activiteit is placed on a calendar **day**, never on a planningsblok; `Planningsblokniveau` gains no week/day member and a week is a rendering grouping (relates to 0013/0020, supersedes neither) | Accepted |
 | [0024](0024-single-frontend-inkt-en-signaal.md) | One frontend at `frontend/` (frontend-v3 renamed in, the old frontend and frontend-mobile deleted); design direction "Inkt en Signaal": near-achromatic chrome (one rationed accent), Radix primitives without shadcn, tokens in CSS, mobile-first (supersedes 0017 decisions 1/2/3/5) | Accepted |
-| *0025* | *(number taken by session `verbeteringen` for the Subthema-per-leeftijd change of 2026-08-30; `Subthema.cs` already cites it) — **not written yet***| *Owed* |
+| [0025](0025-subthema-per-leeftijd.md) | A **subthema is scoped by leeftijd alone** (the `KlasId` leaves the entity, so a subthema on K3 holds for every K3 class); a `Klas` states a required `Jaarfase` and derives its `Leerjaar` from it; planning stays per klas (supersedes ADR-0008's per-class scoping of Subthema/Subdoel/Activiteit) | Accepted |
 | [0026](0026-streefwoordenschat-op-subthema.md) | Streefwoordenschat is a **third** vocabulary list, on `Subthema` and therefore scoped by leeftijd alone; the thema's two school-wide lists are untouched, no new endpoint, and the calendar strip stays decorative because the doorklik is one control per run (depends on 0025, supersedes nothing) | **Proposed** |
 
 ## Compliance traceability matrix
@@ -70,6 +70,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0022 | Art. VI.1/VI.5, XIV, VIII, III.1/III.4, II.3 | E1-15; E1-12, E6-01/02, E7-11, E7-13 | FR-2.1/2.5, FR-10/§3.2; NFR-5 |
 | 0023 | Art. IX.3, IX.2, IV.2, V.1, VIII | E9-03; enables E9-04/05 | FR-6.2/6.3, FR-7.2 |
 | 0024 | Art. VIII, XII, II, X | E9 | NFR-1/2/7 |
+| 0025 | Art. IX.2, IX.3, III, V | E1; E10 | FR-3 |
 | 0026 | Art. III, IX.2, II.3, V.1, XII | E10-01 | F9 (owner meeting notes; not an FR) |
 
 ## Open decisions referenced by ADRs
