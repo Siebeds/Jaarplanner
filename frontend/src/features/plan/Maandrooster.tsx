@@ -7,6 +7,7 @@ import { t } from "../../i18n";
 import { Dagplus } from "./Dagplus";
 import { Subthemastroken } from "./Subthemastroken";
 import { Hoekstroken } from "../hoeken/Hoekstroken";
+import { hoekZin } from "../hoeken/hoekzin";
 import { Themastroken } from "./Themastroken";
 import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
 import { themaZin, vakOpDag, type Themavak } from "./themavakken";
@@ -188,7 +189,8 @@ function Maandcel({
               ? t("periode.openDagMet", { dag: volleDag(dag.datum), aantal: dag.activiteiten.length })
               : t("periode.openDag", { dag: volleDag(dag.datum) })) +
           themaZin(periode) +
-          subthemaZin(stroken)
+          subthemaZin(stroken) +
+          hoekZin(hoekplaatsingen, dag.datum)
         }
         className="absolute inset-0 z-0 rounded-veld transition-colors duration-150 hover:bg-vlak-diep/60"
       />

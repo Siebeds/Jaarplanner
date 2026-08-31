@@ -7,8 +7,11 @@ import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
 import { cn } from "../../lib/cn";
 import { Dagplus } from "./Dagplus";
 import { Subthemastroken } from "./Subthemastroken";
+import { Hoekstroken } from "../hoeken/Hoekstroken";
+import { hoekZin } from "../hoeken/hoekzin";
 import { Themastroken } from "./Themastroken";
 import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
+import type { HoekplaatsingWeergave } from "../hoeken/gegevens";
 import { themaZin, type Themavak } from "./themavakken";
 
 /**
@@ -38,6 +41,7 @@ export function Dagcel({
   bovenkop,
   groot,
   reeksen = LEEG,
+  hoekplaatsingen = GEEN_HOEKEN,
   vak,
   onVoegToe,
   onOpen,
@@ -49,6 +53,15 @@ export function Dagcel({
   groot?: boolean;
   /** The subthema runs covering this day. */
   reeksen?: readonly Subthemareeks[];
+  /**
+   * The hoeken running in the range this cell belongs to.
+   *
+   * Defaulted, because the week view is not the only caller and a cell without them is a cell that
+   * simply has none. It went missing here when the month view got its band: the week view was left
+   * drawing nothing, so a placement made on a Tuesday was invisible on the very screen a teacher
+   * plans a week in.
+   */
+  hoekplaatsingen?: readonly HoekplaatsingWeergave[];
   /** The themaperiode this day sits in, or undefined between two periods. */
   vak?: Themavak;
   onVoegToe: (datum: string) => void;
@@ -90,7 +103,8 @@ export function Dagcel({
               ? t("periode.openDagMet", { dag: volleDag(dag.datum), aantal: dag.activiteiten.length })
               : t("periode.openDag", { dag: volleDag(dag.datum) })) +
             themaZin(periode) +
-            subthemaZin(stroken)
+            subthemaZin(stroken) +
+            hoekZin(hoekplaatsingen, dag.datum)
           }
           className="absolute inset-0 z-0 rounded-kaart transition-colors duration-150 hover:bg-vlak-diep/50"
         />
@@ -103,6 +117,7 @@ export function Dagcel({
       <div className="relative z-10 flex flex-col gap-px">
         <Themastroken vak={periode} datum={dag.datum} />
         <Subthemastroken reeksen={stroken} datum={dag.datum} />
+        <Hoekstroken plaatsingen={hoekplaatsingen} datum={dag.datum} />
       </div>
 
       {/* Weekday over date, the way a calendar has always written it. One line of "ma 28" fits in
@@ -146,6 +161,9 @@ export function Dagcel({
 
 /** A stable empty list, so a day with nothing running does not hand a new array down every render. */
 const LEEG: Subthemareeks[] = [];
+
+/** One frozen empty list, so a cell without hoeken does not hand a new array to every render. */
+const GEEN_HOEKEN: readonly HoekplaatsingWeergave[] = [];
 
 /**
  * One activiteit on a day: a button that opens it, and a handle that drags it to another day.

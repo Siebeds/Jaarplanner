@@ -7,7 +7,8 @@ import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
-import { useHoeken, type HoekWeergave } from "./gegevens";
+import { periode as periodeTekst } from "../../lib/datum";
+import { useHoeken, type HoekplaatsingWeergave, type HoekWeergave } from "./gegevens";
 import { FICHE_VOORVOEGSEL } from "./fiche";
 
 /**
@@ -30,9 +31,20 @@ import { FICHE_VOORVOEGSEL } from "./fiche";
  */
 export function Hoekenpaneel({
   klasId,
+  plaatsingen,
   onKies,
+  onOpenPlaatsing,
 }: {
   klasId: string | null;
+  /**
+   * The placements overlapping the range the agenda is showing.
+   *
+   * **This is what makes a placed hoek reachable at all.** The band on a month cell is
+   * `pointer-events-none` and the day view only draws a hoek that took a lesuur, which is not the
+   * default, so neither is a dependable way in. The panel is: a corner is listed here whether or not
+   * it claims an hour, at every width, and its runs are listed under it.
+   */
+  plaatsingen: readonly HoekplaatsingWeergave[];
   /**
    * A fiche was CHOSEN rather than dragged: the phone path.
    *
@@ -42,6 +54,8 @@ export function Hoekenpaneel({
    * says with its landing point.
    */
   onKies: (hoekId: string) => void;
+  /** One of the runs under a fiche was opened. */
+  onOpenPlaatsing: (plaatsingId: string) => void;
 }) {
   const open = useHoekenpaneel((s) => s.open);
   const zet = useHoekenpaneel((s) => s.zet);
@@ -51,9 +65,11 @@ export function Hoekenpaneel({
   const inhoud = (
     <Fichelijst
       hoeken={hoeken}
+      plaatsingen={plaatsingen}
       laadt={klasId !== null && isPending}
       heeftKlas={klasId !== null}
       onKies={breed ? undefined : onKies}
+      onOpenPlaatsing={onOpenPlaatsing}
     />
   );
 
@@ -108,15 +124,19 @@ export function Hoekenpaneel({
 /** The corners themselves, or the reason there are none to show. */
 function Fichelijst({
   hoeken,
+  plaatsingen,
   laadt,
   heeftKlas,
   onKies,
+  onOpenPlaatsing,
 }: {
   hoeken?: HoekWeergave[];
+  plaatsingen: readonly HoekplaatsingWeergave[];
   laadt: boolean;
   heeftKlas: boolean;
   /** Set only where the fiche is tapped rather than dragged. */
   onKies?: (hoekId: string) => void;
+  onOpenPlaatsing: (plaatsingId: string) => void;
 }) {
   if (!heeftKlas) {
     return <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>;
@@ -145,8 +165,24 @@ function Fichelijst({
   return (
     <ul className="flex flex-col gap-2">
       {(hoeken ?? []).map((hoek) => (
-        <li key={hoek.id}>
+        <li key={hoek.id} className="flex flex-col gap-1">
           <Fiche hoek={hoek} onKies={onKies} />
+
+          {/* The runs of THIS corner that the agenda is currently showing. Each one opens, which is
+              the only reliable route to reading a verrijking back or undoing a misplaced drop. */}
+          {plaatsingen
+            .filter((p) => p.hoekId === hoek.id)
+            .map((plaatsing) => (
+              <button
+                key={plaatsing.id}
+                type="button"
+                onClick={() => onOpenPlaatsing(plaatsing.id)}
+                className="ml-3 flex items-center gap-1.5 rounded-veld px-2 py-1 text-left text-micro text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
+              >
+                <span aria-hidden="true" className="h-2.5 w-0.5 shrink-0 rounded-full bg-inkt-zwak" />
+                <span className="truncate">{periodeTekst(plaatsing.van, plaatsing.tot)}</span>
+              </button>
+            ))}
         </li>
       ))}
     </ul>

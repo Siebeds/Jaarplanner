@@ -226,7 +226,9 @@
     "dagThema": "thema {naam}",
     "dagThemas": "thema's {namen}",
     "dagGeenThema": "nog geen thema in deze periode",
-    "hoekenfiches": "Hoekenfiches"
+    "hoekenfiches": "Hoekenfiches",
+    "dagHoek": "hoek {naam}",
+    "dagHoeken": "hoeken {namen}"
   },
   "slepen": {
     "uitleg": "Druk op de spatiebalk om op te pakken, verplaats met de pijltjestoetsen en druk opnieuw op de spatiebalk om neer te zetten.",
@@ -358,7 +360,7 @@
     "eenSubthema": "1 subthema",
     "aantalSubthemas": "{aantal} subthema's",
     "verwijderTitel": "{naam} verwijderen?",
-    "verwijderGevolg": "Het jaarplan van deze klas verdwijnt mee. Dat is niet terug te draaien.",
+    "verwijderGevolg": "Het jaarplan verdwijnt mee, en ook de hoeken van deze klas met wat erin gepland staat. Dat is niet terug te draaien.",
     "verwijderMislukt": "De klas is niet verwijderd."
   },
   "importeren": {
@@ -581,5 +583,20 @@
     "plaats": "Inplannen",
     "bezig": "Bezig met inplannen",
     "mislukt": "Inplannen is niet gelukt."
+  },
+  "hoekdetail": {
+    "periode": "Periode",
+    "uurrooster": "In het uurrooster",
+    "opLesuur": "Lesuur {nummer}, op {dagen}",
+    "eenSchooldag": "1 schooldag",
+    "aantalSchooldagen": "{aantal} schooldagen",
+    "verrijking": "Verrijking",
+    "geenVerrijking": "Nog niets ingevuld.",
+    "verwijderGevolgEen": "Verwijderen wist ook de verrijking die je hier schreef.",
+    "verwijderGevolgAantal": "Verwijderen wist ook de {aantal} verrijkingen die je hier schreef.",
+    "verwijder": "Uit de agenda halen",
+    "verwijderBezig": "Bezig met verwijderen",
+    "verwijderMislukt": "Verwijderen is niet gelukt.",
+    "sluiten": "Sluiten"
   }
 }

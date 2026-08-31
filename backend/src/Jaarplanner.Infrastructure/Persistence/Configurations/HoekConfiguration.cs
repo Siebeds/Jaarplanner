@@ -14,11 +14,24 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 /// "boekenhoek", one class may not have two.
 /// </para>
 /// <para>
-/// <b>Cascade on the klas, and it is the same call <c>KlasConfiguration</c> makes for its other dependants.</b> A
-/// corner is a statement about a classroom; delete the class and there is no room for it to be in. The teacher's
-/// authored text lives one level further down, on a <c>Hoekverrijking</c> under a <see cref="Hoekplaatsing"/>,
-/// and that path is protected by <c>Restrict</c> instead — see <c>HoekplaatsingConfiguration</c>. So deleting a
-/// klas that still has placed hoeken is refused by that FK before it ever reaches this one.
+/// <b>Cascade on the klas: deleting a class takes its corners, their placements and everything written in
+/// them.</b> A corner is a statement about a classroom, and there is no room left to make it about.
+/// </para>
+/// <para>
+/// <b>THIS PARAGRAPH SAID THE OPPOSITE AND WAS MEASURABLY WRONG.</b> It claimed the <c>Restrict</c> FK from
+/// <c>hoekplaatsingen</c> to <c>hoeken</c> would refuse the klas delete before it reached here. It does not:
+/// <c>hoekplaatsingen</c> also has a CASCADE FK to <c>klassen</c>, so PostgreSQL removes the placements by that
+/// edge and the Restrict edge never fires. An antagonist audit reproduced this migration's exact table and
+/// constraint order against real PostgreSQL 17 and deleted a klas holding one of each: <c>DELETE 1</c>, and all
+/// four tables emptied. Nothing was refused. The comment had been protecting nobody while reading as though it
+/// were the guard.
+/// </para>
+/// <para>
+/// <b>The cascade is now the decision rather than the accident</b> (owner ruling, 2026-08-31, on the second half
+/// of question 9 in <c>docs/besluiten-gevraagd.md</c>): a klas delete takes the hoeken with it, and the
+/// confirmation the teacher reads says so (<c>klasbeheer.verwijderGevolg</c>). The alternative, refusing while any
+/// hoek is placed, was rejected: it would make her clear a year of corners by hand before she could remove a class
+/// she has already decided to remove.
 /// </para>
 /// </summary>
 public sealed class HoekConfiguration : IEntityTypeConfiguration<Hoek>

@@ -45,7 +45,8 @@ import { Subthemaplanner } from "./Subthemaplanner";
 import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
 import { leesFicheId } from "../hoeken/fiche";
 import { Hoekplaatsingblad } from "../hoeken/Hoekplaatsingblad";
-import { useHoekplaatsingen, usePlaatsHoek, useHoeken } from "../hoeken/gegevens";
+import { Hoekdetailblad } from "../hoeken/Hoekdetailblad";
+import { useHoekplaatsingen, usePlaatsHoek, useVerwijderHoekplaatsing, useHoeken } from "../hoeken/gegevens";
 import { roosterdagen } from "./roosterdagen";
 import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
 import { themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
@@ -105,6 +106,9 @@ export function Agendascherm() {
   const zetHoekenpaneel = useHoekenpaneel((s) => s.zet);
   // The fiche that was dropped and the day it landed on. Null means no sheet.
   const [gevallenFiche, setGevallenFiche] = useState<{ hoekId: string; datum: string } | null>(null);
+  // The placement whose detail sheet is open, by id rather than by value: the list is refetched after
+  // a delete, and holding a copy would keep a sheet describing a row that is gone.
+  const [geopendeHoek, setGeopendeHoek] = useState<string | null>(null);
 
   const { data: rooster } = useRooster(schooljaarId);
   const { data: plan } = useJaarplan(klasId);
@@ -178,6 +182,7 @@ export function Agendascherm() {
   const { data: hoekplaatsingen } = useHoekplaatsingen(klasId, van, tot);
   const { data: hoeken } = useHoeken(klasId);
   const plaatsHoek = usePlaatsHoek(klasId);
+  const verwijderPlaatsing = useVerwijderHoekplaatsing();
 
   // The planner spreads over the whole period, so it needs every day of it rather than the days the
   // current view happens to be showing. A separate query with its own key: asking the view's query
@@ -576,6 +581,11 @@ export function Agendascherm() {
               panel is `fixed`, so where it sits on screen owes nothing to where it sits in this tree. */}
           <Hoekenpaneel
             klasId={klasId}
+            plaatsingen={hoekplaatsingen ?? []}
+            onOpenPlaatsing={(plaatsingId) => {
+              verwijderPlaatsing.reset();
+              setGeopendeHoek(plaatsingId);
+            }}
             onKies={(hoekId) => {
               // The phone path: no landing point, so the window opens on the day the agenda is
               // standing on. The sheet closes because it is covering the calendar she is about to
@@ -641,6 +651,7 @@ export function Agendascherm() {
                       bovenkop={weekdagKort(dag.datum)}
                       kop={String(dagNummer(dag.datum))}
                       reeksen={stroken.get(dag.datum)}
+                      hoekplaatsingen={hoekplaatsingen ?? []}
                       vak={vakOpDag(vakken, dag.datum)}
                       onVoegToe={(datum) => setKiezer({ datum, slot: 0 })}
                       onOpen={(activiteit) => setGeopend({ activiteit, datum: dag.datum })}
@@ -721,6 +732,24 @@ export function Agendascherm() {
           }
         />
       ) : null}
+
+      {/* THE WAY BACK OUT, and the only screen that reads a verrijking back. Looked up by id on every
+          render, so the sheet disappears by itself when the placement it describes does. */}
+      {(() => {
+        const open = (hoekplaatsingen ?? []).find((p) => p.id === geopendeHoek);
+        return open ? (
+          <Hoekdetailblad
+            open
+            plaatsing={open}
+            bezig={verwijderPlaatsing.isPending}
+            fout={verwijderPlaatsing.error}
+            onSluit={() => setGeopendeHoek(null)}
+            onVerwijder={() =>
+              verwijderPlaatsing.mutate(open.id, { onSuccess: () => setGeopendeHoek(null) })
+            }
+          />
+        ) : null;
+      })()}
 
       <Nieuweactiviteitblad
         // Keyed on the day and the hour: the form fills its fields at mount, so reopening it for
