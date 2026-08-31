@@ -116,6 +116,12 @@
     "zonderDoelLabel": "Zonder doel",
     "zonderDoelEen": "1 activiteit",
     "zonderDoelMeer": "{aantal} activiteiten",
+    "eenActiviteit": "1 activiteit",
+    "activiteiten": "{aantal} activiteiten",
+    "eenSubdoel": "1 subdoel",
+    "subdoelen": "{aantal} subdoelen",
+    "eenZonderDoel": "1 zonder doel",
+    "aantalZonderDoel": "{aantal} zonder doel",
     "fout": "Thema niet geladen",
     "geenSubdoelen": "Nog geen doelen op dit subthema"
   },

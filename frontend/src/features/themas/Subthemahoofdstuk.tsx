@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Doelmerk } from "../../components/ui/Doelmerk";
-import { Verwijderknop } from "../../components/ui/Rijknoppen";
+import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
+import { IcoonChevron } from "../../components/Iconen";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -21,10 +23,24 @@ import { Blok, Doellijst, Doelregel, Ontkoppel, Subkop } from "./Fiche";
  * margin and its width bounded by the fiche. Same three levels, carried by where the card sits
  * rather than by how deeply it is buried.
  *
- * **The heading opens the subthema** (owner, 2026-08-30: "ik wil niet telkens op dat potloodje
- * klikken"), and the pencil stays gone. An overlay button behind the content, not a wrapper around
- * it: this chapter contains a delete control and two goal pickers, and a button inside a button is
- * invalid and unreachable by keyboard.
+ * **The card folds shut, and the heading is what folds it** (owner, 2026-08-31: "ik wil dat de
+ * subthema cards collapsible worden, zodat ik ze kan dicht en openklappen, default mogen ze
+ * openstaan"). Open by default, and a disclosure button with `aria-expanded` and a chevron that
+ * turns, which is the shape this app already uses in `Themarij` and `Doelenboom`. One pattern for
+ * one gesture.
+ *
+ * **That cost the "press the subthema to edit it" gesture, and the pencil comes back for it.** The
+ * heading of a card that folds has to fold it: that is what a teacher has met everywhere else, and a
+ * header that edited when pressed here and folded when pressed there would be worse than either. So
+ * editing needs a control of its own again. The objection on 2026-08-30 was never to a pencil as
+ * such, it was to a bare 16 pixel one hiding in a corner ("ik wil niet telkens op dat potloodje
+ * klikken"); this is the bordered 44 pixel control the owner asked for on 2026-08-31, beside the
+ * bin, exactly like the thema's own card. Every card now carries the same two controls in the same
+ * place.
+ *
+ * **Folded, the card says what is inside it.** Counts, and the gap when there is one. The point of
+ * folding is scanning, and a fold that leaves only a name gives a teacher nothing to scan. They show
+ * only while it is shut: printed above the lists they count, they would restate them.
  *
  * **Activiteiten come before subdoelen**, which is the other way round from the version this
  * replaced. The activiteiten are what the teacher built; the subdoelen are the accounting on top of
@@ -54,6 +70,10 @@ export function Subthemahoofdstuk({
   koppelenBezig?: boolean;
 }) {
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
+  const zonderDoel = activiteiten.filter((a) => a.doelkoppelingen.length === 0).length;
+  // Local, and deliberately not persisted. The owner asked for open by default; remembering a fold
+  // across a route change is a different feature and would need somewhere to remember it.
+  const [open, setOpen] = useState(true);
 
   return (
     <Blok
@@ -64,99 +84,131 @@ export function Subthemahoofdstuk({
       boven={t("subthemabeheer.leeftijd")}
       figuur={subthema.leeftijd}
       onder={telWoord(subthema.duurWeken, "thema.eenWeek", "thema.weken")}
+      acties={
+        <>
+          <Bewerkknop
+            omrand
+            label={t("subthemabeheer.bewerkAria", { naam: subthema.naam })}
+            onClick={onBewerk}
+          />
+          <Verwijderknop
+            omrand
+            label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })}
+            onClick={onVerwijder}
+          />
+        </>
+      }
     >
-      <header className="relative flex items-start justify-between gap-x-3">
+      <h3>
         <button
           type="button"
-          onClick={onBewerk}
-          aria-label={t("subthemabeheer.bewerkAria", { naam: subthema.naam })}
-          className="absolute -inset-x-2 -inset-y-1.5 z-0 rounded-veld transition-colors duration-150 hover:bg-inkt/[0.035]"
-        />
-        <h3 className="pointer-events-none relative z-10 min-w-0 font-display text-hoofdstuk text-inkt">
-          {subthema.naam}
-        </h3>
-        {/* Bordered, because it acts on the whole chapter rather than on a row inside it, and
-            because bare in the corner of a card is where the owner stopped finding it. There is
-            still no pencil beside it: the heading itself opens the subthema. */}
-        <Verwijderknop
-          omrand
-          className="relative z-10 -mt-1"
-          label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })}
-          onClick={onVerwijder}
-        />
-      </header>
-
-      {/* The onderzoeksvraag is the most characteristic object in this domain: a kennisrijk thema is
-          driven by a question (Art. IX). It was a 15 pixel line behind a hairline, indistinguishable
-          from the probleemstelling under it. Set at reading size now, with the probleemstelling
-          stepping back, so the chapter opens on what it is asking. */}
-      {subthema.onderzoeksvragen.length > 0 ? (
-        <ul className="mt-3 flex flex-col gap-2.5">
-          {subthema.onderzoeksvragen.map((vraag) => (
-            <li key={vraag.id} className="border-l-2 border-lijn-sterk pl-3.5">
-              <p className="text-sectie text-inkt">{vraag.vraag}</p>
-              {vraag.probleemstelling ? (
-                <p className="mt-0.5 text-meta text-inkt-zacht">{vraag.probleemstelling}</p>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      <Subkop
-        titel={t("thema.activiteitenTitel")}
-        acties={<Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} />}
-      >
-        {activiteiten.length === 0 ? (
-          <p className="text-meta text-inkt-zwak">{t("activiteit.geen")}</p>
-        ) : (
-          <ul className="divide-y divide-lijn border-y border-lijn">
-            {activiteiten.map((activiteit) => (
-              <li key={activiteit.id}>
-                <Activiteitregel
-                  activiteit={activiteit}
-                  onBewerk={() => onBewerkActiviteit(activiteit)}
-                  onVerwijder={() => onVerwijderActiviteit(activiteit)}
-                  onKoppelDoel={(code) => onKoppelActiviteitdoel(activiteit.id, code)}
-                  koppelenBezig={koppelenBezig}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Subkop>
-
-      <Subkop
-        titel={t("thema.subdoelenTitel")}
-        acties={
-          <Doelkoppelaar
-            onKies={onKoppelSubdoel}
-            bezig={koppelenBezig}
-            alGekozen={subthema.subdoelen.map((s) => s.koppeling.leerplandoelCode)}
-            toelichting={t("thema.koppelAanSubthema", { naam: subthema.naam })}
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          className="-mx-2 -my-1.5 flex w-[calc(100%+1rem)] items-start gap-2.5 rounded-veld px-2 py-1.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
+        >
+          <IcoonChevron
+            aria-hidden="true"
+            className={cn(
+              "mt-1.5 h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
+              open && "rotate-180",
+            )}
           />
-        }
-      >
-        {subthema.subdoelen.length === 0 ? (
-          <p className="text-meta text-inkt-zwak">{t("thema.geenSubdoelen")}</p>
-        ) : (
-          <Doellijst>
-            {subthema.subdoelen.map((subdoel) => (
-              <Doelregel key={subdoel.id}>
-                <span className="mono min-w-0 truncate text-meta text-inkt">
-                  {subdoel.koppeling.leerplandoelCode}
-                </span>
-                <Statusmerk status={subdoel.koppeling.status} className="ml-auto" />
-                <Ontkoppel
-                  label={t("activiteit.ontkoppel", { code: subdoel.koppeling.leerplandoelCode })}
-                  bezig={koppelenBezig}
-                  onClick={() => onOntkoppelSubdoel(subdoel.id)}
-                />
-              </Doelregel>
-            ))}
-          </Doellijst>
-        )}
-      </Subkop>
+          <span className="min-w-0">
+            <span className="block font-display text-hoofdstuk text-inkt">{subthema.naam}</span>
+            {open ? null : (
+              <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-meta text-inkt-zacht">
+                <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
+                <Punt />
+                <span>{telWoord(subthema.subdoelen.length, "thema.eenSubdoel", "thema.subdoelen")}</span>
+                {zonderDoel > 0 ? (
+                  <>
+                    <Punt />
+                    <span className="font-medium text-attentie-inkt">
+                      {telWoord(zonderDoel, "thema.eenZonderDoel", "thema.aantalZonderDoel")}
+                    </span>
+                  </>
+                ) : null}
+              </span>
+            )}
+          </span>
+        </button>
+      </h3>
+
+      {open ? (
+        <>
+          {/* The onderzoeksvraag is the most characteristic object in this domain: a kennisrijk thema is
+              driven by a question (Art. IX). It was a 15 pixel line behind a hairline, indistinguishable
+              from the probleemstelling under it. Set at reading size now, with the probleemstelling
+              stepping back, so the chapter opens on what it is asking. */}
+          {subthema.onderzoeksvragen.length > 0 ? (
+            <ul className="mt-3 flex flex-col gap-2.5">
+              {subthema.onderzoeksvragen.map((vraag) => (
+                <li key={vraag.id} className="border-l-2 border-lijn-sterk pl-3.5">
+                  <p className="text-sectie text-inkt">{vraag.vraag}</p>
+                  {vraag.probleemstelling ? (
+                    <p className="mt-0.5 text-meta text-inkt-zacht">{vraag.probleemstelling}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <Subkop
+            titel={t("thema.activiteitenTitel")}
+            acties={<Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} />}
+          >
+            {activiteiten.length === 0 ? (
+              <p className="text-meta text-inkt-zwak">{t("activiteit.geen")}</p>
+            ) : (
+              <ul className="divide-y divide-lijn border-y border-lijn">
+                {activiteiten.map((activiteit) => (
+                  <li key={activiteit.id}>
+                    <Activiteitregel
+                      activiteit={activiteit}
+                      onBewerk={() => onBewerkActiviteit(activiteit)}
+                      onVerwijder={() => onVerwijderActiviteit(activiteit)}
+                      onKoppelDoel={(code) => onKoppelActiviteitdoel(activiteit.id, code)}
+                      koppelenBezig={koppelenBezig}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Subkop>
+
+          <Subkop
+            titel={t("thema.subdoelenTitel")}
+            acties={
+              <Doelkoppelaar
+                onKies={onKoppelSubdoel}
+                bezig={koppelenBezig}
+                alGekozen={subthema.subdoelen.map((s) => s.koppeling.leerplandoelCode)}
+                toelichting={t("thema.koppelAanSubthema", { naam: subthema.naam })}
+              />
+            }
+          >
+            {subthema.subdoelen.length === 0 ? (
+              <p className="text-meta text-inkt-zwak">{t("thema.geenSubdoelen")}</p>
+            ) : (
+              <Doellijst>
+                {subthema.subdoelen.map((subdoel) => (
+                  <Doelregel key={subdoel.id}>
+                    <span className="mono min-w-0 truncate text-meta text-inkt">
+                      {subdoel.koppeling.leerplandoelCode}
+                    </span>
+                    <Statusmerk status={subdoel.koppeling.status} className="ml-auto" />
+                    <Ontkoppel
+                      label={t("activiteit.ontkoppel", { code: subdoel.koppeling.leerplandoelCode })}
+                      bezig={koppelenBezig}
+                      onClick={() => onOntkoppelSubdoel(subdoel.id)}
+                    />
+                  </Doelregel>
+                ))}
+              </Doellijst>
+            )}
+          </Subkop>
+        </>
+      ) : null}
     </Blok>
   );
 }
@@ -263,5 +315,14 @@ function Activiteitregel({
         </div>
       </div>
     </div>
+  );
+}
+
+/** The separator in the folded card's summary. Decorative, so it is hidden from the reading order. */
+function Punt() {
+  return (
+    <span aria-hidden="true" className="text-inkt-zwak">
+      ·
+    </span>
   );
 }
