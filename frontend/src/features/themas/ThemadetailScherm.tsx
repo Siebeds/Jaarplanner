@@ -158,27 +158,12 @@ export function ThemadetailScherm() {
 
   return (
     <>
-      <Schermkop
-        titel={thema.naam}
-        rechts={
-          <div className="flex shrink-0 items-center gap-0.5">
-            <Bewerkknop
-              label={t("themabeheer.bewerkAria", { naam: thema.naam })}
-              onClick={() => {
-                wijzig.reset();
-                setBewerkOpen(true);
-              }}
-            />
-            <Verwijderknop
-              label={t("themabeheer.verwijderAria", { naam: thema.naam })}
-              onClick={() => {
-                verwijder.reset();
-                setVerwijderOpen(true);
-              }}
-            />
-          </div>
-        }
-      />
+      {/* THE THEMA'S TWO CONTROLS ARE NOT UP HERE ANY MORE (owner, 2026-08-31: "het edit potloodje
+          en trashcan zitten nog wat te verdoken in de hoek"). In the screen header they were two
+          bare 36 pixel icons at the far right of a 1440 wide bar, eleven hundred pixels from the
+          title they act on and with nothing around them to be read against. They now sit on the
+          thema's own card, which is exactly the card whose contents the pencil opens for editing. */}
+      <Schermkop titel={thema.naam} />
 
       <Schermvlak>
         {/* The fiche's own measure. Narrower than the screen on purpose: see the note at the top. */}
@@ -191,9 +176,28 @@ export function ThemadetailScherm() {
               lists they counted, and each one now lives in the margin of the block that holds those
               lists. */}
           <Blok
-            eerste
             figuur={thema.duurWeken}
             onder={t(thema.duurWeken === 1 ? "themas.weekEen" : "themas.weekMeer")}
+            acties={
+              <>
+                <Bewerkknop
+                  omrand
+                  label={t("themabeheer.bewerkAria", { naam: thema.naam })}
+                  onClick={() => {
+                    wijzig.reset();
+                    setBewerkOpen(true);
+                  }}
+                />
+                <Verwijderknop
+                  omrand
+                  label={t("themabeheer.verwijderAria", { naam: thema.naam })}
+                  onClick={() => {
+                    verwijder.reset();
+                    setVerwijderOpen(true);
+                  }}
+                />
+              </>
+            }
           >
             <dl className="flex flex-col gap-2">
               {thema.invalshoeken ? (
@@ -378,6 +382,7 @@ export function ThemadetailScherm() {
               chapters themselves are NOT nested under it: they are siblings hanging off the same
               margin, which is what keeps their leeftijd legible as an axis. */}
           <Blok
+            kaal
             figuur={thema.subthemas.length}
             onder={t(thema.subthemas.length === 1 ? "themas.subthemaEen" : "themas.subthemaMeer")}
           >

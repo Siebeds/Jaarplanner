@@ -21,6 +21,14 @@ import { cn } from "../../lib/cn";
  * with room and buy back the density the owner asked for. Every one of them also has a second,
  * larger route to the same action: a subthema and a thema are edited from the sheet these open, and
  * an activiteit row is itself a 60-pixel-tall button that opens the same sheet.
+ *
+ * **`omrand` is the card-level variant** (owner, 2026-08-31: "het edit potloodje en trashcan zitten
+ * nog wat te verdoken in de hoek"). Borderless is right for a control that REPEATS down a list,
+ * because twenty bordered boxes are the loudest thing on the page. It is wrong for the one control
+ * that acts on a whole card, which has nothing beside it to be read against and was sitting in the
+ * far corner of the screen header. So the rule the two variants encode is: **a control that repeats
+ * inside a card is bare, a control that acts on the card itself is bordered**, and the bordered one
+ * takes the full 44 pixel target since it is not competing with anything for room.
  */
 
 /** Row-level "bewerk this". The label must name WHAT is being edited: there are many of these. */
@@ -28,10 +36,13 @@ export function Bewerkknop({
   label,
   onClick,
   className,
+  omrand,
 }: {
   label: string;
   onClick: () => void;
   className?: string;
+  /** This control acts on the whole card it sits on, rather than on one row inside it. */
+  omrand?: boolean;
 }) {
   return (
     <button
@@ -40,12 +51,14 @@ export function Bewerkknop({
       aria-label={label}
       title={t("themabeheer.bewerk")}
       className={cn(
-        "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-veld text-inkt-zwak",
-        "transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt",
+        "inline-flex shrink-0 items-center justify-center rounded-veld transition-colors duration-150",
+        omrand
+          ? "h-raak w-raak border border-lijn-veld bg-kaart text-inkt-zacht hover:border-inkt hover:text-inkt active:bg-vlak-diep"
+          : "h-9 w-9 text-inkt-zwak hover:bg-vlak-diep hover:text-inkt",
         className,
       )}
     >
-      <IcoonPotlood aria-hidden="true" className="h-[18px] w-[18px]" />
+      <IcoonPotlood aria-hidden="true" className={omrand ? "h-5 w-5" : "h-[18px] w-[18px]"} />
     </button>
   );
 }
@@ -63,10 +76,13 @@ export function Verwijderknop({
   label,
   onClick,
   className,
+  omrand,
 }: {
   label: string;
   onClick: () => void;
   className?: string;
+  /** This control acts on the whole card it sits on, rather than on one row inside it. */
+  omrand?: boolean;
 }) {
   return (
     <button
@@ -75,13 +91,18 @@ export function Verwijderknop({
       aria-label={label}
       title={t("themabeheer.verwijder")}
       className={cn(
-        "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-veld text-inkt-zwak",
-        "transition-colors duration-150",
+        "inline-flex shrink-0 items-center justify-center rounded-veld transition-colors duration-150",
+        omrand
+          ? "h-raak w-raak border border-lijn-veld bg-kaart text-inkt-zacht"
+          : "h-9 w-9 text-inkt-zwak",
+        // Red on hover and focus at both sizes. Bordered, the border reddens with the icon, which is
+        // what keeps the two states one gesture apart rather than two different treatments.
         "hover:bg-gevaar-zacht hover:text-gevaar focus-visible:bg-gevaar-zacht focus-visible:text-gevaar",
+        omrand && "hover:border-gevaar focus-visible:border-gevaar",
         className,
       )}
     >
-      <IcoonVuilbak aria-hidden="true" className="h-[18px] w-[18px]" />
+      <IcoonVuilbak aria-hidden="true" className={omrand ? "h-5 w-5" : "h-[18px] w-[18px]"} />
     </button>
   );
 }

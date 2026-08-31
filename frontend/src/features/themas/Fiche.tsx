@@ -18,6 +18,15 @@ import { cn } from "../../lib/cn";
  * as a list of things that happen to be stacked, and every one of them is achromatic: the hierarchy
  * here is spent in type, space and division, because Art. XII has already spent the colour.
  *
+ * **Each block is a card, and the margin stays outside it** (owner, 2026-08-31: "kan je van de
+ * verschillende secties iets meer cards maken, duidelijk opgedeelde cards"). The first version drew
+ * the divisions with hairline rules across the full width. Rules divide a page for a reader who is
+ * reading it top to bottom; a teacher arrives at this screen to work on one part of it, and for that
+ * a boundary you can see the whole of beats a line you have to trace. Keeping the figures out in the
+ * page margin rather than inside the card is what stops the card from becoming a header row again,
+ * and it leaves the second axis intact: paper panels on the left column of the eye, annotations on
+ * the right column of the margin.
+ *
  * **The margin exists from `sm` up and becomes an eyebrow below it.** At 390 a margin wide enough
  * for the word "subthema's" would take a fifth of the screen and squeeze every activiteit row. On a
  * phone the same three tokens run as one small line above the block, which is the shape that screen
@@ -36,7 +45,8 @@ export function Blok({
   figuur,
   boven,
   onder,
-  eerste,
+  acties,
+  kaal,
   children,
 }: {
   /** The block's measure, set large in the mono face: `5`, `L3`, a count. */
@@ -45,18 +55,30 @@ export function Blok({
   boven?: string;
   /** A caption below the figure: its unit, or a second small fact. */
   onder?: string;
-  /** The first block carries no rule above it: the screen title is already its boundary. */
-  eerste?: boolean;
+  /**
+   * What acts on this card as a whole, set top right inside it.
+   *
+   * Bordered controls, deliberately, and the argument is in `Rijknoppen.tsx`: bare is right for a
+   * control that repeats down a list and wrong for the single control that owns a card.
+   */
+  acties?: ReactNode;
+  /**
+   * No card. For a block that only LABELS the cards under it, such as the heading that introduces
+   * the subthema chapters: wrapping a heading and one quiet button in their own panel would put an
+   * almost empty card between two full ones.
+   */
+  kaal?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section
-      className={cn(
-        "sm:grid sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:gap-x-5 lg:grid-cols-[5.5rem_minmax(0,1fr)] lg:gap-x-8",
-        eerste ? "mt-5" : "mt-7 border-t border-lijn pt-6",
-      )}
-    >
-      <div className="mb-2 flex items-baseline gap-x-2 sm:mb-0 sm:flex-col sm:items-end sm:gap-x-0 sm:pt-1 sm:text-right">
+    <section className="mt-4 sm:grid sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:gap-x-5 lg:grid-cols-[5.5rem_minmax(0,1fr)] lg:gap-x-8">
+      <div
+        className={cn(
+          "mb-2 flex items-baseline gap-x-2 sm:mb-0 sm:flex-col sm:items-end sm:gap-x-0 sm:text-right",
+          // Lines the figure up with the card's first line of text rather than with its top edge.
+          kaal ? "sm:pt-1" : "sm:pt-5",
+        )}
+      >
         {boven ? (
           <span className="text-micro uppercase tracking-wide text-inkt-zwak">{boven}</span>
         ) : null}
@@ -79,7 +101,21 @@ export function Blok({
         ) : null}
       </div>
 
-      <div className="min-w-0">{children}</div>
+      <div
+        className={cn(
+          "min-w-0",
+          kaal ? "" : "rounded-kaart border border-lijn bg-kaart p-4 shadow-kaart sm:p-5",
+        )}
+      >
+        {acties ? (
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">{children}</div>
+            <div className="flex shrink-0 items-center gap-2">{acties}</div>
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </section>
   );
 }
@@ -116,9 +152,10 @@ export function Kop({
 /**
  * A heading one rank below `Kop`, for the two lists inside a subthema chapter.
  *
- * Micro against `Kop`'s meta, and a hairline that runs the width of the content column rather than
- * the width of the fiche. Both differences are deliberate: a rule that spans the margin divides the
- * DOCUMENT, and these divide one chapter of it.
+ * Micro against `Kop`'s meta, and a hairline rather than a card. Both differences are deliberate and
+ * they say the same thing twice: a CARD is how this fiche divides one section of the document from
+ * the next, so a rule is what is left to divide one chapter into its parts. Nesting a card inside a
+ * card would flatten that distinction back out.
  */
 export function Subkop({
   titel,

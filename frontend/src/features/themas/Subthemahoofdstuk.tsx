@@ -13,20 +13,22 @@ import { Blok, Doellijst, Doelregel, Ontkoppel, Subkop } from "./Fiche";
 /**
  * One age's derivation of a thema: a chapter of the fiche.
  *
- * **It was a card and it is now a chapter, and that is the whole change.** As a card it sat inside a
- * "Subthema's" section, so the level a doel hangs on was expressed by one border and twenty pixels
- * of indent, and on a wide screen the card stretched to eleven hundred pixels around a list of two
- * short lines. As a chapter it hangs off the fiche's own margin, at the same axis as the thema's
- * facts and the themadoelen above it, with its leeftijd and duration set in that margin. Same three
- * levels, carried by the page's structure instead of by a box.
+ * **It is a card again, but it is no longer a card INSIDE a section, and that is the change that
+ * mattered.** It used to sit nested in a "Subthema's" panel, so the level a doel hangs on was
+ * expressed by one border and twenty pixels of indent, and on a wide screen the box stretched to
+ * eleven hundred pixels around a list of two short lines. It now hangs off the fiche's own margin as
+ * a sibling of the thema's facts and its themadoelen, with its leeftijd and duration set out in that
+ * margin and its width bounded by the fiche. Same three levels, carried by where the card sits
+ * rather than by how deeply it is buried.
  *
  * **The heading opens the subthema** (owner, 2026-08-30: "ik wil niet telkens op dat potloodje
  * klikken"), and the pencil stays gone. An overlay button behind the content, not a wrapper around
  * it: this chapter contains a delete control and two goal pickers, and a button inside a button is
  * invalid and unreachable by keyboard.
  *
- * **Activiteiten come before subdoelen**, which is the other way round from the card. The
- * activiteiten are what the teacher built; the subdoelen are the accounting on top of it.
+ * **Activiteiten come before subdoelen**, which is the other way round from the version this
+ * replaced. The activiteiten are what the teacher built; the subdoelen are the accounting on top of
+ * it.
  */
 export function Subthemahoofdstuk({
   subthema,
@@ -73,7 +75,11 @@ export function Subthemahoofdstuk({
         <h3 className="pointer-events-none relative z-10 min-w-0 font-display text-hoofdstuk text-inkt">
           {subthema.naam}
         </h3>
+        {/* Bordered, because it acts on the whole chapter rather than on a row inside it, and
+            because bare in the corner of a card is where the owner stopped finding it. There is
+            still no pencil beside it: the heading itself opens the subthema. */}
         <Verwijderknop
+          omrand
           className="relative z-10 -mt-1"
           label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })}
           onClick={onVerwijder}
