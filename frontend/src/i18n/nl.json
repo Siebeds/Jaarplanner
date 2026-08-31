@@ -181,6 +181,8 @@
     "verplaats": "Verplaats",
     "haalWeg": "Haal weg",
     "mislukt": "Niet gelukt",
+    "activiteitWeg": "Deze activiteit staat niet meer in dit thema. Ze is verwijderd of naar een ander thema verplaatst.",
+    "agendaVernieuwen": "Agenda vernieuwen",
     "voegToeOp": "Activiteit toevoegen op {dag}",
     "planSubthema": "Subthema inplannen",
     "vandaag": "Vandaag",
