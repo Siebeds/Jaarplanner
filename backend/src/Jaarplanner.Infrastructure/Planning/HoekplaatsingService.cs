@@ -135,17 +135,7 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
         _db.Hoekplaatsingen.Add(plaatsing);
         await _db.SaveChangesAsync(cancellationToken);
 
-        return new HoekplaatsingWeergave(
-            plaatsing.Id,
-            plaatsing.HoekId,
-            hoek.Naam,
-            plaatsing.Van,
-            plaatsing.Tot,
-            plaatsing.Verrijkingen.Select(v => new HoekverrijkingWeergave(v.Id, v.Van, v.Tot, v.Tekst)).ToList(),
-            plaatsing.Momenten
-                .OrderBy(m => m.Datum)
-                .Select(m => new HoekmomentWeergave(m.Id, m.Datum, m.Volgorde))
-                .ToList());
+        return Weergave(plaatsing, hoek.Naam);
     }
 
     public async Task VerwijderAsync(Guid plaatsingId, CancellationToken cancellationToken = default)
@@ -166,6 +156,74 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
         _db.Hoekplaatsingen.Remove(plaatsing);
         await _db.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<HoekplaatsingWeergave> VerplaatsMomentAsync(
+        Guid plaatsingId,
+        Guid momentId,
+        DateOnly datum,
+        int volgorde,
+        CancellationToken cancellationToken = default)
+    {
+        // The momenten are LOADED rather than left to lazy loading, because the aggregate does its own
+        // uniqueness check over them: it refuses a second appearance of this hoek at the same hour on the same
+        // day. A half-loaded collection would let that check pass on a duplicate it could not see.
+        var plaatsing = await _db.Hoekplaatsingen
+            .Include(p => p.Momenten)
+            .FirstOrDefaultAsync(p => p.Id == plaatsingId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Hoekplaatsing {plaatsingId} is niet gevonden.");
+
+        // The domain owns the day and uniqueness rules and says them in Dutch; this only turns them into the
+        // app's own fault type so the shared handler answers 400 instead of 500.
+        bool gevonden;
+        try
+        {
+            gevonden = plaatsing.VerplaatsMoment(momentId, datum, volgorde);
+        }
+        catch (ArgumentException fout)
+        {
+            throw new SchoolcontentValidatieFout(fout.Message);
+        }
+
+        if (!gevonden)
+        {
+            throw new SchoolcontentNietGevondenFout($"Hoekmoment {momentId} is niet gevonden.");
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        // The verrijkingen were not needed for the move and ARE needed for the answer, so they are read after
+        // the save rather than included above: this endpoint is called on every drag in the lesurenraster.
+        await _db.Entry(plaatsing).Collection(p => p.Verrijkingen).LoadAsync(cancellationToken);
+
+        var naam = await _db.Hoeken
+            .Where(h => h.Id == plaatsing.HoekId)
+            .Select(h => h.Naam)
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Hoek {plaatsing.HoekId} is niet gevonden.");
+
+        return Weergave(plaatsing, naam);
+    }
+
+    /// <summary>
+    /// One placement as the agenda reads it.
+    /// <para>
+    /// Ordered by day and then by hour, so two appearances on one day come back in the order they are taught
+    /// rather than in insertion order, which after a move is no longer the same thing.
+    /// </para>
+    /// </summary>
+    private static HoekplaatsingWeergave Weergave(Hoekplaatsing plaatsing, string hoekNaam) =>
+        new(
+            plaatsing.Id,
+            plaatsing.HoekId,
+            hoekNaam,
+            plaatsing.Van,
+            plaatsing.Tot,
+            plaatsing.Verrijkingen.Select(v => new HoekverrijkingWeergave(v.Id, v.Van, v.Tot, v.Tekst)).ToList(),
+            plaatsing.Momenten
+                .OrderBy(m => m.Datum)
+                .ThenBy(m => m.Volgorde)
+                .Select(m => new HoekmomentWeergave(m.Id, m.Datum, m.Volgorde))
+                .ToList());
 
     private async Task BevestigKlasAsync(Guid klasId, CancellationToken cancellationToken)
     {

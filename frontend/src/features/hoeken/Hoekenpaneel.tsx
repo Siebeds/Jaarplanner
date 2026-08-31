@@ -9,7 +9,7 @@ import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
 import { periode as periodeTekst } from "../../lib/datum";
 import { useHoeken, type HoekplaatsingWeergave, type HoekWeergave } from "./gegevens";
-import { FICHE_VOORVOEGSEL } from "./fiche";
+import { FICHE_VOORVOEGSEL } from "./sleepids";
 
 /**
  * The hoekenfiches, beside the agenda: the corners this class has, while she plans (owner, 2026-08-30).

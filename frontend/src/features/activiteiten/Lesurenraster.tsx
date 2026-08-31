@@ -5,6 +5,7 @@ import { cn } from "../../lib/cn";
 import type { Dagweergave, GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel, type Activiteitkleur } from "./kleuren";
 import { LAATSTE_SLOT, LESUREN, slotId } from "./lesuren";
+import { momentSleepId } from "../hoeken/sleepids";
 
 /** A scheduled activiteit as the API sends it now: with the colour and the length in lesuren. */
 export type GeplandMetKleur = GeplandeActiviteit & {
@@ -23,9 +24,11 @@ const RIJ_VAN_MIDDAG = LESUREN.findIndex((l) => l.naMiddag) + 1;
 const gridRij = (slot: number) => (slot < RIJ_VAN_MIDDAG ? slot + 1 : slot + 2);
 const AANTAL_RIJEN = LESUREN.length + 1;
 
-/** One hoek taking one lesuur on this day: its placement, its name, and the hour it claimed. */
+/** One hoek taking one lesuur on this day: its placement, the appearance, its name, and the hour. */
 export interface Hoekuur {
   plaatsingId: string;
+  /** The appearance itself. Dragging one of these moves THIS day and no other. */
+  momentId: string;
   naam: string;
   /** The `volgorde` of the moment. Kept because a cell may draw an hour that is not its own. */
   slot: number;
@@ -275,25 +278,16 @@ function Uurvak({
           What distinguishes it is the icon and the word underneath, which is also what makes it
           readable without colour at all (Art. XII, WCAG 2.2 AA).
 
-          It opens the placement rather than sitting there inert: a block that ignores a click beside
-          blocks that answer one reads as broken. It does NOT drag, because moving a single moment to
-          another hour has no endpoint yet, and a grabbing cursor over a gesture that cannot land is
-          the E3-06 rule with a different control. */}
+          It drags to another lesuur and it opens the placement, which are the same two jobs on one
+          element that every other card in this agenda has: the pointer sensor wants six pixels of
+          travel before a press counts as a drag, so a press that does not move is a click. On a
+          keyboard the two are two keys, Enter opens and Space picks up (see `sleep.ts`).
+
+          *It did not drag until 2026-08-31, and the reason it did not was honest at the time: the
+          verb existed in the aggregate and had no endpoint, and a grabbing cursor over a gesture that
+          cannot land is the E3-06 rule with a different control. The endpoint exists now.* */}
       {hoeken.map((hoek) => (
-        <button
-          key={hoek.plaatsingId + hoek.slot}
-          type="button"
-          onClick={() => onOpenHoek(hoek.plaatsingId)}
-          className="flex min-h-raak flex-1 flex-col justify-center rounded-veld border border-lijn bg-vlak px-3 py-1.5 text-left transition-colors duration-150 hover:border-accent"
-        >
-          <span className="flex min-w-0 items-center gap-1.5 text-body font-medium text-inkt">
-            <IcoonHoek aria-hidden="true" className="h-4 w-4 shrink-0" />
-            <span className="truncate">{hoek.naam}</span>
-          </span>
-          <span className="truncate text-meta text-inkt-zacht">
-            {hoek.slot === slot ? t("lesuur.hoekenwerk") : t("lesuur.hoekenwerkOp", { nummer: nummerVan(hoek.slot) })}
-          </span>
-        </button>
+        <Hoekblok key={hoek.momentId} hoek={hoek} inSlot={slot} onOpen={() => onOpenHoek(hoek.plaatsingId)} />
       ))}
 
       {/* The invitation, and only where there is genuinely nothing in the hour. An hour holding a
@@ -320,6 +314,47 @@ function Uurvak({
         ))
       )}
     </div>
+  );
+}
+
+/**
+ * One appearance of a placed hoek, in the hour it takes.
+ *
+ * No colour: the palette on a block means the activiteit's own colour, so borrowing one here would say
+ * something about a corner that corners do not have. What distinguishes it is the icon and the word
+ * underneath, which is also what makes it readable without colour at all (Art. XII, WCAG 2.2 AA).
+ *
+ * `inSlot` is the hour of the CELL drawing it, which is usually its own. Where it is not, because a
+ * three-hour activiteit swallowed its hour, the subtitle names the hour instead of leaving position to
+ * imply it.
+ */
+function Hoekblok({ hoek, inSlot, onOpen }: { hoek: Hoekuur; inSlot: number; onOpen: () => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: momentSleepId(hoek.plaatsingId, hoek.momentId),
+    data: { naam: hoek.naam },
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      onClick={onOpen}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "flex min-h-raak flex-1 cursor-grab touch-none flex-col justify-center rounded-veld border border-lijn bg-vlak px-3 py-1.5 text-left",
+        "transition-colors duration-150 hover:border-accent active:cursor-grabbing",
+        isDragging && "opacity-40",
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-1.5 text-body font-medium text-inkt">
+        <IcoonHoek aria-hidden="true" className="h-4 w-4 shrink-0" />
+        <span className="truncate">{hoek.naam}</span>
+      </span>
+      <span className="truncate text-meta text-inkt-zacht">
+        {hoek.slot === inSlot ? t("lesuur.hoekenwerk") : t("lesuur.hoekenwerkOp", { nummer: nummerVan(hoek.slot) })}
+      </span>
+    </button>
   );
 }
 

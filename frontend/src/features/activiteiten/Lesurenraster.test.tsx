@@ -39,7 +39,12 @@ const dag = (activiteiten: GeplandMetKleur[] = []): Dagweergave => ({
   activiteiten,
 });
 
-const hoek = (slot: number, naam = "bouwhoek", plaatsingId = "hp-1"): Hoekuur => ({ plaatsingId, naam, slot });
+const hoek = (slot: number, naam = "bouwhoek", plaatsingId = "hp-1"): Hoekuur => ({
+  plaatsingId,
+  momentId: `${plaatsingId}-m${slot}`,
+  naam,
+  slot,
+});
 
 const toon = (
   d: Dagweergave,

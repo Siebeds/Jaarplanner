@@ -41,6 +41,30 @@ public interface IHoekplaatsingService
     /// </para>
     /// </summary>
     Task VerwijderAsync(Guid plaatsingId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves one appearance to another day and/or lesuur (owner, 2026-08-31).
+    /// <para>
+    /// <b>One appearance, not the placement.</b> The rows are stored per day rather than derived precisely so
+    /// that this is possible: the hoek runs all fortnight and on this one Thursday it happens at a different
+    /// hour. Moving the whole run is <c>Herzet</c>, which is a different verb with a different sheet.
+    /// </para>
+    /// <para>
+    /// It answers with the WHOLE placement rather than the moved row. The agenda draws a placement's band, its
+    /// enrichments and all of its rows together, so handing back one row would leave the caller to patch a
+    /// structure it did not receive.
+    /// </para>
+    /// </summary>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such placement, or no such appearance in it.</exception>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentValidatieFout">
+    /// The day falls outside the placement's window, or that hoek already stands at that hour on that day.
+    /// </exception>
+    Task<HoekplaatsingWeergave> VerplaatsMomentAsync(
+        Guid plaatsingId,
+        Guid momentId,
+        DateOnly datum,
+        int volgorde,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>What the teacher answered in the sheet after dropping a fiche on a day.</summary>

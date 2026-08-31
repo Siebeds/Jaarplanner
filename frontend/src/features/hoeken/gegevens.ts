@@ -203,3 +203,36 @@ export function useVerwijderHoekplaatsing() {
     onSuccess: ververs,
   });
 }
+
+/** Where one appearance of a placed hoek should move to. */
+export interface HoekmomentVerplaatsing {
+  plaatsingId: string;
+  momentId: string;
+  datum: string;
+  /** Zero-based, so 0 is what a teacher calls lesuur 1. */
+  volgorde: number;
+}
+
+/**
+ * Moves ONE appearance of a placed hoek to another day and/or lesuur (owner, 2026-08-31).
+ *
+ * The rows are stored per day rather than derived exactly so that this is possible: the hoek runs all
+ * fortnight and on this one Thursday it happens after the break. Moving the whole run is a different
+ * verb and is not this hook.
+ *
+ * **It does not invalidate optimistically and it is not meant to.** The server refuses a day outside
+ * the placement's window and a second appearance of the same hoek at the same hour, and both refusals
+ * are things the teacher has to see rather than watch get undone.
+ */
+export function useVerplaatsHoekmoment() {
+  const ververs = usePlaatsingVerversing();
+
+  return useMutation({
+    mutationFn: ({ plaatsingId, momentId, datum, volgorde }: HoekmomentVerplaatsing) =>
+      put<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/momenten/${momentId}`, {
+        datum,
+        volgorde,
+      }),
+    onSuccess: ververs,
+  });
+}

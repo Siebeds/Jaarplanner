@@ -243,4 +243,109 @@ public sealed class HoekplaatsingServiceTests
         await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
             () => Service().HaalVoorBereikAsync(Guid.NewGuid(), Start, Eind));
     }
+
+    /* ------------------------------------------------------------------------------------------------
+       MOVING ONE APPEARANCE (owner, 2026-08-31)
+
+       The point of the whole feature is in the first test: ONE row moves and its siblings do not. The
+       rows are stored per day rather than derived exactly so that a teacher can say "on this one
+       Thursday the bouwhoek happens after the break", and a move that dragged all of them along would
+       make the storage pointless.
+       ------------------------------------------------------------------------------------------------ */
+
+    private async Task<HoekplaatsingWeergave> EenWeekIngepland(int lesuur = 1) =>
+        await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(
+                _hoekId,
+                new DateOnly(2026, 9, 1),
+                new DateOnly(2026, 9, 4),
+                Lesuur: lesuur));
+
+    [Fact]
+    public async Task Verplaatst_een_moment_naar_een_ander_lesuur_en_laat_de_andere_dagen_staan()
+    {
+        var plaatsing = await EenWeekIngepland();
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
+
+        var na = await Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, dinsdag.Datum, 4);
+
+        Assert.Equal(4, na.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1)).Volgorde);
+        Assert.All(
+            na.Momenten.Where(m => m.Datum != new DateOnly(2026, 9, 1)),
+            m => Assert.Equal(1, m.Volgorde));
+    }
+
+    [Fact]
+    public async Task Verplaatst_een_moment_naar_een_andere_dag_binnen_de_periode()
+    {
+        var plaatsing = await EenWeekIngepland();
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
+
+        var na = await Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, new DateOnly(2026, 9, 2), 4);
+
+        // Two appearances on the Wednesday now, at different hours, which is a legal thing to want.
+        var woensdag = na.Momenten.Where(m => m.Datum == new DateOnly(2026, 9, 2)).ToList();
+        Assert.Equal(2, woensdag.Count);
+        Assert.Equal([1, 4], woensdag.Select(m => m.Volgorde));
+        Assert.DoesNotContain(na.Momenten, m => m.Datum == new DateOnly(2026, 9, 1));
+    }
+
+    [Fact]
+    public async Task Weigert_een_moment_buiten_de_periode_van_de_hoek()
+    {
+        var plaatsing = await EenWeekIngepland();
+        var dinsdag = plaatsing.Momenten.First();
+
+        // A 400 and not a 500: the day is a thing the teacher chose, so the refusal is hers to read.
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, new DateOnly(2026, 10, 1), 1));
+    }
+
+    [Fact]
+    public async Task Weigert_twee_keer_dezelfde_hoek_op_hetzelfde_lesuur_op_een_dag()
+    {
+        var plaatsing = await EenWeekIngepland();
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
+
+        // The Wednesday already has this hoek at lesuur 1, which is the one combination that means nothing.
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, new DateOnly(2026, 9, 2), 1));
+    }
+
+    [Fact]
+    public async Task Een_moment_dat_niet_bestaat_geeft_niet_gevonden()
+    {
+        var plaatsing = await EenWeekIngepland();
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => Service().VerplaatsMomentAsync(plaatsing.Id, Guid.NewGuid(), new DateOnly(2026, 9, 2), 4));
+    }
+
+    [Fact]
+    public async Task Een_plaatsing_die_niet_bestaat_geeft_niet_gevonden()
+    {
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => Service().VerplaatsMomentAsync(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 9, 2), 4));
+    }
+
+    [Fact]
+    public async Task Houdt_de_verrijkingen_bij_een_verplaatst_moment()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(
+                _hoekId,
+                new DateOnly(2026, 9, 1),
+                new DateOnly(2026, 9, 4),
+                Verrijking: "prentenboeken",
+                Lesuur: 1));
+
+        // The answer carries the whole placement, so a verrijking missing from it would blank the detail sheet
+        // the moment a teacher dragged a row.
+        var na = await Service().VerplaatsMomentAsync(plaatsing.Id, plaatsing.Momenten.First().Id, new DateOnly(2026, 9, 3), 5);
+
+        Assert.Equal("prentenboeken", Assert.Single(na.Verrijkingen).Tekst);
+        Assert.Equal("boekenhoek", na.HoekNaam);
+    }
 }
