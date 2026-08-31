@@ -164,13 +164,7 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
         int volgorde,
         CancellationToken cancellationToken = default)
     {
-        // The momenten are LOADED rather than left to lazy loading, because the aggregate does its own
-        // uniqueness check over them: it refuses a second appearance of this hoek at the same hour on the same
-        // day. A half-loaded collection would let that check pass on a duplicate it could not see.
-        var plaatsing = await _db.Hoekplaatsingen
-            .Include(p => p.Momenten)
-            .FirstOrDefaultAsync(p => p.Id == plaatsingId, cancellationToken)
-            ?? throw new SchoolcontentNietGevondenFout($"Hoekplaatsing {plaatsingId} is niet gevonden.");
+        var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
 
         // The domain owns the day and uniqueness rules and says them in Dutch; this only turns them into the
         // app's own fault type so the shared handler answers 400 instead of 500.
@@ -189,11 +183,94 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
             throw new SchoolcontentNietGevondenFout($"Hoekmoment {momentId} is niet gevonden.");
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        return await BewaarAsync(plaatsing, cancellationToken);
+    }
 
-        // The verrijkingen were not needed for the move and ARE needed for the answer, so they are read after
-        // the save rather than included above: this endpoint is called on every drag in the lesurenraster.
-        await _db.Entry(plaatsing).Collection(p => p.Verrijkingen).LoadAsync(cancellationToken);
+    public async Task<HoekplaatsingWeergave> VoegVerrijkingToeAsync(
+        Guid plaatsingId,
+        DateOnly van,
+        DateOnly tot,
+        string tekst,
+        CancellationToken cancellationToken = default)
+    {
+        var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
+
+        try
+        {
+            plaatsing.VoegVerrijkingToe(van, tot, tekst);
+        }
+        catch (ArgumentException fout)
+        {
+            throw new SchoolcontentValidatieFout(fout.Message);
+        }
+
+        return await BewaarAsync(plaatsing, cancellationToken);
+    }
+
+    public async Task<HoekplaatsingWeergave> WijzigVerrijkingAsync(
+        Guid plaatsingId,
+        Guid verrijkingId,
+        DateOnly van,
+        DateOnly tot,
+        string tekst,
+        CancellationToken cancellationToken = default)
+    {
+        var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
+
+        bool gevonden;
+        try
+        {
+            gevonden = plaatsing.WijzigVerrijking(verrijkingId, van, tot, tekst);
+        }
+        catch (ArgumentException fout)
+        {
+            throw new SchoolcontentValidatieFout(fout.Message);
+        }
+
+        if (!gevonden)
+        {
+            throw new SchoolcontentNietGevondenFout($"Hoekverrijking {verrijkingId} is niet gevonden.");
+        }
+
+        return await BewaarAsync(plaatsing, cancellationToken);
+    }
+
+    public async Task<HoekplaatsingWeergave> VerwijderVerrijkingAsync(
+        Guid plaatsingId,
+        Guid verrijkingId,
+        CancellationToken cancellationToken = default)
+    {
+        var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
+
+        if (!plaatsing.VerwijderVerrijking(verrijkingId))
+        {
+            throw new SchoolcontentNietGevondenFout($"Hoekverrijking {verrijkingId} is niet gevonden.");
+        }
+
+        return await BewaarAsync(plaatsing, cancellationToken);
+    }
+
+    /// <summary>
+    /// One placement, with BOTH child collections loaded, ready to be changed.
+    /// <para>
+    /// Both, always, even where the verb only touches one of them. The aggregate checks its invariants
+    /// over the collection it is changing, so a half-loaded graph would let a check pass on a row it
+    /// could not see, and the answer carries the whole placement anyway.
+    /// </para>
+    /// </summary>
+    private async Task<Hoekplaatsing> VoorWijzigingAsync(Guid plaatsingId, CancellationToken cancellationToken) =>
+        await _db.Hoekplaatsingen
+            .Include(p => p.Momenten)
+            .Include(p => p.Verrijkingen)
+            .FirstOrDefaultAsync(p => p.Id == plaatsingId, cancellationToken)
+        ?? throw new SchoolcontentNietGevondenFout($"Hoekplaatsing {plaatsingId} is niet gevonden.");
+
+    /// <summary>Saves a changed placement and answers with it, name and all.</summary>
+    private async Task<HoekplaatsingWeergave> BewaarAsync(
+        Hoekplaatsing plaatsing,
+        CancellationToken cancellationToken)
+    {
+        await _db.SaveChangesAsync(cancellationToken);
 
         var naam = await _db.Hoeken
             .Where(h => h.Id == plaatsing.HoekId)

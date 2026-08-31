@@ -65,6 +65,43 @@ public interface IHoekplaatsingService
         DateOnly datum,
         int volgorde,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Adds an enrichment: what is in the corner over these days (owner, 2026-08-31).
+    /// <para>
+    /// A placement may hold several, for successive stretches of its window. They may not overlap, which
+    /// the aggregate enforces: two answers to "what is in the boekenhoek this week" is not a richer
+    /// answer, it is an ambiguous one.
+    /// </para>
+    /// </summary>
+    Task<HoekplaatsingWeergave> VoegVerrijkingToeAsync(
+        Guid plaatsingId,
+        DateOnly van,
+        DateOnly tot,
+        string tekst,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Rewrites one enrichment (owner, 2026-08-31: "ik wil ook de verrijking kunnen aanpassen").
+    /// <para>
+    /// It was write-once: the sheet took it on the way in and no screen ever changed it again. The
+    /// enrichment is the field carrying the pedagogy, so a typo in it was permanent unless the whole
+    /// placement was deleted and redone.
+    /// </para>
+    /// </summary>
+    Task<HoekplaatsingWeergave> WijzigVerrijkingAsync(
+        Guid plaatsingId,
+        Guid verrijkingId,
+        DateOnly van,
+        DateOnly tot,
+        string tekst,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Removes one enrichment, leaving the placement and its days alone.</summary>
+    Task<HoekplaatsingWeergave> VerwijderVerrijkingAsync(
+        Guid plaatsingId,
+        Guid verrijkingId,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>What the teacher answered in the sheet after dropping a fiche on a day.</summary>

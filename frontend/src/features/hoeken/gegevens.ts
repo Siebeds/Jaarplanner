@@ -204,6 +204,53 @@ export function useVerwijderHoekplaatsing() {
   });
 }
 
+/** What is in the corner, over which days. */
+export interface HoekverrijkingInvoer {
+  plaatsingId: string;
+  /** Set when rewriting one, absent when adding one. */
+  verrijkingId?: string;
+  van: string;
+  tot: string;
+  tekst: string;
+}
+
+/**
+ * Adds or rewrites an enrichment (owner, 2026-08-31: "ik wil ook de verrijking kunnen aanpassen").
+ *
+ * **One hook for both, because the sheet has one form for both.** Adding and rewriting differ only in
+ * whether an id exists, and splitting them into two hooks would give the same form two loading flags
+ * and two error slots to keep in step.
+ *
+ * The enrichment is the field carrying the pedagogy and it used to be write-once: the placement sheet
+ * took it on the way in and nothing reached it again, so a typo in it was permanent unless the whole
+ * placement was deleted and redone.
+ */
+export function useBewaarHoekverrijking() {
+  const ververs = usePlaatsingVerversing();
+
+  return useMutation({
+    mutationFn: ({ plaatsingId, verrijkingId, van, tot, tekst }: HoekverrijkingInvoer) =>
+      verrijkingId === undefined
+        ? post<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/verrijkingen`, { van, tot, tekst })
+        : put<HoekplaatsingWeergave>(
+            `/api/hoekplaatsingen/${plaatsingId}/verrijkingen/${verrijkingId}`,
+            { van, tot, tekst },
+          ),
+    onSuccess: ververs,
+  });
+}
+
+/** Removes one enrichment. The run itself stays: she clears what is in the corner, not the corner. */
+export function useVerwijderHoekverrijking() {
+  const ververs = usePlaatsingVerversing();
+
+  return useMutation({
+    mutationFn: ({ plaatsingId, verrijkingId }: { plaatsingId: string; verrijkingId: string }) =>
+      del<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/verrijkingen/${verrijkingId}`),
+    onSuccess: ververs,
+  });
+}
+
 /** Where one appearance of a placed hoek should move to. */
 export interface HoekmomentVerplaatsing {
   plaatsingId: string;

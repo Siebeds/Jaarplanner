@@ -61,8 +61,45 @@ public sealed class HoekplaatsingenController : ControllerBase
         CancellationToken cancellationToken) =>
         Ok(await _service.VerplaatsMomentAsync(plaatsingId, momentId, invoer.Datum, invoer.Volgorde, cancellationToken));
 
+    /// <summary>Adds an enrichment: what is in the corner over these days.</summary>
+    [HttpPost("/api/hoekplaatsingen/{plaatsingId:guid}/verrijkingen")]
+    public async Task<ActionResult<HoekplaatsingWeergave>> VoegVerrijkingToe(
+        Guid plaatsingId,
+        [FromBody] HoekverrijkingInvoer invoer,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.VoegVerrijkingToeAsync(plaatsingId, invoer.Van, invoer.Tot, invoer.Tekst, cancellationToken));
+
+    /// <summary>Rewrites one enrichment, moving its window if asked.</summary>
+    [HttpPut("/api/hoekplaatsingen/{plaatsingId:guid}/verrijkingen/{verrijkingId:guid}")]
+    public async Task<ActionResult<HoekplaatsingWeergave>> WijzigVerrijking(
+        Guid plaatsingId,
+        Guid verrijkingId,
+        [FromBody] HoekverrijkingInvoer invoer,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.WijzigVerrijkingAsync(
+            plaatsingId,
+            verrijkingId,
+            invoer.Van,
+            invoer.Tot,
+            invoer.Tekst,
+            cancellationToken));
+
+    /// <summary>Removes one enrichment.</summary>
+    [HttpDelete("/api/hoekplaatsingen/{plaatsingId:guid}/verrijkingen/{verrijkingId:guid}")]
+    public async Task<ActionResult<HoekplaatsingWeergave>> VerwijderVerrijking(
+        Guid plaatsingId,
+        Guid verrijkingId,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.VerwijderVerrijkingAsync(plaatsingId, verrijkingId, cancellationToken));
+
     /// <summary>Where one appearance should move to.</summary>
     /// <param name="Datum">The day it happens on. May be the day it is already on.</param>
     /// <param name="Volgorde">The zero-based lesuur, so 0 is what a teacher calls lesuur 1.</param>
     public sealed record HoekmomentVerplaatsing(DateOnly Datum, int Volgorde);
+
+    /// <summary>What is in the corner, over which days.</summary>
+    /// <param name="Van">First day of the enrichment, inclusive. Must fall inside the placement.</param>
+    /// <param name="Tot">Last day, inclusive.</param>
+    /// <param name="Tekst">What she wrote. The aggregate refuses blank.</param>
+    public sealed record HoekverrijkingInvoer(DateOnly Van, DateOnly Tot, string Tekst);
 }
