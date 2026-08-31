@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
-import { IcoonChevron } from "../../components/Iconen";
+import { IcoonChevron, IcoonDoelen } from "../../components/Iconen";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -178,6 +178,7 @@ export function Subthemahoofdstuk({
 
           <Subkop
             titel={t("thema.subdoelenTitel")}
+            icoon={<IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zwak" />}
             acties={
               <Doelkoppelaar
                 onKies={onKoppelSubdoel}

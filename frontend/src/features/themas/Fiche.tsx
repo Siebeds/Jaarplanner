@@ -2,6 +2,24 @@ import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
 
 /**
+ * **When a heading here gets an icon, and when it does not.** The owner asked on 2026-08-31 whether
+ * the sections could carry icons. A set of four would have been decoration: THEMADOELEN, SUBTHEMA'S,
+ * ACTIVITEITEN and SUBDOELEN are unambiguous Dutch words, each block already carries a figure in the
+ * margin as its mark, and this screen's whole problem was chrome outranking content.
+ *
+ * So an icon marks the two things on this page that are **not the school's own content**: an Op.stap
+ * doel, and the AI. That is the constitution's own dividing line (Art. III): decreed, read-only
+ * reference data on one side, and thema's, subthema's and activiteiten the school is free to write on
+ * the other. Everything a teacher authored stays bare, because it is the norm here and needs no mark;
+ * what gets marked is what came from somewhere else.
+ *
+ * It earns its keep twice over. The target is the same mark as the Doelen destination in the
+ * navigation, so a teacher can see that these codes are the same objects as the ones in that
+ * register. And it appears identically on themadoelen and on subdoelen, which says "same kind of
+ * thing, different level" about the one distinction this screen exists to make legible (Art. IX.2).
+ */
+
+/**
  * The thema fiche: a document with a margin, and the primitives every block on it is built from.
  *
  * **Why this file exists.** Three passes of correcting individual controls left the thema screen
@@ -132,17 +150,23 @@ export function Blok({
  */
 export function Kop({
   titel,
+  icoon,
   acties,
   children,
 }: {
   titel: string;
+  /** Only for a section holding Op.stap doelen. See the note at the top of this file. */
+  icoon?: ReactNode;
   acties?: ReactNode;
   /** Optional: the "Subthema's" heading introduces chapters that are siblings of its own block. */
   children?: ReactNode;
 }) {
   return (
     <>
-      <h2 className="text-meta font-semibold uppercase tracking-wide text-inkt-zacht">{titel}</h2>
+      <h2 className="flex items-center gap-2 text-meta font-semibold uppercase tracking-wide text-inkt-zacht">
+        {icoon}
+        {titel}
+      </h2>
       {acties ? <div className="mt-2.5 flex flex-wrap items-center gap-2">{acties}</div> : null}
       {children ? <div className="mt-3">{children}</div> : null}
     </>
@@ -159,16 +183,22 @@ export function Kop({
  */
 export function Subkop({
   titel,
+  icoon,
   acties,
   children,
 }: {
   titel: string;
+  /** Only for a section holding Op.stap doelen. See the note at the top of this file. */
+  icoon?: ReactNode;
   acties?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="mt-5 border-t border-lijn pt-3">
-      <h3 className="text-micro uppercase tracking-wide text-inkt-zwak">{titel}</h3>
+      <h3 className="flex items-center gap-1.5 text-micro uppercase tracking-wide text-inkt-zwak">
+        {icoon}
+        {titel}
+      </h3>
       {acties ? <div className="mt-2 flex flex-wrap items-center gap-2">{acties}</div> : null}
       <div className="mt-2.5">{children}</div>
     </section>

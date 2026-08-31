@@ -200,6 +200,28 @@ export function IcoonChevron(props: IconProps) {
   );
 }
 
+/**
+ * A wand: this control asks the model, and what comes back has to be judged.
+ *
+ * The one icon in this set that marks a KIND OF ACTION rather than a destination or an object, and
+ * it exists because "Vraag suggesties" looked exactly like every other button on the thema screen
+ * while being the only one that calls an AI (Art. IV). A teacher who cannot see that beforehand
+ * cannot know that what appears afterwards is a proposal rather than a fact.
+ *
+ * Sparkles rather than a robot or a chip: the convention a teacher has already met in the tools on
+ * her own phone. Two of them and no more, one at the tip and one loose, because at 16 pixels a third
+ * turns the whole glyph into a smudge.
+ */
+export function IcoonToverstok(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4.5 19.5 12 12" />
+      <path d="M16 5.5v5M13.5 8h5" />
+      <path d="M20.5 2.5v2M19.5 3.5h2" />
+    </Icoon>
+  );
+}
+
 /** A drag handle: two short rules, the universal "this row can be picked up". */
 export function IcoonGreep(props: IconProps) {
   return (

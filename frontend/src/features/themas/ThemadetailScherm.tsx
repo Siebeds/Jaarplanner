@@ -9,6 +9,7 @@ import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { Bevestiging } from "../../components/ui/Bevestiging";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
+import { IcoonDoelen, IcoonToverstok } from "../../components/Iconen";
 import {
   useBeoordeelSuggestie,
   useDoelsuggesties,
@@ -268,6 +269,7 @@ export function ThemadetailScherm() {
           >
             <Kop
               titel={t("thema.themadoelen")}
+              icoon={<IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zwak" />}
               acties={
                 <>
                   <Doelkoppelaar
@@ -280,10 +282,11 @@ export function ThemadetailScherm() {
                       teacher then has to accept one by one (Art. IV). */}
                   <Knop
                     rang="stil"
-                    className="h-9 min-h-9 px-3 text-meta"
+                    className="h-9 min-h-9 px-2.5 text-meta"
                     disabled={genereer.isPending}
                     onClick={() => genereer.mutate()}
                   >
+                    <IcoonToverstok aria-hidden="true" className="h-4 w-4" />
                     {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
                   </Knop>
                 </>
