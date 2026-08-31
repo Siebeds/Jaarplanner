@@ -19,9 +19,11 @@ interface HoekenpaneelState {
  * that a teacher would have to rebuild; an open panel is a thing she can see and close in one click,
  * and an app that reopens on a half-covered navigation is worse than one that opens plainly.
  *
- * **It is not reset on navigation either, and that is on purpose:** only the agenda renders the
- * panel, so leaving the screen already hides it, and coming back to a panel she left open is the
- * behaviour she asked for by opening it.
+ * **It IS reset when the teacher leaves the agenda** (owner, 2026-08-31), and the reset lives in
+ * `Navigatie` rather than here, because this file cannot see the router. It used to be kept, on the
+ * reasoning that only the agenda renders the panel so leaving the screen already hides it. That
+ * reasoning was wrong about its own app: `Navigatie` collapses to a rail and `Schil` reserves 296px
+ * off this flag alone, so a kept `true` left both of them dressed for a panel that had unmounted.
  */
 export const useHoekenpaneel = create<HoekenpaneelState>((set) => ({
   open: false,

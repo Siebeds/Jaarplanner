@@ -17,7 +17,9 @@ import { cn } from "../lib/cn";
  * one element that already owns the reservation, and two places computing it is how they drift.
  *
  * *Reserved even on a screen that renders no panel, since only the agenda does.* The store is false
- * everywhere else, so the wider padding only ever applies while the panel is actually up.
+ * everywhere else, so the wider padding only ever applies while the panel is actually up. **That
+ * guarantee is made by `Navigatie`**, which closes the panel on the way off the agenda; it was not
+ * true before that (owner, 2026-08-31), and this sentence asserted it anyway.
  */
 export function Schil() {
   const paneelOpen = useHoekenpaneel((s) => s.open);

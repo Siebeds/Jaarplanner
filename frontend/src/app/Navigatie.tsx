@@ -1,6 +1,8 @@
-import { NavLink } from "react-router-dom";
+import { useLayoutEffect } from "react";
+import { NavLink, useMatch } from "react-router-dom";
 import { BESTEMMINGEN, ONDERAAN, type Bestemming } from "./routes";
 import { Merk } from "./Merk";
+import { IcoonHoek } from "../components/Iconen";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { t } from "../i18n";
 import { cn } from "../lib/cn";
@@ -32,9 +34,45 @@ import { cn } from "../lib/cn";
  * does all year and a fifth item in the run would read as if it were. On a phone the bottom bar has
  * no bottom to push it to, so it is simply the last tab: five fit, and the alternative is a
  * destination that exists on a laptop and not on a phone.
+ *
+ * **The hoekenfiches switch lives here from `lg` (owner, 2026-08-31), under the four and over a
+ * rule.** It is not a destination and must not read as one, so it is a `button` with `aria-pressed`,
+ * it never takes the accent bar that stands for `aria-current`, and its open state is a neutral tint
+ * rather than the accent the destinations own. What tells a sighted teacher the panel is open is the
+ * panel: 240px of it, immediately to the right of this button. *Below `lg` the switch stays in the
+ * agenda toolbar,* because a bottom bar of five tabs has no room for a sixth and the panel has to
+ * stay reachable on a phone. One control per viewport, never two at once.
+ *
+ * **Leaving the agenda closes the panel** (owner, 2026-08-31): press a destination and the sidebar is
+ * a sidebar again. That reset is not cosmetic. Only `Agendascherm` renders the panel, while the rail
+ * here and the inline reservation in `Schil` both follow the store, so without it a teacher who
+ * navigated away kept a 56px rail and 296px of reserved width beside a screen with no panel in it.
  */
 export function Navigatie() {
   const paneelOpen = useHoekenpaneel((s) => s.open);
+  const zetPaneel = useHoekenpaneel((s) => s.zet);
+  const wisselPaneel = useHoekenpaneel((s) => s.wissel);
+
+  /*
+    The two routes `Agendascherm` answers, and so the only two that mount a hoekenpaneel. Matched as
+    route patterns rather than by a `/agenda` prefix on purpose: `/agenda/periodes` is a different
+    screen with no panel, and a prefix test would offer the switch there.
+
+    Both matches are read into their own const before they are combined. Inlining them into one `||`
+    short-circuits the second hook on the month view, which is a rules-of-hooks violation.
+  */
+  const opMaand = useMatch("/agenda");
+  const opDag = useMatch("/agenda/dag/:datum");
+  const opAgenda = opMaand !== null || opDag !== null;
+
+  /*
+    `useLayoutEffect` and not `useEffect`: this runs on every navigation away from the agenda, and an
+    effect that fires after paint would let one frame through with the rail still collapsed and the
+    padding still reserved. Before paint, the browser only ever sees the settled layout.
+  */
+  useLayoutEffect(() => {
+    if (!opAgenda && paneelOpen) zetPaneel(false);
+  }, [opAgenda, paneelOpen, zetPaneel]);
 
   return (
     <nav
@@ -70,6 +108,15 @@ export function Navigatie() {
         {BESTEMMINGEN.map((bestemming) => (
           <Tab key={bestemming.pad} bestemming={bestemming} smal={paneelOpen} />
         ))}
+
+        {/* Only on the routes that have a panel to switch. Never in the bottom bar, hence `hidden`
+            with an `lg` opt-in: the phone keeps exactly its five tabs at every route. */}
+        {opAgenda ? (
+          <li className="hidden lg:mt-2 lg:block lg:border-t lg:border-lijn lg:pt-2">
+            <Hoekenschakelaar open={paneelOpen} onWissel={wisselPaneel} />
+          </li>
+        ) : null}
+
         {ONDERAAN.map((bestemming, index) => (
           <Tab
             key={bestemming.pad}
@@ -82,6 +129,39 @@ export function Navigatie() {
         ))}
       </ul>
     </nav>
+  );
+}
+
+/**
+ * The hoekenfiches switch: the shape of a sidebar item, deliberately not its behaviour.
+ *
+ * It borrows the geometry of a `Tab` so the sidebar reads as one family: the same height, the same
+ * icon size, the same rounding and inset. What it does not borrow is the accent. A destination is
+ * marked with `bg-accent-zacht` plus the 2px rule that stands for `aria-current`, and a switch
+ * copying either would claim to be a place you are rather than a thing that is on.
+ *
+ * When the panel is open this sits in the 56px rail, so the label is gone and `aria-label` carries
+ * it, exactly as the destinations above do.
+ */
+function Hoekenschakelaar({ open, onWissel }: { open: boolean; onWissel: () => void }) {
+  const naam = t("hoekenpaneel.titel");
+
+  return (
+    <button
+      type="button"
+      onClick={onWissel}
+      aria-pressed={open}
+      aria-label={open ? naam : undefined}
+      title={open ? naam : undefined}
+      className={cn(
+        "flex min-h-11 w-full items-center gap-3 rounded-veld px-3 text-body font-medium",
+        "transition-colors duration-150",
+        open ? "justify-center gap-0 bg-vlak-diep px-0 text-inkt" : "text-inkt-zacht hover:bg-vlak hover:text-inkt",
+      )}
+    >
+      <IcoonHoek aria-hidden="true" className="h-5 w-5 shrink-0" />
+      {open ? null : <span className="truncate">{naam}</span>}
+    </button>
   );
 }
 

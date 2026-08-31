@@ -439,23 +439,22 @@ export function Agendascherm() {
               </Link>
 
               {/*
-                THE HOEKENFICHES SWITCH SITS HERE AND NOT IN THE SIDEBAR, WHICH IS A DEPARTURE FROM
-                WHAT WAS ASKED FOR, SO IT SAYS WHY.
+                THE HOEKENFICHES SWITCH IS IN THE SIDEBAR FROM `lg`, AND THIS IS WHAT IS LEFT OF IT
+                BELOW THAT.
 
-                The owner described a switch in the sidepane. A sidepane exists only from `lg`: below
-                it the navigation is a bottom bar of five tabs with no room for a sixth, and the
-                panel still has to be reachable on a phone, where it opens as a sheet. Putting the
-                switch here gives one control at every width, next to the other two that act on the
-                whole agenda. Two switches for one panel, one per viewport, would be worse than one
-                in a slightly different place. Moving it into the sidebar is one component away if
-                the owner still wants it there at `lg`.
+                The owner asked for the switch in the sidepane (2026-08-31), and a sidepane exists
+                only from `lg`: below it the navigation is a bottom bar of five tabs with no room for
+                a sixth, while the panel still has to be reachable on a phone, where it opens as a
+                sheet. So this chip is `lg:hidden` and `Navigatie` carries the switch from `lg`
+                upward. One control per viewport, never two at once, which is what made a single
+                control in the toolbar the earlier answer.
               */}
               <button
                 type="button"
                 onClick={wisselHoeken}
                 aria-pressed={hoekenOpen}
                 className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-meta font-medium transition-colors duration-150",
+                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-meta font-medium transition-colors duration-150 lg:hidden",
                   hoekenOpen
                     ? "border-accent bg-accent-zacht text-accent"
                     : "border-lijn text-inkt-zacht hover:border-accent hover:text-accent",
