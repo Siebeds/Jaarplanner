@@ -13,11 +13,16 @@ import type { OnderzoeksvraagInvoer, SubthemaInvoer } from "./mutaties";
 /**
  * Making or changing a subthema (FR-3.2).
  *
- * **The leeftijd is required and it is the first thing asked.** A subthema cannot exist without an
- * age (Art. IX.2 as amended 2026-08-30): it is the school's content FOR a year group, and it holds
- * for every klas that teaches that year. The server rejects a blank or unknown age, so the form asks
- * for it before anything else rather than letting a teacher fill in a name and then discover the
- * subthema had nowhere to live.
+ * **The leeftijd is required, and it is asked AFTER the naam** (owner, 2026-08-31). A subthema
+ * cannot exist without an age (Art. IX.2 as amended 2026-08-30): it is the school's content FOR a
+ * year group, and it holds for every klas that teaches that year, and the server rejects a blank or
+ * unknown one. So it stays a required field with a visible label.
+ *
+ * It opened this form until 2026-08-31, on the argument that the age is what makes this a subthema at
+ * all. That argument was about the schema, not about the person filling the form in: a teacher
+ * reaches this sheet from a class she has already chosen, so the age is settled before she starts
+ * typing, and putting it first put the one field she will not touch above the one she came here for.
+ * The order now follows what she is doing rather than what the model needs.
  *
  * **The klas field is gone, and its absence is the change** (owner, 2026-08-30). It used to sit
  * beside the leeftijd and made the subthema one class's, so a teacher who built "de speelhoek" under
@@ -125,47 +130,6 @@ export function Subthemaformulier({
       }
     >
       <form id={id} onSubmit={verstuur} className="flex flex-col gap-5">
-        {/* The scope first, because it is the thing that makes this a subthema and not a thema. One field
-            where there were two: the klas left this fieldset on 2026-08-30, so what is left is the age. */}
-        <fieldset className="rounded-veld bg-vlak-diep/60 p-3">
-          <legend className="px-1 text-micro uppercase text-inkt-zwak">
-            {t("subthemabeheer.voorWie")}
-          </legend>
-          <div className="min-w-48">
-            <label htmlFor={`${id}-leeftijd`} className="text-meta font-medium text-inkt">
-              {t("subthemabeheer.leeftijd")}
-            </label>
-            {fasen.length === 0 ? (
-              <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
-                {t("klasbeheer.leeftijdenOnbekend")}
-              </p>
-            ) : (
-              <Keuze
-                id={`${id}-leeftijd`}
-                value={leeftijd}
-                disabled={bezig}
-                onChange={(e) => {
-                  setLeeftijd(e.target.value);
-                  setScopeFout(false);
-                }}
-                className="mt-1.5"
-              >
-                <option value="">{t("subthemabeheer.kiesLeeftijd")}</option>
-                {fasen.map((fase) => (
-                  <option key={fase} value={fase}>
-                    {fase}
-                  </option>
-                ))}
-              </Keuze>
-            )}
-          </div>
-          {scopeFout ? (
-            <p role="alert" className="mt-2 text-meta font-medium text-attentie-inkt">
-              {t("subthemabeheer.scopeVerplicht")}
-            </p>
-          ) : null}
-        </fieldset>
-
         <div className="flex flex-col gap-4 @md:flex-row @md:items-start">
           <div className="min-w-48 flex-1">
             <label htmlFor={`${id}-naam`} className="text-meta font-medium text-inkt">
@@ -244,6 +208,56 @@ export function Subthemaformulier({
             </div>
           </fieldset>
         </div>
+
+        {/* THE LEEFTIJD IS NOT AT THE TOP ANY MORE (owner, 2026-08-31: "leeftijd is voor mij niet de
+            prioriteit en hoeft niet vanboven te staan, zet dat maar iets meer naar onder en zet naam
+            vanboven, normaal zal een juf nooit de leeftijd moeten veranderen eens dat ze haar klas
+            geselecteerd heeft").
+
+            It used to open the form, and the argument for that was the model's: the leeftijd is what
+            makes this a subthema rather than a thema (Art. IX.2), and it is required. True, and it
+            still is, but it was an argument about the schema and not about the person filling the
+            form in. She reaches this sheet from a class she already chose, so the age is settled
+            before she starts typing and asking it first put a field she will not touch above the one
+            she came here for. It stays required and it stays visible; it just stops going first. */}
+        <fieldset className="rounded-veld bg-vlak-diep/60 p-3">
+          <legend className="px-1 text-micro uppercase text-inkt-zwak">
+            {t("subthemabeheer.voorWie")}
+          </legend>
+          <div className="min-w-48">
+            <label htmlFor={`${id}-leeftijd`} className="text-meta font-medium text-inkt">
+              {t("subthemabeheer.leeftijd")}
+            </label>
+            {fasen.length === 0 ? (
+              <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
+                {t("klasbeheer.leeftijdenOnbekend")}
+              </p>
+            ) : (
+              <Keuze
+                id={`${id}-leeftijd`}
+                value={leeftijd}
+                disabled={bezig}
+                onChange={(e) => {
+                  setLeeftijd(e.target.value);
+                  setScopeFout(false);
+                }}
+                className="mt-1.5"
+              >
+                <option value="">{t("subthemabeheer.kiesLeeftijd")}</option>
+                {fasen.map((fase) => (
+                  <option key={fase} value={fase}>
+                    {fase}
+                  </option>
+                ))}
+              </Keuze>
+            )}
+          </div>
+          {scopeFout ? (
+            <p role="alert" className="mt-2 text-meta font-medium text-attentie-inkt">
+              {t("subthemabeheer.scopeVerplicht")}
+            </p>
+          ) : null}
+        </fieldset>
 
         <section className="border-t border-lijn pt-5">
           <div className="flex items-baseline justify-between gap-2">

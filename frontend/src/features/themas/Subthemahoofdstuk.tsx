@@ -100,19 +100,17 @@ export function Subthemahoofdstuk({
       }
     >
       <h3>
+        {/* THE CHEVRON IS ON THE RIGHT, and that is an alignment fix rather than a preference. Beside
+            the title it pushed the name thirty pixels further in than the question and the two
+            section headings below it, so the card had a ragged left edge: exactly the defect this
+            redesign exists to remove. On the right the title starts where the whole card body starts,
+            and the chevron still sits on the row it opens. */}
         <button
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="-mx-2 -my-1.5 flex w-[calc(100%+1rem)] items-start gap-2.5 rounded-veld px-2 py-1.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
+          className="-mx-2 -my-1.5 flex w-[calc(100%+1rem)] items-start justify-between gap-3 rounded-veld px-2 py-1.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
         >
-          <IcoonChevron
-            aria-hidden="true"
-            className={cn(
-              "mt-1.5 h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
-              open && "rotate-180",
-            )}
-          />
           <span className="min-w-0">
             <span className="block font-display text-hoofdstuk text-inkt">{subthema.naam}</span>
             {open ? null : (
@@ -131,19 +129,31 @@ export function Subthemahoofdstuk({
               </span>
             )}
           </span>
+          <IcoonChevron
+            aria-hidden="true"
+            className={cn(
+              "mt-2 h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
+              open && "rotate-180",
+            )}
+          />
         </button>
       </h3>
 
       {open ? (
         <>
-          {/* The onderzoeksvraag is the most characteristic object in this domain: a kennisrijk thema is
-              driven by a question (Art. IX). It was a 15 pixel line behind a hairline, indistinguishable
-              from the probleemstelling under it. Set at reading size now, with the probleemstelling
-              stepping back, so the chapter opens on what it is asking. */}
+          {/* The onderzoeksvraag is the most characteristic object in this domain: a kennisrijk thema
+              is driven by a question (Art. IX). It was a 15 pixel line indistinguishable from the
+              probleemstelling under it; it is set at reading size now, so the chapter opens on what
+              it is asking.
+
+              No rule down its left any more (owner, 2026-08-31: "die verticale lijn mag weg bij de
+              vragen"). It was carrying the question's weight for it. Now that the question is the
+              largest thing in the card after the title, and the two lists below it are each closed
+              in their own frame, nothing is left for the rule to separate it FROM. */}
           {subthema.onderzoeksvragen.length > 0 ? (
             <ul className="mt-3 flex flex-col gap-2.5">
               {subthema.onderzoeksvragen.map((vraag) => (
-                <li key={vraag.id} className="border-l-2 border-lijn-sterk pl-3.5">
+                <li key={vraag.id}>
                   <p className="text-sectie text-inkt">{vraag.vraag}</p>
                   {vraag.probleemstelling ? (
                     <p className="mt-0.5 text-meta text-inkt-zacht">{vraag.probleemstelling}</p>
@@ -158,9 +168,9 @@ export function Subthemahoofdstuk({
             acties={<Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} />}
           >
             {activiteiten.length === 0 ? (
-              <p className="text-meta text-inkt-zwak">{t("activiteit.geen")}</p>
+              <p className="text-meta text-inkt-zacht">{t("activiteit.geen")}</p>
             ) : (
-              <ul className="divide-y divide-lijn border-y border-lijn">
+              <ul className="divide-y divide-lijn overflow-hidden rounded-veld border border-lijn">
                 {activiteiten.map((activiteit) => (
                   <li key={activiteit.id}>
                     <Activiteitregel
@@ -178,7 +188,7 @@ export function Subthemahoofdstuk({
 
           <Subkop
             titel={t("thema.subdoelenTitel")}
-            icoon={<IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zwak" />}
+            icoon={<IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zacht" />}
             acties={
               <Doelkoppelaar
                 onKies={onKoppelSubdoel}
@@ -189,7 +199,7 @@ export function Subthemahoofdstuk({
             }
           >
             {subthema.subdoelen.length === 0 ? (
-              <p className="text-meta text-inkt-zwak">{t("thema.geenSubdoelen")}</p>
+              <p className="text-meta text-inkt-zacht">{t("thema.geenSubdoelen")}</p>
             ) : (
               <Doellijst>
                 {subthema.subdoelen.map((subdoel) => (
@@ -216,6 +226,10 @@ export function Subthemahoofdstuk({
 
 /**
  * One activiteit: a ruled row, not a box.
+ *
+ * **The list is closed in one frame and the rows are divided inside it** (owner, 2026-08-31: "zou je
+ * de activiteiten volledig kunnen omkaderen ipv wat lijntjes?"). The argument is at `Doellijst`,
+ * which took the same change: two hairlines say where a list begins and ends only if you notice both.
  *
  * **The teacher's colour is a bar, where it used to be the whole surface.** A washed rectangle per
  * activiteit turned a list a teacher scans into a stack of cards inside a card inside a page, and at
@@ -250,7 +264,7 @@ function Activiteitregel({
   const codes = activiteit.doelkoppelingen.map((k) => k.leerplandoelCode);
 
   return (
-    <div className="relative flex gap-3 py-2.5">
+    <div className="relative flex gap-3 px-3 py-2.5">
       {/* The hover fill is deliberately faint. This list runs to twenty rows on a real thema, and a
           row that lights up under a pointer merely passing over it keeps claiming to be the one you
           were looking for. Ink at 3.5% reads as "this responds" and no more. */}
@@ -258,7 +272,7 @@ function Activiteitregel({
         type="button"
         onClick={onBewerk}
         aria-label={t("activiteit.bewerkAria", { naam: activiteit.naam })}
-        className="absolute -inset-x-2 inset-y-0 z-0 rounded-veld transition-colors duration-150 hover:bg-inkt/[0.035]"
+        className="absolute inset-0 z-0 transition-colors duration-150 hover:bg-inkt/[0.035]"
       />
 
       {/* The bar is ALWAYS rendered and only sometimes coloured. Rendering it conditionally left the
@@ -322,7 +336,7 @@ function Activiteitregel({
 /** The separator in the folded card's summary. Decorative, so it is hidden from the reading order. */
 function Punt() {
   return (
-    <span aria-hidden="true" className="text-inkt-zwak">
+    <span aria-hidden="true" className="text-inkt-zacht">
       ·
     </span>
   );

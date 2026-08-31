@@ -65,6 +65,7 @@ export function Blok({
   onder,
   acties,
   kaal,
+  strak,
   children,
 }: {
   /** The block's measure, set large in the mono face: `5`, `L3`, a count. */
@@ -86,10 +87,15 @@ export function Blok({
    * almost empty card between two full ones.
    */
   kaal?: boolean;
+  /** No top margin: this block opens a `Groep`, whose own padding is already the space above it. */
+  strak?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="mt-4 sm:grid sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:gap-x-5 lg:grid-cols-[5.5rem_minmax(0,1fr)] lg:gap-x-8">
+    <section className={cn(
+      strak ? "" : "mt-4",
+      "sm:grid sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:gap-x-5 lg:grid-cols-[5.5rem_minmax(0,1fr)] lg:gap-x-8",
+    )}>
       <div
         className={cn(
           "mb-2 flex items-baseline gap-x-2 sm:mb-0 sm:flex-col sm:items-end sm:gap-x-0 sm:text-right",
@@ -98,7 +104,7 @@ export function Blok({
         )}
       >
         {boven ? (
-          <span className="text-micro uppercase tracking-wide text-inkt-zwak">{boven}</span>
+          <span className="text-micro uppercase tracking-wide text-inkt-zacht">{boven}</span>
         ) : null}
         {figuur !== undefined ? (
           <span className="mono text-sectie font-medium text-inkt sm:text-hoofdstuk">{figuur}</span>
@@ -110,11 +116,11 @@ export function Blok({
                 figure and its own unit and read as punctuation inside "5 weken". Never in the
                 margin, where the tokens are already three stacked lines. */}
             {boven ? (
-              <span aria-hidden="true" className="text-inkt-zwak sm:hidden">
+              <span aria-hidden="true" className="text-inkt-zacht sm:hidden">
                 ·
               </span>
             ) : null}
-            <span className="text-micro text-inkt-zwak">{onder}</span>
+            <span className="text-micro text-inkt-zacht">{onder}</span>
           </>
         ) : null}
       </div>
@@ -135,6 +141,41 @@ export function Blok({
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * A tray holding a heading and the cards it introduces, so the group reads as one thing.
+ *
+ * **The subthema's needed this and the first version did not give it to them** (owner, 2026-08-31:
+ * "ik vind het wat verwarrend dat de subthemas niet een sectie is, zou je een subtiele card kader
+ * rond het hele subthema gedoe kunnen trekken zodat het duidelijk is dat dat een geheel is"). Their
+ * heading sat bare on the page and each chapter was its own white card, so a screen where every
+ * other section was a panel had one section that was a loose label followed by loose panels. It read
+ * as three unrelated things.
+ *
+ * A tray rather than a card, and the difference is the point: a shade DOWN from the page instead of
+ * up to paper. Cards on this screen are white and hold content; making the group white too would put
+ * paper on paper and cost the chapters their own boundary, which is the thing that just got fixed.
+ * A recessed surface holds cards without competing with them, and it stays inside the palette: this
+ * is `vlak-diep`, the neutral one shade below the page, not a new hue (Art. XII).
+ *
+ * It spans the whole fiche, margin included, because the leeftijd of a chapter is part of that
+ * chapter and belongs inside the boundary drawn around the group.
+ *
+ * **This tray is why every label on the fiche is `inkt-zacht` and not `inkt-zwak`.** Measured in a
+ * browser with the tint composited, the 11 pixel labels in the margin fell to 4.46:1 the moment they
+ * sat on it, which is under the 4.5 AA floor for text that size. They read 4.64 on the page and 4.97
+ * on a white card, so the failure only existed on this one surface and only after it was added: the
+ * exact shape of bug this project has shipped twice, and the reason contrast here is measured rather
+ * than reasoned about. One darker grey for every label removes the dependency on which surface a
+ * label happens to land on, and it let the tray get MORE visible rather than less.
+ */
+export function Groep({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-5 rounded-blad border border-lijn bg-vlak-diep/60 px-3 py-4 sm:px-4 sm:py-5">
+      {children}
+    </div>
   );
 }
 
@@ -195,7 +236,7 @@ export function Subkop({
 }) {
   return (
     <section className="mt-5 border-t border-lijn pt-3">
-      <h3 className="flex items-center gap-1.5 text-micro uppercase tracking-wide text-inkt-zwak">
+      <h3 className="flex items-center gap-1.5 text-micro uppercase tracking-wide text-inkt-zacht">
         {icoon}
         {titel}
       </h3>
@@ -233,7 +274,7 @@ export function Feit({
 }) {
   return (
     <div className="flex flex-col gap-x-4 sm:flex-row sm:items-baseline">
-      <dt className="text-micro uppercase tracking-wide text-inkt-zwak sm:w-40 sm:shrink-0 sm:pt-1">
+      <dt className="text-micro uppercase tracking-wide text-inkt-zacht sm:w-40 sm:shrink-0 sm:pt-1">
         {label}
       </dt>
       <dd className={cn("min-w-0 text-body", zacht ? "text-inkt-zacht" : "text-inkt")}>{children}</dd>
@@ -267,14 +308,23 @@ export function Ontkoppel({
 /**
  * A list of goal links: a code, its status, and the control that takes it off.
  *
- * Ruled rows rather than bordered boxes. Each of these used to be its own rounded card on a white
- * card on a grey page, which is three surfaces deep for a line holding a code and a word, and it is
- * why a page of read-only facts looked like a toolbar.
+ * **One frame around the whole list, with the rows divided inside it** (owner, 2026-08-31, about the
+ * activiteiten: "zou je de activiteiten volledig kunnen omkaderen ipv wat lijntjes?"). It was a rule
+ * above and a rule below, which says "a list starts here and ends here" only if you notice both and
+ * connect them. A closed border says it in one glance. Still not one card per row: that was the
+ * three-surfaces-deep version this replaced, and it made a page of read-only facts look like a
+ * toolbar.
+ *
+ * The subdoelen get the same frame as the activiteiten even though only the activiteiten were named.
+ * They are the same kind of object at the same depth of the same card, and framing one of the two is
+ * the sort of near-miss consistency the owner has reported three times.
  */
 export function Doellijst({ children }: { children: ReactNode }) {
-  return <ul className="divide-y divide-lijn border-y border-lijn">{children}</ul>;
+  return (
+    <ul className="divide-y divide-lijn overflow-hidden rounded-veld border border-lijn">{children}</ul>
+  );
 }
 
 export function Doelregel({ children }: { children: ReactNode }) {
-  return <li className="flex items-center gap-2 py-1.5">{children}</li>;
+  return <li className="flex items-center gap-2 px-3 py-2">{children}</li>;
 }

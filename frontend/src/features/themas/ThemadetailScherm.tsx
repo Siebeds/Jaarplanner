@@ -25,7 +25,7 @@ import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Ac
 import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
-import { Blok, Doellijst, Doelregel, Feit, Kop, Ontkoppel } from "./Fiche";
+import { Blok, Doellijst, Doelregel, Feit, Groep, Kop, Ontkoppel } from "./Fiche";
 import { themabalans } from "./themabalans";
 import {
   useKoppelActiviteitdoel,
@@ -269,7 +269,7 @@ export function ThemadetailScherm() {
           >
             <Kop
               titel={t("thema.themadoelen")}
-              icoon={<IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zwak" />}
+              icoon={<IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />}
               acties={
                 <>
                   <Doelkoppelaar
@@ -293,7 +293,7 @@ export function ThemadetailScherm() {
               }
             >
               {thema.themadoelen.length === 0 ? (
-                <p className="text-meta text-inkt-zwak">{t("thema.geenThemadoelen")}</p>
+                <p className="text-meta text-inkt-zacht">{t("thema.geenThemadoelen")}</p>
               ) : (
                 <Doellijst>
                   {thema.themadoelen.map((themadoel) => (
@@ -327,7 +327,7 @@ export function ThemadetailScherm() {
                   read, and these are the only objects on the page waiting for a decision. */}
               {openSuggesties.length > 0 ? (
                 <>
-                  <h3 className="mt-5 text-micro uppercase tracking-wide text-inkt-zwak">
+                  <h3 className="mt-5 text-micro uppercase tracking-wide text-inkt-zacht">
                     {t("thema.suggesties")}
                   </h3>
                   <ul className="mt-2 flex flex-col gap-2">
@@ -381,11 +381,15 @@ export function ThemadetailScherm() {
             </Kop>
           </Blok>
 
-          {/* The heading that introduces the chapters, and the one control that adds one. The
-              chapters themselves are NOT nested under it: they are siblings hanging off the same
-              margin, which is what keeps their leeftijd legible as an axis. */}
+          {/* THE HEADING AND ITS CHAPTERS SIT IN ONE TRAY (owner, 2026-08-31: "ik vind het wat
+              verwarrend dat de subthemas niet een sectie is"). The chapters are still not nested
+              INSIDE the heading's block: they are siblings hanging off the same margin, which is what
+              keeps their leeftijd legible as an axis. What the tray adds is the boundary that says
+              those siblings and that heading are one section. See `Groep`. */}
+          <Groep>
           <Blok
             kaal
+            strak
             figuur={thema.subthemas.length}
             onder={t(thema.subthemas.length === 1 ? "themas.subthemaEen" : "themas.subthemaMeer")}
           >
@@ -402,7 +406,7 @@ export function ThemadetailScherm() {
               }
             >
               {subthemas.length === 0 ? (
-                <p className="text-meta text-inkt-zwak">{t("thema.geenSubthemas")}</p>
+                <p className="text-meta text-inkt-zacht">{t("thema.geenSubthemas")}</p>
               ) : null}
             </Kop>
           </Blok>
@@ -449,6 +453,7 @@ export function ThemadetailScherm() {
               }
             />
           ))}
+          </Groep>
         </div>
       </Schermvlak>
 
