@@ -90,10 +90,11 @@ export function Navigatie() {
         paneelOpen ? "lg:w-14" : "lg:w-60",
       )}
     >
-      {/* The wordmark goes with the labels: it is a word. Kept mounted rather than unmounted so the
-          rail does not jump when it returns. */}
-      <div className={cn("hidden px-5 pb-5 pt-6 lg:block", paneelOpen && "lg:invisible")}>
-        <Merk />
+      {/* The wordmark drops its word in the rail and keeps its bar (owner, 2026-08-31). The box holds
+          the same height in both states, because the destinations below it are positioned by it: a
+          shorter mark would slide the whole run of icons up as the panel opens. */}
+      <div className={cn("hidden h-[4.375rem] lg:flex lg:items-center", paneelOpen ? "lg:justify-center" : "lg:px-5")}>
+        <Merk compact={paneelOpen} />
       </div>
 
       {/* One list, both groups. The phone bar reads them as one run of tabs; the sidebar pushes the

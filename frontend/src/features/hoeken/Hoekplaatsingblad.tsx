@@ -27,12 +27,19 @@ import type { HoekplaatsingInvoer } from "./gegevens";
  * **"Not in the uurrooster" is the default and the first option.** A hoek that claims no lesuur still
  * runs; it just does not take an hour. Most corners are like that, and defaulting to a lesuur would
  * write a row on every teaching day of the window for a teacher who never asked for one.
+ *
+ * **Unless the drop itself named an hour** (`startSlot`, owner 2026-08-31). Dropping a fiche on the
+ * third lesuur of the day view is a teacher saying which hour, in the same gesture that says which
+ * day, and the sheet used to answer "Niet in het uurrooster" and make her say it again. The default
+ * above still holds everywhere the gesture is silent about the hour: the month and the week drop onto
+ * a bare day, and they pass null.
  */
 export function Hoekplaatsingblad({
   open,
   hoekNaam,
   hoekId,
   startdag,
+  startSlot = null,
   loopt,
   schooljaarVan,
   schooljaarTot,
@@ -46,6 +53,13 @@ export function Hoekplaatsingblad({
   hoekId: string;
   /** The day the fiche was dropped on. The window opens here. */
   startdag: string;
+  /**
+   * The lesuur the fiche was dropped on, or null when the drop was onto a day rather than an hour.
+   *
+   * A `volgorde`, so 0 is lesuur 1. Null and 0 are therefore different answers and the check below
+   * has to be against null rather than falsy.
+   */
+  startSlot?: number | null;
   /** The subthema runs, so the calendar can say what she is aiming at. */
   loopt: Loopt[];
   schooljaarVan: string;
@@ -61,7 +75,7 @@ export function Hoekplaatsingblad({
   const [verrijking, setVerrijking] = useState("");
   // "" is "not in the uurrooster". A string because it comes from a select; it becomes null or a
   // number exactly once, on submit.
-  const [lesuur, setLesuur] = useState("");
+  const [lesuur, setLesuur] = useState(startSlot === null ? "" : String(startSlot));
   const [eindFout, setEindFout] = useState(false);
 
   function verstuur(event: FormEvent) {

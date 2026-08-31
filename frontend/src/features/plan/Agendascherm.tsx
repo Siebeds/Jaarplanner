@@ -36,14 +36,14 @@ import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { Dagcel } from "./Dagcel";
 import { Maandrooster } from "./Maandrooster";
-import { Lesurenraster } from "../activiteiten/Lesurenraster";
+import { Lesurenraster, type Hoekuur } from "../activiteiten/Lesurenraster";
 import { leesSlotId } from "../activiteiten/lesuren";
 import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
 import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
-import { leesFicheId } from "../hoeken/fiche";
+import { FICHE_VOORVOEGSEL, leesFicheId } from "../hoeken/fiche";
 import { Hoekplaatsingblad } from "../hoeken/Hoekplaatsingblad";
 import { Hoekdetailblad } from "../hoeken/Hoekdetailblad";
 import { useHoekplaatsingen, usePlaatsHoek, useVerwijderHoekplaatsing, useHoeken } from "../hoeken/gegevens";
@@ -104,8 +104,11 @@ export function Agendascherm() {
   const hoekenOpen = useHoekenpaneel((s) => s.open);
   const wisselHoeken = useHoekenpaneel((s) => s.wissel);
   const zetHoekenpaneel = useHoekenpaneel((s) => s.zet);
-  // The fiche that was dropped and the day it landed on. Null means no sheet.
-  const [gevallenFiche, setGevallenFiche] = useState<{ hoekId: string; datum: string } | null>(null);
+  // The fiche that was dropped, the day it landed on, and the lesuur if it landed on one. Null means
+  // no sheet; a null `slot` means the drop said nothing about an hour.
+  const [gevallenFiche, setGevallenFiche] = useState<{ hoekId: string; datum: string; slot: number | null } | null>(
+    null,
+  );
   // The placement whose detail sheet is open, by id rather than by value: the list is refetched after
   // a delete, and holding a copy would keep a sheet describing a row that is gone.
   const [geopendeHoek, setGeopendeHoek] = useState<string | null>(null);
@@ -220,32 +223,39 @@ export function Agendascherm() {
   const stroken = useMemo(() => reeksenPerDag(reeksen), [reeksen]);
 
   /**
-   * The subthema runs as the placement sheet wants them: a name and a window.
-   *
-   * Derived from the same `reeksen` the calendar draws, so the sheet cannot tell a teacher a subthema
-   * runs on days the grid behind it leaves blank.
-   */
-  /**
    * Which hoeken take which lesuur on the anchored day.
    *
    * Built from the placements' own momenten rather than from their windows: a moment is a row a
    * teacher can move on its own, so a hoek running all fortnight can genuinely sit at the third
    * lesuur on Monday and the fifth on Thursday. Deriving it from the window would draw the same hour
    * every day and quietly contradict what is stored.
+   *
+   * The placement id travels with the name because the day view's block opens the placement, which is
+   * the same sheet the panel's period row opens.
    */
   const hoekenPerSlot = useMemo(() => {
-    const kaart = new Map<number, string[]>();
+    const kaart = new Map<number, Hoekuur[]>();
     for (const plaatsing of hoekplaatsingen ?? []) {
       for (const moment of plaatsing.momenten) {
         if (moment.datum !== anker) continue;
         const rij = kaart.get(moment.volgorde) ?? [];
-        rij.push(plaatsing.hoekNaam);
+        rij.push({ plaatsingId: plaatsing.id, naam: plaatsing.hoekNaam, slot: moment.volgorde });
         kaart.set(moment.volgorde, rij);
       }
     }
     return kaart;
   }, [hoekplaatsingen, anker]);
 
+  /**
+   * The subthema runs as the placement sheet wants them: a name and a window.
+   *
+   * Derived from the same `reeksen` the calendar draws, so the sheet cannot tell a teacher a subthema
+   * runs on days the grid behind it leaves blank.
+   *
+   * *This comment sat above `hoekenPerSlot` from 2026-08-30 until 2026-08-31, describing the wrong
+   * declaration. Recorded rather than silently moved, because it is the second stray comment in this
+   * file and both times the code below it read plausibly enough to keep it there.*
+   */
   const looptSubthema = useMemo(
     () => reeksen.map((reeks) => ({ naam: reeks.subthemaNaam, van: reeks.van, tot: reeks.tot })),
     [reeksen],
@@ -327,15 +337,21 @@ export function Agendascherm() {
       : zichtbareDagen;
   const heelBereikBuiten = eenheidsdagen.length > 0 && eenheidsdagen.every((dag) => dag.buitenSchooljaar);
 
-  // Every activiteit on screen, by plaatsingId, so a drag announcement can name the thing it moved
-  // after the grid has already re-rendered without it.
+  // Every DRAGGABLE thing on screen, by the id dnd-kit will hand back, so a drag announcement and the
+  // overlay can name the thing being carried after the grid has re-rendered without it.
+  //
+  // The hoekenfiches are in here under their prefixed id (owner, 2026-08-31). Without them a fiche
+  // drag carried nothing visible and the announcer said "op woensdag 14 oktober gezet" with an empty
+  // name, which is the one gesture in this agenda where a teacher most needs to see what she has hold
+  // of: the panel is chrome and the fiche leaves it.
   const opNaam = useMemo(() => {
     const kaart = new Map<string, string>();
     for (const dag of planning?.dagen ?? []) {
       for (const activiteit of dag.activiteiten) kaart.set(activiteit.plaatsingId, activiteit.activiteitNaam);
     }
+    for (const hoek of hoeken ?? []) kaart.set(`${FICHE_VOORVOEGSEL}${hoek.id}`, hoek.naam);
     return kaart;
-  }, [planning]);
+  }, [planning, hoeken]);
 
   function schuif(richting: -1 | 1) {
     if (weergave === "maand") ga({ datum: verschuifMaanden(anker, richting) });
@@ -356,9 +372,13 @@ export function Agendascherm() {
     // and at which lesuur are three questions a drop cannot answer.
     const hoekId = leesFicheId(String(active.id));
     if (hoekId !== null) {
-      const doelDag = leesSlotId(String(over.id))?.datum ?? String(over.id);
+      // THE LESUUR IS KEPT WHEN THE DROP LANDED ON ONE. It was thrown away here: the day view drops
+      // onto a slot, and taking only `.datum` off it meant a fiche dropped on the third lesuur opened
+      // a sheet reading "Niet in het uurrooster". The month and week views drop onto a bare day and
+      // say nothing about an hour, so they still get null, which is the honest answer there.
+      const doel = leesSlotId(String(over.id));
       plaatsHoek.reset();
-      setGevallenFiche({ hoekId, datum: doelDag });
+      setGevallenFiche({ hoekId, datum: doel?.datum ?? String(over.id), slot: doel?.slot ?? null });
       return;
     }
 
@@ -591,7 +611,7 @@ export function Agendascherm() {
               // look at while choosing the days.
               plaatsHoek.reset();
               zetHoekenpaneel(false);
-              setGevallenFiche({ hoekId, datum: anker });
+              setGevallenFiche({ hoekId, datum: anker, slot: null });
             }}
           />
 
@@ -628,6 +648,7 @@ export function Agendascherm() {
                 hoekenPerSlot={hoekenPerSlot}
                 onVoegToe={(datum, slot) => setKiezer({ datum, slot })}
                 onOpen={(activiteit) => setGeopend({ activiteit, datum: anker })}
+                onOpenHoek={setGeopendeHoek}
               />
             ) : (
               /* Week only now: the day view is the lesurenraster above. The conditionals that used to
@@ -716,10 +737,11 @@ export function Agendascherm() {
       {gevallenFiche && rooster ? (
         <Hoekplaatsingblad
           open
-          key={`${gevallenFiche.hoekId}-${gevallenFiche.datum}`}
+          key={`${gevallenFiche.hoekId}-${gevallenFiche.datum}-${gevallenFiche.slot ?? "geen"}`}
           hoekId={gevallenFiche.hoekId}
           hoekNaam={(hoeken ?? []).find((h) => h.id === gevallenFiche.hoekId)?.naam ?? ""}
           startdag={gevallenFiche.datum}
+          startSlot={gevallenFiche.slot}
           loopt={looptSubthema}
           schooljaarVan={rooster.start}
           schooljaarTot={rooster.eind}

@@ -529,7 +529,9 @@
     "duurt": "{aantal} lesuren",
     "nogEenOp": "Nog een activiteit in lesuur {nummer}",
     "pastNietEen": "1 lesuur valt na het laatste lesuur",
-    "pastNietMeer": "{aantal} lesuren vallen na het laatste lesuur"
+    "pastNietMeer": "{aantal} lesuren vallen na het laatste lesuur",
+    "hoekenwerk": "hoekenwerk",
+    "hoekenwerkOp": "hoekenwerk in lesuur {nummer}"
   },
   "hoeken": {
     "toevoegen": "Hoek toevoegen",
@@ -567,7 +569,8 @@
     "sluiten": "Hoekenfiches sluiten",
     "geenKlas": "Kies eerst een klas.",
     "geenHoeken": "Deze klas heeft nog geen hoeken.",
-    "naarInstellingen": "Hoeken instellen"
+    "naarInstellingen": "Hoeken instellen",
+    "ingepland": "Ingepland {periode}"
   },
   "periodekiezer": {
     "vorigeMaand": "Vorige maand",

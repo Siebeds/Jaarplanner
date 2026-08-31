@@ -2,7 +2,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { Link } from "react-router-dom";
 import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
-import { IcoonHoek, IcoonKruis } from "../../components/Iconen";
+import { IcoonChevron, IcoonHoek, IcoonKruis } from "../../components/Iconen";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { cn } from "../../lib/cn";
@@ -169,7 +169,13 @@ function Fichelijst({
           <Fiche hoek={hoek} onKies={onKies} />
 
           {/* The runs of THIS corner that the agenda is currently showing. Each one opens, which is
-              the only reliable route to reading a verrijking back or undoing a misplaced drop. */}
+              the only reliable route to reading a verrijking back or undoing a misplaced drop.
+
+              THE ROW SAYS WHAT THE DATES ARE. It used to be a hairline and a bare range, and the
+              owner read it as a stray date rather than as "this corner is in the agenda then"
+              (2026-08-31): under a fiche whose card carries a name and a description, two dates with
+              no verb are the only thing on the panel that does not say what it is. The chevron is the
+              other half of the answer, because the row also opens something. */}
           {plaatsingen
             .filter((p) => p.hoekId === hoek.id)
             .map((plaatsing) => (
@@ -177,10 +183,12 @@ function Fichelijst({
                 key={plaatsing.id}
                 type="button"
                 onClick={() => onOpenPlaatsing(plaatsing.id)}
-                className="ml-3 flex items-center gap-1.5 rounded-veld px-2 py-1 text-left text-micro text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
+                className="ml-3 flex items-center gap-1 rounded-veld px-2 py-1 text-left text-micro text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
               >
-                <span aria-hidden="true" className="h-2.5 w-0.5 shrink-0 rounded-full bg-inkt-zwak" />
-                <span className="truncate">{periodeTekst(plaatsing.van, plaatsing.tot)}</span>
+                <span className="truncate">
+                  {t("hoekenpaneel.ingepland", { periode: periodeTekst(plaatsing.van, plaatsing.tot) })}
+                </span>
+                <IcoonChevron aria-hidden="true" className="h-3.5 w-3.5 shrink-0 -rotate-90" />
               </button>
             ))}
         </li>
@@ -225,6 +233,12 @@ function Fiche({ hoek, onKies }: { hoek: HoekWeergave; onKies?: (hoekId: string)
       className={cn(
         "w-full rounded-veld border border-lijn bg-vlak px-3 py-2.5 text-left",
         "transition-colors duration-150 hover:border-accent",
+        // THE CURSOR IS THE ONLY THING THAT SAYS THIS CAN BE PICKED UP (owner, 2026-08-31). A card
+        // that answers a press with a pointing finger reads as a link to somewhere, and the fiche
+        // goes nowhere: it gets carried onto a day. `touch-none` belongs with it, because without it
+        // a touch drag scrolls the panel instead of lifting the fiche. Only on the drag path: where
+        // the fiche is tapped, a grabbing hand would promise a gesture the phone does not have.
+        tikt ? null : "cursor-grab touch-none active:cursor-grabbing",
         isDragging && "opacity-40",
       )}
     >

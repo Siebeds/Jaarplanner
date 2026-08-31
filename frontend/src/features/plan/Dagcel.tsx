@@ -204,7 +204,7 @@ export function Sleepbare({
       {...listeners}
       {...attributes}
       className={cn(
-        "pointer-events-auto w-full cursor-grab touch-none rounded-veld border-l-2 bg-vlak px-2.5 py-2 text-left transition-colors duration-150 hover:bg-vlak-diep",
+        "pointer-events-auto w-full cursor-grab touch-none rounded-veld border-l-2 bg-vlak px-2.5 py-2 text-left transition-colors duration-150 hover:bg-vlak-diep active:cursor-grabbing",
         kleur && KLEURVLAK[kleur],
         activiteit.valtBuitenThemaperiode ? "border-attentie" : "border-accent",
         isDragging && "opacity-40",

@@ -326,7 +326,7 @@ function Maandchip({
       {...listeners}
       {...attributes}
       className={cn(
-        "pointer-events-auto block w-full cursor-grab touch-none truncate rounded border-l-2 bg-vlak px-1 py-0.5 text-left text-[0.625rem] text-inkt",
+        "pointer-events-auto block w-full cursor-grab touch-none truncate rounded border-l-2 bg-vlak px-1 py-0.5 text-left text-[0.625rem] text-inkt active:cursor-grabbing",
         // The wash takes the FILL. The left border is already spoken for: attentie there means the
         // activiteit falls outside its own themaperiode, and a teacher-chosen hue on the same edge
         // would overwrite that. Listed before the border classes so tailwind-merge keeps the border.
