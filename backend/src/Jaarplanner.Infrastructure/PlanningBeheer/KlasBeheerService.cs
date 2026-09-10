@@ -204,25 +204,30 @@ public sealed class KlasBeheerService : IKlasBeheerService
         // different screen and a different endpoint: a teacher told "3 plaatsingen" who then finds two of them in
         // the year view and none of the third has been sent looking for something the sentence never described.
         //
-        // **⚠ A BACKSTOP, NOT THE GUARD A TEACHER WILL MEET — established by a failing test, not by reading.** The
-        // subthema guard above fires FIRST in every ordinary case, and it always will: an activiteitplaatsing requires
-        // an activiteit, which requires a subthema, whose KlasId must equal this plan's klas (the invariant
-        // `Jaarplan.PlaatsActiviteit` enforces). So a class with a scheduled activiteit necessarily has a subthema, and
-        // the count below is unreachable by that route. The integration test that expected this message got the
-        // subthema one instead, which is how this was found.
+        // **THIS IS NOW THE GUARD A TEACHER MEETS, and it used to be a backstop.** Until 2026-08-30 a subthema
+        // guard stood above it and fired first in every ordinary case, because an activiteitplaatsing needs an
+        // activiteit, which needs a subthema, which named this very klas. That guard went with the class scope
+        // (Art. IX.2), so the ordinary route now arrives here: a klas whose only work is a day planning is refused
+        // by this sentence and by no other. The comment that called it unreachable was true for eleven days and is
+        // corrected rather than deleted, because "unreachable" is exactly the claim that invites a simplification.
         //
-        // It is kept rather than deleted because there IS one route that reaches it: **E1-19**, the open hole where
-        // `Subthema.WijzigScope` re-scopes a subthema (and every activiteit in it) to another klas, leaving this plan
-        // holding a placement whose activiteit now belongs elsewhere. That route also breaks the class-boundary
-        // invariant, so closing E1-19 is what makes this dead rather than merely unreachable — and until then, a
-        // silent cascade here would destroy scheduling work. Do not "simplify" this away without closing E1-19 first.
-        // **The remediation this sentence names is load-bearing and only conditionally true.** In the E1-19 state where
-        // this guard actually fires, the activiteit's subthema belongs to another klas — and the week view still shows
-        // the placement only because `WeekplanningService.ProjecteerAsync` applies **no klas filter** and `Bevraag`
-        // resolves the activiteit by id whatever its subthema now says. Adding a klas filter to the week view (an
-        // obvious hardening) would turn this message into the trap `ActiviteitplaatsingConfiguration` records shipping
-        // once already: a Restrict whose remediation does not exist. Pinned end to end by the Postgres test named above,
-        // which deletes the orphaned placement over the API and then completes the klas delete.
+        // **E1-19 is HALF dissolved by the same amendment, and the half that is left is what keeps this guard
+        // load-bearing. The story is still `[ ]`.** It existed because `Subthema.WijzigScope` could re-scope a
+        // subthema to another klas and leave this plan holding a placement whose activiteit belonged elsewhere.
+        // There is no class to re-scope to any more, so that clause is unfalsifiable rather than fixed: nothing
+        // was built, a field was deleted somewhere else. What re-scoping still does is change the AGE, and a plan
+        // may then hold a placement for an activiteit its klas no longer teaches — the same orphan wearing
+        // different clothes, refused here in the same way and remediated by the same endpoint. An earlier version
+        // of this comment said "E1-19 is closed", which the backlog entry written the same hour contradicts in
+        // capitals; the word is corrected rather than deleted, because "closed" sitting above a guard is an
+        // invitation to remove it.
+        //
+        // The remediation is real: DELETE /api/klassen/{klasId}/jaarplan/weekplanning/{id} removes the placement,
+        // and `WeekplanningService.ProjecteerAsync` applies no klas filter, so the teacher can still see the thing
+        // she is told to remove. Adding one (an obvious hardening) would turn this message into the trap
+        // `ActiviteitplaatsingConfiguration` records shipping once already: a Restrict whose remediation does not
+        // exist. Pinned end to end by the Postgres test named above, which deletes the placement over the API and
+        // then completes the klas delete.
         var beslotenDagen = jaarplan?.MenselijkBeslotenActiviteitplaatsingen.Count ?? 0;
         if (beslotenDagen > 0)
         {

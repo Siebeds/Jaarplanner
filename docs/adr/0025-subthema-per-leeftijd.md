@@ -82,13 +82,60 @@ choosing whose activiteiten, subdoelen and goal links survive, which is a teache
 content and not a migration's. They appear as two rows with the same name: visible and fixable, where a silent
 merge would be neither.
 
-**The bad consequence, stated because it is still open.** Eleven integration tests still encode the abolished
+~~**The bad consequence, stated because it is still open.** Eleven integration tests still encode the abolished
 concept *"a subthema of another klas"*, and behind three of them sit **live guards and endpoints that were not
 updated with the model**: an activiteit-verhuizing still refused with *"Een activiteit kan alleen verhuizen naar
 een subthema van dezelfde klas."* (a sentence that no longer describes anything, and a guard that no longer
 fires), and `/api/subthemas/voor-klas/{id}` answers an unknown klas with a bare 404 where it used to answer a
 deliberate Dutch 400. What each should now assert is a decision about intended behaviour, so they are named in
-commit `ba4a68a` and escalated rather than adjusted in passing.
+commit `ba4a68a` and escalated rather than adjusted in passing.~~
+
+**Closed on 2026-08-30 by the amendment below.** The paragraph above is struck rather than rewritten, because a
+consequence recorded as open and then silently edited leaves no trace that anyone answered it. Every sentence in
+it was true when written and none of them is true now: the eleven tests were rewritten, the refusal was replaced
+by a leeftijd guard, and the endpoint answers the Dutch 400. *It stood for a day after being answered, and it
+was found by the antagonist pass on the change that answered it, not by the change itself: an ADR paragraph that
+describes a defect goes on describing it long after the defect is gone, and this is the second time in two days
+that a stale record here misled a reader (see the deciders note above).*
+
+## Amendment — 2026-08-30: the move rule this decision left unwritten
+
+- **Status:** Accepted. **Decider:** project owner, ruling of 2026-08-30, given in session in reply to a direct
+  question with three options and their costs stated. **Directie's confirmation is outstanding:** question 11 in
+  [`besluiten-gevraagd.md`](../besluiten-gevraagd.md).
+
+**An activiteit may be moved to another `Thema`, and only to a subthema at the same `leeftijd`.**
+
+**Why this needed a decision and not a repair.** The verb `Subthema.VerplaatsActiviteitNaar` (E4-08, FR-7.2)
+carried a guard that compared two `KlasId`s. This ADR removed the field it compared, so for part of 2026-08-30
+the verb had **no scope check at all**: any caller could post any `subthemaId` and the move succeeded with 200.
+Nothing in the model could be consulted to decide what should replace it, because the question is pedagogical:
+content is school-wide now, so an age is the only thing left that says who a subthema is for.
+
+**It supersedes the owner ruling of 2026-08-05**, which permitted a move across leeftijd. That ruling was made
+while a subthema named a klas as well, so "another leeftijd" then meant "the same class, its other half" (the
+graadklas differentiation the model existed for). Once the klas left the entity it started meaning "a class that
+is not this one", which is the boundary the older guard protected under a different name. **The cost is on the
+record:** a graadklas can no longer shift an activiteit between its own two ages without retyping it, and the
+owner accepted that with the cost stated.
+
+**Scope of the invariant, stated narrowly on purpose.** It binds **the verb**. `Subthema.WijzigScope`
+(`PUT /api/subthemas/{subthemaId}`) re-points a subthema's own leeftijd, its activiteiten inherit that scope, and
+it is **not guarded** — so the outcome the verb refuses one activiteit at a time is reachable wholesale, from a
+real screen (`Subthemaformulier` serves create and edit from one form). Whether that is a mistake to refuse or a
+correction to disclose is **E1-19**, still open; the 2026-08-19 ruling on it answered the question about a klas
+boundary that no longer exists. *An earlier draft of the constitution amendment claimed the invariant held for
+the system; corrected on its antagonist's MAJOR the same day.*
+
+**What it governs today is unreachable, and that is worth knowing before relying on it.** Nothing in
+`frontend/src` calls the move or the destination list, and the copy line the 2026-08-05 ruling wrote
+(`themabeheer.activiteitVerplaatsLeeftijd`) is no longer in `nl.json`. The rule is enforced in the domain and
+covered by tests against real PostgreSQL; it has never been exercised by a teacher.
+
+**Compliance trace:** Art. IX.2 (`Activiteit`, and the ratification-log rows of 2026-08-30), Art. IV.2 (the
+`DoelKoppeling` statuses survive a move and a refused move changes nothing), Art. II.3 (the refusal is a Dutch
+sentence composed server-side and rendered verbatim), Art. XIV (it fixes one half of the open graadklas
+question). Backlog: E4-08 owns the verb, E1-19 owns the route beside it.
 
 ## Alternatives considered
 

@@ -270,24 +270,42 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Art. IX.2's class boundary over HTTP. Reachable only by a hand-built request — every screen offers a teacher the
-    /// activiteiten of the class whose plan they are editing — but it is refused rather than trusted, which is the
-    /// lesson E1-19 records about a boundary left open by a second route.
+    /// <b>A klas may only schedule an activiteit at an age it teaches</b>, and the refusal names the age.
+    /// <para>
+    /// This test said "van een andere klas" until 2026-08-30 and arranged one by handing the helper another
+    /// <c>klasId</c>. The guard it exercises was rewritten with the model on that day and compares
+    /// <c>Subthema.Leeftijd</c> against the class's jaar/fase (Art. IX.2); the klasId was being posted into a
+    /// field the API no longer reads, so the "foreign" activiteit was arriving at this class's own age and the
+    /// guard correctly did not fire. The state under test is unchanged: content this class cannot reach.
+    /// </para>
+    /// <para>
+    /// <b>This is the ONLY place the scope is checked on this path</b> — <c>Jaarplan.PlaatsActiviteit</c> lost
+    /// its own copy with the KlasId it compared — so a green here is the whole guarantee.
+    /// </para>
     /// </summary>
     [PostgresFact]
-    public async Task Een_activiteit_van_een_andere_klas_wordt_geweigerd_met_400()
+    public async Task Een_activiteit_van_een_andere_leeftijd_wordt_geweigerd_met_400()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
-        var vreemde = await MaakActiviteitAsync(client, opzet, "Windvaan", opzet.AndereKlasId, "Lucht", "De wind");
+        var vreemde = await MaakActiviteitAsync(client, opzet, "Windvaan", AndereLeeftijd, "Lucht", "De wind");
 
         var resp = await client.PostAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning",
             new { activiteitId = vreemde, datum = opzet.EersteLesdag, volgorde = 0 });
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+
+        // Dutch, and it names the age rather than only refusing: a teacher looking at a list of her own
+        // activiteiten needs to be told which property put this one out of reach (Art. II.3).
         var probleem = await resp.Content.ReadFromJsonAsync<ProbleemDto>();
-        Assert.Contains("andere klas", probleem!.Detail, StringComparison.Ordinal);
+        Assert.Contains("leeftijd", probleem!.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(AndereLeeftijd, probleem.Detail, StringComparison.Ordinal);
+
+        // And nothing landed on the day.
+        var week = await client.GetFromJsonAsync<WeekDto>(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning?van={opzet.EersteLesdag:yyyy-MM-dd}&tot={opzet.EersteLesdag:yyyy-MM-dd}");
+        Assert.Empty(Assert.Single(week!.Dagen, d => d.Datum == opzet.EersteLesdag).Activiteiten);
     }
 
     /// <summary>
@@ -344,15 +362,22 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A class holding scheduled activiteiten is not deletable — and this test records <b>which</b> guard refuses it,
-    /// because that turned out not to be the one this story added.
+    /// A class holding scheduled activiteiten is not deletable, and this test records <b>which</b> guard refuses it.
+    /// Since 2026-08-30 that is the day-level guard in <c>KlasBeheerService</c>, and a teacher meets it.
     /// <para>
-    /// <b>The subthema guard fires first, and it always will.</b> An activiteitplaatsing requires an activiteit, which
-    /// requires a subthema scoped to this same klas, so a class with a scheduled activiteit necessarily has a subthema.
-    /// The new day-level guard in <c>KlasBeheerService</c> is therefore a backstop for the <b>E1-19</b> re-scoping hole
-    /// rather than a message a teacher will meet. An earlier version of this test asserted the new message and failed,
-    /// which is how that was established — asserting the message it actually produces is the point, since a test that
-    /// names a guard it never exercises is worse than no test (the E5-05 lesson of 2026-08-19).
+    /// <b>It used to be the subthema guard, and this summary said so in three sentences that are now false.</b> They
+    /// read: "the subthema guard fires first, and it always will", because an activiteitplaatsing needs an activiteit,
+    /// which needs "a subthema scoped to this same klas" — so the day-level guard was "a backstop for the E1-19
+    /// re-scoping hole rather than a message a teacher will meet". A subthema is scoped by leeftijd and belongs to no
+    /// klas since Art. IX.2 was amended, so deleting a class takes nothing from it and the subthema guard is gone.
+    /// The backstop became the guard.
+    /// </para>
+    /// <para>
+    /// <b>Corrected rather than rewritten, because the correction is the lesson.</b> An earlier version of this test
+    /// asserted the message the story had just added, failed, and was changed to assert the one it actually got: a
+    /// test that names a guard it never exercises is worse than no test (the E5-05 lesson of 2026-08-19). That
+    /// reasoning still holds; only the answer to "which guard" moved. This summary went on telling the old answer for
+    /// a day after the body below it had been corrected, which is the same defect one level up.
     /// </para>
     /// </summary>
     [PostgresFact]
@@ -368,8 +393,16 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         var probleem = await resp.Content.ReadFromJsonAsync<ProbleemDto>();
 
-        // The subthema guard, reported honestly rather than the one this story wrote.
-        Assert.Contains("subthema", probleem!.Detail, StringComparison.Ordinal);
+        // **The day-level guard, and now it is the one a teacher actually meets.** This assertion read
+        // `Contains("subthema")` with a comment calling that "reported honestly rather than the one this story
+        // wrote": a subthema guard stood in front of this one and always answered first, because an
+        // activiteitplaatsing needed an activiteit, which needed a subthema, which named this very klas. That
+        // guard went with the class scope on 2026-08-30 (Art. IX.2) — a subthema is nobody's now, so deleting a
+        // class takes nothing from it — and this refusal became the reachable one.
+        Assert.Contains("ingeplande activiteit", probleem!.Detail, StringComparison.Ordinal);
+
+        // The remediation it names has to be the one that works, which is the week view and not the year view.
+        Assert.Contains("weekplanning", probleem.Detail, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -393,16 +426,20 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     /// integration test can catch this" is how the next missing navigation ships.</i>
     /// </para>
     /// <para>
-    /// <b>This test still earns its place, for the two things the cheap one cannot reach:</b> the E1-19 re-scoping route,
-    /// which is the only route that reaches this guard in production, and the real database <c>ON DELETE</c> cascade
-    /// that the in-memory provider does not enforce.
+    /// <b>This test still earns its place, for the two things the cheap one cannot reach:</b> the E1-19 re-scoping
+    /// route, and the real database <c>ON DELETE</c> cascade that the in-memory provider does not enforce.
     /// </para>
     /// <para>
-    /// <b>Reached over the E1-19 hole, because nothing else reaches it.</b> The subthema guard fires first in every
-    /// ordinary case (see the test above): an activiteitplaatsing needs an activiteit, which needs a subthema of this
-    /// same klas. <c>Subthema.WijzigScope</c> moves that subthema — and every activiteit in it — to another klas,
-    /// leaving this plan holding a placement whose activiteit now belongs elsewhere and this klas holding no subthema
-    /// at all. That is exactly the state the guard exists for, and it is why the guard is kept rather than deleted.
+    /// <b>What this arranges, in the terms that hold since 2026-08-30.</b> <c>Subthema.WijzigScope</c> re-points a
+    /// subthema at another <b>leeftijd</b>, and its activiteiten inherit that scope, so this plan is left holding a
+    /// placement for an activiteit its klas no longer teaches. That is exactly the state the guard exists for.
+    /// </para>
+    /// <para>
+    /// <b>Two claims that stood here are struck rather than edited away.</b> The route was described as moving the
+    /// subthema "to another <i>klas</i>", which no request can do any more; and it was called "the only route that
+    /// reaches this guard in production", which was true only while a subthema guard stood in front. That guard went
+    /// with the class scope, so the ordinary route reaches the same refusal now (see the test above) and this one is
+    /// no longer the sole path but the sharper one, because it also leaves the klas holding no subthema at all.
     /// </para>
     /// </summary>
     [PostgresFact]
@@ -413,12 +450,18 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
         var inhoud = await MaakActiviteitMetIdsAsync(client, opzet, "Bladeren zoeken");
         await PlanAsync(client, opzet.KlasId, inhoud.ActiviteitId, opzet.EersteLesdag);
 
-        // The E1-19 route, applied directly because no screen offers it: the subthema (and its activiteit) move to
-        // ANOTHER LEEFTIJD, so this klas keeps the day placement and loses the subthema that shielded it.
+        // The E1-19 route: the subthema (and its activiteit) move to ANOTHER LEEFTIJD, so this klas keeps the day
+        // placement and loses the subthema that shielded it.
         //
         // It moved to another KLAS until 2026-08-30. Since a subthema is scoped by leeftijd alone (Art. IX.2), the
         // way to take it away from this K3 class is to give it the age the other class teaches. The state under
         // test is identical: a plan holding a placement whose activiteit its class no longer reaches.
+        //
+        // **Applied through the context, but NOT because "no screen offers it" — that clause was struck on
+        // 2026-08-31, on the antagonist's MAJOR.** `Subthemaformulier` serves create and edit from one form and
+        // renders the leeftijd select with the stored value, so a teacher can reach this state in two clicks. It is
+        // arranged here rather than over the API only because the API route is `PUT /api/subthemas/{id}`, whose own
+        // payload validation is not what this test is about.
         await using (var context = _db.MaakContext())
         {
             var subthema = await context.Subthemas.FirstAsync(s => s.Id == inhoud.SubthemaId);
@@ -426,7 +469,10 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
             await context.SaveChangesAsync();
         }
 
-        // Precondition, asserted rather than assumed: the subthema guard can no longer be the one that answers.
+        // Precondition, asserted rather than assumed, and it is what makes the test's own name true: this klas now
+        // reaches NO subthema at all. The reason given here used to be "so the subthema guard can no longer be the
+        // one that answers"; that guard no longer exists (Art. IX.2, 2026-08-30), so the assertion is kept for what
+        // it still proves rather than for the guard it used to rule out.
         await using (var context = _db.MaakContext())
         {
             Assert.Equal(0, await context.Subthemas.CountAsync(s => s.Leeftijd == "K3"));
@@ -636,6 +682,11 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
         return week!.Dagen.SelectMany(d => d.Activiteiten).Single(a => a.ActiviteitId == activiteitId).PlaatsingId;
     }
 
+    /// <summary>The age the klas in <see cref="ZetOpAsync"/> teaches, and one it does not.</summary>
+    private const string Leeftijd = "K3";
+
+    private const string AndereLeeftijd = "L1";
+
     private async Task<Opzet> ZetOpAsync()
     {
         await using var context = _db.MaakContext();
@@ -662,8 +713,8 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
         schooljaar.VoegSluitingToe(
             new Schoolsluiting("Herfstvakantie", new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8)));
 
-        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", "K3");
-        var andere = schooljaar.VoegKlasToe($"L1-{Guid.NewGuid():N}", "L1");
+        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", Leeftijd);
+        var andere = schooljaar.VoegKlasToe($"L1-{Guid.NewGuid():N}", AndereLeeftijd);
         context.Schooljaren.Add(schooljaar);
 
         await context.SaveChangesAsync();
@@ -679,16 +730,26 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
         HttpClient client,
         Opzet opzet,
         string naam,
-        Guid? klasId = null,
+        string leeftijd = Leeftijd,
         string themaNaam = "Water",
         string subthemaNaam = "De plas") =>
-        (await MaakActiviteitMetIdsAsync(client, opzet, naam, klasId, themaNaam, subthemaNaam)).ActiviteitId;
+        (await MaakActiviteitMetIdsAsync(client, opzet, naam, leeftijd, themaNaam, subthemaNaam)).ActiviteitId;
 
+    /// <summary>
+    /// Creates thema + subthema + activiteit + one goal link over the API, at <paramref name="leeftijd"/>.
+    /// <para>
+    /// <b>The parameter used to be a <c>klasId</c> that the API stopped reading on 2026-08-30</b> (Art. IX.2).
+    /// It was still being posted, and it still made the one test that used it read as though it were creating
+    /// another class's activiteit — while the row it produced was at this class's own age, so the guard under
+    /// test could not fire and the test failed. The age is what the guard compares, so the age is what a caller
+    /// gets to choose.
+    /// </para>
+    /// </summary>
     private static async Task<Inhoud> MaakActiviteitMetIdsAsync(
         HttpClient client,
         Opzet opzet,
         string naam,
-        Guid? klasId = null,
+        string leeftijd = Leeftijd,
         string themaNaam = "Water",
         string subthemaNaam = "De plas")
     {
@@ -700,8 +761,7 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
         {
             naam = subthemaNaam,
             duurWeken = 2,
-            klasId = klasId ?? opzet.KlasId,
-            leeftijd = "K3",
+            leeftijd,
         });
         Assert.Equal(HttpStatusCode.Created, subResp.StatusCode);
         var subthema = await subResp.Content.ReadFromJsonAsync<IdDto>();

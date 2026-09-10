@@ -293,7 +293,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    // --- Subthema (class/age-scoped). ---
+    // --- Subthema (age-scoped). ---
 
     public async Task<SubthemaWeergave> MaakSubthemaAsync(Guid themaId, SubthemaCreatie creatie, CancellationToken cancellationToken = default)
     {
@@ -447,7 +447,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    // --- Activiteit (class/age-scoped). ---
+    // --- Activiteit (age-scoped, through its subthema). ---
 
     public async Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default)
     {
@@ -622,8 +622,10 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
         try
         {
-            // The klas boundary and the two no-op refusals live in the domain (Art. IX.2), so every caller
-            // meets them, and their Dutch sentences travel out as a 400 the form renders.
+            // The leeftijd boundary (owner ruling, 2026-08-30) and the no-op refusal live in the domain
+            // (Art. IX.2), so every caller meets them, and their Dutch sentences travel out as a 400 the form
+            // renders. Nothing is checked here that the aggregate already checks: a second copy of the rule in
+            // this method is a second place for it to drift.
             bron.VerplaatsActiviteitNaar(activiteit, doel);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
@@ -641,10 +643,19 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         // unknown or deleted klas answers an empty list, and the picker reads an empty list as "this klas has
         // nowhere to move to" and hides the control. That renders an infrastructure state as a statement about
         // the school's content. A refusal makes the screen say it could not load the destinations instead.
+        //
+        // A 400 and not a 404, for the reason HaalThemaVoorKlasAsync states one screen over and which holds just
+        // as hard here: the resource this endpoint ADDRESSES is the collection of subthema's, and it exists. The
+        // klas is a *referenced* resource, so a missing one is a bad request. A 404 would tell the client that
+        // the thing it asked for is gone, and the picker would close on a route that is perfectly alive.
+        //
+        // The sentence is the same one that neighbour uses, deliberately: a teacher meeting this in two places on
+        // one screen must not be told two different things about one fact (Art. II.3, as ratified 2026-07-30 — a
+        // message a teacher can act on is Dutch and may be composed server-side).
         var leeftijden = await Klasleeftijden.VoorKlasAsync(_context, klasId, cancellationToken);
         if (!leeftijden.Bestaat)
         {
-            throw new SchoolcontentNietGevondenFout("Deze klas bestaat niet.");
+            throw new SchoolcontentValidatieFout("Die klas bestaat niet meer. Kies een klas uit de lijst.");
         }
 
         var codes = leeftijden.Waarden;

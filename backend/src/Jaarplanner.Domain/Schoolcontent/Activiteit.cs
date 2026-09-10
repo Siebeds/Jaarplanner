@@ -1,7 +1,7 @@
 namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
-/// An activiteit (Art. IX.2) — <b>class/age-scoped</b> (it inherits the class/age scope from its
+/// An activiteit (Art. IX.2) — <b>age-scoped</b> (it inherits the leeftijd from its
 /// owning <see cref="Subthema"/>). It has an <see cref="ActiviteitType"/>, an optional
 /// <see cref="Hoek"/> (learning corner) and optional <see cref="VerwachteUitkomsten"/>, and can
 /// link to one or more leerdoelen through its <see cref="Doelkoppelingen"/> (each carrying status
@@ -34,7 +34,7 @@ public sealed class Activiteit
     /// <summary>Surrogate identity.</summary>
     public Guid Id { get; private set; } = Guid.NewGuid();
 
-    /// <summary>The owning (class/age-scoped) subthema.</summary>
+    /// <summary>The owning (age-scoped) subthema.</summary>
     public Guid SubthemaId { get; private set; }
 
     /// <summary>The activiteit name.</summary>
@@ -144,10 +144,11 @@ public sealed class Activiteit
     /// <summary>
     /// Re-parents this activiteit to another subthema (E4-08, FR-7.2).
     /// <para>
-    /// <b>Internal on purpose.</b> An activiteit has no class scope of its own, so it cannot check the one rule
-    /// a move has to obey (Art. IX.2: the class scope comes from the subthema). <see cref="Subthema"/> is the
-    /// only type that knows both scopes, so the guard lives there and this setter is reachable only through
-    /// <c>Subthema.VerplaatsActiviteitNaar</c>. Nothing outside the domain can move an activiteit past it.
+    /// <b>Internal on purpose.</b> An activiteit has no scope of its own, so it cannot check the one rule a move
+    /// has to obey (Art. IX.2: the leeftijd comes from the subthema, and since the owner's ruling of 2026-08-30 a
+    /// move may not change it). <see cref="Subthema"/> is the only type that knows both ages, so the guard lives
+    /// there and this setter is reachable only through <c>Subthema.VerplaatsActiviteitNaar</c>. Nothing outside
+    /// the domain can move an activiteit past it.
     /// </para>
     /// <para>
     /// The <see cref="Doelkoppelingen"/> are deliberately untouched: they are owned by this activiteit, so a

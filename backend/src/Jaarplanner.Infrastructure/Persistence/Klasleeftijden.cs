@@ -22,9 +22,15 @@ public static class Klasleeftijden
     /// <b>The three answers are deliberately distinct and callers must not collapse them.</b> A list narrows;
     /// <c>null</c> means the class exists and its jaar/fase is underivable (the unresolved graadklas ordinal,
     /// Art. XIV) and the caller must WIDEN rather than narrow to nothing, exactly as <c>Jaarfasen</c> documents;
-    /// and a class that does not exist is a 404 the caller already raises, never an empty scope. Narrowing to an
-    /// empty set would report a class as having no content at all, which is the one direction these figures must
+    /// and a class that does not exist is a refusal the caller already raises, never an empty scope. Narrowing to
+    /// an empty set would report a class as having no content at all, which is the one direction these figures must
     /// never move by themselves.
+    /// <para>
+    /// <b>That refusal is a 400, not a 404, in both callers that consult it</b> (<c>HaalThemaVoorKlasAsync</c> and,
+    /// since 2026-08-30, <c>HaalSubthemaBestemmingenAsync</c>): the resource each endpoint ADDRESSES exists, and the
+    /// klas is a *referenced* one. These two lines said "404" until the second caller was corrected and this doc
+    /// became the last place asserting the old shape.
+    /// </para>
     /// </para>
     /// </summary>
     public static async Task<Klasleeftijd> VoorKlasAsync(
@@ -72,7 +78,7 @@ public readonly record struct Klasleeftijd
     /// <summary>The codes to narrow on, or <c>null</c> when the caller must not narrow at all.</summary>
     public IReadOnlyList<string>? Waarden { get; }
 
-    /// <summary>Whether the class exists. <c>false</c> is a 404, never an empty scope.</summary>
+    /// <summary>Whether the class exists. <c>false</c> is a Dutch 400, never an empty scope.</summary>
     public bool Bestaat { get; }
 
     /// <summary>Whether the caller may narrow. When false it must include everything and say that it did.</summary>

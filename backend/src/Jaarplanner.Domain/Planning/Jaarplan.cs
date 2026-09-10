@@ -145,12 +145,11 @@ public sealed class Jaarplan
     /// <summary>
     /// Places an activiteit on one day (E9-03, FR-7.2).
     /// <para>
-    /// <b>The class boundary is this method's invariant, and it is enforced here because this is the only place both
-    /// classes are known.</b> An <see cref="Activiteit"/> inherits its subthema's <c>KlasId</c> (Art. IX.2, where class
-    /// scoping is structural), and this plan has a <see cref="KlasId"/> of its own; nothing below this can compare
-    /// them. Without the check, one class's plan could schedule another class's content — the same boundary
-    /// <c>Subthema.VerplaatsActiviteitNaar</c> guards, and it is guarded here rather than assumed because <b>E1-19
-    /// exists precisely because that boundary was left open by a second route</b>.
+    /// <b>There is no class boundary left for this method to enforce, and the remarks below say where the check
+    /// went.</b> This paragraph used to describe one: an <see cref="Activiteit"/> inherited its subthema's
+    /// <c>KlasId</c> and this plan had a <see cref="KlasId"/> of its own, so the two were compared here. Since
+    /// 2026-08-30 a subthema names an age instead (Art. IX.2), and deciding whether this plan's klas teaches
+    /// that age needs the <c>Klas</c> row, which this aggregate may not reach for.
     /// </para>
     /// <para>
     /// <b>A day may hold several activiteiten</b> — that is the normal case, not an edge one — so only the exact

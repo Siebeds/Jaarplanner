@@ -60,13 +60,13 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Verhuizen_naar_een_ander_thema_van_dezelfde_klas_behoudt_hoek_uitkomsten_en_koppelingen()
+    public async Task Verhuizen_naar_een_ander_thema_van_dezelfde_leeftijd_behoudt_hoek_uitkomsten_en_koppelingen()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
 
-        var bron = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", opzet.KlasId, "K3");
-        var doel = await MaakThemaMetSubthemaAsync(client, "Lucht", "De wind", opzet.KlasId, "K3");
+        var bron = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", "K3");
+        var doel = await MaakThemaMetSubthemaAsync(client, "Lucht", "De wind", "K3");
         var activiteitId = await MaakActiviteitAsync(client, bron.SubthemaId, "Waterproef", "ontdektafel", "kind benoemt drijven en zinken");
         await KoppelAsync(client, activiteitId, "VER-01");
         await KoppelAsync(client, activiteitId, "VER-02");
@@ -101,20 +101,28 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         Assert.All(verhuisd.Doelkoppelingen, k => Assert.Equal("Manueel", k.Status));
     }
 
+    /// <summary>
+    /// <b>The boundary is the leeftijd (owner ruling, 2026-08-30), and this test used to say "klas".</b> It is
+    /// rewritten rather than deleted: the state it arranges is the same one it always arranged, which is content
+    /// a different class teaches, reached the only way that is still expressible. Under the amended Art. IX.2 a
+    /// class no longer owns a subthema, so what separates two classes is the age they teach, and dropping the
+    /// test would have left the move endpoint with no scope assertion at all for the eleven days it took anyone
+    /// to notice.
+    /// </summary>
     [PostgresFact]
-    public async Task Verhuizen_naar_een_subthema_van_een_andere_klas_wordt_geweigerd_en_verandert_niets()
+    public async Task Verhuizen_naar_een_subthema_van_een_andere_leeftijd_wordt_geweigerd_en_verandert_niets()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
 
-        var bron = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", opzet.KlasId, "K3");
-        var vanAndereKlas = await MaakThemaMetSubthemaAsync(client, "Lucht", "De wind", opzet.AndereKlasId, "K3");
+        var bron = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", "K3");
+        var vanAndereLeeftijd = await MaakThemaMetSubthemaAsync(client, "Lucht", "De wind", "L1");
         var activiteitId = await MaakActiviteitAsync(client, bron.SubthemaId, "Waterproef", "ontdektafel", null);
         await KoppelAsync(client, activiteitId, "VER-01");
 
         var verhuis = await client.PutAsJsonAsync(
             $"/api/activiteiten/{activiteitId}/subthema",
-            new { doelSubthemaId = vanAndereKlas.SubthemaId });
+            new { doelSubthemaId = vanAndereLeeftijd.SubthemaId });
 
         Assert.Equal(HttpStatusCode.BadRequest, verhuis.StatusCode);
 
@@ -123,16 +131,16 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         // 400 carrying an English developer diagnostic is the defect E1-14's round 4 found on this same screen.
         var probleem = await verhuis.Content.ReadFromJsonAsync<ProbleemDto>();
         Assert.NotNull(probleem);
-        Assert.Equal("Een activiteit kan alleen verhuizen naar een subthema van dezelfde klas.", probleem!.Detail);
+        Assert.Equal("Een activiteit kan alleen verhuizen naar een subthema van dezelfde leeftijd.", probleem!.Detail);
 
-        // Non-destructive: the activiteit is still where it was, with its link, and the other class received nothing.
+        // Non-destructive: the activiteit is still where it was, with its link, and the other age received nothing.
         var bronNa = await LeesVoorKlasAsync(client, bron.ThemaId, opzet.KlasId);
         var gebleven = Assert.Single(bronNa.Subthemas.Single().Activiteiten);
         Assert.Equal(activiteitId, gebleven.Id);
         Assert.Single(gebleven.Doelkoppelingen);
 
-        var andereKlasNa = await LeesVoorKlasAsync(client, vanAndereKlas.ThemaId, opzet.AndereKlasId);
-        Assert.Empty(andereKlasNa.Subthemas.Single().Activiteiten);
+        var andereLeeftijdNa = await LeesVoorKlasAsync(client, vanAndereLeeftijd.ThemaId, opzet.AndereKlasId);
+        Assert.Empty(andereLeeftijdNa.Subthemas.Single().Activiteiten);
     }
 
     [PostgresFact]
@@ -145,7 +153,7 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
 
-        var bron = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", opzet.KlasId, "K3");
+        var bron = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", "K3");
         var activiteitId = await MaakActiviteitAsync(client, bron.SubthemaId, "Waterproef", null, null);
 
         var weg = await client.PutAsJsonAsync(
@@ -163,37 +171,46 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, geenActiviteit.StatusCode);
     }
 
+    /// <summary>
+    /// <b>The list is scoped by age now, and that inverts two of its assertions.</b> It used to prove that a
+    /// subthema created "for another klas" stays out; since 2026-08-30 a subthema at an age this class teaches is
+    /// this class's too, whoever typed it (Art. IX.2), so that row belongs in the answer and its absence would be
+    /// the bug. What stays out is an age the class does not teach.
+    /// </summary>
     [PostgresFact]
-    public async Task De_bestemmingenlijst_geeft_alleen_de_subthemas_van_die_ene_klas()
+    public async Task De_bestemmingenlijst_geeft_de_subthemas_van_de_leeftijd_die_deze_klas_geeft()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
 
-        var water = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", opzet.KlasId, "K3");
-        var lucht = await MaakThemaMetSubthemaAsync(client, "Lucht", "De wind", opzet.KlasId, "L1");
-        var vanAndereKlas = await MaakThemaMetSubthemaAsync(client, "Vuur", "De vlam", opzet.AndereKlasId, "K3");
+        var water = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", "K3");
+        var vuur = await MaakThemaMetSubthemaAsync(client, "Vuur", "De vlam", "K3");
+        var lucht = await MaakThemaMetSubthemaAsync(client, "Lucht", "De wind", "L1");
 
         var lijst = await client.GetFromJsonAsync<List<BestemmingDto>>($"/api/subthemas/voor-klas/{opzet.KlasId}");
 
         Assert.NotNull(lijst);
 
-        // Both thema's of this klas are offered, so a move across thema's has somewhere to go (owner ruling
-        // 2026-08-05), and the other klas's subthema is absent: the scope is the answer, not a filter on it.
+        // Both K3 thema's are offered, so a move across thema's has somewhere to go (owner ruling 2026-08-05,
+        // the half of it that still stands), and the L1 subthema is absent: the scope is the answer, not a
+        // filter on it. Its absence is also what keeps the offer honest, because the move itself refuses a
+        // destination at another leeftijd (owner ruling 2026-08-30).
         var ids = lijst!.Select(b => b.Id).ToList();
         Assert.Equal(2, ids.Count);
         Assert.Contains(water.SubthemaId, ids);
-        Assert.Contains(lucht.SubthemaId, ids);
-        Assert.DoesNotContain(vanAndereKlas.SubthemaId, ids);
+        Assert.Contains(vuur.SubthemaId, ids);
+        Assert.DoesNotContain(lucht.SubthemaId, ids);
 
         // Each entry names its thema, which is the only thing that tells two same-named subthema's apart, and its
-        // leeftijd, because a move may cross that within one klas.
-        var wind = lijst.Single(b => b.Id == lucht.SubthemaId);
-        Assert.Equal("Lucht", wind.ThemaNaam);
-        Assert.Equal("De wind", wind.Naam);
-        Assert.Equal("L1", wind.Leeftijd);
+        // leeftijd, which a teacher needs in order to read the list as the scope it is.
+        var vlam = lijst.Single(b => b.Id == vuur.SubthemaId);
+        Assert.Equal("Vuur", vlam.ThemaNaam);
+        Assert.Equal("De vlam", vlam.Naam);
+        Assert.Equal("K3", vlam.Leeftijd);
 
-        // Ordered by thema, then subthema: "Lucht" before "Water" under the database collation.
-        Assert.Equal(["Lucht", "Water"], lijst.Select(b => b.ThemaNaam));
+        // Ordered by thema, then subthema: "Vuur" before "Water" under the database collation, which is the
+        // ordering the query asks the database for rather than the one .NET would produce for these two.
+        Assert.Equal(["Vuur", "Water"], lijst.Select(b => b.ThemaNaam));
     }
 
     [PostgresFact]
@@ -206,8 +223,8 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
 
-        var geplaatst = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", opzet.KlasId, "K3");
-        var nietGeplaatst = await MaakThemaMetSubthemaAsync(client, "Lucht", "De wind", opzet.KlasId, "K3");
+        var geplaatst = await MaakThemaMetSubthemaAsync(client, "Water", "De plas", "K3");
+        var nietGeplaatst = await MaakThemaMetSubthemaAsync(client, "Lucht", "De wind", "K3");
         var activiteitId = await MaakActiviteitAsync(client, geplaatst.SubthemaId, "Waterproef", null, null);
         await KoppelAsync(client, activiteitId, "VER-01");
 
@@ -236,6 +253,11 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         // An empty list and "this klas does not exist" are different facts, and the picker cannot tell them
         // apart: it reads an empty list as "there is nowhere to move to" and hides the control, which turns an
         // infrastructure state into a statement about the school's content (antagonist round 1).
+        //
+        // **A 400 and not a 404, and this test failed on that for eleven days.** The endpoint answered a bare 404
+        // while the sentence it should carry sat on the neighbouring method (HaalThemaVoorKlasAsync) with a
+        // comment explaining why 404 is the wrong code here: the resource this route ADDRESSES is the list of
+        // destinations, which exists; the klas is referenced. A 404 tells the picker its own route is gone.
         await ZetOpAsync();
         var client = _factory.CreateClient();
 
@@ -263,10 +285,10 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         var client = _factory.CreateClient();
 
         // Names chosen so that ordering by subthema naam alone would interleave them: A1, B1, A2, B2.
-        var een = await MaakThemaMetSubthemaAsync(client, "Water", "Aa", opzet.KlasId, "K3");
-        var twee = await MaakThemaMetSubthemaAsync(client, "Water", "Bb", opzet.KlasId, "K3");
-        await VoegSubthemaToeAsync(client, een.ThemaId, "Cc", opzet.KlasId, "K3");
-        await VoegSubthemaToeAsync(client, twee.ThemaId, "Dd", opzet.KlasId, "K3");
+        var een = await MaakThemaMetSubthemaAsync(client, "Water", "Aa", "K3");
+        var twee = await MaakThemaMetSubthemaAsync(client, "Water", "Bb", "K3");
+        await VoegSubthemaToeAsync(client, een.ThemaId, "Cc", "K3");
+        await VoegSubthemaToeAsync(client, twee.ThemaId, "Dd", "K3");
 
         var lijst = await client.GetFromJsonAsync<List<BestemmingDto>>($"/api/subthemas/voor-klas/{opzet.KlasId}");
 
@@ -317,11 +339,19 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         return new Opzet(klas.Id, andere.Id, blokken[0].Start);
     }
 
+    /// <summary>
+    /// Creates a thema with one subthema at <paramref name="leeftijd"/>.
+    /// <para>
+    /// <b>No klasId, and its absence is the change of 2026-08-30.</b> This helper used to take one and post it,
+    /// which the API stopped reading when a subthema became age-scoped (Art. IX.2). Keeping the parameter would
+    /// have let every test in this file go on reading as though it were arranging one class's content, while the
+    /// database recorded something else entirely.
+    /// </para>
+    /// </summary>
     private static async Task<ThemaMetSubthema> MaakThemaMetSubthemaAsync(
         HttpClient client,
         string themaNaam,
         string subthemaNaam,
-        Guid klasId,
         string leeftijd)
     {
         var themaResp = await client.PostAsJsonAsync("/api/themas", new { naam = themaNaam, duurWeken = 4 });
@@ -332,7 +362,6 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         {
             naam = subthemaNaam,
             duurWeken = 2,
-            klasId,
             leeftijd,
         });
         Assert.Equal(HttpStatusCode.Created, subResp.StatusCode);
@@ -345,14 +374,12 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         HttpClient client,
         Guid themaId,
         string naam,
-        Guid klasId,
         string leeftijd)
     {
         var resp = await client.PostAsJsonAsync($"/api/themas/{themaId}/subthemas", new
         {
             naam,
             duurWeken = 2,
-            klasId,
             leeftijd,
         });
         Assert.Equal(HttpStatusCode.Created, resp.StatusCode);

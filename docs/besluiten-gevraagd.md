@@ -92,7 +92,7 @@ Per rij hebben we vier gegevens nodig:
 De kalender kan een jaarplan op twee grofheden tonen: per **themaperiode** (4–6 weken) en per **subthemaperiode** (ongeveer 2 weken). Sinds deze maand kan een leerkracht daarnaast **in** één themaperiode duiken en die week per week plannen, met de activiteiten op een concrete dag.
 
 - **De vraag:** is die jaarbrede subthemaperiode-weergave nog nodig nu de leerkracht in een periode kan duiken? Of zijn er nu twee manieren om hetzelfde te zien, waarvan er één weg mag?
-- **Waarom wij het niet beslissen:** het is een onderwijskundige keuze over hoe een leerkracht plant, niet een technische. Beide bestaan vandaag naast elkaar, en dat is de toestand die onze eigen notitie *"kies expliciet, laat niet beide staan en hoop maar"* verbiedt — we staan er dus nu in.
+- **Waarom wij het niet beslissen:** het is een onderwijskundige keuze over hoe een leerkracht plant, niet een technische. Beide bestaan vandaag naast elkaar, en dat is de toestand die onze eigen notitie *"kies expliciet, laat niet beide staan en hoop maar"* verbiedt: we staan er dus nu in.
 - **Wat het kost om te laten zoals het is:** twee weergaven onderhouden die grotendeels hetzelfde vertellen, en een leerkracht die moet uitzoeken welke van de twee ze nodig heeft.
 
 ---
@@ -113,8 +113,9 @@ Sinds deze maand krijgt een leerkracht die een leerplandoel opzoekt standaard de
 
 **Dit is een technische vraag met een onderwijskundige kern, en beide antwoorden hebben een prijs.** Een controleronde vond op 20 augustus 2026 dat een beveiliging die dit had moeten tegenhouden, in werkelijkheid nooit afgaat: een klas verwijderen kan vandaag de weekplanning die eraan hangt stil meenemen.
 
-- **Antwoord A — tegenhouden.** De tool weigert de klas te verwijderen zolang er nog activiteiten op dagen staan, en zegt wat er eerst weg moet. Nadeel: er is een omweg waarlangs inhoud van een *andere* klas onder deze klas terecht kan komen, en dan kan een directie een klas niet meer verwijderen om iets wat ze zelf niet heeft gepland en misschien niet ziet.
-- **Antwoord B — laten gebeuren, maar het zeggen.** Verwijderen mag, en de tool waarschuwt vooraf hoeveel ingeplande activiteiten daarmee verdwijnen. Nadeel: werk van een leerkracht verdwijnt op één bevestiging.
+- **Antwoord A: tegenhouden.** De tool weigert de klas te verwijderen zolang er nog activiteiten op dagen staan, en zegt wat er eerst weg moet. Nadeel: er is een omweg waarlangs inhoud onder deze klas terecht kan komen die er niet thuishoort, en dan kan een directie een klas niet meer verwijderen om iets wat ze zelf niet heeft gepland en misschien niet ziet.
+  > *Bijgewerkt op 30 augustus 2026, want het nadeel hierboven stond er in andere woorden en die klopten niet meer.* Er stond "inhoud van een **andere klas**". Sinds eind augustus hoort een subthema bij een **leeftijd** en niet meer bij één klas, dus die omweg bestaat in die vorm niet. Wat er nog wel kan: iemand zet een subthema op een andere leeftijd, en dan houdt deze klas een dagplanning over voor iets wat ze niet meer geeft. Het nadeel is dus kleiner geworden maar niet weg, en uw keuze blijft dezelfde keuze.
+- **Antwoord B: laten gebeuren, maar het zeggen.** Verwijderen mag, en de tool waarschuwt vooraf hoeveel ingeplande activiteiten daarmee verdwijnen. Nadeel: werk van een leerkracht verdwijnt op één bevestiging.
 - **Wat wij zouden doen als u niets zegt:** antwoord A, want de tool hoort nooit uit zichzelf werk van een leerkracht weg te gooien. Maar de omweg hierboven maakt dat minder duidelijk dan het klinkt, en daarom leggen we het voor.
 
 ---
@@ -142,6 +143,22 @@ Onder een thema hangen de **subthema's**, en die zijn per **leeftijd**: een subt
 **Eén gevolg willen we u niet stil laten passeren.** Sinds eind augustus hangt een subthema aan een **leeftijd**, niet meer aan één klas. Dat was een verbetering: twee K3-klassen moesten daarvoor elk hun eigen kopie van hetzelfde subthema maken. Maar het betekent ook dat de streefwoordenschat van een K3-subthema **gedeeld** is. Past de juf van K3 groen de lijst aan in haar agenda, dan verandert ze ook voor K3 blauw. De tool zal dat op het scherm zeggen voor er iets bewaard wordt.
 
 - **De vraag daarbij:** is dat wat u wil? Een gedeelde lijst betekent dat het team samen afspreekt welke woorden een leeftijd nastreeft. Wil u in de plaats daarvan dat elke leerkracht een **eigen** lijst heeft, zeg dat dan nu: dat is een andere opbouw en die is achteraf een pak duurder dan vooraf.
+
+---
+
+## 11. Mag een activiteit verhuizen naar een subthema van een andere leeftijd?
+
+**Deze vraag is er omdat er een tijdlang helemaal geen antwoord op stond.** Een leerkracht kan een activiteit die ze al gemaakt heeft, met haar doelen en haar hoek eraan, verplaatsen naar een ander subthema in plaats van ze weg te gooien en opnieuw te typen. Tot eind augustus mocht dat binnen dezelfde klas en niet erbuiten. Toen een subthema van klas naar **leeftijd** verhuisde, verdween die grens mee, en er kwam niets voor in de plaats: de tool aanvaardde elke bestemming.
+
+- **Antwoord A: alleen binnen dezelfde leeftijd.** Een activiteit van K3 kan naar elk ander thema, maar blijft bij K3. Wat u wint: een activiteit die voor kleuters gemaakt is, kan niet in het materiaal van het vierde leerjaar belanden. Wat het kost: een klas die twee leeftijden geeft, een graadklas, kan een activiteit niet van haar ene helft naar haar andere verschuiven zonder ze opnieuw te maken.
+- **Antwoord B: naar elke leeftijd.** De leerkracht beslist zelf, en de tool houdt niets tegen. Wat u wint: de graadklas hierboven kan gewoon schuiven. Wat het kost: er is dan geen enkele controle meer op waar inhoud terechtkomt, en de vorige regel bestond precies daarvoor.
+
+**Wat wij intussen gebouwd hebben, en waarom.** De projecteigenaar koos op 30 augustus voor **antwoord A**, en dat is wat de tool nu doet: een verhuizing naar een andere leeftijd wordt geweigerd met een zin die zegt waarom. Dat is met opzet de strengste van de twee, want een weigering is achteraf makkelijk te versoepelen en een verkeerd geplaatste activiteit is dat niet.
+
+- **De vraag daarbij is de graadklas.** Geeft u les in groepen die twee leeftijden bevatten, en verwacht u dat een activiteit daarbinnen mag schuiven? Zeg het, want dan is antwoord A voor u de verkeerde.
+- **Nog iets dat u moet weten om dit eerlijk te kunnen beoordelen:** het scherm waarop een leerkracht één activiteit zou verhuizen, bestaat vandaag niet. De regel zit in de tool, maar er is geen knop die hem oproept. Wij melden dat, omdat een regel over iets wat niemand kan zien, ook niet in de praktijk kan blijken tegen te vallen.
+- **En er is een grovere weg die wél op een scherm staat, dus die moet u er bij lezen.** Een leerkracht kan van een subthema de **leeftijd** wijzigen in het bewerkformulier. Daarmee verhuist niet één activiteit maar het hele subthema, met al zijn activiteiten en al zijn doelen, in één keer naar een andere leeftijd. Daar houdt vandaag niets haar tegen. De regel hierboven weigert dus de kleine beweging en laat de grote toe.
+  > *Waarom wij dat niet meteen ook dichtgezet hebben.* Het is een aparte vraag met een ander antwoord: één activeit verhuizen is een vergissing of het niet, maar een subthema dat onder de verkeerde leeftijd is aangemaakt, is iets wat een school echt wil kunnen rechtzetten. Dat vraagt eerder een waarschuwing die zegt hoeveel er meeverhuist dan een weigering. Wij bouwen daar niets op een gok; het staat als openstaand punt in de backlog (E1-19) en u krijgt het als aparte vraag zodra we ze goed kunnen stellen.
 
 ---
 

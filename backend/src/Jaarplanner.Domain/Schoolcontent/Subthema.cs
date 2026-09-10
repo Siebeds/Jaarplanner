@@ -123,12 +123,23 @@ public sealed class Subthema
     /// age it teaches. That is a bigger act than it was when the klas was named explicitly, and it is the
     /// caller's to present as one.
     /// </para>
+    /// <para>
+    /// <b>⚠ THIS IS UNGUARDED, AND IT REACHES WHAT <see cref="VerplaatsActiviteitNaar"/> REFUSES.</b> The
+    /// subdoelen and activiteiten under this subthema carry no age of their own, so re-pointing this one changes
+    /// theirs; the move verb refuses exactly that for a single activiteit, and this does it for all of them on
+    /// one request. It can also leave a <c>Jaarplan</c> holding a dagplanning for an activiteit its klas no
+    /// longer teaches, which is the orphan <c>KlasBeheerService.VerwijderKlasAsync</c> refuses a delete over.
+    /// <b>Deliberately still unguarded:</b> whether this is a mistake or a legitimate correction that must
+    /// disclose how much travels is <b>E1-19</b>, and it needs an owner ruling first. Do not add a guard here on
+    /// the strength of the move rule alone: the two were confused once already, and the 2026-08-19 ruling that
+    /// looks like it settles this was about the klas half, which no longer exists.
+    /// </para>
     /// </summary>
     public void WijzigScope(string leeftijd) => Leeftijd = Require(leeftijd, nameof(leeftijd));
 
     /// <summary>
     /// Removes an activiteit (and, via the EF cascade, its goal links) from this subthema. CRUD delete
-    /// of a class/age-scoped activiteit (E1-10).
+    /// of an age-scoped activiteit (E1-10).
     /// </summary>
     public void VerwijderActiviteit(Activiteit activiteit)
     {
@@ -142,26 +153,37 @@ public sealed class Subthema
     /// <c>DoelKoppeling</c> it carries, which is what makes this different in kind from deleting it here and
     /// retyping it there.
     /// <para>
-    /// <b>THIS VERB NO LONGER HAS A SCOPE INVARIANT TO ENFORCE, and that is a real loss of a guard rather than a
-    /// simplification</b> (Art. IX.2 as amended 2026-08-30). It used to refuse a destination in another klas,
-    /// because a subthema named its klas and handing one class's content to another was the thing that could go
-    /// wrong. A subthema now names only an age, an activiteit inherits that age, and nothing an aggregate can see
-    /// distinguishes a legitimate destination from an illegitimate one: moving an L3 activiteit into a K3
-    /// subthema is a teacher making a strange choice, not a breach of anyone's boundary.
+    /// <b>THE SCOPE INVARIANT IS THE LEEFTIJD, and it is enforced here (owner ruling, 2026-08-30).</b> The guard
+    /// this verb used to carry compared two <c>KlasId</c>s, and it went with the klas itself when Art. IX.2 was
+    /// amended that same day. The owner ruled the replacement rather than leaving the verb unguarded: an
+    /// activiteit may move to any <b>thema</b>, and only to a subthema at the <b>same leeftijd</b>. So a K3
+    /// activiteit crossing from "Water" to "Lucht" is ordinary work, and the same activiteit landing in an L1
+    /// subthema is refused.
     /// </para>
     /// <para>
-    /// <b>What kept the offer sensible has therefore become the service's job alone.</b>
-    /// <c>HaalSubthemaBestemmingenAsync</c> offers only subthema's at an age the asking klas teaches, and it is
-    /// now the ONLY thing doing so — an API caller that posts an arbitrary subthemaId is no longer refused here.
-    /// Recorded rather than quietly dropped, because a reader comparing this against the old version should see
-    /// that a check was removed on purpose and where the remaining one lives.
+    /// <b>This supersedes the ruling of 2026-08-05</b>, which allowed a move across leeftijd because a subthema
+    /// then named a klas as well and two ages inside one graadklas were the differentiation the model existed
+    /// for. Once the klas left the entity, "another leeftijd" stopped meaning "the same class, its other half"
+    /// and started meaning "a class that is not this one at all", which is the boundary the older guard was
+    /// protecting under a different name.
     /// </para>
     /// <para>
-    /// A move to another <b>thema</b> and to another <b>leeftijd</b> are both permitted (owner rulings,
-    /// 2026-08-05), and the panel says what a leeftijd change means rather than leaving it to an option label
-    /// (<c>themabeheer.activiteitVerplaatsLeeftijd</c>). <b>E1-19</b>, filed for the re-scoping route that
-    /// carried activiteiten across a class boundary, is closed by this amendment rather than by that story:
-    /// there is no class boundary left for it to cross.
+    /// <b>The aggregate is the right place for it.</b> A subthema knows its own leeftijd and its destination's, so
+    /// no service has to be trusted to check first and an API caller posting an arbitrary <c>subthemaId</c> at
+    /// <b>this verb</b> meets the same refusal a teacher does. <c>HaalSubthemaBestemmingenAsync</c> still narrows
+    /// the <i>offer</i> to the ages the asking klas teaches, which is a different job: it keeps the picker
+    /// sensible, this keeps the verb true.
+    /// </para>
+    /// <para>
+    /// <b>⚠ THE INVARIANT BINDS THIS VERB, NOT THE SYSTEM, and saying otherwise is a claim a single request
+    /// falsifies.</b> <see cref="WijzigScope"/> re-points this subthema's own leeftijd, and its subdoelen and
+    /// activiteiten inherit that scope structurally, so it reaches the outcome refused here for <i>every</i>
+    /// activiteit at once and is not guarded. Unlike the class-crossing version of that hole, it is reachable
+    /// from a screen: <c>Subthemaformulier</c> serves create and edit from one form and offers the leeftijd in
+    /// both. Whether that is a mistake to refuse or a correction to disclose is <b>E1-19</b>, still open; the
+    /// 2026-08-19 ruling on it answered the question about a <i>klas</i> boundary that has since ceased to
+    /// exist. <i>This paragraph restores a narrowing that E4-08's audit put here on purpose and that the
+    /// 2026-08-30 rewrite dropped.</i>
     /// </para>
     /// </summary>
     public void VerplaatsActiviteitNaar(Activiteit activiteit, Subthema doelSubthema)
@@ -186,6 +208,15 @@ public sealed class Subthema
         if (doelSubthema.Id == Id)
         {
             throw new ArgumentException("Deze activiteit staat al in dit subthema.");
+        }
+
+        // Ordinal, like every other comparison of a jaar/fase code in this codebase: the nine codes are a ruled
+        // vocabulary (`Jaarfasen`), not free text, so a comparer that folded case would only hide an import or a
+        // client that failed to normalise. States the rule rather than the remedy, because the destination the
+        // teacher may pick instead is something only the screen can enumerate.
+        if (!string.Equals(doelSubthema.Leeftijd, Leeftijd, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Een activiteit kan alleen verhuizen naar een subthema van dezelfde leeftijd.");
         }
 
         _activiteiten.Remove(activiteit);
@@ -215,7 +246,7 @@ public sealed class Subthema
         return subdoel;
     }
 
-    /// <summary>Adds an activiteit to this (class/age-scoped) subthema.</summary>
+    /// <summary>Adds an activiteit to this (age-scoped) subthema.</summary>
     public Activiteit VoegActiviteitToe(
         string naam,
         ActiviteitType activiteitType,

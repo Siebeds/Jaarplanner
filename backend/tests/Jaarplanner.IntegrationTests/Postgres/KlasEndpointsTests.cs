@@ -222,20 +222,29 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A class carrying school content cannot be deleted, and the refusal is a friendly 400 with a count
-    /// rather than the Restrict FK surfacing as an opaque 500 (ADR-0006 §4).
+    /// <b>A klas with a subthema at its own age CAN be deleted, and the subthema survives the delete.</b>
+    /// <para>
+    /// This test asserted the opposite until 2026-08-30, and the inversion is the amendment rather than a
+    /// loosening. The guard it pinned existed because a subthema named a <c>KlasId</c> under a <c>Restrict</c>
+    /// FK: deleting the class would have orphaned content that belonged to it and to nobody else. A subthema is
+    /// school-wide and age-scoped now (Art. IX.2), so deleting a class takes nothing from it — the subthema, its
+    /// activiteiten and its goal links stay, and the next class at that age inherits them.
+    /// </para>
+    /// <para>
+    /// <b>The survival is asserted, not assumed</b>, because "the delete succeeds" and "the delete succeeds
+    /// without destroying the content" are different claims and only the second is the reason the guard could
+    /// go. What still refuses a klas delete is that class's own <c>Jaarplan</c>, which is covered where those
+    /// guards live (<c>WeekplanningEndpointsTests</c>).
+    /// </para>
     /// </summary>
     [PostgresFact]
-    public async Task Klas_met_subthema_kan_niet_verwijderd_worden()
+    public async Task Klas_met_een_subthema_op_haar_leeftijd_kan_wel_verwijderd_worden()
     {
         var client = _factory.CreateClient();
 
         var klas = await (await client.PostAsJsonAsync(KlassenRoute, new { naam = "L2 — tweede leerjaar", jaarfase = "L2" }))
             .Content.ReadFromJsonAsync<KlasWeergave>();
 
-        // A thema is school-scoped; its subthema pins a LEEFTIJD, and a class holds the subthema's of the age
-        // it teaches (Art. IX.2, 2026-08-30). So the guard fires on "L2" matching this class's jaar/fase, not on
-        // a foreign key it no longer has.
         var thema = await (await client.PostAsJsonAsync("/api/themas", new
         {
             naam = "Water",
@@ -244,6 +253,8 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
             kernwoordenschat = new[] { "plas" },
         })).Content.ReadFromJsonAsync<Application.Schoolcontent.Beheer.ThemaWeergave>();
 
+        // At L2, which is exactly the age this class teaches: the strongest case, because it is the one the old
+        // FK would have called this class's own content.
         var subthema = await client.PostAsJsonAsync($"/api/themas/{thema!.Id}/subthemas", new
         {
             naam = "Regen",
@@ -253,6 +264,16 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, subthema.StatusCode);
 
         var verwijder = await client.DeleteAsync($"/api/klassen/{klas!.Id}");
-        Assert.Equal(HttpStatusCode.BadRequest, verwijder.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, verwijder.StatusCode);
+
+        // The class is gone and the content is not. Read back over the API against real PostgreSQL, so a cascade
+        // that took the subthema with it at the database level would fail this line rather than pass unnoticed.
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/klassen/{klas.Id}")).StatusCode);
+
+        var themaNa = await client.GetFromJsonAsync<Application.Schoolcontent.Beheer.ThemaWeergave>(
+            $"/api/themas/{thema.Id}");
+        var gebleven = Assert.Single(themaNa!.Subthemas);
+        Assert.Equal("Regen", gebleven.Naam);
+        Assert.Equal("L2", gebleven.Leeftijd);
     }
 }

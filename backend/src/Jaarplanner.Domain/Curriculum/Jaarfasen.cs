@@ -101,10 +101,16 @@ public static class Jaarfasen
     /// throws on this sentence and the beheerservice raises a mapped 400 with it, and a change here reaches both.
     /// </para>
     /// <para>
-    /// Blank is not an error: it means the school has not said, which is the normal state of every class that existed
-    /// before this field did.
+    /// ~~Blank is not an error: it means the school has not said, which is the normal state of every class that
+    /// existed before this field did.~~ <b>Struck 2026-08-31.</b> It contradicts the first paragraph of this very
+    /// comment, four lines up, which records the owner's ruling that blank IS an error. Both were true in turn and
+    /// the amendment kept the older one; struck rather than deleted, because a reader who has seen the old rule
+    /// needs to know which way it went. What remains true of it: rows that predate the field can still hold no
+    /// jaar/fase, which is why <see cref="VoorKlas"/> falls back to the <c>Leerjaar</c> ordinal rather than
+    /// refusing. That is a state the database may be in, not one a new or edited class may be put in.
     /// </para>
     /// </summary>
+
     /// <summary>
     /// The <c>Leerjaar</c> ordinal a jaar/fase code implies: <c>0</c> for the three kleuter jaren, 1 to 6 for L1
     /// to L6.
