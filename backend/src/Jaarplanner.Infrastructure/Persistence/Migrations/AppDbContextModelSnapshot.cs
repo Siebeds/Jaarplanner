@@ -263,6 +263,80 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("generatieparameters", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekmoment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Datum")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("HoekplaatsingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Volgorde")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HoekplaatsingId");
+
+                    b.HasIndex("Datum", "Volgorde");
+
+                    b.ToTable("hoekmomenten", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekplaatsing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("HoekId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("KlasId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Tot")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("Van")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HoekId");
+
+                    b.HasIndex("KlasId", "Van", "Tot");
+
+                    b.ToTable("hoekplaatsingen", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekverrijking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("HoekplaatsingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tekst")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("Tot")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("Van")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HoekplaatsingId", "Van", "Tot");
+
+                    b.ToTable("hoekverrijkingen", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -411,6 +485,29 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("activiteiten", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Hoek", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("KlasId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Naam")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Omschrijving")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KlasId", "Naam")
+                        .IsUnique();
+
+                    b.ToTable("hoeken", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Onderzoeksvraag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -461,9 +558,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<int>("DuurWeken")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("KlasId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Leeftijd")
                         .IsRequired()
                         .HasMaxLength(8)
@@ -479,9 +573,9 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ThemaId");
+                    b.HasIndex("Leeftijd");
 
-                    b.HasIndex("KlasId", "Leeftijd");
+                    b.HasIndex("ThemaId");
 
                     b.ToTable("subthemas", (string)null);
                 });
@@ -640,6 +734,39 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Navigation("_startthemas");
 
                     b.Navigation("_vasteMomenten");
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekmoment", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Planning.Hoekplaatsing", null)
+                        .WithMany("Momenten")
+                        .HasForeignKey("HoekplaatsingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekplaatsing", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Hoek", null)
+                        .WithMany()
+                        .HasForeignKey("HoekId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
+                        .WithMany()
+                        .HasForeignKey("KlasId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekverrijking", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Planning.Hoekplaatsing", null)
+                        .WithMany("Verrijkingen")
+                        .HasForeignKey("HoekplaatsingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>
@@ -825,6 +952,15 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Navigation("Doelkoppelingen");
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Hoek", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
+                        .WithMany()
+                        .HasForeignKey("KlasId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Onderzoeksvraag", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Schoolcontent.Subthema", null)
@@ -888,12 +1024,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subthema", b =>
                 {
-                    b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
-                        .WithMany()
-                        .HasForeignKey("KlasId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Jaarplanner.Domain.Schoolcontent.Thema", null)
                         .WithMany("Subthemas")
                         .HasForeignKey("ThemaId")
@@ -996,6 +1126,13 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Koppeling")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekplaatsing", b =>
+                {
+                    b.Navigation("Momenten");
+
+                    b.Navigation("Verrijkingen");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>

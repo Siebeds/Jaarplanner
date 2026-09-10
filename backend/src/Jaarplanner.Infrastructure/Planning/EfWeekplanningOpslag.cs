@@ -122,7 +122,7 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
                 _context.Themas.AsNoTracking(),
                 sub => sub.ThemaId,
                 thema => thema.Id,
-                (sub, thema) => new Subthemainhoud(sub.Id, sub.Naam, thema.Id, thema.Naam, sub.KlasId))
+                (sub, thema) => new Subthemainhoud(sub.Id, sub.Naam, thema.Id, thema.Naam, sub.Leeftijd))
             .ToListAsync(cancellationToken);
     }
 
@@ -211,7 +211,6 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
             activiteit.ActiviteitType.ToString(),
             subthema.Id,
             subthema.Naam,
-            subthema.KlasId,
             subthema.Leeftijd,
             thema.Id,
             thema.Naam,

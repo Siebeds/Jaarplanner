@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -8,14 +9,15 @@ import { Knop } from "../../components/ui/Knop";
 import { Segment } from "../../components/ui/Segment";
 import { Veld, Keuze, Invoer } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
+import { knopklassen } from "../../components/ui/knopklassen";
 import { useThemasVoorKlas } from "../../lib/queries";
-import type { Dagweergave } from "../../lib/types";
+import type { Dagweergave, ThemaWeergave } from "../../lib/types";
 import { dagMaand } from "../../lib/datum";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { verdeelDagen, type Verdeling } from "./verdeling";
 import { lijstMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
-import { IcoonGreep } from "../../components/Iconen";
+import { IcoonGreep, IcoonPijlRechts } from "../../components/Iconen";
 
 interface Voorstel {
   activiteitId: string;
@@ -39,6 +41,7 @@ interface Voorstel {
 export function Subthemaplanner({
   open,
   klasId,
+  klasNaam,
   themaIds,
   dagen,
   bezig,
@@ -48,6 +51,8 @@ export function Subthemaplanner({
 }: {
   open: boolean;
   klasId: string | null;
+  /** Named in the empty state, because which klas is selected is exactly what makes it empty. */
+  klasNaam: string | null;
   themaIds: string[];
   dagen: Dagweergave[];
   bezig: boolean;
@@ -169,7 +174,7 @@ export function Subthemaplanner({
       {laadt ? (
         <Laadlijst rijen={4} />
       ) : subthemas.length === 0 ? (
-        <p className="text-body text-inkt-zacht">{t("periode.geenSubthemas")}</p>
+        <Nietsomteplannen klasNaam={klasNaam} themas={themas} />
       ) : (
         <div className="flex flex-col gap-4">
           <Veld label={t("periode.subthema")}>
@@ -311,6 +316,70 @@ export function Subthemaplanner({
         </div>
       )}
     </Blad>
+  );
+}
+
+/**
+ * The sheet with nothing to offer, and the two different reasons why.
+ *
+ * **A subthema belongs to one leeftijd** (Art. IX.2 as amended 2026-08-30), so "this thema has no
+ * subthema" and "this klas has no subthema under this thema" are different facts, and the copy this
+ * replaces stated the first while it could only mean the second. The owner hit exactly that: the
+ * period's thema had a subthema, it was for an age this klas does not teach, and the sheet reported
+ * the thema as empty. It now names the klas, says why a subthema for another age is not in the list,
+ * and links to the screen where the missing one is made.
+ *
+ * *(The sentence originally read "een subthema hoort bij één klas", which the amendment made false
+ * eight hours after it shipped. Rewritten rather than deleted, because the empty state itself is
+ * still needed: a K3 class and an L3 class still see different subthema's.)*
+ *
+ * A period holding no thema at all is a third state, and it says so rather than being folded into the
+ * second: there is no thema to make a subthema under, so the way out is a different screen.
+ */
+function Nietsomteplannen({ klasNaam, themas }: { klasNaam: string | null; themas: ThemaWeergave[] }) {
+  if (themas.length === 0) {
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-body text-inkt">{t("periode.geenThemaInPeriode")}</p>
+        <p className="text-meta text-inkt-zacht">{t("periode.geenThemaUitleg")}</p>
+        <Link to="/agenda/periodes" className={cn(knopklassen(), "mt-1")}>
+          {t("periode.themasPerPeriode")}
+        </Link>
+      </div>
+    );
+  }
+
+  // Never the raw id: with the klas still loading the sentence loses the name rather than the point.
+  const klas = klasNaam ?? t("periode.dezeKlas");
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-body text-inkt">
+        {/* One thema is the ordinary case and it gets named, which is the whole fix: the teacher is
+            looking at that name on the day behind this sheet. Two or more would need a list, and a
+            list of names in a sentence says less than the buttons below it already do. */}
+        {themas.length === 1
+          ? t("periode.geenSubthemaVoorKlasEen", { klas, thema: themas[0].naam })
+          : t("periode.geenSubthemaVoorKlasMeer", { klas })}
+      </p>
+      <p className="text-meta text-inkt-zacht">{t("periode.subthemaHoortBijLeeftijd")}</p>
+
+      {/* A destination, so a link and not a Knop: it goes in the address bar and takes a middle
+          click. One per thema, because the subthema has to be made under one of them. */}
+      <ul className="mt-1 flex flex-col gap-2">
+        {themas.map((thema) => (
+          <li key={thema.id}>
+            <Link
+              to={`/themas/${thema.id}`}
+              className={cn(knopklassen(), "w-full justify-between gap-3 text-left")}
+            >
+              <span className="min-w-0 truncate">{t("periode.maakSubthemaBij", { thema: thema.naam })}</span>
+              <IcoonPijlRechts aria-hidden="true" className="h-4 w-4 shrink-0" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

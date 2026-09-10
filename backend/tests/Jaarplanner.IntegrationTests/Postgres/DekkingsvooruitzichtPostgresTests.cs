@@ -258,7 +258,7 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         await using var context = _db.MaakContext();
 
         var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("vooruit"));
-        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", "L3");
         context.Schooljaren.Add(schooljaar);
 
         var herfstCode = $"L3H-{Guid.NewGuid():N}"[..12];

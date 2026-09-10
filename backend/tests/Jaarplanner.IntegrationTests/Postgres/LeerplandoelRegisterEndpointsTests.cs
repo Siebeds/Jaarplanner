@@ -54,6 +54,9 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
     /// <summary>The klas that owns the seeded class/age-scoped school content (Art. IX.2).</summary>
     private const string KlasNaam = "K3 doelenregister";
 
+    /// <summary>The jaar/fase both the klas and its subthema are scoped to (Art. IX.2, 2026-08-30).</summary>
+    private const string Leeftijd = "K3";
+
     /// <summary>
     /// Mirrors the API's own serialisation (Program.cs adds a <see cref="JsonStringEnumConverter"/>), so the
     /// enums travel as names and the tests read the same wire form the frontend does. Deserialising into the
@@ -571,12 +574,16 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         Assert.Equal("Bladeren zoeken", activiteit.Onderdeel);
         Assert.Equal(KoppelingStatus.Geweigerd, activiteit.Status);
 
-        // A class/age-scoped link NAMES ITS KLAS, and a school-wide one has none (Art. IX.2, antagonist
-        // finding 3). Without this, one class's planning reads as a school-wide fact.
-        Assert.Equal(KlasNaam, subdoel.KlasNaam);
-        Assert.Equal(KlasNaam, activiteit.KlasNaam);
-        Assert.Null(themadoel.KlasNaam);
-        Assert.Null(suggestie.KlasNaam);
+        // An age-scoped link NAMES ITS LEEFTIJD, and a school-wide one has none (Art. IX.2, antagonist
+        // finding 3). Without this, one year group's planning reads as a school-wide fact.
+        //
+        // It named the KLAS until 2026-08-30, and the replacement is not a rename: a subthema is scoped by
+        // leeftijd alone now, so "K3 werkt hieraan" is the true statement and "K3 doelenregister werkt hieraan"
+        // is one this row can no longer make.
+        Assert.Equal(Leeftijd, subdoel.Leeftijd);
+        Assert.Equal(Leeftijd, activiteit.Leeftijd);
+        Assert.Null(themadoel.Leeftijd);
+        Assert.Null(suggestie.Leeftijd);
     }
 
     /// <summary>
@@ -604,7 +611,7 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         Assert.All(schoolbreed.Koppelingen, k => Assert.True(
             k.Herkomst is KoppelingHerkomst.Themadoel or KoppelingHerkomst.Doelsuggestie,
             $"{k.Herkomst} is class/age-scoped and must not survive AlleenSchoolbreed"));
-        Assert.All(schoolbreed.Koppelingen, k => Assert.Null(k.KlasNaam));
+        Assert.All(schoolbreed.Koppelingen, k => Assert.Null(k.Leeftijd));
     }
 
     /// <summary>
@@ -986,14 +993,14 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
             new DateOnly(2027, 6, 30));
         context.Schooljaren.Add(schooljaar);
 
-        var klas = new Klas(schooljaar.Id, KlasNaam, 0);
+        var klas = new Klas(schooljaar.Id, KlasNaam, Leeftijd);
         context.Klassen.Add(klas);
 
         var thema = new Thema("Herfst", 5);
         thema.VoegThemadoelToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Manueel));
         thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past bij bladeren"));
 
-        var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
+        var subthema = thema.VoegSubthemaToe("Bladeren", 2, Leeftijd);
         subthema.VoegSubdoelToe("5", new DoelKoppeling("NAT-K3-01", KoppelingStatus.Aanvaard));
         var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
         activiteit.VoegDoelkoppelingToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Geweigerd));

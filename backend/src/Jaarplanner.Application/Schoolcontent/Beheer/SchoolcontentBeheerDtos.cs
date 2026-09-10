@@ -35,26 +35,32 @@ public sealed record ThemaWijziging(
     IReadOnlyList<string>? RijkeWoordenschat = null);
 
 /// <summary>
-/// Create payload for a class/age-scoped <see cref="Subthema"/> (Art. IX.2). <see cref="KlasId"/> and
-/// <see cref="Leeftijd"/> are <b>required</b> — a subthema cannot exist school-wide; the service rejects
-/// a blank/empty scope.
+/// Create payload for an age-scoped <see cref="Subthema"/> (Art. IX.2, amended 2026-08-30).
+/// <see cref="Leeftijd"/> is <b>required</b> and must be one of the nine Op.stap jaar/fase codes; the service
+/// rejects anything else.
+/// <para>
+/// <b>There is no KlasId, and its absence is the change.</b> A subthema belongs to an age and holds for every
+/// class that teaches it, so a caller that knew which class it was creating for no longer has anything to say
+/// about it.
+/// </para>
 /// </summary>
 public sealed record SubthemaCreatie(
     string Naam,
     int DuurWeken,
-    Guid KlasId,
     string Leeftijd,
     IReadOnlyList<OnderzoeksvraagCreatie>? Onderzoeksvragen = null);
 
-/// <summary>Update payload for a <see cref="Subthema"/> — the class/age scope may be re-pointed but never cleared.</summary>
+/// <summary>
+/// Update payload for a <see cref="Subthema"/> — the age scope may be re-pointed but never cleared.
+/// Re-pointing it moves the subthema between classes, because a class reaches it through the age it teaches.
+/// </summary>
 public sealed record SubthemaWijzigingInvoer(
     string Naam,
     int DuurWeken,
-    Guid KlasId,
     string Leeftijd,
     IReadOnlyList<OnderzoeksvraagCreatie>? Onderzoeksvragen = null);
 
-/// <summary>Create payload for a class/age-scoped <see cref="Activiteit"/> (inherits its subthema's scope, Art. IX.2).</summary>
+/// <summary>Create payload for an <see cref="Activiteit"/> (inherits its subthema's age scope, Art. IX.2).</summary>
 /// <param name="LeerplandoelCodes">
 /// Goals to link in the same request, each landing as a <see cref="KoppelingStatus.Manueel"/>
 /// <see cref="DoelKoppeling"/> because a code in a create payload is a teacher deciding, never the model
@@ -126,20 +132,19 @@ public sealed record SubthemaWeergave(
     Guid ThemaId,
     string Naam,
     int DuurWeken,
-    Guid KlasId,
     string Leeftijd,
     IReadOnlyList<OnderzoeksvraagWeergave> Onderzoeksvragen,
     IReadOnlyList<SubdoelWeergave> Subdoelen,
     IReadOnlyList<ActiviteitWeergave> Activiteiten);
 
 /// <summary>
-/// One candidate destination for moving an activiteit (E4-08, FR-7.2): a subthema of <b>one</b> klas, named
+/// One candidate destination for moving an activiteit (E4-08, FR-7.2): a subthema at an age this klas teaches, named
 /// together with the thema it hangs under so a teacher can tell two same-named subthema's apart.
 /// <para>
 /// It is a deliberately thin projection rather than a <see cref="SubthemaWeergave"/>: a picker needs a label,
-/// not another class's worth of subdoelen and activiteiten. The <see cref="Leeftijd"/> is included because a
-/// move may cross it within one klas (the graadklas case, Art. IX.2), and a teacher choosing a destination
-/// should see which age they are moving the activiteit to rather than discover it afterwards.
+/// not a subtree of subdoelen and activiteiten. The <see cref="Leeftijd"/> is included because a move may cross
+/// it — a class that teaches more than one age sees a destination at each — and a teacher choosing one should
+/// see which age they are moving the activiteit to rather than discover it afterwards.
 /// </para>
 /// </summary>
 public sealed record SubthemaBestemming(
@@ -165,9 +170,14 @@ public sealed record ThemaWeergave(
 /// Read view of a single entry in the <b>shared thema-bibliotheek</b> (E1-11, FR-3.3 resolved per-level,
 /// Art. IX.2, Gap A.5). It exposes <b>only</b> the school-wide layer of a thema — naam, duur, invalshoeken,
 /// the two-tier woordenschat and the 2–3 themadoelen — and <b>deliberately omits all subthema's</b>: those
-/// are class/age-scoped derivations and must never leak into the school-wide library view (no cross-class
-/// bleed). <see cref="AantalAfgeleideKlassen"/> is a derived count (how many classes have derived a subthema
-/// from this thema) so the directie can see uptake without exposing any class's content.
+/// are age-scoped derivations whose content must never leak into the school-wide library view (Gap A.5).
+/// <see cref="AantalAfgeleideLeeftijden"/> is a derived count (how many distinct ages have a subthema under this
+/// thema) so the directie can see uptake without exposing any of that content.
+/// <para>
+/// It counted distinct KLASSEN until the 2026-08-30 amendment to Art. IX.2. A subthema no longer names a klas,
+/// so that number has nothing to count; ages are what this thema can honestly report, and they answer the more
+/// useful question anyway — whether a thema is built out for the age a reader teaches.
+/// </para>
 /// </summary>
 public sealed record ThemaBibliotheekItem(
     Guid Id,
@@ -178,7 +188,7 @@ public sealed record ThemaBibliotheekItem(
     IReadOnlyList<string> RijkeWoordenschat,
     bool HeeftVoldoendeThemadoelen,
     IReadOnlyList<ThemadoelWeergave> Themadoelen,
-    int AantalAfgeleideKlassen,
+    int AantalAfgeleideLeeftijden,
     int AantalSubthemas,
     int AantalActiviteiten,
     int AantalDoelkoppelingen);

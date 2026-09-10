@@ -845,7 +845,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
 
         var klasNaam = $"K3-{Guid.NewGuid():N}";
         var klasResponse = await client.PostAsJsonAsync(
-            $"/api/schooljaren/{schooljaar.Id}/klassen", new { naam = klasNaam, leerjaar = 0 });
+            $"/api/schooljaren/{schooljaar.Id}/klassen", new { naam = klasNaam, jaarfase = "K3" });
         Assert.Equal(HttpStatusCode.Created, klasResponse.StatusCode);
 
         var klas = await klasResponse.Content.ReadFromJsonAsync<KlasWeergave>();
@@ -861,7 +861,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         var client = _factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(
-            $"/api/schooljaren/{Guid.NewGuid()}/klassen", new { naam = $"L9-{Guid.NewGuid():N}", leerjaar = 9 });
+            $"/api/schooljaren/{Guid.NewGuid()}/klassen", new { naam = $"L9-{Guid.NewGuid():N}", jaarfase = "L6" });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -1033,7 +1033,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             // max length, so an over-long name here would pass locally and only break if the fixture were ever pointed
             // at Postgres — the same blind spot that took out the [PostgresFact] suite in CI.
             var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("jaarplan"));
-            var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", leerjaar: 3);
+            var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", "L3");
             db.Schooljaren.Add(schooljaar);
 
             if (!await db.Themas.AnyAsync(t => t.Naam == "Herfst"))

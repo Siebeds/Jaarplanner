@@ -1,10 +1,11 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { IcoonPlus } from "../../components/Iconen";
+import { IcoonHoek, IcoonPlus } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import type { Dagweergave, GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel, type Activiteitkleur } from "./kleuren";
 import { LAATSTE_SLOT, LESUREN, slotId } from "./lesuren";
+import { momentSleepId } from "../hoeken/sleepids";
 
 /** A scheduled activiteit as the API sends it now: with the colour and the length in lesuren. */
 export type GeplandMetKleur = GeplandeActiviteit & {
@@ -22,6 +23,22 @@ export type GeplandMetKleur = GeplandeActiviteit & {
 const RIJ_VAN_MIDDAG = LESUREN.findIndex((l) => l.naMiddag) + 1;
 const gridRij = (slot: number) => (slot < RIJ_VAN_MIDDAG ? slot + 1 : slot + 2);
 const AANTAL_RIJEN = LESUREN.length + 1;
+
+/** One hoek taking one lesuur on this day: its placement, the appearance, its name, and the hour. */
+export interface Hoekuur {
+  plaatsingId: string;
+  /** The appearance itself. Dragging one of these moves THIS day and no other. */
+  momentId: string;
+  naam: string;
+  /** The `volgorde` of the moment. Kept because a cell may draw an hour that is not its own. */
+  slot: number;
+}
+
+/** One frozen empty list, so an hour without hoeken does not hand a new array to every render. */
+const GEEN_HOEKEN: readonly Hoekuur[] = [];
+
+/** What a teacher calls this slot. Falls back to the ordinal, which is what the numbering means. */
+const nummerVan = (slot: number) => LESUREN.find((l) => l.slot === slot)?.nummer ?? slot + 1;
 
 /**
  * One day, divided into lesuren.
@@ -47,13 +64,35 @@ const AANTAL_RIJEN = LESUREN.length + 1;
  */
 export function Lesurenraster({
   dag,
+  hoekenPerSlot,
   onVoegToe,
   onOpen,
+  onOpenHoek,
 }: {
   dag: Dagweergave;
+  /**
+   * Which hoeken take which lesuur on this day, by slot.
+   *
+   * **A hoek that claimed a lesuur OCCUPIES it, like an activiteit does** (owner ruling,
+   * 2026-08-31): "dit pakt effectief een uur van de dag in". So it is drawn as a block and the hour
+   * stops offering its "vrij" invitation, because the hour is not free.
+   *
+   * *This reverses the rule that shipped on 2026-08-30, and the reasoning it reversed is worth
+   * keeping:* a corner was drawn as a thin line inside an hour that still read as free, on the
+   * argument that hoekenwerk is what the class does rather than what the teacher has finished
+   * planning. The owner's answer is that the two are the same thing when the corner has been given an
+   * hour. A hoek placed with **no** lesuur is the case that argument was really about, and it is
+   * unaffected: it writes no moment, so it never reaches this map.
+   *
+   * The hour stays open for an activiteit beside the corner, through the plus in the hour column,
+   * exactly as an hour holding one activiteit does.
+   */
+  hoekenPerSlot: ReadonlyMap<number, readonly Hoekuur[]>;
   /** Asked for an activiteit in this lesuur. `slot` is what goes into `volgorde`. */
   onVoegToe: (datum: string, slot: number) => void;
   onOpen: (activiteit: GeplandeActiviteit) => void;
+  /** Opened a placed hoek, which is where its period and its verrijkingen are read back. */
+  onOpenHoek: (plaatsingId: string) => void;
 }) {
   if (!dag.isLesdag) {
     return (
@@ -69,12 +108,34 @@ export function Lesurenraster({
   // What STARTS in each hour, and which hours are merely covered by a block that began above. Two
   // maps rather than one: a covered hour and a free hour look the same in the data and must not look
   // the same on screen, because one is taken and the other is an invitation.
+  //
+  // `bedekt` maps a covered hour to the hour whose block covers it, not just to "covered". The value
+  // is what lets a hoek in a covered hour be drawn at all: see `hoekenVanCel`.
   const begintIn = new Map<number, GeplandMetKleur[]>();
-  const bedekt = new Set<number>();
+  const bedekt = new Map<number, number>();
   for (const activiteit of activiteiten) {
     if (activiteit.volgorde > LAATSTE_SLOT) continue;
     begintIn.set(activiteit.volgorde, [...(begintIn.get(activiteit.volgorde) ?? []), activiteit]);
-    for (let i = 1; i < lengteVan(activiteit); i++) bedekt.add(activiteit.volgorde + i);
+    for (let i = 1; i < lengteVan(activiteit); i++) bedekt.set(activiteit.volgorde + i, activiteit.volgorde);
+  }
+
+  /*
+    WHICH CELL DRAWS WHICH HOEK, keyed by the cell rather than by the hour.
+
+    Usually the same thing: the hour draws its own corners. The exception is an hour swallowed by a
+    three-hour block above it, which gets no cell of its own in the content column, so a corner sitting
+    in it would be drawn NOWHERE. That was already true before a hoek occupied its hour, and a comment
+    here claimed the opposite ("it is drawn on the hour it starts in") by confusing the activiteit's
+    start with the corner's. The corner is handed to the covering cell instead, and it says which hour
+    it belongs to, because a block that spans three hours cannot say it by position.
+  */
+  const hoekenVanCel = new Map<number, Hoekuur[]>();
+  for (const lesuur of LESUREN) {
+    const eigen = hoekenPerSlot.get(lesuur.slot) ?? [];
+    if (eigen.length === 0) continue;
+    const heeftEigenCel = (begintIn.get(lesuur.slot) ?? []).length > 0 || !bedekt.has(lesuur.slot);
+    const cel = heeftEigenCel ? lesuur.slot : (bedekt.get(lesuur.slot) as number);
+    hoekenVanCel.set(cel, [...(hoekenVanCel.get(cel) ?? []), ...eigen]);
   }
 
   // Placements past the last drawn hour are not dropped on the floor: they exist, so they get their
@@ -94,7 +155,9 @@ export function Lesurenraster({
         }}
       >
         {LESUREN.map((lesuur) => {
-          const gevuld = (begintIn.get(lesuur.slot) ?? []).length > 0;
+          // Filled by an activiteit or by a corner, since a corner now takes the hour. Keyed on the
+          // CELL, so a covered hour still gets no plus: it has no cell to add anything into.
+          const gevuld = (begintIn.get(lesuur.slot) ?? []).length > 0 || (hoekenVanCel.get(lesuur.slot) ?? []).length > 0;
           return (
             <div
               key={`nr-${lesuur.slot}`}
@@ -132,16 +195,20 @@ export function Lesurenraster({
 
         {LESUREN.map((lesuur) => {
           const start = begintIn.get(lesuur.slot) ?? [];
-          if (start.length === 0 && bedekt.has(lesuur.slot)) return null; // the block above owns it
+          // The block above owns this hour, so this hour gets no cell. Its corners are not lost:
+          // `hoekenVanCel` handed them to the covering cell before this loop ran.
+          if (start.length === 0 && bedekt.has(lesuur.slot)) return null;
           return (
             <Uurvak
               key={`vak-${lesuur.slot}`}
               datum={dag.datum}
               slot={lesuur.slot}
               start={start}
+              hoeken={hoekenVanCel.get(lesuur.slot) ?? GEEN_HOEKEN}
               lengteVan={lengteVan}
               onVoegToe={onVoegToe}
               onOpen={onOpen}
+              onOpenHoek={onOpenHoek}
             />
           );
         })}
@@ -173,16 +240,20 @@ function Uurvak({
   datum,
   slot,
   start,
+  hoeken,
   lengteVan,
   onVoegToe,
   onOpen,
+  onOpenHoek,
 }: {
   datum: string;
   slot: number;
   start: GeplandMetKleur[];
+  hoeken: readonly Hoekuur[];
   lengteVan: (a: GeplandMetKleur) => number;
   onVoegToe: (datum: string, slot: number) => void;
   onOpen: (activiteit: GeplandeActiviteit) => void;
+  onOpenHoek: (plaatsingId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: slotId(datum, slot) });
   const langste = start.reduce((max, a) => Math.max(max, lengteVan(a)), 1);
@@ -201,7 +272,28 @@ function Uurvak({
         isOver && "bg-accent-zacht",
       )}
     >
-      {start.length === 0 ? (
+      {/* The corners running in this hour, above whatever else is in it. A block, because the hour is
+          taken (see the prop's note). No colour: the palette on a block means the activiteit's own
+          colour, so borrowing one here would say something about a corner that corners do not have.
+          What distinguishes it is the icon and the word underneath, which is also what makes it
+          readable without colour at all (Art. XII, WCAG 2.2 AA).
+
+          It drags to another lesuur and it opens the placement, which are the same two jobs on one
+          element that every other card in this agenda has: the pointer sensor wants six pixels of
+          travel before a press counts as a drag, so a press that does not move is a click. On a
+          keyboard the two are two keys, Enter opens and Space picks up (see `sleep.ts`).
+
+          *It did not drag until 2026-08-31, and the reason it did not was honest at the time: the
+          verb existed in the aggregate and had no endpoint, and a grabbing cursor over a gesture that
+          cannot land is the E3-06 rule with a different control. The endpoint exists now.* */}
+      {hoeken.map((hoek) => (
+        <Hoekblok key={hoek.momentId} hoek={hoek} inSlot={slot} onOpen={() => onOpenHoek(hoek.plaatsingId)} />
+      ))}
+
+      {/* The invitation, and only where there is genuinely nothing in the hour. An hour holding a
+          corner is not free, so it does not offer to be filled; the plus in the hour column beside it
+          is still there for an activiteit alongside. */}
+      {start.length === 0 && hoeken.length === 0 ? (
         <button
           type="button"
           onClick={() => onVoegToe(datum, slot)}
@@ -222,6 +314,47 @@ function Uurvak({
         ))
       )}
     </div>
+  );
+}
+
+/**
+ * One appearance of a placed hoek, in the hour it takes.
+ *
+ * No colour: the palette on a block means the activiteit's own colour, so borrowing one here would say
+ * something about a corner that corners do not have. What distinguishes it is the icon and the word
+ * underneath, which is also what makes it readable without colour at all (Art. XII, WCAG 2.2 AA).
+ *
+ * `inSlot` is the hour of the CELL drawing it, which is usually its own. Where it is not, because a
+ * three-hour activiteit swallowed its hour, the subtitle names the hour instead of leaving position to
+ * imply it.
+ */
+function Hoekblok({ hoek, inSlot, onOpen }: { hoek: Hoekuur; inSlot: number; onOpen: () => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: momentSleepId(hoek.plaatsingId, hoek.momentId),
+    data: { naam: hoek.naam },
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      onClick={onOpen}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "flex min-h-raak flex-1 cursor-grab touch-none flex-col justify-center rounded-veld border border-lijn bg-vlak px-3 py-1.5 text-left",
+        "transition-colors duration-150 hover:border-accent active:cursor-grabbing",
+        isDragging && "opacity-40",
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-1.5 text-body font-medium text-inkt">
+        <IcoonHoek aria-hidden="true" className="h-4 w-4 shrink-0" />
+        <span className="truncate">{hoek.naam}</span>
+      </span>
+      <span className="truncate text-meta text-inkt-zacht">
+        {hoek.slot === inSlot ? t("lesuur.hoekenwerk") : t("lesuur.hoekenwerkOp", { nummer: nummerVan(hoek.slot) })}
+      </span>
+    </button>
   );
 }
 

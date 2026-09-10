@@ -46,12 +46,11 @@ public sealed class Klas
     /// <summary>Creates a class group inside a school year.</summary>
     /// <param name="schooljaarId">The school year that contains this class (Art. IX.3). Required.</param>
     /// <param name="naam">The class name (e.g. "L3 — derde leerjaar").</param>
-    /// <param name="leerjaar">The leerjaar/leeftijdsgroep ordinal (e.g. 3 for L3); 0 is allowed for kleuter groepen modelled elsewhere.</param>
     /// <param name="jaarfase">
-    /// The Op.stap jaar/fase this class teaches (JK, K2, K3, L1–L6), or null when the school has not stated one.
-    /// See <see cref="Jaarfase"/>.
+    /// The Op.stap jaar/fase this class teaches (JK, K2, K3, L1-L6). <b>Required, and the only thing a caller
+    /// states about the class's level</b> — <see cref="Leerjaar"/> is derived from it (owner ruling, 2026-08-30).
     /// </param>
-    public Klas(Guid schooljaarId, string naam, int leerjaar, string? jaarfase = null)
+    public Klas(Guid schooljaarId, string naam, string jaarfase)
     {
         if (schooljaarId == Guid.Empty)
         {
@@ -60,8 +59,8 @@ public sealed class Klas
 
         SchooljaarId = schooljaarId;
         Naam = Require(naam, nameof(naam));
-        Leerjaar = leerjaar;
-        Jaarfase = Keur(jaarfase, leerjaar);
+        Jaarfase = Keur(jaarfase);
+        Leerjaar = Jaarfasen.LeerjaarVoor(Jaarfase!);
     }
 
     /// <summary>Surrogate identity.</summary>
@@ -77,7 +76,16 @@ public sealed class Klas
     /// <summary>The class name (e.g. "L3 — derde leerjaar").</summary>
     public string Naam { get; private set; }
 
-    /// <summary>The leerjaar / leeftijdsgroep ordinal. Descriptive only — see the type documentation.</summary>
+    /// <summary>
+    /// The leerjaar / leeftijdsgroep ordinal, <b>derived from <see cref="Jaarfase"/></b> since 2026-08-30: 0 for a
+    /// kleutergroep, 1 to 6 for L1 to L6.
+    /// <para>
+    /// <b>It is no longer stated by anyone and it can no longer disagree with the jaar/fase.</b> It used to be the
+    /// input and the code the derivation, which meant a kleutergroep could only say "kleuter" and the two fields
+    /// could contradict each other. Kept because the klassenlijst sorts on it and the generation prompt names it,
+    /// and because rows written before this field was derived still carry whatever was stored then.
+    /// </para>
+    /// </summary>
     public int Leerjaar { get; private set; }
 
     /// <summary>
@@ -112,11 +120,11 @@ public sealed class Klas
     /// invariant so that any rule added to the constructor would silently not apply on update.
     /// </para>
     /// </summary>
-    public void Wijzig(string naam, int leerjaar, string? jaarfase = null)
+    public void Wijzig(string naam, string jaarfase)
     {
         Naam = Require(naam, nameof(naam));
-        Leerjaar = leerjaar;
-        Jaarfase = Keur(jaarfase, leerjaar);
+        Jaarfase = Keur(jaarfase);
+        Leerjaar = Jaarfasen.LeerjaarVoor(Jaarfase!);
     }
 
     /// <summary>
@@ -143,15 +151,15 @@ public sealed class Klas
     /// teacher input, and neither restates the rule.
     /// </para>
     /// </summary>
-    private static string? Keur(string? jaarfase, int leerjaar)
+    private static string Keur(string jaarfase)
     {
-        var mis = Jaarfasen.WatIsErMisMet(jaarfase, leerjaar);
+        var mis = Jaarfasen.WatIsErMisMet(jaarfase);
         if (mis is not null)
         {
             throw new ArgumentException(mis, nameof(jaarfase));
         }
 
-        return string.IsNullOrWhiteSpace(jaarfase) ? null : jaarfase.Trim();
+        return jaarfase.Trim();
     }
 
     private static string Require(string value, string paramName)

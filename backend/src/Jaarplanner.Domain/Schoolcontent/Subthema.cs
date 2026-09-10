@@ -3,16 +3,29 @@ using Jaarplanner.Domain.Planning;
 namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
-/// A subthema (Art. IX.2) — <b>class/age-scoped: per <see cref="KlasId"/> &amp; <see cref="Leeftijd"/></b>.
-/// It belongs to a school-wide <see cref="Thema"/> but may differ per klas/leeftijd, so its
-/// <see cref="KlasId"/> (FK to <see cref="Klas"/>) and <see cref="Leeftijd"/> are <b>required</b>:
-/// a subthema cannot exist school-wide. It carries zero or more driving questions
+/// A subthema (Art. IX.2 as amended 2026-08-30) — <b>age-scoped: per <see cref="Leeftijd"/> alone</b>.
+/// It belongs to a school-wide <see cref="Thema"/> but differs per leeftijd, so its <see cref="Leeftijd"/>
+/// is <b>required</b>: a subthema cannot exist without an age. It carries zero or more driving questions
 /// (<see cref="Onderzoeksvragen"/>, each with its own <c>Vraag</c> and optional <c>Probleemstelling</c>)
 /// and a <see cref="DuurWeken"/> (≈ 2 wk, the subthemaperiode). Mutable autonomous school content (Art. III).
 /// <para>
-/// The class/age scope flows down: <see cref="Subdoelen"/> and <see cref="Activiteiten"/> belong to
-/// this subthema and therefore inherit its <see cref="KlasId"/>, while a subdoel additionally pins
-/// its own <c>leeftijd</c> for the per-<c>(subthema × leeftijd)</c> differentiation (Art. IX.2).
+/// <b>The klas is gone from this scope, and that is the point</b> (owner ruling, 2026-08-30; ADR-0025).
+/// A subthema used to require a <c>KlasId</c> as well, which meant two K3 classes each needed their own copy
+/// of the same content, and a teacher who built "de speelhoek" under K3 groen found it unreachable from K3
+/// blauw. What a school actually authors once is the content for an age. So a subthema on <c>K3</c> now holds
+/// for <b>every</b> class that teaches K3, and its <see cref="Subdoelen"/> and <see cref="Activiteiten"/> come
+/// with it.
+/// </para>
+/// <para>
+/// <b>What stays per klas is the planning, not the content.</b> A <c>Jaarplan</c> belongs to one klas, and so
+/// do its themaplaatsingen and activiteitplaatsingen: two K3 classes share this subthema and still put its
+/// activiteiten on different days in a different order. The klas remains what a teacher plans <i>in</i>; it is
+/// no longer what content belongs <i>to</i>.
+/// </para>
+/// <para>
+/// A subdoel still pins its own <c>leeftijd</c>. It is now normally the same value as this one, and the field is
+/// kept rather than collapsed because it is the subdoel's own record of what it differentiates for; nothing in
+/// this change makes a subdoel mean something else.
 /// </para>
 /// </summary>
 public sealed class Subthema
@@ -28,12 +41,11 @@ public sealed class Subthema
         Leeftijd = null!;
     }
 
-    internal Subthema(Guid themaId, string naam, int duurWeken, Guid klasId, string leeftijd)
+    internal Subthema(Guid themaId, string naam, int duurWeken, string leeftijd)
     {
         ThemaId = themaId;
         Naam = Require(naam, nameof(naam));
         DuurWeken = RequirePositive(duurWeken, nameof(duurWeken));
-        KlasId = RequireKlas(klasId);
         Leeftijd = Require(leeftijd, nameof(leeftijd));
     }
 
@@ -52,10 +64,14 @@ public sealed class Subthema
     /// <summary>The subthemaperiode duration in weeks (≈ 2).</summary>
     public int DuurWeken { get; private set; }
 
-    /// <summary>The owning class — <b>required</b> (class scoping is structural; Art. IX.2).</summary>
-    public Guid KlasId { get; private set; }
-
-    /// <summary>The age this subthema is scoped to — <b>required</b> (age scoping is structural; Art. IX.2).</summary>
+    /// <summary>
+    /// The age this subthema is scoped to — <b>required</b>, and now the whole of its scope (Art. IX.2).
+    /// <para>
+    /// It holds an Op.stap jaar/fase code (<c>Jaarfasen.Alle</c>: JK, K2, K3, L1-L6), which is the same
+    /// vocabulary a <c>Klas</c> records in its own <c>Jaarfase</c>. That the two agree is what makes "this
+    /// subthema is this class's" answerable at all now that the FK is gone.
+    /// </para>
+    /// </summary>
     public string Leeftijd { get; private set; }
 
     /// <summary>The age-differentiated subdoelen at the (subthema × leeftijd) level (Art. IX.2).</summary>
@@ -87,32 +103,43 @@ public sealed class Subthema
 
     /// <summary>
     /// Updates the subthema's basic attributes (mutable autonomous content, Art. III). Used by the
-    /// school-content import overwrite path (E1-08); the identity fields (naam, klas, leeftijd) are
+    /// school-content import overwrite path (E1-08); the identity fields (naam, leeftijd) are
     /// the match key and are not changed here.
     /// </summary>
     public void WerkBasisGegevensBij(int duurWeken) =>
         DuurWeken = RequirePositive(duurWeken, nameof(duurWeken));
 
     /// <summary>
-    /// Renames the subthema (CRUD, E1-10). The class/age scope (<see cref="KlasId"/>/<see cref="Leeftijd"/>)
-    /// is part of its identity and is changed only via <see cref="WijzigScope"/>.
+    /// Renames the subthema (CRUD, E1-10). The age scope (<see cref="Leeftijd"/>) is part of its identity
+    /// and is changed only via <see cref="WijzigScope"/>.
     /// </summary>
     public void WijzigNaam(string naam) => Naam = Require(naam, nameof(naam));
 
     /// <summary>
-    /// Re-scopes the subthema to a different class/age (CRUD, E1-10). Class scoping stays structural:
-    /// a subthema can never become school-wide — both a non-empty <paramref name="klasId"/> and a
-    /// non-blank <paramref name="leeftijd"/> remain required (Art. IX.2).
+    /// Re-scopes the subthema to a different age (CRUD, E1-10). Age scoping stays structural: a subthema can
+    /// never become ageless, so a non-blank <paramref name="leeftijd"/> remains required (Art. IX.2).
+    /// <para>
+    /// <b>Moving a subthema to another age moves it between classes</b>, because a class reaches it through the
+    /// age it teaches. That is a bigger act than it was when the klas was named explicitly, and it is the
+    /// caller's to present as one.
+    /// </para>
+    /// <para>
+    /// <b>⚠ THIS IS UNGUARDED, AND IT REACHES WHAT <see cref="VerplaatsActiviteitNaar"/> REFUSES.</b> The
+    /// subdoelen and activiteiten under this subthema carry no age of their own, so re-pointing this one changes
+    /// theirs; the move verb refuses exactly that for a single activiteit, and this does it for all of them on
+    /// one request. It can also leave a <c>Jaarplan</c> holding a dagplanning for an activiteit its klas no
+    /// longer teaches, which is the orphan <c>KlasBeheerService.VerwijderKlasAsync</c> refuses a delete over.
+    /// <b>Deliberately still unguarded:</b> whether this is a mistake or a legitimate correction that must
+    /// disclose how much travels is <b>E1-19</b>, and it needs an owner ruling first. Do not add a guard here on
+    /// the strength of the move rule alone: the two were confused once already, and the 2026-08-19 ruling that
+    /// looks like it settles this was about the klas half, which no longer exists.
+    /// </para>
     /// </summary>
-    public void WijzigScope(Guid klasId, string leeftijd)
-    {
-        KlasId = RequireKlas(klasId);
-        Leeftijd = Require(leeftijd, nameof(leeftijd));
-    }
+    public void WijzigScope(string leeftijd) => Leeftijd = Require(leeftijd, nameof(leeftijd));
 
     /// <summary>
     /// Removes an activiteit (and, via the EF cascade, its goal links) from this subthema. CRUD delete
-    /// of a class/age-scoped activiteit (E1-10).
+    /// of an age-scoped activiteit (E1-10).
     /// </summary>
     public void VerwijderActiviteit(Activiteit activiteit)
     {
@@ -126,25 +153,37 @@ public sealed class Subthema
     /// <c>DoelKoppeling</c> it carries, which is what makes this different in kind from deleting it here and
     /// retyping it there.
     /// <para>
-    /// <b>The class boundary is the invariant of this verb, and it is enforced here because this is the only
-    /// place both scopes are known</b> (Art. IX.2: a subthema is scoped per klas and leeftijd, an activiteit
-    /// inherits that scope). A move to another klas would silently hand one class's content to another, so it
-    /// is refused. A move to another <b>thema</b> is allowed (owner ruling, 2026-08-05).
-    /// <para>
-    /// <b>Deliberately narrow wording: this guards the move verb, not the system.</b>
-    /// <c>WijzigScope</c> still accepts a different klas, so re-scoping a subthema carries every activiteit in
-    /// it across a class boundary by another route. That is pre-existing E1-10 behaviour which no screen offers.
-    /// <b>The owner ruled on 2026-08-05 to leave that route as it is and file it</b>, so it is <b>E1-19</b>, and
-    /// closing it is that story's decision rather than this method's. Until then the claim above is true of this
-    /// verb and not of the system, which is why it is worded that way.
+    /// <b>THE SCOPE INVARIANT IS THE LEEFTIJD, and it is enforced here (owner ruling, 2026-08-30).</b> The guard
+    /// this verb used to carry compared two <c>KlasId</c>s, and it went with the klas itself when Art. IX.2 was
+    /// amended that same day. The owner ruled the replacement rather than leaving the verb unguarded: an
+    /// activiteit may move to any <b>thema</b>, and only to a subthema at the <b>same leeftijd</b>. So a K3
+    /// activiteit crossing from "Water" to "Lucht" is ordinary work, and the same activiteit landing in an L1
+    /// subthema is refused.
     /// </para>
     /// <para>
-    /// A move to another <b>leeftijd</b> within the same klas is permitted, which is the graadklas
-    /// differentiation Art. IX.2 exists for. <b>Ruled by the owner on 2026-08-05</b>, after an antagonist
-    /// QUESTION established that the earlier ruling had only covered the *thema* boundary and that this half
-    /// had been inferred: permitted, <b>and the panel must say what it means</b> rather than leave it to the
-    /// age printed in an option label (<c>themabeheer.activiteitVerplaatsLeeftijd</c>).
+    /// <b>This supersedes the ruling of 2026-08-05</b>, which allowed a move across leeftijd because a subthema
+    /// then named a klas as well and two ages inside one graadklas were the differentiation the model existed
+    /// for. Once the klas left the entity, "another leeftijd" stopped meaning "the same class, its other half"
+    /// and started meaning "a class that is not this one at all", which is the boundary the older guard was
+    /// protecting under a different name.
     /// </para>
+    /// <para>
+    /// <b>The aggregate is the right place for it.</b> A subthema knows its own leeftijd and its destination's, so
+    /// no service has to be trusted to check first and an API caller posting an arbitrary <c>subthemaId</c> at
+    /// <b>this verb</b> meets the same refusal a teacher does. <c>HaalSubthemaBestemmingenAsync</c> still narrows
+    /// the <i>offer</i> to the ages the asking klas teaches, which is a different job: it keeps the picker
+    /// sensible, this keeps the verb true.
+    /// </para>
+    /// <para>
+    /// <b>⚠ THE INVARIANT BINDS THIS VERB, NOT THE SYSTEM, and saying otherwise is a claim a single request
+    /// falsifies.</b> <see cref="WijzigScope"/> re-points this subthema's own leeftijd, and its subdoelen and
+    /// activiteiten inherit that scope structurally, so it reaches the outcome refused here for <i>every</i>
+    /// activiteit at once and is not guarded. Unlike the class-crossing version of that hole, it is reachable
+    /// from a screen: <c>Subthemaformulier</c> serves create and edit from one form and offers the leeftijd in
+    /// both. Whether that is a mistake to refuse or a correction to disclose is <b>E1-19</b>, still open; the
+    /// 2026-08-19 ruling on it answered the question about a <i>klas</i> boundary that has since ceased to
+    /// exist. <i>This paragraph restores a narrowing that E4-08's audit put here on purpose and that the
+    /// 2026-08-30 rewrite dropped.</i>
     /// </para>
     /// </summary>
     public void VerplaatsActiviteitNaar(Activiteit activiteit, Subthema doelSubthema)
@@ -171,11 +210,13 @@ public sealed class Subthema
             throw new ArgumentException("Deze activiteit staat al in dit subthema.");
         }
 
-        if (doelSubthema.KlasId != KlasId)
+        // Ordinal, like every other comparison of a jaar/fase code in this codebase: the nine codes are a ruled
+        // vocabulary (`Jaarfasen`), not free text, so a comparer that folded case would only hide an import or a
+        // client that failed to normalise. States the rule rather than the remedy, because the destination the
+        // teacher may pick instead is something only the screen can enumerate.
+        if (!string.Equals(doelSubthema.Leeftijd, Leeftijd, StringComparison.Ordinal))
         {
-            // Art. IX.2 makes the class scope structural. The sentence stays free of the article reference and
-            // says what the reader can do, which is the rule E1-14 landed for every message on these screens.
-            throw new ArgumentException("Een activiteit kan alleen verhuizen naar een subthema van dezelfde klas.");
+            throw new ArgumentException("Een activiteit kan alleen verhuizen naar een subthema van dezelfde leeftijd.");
         }
 
         _activiteiten.Remove(activiteit);
@@ -205,7 +246,7 @@ public sealed class Subthema
         return subdoel;
     }
 
-    /// <summary>Adds an activiteit to this (class/age-scoped) subthema.</summary>
+    /// <summary>Adds an activiteit to this (age-scoped) subthema.</summary>
     public Activiteit VoegActiviteitToe(
         string naam,
         ActiviteitType activiteitType,
@@ -216,11 +257,6 @@ public sealed class Subthema
         _activiteiten.Add(activiteit);
         return activiteit;
     }
-
-    private static Guid RequireKlas(Guid klasId) =>
-        klasId != Guid.Empty
-            ? klasId
-            : throw new ArgumentException("Een subthema is klas-gebonden; klasId is verplicht (Art. IX.2).", nameof(klasId));
 
     private static string Require(string value, string paramName)
     {

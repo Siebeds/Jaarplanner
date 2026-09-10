@@ -1,10 +1,13 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { GeplandeActiviteit } from "../../lib/types";
+import type { HoekplaatsingWeergave } from "../hoeken/gegevens";
 import type { Agendadag } from "./roosterdagen";
 import { dagNummer, maandVan, maandagVan, vandaag, verschuif, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
 import { t } from "../../i18n";
 import { Dagplus } from "./Dagplus";
 import { Subthemastroken } from "./Subthemastroken";
+import { Hoekstroken } from "../hoeken/Hoekstroken";
+import { hoekZin } from "../hoeken/hoekzin";
 import { Themastroken } from "./Themastroken";
 import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
 import { themaZin, vakOpDag, type Themavak } from "./themavakken";
@@ -31,6 +34,7 @@ export function Maandrooster({
   ankerMaand,
   vakken,
   reeksenPerDag,
+  hoekplaatsingen,
   onKiesDag,
   onOpen,
   onVoegToe,
@@ -48,6 +52,14 @@ export function Maandrooster({
   vakken: readonly Themavak[];
   /** Which subthema runs cover each day, so a cell can name what is running on it. */
   reeksenPerDag: Map<string, Subthemareeks[]>;
+  /**
+   * The hoeken running in the visible range.
+   *
+   * A flat list rather than a map per day, unlike the subthema runs beside it: a hoekplaatsing is
+   * already a window, so a cell answers "am I inside it" with a comparison instead of a lookup, and
+   * there is no derivation step that could disagree with the calendar.
+   */
+  hoekplaatsingen: readonly HoekplaatsingWeergave[];
   onKiesDag: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   /** Asked for an activiteit on this day, straight from the month. Lands in lesuur 1. */
@@ -91,6 +103,7 @@ export function Maandrooster({
               vak={vakOpDag(vakken, dag.datum)}
               isVandaag={dag.datum === nu}
               reeksen={reeksenPerDag.get(dag.datum) ?? LEEG}
+              hoekplaatsingen={hoekplaatsingen}
               onKiesDag={onKiesDag}
               onVoegToe={onVoegToe}
               onOpen={onOpen}
@@ -111,6 +124,7 @@ function Maandcel({
   vak,
   isVandaag,
   reeksen,
+  hoekplaatsingen,
   onKiesDag,
   onVoegToe,
   onOpen,
@@ -120,6 +134,7 @@ function Maandcel({
   vak: Themavak | undefined;
   isVandaag: boolean;
   reeksen: readonly Subthemareeks[];
+  hoekplaatsingen: readonly HoekplaatsingWeergave[];
   onKiesDag: (datum: string) => void;
   onVoegToe: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
@@ -174,7 +189,8 @@ function Maandcel({
               ? t("periode.openDagMet", { dag: volleDag(dag.datum), aantal: dag.activiteiten.length })
               : t("periode.openDag", { dag: volleDag(dag.datum) })) +
           themaZin(periode) +
-          subthemaZin(stroken)
+          subthemaZin(stroken) +
+          hoekZin(hoekplaatsingen, dag.datum)
         }
         className="absolute inset-0 z-0 rounded-veld transition-colors duration-150 hover:bg-vlak-diep/60"
       />
@@ -188,6 +204,7 @@ function Maandcel({
       <div className="relative z-10 -mx-1.5 -mt-1.5 hidden flex-col gap-px sm:flex">
         <Themastroken vak={periode} datum={dag.datum} dicht />
         <Subthemastroken reeksen={stroken} datum={dag.datum} dicht />
+        <Hoekstroken plaatsingen={hoekplaatsingen} datum={dag.datum} dicht />
       </div>
 
       {/* Adding straight from the month, without the detour through the day.
@@ -199,8 +216,26 @@ function Maandcel({
           On a phone it is visible rather than revealed, because there is no hover to reveal it with;
           `Dagplus` owns that switch. *This paragraph used to say the opposite* ("not on a phone"),
           and went on saying it after the plus was made unconditional, which is the failure mode a
-          comment about layout has: nothing rechecks it. */}
-      {dag.isLesdag ? <Dagplus datum={dag.datum} onVoegToe={onVoegToe} className="absolute right-1 top-1 z-20" /> : null}
+          comment about layout has: nothing rechecks it.
+
+          WHICH CORNER, and why it differs by breakpoint. From `sm` it is the bottom right, because
+          the top right is where the thema band is: the band is full bleed and 16 pixels tall, the
+          plus is 28, so hovering a cell put the plus straight over the name of the running thema.
+          Below `sm` there is no band (the strip above is `hidden sm:flex`), so the top corner is the
+          free one there and the plus stays in it.
+
+          `sm:bg-kaart` because the bottom of a cell is where the activiteit chips sit. The plus is
+          revealed over them rather than beside them, and a transparent 28 pixel square laid on a
+          chip reads as one smudged label instead of two things. It masks instead. The cost is that
+          on a full day the tail of the bottom chip is hidden WHILE the pointer is in the cell; the
+          chip is still there, and the day button's own label carries the count either way. */}
+      {dag.isLesdag ? (
+        <Dagplus
+          datum={dag.datum}
+          onVoegToe={onVoegToe}
+          className="absolute right-1 top-1 z-20 sm:bottom-1 sm:top-auto sm:bg-kaart"
+        />
+      ) : null}
 
       {/* Today is a filled pill, not another hue: this grid already spends colour on the activiteiten
           inside the cells, and a shape reads at 40 pixels where a tint does not. The word itself does
@@ -291,7 +326,7 @@ function Maandchip({
       {...listeners}
       {...attributes}
       className={cn(
-        "pointer-events-auto block w-full cursor-grab touch-none truncate rounded border-l-2 bg-vlak px-1 py-0.5 text-left text-[0.625rem] text-inkt",
+        "pointer-events-auto block w-full cursor-grab touch-none truncate rounded border-l-2 bg-vlak px-1 py-0.5 text-left text-[0.625rem] text-inkt active:cursor-grabbing",
         // The wash takes the FILL. The left border is already spoken for: attentie there means the
         // activiteit falls outside its own themaperiode, and a teacher-chosen hue on the same edge
         // would overwrite that. Listed before the border classes so tailwind-merge keeps the border.

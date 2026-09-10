@@ -85,7 +85,7 @@ export interface OnderzoeksvraagInvoer {
 export interface SubthemaInvoer {
   naam: string;
   duurWeken: number;
-  klasId: string;
+  /** The age it is for. No klas: a subthema holds for every class teaching this age (Art. IX.2). */
   leeftijd: string;
   onderzoeksvragen: OnderzoeksvraagInvoer[];
 }
@@ -143,7 +143,16 @@ export function useVerwijderActiviteit(themaId: string) {
   );
 }
 
-/** Moves an activiteit to another subthema. It may cross a thema, never a klas (ruling 2026-08-05). */
+/**
+ * Moves an activiteit to another subthema. It may cross a thema, never a leeftijd (ruling 2026-08-30, which
+ * supersedes the 2026-08-05 ruling this comment used to cite: that one permitted the crossing, back when a
+ * subthema named a klas as well).
+ *
+ * **Nothing calls this today.** There is no move panel in `src/`, so a server refusal has no renderer; the
+ * destination list `GET /api/subthemas/voor-klas/{klasId}` has no caller either. Whoever builds the panel:
+ * narrow that list to the leeftijd of the activiteit being moved, because it is scoped to the ages the KLAS
+ * teaches and a class with several will otherwise be offered a row the server refuses.
+ */
 export function useVerplaatsActiviteit(themaId: string) {
   return useSchoolcontentMutatie<{ activiteitId: string; doelSubthemaId: string }, unknown>(
     ({ activiteitId, doelSubthemaId }) =>

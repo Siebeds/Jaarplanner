@@ -8,6 +8,7 @@ import { PlanScherm } from "./features/plan/PlanScherm";
 import { Agendascherm } from "./features/plan/Agendascherm";
 import { DekkingScherm } from "./features/dekking/DekkingScherm";
 import { ImportScherm } from "./features/import/ImportScherm";
+import { InstellingenScherm } from "./features/instellingen/InstellingenScherm";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="agenda/dag/:datum" element={<Agendascherm />} />
             <Route path="agenda/periodes" element={<PlanScherm />} />
             <Route path="dekking" element={<DekkingScherm />} />
+            <Route path="instellingen" element={<InstellingenScherm />} />
             {/* Not in the bottom bar: see the note in ImportScherm. Reached from Doelen and Thema's. */}
             <Route path="inladen" element={<ImportScherm />} />
             <Route path="*" element={<Navigate to="/doelen" replace />} />

@@ -31,7 +31,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
 
         // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
         var schooljaar = TestSchooljaar.Maak();
-        _klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
+        _klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", "L1");
         seed.Schooljaren.Add(schooljaar);
 
         // Seed read-only curriculum codes the goal links can reference (Art. III.5). The in-memory
@@ -98,7 +98,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Plassen meten", ActiviteitType.Waarneming));
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "WIS-001");
 
@@ -257,37 +257,44 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     // --- Subthema CRUD + level scoping (Art. IX.2). ---
 
     [Fact]
-    public async Task Maak_subthema_requires_a_klas_and_leeftijd()
+    public async Task Maak_subthema_requires_een_leeftijd()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
 
-        // Empty klas → a subthema cannot exist school-wide.
+        // Blank leeftijd → age scoping is structural (Art. IX.2).
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, Guid.Empty, "K3")));
-
-        // Blank leeftijd → age scoping is structural.
-        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "  ")));
+            () => NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "  ")));
     }
 
-    [Fact]
-    public async Task Maak_subthema_rejects_an_unknown_klas()
+    /// <summary>
+    /// The validation that replaced "does this klas exist" (Art. IX.2 as amended 2026-08-30). A leeftijd is the
+    /// whole scope now, so a value outside the nine Op.stap jaar/fase codes is not an odd label but a subthema no
+    /// class can ever reach: "5-6" is the shape real files hold and exactly what must not get in.
+    /// </summary>
+    [Theory]
+    [InlineData("5-6")]
+    [InlineData("8")]
+    [InlineData("kleuters")]
+    public async Task Maak_subthema_rejects_een_leeftijd_buiten_de_jaarfasen(string leeftijd)
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, Guid.NewGuid(), "K3")));
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, leeftijd)));
+
+        // The message names the choices rather than only refusing, which is the rule E1-14 landed for every
+        // sentence a teacher can reach.
+        Assert.Contains("K3", fout.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task Maak_subthema_persists_class_and_age_scope()
+    public async Task Maak_subthema_persists_age_scope()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
 
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie(
-            "Regen", DuurWeken: 2, _klas.Id, "K3",
+            "Regen", DuurWeken: 2, "K3",
             Onderzoeksvragen: [new("Waar komt regen vandaan?", "Waarom regent het?")]));
 
-        Assert.Equal(_klas.Id, subthema.KlasId);
         Assert.Equal("K3", subthema.Leeftijd);
         Assert.Single(subthema.Onderzoeksvragen);
         Assert.Equal("Waar komt regen vandaan?", subthema.Onderzoeksvragen[0].Vraag);
@@ -299,9 +306,9 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Editing_a_subthema_does_not_affect_school_wide_thema()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5, Kernwoordenschat: ["plas"]));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
-        await NieuweService().WijzigSubthemaAsync(subthema.Id, new SubthemaWijzigingInvoer("Stortbui", DuurWeken: 3, _klas.Id, "K2"));
+        await NieuweService().WijzigSubthemaAsync(subthema.Id, new SubthemaWijzigingInvoer("Stortbui", DuurWeken: 3, "K2"));
 
         var themaNa = await NieuweService().HaalThemaOpAsync(thema.Id);
         // School-wide thema attributes are untouched (level scoping, Art. IX.2).
@@ -318,17 +325,20 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Wijzig_subthema_cannot_clear_the_scope()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
+        // Blank, and equally a value outside the nine codes: both would leave the subthema unreachable.
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => NieuweService().WijzigSubthemaAsync(subthema.Id, new SubthemaWijzigingInvoer("Regen", 2, Guid.Empty, "K3")));
+            () => NieuweService().WijzigSubthemaAsync(subthema.Id, new SubthemaWijzigingInvoer("Regen", 2, "  ")));
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => NieuweService().WijzigSubthemaAsync(subthema.Id, new SubthemaWijzigingInvoer("Regen", 2, "5-6")));
     }
 
     [Fact]
     public async Task Verwijder_subthema_cascades_children_but_leaves_thema()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "NL-001");
 
@@ -345,7 +355,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Koppel_subthema_creates_a_manueel_subdoel_at_the_subthema_leeftijd()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
         var subdoel = await NieuweService().KoppelSubthemaAanDoelAsync(subthema.Id, "NL-001");
 
@@ -363,7 +373,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Koppel_subthema_rejects_a_duplicate_link()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         await NieuweService().KoppelSubthemaAanDoelAsync(subthema.Id, "NL-001");
 
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
@@ -374,7 +384,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Ontkoppel_subdoel_removes_the_link()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var subdoel = await NieuweService().KoppelSubthemaAanDoelAsync(subthema.Id, "NL-001");
 
         await NieuweService().OntkoppelSubdoelAsync(subthema.Id, subdoel.Id);
@@ -388,7 +398,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Maak_activiteit_inherits_the_subthema_scope()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
             "Plassen meten", ActiviteitType.Waarneming, Hoek: "ontdektafel"));
@@ -402,7 +412,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Activiteit_links_to_multiple_leerdoelen_each_manueel()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
 
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "NL-001");
@@ -420,7 +430,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Activiteit_link_to_unknown_code_is_rejected_and_curriculum_untouched()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
 
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
@@ -437,7 +447,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         // so before this call returns there is nothing to link to, and the form could not offer the picker
         // while creating. Everything lands in one request.
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
             "Meten", ActiviteitType.Onderzoek, LeerplandoelCodes: ["NL-001", "WIS-001"]));
@@ -455,7 +465,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     {
         // Null and empty are both "no goals yet", which is how most activiteiten are made.
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
         var zonder = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
         var leeg = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
@@ -469,7 +479,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Maak_activiteit_collapses_a_code_repeated_in_one_payload()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
             "Meten", ActiviteitType.Onderzoek, LeerplandoelCodes: ["NL-001", "NL-001"]));
@@ -483,7 +493,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         // THE POINT OF PUTTING THE CODES ON THE CREATE PAYLOAD. One SaveChanges, so a bad code cannot leave
         // an activiteit behind carrying half of what the teacher chose. Art. III.5 refuses the code itself.
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
             () => NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
@@ -497,7 +507,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Ontkoppel_activiteit_doel_removes_only_that_link()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
         var k1 = await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "NL-001");
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "WIS-001");
@@ -513,7 +523,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Wijzig_activiteit_updates_type_and_uitkomsten()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
 
         var gewijzigd = await NieuweService().WijzigActiviteitAsync(activiteit.Id, new ActiviteitWijzigingInvoer(
@@ -528,7 +538,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Verwijder_activiteit_removes_it_and_its_links()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "NL-001");
 
@@ -545,7 +555,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Voeg_onderzoeksvraag_toe_en_haal_op_bij_subthema()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Planten", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Planten", 2, "K3"));
 
         var ov = await NieuweService().VoegOnderzoeksvraagToeAsync(subthema.Id,
             new OnderzoeksvraagCreatie("Wat gebeurt er als planten geen water krijgen?", "Planten hebben water nodig."));
@@ -563,7 +573,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Activiteit_koppelen_aan_onderzoeksvraag_en_weer_loskoppelen()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Planten", 2, _klas.Id, "K3"));
+        var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Planten", 2, "K3"));
         var ov = await NieuweService().VoegOnderzoeksvraagToeAsync(subthema.Id, new OnderzoeksvraagCreatie("Hoe zuigen planten water op?"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Planten observeren", ActiviteitType.Waarneming));
 
@@ -580,8 +590,8 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Activiteit_koppelen_aan_onderzoeksvraag_van_ander_subthema_wordt_geweigerd()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var subthemaA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klas.Id, "K3"));
-        var subthemaB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Ijs", 2, _klas.Id, "K2"));
+        var subthemaA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
+        var subthemaB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Ijs", 2, "K2"));
         var ovB = await NieuweService().VoegOnderzoeksvraagToeAsync(subthemaB.Id, new OnderzoeksvraagCreatie("Wanneer bevriest water?"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthemaA.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
 

@@ -57,7 +57,8 @@ export interface DoelKoppelingContext {
   herkomst: KoppelingHerkomst;
   themaNaam: string;
   onderdeel: string | null;
-  klasNaam: string | null;
+  /** The age an age-scoped link belongs to; null for the school-wide layers. Was the klas name until 2026-08-30. */
+  leeftijd: string | null;
   status: KoppelingStatus;
 }
 
@@ -209,7 +210,17 @@ export interface KlasWeergave {
   naam: string;
   leerjaar: number;
   aantalSubthemas: number;
+  /** What this class is MEASURED against: one code once the school records one, otherwise what the leerjaar can say. */
   jaarFasen: string[];
+  /** What the school has recorded, or null when it has not. */
+  jaarfase: string | null;
+  /**
+   * The codes a form may offer for `jaarfase`, empty when there is nothing to ask.
+   *
+   * From the server, deliberately: `Jaarfasen` is domain vocabulary and a list spelled out here would be a second
+   * answer to "what may this class teach?". Same rule as `jaarFasen` itself.
+   */
+  mogelijkeJaarfasen: string[];
 }
 
 export interface SchooljaarSamenvatting {
@@ -302,7 +313,12 @@ export interface SubthemaWeergave {
   themaId: string;
   naam: string;
   duurWeken: number;
-  klasId: string;
+  /**
+   * The age this subthema is for, and the whole of its scope (Art. IX.2 as amended 2026-08-30).
+   *
+   * It used to sit beside a `klasId`. A subthema now holds for every klas that teaches this age, so there is no
+   * class to name: two K3 classes share this one and each keeps its own dagplanning.
+   */
   leeftijd: string;
   onderzoeksvragen: OnderzoeksvraagWeergave[];
   subdoelen: SubdoelWeergave[];

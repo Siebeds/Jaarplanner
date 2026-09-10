@@ -31,7 +31,7 @@ public sealed class SchoolcontentImportServiceTests : IDisposable
 
         // A Klas lives in a Schooljaar (Art. IX.3 containment, E3-01).
         var schooljaar = TestSchooljaar.Maak();
-        _klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
+        _klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", "L1");
         _context.Schooljaren.Add(schooljaar);
 
         // Seed the leerplandoelen these fixtures link to. The import now validates every goal code
@@ -126,8 +126,7 @@ public sealed class SchoolcontentImportServiceTests : IDisposable
         Assert.Equal(2, thema.Themadoelen.Count);
 
         var subthema = Assert.Single(thema.Subthemas);
-        Assert.Equal(_klas.Id, subthema.KlasId); // class scoping persisted (Art. IX.2)
-        Assert.Equal("K3", subthema.Leeftijd);   // age scoping persisted
+        Assert.Equal("K3", subthema.Leeftijd); // age scoping persisted (Art. IX.2)
         var subdoel = Assert.Single(subthema.Subdoelen);
         Assert.Equal("LP-3", subdoel.Koppeling.LeerplandoelCode);
         Assert.Equal("K3", subdoel.Leeftijd);
@@ -135,16 +134,36 @@ public sealed class SchoolcontentImportServiceTests : IDisposable
         Assert.Equal("Bladeren rapen", activiteit.Naam);
     }
 
+    /// <summary>
+    /// An unknown klas is no longer fatal by itself (Art. IX.2, amended 2026-08-30): the klas column is a fallback
+    /// source for the leeftijd, not the scope, so a row carrying a valid jaar/fase code imports regardless.
+    /// </summary>
     [Fact]
-    public async Task Subthema_referencing_an_unknown_klas_is_skipped_with_a_notice()
+    public async Task Subthema_met_een_onbekende_klas_maar_geldige_leeftijd_wordt_gewoon_ingelezen()
     {
-        var rij = Rij(klas: "L9 — bestaat niet");
+        var rij = Rij(klas: "L9 bestaat niet", leeftijd: "K3");
+
+        var result = await Importeer(Parse(rij));
+
+        Assert.Empty(result.Diff.Opmerkingen);
+        var thema = await _context.Themas.Include(t => t.Subthemas).SingleAsync();
+        Assert.Equal("K3", Assert.Single(thema.Subthemas).Leeftijd);
+    }
+
+    /// <summary>
+    /// And what IS fatal: a leeftijd that is not one of the nine codes, with no klas able to supply one. The
+    /// subthema would be stored and unreachable from every screen, so it is skipped and reported instead.
+    /// </summary>
+    [Fact]
+    public async Task Subthema_zonder_bruikbare_leeftijd_is_overgeslagen_met_een_melding()
+    {
+        var rij = Rij(klas: "L9 bestaat niet", leeftijd: "5-6");
 
         var result = await Importeer(Parse(rij));
 
         Assert.NotEmpty(result.Diff.Opmerkingen);
         var thema = await _context.Themas.Include(t => t.Subthemas).SingleAsync();
-        Assert.Empty(thema.Subthemas); // could not satisfy required class scoping → skipped
+        Assert.Empty(thema.Subthemas);
     }
 
     // --- Preview == commit. ---

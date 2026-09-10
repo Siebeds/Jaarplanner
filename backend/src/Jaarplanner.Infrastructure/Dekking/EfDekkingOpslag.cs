@@ -41,8 +41,15 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
         // Materialised so EF parameterises one list rather than re-enumerating the caller's collection per query.
         var ids = themaIds.Distinct().ToList();
 
-        // FOUR layers, and the class-scoped two are filtered to THIS class (owner ruling 2026-08-03; the full
-        // reasoning and the rejected alternatives are on IDekkingOpslag).
+        // The AGES this class teaches, which is how a class reaches its subthema's since the 2026-08-30 amendment
+        // to Art. IX.2. `null` means the ages cannot be derived (the graadklas ordinal, Art. XIV) and the layers
+        // below then include every subthema rather than none — a class we cannot scope must not be reported as
+        // covering nothing, which is the one direction a coverage figure may never move by itself.
+        var codes = (await Klasleeftijden.VoorKlasAsync(_context, klasId, cancellationToken)).Waarden;
+
+        // FOUR layers, and the age-scoped two are filtered to THIS class's ages (owner ruling 2026-08-03, and
+        // its scoping mechanism amended 2026-08-30; the full reasoning and the rejected alternatives are on
+        // IDekkingOpslag).
         //
         // Every layer is reached through Themas so the thema NAME comes back with the code: Art. V.4 wants the
         // overview exportable as proof of coverage, and a proof that cannot say through which thema a goal is
@@ -89,26 +96,27 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
                 .Select(k => new DekkendeKoppeling(k.LeerplandoelCode, t.Naam)))
             .ToListAsync(cancellationToken);
 
-        // Layer 3 — subdoelen, per subthema. Subthema is scoped per klas AND leeftijd (Art. IX.2), so the KlasId
-        // filter is what stops class A claiming dekking for what class B teaches.
+        // Layer 3 — subdoelen, per subthema. A subthema is scoped by leeftijd (Art. IX.2), so the leeftijd filter
+        // is what stops an L3 class claiming dekking for what a kleuterklas teaches. It no longer separates two
+        // classes of the SAME age, and it is not meant to: they share this content by design now.
         var subdoelen = await _context.Themas
             .AsNoTracking()
             .Where(t => ids.Contains(t.Id))
             .SelectMany(t => t.Subthemas
-                .Where(st => st.KlasId == klasId)
+                .Where(st => codes == null || codes.Contains(st.Leeftijd))
                 .SelectMany(st => st.Subdoelen
                     .Where(sd => sd.Koppeling.Status == KoppelingStatus.Aanvaard
                         || sd.Koppeling.Status == KoppelingStatus.Manueel)
                     .Select(sd => new DekkendeKoppeling(sd.Koppeling.LeerplandoelCode, t.Naam))))
             .ToListAsync(cancellationToken);
 
-        // Layer 4 — activiteit links, one level deeper. Scoped by the SUBTHEMA's klas, not the activiteit's:
-        // an activiteit has no klas of its own, it inherits the scope of the subthema it sits in.
+        // Layer 4 — activiteit links, one level deeper. Scoped by the SUBTHEMA's leeftijd, not the activiteit's:
+        // an activiteit has no age of its own, it inherits the scope of the subthema it sits in.
         var activiteiten = await _context.Themas
             .AsNoTracking()
             .Where(t => ids.Contains(t.Id))
             .SelectMany(t => t.Subthemas
-                .Where(st => st.KlasId == klasId)
+                .Where(st => codes == null || codes.Contains(st.Leeftijd))
                 .SelectMany(st => st.Activiteiten
                     .SelectMany(a => a.Doelkoppelingen
                         .Where(k => k.Status == KoppelingStatus.Aanvaard
@@ -150,6 +158,10 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
         // problem rather than this story's; what this story owes is that these four agree with the covering read's
         // four, which DekkingLagenPostgresTests asserts directly rather than leaving to inspection.
 
+        // Same age scoping as the covering read above, and the same meaning for `null`: cannot be derived, so
+        // widen. See the note there.
+        var codes = (await Klasleeftijden.VoorKlasAsync(_context, klasId, cancellationToken)).Waarden;
+
         // Layer 1 — themadoelen, school-wide.
         var themadoelen = await _context.Themas
             .AsNoTracking()
@@ -176,11 +188,11 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
                     k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)))
             .ToListAsync(cancellationToken);
 
-        // Layer 3 — subdoelen, scoped to this class's subthema's (Art. IX.2).
+        // Layer 3 — subdoelen, scoped to the subthema's at this class's ages (Art. IX.2).
         var subdoelen = await _context.Themas
             .AsNoTracking()
             .SelectMany(t => t.Subthemas
-                .Where(st => st.KlasId == klasId)
+                .Where(st => codes == null || codes.Contains(st.Leeftijd))
                 .SelectMany(st => st.Subdoelen
                     .Where(sd => sd.Koppeling.Status != KoppelingStatus.Geweigerd)
                     .Select(sd => new KandidaatKoppeling(
@@ -191,11 +203,11 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
                             || sd.Koppeling.Status == KoppelingStatus.Manueel))))
             .ToListAsync(cancellationToken);
 
-        // Layer 4 — activiteit links, scoped by the SUBTHEMA's klas, as above.
+        // Layer 4 — activiteit links, scoped by the SUBTHEMA's leeftijd, as above.
         var activiteiten = await _context.Themas
             .AsNoTracking()
             .SelectMany(t => t.Subthemas
-                .Where(st => st.KlasId == klasId)
+                .Where(st => codes == null || codes.Contains(st.Leeftijd))
                 .SelectMany(st => st.Activiteiten
                     .SelectMany(a => a.Doelkoppelingen
                         .Where(k => k.Status != KoppelingStatus.Geweigerd)

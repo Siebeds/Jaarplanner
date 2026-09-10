@@ -101,7 +101,7 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
         await using (var context = _db.MaakContext())
         {
             var thema = await context.Themas.Include(t => t.Subthemas).SingleAsync(t => t.Id == seed.ThemaId);
-            thema.VoegSubthemaToe("Noten", duurWeken: 2, seed.KlasId, leeftijd: "6");
+            thema.VoegSubthemaToe("Noten", duurWeken: 2, leeftijd: "6");
             await context.SaveChangesAsync();
         }
 
@@ -251,7 +251,7 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
         await using (var context = _db.MaakContext())
         {
             var schooljaar = await context.Schooljaren.SingleAsync(s => s.Id == seed.SchooljaarId);
-            schooljaar.VoegKlasToe(naam, leerjaar: 4);
+            schooljaar.VoegKlasToe(naam, "L4");
             await context.SaveChangesAsync();
         }
 
@@ -308,7 +308,7 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
         await using var context = _db.MaakContext();
 
         var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("groei"));
-        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}"[..12], leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}"[..12], "L3");
         context.Schooljaren.Add(schooljaar);
 
         var eersteCode = $"GRO-A-{Guid.NewGuid():N}"[..16];
@@ -321,7 +321,7 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
 
         var thema = new Thema($"Herfst-{Guid.NewGuid():N}"[..16], duurWeken: 5);
         thema.VoegThemadoelToe(new DoelKoppeling(eersteCode, KoppelingStatus.Manueel));
-        var subthema = thema.VoegSubthemaToe("Bladeren", duurWeken: 2, klas.Id, leeftijd: "6");
+        var subthema = thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "6");
         var activiteit = subthema.VoegActiviteitToe(
             "Bladeren rapen", ActiviteitType.Waarneming);
         context.Themas.Add(thema);

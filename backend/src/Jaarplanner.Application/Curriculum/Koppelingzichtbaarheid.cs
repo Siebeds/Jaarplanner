@@ -24,11 +24,11 @@ public enum Koppelingzichtbaarheid
     /// Every link layer, school-wide and class/age-scoped alike.
     /// <para>
     /// <b>This is the present no-authentication reality, not a ruling on FR-10.2.</b> The API has no
-    /// authenticated user, so it cannot know which klas the reader teaches; narrowing to "your klas only"
-    /// would mean narrowing to *no* klas, which would report a doel used by one class's activiteit as used
+    /// authenticated user, so it cannot know which leeftijd the reader teaches; narrowing to "your age only"
+    /// would mean narrowing to *no* age, which would report a doel used by a subthema's activiteit as used
     /// nowhere. A false "gebruikt in geen enkel thema" is worse than a wide answer, because a teacher would
-    /// act on it. Every class-scoped row therefore <b>names its klas</b>, so nothing here can be read as a
-    /// school-wide fact (see <c>DoelKoppelingWeergave.KlasNaam</c>).
+    /// act on it. Every age-scoped row therefore <b>names its leeftijd</b>, so nothing here can be read as a
+    /// school-wide fact (see <c>DoelKoppelingWeergave.Leeftijd</c>).
     /// </para>
     /// </summary>
     Alles = 0,

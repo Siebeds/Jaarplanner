@@ -752,8 +752,8 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         await using (var context = _db.MaakContext())
         {
             var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("containment"));
-            schooljaar.VoegKlasToe($"L1-{Guid.NewGuid():N}", leerjaar: 1);
-            schooljaar.VoegKlasToe($"L2-{Guid.NewGuid():N}", leerjaar: 2);
+            schooljaar.VoegKlasToe($"L1-{Guid.NewGuid():N}", "L1");
+            schooljaar.VoegKlasToe($"L2-{Guid.NewGuid():N}", "L2");
             context.Schooljaren.Add(schooljaar);
             await context.SaveChangesAsync();
             schooljaarId = schooljaar.Id;
@@ -783,7 +783,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     public async Task Een_klas_zonder_bestaand_schooljaar_wordt_geweigerd()
     {
         await using var context = _db.MaakContext();
-        context.Klassen.Add(new Klas(Guid.NewGuid(), $"Zwevend-{Guid.NewGuid():N}", 3));
+        context.Klassen.Add(new Klas(Guid.NewGuid(), $"Zwevend-{Guid.NewGuid():N}", "L3"));
 
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
         Assert.Equal("23503", Assert.IsType<Npgsql.PostgresException>(ex.InnerException).SqlState);
@@ -938,7 +938,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         await using var context = _db.MaakContext();
 
         var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("jaarplan"));
-        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", "L3");
         context.Schooljaren.Add(schooljaar);
 
         var code = $"NAT-{Guid.NewGuid():N}"[..16];
@@ -964,7 +964,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         await using var context = _db.MaakContext();
 
         var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("slot"));
-        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", "L3");
         context.Schooljaren.Add(schooljaar);
 
         var vast = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);

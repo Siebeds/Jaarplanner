@@ -455,13 +455,11 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                             KoppelingHerkomst.Subdoel,
                             t.Naam,
                             st.Naam,
-                            // A correlated subquery rather than a navigation: Subthema carries only KlasId, and
-                            // adding a navigation property to the domain for a read view would change the
-                            // aggregate to serve a screen.
-                            _context.Klassen
-                                .Where(kl => kl.Id == st.KlasId)
-                                .Select(kl => kl.Naam)
-                                .FirstOrDefault(),
+                            // The subthema's own column now, where this used to be a correlated subquery into
+                            // klassen. A subthema names its leeftijd directly (Art. IX.2 as amended 2026-08-30),
+                            // so the join, its translation risk and its "klas row has gone" null are all gone
+                            // with it.
+                            st.Leeftijd,
                             sd.Koppeling.Status))))
                 .ToListAsync(cancellationToken);
 
@@ -475,10 +473,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                                 KoppelingHerkomst.Activiteit,
                                 t.Naam,
                                 a.Naam,
-                                _context.Klassen
-                                    .Where(kl => kl.Id == st.KlasId)
-                                    .Select(kl => kl.Naam)
-                                    .FirstOrDefault(),
+                                st.Leeftijd,
                                 k.Status)))))
                 .ToListAsync(cancellationToken);
         }
@@ -491,7 +486,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                 .Concat(activiteiten)
                 .OrderBy(k => k.ThemaNaam, StringComparer.CurrentCulture)
                 .ThenBy(k => k.Herkomst)
-                .ThenBy(k => k.KlasNaam, StringComparer.CurrentCulture)
+                .ThenBy(k => k.Leeftijd, StringComparer.Ordinal)
                 .ThenBy(k => k.Onderdeel, StringComparer.CurrentCulture),
         ];
     }

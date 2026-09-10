@@ -82,21 +82,11 @@ public class SchoolContentEntitiesTests
     public void Subthema_is_class_and_age_scoped_and_requires_both()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var klasId = Guid.NewGuid();
 
-        var subthema = thema.VoegSubthemaToe("De plas", duurWeken: 2, klasId, leeftijd: "K3");
+        var subthema = thema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: "K3");
 
-        Assert.Equal(klasId, subthema.KlasId);
         Assert.Equal("K3", subthema.Leeftijd);
         Assert.Equal(thema.Id, subthema.ThemaId);
-    }
-
-    [Fact]
-    public void Subthema_cannot_exist_without_a_klas()
-    {
-        var thema = new Thema("Water", duurWeken: 4);
-        Assert.Throws<ArgumentException>(() =>
-            thema.VoegSubthemaToe("De plas", duurWeken: 2, klasId: Guid.Empty, leeftijd: "K3"));
     }
 
     [Theory]
@@ -107,14 +97,14 @@ public class SchoolContentEntitiesTests
     {
         var thema = new Thema("Water", duurWeken: 4);
         Assert.Throws<ArgumentException>(() =>
-            thema.VoegSubthemaToe("De plas", duurWeken: 2, klasId: Guid.NewGuid(), leeftijd: leeftijd!));
+            thema.VoegSubthemaToe("De plas", duurWeken: 2, leeftijd: leeftijd!));
     }
 
     [Fact]
     public void Subthema_carries_the_kennisrijk_driving_questions()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var subthema = thema.VoegSubthemaToe("De plas", 2, "K3");
         var ov = subthema.VoegOnderzoeksvraagToe("Hoe ontstaat een plas?", "Waar komt regen vandaan?");
 
         Assert.Single(subthema.Onderzoeksvragen);
@@ -126,7 +116,7 @@ public class SchoolContentEntitiesTests
     public void Subthema_can_hold_multiple_onderzoeksvragen()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var subthema = thema.VoegSubthemaToe("Planten", 2, Guid.NewGuid(), "2K");
+        var subthema = thema.VoegSubthemaToe("Planten", 2, "2K");
 
         var ov1 = subthema.VoegOnderzoeksvraagToe("Wat gebeurt er als planten geen water krijgen?", "Planten hebben water nodig.");
         var ov2 = subthema.VoegOnderzoeksvraagToe("Hoe zuigen planten water op?");
@@ -142,7 +132,7 @@ public class SchoolContentEntitiesTests
     public void Subthema_verwijder_onderzoeksvraag_removes_it()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var subthema = thema.VoegSubthemaToe("De plas", 2, "K3");
         var ov = subthema.VoegOnderzoeksvraagToe("Hoe ontstaat een plas?");
         Assert.Single(subthema.Onderzoeksvragen);
 
@@ -154,7 +144,7 @@ public class SchoolContentEntitiesTests
     public void Subdoel_is_per_subthema_and_age_and_links_through_its_koppeling()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var subthema = thema.VoegSubthemaToe("De plas", 2, "K3");
         var subdoel = subthema.VoegSubdoelToe("K3", Voorstel("WIS-001"));
 
         Assert.Equal(subthema.Id, subdoel.SubthemaId);
@@ -166,7 +156,7 @@ public class SchoolContentEntitiesTests
     public void Activiteit_is_owned_by_a_subthema_and_can_link_multiple_leerdoelen()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var subthema = thema.VoegSubthemaToe("De plas", 2, "K3");
 
         var activiteit = subthema.VoegActiviteitToe(
             "Waterproef", ActiviteitType.Experiment, hoek: "ontdektafel", verwachteUitkomsten: "kind benoemt drijven/zinken");
@@ -183,7 +173,7 @@ public class SchoolContentEntitiesTests
     public void Activiteit_rejects_an_undefined_type()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var subthema = thema.VoegSubthemaToe("De plas", 2, "K3");
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             subthema.VoegActiviteitToe("X", (ActiviteitType)99));
     }
@@ -246,26 +236,24 @@ public class SchoolContentEntitiesTests
     }
 
     [Fact]
-    public void Subthema_rescope_stays_class_and_age_bound()
+    public void Subthema_rescope_stays_age_bound()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var subthema = thema.VoegSubthemaToe("De plas", 2, "K3");
 
-        var nieuweKlas = Guid.NewGuid();
-        subthema.WijzigScope(nieuweKlas, "K2");
-        Assert.Equal(nieuweKlas, subthema.KlasId);
+        subthema.WijzigScope("K2");
         Assert.Equal("K2", subthema.Leeftijd);
 
-        // A subthema can never become school-wide (Art. IX.2).
-        Assert.Throws<ArgumentException>(() => subthema.WijzigScope(Guid.Empty, "K2"));
-        Assert.Throws<ArgumentException>(() => subthema.WijzigScope(nieuweKlas, " "));
+        // A subthema can never become ageless (Art. IX.2). The klas half of this assertion went with the klas
+        // itself on 2026-08-30; a subthema no longer has one to clear.
+        Assert.Throws<ArgumentException>(() => subthema.WijzigScope(" "));
     }
 
     [Fact]
     public void Activiteit_link_can_be_removed()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var subthema = thema.VoegSubthemaToe("De plas", 2, "K3");
         var activiteit = subthema.VoegActiviteitToe("Waterproef", ActiviteitType.Experiment);
         var koppeling = new DoelKoppeling("WT-001", KoppelingStatus.Manueel);
         activiteit.VoegDoelkoppelingToe(koppeling);
@@ -279,7 +267,7 @@ public class SchoolContentEntitiesTests
     public void Verwijder_subthema_detaches_it_from_the_school_wide_thema()
     {
         var thema = new Thema("Water", duurWeken: 4);
-        var subthema = thema.VoegSubthemaToe("De plas", 2, Guid.NewGuid(), "K3");
+        var subthema = thema.VoegSubthemaToe("De plas", 2, "K3");
         Assert.Single(thema.Subthemas);
 
         thema.VerwijderSubthema(subthema);

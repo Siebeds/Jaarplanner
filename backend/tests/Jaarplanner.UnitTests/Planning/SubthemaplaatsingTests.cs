@@ -25,7 +25,7 @@ public sealed class SubthemaplaatsingTests
         var subthemaId = Guid.NewGuid();
         var plan = new Jaarplan(klasId);
 
-        var plaatsing = plan.PlaatsSubthema(subthemaId, klasId, Maandag, Vrijdag);
+        var plaatsing = plan.PlaatsSubthema(subthemaId, Maandag, Vrijdag);
 
         Assert.Equal(Maandag, plaatsing.Van);
         Assert.Equal(Vrijdag, plaatsing.Tot);
@@ -41,7 +41,7 @@ public sealed class SubthemaplaatsingTests
         var klasId = Guid.NewGuid();
         var plan = new Jaarplan(klasId);
 
-        var plaatsing = plan.PlaatsSubthema(Guid.NewGuid(), klasId, Maandag, Maandag);
+        var plaatsing = plan.PlaatsSubthema(Guid.NewGuid(), Maandag, Maandag);
 
         Assert.Equal(Maandag, plaatsing.Van);
         Assert.Equal(Maandag, plaatsing.Tot);
@@ -53,10 +53,10 @@ public sealed class SubthemaplaatsingTests
         var klasId = Guid.NewGuid();
         var subthemaId = Guid.NewGuid();
         var plan = new Jaarplan(klasId);
-        plan.PlaatsSubthema(subthemaId, klasId, Maandag, Vrijdag);
+        plan.PlaatsSubthema(subthemaId, Maandag, Vrijdag);
 
         // Two days later, three days shorter: the teacher saying "these days instead".
-        var opnieuw = plan.PlaatsSubthema(subthemaId, klasId, new DateOnly(2027, 3, 3), new DateOnly(2027, 3, 4));
+        var opnieuw = plan.PlaatsSubthema(subthemaId, new DateOnly(2027, 3, 3), new DateOnly(2027, 3, 4));
 
         var enige = Assert.Single(plan.Subthemaplaatsingen);
         Assert.Equal(opnieuw.Id, enige.Id);
@@ -73,10 +73,10 @@ public sealed class SubthemaplaatsingTests
         var klasId = Guid.NewGuid();
         var subthemaId = Guid.NewGuid();
         var plan = new Jaarplan(klasId);
-        plan.PlaatsSubthema(subthemaId, klasId, Maandag, Vrijdag);
+        plan.PlaatsSubthema(subthemaId, Maandag, Vrijdag);
 
         // No shared day, so this is a second period rather than a correction of the first.
-        plan.PlaatsSubthema(subthemaId, klasId, new DateOnly(2027, 5, 3), new DateOnly(2027, 5, 7));
+        plan.PlaatsSubthema(subthemaId, new DateOnly(2027, 5, 3), new DateOnly(2027, 5, 7));
 
         Assert.Equal(2, plan.Subthemaplaatsingen.Count);
     }
@@ -87,27 +87,30 @@ public sealed class SubthemaplaatsingTests
         var klasId = Guid.NewGuid();
         var subthemaId = Guid.NewGuid();
         var plan = new Jaarplan(klasId);
-        plan.PlaatsSubthema(subthemaId, klasId, Maandag, Vrijdag);
+        plan.PlaatsSubthema(subthemaId, Maandag, Vrijdag);
 
         // Monday the 8th begins where Friday the 5th ended without sharing a day. Abutting is not overlapping:
         // otherwise a subthema running two fortnights back to back would collapse into one.
-        plan.PlaatsSubthema(subthemaId, klasId, new DateOnly(2027, 3, 8), new DateOnly(2027, 3, 12));
+        plan.PlaatsSubthema(subthemaId, new DateOnly(2027, 3, 8), new DateOnly(2027, 3, 12));
 
         Assert.Equal(2, plan.Subthemaplaatsingen.Count);
     }
 
+    /// <summary>
+    /// The subthema counterpart of the activiteit case, removed for the same reason: a subthema carries a leeftijd
+    /// rather than a klas since 2026-08-30 (Art. IX.2), so this aggregate has nothing to compare. The refusal now
+    /// lives in <c>WeekplanningService</c> alone. Asserted rather than deleted so that re-introducing a class
+    /// comparison here is a failing test rather than a silent regression.
+    /// </summary>
     [Fact]
-    public void Een_subthema_van_een_andere_klas_wordt_geweigerd()
+    public void Een_subthema_wordt_niet_meer_op_klas_geweigerd()
     {
         var plan = new Jaarplan(Guid.NewGuid());
 
-        var fout = Assert.Throws<ArgumentException>(
-            () => plan.PlaatsSubthema(Guid.NewGuid(), Guid.NewGuid(), Maandag, Vrijdag));
+        var plaatsing = plan.PlaatsSubthema(Guid.NewGuid(), Maandag, Vrijdag);
 
-        // Dutch, because it reaches a teacher (Art. II.3), and refused because the class scope is structural
-        // (Art. IX.2) rather than a filter a screen happens to apply.
-        Assert.Contains("eigen klas", fout.Message, StringComparison.Ordinal);
-        Assert.Empty(plan.Subthemaplaatsingen);
+        Assert.NotNull(plaatsing);
+        Assert.Single(plan.Subthemaplaatsingen);
     }
 
     [Fact]
@@ -116,7 +119,7 @@ public sealed class SubthemaplaatsingTests
         var klasId = Guid.NewGuid();
         var plan = new Jaarplan(klasId);
 
-        Assert.Throws<ArgumentException>(() => plan.PlaatsSubthema(Guid.NewGuid(), klasId, Vrijdag, Maandag));
+        Assert.Throws<ArgumentException>(() => plan.PlaatsSubthema(Guid.NewGuid(), Vrijdag, Maandag));
         Assert.Empty(plan.Subthemaplaatsingen);
     }
 
@@ -125,8 +128,8 @@ public sealed class SubthemaplaatsingTests
     {
         var klasId = Guid.NewGuid();
         var plan = new Jaarplan(klasId);
-        plan.PlaatsSubthema(Guid.NewGuid(), klasId, new DateOnly(2027, 5, 3), new DateOnly(2027, 5, 7));
-        plan.PlaatsSubthema(Guid.NewGuid(), klasId, Maandag, Vrijdag);
+        plan.PlaatsSubthema(Guid.NewGuid(), new DateOnly(2027, 5, 3), new DateOnly(2027, 5, 7));
+        plan.PlaatsSubthema(Guid.NewGuid(), Maandag, Vrijdag);
 
         // Ordered by the stored dates rather than by insertion, so a read view stays stable across a refetch.
         Assert.Equal([Maandag, new DateOnly(2027, 5, 3)], plan.Subthemaplaatsingen.Select(p => p.Van));

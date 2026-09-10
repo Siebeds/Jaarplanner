@@ -7,6 +7,13 @@
     <!-- Enables `dotnet user-secrets` for local dev secrets (DB connection string). -->
     <!-- No secret is stored here; the id only points at a per-user store (Art. VI.4 / ADR-0012). -->
     <UserSecretsId>jaarplanner-api-dev</UserSecretsId>
+    <!-- Keep sibling output folders out of the default item globs. The Web SDK includes **/*.json as -->
+    <!-- Content and excludes only bin/ and obj/, so an API built to `bin-run` (which is how a session -->
+    <!-- runs the app without locking bin/Debug against the next `dotnet build`) has every .json in that -->
+    <!-- folder copied back into bin/Debug — including a copy of the previous copy. The nesting deepens -->
+    <!-- one level per build until the path passes MAX_PATH, and the build then fails with an MSB3030 -->
+    <!-- naming a 330-character path that does not exist. Cost two sessions a red build on 2026-08-30. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin-*/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

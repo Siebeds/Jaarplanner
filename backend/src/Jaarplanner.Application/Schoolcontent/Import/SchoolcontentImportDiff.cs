@@ -95,16 +95,22 @@ public enum WijzigingSoort
 /// <param name="Soort">Added / updated / unchanged.</param>
 public sealed record ThemaWijziging(string Naam, WijzigingSoort Soort);
 
-/// <summary>One subthema's classification, keyed by (thema naam, subthema naam, klas, leeftijd).</summary>
+/// <summary>
+/// One subthema's classification, keyed by (thema naam, subthema naam, leeftijd).
+/// <para>
+/// <b>The klas left the key on 2026-08-30</b> (Art. IX.2). Two rows naming the same subthema at the same age for
+/// two different classes used to import as two subthema's; they are now one, which is the merge the amendment
+/// intends. A file that lists "Bladeren, K3 groen, K3" and "Bladeren, K3 blauw, K3" therefore produces a single
+/// added row here rather than two.
+/// </para>
+/// </summary>
 /// <param name="ThemaNaam">The owning thema naam.</param>
 /// <param name="Naam">The subthema naam.</param>
-/// <param name="Klas">The class the subthema is scoped to.</param>
 /// <param name="Leeftijd">The age the subthema is scoped to.</param>
 /// <param name="Soort">Added / updated / unchanged.</param>
 public sealed record SubthemaWijziging(
     string ThemaNaam,
     string Naam,
-    string Klas,
     string Leeftijd,
     WijzigingSoort Soort);
 

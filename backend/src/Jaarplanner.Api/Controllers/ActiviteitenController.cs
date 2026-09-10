@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// Thin REST controller (Art. VIII) for class/age-scoped <c>Activiteit</c> CRUD and its goal links
+/// Thin REST controller (Art. VIII) for age-scoped <c>Activiteit</c> CRUD and its goal links
 /// (E1-10, FR-3.1/3.2). An activiteit may carry one or more leerdoel links, each persisted with status
 /// <c>manueel</c> for a manual link (Art. IV.2). Scoping and validation live in the service/domain.
 /// </summary>
@@ -28,7 +28,9 @@ public sealed class ActiviteitenController : ControllerBase
     }
 
     /// <summary>
-    /// Moves the activiteit to another subthema (E4-08, FR-7.2) with its attributes and goal links intact.
+    /// Moves the activiteit to another subthema (E4-08, FR-7.2) with its attributes and goal links intact. The
+    /// destination may be under another thema but must be at the same <b>leeftijd</b> (owner ruling, 2026-08-30);
+    /// the domain refuses the rest as a Dutch 400.
     /// A separate route from <c>PUT {activiteitId}</c> on purpose: the edit payload carries the activiteit's
     /// own fields, while this one carries its <b>place</b>, and folding the parent into the edit form would
     /// make every rename able to re-parent silently.

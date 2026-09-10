@@ -1,15 +1,9 @@
 import { Blad } from "../../components/ui/Blad";
 import { Veld, Keuze } from "../../components/ui/Veld";
 import { Knop } from "../../components/ui/Knop";
-import type { Doelsoort, LeerplandoelFacetten } from "../../lib/types";
+import type { LeerplandoelFacetten } from "../../lib/types";
+import type { Doelenfilter } from "../../state/doelenfilter";
 import { t } from "../../i18n";
-
-export interface Doelenfilter {
-  doelsoort?: Doelsoort;
-  jaarFase?: string;
-  domein?: string;
-  subdomein?: string;
-}
 
 /**
  * The three dimensions a teacher narrows on here, each with the count the rest of the filter

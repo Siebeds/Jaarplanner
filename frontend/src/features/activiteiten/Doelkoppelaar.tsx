@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Knop } from "../../components/ui/Knop";
+import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { IcoonPlus } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { Doelkiezer } from "./Doelkiezer";
@@ -21,10 +22,25 @@ export function Doelkoppelaar({
   bezig,
   alGekozen,
   toelichting,
+  compact,
 }: {
   onKies: (leerplandoelCode: string) => void;
   bezig?: boolean;
   alGekozen: string[];
+  /**
+   * Icon only, for a row that already sits inside a card that has one of these.
+   *
+   * A subthemakaart carries one koppelaar for its subdoelen and one per activiteit, and spelled out
+   * they are the same button two or three times in one card, which is what made it read as a toolbar
+   * (owner, 2026-08-30: "veel te veel knoppen"). The card-level one keeps its words because it is the
+   * one being scanned for; the row-level ones become the plus alone.
+   *
+   * `toelichting` stops being optional in spirit here: with the visible label gone it is the ONLY
+   * thing that says what this plus links a doel to, so the caller must pass it. It is not made
+   * required in the type because the same component still has a labelled mode where it is genuinely
+   * optional, and a required prop that is only required half the time is a worse lie than this note.
+   */
+  compact?: boolean;
   /**
    * What this particular koppelaar links a doel to, for assistive technology.
    *
@@ -39,16 +55,27 @@ export function Doelkoppelaar({
   const [open, setOpen] = useState(false);
 
   if (!open) {
-    return (
+    return compact ? (
       <Knop
         rang="stil"
-        className="h-9 min-h-9 px-3 text-meta"
-        aria-label={toelichting}
+        className="h-9 min-h-9 w-9 px-0"
+        aria-label={toelichting ?? t("doelkiezer.koppel")}
+        disabled={bezig}
         onClick={() => setOpen(true)}
       >
         <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-        {t("doelkiezer.koppel")}
       </Knop>
+    ) : (
+      // `Toevoegknop`, the one shape every add-or-link control on this app wears. It used to be a
+      // borderless `stil` button sitting two sections above an outlined "Subthema toevoegen", which
+      // is the inconsistency the owner reported on 2026-08-30: same intention, different weight, and
+      // the difference tracked nothing.
+      <Toevoegknop
+        label={t("doelkiezer.koppel")}
+        aria-label={toelichting}
+        disabled={bezig}
+        onClick={() => setOpen(true)}
+      />
     );
   }
 

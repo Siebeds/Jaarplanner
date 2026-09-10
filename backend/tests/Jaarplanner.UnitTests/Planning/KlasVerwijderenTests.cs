@@ -35,7 +35,7 @@ public sealed class KlasVerwijderenTests
         await using var context = Context();
 
         var schooljaar = TestSchooljaar.MetVakanties();
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         context.Schooljaren.Add(schooljaar);
 
         var thema = new Thema("Herfst", duurWeken: 5);
@@ -248,7 +248,7 @@ public sealed class KlasVerwijderenTests
         var activiteitId = Guid.NewGuid();
 
         await MetJaarplanAsync(klasId, plan =>
-            plan.PlaatsActiviteit(activiteitId, klasId, new DateOnly(2026, 9, 7), KoppelingStatus.Manueel));
+            plan.PlaatsActiviteit(activiteitId, new DateOnly(2026, 9, 7), KoppelingStatus.Manueel));
 
         await using var context = Context();
         var service = new KlasBeheerService(context);
@@ -277,7 +277,7 @@ public sealed class KlasVerwijderenTests
         var (klasId, _) = await SeedAsync();
 
         await MetJaarplanAsync(klasId, plan =>
-            plan.PlaatsActiviteit(Guid.NewGuid(), klasId, new DateOnly(2026, 9, 7), KoppelingStatus.Voorgesteld));
+            plan.PlaatsActiviteit(Guid.NewGuid(), new DateOnly(2026, 9, 7), KoppelingStatus.Voorgesteld));
 
         await using var context = Context();
         await new KlasBeheerService(context).VerwijderKlasAsync(klasId);

@@ -38,6 +38,21 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// </summary>
 public sealed class DekkingLagenPostgresTests : IAsyncLifetime
 {
+    /// <summary>
+    /// The age the class in <see cref="ZetOpAsync"/> teaches, and one it does not.
+    /// <para>
+    /// <b>Named rather than spelled out, because a literal here is invisible when it is wrong.</b> Layers 3 and 4
+    /// are scoped by <c>Subthema.Leeftijd</c> since 2026-08-30 (Art. IX.2), so a fixture that hangs its subthema
+    /// at an age the class does not teach reports NO coverage from those layers — which is what a broken layer
+    /// looks like as well. Every one of these fixtures carried the literal "5" for a while, and the two tests
+    /// that assert all four layers failed while the three that assert an EXCLUSION passed for the wrong reason:
+    /// they excluded the content because the age was nonsense, not because the filter works.
+    /// </para>
+    /// </summary>
+    private const string Leeftijd = "K3";
+
+    private const string AndereLeeftijd = "L1";
+
     private PostgresTestDatabase _db = null!;
 
     public async Task InitializeAsync()
@@ -73,8 +88,8 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegDoelsuggestieToe(new DoelKoppeling("L2-SUGGESTIE", KoppelingStatus.Voorgesteld, "past"))
                 .WijzigStatus(KoppelingStatus.Aanvaard);
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("L3-SUBDOEL", KoppelingStatus.Aanvaard));
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, Leeftijd);
+            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("L3-SUBDOEL", KoppelingStatus.Aanvaard));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
             activiteit.VoegDoelkoppelingToe(new DoelKoppeling("L4-ACTIVITEIT", KoppelingStatus.Manueel));
@@ -135,9 +150,9 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             context.Themas.Add(tweedeThema);
             tweedeThemaId = tweedeThema.Id;
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("TELT-NIET-SUBDOEL", KoppelingStatus.Voorgesteld));
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("TELT-NIET-SUBDOEL-GEWEIGERD", KoppelingStatus.Geweigerd));
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, Leeftijd);
+            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("TELT-NIET-SUBDOEL", KoppelingStatus.Voorgesteld));
+            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("TELT-NIET-SUBDOEL-GEWEIGERD", KoppelingStatus.Geweigerd));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
             activiteit.VoegDoelkoppelingToe(new DoelKoppeling("TELT-NIET-ACT", KoppelingStatus.Geweigerd));
@@ -160,13 +175,18 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Een_subthema_van_een_andere_klas_dekt_niet()
+    public async Task Een_subthema_van_een_andere_leeftijd_dekt_niet()
     {
         // The load-bearing half of the owner's ruling. Both classes place the same school-wide thema, but the
-        // subthema (and therefore its subdoel and activiteit) belongs to class B. Class A must not be credited with
-        // it: Art. IX.2 scopes Subthema/Subdoel/Activiteit per klas and leeftijd, so that content is taught to B's
-        // pupils, not A's. Without the KlasId filter this test fails and every class silently inherits every other
-        // class's coverage.
+        // subthema (and therefore its subdoel and activiteit) sits at the age only class B teaches. Class A must
+        // not be credited with it: Art. IX.2 scopes Subthema/Subdoel/Activiteit per LEEFTIJD, so that content is
+        // taught to B's pupils, not A's. Without the leeftijd filter this test fails and every class silently
+        // inherits every other age's coverage.
+        //
+        // **The two classes are at two DIFFERENT ages, and that is what this test now needs to exist at all.**
+        // They were two K3 groups until 2026-08-30, which was the whole point back when a subthema named its
+        // klas. Since that amendment two classes at one age SHARE every subthema by design, so a same-age pair
+        // could no longer demonstrate an exclusion — it would be asserting that the ruling had not happened.
         Guid klasAId = Guid.Empty;
         Guid themaId = Guid.Empty;
 
@@ -183,15 +203,15 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
                 $"2026-2027-{Guid.NewGuid():N}"[..20],
                 new DateOnly(2026, 9, 1),
                 new DateOnly(2027, 6, 30));
-            var klasA = schooljaar.VoegKlasToe($"K3A-{Guid.NewGuid():N}", leerjaar: 0);
-            var klasB = schooljaar.VoegKlasToe($"K3B-{Guid.NewGuid():N}", leerjaar: 0);
+            var klasA = schooljaar.VoegKlasToe($"A-{Guid.NewGuid():N}", Leeftijd);
+            var klasB = schooljaar.VoegKlasToe($"B-{Guid.NewGuid():N}", AndereLeeftijd);
             context.Schooljaren.Add(schooljaar);
 
             var thema = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);
             thema.VoegThemadoelToe(new DoelKoppeling("SCHOOLBREED", KoppelingStatus.Aanvaard, "anchor"));
 
-            var subthemaVanB = thema.VoegSubthemaToe("Bladeren", 2, klasB.Id, "5");
-            subthemaVanB.VoegSubdoelToe("5", new DoelKoppeling("VAN-KLAS-B-SUBDOEL", KoppelingStatus.Aanvaard));
+            var subthemaVanB = thema.VoegSubthemaToe("Bladeren", 2, AndereLeeftijd);
+            subthemaVanB.VoegSubdoelToe(AndereLeeftijd, new DoelKoppeling("VAN-KLAS-B-SUBDOEL", KoppelingStatus.Aanvaard));
 
             var activiteitVanB = subthemaVanB.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
             activiteitVanB.VoegDoelkoppelingToe(
@@ -208,7 +228,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         var koppelingen = await new EfDekkingOpslag(leescontext)
             .HaalDekkendeKoppelingenAsync(klasAId, [themaId]);
 
-        // A gets the school-wide themadoel and NOTHING of B's class-scoped content.
+        // A gets the school-wide themadoel and NOTHING of the content scoped to B's age.
         Assert.Equal(["SCHOOLBREED"], koppelingen.Select(k => k.LeerplandoelCode));
     }
 
@@ -234,8 +254,8 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegDoelsuggestieToe(new DoelKoppeling("OOK-NIET-SUGGESTIE", KoppelingStatus.Voorgesteld, "past"))
                 .WijzigStatus(KoppelingStatus.Aanvaard);
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("OOK-NIET", KoppelingStatus.Aanvaard));
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, Leeftijd);
+            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("OOK-NIET", KoppelingStatus.Aanvaard));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
             activiteit.VoegDoelkoppelingToe(new DoelKoppeling("OOK-NIET-ACTIVITEIT", KoppelingStatus.Manueel));
@@ -338,10 +358,10 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegThemadoelToe(new DoelKoppeling("KAND-TD-GEWEIGERD", KoppelingStatus.Geweigerd, "nee"));
             thema.VoegThemadoelToe(new DoelKoppeling("KAND-TD-VOORGESTELD", KoppelingStatus.Voorgesteld, "?"));
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL", KoppelingStatus.Manueel));
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-GEWEIGERD", KoppelingStatus.Geweigerd));
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-VOORGESTELD", KoppelingStatus.Voorgesteld));
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, Leeftijd);
+            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("KAND-SUBDOEL", KoppelingStatus.Manueel));
+            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("KAND-SUBDOEL-GEWEIGERD", KoppelingStatus.Geweigerd));
+            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("KAND-SUBDOEL-VOORGESTELD", KoppelingStatus.Voorgesteld));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
             activiteit.VoegDoelkoppelingToe(new DoelKoppeling("KAND-ACTIVITEIT", KoppelingStatus.Voorgesteld));
@@ -372,21 +392,22 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Een_subthema_van_een_andere_klas_is_ook_geen_kandidaat()
+    public async Task Een_subthema_van_een_andere_leeftijd_is_ook_geen_kandidaat()
     {
-        // The owner ruling of 2026-08-03 scopes layers 3 and 4 per class, and the gap-analyse has to honour it for
-        // the same reason coverage does: naming class B's subthema as the route to closing class A's gap would send a
-        // teacher to content that is not theirs to plan.
+        // The owner ruling of 2026-08-03 scopes layers 3 and 4 per class, which since 2026-08-30 means per age
+        // (Art. IX.2), and the gap-analyse has to honour it for the same reason coverage does: naming an L1
+        // subthema as the route to closing a K3 class's gap would send a teacher to content her pupils never get.
         //
         // Written as its own test rather than folded into the one above because the failure it guards is a MISSING
         // filter, and a fixture with only one class cannot distinguish a filter that works from one that is absent.
         //
         // IT COVERS LAYER 4 AS WELL AS LAYER 3, and that is antagonist ronde 1's MAJOR-2 (2026-08-19): the first
-        // version hung only a subdoel under class B's subthema, so layer 4 was never filled for the foreign class and
-        // the klas filter on it was untested. Proven, not suspected — mutating `st.KlasId == klasId` on the
-        // activiteit branch of the candidate read to `st.KlasId == st.KlasId` left the WHOLE suite green. The
-        // covering read's sibling test above had the activiteit from the start, so the new read got the weaker copy
-        // of a fixture whose own comment says a missing filter is what it exists to catch.
+        // version hung only a subdoel under the foreign subthema, so layer 4 was never filled and the scope filter
+        // on it was untested. Proven, not suspected — mutating that filter on the activiteit branch of the
+        // candidate read to a tautology left the WHOLE suite green. The covering read's sibling test above had the
+        // activiteit from the start, so the new read got the weaker copy of a fixture whose own comment says a
+        // missing filter is what it exists to catch. (The filter compared `st.KlasId` then and compares
+        // `st.Leeftijd` now; what the mutation proves is the same either way.)
         await using var context = _db.MaakContext();
 
         await ZorgVoorDoelenAsync(context, ["KAND-THEMADOEL", "KAND-SUBDOEL", "KAND-ACTIVITEIT-B"]);
@@ -395,15 +416,19 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             $"2026-2027-{Guid.NewGuid():N}"[..20],
             new DateOnly(2026, 9, 1),
             new DateOnly(2027, 6, 30));
-        var klasA = schooljaar.VoegKlasToe($"A-{Guid.NewGuid():N}", leerjaar: 0);
-        var klasB = schooljaar.VoegKlasToe($"B-{Guid.NewGuid():N}", leerjaar: 0);
+        // Two classes at two DIFFERENT ages, where these used to be two kleutergroepen at the same one. Since
+        // 2026-08-30 a subthema is scoped by leeftijd (Art. IX.2), so two classes at the same age share every
+        // subthema by design and could not demonstrate the isolation this test exists to prove. The age is now
+        // what separates them, and that is the separation the dekking layers actually filter on.
+        var klasA = schooljaar.VoegKlasToe($"A-{Guid.NewGuid():N}", Leeftijd);
+        var klasB = schooljaar.VoegKlasToe($"B-{Guid.NewGuid():N}", AndereLeeftijd);
         context.Schooljaren.Add(schooljaar);
 
         var thema = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);
         thema.VoegThemadoelToe(new DoelKoppeling("KAND-THEMADOEL", KoppelingStatus.Aanvaard, "anchor"));
 
-        var subthemaVanB = thema.VoegSubthemaToe("Bladeren", 2, klasB.Id, "5");
-        subthemaVanB.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL", KoppelingStatus.Aanvaard));
+        var subthemaVanB = thema.VoegSubthemaToe("Bladeren", 2, AndereLeeftijd);
+        subthemaVanB.VoegSubdoelToe(AndereLeeftijd, new DoelKoppeling("KAND-SUBDOEL", KoppelingStatus.Aanvaard));
 
         var activiteitVanB = subthemaVanB.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
         activiteitVanB.VoegDoelkoppelingToe(new DoelKoppeling("KAND-ACTIVITEIT-B", KoppelingStatus.Aanvaard));
@@ -462,9 +487,9 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-SUGGESTIE-M", KoppelingStatus.Voorgesteld, "past"))
                 .WijzigStatus(KoppelingStatus.Manueel);
 
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, klas.Id, "5");
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-A", KoppelingStatus.Aanvaard));
-            subthema.VoegSubdoelToe("5", new DoelKoppeling("KAND-SUBDOEL-M", KoppelingStatus.Manueel));
+            var subthema = thema.VoegSubthemaToe("Bladeren", 2, Leeftijd);
+            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("KAND-SUBDOEL-A", KoppelingStatus.Aanvaard));
+            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("KAND-SUBDOEL-M", KoppelingStatus.Manueel));
 
             var activiteit = subthema.VoegActiviteitToe("Bladeren zoeken", ActiviteitType.Waarneming);
             activiteit.VoegDoelkoppelingToe(new DoelKoppeling("KAND-ACTIVITEIT-A", KoppelingStatus.Aanvaard));
@@ -540,7 +565,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
             $"2026-2027-{Guid.NewGuid():N}"[..20],
             new DateOnly(2026, 9, 1),
             new DateOnly(2027, 6, 30));
-        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", leerjaar: 0);
+        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", Leeftijd);
         context.Schooljaren.Add(schooljaar);
 
         var thema = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);

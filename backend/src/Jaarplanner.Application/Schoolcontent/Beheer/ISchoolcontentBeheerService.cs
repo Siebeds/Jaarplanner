@@ -8,7 +8,10 @@ namespace Jaarplanner.Application.Schoolcontent.Beheer;
 /// <para>
 /// <b>Level scoping is enforced here (Art. IX.2).</b> Thema + Themadoel + kernwoordenschat are
 /// school-wide (no klas/leeftijd in their inputs); Subthema/Subdoel/Activiteit are per class &amp; age
-/// (a subthema input must carry a real klas + leeftijd, else <see cref="SchoolcontentValidatieFout"/>).
+/// (a subthema input must carry one of the nine Op.stap jaar/fase codes, checked against <c>Jaarfasen</c>, else
+/// <see cref="SchoolcontentValidatieFout"/>). <i>This said "a real klas + leeftijd" until 2026-08-31, describing a
+/// validation that had no input to validate: neither <c>SubthemaCreatie</c> nor <c>SubthemaWijzigingInvoer</c> has
+/// carried a <c>KlasId</c> since Art. IX.2 was amended.</i>
 /// Goal links reference a read-only <c>Leerplandoel</c> by code; an unknown code is rejected and the
 /// curriculum is never mutated (Art. III).
 /// </para>
@@ -55,7 +58,7 @@ public interface ISchoolcontentBeheerService
 
     Task VerwijderThemadoelAsync(Guid themaId, Guid themadoelId, CancellationToken cancellationToken = default);
 
-    // --- Subthema (class/age-scoped). ---
+    // --- Subthema (age-scoped). ---
 
     Task<SubthemaWeergave> MaakSubthemaAsync(Guid themaId, SubthemaCreatie creatie, CancellationToken cancellationToken = default);
 
@@ -72,7 +75,7 @@ public interface ISchoolcontentBeheerService
 
     Task OntkoppelSubdoelAsync(Guid subthemaId, Guid subdoelId, CancellationToken cancellationToken = default);
 
-    // --- Activiteit (class/age-scoped). ---
+    // --- Activiteit (age-scoped, through its subthema). ---
 
     Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default);
 
@@ -82,17 +85,24 @@ public interface ISchoolcontentBeheerService
 
     /// <summary>
     /// Moves an activiteit to another subthema (E4-08, FR-7.2), keeping its attributes and every goal link.
-    /// The destination may belong to another thema and to another leeftijd, but <b>not to another klas</b>
-    /// (owner ruling, 2026-08-05); the domain enforces that boundary and a crossing is refused as a
+    /// The destination may belong to another thema but must be at the <b>same leeftijd</b> (owner ruling,
+    /// 2026-08-30, superseding the 2026-08-05 ruling that allowed a move across leeftijd back when a subthema
+    /// still named a klas as well). The domain enforces that boundary and a crossing is refused as a
     /// <see cref="SchoolcontentValidatieFout"/>.
     /// </summary>
     Task<ActiviteitWeergave> VerplaatsActiviteitAsync(Guid activiteitId, Guid doelSubthemaId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Lists the subthema's of <b>one klas</b>, across every thema, as candidate destinations for a move
-    /// (E4-08). Class-scoped by construction: it filters on <paramref name="klasId"/>, so no other class's
-    /// derivations are in the answer to begin with (Art. IX.2), which is the same property
-    /// <see cref="HaalThemaVoorKlasAsync"/> relies on.
+    /// Lists the subthema's at the ages <paramref name="klasId"/> teaches, across every thema, as candidate
+    /// destinations for a move (E4-08). Age-scoped by construction (Art. IX.2 as amended 2026-08-30), which is
+    /// the same property <see cref="HaalThemaVoorKlasAsync"/> relies on.
+    /// <para>
+    /// <b>It is an offer, not the guard</b>, and a caller must not treat it as one. A class that teaches more
+    /// than one age (a kleutergroep with no recorded jaar/fase gets all three kleuter codes) is answered rows at
+    /// several ages, while <c>Subthema.VerplaatsActiviteitNaar</c> refuses any destination whose leeftijd differs
+    /// from the activiteit's own. A picker must therefore narrow this list to the leeftijd of the activiteit it
+    /// is moving, or it will offer a row the move refuses.
+    /// </para>
     /// </summary>
     Task<IReadOnlyList<SubthemaBestemming>> HaalSubthemaBestemmingenAsync(Guid klasId, CancellationToken cancellationToken = default);
 

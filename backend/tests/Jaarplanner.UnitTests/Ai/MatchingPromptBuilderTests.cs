@@ -24,7 +24,7 @@ public sealed class MatchingPromptBuilderTests
         thema.VoegThemadoelToe(
             new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past bij natuurobservatie"));
 
-        var subthema = thema.VoegSubthemaToe("Bladeren", duurWeken: 2, klasId: Guid.NewGuid(), leeftijd: "K3");
+        var subthema = thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
         subthema.VoegOnderzoeksvraagToe("Welke kleuren zien we?", "Waarom vallen bladeren?");
         subthema.VoegActiviteitToe(
             "Bladeren verzamelen",

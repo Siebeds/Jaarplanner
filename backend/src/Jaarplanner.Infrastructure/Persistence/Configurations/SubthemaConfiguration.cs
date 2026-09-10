@@ -1,4 +1,3 @@
-using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,10 +5,15 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// EF Core mapping for <see cref="Subthema"/> — <b>class/age-scoped</b> (Art. IX.2). The scoping is
-/// enforced structurally: <see cref="Subthema.KlasId"/> is a <b>required</b> FK to <see cref="Klas"/>
-/// and <see cref="Subthema.Leeftijd"/> is <b>required</b> — a subthema cannot exist school-wide.
-/// Subdoelen and activiteiten hang off the subthema and so inherit its class/age scope.
+/// EF Core mapping for <see cref="Subthema"/> — <b>age-scoped</b> (Art. IX.2 as amended 2026-08-30).
+/// <see cref="Subthema.Leeftijd"/> is <b>required</b>; a subthema cannot exist without an age. Subdoelen and
+/// activiteiten hang off the subthema and so inherit its age scope.
+/// <para>
+/// <b>The FK to <c>Klas</c> is gone.</b> It used to be required and <c>Restrict</c>, which is what made a
+/// subthema one class's and what made deleting a class refuse while any hung on it. A class now reaches its
+/// subthema's by matching its own jaar/fase against <see cref="Subthema.Leeftijd"/>, which is a value match and
+/// not a relationship, so there is nothing left for a foreign key to enforce.
+/// </para>
 /// </summary>
 public sealed class SubthemaConfiguration : IEntityTypeConfiguration<Subthema>
 {
@@ -23,16 +27,12 @@ public sealed class SubthemaConfiguration : IEntityTypeConfiguration<Subthema>
         builder.Property(s => s.Naam).HasMaxLength(256).IsRequired();
         builder.Property(s => s.DuurWeken).IsRequired();
 
-        // Class/age scoping is structural and required (Art. IX.2).
-        builder.Property(s => s.KlasId).IsRequired();
+        // Age scoping is structural and required (Art. IX.2).
         builder.Property(s => s.Leeftijd).HasMaxLength(8).IsRequired();
 
-        builder.HasOne<Klas>()
-            .WithMany()
-            .HasForeignKey(s => s.KlasId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasIndex(s => new { s.KlasId, s.Leeftijd });
+        // Every "which subthema's are this class's" query filters on this column alone, so it carries the index
+        // the composite (KlasId, Leeftijd) one used to.
+        builder.HasIndex(s => s.Leeftijd);
 
         // Age-differentiated subdoelen at (subthema × leeftijd).
         builder.HasMany(s => s.Subdoelen)

@@ -199,12 +199,12 @@ public sealed class Thema
     }
 
     /// <summary>
-    /// Adds a class/age-scoped subthema to this thema. The subthema must name its <paramref name="klasId"/>
-    /// and <paramref name="leeftijd"/> — scoping is structural (Art. IX.2).
+    /// Adds an age-scoped subthema to this thema. The subthema must name its <paramref name="leeftijd"/> —
+    /// scoping is structural (Art. IX.2) — and it holds for every klas that teaches that age.
     /// </summary>
-    public Subthema VoegSubthemaToe(string naam, int duurWeken, Guid klasId, string leeftijd)
+    public Subthema VoegSubthemaToe(string naam, int duurWeken, string leeftijd)
     {
-        var subthema = new Subthema(Id, naam, duurWeken, klasId, leeftijd);
+        var subthema = new Subthema(Id, naam, duurWeken, leeftijd);
         _subthemas.Add(subthema);
         return subthema;
     }

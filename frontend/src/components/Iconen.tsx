@@ -50,6 +50,39 @@ export function IcoonThemas(props: IconProps) {
   );
 }
 
+/**
+ * Hoek: a corner of a room, drawn as a corner.
+ *
+ * Two walls meeting, with what stands in the corner between them. Not a box and not a bookshelf: a
+ * box is every other icon in every other app, and a bookshelf would name ONE corner while the
+ * boekenhoek, the bouwhoek and the zandtafel are all hoeken. What they share is the geometry.
+ */
+export function IcoonHoek(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4.5 4.5v15h15" />
+      <path d="M8.5 15.5v-4.5h4.5v4.5z" />
+    </Icoon>
+  );
+}
+
+/**
+ * Instellingen: two rails with a knob on each, not a cog.
+ *
+ * A cog says "machinery", and nothing behind this destination is machinery: it is where the school
+ * states what its klassen are. Rails set to different positions say "these are the values you set
+ * here", which is what the screen does.
+ */
+export function IcoonInstellingen(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4 8.5h16M4 15.5h16" />
+      <circle cx="9.5" cy="8.5" r="2.25" />
+      <circle cx="15" cy="15.5" r="2.25" />
+    </Icoon>
+  );
+}
+
 /** Plan: a year band with one period marked. The signature of this app, at 24px. */
 export function IcoonPlan(props: IconProps) {
   return (
@@ -98,6 +131,32 @@ export function IcoonPlus(props: IconProps) {
   );
 }
 
+/**
+ * Bewerken: a pencil. The owner's word for it is "penseeltje" (2026-08-30) and it is drawn as a
+ * pencil rather than a brush, because a brush at 16 pixels is a smudge on a stick and every other
+ * tool this teacher uses spells "edit" this way.
+ */
+export function IcoonPotlood(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M5 19l.9-3.6 9.2-9.2a1.9 1.9 0 0 1 2.7 2.7L8.6 18.1 5 19z" />
+      <path d="M14.2 7.1l2.7 2.7" />
+    </Icoon>
+  );
+}
+
+/** Verwijderen: a bin. Its colour, and why it only wears it on hover, is `--color-gevaar`. */
+export function IcoonVuilbak(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4.5 7h15" />
+      <path d="M9.5 7V5.2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7" />
+      <path d="M6.6 7l.8 11.3a1.6 1.6 0 0 0 1.6 1.5h6.2a1.6 1.6 0 0 0 1.6-1.5L17.4 7" />
+      <path d="M10.5 11v5M13.5 11v5" />
+    </Icoon>
+  );
+}
+
 /** Done: a tick. Always beside the word it reinforces, never carrying the state on its own. */
 export function IcoonVink(props: IconProps) {
   return (
@@ -137,6 +196,28 @@ export function IcoonChevron(props: IconProps) {
   return (
     <Icoon {...props}>
       <path d="m6 9.5 6 6 6-6" />
+    </Icoon>
+  );
+}
+
+/**
+ * A wand: this control asks the model, and what comes back has to be judged.
+ *
+ * The one icon in this set that marks a KIND OF ACTION rather than a destination or an object, and
+ * it exists because "Vraag suggesties" looked exactly like every other button on the thema screen
+ * while being the only one that calls an AI (Art. IV). A teacher who cannot see that beforehand
+ * cannot know that what appears afterwards is a proposal rather than a fact.
+ *
+ * Sparkles rather than a robot or a chip: the convention a teacher has already met in the tools on
+ * her own phone. Two of them and no more, one at the tip and one loose, because at 16 pixels a third
+ * turns the whole glyph into a smudge.
+ */
+export function IcoonToverstok(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4.5 19.5 12 12" />
+      <path d="M16 5.5v5M13.5 8h5" />
+      <path d="M20.5 2.5v2M19.5 3.5h2" />
     </Icoon>
   );
 }

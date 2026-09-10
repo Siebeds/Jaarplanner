@@ -345,7 +345,7 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
             await SeedLeerplandoelenAsync(db);
 
             var thema = new Thema("Herfst", duurWeken: 4, invalshoeken: "natuur");
-            thema.VoegSubthemaToe("Bladeren", duurWeken: 2, klasId: Guid.NewGuid(), leeftijd: "K3");
+            thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
             db.Themas.Add(thema);
             await db.SaveChangesAsync();
 

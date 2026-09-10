@@ -8,9 +8,10 @@ import { Segment } from "../../components/ui/Segment";
 import { Leegte } from "../../components/ui/Leegte";
 import { Knop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
-import { IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
+import { IcoonHoek, IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
 import { useDagacties, useJaarplan, usePlaatsSubthemaperiode, useRooster, useWeekplanning } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
+import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import { ApiError } from "../../lib/api";
 import type { GeplandeActiviteit } from "../../lib/types";
 import {
@@ -35,17 +36,29 @@ import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { Dagcel } from "./Dagcel";
 import { Maandrooster } from "./Maandrooster";
-import { Lesurenraster } from "../activiteiten/Lesurenraster";
+import { Lesurenraster, type GeplandMetKleur, type Hoekuur } from "../activiteiten/Lesurenraster";
 import { leesSlotId } from "../activiteiten/lesuren";
 import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
+import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
+import { FICHE_VOORVOEGSEL, leesFicheId, leesMomentId, momentSleepId } from "../hoeken/sleepids";
+import { Hoekplaatsingblad } from "../hoeken/Hoekplaatsingblad";
+import { Hoekdetailblad } from "../hoeken/Hoekdetailblad";
+import {
+  useHoekplaatsingen,
+  usePlaatsHoek,
+  useVerplaatsHoekmoment,
+  useVerwijderHoekplaatsing,
+  useHoeken,
+} from "../hoeken/gegevens";
 import { roosterdagen } from "./roosterdagen";
 import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
 import { themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
 import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
+import { ruilbesluit, type Bezetter } from "./ruilen";
 
 type Weergave = "maand" | "week" | "dag";
 
@@ -81,7 +94,7 @@ export function Agendascherm() {
   const { datum: routeDatum } = useParams<{ datum: string }>();
   const [zoek] = useSearchParams();
   const navigeer = useNavigate();
-  const { klasId, schooljaarId } = useActieveSelectie();
+  const { klasId, klas, schooljaarId } = useActieveSelectie();
 
   // The day AND the lesuur the picker was opened from. A slot of 0 is lesuur 1, which is what the
   // month view and the week cells use: they add to the first hour and the teacher moves it from there.
@@ -90,10 +103,25 @@ export function Agendascherm() {
   // Making an activiteit that does not exist yet, for the day and the lesuur the picker was on.
   const [nieuw, setNieuw] = useState<{ datum: string; slot: number } | null>(null);
   const [sleepNaam, setSleepNaam] = useState<string | null>(null);
+  // Why a drop was refused before any request went out. Cleared at the start of the next drag, so it
+  // describes the last thing she tried rather than accumulating.
+  const [sleepFout, setSleepFout] = useState<string | null>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerResultaat, setPlannerResultaat] = useState<{ gelukt: number; totaal: number; fouten: string[] } | null>(
     null,
   );
+
+  const hoekenOpen = useHoekenpaneel((s) => s.open);
+  const wisselHoeken = useHoekenpaneel((s) => s.wissel);
+  const zetHoekenpaneel = useHoekenpaneel((s) => s.zet);
+  // The fiche that was dropped, the day it landed on, and the lesuur if it landed on one. Null means
+  // no sheet; a null `slot` means the drop said nothing about an hour.
+  const [gevallenFiche, setGevallenFiche] = useState<{ hoekId: string; datum: string; slot: number | null } | null>(
+    null,
+  );
+  // The placement whose detail sheet is open, by id rather than by value: the list is refetched after
+  // a delete, and holding a copy would keep a sheet describing a row that is gone.
+  const [geopendeHoek, setGeopendeHoek] = useState<string | null>(null);
 
   const { data: rooster } = useRooster(schooljaarId);
   const { data: plan } = useJaarplan(klasId);
@@ -162,6 +190,14 @@ export function Agendascherm() {
 
   const { data: planning, isPending } = useWeekplanning(klasId, van, tot);
 
+  // The hoeken running in the visible range, read separately from the weekplanning: a hoekplaatsing
+  // is not part of the jaarplan, so it is not part of the read model that projects one.
+  const { data: hoekplaatsingen } = useHoekplaatsingen(klasId, van, tot);
+  const { data: hoeken } = useHoeken(klasId);
+  const plaatsHoek = usePlaatsHoek(klasId);
+  const verwijderPlaatsing = useVerwijderHoekplaatsing();
+  const verplaatsMoment = useVerplaatsHoekmoment();
+
   // The planner spreads over the whole period, so it needs every day of it rather than the days the
   // current view happens to be showing. A separate query with its own key: asking the view's query
   // for a wider range would refetch the grid every time the teacher changed week.
@@ -196,6 +232,50 @@ export function Agendascherm() {
     [reeksbron, rooster],
   );
   const stroken = useMemo(() => reeksenPerDag(reeksen), [reeksen]);
+
+  /**
+   * Which hoeken take which lesuur on the anchored day.
+   *
+   * Built from the placements' own momenten rather than from their windows: a moment is a row a
+   * teacher can move on its own, so a hoek running all fortnight can genuinely sit at the third
+   * lesuur on Monday and the fifth on Thursday. Deriving it from the window would draw the same hour
+   * every day and quietly contradict what is stored.
+   *
+   * The placement id travels with the name because the day view's block opens the placement, which is
+   * the same sheet the panel's period row opens.
+   */
+  const hoekenPerSlot = useMemo(() => {
+    const kaart = new Map<number, Hoekuur[]>();
+    for (const plaatsing of hoekplaatsingen ?? []) {
+      for (const moment of plaatsing.momenten) {
+        if (moment.datum !== anker) continue;
+        const rij = kaart.get(moment.volgorde) ?? [];
+        rij.push({
+          plaatsingId: plaatsing.id,
+          momentId: moment.id,
+          naam: plaatsing.hoekNaam,
+          slot: moment.volgorde,
+        });
+        kaart.set(moment.volgorde, rij);
+      }
+    }
+    return kaart;
+  }, [hoekplaatsingen, anker]);
+
+  /**
+   * The subthema runs as the placement sheet wants them: a name and a window.
+   *
+   * Derived from the same `reeksen` the calendar draws, so the sheet cannot tell a teacher a subthema
+   * runs on days the grid behind it leaves blank.
+   *
+   * *This comment sat above `hoekenPerSlot` from 2026-08-30 until 2026-08-31, describing the wrong
+   * declaration. Recorded rather than silently moved, because it is the second stray comment in this
+   * file and both times the code below it read plausibly enough to keep it there.*
+   */
+  const looptSubthema = useMemo(
+    () => reeksen.map((reeks) => ({ naam: reeks.subthemaNaam, van: reeks.van, tot: reeks.tot })),
+    [reeksen],
+  );
 
   /**
    * EVERY THEMAPERIODE OF THE YEAR, WITH THE THEMA'S PLACED IN IT.
@@ -273,15 +353,28 @@ export function Agendascherm() {
       : zichtbareDagen;
   const heelBereikBuiten = eenheidsdagen.length > 0 && eenheidsdagen.every((dag) => dag.buitenSchooljaar);
 
-  // Every activiteit on screen, by plaatsingId, so a drag announcement can name the thing it moved
-  // after the grid has already re-rendered without it.
+  // Every DRAGGABLE thing on screen, by the id dnd-kit will hand back, so a drag announcement and the
+  // overlay can name the thing being carried after the grid has re-rendered without it.
+  //
+  // The hoekenfiches are in here under their prefixed id (owner, 2026-08-31). Without them a fiche
+  // drag carried nothing visible and the announcer said "op woensdag 14 oktober gezet" with an empty
+  // name, which is the one gesture in this agenda where a teacher most needs to see what she has hold
+  // of: the panel is chrome and the fiche leaves it.
   const opNaam = useMemo(() => {
     const kaart = new Map<string, string>();
     for (const dag of planning?.dagen ?? []) {
       for (const activiteit of dag.activiteiten) kaart.set(activiteit.plaatsingId, activiteit.activiteitNaam);
     }
+    for (const hoek of hoeken ?? []) kaart.set(`${FICHE_VOORVOEGSEL}${hoek.id}`, hoek.naam);
+    // The appearances of a placed hoek too, since 2026-08-31: they drag inside the lesurenraster, and a
+    // drag that names nothing is what this map exists to prevent.
+    for (const plaatsing of hoekplaatsingen ?? []) {
+      for (const moment of plaatsing.momenten) {
+        kaart.set(momentSleepId(plaatsing.id, moment.id), plaatsing.hoekNaam);
+      }
+    }
     return kaart;
-  }, [planning]);
+  }, [planning, hoeken, hoekplaatsingen]);
 
   function schuif(richting: -1 | 1) {
     if (weergave === "maand") ga({ datum: verschuifMaanden(anker, richting) });
@@ -293,30 +386,179 @@ export function Agendascherm() {
     setSleepNaam(opNaam.get(String(gebeurtenis.active.id)) ?? null);
   }
 
+  /** Everything standing at one day and one lesuur, of either kind. */
+  function bezettersOp(datum: string, slot: number): Bezetter[] {
+    const uit: Bezetter[] = [];
+
+    const dag = (planning?.dagen ?? []).find((d) => d.datum === datum);
+    for (const activiteit of (dag?.activiteiten ?? []) as GeplandMetKleur[]) {
+      if (activiteit.volgorde !== slot) continue;
+      uit.push({
+        soort: "activiteit",
+        plaatsingId: activiteit.plaatsingId,
+        naam: activiteit.activiteitNaam,
+        datum,
+        slot,
+        lengte: Math.max(1, activiteit.lengteInLesuren ?? 1),
+      });
+    }
+
+    for (const plaatsing of hoekplaatsingen ?? []) {
+      for (const moment of plaatsing.momenten) {
+        if (moment.datum !== datum || moment.volgorde !== slot) continue;
+        uit.push({
+          soort: "hoek",
+          plaatsingId: plaatsing.id,
+          momentId: moment.id,
+          naam: plaatsing.hoekNaam,
+          datum,
+          slot,
+        });
+      }
+    }
+
+    return uit;
+  }
+
+  /** What was picked up, found by the id dnd-kit handed back. Null when it is not on the days in hand. */
+  function vindBezetter(sleepId: string): Bezetter | null {
+    const moment = leesMomentId(sleepId);
+    if (moment !== null) {
+      const plaatsing = (hoekplaatsingen ?? []).find((p) => p.id === moment.plaatsingId);
+      const rij = plaatsing?.momenten.find((m) => m.id === moment.momentId);
+      return plaatsing && rij
+        ? {
+            soort: "hoek",
+            plaatsingId: plaatsing.id,
+            momentId: rij.id,
+            naam: plaatsing.hoekNaam,
+            datum: rij.datum,
+            slot: rij.volgorde,
+          }
+        : null;
+    }
+
+    for (const dag of planning?.dagen ?? []) {
+      const activiteit = (dag.activiteiten as GeplandMetKleur[]).find((a) => a.plaatsingId === sleepId);
+      if (activiteit) {
+        return {
+          soort: "activiteit",
+          plaatsingId: activiteit.plaatsingId,
+          naam: activiteit.activiteitNaam,
+          datum: dag.datum,
+          slot: activiteit.volgorde,
+          lengte: Math.max(1, activiteit.lengteInLesuren ?? 1),
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /** Moves one bezetter, through whichever endpoint owns its kind. */
+  async function verzet(wat: Bezetter, datum: string, slot: number): Promise<void> {
+    if (wat.soort === "activiteit") {
+      await acties.verplaats.mutateAsync({ plaatsingId: wat.plaatsingId, datum, volgorde: slot });
+    } else {
+      await verplaatsMoment.mutateAsync({
+        plaatsingId: wat.plaatsingId,
+        momentId: wat.momentId,
+        datum,
+        volgorde: slot,
+      });
+    }
+  }
+
+  /**
+   * The exchange itself: two moves, and the order matters.
+   *
+   * HER INTENT LANDS FIRST. If the second move then fails, the thing she dragged is where she put it
+   * and the other one is sitting beside it, which is a state she can see and drag out of. The other
+   * order would move something she never touched and leave hers where it started, which looks like the
+   * app did something else entirely.
+   *
+   * Two calls and not one transaction, deliberately: the two kinds live in different aggregates behind
+   * different endpoints, and a swap endpoint spanning both would put the calendar drag rule in the
+   * backend. Nothing is lost by a half-finished swap, which is what makes two calls acceptable here.
+   */
+  async function ruil(gesleept: Bezetter, ander: Bezetter, datum: string, slot: number): Promise<void> {
+    try {
+      await verzet(gesleept, datum, slot);
+    } catch {
+      return; // The refusal from the mutation itself is already on screen.
+    }
+
+    try {
+      await verzet(ander, gesleept.datum, gesleept.slot);
+    } catch {
+      setSleepFout(t("slepen.ruilHalf", { naam: ander.naam }));
+    }
+  }
+
   function laatLos({ active, over }: DragEndEvent) {
     setSleepNaam(null);
+    setSleepFout(null);
+    acties.verplaats.reset();
+    verplaatsMoment.reset();
     if (!over) return;
-    const plaatsingId = String(active.id);
 
+    const sleepId = String(active.id);
     // Two kinds of target. The day grid drops onto a LESUUR, so its id carries the slot; the month
     // and week cells drop onto a day and say nothing about the hour.
     const doel = leesSlotId(String(over.id));
     const datum = doel?.datum ?? String(over.id);
 
-    const huidige = (planning?.dagen ?? [])
-      .flatMap((dag) => dag.activiteiten.map((a) => ({ datum: dag.datum, activiteit: a })))
-      .find((x) => x.activiteit.plaatsingId === plaatsingId);
+    // THREE KINDS OF DRAGGED THING, and the id says which (see `sleepids.ts`). A hoekfiche comes from
+    // the panel and has no placement yet, so it opens the sheet instead of moving anything: which days,
+    // with what in it and at which lesuur are three questions a drop cannot answer.
+    const hoekId = leesFicheId(sleepId);
+    if (hoekId !== null) {
+      // THE LESUUR IS KEPT WHEN THE DROP LANDED ON ONE. It was thrown away here: the day view drops
+      // onto a slot, and taking only `.datum` off it meant a fiche dropped on the third lesuur opened
+      // a sheet reading "Niet in het uurrooster". The month and week views drop onto a bare day and
+      // say nothing about an hour, so they still get null, which is the honest answer there.
+      plaatsHoek.reset();
+      setGevallenFiche({ hoekId, datum, slot: doel?.slot ?? null });
+      return;
+    }
+
+    const gesleept = vindBezetter(sleepId);
+    if (gesleept === null) {
+      // Not on the days we have in hand. Only reachable if the grid and the fetched range disagree,
+      // which dragging from the grid makes unlikely. A plain move is what the old code did and it is
+      // still the safer answer, because refusing here would make a legal drag silently do nothing.
+      if (leesMomentId(sleepId) === null) {
+        acties.verplaats.mutate({ plaatsingId: sleepId, datum, volgorde: doel?.slot ?? 0 });
+      }
+      return;
+    }
 
     // A drop onto a day says nothing about the hour, so the hour is KEPT. Sending the default 0
     // would quietly move an afternoon activiteit to the first lesuur every time a teacher dragged it
     // across the month, which is a change nobody asked for hidden inside one they did.
-    const slot = doel ? doel.slot : (huidige?.activiteit.volgorde ?? 0);
+    const slot = doel ? doel.slot : gesleept.slot;
 
     // Landing where it already is, is a legal target and a no-op. Firing the mutation anyway would
     // make the grid flicker and the server answer a question nobody asked.
-    if (huidige && huidige.datum === datum && huidige.activiteit.volgorde === slot) return;
+    if (gesleept.datum === datum && gesleept.slot === slot) return;
 
-    acties.verplaats.mutate({ plaatsingId, datum, volgorde: slot });
+    /*
+      THE SWAP RULE BELONGS TO THE LESURENRASTER (owner, 2026-08-31). The rule itself is in `ruilen.ts`,
+      which is where it can be read and tested without a router and a query client around it.
+
+      A MONTH OR WEEK DROP IS NOT THIS RULE. Those name a day and no hour, so an exchange there would
+      swap two things at an hour neither view is drawing: a change she cannot see she asked for. They
+      keep what they always did, which is to move and share the hour if it is taken.
+    */
+    if (doel === null) {
+      void verzet(gesleept, datum, slot);
+      return;
+    }
+
+    const besluit = ruilbesluit(gesleept, bezettersOp(datum, slot), slot);
+    if (besluit.soort === "weiger") setSleepFout(besluit.melding);
+    else if (besluit.soort === "ruil") void ruil(gesleept, besluit.ander, datum, slot);
+    else void verzet(gesleept, datum, slot);
   }
 
   // The range the teacher is looking at, said big. It used to be meta text beside the arrows, which
@@ -330,6 +572,12 @@ export function Agendascherm() {
 
   const foutTekst = (fout: unknown) =>
     fout instanceof ApiError && fout.detail ? fout.detail : fout ? t("periode.mislukt") : null;
+
+  const sleepmelding =
+    sleepFout ??
+    (acties.plaats.isError || acties.verplaats.isError || verplaatsMoment.isError
+      ? foutTekst(acties.plaats.error ?? acties.verplaats.error ?? verplaatsMoment.error)
+      : null);
 
   if (!klasId) {
     return (
@@ -371,6 +619,32 @@ export function Agendascherm() {
               >
                 {t("periode.themasPerPeriode")}
               </Link>
+
+              {/*
+                THE HOEKENFICHES SWITCH IS IN THE SIDEBAR FROM `lg`, AND THIS IS WHAT IS LEFT OF IT
+                BELOW THAT.
+
+                The owner asked for the switch in the sidepane (2026-08-31), and a sidepane exists
+                only from `lg`: below it the navigation is a bottom bar of five tabs with no room for
+                a sixth, while the panel still has to be reachable on a phone, where it opens as a
+                sheet. So this chip is `lg:hidden` and `Navigatie` carries the switch from `lg`
+                upward. One control per viewport, never two at once, which is what made a single
+                control in the toolbar the earlier answer.
+              */}
+              <button
+                type="button"
+                onClick={wisselHoeken}
+                aria-pressed={hoekenOpen}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-meta font-medium transition-colors duration-150 lg:hidden",
+                  hoekenOpen
+                    ? "border-accent bg-accent-zacht text-accent"
+                    : "border-lijn text-inkt-zacht hover:border-accent hover:text-accent",
+                )}
+              >
+                <IcoonHoek aria-hidden="true" className="h-4 w-4" />
+                {t("periode.hoekenfiches")}
+              </button>
 
               {/* No period, no planner: the sheet spreads a subthema over the days of a themaperiode,
                   and between two periods there are none to spread it over. */}
@@ -483,6 +757,26 @@ export function Agendascherm() {
           onDragEnd={laatLos}
           onDragCancel={() => setSleepNaam(null)}
         >
+          {/* INSIDE the context, and it has to be: a fiche is dragged FROM here ONTO the grid below,
+              and dnd-kit registers a draggable through React context rather than through the DOM. The
+              panel is `fixed`, so where it sits on screen owes nothing to where it sits in this tree. */}
+          <Hoekenpaneel
+            klasId={klasId}
+            plaatsingen={hoekplaatsingen ?? []}
+            onOpenPlaatsing={(plaatsingId) => {
+              verwijderPlaatsing.reset();
+              setGeopendeHoek(plaatsingId);
+            }}
+            onKies={(hoekId) => {
+              // The phone path: no landing point, so the window opens on the day the agenda is
+              // standing on. The sheet closes because it is covering the calendar she is about to
+              // look at while choosing the days.
+              plaatsHoek.reset();
+              zetHoekenpaneel(false);
+              setGevallenFiche({ hoekId, datum: anker, slot: null });
+            }}
+          />
+
           <div className="mt-3">
             {isPending || !planning ? (
               <Laadvlak className="h-72" />
@@ -503,6 +797,7 @@ export function Agendascherm() {
                 ankerMaand={anker}
                 vakken={vakken}
                 reeksenPerDag={stroken}
+                hoekplaatsingen={hoekplaatsingen ?? []}
                 onKiesDag={openDag}
                 onVoegToe={(datum) => setKiezer({ datum, slot: 0 })}
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
@@ -512,8 +807,10 @@ export function Agendascherm() {
                  deciding WHEN inside that Tuesday, and Volgorde already carried that. */
               <Lesurenraster
                 dag={zichtbareDagen[0] ?? leegteDag(anker)}
+                hoekenPerSlot={hoekenPerSlot}
                 onVoegToe={(datum, slot) => setKiezer({ datum, slot })}
                 onOpen={(activiteit) => setGeopend({ activiteit, datum: anker })}
+                onOpenHoek={setGeopendeHoek}
               />
             ) : (
               /* Week only now: the day view is the lesurenraster above. The conditionals that used to
@@ -536,6 +833,7 @@ export function Agendascherm() {
                       bovenkop={weekdagKort(dag.datum)}
                       kop={String(dagNummer(dag.datum))}
                       reeksen={stroken.get(dag.datum)}
+                      hoekplaatsingen={hoekplaatsingen ?? []}
                       vak={vakOpDag(vakken, dag.datum)}
                       onVoegToe={(datum) => setKiezer({ datum, slot: 0 })}
                       onOpen={(activiteit) => setGeopend({ activiteit, datum: dag.datum })}
@@ -558,9 +856,12 @@ export function Agendascherm() {
           </DragOverlay>
         </DndContext>
 
-        {acties.plaats.isError || acties.verplaats.isError ? (
+        {/* ONE STRIP FOR EVERYTHING A DRAG CAN GO WRONG WITH, because from the teacher side they are one
+            thing: the drop did not do what she meant. `sleepFout` wins, since a refusal decided here
+            fired no request and any server error beside it belongs to an earlier attempt. */}
+        {sleepmelding ? (
           <p className="mt-4 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-            {foutTekst(acties.plaats.error ?? acties.verplaats.error)}
+            {sleepmelding}
           </p>
         ) : null}
       </Schermvlak>
@@ -592,6 +893,50 @@ export function Agendascherm() {
         }}
       />
 
+      {/* WHAT A DROPPED FICHE OPENS.
+
+          Keyed on the fiche and the day, so dropping a second corner refills the sheet instead of
+          showing the first one's half-made window. Mounted only while a fiche has actually landed:
+          the sheet's own state (which days, what text, which lesuur) is per drop and must not survive
+          one. */}
+      {gevallenFiche && rooster ? (
+        <Hoekplaatsingblad
+          open
+          key={`${gevallenFiche.hoekId}-${gevallenFiche.datum}-${gevallenFiche.slot ?? "geen"}`}
+          hoekId={gevallenFiche.hoekId}
+          hoekNaam={(hoeken ?? []).find((h) => h.id === gevallenFiche.hoekId)?.naam ?? ""}
+          startdag={gevallenFiche.datum}
+          startSlot={gevallenFiche.slot}
+          loopt={looptSubthema}
+          schooljaarVan={rooster.start}
+          schooljaarTot={rooster.eind}
+          bezig={plaatsHoek.isPending}
+          fout={plaatsHoek.error}
+          onSluit={() => setGevallenFiche(null)}
+          onPlaats={(invoer) =>
+            plaatsHoek.mutate(invoer, { onSuccess: () => setGevallenFiche(null) })
+          }
+        />
+      ) : null}
+
+      {/* THE WAY BACK OUT, and the only screen that reads a verrijking back. Looked up by id on every
+          render, so the sheet disappears by itself when the placement it describes does. */}
+      {(() => {
+        const open = (hoekplaatsingen ?? []).find((p) => p.id === geopendeHoek);
+        return open ? (
+          <Hoekdetailblad
+            open
+            plaatsing={open}
+            bezig={verwijderPlaatsing.isPending}
+            fout={verwijderPlaatsing.error}
+            onSluit={() => setGeopendeHoek(null)}
+            onVerwijder={() =>
+              verwijderPlaatsing.mutate(open.id, { onSuccess: () => setGeopendeHoek(null) })
+            }
+          />
+        ) : null;
+      })()}
+
       <Nieuweactiviteitblad
         // Keyed on the day and the hour: the form fills its fields at mount, so reopening it for
         // another day without a remount would offer the previous day's half-typed activiteit.
@@ -622,6 +967,8 @@ export function Agendascherm() {
       <Subthemaplanner
         open={plannerOpen}
         klasId={klasId}
+        // The sheet's empty state is about THIS klas, so it needs the name and not just the id.
+        klasNaam={klas?.naam ?? null}
         themaIds={themaIdsInPeriode}
         dagen={heelDePeriode?.dagen ?? []}
         bezig={acties.plaats.isPending}

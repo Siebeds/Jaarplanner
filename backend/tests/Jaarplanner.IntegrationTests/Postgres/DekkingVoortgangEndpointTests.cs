@@ -258,8 +258,8 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
             $"2026-2027-{Guid.NewGuid():N}"[..20],
             new DateOnly(2026, 9, 1),
             new DateOnly(2027, 6, 30));
-        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", leerjaar: 0);
-        var andere = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", leerjaar: 3);
+        var klas = schooljaar.VoegKlasToe($"K3-{Guid.NewGuid():N}", "K3");
+        var andere = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", "L3");
         context.Schooljaren.Add(schooljaar);
 
         await context.SaveChangesAsync();

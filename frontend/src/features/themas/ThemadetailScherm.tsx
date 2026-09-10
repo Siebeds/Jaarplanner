@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Statusmerk } from "../../components/ui/Statusmerk";
@@ -7,22 +7,26 @@ import { Knop } from "../../components/ui/Knop";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { Bevestiging } from "../../components/ui/Bevestiging";
-import { IcoonPlus } from "../../components/Iconen";
+import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
+import { Toevoegknop } from "../../components/ui/Toevoegknop";
+import { IcoonDoelen, IcoonToverstok } from "../../components/Iconen";
 import {
   useBeoordeelSuggestie,
   useDoelsuggesties,
   useGenereerDoelsuggesties,
-  useKlassen,
+  useJaarfasen,
   useThema,
 } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
 import type { SubthemaWeergave } from "../../lib/types";
-import { t, telWoord } from "../../i18n";
+import { t, telWoord, type Vertaalsleutel } from "../../i18n";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
 import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
-import { Subthemakaart } from "./Subthemakaart";
+import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
+import { Blok, Doellijst, Doelregel, Feit, Groep, Kop, Ontkoppel } from "./Fiche";
+import { themabalans } from "./themabalans";
 import {
   useKoppelActiviteitdoel,
   useKoppelSubdoel,
@@ -41,22 +45,48 @@ import {
 } from "./mutaties";
 
 /**
- * One thema, top to bottom: what it is, which goals hang on it, and what each class built under it.
+ * One thema, as a document rather than as a stack of tables.
  *
- * **All three levels a goal can hang on are reachable here, and each says which level it is.** A
- * themadoel is school-wide, a subdoel belongs to one class's subthema, an activiteit's link belongs to
- * one activiteit (Art. IX.2). Those layers all count towards dekking, but only for a thema that is
- * placed in the plan, which is why nothing on this screen claims anything about coverage.
+ * **The three earlier passes fixed controls; this one fixes the page.** The complaints were "too
+ * many buttons", "everything the same size", "no consistency", "sloppy", and each was answered where
+ * it was reported: icons instead of words, one shape for adding, the counts moved onto the headings.
+ * The screen was still ugly afterwards, because none of that touched the reason. There was no
+ * composition, only a stack: every object began at the same x, every object was the same width,
+ * every gap was the same size. At 1440 that made an activiteit holding eight words a box eleven
+ * hundred pixels wide, and it made three levels of nesting a matter of twenty pixels of indent.
  *
- * **Read-only facts are text.** Woordenschat is a sentence, goal codes and soorten are text. Only
- * what acts carries an outline, so a card of facts stops looking like a toolbar.
+ * **So the page has a margin now, and the blocks hang off it as siblings.** `Fiche.tsx` holds the
+ * grid and the argument. Here is what that buys, in order:
+ *
+ * - **The fiche has a measure, and the whole screen takes it.** A document measure rather than the
+ *   default `80rem`, so the rows stop stretching to the width of the window. It is set on `Schermkop`
+ *   and `Schermvlak` together via `smal`, which also CENTRES it. The first version put a 54rem
+ *   wrapper inside the default measure, and that measure is left aligned: on a wide window it left a
+ *   small gap on one side and a large one on the other, which reads as a mistake rather than as a
+ *   margin (owner, 2026-08-31). Applying it to the header too is what keeps the title lined up with
+ *   the fiche's margin.
+ * - **The margin carries the figures**, so a section heading no longer has to be a count as well as
+ *   a name, and the loudest thing in a block is not its add-button.
+ * - **A subthema is a chapter, not a card**, at the same axis as the thema's own facts. The level a
+ *   doel hangs on (Art. IX.2) is carried by the page's structure rather than by a border.
+ * - **The labels of the thema's facts line up**, so the values start at one edge. Four labels of
+ *   four different lengths put four values at four different x positions, which is the "slordig"
+ *   the owner reported in its second form.
+ *
+ * **The subthema's are ordered by leeftijd** (the server's own order, from `/api/jaarfasen`), so the
+ * ages group instead of arriving in insertion order. A thema is school-wide and its subthema's are
+ * per age; two of them are usually two ages running side by side in two classes, not a sequence.
+ *
+ * **Nothing here claims anything about dekking.** A doel is gedekt when it is linked AND the thema
+ * is placed in a plan (Art. V.1), and this screen knows nothing about any plan. The margin counts
+ * links and the copy says "gekoppeld".
  */
 export function ThemadetailScherm() {
   const { themaId } = useParams<{ themaId: string }>();
   const id = themaId ?? "";
   const { data: thema, isPending, isError } = useThema(themaId);
   const { data: suggesties } = useDoelsuggesties(themaId);
-  const { data: klassen } = useKlassen();
+  const { data: jaarfasen } = useJaarfasen();
   const genereer = useGenereerDoelsuggesties(id);
   const beoordeel = useBeoordeelSuggestie(id);
   const navigeer = useNavigate();
@@ -91,8 +121,8 @@ export function ThemadetailScherm() {
   if (isError) {
     return (
       <>
-        <Schermkop titel={t("themas.titel")} />
-        <Schermvlak>
+        <Schermkop smal titel={t("themas.titel")} />
+        <Schermvlak smal>
           <Leegte titel={t("thema.fout")} actie={<Terug />} />
         </Schermvlak>
       </>
@@ -102,8 +132,8 @@ export function ThemadetailScherm() {
   if (isPending || !thema) {
     return (
       <>
-        <Schermkop titel={t("themas.titel")} />
-        <Schermvlak>
+        <Schermkop smal titel={t("themas.titel")} />
+        <Schermvlak smal>
           <Laadvlak className="mb-4 h-24" />
           <Laadlijst rijen={5} />
         </Schermvlak>
@@ -114,18 +144,9 @@ export function ThemadetailScherm() {
   // A verdict has been recorded on everything that is no longer Voorgesteld, so only the open ones
   // are waiting for the teacher.
   const openSuggesties = (suggesties ?? []).filter((s) => s.status === "Voorgesteld");
-  const klasNaam = (klasId: string) => (klassen ?? []).find((k) => k.id === klasId)?.naam ?? null;
 
-  // The at-a-glance figures, summed here rather than fetched: they are sums over data this screen
-  // already holds, and a second endpoint would be a second thing that can disagree with it.
-  const aantalActiviteiten = thema.subthemas.reduce((som, s) => som + s.activiteiten.length, 0);
-  const aantalDoelen =
-    thema.themadoelen.length +
-    thema.subthemas.reduce(
-      (som, s) =>
-        som + s.subdoelen.length + s.activiteiten.reduce((n, a) => n + a.doelkoppelingen.length, 0),
-      0,
-    );
+  const balans = themabalans(thema);
+  const subthemas = opLeeftijd(thema.subthemas, jaarfasen);
 
   // The sheet holds IDS, not objects, and the objects are looked up from the freshly invalidated
   // thema on every render. Holding the object would freeze the goal list at the moment the sheet
@@ -142,231 +163,299 @@ export function ThemadetailScherm() {
 
   return (
     <>
-      <Schermkop
-        titel={thema.naam}
-        rechts={
-          <div className="flex shrink-0 items-center gap-2">
-            <Knop
-              rang="rustig"
-              className="h-9 min-h-9 px-3 text-meta"
-              onClick={() => {
-                wijzig.reset();
-                setBewerkOpen(true);
-              }}
-            >
-              {t("themabeheer.bewerk")}
-            </Knop>
-            <Knop
-              rang="stil"
-              className="h-9 min-h-9 px-3 text-meta"
-              onClick={() => {
-                verwijder.reset();
-                setVerwijderOpen(true);
-              }}
-            >
-              {t("themabeheer.verwijder")}
-            </Knop>
-          </div>
-        }
-      />
+      {/* THE THEMA'S TWO CONTROLS ARE NOT UP HERE ANY MORE (owner, 2026-08-31: "het edit potloodje
+          en trashcan zitten nog wat te verdoken in de hoek"). In the screen header they were two
+          bare 36 pixel icons at the far right of a 1440 wide bar, eleven hundred pixels from the
+          title they act on and with nothing around them to be read against. They now sit on the
+          thema's own card, which is exactly the card whose contents the pencil opens for editing. */}
+      <Schermkop smal titel={thema.naam} />
 
-      <Schermvlak>
+      <Schermvlak smal>
         <Terug />
 
-        <p className="mono mt-3 text-meta text-inkt-zwak">
-          {telWoord(thema.duurWeken, "thema.eenWeek", "thema.weken")} ·{" "}
-          {telWoord(thema.subthemas.length, "thema.eenSubthema", "thema.subthemas")} ·{" "}
-          {telWoord(aantalActiviteiten, "thema.eenActiviteit", "thema.activiteiten")} ·{" "}
-          {telWoord(aantalDoelen, "thema.eenDoel", "thema.doelen")}
-        </p>
-
-        {thema.invalshoeken ? <p className="mt-3 text-body text-inkt">{thema.invalshoeken}</p> : null}
-
-        {thema.kernwoordenschat.length > 0 || thema.rijkeWoordenschat.length > 0 ? (
-          <Sectie titel={t("themabeheer.woordenschat")}>
-            {thema.kernwoordenschat.length > 0 ? (
-              <Woordenregel
-                label={t("themabeheer.kernwoordenschat")}
-                woorden={thema.kernwoordenschat}
-                sterk
+        {/* WHAT THIS THEMA IS. The duration goes in the margin, where every other block keeps its
+            measure, and the rest are labelled facts in one aligned column. Three of the four
+            counts this block used to carry are gone from it entirely: they sat directly above the
+            lists they counted, and each one now lives in the margin of the block that holds those
+            lists. */}
+        <Blok
+          figuur={thema.duurWeken}
+          onder={t(thema.duurWeken === 1 ? "themas.weekEen" : "themas.weekMeer")}
+          acties={
+            <>
+              <Bewerkknop
+                omrand
+                label={t("themabeheer.bewerkAria", { naam: thema.naam })}
+                onClick={() => {
+                  wijzig.reset();
+                  setBewerkOpen(true);
+                }}
               />
+              <Verwijderknop
+                omrand
+                label={t("themabeheer.verwijderAria", { naam: thema.naam })}
+                onClick={() => {
+                  verwijder.reset();
+                  setVerwijderOpen(true);
+                }}
+              />
+            </>
+          }
+        >
+          <dl className="flex flex-col gap-2">
+            {thema.invalshoeken ? (
+              <Feit label={t("themabeheer.invalshoeken")}>{thema.invalshoeken}</Feit>
+            ) : null}
+
+            {/* The two vocabulary lists keep their full names rather than being shortened to
+                "Kern" and "Rijk": they are Op.stap's own terms and a teacher meets them in the
+                thema form under exactly these words. */}
+            {thema.kernwoordenschat.length > 0 ? (
+              <Feit label={t("themabeheer.kernwoordenschat")}>
+                {thema.kernwoordenschat.join(" · ")}
+              </Feit>
             ) : null}
             {thema.rijkeWoordenschat.length > 0 ? (
-              <Woordenregel label={t("themabeheer.rijkeWoordenschat")} woorden={thema.rijkeWoordenschat} />
+              <Feit label={t("themabeheer.rijkeWoordenschat")} zacht>
+                {thema.rijkeWoordenschat.join(" · ")}
+              </Feit>
             ) : null}
-          </Sectie>
-        ) : null}
 
-        <Sectie
-          titel={t("thema.themadoelen")}
-          actie={
-            <Doelkoppelaar
-              onKies={(code) => koppelThemadoel.mutate(code)}
-              bezig={koppelThemadoel.isPending}
-              alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
-            />
-          }
+            {/* WHERE THE DOELEN ARE, AND WHERE THE HOLE IS (owner's pick, 2026-08-30). They hang
+                at three depths and were nowhere added up, so the one question a teacher opens this
+                screen with, "what still needs a doel", could only be answered by scrolling the
+                whole page and counting. `gekoppeld`, never `gedekt`: see `themabalans.ts`. */}
+            <Feit label={t("thema.doelenLabel")}>
+              {balans.totaal === 0 ? (
+                t("thema.geenDoelenGekoppeld")
+              ) : (
+                // Only the levels that carry something. A thema with two themadoelen and nothing
+                // else would otherwise read "2 op het thema, 0 op subthema's, 0 op activiteiten",
+                // which spends three facts to state one.
+                <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <Deel aantal={balans.themadoelen} woord="thema.doelenOpThema" />
+                  <Deel aantal={balans.subdoelen} woord="thema.doelenOpSubthemas" />
+                  <Deel aantal={balans.activiteitdoelen} woord="thema.doelenOpActiviteiten" />
+                </span>
+              )}
+            </Feit>
+
+            {/* Only when there is a hole, and it then states only what it counted. An activiteit
+                with no doel at all can never contribute to coverage whatever else happens to it,
+                which is what earns `attentie` here; the label carries the meaning without the
+                colour (Art. XII). */}
+            {balans.activiteitenZonderDoel > 0 ? (
+              <Feit label={t("thema.zonderDoelLabel")}>
+                <span className="font-medium text-attentie-inkt">
+                  {telWoord(
+                    balans.activiteitenZonderDoel,
+                    "thema.zonderDoelEen",
+                    "thema.zonderDoelMeer",
+                  )}
+                </span>
+              </Feit>
+            ) : null}
+          </dl>
+        </Blok>
+
+        {/* THEMADOELEN AND DOELSUGGESTIES ARE ONE BLOCK. A doelsuggestie is a proposed themadoel:
+            accepting one makes it a themadoel, in this very list. As a sibling section it cost a
+            second heading, a second empty state and a permanent "Geen open suggesties" line.
+
+            The AI half is unchanged where it counts (Art. IV): every suggestion is still shown
+            with its motivation and still has to be accepted or rejected by hand, and "Vraag
+            suggesties" is always reachable rather than appearing only when the list is empty. */}
+        <Blok
+          figuur={thema.themadoelen.length}
+          onder={t(thema.themadoelen.length === 1 ? "themas.doelEen" : "themas.doelMeer")}
         >
-          {thema.themadoelen.length === 0 ? (
-            <p className="text-meta text-inkt-zwak">{t("thema.geenThemadoelen")}</p>
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {thema.themadoelen.map((themadoel) => (
-                <li
-                  key={themadoel.id}
-                  className="flex items-center gap-2 rounded-veld border border-lijn bg-kaart px-3 py-2"
+          <Kop
+            titel={t("thema.themadoelen")}
+            icoon={<IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />}
+            acties={
+              <>
+                <Doelkoppelaar
+                  onKies={(code) => koppelThemadoel.mutate(code)}
+                  bezig={koppelThemadoel.isPending}
+                  alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
+                />
+                {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
+                    legible: this does not add a themadoel, it asks the model for candidates that a
+                    teacher then has to accept one by one (Art. IV). */}
+                <Knop
+                  rang="stil"
+                  className="h-9 min-h-9 px-2.5 text-meta"
+                  disabled={genereer.isPending}
+                  onClick={() => genereer.mutate()}
                 >
-                  <span className="mono min-w-0 truncate text-meta font-medium text-inkt">
-                    {themadoel.koppeling.leerplandoelCode}
-                  </span>
-                  <Statusmerk status={themadoel.koppeling.status} className="ml-auto" />
-                  <Ontkoppel
-                    label={t("activiteit.ontkoppel", { code: themadoel.koppeling.leerplandoelCode })}
-                    bezig={ontkoppelThemadoel.isPending}
-                    onClick={() => ontkoppelThemadoel.mutate(themadoel.id)}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Sectie>
-
-        <Sectie
-          titel={t("thema.suggesties")}
-          actie={
-            <Knop
-              rang="rustig"
-              className="h-9 min-h-9 px-3 text-meta"
-              disabled={genereer.isPending}
-              onClick={() => genereer.mutate()}
-            >
-              {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
-            </Knop>
-          }
-        >
-          {genereer.isError ? (
-            <p className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-              {genereer.error instanceof ApiError && genereer.error.detail
-                ? genereer.error.detail
-                : t("thema.suggestiesMislukt")}
-            </p>
-          ) : null}
-
-          {openSuggesties.length === 0 ? (
-            <p className="text-meta text-inkt-zwak">{t("thema.geenSuggesties")}</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {openSuggesties.map((suggestie) => (
-                <li key={suggestie.id} className="rounded-kaart border border-lijn bg-kaart p-3">
-                  <div className="flex items-center gap-2">
-                    {suggestie.doelsoort ? <Doelsoortmerk soort={suggestie.doelsoort} /> : null}
-                    <span className="mono text-micro font-medium text-inkt-zacht">
-                      {suggestie.leerplandoelCode}
+                  <IcoonToverstok aria-hidden="true" className="h-4 w-4" />
+                  {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
+                </Knop>
+              </>
+            }
+          >
+            {thema.themadoelen.length === 0 ? (
+              <p className="text-meta text-inkt-zacht">{t("thema.geenThemadoelen")}</p>
+            ) : (
+              <Doellijst>
+                {thema.themadoelen.map((themadoel) => (
+                  <Doelregel key={themadoel.id}>
+                    <span className="mono min-w-0 truncate text-meta font-medium text-inkt">
+                      {themadoel.koppeling.leerplandoelCode}
                     </span>
-                    <Statusmerk status={suggestie.status} className="ml-auto" />
-                  </div>
+                    <Statusmerk status={themadoel.koppeling.status} className="ml-auto" />
+                    <Ontkoppel
+                      label={t("activiteit.ontkoppel", {
+                        code: themadoel.koppeling.leerplandoelCode,
+                      })}
+                      bezig={ontkoppelThemadoel.isPending}
+                      onClick={() => ontkoppelThemadoel.mutate(themadoel.id)}
+                    />
+                  </Doelregel>
+                ))}
+              </Doellijst>
+            )}
 
-                  {suggestie.tekst ? <p className="mt-1.5 text-body text-inkt">{suggestie.tekst}</p> : null}
+            {genereer.isError ? (
+              <p className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                {genereer.error instanceof ApiError && genereer.error.detail
+                  ? genereer.error.detail
+                  : t("thema.suggestiesMislukt")}
+              </p>
+            ) : null}
 
-                  {suggestie.aiMotivatie ? (
-                    <p className="mt-2 border-l-2 border-suggestie-voorgesteld pl-3 text-meta text-inkt-zacht">
-                      {suggestie.aiMotivatie}
-                    </p>
-                  ) : null}
+            {/* Open suggestions, when there are any. They keep a white surface where the rest of
+                this screen has none, and that is the point: everything else here is a fact to
+                read, and these are the only objects on the page waiting for a decision. */}
+            {openSuggesties.length > 0 ? (
+              <>
+                <h3 className="mt-5 text-micro uppercase tracking-wide text-inkt-zacht">
+                  {t("thema.suggesties")}
+                </h3>
+                <ul className="mt-2 flex flex-col gap-2">
+                  {openSuggesties.map((suggestie) => (
+                    <li key={suggestie.id} className="rounded-kaart border border-lijn bg-kaart p-3 shadow-licht">
+                      <div className="flex items-center gap-2">
+                        {suggestie.doelsoort ? <Doelsoortmerk soort={suggestie.doelsoort} /> : null}
+                        <span className="mono text-micro font-medium text-inkt-zacht">
+                          {suggestie.leerplandoelCode}
+                        </span>
+                        <Statusmerk status={suggestie.status} className="ml-auto" />
+                      </div>
 
-                  <div className="mt-3 flex gap-2">
-                    <Knop
-                      rang="hoofd"
-                      className="h-9 min-h-9 px-3 text-meta"
-                      disabled={beoordeel.isPending}
-                      onClick={() => beoordeel.mutate({ suggestieId: suggestie.id, status: "Aanvaard" })}
-                    >
-                      {t("thema.aanvaard")}
-                    </Knop>
-                    <Knop
-                      rang="rustig"
-                      className="h-9 min-h-9 px-3 text-meta"
-                      disabled={beoordeel.isPending}
-                      onClick={() => beoordeel.mutate({ suggestieId: suggestie.id, status: "Geweigerd" })}
-                    >
-                      {t("thema.weiger")}
-                    </Knop>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Sectie>
+                      {suggestie.tekst ? (
+                        <p className="mt-1.5 text-body text-inkt">{suggestie.tekst}</p>
+                      ) : null}
 
-        <Sectie
-          titel={t("thema.subthemasTitel")}
-          actie={
-            <Knop
-              rang="rustig"
-              className="h-9 min-h-9 px-3 text-meta"
-              onClick={() => {
-                maakSubthema.reset();
-                setSubthemaBlad({});
-              }}
-            >
-              <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-              {t("subthemabeheer.toevoegen")}
-            </Knop>
-          }
+                      {suggestie.aiMotivatie ? (
+                        <p className="mt-2 border-l-2 border-suggestie-voorgesteld pl-3 text-meta text-inkt-zacht">
+                          {suggestie.aiMotivatie}
+                        </p>
+                      ) : null}
+
+                      <div className="mt-3 flex gap-2">
+                        <Knop
+                          rang="hoofd"
+                          className="h-9 min-h-9 px-3 text-meta"
+                          disabled={beoordeel.isPending}
+                          onClick={() =>
+                            beoordeel.mutate({ suggestieId: suggestie.id, status: "Aanvaard" })
+                          }
+                        >
+                          {t("thema.aanvaard")}
+                        </Knop>
+                        <Knop
+                          rang="rustig"
+                          className="h-9 min-h-9 px-3 text-meta"
+                          disabled={beoordeel.isPending}
+                          onClick={() =>
+                            beoordeel.mutate({ suggestieId: suggestie.id, status: "Geweigerd" })
+                          }
+                        >
+                          {t("thema.weiger")}
+                        </Knop>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </Kop>
+        </Blok>
+
+        {/* THE HEADING AND ITS CHAPTERS SIT IN ONE TRAY (owner, 2026-08-31: "ik vind het wat
+            verwarrend dat de subthemas niet een sectie is"). The chapters are still not nested
+            INSIDE the heading's block: they are siblings hanging off the same margin, which is what
+            keeps their leeftijd legible as an axis. What the tray adds is the boundary that says
+            those siblings and that heading are one section. See `Groep`. */}
+        <Groep>
+        <Blok
+          kaal
+          strak
+          figuur={thema.subthemas.length}
+          onder={t(thema.subthemas.length === 1 ? "themas.subthemaEen" : "themas.subthemaMeer")}
         >
-          {thema.subthemas.length === 0 ? (
-            <p className="text-meta text-inkt-zwak">{t("thema.geenSubthemas")}</p>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {thema.subthemas.map((subthema) => (
-                <li key={subthema.id}>
-                  <Subthemakaart
-                    subthema={subthema}
-                    klasNaam={klasNaam(subthema.klasId)}
-                    koppelenBezig={
-                      koppelSubdoel.isPending ||
-                      ontkoppelSubdoel.isPending ||
-                      koppelActiviteitdoel.isPending
-                    }
-                    onBewerk={() => {
-                      wijzigSubthema.reset();
-                      setSubthemaBlad({ subthema });
-                    }}
-                    onVerwijder={() => {
-                      verwijderSubthema.reset();
-                      setTeVerwijderenSubthema(subthema);
-                    }}
-                    onNieuweActiviteit={() => {
-                      maakActiviteit.reset();
-                      setActiviteitBlad({ subthemaId: subthema.id });
-                    }}
-                    onBewerkActiviteit={(activiteit) => {
-                      wijzigActiviteit.reset();
-                      setActiviteitBlad({ subthemaId: subthema.id, activiteitId: activiteit.id });
-                    }}
-                    onVerwijderActiviteit={(activiteit) => {
-                      verwijderActiviteit.reset();
-                      setTeVerwijderenActiviteit(activiteit);
-                    }}
-                    onKoppelSubdoel={(code) =>
-                      koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
-                    }
-                    onOntkoppelSubdoel={(subdoelId) =>
-                      ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
-                    }
-                    // Linking from the list uses the same mutation as the bewerk-blad, so a doel
-                    // linked here shows up there and both invalidate the same query. Removing one
-                    // stays in the blad: that needs a per-koppeling id, and putting a row of remove
-                    // controls on a card meant for scanning is how the card became a toolbar before.
-                    onKoppelActiviteitdoel={(activiteitId, code) =>
-                      koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Sectie>
+          <Kop
+            titel={t("thema.subthemasTitel")}
+            acties={
+              <Toevoegknop
+                label={t("subthemabeheer.toevoegen")}
+                onClick={() => {
+                  maakSubthema.reset();
+                  setSubthemaBlad({});
+                }}
+              />
+            }
+          >
+            {subthemas.length === 0 ? (
+              <p className="text-meta text-inkt-zacht">{t("thema.geenSubthemas")}</p>
+            ) : null}
+          </Kop>
+        </Blok>
+
+        {subthemas.map((subthema) => (
+          <Subthemahoofdstuk
+            key={subthema.id}
+            subthema={subthema}
+            koppelenBezig={
+              koppelSubdoel.isPending || ontkoppelSubdoel.isPending || koppelActiviteitdoel.isPending
+            }
+            onBewerk={() => {
+              wijzigSubthema.reset();
+              setSubthemaBlad({ subthema });
+            }}
+            onVerwijder={() => {
+              verwijderSubthema.reset();
+              setTeVerwijderenSubthema(subthema);
+            }}
+            onNieuweActiviteit={() => {
+              maakActiviteit.reset();
+              setActiviteitBlad({ subthemaId: subthema.id });
+            }}
+            onBewerkActiviteit={(activiteit) => {
+              wijzigActiviteit.reset();
+              setActiviteitBlad({ subthemaId: subthema.id, activiteitId: activiteit.id });
+            }}
+            onVerwijderActiviteit={(activiteit) => {
+              verwijderActiviteit.reset();
+              setTeVerwijderenActiviteit(activiteit);
+            }}
+            onKoppelSubdoel={(code) =>
+              koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
+            }
+            onOntkoppelSubdoel={(subdoelId) =>
+              ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
+            }
+            // Linking from the list uses the same mutation as the bewerk-blad, so a doel linked
+            // here shows up there and both invalidate the same query. Removing one stays in the
+            // blad: that needs a per-koppeling id, and putting a row of remove controls on a list
+            // meant for scanning is how the card became a toolbar before.
+            onKoppelActiviteitdoel={(activiteitId, code) =>
+              koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
+            }
+          />
+        ))}
+        </Groep>
       </Schermvlak>
 
       {bewerkOpen ? (
@@ -387,7 +476,7 @@ export function ThemadetailScherm() {
         titel={t("themabeheer.verwijderTitel", { naam: thema.naam })}
         gevolg={t("themabeheer.verwijderGevolg", {
           subthemas: thema.subthemas.length,
-          doelen: aantalDoelen,
+          doelen: balans.totaal,
         })}
         bevestigLabel={t("themabeheer.verwijder")}
         bezig={verwijder.isPending}
@@ -496,8 +585,8 @@ export function ThemadetailScherm() {
       ) : null}
 
       {/* No count of scheduled days in this sentence: the server refuses the delete outright for an
-          activiteit that still sits in the weekplanning, and its own message names the day count that
-          this screen does not have. */}
+          activiteit that still sits in the weekplanning, and its own message names the day count
+          that this screen does not have. */}
       <Bevestiging
         open={teVerwijderenActiviteit !== null}
         titel={t("activiteit.verwijderTitel", { naam: teVerwijderenActiviteit?.naam ?? "" })}
@@ -516,7 +605,8 @@ export function ThemadetailScherm() {
       />
 
       {/* The one refusal a teacher will actually hit: an activiteit that is still on a day. The
-          server's sentence names how many days, which is why it is shown instead of a catalogue line. */}
+          server's sentence names how many days, which is why it is shown instead of a catalogue
+          line. */}
       {verwijderActiviteit.isError ? (
         <div
           role="alert"
@@ -533,6 +623,45 @@ export function ThemadetailScherm() {
   );
 }
 
+/**
+ * One level's share of the doelen: the figure in the mono face, the level in words.
+ *
+ * The same pairing the thema library card uses for its counts, and for the same reason: the number
+ * carries the weight, the word steps back, and three of them read as three separate facts on one
+ * line instead of as a sentence to parse. Renders nothing at all for a level that holds none.
+ */
+function Deel({ aantal, woord }: { aantal: number; woord: Vertaalsleutel }) {
+  if (aantal === 0) return null;
+
+  return (
+    <span className="whitespace-nowrap">
+      <span className="mono font-medium text-inkt">{aantal}</span> {t(woord)}
+    </span>
+  );
+}
+
+/**
+ * The subthema's in the order a teacher thinks of the ages, not in the order they were typed.
+ *
+ * The order comes from `/api/jaarfasen`, which is the same list the subthema form offers, because
+ * spelling JK, K2, K3, L1 out here would be a second source for domain vocabulary the server already
+ * owns (`lib/types.ts` makes the same point about `mogelijkeJaarfasen`). A leeftijd the server does
+ * not know is legitimate: older imports carry free text such as "5-6". Those sort after the known
+ * ones rather than being hidden or reordered among them, and within any tie the name decides, so the
+ * order is stable across renders.
+ */
+function opLeeftijd(subthemas: SubthemaWeergave[], jaarfasen: string[] | undefined) {
+  const volgorde = new Map((jaarfasen ?? []).map((fase, i) => [fase, i]));
+  const rang = (leeftijd: string) => volgorde.get(leeftijd) ?? Number.MAX_SAFE_INTEGER;
+
+  return [...subthemas].sort(
+    (a, b) =>
+      rang(a.leeftijd) - rang(b.leeftijd) ||
+      a.leeftijd.localeCompare(b.leeftijd, "nl") ||
+      a.naam.localeCompare(b.naam, "nl"),
+  );
+}
+
 function Terug() {
   return (
     <Link
@@ -541,48 +670,5 @@ function Terug() {
     >
       {t("thema.terug")}
     </Link>
-  );
-}
-
-function Sectie({ titel, actie, children }: { titel: string; actie?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="mt-7 flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-micro uppercase text-inkt-zwak">{titel}</h2>
-        {actie}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/**
- * One vocabulary list, as a sentence.
- *
- * Words are read, not clicked, so they are text with a separator rather than a row of pills. The two
- * lists differ in weight: kernwoordenschat is what every child ends up with, rijke woordenschat is
- * the stretch, which is the same distinction the form's chips carry.
- */
-function Woordenregel({ label, woorden, sterk }: { label: string; woorden: string[]; sterk?: boolean }) {
-  return (
-    <p className="text-body">
-      <span className="text-micro uppercase text-inkt-zwak">{label}</span>{" "}
-      <span className={sterk ? "text-inkt" : "text-inkt-zacht"}>{woorden.join(" · ")}</span>
-    </p>
-  );
-}
-
-/** A small remove control for a goal link, sitting next to the code it removes. */
-function Ontkoppel({ label, bezig, onClick }: { label: string; bezig?: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      disabled={bezig}
-      aria-label={label}
-      onClick={onClick}
-      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
-    >
-      <span aria-hidden="true" className="block h-[1.5px] w-3.5 bg-current" />
-    </button>
   );
 }

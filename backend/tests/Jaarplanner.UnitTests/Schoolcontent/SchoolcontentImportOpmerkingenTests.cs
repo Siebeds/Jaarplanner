@@ -112,15 +112,21 @@ public sealed class SchoolcontentImportOpmerkingenTests
         }
     }
 
+    /// <summary>
+    /// <b>What makes a row unusable changed on 2026-08-30, and so did this test</b> (Art. IX.2). An unknown klas
+    /// used to be fatal, because a subthema had to name one. It is no longer fatal on its own: the klas column is
+    /// only a fallback source for the age, so a row with a valid leeftijd imports whatever the klas column says.
+    /// A row is skipped when NEITHER can answer, which is the case this now covers.
+    /// </summary>
     [Fact]
-    public async Task Onbekende_klas_meldt_wat_er_misging_en_wat_de_leerkracht_kan_doen()
+    public async Task Onbruikbare_leeftijd_meldt_wat_er_misging_en_wat_de_leerkracht_kan_doen()
     {
         await using var context = MaakContext();
         await SeedAsync(context);
 
         var parseResultaat = Parse(new SchoolcontentWorkbookBuilder()
             .MetHeader()
-            .MetRij(klas: "L6 bestaat niet")
+            .MetRij(klas: "L6 bestaat niet", leeftijd: "5-6")
             .Bouw());
 
         var resultaat = await new SchoolcontentImportService(context).ImporteerAsync(
@@ -128,10 +134,11 @@ public sealed class SchoolcontentImportOpmerkingenTests
 
         var opmerking = Assert.Single(resultaat.Diff.Opmerkingen);
         AssertLeesbaarVoorEenLeerkracht(opmerking);
-        // It names the klas from the file (only this layer knows it) and states the next step.
-        Assert.Contains("L6 bestaat niet", opmerking, StringComparison.Ordinal);
+        // It names the value from the file (only this layer knows it), says what happened, and lists the choices
+        // rather than only refusing.
+        Assert.Contains("5-6", opmerking, StringComparison.Ordinal);
         Assert.Contains("overgeslagen", opmerking, StringComparison.Ordinal);
-        Assert.Contains("Maak die klas eerst aan", opmerking, StringComparison.Ordinal);
+        Assert.Contains("K3", opmerking, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -451,12 +458,15 @@ public sealed class SchoolcontentImportOpmerkingenTests
         await using var context = MaakContext();
         await SeedAsync(context, codes);
 
-        // Four valid themadoel codes (the cap notice), one typo (the unknown-code notice) and a klas that does
-        // not exist (the unknown-klas notice). The thema layer is processed before the subthema is skipped, so
-        // all three fire in the same run.
+        // Four valid themadoel codes (the cap notice), one typo (the unknown-code notice) and a leeftijd that is
+        // not a jaar/fase, with a klas that cannot supply one either (the unusable-leeftijd notice). The thema
+        // layer is processed before the subthema is skipped, so all three fire in the same run.
+        //
+        // The third notice used to be the unknown-KLAS one. Since 2026-08-30 an unknown klas is not fatal by
+        // itself (Art. IX.2), so it no longer produces a notice and the row is refused one level down.
         var parseResultaat = Parse(new SchoolcontentWorkbookBuilder()
             .MetHeader()
-            .MetRij(themadoelen: $"{string.Join(";", codes)};TYPO-1", klas: "L6 bestaat niet")
+            .MetRij(themadoelen: $"{string.Join(";", codes)};TYPO-1", klas: "L6 bestaat niet", leeftijd: "5-6")
             .Bouw());
 
         var resultaat = await new SchoolcontentImportService(context).ImporteerAsync(
@@ -486,7 +496,7 @@ public sealed class SchoolcontentImportOpmerkingenTests
     private static async Task SeedAsync(AppDbContext context, params string[] codes)
     {
         var schooljaar = TestSchooljaar.Maak();
-        schooljaar.VoegKlasToe("K3", leerjaar: 0);
+        schooljaar.VoegKlasToe("K3", "K3");
         context.Schooljaren.Add(schooljaar);
 
         foreach (var code in codes)

@@ -41,7 +41,6 @@ function subthema(naam: string, activiteiten: ActiviteitWeergave[]): SubthemaWee
     themaId: "thema-1",
     naam,
     duurWeken: 2,
-    klasId: "klas-1",
     leeftijd: "K3",
     onderzoeksvragen: [],
     subdoelen: [],

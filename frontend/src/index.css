@@ -96,6 +96,27 @@
   --color-attentie-zacht: hsl(40 90% 96%);
   --color-attentie-inkt: hsl(25 68% 24%);
 
+  /* ── gevaar - the one destructive control (owner, 2026-08-30: "verwijderen = rood") ── */
+  /* NO NEW HUE. It is `suggestie-geweigerd` and `dekking-niet-gedekt` byte for byte, given a
+     name for the third thing that red already means here. Adding a second red would put two
+     nearly identical hues on one screen carrying three meanings, which is worse than one red
+     doing all three, and the rule at the top of this file forbids the free choice anyway.
+
+     They do not collide, because they never occupy the same slot: the two statuses are text
+     on a labelled merk, this is an icon control that always carries an aria-label. Never
+     colour alone, either way.
+
+     `gevaar` is worn ON HOVER AND FOCUS, not at rest. A thema page carries one trash per
+     activiteit and one per subthema, so a dozen red icons would be the loudest thing on a
+     screen whose job is reading, and the red that IS resting on it means "geweigerd" and
+     "niet gedekt". At rest the icon is ink; the colour arrives with the pointer, at the
+     moment it is about to matter.
+
+     Measured on white: 4.83:1, which clears AA for the icon's own stroke (1.4.11 asks 3:1 of a
+     graphical control) and for text set in it. */
+  --color-gevaar: hsl(0 72% 42%);
+  --color-gevaar-zacht: hsl(0 80% 97%);
+
   /* ── type ──────────────────────────────────────────────────────────────────────────── */
   /* Three roles, three faces, each doing one job. Schibsted Grotesk is the voice: tight,
      editorial, used only for headings and the screen title. IBM Plex Sans is the workhorse
@@ -110,6 +131,17 @@
   --text-scherm--line-height: 1.05;
   --text-scherm--letter-spacing: -0.03em;
   --text-scherm--font-weight: 700;
+
+  /* A chapter head, between the screen title and a section label.
+     It exists because the thema fiche has four ranks of heading and this scale had three: a subthema
+     is a CHAPTER of that document, it was set at `sectie`, and it landed two pixels away from the
+     body text underneath it. That two pixel gap is why the screen kept reading as one flat column
+     however the elements inside it were arranged. The display face at this size is the step that
+     makes three levels legible without spending a single hue. */
+  --text-hoofdstuk: 1.375rem;
+  --text-hoofdstuk--line-height: 1.15;
+  --text-hoofdstuk--letter-spacing: -0.02em;
+  --text-hoofdstuk--font-weight: 600;
 
   --text-sectie: 1.0625rem;
   --text-sectie--line-height: 1.3;

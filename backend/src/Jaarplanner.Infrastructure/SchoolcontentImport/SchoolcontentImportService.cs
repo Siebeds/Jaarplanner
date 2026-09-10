@@ -1,4 +1,5 @@
 ﻿using Jaarplanner.Application.Schoolcontent.Import;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
@@ -264,7 +265,10 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
     {
         var themaNaam = doelThema.Naam;
         var perSubthema = themaGroep
-            .GroupBy(r => new SubthemaSleutel(r.SubthemaNaam.Trim(), r.SubthemaKlas.Trim(), r.SubthemaLeeftijd.Trim()))
+            // Grouped on (naam, leeftijd). The klas left this key on 2026-08-30 (Art. IX.2): two rows naming the
+            // same subthema at the same age for two classes are now ONE subthema, which is the merge the amendment
+            // intends rather than a collision to disambiguate.
+            .GroupBy(r => new SubthemaSleutel(r.SubthemaNaam.Trim(), LeeftijdVoor(r, klasPerNaam) ?? r.SubthemaLeeftijd.Trim()))
             .ToList();
 
         // Track subthema's created during this import so multiple activiteit-rows reuse the same instance.
@@ -275,31 +279,35 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
             var sleutel = subthemaGroep.Key;
             var eersteRij = subthemaGroep.First();
 
-            if (!klasPerNaam.TryGetValue(sleutel.Klas, out var klas))
+            // A subthema is age-scoped (Art. IX.2), so a row whose leeftijd cannot be resolved to one of the nine
+            // jaar/fase codes cannot be placed at all. The Dutch says what happened and what to do; the article
+            // reference lives here in the comment, because a teacher cannot act on "Art. IX.2" (Art. II.3) — the
+            // same audience mixing E1-15 fixed in the Op.stap importer's out-of-scope notice. No em dash either
+            // (Art. II.5): E1-13 renders this string.
+            //
+            // The KLAS column is still read, but only as a fallback source for the age, and no longer as a scope.
+            // A file naming a class that does not exist is therefore no longer fatal on its own: it is fatal only
+            // when the leeftijd column could not answer either.
+            if (!Jaarfasen.IsBekend(sleutel.Leeftijd))
             {
-                // A subthema is class-scoped (Art. IX.2), so an unresolvable klas means the row cannot be
-                // placed at all. The Dutch says what happened and what to do; the article reference lives
-                // here in the comment, because a teacher cannot act on "Art. IX.2" (Art. II.3) — the same
-                // audience mixing E1-15 fixed in the Op.stap importer's out-of-scope notice. No em dash
-                // either (Art. II.5): E1-13 renders this string.
                 opmerkingen.Add(
-                    $"Subthema '{sleutel.Naam}' verwijst naar de klas '{sleutel.Klas}', die niet bestaat. " +
-                    "Het subthema is daarom overgeslagen. Maak die klas eerst aan, of pas de naam in het " +
-                    "bestand aan.");
+                    $"Subthema '{sleutel.Naam}' heeft leeftijd '{eersteRij.SubthemaLeeftijd.Trim()}', en dat is geen " +
+                    $"geldige leeftijd. Het subthema is daarom overgeslagen. Zet er een van deze in: " +
+                    $"{string.Join(", ", Jaarfasen.Alle)}. De klas '{eersteRij.SubthemaKlas.Trim()}' kon de leeftijd " +
+                    "ook niet aanvullen, want die klas bestaat niet of geeft meer dan een leeftijd.");
                 continue;
             }
 
             var bestaandSubthema = bestaandeThema?.Subthemas.FirstOrDefault(s =>
                 KeyComparer.Equals(s.Naam, sleutel.Naam) &&
-                s.KlasId == klas.Id &&
                 KeyComparer.Equals(s.Leeftijd, sleutel.Leeftijd));
 
             Subthema doelSubthema;
             if (bestaandSubthema is null)
             {
                 subthemaWijzigingen.Add(new SubthemaWijziging(
-                    themaNaam, sleutel.Naam, sleutel.Klas, sleutel.Leeftijd, WijzigingSoort.Toegevoegd));
-                doelSubthema = MaakSubthema(doelThema, eersteRij, klas.Id, toepassen, out var nieuw);
+                    themaNaam, sleutel.Naam, sleutel.Leeftijd, WijzigingSoort.Toegevoegd));
+                doelSubthema = MaakSubthema(doelThema, eersteRij, sleutel.Leeftijd, toepassen, out var nieuw);
                 if (nieuw is not null)
                 {
                     nieuweSubthemas[sleutel] = nieuw;
@@ -317,7 +325,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
             else if (opties.Modus == SchoolcontentImportModus.Toevoegen)
             {
                 subthemaWijzigingen.Add(new SubthemaWijziging(
-                    themaNaam, sleutel.Naam, sleutel.Klas, sleutel.Leeftijd, WijzigingSoort.Ongewijzigd));
+                    themaNaam, sleutel.Naam, sleutel.Leeftijd, WijzigingSoort.Ongewijzigd));
                 doelSubthema = bestaandSubthema;
             }
             else
@@ -325,7 +333,7 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                 doelSubthema = bestaandSubthema;
                 var gewijzigd = WerkSubthemaBij(doelSubthema, eersteRij, toepassen);
                 subthemaWijzigingen.Add(new SubthemaWijziging(
-                    themaNaam, sleutel.Naam, sleutel.Klas, sleutel.Leeftijd,
+                    themaNaam, sleutel.Naam, sleutel.Leeftijd,
                     gewijzigd ? WijzigingSoort.Bijgewerkt : WijzigingSoort.Ongewijzigd));
 
                 ReconcileSubdoelen(doelSubthema, subthemaGroep, opties, codeControle, toepassen, bedreigd);
@@ -799,19 +807,23 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         return thema;
     }
 
-    private Subthema MaakSubthema(Thema thema, SchoolcontentRij rij, Guid klasId, bool toepassen, out Subthema? nieuw)
+    /// <param name="leeftijd">
+    /// The RESOLVED age, not <c>rij.SubthemaLeeftijd</c>. The row's own value may have come from the klas column
+    /// instead (see <c>LeeftijdVoor</c>), and passing the raw one here would store the unresolved text.
+    /// </param>
+    private Subthema MaakSubthema(Thema thema, SchoolcontentRij rij, string leeftijd, bool toepassen, out Subthema? nieuw)
     {
         if (!toepassen)
         {
             // Preview: build a detached instance purely so the activiteit walk has a parent to read from.
             var voorbeeld = new Thema(thema.Naam, thema.DuurWeken).VoegSubthemaToe(
-                rij.SubthemaNaam, rij.SubthemaDuurWeken, klasId, rij.SubthemaLeeftijd);
+                rij.SubthemaNaam, rij.SubthemaDuurWeken, leeftijd);
             VoegOnderzoeksvraagToeVanuitRij(voorbeeld, rij);
             nieuw = null;
             return voorbeeld;
         }
 
-        var subthema = thema.VoegSubthemaToe(rij.SubthemaNaam, rij.SubthemaDuurWeken, klasId, rij.SubthemaLeeftijd);
+        var subthema = thema.VoegSubthemaToe(rij.SubthemaNaam, rij.SubthemaDuurWeken, leeftijd);
         VoegOnderzoeksvraagToeVanuitRij(subthema, rij);
         nieuw = subthema;
         return subthema;
@@ -908,5 +920,33 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
     }
 
     /// <summary>Match key for a subthema within its thema (class/age scoping is part of identity, Art. IX.2).</summary>
-    private readonly record struct SubthemaSleutel(string Naam, string Klas, string Leeftijd);
+    /// <summary>
+    /// The age a row is scoped to: its own leeftijd column when that already holds a jaar/fase code, and otherwise
+    /// the one its named klas teaches. <c>null</c> when neither can answer.
+    /// <para>
+    /// <b>The fallback exists because the leeftijd column was free text until 2026-08-30</b> and real files hold
+    /// values like "5-6" and "8-9". Those cannot scope anything now, but the klas beside them can: a class records
+    /// one jaar/fase, and a row saying "K3 groen" says K3 as clearly as the age column was meant to. The fallback
+    /// refuses when the class teaches more than one age, because picking one of several would be a guess, and
+    /// guessing which age a school's content is for is exactly the mistake this column exists to prevent.
+    /// </para>
+    /// </summary>
+    private static string? LeeftijdVoor(SchoolcontentRij rij, IReadOnlyDictionary<string, Klas> klasPerNaam)
+    {
+        var eigen = rij.SubthemaLeeftijd.Trim();
+        if (Jaarfasen.IsBekend(eigen))
+        {
+            return eigen;
+        }
+
+        if (!klasPerNaam.TryGetValue(rij.SubthemaKlas.Trim(), out var klas))
+        {
+            return null;
+        }
+
+        var codes = Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase);
+        return codes is { Count: 1 } ? codes[0] : null;
+    }
+
+    private readonly record struct SubthemaSleutel(string Naam, string Leeftijd);
 }

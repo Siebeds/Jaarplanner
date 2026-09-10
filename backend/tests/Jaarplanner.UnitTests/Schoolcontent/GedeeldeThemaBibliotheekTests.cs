@@ -11,9 +11,15 @@ namespace Jaarplanner.UnitTests.Schoolcontent;
 /// <summary>
 /// E1-11 — Gedeelde thema-bibliotheek (FR-3.3 resolved per-level, Art. IX.2, Gap A.5). Proves the shared
 /// thema-bibliotheek (school-wide thema + themadoelen + woordenschat) and the per-class derivation of
-/// subthema's are two coherent but isolated views: the bibliotheek view never leaks a class's subthema's,
-/// two classes derive the same thema independently (no cross-class bleed), and editing/adding/deleting one
-/// class's subthema/subdoel/activiteit leaves the shared thema AND every other class's derivation unchanged.
+/// subthema's are two coherent but isolated views: the bibliotheek view never leaks a subthema's content, two
+/// classes AT DIFFERENT AGES derive the same thema independently, and editing/adding/deleting one age's
+/// subthema/subdoel/activiteit leaves the shared thema AND every other age's derivation unchanged.
+/// <para>
+/// <b>What separates the two classes here is their AGE, since 2026-08-30</b> (Art. IX.2): klas A teaches L1 and
+/// klas B teaches L2, so their content is still disjoint. Two classes at the SAME age would now deliberately
+/// share every subthema, which is the case this suite does not cover and
+/// <c>SchoolcontentBeheerServiceTests</c> does.
+/// </para>
 /// The shared layer can only be edited via the school-level thema operations, never as a side effect of
 /// class-level work. Uses the EF Core in-memory provider (no Docker), matching the E1-10 test pattern.
 /// </summary>
@@ -33,8 +39,8 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
 
         // Both classes live in the same school year — the Art. IX.3 containment E3-01 made required.
         var schooljaar = TestSchooljaar.Maak();
-        _klasA = schooljaar.VoegKlasToe("L1 — eerste leerjaar", leerjaar: 1);
-        _klasB = schooljaar.VoegKlasToe("L2 — tweede leerjaar", leerjaar: 2);
+        _klasA = schooljaar.VoegKlasToe("L1 — eerste leerjaar", "L1");
+        _klasB = schooljaar.VoegKlasToe("L2 — tweede leerjaar", "L2");
         seed.Schooljaren.Add(schooljaar);
 
         seed.Leerplandoelen.AddRange(
@@ -80,19 +86,20 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     }
 
     [Fact]
-    public async Task Bibliotheek_item_carries_no_subthema_field_and_counts_deriving_classes()
+    public async Task Bibliotheek_item_carries_no_subthema_field_and_counts_deriving_ages()
     {
         // The ThemaBibliotheekItem type structurally cannot carry subthema's (compile-time guarantee of
-        // no class content in the shared-library view). Here we also assert the derived class-count.
+        // no subthema content in the shared-library view). Here we also assert the derived age-count.
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5));
-        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klasA.Id, "K3"));
-        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Sneeuw", 2, _klasA.Id, "K2"));
-        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Stormen", 2, _klasB.Id, "L1"));
+        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
+        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Sneeuw", 2, "K2"));
+        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Stormen", 2, "L1"));
 
         var item = Assert.Single(await NieuweService().HaalThemaBibliotheekOpAsync());
 
-        // Two distinct classes derived this thema (klas A twice, klas B once) → count is 2, not 3.
-        Assert.Equal(2, item.AantalAfgeleideKlassen);
+        // Three subthema's at three distinct AGES, so the count is 3. It counted distinct KLASSEN until
+        // 2026-08-30 and answered 2 for the same rows; a subthema has no klas to count any more (Art. IX.2).
+        Assert.Equal(3, item.AantalAfgeleideLeeftijden);
     }
 
     [Fact]
@@ -112,8 +119,8 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     public async Task Two_classes_derive_the_same_thema_with_independent_subthemas()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5));
-        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, _klasA.Id, "K3"));
-        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, _klasB.Id, "L1"));
+        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
+        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
 
         var voorA = await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasA.Id);
         var voorB = await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasB.Id);
@@ -124,11 +131,13 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         Assert.Equal("Water", voorA.Naam);
         Assert.Equal("Water", voorB.Naam);
 
-        // Each class sees ONLY its own subthema; class A's never appears under class B and vice versa.
+        // Each class sees the subthema's for the AGE it teaches. Since 2026-08-30 (Art. IX.2) that is what
+        // separates two classes rather than a KlasId, so two classes at DIFFERENT ages still see only their own,
+        // and two at the SAME age would deliberately see both.
         Assert.Equal(subA.Id, Assert.Single(voorA.Subthemas).Id);
         Assert.Equal(subB.Id, Assert.Single(voorB.Subthemas).Id);
-        Assert.All(voorA.Subthemas, s => Assert.Equal(_klasA.Id, s.KlasId));
-        Assert.All(voorB.Subthemas, s => Assert.Equal(_klasB.Id, s.KlasId));
+        Assert.All(voorA.Subthemas, s => Assert.Contains(s.Leeftijd, _klasA.Jaarfase ?? s.Leeftijd));
+        Assert.All(voorB.Subthemas, s => Assert.Contains(s.Leeftijd, _klasB.Jaarfase ?? s.Leeftijd));
         Assert.DoesNotContain(voorA.Subthemas, s => s.Id == subB.Id);
         Assert.DoesNotContain(voorB.Subthemas, s => s.Id == subA.Id);
     }
@@ -137,12 +146,12 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     public async Task Thema_voor_klas_shows_only_that_class_subdoelen_and_activiteiten()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5));
-        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, _klasA.Id, "K3"));
+        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
         await NieuweService().KoppelSubthemaAanDoelAsync(subA.Id, "NL-001");
         var actA = await NieuweService().MaakActiviteitAsync(subA.Id, new ActiviteitCreatie("Meten (A)", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(actA.Id, "WIS-001");
 
-        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, _klasB.Id, "L1"));
+        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
         await NieuweService().KoppelSubthemaAanDoelAsync(subB.Id, "NL-002");
 
         var voorA = await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasA.Id);
@@ -158,8 +167,8 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     public async Task Thema_voor_klas_with_no_derivation_yields_the_shared_thema_and_no_subthemas()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5, Kernwoordenschat: ["plas"]));
-        // Only klas A derives; klas B has not derived anything from this shared thema.
-        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klasA.Id, "K3"));
+        // Only klas A's age; klas B teaches another one, so this thema has nothing for it.
+        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "L1"));
 
         var voorB = await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasB.Id);
 
@@ -191,12 +200,15 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie(
             "Water", DuurWeken: 5, Invalshoeken: "natuur", Kernwoordenschat: ["plas"], RijkeWoordenschat: ["waterkringloop"]));
         await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
-        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, _klasA.Id, "K3"));
-        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, _klasB.Id, "L1"));
+        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
+        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
 
-        // Edit class A's subthema heavily: rename, re-scope age, change duur + driving questions.
+        // Edit class A's subthema heavily: rename, change duur + driving questions. The AGE is deliberately kept,
+        // because changing it is no longer an edit within one class's content: it moves the subthema to whichever
+        // classes teach the new age. That consequence is asserted at the end of this test rather than mixed in
+        // here, where it would have looked like the edit failing to take effect.
         await NieuweService().WijzigSubthemaAsync(subA.Id, new SubthemaWijzigingInvoer(
-            "Stortbui (A)", DuurWeken: 3, _klasA.Id, "K2",
+            "Stortbui (A)", DuurWeken: 3, "L1",
             Onderzoeksvragen: [new("Waarom regent het?")]));
 
         // The shared (school-wide) thema is byte-for-byte unchanged.
@@ -213,22 +225,31 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         var subBNa = Assert.Single(voorB.Subthemas);
         Assert.Equal(subB.Id, subBNa.Id);
         Assert.Equal("Regen (B)", subBNa.Naam);
-        Assert.Equal("L1", subBNa.Leeftijd);
+        Assert.Equal("L2", subBNa.Leeftijd);
         Assert.Equal(2, subBNa.DuurWeken);
 
         // Class A's own derivation did change (sanity: the edit took effect).
         var voorA = await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasA.Id);
         Assert.Equal("Stortbui (A)", Assert.Single(voorA.Subthemas).Naam);
+
+        // And now the part that is new since 2026-08-30 (Art. IX.2): re-scoping the AGE hands the subthema to the
+        // classes that teach it. Class A loses it and class B gains it, without either class being named anywhere.
+        await NieuweService().WijzigSubthemaAsync(subA.Id, new SubthemaWijzigingInvoer("Stortbui (A)", 3, "L2"));
+
+        Assert.Empty((await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasA.Id)).Subthemas);
+        Assert.Equal(
+            ["Regen (B)", "Stortbui (A)"],
+            (await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasB.Id)).Subthemas.Select(s => s.Naam).Order());
     }
 
     [Fact]
     public async Task Adding_class_A_subthema_does_not_appear_under_class_B()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5));
-        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, _klasB.Id, "L1"));
+        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
 
         // Add a brand-new subthema for class A.
-        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Sneeuw (A)", 2, _klasA.Id, "K3"));
+        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Sneeuw (A)", 2, "L1"));
 
         var voorB = await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasB.Id);
         // Class B still sees only its own single subthema; class A's addition did not bleed in.
@@ -238,7 +259,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         var biblioItem = Assert.Single(await NieuweService().HaalThemaBibliotheekOpAsync());
         Assert.Equal("Water", biblioItem.Naam);
         Assert.Equal(5, biblioItem.DuurWeken);
-        Assert.Equal(2, biblioItem.AantalAfgeleideKlassen);
+        Assert.Equal(2, biblioItem.AantalAfgeleideLeeftijden);
     }
 
     [Fact]
@@ -246,10 +267,10 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5, Kernwoordenschat: ["plas"]));
         await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
-        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, _klasA.Id, "K3"));
+        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
         var actA = await NieuweService().MaakActiviteitAsync(subA.Id, new ActiviteitCreatie("Meten (A)", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(actA.Id, "WIS-001");
-        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, _klasB.Id, "L1"));
+        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
 
         await NieuweService().VerwijderSubthemaAsync(subA.Id);
 
@@ -259,7 +280,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         Assert.Equal(["plas"], biblioItem.Kernwoordenschat);
         Assert.Equal("NL-001", Assert.Single(biblioItem.Themadoelen).Koppeling.LeerplandoelCode);
         // Only one class derives now (klas B).
-        Assert.Equal(1, biblioItem.AantalAfgeleideKlassen);
+        Assert.Equal(1, biblioItem.AantalAfgeleideLeeftijden);
 
         // Class B's derivation is fully intact.
         var voorB = await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasB.Id);
@@ -270,8 +291,8 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     public async Task Editing_class_A_subdoel_or_activiteit_does_not_touch_class_B_derivation()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5));
-        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, _klasA.Id, "K3"));
-        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, _klasB.Id, "L1"));
+        var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
+        var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
         var subdoelB = await NieuweService().KoppelSubthemaAanDoelAsync(subB.Id, "NL-002");
         var actB = await NieuweService().MaakActiviteitAsync(subB.Id, new ActiviteitCreatie("Meten (B)", ActiviteitType.Onderzoek));
 
@@ -296,7 +317,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     public async Task Shared_themadoelen_and_woordenschat_change_only_via_school_level_ops()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5, Kernwoordenschat: ["plas"]));
-        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, _klasA.Id, "K3"));
+        await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "L1"));
 
         // School-level edit: rename + re-vocab + add themadoel. This is the ONLY path that touches the shared layer.
         await NieuweService().WijzigThemaAsync(thema.Id, new ThemaWijziging(
