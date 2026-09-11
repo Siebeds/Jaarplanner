@@ -99,7 +99,7 @@ public sealed class HoekplaatsingTests
         var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
         plaatsing.VerplaatsMoment(dinsdag.Id, dinsdag.Datum, HalfTwee, new TimeOnly(15, 0));
 
-        Assert.Equal(0, plaatsing.ZetUren(new TimeOnly(9, 0), new TimeOnly(10, 30)));
+        plaatsing.ZetUren(new TimeOnly(9, 0), new TimeOnly(10, 30));
 
         Assert.All(plaatsing.Momenten, m => Assert.Equal(new TimeOnly(9, 0), m.Begin));
         Assert.All(plaatsing.Momenten, m => Assert.Equal(new TimeOnly(10, 30), m.Einde));
@@ -108,36 +108,39 @@ public sealed class HoekplaatsingTests
     }
 
     [Fact]
-    public void Twee_momenten_op_een_dag_worden_een_wanneer_ze_dezelfde_uren_krijgen()
+    public void Nieuwe_uren_worden_geweigerd_zolang_een_dag_de_hoek_twee_keer_heeft()
     {
-        // Tuesday dragged onto Monday morning: legal, because it starts at another time than Monday's own row. At
-        // the same hours the two would be one row written twice, so the earliest stays.
+        // Tuesday dragged onto Monday morning: legal on its own, because it starts at another time than Monday's own
+        // row. At the same hours the two would be one row written twice. Owner ruling 2026-09-11: refuse and name the
+        // day, rather than fold the two into one and quietly lose an appearance she placed.
         var plaatsing = Plaatsing();
         var maandag = plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
         var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
         plaatsing.VerplaatsMoment(dinsdag.Id, maandag.Datum, new TimeOnly(9, 0), new TimeOnly(9, 50));
 
-        Assert.Equal(1, plaatsing.ZetUren(new TimeOnly(10, 0), new TimeOnly(11, 0)));
+        var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(new TimeOnly(10, 0), new TimeOnly(11, 0)));
 
-        var enige = Assert.Single(plaatsing.Momenten);
-        Assert.Equal(dinsdag.Id, enige.Id);
-        Assert.Equal(maandag.Datum, enige.Datum);
-        Assert.Equal(new TimeOnly(10, 0), enige.Begin);
+        // The whole sentence, because its twin lives in nl.json (hoekdetail.dubbeleDag) and nothing else keeps the
+        // two in step: the sheet says it before saving, this says it to a request that raced the sheet.
+        Assert.Equal(
+            "Op maandag 7 september staat deze hoek twee keer. Sleep eerst een van de twee naar een andere dag, dan kan je de uren aanpassen.",
+            fout.Message);
+        Assert.Equal(2, plaatsing.Momenten.Count);
+        Assert.Equal(HalfTwee, plaatsing.Momenten.Single(m => m.Id == maandag.Id).Begin);
+        Assert.Equal(new TimeOnly(9, 0), plaatsing.Momenten.Single(m => m.Id == dinsdag.Id).Begin);
     }
 
     [Fact]
     public void Nieuwe_uren_met_een_einde_voor_het_begin_laten_de_reeks_zoals_ze_was()
     {
         var plaatsing = Plaatsing();
-        var maandag = plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
-        plaatsing.PlanIn(maandag.Datum, new TimeOnly(9, 0), new TimeOnly(9, 50));
+        plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
 
         var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(TweeUurTwintig, HalfTwee));
 
         Assert.Contains("einde", fout.Message);
-        // Neither rewritten nor folded: the check comes before either.
-        Assert.Equal(2, plaatsing.Momenten.Count);
-        Assert.Contains(plaatsing.Momenten, m => m.Begin == HalfTwee && m.Einde == TweeUurTwintig);
+        var moment = Assert.Single(plaatsing.Momenten);
+        Assert.Equal((HalfTwee, TweeUurTwintig), (moment.Begin, moment.Einde));
     }
 
     [Fact]

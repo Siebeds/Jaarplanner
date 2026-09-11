@@ -649,7 +649,9 @@ function Rekgreep({
           "block h-[5px] w-4 border-y transition-opacity duration-150 motion-reduce:transition-none",
           actief
             ? "border-inkt opacity-100"
-            : "border-inkt-zacht opacity-0 group-hover/blok:opacity-100 group-hover/greep:border-inkt pointer-coarse:opacity-60",
+            : // Full strength on a touchscreen, never a faded version: there the grip is the ONLY sign the edge moves,
+              // and inkt-zacht at 60% composited to about 2.6:1, under the 3:1 a control needs (SC 1.4.11).
+              "border-inkt-zacht opacity-0 group-hover/blok:opacity-100 group-hover/greep:border-inkt pointer-coarse:opacity-100",
         )}
       />
     </span>

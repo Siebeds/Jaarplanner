@@ -84,7 +84,8 @@ public interface IHoekplaatsingService
     /// </summary>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such placement.</exception>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentValidatieFout">
-    /// The end is not after the start.
+    /// The end is not after the start, or a day holds the hoek twice (one day dragged onto another). The second is
+    /// refused with the day named rather than folded into one row, by the owner's ruling of 2026-09-11.
     /// </exception>
     Task<HoekplaatsingWeergave> ZetUrenAsync(
         Guid plaatsingId,

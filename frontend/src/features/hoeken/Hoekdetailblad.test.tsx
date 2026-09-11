@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Hoekdetailblad } from "./Hoekdetailblad";
 import type { HoekmomentWeergave, HoekplaatsingWeergave } from "./gegevens";
 import { t } from "../../i18n";
+import { volleDag } from "../../lib/datum";
 
 /**
  * The hours of a run, in the sheet that describes it (owner, 2026-09-11).
@@ -116,15 +117,21 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     ).toBeInTheDocument();
   });
 
-  it("telt dagen en geen rijen wanneer een dag er twee heeft", () => {
-    // Tuesday dragged onto Monday morning: four rows, three days, and one day with other hours.
+  it("weigert nieuwe uren zolang een dag de hoek twee keer heeft, en noemt die dag", () => {
+    // Tuesday dragged onto Monday morning: four rows on three days, Monday twice. Owner ruling 2026-09-11: refuse
+    // and name the day, rather than fold the two into one.
     toon([moment("m-2", "2026-09-14", "07:00:00", "07:45:00"), ...gelijk.filter((m) => m.id !== "m-2")]);
     openUren();
 
+    expect(screen.getByText(t("hoekdetail.dubbeleDag", { dagen: volleDag("2026-09-14") }))).toBeInTheDocument();
+    // The overwrite warning is beside the point when saving cannot happen.
+    expect(screen.queryByText(t("hoekdetail.afwijkendEen"))).toBeNull();
+    expect(screen.getByRole("button", { name: t("hoekdetail.bewaren") })).toBeDisabled();
+    // Three days, not four rows.
     expect(
       screen.getByText(t("hoekdetail.geldtVoor", { dagen: t("hoekdetail.aantalSchooldagen", { aantal: 3 }) })),
     ).toBeInTheDocument();
-    expect(screen.getByText(t("hoekdetail.afwijkendEen"))).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("bewaart geen einde dat voor het begin ligt", () => {

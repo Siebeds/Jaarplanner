@@ -4,7 +4,7 @@ import { Knop } from "../../components/ui/Knop";
 import { Invoer, Tekstvlak } from "../../components/ui/Veld";
 import { IcoonPlus } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
-import { periode as periodeTekst } from "../../lib/datum";
+import { periode as periodeTekst, volleDag } from "../../lib/datum";
 import { toonBereik } from "../plan/tijd";
 import { t, telWoord } from "../../i18n";
 import {
@@ -31,9 +31,11 @@ import {
  * whole placement was deleted and redone.
  *
  * **It edits the hours of the run since 2026-09-11** (owner: "ik wil op het detailscherm van de hoeken
- * de mogelijkheid om de uren aan te passen"). Every day gets the new hours, the ones she moved by hand
- * included, which is the owner's ruling of the same day; when a day currently differs, the form says so
- * before she saves rather than after.
+ * de mogelijkheid om de uren aan te passen"). Two rulings of the same day shape it. Every day gets the
+ * new hours, the ones she moved by hand included, and when a day currently differs the form says so
+ * before she saves rather than after. And a day that holds the hoek twice (one day dragged onto
+ * another) blocks the save, with that day named: at the same hours the two would be one row written
+ * twice, and the owner chose refusing over quietly folding them into one.
  *
  * **The hours are printed per group, not read off the first day.** This line used to take the first
  * appearance and present it as the run's: after she shortened only the Monday it said "8:00 - 10:00, op
@@ -93,8 +95,9 @@ export function Hoekdetailblad({
   const urenOngeldig = begin === "" || einde === "" || einde <= begin;
 
   const groepen = useMemo(() => uurgroepen(plaatsing.momenten), [plaatsing.momenten]);
+  const dubbeleDagen = useMemo(() => dagenMetTweeKeer(plaatsing.momenten), [plaatsing.momenten]);
   const gewoon = groepen[0];
-  // Days, not rows: after a day was dragged onto another one, that other day holds two rows.
+  // Days, not rows: a day holding the hoek twice is one day.
   const dagen = new Set(plaatsing.momenten.map((m) => m.datum)).size;
   const afwijkendeDagen = gewoon
     ? new Set(
@@ -241,9 +244,15 @@ export function Hoekdetailblad({
                 })}
               </p>
 
-              {/* The owner's condition for overwriting a day she moved by hand: she is told before, not after.
-                  Only where a day actually differs, so the sentence never warns about nothing. */}
-              {afwijkendeDagen > 0 ? (
+              {/* Said before she saves, never after, and only where true. A doubled day blocks the save outright
+                  (owner, 2026-09-11), so it replaces the overwrite warning: telling her what saving would do to a
+                  day is beside the point when saving cannot happen. The server refuses the same case in the same
+                  words, so a second tab that raced this one still gets a sentence she can act on. */}
+              {dubbeleDagen.length > 0 ? (
+                <p className="text-meta font-medium text-attentie-inkt">
+                  {t("hoekdetail.dubbeleDag", { dagen: DAGENLIJST.format(dubbeleDagen.map(volleDag)) })}
+                </p>
+              ) : afwijkendeDagen > 0 ? (
                 <p className="text-meta font-medium text-attentie-inkt">
                   {telWoord(afwijkendeDagen, "hoekdetail.afwijkendEen", "hoekdetail.afwijkendAantal")}
                 </p>
@@ -256,9 +265,13 @@ export function Hoekdetailblad({
               ) : null}
 
               <div className="flex flex-wrap gap-2">
-                {/* Disabled on an impossible pair rather than sending it: the refusal would teach nothing the
-                    sentence above does not already say. */}
-                <Knop type="button" onClick={bewaarUren} disabled={zetUren.isPending || urenOngeldig}>
+                {/* Disabled on an impossible pair or a doubled day rather than sending it: each has its reason
+                    printed just above, and a refusal would teach nothing that sentence does not already say. */}
+                <Knop
+                  type="button"
+                  onClick={bewaarUren}
+                  disabled={zetUren.isPending || urenOngeldig || dubbeleDagen.length > 0}
+                >
                   {zetUren.isPending ? t("hoekdetail.bewarenBezig") : t("hoekdetail.bewaren")}
                 </Knop>
                 <Knop rang="stil" type="button" onClick={() => setUrenOpen(false)} disabled={zetUren.isPending}>
@@ -403,6 +416,9 @@ export function Hoekdetailblad({
   );
 }
 
+/** `maandag 14 september en woensdag 16 september`: the locale's own "and", so no Dutch word lives in this file. */
+const DAGENLIJST = new Intl.ListFormat("nl", { style: "long", type: "conjunction" });
+
 /** One stretch of hours and how many days run at it. */
 interface Uurgroep {
   begin: string;
@@ -427,6 +443,13 @@ function uurgroepen(momenten: readonly HoekmomentWeergave[]): Uurgroep[] {
   }
 
   return [...perUren.values()].sort((a, b) => b.dagen - a.dagen || a.begin.localeCompare(b.begin));
+}
+
+/** The days holding this hoek more than once, in calendar order: the case that blocks new hours for the run. */
+function dagenMetTweeKeer(momenten: readonly HoekmomentWeergave[]): string[] {
+  const perDag = new Map<string, number>();
+  for (const moment of momenten) perDag.set(moment.datum, (perDag.get(moment.datum) ?? 0) + 1);
+  return [...perDag].filter(([, aantal]) => aantal > 1).map(([datum]) => datum).sort();
 }
 
 /**

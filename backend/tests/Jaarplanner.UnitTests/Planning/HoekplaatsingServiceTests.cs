@@ -387,7 +387,7 @@ public sealed class HoekplaatsingServiceTests
     }
 
     [Fact]
-    public async Task Een_dubbele_dag_wordt_bij_nieuwe_uren_ook_in_de_opslag_een_rij()
+    public async Task Weigert_nieuwe_uren_zolang_een_dag_de_hoek_twee_keer_heeft_en_laat_alles_staan()
     {
         var plaatsing = await EenWeekIngepland();
         var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
@@ -395,13 +395,15 @@ public sealed class HoekplaatsingServiceTests
         await Service().VerplaatsMomentAsync(
             plaatsing.Id, dinsdag.Id, new DateOnly(2026, 9, 2), new TimeOnly(9, 0), new TimeOnly(9, 50));
 
-        var na = await Service().ZetUrenAsync(plaatsing.Id, new TimeOnly(9, 0), new TimeOnly(10, 30));
+        // A 400 naming the day (owner ruling 2026-09-11), not a quiet fold into one row.
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().ZetUrenAsync(plaatsing.Id, new TimeOnly(9, 0), new TimeOnly(10, 30)));
+        Assert.Contains("woensdag 2 september", fout.Message);
 
-        Assert.Equal(3, na.Momenten.Count);
-        // The folded row is gone from the store, not only from the answer: removing it from the aggregate's list
-        // has to reach EF as a delete, and a row left behind would come back on the next read.
         var gelezen = await Service().HaalVoorBereikAsync(_klasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4));
-        Assert.Equal(3, Assert.Single(gelezen).Momenten.Count);
+        var momenten = Assert.Single(gelezen).Momenten;
+        Assert.Equal(4, momenten.Count);
+        Assert.Contains(momenten, m => m.Begin == new TimeOnly(9, 0) && m.Einde == new TimeOnly(9, 50));
     }
 
     [Fact]
