@@ -8,6 +8,7 @@ import { PlanScherm } from "./features/plan/PlanScherm";
 import { Agendascherm } from "./features/plan/Agendascherm";
 import { DekkingScherm } from "./features/dekking/DekkingScherm";
 import { ImportScherm } from "./features/import/ImportScherm";
+import { GeenToegangScherm } from "./features/aanmelding/GeenToegangScherm";
 import { Instellingenindeling } from "./features/instellingen/Instellingenindeling";
 import { KlassenScherm } from "./features/instellingen/KlassenScherm";
 import { HoekenScherm } from "./features/instellingen/HoekenScherm";
@@ -44,6 +45,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          {/* Outside the shell (E6-01). The shell reads who is signed in, and on this page that read
+              would answer 401 and loop through the sign-in: see GeenToegangScherm. */}
+          <Route path="geen-toegang" element={<GeenToegangScherm />} />
           <Route element={<Schil />}>
             {/* The app opens on the agenda (owner, 2026-09-11: "ik wil niet dat er default doelen
                 wordt geopend"), and an address it does not know lands there too, below. */}

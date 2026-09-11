@@ -1,6 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Navigatie } from "./Navigatie";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { t } from "../i18n";
@@ -18,16 +19,46 @@ import { t } from "../i18n";
  * this component and the inline reservation in `Schil`, so a `true` that outlives the agenda dresses
  * both of them for a panel that has unmounted, and nothing else in the app would notice.
  */
+/*
+  The navigation reads who is signed in (E6-01), so it needs a query client. The network is a promise
+  that never settles unless a test says otherwise: the signed-in row then draws nothing, and every test
+  below sees the navigation exactly as it was before the row existed.
+*/
 const rendermetPad = (pad: string) =>
   render(
-    <MemoryRouter initialEntries={[pad]}>
-      <Navigatie />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={[pad]}>
+        <Navigatie />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 
 const schakelaar = () => screen.queryByRole("button", { name: t("hoekenpaneel.titel") });
 
-afterEach(() => useHoekenpaneel.setState({ open: false }));
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+});
+
+afterEach(() => {
+  useHoekenpaneel.setState({ open: false });
+  vi.unstubAllGlobals();
+});
+
+describe("Navigatie, aangemeld", () => {
+  it("toont wie aangemeld is en biedt afmelden aan", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ id: "1", naam: "An Peeters", email: "an@school.be", isDirectie: false }), { status: 200 }),
+      ),
+    );
+
+    rendermetPad("/doelen");
+
+    expect(await screen.findByText("An Peeters")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("aanmelding.afmelden") })).toBeInTheDocument();
+  });
+});
 
 describe("Navigatie", () => {
   it("biedt de hoekenschakelaar aan op de agenda", () => {
