@@ -15,9 +15,10 @@ public enum OpstapImportFoutSoort
     OnbekendeDiscipline = 0,
 
     /// <summary>
-    /// The file's rows concord to minimumdoelen that are not loaded. Blocked until the decreed
-    /// minimumdoelen have a source (E1-12); the concordance is a <c>Restrict</c> FK, so such rows cannot
-    /// be persisted and, because the import commits in one transaction, neither can the rest of the file.
+    /// The file's rows concord to minimumdoelen that are not loaded. The decreed minimumdoelen are imported
+    /// from KOV's Op.stap API (E1-12, ADR-0032); until that has run, or for a ref it did not bring, the
+    /// concordance is a <c>Restrict</c> FK, so such rows cannot be persisted and, because the import commits
+    /// in one transaction, neither can the rest of the file.
     /// </summary>
     OntbrekendeMinimumdoelen = 1,
 

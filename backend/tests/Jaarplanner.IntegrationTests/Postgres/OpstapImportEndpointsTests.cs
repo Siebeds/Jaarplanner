@@ -250,14 +250,14 @@ public sealed class OpstapImportEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// <b>Characterisation test for the E1-12 blocker, at the trigger.</b> A real Op.stap file's
-    /// MD-concorded rows cannot commit while no <c>Minimumdoel</c> row can exist, because
+    /// A row concorded to a minimumdoel that is <b>not loaded</b> cannot commit, because
     /// <c>MinimumdoelRef</c> is a Restrict FK. The endpoint answers <b>409</b> with a Dutch explanation
     /// instead of a 500, and the curriculum is left exactly as it was.
     /// <para>
-    /// Flip this to the positive assertion when E1-12 lands; until then it is the honest statement of what
-    /// the trigger can and cannot do, and it is the assertion the EF in-memory provider structurally
-    /// cannot make.
+    /// This began as the characterisation test of the E1-12 blocker, with a note to flip it once E1-12 landed.
+    /// E1-12 did not make it false, it narrowed it: nobody imported <c>4-12</c> here, so the refusal still holds.
+    /// The positive half, a concorded row committing once its minimumdoel <i>is</i> loaded, lives in
+    /// <c>OpstapMinimumdoelenImportEndpointsTests.Na_de_import_landt_een_leerplandoel_met_concordantie</c>.
     /// </para>
     /// </summary>
     [PostgresFact]

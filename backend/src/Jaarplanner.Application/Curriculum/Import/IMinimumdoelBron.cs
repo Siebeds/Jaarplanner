@@ -1,0 +1,47 @@
+using Jaarplanner.Domain.Curriculum;
+
+namespace Jaarplanner.Application.Curriculum.Import;
+
+/// <summary>
+/// Where the decreed minimumdoelen come from (E1-12, ADR-0032). A port, so the import logic runs in tests without a
+/// network and the source can change without touching it. The one implementation reads KOV's Op.stap API.
+/// </summary>
+public interface IMinimumdoelBron
+{
+    /// <summary>
+    /// Reads every decreed minimumdoel the source publishes today, mapped to <see cref="Minimumdoel"/>, together with the
+    /// rows that could not be mapped.
+    /// </summary>
+    /// <exception cref="OpstapBronFout">The source could not be read at all. Nothing has been written.</exception>
+    Task<MinimumdoelBronResultaat> HaalOpAsync(CancellationToken cancellationToken = default);
+}
+
+/// <summary>What one read of the minimumdoelen source produced.</summary>
+public sealed class MinimumdoelBronResultaat
+{
+    /// <summary>Constructs a source result.</summary>
+    /// <param name="minimumdoelen">The rows that mapped cleanly, at most one per <see cref="Minimumdoel.Ref"/>.</param>
+    /// <param name="problemen">The rows that were not imported, and why.</param>
+    public MinimumdoelBronResultaat(
+        IReadOnlyList<Minimumdoel> minimumdoelen,
+        IReadOnlyList<MinimumdoelBronProbleem> problemen)
+    {
+        Minimumdoelen = minimumdoelen;
+        Problemen = problemen;
+    }
+
+    /// <summary>The rows that mapped cleanly, at most one per <see cref="Minimumdoel.Ref"/>.</summary>
+    public IReadOnlyList<Minimumdoel> Minimumdoelen { get; }
+
+    /// <summary>The rows that were not imported, and why.</summary>
+    public IReadOnlyList<MinimumdoelBronProbleem> Problemen { get; }
+}
+
+/// <summary>
+/// A source row that was not imported. Its <see cref="Reden"/> is <b>English</b>: a malformed or expired row in KOV's
+/// data is nothing a teacher or directie can fix, so it is an operator diagnostic (Art. II.3 as amended 2026-07-30),
+/// the same choice <c>OpstapRijProbleem</c> made for the Excel path.
+/// </summary>
+/// <param name="Sleutel">The row's identifier in the source (its <c>uniqueCode</c> when it has one, else its href).</param>
+/// <param name="Reden">Why the row was left out.</param>
+public readonly record struct MinimumdoelBronProbleem(string Sleutel, string Reden);
