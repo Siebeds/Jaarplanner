@@ -495,9 +495,14 @@ export function Agendascherm() {
   const ankerLabel =
     weergave === "maand" ? maandJaar(anker) : weergave === "week" ? periodeTekst(van, tot) : volleDag(anker);
 
-  // Only where a week is a unit. In a month the label already names the month, and a week number on
-  // a grid spanning five of them would name only the first.
-  const weekLabel = weergave === "maand" ? null : t("periode.weeknummer", { nummer: weeknummer(anker) });
+  // Only where the days in view are one week. In a month the label already names the month, and a week
+  // number on a grid spanning five of them would name only the first. A phone's three-day window pages
+  // Mon, Thu, Sun and so crosses a Monday every other page: "Week 37" over a Monday of week 38 is the
+  // same mistake at a smaller scale, so it says nothing there either.
+  const weekLabel =
+    weergave === "maand" || weeknummer(van) !== weeknummer(tot)
+      ? null
+      : t("periode.weeknummer", { nummer: weeknummer(anker) });
 
   const foutTekst = (fout: unknown) =>
     fout instanceof ApiError && fout.detail ? fout.detail : fout ? t("periode.mislukt") : null;

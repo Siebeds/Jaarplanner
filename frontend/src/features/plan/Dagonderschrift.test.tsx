@@ -8,12 +8,15 @@ import { t } from "../../i18n";
 /**
  * The caption's sentences, one per state of the day.
  *
- * "No period" has four causes and the caption used to answer all of them with "Tussen twee periodes"
- * and "Nog geen thema": outside the school year, after the last period, while the rooster loads, and
+ * A day without a period used to get "Tussen twee periodes" and "Nog geen thema" whatever the reason:
+ * outside the school year, before the first period, after the last, while the rooster loads, and
  * genuinely between two periods. Only the last one earns the sentence.
+ *
+ * The school year opens a day before its first period, so that "before the first" is reachable here:
+ * a school year that opens on a closure, or a block indeling behind the E3-05 seam, gives the same.
  */
 const schooljaar = {
-  start: "2026-09-01",
+  start: "2026-08-31",
   eind: "2027-06-30",
   blokken: [
     { start: "2026-09-01", eind: "2026-10-01" },
@@ -79,9 +82,21 @@ describe("Dagonderschrift", () => {
   });
 
   it("zegt buiten het schooljaar op een dag voor de eerste schooldag", () => {
-    toon({ datum: "2026-08-31" });
+    toon({ datum: "2026-08-30" });
     expect(screen.getByText(t("periode.buitenSchooljaar"))).toBeInTheDocument();
     expect(screen.queryByText(t("periode.tussenPeriodes"))).not.toBeInTheDocument();
+  });
+
+  it("zwijgt over periodes voor de eerste periode", () => {
+    toon({ datum: "2026-08-31" });
+    expect(screen.queryByText(t("periode.tussenPeriodes"))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("periode.buitenSchooljaar"))).not.toBeInTheDocument();
+  });
+
+  it("toont de periode zonder weeknummer als het venster twee weken raakt", () => {
+    toon({ weekLabel: null });
+    expect(screen.getByText(periodeTekst("2026-09-01", "2026-10-01"))).toBeInTheDocument();
+    expect(screen.queryByText("Week 37")).not.toBeInTheDocument();
   });
 
   it("zwijgt over periodes na de laatste periode", () => {
