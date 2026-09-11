@@ -134,6 +134,8 @@ Coordination between parallel sessions (see the working agreement above; protoco
 - **AlgemeneFiche** — a recurring activity of one klas outside every thema (onthaal, turnen), with `manueel` goal links; planned per teaching day on chosen weekdays with clock times, outside the `Jaarplan` aggregate. See [`CONSTITUTION.md` Art. IX.2](CONSTITUTION.md#article-ix--core-data-model-functional).
 
 ## Op.stap Excel → model mapping
+> **Source changed 2026-09-11 ([ADR-0032](docs/adr/0032-opstap-api-als-importbron.md), [`CONSTITUTION.md` Art. VII.2](CONSTITUTION.md#article-vii--opstap-taxonomy--excel--model-mapping)):** Op.stap is imported from **KOV's Op.stap API** (`api.katholiekonderwijs.vlaanderen`), by the backend only, and for now **only G goals**. The minimumdoelen mapping lives in `OnderwijsdoelMapping`; the leerplandoelen mapping is E1-21's. The table below describes the older Excel route, which stays available but is no longer the source — and the Excel files in `assets/opstap-xlsx/` have empty concordance columns B–D.
+
 One Excel file per discipline. Hidden columns may be empty. **Keep this mapping in one place** — Op.stap is still rolling out, so columns may change.
 
 > **Taxonomy correction (see [`CONSTITUTION.md` Art. VII.0](CONSTITUTION.md#article-vii--opstap-taxonomy--excel--model-mapping)):** the official *ordeningskader* has only three levels — `Discipline → Domein → Subdomein`. `cluster` (col I) is **nullable** and lives in the per-discipline goal Excel, not the ordeningskader. `subdomein` names are not globally unique → group by `(domein, subdomein)`; identity stays `code`.
@@ -188,7 +190,7 @@ Fast-follow: multi-class dekkingsdashboard (FR-9.4), samenwerking/opmerkingen (F
 
 ## Open decisions (confirm before building deep)
 - Which disciplines to include first (all vs. a starter selection).
-- Op.stap import: manual per-discipline Excel download vs. an automated source.
+- ~~Op.stap import: manual per-discipline Excel download vs. an automated source.~~ — **resolved (owner 2026-09-11):** KOV's Op.stap API is the import source, read by the backend into the database, and only **G** goals are imported for now ([ADR-0032](docs/adr/0032-opstap-api-als-importbron.md), [`CONSTITUTION.md` Art. VII.2](CONSTITUTION.md#article-vii--opstap-taxonomy--excel--model-mapping)).
 - ~~Planningsblok granularity~~ — **resolved (directie 2026-07-14):** two-tier default = themaperiode (4–6 wk) + subthemaperiode (~2 wk), configurable behind the E3-05 seam.
 - Handling of graadklassen / menggroepen.
 - Whether a leerplandoel/thema is shared school-wide or per class.
