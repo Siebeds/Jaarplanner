@@ -1,6 +1,6 @@
 using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Infrastructure.Toegang;
-using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -24,7 +24,9 @@ namespace Jaarplanner.IntegrationTests;
 /// <b>Why the keys stay in memory by default.</b> A host that does not replace the database inherits the developer's
 /// user-secrets and so talks to their <i>own</i> development database. The first Entra-mode test did exactly that: its
 /// sign-in challenge went to read the key ring from <c>data_protection_keys</c> in the owner's database, and would
-/// have written a key there had the table existed. Only a host with a throwaway database of its own
+/// have written a key there had the table existed. A first fix swapped in the ephemeral provider and still left Data
+/// Protection's startup read of the key ring pointed at that database, so the repository itself is what is replaced
+/// (<see cref="GeheugenSleutelopslag"/>). Only a host with a throwaway database of its own
 /// (<c>PostgresApiFactory</c>) turns the database path on, so the real persistence is still what the session tests use.
 /// </para>
 /// </summary>
@@ -50,7 +52,9 @@ public class JaarplannerApiFactory : WebApplicationFactory<Program>
 
         if (!SessiesleutelsInDatabase)
         {
-            builder.ConfigureTestServices(services => services.AddDataProtection().UseEphemeralDataProtectionProvider());
+            // The repository, not the ephemeral provider: see GeheugenSleutelopslag for the read the provider leaves.
+            builder.ConfigureTestServices(services =>
+                services.Configure<KeyManagementOptions>(o => o.XmlRepository = new GeheugenSleutelopslag()));
         }
     }
 
