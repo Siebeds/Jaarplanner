@@ -41,4 +41,13 @@ public static class Probleemtitels
     /// </para>
     /// </summary>
     public const string PeriodeIsBezet = "Periode is bezet";
+
+    /// <summary>
+    /// The request carries no session (401, E6-01). The frontend answers it by sending the browser to the sign-in, so a
+    /// teacher rarely reads it; it is Dutch because a teacher is who it would be for.
+    /// </summary>
+    public const string NietAangemeld = "Niet aangemeld";
+
+    /// <summary>The session is valid but the action is not allowed for this person (403). E6-02 is what produces it.</summary>
+    public const string GeenToegang = "Geen toegang";
 }

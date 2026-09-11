@@ -20,11 +20,11 @@ namespace Jaarplanner.IntegrationTests;
 /// the explicit override — the default for <see cref="WebApplicationFactory{T}"/> here is not.
 /// </para>
 /// </summary>
-public class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<Program>>
+public class OpenApiDocumentTests : IClassFixture<JaarplannerApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly JaarplannerApiFactory _factory;
 
-    public OpenApiDocumentTests(WebApplicationFactory<Program> factory)
+    public OpenApiDocumentTests(JaarplannerApiFactory factory)
     {
         _factory = factory;
     }

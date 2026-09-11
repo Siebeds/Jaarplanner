@@ -164,13 +164,14 @@ public sealed class PlanningsroosterEndpointTests : IClassFixture<Planningsroost
     private sealed record OnderbrekingDto(string Naam, DateOnly Start, DateOnly Eind);
 
     /// <summary>In-memory host: real controller, real configured indeling seam, no Postgres and no AI.</summary>
-    public sealed class Factory : WebApplicationFactory<Program>
+    public sealed class Factory : JaarplannerApiFactory
     {
         private readonly string _dbNaam = $"e3_06_rooster_{Guid.NewGuid():N}";
         private Guid? _schooljaarId;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            base.ConfigureWebHost(builder);
             builder.UseEnvironment(Environments.Development);
 
             builder.ConfigureServices(services =>

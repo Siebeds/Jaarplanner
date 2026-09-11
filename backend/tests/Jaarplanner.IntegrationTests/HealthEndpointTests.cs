@@ -68,9 +68,11 @@ public class HealthEndpointTests : IClassFixture<HealthEndpointTests.Onbereikbar
     /// Port 1 is not listening, so the connection is refused immediately rather than waiting on a timeout.
     /// </para>
     /// </summary>
-    public sealed class OnbereikbareDatabaseFactory : WebApplicationFactory<Program>
+    public sealed class OnbereikbareDatabaseFactory : JaarplannerApiFactory
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
             builder.ConfigureServices(services =>
             {
                 var toRemove = services
@@ -88,5 +90,6 @@ public class HealthEndpointTests : IClassFixture<HealthEndpointTests.Onbereikbar
                 services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
                     "Host=127.0.0.1;Port=1;Database=onbereikbaar;Username=x;Password=x;Timeout=1"));
             });
+        }
     }
 }
