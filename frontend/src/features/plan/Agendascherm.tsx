@@ -615,7 +615,9 @@ export function Agendascherm() {
                 </button>
 
                 <div className="ml-1 min-w-0">
-                  <h2 className="truncate font-display text-[1.375rem] leading-9 text-inkt sm:text-[1.625rem]">
+                  {/* Wraps rather than truncates: beside the arrows a 320px screen has room for
+                      "vrijdag 11 septem...", and the month is the half of the date that matters. */}
+                  <h2 className="flex min-h-9 items-center font-display text-[1.375rem] leading-tight text-inkt sm:text-[1.625rem]">
                     {ankerLabel}
                   </h2>
 
