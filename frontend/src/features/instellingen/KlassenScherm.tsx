@@ -11,25 +11,30 @@ import { ApiError } from "../../lib/api";
 import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Klasformulier } from "./Klasformulier";
-import { Hoekensectie } from "./Hoekensectie";
+import { Onderdeelwissel } from "./Instellingenindeling";
 import { useMaakKlas, useVerwijderKlas, useWijzigKlasVolledig } from "./mutaties";
 
 /**
- * Where the school says what it is: one screen, sections, and Klassen is the first of them.
+ * Instellingen, Klassen: which classes the school has and which age each one teaches.
+ *
+ * **Its own page since 2026-09-11**, when the owner split Instellingen into parts and asked for
+ * bigger titles. It was the first section of one long screen, under an 11px uppercase label; the
+ * part's name is now the page title, in the display face. The other parts are one press away: in the
+ * column beside it from `lg`, in the switch under the title below that.
  *
  * **A klas is defined here and chosen everywhere else.** The Klaskiezer in the header answers "which
  * class am I looking at"; this answers "which classes exist and what is each one". Keeping the two
  * apart is why this screen is not a sheet hanging off the picker.
  *
- * **The leeftijd is the reason this section exists** (owner, 2026-08-30). It couples a klas to an
- * age, and an age is what a subthema is scoped to: a subthema on K3 holds for every K3 class, while
- * each of those classes keeps its own dagplanning. A class whose age is unset cannot be told which
+ * **The leeftijd is the reason this part exists** (owner, 2026-08-30). It couples a klas to an age,
+ * and an age is what a subthema is scoped to: a subthema on K3 holds for every K3 class, while each
+ * of those classes keeps its own dagplanning. A class whose age is unset cannot be told which
  * subthema's are its own, so an unset one is not merely blank here, it is called out.
  *
  * **A klas states its leeftijd and nothing else about its level.** The leerjaar is derived from it
  * server-side, so it appears nowhere on this screen: printing both would be one fact twice.
  */
-export function InstellingenScherm() {
+export function KlassenScherm() {
   const { schooljaar, schooljaren, klassen, laadt, kiesSchooljaar } = useActieveSelectie();
   const [formulier, setFormulier] = useState<{ klas?: KlasWeergave } | null>(null);
   const [teVerwijderen, setTeVerwijderen] = useState<KlasWeergave | null>(null);
@@ -44,16 +49,31 @@ export function InstellingenScherm() {
 
   return (
     <>
-      <Schermkop titel={t("instellingen.titel")} />
+      <Schermkop titel={t("instellingen.klassen")} smal onder={<Onderdeelwissel />} />
 
-      <Schermvlak>
-        {/* Sections, separated by space rather than by a rule. Each already opens with its own
-            uppercase micro heading, and a hairline between two of them would be a second answer to a
-            question the headings have already answered. */}
-        <div className="flex flex-col gap-8">
-        <section className="flex flex-col gap-3">
+      <Schermvlak smal>
+        <div className="flex flex-col gap-3">
+          {/* The context on the left and the action on the right, the same row Hoeken opens with.
+              Once above the list, never per row: which school year these classes belong to is the
+              same fact for every one of them. Changing it here changes it for the whole app, which is
+              what the header's picker does too, so there is one context and not two. */}
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-micro uppercase text-inkt-zwak">{t("instellingen.klassen")}</h2>
+            <label className="flex flex-wrap items-center gap-2 text-meta text-inkt-zacht">
+              {t("instellingen.schooljaar")}
+              <Keuze
+                value={schooljaar?.id ?? ""}
+                disabled={schooljaren.length === 0}
+                onChange={(e) => kiesSchooljaar(e.target.value)}
+                className="w-auto"
+              >
+                {schooljaren.map((jaar) => (
+                  <option key={jaar.id} value={jaar.id}>
+                    {jaar.naam}
+                  </option>
+                ))}
+              </Keuze>
+            </label>
+
             <Knop
               rang="rustig"
               className="h-9 min-h-9 px-3 text-meta"
@@ -67,25 +87,6 @@ export function InstellingenScherm() {
               {t("klasbeheer.toevoegen")}
             </Knop>
           </div>
-
-          {/* Once above the list, never per row: which school year these classes belong to is the
-              same fact for every one of them. Changing it here changes it for the whole app, which is
-              what the header's picker does too, so there is one context and not two. */}
-          <label className="flex flex-wrap items-center gap-2 text-meta text-inkt-zacht">
-            {t("instellingen.schooljaar")}
-            <Keuze
-              value={schooljaar?.id ?? ""}
-              disabled={schooljaren.length === 0}
-              onChange={(e) => kiesSchooljaar(e.target.value)}
-              className="w-auto"
-            >
-              {schooljaren.map((jaar) => (
-                <option key={jaar.id} value={jaar.id}>
-                  {jaar.naam}
-                </option>
-              ))}
-            </Keuze>
-          </label>
 
           {laadt ? (
             <Laadlijst rijen={3} />
@@ -124,9 +125,6 @@ export function InstellingenScherm() {
                 : t("klasbeheer.verwijderMislukt")}
             </p>
           ) : null}
-        </section>
-
-        <Hoekensectie klassen={klassen} laadt={laadt} />
         </div>
       </Schermvlak>
 

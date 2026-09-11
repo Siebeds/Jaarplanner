@@ -4,6 +4,7 @@ import { BESTEMMINGEN, ONDERAAN, type Bestemming } from "./routes";
 import { Merk } from "./Merk";
 import { IcoonHoek } from "../components/Iconen";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
+import { useZijkolom } from "./zijkolom";
 import { t } from "../i18n";
 import { cn } from "../lib/cn";
 
@@ -24,10 +25,15 @@ import { cn } from "../lib/cn";
  * was covering the navigation entirely: a teacher who opens a panel has not asked to lose her way
  * around the app. The destinations stay where they were, in the same order, at the same vertical
  * positions; only the words go. `aria-label` carries each one, so nothing is lost to a screen reader,
- * and the label is restored the moment the panel closes.
+ * and the labels come back as soon as no second column stands beside the navigation.
  *
  * *A phone has no sidebar to collapse, so this is an `lg` behaviour only and the bottom bar is
  * untouched. The panel becomes a sheet there instead; see `Hoekenpaneel`.*
+ *
+ * **It collapses the same way in Instellingen** (owner, 2026-09-11), whose parts stand in the column
+ * the hoekenpaneel would use. Whether either is up is `useZijkolom`'s question rather than this
+ * component's, so the rail here and the reservation in `Schil` cannot disagree. The hoekenfiches
+ * switch still reads the panel alone, because that is the only thing it switches.
  *
  * **Instellingen is drawn apart from the four (owner, 2026-08-30).** In the sidebar it is pushed to
  * the bottom edge over a rule, because setting the school up is not one of the four things a teacher
@@ -43,15 +49,16 @@ import { cn } from "../lib/cn";
  * agenda toolbar,* because a bottom bar of five tabs has no room for a sixth and the panel has to
  * stay reachable on a phone. One control per viewport, never two at once.
  *
- * **Leaving the agenda closes the panel** (owner, 2026-08-31): press a destination and the sidebar is
- * a sidebar again. That reset is not cosmetic. Only `Agendascherm` renders the panel, while the rail
- * here and the inline reservation in `Schil` both follow the store, so without it a teacher who
+ * **Leaving the agenda closes the panel** (owner, 2026-08-31): press a destination and the panel is
+ * gone. That reset is not cosmetic. Only `Agendascherm` renders the panel, while the rail here and
+ * the inline reservation in `Schil` both follow the store through `useZijkolom`, so without it a teacher who
  * navigated away kept a 56px rail and 296px of reserved width beside a screen with no panel in it.
  */
 export function Navigatie() {
   const paneelOpen = useHoekenpaneel((s) => s.open);
   const zetPaneel = useHoekenpaneel((s) => s.zet);
   const wisselPaneel = useHoekenpaneel((s) => s.wissel);
+  const smal = useZijkolom();
 
   /*
     The two routes `Agendascherm` answers, and so the only two that mount a hoekenpaneel. Matched as
@@ -87,14 +94,14 @@ export function Navigatie() {
         // The width is the whole animation. Everything inside is laid out from the leading edge, so
         // the labels are clipped away rather than reflowed, and the icons do not move a pixel.
         "transition-[width] duration-200 ease-out motion-reduce:transition-none",
-        paneelOpen ? "lg:w-14" : "lg:w-60",
+        smal ? "lg:w-14" : "lg:w-60",
       )}
     >
       {/* The wordmark drops its word in the rail and keeps its bar (owner, 2026-08-31). The box holds
           the same height in both states, because the destinations below it are positioned by it: a
           shorter mark would slide the whole run of icons up as the panel opens. */}
-      <div className={cn("hidden h-[4.375rem] lg:flex lg:items-center", paneelOpen ? "lg:justify-center" : "lg:px-5")}>
-        <Merk compact={paneelOpen} />
+      <div className={cn("hidden h-[4.375rem] lg:flex lg:items-center", smal ? "lg:justify-center" : "lg:px-5")}>
+        <Merk compact={smal} />
       </div>
 
       {/* One list, both groups. The phone bar reads them as one run of tabs; the sidebar pushes the
@@ -103,11 +110,11 @@ export function Navigatie() {
       <ul
         className={cn(
           "flex items-stretch lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-0.5 lg:pb-4",
-          paneelOpen ? "lg:px-2" : "lg:px-3",
+          smal ? "lg:px-2" : "lg:px-3",
         )}
       >
         {BESTEMMINGEN.map((bestemming) => (
-          <Tab key={bestemming.pad} bestemming={bestemming} smal={paneelOpen} />
+          <Tab key={bestemming.pad} bestemming={bestemming} smal={smal} />
         ))}
 
         {/* Only on the routes that have a panel to switch. Never in the bottom bar, hence `hidden`
@@ -122,7 +129,7 @@ export function Navigatie() {
           <Tab
             key={bestemming.pad}
             bestemming={bestemming}
-            smal={paneelOpen}
+            smal={smal}
             // Only the first of the group takes the push and the rule, so a second settings
             // destination would sit under this one instead of starting a third group.
             className={index === 0 ? "lg:mt-auto lg:border-t lg:border-lijn lg:pt-2" : undefined}

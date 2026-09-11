@@ -150,7 +150,7 @@ function Fichelijst({
         {/* A real destination, not a sentence about one. This is where she makes them, and it is two
             clicks away otherwise. */}
         <Link
-          to="/instellingen"
+          to="/instellingen/hoeken"
           className="text-meta font-medium text-accent underline-offset-2 hover:underline"
         >
           {t("hoekenpaneel.naarInstellingen")}

@@ -22,11 +22,14 @@ import {
 /**
  * The corners of one classroom: the boekenhoek, the bouwhoek, the zandtafel (owner, 2026-08-30).
  *
- * **A hoek is furniture, and that is why this section is scoped to one class where Klassen above it
- * is not.** A subthema is content a school authors once for an age; a corner is a thing standing in a
- * room, and K3 groen may genuinely have a bouwhoek that K3 blauw has not. So this section asks which
- * room it is talking about, and it asks once above the list rather than on every row, the same way
- * the section above asks which school year.
+ * **A hoek is furniture, and that is why this part is scoped to one class where Klassen is not.** A
+ * subthema is content a school authors once for an age; a corner is a thing standing in a room, and
+ * K3 groen may genuinely have a bouwhoek that K3 blauw has not. So this part asks which room it is
+ * talking about, and it asks once above the list rather than on every row, the same way Klassen asks
+ * which school year.
+ *
+ * *It was a section under Klassen on one Instellingen page until 2026-09-11.* Its title is now the
+ * page's, drawn by `HoekenScherm`, which is why it opens with its controls rather than a heading.
  *
  * **What is NOT here is the verrijking.** What a teacher puts in the boekenhoek for a fortnight
  * belongs to a period and lives on the agenda; what belongs here is the corner itself, which is there
@@ -49,8 +52,8 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
    * Which room is on screen: what she picked, falling back to the first class the school has.
    *
    * **Derived during render rather than synchronised in an effect.** The effect version needed the
-   * class list in its dependencies and called setState inside itself, so every change to the section
-   * above cost a second render pass, and a class deleted there left this picker pointing at a row
+   * class list in its dependencies and called setState inside itself, so every change to the class
+   * list cost a second render pass, and a deleted class left this picker pointing at a row
    * that was gone until that pass ran. Reading it here cannot be stale, because there is no moment
    * between the two.
    */
@@ -68,9 +71,28 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
   const andere = klassen.filter((k) => k.id !== klasId);
 
   return (
-    <section className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
+      {/* Which room these corners are in on the left, once above the list, and what she can do in it
+          on the right: the same row Klassen opens with. */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-micro uppercase text-inkt-zwak">{t("instellingen.hoeken")}</h2>
+        <label className="flex flex-wrap items-center gap-2 text-meta text-inkt-zacht">
+          {t("hoeken.klas")}
+          <Keuze
+            value={klasId ?? ""}
+            disabled={klassen.length === 0}
+            onChange={(e) => {
+              setGekozen(e.target.value);
+              setOvername(null);
+            }}
+            className="w-auto"
+          >
+            {klassen.map((klas) => (
+              <option key={klas.id} value={klas.id}>
+                {klas.naam}
+              </option>
+            ))}
+          </Keuze>
+        </label>
 
         <div className="flex flex-wrap items-center gap-2">
           <Knop
@@ -101,31 +123,11 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
         </div>
       </div>
 
-      {/* Which room these corners are in, once above the list. */}
-      <label className="flex flex-wrap items-center gap-2 text-meta text-inkt-zacht">
-        {t("hoeken.klas")}
-        <Keuze
-          value={klasId ?? ""}
-          disabled={klassen.length === 0}
-          onChange={(e) => {
-            setGekozen(e.target.value);
-            setOvername(null);
-          }}
-          className="w-auto"
-        >
-          {klassen.map((klas) => (
-            <option key={klas.id} value={klas.id}>
-              {klas.naam}
-            </option>
-          ))}
-        </Keuze>
-      </label>
-
       {laadt || (klasId !== null && isPending) ? (
         <Laadlijst rijen={2} />
       ) : klassen.length === 0 ? (
-        // No class, no room. Said here rather than left as an empty list under a dead picker: the
-        // section above is where she fixes it, and it is directly above this line.
+        // No class, no room. Said here rather than left as an empty list under a dead picker: she
+        // fixes it in Klassen, the part listed next to this one.
         <p className="text-body text-inkt-zacht">{t("hoeken.geenKlassen")}</p>
       ) : (hoeken ?? []).length === 0 ? (
         <p className="text-body text-inkt-zacht">{t("hoeken.geenHoeken")}</p>
@@ -222,7 +224,7 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
           verwijder.mutate(teVerwijderen.id, { onSuccess: () => setTeVerwijderen(null) });
         }}
       />
-    </section>
+    </div>
   );
 }
 
