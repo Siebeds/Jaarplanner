@@ -219,6 +219,5 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
                 .OrderBy(k => k.LeerplandoelCode)
                 .Select(k => k.LeerplandoelCode)
                 .ToList(),
-            activiteit.Kleur,
-            activiteit.LengteInLesuren);
+            activiteit.Kleur);
 }

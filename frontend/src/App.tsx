@@ -12,6 +12,7 @@ import { Instellingenindeling } from "./features/instellingen/Instellingenindeli
 import { KlassenScherm } from "./features/instellingen/KlassenScherm";
 import { HoekenScherm } from "./features/instellingen/HoekenScherm";
 import { AlgemeneFichesScherm } from "./features/instellingen/AlgemeneFichesScherm";
+import { WeergaveScherm } from "./features/instellingen/WeergaveScherm";
 import { ONDERDELEN, type Deel } from "./features/instellingen/onderdelen";
 import type { ComponentType } from "react";
 
@@ -23,6 +24,7 @@ const INSTELLINGEN: Record<Deel, ComponentType> = {
   klassen: KlassenScherm,
   hoeken: HoekenScherm,
   "algemene-fiches": AlgemeneFichesScherm,
+  weergave: WeergaveScherm,
 };
 
 const queryClient = new QueryClient({

@@ -122,9 +122,7 @@ public sealed record Activiteitinhoud(
     string ThemaNaam,
     IReadOnlyList<string> Doelcodes,
     /// <summary>The teacher's colour label, or null. A label they chose, never a signal the app reads.</summary>
-    Activiteitkleur? Kleur = null,
-    /// <summary>How many consecutive lesuren the activiteit takes. One unless the teacher said otherwise.</summary>
-    int LengteInLesuren = 1);
+    Activiteitkleur? Kleur = null);
 
 /// <summary>
 /// A subthema's identity and the names above it, for a screen that has to label a period it holds no content for.

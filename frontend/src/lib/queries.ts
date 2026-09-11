@@ -457,15 +457,36 @@ export function useDagacties(klasId: string) {
   };
   const basis = `/api/klassen/${klasId}/jaarplan/weekplanning`;
 
+  // The times travel as `HH:mm:ss`, which is what the server binds a TimeOnly from. No default for either: since
+  // ADR-0028 a placement without a time is not a state the plan can hold, and a fallback here would be this file
+  // deciding a teacher's hour.
   const plaats = useMutation({
-    mutationFn: ({ activiteitId, datum, volgorde }: { activiteitId: string; datum: string; volgorde?: number }) =>
-      post<Weekplanning>(basis, { activiteitId, datum, volgorde: volgorde ?? 0 }),
+    mutationFn: ({
+      activiteitId,
+      datum,
+      begin,
+      einde,
+    }: {
+      activiteitId: string;
+      datum: string;
+      begin: string;
+      einde: string;
+    }) => post<Weekplanning>(basis, { activiteitId, datum, begin, einde }),
     onSuccess: ververs,
   });
 
   const verplaats = useMutation({
-    mutationFn: ({ plaatsingId, datum, volgorde }: { plaatsingId: string; datum: string; volgorde?: number }) =>
-      put<Weekplanning>(`${basis}/${plaatsingId}/dag`, { datum, volgorde: volgorde ?? 0 }),
+    mutationFn: ({
+      plaatsingId,
+      datum,
+      begin,
+      einde,
+    }: {
+      plaatsingId: string;
+      datum: string;
+      begin: string;
+      einde: string;
+    }) => put<Weekplanning>(`${basis}/${plaatsingId}/dag`, { datum, begin, einde }),
     onSuccess: ververs,
   });
 

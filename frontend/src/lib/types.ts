@@ -309,6 +309,14 @@ export interface ActiviteitWeergave {
   verwachteUitkomsten: string | null;
   onderzoeksvraagId: string | null;
   kleur: Activiteitkleur | null;
+  /**
+   * How long this activiteit runs by DEFAULT, in units of 50 minutes.
+   *
+   * It is what a newly placed block gets; the block itself then owns its own begin and end (ADR-0028), so making
+   * one Thursday longer changes nothing here. The unit is a leftover: the column is still `lengte_in_lesuren`
+   * because renaming it waits on a stale claim, and ADR-0028 decision 2 is where that is written down.
+   */
+  lengteInLesuren?: number;
   doelkoppelingen: DoelKoppelingWeergave[];
 }
 
@@ -542,7 +550,14 @@ export interface GeplandeActiviteit {
   subthemaNaam: string;
   themaId: string;
   themaNaam: string;
-  volgorde: number;
+  /**
+   * When this runs on its day, as `HH:mm:ss` (ADR-0028).
+   *
+   * It replaced `volgorde`, an ordinal into seven numbered lesuren. The end is stored per placement, so making one
+   * Thursday's block longer leaves every other day this activiteit is planned on alone.
+   */
+  begin: string;
+  einde: string;
   status: string;
   /** The teacher's own colour, if they gave it one. Sent on the weekplanning row as well as on the
    *  activiteit, so a calendar can paint it without fetching the thema. */

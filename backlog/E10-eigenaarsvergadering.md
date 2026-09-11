@@ -30,6 +30,7 @@ home for that whole set.
 | F7 | hoekenverrijking | built 2026-08-30 by session `hoeken`, **story entry still owed** |
 | F8 | not yet transcribed into this file | — |
 | F9 | streefwoordenschat op subthema | **E10-01** below |
+| — | the agenda as a time grid, with free clock times | **E10-04** below. *No F-number: it came from a session on 2026-09-11, not from the meeting notes this file was opened for.* |
 
 ---
 
@@ -161,3 +162,64 @@ home for that whole set.
 
   **Gates so far:** 825 unit + 261 integration on real PostgreSQL, 0 skipped; `dotnet format` clean; frontend
   lint/tsc and Vitest green.
+
+- [~] **E10-04 — De agenda als tijdraster: vrije tijdstippen in plaats van lesuren** — *Owner request of
+  2026-09-11, in session, with his own Outlook week beside the screen. Decision record:
+  **[ADR-0028](../docs/adr/0028-tijdraster-in-plaats-van-lesuren.md)**, which supersedes his own instruction of
+  2026-08-24 that the agenda shows no clock times, and the `Volgorde` half of
+  [ADR-0023](../docs/adr/0023-activiteit-day-placement.md) decision 1.*
+
+  The owner's wording: *"ik wil zoals in outlook alle uren van de dag zien op de week/dag view met een lijntje van
+  waar we vandaag zitten ook. hierin moeten de leerkrachten hun activiteiten kunnen plannen, niet zoals nu met
+  lesuren, zij moeten de tijdstippen zelf kunnen bepalen. ook zie ik bij de hoeken dat in de weekview ze vanboven
+  staan bovenaan de dag terwijl ik ze liever op de dag zelf ook willen zien staan."*
+
+  Four defaults were put to him with their costs and accepted: the grid draws 7:00 to 18:00 and opens on 8:00,
+  planning snaps to a quarter of an hour, a new activiteit runs 50 minutes, and the existing rows are converted by
+  arithmetic rather than by a real bell schedule because they are demo data. He also ruled that **every hoek gets a
+  time**, which removes the "niet in het uurrooster" answer.
+
+  *Done when:* a teacher can drag a block to another day and another hour, pull its bottom edge to change when it
+  ends, click empty space to make something at that hour, see a line marking the current time, and read a hoek as a
+  block on the day it runs; and when the same three things are reachable without a drag, from the activiteit sheet.
+
+  **Built 2026-09-11. `[~]` rather than `[x]`: the antagonist has not seen it.** That is the only gate left; the
+  migration and the browser pass below are done.
+
+  **The migration is written, hand-edited and applied.** `20260911131815_TijdstippenInPlaatsVanLesuren` adds the two
+  columns nullable, derives them from the slot they replace, makes them required and only then drops `Volgorde`. The
+  scaffold had it the other way round, which would have moved every planned activiteit in the database to midnight.
+  Applied to the dev database, and the conversion was read back through the API: lesuur 2 became 10:10, lesuur 4
+  became 11:50, and the one day the owner had dragged to another hour kept its own.
+
+  **The browser pass ran at 1440px and 390px, over CDP, and found what the tests could not.**
+  - **A real defect:** a drag changed the day and silently kept the old hour. `laatLos` called `eindigSleep()` before
+    reading the target time, so the pointer it needs was already forgotten and every drop fell back to "keep the
+    time" — while the preview under the cursor had shown the right one. Fixed, then re-measured: a block dragged two
+    hours down went from 10:10 to 12:30 **in the database**, not only on screen.
+  - **A second, visible one:** a 50-minute block is 47 pixels tall and was drawing three stacked lines, so the third
+    was cut in half. The block now says as much as it has room for: name alone under half an hour, name and start
+    beside each other under an hour, and the full three lines above it.
+  - Also measured: 7 columns at 1440 and 3 at 390 with no horizontal overflow, hour labels 4.97:1 and block names
+    16.58:1, a resize by the bottom edge landing on 11:15, and no console errors.
+  - **The dev database was put back exactly as the migration left it** (four hoekmomenten, one verrijking), because
+    this ran against the shared one.
+
+  **What landed**
+
+  *Backend.* `Activiteitplaatsing` and `Hoekmoment` carry `Begin`/`Einde` (`TimeOnly`); the duplicate rule and the
+  unique index key on the start time; `WeekplanningService` refuses an end that is not after its start with a Dutch
+  400, and the hoek service refuses a window with no teaching day in it, because every placement now writes rows.
+  `GeplandeActiviteitWeergave` sends the two times and no longer sends `LengteInLesuren`.
+
+  *Frontend.* One `Tijdraster` draws both the day and the week (three days below `sm`), with an hour gutter, the
+  now-line in ink plus its time in words, overlapping blocks side by side, a drag preview that reads the same module
+  the drop handler reads, and a resize handle. `ruilen.ts` (the swap rule of 2026-08-31), `Lesurenraster`,
+  `lesuren.ts` and `Dagcel` are deleted; the activiteit sheet gained begin/end fields as the non-drag route.
+
+  *Gates:* **801 unit + 256 integration tests on real PostgreSQL, 0 skipped**, `dotnet build` and `dotnet format`
+  clean, 131 frontend tests (16 new), oxlint + tsc clean, and the browser pass above.
+
+  **Owed:** the antagonist round; and then the rename `LengteInLesuren` → `DuurInMinuten` (ADR-0028 decision 2),
+  which is blocked on a stale claim over `SchoolcontentBeheerService.cs` and is the one place the model still
+  speaks in lesuren.

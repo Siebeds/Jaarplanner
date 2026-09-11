@@ -5,7 +5,7 @@ import { Tekstvlak } from "../../components/ui/Veld";
 import { IcoonPlus } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
 import { periode as periodeTekst } from "../../lib/datum";
-import { LESUREN } from "../activiteiten/lesuren";
+import { toonBereik } from "../plan/tijd";
 import { t, telWoord } from "../../i18n";
 import {
   useBewaarHoekverrijking,
@@ -71,8 +71,10 @@ export function Hoekdetailblad({
   const [tekst, setTekst] = useState("");
   const [leegFout, setLeegFout] = useState(false);
 
-  const lesuur = plaatsing.momenten[0]?.volgorde;
-  const nummer = LESUREN.find((u) => u.slot === lesuur)?.nummer;
+  // The first appearance, which is the ordinary one: the service writes them all at the hour the sheet asked for.
+  // A teacher who dragged one Thursday elsewhere has changed that one row, and the block on the day is where she
+  // reads that; this line says what the run does, not what every row of it does.
+  const eerste = plaatsing.momenten[0];
   const serverReden = fout instanceof ApiError ? fout.detail : undefined;
 
   const drukBezig = bezig || bewaar.isPending || verwijderVerrijking.isPending;
@@ -142,13 +144,13 @@ export function Hoekdetailblad({
 
         <div>
           <p className="text-micro uppercase text-inkt-zwak">{t("hoekdetail.uurrooster")}</p>
-          {/* Each branch says only what it knows. "Niet in het uurrooster" is not a gap to apologise
-              for: it is the ordinary answer, and most corners are placed that way. */}
+          {/* Each branch says only what it knows. A placement with no rows is one made before every hoek had to
+              have a time (ADR-0028), so the sentence says that rather than inventing an hour for it. */}
           <p className="mt-0.5 text-body text-inkt">
-            {nummer === undefined
-              ? t("hoekplaatsing.nietInUurrooster")
-              : t("hoekdetail.opLesuur", {
-                  nummer,
+            {eerste === undefined
+              ? t("hoekdetail.geenUur")
+              : t("hoekdetail.opUur", {
+                  periode: toonBereik(eerste.begin, eerste.einde),
                   dagen: telWoord(
                     plaatsing.momenten.length,
                     "hoekdetail.eenSchooldag",

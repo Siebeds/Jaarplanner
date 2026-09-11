@@ -166,7 +166,6 @@
     "vorige": "Vorige",
     "volgende": "Volgende",
     "voegToe": "Toevoegen",
-    "geenLesdag": "Geen lesdag",
     "buitenSchooljaar": "Buiten het schooljaar",
     "heelBereikBuiten": "Dit valt buiten het schooljaar",
     "naarHetSchooljaar": "Naar {datum}",
@@ -226,7 +225,6 @@
     "komtHier": "Waar het komt",
     "subthemaInThema": "{subthema} · {thema}",
     "enOpDeze": "Bewaren maakt de activiteit en plant ze meteen op {dag}.",
-    "enOpDezeLesuur": "Bewaren maakt de activiteit en plant ze meteen op {dag}, lesuur {nummer}.",
     "gemaaktNietGepland": "De activiteit is gemaakt maar niet ingepland.",
     "geenSubthemaOmIn": "Er is nog geen subthema voor de leeftijd van deze klas onder de thema's van deze dag. Maak er eerst een bij het thema.",
     "geenThema": "Nog geen thema",
@@ -244,9 +242,6 @@
     "boven": "{naam} boven {dag}",
     "neer": "{naam} op {dag} gezet",
     "afgebroken": "{naam} teruggezet",
-    "ruilTeVol": "In lesuur {nummer} staan meerdere dingen. Ruilen kan alleen als er precies één ding staat.",
-    "ruilTeLang": "{naam} duurt meer dan één lesuur, dus ruilen komt niet uit. Sleep het naar een vrij lesuur.",
-    "ruilHalf": "{naam} is niet meegeruild en staat nu op hetzelfde lesuur. Sleep het zelf naar een vrij lesuur.",
     "lijstOpgepakt": "{naam} opgepakt, {totaal} in de reeks",
     "lijstBoven": "{naam} naar plaats {positie} van {totaal}",
     "lijstNeer": "{naam} op plaats {positie} van {totaal} gezet",
@@ -357,6 +352,13 @@
     "algemeneFiches": "Algemene fiches",
     "sluiten": "Instellingen sluiten"
   },
+  "weergave": {
+    "titel": "Weergave",
+    "systeem": "Zoals het toestel",
+    "licht": "Licht",
+    "donker": "Donker",
+    "dezeBrowser": "Geldt alleen in deze browser."
+  },
   "klasbeheer": {
     "toevoegen": "Klas toevoegen",
     "nieuwTitel": "Nieuwe klas",
@@ -451,9 +453,8 @@
     "geen": "Nog geen activiteiten",
     "verwijderTitel": "{naam} verwijderen",
     "verwijderGevolg": "Hiermee verdwijnen ook {doelen} gekoppelde doelen. Dat is niet terug te draaien.",
-    "lengte": "Hoeveel lesuren",
-    "eenLesuur": "1 lesuur",
-    "aantalLesuren": "{aantal} lesuren",
+    "duur": "Hoelang duurt ze meestal",
+    "duurUitleg": "{aantal} minuten. In de agenda kan je dat per dag bijstellen.",
     "eenDoel": "1 doel",
     "aantalDoelen": "{aantal} doelen",
     "geenDoel": "Nog geen doel",
@@ -530,17 +531,11 @@
     "leeftijd": "leeftijd {leeftijd}",
     "geenKlasTitel": "Nog geen klas gekozen"
   },
-  "lesuur": {
-    "vrij": "Vrij lesuur",
-    "middag": "middagpauze",
-    "buitenRaster": "Buiten het lesurenraster",
-    "kiezerTitel": "{dag}, lesuur {nummer}",
-    "duurt": "{aantal} lesuren",
-    "nogEenOp": "Nog een activiteit in lesuur {nummer}",
-    "pastNietEen": "1 lesuur valt na het laatste lesuur",
-    "pastNietMeer": "{aantal} lesuren vallen na het laatste lesuur",
+  "tijdraster": {
+    "kiezerTitel": "{dag} om {tijd}",
+    "enOpDitUur": "Bewaren maakt de activiteit en plant ze meteen op {dag} om {tijd}.",
     "hoekenwerk": "hoekenwerk",
-    "hoekenwerkOp": "hoekenwerk in lesuur {nummer}"
+    "eindeVoorBegin": "Het einduur moet na het beginuur liggen."
   },
   "hoeken": {
     "toevoegen": "Hoek toevoegen",
@@ -620,10 +615,11 @@
     "einddagVerplicht": "Kies eerst de laatste dag.",
     "verrijking": "Hoe verrijk je de hoek?",
     "verrijkingVoorbeeld": "prentenboeken over de herfst, bladerenpers op tafel",
-    "uurrooster": "In het uurrooster",
-    "nietInUurrooster": "Niet in het uurrooster",
-    "lesuurN": "Lesuur {nummer}",
-    "lesuurUitleg": "De hoek komt op dit lesuur op elke schooldag van de periode.",
+    "wanneer": "Wanneer loopt de hoek?",
+    "van": "Van",
+    "tot": "Tot",
+    "uurUitleg": "De hoek komt op dit uur op elke schooldag van de periode.",
+    "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
     "plaats": "Inplannen",
     "bezig": "Bezig met inplannen",
     "mislukt": "Inplannen is niet gelukt."
@@ -631,7 +627,8 @@
   "hoekdetail": {
     "periode": "Periode",
     "uurrooster": "In het uurrooster",
-    "opLesuur": "Lesuur {nummer}, op {dagen}",
+    "opUur": "{periode}, op {dagen}",
+    "geenUur": "Deze hoek kreeg nog geen uur.",
     "eenSchooldag": "1 schooldag",
     "aantalSchooldagen": "{aantal} schooldagen",
     "verrijking": "Verrijking",

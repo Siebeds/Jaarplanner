@@ -110,11 +110,13 @@ export function useNeemHoekenOver(klasId: string | null) {
    property the model exists for: a (re)generation cannot reach what it cannot see.
    ------------------------------------------------------------------------------------------------ */
 
-/** One appearance in the timetable: this day, this lesuur. */
+/** One appearance in the time grid: this day, from this time to that one (ADR-0028). */
 export interface HoekmomentWeergave {
   id: string;
   datum: string;
-  volgorde: number;
+  /** `HH:mm:ss`, as the server sends a TimeOnly. */
+  begin: string;
+  einde: string;
 }
 
 /** What is in the corner over a stretch of days. */
@@ -143,8 +145,14 @@ export interface HoekplaatsingInvoer {
   tot: string;
   /** What the corner gets over this window. Null when she left it blank, which is an ordinary answer. */
   verrijking: string | null;
-  /** The zero-based lesuur it takes on every teaching day, or null for "not in the uurrooster". */
-  lesuur: number | null;
+  /**
+   * When it opens and closes on every teaching day of the window, as `HH:mm:ss`.
+   *
+   * Required since 2026-09-11 (owner: "elke hoek moet een tijdstip krijgen", ADR-0028). "Niet in het uurrooster"
+   * was an answer until then, and it left a corner running over its days with no hour and no block on any day.
+   */
+  begin: string;
+  einde: string;
 }
 
 const plaatsingSleutel = (klasId: string | null, van: string, tot: string) =>
@@ -251,34 +259,36 @@ export function useVerwijderHoekverrijking() {
   });
 }
 
-/** Where one appearance of a placed hoek should move to. */
+/** Where one appearance of a placed hoek should move to, or how long it should run. */
 export interface HoekmomentVerplaatsing {
   plaatsingId: string;
   momentId: string;
   datum: string;
-  /** Zero-based, so 0 is what a teacher calls lesuur 1. */
-  volgorde: number;
+  /** `HH:mm:ss`. A resize sends the unchanged begin with a new einde. */
+  begin: string;
+  einde: string;
 }
 
 /**
- * Moves ONE appearance of a placed hoek to another day and/or lesuur (owner, 2026-08-31).
+ * Moves or resizes ONE appearance of a placed hoek (owner, 2026-08-31; clock times since ADR-0028).
  *
  * The rows are stored per day rather than derived exactly so that this is possible: the hoek runs all
- * fortnight and on this one Thursday it happens after the break. Moving the whole run is a different
- * verb and is not this hook.
+ * fortnight and on this one Thursday it happens after the break, or half an hour longer. Moving the
+ * whole run is a different verb and is not this hook.
  *
  * **It does not invalidate optimistically and it is not meant to.** The server refuses a day outside
- * the placement's window and a second appearance of the same hoek at the same hour, and both refusals
- * are things the teacher has to see rather than watch get undone.
+ * the placement's window and a second appearance of the same hoek starting at the same time, and both
+ * refusals are things the teacher has to see rather than watch get undone.
  */
 export function useVerplaatsHoekmoment() {
   const ververs = usePlaatsingVerversing();
 
   return useMutation({
-    mutationFn: ({ plaatsingId, momentId, datum, volgorde }: HoekmomentVerplaatsing) =>
+    mutationFn: ({ plaatsingId, momentId, datum, begin, einde }: HoekmomentVerplaatsing) =>
       put<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/momenten/${momentId}`, {
         datum,
-        volgorde,
+        begin,
+        einde,
       }),
     onSuccess: ververs,
   });

@@ -11,10 +11,10 @@ namespace Jaarplanner.UnitTests.Planning;
 /// <summary>
 /// <see cref="HoekplaatsingService"/> against a real service over the in-memory provider (owner, 2026-08-30).
 /// <para>
-/// <b>The test that carries the feature is the one about which days get a timetable row.</b> A hoek that takes
-/// the third lesuur takes it on the days the class is in front of the teacher, so a placement over a fortnight
-/// must skip the weekends and the vakantie inside it. Writing one row per calendar day would put a lesson on a
-/// Saturday, and nothing else in this file would notice.
+/// <b>The test that carries the feature is the one about which days get a timetable row.</b> A hoek that runs from
+/// 13:30 runs then on the days the class is in front of the teacher, so a placement over a fortnight must skip the
+/// weekends and the vakantie inside it. Writing one row per calendar day would put a lesson on a Saturday, and
+/// nothing else in this file would notice.
 /// </para>
 /// </summary>
 public sealed class HoekplaatsingServiceTests
@@ -22,6 +22,10 @@ public sealed class HoekplaatsingServiceTests
     // A Monday, so the arithmetic in the assertions below is readable.
     private static readonly DateOnly Start = new(2026, 8, 31);
     private static readonly DateOnly Eind = new(2027, 6, 30);
+
+    // Hoekenwerk after lunch. Every placement has a time since 2026-09-11 (ADR-0028), so every call below states one.
+    private static readonly TimeOnly Begin = new(13, 30);
+    private static readonly TimeOnly Einde = new(14, 20);
 
     private readonly DbContextOptions<AppDbContext> _options;
     private readonly Guid _klasId;
@@ -59,31 +63,35 @@ public sealed class HoekplaatsingServiceTests
 
     private HoekplaatsingService Service() => new(new AppDbContext(_options));
 
+    /// <summary>The first week of the year, Tuesday to Friday: four teaching days, no closure.</summary>
+    private HoekplaatsingInvoer EersteWeek(string? verrijking = null) =>
+        new(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4), Begin, Einde, verrijking);
+
     [Fact]
     public async Task Een_plaatsing_bewaart_de_periode_en_de_naam_van_de_hoek()
     {
         var plaatsing = await Service().PlaatsAsync(
             _klasId,
-            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18), Begin, Einde));
 
         Assert.Equal("boekenhoek", plaatsing.HoekNaam);
         Assert.Equal(new DateOnly(2026, 9, 1), plaatsing.Van);
         Assert.Equal(new DateOnly(2026, 9, 18), plaatsing.Tot);
         Assert.Empty(plaatsing.Verrijkingen);
-        Assert.Empty(plaatsing.Momenten);
     }
 
     [Fact]
-    public async Task Een_lesuur_levert_een_rij_per_open_weekdag_en_slaat_weekends_en_vakantie_over()
+    public async Task Een_tijdstip_levert_een_rij_per_open_weekdag_en_slaat_weekends_en_vakantie_over()
     {
         // 1 september 2026 is a Tuesday. The window runs to Friday 18 september, so on a calendar it is 18 days:
         // 14 weekdays, of which 5 fall in the Herfst closure seeded above. Nine lessons remain.
         var plaatsing = await Service().PlaatsAsync(
             _klasId,
-            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18), Lesuur: 2));
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18), Begin, Einde));
 
         Assert.Equal(9, plaatsing.Momenten.Count);
-        Assert.All(plaatsing.Momenten, m => Assert.Equal(2, m.Volgorde));
+        Assert.All(plaatsing.Momenten, m => Assert.Equal(Begin, m.Begin));
+        Assert.All(plaatsing.Momenten, m => Assert.Equal(Einde, m.Einde));
 
         // No weekend, and nothing inside the closure.
         Assert.All(plaatsing.Momenten, m => Assert.NotEqual(DayOfWeek.Saturday, m.Datum.DayOfWeek));
@@ -95,15 +103,37 @@ public sealed class HoekplaatsingServiceTests
         Assert.Equal(new DateOnly(2026, 9, 18), plaatsing.Momenten[^1].Datum);
     }
 
-    [Fact]
-    public async Task Zonder_lesuur_loopt_de_hoek_wel_maar_staat_hij_in_geen_enkel_uurrooster()
+    /// <summary>
+    /// <b>The owner's ruling of 2026-09-11, pinned from the refusing side.</b> Every hoek gets a time, so every
+    /// placement gets rows; a window holding no teaching day would be a placement with nowhere to appear. Both
+    /// shapes of that window are covered: the closure week, and a bare weekend.
+    /// </summary>
+    [Theory]
+    [InlineData(2026, 9, 7, 2026, 9, 11)]
+    [InlineData(2026, 9, 5, 2026, 9, 6)]
+    public async Task Een_periode_zonder_schooldag_wordt_geweigerd(int vj, int vm, int vd, int tj, int tm, int td)
     {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().PlaatsAsync(
+                _klasId,
+                new HoekplaatsingInvoer(_hoekId, new DateOnly(vj, vm, vd), new DateOnly(tj, tm, td), Begin, Einde)));
 
-        Assert.Empty(plaatsing.Momenten);
-        Assert.Equal(new DateOnly(2026, 9, 18), plaatsing.Tot);
+        Assert.Contains("schooldag", fout.Message);
+
+        await using var na = new AppDbContext(_options);
+        Assert.Empty(await na.Hoekplaatsingen.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Een_einde_voor_het_begin_wordt_geweigerd_als_een_400()
+    {
+        // The domain says it in Dutch; the service maps it, so the teacher sees her own mistake rather than a 500.
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().PlaatsAsync(
+                _klasId,
+                new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4), Einde, Begin)));
+
+        Assert.Contains("einde", fout.Message);
     }
 
     [Fact]
@@ -115,6 +145,8 @@ public sealed class HoekplaatsingServiceTests
                 _hoekId,
                 new DateOnly(2026, 9, 1),
                 new DateOnly(2026, 9, 18),
+                Begin,
+                Einde,
                 Verrijking: "prentenboeken over de herfst"));
 
         var verrijking = Assert.Single(plaatsing.Verrijkingen);
@@ -130,9 +162,7 @@ public sealed class HoekplaatsingServiceTests
     {
         // Blank is an ordinary answer: the corner runs in december with nothing special in it. Storing "" would
         // record that she described it as nothing.
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4), Verrijking: tekst));
+        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek(tekst));
 
         Assert.Empty(plaatsing.Verrijkingen);
     }
@@ -143,7 +173,8 @@ public sealed class HoekplaatsingServiceTests
         var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
             () => Service().PlaatsAsync(
                 _klasId,
-                new HoekplaatsingInvoer(_hoekVanAndereKlasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4))));
+                new HoekplaatsingInvoer(
+                    _hoekVanAndereKlasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4), Begin, Einde)));
 
         // Not a 404: the corner exists, it is in another classroom, and saying so lets the screen explain itself
         // rather than claim the row was deleted.
@@ -156,7 +187,7 @@ public sealed class HoekplaatsingServiceTests
         var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
             () => Service().PlaatsAsync(
                 _klasId,
-                new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 8, 1), new DateOnly(2026, 9, 4))));
+                new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 8, 1), new DateOnly(2026, 9, 4), Begin, Einde)));
 
         Assert.Contains("schooljaar", fout.Message);
     }
@@ -165,11 +196,14 @@ public sealed class HoekplaatsingServiceTests
     public async Task Een_venster_dat_eindigt_voor_het_begint_wordt_geweigerd_als_een_400()
     {
         // The domain says it in Dutch; the service turns it into the app's own fault type so the shared handler
-        // answers 400 rather than letting an ArgumentException become a 500.
-        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+        // answers 400 rather than letting an ArgumentException become a 500. And it is THIS sentence the teacher
+        // reads, not "no teaching day": a backwards window is checked before the days in it are counted.
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
             () => Service().PlaatsAsync(
                 _klasId,
-                new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 18), new DateOnly(2026, 9, 1))));
+                new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 18), new DateOnly(2026, 9, 1), Begin, Einde)));
+
+        Assert.Contains("hoekperiode", fout.Message);
     }
 
     [Fact]
@@ -177,7 +211,7 @@ public sealed class HoekplaatsingServiceTests
     {
         await Service().PlaatsAsync(
             _klasId,
-            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30)));
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30), Begin, Einde));
 
         // A week in november, months after the placement began. Reading placements that START in the range would
         // draw nothing here, which is almost every screen.
@@ -193,7 +227,7 @@ public sealed class HoekplaatsingServiceTests
     {
         await Service().PlaatsAsync(
             _klasId,
-            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18), Begin, Einde));
 
         var gevonden = await Service().HaalVoorBereikAsync(
             _klasId, new DateOnly(2026, 9, 19), new DateOnly(2026, 9, 25));
@@ -206,7 +240,7 @@ public sealed class HoekplaatsingServiceTests
     {
         await Service().PlaatsAsync(
             _klasId,
-            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18), Begin, Einde));
 
         Assert.Empty(await Service().HaalVoorBereikAsync(
             _andereKlasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18)));
@@ -215,14 +249,7 @@ public sealed class HoekplaatsingServiceTests
     [Fact]
     public async Task Verwijderen_neemt_de_verrijkingen_en_de_uurroosterrijen_mee()
     {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(
-                _hoekId,
-                new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 9, 4),
-                Verrijking: "prentenboeken",
-                Lesuur: 1));
+        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek("prentenboeken"));
 
         Assert.NotEmpty(plaatsing.Momenten);
 
@@ -250,30 +277,41 @@ public sealed class HoekplaatsingServiceTests
        The point of the whole feature is in the first test: ONE row moves and its siblings do not. The
        rows are stored per day rather than derived exactly so that a teacher can say "on this one
        Thursday the bouwhoek happens after the break", and a move that dragged all of them along would
-       make the storage pointless.
+       make the storage pointless. Since ADR-0028 the same verb also resizes a row: dragging its bottom
+       edge sends the same day and start with a new end.
        ------------------------------------------------------------------------------------------------ */
 
-    private async Task<HoekplaatsingWeergave> EenWeekIngepland(int lesuur = 1) =>
-        await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(
-                _hoekId,
-                new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 9, 4),
-                Lesuur: lesuur));
+    private async Task<HoekplaatsingWeergave> EenWeekIngepland() =>
+        await Service().PlaatsAsync(_klasId, EersteWeek());
 
     [Fact]
-    public async Task Verplaatst_een_moment_naar_een_ander_lesuur_en_laat_de_andere_dagen_staan()
+    public async Task Verplaatst_een_moment_naar_een_ander_uur_en_laat_de_andere_dagen_staan()
     {
         var plaatsing = await EenWeekIngepland();
         var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
 
-        var na = await Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, dinsdag.Datum, 4);
+        var na = await Service().VerplaatsMomentAsync(
+            plaatsing.Id, dinsdag.Id, dinsdag.Datum, new TimeOnly(10, 15), new TimeOnly(11, 5));
 
-        Assert.Equal(4, na.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1)).Volgorde);
+        var verplaatst = na.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
+        Assert.Equal(new TimeOnly(10, 15), verplaatst.Begin);
+        Assert.Equal(new TimeOnly(11, 5), verplaatst.Einde);
         Assert.All(
             na.Momenten.Where(m => m.Datum != new DateOnly(2026, 9, 1)),
-            m => Assert.Equal(1, m.Volgorde));
+            m => Assert.Equal(Begin, m.Begin));
+    }
+
+    [Fact]
+    public async Task Maakt_een_moment_langer_zonder_het_te_verplaatsen()
+    {
+        var plaatsing = await EenWeekIngepland();
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
+
+        // Same day, same start, later end: the bottom edge of the block dragged down. Refusing this as "that hoek
+        // already starts there" would make every resize an error, because the row it compares against is itself.
+        var na = await Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, dinsdag.Datum, Begin, new TimeOnly(15, 0));
+
+        Assert.Equal(new TimeOnly(15, 0), na.Momenten.Single(m => m.Id == dinsdag.Id).Einde);
     }
 
     [Fact]
@@ -282,12 +320,13 @@ public sealed class HoekplaatsingServiceTests
         var plaatsing = await EenWeekIngepland();
         var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
 
-        var na = await Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, new DateOnly(2026, 9, 2), 4);
+        var na = await Service().VerplaatsMomentAsync(
+            plaatsing.Id, dinsdag.Id, new DateOnly(2026, 9, 2), new TimeOnly(9, 0), new TimeOnly(9, 50));
 
-        // Two appearances on the Wednesday now, at different hours, which is a legal thing to want.
+        // Two appearances on the Wednesday now, at different times, which is a legal thing to want.
         var woensdag = na.Momenten.Where(m => m.Datum == new DateOnly(2026, 9, 2)).ToList();
         Assert.Equal(2, woensdag.Count);
-        Assert.Equal([1, 4], woensdag.Select(m => m.Volgorde));
+        Assert.Equal([new TimeOnly(9, 0), Begin], woensdag.Select(m => m.Begin));
         Assert.DoesNotContain(na.Momenten, m => m.Datum == new DateOnly(2026, 9, 1));
     }
 
@@ -299,18 +338,28 @@ public sealed class HoekplaatsingServiceTests
 
         // A 400 and not a 500: the day is a thing the teacher chose, so the refusal is hers to read.
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, new DateOnly(2026, 10, 1), 1));
+            () => Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, new DateOnly(2026, 10, 1), Begin, Einde));
     }
 
     [Fact]
-    public async Task Weigert_twee_keer_dezelfde_hoek_op_hetzelfde_lesuur_op_een_dag()
+    public async Task Weigert_twee_keer_dezelfde_hoek_met_hetzelfde_begin_op_een_dag()
     {
         var plaatsing = await EenWeekIngepland();
         var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
 
-        // The Wednesday already has this hoek at lesuur 1, which is the one combination that means nothing.
+        // The Wednesday already has this hoek starting at 13:30, which is the one combination that means nothing.
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, new DateOnly(2026, 9, 2), 1));
+            () => Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, new DateOnly(2026, 9, 2), Begin, Einde));
+    }
+
+    [Fact]
+    public async Task Weigert_een_moment_dat_eindigt_voor_het_begint()
+    {
+        var plaatsing = await EenWeekIngepland();
+        var dinsdag = plaatsing.Momenten.First();
+
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, dinsdag.Datum, Einde, Begin));
     }
 
     [Fact]
@@ -319,14 +368,14 @@ public sealed class HoekplaatsingServiceTests
         var plaatsing = await EenWeekIngepland();
 
         await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
-            () => Service().VerplaatsMomentAsync(plaatsing.Id, Guid.NewGuid(), new DateOnly(2026, 9, 2), 4));
+            () => Service().VerplaatsMomentAsync(plaatsing.Id, Guid.NewGuid(), new DateOnly(2026, 9, 2), Begin, Einde));
     }
 
     [Fact]
     public async Task Een_plaatsing_die_niet_bestaat_geeft_niet_gevonden()
     {
         await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
-            () => Service().VerplaatsMomentAsync(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 9, 2), 4));
+            () => Service().VerplaatsMomentAsync(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 9, 2), Begin, Einde));
     }
 
     /* ------------------------------------------------------------------------------------------------
@@ -340,13 +389,7 @@ public sealed class HoekplaatsingServiceTests
     [Fact]
     public async Task Herschrijft_een_verrijking()
     {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(
-                _hoekId,
-                new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 9, 4),
-                Verrijking: "prentenboeken"));
+        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek("prentenboeken"));
         var verrijking = Assert.Single(plaatsing.Verrijkingen);
 
         var na = await Service().WijzigVerrijkingAsync(
@@ -362,14 +405,7 @@ public sealed class HoekplaatsingServiceTests
     [Fact]
     public async Task Verwijdert_een_verrijking_en_laat_de_plaatsing_staan()
     {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(
-                _hoekId,
-                new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 9, 4),
-                Verrijking: "prentenboeken",
-                Lesuur: 1));
+        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek("prentenboeken"));
 
         var na = await Service().VerwijderVerrijkingAsync(plaatsing.Id, plaatsing.Verrijkingen[0].Id);
 
@@ -388,6 +424,8 @@ public sealed class HoekplaatsingServiceTests
                 _hoekId,
                 new DateOnly(2026, 9, 1),
                 new DateOnly(2026, 9, 18),
+                Begin,
+                Einde,
                 Verrijking: "prentenboeken"));
         var eerste = Assert.Single(plaatsing.Verrijkingen);
 
@@ -419,6 +457,8 @@ public sealed class HoekplaatsingServiceTests
                 _hoekId,
                 new DateOnly(2026, 9, 1),
                 new DateOnly(2026, 9, 18),
+                Begin,
+                Einde,
                 Verrijking: "prentenboeken"));
 
         // Two answers to "what is in the boekenhoek this week" is not a richer answer, it is an ambiguous
@@ -434,9 +474,7 @@ public sealed class HoekplaatsingServiceTests
     [Fact]
     public async Task Weigert_een_verrijking_buiten_de_periode_van_de_hoek()
     {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4)));
+        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek());
 
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
             () => Service().VoegVerrijkingToeAsync(
@@ -449,9 +487,7 @@ public sealed class HoekplaatsingServiceTests
     [Fact]
     public async Task Een_verrijking_die_niet_bestaat_geeft_niet_gevonden()
     {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4)));
+        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek());
 
         await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
             () => Service().VerwijderVerrijkingAsync(plaatsing.Id, Guid.NewGuid()));
@@ -460,18 +496,12 @@ public sealed class HoekplaatsingServiceTests
     [Fact]
     public async Task Houdt_de_verrijkingen_bij_een_verplaatst_moment()
     {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(
-                _hoekId,
-                new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 9, 4),
-                Verrijking: "prentenboeken",
-                Lesuur: 1));
+        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek("prentenboeken"));
 
         // The answer carries the whole placement, so a verrijking missing from it would blank the detail sheet
         // the moment a teacher dragged a row.
-        var na = await Service().VerplaatsMomentAsync(plaatsing.Id, plaatsing.Momenten.First().Id, new DateOnly(2026, 9, 3), 5);
+        var na = await Service().VerplaatsMomentAsync(
+            plaatsing.Id, plaatsing.Momenten.First().Id, new DateOnly(2026, 9, 3), new TimeOnly(11, 0), new TimeOnly(11, 50));
 
         Assert.Equal("prentenboeken", Assert.Single(na.Verrijkingen).Tekst);
         Assert.Equal("boekenhoek", na.HoekNaam);

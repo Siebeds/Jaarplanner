@@ -5,6 +5,7 @@ import { useThemasVoorKlas } from "../../lib/queries";
 import { volleDag } from "../../lib/datum";
 import { t } from "../../i18n";
 import { IcoonPlus } from "../../components/Iconen";
+import { STANDAARDDUUR } from "./tijd";
 
 /**
  * The activiteiten a teacher can put on one day.
@@ -22,14 +23,14 @@ import { IcoonPlus } from "../../components/Iconen";
  * is running, and plans it on the day in the same press.
  *
  * Nothing is filtered out for already being scheduled. The server refuses only the same activiteit
- * twice in the same LESUUR (a unique index on jaarplan, activiteit, date and volgorde) and returns a
- * Dutch refusal naming that hour, and hiding the row would leave a teacher wondering where their
- * activiteit went. Twice on one day in two different hours is allowed and normal: that is what a hoek
- * running two hours looks like.
+ * twice from the same START TIME (a unique index on jaarplan, activiteit, date and begin) and returns
+ * a Dutch refusal naming that time, and hiding the row would leave a teacher wondering where their
+ * activiteit went. Twice on one day at two different hours is allowed and normal: that is what a
+ * reading moment in the morning and again after lunch looks like.
  */
 export function Activiteitkiezer({
   datum,
-  lesuur,
+  tijd,
   klasId,
   themaIds,
   bezig,
@@ -39,15 +40,17 @@ export function Activiteitkiezer({
 }: {
   datum: string | null;
   /**
-   * The lesuur this will land in, 1-based, or undefined when the caller does not mean a particular
-   * one. Named in the title: a teacher who pressed the plus on the fourth hour has to be able to see
-   * that the fourth hour is where it goes, and the day alone does not say that.
+   * The time this will start at, as a teacher reads it ("9:15"), or undefined when the caller does
+   * not mean a particular one. Named in the title: a teacher who clicked the grid at quarter past
+   * nine has to be able to see that quarter past nine is where it goes, and the day alone does not
+   * say that.
    */
-  lesuur?: number;
+  tijd?: string;
   klasId: string | null;
   themaIds: string[];
   bezig: boolean;
-  onKies: (activiteitId: string) => void;
+  /** The chosen activiteit, with how long it runs by default, which the screen turns into an end time. */
+  onKies: (activiteitId: string, duurInMinuten: number) => void;
   /** Make one that does not exist yet. The screen owns the sheet that does it. */
   onNieuw: () => void;
   onSluit: () => void;
@@ -66,9 +69,9 @@ export function Activiteitkiezer({
       onOpenChange={(open) => !open && onSluit()}
       titel={
         datum
-          ? lesuur === undefined
+          ? tijd === undefined
             ? volleDag(datum)
-            : t("lesuur.kiezerTitel", { dag: volleDag(datum), nummer: lesuur })
+            : t("tijdraster.kiezerTitel", { dag: volleDag(datum), tijd })
           : t("periode.voegToe")
       }
     >
@@ -95,7 +98,9 @@ export function Activiteitkiezer({
                             <button
                               type="button"
                               disabled={bezig}
-                              onClick={() => onKies(activiteit.id)}
+                              // The default length travels with the choice: the screen knows where the block
+                              // starts, and only the activiteit knows how long it usually runs.
+                              onClick={() => onKies(activiteit.id, (activiteit.lengteInLesuren ?? 1) * STANDAARDDUUR)}
                               className="flex w-full items-center justify-between gap-3 rounded-veld border border-lijn bg-kaart px-3 py-2.5 text-left transition-colors duration-150 hover:border-accent disabled:opacity-50"
                             >
                               <span className="min-w-0">

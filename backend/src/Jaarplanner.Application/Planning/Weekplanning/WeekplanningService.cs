@@ -41,7 +41,8 @@ public sealed class WeekplanningService : IWeekplanningService
         Guid klasId,
         Guid activiteitId,
         DateOnly datum,
-        int volgorde,
+        TimeOnly begin,
+        TimeOnly einde,
         CancellationToken cancellationToken = default)
     {
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
@@ -64,19 +65,19 @@ public sealed class WeekplanningService : IWeekplanningService
         }
 
         VereisLesdag(schooljaar, datum);
+        VereisTijden(begin, einde);
 
         var jaarplan = await LaadOfMaakJaarplanAsync(klasId, cancellationToken);
 
         // Checked here rather than letting the aggregate's own guard fire, which throws an English
         // InvalidOperationException that no handler maps — it would reach a teacher as a 500. Same division of labour
         // as the thema path: the aggregate refuses programmer error, the service refuses teacher input.
-        if (jaarplan.IsAlGeplaatstOp(activiteitId, datum, volgorde))
+        if (jaarplan.IsAlGeplaatstOp(activiteitId, datum, begin))
         {
-            // Volgorde is 0-based; a teacher counts lesuren from one.
-            throw OngeldigeDagplanningFout.ActiviteitStaatErAl(datum, volgorde + 1);
+            throw OngeldigeDagplanningFout.ActiviteitStaatErAl(datum, begin);
         }
 
-        jaarplan.PlaatsActiviteit(activiteitId, datum, KoppelingStatus.Manueel, volgorde);
+        jaarplan.PlaatsActiviteit(activiteitId, datum, KoppelingStatus.Manueel, begin, einde);
         await _opslag.BewaarAsync(cancellationToken);
 
         return await ProjecteerWeekAsync(klas, schooljaar, jaarplan, datum, cancellationToken);
@@ -128,7 +129,8 @@ public sealed class WeekplanningService : IWeekplanningService
         Guid klasId,
         Guid plaatsingId,
         DateOnly datum,
-        int volgorde,
+        TimeOnly begin,
+        TimeOnly einde,
         CancellationToken cancellationToken = default)
     {
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
@@ -137,19 +139,18 @@ public sealed class WeekplanningService : IWeekplanningService
         // Only the target is validated. The placement's current day is deliberately not, which is what makes this the
         // route off a day the school has since closed (see IWeekplanningService).
         VereisLesdag(schooljaar, datum);
+        VereisTijden(begin, einde);
 
-        // A no-op move is allowed through: the placement is already there, so `IsAlGeplaatstOp` would be true and
-        // refusing would make dropping a card back where it came from an error. Only a *different* placement in the
-        // target SLOT is a genuine duplicate, which is why both halves of the target are compared: the same
-        // activiteit may sit in two lesuren of one day, so a move within the day is only a duplicate when it lands
-        // on a slot that already holds it.
-        var blijftStaan = plaatsing.Datum == datum && plaatsing.Volgorde == volgorde;
-        if (!blijftStaan && jaarplan.IsAlGeplaatstOp(plaatsing.ActiviteitId, datum, volgorde))
+        // A no-op move is allowed through, and so is a resize: both leave the placement starting where it already
+        // starts, so `IsAlGeplaatstOp` would be true and refusing would make dragging a bottom edge an error. Only a
+        // *different* placement of the same activiteit at the target start is a genuine duplicate.
+        var blijftStaan = plaatsing.Datum == datum && plaatsing.Begin == begin;
+        if (!blijftStaan && jaarplan.IsAlGeplaatstOp(plaatsing.ActiviteitId, datum, begin))
         {
-            throw OngeldigeDagplanningFout.ActiviteitStaatErAl(datum, volgorde + 1);
+            throw OngeldigeDagplanningFout.ActiviteitStaatErAl(datum, begin);
         }
 
-        plaatsing.VerplaatsNaar(datum, volgorde);
+        plaatsing.VerplaatsNaar(datum, begin, einde);
         await _opslag.BewaarAsync(cancellationToken);
 
         return await ProjecteerWeekAsync(klas, schooljaar, jaarplan, datum, cancellationToken);
@@ -192,6 +193,18 @@ public sealed class WeekplanningService : IWeekplanningService
     {
         var codes = Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase);
         return codes is null || codes.Contains(leeftijd, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Refuses a block that ends where it starts or earlier. Teacher input, so a Dutch 400 here rather than the
+    /// aggregate's English guard reaching her as a 500 (ADR-0027).
+    /// </summary>
+    private static void VereisTijden(TimeOnly begin, TimeOnly einde)
+    {
+        if (einde <= begin)
+        {
+            throw OngeldigeDagplanningFout.EindeNietNaBegin();
+        }
     }
 
     private static void VereisLesdag(Schooljaar schooljaar, DateOnly datum)
@@ -286,7 +299,8 @@ public sealed class WeekplanningService : IWeekplanningService
 
             var opDezeDag = plaatsingen
                 .Where(p => p.Datum == datum)
-                .OrderBy(p => p.Volgorde)
+                .OrderBy(p => p.Begin)
+                .ThenBy(p => p.Einde)
                 .ThenBy(p => p.ActiviteitId)
                 .Select(p => Projecteer(p, inhoudPerActiviteit, themaperiodePerThema))
                 // A placement whose activiteit could not be resolved is dropped rather than rendered blank. It is
@@ -413,12 +427,12 @@ public sealed class WeekplanningService : IWeekplanningService
             SubthemaNaam: inhoud.SubthemaNaam,
             ThemaId: inhoud.ThemaId,
             ThemaNaam: inhoud.ThemaNaam,
-            Volgorde: plaatsing.Volgorde,
+            Begin: plaatsing.Begin,
+            Einde: plaatsing.Einde,
             Status: plaatsing.Status.ToString(),
             Doelcodes: inhoud.Doelcodes,
             ValtBuitenThemaperiode: buiten,
-            Kleur: inhoud.Kleur,
-            LengteInLesuren: inhoud.LengteInLesuren);
+            Kleur: inhoud.Kleur);
     }
 
     private async Task<(Klas Klas, Schooljaar Schooljaar)> LaadKlasAsync(

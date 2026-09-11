@@ -22,9 +22,14 @@ public interface IHoekplaatsingService
     /// Places a hoek over a stretch of days.
     /// <para>
     /// One call does all three things the teacher answered in the sheet: the window, the enrichment she typed,
-    /// and whether it takes a lesuur. They arrive together because she decided them together, and because a
+    /// and the time of day it runs. They arrive together because she decided them together, and because a
     /// placement that got its window but lost its verrijking to a second failed request is worse than one that
     /// never happened.
+    /// </para>
+    /// <para>
+    /// <b>Every placement gets a row per teaching day of the window</b> (owner, 2026-09-11: <i>"elke hoek moet
+    /// een tijdstip krijgen"</i>). A window holding no teaching day at all is therefore refused: it would make a
+    /// placement with nowhere to appear.
     /// </para>
     /// </summary>
     Task<HoekplaatsingWeergave> PlaatsAsync(
@@ -43,7 +48,8 @@ public interface IHoekplaatsingService
     Task VerwijderAsync(Guid plaatsingId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Moves one appearance to another day and/or lesuur (owner, 2026-08-31).
+    /// Moves or resizes one appearance: another day, another time, or both (owner, 2026-08-31; clock times since
+    /// ADR-0027).
     /// <para>
     /// <b>One appearance, not the placement.</b> The rows are stored per day rather than derived precisely so
     /// that this is possible: the hoek runs all fortnight and on this one Thursday it happens at a different
@@ -57,13 +63,15 @@ public interface IHoekplaatsingService
     /// </summary>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such placement, or no such appearance in it.</exception>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentValidatieFout">
-    /// The day falls outside the placement's window, or that hoek already stands at that hour on that day.
+    /// The day falls outside the placement's window, the end is not after the start, or that hoek already starts at
+    /// that time on that day.
     /// </exception>
     Task<HoekplaatsingWeergave> VerplaatsMomentAsync(
         Guid plaatsingId,
         Guid momentId,
         DateOnly datum,
-        int volgorde,
+        TimeOnly begin,
+        TimeOnly einde,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -108,20 +116,22 @@ public interface IHoekplaatsingService
 /// <param name="HoekId">The corner she dragged.</param>
 /// <param name="Van">First day of the window, inclusive.</param>
 /// <param name="Tot">Last day, inclusive. May equal <paramref name="Van"/>.</param>
+/// <param name="Begin">
+/// When the corner opens on every teaching day of the window (ADR-0027). Required: "not in the uurrooster" was
+/// an answer until 2026-09-11, when the owner ruled that every hoek gets a time.
+/// </param>
+/// <param name="Einde">When it closes. Must lie after <paramref name="Begin"/>.</param>
 /// <param name="Verrijking">
 /// What the corner gets over this window, or null when she left it blank. Blank is an ordinary answer: the
 /// boekenhoek runs in december with nothing special in it.
-/// </param>
-/// <param name="Lesuur">
-/// The zero-based lesuur the hoek takes on every teaching day of the window, or null for "not in the uurrooster".
-/// One nullable field rather than a bool plus a number, so the two cannot disagree.
 /// </param>
 public sealed record HoekplaatsingInvoer(
     Guid HoekId,
     DateOnly Van,
     DateOnly Tot,
-    string? Verrijking = null,
-    int? Lesuur = null);
+    TimeOnly Begin,
+    TimeOnly Einde,
+    string? Verrijking = null);
 
 /// <summary>A placed hoek as the agenda reads it.</summary>
 /// <param name="Id">Surrogate identity of the placement.</param>
@@ -130,7 +140,10 @@ public sealed record HoekplaatsingInvoer(
 /// <param name="Van">First day, inclusive.</param>
 /// <param name="Tot">Last day, inclusive.</param>
 /// <param name="Verrijkingen">What is in the corner, per sub-window. Empty is normal.</param>
-/// <param name="Momenten">Where it appears in the timetable. Empty means it claims no lesuur.</param>
+/// <param name="Momenten">
+/// Where it appears in the time grid, one per teaching day. Empty only for a placement made before every hoek had
+/// to have a time (2026-09-11).
+/// </param>
 public sealed record HoekplaatsingWeergave(
     Guid Id,
     Guid HoekId,
@@ -143,5 +156,5 @@ public sealed record HoekplaatsingWeergave(
 /// <summary>One enrichment: what is in the corner, over these days.</summary>
 public sealed record HoekverrijkingWeergave(Guid Id, DateOnly Van, DateOnly Tot, string Tekst);
 
-/// <summary>One appearance in the timetable: this day, this lesuur.</summary>
-public sealed record HoekmomentWeergave(Guid Id, DateOnly Datum, int Volgorde);
+/// <summary>One appearance in the time grid: this day, from this time to that one.</summary>
+public sealed record HoekmomentWeergave(Guid Id, DateOnly Datum, TimeOnly Begin, TimeOnly Einde);

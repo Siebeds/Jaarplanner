@@ -70,19 +70,21 @@ public sealed class Activiteitplaatsing
     /// The human-in-the-loop status (Art. IV.2). A teacher placing an activiteit is
     /// <see cref="KoppelingStatus.Manueel"/>.
     /// </param>
-    /// <param name="volgorde">Position within the day, for the several activiteiten a day usually holds.</param>
+    /// <param name="begin">When it starts on that day, as the teacher chose it.</param>
+    /// <param name="einde">When it ends. Must lie after <paramref name="begin"/>.</param>
     public Activiteitplaatsing(
         Guid jaarplanId,
         Guid activiteitId,
         DateOnly datum,
         KoppelingStatus status,
-        int volgorde = 0)
+        TimeOnly begin,
+        TimeOnly einde)
     {
         JaarplanId = RequireId(jaarplanId, nameof(jaarplanId));
         ActiviteitId = RequireId(activiteitId, nameof(activiteitId));
         Datum = datum;
         Status = RequireStatus(status);
-        Volgorde = RequireNietNegatief(volgorde, nameof(volgorde));
+        (Begin, Einde) = RequireTijden(begin, einde);
     }
 
     /// <summary>Surrogate identity.</summary>
@@ -104,10 +106,22 @@ public sealed class Activiteitplaatsing
     public KoppelingStatus Status { get; private set; }
 
     /// <summary>
-    /// Position within its day. Several activiteiten on one Tuesday need an order, and it must not be the insertion
-    /// order: a teacher who inserts a reading moment before the one already there expects it to stay first.
+    /// When this activiteit starts on its day: a clock time the teacher chose (owner, 2026-09-11, ADR-0027).
+    /// <para>
+    /// <b>It replaced <c>Volgorde</c>, an ordinal into seven numbered lesuren.</b> The owner asked for an agenda that
+    /// looks like Outlook, where a teacher drags a block to 10:15 and pulls its bottom edge to 11:00, and a slot number
+    /// cannot say either. It also orders the day, which is the job <c>Volgorde</c> had: a reading moment placed at
+    /// 8:45 stays before the one at 9:30 whatever order they were entered in.
+    /// </para>
     /// </summary>
-    public int Volgorde { get; private set; }
+    public TimeOnly Begin { get; private set; }
+
+    /// <summary>
+    /// When it ends. <b>Stored per placement rather than derived from the activiteit</b>, because resizing one block on
+    /// one Thursday is exactly what the time grid offers, and a length read off the activiteit would move every other
+    /// day that activiteit is planned on along with it.
+    /// </summary>
+    public TimeOnly Einde { get; private set; }
 
     /// <summary>
     /// Whether anything may discard this placement without asking the teacher.
@@ -152,7 +166,8 @@ public sealed class Activiteitplaatsing
     }
 
     /// <summary>
-    /// Moves this activiteit to another day, and optionally to another position within it (E9-04, FR-6.2/FR-7.2).
+    /// Moves this activiteit to another day and/or another time, which is also how it is made longer or shorter
+    /// (E9-04, FR-6.2/FR-7.2; clock times since ADR-0027).
     /// <para>
     /// <b>Unlike <see cref="Themaplaatsing.VerplaatsNaar"/>, this neither rewrites the status nor destroys anything.</b>
     /// That method has to convert a proposal into the teacher's own placement and drop an AI motivation that argued for
@@ -167,16 +182,19 @@ public sealed class Activiteitplaatsing
     /// since closed.
     /// </para>
     /// </summary>
-    public void VerplaatsNaar(DateOnly datum, int volgorde = 0)
+    public void VerplaatsNaar(DateOnly datum, TimeOnly begin, TimeOnly einde)
     {
         Datum = datum;
-        Volgorde = RequireNietNegatief(volgorde, nameof(volgorde));
+        (Begin, Einde) = RequireTijden(begin, einde);
     }
 
-    /// <summary>Reorders this placement within its own day, leaving the day alone.</summary>
-    public void WijzigVolgorde(int volgorde) => Volgorde = RequireNietNegatief(volgorde, nameof(volgorde));
-
     // The guards below catch programmer error, never teacher input, so their messages are English (Art. II.2).
+    // A teacher's own "the end is before the start" is refused earlier, in Dutch, by WeekplanningService.
+    private static (TimeOnly Begin, TimeOnly Einde) RequireTijden(TimeOnly begin, TimeOnly einde) =>
+        einde > begin
+            ? (begin, einde)
+            : throw new ArgumentOutOfRangeException(nameof(einde), einde, "Einde must lie after Begin.");
+
     private static KoppelingStatus RequireStatus(KoppelingStatus status) =>
         Enum.IsDefined(status)
             ? status
@@ -185,10 +203,5 @@ public sealed class Activiteitplaatsing
     private static Guid RequireId(Guid value, string paramName) =>
         value == Guid.Empty
             ? throw new ArgumentException($"'{paramName}' is required.", paramName)
-            : value;
-
-    private static int RequireNietNegatief(int value, string paramName) =>
-        value < 0
-            ? throw new ArgumentOutOfRangeException(paramName, value, "Volgorde cannot be negative.")
             : value;
 }

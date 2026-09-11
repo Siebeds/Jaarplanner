@@ -66,8 +66,8 @@ public sealed class Jaarplan
             .ToList();
 
     /// <summary>
-    /// The activiteiten placed on days of this plan (E9-03, FR-6.2/FR-7.2), ordered by day and then by their
-    /// position within it.
+    /// The activiteiten placed on days of this plan (E9-03, FR-6.2/FR-7.2), ordered by day and then by the time
+    /// they start.
     /// <para>
     /// <b>A second, independent placement axis, and deliberately not a finer tier of the first.</b>
     /// <see cref="Plaatsingen"/> answers "in which stretch of the year does this thema live?" and keys on a derived
@@ -78,7 +78,7 @@ public sealed class Jaarplan
     public IReadOnlyList<Activiteitplaatsing> Activiteitplaatsingen =>
         _activiteitplaatsingen
             .OrderBy(p => p.Datum)
-            .ThenBy(p => p.Volgorde)
+            .ThenBy(p => p.Begin)
             .ThenBy(p => p.ActiviteitId)
             .ToList();
 
@@ -153,8 +153,9 @@ public sealed class Jaarplan
     /// </para>
     /// <para>
     /// <b>A day may hold several activiteiten</b> — that is the normal case, not an edge one — so only the exact
-    /// duplicate is refused: the same activiteit twice on the same day. The same activiteit on two different days is
-    /// legitimate and common (a reading moment that recurs on Monday and Thursday).
+    /// duplicate is refused: the same activiteit starting twice at the same time on the same day. The same activiteit
+    /// on two different days, or at two times of one day, is legitimate and common. Two different activiteiten that
+    /// overlap in time are allowed too: an agenda draws them side by side.
     /// </para>
     /// <para>
     /// <b>Whether <paramref name="datum"/> is a teaching day is not checked here.</b> Closures live on the
@@ -166,10 +167,12 @@ public sealed class Jaarplan
     /// <param name="activiteitId">The activiteit to place.</param>
     /// <param name="datum">The day it happens.</param>
     /// <param name="status">The human-in-the-loop status (Art. IV.2); a teacher's own placement is Manueel.</param>
-    /// <param name="volgorde">Position within the day.</param>
+    /// <param name="begin">When it starts that day.</param>
+    /// <param name="einde">When it ends. Must lie after <paramref name="begin"/>.</param>
     /// <exception cref="InvalidOperationException">
-    /// The activiteit is already on that day. A caller that has not checked <see cref="IsAlGeplaatstOp"/> is a
-    /// programmer error rather than teacher input, so this one is English (Art. II.2) and no handler maps it.
+    /// The activiteit already starts at that time on that day. A caller that has not checked
+    /// <see cref="IsAlGeplaatstOp"/> is a programmer error rather than teacher input, so this one is English
+    /// (Art. II.2) and no handler maps it.
     /// </exception>
     /// <remarks>
     /// <b>No class guard, since 2026-08-30.</b> An activiteit inherits its subthema's leeftijd rather than a klas
@@ -180,15 +183,16 @@ public sealed class Jaarplan
         Guid activiteitId,
         DateOnly datum,
         KoppelingStatus status,
-        int volgorde = 0)
+        TimeOnly begin,
+        TimeOnly einde)
     {
-        if (IsAlGeplaatstOp(activiteitId, datum, volgorde))
+        if (IsAlGeplaatstOp(activiteitId, datum, begin))
         {
             throw new InvalidOperationException(
-                $"Activiteit {activiteitId} is already placed on {datum:yyyy-MM-dd} in slot {volgorde}.");
+                $"Activiteit {activiteitId} already starts at {begin:HH:mm} on {datum:yyyy-MM-dd}.");
         }
 
-        var plaatsing = new Activiteitplaatsing(Id, activiteitId, datum, status, volgorde);
+        var plaatsing = new Activiteitplaatsing(Id, activiteitId, datum, status, begin, einde);
         _activiteitplaatsingen.Add(plaatsing);
 
         return plaatsing;
@@ -209,19 +213,19 @@ public sealed class Jaarplan
         _activiteitplaatsingen.Where(p => !p.IsVervangbaar).ToList();
 
     /// <summary>
-    /// Whether this activiteit already sits in that <b>slot</b> of that day. Keeps a repeated call idempotent
-    /// rather than stacking.
+    /// Whether this activiteit already starts at <paramref name="begin"/> on that day. Keeps a repeated call
+    /// idempotent rather than stacking.
     /// <para>
-    /// <b>The unit is the lesuur, not the day, and that widening is deliberate.</b> A school day is a row of
-    /// numbered lesmomenten (<see cref="Activiteitplaatsing.Volgorde"/> is the slot), and two real cases need the
-    /// same activiteit twice on one day: a hoek that runs two consecutive hours, and something a class does in the
-    /// morning and again in the afternoon. Keying the guard on the day alone refused both, and the refusal was not
-    /// protecting anything: the plan has always been able to hold several activiteiten on one day.
+    /// <b>The unit is the start time, not the day, and that widening is deliberate.</b> Two real cases need the
+    /// same activiteit twice on one day: something a class does in the morning and again in the afternoon, and a
+    /// block a teacher splits around the break. Keying the guard on the day alone refused both. Until 2026-09-11
+    /// the unit was a numbered lesuur (<c>Volgorde</c>); the start time took its place with ADR-0027, and it keeps
+    /// the one thing the guard was ever for: the same row written twice.
     /// </para>
     /// </summary>
-    public bool IsAlGeplaatstOp(Guid activiteitId, DateOnly datum, int volgorde) =>
+    public bool IsAlGeplaatstOp(Guid activiteitId, DateOnly datum, TimeOnly begin) =>
         _activiteitplaatsingen.Any(p =>
-            p.ActiviteitId == activiteitId && p.Datum == datum && p.Volgorde == volgorde);
+            p.ActiviteitId == activiteitId && p.Datum == datum && p.Begin == begin);
 
     /// <summary>The activiteit placement with this id, or null.</summary>
     public Activiteitplaatsing? VindActiviteitplaatsing(Guid plaatsingId) =>

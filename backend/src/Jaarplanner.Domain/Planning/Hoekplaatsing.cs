@@ -89,9 +89,14 @@ public sealed class Hoekplaatsing
     public IReadOnlyList<Hoekverrijking> Verrijkingen => _verrijkingen;
 
     /// <summary>
-    /// Where the hoek appears in the timetable: one row per day it takes a lesuur on. Empty when the teacher
-    /// answered "no" to putting it in the uurrooster, which is a normal state: the placement still draws a band
-    /// over its days, it just claims no hour.
+    /// Where the hoek appears in the timetable: one row per teaching day of the window, each at a clock time.
+    /// <para>
+    /// <b>Every placement has them since 2026-09-11</b> (owner: <i>"elke hoek moet een tijdstip krijgen"</i>,
+    /// ADR-0027). The sheet used to offer "not in the uurrooster", which left a corner running over its days with no
+    /// hour, drawn only as a band. The agenda is a time grid now and a corner belongs on the day at its time, so the
+    /// service writes a row for every teaching day. Rows written before that ruling may still be missing; nothing
+    /// here depends on them being present.
+    /// </para>
     /// </summary>
     public IReadOnlyList<Hoekmoment> Momenten => _momenten;
 
@@ -152,33 +157,33 @@ public sealed class Hoekplaatsing
     public bool VerwijderVerrijking(Guid verrijkingId) => _verrijkingen.RemoveAll(v => v.Id == verrijkingId) > 0;
 
     /// <summary>
-    /// Puts the hoek in the timetable on one day at one lesuur.
+    /// Puts the hoek in the timetable on one day, from <paramref name="begin"/> to <paramref name="einde"/>.
     /// <para>
-    /// The service calls this once per teaching day of the window when the teacher answers "yes" to the
-    /// uurrooster question, which is where the fifteen rows of a three-week placement come from. It is a
-    /// separate verb rather than a constructor argument precisely because the fifteen are then individually
-    /// movable: see <see cref="Hoekmoment"/>.
+    /// The service calls this once per teaching day of the window, which is where the fifteen rows of a
+    /// three-week placement come from. It is a separate verb rather than a constructor argument precisely
+    /// because the fifteen are then individually movable: see <see cref="Hoekmoment"/>.
     /// </para>
     /// </summary>
     /// <exception cref="ArgumentException">
-    /// The day lies outside the placement, or the hoek already takes that lesuur on that day. Dutch, because a
-    /// teacher dragging an appearance onto an occupied slot is the one who can act on it.
+    /// The day lies outside the placement, the end is not after the start, or the hoek already starts at that
+    /// time on that day. Dutch, because a teacher dragging an appearance onto that time is the one who can act on
+    /// it.
     /// </exception>
-    public Hoekmoment PlanIn(DateOnly datum, int volgorde)
+    public Hoekmoment PlanIn(DateOnly datum, TimeOnly begin, TimeOnly einde)
     {
-        BewaakDag(datum, volgorde, null);
+        BewaakDag(datum, begin, null);
 
-        var moment = new Hoekmoment(Id, datum, volgorde);
+        var moment = new Hoekmoment(Id, datum, begin, einde);
         _momenten.Add(moment);
         return moment;
     }
 
     /// <summary>
-    /// Moves one appearance to another day and/or lesuur. This is the flexibility the owner asked for: the hoek
-    /// runs all fortnight, and on this one Thursday it happens at a different hour.
+    /// Moves or resizes one appearance. This is the flexibility the owner asked for: the hoek runs all fortnight,
+    /// and on this one Thursday it happens after the break, or runs half an hour longer.
     /// </summary>
     /// <returns><c>false</c> when this placement holds no appearance with that id.</returns>
-    public bool VerplaatsMoment(Guid momentId, DateOnly datum, int volgorde)
+    public bool VerplaatsMoment(Guid momentId, DateOnly datum, TimeOnly begin, TimeOnly einde)
     {
         var moment = _momenten.Find(m => m.Id == momentId);
         if (moment is null)
@@ -186,8 +191,8 @@ public sealed class Hoekplaatsing
             return false;
         }
 
-        BewaakDag(datum, volgorde, momentId);
-        moment.Verplaats(datum, volgorde);
+        BewaakDag(datum, begin, momentId);
+        moment.Verplaats(datum, begin, einde);
         return true;
     }
 
@@ -253,19 +258,20 @@ public sealed class Hoekplaatsing
     }
 
     /// <summary>The rules shared by scheduling and moving one appearance.</summary>
-    private void BewaakDag(DateOnly datum, int volgorde, Guid? negeer)
+    private void BewaakDag(DateOnly datum, TimeOnly begin, Guid? negeer)
     {
         if (!Omvat(datum))
         {
             throw new ArgumentException("Die dag valt buiten de periode van de hoek.");
         }
 
-        // Twice at the same hour on the same day is the one combination that means nothing: it is the same row
-        // written twice. Two placements of the same hoek landing on one day is fine and is checked nowhere,
+        // Twice from the same start on the same day is the one combination that means nothing: it is the same row
+        // written twice. Overlapping appearances that start at different times are allowed, like two blocks side
+        // by side in any agenda, and two placements of the same hoek landing on one day are checked nowhere,
         // because that is how a teacher expresses two enrichments at once.
-        if (_momenten.Any(m => m.Id != negeer && m.Datum == datum && m.Volgorde == volgorde))
+        if (_momenten.Any(m => m.Id != negeer && m.Datum == datum && m.Begin == begin))
         {
-            throw new ArgumentException("Deze hoek staat al op dat lesuur op die dag.");
+            throw new ArgumentException("Deze hoek begint al op dat uur op die dag. Kies een ander uur.");
         }
     }
 

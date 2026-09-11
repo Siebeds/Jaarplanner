@@ -45,9 +45,10 @@ public sealed class WeekplanningController : ControllerBase
         Ok(await _service.HaalWeekplanningAsync(klasId, van, tot, cancellationToken));
 
     /// <summary>
-    /// Schedules one activiteit onto one day. <b>400</b> when the day is closed or outside the school year, when the
-    /// activiteit is already on that day, or when it belongs to another class; <b>404</b> when the class or the
-    /// activiteit does not exist; <b>200</b> with the affected week otherwise.
+    /// Schedules one activiteit onto one day at a time. <b>400</b> when the day is closed or outside the school year,
+    /// when the end is not after the start, when the activiteit already starts at that time that day, or when it is
+    /// for an age the class does not teach; <b>404</b> when the class or the activiteit does not exist; <b>200</b>
+    /// with the affected week otherwise.
     /// <para>
     /// The placement lands as <c>manueel</c> — nothing here proposes anything, so there is no status for a teacher to
     /// review (Art. IV.2).
@@ -59,7 +60,7 @@ public sealed class WeekplanningController : ControllerBase
         [FromBody] Dagplanning planning,
         CancellationToken cancellationToken) =>
         Ok(await _service.PlanActiviteitAsync(
-            klasId, planning.ActiviteitId, planning.Datum, planning.Volgorde, cancellationToken));
+            klasId, planning.ActiviteitId, planning.Datum, planning.Begin, planning.Einde, cancellationToken));
 
     /// <summary>
     /// Marks off a stretch of days for a subthema, or moves the stretch it already had (owner ruling, 2026-08-25).
@@ -92,8 +93,8 @@ public sealed class WeekplanningController : ControllerBase
             klasId, periode.SubthemaId, periode.Van, periode.Tot, cancellationToken));
 
     /// <summary>
-    /// Moves a scheduled activiteit to another day and/or position — the teacher dragging a card within the week view
-    /// (FR-6.2), persisted immediately (FR-6.5).
+    /// Moves a scheduled activiteit to another day and/or time — the teacher dragging a block in the time grid, or its
+    /// bottom edge to make it longer (FR-6.2), persisted immediately (FR-6.5).
     /// <para>
     /// <b>Reversible, unlike a thema move.</b> Nothing is rewritten and nothing is destroyed: there is no AI motivation
     /// to lose and no proposal to override, because every placement here is the teacher's own. So no confirmation step
@@ -107,7 +108,7 @@ public sealed class WeekplanningController : ControllerBase
         [FromBody] Dagwijziging wijziging,
         CancellationToken cancellationToken) =>
         Ok(await _service.VerplaatsActiviteitAsync(
-            klasId, plaatsingId, wijziging.Datum, wijziging.Volgorde, cancellationToken));
+            klasId, plaatsingId, wijziging.Datum, wijziging.Begin, wijziging.Einde, cancellationToken));
 
     /// <summary>
     /// Takes an activiteit off its day, whatever its status — an explicit teacher action is the one actor Art. IV.2
@@ -133,11 +134,13 @@ public sealed class WeekplanningController : ControllerBase
 /// <summary>The body of a scheduling request.</summary>
 /// <param name="ActiviteitId">The activiteit to schedule. Must belong to the class in the path (Art. IX.2).</param>
 /// <param name="Datum">The day. Must be a teaching day inside the school year.</param>
-/// <param name="Volgorde">
-/// Position within the day. Defaults to 0 — "first" — because a day usually holds several activiteiten and a caller
-/// that does not care about order must still get a defined one.
+/// <param name="Begin">
+/// When it starts, as <c>HH:mm:ss</c> (ADR-0027). <b>No default</b>, unlike the <c>Volgorde</c> it replaced: "first"
+/// was a sensible answer for a slot number, while a clock time nobody chose would be the tool deciding the teacher's
+/// day. A body that omits it binds to midnight and is refused, because the end cannot be before it.
 /// </param>
-public sealed record Dagplanning(Guid ActiviteitId, DateOnly Datum, int Volgorde = 0);
+/// <param name="Einde">When it ends. Must lie after <paramref name="Begin"/>.</param>
+public sealed record Dagplanning(Guid ActiviteitId, DateOnly Datum, TimeOnly Begin, TimeOnly Einde);
 
 /// <summary>The body of a request to mark off days for a subthema.</summary>
 /// <param name="SubthemaId">The subthema. Must belong to the class in the path (Art. IX.2).</param>
@@ -151,5 +154,6 @@ public sealed record Subthemaperiode(Guid SubthemaId, DateOnly Van, DateOnly Tot
 
 /// <summary>The body of a move.</summary>
 /// <param name="Datum">The target day. Must be a teaching day; the placement's current day is not validated.</param>
-/// <param name="Volgorde">Position within the target day.</param>
-public sealed record Dagwijziging(DateOnly Datum, int Volgorde = 0);
+/// <param name="Begin">When it starts on the target day. Sent unchanged by a resize.</param>
+/// <param name="Einde">When it ends. Must lie after <paramref name="Begin"/>.</param>
+public sealed record Dagwijziging(DateOnly Datum, TimeOnly Begin, TimeOnly Einde);

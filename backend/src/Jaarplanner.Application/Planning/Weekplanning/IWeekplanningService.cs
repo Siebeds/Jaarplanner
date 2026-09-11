@@ -33,7 +33,8 @@ public interface IWeekplanningService
     /// nothing regenerates away (Art. IV.2).
     /// </summary>
     /// <exception cref="OngeldigeDagplanningFout">
-    /// The day is closed or outside the year, the activiteit is already on it, or it belongs to another class.
+    /// The day is closed or outside the year, the end is not after the start, the activiteit already starts at that
+    /// time on that day, or it is for an age the class does not teach.
     /// </exception>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
     /// The class or the activiteit does not exist.
@@ -42,17 +43,10 @@ public interface IWeekplanningService
         Guid klasId,
         Guid activiteitId,
         DateOnly datum,
-        int volgorde,
+        TimeOnly begin,
+        TimeOnly einde,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Moves a scheduled activiteit to another day and/or another position within it.
-    /// <para>
-    /// <b>The placement's current day is never validated, only the target.</b> That is what makes this the route off a
-    /// day the school has since closed — the same shape as the thema move path, and for the same reason: the
-    /// application must never have to guess a position for something it is repairing.
-    /// </para>
-    /// </summary>
     /// <summary>
     /// Marks off a stretch of days for a subthema, or moves the stretch it already had (owner ruling, 2026-08-25).
     /// <para>
@@ -73,11 +67,21 @@ public interface IWeekplanningService
         DateOnly tot,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Moves a scheduled activiteit to another day and/or another time, which is also how a block is made longer or
+    /// shorter: dragging its bottom edge sends the same day and start with a new end.
+    /// <para>
+    /// <b>The placement's current day is never validated, only the target.</b> That is what makes this the route off a
+    /// day the school has since closed — the same shape as the thema move path, and for the same reason: the
+    /// application must never have to guess a position for something it is repairing.
+    /// </para>
+    /// </summary>
     Task<Weekplanningweergave> VerplaatsActiviteitAsync(
         Guid klasId,
         Guid plaatsingId,
         DateOnly datum,
-        int volgorde,
+        TimeOnly begin,
+        TimeOnly einde,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -16,6 +16,7 @@ import { dagMaand } from "../../lib/datum";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { verdeelDagen, type Verdeling } from "./verdeling";
+import { STANDAARDBEGIN, STANDAARDDUUR, alsTijd, toonTijd } from "./tijd";
 import { lijstMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
 import { IcoonGreep, IcoonPijlRechts } from "../../components/Iconen";
 
@@ -23,6 +24,15 @@ interface Voorstel {
   activiteitId: string;
   activiteitNaam: string;
   datum: string;
+  /**
+   * When it lands, as `HH:mm:ss` (ADR-0028).
+   *
+   * Every proposal starts at the ordinary start of a morning and runs for its activiteit's own default length. The
+   * planner spreads over DAYS, one activiteit per day, so nothing here has to stack two blocks in one morning; a
+   * teacher who wants another hour drags the block once it is on the grid.
+   */
+  begin: string;
+  einde: string;
 }
 
 /**
@@ -132,6 +142,8 @@ export function Subthemaplanner({
       activiteitId: activiteiten[i].id,
       activiteitNaam: activiteiten[i].naam,
       datum,
+      begin: alsTijd(STANDAARDBEGIN),
+      einde: alsTijd(STANDAARDBEGIN + (activiteiten[i].lengteInLesuren ?? 1) * STANDAARDDUUR),
     }));
   }, [gekozen, activiteiten, beschikbaar, verdeling]);
 
@@ -410,7 +422,11 @@ function Voorstelregel({ voorstel }: { voorstel: Voorstel }) {
         <IcoonGreep className="h-4 w-4" />
       </button>
       <span className="min-w-0 flex-1 truncate text-body text-inkt">{voorstel.activiteitNaam}</span>
-      <span className="mono shrink-0 text-[0.6875rem] text-inkt-zacht">{dagMaand(voorstel.datum)}</span>
+      {/* The hour as well as the day, because the grid has hours now: a preview that named only the day would be
+          silent about the one thing a teacher would otherwise have to open the agenda to find out. */}
+      <span className="mono shrink-0 text-[0.6875rem] text-inkt-zacht">
+        {dagMaand(voorstel.datum)} {toonTijd(voorstel.begin)}
+      </span>
     </li>
   );
 }

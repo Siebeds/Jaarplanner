@@ -18,6 +18,16 @@ export const ONDERDELEN = [
   { deel: "klassen", labelSleutel: "instellingen.klassen" },
   { deel: "hoeken", labelSleutel: "instellingen.hoeken" },
   { deel: "algemene-fiches", labelSleutel: "instellingen.algemeneFiches" },
+  // Last because it is the least often touched: a teacher sets light or dark once, if ever, while
+  // the three above it are the school's own content. The order lives here rather than in any one
+  // screen, so this is the only place that sentence stays true.
+  //
+  // Its label is `weergave.titel` rather than an `instellingen.*` twin: the section already owns
+  // that word, and a second key with the same Dutch in it is a key that can drift. Note what that
+  // costs, because the type checker cannot see it: this key names three things, the link here, the
+  // page title, and the `aria-label` of the light/dark radiogroup. Shortening it for the navigation
+  // renames the control for a screen reader too.
+  { deel: "weergave", labelSleutel: "weergave.titel" },
 ] as const satisfies readonly { deel: string; labelSleutel: Vertaalsleutel }[];
 
 export type Deel = (typeof ONDERDELEN)[number]["deel"];
