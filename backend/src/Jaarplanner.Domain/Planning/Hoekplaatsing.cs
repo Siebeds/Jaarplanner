@@ -200,6 +200,46 @@ public sealed class Hoekplaatsing
     public bool VerwijderMoment(Guid momentId) => _momenten.RemoveAll(m => m.Id == momentId) > 0;
 
     /// <summary>
+    /// Gives every appearance of this run the same hours, each on the day it is already on (owner, 2026-09-11: <i>"ik
+    /// wil op het detailscherm van de hoeken de mogelijkheid om de uren aan te passen"</i>).
+    /// <para>
+    /// <b>Every appearance, the ones moved by hand included.</b> The owner ruled it that way the same day: new hours
+    /// typed for the run mean "the hoek runs then", and a Thursday she once shortened is part of the run. The detail
+    /// sheet warns before saving when a day currently differs, so the overwrite is one she was told about.
+    /// </para>
+    /// <para>
+    /// <b>Two appearances on one day become one.</b> That only happens after a day was dragged onto another one, and
+    /// at the same hours they would be the same row written twice, which <see cref="PlanIn"/> refuses. The earliest
+    /// stays, the rest go, and the count comes back so the caller does not have to pretend nothing was removed.
+    /// </para>
+    /// </summary>
+    /// <returns>How many appearances were folded into another one on the same day. Nearly always zero.</returns>
+    /// <exception cref="ArgumentException">
+    /// The end is not after the start, in which case nothing changed. Dutch: she typed both times.
+    /// </exception>
+    public int ZetUren(TimeOnly begin, TimeOnly einde)
+    {
+        // Checked before anything is touched, so a refusal leaves the run exactly as it was, doubled days included.
+        Hoekmoment.RequireTijden(begin, einde);
+
+        var dubbel = _momenten
+            .GroupBy(m => m.Datum)
+            .SelectMany(dag => dag.OrderBy(m => m.Begin).Skip(1))
+            .ToList();
+        foreach (var moment in dubbel)
+        {
+            _momenten.Remove(moment);
+        }
+
+        foreach (var moment in _momenten)
+        {
+            moment.Verplaats(moment.Datum, begin, einde);
+        }
+
+        return dubbel.Count;
+    }
+
+    /// <summary>
     /// Moves the placement to a new range.
     /// <para>
     /// <b>Enrichments block the move; appearances travel with it.</b> The asymmetry is deliberate and it tracks

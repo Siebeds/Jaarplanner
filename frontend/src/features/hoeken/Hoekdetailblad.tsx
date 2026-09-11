@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
-import { Tekstvlak } from "../../components/ui/Veld";
+import { Invoer, Tekstvlak } from "../../components/ui/Veld";
 import { IcoonPlus } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
 import { periode as periodeTekst } from "../../lib/datum";
@@ -10,11 +10,13 @@ import { t, telWoord } from "../../i18n";
 import {
   useBewaarHoekverrijking,
   useVerwijderHoekverrijking,
+  useZetHoekuren,
+  type HoekmomentWeergave,
   type HoekplaatsingWeergave,
 } from "./gegevens";
 
 /**
- * One placed hoek: which days it runs, what is in it, and the three sizes of undo.
+ * One placed hoek: which days it runs, at which hours, what is in it, and the three sizes of undo.
  *
  * **THIS SHEET EXISTS BECAUSE THE FEATURE SHIPPED WITHOUT IT AND WAS BROKEN BY ITS ABSENCE.** An
  * antagonist audit found two things that were the same missing screen twice. A teacher could drop a
@@ -27,6 +29,16 @@ import {
  * is het read-only nadat ik opgeslagen heb"). Showing it and never letting her change it was the same
  * defect one step further on: a typo in the one field carrying the pedagogy was permanent unless the
  * whole placement was deleted and redone.
+ *
+ * **It edits the hours of the run since 2026-09-11** (owner: "ik wil op het detailscherm van de hoeken
+ * de mogelijkheid om de uren aan te passen"). Every day gets the new hours, the ones she moved by hand
+ * included, which is the owner's ruling of the same day; when a day currently differs, the form says so
+ * before she saves rather than after.
+ *
+ * **The hours are printed per group, not read off the first day.** This line used to take the first
+ * appearance and present it as the run's: after she shortened only the Monday it said "8:00 - 10:00, op
+ * 4 schooldagen" while three of the four still ran to 11:50. Each distinct stretch of hours now has its
+ * own line and its own count, so the line is true whatever she dragged.
  *
  * **What it still does not offer is a SECOND verrijking for a later stretch of the window.** The
  * domain and the endpoint take one, and a second one needs its own two dates, which is a control this
@@ -58,8 +70,10 @@ export function Hoekdetailblad({
   onVerwijder: () => void;
   onSluit: () => void;
 }) {
+  const id = useId();
   const bewaar = useBewaarHoekverrijking();
   const verwijderVerrijking = useVerwijderHoekverrijking();
+  const zetUren = useZetHoekuren();
 
   /**
    * Which verrijking is open in the form: its id, `"nieuw"`, or nothing.
@@ -71,18 +85,40 @@ export function Hoekdetailblad({
   const [tekst, setTekst] = useState("");
   const [leegFout, setLeegFout] = useState(false);
 
-  // The first appearance, which is the ordinary one: the service writes them all at the hour the sheet asked for.
-  // A teacher who dragged one Thursday elsewhere has changed that one row, and the block on the day is where she
-  // reads that; this line says what the run does, not what every row of it does.
-  const eerste = plaatsing.momenten[0];
+  // The hours form. `HH:mm`, which is what a time input reads and writes; the seconds are added on save.
+  const [urenOpen, setUrenOpen] = useState(false);
+  const [begin, setBegin] = useState("");
+  const [einde, setEinde] = useState("");
+  // `HH:mm` sorts as it reads, so comparing the strings is comparing the times.
+  const urenOngeldig = begin === "" || einde === "" || einde <= begin;
+
+  const groepen = useMemo(() => uurgroepen(plaatsing.momenten), [plaatsing.momenten]);
+  const gewoon = groepen[0];
+  // Days, not rows: after a day was dragged onto another one, that other day holds two rows.
+  const dagen = new Set(plaatsing.momenten.map((m) => m.datum)).size;
+  const afwijkendeDagen = gewoon
+    ? new Set(
+        plaatsing.momenten.filter((m) => m.begin !== gewoon.begin || m.einde !== gewoon.einde).map((m) => m.datum),
+      ).size
+    : 0;
+
   const serverReden = fout instanceof ApiError ? fout.detail : undefined;
+  const drukBezig = bezig || bewaar.isPending || verwijderVerrijking.isPending || zetUren.isPending;
 
-  const drukBezig = bezig || bewaar.isPending || verwijderVerrijking.isPending;
+  // Focus follows the form: into its first field when it opens, back to the button that opened it when it closes.
+  // Without the second half a keyboard user who saves lands on the top of the page, because the control that had
+  // focus is gone. By id rather than ref because neither `Knop` nor `Invoer` passes a ref through.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (urenOpen) document.getElementById(`${id}-begin`)?.focus();
+    else if (wasOpen.current) document.getElementById(`${id}-uren`)?.focus();
+    wasOpen.current = urenOpen;
+  }, [urenOpen, id]);
 
-  function beginBewerken(id: string, huidige: string) {
+  function beginBewerken(verrijkingId: string, huidige: string) {
     bewaar.reset();
     setLeegFout(false);
-    setBewerkt(id);
+    setBewerkt(verrijkingId);
     setTekst(huidige);
   }
 
@@ -107,6 +143,22 @@ export function Hoekdetailblad({
         tekst: schoon,
       },
       { onSuccess: () => setBewerkt(null) },
+    );
+  }
+
+  function beginUren() {
+    if (!gewoon) return;
+    zetUren.reset();
+    // Filled with the hours most days have, which is what she is most likely adjusting from.
+    setBegin(gewoon.begin.slice(0, 5));
+    setEinde(gewoon.einde.slice(0, 5));
+    setUrenOpen(true);
+  }
+
+  function bewaarUren() {
+    zetUren.mutate(
+      { plaatsingId: plaatsing.id, begin: `${begin}:00`, einde: `${einde}:00` },
+      { onSuccess: () => setUrenOpen(false) },
     );
   }
 
@@ -144,20 +196,93 @@ export function Hoekdetailblad({
 
         <div>
           <p className="text-micro uppercase text-inkt-zwak">{t("hoekdetail.uurrooster")}</p>
+
           {/* Each branch says only what it knows. A placement with no rows is one made before every hoek had to
-              have a time (ADR-0028), so the sentence says that rather than inventing an hour for it. */}
-          <p className="mt-0.5 text-body text-inkt">
-            {eerste === undefined
-              ? t("hoekdetail.geenUur")
-              : t("hoekdetail.opUur", {
-                  periode: toonBereik(eerste.begin, eerste.einde),
-                  dagen: telWoord(
-                    plaatsing.momenten.length,
-                    "hoekdetail.eenSchooldag",
-                    "hoekdetail.aantalSchooldagen",
-                  ),
+              have a time (ADR-0028), so the sentence says that rather than inventing an hour for it, and offers no
+              hours to change: there is no row for them to land on. */}
+          {gewoon === undefined ? (
+            <p className="mt-0.5 text-body text-inkt">{t("hoekdetail.geenUur")}</p>
+          ) : urenOpen ? (
+            <div className="mt-1.5 flex flex-col gap-2">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="min-w-28 flex-1">
+                  <label htmlFor={`${id}-begin`} className="text-micro text-inkt-zacht">
+                    {t("hoekdetail.van")}
+                  </label>
+                  <Invoer
+                    id={`${id}-begin`}
+                    type="time"
+                    step={900}
+                    value={begin}
+                    disabled={zetUren.isPending}
+                    onChange={(e) => setBegin(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="min-w-28 flex-1">
+                  <label htmlFor={`${id}-einde`} className="text-micro text-inkt-zacht">
+                    {t("hoekdetail.tot")}
+                  </label>
+                  <Invoer
+                    id={`${id}-einde`}
+                    type="time"
+                    step={900}
+                    value={einde}
+                    disabled={zetUren.isPending}
+                    onChange={(e) => setEinde(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <p className="text-micro text-inkt-zacht">
+                {t("hoekdetail.geldtVoor", {
+                  dagen: telWoord(dagen, "hoekdetail.eenSchooldag", "hoekdetail.aantalSchooldagen"),
                 })}
-          </p>
+              </p>
+
+              {/* The owner's condition for overwriting a day she moved by hand: she is told before, not after.
+                  Only where a day actually differs, so the sentence never warns about nothing. */}
+              {afwijkendeDagen > 0 ? (
+                <p className="text-meta font-medium text-attentie-inkt">
+                  {telWoord(afwijkendeDagen, "hoekdetail.afwijkendEen", "hoekdetail.afwijkendAantal")}
+                </p>
+              ) : null}
+
+              {urenOngeldig && begin !== "" && einde !== "" ? (
+                <p role="alert" className="text-meta font-medium text-attentie-inkt">
+                  {t("hoekdetail.eindeVoorBegin")}
+                </p>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2">
+                {/* Disabled on an impossible pair rather than sending it: the refusal would teach nothing the
+                    sentence above does not already say. */}
+                <Knop type="button" onClick={bewaarUren} disabled={zetUren.isPending || urenOngeldig}>
+                  {zetUren.isPending ? t("hoekdetail.bewarenBezig") : t("hoekdetail.bewaren")}
+                </Knop>
+                <Knop rang="stil" type="button" onClick={() => setUrenOpen(false)} disabled={zetUren.isPending}>
+                  {t("hoekdetail.annuleren")}
+                </Knop>
+              </div>
+
+              {zetUren.isError ? <Melding titel={t("hoekdetail.urenMislukt")} reden={zetUren.error} /> : null}
+            </div>
+          ) : (
+            <div className="mt-0.5 flex flex-col items-start">
+              {groepen.map((groep) => (
+                <p key={`${groep.begin}-${groep.einde}`} className="text-body text-inkt">
+                  {t("hoekdetail.opUur", {
+                    periode: toonBereik(groep.begin, groep.einde),
+                    dagen: telWoord(groep.dagen, "hoekdetail.eenSchooldag", "hoekdetail.aantalSchooldagen"),
+                  })}
+                </p>
+              ))}
+              <Knop id={`${id}-uren`} rang="stil" type="button" disabled={drukBezig} onClick={beginUren} className="mt-2">
+                {t("hoekdetail.urenAanpassen")}
+              </Knop>
+            </div>
+          )}
         </div>
 
         <div>
@@ -276,6 +401,32 @@ export function Hoekdetailblad({
       </div>
     </Blad>
   );
+}
+
+/** One stretch of hours and how many days run at it. */
+interface Uurgroep {
+  begin: string;
+  einde: string;
+  dagen: number;
+}
+
+/**
+ * The run's appearances grouped by their hours, the most common first.
+ *
+ * Counting rows within a group is counting days: the aggregate refuses the same hoek starting twice at one time on
+ * one day, so two rows with the same hours always sit on two different days.
+ */
+function uurgroepen(momenten: readonly HoekmomentWeergave[]): Uurgroep[] {
+  const perUren = new Map<string, Uurgroep>();
+
+  for (const moment of momenten) {
+    const sleutel = `${moment.begin}-${moment.einde}`;
+    const groep = perUren.get(sleutel);
+    if (groep) groep.dagen += 1;
+    else perUren.set(sleutel, { begin: moment.begin, einde: moment.einde, dagen: 1 });
+  }
+
+  return [...perUren.values()].sort((a, b) => b.dagen - a.dagen || a.begin.localeCompare(b.begin));
 }
 
 /**

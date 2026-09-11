@@ -91,6 +91,56 @@ public sealed class HoekplaatsingTests
     }
 
     [Fact]
+    public void Nieuwe_uren_gelden_voor_elke_dag_ook_een_die_apart_verzet_was()
+    {
+        // Owner ruling 2026-09-11: new hours for the run reach the Tuesday she once lengthened by hand as well.
+        var plaatsing = Plaatsing();
+        plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
+        var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
+        plaatsing.VerplaatsMoment(dinsdag.Id, dinsdag.Datum, HalfTwee, new TimeOnly(15, 0));
+
+        Assert.Equal(0, plaatsing.ZetUren(new TimeOnly(9, 0), new TimeOnly(10, 30)));
+
+        Assert.All(plaatsing.Momenten, m => Assert.Equal(new TimeOnly(9, 0), m.Begin));
+        Assert.All(plaatsing.Momenten, m => Assert.Equal(new TimeOnly(10, 30), m.Einde));
+        // Each stays on its own day: this changes when, never which days.
+        Assert.Equal([new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 8)], plaatsing.Momenten.Select(m => m.Datum).Order());
+    }
+
+    [Fact]
+    public void Twee_momenten_op_een_dag_worden_een_wanneer_ze_dezelfde_uren_krijgen()
+    {
+        // Tuesday dragged onto Monday morning: legal, because it starts at another time than Monday's own row. At
+        // the same hours the two would be one row written twice, so the earliest stays.
+        var plaatsing = Plaatsing();
+        var maandag = plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
+        var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
+        plaatsing.VerplaatsMoment(dinsdag.Id, maandag.Datum, new TimeOnly(9, 0), new TimeOnly(9, 50));
+
+        Assert.Equal(1, plaatsing.ZetUren(new TimeOnly(10, 0), new TimeOnly(11, 0)));
+
+        var enige = Assert.Single(plaatsing.Momenten);
+        Assert.Equal(dinsdag.Id, enige.Id);
+        Assert.Equal(maandag.Datum, enige.Datum);
+        Assert.Equal(new TimeOnly(10, 0), enige.Begin);
+    }
+
+    [Fact]
+    public void Nieuwe_uren_met_een_einde_voor_het_begin_laten_de_reeks_zoals_ze_was()
+    {
+        var plaatsing = Plaatsing();
+        var maandag = plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
+        plaatsing.PlanIn(maandag.Datum, new TimeOnly(9, 0), new TimeOnly(9, 50));
+
+        var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(TweeUurTwintig, HalfTwee));
+
+        Assert.Contains("einde", fout.Message);
+        // Neither rewritten nor folded: the check comes before either.
+        Assert.Equal(2, plaatsing.Momenten.Count);
+        Assert.Contains(plaatsing.Momenten, m => m.Begin == HalfTwee && m.Einde == TweeUurTwintig);
+    }
+
+    [Fact]
     public void Een_losse_dag_kan_weg_zonder_de_rest_mee_te_nemen()
     {
         var plaatsing = Plaatsing();
