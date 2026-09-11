@@ -85,8 +85,8 @@ describe("Tijdraster", () => {
     toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])]);
 
     const knop = screen.getByRole("button", { name: /kringgesprek/ });
-    // The grid starts at 7:00 and an hour is 56 pixels: 9:00 is two hours down, and 50 minutes is 46.67 of them.
-    expect(plaats(knop).top).toBe(`${120 * (56 / 60)}px`);
+    // The grid draws from midnight and an hour is 56 pixels: 9:00 is nine hours down, and 50 minutes is 46.67 of them.
+    expect(plaats(knop).top).toBe(`${540 * (56 / 60)}px`);
     expect(plaats(knop).height).toBe(`${50 * (56 / 60)}px`);
   });
 
@@ -130,7 +130,7 @@ describe("Tijdraster", () => {
     toon([dag()], { hoekmomenten: [hoek("13:30:00", "14:20:00")], onOpenHoek: geopend });
 
     const knop = screen.getByRole("button", { name: /bouwhoek/ });
-    expect(plaats(knop).top).toBe(`${390 * (56 / 60)}px`);
+    expect(plaats(knop).top).toBe(`${810 * (56 / 60)}px`);
 
     fireEvent.click(knop);
     expect(geopend).toHaveBeenCalledWith("hp-1");
@@ -146,11 +146,101 @@ describe("Tijdraster", () => {
     expect(gevraagd).not.toHaveBeenCalled();
   });
 
-  it("verbreedt het raster voor een blok dat voor zeven uur begint", () => {
-    toon([dag([activiteit("uitstap", "06:30:00", "16:00:00")])]);
+  it("tekent elk uur van het etmaal, en opent op zeven uur", () => {
+    const { container } = toon([dag([activiteit("uitstap", "06:30:00", "16:00:00")])]);
 
-    // The grid now starts at 6:00, so the block sits half an hour down rather than being clipped at the top.
-    expect(plaats(screen.getByRole("button", { name: /uitstap/ })).top).toBe(`${30 * (56 / 60)}px`);
+    // Every hour is drawn, so a 6:30 trip is not clipped AND an empty 6:00 can still be clicked. The label of the
+    // first hour is 0:00 and the last is 23:00: the boundary at midnight gets no label, because one drawn on the
+    // very last pixel would hang outside the scroller, which is the half-cut hour this replaces.
+    expect(screen.getByText("0:00")).toBeInTheDocument();
+    expect(screen.getByText("23:00")).toBeInTheDocument();
+    expect(screen.queryByText("24:00")).not.toBeInTheDocument();
+    expect(plaats(screen.getByRole("button", { name: /uitstap/ })).top).toBe(`${390 * (56 / 60)}px`);
+
+    // And what a teacher sees of it before scrolling is 7:00 downwards. jsdom lays nothing out, so the scroll
+    // position is the only half of "default 7u-18u" it can check; the height of the window is the browser pass.
+    const scroller = container.querySelector(".overflow-y-auto") as HTMLElement;
+    expect(scroller.scrollTop).toBe(7 * 56);
+  });
+
+  /**
+   * The day and the two bands above it (owner, 2026-09-11).
+   *
+   * A run's name may be dropped only where a day on the same row is carrying it, and that day is the Monday. So the
+   * rows without a Monday in them are the ones that used to draw two grey bars with nothing written on them: the day
+   * view, and the phone's three-day week when it is anchored past Monday.
+   */
+  const lopendeReeks = [
+    { subthemaId: "s1", subthemaNaam: "de speelhoek", van: "2026-09-07", tot: "2026-09-18", aantalDagen: 4 },
+  ];
+  const midden = {
+    hoekmomenten: [],
+    reeksenPerDag: new Map([
+      ["2026-09-10", lopendeReeks],
+      ["2026-09-11", lopendeReeks],
+      ["2026-09-12", lopendeReeks],
+      ["2026-09-14", lopendeReeks],
+    ]),
+    vakken: [
+      { blokStart: "2026-09-01", van: "2026-09-01", tot: "2026-10-01", themas: [{ id: "t1", naam: "Ik en mijn klas" }] },
+    ],
+    onVoegToe: () => {},
+    onOpen: () => {},
+    onOpenHoek: () => {},
+    onWijzigTijd: () => {},
+  };
+  const toonRij = (datums: string[]) =>
+    render(
+      <DndContext>
+        <Tijdraster dagen={datums.map((datum) => dag([], { datum }))} {...midden} />
+      </DndContext>,
+    );
+  const themaLabels = () => screen.getAllByText(t("periode.themaVervolg", { naam: "Ik en mijn klas" }));
+
+  it("noemt allebei de balken op een rij zonder maandag erin, in de dag en op een telefoonweek", () => {
+    // One column, a Friday in the middle of both runs: what the owner was looking at.
+    const dagweergave = toonRij(["2026-09-11"]);
+    expect(themaLabels()[0].className).not.toMatch(/hidden/);
+    expect(screen.getByText(t("periode.subthemaVervolg", { naam: "de speelhoek" })).className).not.toMatch(/hidden/);
+    dagweergave.unmount();
+
+    // The phone's week is three days starting at the anchored one, so an anchor past Monday gives a row with no
+    // Monday in it. Same two nameless bars, and the reason the rule counts Mondays rather than columns.
+    toonRij(["2026-09-10", "2026-09-11", "2026-09-12"]);
+    expect(themaLabels().every((label) => !/hidden/.test(label.className))).toBe(true);
+    expect(screen.getAllByText(t("periode.subthemaVervolg", { naam: "de speelhoek" }))).toHaveLength(3);
+  });
+
+  it("laat de rest van een rij mét maandag wel zwijgen", () => {
+    // The rule the week view had, and keeps. Monday carries the name for the row; the Tuesday beside it renders no
+    // subthema strip text at all, and its thema band keeps the class that takes the word away from `xl`.
+    toonRij(["2026-09-14", "2026-09-15"]);
+
+    // Monday's own label says "… de speelhoek" too, because the run began the week before: it is the carrier, not
+    // the start. Exactly one, so the Tuesday is the day that went quiet.
+    expect(screen.getAllByText(t("periode.subthemaVervolg", { naam: "de speelhoek" }))).toHaveLength(1);
+    expect(themaLabels()).toHaveLength(1);
+    expect(themaLabels()[0].className).toMatch(/hidden/);
+  });
+
+  it("zegt tegen een schermlezer wat er op de dag loopt, want de balken zijn aria-hidden", () => {
+    // The bands are `aria-hidden` on the promise that the day says the same facts once. This grid's day view has no
+    // day button to carry them, so without this the subthema is readable on screen and nowhere else.
+    toonRij(["2026-09-11"]);
+
+    expect(screen.getByText(/de speelhoek/, { selector: ".sr-only" })).toBeInTheDocument();
+    expect(screen.getByText(/Ik en mijn klas/, { selector: ".sr-only" })).toBeInTheDocument();
+  });
+
+  it("hangt dezelfde zin aan de dagknop van de weekweergave", () => {
+    render(
+      <DndContext>
+        <Tijdraster dagen={[dag([], { datum: "2026-09-11" })]} {...midden} onKiesDag={() => {}} />
+      </DndContext>,
+    );
+
+    // One control, one reading: the button a screen reader lands on names the date AND what runs on it.
+    expect(screen.getByRole("button", { name: /vrijdag 11 september.*de speelhoek/ })).toBeInTheDocument();
   });
 
   it("laat de dagkop van de weekweergave zijn eigen dag openen", () => {

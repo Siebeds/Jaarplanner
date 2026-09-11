@@ -66,6 +66,32 @@ quarter-hour step and the 50-minute default are **client-side presentation const
 not persisted per school. That is the 2026-08-24 instruction's reasoning honoured rather than reversed: the tool still
 does not claim to know a school's hours; it draws the hours the teacher herself picked.
 
+> **Amended 2026-09-11, later the same day. The principle above stands; three of its numbers do not.** The owner
+> looked at the day view and asked for two things this decision had merged into one: *"ik wil wel de mogelijkheid voor
+> de leerkrachten om op andere uren buiten 7u-18u dingen aan te duiden en in te plannen maar default moet gewoon
+> 7u-17/18u zichtbaar zijn"*, and, when offered an expand control: *"ik wil gewoon kunnen scrollen maar default moet
+> het wel op 7u-18u staan"*.
+>
+> **So the drawn range and the visible window are now two different facts.** The grid draws **0:00–24:00**
+> (`HEEL_DE_DAG`), because an hour it does not draw is an hour a teacher cannot click, drag to or resize into; the
+> window it opens is **7:00–18:00**, scrolled to **7:00**, sized to exactly those eleven hours. Read "the grid's
+> visible range (7:00–18:00, opening scrolled to 8:00)" above as **"the grid's default window (7:00–18:00, opening
+> scrolled to 7:00)"**; 8:00 was this decision's own default and the owner replaced it. The `Deciders` line naming
+> "the visible hours" among the four defaults accepted on 2026-09-11 refers to the original three numbers and is
+> superseded here for that clause only.
+>
+> **Nothing else in decision 5 moves.** The constants stay client-side, in `tijd.ts`, and are still not persisted per
+> school, per klas or per schooljaar. Widening the drawn range to the whole day removes an assumption about school
+> hours rather than adding one, so the 2026-08-24 reasoning is honoured harder than before.
+>
+> **One caveat the pixels impose.** The window is *at most* eleven hours: it is `clamp(24rem, 100dvh - 21rem, 616px)`,
+> so from roughly 950px of viewport height it is the full 7:00–18:00, and on a 390×844 phone it is 508px, which is
+> 7:00 to about 16:00. The rest of the default day is a scroll away there rather than on screen. Recorded because the
+> owner's default is a promise about what he sees, and on a phone it is one the pixels cannot keep.
+>
+> Amended in place rather than superseded by a new ADR: the reasoning survives intact and only a parenthetical
+> enumeration was falsified. Found by the antagonist round on the day-view fixes.
+
 **6. Existing rows are converted roughly, and that is a ruling rather than an oversight.** The migration maps
 `volgorde n` to `08:30 + n × 50 minutes` and the end to `begin + lengte_in_lesuren × 50 minutes`. It is arithmetic
 about a bell schedule nobody recorded, so it cannot be right; the owner ruled it good enough because every row it

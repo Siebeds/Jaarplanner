@@ -31,6 +31,7 @@ export function Themastroken({
   vak,
   datum,
   dicht,
+  altijdNaam,
   className,
 }: {
   /** The themaperiode this day sits in, or undefined between two periods, where there is none. */
@@ -38,6 +39,13 @@ export function Themastroken({
   datum: string;
   /** The month cell, where 16 pixels of band is already a seventh of the cell. */
   dicht?: boolean;
+  /**
+   * There is no row of neighbouring days to carry the name instead, so the word is never dropped.
+   *
+   * The day view of the agenda: one column, and a band with nothing written on it there is not "and it goes on" but
+   * a grey stripe with no explanation, which is exactly how the owner read it on 2026-09-11.
+   */
+  altijdNaam?: boolean;
   className?: string;
 }) {
   if (!vak) return null;
@@ -75,8 +83,8 @@ export function Themastroken({
         ) : (
           // Mid band. The month cell drops the word entirely, as its strip does; the week view keeps
           // it below `xl`, where the seven columns have folded into a stack and there is no row left
-          // for a blank band to continue along.
-          <span className={cn("truncate", dicht ? "hidden" : "xl:hidden")}>
+          // for a blank band to continue along. A single column never drops it: see `altijdNaam`.
+          <span className={cn("truncate", !altijdNaam && (dicht ? "hidden" : "xl:hidden"))}>
             {t("periode.themaVervolg", { naam })}
           </span>
         )}

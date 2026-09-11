@@ -10,14 +10,26 @@
  * it snaps to, and they live together so a school setting can later replace them in one file.
  */
 
-/** First hour the grid draws. Earlier placements widen it rather than being clipped; see `rasterbereik`. */
+/**
+ * The hours a teacher sees without scrolling, and where the grid opens.
+ *
+ * **These are not the hours the grid draws.** It draws the whole day (`HEEL_DE_DAG`); these two say which stretch of
+ * it is on screen when the agenda arrives. Owner, 2026-09-11: *"ik wil gewoon kunnen scrollen maar default moet het
+ * wel op 7u-18u staan"*, so an opvang at 6:45 or an oudercontact at 19:30 is a scroll away rather than behind a
+ * control, and the ordinary school day is still what opens.
+ */
 export const DAGBEGIN = 7 * 60;
-
-/** Last hour the grid draws. */
 export const DAGEINDE = 18 * 60;
 
-/** Where the grid is scrolled when it opens: the start of an ordinary school day. */
-export const OPENEN_OP = 8 * 60;
+/**
+ * The hours the grid draws: all of them.
+ *
+ * A teacher may pick any time, so every time has to be reachable by the gestures that make one: clicking an empty
+ * hour, dragging a block to it. Drawing only the default window and widening it for what already falls outside (which
+ * is what this did until 2026-09-11) reached the blocks but not the empty hours: an hour the grid does not draw is an
+ * hour a teacher cannot click.
+ */
+export const HEEL_DE_DAG = { van: 0, tot: 24 * 60 } as const;
 
 /** A drag, a resize and a click all land on a quarter of an hour. */
 export const STAP = 15;
@@ -68,24 +80,6 @@ export const toonBereik = (begin: string | number, einde: string | number) =>
 
 /** To the nearest quarter of an hour. */
 export const rond = (minuten: number, stap = STAP) => Math.round(minuten / stap) * stap;
-
-/**
- * The hours the grid has to draw for one screen: the default window, widened to hold everything on it.
- *
- * **Widened rather than clipped**, because a block the grid cannot reach is a block a teacher cannot move. A school
- * trip that starts at 6:30 pulls the top of the grid up to 6:00 for as long as it is on screen.
- */
-export function rasterbereik(blokjes: readonly { begin: number; einde: number }[]): { van: number; tot: number } {
-  let van = DAGBEGIN;
-  let tot = DAGEINDE;
-
-  for (const blokje of blokjes) {
-    if (blokje.begin < van) van = Math.floor(blokje.begin / 60) * 60;
-    if (blokje.einde > tot) tot = Math.ceil(blokje.einde / 60) * 60;
-  }
-
-  return { van, tot };
-}
 
 /** Something occupying a stretch of one day. */
 export interface Blokje {
