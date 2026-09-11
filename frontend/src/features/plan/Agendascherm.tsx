@@ -612,8 +612,8 @@ export function Agendascherm() {
             {/* The range, its arrows and the way back to today, together and at heading size. Navigation
                 next to the thing it moves: the arrows used to sit up in the chrome, three controls away
                 from the only label that told you what pressing them had done. */}
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+              <div className="flex min-w-0 items-start gap-2">
                 <button
                   type="button"
                   aria-label={t("periode.vorige")}
@@ -631,45 +631,73 @@ export function Agendascherm() {
                   <IcoonPijlRechts className="h-4 w-4" />
                 </button>
 
-                <h2 className="ml-1 min-w-0 truncate font-display text-[1.375rem] text-inkt sm:text-[1.625rem]">
-                  {ankerLabel}
-                </h2>
+                <div className="ml-1 min-w-0">
+                  <h2 className="truncate font-display text-[1.375rem] leading-9 text-inkt sm:text-[1.625rem]">
+                    {ankerLabel}
+                  </h2>
 
-                {weekLabel ? (
-                  <span className="mono shrink-0 rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
-                    {weekLabel}
-                  </span>
-                ) : null}
+                  {/* A caption under the heading, not a row of chips beside it. The owner read the
+                      filled pills as buttons (2026-09-11), and they were not: nothing here can be
+                      pressed. So no fill, no border, no radius, and the size and ink step down from
+                      the heading instead of sitting level with it. */}
+                  {weekLabel ? (
+                    <p className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-1 text-meta text-inkt-zacht">
+                      <span className="shrink-0 tabular-nums">{weekLabel}</span>
 
-                {/* THE PERIOD AND ITS THEMA ARE FACTS ABOUT ONE DAY, so they are only printed where
-                    the view IS one day.
+                      {/* THE PERIOD AND ITS THEMA ARE FACTS ABOUT ONE DAY, so they are only printed
+                          where the view IS one day.
 
-                    They used to be printed always, derived from the anchored day, above a grid
-                    showing a whole month. On this school year the periods end on the 1st and paging
-                    a month keeps the day of the month, so a teacher who paged from september stood
-                    on 1 november and read "Periode 2 okt - 1 nov" over a grid of which that period
-                    owned not one day, with the thema chip gone because that period holds none. In
-                    october the same drift printed september's thema as a fact.
+                          They used to be printed always, derived from the anchored day, above a grid
+                          showing a whole month. On this school year the periods end on the 1st and
+                          paging a month keeps the day of the month, so a teacher who paged from
+                          september stood on 1 november and read "Periode 2 okt - 1 nov" over a grid of
+                          which that period owned not one day, with the thema chip gone because that
+                          period holds none. In october the same drift printed september's thema as a
+                          fact.
 
-                    In the month and week views the answer is on the days instead, where it can differ
-                    per day: `Themastroken`. */}
-                {weergave === "dag" ? (
-                  <>
-                    <span className="shrink-0 rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
-                      {blok
-                        ? `${t("periode.periodeLabel")} ${periodeTekst(blok.start, blok.eind)}`
-                        : t("periode.tussenPeriodes")}
-                    </span>
+                          In the month and week views the answer is on the days instead, where it can
+                          differ per day: `Themastroken`. */}
+                      {weergave === "dag" ? (
+                        blok ? (
+                          <>
+                            <span className="shrink-0">
+                              {t("periode.periodeLabel")}{" "}
+                              <span className="text-inkt">{periodeTekst(blok.start, blok.eind)}</span>
+                            </span>
 
-                    <span className="min-w-0 max-w-64 truncate rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
-                      {themaNamen.length === 0
-                        ? t("periode.geenThema")
-                        : themaNamen.length === 1
-                          ? themaNamen[0]
-                          : t("periode.themaMeer", { naam: themaNamen[0], aantal: themaNamen.length - 1 })}
-                    </span>
-                  </>
-                ) : null}
+                            {/* The thema carries the same left edge as its band in the month and week
+                                views, by the same rule: the accent only on the day the period begins,
+                                and the neutral edge when the period holds nothing. That edge is what
+                                marks this name as the thema without a label in front of it. */}
+                            <span
+                              className={cn(
+                                "min-w-0 max-w-64 truncate border-l-2 pl-2",
+                                themaNamen.length === 0 ? "text-inkt-zacht" : "font-medium text-inkt",
+                                blok.start === anker
+                                  ? themaNamen.length === 0
+                                    ? "border-l-lijn-veld"
+                                    : "border-l-accent"
+                                  : themaNamen.length === 0
+                                    ? "border-l-lijn"
+                                    : "border-l-lijn-sterk",
+                              )}
+                            >
+                              {themaNamen.length === 0
+                                ? t("periode.geenThema")
+                                : themaNamen.length === 1
+                                  ? themaNamen[0]
+                                  : t("periode.themaMeer", { naam: themaNamen[0], aantal: themaNamen.length - 1 })}
+                            </span>
+                          </>
+                        ) : (
+                          // Between two periods there is no thema to be missing, so "Nog geen thema"
+                          // would promise one. Say less: only that the day falls outside a period.
+                          <span className="shrink-0">{t("periode.tussenPeriodes")}</span>
+                        )
+                      ) : null}
+                    </p>
+                  ) : null}
+                </div>
               </div>
 
               {/* The button when there is a today to go to, and the reason when there is not. Never a
