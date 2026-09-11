@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { Navigatie } from "./Navigatie";
-import { useHoekenpaneel } from "../state/hoekenpaneel";
+import { useZijkolom } from "./zijkolom";
 import { t } from "../i18n";
 import { cn } from "../lib/cn";
 
@@ -15,20 +15,23 @@ import { cn } from "../lib/cn";
  * column is then a 56px rail plus a 240px panel, and a screen that kept reserving 240 would run its
  * first inches underneath the panel. It is computed here rather than in the panel because this is the
  * one element that already owns the reservation, and two places computing it is how they drift.
+ * **It grows the same way in Instellingen** (owner, 2026-09-11), whose parts stand in that column;
+ * `useZijkolom` answers for both, and `Navigatie` asks it the same question for the rail.
  *
- * *Reserved even on a screen that renders no panel, since only the agenda does.* The store is false
- * everywhere else, so the wider padding only ever applies while the panel is actually up. **That
- * guarantee is made by `Navigatie`**, which closes the panel on the way off the agenda; it was not
- * true before that (owner, 2026-08-31), and this sentence asserted it anyway.
+ * *The panel's half of that question is a store, read even on a screen that renders no panel.* The
+ * store is false off the agenda, so outside Instellingen the wider padding only applies while the
+ * panel is actually up. **That guarantee is made by `Navigatie`**, which closes the panel on the way
+ * off the agenda; it was not true before that (owner, 2026-08-31), and this sentence asserted it
+ * anyway, as it did again on 2026-09-11 until Instellingen's column was written into it.
  */
 export function Schil() {
-  const paneelOpen = useHoekenpaneel((s) => s.open);
+  const zijkolom = useZijkolom();
 
   return (
     <div
       className={cn(
         "min-h-dvh transition-[padding] duration-200 ease-out motion-reduce:transition-none",
-        paneelOpen ? "lg:pl-[18.5rem]" : "lg:pl-60",
+        zijkolom ? "lg:pl-[18.5rem]" : "lg:pl-60",
       )}
     >
       {/*

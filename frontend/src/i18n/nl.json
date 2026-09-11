@@ -354,7 +354,8 @@
     "klassen": "Klassen",
     "schooljaar": "Schooljaar",
     "hoeken": "Hoeken",
-    "algemeneFiches": "Algemene fiches"
+    "algemeneFiches": "Algemene fiches",
+    "sluiten": "Instellingen sluiten"
   },
   "klasbeheer": {
     "toevoegen": "Klas toevoegen",
@@ -601,17 +602,19 @@
     "sluiten": "Hoekenfiches sluiten",
     "geenKlas": "Kies eerst een klas.",
     "geenHoeken": "Deze klas heeft nog geen hoeken.",
-    "naarInstellingen": "Hoeken instellen",
-    "ingepland": "Ingepland {periode}"
+    "naarInstellingen": "Hoeken instellen"
   },
   "periodekiezer": {
     "vorigeMaand": "Vorige maand",
     "volgendeMaand": "Volgende maand",
     "loopt": "{van} tot {tot}",
-    "geenSubthema": "In deze maand loopt er geen subthema."
+    "geenSubthema": "In deze maand loopt er geen subthema.",
+    "alIngepland": "de hoek loopt dan al"
   },
   "hoekplaatsing": {
     "titel": "{naam} inplannen",
+    "alIngepland": "Al ingepland",
+    "bekijk": "{periode} bekijken",
     "periode": "Periode",
     "kiesEinddag": "Kies de laatste dag.",
     "einddagVerplicht": "Kies eerst de laatste dag.",

@@ -70,7 +70,7 @@ export function Doelsoortbalk({
                 aria-pressed={gekozen}
                 onClick={() => onKies(gekozen ? undefined : soort)}
                 className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-full border px-2 transition-colors duration-150",
+                  "flex h-8 items-center gap-1.5 rounded-veld border px-2 transition-colors duration-150",
                   gekozen ? "border-accent bg-accent-zacht" : "border-lijn bg-kaart hover:border-lijn-veld",
                 )}
               >
