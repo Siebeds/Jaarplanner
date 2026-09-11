@@ -25,13 +25,17 @@ import {
  * A class's algemene fiches: the onthaal, the turnles, whatever recurs in its week and belongs to no
  * thema (owner, 2026-09-11).
  *
- * **Shaped like the Hoeken section above it, on purpose.** Both are per klas, both are a short list
- * of things a teacher defines once and plans many times, and two neighbouring sections that differ
- * only in how they reflow read as a rendering fault. What this one adds is the goals, because a fiche
- * carries doelen and a hoek does not.
+ * **Shaped like the Hoeken part, on purpose.** Both are per klas, both are a short list of things a
+ * teacher defines once and plans many times, and two parts of one settings screen that differ only in
+ * how they reflow read as a rendering fault. What this one adds is the goals, because a fiche carries
+ * doelen and a hoek does not.
+ *
+ * *It was a section under Hoeken on the single Instellingen page before that page was split into
+ * parts.* Its title is now the page's, drawn by `AlgemeneFichesScherm`, which is why it opens with
+ * its controls and no heading.
  *
  * **The room is chosen here, and it defaults to the class the teacher is looking at.** The Hoeken
- * section defaults to the first class, which is harmless for furniture; for goals it is not, because
+ * part defaults to the first class, which is harmless for furniture; for goals it is not, because
  * the goal picker narrows to the chosen class's jaar/fase and would otherwise offer K3 goals to an L1
  * teacher who opened settings from her own class.
  *
@@ -47,8 +51,8 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
   const [formulier, setFormulier] = useState<{ fiche?: AlgemeneFicheWeergave } | null>(null);
   const [teVerwijderen, setTeVerwijderen] = useState<AlgemeneFicheWeergave | null>(null);
 
-  // Derived during render, like the Hoeken section's picker: a class deleted above cannot leave this
-  // pointing at a row that is gone.
+  // Derived during render, like the Hoeken part's picker: a deleted class cannot leave this pointing
+  // at a row that is gone.
   const klasId =
     [gekozen, actieveKlas?.id].find((id) => id != null && klassen.some((k) => k.id === id)) ??
     klassen[0]?.id ??
@@ -67,9 +71,30 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
   const doelFout = koppel.error ?? ontkoppel.error;
 
   return (
-    <section className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
+      {/* Which room on the left, once above the list, and the action on the right: the row Klassen
+          and Hoeken open with. */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-micro uppercase text-inkt-zwak">{t("instellingen.algemeneFiches")}</h2>
+        <label className="flex flex-wrap items-center gap-2 text-meta text-inkt-zacht">
+          {t("algemeneFiches.klas")}
+          <Keuze
+            value={klasId ?? ""}
+            disabled={klassen.length === 0}
+            onChange={(e) => {
+              setGekozen(e.target.value);
+              koppel.reset();
+              ontkoppel.reset();
+            }}
+            className="w-auto"
+          >
+            {klassen.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.naam}
+              </option>
+            ))}
+          </Keuze>
+        </label>
+
         <Knop
           rang="rustig"
           className="h-9 min-h-9 px-3 text-meta"
@@ -83,26 +108,6 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
           {t("algemeneFiches.toevoegen")}
         </Knop>
       </div>
-
-      <label className="flex flex-wrap items-center gap-2 text-meta text-inkt-zacht">
-        {t("algemeneFiches.klas")}
-        <Keuze
-          value={klasId ?? ""}
-          disabled={klassen.length === 0}
-          onChange={(e) => {
-            setGekozen(e.target.value);
-            koppel.reset();
-            ontkoppel.reset();
-          }}
-          className="w-auto"
-        >
-          {klassen.map((k) => (
-            <option key={k.id} value={k.id}>
-              {k.naam}
-            </option>
-          ))}
-        </Keuze>
-      </label>
 
       {laadt || (klasId !== null && isPending) ? (
         <Laadlijst rijen={2} />
@@ -193,7 +198,7 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
           verwijder.mutate(teVerwijderen.id, { onSuccess: () => setTeVerwijderen(null) });
         }}
       />
-    </section>
+    </div>
   );
 }
 

@@ -3,7 +3,7 @@ import { useWeergave, type Weergave } from "../../state/weergave";
 import { t } from "../../i18n";
 
 /**
- * Light or dark, the last section of Instellingen because it is the least often touched.
+ * Light or dark, the last part of Instellingen because it is the least often touched.
  *
  * "Zoals het toestel" comes first and is the default: most teachers never need this control, and
  * the ones who do are overriding their device, not configuring the app from scratch.
@@ -25,10 +25,11 @@ export function Weergavesectie() {
   ];
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-micro uppercase text-inkt-zwak">{t("weergave.titel")}</h2>
+    // No heading of its own: the part's name is the page title now, and repeating it under itself
+    // reads as a rendering fault. `Segment` still carries the word for a screen reader.
+    <div className="flex flex-col gap-3">
       <Segment label={t("weergave.titel")} waarde={keuze} opties={opties} onKies={kies} className="self-start" />
       <p className="text-meta text-inkt-zacht">{t("weergave.dezeBrowser")}</p>
-    </section>
+    </div>
   );
 }
