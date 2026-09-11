@@ -13,7 +13,7 @@ import { t } from "../../i18n";
  * genuinely between two periods. Only the last one earns the sentence.
  *
  * The school year opens a day before its first period, so that "before the first" is reachable here:
- * a school year that opens on a closure, or a block indeling behind the E3-05 seam, gives the same.
+ * a school year that opens on a vacation, or a block indeling behind the E3-05 seam, gives the same.
  */
 const schooljaar = {
   start: "2026-08-31",
@@ -91,12 +91,6 @@ describe("Dagonderschrift", () => {
     toon({ datum: "2026-08-31" });
     expect(screen.queryByText(t("periode.tussenPeriodes"))).not.toBeInTheDocument();
     expect(screen.queryByText(t("periode.buitenSchooljaar"))).not.toBeInTheDocument();
-  });
-
-  it("toont de periode zonder weeknummer als het venster twee weken raakt", () => {
-    toon({ weekLabel: null });
-    expect(screen.getByText(periodeTekst("2026-09-01", "2026-10-01"))).toBeInTheDocument();
-    expect(screen.queryByText("Week 37")).not.toBeInTheDocument();
   });
 
   it("zwijgt over periodes na de laatste periode", () => {

@@ -8,8 +8,8 @@ import { themaClausule, themaLabel, vakOpDag, type Themavak } from "./themavakke
  *
  * **It is a caption and not a row of chips.** The owner read the filled pills that used to sit beside
  * the heading as buttons (2026-09-11), and nothing in them can be pressed. So there is no fill and no
- * radius here, only one neutral rule before the thema, and the size and ink step down from the heading
- * instead of sitting level with it.
+ * radius here, only one neutral rule before the thema, and the caption sits a size below the heading
+ * with everything but the values in a softer ink.
  *
  * **The period and its thema are facts about one day, so they are only printed where the view IS one
  * day.** They used to be printed always, derived from the anchored day, above a grid showing a whole
@@ -31,8 +31,8 @@ export function Dagonderschrift({
   planGeladen,
 }: {
   /**
-   * Null wherever one week number would name only part of what is in view: the month view, and a
-   * phone's three-day window that crosses a Monday.
+   * Null wherever the days in view are not one week (`weekInBeeld`), and the caption is then empty.
+   * That costs the period nothing: it is only printed in the day view, and one day is always one week.
    */
   weekLabel: string | null;
   dagweergave: boolean;
@@ -43,14 +43,14 @@ export function Dagonderschrift({
   /** False while the jaarplan loads or failed to: an empty thema list then means "unknown", not "none". */
   planGeladen: boolean;
 }) {
+  if (!weekLabel) return null;
+
   const vak = dagweergave ? vakOpDag(vakken, datum) : undefined;
   const plaats = dagweergave && !vak ? plaatsZonderPeriode(datum, schooljaar) : null;
 
-  if (!weekLabel && !vak && !plaats) return null;
-
   return (
     <p className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-1 text-meta text-inkt-zacht">
-      {weekLabel ? <span className="shrink-0 tabular-nums">{weekLabel}</span> : null}
+      <span className="shrink-0 tabular-nums">{weekLabel}</span>
 
       {vak ? (
         <>
@@ -89,7 +89,7 @@ function plaatsZonderPeriode(
  * The thema, behind a rule in the colour its band is filled with in the month and week views.
  *
  * The rule is decoration: in neutral ink it measures well under 3:1 against the page, so it carries
- * no meaning of its own. It takes no accent even on a period's first day, where the band does, because
+ * no meaning of its own. It takes no accent even on a period's first day, where a band with a thema does, because
  * the accent is rationed to five uses (ADR-0024) and the heading already names the date. What tells a
  * screen reader this name is the thema is the spoken clause, `themaClausule`, which the grid's day
  * buttons speak too.

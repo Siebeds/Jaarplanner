@@ -28,7 +28,6 @@ import {
   valtBinnen,
   vandaag,
   volleDag,
-  weeknummer,
 } from "../../lib/datum";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -39,6 +38,7 @@ import { STANDAARDBEGIN, alsTijd, minuten, toonTijd } from "./tijd";
 import { beginSleep, doelTijd, eindigSleep, leesKolomId } from "./tijdsleep";
 import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Dagonderschrift } from "./Dagonderschrift";
+import { weekInBeeld } from "./weekInBeeld";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
@@ -495,14 +495,9 @@ export function Agendascherm() {
   const ankerLabel =
     weergave === "maand" ? maandJaar(anker) : weergave === "week" ? periodeTekst(van, tot) : volleDag(anker);
 
-  // Only where the days in view are one week. In a month the label already names the month, and a week
-  // number on a grid spanning five of them would name only the first. A phone's three-day window pages
-  // Mon, Thu, Sun and so crosses a Monday every other page: "Week 37" over a Monday of week 38 is the
-  // same mistake at a smaller scale, so it says nothing there either.
-  const weekLabel =
-    weergave === "maand" || weeknummer(van) !== weeknummer(tot)
-      ? null
-      : t("periode.weeknummer", { nummer: weeknummer(anker) });
+  // Only where the days in view are one week: see `weekInBeeld`.
+  const weekNummer = weekInBeeld(weergave, van, tot);
+  const weekLabel = weekNummer === null ? null : t("periode.weeknummer", { nummer: weekNummer });
 
   const foutTekst = (fout: unknown) =>
     fout instanceof ApiError && fout.detail ? fout.detail : fout ? t("periode.mislukt") : null;
