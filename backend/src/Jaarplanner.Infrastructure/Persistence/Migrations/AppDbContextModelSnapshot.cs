@@ -243,6 +243,58 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("activiteitplaatsingen", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.AlgemeneFichemoment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeOnly>("Begin")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<DateOnly>("Datum")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly>("Einde")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid>("PlaatsingId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlaatsingId");
+
+                    b.HasIndex("Datum", "Begin");
+
+                    b.ToTable("algemene_fichemomenten", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.AlgemeneFicheplaatsing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AlgemeneFicheId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("KlasId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Tot")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("Van")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlgemeneFicheId");
+
+                    b.HasIndex("KlasId", "Van", "Tot");
+
+                    b.ToTable("algemene_ficheplaatsingen", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Generatieparameters", b =>
                 {
                     b.Property<Guid>("Id")
@@ -489,6 +541,30 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("activiteiten", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.AlgemeneFiche", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("KlasId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Naam")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Omschrijving")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KlasId", "Naam")
+                        .IsUnique();
+
+                    b.ToTable("algemene_fiches", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Hoek", b =>
                 {
                     b.Property<Guid>("Id")
@@ -661,6 +737,30 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.HasOne("Jaarplanner.Domain.Planning.Jaarplan", null)
                         .WithMany("_activiteitplaatsingen")
                         .HasForeignKey("JaarplanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.AlgemeneFichemoment", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Planning.AlgemeneFicheplaatsing", null)
+                        .WithMany("Momenten")
+                        .HasForeignKey("PlaatsingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.AlgemeneFicheplaatsing", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.AlgemeneFiche", null)
+                        .WithMany()
+                        .HasForeignKey("AlgemeneFicheId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
+                        .WithMany()
+                        .HasForeignKey("KlasId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -956,6 +1056,57 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Navigation("Doelkoppelingen");
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.AlgemeneFiche", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
+                        .WithMany()
+                        .HasForeignKey("KlasId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("Jaarplanner.Domain.Schoolcontent.DoelKoppeling", "Doelkoppelingen", b1 =>
+                        {
+                            b1.Property<Guid>("AlgemeneFicheId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("AiMotivatie")
+                                .HasColumnType("text")
+                                .HasColumnName("ai_motivatie");
+
+                            b1.Property<string>("LeerplandoelCode")
+                                .IsRequired()
+                                .HasMaxLength(64)
+                                .HasColumnType("character varying(64)")
+                                .HasColumnName("leerplandoel_code");
+
+                            b1.Property<string>("Status")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("status");
+
+                            b1.HasKey("AlgemeneFicheId", "Id");
+
+                            b1.HasIndex("LeerplandoelCode");
+
+                            b1.ToTable("algemene_fiche_doelkoppelingen", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("AlgemeneFicheId");
+
+                            b1.HasOne("Jaarplanner.Domain.Curriculum.Leerplandoel", null)
+                                .WithMany()
+                                .HasForeignKey("LeerplandoelCode")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Doelkoppelingen");
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Hoek", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
@@ -1130,6 +1281,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Koppeling")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.AlgemeneFicheplaatsing", b =>
+                {
+                    b.Navigation("Momenten");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekplaatsing", b =>

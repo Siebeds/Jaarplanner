@@ -81,7 +81,8 @@ public class ClosedXmlDekkingExportTests
         // ruled on 2026-08-06 that the document carries the figures and the evidence, not the remedies — and a test
         // in this file asserts that absence rather than leaving it to the default's silence.
         Lacuneoorzaak? oorzaak = Lacuneoorzaak.GeenThema,
-        IReadOnlyList<string>? kandidaten = null) =>
+        IReadOnlyList<string>? kandidaten = null,
+        IReadOnlyList<string>? fiches = null) =>
         new(
             code,
             doelsoort,
@@ -93,6 +94,7 @@ public class ClosedXmlDekkingExportTests
             nietMeerInOpstap,
             gedekt,
             themas ?? Array.Empty<string>(),
+            fiches ?? Array.Empty<string>(),
             gedekt ? null : oorzaak,
             kandidaten ?? Array.Empty<string>());
 
@@ -295,6 +297,28 @@ public class ClosedXmlDekkingExportTests
 
         Assert.Equal("Nee", blad.Cell(eerste + 1, (int)DekkingKolom.Gedekt).GetString());
         Assert.Equal(string.Empty, blad.Cell(eerste + 1, (int)DekkingKolom.DekkendeThemas).GetString());
+    }
+
+    [Fact]
+    public void Een_algemene_fiche_staat_na_de_themas_en_zegt_dat_ze_een_fiche_is()
+    {
+        // Owner ruling 2026-09-11: a planned fiche covers. In a document handed to an inspecteur, a bare "Turnen" in
+        // the "Gedekt door" column would read as the name of a thema.
+        var doelen = new[]
+        {
+            Doel("LO-1", gedekt: true, themas: new[] { "Herfst" }, fiches: new[] { "Turnen" }),
+            Doel("LO-2", gedekt: true, fiches: new[] { "Onthaal" }),
+        };
+
+        var bestand = Export().Genereer(Weergave(doelen));
+        var blad = Blad(bestand, out var workbook);
+        using var _ = workbook;
+
+        var eerste = Kopregel(blad) + 1;
+
+        Assert.Equal("Herfst; Turnen (algemene fiche)", blad.Cell(eerste, (int)DekkingKolom.DekkendeThemas).GetString());
+        Assert.Equal("Ja", blad.Cell(eerste + 1, (int)DekkingKolom.Gedekt).GetString());
+        Assert.Equal("Onthaal (algemene fiche)", blad.Cell(eerste + 1, (int)DekkingKolom.DekkendeThemas).GetString());
     }
 
     [Fact]

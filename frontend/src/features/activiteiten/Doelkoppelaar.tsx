@@ -23,10 +23,13 @@ export function Doelkoppelaar({
   alGekozen,
   toelichting,
   compact,
+  fasen,
 }: {
   onKies: (leerplandoelCode: string) => void;
   bezig?: boolean;
   alGekozen: string[];
+  /** Passed through to the `Doelkiezer`; see there. */
+  fasen?: string[];
   /**
    * Icon only, for a row that already sits inside a card that has one of these.
    *
@@ -91,6 +94,7 @@ export function Doelkoppelaar({
         }}
         bezig={bezig}
         alGekozen={alGekozen}
+        fasen={fasen}
       />
       <div className="mt-2">
         <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={() => setOpen(false)}>

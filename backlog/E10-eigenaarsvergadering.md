@@ -130,6 +130,39 @@ home for that whole set.
   it was actually held to, and the gates that ran. A feature on `main` with no durable record is how this repo
   gets a progress table it cannot trust.*
 
+- [~] **E10-03 — Algemene fiches: terugkerende activiteiten per klas, los van thema's** — *Owner request 2026-09-11,
+  from the teachers' feedback. **Backend and the Instellingen half built** on `feature/algemene-fiches` (backend
+  `743af2e`, pushed). **The agenda half waits on ADR-0028's time grid** (owner ruling, same day). Design:
+  [ADR-0029](../docs/adr/0029-algemene-fiches.md).*
+
+  The teachers' wording: *"Lesfiches algemene/terugkerende activiteiten (e.g. onthaal) los staand van thema/subthema
+  kunnen inplannen en dit ook kunnen linken aan doelen > via algemeen thema eventueel implementeren. Elke maandag
+  turnen op dit uur."* The owner's: *"ik wil het algemene fiches noemen, ik wil een gelijkaardige optie zoals bij de
+  hoekenfiches (het mag eronder komen te staan), deze algemene fiches kunnen worden ingesteld per klas (een leerkracht
+  kan voor haar eigen klas deze aanmaken)."*
+
+  **Owner rulings of 2026-09-11 this story rests on:** (1) a planned fiche's goals **count for dekking**, which amends
+  Art. V.1 (amendment commit owed, see below); (2) the fiche moments use **clock times**, aligned with ADR-0028; (3) the
+  agenda half is built **after** the time grid is committed, so it is built once.
+
+  **Acceptance criteria**
+  - [x] A teacher creates, renames and deletes fiches for one klas in Instellingen, in a section under Hoeken. A
+    planned fiche's delete is refused with the count, in Dutch.
+  - [x] She links and unlinks leerplandoelen on a fiche; every link is `manueel`; the picker narrows to the chosen
+    klas's jaar/fase.
+  - [x] Planning (API): chosen weekdays over a window, one row per teaching day, skipping weekends and closures,
+    from a begin to an end time; one occurrence can be moved or resized; the placement is outside the Jaarplan.
+  - [x] Dekking: a goal linked to a planned fiche of the klas is gedekt, named as `DekkendeFiches`, in the
+    dekkingsoverzicht, the vooruitzicht and the export; an unplanned fiche and another class's fiche do not count.
+  - [x] The register, the ongekoppelde doelen and the Op.stap re-import reference count read the fifth link table.
+  - [ ] Agenda: a panel of algemene fiches under the hoekenfiches; drag a fiche onto a day of the time grid; the
+    placement sheet asks the weekdays and the times; occurrences drawn and movable in the day and week views.
+  - [ ] Art. V.1 amendment commit (with CLAUDE.md's dekking line), per Art. XI.1.
+  - [ ] Browser pass at 1440 and 390 on the Instellingen half; antagonist audit.
+
+  **Gates so far:** 825 unit + 261 integration on real PostgreSQL, 0 skipped; `dotnet format` clean; frontend
+  lint/tsc and Vitest green.
+
 - [~] **E10-04 — De agenda als tijdraster: vrije tijdstippen in plaats van lesuren** — *Owner request of
   2026-09-11, in session, with his own Outlook week beside the screen. Decision record:
   **[ADR-0028](../docs/adr/0028-tijdraster-in-plaats-van-lesuren.md)**, which supersedes his own instruction of

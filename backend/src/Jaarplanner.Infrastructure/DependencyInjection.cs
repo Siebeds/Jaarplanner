@@ -5,6 +5,7 @@ using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Dekking;
 using Jaarplanner.Application.Planning;
+using Jaarplanner.Application.Planning.AlgemeneFiches;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Application.Planning.Hoeken;
@@ -148,6 +149,11 @@ public static class DependencyInjection
         // Placing a hoek on the agenda. Registered apart from the jaarplan services on purpose: a hoekplaatsing
         // is not part of that aggregate, and the separation is what keeps a (re)generation unable to see it.
         services.AddScoped<IHoekplaatsingService, HoekplaatsingService>();
+
+        // The algemene fiches (owner, 2026-09-11): the hoek's sibling for recurring activities, with the same split
+        // between the class's own list and its planning, and the planning kept out of the jaarplan for the same reason.
+        services.AddScoped<IAlgemeneFicheBeheerService, AlgemeneFicheBeheerService>();
+        services.AddScoped<IAlgemeneFicheplaatsingService, AlgemeneFicheplaatsingService>();
 
         // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
         // multiple klassen"), so the container needs a creation path in the same change that makes it required —

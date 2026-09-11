@@ -233,6 +233,31 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<DekkendeFichekoppeling>> HaalFichekoppelingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default)
+    {
+        // Layer 5 — algemene fiches (owner ruling, 2026-09-11). Scoped by the fiche's own klas, which is the whole of
+        // its scope, and counted only once the fiche stands in that class's agenda: a fiche that exists only in the
+        // settings list is a plan for a plan, and it proves nothing is taught.
+        //
+        // The placement's klas is checked as well as the fiche's. The service that writes placements refuses another
+        // class's fiche, so the two always agree; the second condition is here so this read does not depend on it.
+        var rijen = await _context.AlgemeneFiches
+            .AsNoTracking()
+            .Where(f => f.KlasId == klasId
+                && _context.AlgemeneFicheplaatsingen.Any(p => p.AlgemeneFicheId == f.Id && p.KlasId == klasId))
+            .SelectMany(f => f.Doelkoppelingen
+                .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
+                .Select(k => new DekkendeFichekoppeling(k.LeerplandoelCode, f.Naam)))
+            .ToListAsync(cancellationToken);
+
+        // Distinct in memory, for the reason the four thema layers union client-side: a set operation after a record
+        // projection is the shape EF has already refused to translate once in this file.
+        return rijen.Distinct().ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
         IReadOnlyCollection<string>? jaarFasen = null,
         CancellationToken cancellationToken = default)

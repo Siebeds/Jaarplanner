@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260911131815_TijdstippenInPlaatsVanLesuren")]
-    partial class TijdstippenInPlaatsVanLesuren
+    [Migration("20260911124256_AlgemeneFiches")]
+    partial class AlgemeneFiches
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -217,14 +217,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ActiviteitId")
                         .HasColumnType("uuid");
 
-                    b.Property<TimeOnly>("Begin")
-                        .HasColumnType("time without time zone");
-
                     b.Property<DateOnly>("Datum")
                         .HasColumnType("date");
-
-                    b.Property<TimeOnly>("Einde")
-                        .HasColumnType("time without time zone");
 
                     b.Property<Guid>("JaarplanId")
                         .HasColumnType("uuid");
@@ -234,13 +228,18 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<int>("Volgorde")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.HasKey("Id");
 
                     b.HasIndex("ActiviteitId");
 
                     b.HasIndex("JaarplanId", "Datum");
 
-                    b.HasIndex("JaarplanId", "ActiviteitId", "Datum", "Begin")
+                    b.HasIndex("JaarplanId", "ActiviteitId", "Datum", "Volgorde")
                         .IsUnique();
 
                     b.ToTable("activiteitplaatsingen", (string)null);
@@ -324,23 +323,20 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
-                    b.Property<TimeOnly>("Begin")
-                        .HasColumnType("time without time zone");
-
                     b.Property<DateOnly>("Datum")
                         .HasColumnType("date");
 
-                    b.Property<TimeOnly>("Einde")
-                        .HasColumnType("time without time zone");
-
                     b.Property<Guid>("HoekplaatsingId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Volgorde")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.HasIndex("HoekplaatsingId");
 
-                    b.HasIndex("Datum", "Begin");
+                    b.HasIndex("Datum", "Volgorde");
 
                     b.ToTable("hoekmomenten", (string)null);
                 });

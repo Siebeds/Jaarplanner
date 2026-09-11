@@ -183,8 +183,10 @@ public sealed record DekkingWeergave(
 /// </para>
 /// </param>
 /// <param name="IsGedekt">
-/// Whether a thema carrying this goal is placed in a real period of this plan (Art. V.1). Three exclusions are
-/// folded into that sentence, each with its own authority:
+/// Whether a thema carrying this goal is placed in a real period of this plan, <b>or</b> a planned algemene fiche of
+/// this class carries it (Art. V.1; the second route by owner ruling of 2026-09-11, see
+/// <paramref name="DekkendeFiches"/>). For the thema route, three exclusions are folded into that sentence, each with
+/// its own authority:
 /// <list type="bullet">
 /// <item>the <b>link</b> must be <c>aanvaard</c> or <c>manueel</c> — a <c>voorgesteld</c> one would let the AI grant
 /// dekking (Art. IV.1), a <c>geweigerd</c> one never counted;</item>
@@ -194,9 +196,20 @@ public sealed record DekkingWeergave(
 /// </list>
 /// </param>
 /// <param name="DekkendeThemas">
-/// The thema's that cover this goal, ordered by name; empty exactly when <paramref name="IsGedekt"/> is
-/// <c>false</c>. This is the evidence half of Art. V: an export that claims coverage has to be able to say
-/// <i>through what</i>.
+/// The thema's that cover this goal, ordered by name. This is the evidence half of Art. V: an export that claims
+/// coverage has to be able to say <i>through what</i>.
+/// <para>
+/// <b>It is no longer empty exactly when <paramref name="IsGedekt"/> is false</b>, and a caller that relied on that
+/// has to read <paramref name="DekkendeFiches"/> as well: since 2026-09-11 a goal can be covered by a fiche alone.
+/// What still holds, and what the tests pin, is that <paramref name="IsGedekt"/> is true exactly when at least one of
+/// the two lists is non-empty.
+/// </para>
+/// </param>
+/// <param name="DekkendeFiches">
+/// The planned algemene fiches of this class that cover this goal, ordered by name (owner ruling, 2026-09-11; Art. V.1
+/// as amended). A separate list rather than names mixed into <paramref name="DekkendeThemas"/>, because a thema and a
+/// turnles are different kinds of evidence and a directie reading "gedekt door Turnen" has to be able to tell which
+/// one it is looking at.
 /// </param>
 /// <param name="Oorzaak">
 /// Why this goal is not covered, and therefore where closing it happens (E5-05); <c>null</c> exactly when
@@ -230,5 +243,6 @@ public sealed record LeerplandoelDekking(
     bool NietMeerInOpstap,
     bool IsGedekt,
     IReadOnlyList<string> DekkendeThemas,
+    IReadOnlyList<string> DekkendeFiches,
     Lacuneoorzaak? Oorzaak,
     IReadOnlyList<string> KandidaatThemas);
