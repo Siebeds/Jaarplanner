@@ -221,6 +221,22 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     expect(sluiten).toHaveFocus();
   });
 
+  it("laat een focus op het blad zelf staan, want die was niet verloren", async () => {
+    // She clicked plain text inside the sheet, so the dialog itself holds focus. That looks exactly like a focus the
+    // browser dropped there, and only the record of the last focused control tells them apart: a refetch bringing in
+    // a doubled day must not pull her to the reason. (The Sluiten test above cannot catch this: focus on a live
+    // button is never mistaken for a lost one.)
+    const { ververs } = toon(gelijk);
+    const blad = screen.getByRole("dialog");
+    act(() => blad.focus());
+    expect(blad).toHaveFocus();
+
+    ververs(maandagDubbel);
+
+    await waitFor(() => expect(screen.getByText(dubbel("maandag 14 september"))).toBeInTheDocument());
+    expect(blad).toHaveFocus();
+  });
+
   it("bewaart geen einde dat voor het begin ligt", () => {
     toon(gelijk);
     openUren();
