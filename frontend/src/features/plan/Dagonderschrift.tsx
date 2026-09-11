@@ -8,8 +8,8 @@ import { themaClausule, themaLabel, vakOpDag, type Themavak } from "./themavakke
  *
  * **It is a caption and not a row of chips.** The owner read the filled pills that used to sit beside
  * the heading as buttons (2026-09-11), and nothing in them can be pressed. So there is no fill and no
- * radius here, only one neutral rule before the thema, and the caption sits a size below the heading
- * with everything but the values in a softer ink.
+ * radius here, only one neutral rule before the thema. The caption is set well below the heading in a
+ * softer ink, and only the period's dates and a thema's name are in full ink.
  *
  * **The period and its thema are facts about one day, so they are only printed where the view IS one
  * day.** They used to be printed always, derived from the anchored day, above a grid showing a whole
@@ -89,10 +89,10 @@ function plaatsZonderPeriode(
  * The thema, behind a rule in the colour its band is filled with in the month and week views.
  *
  * The rule is decoration: in neutral ink it measures well under 3:1 against the page, so it carries
- * no meaning of its own. It takes no accent even on a period's first day, where a band with a thema does, because
- * the accent is rationed to five uses (ADR-0024) and the heading already names the date. What tells a
- * screen reader this name is the thema is the spoken clause, `themaClausule`, which the grid's day
- * buttons speak too.
+ * no meaning of its own. It takes no accent even on a period's first day, where a band with a thema
+ * does, because the accent is rationed to five uses (ADR-0024) and the heading already names the date.
+ * What tells a screen reader this name is the thema is the spoken clause, `themaClausule`, which the
+ * grid's day buttons speak too.
  */
 function Themanaam({ vak }: { vak: Themavak }) {
   const leeg = vak.themas.length === 0;
