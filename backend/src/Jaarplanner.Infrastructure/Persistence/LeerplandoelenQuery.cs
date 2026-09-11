@@ -438,6 +438,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
 
         List<DoelKoppelingWeergave> subdoelen = [];
         List<DoelKoppelingWeergave> activiteiten = [];
+        List<DoelKoppelingWeergave> fiches = [];
 
         // The class/age-scoped layers are gated by the seam, and each row NAMES ITS KLAS. Both halves matter:
         // withholding them entirely would report a doel used by one class's activiteit as used nowhere (a
@@ -476,6 +477,22 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                                 st.Leeftijd,
                                 k.Status)))))
                 .ToListAsync(cancellationToken);
+
+            // The fifth layer (owner, 2026-09-11): an algemene fiche belongs to one klas, so it sits behind the same
+            // gate as the age-scoped layers and names that klas. No thema exists to name; see DoelKoppelingWeergave
+            // for how the two fields carry the fiche instead.
+            fiches = await (
+                from fiche in _context.AlgemeneFiches.AsNoTracking()
+                join klas in _context.Klassen on fiche.KlasId equals klas.Id
+                from k in fiche.Doelkoppelingen
+                where k.LeerplandoelCode == code
+                select new DoelKoppelingWeergave(
+                    KoppelingHerkomst.AlgemeneFiche,
+                    fiche.Naam,
+                    klas.Naam,
+                    null,
+                    k.Status))
+                .ToListAsync(cancellationToken);
         }
 
         return
@@ -484,6 +501,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                 .Concat(suggesties)
                 .Concat(subdoelen)
                 .Concat(activiteiten)
+                .Concat(fiches)
                 .OrderBy(k => k.ThemaNaam, StringComparer.CurrentCulture)
                 .ThenBy(k => k.Herkomst)
                 .ThenBy(k => k.Leeftijd, StringComparer.Ordinal)

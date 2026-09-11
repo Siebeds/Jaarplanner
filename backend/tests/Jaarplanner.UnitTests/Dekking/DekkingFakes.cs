@@ -121,6 +121,24 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     }
 
     /// <summary>
+    /// The fifth layer's answer: the planned fiches' goals (owner ruling, 2026-09-11). Empty by default, which is the
+    /// state every test written before fiches existed runs in, so none of them changes meaning.
+    /// </summary>
+    public IReadOnlyList<DekkendeFichekoppeling> Fichekoppelingen { get; set; } = [];
+
+    /// <summary>The klas the service asked the fiche layer about, or null when it never asked.</summary>
+    public Guid? GevraagdeFicheKlasId { get; private set; }
+
+    public Task<IReadOnlyList<DekkendeFichekoppeling>> HaalFichekoppelingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default)
+    {
+        GevraagdeFicheKlasId = klasId;
+
+        return Task.FromResult(Fichekoppelingen);
+    }
+
+    /// <summary>
     /// The jaar/fase scope the service asked for: the codes for <c>Dekkingsbereik.EigenJaarFase</c>, null for
     /// <c>HeelCurriculum</c>. This is where E5-02's ruling is observable as a <b>request</b>, independently of what
     /// comes back.

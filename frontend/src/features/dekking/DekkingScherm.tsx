@@ -191,8 +191,12 @@ function Dekkingsrij({ doel }: { doel: LeerplandoelDekking }) {
           </span>
         </div>
         <p className="mt-0.5 text-body text-inkt">{doel.tekst}</p>
-        {doel.dekkendeThemas.length > 0 ? (
-          <p className="mt-1 text-meta text-inkt-zacht">{doel.dekkendeThemas.join(", ")}</p>
+        {/* The evidence: the thema's first, then each covering fiche marked as one, because a bare
+            "Turnen" beside "Herfst" reads as a second thema (owner ruling, 2026-09-11). */}
+        {doel.dekkendeThemas.length > 0 || doel.dekkendeFiches.length > 0 ? (
+          <p className="mt-1 text-meta text-inkt-zacht">
+            {[...doel.dekkendeThemas, ...doel.dekkendeFiches.map((naam) => t("dekking.alsFiche", { naam }))].join(", ")}
+          </p>
         ) : null}
       </div>
 

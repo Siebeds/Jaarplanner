@@ -25,11 +25,19 @@ export function Doelkiezer({
   onKies,
   bezig,
   alGekozen,
+  fasen: gegevenFasen,
 }: {
   onKies: (leerplandoelCode: string) => void;
   bezig?: boolean;
   /** Codes already linked here, so the list does not offer the same goal twice. */
   alGekozen: string[];
+  /**
+   * The jaar/fase to narrow to, when the goals belong to a class other than the one selected in the
+   * header. The algemene fiches section in Instellingen picks its own class, and without this the
+   * picker would search the header's class instead (2026-09-11). Omitted everywhere else, which
+   * keeps the behaviour below.
+   */
+  fasen?: string[];
 }) {
   const [zoek, setZoek] = useState("");
   const [alleJaren, setAlleJaren] = useState(false);
@@ -47,7 +55,7 @@ export function Doelkiezer({
    * `Jaarfasen.VoorKlas` and a second copy in TypeScript would be a second answer to "what does this class teach?".
    */
   const { klas } = useActieveSelectie();
-  const fasen = klas?.jaarFasen ?? [];
+  const fasen = gegevenFasen ?? klas?.jaarFasen ?? [];
   const scoped = !alleJaren && fasen.length > 0;
 
   // Only asked once there is something to ask about: an unfiltered first page is 20 goals nobody
