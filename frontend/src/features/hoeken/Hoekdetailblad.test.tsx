@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Hoekdetailblad } from "./Hoekdetailblad";
 import type { HoekmomentWeergave, HoekplaatsingWeergave } from "./gegevens";
@@ -41,6 +41,9 @@ const gelijk = [
 // The owner's screenshot: only the Monday's bottom edge pulled up to 10:00.
 const maandagKorter = [moment("m-1", "2026-09-14", "08:00:00", "10:00:00"), ...gelijk.slice(1)];
 
+// Tuesday dragged onto Monday morning: four rows on three days, Monday twice.
+const maandagDubbel = [moment("m-2", "2026-09-14", "07:00:00", "07:45:00"), ...gelijk.filter((m) => m.id !== "m-2")];
+
 const opUur = (periode: string, dagen: string) => t("hoekdetail.opUur", { periode, dagen });
 
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -59,13 +62,16 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** Renders the sheet, and hands back a way to re-render it with another run, the way a refetch would. */
 function toon(momenten: HoekmomentWeergave[]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  return render(
+  const blad = (lijst: HoekmomentWeergave[]) => (
     <QueryClientProvider client={client}>
-      <Hoekdetailblad open plaatsing={bouwhoek(momenten)} bezig={false} onVerwijder={() => {}} onSluit={() => {}} />
-    </QueryClientProvider>,
+      <Hoekdetailblad open plaatsing={bouwhoek(lijst)} bezig={false} onVerwijder={() => {}} onSluit={() => {}} />
+    </QueryClientProvider>
   );
+  const resultaat = render(blad(momenten));
+  return { ververs: (lijst: HoekmomentWeergave[]) => resultaat.rerender(blad(lijst)) };
 }
 
 const openUren = () => fireEvent.click(screen.getByRole("button", { name: t("hoekdetail.urenAanpassen") }));
@@ -125,11 +131,10 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     would let the nl.json twin drift from the server's without a single test noticing.
   */
   const dubbel = (dagen: string) =>
-    `Op ${dagen} staat deze hoek meer dan één keer. Sleep eerst de extra blokken naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.`;
+    `Op ${dagen} staat deze hoek meer dan één keer. Sleep er eerst één naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.`;
 
   it("noemt een dag met de hoek twee keer in de woorden van de server, en biedt dan geen uren aan", () => {
-    // Tuesday dragged onto Monday morning.
-    toon([moment("m-2", "2026-09-14", "07:00:00", "07:45:00"), ...gelijk.filter((m) => m.id !== "m-2")]);
+    toon(maandagDubbel);
 
     expect(volleDag("2026-09-14")).toBe("maandag 14 september");
     expect(screen.getByText(dubbel("maandag 14 september"))).toBeInTheDocument();
@@ -153,6 +158,41 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     toon([moment("m-6", "2026-09-16", "07:00:00", "07:45:00"), ...gelijk, moment("m-5", "2026-09-14", "07:00:00", "07:45:00")]);
 
     expect(screen.getByText(dubbel("maandag 14 september en woensdag 16 september"))).toBeInTheDocument();
+  });
+
+  it("houdt een al open formulier eerlijk wanneer de reeks eronder verandert, en zet de focus op de reden", async () => {
+    const { ververs } = toon(gelijk);
+    openUren();
+
+    // Another tab drags Tuesday onto Monday while this form is open; the agenda's query hands the sheet the new run.
+    ververs(maandagDubbel);
+
+    const zin = screen.getByText(dubbel("maandag 14 september"));
+    expect(screen.getByRole("button", { name: t("hoekdetail.bewaren") })).toBeDisabled();
+    // The keyboard user who never reaches the disabled button still hears why, from either field.
+    expect(screen.getByLabelText(t("hoekdetail.van"))).toHaveAttribute("aria-describedby", zin.id);
+    expect(screen.getByLabelText(t("hoekdetail.tot"))).toHaveAttribute("aria-describedby", zin.id);
+    // The overwrite warning gives way, since saving cannot happen; and the count is of days, not rows.
+    expect(screen.queryByText(t("hoekdetail.afwijkendEen"))).toBeNull();
+    expect(
+      screen.getByText(t("hoekdetail.geldtVoor", { dagen: t("hoekdetail.aantalSchooldagen", { aantal: 3 }) })),
+    ).toBeInTheDocument();
+
+    // Cancelling: the button focus would return to is no longer there, so it lands on the reason in its place.
+    fireEvent.click(screen.getByRole("button", { name: t("hoekdetail.annuleren") }));
+    await waitFor(() => expect(screen.getByText(dubbel("maandag 14 september"))).toHaveFocus());
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("zet de focus op de reden wanneer de knop onder de cursor verdwijnt", async () => {
+    const { ververs } = toon(gelijk);
+    const knop = screen.getByRole("button", { name: t("hoekdetail.urenAanpassen") });
+    act(() => knop.focus());
+    expect(knop).toHaveFocus();
+
+    ververs(maandagDubbel);
+
+    await waitFor(() => expect(screen.getByText(dubbel("maandag 14 september"))).toHaveFocus());
   });
 
   it("bewaart geen einde dat voor het begin ligt", () => {

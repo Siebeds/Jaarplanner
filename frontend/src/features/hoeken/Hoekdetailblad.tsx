@@ -115,13 +115,33 @@ export function Hoekdetailblad({
 
   // Focus follows the form: into its first field when it opens, back to the button that opened it when it closes.
   // Without the second half a keyboard user who saves lands on the top of the page, because the control that had
-  // focus is gone. By id rather than ref because neither `Knop` nor `Invoer` passes a ref through.
+  // focus is gone. When the run gained a doubled day while the form was open, that button is no longer rendered and
+  // the reason stands in its place, so focus goes there. By id rather than ref because neither `Knop` nor `Invoer`
+  // passes a ref through.
   const wasOpen = useRef(false);
   useEffect(() => {
     if (urenOpen) document.getElementById(`${id}-begin`)?.focus();
-    else if (wasOpen.current) document.getElementById(`${id}-uren`)?.focus();
+    else if (wasOpen.current) {
+      (document.getElementById(`${id}-uren`) ?? document.getElementById(`${id}-dubbel`))?.focus();
+    }
     wasOpen.current = urenOpen;
   }, [urenOpen, id]);
+
+  // The same guarantee when the button vanishes under the cursor: a refetch that brings in a doubled day swaps
+  // "Uren aanpassen" for the reason while it has focus, the browser drops focus to the page and Radix parks it on the
+  // dialog itself. Only on that change, never on mount: opening the sheet on a doubled run keeps the dialog's own
+  // first focus, and only a focus that was actually lost is moved.
+  const vorigeZin = useRef(dubbeleZin);
+  useEffect(() => {
+    const zojuistDubbel = vorigeZin.current === null && dubbeleZin !== null;
+    vorigeZin.current = dubbeleZin;
+    if (!zojuistDubbel || urenOpen) return;
+
+    const actief = document.activeElement;
+    if (actief === null || actief === document.body || actief.getAttribute("role") === "dialog") {
+      document.getElementById(`${id}-dubbel`)?.focus();
+    }
+  }, [dubbeleZin, urenOpen, id]);
 
   function beginBewerken(verrijkingId: string, huidige: string) {
     bewaar.reset();
@@ -254,9 +274,10 @@ export function Hoekdetailblad({
               {/* Said before she saves, never after, and only where true. The form is only reachable with a doubled
                   day when the run changed under it (another tab dragged a block while this one was open), so the
                   reason is also tied to both fields: a keyboard user who never reaches the disabled button still
-                  hears why. The overwrite warning gives way to it, since saving cannot happen. */}
+                  hears why. The overwrite warning gives way to it, since saving cannot happen. Focusable by script
+                  only, as the place focus returns to when the button it would go back to is gone. */}
               {dubbeleZin ? (
-                <p id={`${id}-dubbel`} className="text-meta font-medium text-attentie-inkt">
+                <p id={`${id}-dubbel`} tabIndex={-1} className="text-meta font-medium text-attentie-inkt outline-none">
                   {dubbeleZin}
                 </p>
               ) : afwijkendeDagen > 0 ? (
@@ -302,7 +323,11 @@ export function Hoekdetailblad({
               {/* A doubled day blocks new hours (owner, 2026-09-11), so the reason stands here, where she reads the
                   hours, in place of a button that would open a form she cannot save. */}
               {dubbeleZin ? (
-                <p id={`${id}-dubbel`} className="mt-1.5 text-meta font-medium text-attentie-inkt">
+                <p
+                  id={`${id}-dubbel`}
+                  tabIndex={-1}
+                  className="mt-1.5 text-meta font-medium text-attentie-inkt outline-none"
+                >
                   {dubbeleZin}
                 </p>
               ) : (

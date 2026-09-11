@@ -113,7 +113,7 @@ public sealed class HoekplaatsingTests
     /// sentence fails one of the two tests instead of letting the sheet and the server drift apart.
     /// </summary>
     private static string Dubbel(string dagen) =>
-        $"Op {dagen} staat deze hoek meer dan één keer. Sleep eerst de extra blokken naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.";
+        $"Op {dagen} staat deze hoek meer dan één keer. Sleep er eerst één naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.";
 
     [Fact]
     public void Nieuwe_uren_worden_geweigerd_zolang_een_dag_de_hoek_meer_dan_een_keer_heeft()
