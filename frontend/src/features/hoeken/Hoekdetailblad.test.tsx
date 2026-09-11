@@ -195,6 +195,32 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     await waitFor(() => expect(screen.getByText(dubbel("maandag 14 september"))).toHaveFocus());
   });
 
+  it("zet de focus op de reden wanneer Bewaren onder de cursor uitgeschakeld wordt", async () => {
+    const { ververs } = toon(gelijk);
+    openUren();
+    const bewaren = screen.getByRole("button", { name: t("hoekdetail.bewaren") });
+    act(() => bewaren.focus());
+    expect(bewaren).toHaveFocus();
+
+    ververs(maandagDubbel);
+
+    expect(bewaren).toBeDisabled();
+    await waitFor(() => expect(screen.getByText(dubbel("maandag 14 september"))).toHaveFocus());
+  });
+
+  it("laat de focus staan waar ze was wanneer die niet op een van die twee knoppen stond", async () => {
+    const { ververs } = toon(gelijk);
+    // The footer's Sluiten, by its text: the sheet's close cross carries the same name as a label.
+    const sluiten = screen.getByText(t("hoekdetail.sluiten"), { selector: "button" });
+    act(() => sluiten.focus());
+
+    ververs(maandagDubbel);
+
+    // The reason is there, so the effect has run; and it left her where she was.
+    await waitFor(() => expect(screen.getByText(dubbel("maandag 14 september"))).toBeInTheDocument());
+    expect(sluiten).toHaveFocus();
+  });
+
   it("bewaart geen einde dat voor het begin ligt", () => {
     toon(gelijk);
     openUren();

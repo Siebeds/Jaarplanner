@@ -127,21 +127,41 @@ export function Hoekdetailblad({
     wasOpen.current = urenOpen;
   }, [urenOpen, id]);
 
-  // The same guarantee when the button vanishes under the cursor: a refetch that brings in a doubled day swaps
-  // "Uren aanpassen" for the reason while it has focus, the browser drops focus to the page and Radix parks it on the
-  // dialog itself. Only on that change, never on mount: opening the sheet on a doubled run keeps the dialog's own
-  // first focus, and only a focus that was actually lost is moved.
+  // The same guarantee when a doubled day arrives by refetch under a control that has focus. Two controls lose it that
+  // way: "Uren aanpassen", which is swapped for the reason, and Bewaren, which turns disabled in an open form. The
+  // browser then drops focus to the page (Radix parks a dropped focus on the dialog itself), or, in some browsers,
+  // leaves it on the disabled button. So focus moves to the reason only when the last control focused was one of those
+  // two AND focus now sits on the page, the dialog, or that disabled button. Anywhere else, Sluiten or a time field,
+  // it stays where she put it. Only on the change to a doubled run, never when the sheet opens on one.
+  //
+  // The last focused control is remembered from `focusin` because removal fires no event of its own: by the time this
+  // effect runs, the button that had focus is already gone, and only this record still says it was there.
+  const laatsteFocus = useRef<Element | null>(null);
+  useEffect(() => {
+    const onthoud = (gebeurtenis: FocusEvent) => {
+      laatsteFocus.current = gebeurtenis.target instanceof Element ? gebeurtenis.target : null;
+    };
+    document.addEventListener("focusin", onthoud);
+    return () => document.removeEventListener("focusin", onthoud);
+  }, []);
+
   const vorigeZin = useRef(dubbeleZin);
   useEffect(() => {
     const zojuistDubbel = vorigeZin.current === null && dubbeleZin !== null;
     vorigeZin.current = dubbeleZin;
-    if (!zojuistDubbel || urenOpen) return;
+    if (!zojuistDubbel) return;
+
+    const laatste = laatsteFocus.current?.id;
+    if (laatste !== `${id}-uren` && laatste !== `${id}-bewaar`) return;
 
     const actief = document.activeElement;
-    if (actief === null || actief === document.body || actief.getAttribute("role") === "dialog") {
-      document.getElementById(`${id}-dubbel`)?.focus();
-    }
-  }, [dubbeleZin, urenOpen, id]);
+    const verloren =
+      actief === null ||
+      actief === document.body ||
+      actief.getAttribute("role") === "dialog" ||
+      (actief.id === `${id}-bewaar` && actief instanceof HTMLButtonElement && actief.disabled);
+    if (verloren) document.getElementById(`${id}-dubbel`)?.focus();
+  }, [dubbeleZin, id]);
 
   function beginBewerken(verrijkingId: string, huidige: string) {
     bewaar.reset();
@@ -296,6 +316,7 @@ export function Hoekdetailblad({
                 {/* Disabled on an impossible pair or a doubled day rather than sending it: each has its reason
                     printed just above, and a refusal would teach nothing that sentence does not already say. */}
                 <Knop
+                  id={`${id}-bewaar`}
                   type="button"
                   onClick={bewaarUren}
                   disabled={zetUren.isPending || urenOngeldig || dubbeleZin !== null}
