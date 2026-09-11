@@ -274,7 +274,8 @@
     "geenLacunes": "Alles gedekt in dit bereik",
     "geenDoelen": "Geen doelen in dit bereik",
     "geenKlas": "Kies eerst een klas",
-    "fout": "Dekking niet geladen"
+    "fout": "Dekking niet geladen",
+    "alsFiche": "{naam} (algemene fiche)"
   },
   "doelsoort": {
     "Minimumdoel": "Minimumdoel",
@@ -294,7 +295,8 @@
     "Themadoel": "Themadoel",
     "Doelsuggestie": "Doelsuggestie",
     "Subdoel": "Subdoel",
-    "Activiteit": "Activiteit"
+    "Activiteit": "Activiteit",
+    "AlgemeneFiche": "Algemene fiche"
   },
   "woorden": {
     "eersteWoord": "Typ een woord en druk op Enter",
@@ -352,6 +354,7 @@
     "klassen": "Klassen",
     "schooljaar": "Schooljaar",
     "hoeken": "Hoeken",
+    "algemeneFiches": "Algemene fiches",
     "sluiten": "Instellingen sluiten"
   },
   "klasbeheer": {
@@ -569,6 +572,30 @@
     "overnameEen": "1 hoek overgenomen.",
     "overnameAantal": "{aantal} hoeken overgenomen.",
     "overnameOvergeslagen": "Deze had je al: {namen}."
+  },
+  "algemeneFiches": {
+    "toevoegen": "Fiche toevoegen",
+    "klas": "Klas",
+    "geenKlassen": "Maak eerst een klas aan. Een algemene fiche hoort bij één klas.",
+    "geenFiches": "Deze klas heeft nog geen algemene fiches.",
+    "nieuwTitel": "Nieuwe algemene fiche",
+    "wijzigTitel": "Algemene fiche bewerken",
+    "naam": "Naam",
+    "naamVoorbeeld": "turnen",
+    "naamVerplicht": "Geef de fiche een naam.",
+    "omschrijving": "Wat gebeurt er?",
+    "omschrijvingVoorbeeld": "kring, weerbericht en de dag overlopen",
+    "eenPlaatsing": "Staat 1 keer in de agenda",
+    "aantalPlaatsingen": "Staat {aantal} keer in de agenda",
+    "nietIngepland": "Staat nog niet in de agenda. Deze doelen tellen dus nog niet mee voor de dekking.",
+    "doelenVan": "Doelen van {naam}",
+    "ontkoppel": "{code} ontkoppelen",
+    "koppelVoor": "Doel koppelen aan {naam}",
+    "koppelenMislukt": "Koppelen is niet gelukt.",
+    "verwijderTitel": "{naam} verwijderen?",
+    "verwijderEenDoel": "Het gekoppelde doel verdwijnt mee. Dat is niet terug te draaien.",
+    "verwijderDoelen": "De {aantal} gekoppelde doelen verdwijnen mee. Dat is niet terug te draaien.",
+    "verwijderMislukt": "Verwijderen is niet gelukt."
   },
   "hoekenpaneel": {
     "titel": "Hoekenfiches",

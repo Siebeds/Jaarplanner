@@ -17,6 +17,7 @@ import type { Vertaalsleutel } from "../../i18n";
 export const ONDERDELEN = [
   { deel: "klassen", labelSleutel: "instellingen.klassen" },
   { deel: "hoeken", labelSleutel: "instellingen.hoeken" },
+  { deel: "algemene-fiches", labelSleutel: "instellingen.algemeneFiches" },
 ] as const satisfies readonly { deel: string; labelSleutel: Vertaalsleutel }[];
 
 export type Deel = (typeof ONDERDELEN)[number]["deel"];

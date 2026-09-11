@@ -58,10 +58,18 @@ public sealed class OngekoppeldeDoelenQuery : IOngekoppeldeDoelenQuery
             .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
             .Select(k => k.LeerplandoelCode);
 
+        // The fifth link table (owner ruling, 2026-09-11): an algemene fiche's goals. A doel linked only to the turnles
+        // is linked, and reporting it here as ongekoppeld would send a teacher looking for a thema to put it in.
+        var ficheCodes = _context.AlgemeneFiches
+            .SelectMany(f => f.Doelkoppelingen)
+            .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
+            .Select(k => k.LeerplandoelCode);
+
         var gekoppeldeCodes = await themaSuggestieCodes
             .Concat(themadoelCodes)
             .Concat(subdoelCodes)
             .Concat(activiteitCodes)
+            .Concat(ficheCodes)
             .Distinct()
             .ToListAsync(cancellationToken);
 

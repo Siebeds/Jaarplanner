@@ -96,6 +96,34 @@ public interface IDekkingOpslag
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The FIFTH layer (owner ruling, 2026-09-11; Art. V.1 as amended that day): the leerplandoelen carried by this
+    /// class's <b>planned</b> algemene fiches, as (code, fiche naam) pairs.
+    /// <para>
+    /// <b>Read apart from the four thema layers, not unioned into them, because it answers a different question.</b>
+    /// Those four are asked "which goals do these placed thema's carry for this class", and their input is a list of
+    /// thema ids the service derived from the plan's placements and their statuses. A fiche is not in the plan and has
+    /// no placement status: it counts when it stands in the class's agenda at all. Folding it into
+    /// <see cref="HaalDekkendeKoppelingenAsync"/> would make that method's result depend on something its
+    /// <c>themaIds</c> argument does not describe, and the vooruitzicht, which calls it twice with two different
+    /// thema sets, would count the fiches twice as a difference of zero and never say why.
+    /// </para>
+    /// <para>
+    /// <b>The rules:</b> the fiche belongs to <paramref name="klasId"/>; it has at least one
+    /// <c>AlgemeneFicheplaatsing</c> in that class's agenda; and the link is <c>aanvaard</c> or <c>manueel</c>. Every
+    /// fiche link is <c>manueel</c> by construction, so the status filter is there for the same fail-closed reason it
+    /// is written into every other layer, not because another status can occur today.
+    /// </para>
+    /// <para>
+    /// <b>Not part of the gap-analyse's candidate read.</b> A goal linked only to a fiche that is not planned yet
+    /// classifies by its thema links like any other gap; <see cref="Lacuneoorzaak"/> names thema's and has no cause
+    /// that names a fiche, so a candidate row for one would have nowhere honest to go.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<DekkendeFichekoppeling>> HaalFichekoppelingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The in-scope leerplandoelen — the denominator of the coverage figure and the source of the gap list.
     /// <para>
     /// Returned as the domain entity rather than a fourth near-identical read DTO, following
@@ -192,6 +220,14 @@ public sealed record KandidaatKoppeling(
     Guid ThemaId,
     string ThemaNaam,
     bool IsBeslist);
+
+/// <summary>
+/// One reason a leerplandoel is covered through the fifth layer: the code, and the planned algemene fiche that
+/// carries it (Art. V.1 as amended 2026-09-11).
+/// </summary>
+/// <param name="LeerplandoelCode">The covered goal's code.</param>
+/// <param name="FicheNaam">The fiche's name: the evidence, as <see cref="DekkendeKoppeling.ThemaNaam"/> is for a thema.</param>
+public sealed record DekkendeFichekoppeling(string LeerplandoelCode, string FicheNaam);
 
 /// <summary>
 /// What a class says about which jaar/fase it teaches: its ordinal and, since the owner's ruling of 2026-08-25, its

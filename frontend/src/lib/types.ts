@@ -42,7 +42,11 @@ export const DOELSOORTEN: Doelsoort[] = [
 
 export type KoppelingStatus = "Voorgesteld" | "Aanvaard" | "Geweigerd" | "Manueel";
 
-export type KoppelingHerkomst = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit";
+/**
+ * Which content layer a register link lives in. For `AlgemeneFiche` there is no thema: `themaNaam` carries the
+ * fiche's name and `onderdeel` its klas (server contract, 2026-09-11).
+ */
+export type KoppelingHerkomst = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit" | "AlgemeneFiche";
 
 // --- Curriculum ---
 
@@ -482,6 +486,11 @@ export interface LeerplandoelDekking {
   nietMeerInOpstap: boolean;
   isGedekt: boolean;
   dekkendeThemas: string[];
+  /**
+   * The planned algemene fiches of this class that cover the goal (owner ruling, 2026-09-11). `isGedekt` is true
+   * exactly when this or `dekkendeThemas` is non-empty, so neither list alone says whether a goal is covered.
+   */
+  dekkendeFiches: string[];
 }
 
 /**

@@ -1076,6 +1076,11 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
                 CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<KandidaatKoppeling>>([]);
 
+            public Task<IReadOnlyList<DekkendeFichekoppeling>> HaalFichekoppelingenAsync(
+                Guid klasId,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<DekkendeFichekoppeling>>([]);
+
             public Task<IReadOnlyList<Leerplandoel>> HaalLeerplandoelenAsync(
                 IReadOnlyCollection<string>? jaarFasen = null,
                 CancellationToken cancellationToken = default) =>

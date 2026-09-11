@@ -86,16 +86,16 @@ public sealed class DekkingService
         // Grouped once into code -> the thema's that cover it, so the per-doel projection below is a dictionary
         // lookup rather than a scan per leerplandoel. The curriculum is thousands of rows; a nested scan here
         // would be the one place this computation could become quadratic.
-        var themasPerCode = koppelingen
-            .GroupBy(k => k.LeerplandoelCode, StringComparer.Ordinal)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<string>)g
-                    .Select(k => k.ThemaNaam)
-                    .Distinct(StringComparer.Ordinal)
-                    .OrderBy(naam => naam, StringComparer.Ordinal)
-                    .ToList(),
-                StringComparer.Ordinal);
+        var themasPerCode = NamenPerCode(koppelingen, k => k.LeerplandoelCode, k => k.ThemaNaam);
+
+        // THE FIFTH LAYER (owner ruling, 2026-09-11): the goals of this class's planned algemene fiches. Read on its own
+        // rather than through the thema placements above, because a fiche is not in the plan and has no placement
+        // status; see IDekkingOpslag.HaalFichekoppelingenAsync. Grouped the same way, so the evidence lists are built
+        // by one rule.
+        var fichesPerCode = NamenPerCode(
+            await _opslag.HaalFichekoppelingenAsync(klasId, cancellationToken),
+            k => k.LeerplandoelCode,
+            k => k.FicheNaam);
 
         // THE DENOMINATOR, resolved by the one method both this figure and E3-03's vooruitzicht read it from, so the
         // two can never be over different sets of goals. See BepaalBereikAsync for the ruling it implements.
@@ -122,7 +122,8 @@ public sealed class DekkingService
             .Select(l =>
             {
                 var dekkendeThemas = themasPerCode.GetValueOrDefault(l.Code, []);
-                var isGedekt = dekkendeThemas.Count > 0;
+                var dekkendeFiches = fichesPerCode.GetValueOrDefault(l.Code, []);
+                var isGedekt = dekkendeThemas.Count > 0 || dekkendeFiches.Count > 0;
 
                 // Classified only for a gap. A covered goal has no cause, and the type says so with a null rather
                 // than with an extra enum member: "not applicable" and "we could not work out why" would otherwise be
@@ -143,11 +144,12 @@ public sealed class DekkingService
                     l.Tekst,
                     l.MinimumdoelRef,
                     l.NietMeerInOpstap,
-                    // Covered exactly when at least one placed thema carries it. The two halves of the record can
-                    // therefore never disagree, which matters because an export reads IsGedekt and a teacher reads
-                    // the thema list.
+                    // Covered exactly when at least one placed thema or one planned algemene fiche carries it. The
+                    // flag and the two evidence lists can therefore never disagree, which matters because an export
+                    // reads IsGedekt and a teacher reads the names.
                     IsGedekt: isGedekt,
                     dekkendeThemas,
+                    dekkendeFiches,
                     lacune.Oorzaak,
                     lacune.Themas);
             })
@@ -250,12 +252,19 @@ public sealed class DekkingService
         // they sit in no period at all; an unrecognised status counts as neither (see IsVoorstelbaar).
         var voorstelbaar = Themaplaatsingen(plan, IsVoorstelbaar);
 
-        var nuGedekt = await TelGedekteDoelenAsync(klasId, beslist, scope.Leerplandoelen, cancellationToken);
+        // The planned fiches' goals belong to BOTH halves. A fiche has no proposal state, so it is as decided in the
+        // ceiling as in today's figure; leaving it out of either would make the vooruitzicht disagree with the
+        // dekkingsoverzicht about the same plan, which is exactly what this method exists to prevent.
+        var ficheCodes = (await _opslag.HaalFichekoppelingenAsync(klasId, cancellationToken))
+            .Select(k => k.LeerplandoelCode)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var nuGedekt = await TelGedekteDoelenAsync(klasId, beslist, ficheCodes, scope.Leerplandoelen, cancellationToken);
         var mogelijkGedekt = beslist.Count == voorstelbaar.Count
             // Same thema set, so the same answer: no proposal is standing and the second read would be identical.
             // Skipped rather than repeated because this is the state a plan is in whenever nothing was just generated.
             ? nuGedekt
-            : await TelGedekteDoelenAsync(klasId, voorstelbaar, scope.Leerplandoelen, cancellationToken);
+            : await TelGedekteDoelenAsync(klasId, voorstelbaar, ficheCodes, scope.Leerplandoelen, cancellationToken);
 
         var onopgeloste = TelOnopgelosteVervallen(plan);
         var isBetrouwbaar = onopgeloste == 0;
@@ -353,29 +362,54 @@ public sealed class DekkingService
             .ToList();
 
     /// <summary>
-    /// How many of <paramref name="leerplandoelen"/> at least one of <paramref name="themaIds"/> carries a counting
-    /// link to. Counted over the in-scope goals rather than over the links, so a link pointing at a goal outside the
-    /// scope cannot inflate the figure past its own denominator.
+    /// How many of <paramref name="leerplandoelen"/> are carried by a counting link on one of
+    /// <paramref name="themaIds"/> or by one of the planned fiches' <paramref name="ficheCodes"/>. Counted over the
+    /// in-scope goals rather than over the links, so a link pointing at a goal outside the scope cannot inflate the
+    /// figure past its own denominator.
+    /// <para>
+    /// <b>No early return on an empty thema set any more.</b> It used to answer 0 without asking, which was right while
+    /// a thema was the only way to cover a goal; a class with fiches in its agenda and no thema placed yet covers
+    /// something, and the shortcut would have reported that it covered nothing.
+    /// </para>
     /// </summary>
     private async Task<int> TelGedekteDoelenAsync(
         Guid klasId,
         IReadOnlyList<Guid> themaIds,
+        IReadOnlySet<string> ficheCodes,
         IReadOnlyList<Leerplandoel> leerplandoelen,
         CancellationToken cancellationToken)
     {
-        if (themaIds.Count == 0)
+        var gedekteCodes = new HashSet<string>(ficheCodes, StringComparer.Ordinal);
+
+        // The thema layers are still not asked about an empty set: see HaalDekkendeKoppelingenAsync for why an empty
+        // IN () is avoided, and the tests that pin "the port is never reached" for a plan with nothing placed.
+        if (themaIds.Count > 0)
         {
-            return 0;
+            var koppelingen = await _opslag.HaalDekkendeKoppelingenAsync(klasId, themaIds, cancellationToken);
+            gedekteCodes.UnionWith(koppelingen.Select(k => k.LeerplandoelCode));
         }
-
-        var koppelingen = await _opslag.HaalDekkendeKoppelingenAsync(klasId, themaIds, cancellationToken);
-
-        var gedekteCodes = koppelingen
-            .Select(k => k.LeerplandoelCode)
-            .ToHashSet(StringComparer.Ordinal);
 
         return leerplandoelen.Count(l => gedekteCodes.Contains(l.Code));
     }
+
+    /// <summary>
+    /// Evidence rows grouped into code -> the distinct names that cover it, ordinally ordered. One helper for the thema
+    /// and the fiche lists, so the two lines a teacher reads about one goal sort their names by the same rule.
+    /// </summary>
+    private static Dictionary<string, IReadOnlyList<string>> NamenPerCode<T>(
+        IEnumerable<T> rijen,
+        Func<T, string> code,
+        Func<T, string> naam) =>
+        rijen
+            .GroupBy(code, StringComparer.Ordinal)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<string>)g
+                    .Select(naam)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(n => n, StringComparer.Ordinal)
+                    .ToList(),
+                StringComparer.Ordinal);
 
     /// <summary>
     /// How many stale placements are still <b>unresolved</b> — stale and not rejected. One implementation, read by the

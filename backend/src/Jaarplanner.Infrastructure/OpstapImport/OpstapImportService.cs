@@ -441,9 +441,14 @@ public sealed class OpstapImportService : IOpstapImportService
         entry.Property(l => l.NietMeerInOpstap).CurrentValue = value;
 
     /// <summary>
-    /// Counts how many teacher links (across themadoelen, subdoelen and activity koppelingen)
+    /// Counts how many teacher links (across themadoelen, subdoelen, activity koppelingen and algemene fiches)
     /// still reference each of the given leerplandoel codes. A non-zero count means the goal is
     /// in use and must not be deleted (Art. IV.2).
+    /// <para>
+    /// <b>Every table with a Restrict FK to a leerplandoel code has to be in here</b>, or a re-import that drops a code
+    /// only a fiche still uses would try to delete it and meet a bare 23503 instead of flagging it
+    /// <c>NietMeerInOpstap</c>. The fiche table joined that set on 2026-09-11.
+    /// </para>
     /// </summary>
     private async Task<Dictionary<string, int>> KoppelingAantallenAsync(
         IReadOnlyCollection<string> codes,
@@ -466,9 +471,15 @@ public sealed class OpstapImportService : IOpstapImportService
             .Where(k => codeSet.Contains(k.LeerplandoelCode))
             .Select(k => k.LeerplandoelCode);
 
+        var ficheCodes = _context.AlgemeneFiches
+            .SelectMany(f => f.Doelkoppelingen)
+            .Where(k => codeSet.Contains(k.LeerplandoelCode))
+            .Select(k => k.LeerplandoelCode);
+
         var alle = await themadoelCodes
             .Concat(subdoelCodes)
             .Concat(activiteitCodes)
+            .Concat(ficheCodes)
             .ToListAsync(cancellationToken);
 
         return alle
