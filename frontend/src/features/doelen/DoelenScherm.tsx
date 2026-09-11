@@ -148,7 +148,7 @@ export function DoelenScherm() {
                   type="button"
                   onClick={() => setZoekInvoer("")}
                   aria-label={t("doelen.zoekWissen")}
-                  className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-inkt-zwak transition-colors hover:bg-vlak-diep hover:text-inkt"
+                  className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-veld text-inkt-zwak transition-colors hover:bg-vlak-diep hover:text-inkt"
                 >
                   <IcoonKruis className="h-4 w-4" />
                 </button>

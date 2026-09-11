@@ -84,7 +84,7 @@ export function PlanScherm() {
              sidebar item leads here too and pressing it again is not an obvious exit. */
           <Link
             to="/agenda"
-            className="inline-flex h-9 items-center rounded-full border border-lijn px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
+            className="inline-flex h-9 items-center rounded-veld border border-lijn px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
           >
             {t("navigatie.agenda")}
           </Link>
@@ -168,7 +168,7 @@ export function PlanScherm() {
                         <button
                           type="button"
                           onClick={() => setThemakiezerBlok(blok.start)}
-                          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
                         >
                           <IcoonPlus aria-hidden="true" className="h-4 w-4" />
                           {t("plan.voegThemaToe")}
@@ -176,7 +176,7 @@ export function PlanScherm() {
 
                         <Link
                           to={`/agenda/dag/${blok.start}`}
-                          className="group inline-flex h-9 items-center gap-1.5 rounded-full bg-accent px-3 text-meta font-medium text-accent-op transition-colors duration-150 hover:bg-accent-diep"
+                          className="group inline-flex h-9 items-center gap-1.5 rounded-veld bg-accent px-3 text-meta font-medium text-accent-op transition-colors duration-150 hover:bg-accent-diep"
                         >
                           {t("plan.openPeriode")}
                           <IcoonPijlRechts

@@ -159,7 +159,7 @@ function Dekkingsmeter({
 
         <a
           href={exportPad}
-          className="inline-flex h-9 items-center rounded-full border border-lijn-veld px-3 text-meta font-medium text-inkt transition-colors duration-150 hover:border-inkt"
+          className="inline-flex h-9 items-center rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt transition-colors duration-150 hover:border-inkt"
         >
           {t("dekking.export")}
         </a>
