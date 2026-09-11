@@ -223,3 +223,23 @@ home for that whole set.
   **Owed:** the antagonist round; and then the rename `LengteInLesuren` → `DuurInMinuten` (ADR-0028 decision 2),
   which is blocked on a stale claim over `SchoolcontentBeheerService.cs` and is the one place the model still
   speaks in lesuren.
+
+  **Also owed: a non-drag route to resize one hoek day** (WCAG 2.2 AA). *Found 2026-09-11 by the antagonist on
+  `feature/hoek-uren` (rounds 1–3); recorded by the technical lead, because without it this story closes with the gap
+  unrecorded.* In the time grid, resizing **one** day of a hoek run still depends on the drag strip at the block's
+  bottom edge, and nothing else does it: there is no single-pointer or keyboard alternative (SC 2.5.7 Dragging
+  Movements), and the strip is below the 24px minimum target (SC 2.5.8 Target Size). It is `h-1.5` (6px) on `main`
+  (`f047cef`, `Rekgreep` in `Tijdraster.tsx`) and `h-2` (8px) on `feature/hoek-uren`. The hours form that branch adds
+  to the Hoekdetailblad sets **every** day of the run, so it is not that alternative. The gap predates the branch; its
+  visible grip only makes the gap easier to find. The *Done when* above asks for a non-drag route for activiteiten
+  only, and no story names one for a hoek day. This finding does not replace the antagonist round on E10-04 itself,
+  which is still owed.
+
+  **Owner rulings of 2026-09-11 on a hoek run's hours**, given in session to `hoek-uren` in answer to explicit
+  questions, and reported to the lead by that session. They are built on `feature/hoek-uren` (`aeb44de`, `6cc843e`,
+  `21feaf3`), which is **not yet on `main`**:
+  - **New hours saved in the Hoekdetailblad go to every day of the run**, including days moved or resized by hand. The
+    sheet warns before saving when a day currently differs.
+  - **A day that holds the hoek more than once** (days dragged onto another) **refuses** a change to the run's hours,
+    and the refusal names the day. Nothing is folded into one row. *`aeb44de` first folded such a day. Antagonist
+    round 1 flagged that as unruled (MAJOR), and this ruling replaced it in `6cc843e`.*
