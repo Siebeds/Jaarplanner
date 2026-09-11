@@ -19,6 +19,12 @@ export const CSRF_HEADER = "X-Jaarplanner-Csrf";
 /** The page a person lands on when Entra knows them and the app does not let them in. */
 export const GEEN_TOEGANG_PAD = "/geen-toegang";
 
+/** The page a sign-in lands on when it did not complete. */
+export const AANMELDEN_MISLUKT_PAD = "/aanmelden-mislukt";
+
+/** The pages a 401 must never navigate away from: each would loop through Microsoft's silent sign-in. */
+const ZONDER_OMLEIDING = new Set([GEEN_TOEGANG_PAD, AANMELDEN_MISLUKT_PAD]);
+
 let omleidingBezig = false;
 
 /**
@@ -28,15 +34,16 @@ let omleidingBezig = false;
  * only a top-level page can follow. Once per page: several queries fail at the same moment on an
  * expired session, and each would otherwise start its own navigation.
  *
- * *Never from the refusal page itself.* Someone whose account the app refused would otherwise be
- * signed in again by Microsoft without a click, refused again, and sent back here, in a loop.
+ * *Never from the refusal page or the failed-sign-in page.* Someone whose account the app refused
+ * would otherwise be signed in again by Microsoft without a click, refused again, and sent back
+ * here, in a loop.
  *
  * An object with a method rather than a bare function so a test can replace it: jsdom cannot
  * navigate.
  */
 export const aanmeldOmleiding = {
   stuurDoor(): void {
-    if (omleidingBezig || window.location.pathname === GEEN_TOEGANG_PAD) return;
+    if (omleidingBezig || ZONDER_OMLEIDING.has(window.location.pathname)) return;
     omleidingBezig = true;
     const terug = `${window.location.pathname}${window.location.search}`;
     window.location.assign(`${BASE_URL}/api/aanmelden?terugNaar=${encodeURIComponent(terug)}`);

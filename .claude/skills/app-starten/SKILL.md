@@ -34,7 +34,9 @@ for p in 5184 5185 5177; do printf '%s http=%s claim=%s\n' "$p" \
 ```
 
 - `http=000` and no claim: the port is free. Anything else: already served, or claimed.
-- **Is it already running?** If 5177 answers 200 and `/api/klassen` through it answers 200, the app is up.
+- **Is it already running?** If 5177 answers 200 and `/api/klassen` through it answers **401**, the app is up.
+  Every route needs a session since E6-01, so 401 is the healthy answer without one, and 200 there means an
+  API from before E6-01.
   Tell the owner the URL and stop here.
 - **A claimed port is not yours, even if its claim is stale.** Only the technical lead breaks a claim. Pick
   the next free port for the API (5185, 5186, …) and point Vite at it in step 5. That is all it costs.
@@ -124,16 +126,28 @@ cd $REPO/frontend && VITE_API_PROXY_TARGET=http://localhost:5185 corepack pnpm d
 ## 6. Verify, and look at it
 
 ```bash
-curl -s -o /dev/null -w 'api %{http_code}\n'   http://localhost:5185/api/klassen
+curl -s -o /dev/null -w 'api %{http_code}\n'   http://localhost:5185/health
 curl -s --retry 20 --retry-connrefused --retry-delay 1 -o /dev/null -w 'vite %{http_code}\n' http://localhost:5177/
 curl -s -o /dev/null -w 'proxy %{http_code}\n' http://localhost:5177/api/klassen
+curl -s -o /dev/null -w 'signin %{http_code}\n' 'http://localhost:5177/api/aanmelden/ontwikkeling?terugNaar=%2F'
 "/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new --disable-gpu \
   --user-data-dir="$(cygpath -w "$LOGS")\\chrome-profile" --window-size=1440,900 \
   --virtual-time-budget=8000 --screenshot="$(cygpath -w "$LOGS")\\app.png" http://localhost:5177/
 ```
 
-All three must be **200**. Then **Read the screenshot**. Three 200s do not prove the page renders. Use your
-own `--user-data-dir` so you never touch the owner's Chrome profile.
+Expect `api 200`, `vite 200`, **`proxy 401`** and `signin 200`. Since E6-01 (ADR-0031) every route needs a
+session, so a 401 through the proxy is the healthy answer, and `signin` is the development sign-in page. Then
+**Read the screenshot**: without a session it shows that English "Development sign-in" page, which proves the API
+and the proxy work. It does not show the app itself.
+
+- **`signin` answers 500, or the page lists no users** → the database lacks the E6-01 migration
+  (`20260911150216_GebruikersEnSessiesleutels`). Run `dotnet ef database update` against it, then **restart the
+  API**. On its next start the API creates `directie@jaarplanner.local` from `appsettings.Development.json`, and
+  only then is there someone to pick.
+- **Telling the owner:** say that the first page is a sign-in on which they pick a person. Nothing in the app is
+  reachable before that.
+
+Use your own `--user-data-dir` so you never touch the owner's Chrome profile.
 
 - **White page** → almost always Vite's optimizer failing with `EBUSY … node_modules/.vite/deps`. Read
   `vite.log`, not the browser console. Fix: stop Vite, `rm -rf $REPO/frontend/node_modules/.vite`, start again.

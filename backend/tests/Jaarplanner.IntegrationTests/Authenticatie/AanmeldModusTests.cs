@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Web;
 using Jaarplanner.Api.Infrastructure.Authenticatie;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +32,39 @@ public sealed class AanmeldModusTests
         var fout = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
 
         Assert.Contains("Ontwikkeling", fout.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Buiten_Development_is_een_Key_Vault_sleutel_voor_de_sessiesleutels_verplicht()
+    {
+        using var factory = new Fabriek(Environments.Production, EntraInstellingen());
+
+        var fout = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        Assert.Contains("KeyVaultSleutel", fout.ToString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A sign-in that does not complete (here: the correlation cookie is gone) must not surface as the framework's
+    /// English 500. Run through the configured event exactly as the handler would, since provoking a real failed
+    /// callback needs a real round trip to Entra.
+    /// </summary>
+    [Fact]
+    public async Task Een_onvoltooide_Entra_aanmelding_landt_op_de_Nederlandse_pagina()
+    {
+        using var factory = new Fabriek(Environments.Development, EntraInstellingen());
+        _ = factory.CreateClient();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var opties = factory.Services.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>().Get(Aanmelding.EntraSchema);
+        var schema = await factory.Services.GetRequiredService<IAuthenticationSchemeProvider>().GetSchemeAsync(Aanmelding.EntraSchema);
+        var http = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        var context = new RemoteFailureContext(http, schema!, opties, new AuthenticationFailureException("Correlation failed."));
+
+        await opties.Events.RemoteFailure(context);
+
+        Assert.True(context.Result?.Handled);
+        Assert.Equal(Aanmelding.AanmeldenMisluktPad, http.Response.Headers.Location.ToString());
+        Assert.Equal(Aanmelding.AanmeldenMisluktPad, opties.AccessDeniedPath.Value);
     }
 
     [Fact]

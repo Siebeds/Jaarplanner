@@ -117,14 +117,22 @@ A browser SPA can log in to Entra in two ways:
    - **No front-channel logout.** Entra calls it from a cross-site iframe, where a `SameSite=Lax` cookie is never
      sent, so it could not end this session anyway.
    - `GET /api/ik` tells the frontend who is logged in: naam, sign-in address, and whether the person is directie.
+   - **A sign-in that does not complete** lands on `/aanmelden-mislukt`, a Dutch page offering to try again. That
+     covers cancelled consent, an error returned by Entra, and an expired correlation cookie. It is wired through
+     `OnRemoteFailure` and `AccessDeniedPath`; without them the framework answers with an English 500 in a
+     top-level page. It is a page of its own because the refusal page's sentences would be false for it: nobody
+     refused anything.
 5. **The cookie:**
    - `HttpOnly`, `Secure`, `SameSite=Lax`, with the `__Host-` prefix outside Development.
    - Sliding expiry, configurable.
    - **Checked against the database on every request.** A `Gebruiker` that directie removes loses its session
      immediately rather than at expiry.
    - Encrypted with ASP.NET Core Data Protection. Its keys are **persisted in the application database**, so a
-     restart or a second instance does not log everyone out. In the cloud they are protected with a Key Vault key
-     when one is configured.
+     restart or a second instance does not log everyone out.
+   - **Outside Development those keys must be wrapped with a Key Vault key** (`DataProtection:KeyVaultSleutel`).
+     The app refuses to start without it. The cookie carries only a `Gebruiker` id, so unwrapped keys would let a
+     copy of the database mint a session for anyone, directie included. *Tightened on the code round's
+     antagonist finding: the first build only wrapped them "when one is configured".*
    - **Cross-site request forgery.**
      - `Lax` already keeps the cookie off cross-site POSTs.
      - As a second layer, every `POST`, `PUT`, `PATCH` or `DELETE` to `/api` must carry the header
@@ -217,10 +225,19 @@ A browser SPA can log in to Entra in two ways:
   - the scopes `openid profile`, with no Microsoft Graph permissions;
   - the `acct` optional claim in the ID token.
 - The client secret in Key Vault, as `Authenticatie--Entra--ClientSecret`.
-- Optionally, a Key Vault key for the Data Protection keys, as `DataProtection:KeyVaultSleutel`.
+- **A Key Vault key for the Data Protection keys**, as `DataProtection:KeyVaultSleutel`. It is required: the app
+  refuses to start outside Development without it.
 - *Assignment required* on, with the staff group assigned.
-- HTTPS only, with HSTS. Behind App Service, forwarded headers must be honoured so the post-logout address is built
-  with `https`.
+- HTTPS only, with HSTS.
+- **Forwarded headers.** The app has no `UseForwardedHeaders`, so on App Service set
+  `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`. Otherwise the sign-in's `redirect_uri` and the post-logout address
+  are built with `http`, and Entra refuses them.
+- An ASP.NET Core runtime at or above the release that patches `System.Security.Cryptography.Xml`. The package pin
+  does not reach a web project, which loads the shared framework's copy.
+- One real-tenant round trip before the gate opens. The tests stop at the configured events and a static discovery
+  document.
+
+These prerequisites are also written on E7-11, which owns them.
 
 ## Compliance trace
 

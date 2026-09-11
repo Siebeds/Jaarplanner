@@ -3,43 +3,60 @@ import { Knop, Knoplink } from "../../components/ui/Knop";
 import { t } from "../../i18n";
 import { aanmeldAdres, useAfmelden } from "../../lib/aanmelding";
 
+/** Why the sign-in did not end in a session. */
+export type Aanmeldfout = "geweigerd" | "mislukt";
+
 /**
- * Where a person lands when Microsoft knows them and Jaarplanner does not let them in (E6-01,
- * ADR-0031 decision 3).
+ * Where a sign-in ends when it does not end in a session (E6-01, ADR-0031). Two cases, one page:
+ *
+ * - **`geweigerd`** (`/geen-toegang`): Microsoft knows the person and Jaarplanner does not let them in.
+ * - **`mislukt`** (`/aanmelden-mislukt`): the sign-in itself did not complete. Consent was cancelled, Entra returned
+ *   an error, or the round trip took too long. Nobody refused anything, so the refusal's sentences would be false
+ *   here and this case has its own.
  *
  * **Outside the shell, and it asks the API nothing when it opens.** The shell's navigation reads the
  * signed-in person, and every read here would answer 401, send the browser to the sign-in, have
- * Microsoft sign the same account in again without a click, get refused, and land here again. The
- * page therefore renders from the catalogue alone, and `aanmeldOmleiding` leaves this address alone.
+ * Microsoft sign the same account in again without a click, and land here again. The page therefore
+ * renders from the catalogue alone, and `aanmeldOmleiding` leaves both addresses alone.
  *
- * **Its sentences hold for every reason a login is refused**: another tenant's account, a guest in
- * the school's tenant, an app registration that does not say "member", or simply nobody having
- * invited this person. So it does not say that directie forgot anyone, because in three of those four
- * cases directie did nothing wrong. It says what is true in all four, and what the person can do.
+ * **The refusal's sentences hold for every reason a login is refused**: a token without the account's
+ * identifiers, another tenant's account, a guest in the school's tenant, an app registration that does
+ * not say "member", or simply nobody having invited this person. So it does not say that directie
+ * forgot anyone, because in four of those five cases directie did nothing wrong.
  *
- * Two ways on, ranked: trying again is the primary action (one of the accent's five uses), because
- * it is the right one once directie has added them; choosing another account steps back to `stil`,
- * because it is the right one only for someone who used the wrong account.
+ * Trying again is the primary action (one of the accent's five uses). Choosing another account steps
+ * back to `stil`, and is only offered on a refusal, where the wrong account is a likely cause.
  */
-export function GeenToegangScherm() {
+export function GeenToegangScherm({ soort = "geweigerd" }: { soort?: Aanmeldfout }) {
   const afmelden = useAfmelden();
+  const mislukt = soort === "mislukt";
 
   return (
     <main className="min-h-dvh px-4 py-16 sm:py-24">
       <div className="mx-auto max-w-[34rem]">
         <Merk />
 
-        <h1 className="mt-12 font-display text-scherm text-inkt">{t("aanmelding.geenToegang.titel")}</h1>
-        <p className="mt-4 text-body text-inkt-zacht">{t("aanmelding.geenToegang.uitleg")}</p>
-        <p className="mt-3 text-body text-inkt-zacht">{t("aanmelding.geenToegang.watNu")}</p>
+        <h1 className="mt-12 font-display text-scherm text-inkt">
+          {mislukt ? t("aanmelding.mislukt.titel") : t("aanmelding.geenToegang.titel")}
+        </h1>
+        {mislukt ? (
+          <p className="mt-4 text-body text-inkt-zacht">{t("aanmelding.mislukt.uitleg")}</p>
+        ) : (
+          <>
+            <p className="mt-4 text-body text-inkt-zacht">{t("aanmelding.geenToegang.uitleg")}</p>
+            <p className="mt-3 text-body text-inkt-zacht">{t("aanmelding.geenToegang.watNu")}</p>
+          </>
+        )}
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Knoplink rang="hoofd" href={aanmeldAdres("/")}>
             {t("aanmelding.geenToegang.opnieuw")}
           </Knoplink>
-          <Knop rang="stil" onClick={() => afmelden.mutate()} disabled={afmelden.isPending}>
-            {t("aanmelding.geenToegang.anderAccount")}
-          </Knop>
+          {mislukt ? null : (
+            <Knop rang="stil" onClick={() => afmelden.mutate()} disabled={afmelden.isPending}>
+              {t("aanmelding.geenToegang.anderAccount")}
+            </Knop>
+          )}
         </div>
 
         {afmelden.isError ? (

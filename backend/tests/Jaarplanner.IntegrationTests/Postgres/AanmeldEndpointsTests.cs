@@ -105,14 +105,22 @@ public sealed class AanmeldEndpointsTests : IAsyncLifetime
     {
         using var client = Client();
         await MeldAanAsync(client);
+        using (var voordien = await client.GetAsync("/api/klassen"))
+        {
+            Assert.Equal(HttpStatusCode.OK, voordien.StatusCode);
+        }
 
         await using (var context = _db.MaakContext())
         {
             await context.Gebruikers.Where(g => g.Id == _directie.Id).ExecuteDeleteAsync();
         }
 
-        using var antwoord = await client.GetAsync("/api/ik");
+        // Not /api/ik: that endpoint answers 401 by itself for a Gebruiker that no longer exists, so a test asking it
+        // passed with the per-request check deleted (antagonist, E6-01 code round, MAJOR). /api/klassen looks nobody
+        // up, so only the cookie's own validation can refuse it, and the refusal must also delete the cookie.
+        using var antwoord = await client.GetAsync("/api/klassen");
         Assert.Equal(HttpStatusCode.Unauthorized, antwoord.StatusCode);
+        Assert.Contains(antwoord.Headers.GetValues("Set-Cookie"), c => c.StartsWith("jaarplanner=;", StringComparison.Ordinal));
     }
 
     [PostgresFact]

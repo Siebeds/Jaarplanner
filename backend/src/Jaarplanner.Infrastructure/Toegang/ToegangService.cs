@@ -60,23 +60,44 @@ public sealed class ToegangService : IToegangService
             return Aanmeldresultaat.Geweigerd(Aanmeldweigering.NietUitgenodigd);
         }
 
+        // The domain validates the binding and settles the name; the database write is conditional on the row still
+        // being unbound. Between the read above and this write, another first login may have bound the same
+        // invitation (the same account on two tabs, or, rarely, another account after a UPN was reassigned
+        // mid-login). An unconditional save would let the last writer win; this one lets only the first, so a binding
+        // is permanent in the database and not only in this instance.
         uitnodiging.KoppelAanEntra(tenantId, objectId, identiteit.Naam);
+        var naam = uitnodiging.Naam;
+        int bijgewerkt;
         try
         {
-            await _context.SaveChangesAsync(cancellationToken);
+            bijgewerkt = await _context.Gebruikers
+                .Where(g => g.Id == uitnodiging.Id && g.EntraObjectId == null)
+                .ExecuteUpdateAsync(
+                    zet => zet
+                        .SetProperty(g => g.EntraTenantId, tenantId)
+                        .SetProperty(g => g.EntraObjectId, objectId)
+                        .SetProperty(g => g.Naam, naam),
+                    cancellationToken);
         }
-        catch (DbUpdateException)
+        catch (Exception fout) when (fout is DbUpdateException or System.Data.Common.DbException)
         {
-            // Two first logins of the same account raced, and the unique (tenant, object) index let one of them win.
-            // Whichever did, the account is bound now, so answer from the database rather than from this attempt.
-            _context.ChangeTracker.Clear();
-            var winnaar = await ZoekGekoppeldAsync(tenantId, objectId, cancellationToken);
-            return winnaar is null
-                ? Aanmeldresultaat.Geweigerd(Aanmeldweigering.NietUitgenodigd)
-                : Aanmeldresultaat.Toegelaten(Weergave(winnaar));
+            // The unique (tenant, object) index: this account is already bound to another invitation.
+            bijgewerkt = 0;
         }
 
-        return Aanmeldresultaat.Toegelaten(Weergave(uitnodiging));
+        // The in-memory instance was changed by KoppelAanEntra; it must never be saved by a later SaveChanges.
+        _context.ChangeTracker.Clear();
+
+        if (bijgewerkt == 1)
+        {
+            return Aanmeldresultaat.Toegelaten(Weergave(uitnodiging));
+        }
+
+        // Someone bound it first. If it was this same account, it is in; if it was another, this one is not invited.
+        var gebonden = await ZoekGekoppeldAsync(tenantId, objectId, cancellationToken);
+        return gebonden is null
+            ? Aanmeldresultaat.Geweigerd(Aanmeldweigering.NietUitgenodigd)
+            : Aanmeldresultaat.Toegelaten(Weergave(gebonden));
     }
 
     public async Task<GebruikerWeergave?> HaalGebruikerOpAsync(Guid gebruikerId, CancellationToken cancellationToken = default)

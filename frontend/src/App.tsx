@@ -48,6 +48,7 @@ export default function App() {
           {/* Outside the shell (E6-01). The shell reads who is signed in, and on this page that read
               would answer 401 and loop through the sign-in: see GeenToegangScherm. */}
           <Route path="geen-toegang" element={<GeenToegangScherm />} />
+          <Route path="aanmelden-mislukt" element={<GeenToegangScherm soort="mislukt" />} />
           <Route element={<Schil />}>
             {/* The app opens on the agenda (owner, 2026-09-11: "ik wil niet dat er default doelen
                 wordt geopend"), and an address it does not know lands there too, below. */}

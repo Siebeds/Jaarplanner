@@ -1,10 +1,14 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
 using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -58,10 +62,23 @@ public sealed class ElkeRouteVraagtEenSessieTests : IClassFixture<JaarplannerApi
         Assert.Equal(AnoniemToegestaan.Order(StringComparer.Ordinal), anoniem);
     }
 
+    /// <summary>
+    /// Every protected endpoint, asked anonymously, answers 401 <b>and was the endpoint that answered</b>. The second
+    /// half is not a formality: ASP.NET Core applies the fallback policy to a request that matches no endpoint at all,
+    /// so a URL that failed a route constraint also answers 401, and without it this test passed with every guid route
+    /// unmatched (antagonist, E6-01 code round). The host records which endpoint each request reached.
+    /// </summary>
     [Fact]
     public async Task Elke_andere_route_antwoordt_401_zonder_sessie()
     {
-        using var client = _factory.MaakAnoniemeClient();
+        var getroffen = new GetroffenEindpunten();
+        using var fabriek = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton(getroffen);
+            services.AddSingleton<IStartupFilter, NoteerEindpunt>();
+        }));
+        using var client = fabriek.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthenticatie.AnoniemHeader, "1");
         var beschermd = Endpoints().Where(e => e.Metadata.GetMetadata<IAllowAnonymous>() is null).ToList();
 
         var fouten = new List<string>();
@@ -71,12 +88,20 @@ public sealed class ElkeRouteVraagtEenSessieTests : IClassFixture<JaarplannerApi
             foreach (var methode in Methoden(endpoint))
             {
                 var url = "/" + VulIn(endpoint.RoutePattern);
+                var id = Guid.NewGuid().ToString();
                 using var verzoek = new HttpRequestMessage(new HttpMethod(methode), url);
+                verzoek.Headers.Add(NoteerEindpunt.VerzoekHeader, id);
                 using var antwoord = await client.SendAsync(verzoek);
                 verzonden++;
                 if (antwoord.StatusCode != HttpStatusCode.Unauthorized)
                 {
                     fouten.Add($"{methode} {url} answered {(int)antwoord.StatusCode}");
+                }
+
+                getroffen.PerVerzoek.TryGetValue(id, out var raakte);
+                if (raakte != endpoint.RoutePattern.RawText)
+                {
+                    fouten.Add($"{methode} {url} reached {raakte ?? "no endpoint"} instead of {endpoint.RoutePattern.RawText}");
                 }
             }
         }
@@ -123,8 +148,9 @@ public sealed class ElkeRouteVraagtEenSessieTests : IClassFixture<JaarplannerApi
         Methoden(endpoint).Select(m => $"{m} {endpoint.RoutePattern.RawText?.TrimStart('/')}");
 
     /// <summary>
-    /// A concrete URL that matches <paramref name="patroon"/>, so the request reaches routing and then authorisation.
-    /// A value that failed a route constraint would answer 404, and the test would name the route that did.
+    /// A concrete URL meant to match <paramref name="patroon"/>. A value that fails a route constraint does <b>not</b>
+    /// answer 404 here: the fallback policy refuses an unmatched request with 401 too. That is why the test checks
+    /// which endpoint each request reached rather than trusting the status.
     /// </summary>
     private static string VulIn(RoutePattern patroon) =>
         string.Join('/', patroon.PathSegments.Select(segment => string.Concat(segment.Parts.Select(deel => deel switch
@@ -134,6 +160,38 @@ public sealed class ElkeRouteVraagtEenSessieTests : IClassFixture<JaarplannerApi
             RoutePatternParameterPart parameter => Voorbeeld(parameter),
             _ => "x",
         }))));
+
+    /// <summary>Which endpoint each tagged request reached, keyed by the request's tag.</summary>
+    private sealed class GetroffenEindpunten
+    {
+        public ConcurrentDictionary<string, string?> PerVerzoek { get; } = new();
+    }
+
+    /// <summary>
+    /// Outermost middleware: after the rest of the pipeline has run, routing has set the endpoint on the context (or
+    /// left it empty), so reading it on the way out tells what the request actually matched.
+    /// </summary>
+    private sealed class NoteerEindpunt : IStartupFilter
+    {
+        public const string VerzoekHeader = "X-Test-Verzoek";
+
+        private readonly GetroffenEindpunten _getroffen;
+
+        public NoteerEindpunt(GetroffenEindpunten getroffen) => _getroffen = getroffen;
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use(async (context, volgende) =>
+            {
+                await volgende(context);
+                if (context.Request.Headers.TryGetValue(VerzoekHeader, out var id))
+                {
+                    _getroffen.PerVerzoek[id.ToString()] = (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText;
+                }
+            });
+            next(app);
+        };
+    }
 
     private static string Voorbeeld(RoutePatternParameterPart parameter)
     {

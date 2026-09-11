@@ -38,6 +38,9 @@ public static class Aanmelding
     /// <summary>The frontend page a refused login lands on.</summary>
     public const string GeenToegangPad = "/geen-toegang";
 
+    /// <summary>The frontend page a sign-in that did not complete lands on.</summary>
+    public const string AanmeldenMisluktPad = "/aanmelden-mislukt";
+
     /// <summary>The one claim a session carries: the id of the <c>Gebruiker</c>.</summary>
     public const string GebruikerClaim = "jaarplanner:gebruiker";
 
@@ -88,11 +91,19 @@ public static class Aanmelding
         builder.Services.AddAuthorizationBuilder()
             .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
-        // The Data Protection keys live in the database (Infrastructure registers that); in the cloud they are also
-        // wrapped with a Key Vault key when one is configured, so a copy of the database alone cannot read a session.
-        if (builder.Configuration["DataProtection:KeyVaultSleutel"] is { Length: > 0 } sleutel)
+        // The Data Protection keys live in the database (Infrastructure registers that). Outside Development they must
+        // also be wrapped with a Key Vault key: the cookie carries only a Gebruiker id, so unwrapped keys would let a
+        // copy of the database mint a session for anyone, directie included. Refused at startup rather than trusted to
+        // be remembered, like every other setting this design cannot run safely without (antagonist, E6-01 code round).
+        var sleutel = builder.Configuration["DataProtection:KeyVaultSleutel"];
+        if (!string.IsNullOrWhiteSpace(sleutel))
         {
             builder.Services.AddDataProtection().ProtectKeysWithAzureKeyVault(new Uri(sleutel), new DefaultAzureCredential());
+        }
+        else if (!builder.Environment.IsDevelopment())
+        {
+            throw new InvalidOperationException(
+                "DataProtection:KeyVaultSleutel is required outside Development: without it the session keys lie unencrypted in the database (ADR-0031 decision 5).");
         }
 
         return opties;
@@ -218,6 +229,21 @@ public static class Aanmelding
         o.GetClaimsFromUserInfoEndpoint = false;
 
         o.Events.OnTokenValidated = context => BeoordeelAanmeldingAsync(context, tenantId);
+
+        // A sign-in that does not complete (cancelled consent, an error returned by Entra, an expired correlation
+        // cookie) would otherwise surface as an English 500 in a top-level page. It lands on a Dutch page with a way
+        // to try again instead, and the reason goes to the log.
+        o.AccessDeniedPath = AanmeldenMisluktPad;
+        o.Events.OnRemoteFailure = context =>
+        {
+            context.HttpContext.RequestServices
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger(typeof(Aanmelding))
+                .LogWarning(context.Failure, "An Entra sign-in did not complete.");
+            context.HandleResponse();
+            context.Response.Redirect(AanmeldenMisluktPad);
+            return Task.CompletedTask;
+        };
     }
 
     /// <summary>
