@@ -57,6 +57,8 @@ Per rij hebben we vier gegevens nodig:
 
 **Gevolg zolang dit openstaat.** Het samenwerkingsgedeelte kan niet af. De rest van de tool werkt wel.
 
+**De projecteigenaar heeft intussen een standaard gekozen, en dat hoort u te weten.** Op 11 september 2026 besliste hij: een leerkracht bewerkt enkel de eigen klassen en kan de plannen van alle andere klassen inkijken, zonder ze te kunnen wijzigen. De directie kan alles zien en aanpassen. **Uw vraag blijft open, maar niet meer op een leeg blad:** wilt u het inkijken beperken, bijvoorbeeld tot het eigen leerjaar, of wilt u het zelf kunnen instellen, zeg het dan. De tool wordt zo gebouwd dat die grens op één plaats zit en dus kan veranderen zonder herbouw.
+
 ---
 
 ## 5. Hoe moet de dekking eruitzien op papier?
