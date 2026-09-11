@@ -25,6 +25,12 @@ export interface Loopt {
   tot: string;
 }
 
+/** A stretch of days this corner already runs, reduced to what this picker draws. */
+export interface Bezet {
+  van: string;
+  tot: string;
+}
+
 /**
  * A month at a glance, for picking the stretch of days a hoek runs.
  *
@@ -34,6 +40,14 @@ export interface Loopt {
  * purpose and at two densities: a hairline under every day they cover, so the shape is visible while
  * she is choosing, and a named line under the grid, because a 32 pixel cell cannot hold "De bomen in
  * het park" and a colour alone would say nothing (Art. XII).
+ *
+ * **It also shows where THIS corner already runs** (owner, 2026-09-10), as a dashed outline around
+ * those days. The server accepts a second run of one corner over the same days, so seeing it while she
+ * chooses is the only thing between a teacher and a double booking. An outline, because the fill is
+ * already spoken for by the window she is choosing and the two have to be readable together where they
+ * overlap; a shape, because Art. XII has no hue left. The day's own label says it in words, and the
+ * sheet's "Al ingepland" rows carry the same outline (`IngeplandTeken`), which is what makes the mark
+ * legible without a legend.
  *
  * **Two clicks, not two date fields.** The first click sets the start and clears the end; the second
  * sets the end. Clicking before the start begins again there rather than refusing, which is what a
@@ -46,6 +60,7 @@ export function Periodekiezer({
   van,
   tot,
   loopt,
+  alIngepland = [],
   schooljaarVan,
   schooljaarTot,
   onKies,
@@ -55,6 +70,8 @@ export function Periodekiezer({
   tot: string;
   /** The subthema runs to draw, typically those of the visible months. */
   loopt: Loopt[];
+  /** The runs this corner already has, over any months: only the visible days are drawn. */
+  alIngepland?: readonly Bezet[];
   schooljaarVan: string;
   schooljaarTot: string;
   onKies: (van: string, tot: string) => void;
@@ -127,6 +144,7 @@ export function Periodekiezer({
           const isEind = datum === tot;
           const inBereik = tot !== "" && van < datum && datum < tot;
           const draagtReeks = zichtbaar.some((r) => valtBinnen(datum, r.van, r.tot));
+          const alBezet = alIngepland.some((r) => valtBinnen(datum, r.van, r.tot));
 
           return (
             <button
@@ -134,16 +152,19 @@ export function Periodekiezer({
               type="button"
               disabled={!binnenJaar}
               aria-pressed={isStart || isEind || inBereik}
-              aria-label={volleDag(datum)}
+              aria-label={alBezet ? `${volleDag(datum)}, ${t("periodekiezer.alIngepland")}` : volleDag(datum)}
               onClick={() => kies(datum)}
               className={cn(
-                "relative flex h-9 flex-col items-center justify-center rounded-veld text-meta transition-colors duration-150",
+                // A transparent border on every day, so the dashed one below replaces a colour rather
+                // than adding a pixel and shifting the grid.
+                "relative flex h-9 flex-col items-center justify-center rounded-veld border border-transparent text-meta transition-colors duration-150",
                 !binnenJaar && "cursor-not-allowed text-inkt-zwak/50",
                 binnenJaar && buitenMaand && "text-inkt-zwak",
                 binnenJaar && !buitenMaand && "text-inkt",
                 binnenJaar && !isStart && !isEind && !inBereik && "hover:bg-vlak-diep",
                 inBereik && "bg-accent-zacht",
                 (isStart || isEind) && "bg-accent font-medium text-accent-op",
+                alBezet && "border-dashed border-inkt-zwak",
               )}
             >
               {dagNummer(datum)}
@@ -181,5 +202,17 @@ export function Periodekiezer({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * The mark for "this corner already runs then": the same dashed outline the picker draws around those
+ * days, at the size of a list glyph. One component so the two cannot drift apart.
+ */
+export function IngeplandTeken() {
+  return (
+    // A rounded square, like the day cell it stands for. At this size any larger radius reads as a
+    // circle, and a circle is a different mark.
+    <span aria-hidden="true" className="h-3.5 w-3.5 shrink-0 rounded-[3px] border border-dashed border-inkt-zwak" />
   );
 }

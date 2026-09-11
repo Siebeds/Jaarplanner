@@ -2,13 +2,12 @@ import { useDraggable } from "@dnd-kit/core";
 import { Link } from "react-router-dom";
 import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
-import { IcoonChevron, IcoonHoek, IcoonKruis } from "../../components/Iconen";
+import { IcoonHoek, IcoonKruis } from "../../components/Iconen";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
-import { periode as periodeTekst } from "../../lib/datum";
-import { useHoeken, type HoekplaatsingWeergave, type HoekWeergave } from "./gegevens";
+import { useHoeken, type HoekWeergave } from "./gegevens";
 import { FICHE_VOORVOEGSEL } from "./sleepids";
 
 /**
@@ -25,51 +24,51 @@ import { FICHE_VOORVOEGSEL } from "./sleepids";
  * the sheet's overlay dimmed the whole agenda behind the column. Found by looking at it, not by a
  * test.
  *
+ * **A fiche says what a corner is, not when it runs** (owner, 2026-09-10). Each fiche used to carry a
+ * row per run under it ("Ingepland 1 sep – 4 sep"), which cluttered a list whose job is showing the
+ * corners side by side, and answered a question she only asks while planning. The runs are now in the
+ * placement sheet, which a click on a fiche opens at every width, and each run opens from there.
+ *
  * **A fiche is dragged onto a day of the agenda.** That is why this component is mounted inside the
  * agenda's `DndContext` even though it is `fixed` and paints nowhere near it: dnd-kit registers a
  * draggable through React context, not through the DOM tree.
  */
 export function Hoekenpaneel({
   klasId,
-  plaatsingen,
   onKies,
-  onOpenPlaatsing,
 }: {
   klasId: string | null;
   /**
-   * The placements overlapping the range the agenda is showing.
+   * A fiche was CHOSEN rather than dragged. The agenda opens the placement sheet with the day it is
+   * standing on as the start, the one thing a click can say that a drag says with its landing point.
    *
-   * **This is what makes a placed hoek reachable at all.** The band on a month cell is
-   * `pointer-events-none` and the day view only draws a hoek that took a lesuur, which is not the
-   * default, so neither is a dependable way in. The panel is: a corner is listed here whether or not
-   * it claims an hour, at every width, and its runs are listed under it.
-   */
-  plaatsingen: readonly HoekplaatsingWeergave[];
-  /**
-   * A fiche was CHOSEN rather than dragged: the phone path.
-   *
-   * Below `lg` the panel is a sheet over the calendar, so there is nothing to drag onto and a
-   * draggable fiche would be a control that does nothing. A tap opens the same placement sheet, with
-   * the day the agenda is standing on as the start, which is the one thing a tap can say that a drag
-   * says with its landing point.
+   * **At every width since 2026-09-10.** It used to be the phone path only, and beside the agenda a
+   * fiche could only be dragged. That was harmless while a corner's runs were listed under its fiche.
+   * With the runs in the sheet instead, a corner that takes no lesuur would have had no way back to
+   * them short of dropping its fiche on some arbitrary day.
    */
   onKies: (hoekId: string) => void;
-  /** One of the runs under a fiche was opened. */
-  onOpenPlaatsing: (plaatsingId: string) => void;
 }) {
   const open = useHoekenpaneel((s) => s.open);
   const zet = useHoekenpaneel((s) => s.zet);
   const breed = useMediaQuery(BREED);
   const { data: hoeken, isPending } = useHoeken(open ? klasId : null);
 
+  // On a phone this panel is a sheet over the calendar and the placement sheet is about to open on top
+  // of it, so it closes first rather than leaving her two sheets deep. Beside the agenda the column
+  // stays: the placement sheet opens on the other side of the screen.
+  function kies(hoekId: string) {
+    if (!breed) zet(false);
+    onKies(hoekId);
+  }
+
   const inhoud = (
     <Fichelijst
       hoeken={hoeken}
-      plaatsingen={plaatsingen}
       laadt={klasId !== null && isPending}
       heeftKlas={klasId !== null}
-      onKies={breed ? undefined : onKies}
-      onOpenPlaatsing={onOpenPlaatsing}
+      sleepbaar={breed}
+      onKies={kies}
     />
   );
 
@@ -124,19 +123,17 @@ export function Hoekenpaneel({
 /** The corners themselves, or the reason there are none to show. */
 function Fichelijst({
   hoeken,
-  plaatsingen,
   laadt,
   heeftKlas,
+  sleepbaar,
   onKies,
-  onOpenPlaatsing,
 }: {
   hoeken?: HoekWeergave[];
-  plaatsingen: readonly HoekplaatsingWeergave[];
   laadt: boolean;
   heeftKlas: boolean;
-  /** Set only where the fiche is tapped rather than dragged. */
-  onKies?: (hoekId: string) => void;
-  onOpenPlaatsing: (plaatsingId: string) => void;
+  /** False on a phone, where the panel covers the calendar and there is nothing to drag onto. */
+  sleepbaar: boolean;
+  onKies: (hoekId: string) => void;
 }) {
   if (!heeftKlas) {
     return <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>;
@@ -165,32 +162,8 @@ function Fichelijst({
   return (
     <ul className="flex flex-col gap-2">
       {(hoeken ?? []).map((hoek) => (
-        <li key={hoek.id} className="flex flex-col gap-1">
-          <Fiche hoek={hoek} onKies={onKies} />
-
-          {/* The runs of THIS corner that the agenda is currently showing. Each one opens, which is
-              the only reliable route to reading a verrijking back or undoing a misplaced drop.
-
-              THE ROW SAYS WHAT THE DATES ARE. It used to be a hairline and a bare range, and the
-              owner read it as a stray date rather than as "this corner is in the agenda then"
-              (2026-08-31): under a fiche whose card carries a name and a description, two dates with
-              no verb are the only thing on the panel that does not say what it is. The chevron is the
-              other half of the answer, because the row also opens something. */}
-          {plaatsingen
-            .filter((p) => p.hoekId === hoek.id)
-            .map((plaatsing) => (
-              <button
-                key={plaatsing.id}
-                type="button"
-                onClick={() => onOpenPlaatsing(plaatsing.id)}
-                className="ml-3 flex items-center gap-1 rounded-veld px-2 py-1 text-left text-micro text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
-              >
-                <span className="truncate">
-                  {t("hoekenpaneel.ingepland", { periode: periodeTekst(plaatsing.van, plaatsing.tot) })}
-                </span>
-                <IcoonChevron aria-hidden="true" className="h-3.5 w-3.5 shrink-0 -rotate-90" />
-              </button>
-            ))}
+        <li key={hoek.id}>
+          <Fiche hoek={hoek} sleepbaar={sleepbaar} onKies={onKies} />
         </li>
       ))}
     </ul>
@@ -198,47 +171,52 @@ function Fichelijst({
 }
 
 /**
- * One hoekfiche: the thing a teacher drags onto a day.
+ * One hoekfiche: the thing a teacher drags onto a day, or clicks to plan from the day she is on.
  *
  * Deliberately quiet: a card in the chrome column, not a card competing with the calendar beside it.
  * The description is clamped to two lines, because a corner described in four sentences would push
  * the next fiche off the panel, and the whole point of the list is seeing the corners together.
  *
- * **A button, so it works without a mouse.** The pointer sensor needs a few pixels of travel before a
- * press counts as a drag, and on a keyboard Space picks the fiche up: the same two jobs on one
- * element that every draggable in this agenda already has (see `sleep.ts`). On a phone the panel is a
- * sheet over the calendar, so there is nothing to drag onto; the sheet is a reference there and the
- * fiche does not pretend otherwise.
+ * **Both gestures on one button, the arrangement `Hoekblok` in the lesurenraster already has.** A
+ * press that travels six pixels is a drag (see `sleep.ts`), and dnd-kit swallows the click that follows
+ * an activated drag, so a drop does not also open the sheet from the agenda's own day; a press that
+ * does not travel is a click. On a keyboard Space picks the fiche up, as on every draggable in this
+ * agenda. On a phone the panel is a sheet over the calendar, so there is nothing to drag onto and the
+ * fiche is only tapped.
  *
  * The id is prefixed because the agenda's drop handler receives ids from two sources: a plaatsingId
  * for an activiteit already on the grid, and this. Without the prefix a drop would have to guess
  * which it got.
  */
-function Fiche({ hoek, onKies }: { hoek: HoekWeergave; onKies?: (hoekId: string) => void }) {
+function Fiche({
+  hoek,
+  sleepbaar,
+  onKies,
+}: {
+  hoek: HoekWeergave;
+  sleepbaar: boolean;
+  onKies: (hoekId: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${FICHE_VOORVOEGSEL}${hoek.id}`,
   });
 
-  // The two paths are exclusive on purpose. A fiche that both dragged and opened a sheet on click
-  // would fire the sheet at the end of every drag, and dnd-kit's pointer sensor deliberately lets a
-  // press that does not travel through as a click.
-  const tikt = onKies !== undefined;
-
   return (
     <button
       type="button"
-      ref={tikt ? undefined : setNodeRef}
-      {...(tikt ? { onClick: () => onKies(hoek.id) } : listeners)}
-      {...(tikt ? {} : attributes)}
+      ref={sleepbaar ? setNodeRef : undefined}
+      onClick={() => onKies(hoek.id)}
+      {...(sleepbaar ? listeners : {})}
+      {...(sleepbaar ? attributes : {})}
       className={cn(
         "w-full rounded-veld border border-lijn bg-vlak px-3 py-2.5 text-left",
         "transition-colors duration-150 hover:border-accent",
-        // THE CURSOR IS THE ONLY THING THAT SAYS THIS CAN BE PICKED UP (owner, 2026-08-31). A card
-        // that answers a press with a pointing finger reads as a link to somewhere, and the fiche
-        // goes nowhere: it gets carried onto a day. `touch-none` belongs with it, because without it
-        // a touch drag scrolls the panel instead of lifting the fiche. Only on the drag path: where
-        // the fiche is tapped, a grabbing hand would promise a gesture the phone does not have.
-        tikt ? null : "cursor-grab touch-none active:cursor-grabbing",
+        // THE GRABBING HAND SAYS THIS CAN BE PICKED UP (owner, 2026-08-31). Dragging is the gesture
+        // that says which day, so it is the one the cursor announces; a click is the shortcut to the
+        // same sheet from the day the agenda is on. `touch-none` belongs with it, because without it a
+        // touch drag scrolls the panel instead of lifting the fiche. Only where the fiche drags: on a
+        // phone a grabbing hand would promise a gesture the sheet does not have.
+        sleepbaar ? "cursor-grab touch-none active:cursor-grabbing" : null,
         isDragging && "opacity-40",
       )}
     >

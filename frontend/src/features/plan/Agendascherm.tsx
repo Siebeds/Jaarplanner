@@ -113,7 +113,6 @@ export function Agendascherm() {
 
   const hoekenOpen = useHoekenpaneel((s) => s.open);
   const wisselHoeken = useHoekenpaneel((s) => s.wissel);
-  const zetHoekenpaneel = useHoekenpaneel((s) => s.zet);
   // The fiche that was dropped, the day it landed on, and the lesuur if it landed on one. Null means
   // no sheet; a null `slot` means the drop said nothing about an hour.
   const [gevallenFiche, setGevallenFiche] = useState<{ hoekId: string; datum: string; slot: number | null } | null>(
@@ -193,6 +192,10 @@ export function Agendascherm() {
   // The hoeken running in the visible range, read separately from the weekplanning: a hoekplaatsing
   // is not part of the jaarplan, so it is not part of the read model that projects one.
   const { data: hoekplaatsingen } = useHoekplaatsingen(klasId, van, tot);
+  // Every run of every corner over the whole school year, for the placement sheet's "Al ingepland"
+  // (owner, 2026-09-10). The visible range above is not enough: a teacher planning the boekenhoek in
+  // november needs to see that it already ran in september, which the month on screen does not reach.
+  const { data: jaarHoekplaatsingen } = useHoekplaatsingen(klasId, rooster?.start ?? "", rooster?.eind ?? "");
   const { data: hoeken } = useHoeken(klasId);
   const plaatsHoek = usePlaatsHoek(klasId);
   const verwijderPlaatsing = useVerwijderHoekplaatsing();
@@ -615,7 +618,7 @@ export function Agendascherm() {
 
               <Link
                 to="/agenda/periodes"
-                className="inline-flex h-9 items-center rounded-full border border-lijn px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
+                className="inline-flex h-9 items-center rounded-veld border border-lijn px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
               >
                 {t("periode.themasPerPeriode")}
               </Link>
@@ -636,7 +639,7 @@ export function Agendascherm() {
                 onClick={wisselHoeken}
                 aria-pressed={hoekenOpen}
                 className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-meta font-medium transition-colors duration-150 lg:hidden",
+                  "inline-flex h-9 items-center gap-1.5 rounded-veld border px-3 text-meta font-medium transition-colors duration-150 lg:hidden",
                   hoekenOpen
                     ? "border-accent bg-accent-zacht text-accent"
                     : "border-lijn text-inkt-zacht hover:border-accent hover:text-accent",
@@ -655,7 +658,7 @@ export function Agendascherm() {
                     setPlannerResultaat(null);
                     setPlannerOpen(true);
                   }}
-                  className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full bg-accent px-3 text-meta font-medium text-accent-op transition-colors duration-150 hover:bg-accent-diep"
+                  className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-veld bg-accent px-3 text-meta font-medium text-accent-op transition-colors duration-150 hover:bg-accent-diep"
                 >
                   <IcoonPlus aria-hidden="true" className="h-4 w-4" />
                   {t("periode.planSubthema")}
@@ -762,17 +765,10 @@ export function Agendascherm() {
               panel is `fixed`, so where it sits on screen owes nothing to where it sits in this tree. */}
           <Hoekenpaneel
             klasId={klasId}
-            plaatsingen={hoekplaatsingen ?? []}
-            onOpenPlaatsing={(plaatsingId) => {
-              verwijderPlaatsing.reset();
-              setGeopendeHoek(plaatsingId);
-            }}
             onKies={(hoekId) => {
-              // The phone path: no landing point, so the window opens on the day the agenda is
-              // standing on. The sheet closes because it is covering the calendar she is about to
-              // look at while choosing the days.
+              // A click has no landing point, so the window opens on the day the agenda is standing
+              // on. On a phone the panel closes its own sheet first; see `Hoekenpaneel`.
               plaatsHoek.reset();
-              zetHoekenpaneel(false);
               setGevallenFiche({ hoekId, datum: anker, slot: null });
             }}
           />
@@ -893,12 +889,13 @@ export function Agendascherm() {
         }}
       />
 
-      {/* WHAT A DROPPED FICHE OPENS.
+      {/* WHAT A DROPPED OR CLICKED FICHE OPENS.
 
           Keyed on the fiche and the day, so dropping a second corner refills the sheet instead of
           showing the first one's half-made window. Mounted only while a fiche has actually landed:
           the sheet's own state (which days, what text, which lesuur) is per drop and must not survive
-          one. */}
+          one. Opening one of its listed runs closes it, for the reason the Activiteitkiezer gives:
+          two sheets deep for one intention is a stack she has to unwind. */}
       {gevallenFiche && rooster ? (
         <Hoekplaatsingblad
           open
@@ -908,10 +905,16 @@ export function Agendascherm() {
           startdag={gevallenFiche.datum}
           startSlot={gevallenFiche.slot}
           loopt={looptSubthema}
+          ingepland={(jaarHoekplaatsingen ?? []).filter((p) => p.hoekId === gevallenFiche.hoekId)}
           schooljaarVan={rooster.start}
           schooljaarTot={rooster.eind}
           bezig={plaatsHoek.isPending}
           fout={plaatsHoek.error}
+          onOpenPlaatsing={(plaatsingId) => {
+            setGevallenFiche(null);
+            verwijderPlaatsing.reset();
+            setGeopendeHoek(plaatsingId);
+          }}
           onSluit={() => setGevallenFiche(null)}
           onPlaats={(invoer) =>
             plaatsHoek.mutate(invoer, { onSuccess: () => setGevallenFiche(null) })
@@ -920,9 +923,13 @@ export function Agendascherm() {
       ) : null}
 
       {/* THE WAY BACK OUT, and the only screen that reads a verrijking back. Looked up by id on every
-          render, so the sheet disappears by itself when the placement it describes does. */}
+          render, so the sheet disappears by itself when the placement it describes does. In the
+          year's list as well as the visible range's: the placement sheet opens runs from any month,
+          and one outside the range on screen would otherwise open nothing at all. */}
       {(() => {
-        const open = (hoekplaatsingen ?? []).find((p) => p.id === geopendeHoek);
+        const open =
+          (hoekplaatsingen ?? []).find((p) => p.id === geopendeHoek) ??
+          (jaarHoekplaatsingen ?? []).find((p) => p.id === geopendeHoek);
         return open ? (
           <Hoekdetailblad
             open

@@ -1,13 +1,14 @@
-import { useId, useState, type FormEvent } from "react";
+import { useId, useMemo, useState, type FormEvent } from "react";
 import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
 import { Keuze, Tekstvlak } from "../../components/ui/Veld";
+import { IcoonChevron } from "../../components/Iconen";
 import { LESUREN } from "../activiteiten/lesuren";
 import { ApiError } from "../../lib/api";
 import { periode as periodeTekst } from "../../lib/datum";
 import { t } from "../../i18n";
-import { Periodekiezer, type Loopt } from "./Periodekiezer";
-import type { HoekplaatsingInvoer } from "./gegevens";
+import { IngeplandTeken, Periodekiezer, type Loopt } from "./Periodekiezer";
+import type { HoekplaatsingInvoer, HoekplaatsingWeergave } from "./gegevens";
 
 /**
  * What happens after a hoekfiche lands on a day: over which days, with what in it, and at which
@@ -18,6 +19,13 @@ import type { HoekplaatsingInvoer } from "./gegevens";
  * books in it, during hoekenwerk". Asking them one at a time would turn one decision into three
  * screens, and a placement that got its window but lost its verrijking to a second failed request is
  * worse than one that never happened. The server takes all three in one call for the same reason.
+ *
+ * **What this corner already runs comes first** (owner, 2026-09-10). It used to hang under the fiche
+ * in the hoekenpaneel, where it cluttered a list meant for seeing the corners side by side, and it
+ * answers a question she only asks here: "when did I already put this one in the agenda?". So the runs
+ * of the whole school year are listed above the calendar, each one opening its detail sheet, and the
+ * calendar outlines their days. Those rows are also the way back to a run that takes no lesuur, which
+ * the day view never draws.
  *
  * **The day she dropped on is the START, and only the start.** It is the one fact the gesture
  * actually carries. Guessing an end (a fortnight? the rest of the subthema?) would be the tool
@@ -32,7 +40,7 @@ import type { HoekplaatsingInvoer } from "./gegevens";
  * third lesuur of the day view is a teacher saying which hour, in the same gesture that says which
  * day, and the sheet used to answer "Niet in het uurrooster" and make her say it again. The default
  * above still holds everywhere the gesture is silent about the hour: the month and the week drop onto
- * a bare day, and they pass null.
+ * a bare day, and a click on the fiche, and they pass null.
  */
 export function Hoekplaatsingblad({
   open,
@@ -41,17 +49,19 @@ export function Hoekplaatsingblad({
   startdag,
   startSlot = null,
   loopt,
+  ingepland,
   schooljaarVan,
   schooljaarTot,
   bezig,
   fout,
   onPlaats,
+  onOpenPlaatsing,
   onSluit,
 }: {
   open: boolean;
   hoekNaam: string;
   hoekId: string;
-  /** The day the fiche was dropped on. The window opens here. */
+  /** The day the fiche was dropped on, or the day the agenda stands on when it was clicked. */
   startdag: string;
   /**
    * The lesuur the fiche was dropped on, or null when the drop was onto a day rather than an hour.
@@ -62,11 +72,15 @@ export function Hoekplaatsingblad({
   startSlot?: number | null;
   /** The subthema runs, so the calendar can say what she is aiming at. */
   loopt: Loopt[];
+  /** This corner's runs in the school year, in any order. */
+  ingepland: readonly HoekplaatsingWeergave[];
   schooljaarVan: string;
   schooljaarTot: string;
   bezig: boolean;
   fout?: unknown;
   onPlaats: (invoer: HoekplaatsingInvoer) => void;
+  /** One of the runs listed above the calendar was opened. */
+  onOpenPlaatsing: (plaatsingId: string) => void;
   onSluit: () => void;
 }) {
   const id = useId();
@@ -77,6 +91,9 @@ export function Hoekplaatsingblad({
   // number exactly once, on submit.
   const [lesuur, setLesuur] = useState(startSlot === null ? "" : String(startSlot));
   const [eindFout, setEindFout] = useState(false);
+
+  // In calendar order, whatever order the server answered in: she reads the list as a timeline.
+  const reeksen = useMemo(() => [...ingepland].sort((a, b) => a.van.localeCompare(b.van)), [ingepland]);
 
   function verstuur(event: FormEvent) {
     event.preventDefault();
@@ -115,6 +132,38 @@ export function Hoekplaatsingblad({
       }
     >
       <form id={id} onSubmit={verstuur} className="flex flex-col gap-5">
+        {/* Nothing at all when the corner runs nowhere yet. A sentence saying so would be the one line
+            in the sheet about something that is not there, above the calendar she came to use. */}
+        {reeksen.length > 0 ? (
+          <div>
+            <p id={`${id}-ingepland`} className="text-meta font-medium text-inkt">
+              {t("hoekplaatsing.alIngepland")}
+            </p>
+            <ul aria-labelledby={`${id}-ingepland`} className="mt-1 flex flex-col">
+              {reeksen.map((plaatsing) => {
+                const tekst = periodeTekst(plaatsing.van, plaatsing.tot);
+                return (
+                  <li key={plaatsing.id}>
+                    {/* The row opens the run, so the chevron says it goes somewhere. Pulled out by the
+                        padding it adds, so the dates line up with the labels above and below. */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenPlaatsing(plaatsing.id)}
+                      disabled={bezig}
+                      aria-label={t("hoekplaatsing.bekijk", { periode: tekst })}
+                      className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-2.5 rounded-veld px-2 py-1.5 text-left text-meta text-inkt transition-colors duration-150 hover:bg-vlak-diep"
+                    >
+                      <IngeplandTeken />
+                      <span className="min-w-0 flex-1 truncate">{tekst}</span>
+                      <IcoonChevron aria-hidden="true" className="h-3.5 w-3.5 shrink-0 -rotate-90 text-inkt-zwak" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+
         <div>
           <p className="text-meta font-medium text-inkt">{t("hoekplaatsing.periode")}</p>
 
@@ -131,6 +180,7 @@ export function Hoekplaatsingblad({
               van={van}
               tot={tot}
               loopt={loopt}
+              alIngepland={reeksen}
               schooljaarVan={schooljaarVan}
               schooljaarTot={schooljaarTot}
               onKies={(nieuwVan, nieuwTot) => {
