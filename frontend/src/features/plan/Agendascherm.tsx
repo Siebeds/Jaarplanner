@@ -38,6 +38,7 @@ import { Tijdraster, type Hoekblokje, type Tijddoel } from "./Tijdraster";
 import { STANDAARDBEGIN, alsTijd, minuten, toonTijd } from "./tijd";
 import { beginSleep, doelTijd, eindigSleep, leesKolomId } from "./tijdsleep";
 import { Activiteitkiezer } from "./Activiteitkiezer";
+import { Dagonderschrift } from "./Dagonderschrift";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
@@ -121,7 +122,7 @@ export function Agendascherm() {
   const [geopendeHoek, setGeopendeHoek] = useState<string | null>(null);
 
   const { data: rooster } = useRooster(schooljaarId);
-  const { data: plan } = useJaarplan(klasId);
+  const { data: plan, isSuccess: planGeladen } = useJaarplan(klasId);
   const acties = useDagacties(klasId ?? "");
   const plaatsSubthema = usePlaatsSubthemaperiode(klasId);
   const sensors = useSleepSensors();
@@ -310,24 +311,6 @@ export function Agendascherm() {
   }, [plan, blok]);
 
   const bezig = acties.plaats.isPending || acties.verplaats.isPending || acties.verwijder.isPending;
-
-  /**
-   * The thema this period holds, once above the grid rather than on every card.
-   *
-   * A themaperiode is period-wide, so a chip is the right shape for it: it is the same fact on every
-   * cell in view, and a month cell is forty pixels of activiteit name.
-   *
-   * **The subthema used to be here too and is not any more.** It was appended only when EVERY
-   * activiteit in view belonged to one subthema, which meant that in any month holding two of them
-   * the line naming the subthema simply vanished, and when it did appear it said nothing about which
-   * days it covered. That is a per-day fact, so it is drawn on the days: see `Subthemastroken`.
-   */
-  const themaNamen = useMemo(() => {
-    const namen = (plan?.plaatsingen ?? [])
-      .filter((plaatsing) => plaatsing.blokStart === blok?.start && plaatsing.status !== "Geweigerd")
-      .map((plaatsing) => plaatsing.themaNaam);
-    return [...new Set(namen)];
-  }, [plan, blok]);
 
   /**
    * The grid, built from the dates the view asked for rather than from the server's answer.
@@ -636,67 +619,14 @@ export function Agendascherm() {
                     {ankerLabel}
                   </h2>
 
-                  {/* A caption under the heading, not a row of chips beside it. The owner read the
-                      filled pills as buttons (2026-09-11), and they were not: nothing here can be
-                      pressed. So no fill, no border, no radius, and the size and ink step down from
-                      the heading instead of sitting level with it. */}
-                  {weekLabel ? (
-                    <p className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-1 text-meta text-inkt-zacht">
-                      <span className="shrink-0 tabular-nums">{weekLabel}</span>
-
-                      {/* THE PERIOD AND ITS THEMA ARE FACTS ABOUT ONE DAY, so they are only printed
-                          where the view IS one day.
-
-                          They used to be printed always, derived from the anchored day, above a grid
-                          showing a whole month. On this school year the periods end on the 1st and
-                          paging a month keeps the day of the month, so a teacher who paged from
-                          september stood on 1 november and read "Periode 2 okt - 1 nov" over a grid of
-                          which that period owned not one day, with the thema chip gone because that
-                          period holds none. In october the same drift printed september's thema as a
-                          fact.
-
-                          In the month and week views the answer is on the days instead, where it can
-                          differ per day: `Themastroken`. */}
-                      {weergave === "dag" ? (
-                        blok ? (
-                          <>
-                            <span className="shrink-0">
-                              {t("periode.periodeLabel")}{" "}
-                              <span className="text-inkt">{periodeTekst(blok.start, blok.eind)}</span>
-                            </span>
-
-                            {/* The thema carries the same left edge as its band in the month and week
-                                views, by the same rule: the accent only on the day the period begins,
-                                and the neutral edge when the period holds nothing. That edge is what
-                                marks this name as the thema without a label in front of it. */}
-                            <span
-                              className={cn(
-                                "min-w-0 max-w-64 truncate border-l-2 pl-2",
-                                themaNamen.length === 0 ? "text-inkt-zacht" : "font-medium text-inkt",
-                                blok.start === anker
-                                  ? themaNamen.length === 0
-                                    ? "border-l-lijn-veld"
-                                    : "border-l-accent"
-                                  : themaNamen.length === 0
-                                    ? "border-l-lijn"
-                                    : "border-l-lijn-sterk",
-                              )}
-                            >
-                              {themaNamen.length === 0
-                                ? t("periode.geenThema")
-                                : themaNamen.length === 1
-                                  ? themaNamen[0]
-                                  : t("periode.themaMeer", { naam: themaNamen[0], aantal: themaNamen.length - 1 })}
-                            </span>
-                          </>
-                        ) : (
-                          // Between two periods there is no thema to be missing, so "Nog geen thema"
-                          // would promise one. Say less: only that the day falls outside a period.
-                          <span className="shrink-0">{t("periode.tussenPeriodes")}</span>
-                        )
-                      ) : null}
-                    </p>
-                  ) : null}
+                  <Dagonderschrift
+                    weekLabel={weekLabel}
+                    dagweergave={weergave === "dag"}
+                    datum={anker}
+                    schooljaar={rooster}
+                    vakken={vakken}
+                    planGeladen={planGeladen}
+                  />
                 </div>
               </div>
 
