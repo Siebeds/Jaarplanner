@@ -1,6 +1,8 @@
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { ONDERDELEN } from "./features/instellingen/onderdelen";
+import { t } from "./i18n";
 
 /**
  * Where the app opens, and where an address it does not know lands (owner, 2026-09-11: the agenda,
@@ -41,4 +43,18 @@ describe("App", () => {
     openOp("/instellingen");
     await waitFor(() => expect(window.location.pathname).toBe("/instellingen/klassen"));
   });
+
+  // One assertion per part, so a part that loses its screen fails here rather than falling into the
+  // `*` route and redirecting to the agenda, which looks like a working app. Driven off `ONDERDELEN`
+  // itself: a fifth part is covered the moment it is added, and cannot arrive untested the way
+  // Weergave did.
+  it.each(ONDERDELEN.map(({ deel, labelSleutel }) => [deel, labelSleutel] as const))(
+    "toont het onderdeel %s op zijn eigen adres",
+    async (deel, labelSleutel) => {
+      openOp(`/instellingen/${deel}`);
+      const titel = await screen.findByRole("heading", { level: 1, name: t(labelSleutel) });
+      expect(titel).toBeInTheDocument();
+      expect(window.location.pathname).toBe(`/instellingen/${deel}`);
+    },
+  );
 });

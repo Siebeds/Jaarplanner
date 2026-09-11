@@ -3,7 +3,8 @@ import { useWeergave, type Weergave } from "../../state/weergave";
 import { t } from "../../i18n";
 
 /**
- * Light or dark, the last part of Instellingen because it is the least often touched.
+ * Light or dark. Where this sits among the parts of Instellingen, and why, is in `onderdelen.ts`,
+ * which is the file that decides it.
  *
  * "Zoals het toestel" comes first and is the default: most teachers never need this control, and
  * the ones who do are overriding their device, not configuring the app from scratch.
