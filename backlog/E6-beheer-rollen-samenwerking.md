@@ -9,13 +9,23 @@
 
 ### Auth & roles
 
-- [ ] **E6-01 — Authentication (personal login)**
-  Personal login for staff accounts only (no pupil data).
-  *Done when:* login works; sessions are secure (HTTPS, encrypted at rest/transit). Ref: NFR-5, Art. VI.2/VI.5.
+> **Owner rulings of 2026-09-11 reshape this section.** Roles and rights live in the app (Entra only
+> authenticates, in the school's own tenant), only invited people log in, directie sees and edits everything,
+> themabeheer is granted to named people, a hoofdleerkracht per jaar edits that jaar's subthema's, and a leerkracht
+> edits their own klassen, reads every other klas and may add personal activiteiten and subdoelen. Recorded in
+> [ADR-0030](../docs/adr/0030-rollen-en-rechten-in-de-app.md), which supersedes ADR-0011 §3 and carries the matrix
+> the stories below enforce.
 
-- [ ] **E6-02 — Role-based authorization (configurable matrix)**
-  Roles `Beheerder`, `Leerkracht`, optional `Zorgcoördinator/co-teacher`; enforce the §3.2 permission matrix; configurable.
-  *Done when:* each action in the matrix is allowed/denied per role; checks are server-enforced. Ref: FR-10/§3.2, Art. VI.1.
+- [~] **E6-01 — Authentication (personal login)** — *in progress 2026-09-11 on `story/E6-01-authenticatie`; mechanism in [ADR-0031](../docs/adr/0031-sessielogin-via-de-api.md) (Proposed)*
+  Personal login for staff accounts only (no pupil data), over the school's own Entra ID tenant. Only people directie has added may log in (ADR-0030 ruling 2).
+  *Done when:* login works; sessions are secure (HTTPS, encrypted at rest/transit); **every `/api` route answers 401 without a session** except health and the login/logout routes, pinned by a test that enumerates the endpoint data source rather than a route prefix; a person with no `Gebruiker` gets no session and a Dutch explanation; the first directie is provisioned from configuration; the shell shows who is logged in and offers *afmelden*; development and the integration tests run without a tenant. Ref: NFR-5, Art. VI.2/VI.5, ADR-0011 §1, ADR-0031.
+  *Explicitly not in scope:* any right beyond "is directie" and every per-klas or per-jaar check (E6-02); the beheer-UI to invite users (E6-04). **So after this story a logged-in leerkracht can still edit another klas, and E7-11 stays `[!]`**: its authentication half closes here, its authorisation half does not.
+
+- [ ] **E6-02 — Role-based authorization (the ADR-0030 matrix)** — *roles ruled by the owner 2026-09-11*
+  Enforce the matrix in [ADR-0030](../docs/adr/0030-rollen-en-rechten-in-de-app.md) server-side, as named policies declared in one place (ADR-0011 §2): directie (everything), themabeheer (thema's, themadoelen, kernwoordenschat), hoofdleerkracht per (schooljaar, jaarfase) (that jaar's subthema's and their shared content), leerkracht (the planning of their own klassen, read on every other klas). The per-klas and per-jaar columns depend on the resource a request is about, so they are resource-based authorization handlers, not role claims. Binds `Curriculumbeheer` to directie (ADR-0022).
+  *Done when:* each action in the matrix is allowed/denied per role and per resource; checks are server-enforced. Ref: FR-10/§3.2, Art. VI.1, ADR-0030.
+  *Owner question owed before the import route is gated (ADR-0030 open (b)):* the 2026-08-03 ruling lets a leerkracht import thema's (E1-13), while ADR-0030 ruling 4 reserves thema's to directie and themabeheer. Both cannot hold for an import that creates a thema. Put the pair to the owner; the conservative default is directie plus themabeheer.
+  *Also owed (ADR-0030 open (c)):* a jaar with no hoofdleerkracht appointed is edited by directie only, until ruled otherwise.
   *Carry-forward (E2 antagonist notes):* no endpoint carries `[Authorize]` yet — cover the E2 AI endpoints `POST /api/thema-opbouw/*` (E2-07) and `/api/doelsuggesties/*` (E2-05) when this lands (Art. VI.1).
   *Carry-forward (E3-01 antagonist, 2026-07-29):* a `grep` for `Authorize`/`AllowAnonymous` across `backend/src` returns **zero hits** — authz is unbuilt project-wide, so nothing regressed, but the matrix must be applied **retroactively** to every route shipped before this story. E3-01 added four of the most sensitive yet: `POST /api/schooljaren` (a beheerder action, FR-12.1) and `POST /api/klassen/{id}/jaarplan/generatie` plus the placement status/vergrendeling routes — *"generate or overwrite another teacher's year plan"* is materially more sensitive than anything that existed before it. Enumerate the full route surface when this lands rather than only the endpoints named in these notes.
   *Carry-forward (E3-07 antagonist, 2026-07-30) — the jaarplan write surface is now five endpoints, and one story's safety argument leans on the client.* E3-07 added `PUT …/jaarplan/plaatsingen/{id}/blok`, so the unauthenticated state-changing routes on a class's jaarplan are: `POST …/jaarplan/generatie`, `PUT …/plaatsingen/{id}/status`, `PUT …/plaatsingen/{id}/vergrendeling`, `PUT …/plaatsingen/{id}/blok`, `DELETE …/plaatsingen/{id}`. **Treat these five as one unit when the matrix lands.** Worth flagging beyond the count: E3-07's ratified compensating control for the status-and-lock-blind DELETE is a **UI confirmation**, which protects nothing at the API — so until this story ships, the only guard on destroying another teacher's accepted, locked year plan is a dialog in a browser the caller need not use. Not an E3-07 defect (the endpoint predates it and ADR-0011 assigns authn here), but it is the clearest example yet of why this story is a deployment gate and not a nicety.
@@ -30,8 +40,8 @@
   *Carry-forward:* `POST /api/schooljaren` currently has **no authorisation** (nothing in the codebase does — E6-01/E6-02 are `[ ]`). Creating a school year is a beheerder action under the FA §3.2 matrix; apply it here.
 
 - [ ] **E6-04 — Klassen + leerkrachten + rechten**
-  Admin creates/manages klassen (naam, leerjaar), links teachers, assigns rights.
-  *Done when:* a teacher sees only what their rights allow. Ref: FR-12.2.
+  Admin creates/manages klassen (naam, jaarfase), **invites users by e-mail address** (ADR-0030 ruling 2), links leerkrachten to klassen (many-to-many, so a klas can have co-teachers), **appoints one hoofdleerkracht per jaarfase per schooljaar**, and **grants themabeheer** to named leerkrachten or zorgcoördinatoren (ADR-0030 rulings 4, 5 and 7).
+  *Done when:* directie can do all of the above from the UI, and a teacher sees only what their rights allow. Ref: FR-12.2, ADR-0030.
 
 - [ ] **E6-05 — Thema-opbouw wizard (beheer UI)**
   The 10-step goal-first wizard UI (thema → 2–3 themadoelen → subthema's → subdoelen → rijk aanbod → … → reflectie), consuming E2-07 AI assist.
@@ -50,7 +60,16 @@
 - [ ] **E6-08 — Colleagues view each other's plans (read, per rights)**
   Teachers can view colleagues' jaarplannen (read-only per permissions) to align.
   *Done when:* a teacher reads another class's plan iff allowed. Ref: FR-10.1.
+  *Owner ruling 2026-09-11 (ADR-0030 ruling 7):* a leerkracht reads **every** klas. This story therefore no longer waits on E6-09, which can only narrow or configure that default.
 
 - [!] **E6-09 — Visibility scope** — *blocked: Art. XIV teacher visibility*
   Configure visibility (school-wide / per graad / narrower).
   *Done when:* the scope rule is configurable per directie decision. Ref: FR-10.2.
+  *Narrowed 2026-09-11:* the owner ruled the default (every klas, read-only) and that directie sees everything (ADR-0030 rulings 3 and 7). Whether directie wants it narrower or configurable is still theirs to decide (question 4 in [`docs/besluiten-gevraagd.md`](../docs/besluiten-gevraagd.md)), so this stays `[!]`.
+
+### Eigen inhoud per leerkracht
+
+- [ ] **E6-10 — Personal activiteiten and subdoelen** — *filed 2026-09-11 from ADR-0030 ruling 6; an owner ruling is owed before building*
+  A leerkracht adds activiteiten and subdoelen under a subthema **for themselves**, next to the shared per-leeftijd content of ADR-0025, without going through the hoofdleerkracht.
+  *Done when:* a teacher can add, edit and delete their own activiteit or subdoel under a subthema; nobody but that teacher and directie can edit it; the shared content of that jaar is unchanged for every other klas; Art. IX.2 is amended to say so. Ref: FR-3, Art. IX.2, ADR-0030.
+  *Owner question first (ADR-0030 open (a)):* does personal content belong to the **leerkracht** (it follows them into next year) or to their **klas** (it stays with the planning)? Can colleagues see it, and does it count only for the coverage of the owner's klas? Nothing personal is built until this is answered.

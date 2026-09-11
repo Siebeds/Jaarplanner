@@ -24,7 +24,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0008](0008-themalaag-level-scoping.md) | Two-tier themalaag with level-based ownership/scoping | Accepted (per-class scoping of Subthema/Subdoel/Activiteit superseded by 0025) |
 | [0009](0009-dekking-computed-not-stored.md) | Dekking is computed, never stored | Accepted |
 | [0010](0010-ai-advisory-architecture.md) | AI advisory architecture (injectable client, server-side, structured+validated) | Accepted |
-| [0011](0011-authn-authz-rbac-gdpr.md) | AuthN/AuthZ, RBAC & GDPR data minimisation | Accepted |
+| [0011](0011-authn-authz-rbac-gdpr.md) | AuthN/AuthZ, RBAC & GDPR data minimisation. **§3 superseded by 0030** (2026-09-11): the ownership rules predated content per leeftijd | Accepted |
 | [0012](0012-secrets-config-management.md) | Secrets & configuration management | Accepted |
 | [0013](0013-planningsblok-abstraction.md) | Planningsblok abstraction for an open decision | Accepted ("configuration on the Schooljaar" clause superseded by 0020) |
 | [0014](0014-frontend-state-and-dnd.md) | Frontend state management & drag-and-drop | Accepted |
@@ -40,6 +40,8 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0024](0024-single-frontend-inkt-en-signaal.md) | One frontend at `frontend/` (frontend-v3 renamed in, the old frontend and frontend-mobile deleted); design direction "Inkt en Signaal": near-achromatic chrome (one rationed accent), Radix primitives without shadcn, tokens in CSS, mobile-first (supersedes 0017 decisions 1/2/3/5) | Accepted |
 | [0025](0025-subthema-per-leeftijd.md) | A **subthema is scoped by leeftijd alone** (the `KlasId` leaves the entity, so a subthema on K3 holds for every K3 class); a `Klas` states a required `Jaarfase` and derives its `Leerjaar` from it; planning stays per klas (supersedes ADR-0008's per-class scoping of Subthema/Subdoel/Activiteit). **Amended 2026-08-30:** an activiteit may move to another thema and **only to a subthema at the same leeftijd** (supersedes the owner ruling of 2026-08-05); the invariant binds the move verb and **not** `WijzigScope`, which stays open as E1-19 | Accepted |
 | [0026](0026-streefwoordenschat-op-subthema.md) | Streefwoordenschat is a **third** vocabulary list, on `Subthema` and therefore scoped by leeftijd alone; the thema's two school-wide lists are untouched, no new endpoint, and the calendar strip stays decorative because the doorklik is one control per run (depends on 0025, supersedes nothing) | **Proposed** |
+| [0030](0030-rollen-en-rechten-in-de-app.md) | **Roles and rights live in the app**, Entra only authenticates (own school tenant); only invited people log in; directie sees and edits everything; **themabeheer** is granted to named people; a **hoofdleerkracht per (schooljaar, jaarfase)** edits that jaar's subthema's; a leerkracht edits their own klassen, reads every other and may add **personal** activiteiten/subdoelen. Owner rulings 2026-09-11, with the matrix that follows and five named open questions (supersedes 0011 §3) | Accepted |
+| [0031](0031-sessielogin-via-de-api.md) | Personal login as a **session held by the API**: Entra ID over OpenID Connect via Microsoft.Identity.Web, an encrypted `HttpOnly` cookie and no token in the browser; every `/api` route requires a session by default and answers 401, never a redirect; authenticated means invited; a development sign-in and a test scheme that issue the same cookie path | **Proposed** |
 
 ## Compliance traceability matrix
 
@@ -72,6 +74,8 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0024 | Art. VIII, XII, II, X | E9 | NFR-1/2/7 |
 | 0025 | Art. IX.2, IX.3, III, V; +Art. II.3, IV.2, XIV (2026-08-30 amendment) | E1; E4 (E4-08); E10 | FR-3; FR-7.2 |
 | 0026 | Art. III, IX.2, II.3, V.1, XII | E10-01 | F9 (owner meeting notes; not an FR) |
+| 0030 | Art. VI.1/VI.2/VI.5, IX.2, III, XI, XIV (amendment of VI.1 and IX.2 owed) | E6-01/02/04/08/09/10, E7-11 | FR-10.1/10.2, FR-12.2, FA §3.1/§3.2; NFR-5 |
+| 0031 | Art. VI.1/VI.2/VI.4/VI.5, VIII, II.3 | E6-01; E7-11 (authentication half), E6-02 | FR-10; NFR-5 |
 
 ## Open decisions referenced by ADRs
 
