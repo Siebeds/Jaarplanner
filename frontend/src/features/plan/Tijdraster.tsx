@@ -489,9 +489,18 @@ function Blok({
   const einde = rekEinde ?? blok.einde;
   const kleur = blok.activiteit?.kleur ?? null;
   const breedte = 100 / plek.kolommen;
-  // Half a line of overlap, so a block behind another still shows its left edge: that edge is what says there are
-  // two things here rather than one wide one.
-  const kort = einde - blok.begin < 40;
+
+  /*
+    HOW MUCH OF ITSELF A BLOCK CAN SAY, decided by its own height rather than by a single threshold.
+
+    An hour of grid is 56 pixels, so the ordinary 50-minute block has 47 of them: three stacked lines do not fit
+    and the third was drawn clipped in half, which a browser pass found and no test could. Three tiers instead:
+    an hour or more gets the subtitle as well, half an hour or more puts the name and the time on ONE line, and
+    anything shorter keeps the name alone. Nothing is lost either way, because the accessible name on the button
+    carries the whole of it.
+  */
+  const duur = einde - blok.begin;
+  const toont = duur >= 60 ? "alles" : duur >= 30 ? "tijd" : "naam";
 
   return (
     <div
@@ -526,23 +535,25 @@ function Blok({
           {...attributes}
           className="block h-full w-full cursor-grab touch-none px-2 py-1 text-left active:cursor-grabbing"
         >
-          <span className="flex min-w-0 items-center gap-1">
+          <span className="flex min-w-0 items-baseline gap-1">
             {blok.doel.soort === "hoek" ? (
-              <IcoonHoek aria-hidden="true" className="h-3 w-3 shrink-0 text-inkt-zwak" />
+              <IcoonHoek aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
             ) : null}
-            <span className="truncate text-meta font-medium text-inkt">{blok.naam}</span>
+            <span className="min-w-0 flex-1 truncate text-meta font-medium text-inkt">{blok.naam}</span>
+            {/* Beside the name rather than under it on a half-hour block: stacked, this line is what got clipped. */}
+            {toont === "tijd" ? (
+              <span className="mono shrink-0 text-[0.625rem] text-inkt-zacht">{toonTijd(blok.begin)}</span>
+            ) : null}
           </span>
 
-          {/* On a short block the time is the first thing to go: the name is what a teacher scans for, and the
-              position already says when it is. The accessible name above keeps both either way. */}
-          {kort ? null : (
+          {toont === "alles" ? (
             <>
               <span className="mono block truncate text-[0.625rem] text-inkt-zacht">
                 {toonBereik(blok.begin, einde)}
               </span>
               <span className="block truncate text-[0.625rem] text-inkt-zacht">{blok.onder}</span>
             </>
-          )}
+          ) : null}
         </button>
 
         <Rekgreep

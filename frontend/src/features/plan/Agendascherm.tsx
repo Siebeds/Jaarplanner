@@ -459,15 +459,22 @@ export function Agendascherm() {
   function laatLos({ active, over }: DragEndEvent) {
     setSleepNaam(null);
     setSleepFout(null);
-    eindigSleep();
     acties.verplaats.reset();
     verplaatsMoment.reset();
-    if (!over) return;
 
     const sleepId = String(active.id);
     // Two kinds of target. A column of the time grid names a day AND, through the pointer, an hour; a month cell
     // names only a day. Both are legitimate, and the difference is what the block keeps.
-    const kolom = leesKolomId(String(over.id));
+    const kolom = over === null ? null : leesKolomId(String(over.id));
+
+    // THE HOUR IS READ BEFORE THE POINTER IS FORGOTTEN, and the order is the whole of it. `eindigSleep` clears the
+    // last pointer position, so calling it first made `doelTijd` answer null on every drop: the block changed day
+    // and kept its old time, silently, while the preview had shown the right one. Found in a browser, by dragging
+    // one across two hours and reading the label back.
+    const doelBegin = kolom === null ? null : doelTijd(kolom);
+    eindigSleep();
+
+    if (!over) return;
     const datum = kolom ?? String(over.id);
 
     // TWO KINDS OF DRAGGED THING, and the id says which (see `sleepids.ts`). A hoekfiche comes from the panel and
@@ -478,7 +485,7 @@ export function Agendascherm() {
       // The hour is kept when the drop landed on one. A month cell says nothing about an hour, so the sheet gets
       // null and offers its own default rather than inventing one from where the pointer happened to be.
       plaatsHoek.reset();
-      setGevallenFiche({ hoekId, datum, begin: kolom === null ? null : doelTijd(kolom) });
+      setGevallenFiche({ hoekId, datum, begin: doelBegin });
       return;
     }
 
@@ -489,8 +496,9 @@ export function Agendascherm() {
 
     // A drop onto a month cell says nothing about the hour, so the hour is KEPT. Taking a default would quietly
     // move an afternoon activiteit to the morning every time a teacher dragged it across the month, which is a
-    // change nobody asked for hidden inside one they did.
-    const begin = (kolom === null ? null : doelTijd(kolom)) ?? blok.begin;
+    // change nobody asked for hidden inside one they did. The same fallback covers a keyboard drag, which names
+    // no pointer position either.
+    const begin = doelBegin ?? blok.begin;
 
     // Landing where it already is, is a legal target and a no-op. Firing the mutation anyway would make the grid
     // flicker and the server answer a question nobody asked.

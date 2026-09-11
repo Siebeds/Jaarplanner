@@ -18,7 +18,7 @@
   **Constitution:** Art. IX.3 (the planning grid is unchanged by this), Art. IV.2 (nothing here generates or discards a
   teacher decision), Art. V.1 (a time moves no dekkingscijfer), Art. II.3 (the refusals are Dutch, composed
   server-side), Art. XII + WCAG 2.2 AA (the now-line carries a time label, never colour alone).
-- **Backlog:** E10-03.
+- **Backlog:** E10-04. *(Filed as E10-03 and renumbered within the hour: session `algemene-fiches` pushed its own E10-03 two minutes earlier. Recorded rather than silently corrected, because the commit message of `6cd3d95` still says E10-03 and a reader chasing that id has to land somewhere.)*
 
 ## Context
 
@@ -49,7 +49,7 @@ keeps a **default** length, which is what a newly placed block gets.
 > `lengte_in_lesuren`, read by the client as `× 50 minutes`. Turning it into `DuurInMinuten` touches
 > `SchoolcontentBeheerService`, which is held by a **stale claim** from a session that ended on 2026-08-31; breaking a
 > claim is the technical lead's, not a building session's. Until then the *model* is honest (the placement owns the
-> real times) and one *default* is still expressed in lesuren. Owed on E10-03.
+> real times) and one *default* is still expressed in lesuren. Owed on E10-04.
 
 **3. The unit of "already placed" is the start time.** `Jaarplan.IsAlGeplaatstOp(activiteitId, datum, begin)` and the
 unique index `(JaarplanId, ActiviteitId, Datum, Begin)`. Two *different* activiteiten may overlap in time — an agenda

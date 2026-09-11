@@ -30,7 +30,7 @@ home for that whole set.
 | F7 | hoekenverrijking | built 2026-08-30 by session `hoeken`, **story entry still owed** |
 | F8 | not yet transcribed into this file | — |
 | F9 | streefwoordenschat op subthema | **E10-01** below |
-| — | the agenda as a time grid, with free clock times | **E10-03** below. *No F-number: it came from a session on 2026-09-11, not from the meeting notes this file was opened for.* |
+| — | the agenda as a time grid, with free clock times | **E10-04** below. *No F-number: it came from a session on 2026-09-11, not from the meeting notes this file was opened for.* |
 
 ---
 
@@ -130,7 +130,7 @@ home for that whole set.
   it was actually held to, and the gates that ran. A feature on `main` with no durable record is how this repo
   gets a progress table it cannot trust.*
 
-- [~] **E10-03 — De agenda als tijdraster: vrije tijdstippen in plaats van lesuren** — *Owner request of
+- [~] **E10-04 — De agenda als tijdraster: vrije tijdstippen in plaats van lesuren** — *Owner request of
   2026-09-11, in session, with his own Outlook week beside the screen. Decision record:
   **[ADR-0028](../docs/adr/0028-tijdraster-in-plaats-van-lesuren.md)**, which supersedes his own instruction of
   2026-08-24 that the agenda shows no clock times, and the `Volgorde` half of
@@ -150,16 +150,27 @@ home for that whole set.
   ends, click empty space to make something at that hour, see a line marking the current time, and read a hoek as a
   block on the day it runs; and when the same three things are reachable without a drag, from the activiteit sheet.
 
-  **Built 2026-09-11, and `[~]` rather than `[x]` for three reasons, each of them named here rather than left for a
-  reader to discover.**
-  1. **No migration yet.** `Activiteitplaatsing.Volgorde` and `Hoekmoment.Volgorde` are gone from the model and the
-     database still has them. Session `algemene-fiches` holds the Migrations claim and asked to land its own first;
-     until that releases, `dotnet ef migrations add TijdstippenInPlaatsVanLesuren` has not been run, the Postgres
-     integration tests cannot pass, and **the app must not be restarted against the dev database**.
-  2. **No browser pass.** Everything below was verified by tests and by the type checker. The three things this
-     story exists for — a drag landing where the preview said, an edge-drag resizing a block, the now-line — are
-     exactly what jsdom cannot see, and the grid has not yet been opened in a real browser at 1440px or at 390px.
-  3. **No antagonist round.**
+  **Built 2026-09-11. `[~]` rather than `[x]`: the antagonist has not seen it.** That is the only gate left; the
+  migration and the browser pass below are done.
+
+  **The migration is written, hand-edited and applied.** `20260911131815_TijdstippenInPlaatsVanLesuren` adds the two
+  columns nullable, derives them from the slot they replace, makes them required and only then drops `Volgorde`. The
+  scaffold had it the other way round, which would have moved every planned activiteit in the database to midnight.
+  Applied to the dev database, and the conversion was read back through the API: lesuur 2 became 10:10, lesuur 4
+  became 11:50, and the one day the owner had dragged to another hour kept its own.
+
+  **The browser pass ran at 1440px and 390px, over CDP, and found what the tests could not.**
+  - **A real defect:** a drag changed the day and silently kept the old hour. `laatLos` called `eindigSleep()` before
+    reading the target time, so the pointer it needs was already forgotten and every drop fell back to "keep the
+    time" — while the preview under the cursor had shown the right one. Fixed, then re-measured: a block dragged two
+    hours down went from 10:10 to 12:30 **in the database**, not only on screen.
+  - **A second, visible one:** a 50-minute block is 47 pixels tall and was drawing three stacked lines, so the third
+    was cut in half. The block now says as much as it has room for: name alone under half an hour, name and start
+    beside each other under an hour, and the full three lines above it.
+  - Also measured: 7 columns at 1440 and 3 at 390 with no horizontal overflow, hour labels 4.97:1 and block names
+    16.58:1, a resize by the bottom edge landing on 11:15, and no console errors.
+  - **The dev database was put back exactly as the migration left it** (four hoekmomenten, one verrijking), because
+    this ran against the shared one.
 
   **What landed**
 
@@ -173,9 +184,9 @@ home for that whole set.
   the drop handler reads, and a resize handle. `ruilen.ts` (the swap rule of 2026-08-31), `Lesurenraster`,
   `lesuren.ts` and `Dagcel` are deleted; the activiteit sheet gained begin/end fields as the non-drag route.
 
-  *Gates so far:* 801 backend unit tests, `dotnet build` and `dotnet format` clean, 131 frontend tests (16 new),
-  oxlint + tsc clean.
+  *Gates:* **801 unit + 256 integration tests on real PostgreSQL, 0 skipped**, `dotnet build` and `dotnet format`
+  clean, 131 frontend tests (16 new), oxlint + tsc clean, and the browser pass above.
 
-  **Owed, in order:** the migration; the browser pass at both widths; the antagonist; and then the rename
-  `LengteInLesuren` → `DuurInMinuten` (ADR-0028 decision 2), which is blocked on a stale claim over
-  `SchoolcontentBeheerService.cs` and is the one place the model still speaks in lesuren.
+  **Owed:** the antagonist round; and then the rename `LengteInLesuren` → `DuurInMinuten` (ADR-0028 decision 2),
+  which is blocked on a stale claim over `SchoolcontentBeheerService.cs` and is the one place the model still
+  speaks in lesuren.
