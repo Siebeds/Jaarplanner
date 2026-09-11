@@ -17,8 +17,9 @@ import { ONDERDELEN, padVan } from "./onderdelen";
  *
  * **It does have the hoekenpaneel's cross** (owner, 2026-09-11: "terug in het default scherm
  * agenda"). The agenda became the app's start route on the same day (`App.tsx`), so the cross and
- * a fresh visit land on the same screen. Closing this column means leaving Instellingen, so the cross is a link rather than a button: it changes the
- * address, and it gets the middle-click and the link semantics that come with that. Same size and
+ * a fresh visit land on the same screen. Closing this column means leaving Instellingen, so the
+ * cross is a link rather than a button: it changes the address, and it gets the middle-click and
+ * the link semantics that come with that. Same size and
  * rounding as the panel's, in the same corner, so the two read as one control; it sits a few pixels
  * higher than the panel's because this header lines up with the wordmark in the rail.
  *
