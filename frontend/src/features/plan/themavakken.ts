@@ -92,14 +92,32 @@ export function vakOpDag(vakken: readonly Themavak[], datum: string): Themavak |
  * label would hide.
  */
 export function themaZin(vak: Themavak | undefined): string {
-  if (!vak) return "";
-  if (vak.themas.length === 0) return `, ${t("periode.dagGeenThema")}`;
+  return vak ? `, ${themaClausule(vak)}` : "";
+}
 
-  return `, ${
-    vak.themas.length === 1
-      ? t("periode.dagThema", { naam: vak.themas[0].naam })
-      : t("periode.dagThemas", { namen: vak.themas.map((thema) => thema.naam).join(", ") })
-  }`;
+/**
+ * A period's thema's as a spoken clause, every name in full: "thema Herfst", "nog geen thema in deze
+ * periode". Shared by the grid's day buttons and the agenda caption, so a screen reader hears one
+ * sentence for one fact wherever it lands.
+ */
+export function themaClausule(vak: Themavak): string {
+  if (vak.themas.length === 0) return t("periode.dagGeenThema");
+
+  return vak.themas.length === 1
+    ? t("periode.dagThema", { naam: vak.themas[0].naam })
+    : t("periode.dagThemas", { namen: vak.themas.map((thema) => thema.naam).join(", ") });
+}
+
+/**
+ * A period's thema's as a label on screen, where room is short: the first name and a count of the rest.
+ * Shared by the band and the agenda caption, so the two cannot name one period differently.
+ */
+export function themaLabel(vak: Themavak): string {
+  if (vak.themas.length === 0) return t("periode.geenThema");
+
+  return vak.themas.length === 1
+    ? vak.themas[0].naam
+    : t("periode.themaMeer", { naam: vak.themas[0].naam, aantal: vak.themas.length - 1 });
 }
 
 /**

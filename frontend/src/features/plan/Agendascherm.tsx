@@ -28,7 +28,6 @@ import {
   valtBinnen,
   vandaag,
   volleDag,
-  weeknummer,
 } from "../../lib/datum";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -38,6 +37,8 @@ import { Tijdraster, type Hoekblokje, type Tijddoel } from "./Tijdraster";
 import { STANDAARDBEGIN, alsTijd, minuten, toonTijd } from "./tijd";
 import { beginSleep, doelTijd, eindigSleep, leesKolomId } from "./tijdsleep";
 import { Activiteitkiezer } from "./Activiteitkiezer";
+import { Dagonderschrift } from "./Dagonderschrift";
+import { weekInBeeld } from "./weekInBeeld";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
@@ -121,7 +122,7 @@ export function Agendascherm() {
   const [geopendeHoek, setGeopendeHoek] = useState<string | null>(null);
 
   const { data: rooster } = useRooster(schooljaarId);
-  const { data: plan } = useJaarplan(klasId);
+  const { data: plan, isSuccess: planGeladen } = useJaarplan(klasId);
   const acties = useDagacties(klasId ?? "");
   const plaatsSubthema = usePlaatsSubthemaperiode(klasId);
   const sensors = useSleepSensors();
@@ -312,24 +313,6 @@ export function Agendascherm() {
   const bezig = acties.plaats.isPending || acties.verplaats.isPending || acties.verwijder.isPending;
 
   /**
-   * The thema this period holds, once above the grid rather than on every card.
-   *
-   * A themaperiode is period-wide, so a chip is the right shape for it: it is the same fact on every
-   * cell in view, and a month cell is forty pixels of activiteit name.
-   *
-   * **The subthema used to be here too and is not any more.** It was appended only when EVERY
-   * activiteit in view belonged to one subthema, which meant that in any month holding two of them
-   * the line naming the subthema simply vanished, and when it did appear it said nothing about which
-   * days it covered. That is a per-day fact, so it is drawn on the days: see `Subthemastroken`.
-   */
-  const themaNamen = useMemo(() => {
-    const namen = (plan?.plaatsingen ?? [])
-      .filter((plaatsing) => plaatsing.blokStart === blok?.start && plaatsing.status !== "Geweigerd")
-      .map((plaatsing) => plaatsing.themaNaam);
-    return [...new Set(namen)];
-  }, [plan, blok]);
-
-  /**
    * The grid, built from the dates the view asked for rather than from the server's answer.
    *
    * The weekplanning endpoint clamps a range into the school year, so a week in august comes back as
@@ -512,9 +495,9 @@ export function Agendascherm() {
   const ankerLabel =
     weergave === "maand" ? maandJaar(anker) : weergave === "week" ? periodeTekst(van, tot) : volleDag(anker);
 
-  // Only where a week is a unit. In a month the label already names the month, and a week number on
-  // a grid spanning five of them would name only the first.
-  const weekLabel = weergave === "maand" ? null : t("periode.weeknummer", { nummer: weeknummer(anker) });
+  // Only where the days in view are one week: see `weekInBeeld`.
+  const weekNummer = weekInBeeld(weergave, van, tot);
+  const weekLabel = weekNummer === null ? null : t("periode.weeknummer", { nummer: weekNummer });
 
   const foutTekst = (fout: unknown) =>
     fout instanceof ApiError && fout.detail ? fout.detail : fout ? t("periode.mislukt") : null;
@@ -612,8 +595,8 @@ export function Agendascherm() {
             {/* The range, its arrows and the way back to today, together and at heading size. Navigation
                 next to the thing it moves: the arrows used to sit up in the chrome, three controls away
                 from the only label that told you what pressing them had done. */}
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+              <div className="flex min-w-0 items-start gap-2">
                 <button
                   type="button"
                   aria-label={t("periode.vorige")}
@@ -631,45 +614,22 @@ export function Agendascherm() {
                   <IcoonPijlRechts className="h-4 w-4" />
                 </button>
 
-                <h2 className="ml-1 min-w-0 truncate font-display text-[1.375rem] text-inkt sm:text-[1.625rem]">
-                  {ankerLabel}
-                </h2>
+                <div className="ml-1 min-w-0">
+                  {/* Wraps rather than truncates: beside the arrows a 320px screen has room for
+                      "vrijdag 11 septem...", and the month is the half of the date that matters. */}
+                  <h2 className="flex min-h-9 items-center font-display text-[1.375rem] leading-tight text-inkt sm:text-[1.625rem]">
+                    {ankerLabel}
+                  </h2>
 
-                {weekLabel ? (
-                  <span className="mono shrink-0 rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
-                    {weekLabel}
-                  </span>
-                ) : null}
-
-                {/* THE PERIOD AND ITS THEMA ARE FACTS ABOUT ONE DAY, so they are only printed where
-                    the view IS one day.
-
-                    They used to be printed always, derived from the anchored day, above a grid
-                    showing a whole month. On this school year the periods end on the 1st and paging
-                    a month keeps the day of the month, so a teacher who paged from september stood
-                    on 1 november and read "Periode 2 okt - 1 nov" over a grid of which that period
-                    owned not one day, with the thema chip gone because that period holds none. In
-                    october the same drift printed september's thema as a fact.
-
-                    In the month and week views the answer is on the days instead, where it can differ
-                    per day: `Themastroken`. */}
-                {weergave === "dag" ? (
-                  <>
-                    <span className="shrink-0 rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
-                      {blok
-                        ? `${t("periode.periodeLabel")} ${periodeTekst(blok.start, blok.eind)}`
-                        : t("periode.tussenPeriodes")}
-                    </span>
-
-                    <span className="min-w-0 max-w-64 truncate rounded-full bg-vlak-diep px-2.5 py-1 text-[0.6875rem] font-medium text-inkt-zacht">
-                      {themaNamen.length === 0
-                        ? t("periode.geenThema")
-                        : themaNamen.length === 1
-                          ? themaNamen[0]
-                          : t("periode.themaMeer", { naam: themaNamen[0], aantal: themaNamen.length - 1 })}
-                    </span>
-                  </>
-                ) : null}
+                  <Dagonderschrift
+                    weekLabel={weekLabel}
+                    dagweergave={weergave === "dag"}
+                    datum={anker}
+                    schooljaar={rooster}
+                    vakken={vakken}
+                    planGeladen={planGeladen}
+                  />
+                </div>
               </div>
 
               {/* The button when there is a today to go to, and the reason when there is not. Never a
