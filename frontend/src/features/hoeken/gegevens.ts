@@ -293,3 +293,29 @@ export function useVerplaatsHoekmoment() {
     onSuccess: ververs,
   });
 }
+
+/** The hours every day of a run should have, as `HH:mm:ss`. */
+export interface Hoekuren {
+  plaatsingId: string;
+  begin: string;
+  einde: string;
+}
+
+/**
+ * Gives every appearance of a run the same hours, each on the day it is already on (owner, 2026-09-11).
+ *
+ * **Every day, the ones moved by hand included**: the owner's ruling of the same day. The detail sheet says so before
+ * saving when a day currently differs.
+ *
+ * **One request for the whole run**, not one `useVerplaatsHoekmoment` per day. Fifteen requests of which the eighth
+ * fails leave a run half at the old hours, which is worse than not saving at all; the server does it in one save.
+ */
+export function useZetHoekuren() {
+  const ververs = usePlaatsingVerversing();
+
+  return useMutation({
+    mutationFn: ({ plaatsingId, begin, einde }: Hoekuren) =>
+      put<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/uren`, { begin, einde }),
+    onSuccess: ververs,
+  });
+}

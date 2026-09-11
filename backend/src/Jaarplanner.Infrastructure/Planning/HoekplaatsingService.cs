@@ -194,6 +194,26 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
         return await BewaarAsync(plaatsing, cancellationToken);
     }
 
+    public async Task<HoekplaatsingWeergave> ZetUrenAsync(
+        Guid plaatsingId,
+        TimeOnly begin,
+        TimeOnly einde,
+        CancellationToken cancellationToken = default)
+    {
+        var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
+
+        try
+        {
+            plaatsing.ZetUren(begin, einde);
+        }
+        catch (ArgumentException fout)
+        {
+            throw new SchoolcontentValidatieFout(fout.Message);
+        }
+
+        return await BewaarAsync(plaatsing, cancellationToken);
+    }
+
     public async Task<HoekplaatsingWeergave> VoegVerrijkingToeAsync(
         Guid plaatsingId,
         DateOnly van,
