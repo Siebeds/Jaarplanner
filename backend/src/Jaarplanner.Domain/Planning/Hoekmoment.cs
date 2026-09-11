@@ -1,14 +1,15 @@
 namespace Jaarplanner.Domain.Planning;
 
 /// <summary>
-/// One concrete appearance of a placed hoek in the timetable: this day, this lesuur (owner, 2026-08-30).
+/// One concrete appearance of a placed hoek in the timetable: this day, from this time to that one (owner,
+/// 2026-08-30; clock times since 2026-09-11, ADR-0027).
 /// <para>
 /// <b>THIS IS A ROW PER DAY, AND THE FIRST VERSION OF THIS FEATURE DERIVED IT INSTEAD.</b> A hoek placed over
-/// three weeks with one lesuur was going to be read as fifteen appearances computed from the window, which keeps
-/// the database small and makes every one of the fifteen identical by construction. The owner rejected that on
-/// the ground it was built to save: <i>"als leerkracht wil ik flexibel kunnen zijn"</i>. A derived appearance
-/// cannot be moved to another lesuur on one Thursday, because there is nothing there to move. So the fifteen are
-/// stored, and each one can be dragged or deleted on its own.
+/// three weeks was going to be read as fifteen appearances computed from the window, which keeps the database small
+/// and makes every one of the fifteen identical by construction. The owner rejected that on the ground it was built
+/// to save: <i>"als leerkracht wil ik flexibel kunnen zijn"</i>. A derived appearance cannot be moved to another hour
+/// on one Thursday, because there is nothing there to move. So the fifteen are stored, and each one can be dragged
+/// or resized on its own.
 /// </para>
 /// <para>
 /// <b>The cost is real and is accepted rather than hidden:</b> shortening a placement now has fifteen rows to
@@ -33,8 +34,13 @@ public sealed class Hoekmoment
     /// <summary>Schedules one appearance of a placed hoek.</summary>
     /// <param name="hoekplaatsingId">The placement this appearance belongs to.</param>
     /// <param name="datum">The teaching day. That it is one is checked by the service, which holds the calendar.</param>
-    /// <param name="volgorde">The lesuur slot, zero-based like <see cref="Activiteitplaatsing.Volgorde"/>.</param>
-    public Hoekmoment(Guid hoekplaatsingId, DateOnly datum, int volgorde)
+    /// <param name="begin">When the corner opens that day.</param>
+    /// <param name="einde">When it closes. Must lie after <paramref name="begin"/>.</param>
+    /// <exception cref="ArgumentException">
+    /// The end is not after the start. Dutch, unlike the id guard: both times came from the teacher's own sheet or her
+    /// own drag, so this is a sentence she can act on (Art. II.3).
+    /// </exception>
+    public Hoekmoment(Guid hoekplaatsingId, DateOnly datum, TimeOnly begin, TimeOnly einde)
     {
         if (hoekplaatsingId == Guid.Empty)
         {
@@ -43,7 +49,7 @@ public sealed class Hoekmoment
 
         HoekplaatsingId = hoekplaatsingId;
         Datum = datum;
-        Volgorde = RequireSlot(volgorde);
+        (Begin, Einde) = RequireTijden(begin, einde);
     }
 
     /// <summary>Surrogate identity.</summary>
@@ -55,21 +61,24 @@ public sealed class Hoekmoment
     /// <summary>The teaching day it appears on.</summary>
     public DateOnly Datum { get; private set; }
 
-    /// <summary>The lesuur slot within that day, zero-based.</summary>
-    public int Volgorde { get; private set; }
+    /// <summary>When the corner opens that day.</summary>
+    public TimeOnly Begin { get; private set; }
+
+    /// <summary>When it closes that day.</summary>
+    public TimeOnly Einde { get; private set; }
 
     /// <summary>
-    /// Moves this one appearance. The caller is <see cref="Hoekplaatsing.VerplaatsMoment"/> rather than a screen,
-    /// because whether the new day is still inside the placement is a question only the placement can answer.
+    /// Moves or resizes this one appearance. The caller is <see cref="Hoekplaatsing.VerplaatsMoment"/> rather than a
+    /// screen, because whether the new day is still inside the placement is a question only the placement can answer.
     /// </summary>
-    internal void Verplaats(DateOnly datum, int volgorde)
+    internal void Verplaats(DateOnly datum, TimeOnly begin, TimeOnly einde)
     {
+        (Begin, Einde) = RequireTijden(begin, einde);
         Datum = datum;
-        Volgorde = RequireSlot(volgorde);
     }
 
-    private static int RequireSlot(int volgorde) =>
-        volgorde < 0
-            ? throw new ArgumentException("A lesuur slot cannot be negative.", nameof(volgorde))
-            : volgorde;
+    private static (TimeOnly Begin, TimeOnly Einde) RequireTijden(TimeOnly begin, TimeOnly einde) =>
+        einde > begin
+            ? (begin, einde)
+            : throw new ArgumentException("Het einde van de hoek moet na het begin liggen. Kies een later einduur.");
 }

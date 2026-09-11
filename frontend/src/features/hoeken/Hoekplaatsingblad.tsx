@@ -1,11 +1,11 @@
 import { useId, useMemo, useState, type FormEvent } from "react";
 import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
-import { Keuze, Tekstvlak } from "../../components/ui/Veld";
+import { Invoer, Tekstvlak } from "../../components/ui/Veld";
 import { IcoonChevron } from "../../components/Iconen";
-import { LESUREN } from "../activiteiten/lesuren";
 import { ApiError } from "../../lib/api";
 import { periode as periodeTekst } from "../../lib/datum";
+import { STANDAARDBEGIN, STANDAARDDUUR, alsTijd } from "../plan/tijd";
 import { t } from "../../i18n";
 import { IngeplandTeken, Periodekiezer, type Loopt } from "./Periodekiezer";
 import type { HoekplaatsingInvoer, HoekplaatsingWeergave } from "./gegevens";
@@ -32,22 +32,21 @@ import type { HoekplaatsingInvoer, HoekplaatsingWeergave } from "./gegevens";
  * deciding the pedagogy, and she would have to notice and undo the guess. So the end is empty and
  * the calendar waits for a second click.
  *
- * **"Not in the uurrooster" is the default and the first option.** A hoek that claims no lesuur still
- * runs; it just does not take an hour. Most corners are like that, and defaulting to a lesuur would
- * write a row on every teaching day of the window for a teacher who never asked for one.
+ * **Every hoek gets a time** (owner, 2026-09-11, ADR-0028). "Niet in het uurrooster" was an answer until then, and
+ * it left a corner running over its days with no hour and therefore no block on any day of the new time grid. The
+ * two fields are required, and the server writes one row per teaching day of the window at exactly these hours.
  *
- * **Unless the drop itself named an hour** (`startSlot`, owner 2026-08-31). Dropping a fiche on the
- * third lesuur of the day view is a teacher saying which hour, in the same gesture that says which
- * day, and the sheet used to answer "Niet in het uurrooster" and make her say it again. The default
- * above still holds everywhere the gesture is silent about the hour: the month and the week drop onto
- * a bare day, and a click on the fiche, and they pass null.
+ * **The drop decides the hour when it named one** (`startuur`). Dropping a fiche at half past one in the grid is a
+ * teacher saying when, in the same gesture that says which day. A month cell and a click on the fiche say nothing
+ * about an hour, so they pass null and the sheet offers the ordinary start of a morning, which she can overwrite
+ * before saving.
  */
 export function Hoekplaatsingblad({
   open,
   hoekNaam,
   hoekId,
   startdag,
-  startSlot = null,
+  startuur = null,
   loopt,
   ingepland,
   schooljaarVan,
@@ -64,12 +63,12 @@ export function Hoekplaatsingblad({
   /** The day the fiche was dropped on, or the day the agenda stands on when it was clicked. */
   startdag: string;
   /**
-   * The lesuur the fiche was dropped on, or null when the drop was onto a day rather than an hour.
+   * The minute of the day the fiche was dropped at, or null when the gesture named no hour.
    *
-   * A `volgorde`, so 0 is lesuur 1. Null and 0 are therefore different answers and the check below
-   * has to be against null rather than falsy.
+   * Minutes since midnight, which is what the time grid works in; midnight itself is 0, so the check below is
+   * against null rather than falsy.
    */
-  startSlot?: number | null;
+  startuur?: number | null;
   /** The subthema runs, so the calendar can say what she is aiming at. */
   loopt: Loopt[];
   /** This corner's runs in the school year, in any order. */
@@ -87,10 +86,13 @@ export function Hoekplaatsingblad({
   const [van, setVan] = useState(startdag);
   const [tot, setTot] = useState("");
   const [verrijking, setVerrijking] = useState("");
-  // "" is "not in the uurrooster". A string because it comes from a select; it becomes null or a
-  // number exactly once, on submit.
-  const [lesuur, setLesuur] = useState(startSlot === null ? "" : String(startSlot));
+  // `HH:mm`, which is what a time input reads and writes; the seconds are added on submit, where the wire format
+  // is decided once.
+  const [begin, setBegin] = useState(() => alsTijd(startuur ?? STANDAARDBEGIN).slice(0, 5));
+  const [einde, setEinde] = useState(() => alsTijd((startuur ?? STANDAARDBEGIN) + STANDAARDDUUR).slice(0, 5));
   const [eindFout, setEindFout] = useState(false);
+  // `HH:mm` sorts as it reads, so comparing the strings is comparing the times.
+  const urenOngeldig = begin === "" || einde === "" || einde <= begin;
 
   // In calendar order, whatever order the server answered in: she reads the list as a timeline.
   const reeksen = useMemo(() => [...ingepland].sort((a, b) => a.van.localeCompare(b.van)), [ingepland]);
@@ -109,7 +111,8 @@ export function Hoekplaatsingblad({
       van,
       tot,
       verrijking: verrijking.trim() || null,
-      lesuur: lesuur === "" ? null : Number(lesuur),
+      begin: `${begin}:00`,
+      einde: `${einde}:00`,
     });
   }
 
@@ -122,7 +125,16 @@ export function Hoekplaatsingblad({
       titel={t("hoekplaatsing.titel", { naam: hoekNaam })}
       voet={
         <div className="flex items-center gap-2">
-          <Knop rang="hoofd" vol form={id} type="submit" disabled={bezig} className="@sm:w-auto @sm:px-6">
+          <Knop
+            rang="hoofd"
+            vol
+            form={id}
+            type="submit"
+            // Disabled on an impossible window rather than sending it: the server would refuse it in Dutch, and a
+            // refusal for something the screen could see coming is a round trip that teaches nothing.
+            disabled={bezig || urenOngeldig}
+            className="@sm:w-auto @sm:px-6"
+          >
             {bezig ? t("hoekplaatsing.bezig") : t("hoekplaatsing.plaats")}
           </Knop>
           <Knop rang="stil" type="button" onClick={onSluit} disabled={bezig}>
@@ -214,28 +226,48 @@ export function Hoekplaatsingblad({
         </div>
 
         <div>
-          <label htmlFor={`${id}-lesuur`} className="text-meta font-medium text-inkt">
-            {t("hoekplaatsing.uurrooster")}
-          </label>
-          <Keuze
-            id={`${id}-lesuur`}
-            value={lesuur}
-            disabled={bezig}
-            onChange={(e) => setLesuur(e.target.value)}
-            className="mt-1.5"
-          >
-            <option value="">{t("hoekplaatsing.nietInUurrooster")}</option>
-            {LESUREN.map((uur) => (
-              <option key={uur.slot} value={String(uur.slot)}>
-                {t("hoekplaatsing.lesuurN", { nummer: uur.nummer })}
-              </option>
-            ))}
-          </Keuze>
+          <p className="text-meta font-medium text-inkt">{t("hoekplaatsing.wanneer")}</p>
 
-          {/* What choosing a lesuur actually does, said only when she has chosen one. Above it the
-              sentence would be describing a thing that is not happening. */}
-          {lesuur !== "" ? (
-            <p className="mt-1.5 text-micro text-inkt-zacht">{t("hoekplaatsing.lesuurUitleg")}</p>
+          <div className="mt-1.5 flex flex-wrap items-end gap-2">
+            <div className="min-w-28 flex-1">
+              <label htmlFor={`${id}-begin`} className="text-micro text-inkt-zacht">
+                {t("hoekplaatsing.van")}
+              </label>
+              <Invoer
+                id={`${id}-begin`}
+                type="time"
+                step={900}
+                value={begin}
+                disabled={bezig}
+                onChange={(e) => setBegin(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="min-w-28 flex-1">
+              <label htmlFor={`${id}-einde`} className="text-micro text-inkt-zacht">
+                {t("hoekplaatsing.tot")}
+              </label>
+              <Invoer
+                id={`${id}-einde`}
+                type="time"
+                step={900}
+                value={einde}
+                disabled={bezig}
+                onChange={(e) => setEinde(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          {/* What these two fields actually do, which is not obvious: they are not one appointment but one hour on
+              every teaching day of the window. Said unconditionally, because there is no longer a state in which
+              the hoek takes no hour. */}
+          <p className="mt-1.5 text-micro text-inkt-zacht">{t("hoekplaatsing.uurUitleg")}</p>
+
+          {urenOngeldig && begin !== "" && einde !== "" ? (
+            <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
+              {t("hoekplaatsing.eindeVoorBegin")}
+            </p>
           ) : null}
         </div>
 

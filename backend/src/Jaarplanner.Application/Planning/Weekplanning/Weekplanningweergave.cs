@@ -79,7 +79,7 @@ public sealed record Subthemaperiodeweergave(
 /// control states its reason in visible text.
 /// </param>
 /// <param name="Activiteiten">
-/// What is scheduled on this day, in the teacher's own order. Empty is the normal state for most days and means
+/// What is scheduled on this day, in order of the time each starts. Empty is the normal state for most days and means
 /// nothing is planned — never "this day cannot hold anything", which is what <paramref name="IsLesdag"/> says.
 /// </param>
 public sealed record Dagweergave(
@@ -103,7 +103,12 @@ public sealed record Dagweergave(
 /// </param>
 /// <param name="ThemaId">The thema the subthema belongs to.</param>
 /// <param name="ThemaNaam">Its name.</param>
-/// <param name="Volgorde">Position within the day.</param>
+/// <param name="Begin">
+/// When it starts on this day, as the teacher chose it (ADR-0027). The time grid draws the block from here.
+/// </param>
+/// <param name="Einde">
+/// When it ends. Per placement, so one Thursday's longer block does not stretch every other day the activiteit is on.
+/// </param>
 /// <param name="Status">The human-in-the-loop status, as the API serialises the enum (Art. IV.2).</param>
 /// <param name="Doelcodes">
 /// The leerplandoel codes this activiteit carries, through its own <b>accepted or manual</b> <c>DoelKoppeling</c>s.
@@ -138,15 +143,10 @@ public sealed record GeplandeActiviteitWeergave(
     string SubthemaNaam,
     Guid ThemaId,
     string ThemaNaam,
-    int Volgorde,
+    TimeOnly Begin,
+    TimeOnly Einde,
     string Status,
     IReadOnlyList<string> Doelcodes,
     bool ValtBuitenThemaperiode,
     /// <summary>The teacher's colour label on the activiteit, or null. Rendered as a wash plus its name.</summary>
-    Activiteitkleur? Kleur = null,
-    /// <summary>
-    /// How many consecutive lesuren this occupies, starting at <c>Volgorde</c>. The day grid draws it
-    /// over that many rows; nothing here is stored per placement, so every placement of one activiteit
-    /// is the same length.
-    /// </summary>
-    int LengteInLesuren = 1);
+    Activiteitkleur? Kleur = null);

@@ -9,10 +9,10 @@ namespace Jaarplanner.Infrastructure.Planning;
 /// <summary>
 /// Placing a hoek on the agenda, over EF Core (owner, meeting 2026-08-30).
 /// <para>
-/// <b>The one piece of real logic is which days get a timetable row.</b> A hoek that takes the third lesuur takes
-/// it on every day the class is actually in front of the teacher, so the service asks the <c>Schooljaar</c> for
-/// its open weekdays and writes one <c>Hoekmoment</c> per day. It does not write one per calendar day: a row on a
-/// Saturday, or on the Monday of the herfstvakantie, is a lesson that does not happen.
+/// <b>The one piece of real logic is which days get a timetable row.</b> A hoek that runs from 13:30 to 14:20
+/// runs then on every day the class is actually in front of the teacher, so the service asks the
+/// <c>Schooljaar</c> for its open weekdays and writes one <c>Hoekmoment</c> per day. It does not write one per
+/// calendar day: a row on a Saturday, or on the Monday of the herfstvakantie, is a lesson that does not happen.
 /// </para>
 /// <para>
 /// <b>The hoek must belong to the klas being planned.</b> That check lives here because this is the layer that
@@ -67,8 +67,8 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
                     .ToList(),
                 p.Momenten
                     .OrderBy(m => m.Datum)
-                    .ThenBy(m => m.Volgorde)
-                    .Select(m => new HoekmomentWeergave(m.Id, m.Datum, m.Volgorde))
+                    .ThenBy(m => m.Begin)
+                    .Select(m => new HoekmomentWeergave(m.Id, m.Datum, m.Begin, m.Einde))
                     .ToList()))
             .ToList();
     }
@@ -119,12 +119,19 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
                 plaatsing.VoegVerrijkingToe(invoer.Van, invoer.Tot, invoer.Verrijking);
             }
 
-            if (invoer.Lesuur is { } lesuur)
+            // Every placement gets its rows (owner, 2026-09-11: "elke hoek moet een tijdstip krijgen"), so a window
+            // without a single teaching day in it would make a corner with nowhere to appear. Checked after the
+            // window itself, so a window that runs backwards is told that rather than this.
+            var dagen = schooljaar.OpenWeekdagen(invoer.Van, invoer.Tot);
+            if (dagen.Count == 0)
             {
-                foreach (var dag in schooljaar.OpenWeekdagen(invoer.Van, invoer.Tot))
-                {
-                    plaatsing.PlanIn(dag, lesuur);
-                }
+                throw new SchoolcontentValidatieFout(
+                    "In die periode valt geen enkele schooldag, dus de hoek kan er nergens staan. Kies andere dagen.");
+            }
+
+            foreach (var dag in dagen)
+            {
+                plaatsing.PlanIn(dag, invoer.Begin, invoer.Einde);
             }
         }
         catch (ArgumentException fout)
@@ -161,17 +168,18 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
         Guid plaatsingId,
         Guid momentId,
         DateOnly datum,
-        int volgorde,
+        TimeOnly begin,
+        TimeOnly einde,
         CancellationToken cancellationToken = default)
     {
         var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
 
-        // The domain owns the day and uniqueness rules and says them in Dutch; this only turns them into the
-        // app's own fault type so the shared handler answers 400 instead of 500.
+        // The domain owns the day, time and uniqueness rules and says them in Dutch; this only turns them into
+        // the app's own fault type so the shared handler answers 400 instead of 500.
         bool gevonden;
         try
         {
-            gevonden = plaatsing.VerplaatsMoment(momentId, datum, volgorde);
+            gevonden = plaatsing.VerplaatsMoment(momentId, datum, begin, einde);
         }
         catch (ArgumentException fout)
         {
@@ -284,8 +292,8 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
     /// <summary>
     /// One placement as the agenda reads it.
     /// <para>
-    /// Ordered by day and then by hour, so two appearances on one day come back in the order they are taught
-    /// rather than in insertion order, which after a move is no longer the same thing.
+    /// Ordered by day and then by start time, so two appearances on one day come back in the order they are
+    /// taught rather than in insertion order, which after a move is no longer the same thing.
     /// </para>
     /// </summary>
     private static HoekplaatsingWeergave Weergave(Hoekplaatsing plaatsing, string hoekNaam) =>
@@ -298,8 +306,8 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
             plaatsing.Verrijkingen.Select(v => new HoekverrijkingWeergave(v.Id, v.Van, v.Tot, v.Tekst)).ToList(),
             plaatsing.Momenten
                 .OrderBy(m => m.Datum)
-                .ThenBy(m => m.Volgorde)
-                .Select(m => new HoekmomentWeergave(m.Id, m.Datum, m.Volgorde))
+                .ThenBy(m => m.Begin)
+                .Select(m => new HoekmomentWeergave(m.Id, m.Datum, m.Begin, m.Einde))
                 .ToList());
 
     private async Task BevestigKlasAsync(Guid klasId, CancellationToken cancellationToken)

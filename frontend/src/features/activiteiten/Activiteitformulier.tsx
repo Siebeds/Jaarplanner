@@ -10,7 +10,7 @@ import type { ActiviteitWeergave, ActiviteitType, OnderzoeksvraagWeergave } from
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { ACTIVITEITKLEUREN, KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "./kleuren";
-import { MAX_LENGTE } from "./lesuren";
+import { STANDAARDDUUR } from "../plan/tijd";
 import { Doelkoppelaar } from "./Doelkoppelaar";
 
 /**
@@ -217,12 +217,20 @@ export function Activiteitformulier({
         </div>
 
         <fieldset>
-          <legend className="text-meta font-medium text-inkt">{t("activiteit.lengte")}</legend>
-          {/* Buttons rather than a number field: the answer is almost always 1 or 2, and a stepper
-              made the common case as much work as the rare one. The chosen number is also spelled out
-              underneath, because a pressed button in a row of four is not by itself a sentence. */}
+          <legend className="text-meta font-medium text-inkt">{t("activiteit.duur")}</legend>
+          {/*
+            THE DEFAULT LENGTH, IN MINUTES SINCE ADR-0028, and the reason it is four buttons rather than a field.
+
+            The answer is almost always the first or the second, and a stepper made the common case as much work
+            as the rare one. What the agenda then does with it is a starting point: the block lands this long and
+            the teacher drags its bottom edge to whatever that Thursday actually needs.
+
+            **It is still stored as a count of 50-minute units** (`lengteInLesuren`), which is why the four values
+            are multiples rather than free minutes. Renaming that column is owed and is written down in ADR-0028
+            decision 2; the label here says minutes because that is what a teacher now plans in.
+          */}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {Array.from({ length: MAX_LENGTE }, (_, i) => i + 1).map((aantal) => {
+            {[1, 2, 3, 4].map((aantal) => {
               const gekozen = lengte === aantal;
               return (
                 <button
@@ -232,19 +240,19 @@ export function Activiteitformulier({
                   aria-pressed={gekozen}
                   onClick={() => setLengte(aantal)}
                   className={cn(
-                    "mono h-raak w-11 rounded-veld border text-body font-medium transition-colors duration-150",
+                    "mono h-raak rounded-veld border px-3 text-body font-medium transition-colors duration-150",
                     gekozen
                       ? "border-accent bg-accent text-accent-op"
                       : "border-lijn-veld bg-kaart text-inkt hover:border-inkt",
                   )}
                 >
-                  {aantal}
+                  {aantal * STANDAARDDUUR}
                 </button>
               );
             })}
           </div>
           <p className="mt-1.5 text-meta text-inkt-zacht">
-            {lengte === 1 ? t("activiteit.eenLesuur") : t("activiteit.aantalLesuren", { aantal: lengte })}
+            {t("activiteit.duurUitleg", { aantal: lengte * STANDAARDDUUR })}
           </p>
         </fieldset>
 

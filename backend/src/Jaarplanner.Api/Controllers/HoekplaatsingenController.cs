@@ -46,11 +46,11 @@ public sealed class HoekplaatsingenController : ControllerBase
     }
 
     /// <summary>
-    /// Moves ONE appearance of a placed hoek to another day and/or lesuur (owner, 2026-08-31).
+    /// Moves or resizes ONE appearance of a placed hoek (owner, 2026-08-31; clock times since ADR-0027).
     /// <para>
     /// A PUT on the appearance rather than a PATCH on the placement, because the whole resource being addressed
-    /// is a day and an hour and both are sent every time. Moving the whole run is a different verb and is not
-    /// this route.
+    /// is a day and a stretch of time and all three are sent every time. Moving the whole run is a different verb
+    /// and is not this route.
     /// </para>
     /// </summary>
     [HttpPut("/api/hoekplaatsingen/{plaatsingId:guid}/momenten/{momentId:guid}")]
@@ -59,7 +59,8 @@ public sealed class HoekplaatsingenController : ControllerBase
         Guid momentId,
         [FromBody] HoekmomentVerplaatsing invoer,
         CancellationToken cancellationToken) =>
-        Ok(await _service.VerplaatsMomentAsync(plaatsingId, momentId, invoer.Datum, invoer.Volgorde, cancellationToken));
+        Ok(await _service.VerplaatsMomentAsync(
+            plaatsingId, momentId, invoer.Datum, invoer.Begin, invoer.Einde, cancellationToken));
 
     /// <summary>Adds an enrichment: what is in the corner over these days.</summary>
     [HttpPost("/api/hoekplaatsingen/{plaatsingId:guid}/verrijkingen")]
@@ -94,8 +95,9 @@ public sealed class HoekplaatsingenController : ControllerBase
 
     /// <summary>Where one appearance should move to.</summary>
     /// <param name="Datum">The day it happens on. May be the day it is already on.</param>
-    /// <param name="Volgorde">The zero-based lesuur, so 0 is what a teacher calls lesuur 1.</param>
-    public sealed record HoekmomentVerplaatsing(DateOnly Datum, int Volgorde);
+    /// <param name="Begin">When the corner opens that day, as <c>HH:mm:ss</c>.</param>
+    /// <param name="Einde">When it closes. Must lie after <paramref name="Begin"/>.</param>
+    public sealed record HoekmomentVerplaatsing(DateOnly Datum, TimeOnly Begin, TimeOnly Einde);
 
     /// <summary>What is in the corner, over which days.</summary>
     /// <param name="Van">First day of the enrichment, inclusive. Must fall inside the placement.</param>

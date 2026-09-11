@@ -83,7 +83,7 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
 
         var geplant = await client.PostAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning",
-            new { activiteitId, datum = opzet.EersteLesdag, volgorde = 0 });
+            new { activiteitId, datum = opzet.EersteLesdag, begin = Negen, einde = NegenVijftig });
         Assert.Equal(HttpStatusCode.OK, geplant.StatusCode);
 
         // A SECOND request, so the answer comes from the database rather than from the tracked aggregate.
@@ -100,49 +100,51 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// The unique index on <c>(JaarplanId, ActiviteitId, Datum, Volgorde)</c> holds in the database, and the service
-    /// refuses the duplicate <b>before</b> it gets there — a raw 23505 would surface as a 500 with an English detail.
+    /// The unique index on <c>(JaarplanId, ActiviteitId, Datum, Begin)</c> holds in the database, and the service
+    /// refuses the duplicate <b>before</b> it gets there: a raw 23505 would surface as a 500 with an English detail.
     /// <para>
-    /// <b>The SLOT, not the day.</b> This test asserted the day-level rule, and went on asserting it after
-    /// <c>ActiviteitplaatsingPerLesuur</c> put <c>Volgorde</c> in that index: it planned lesuur 1, asked for lesuur 2,
+    /// <b>The START TIME, not the day.</b> This test asserted the day-level rule, and went on asserting it after
+    /// <c>ActiviteitplaatsingPerLesuur</c> put the slot in that index: it planned lesuur 1, asked for lesuur 2,
     /// and called the resulting <c>200</c> a failure. That is the one test that had CI red on this branch for two
     /// commits, and it is worth recording rather than quietly rewriting, because a stale test does not read as stale.
-    /// It reads as a rule, and the rule it stated is one a teacher would have noticed was gone. The companion below
-    /// covers the half the change exists for.
+    /// It reads as a rule, and the rule it stated is one a teacher would have noticed was gone. That slot became a
+    /// clock time in ADR-0028 and the shape of the rule did not change with it; the companion below covers the half
+    /// the change exists for.
     /// </para>
     /// </summary>
     [PostgresFact]
-    public async Task Dezelfde_activiteit_twee_keer_in_hetzelfde_lesuur_wordt_geweigerd_met_400()
+    public async Task Dezelfde_activiteit_twee_keer_op_hetzelfde_uur_wordt_geweigerd_met_400()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
         var activiteitId = await MaakActiviteitAsync(client, opzet, "Bladeren zoeken");
 
-        // PlanAsync takes volgorde 0, so this asks for the slot that is already occupied.
+        // PlanAsync starts at nine, so this asks for the time that is already taken.
         await PlanAsync(client, opzet.KlasId, activiteitId, opzet.EersteLesdag);
         var tweede = await client.PostAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning",
-            new { activiteitId, datum = opzet.EersteLesdag, volgorde = 0 });
+            new { activiteitId, datum = opzet.EersteLesdag, begin = Negen, einde = "10:30:00" });
 
         Assert.Equal(HttpStatusCode.BadRequest, tweede.StatusCode);
         var probleem = await tweede.Content.ReadFromJsonAsync<ProbleemDto>();
-        Assert.Contains("staat al", probleem!.Detail, StringComparison.Ordinal);
+        Assert.Contains("begint al", probleem!.Detail, StringComparison.Ordinal);
 
-        // The refusal names the LESUUR and counts it from one. Asserted because that wording is the whole point of
-        // the per-slot rule: telling a teacher to pick another day when picking the next hour would do sends them
-        // away from the fix.
-        Assert.Contains("lesuur 1", probleem.Detail, StringComparison.Ordinal);
+        // The refusal names the TIME, and writes it the way the grid labels it. Asserted because that wording is
+        // the whole point of the per-start rule: telling a teacher to pick another day when a later hour would do
+        // sends them away from the fix.
+        Assert.Contains("om 9:00", probleem.Detail, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// The same activiteit in two lesuren of one day is allowed, which is what a hoek running two hours looks like.
+    /// The same activiteit twice in one day is allowed, which is what something done in the morning and again after
+    /// lunch looks like.
     /// <para>
-    /// Two rows for one activiteit on one day is by itself proof that they sit in different slots: the unique index
-    /// includes <c>Volgorde</c>, so a second row in the same lesuur cannot exist to be counted.
+    /// Two rows for one activiteit on one day is by itself proof that they start at different times: the unique index
+    /// includes <c>Begin</c>, so a second row at the same start cannot exist to be counted.
     /// </para>
     /// </summary>
     [PostgresFact]
-    public async Task Dezelfde_activiteit_in_een_ander_lesuur_van_dezelfde_dag_mag()
+    public async Task Dezelfde_activiteit_op_een_ander_uur_van_dezelfde_dag_mag()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
@@ -151,7 +153,7 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
         await PlanAsync(client, opzet.KlasId, activiteitId, opzet.EersteLesdag);
         var tweede = await client.PostAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning",
-            new { activiteitId, datum = opzet.EersteLesdag, volgorde = 1 });
+            new { activiteitId, datum = opzet.EersteLesdag, begin = "13:30:00", einde = "14:20:00" });
 
         Assert.Equal(HttpStatusCode.OK, tweede.StatusCode);
         var week = await tweede.Content.ReadFromJsonAsync<WeekDto>();
@@ -261,7 +263,7 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
 
         var resp = await client.PostAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning",
-            new { activiteitId, datum = new DateOnly(2026, 11, 3), volgorde = 0 });
+            new { activiteitId, datum = new DateOnly(2026, 11, 3), begin = Negen, einde = NegenVijftig });
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         var probleem = await resp.Content.ReadFromJsonAsync<ProbleemDto>();
@@ -292,7 +294,7 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
 
         var resp = await client.PostAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning",
-            new { activiteitId = vreemde, datum = opzet.EersteLesdag, volgorde = 0 });
+            new { activiteitId = vreemde, datum = opzet.EersteLesdag, begin = Negen, einde = NegenVijftig });
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
 
@@ -323,7 +325,7 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
 
         var verplaatst = await client.PutAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning/{plaatsingId}/dag",
-            new { datum = doeldag, volgorde = 0 });
+            new { datum = doeldag, begin = Negen, einde = NegenVijftig });
         Assert.Equal(HttpStatusCode.OK, verplaatst.StatusCode);
 
         var week = await client.GetFromJsonAsync<WeekDto>(
@@ -665,6 +667,10 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
             .ToListAsync();
 
         Assert.Contains("Datum", kolommen);
+        Assert.Contains("Begin", kolommen);
+        Assert.Contains("Einde", kolommen);
+        // The lesuur slot is GONE from the table, not merely unused by the code (ADR-0028).
+        Assert.DoesNotContain("Volgorde", kolommen);
         Assert.DoesNotContain("BlokStart", kolommen);
         Assert.DoesNotContain("BlokNiveau", kolommen);
         Assert.DoesNotContain("Ordinaal", kolommen);
@@ -674,13 +680,18 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     {
         var resp = await client.PostAsJsonAsync(
             $"/api/klassen/{klasId}/jaarplan/weekplanning",
-            new { activiteitId, datum, volgorde = 0 });
+            new { activiteitId, datum, begin = Negen, einde = NegenVijftig });
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
 
         var week = await resp.Content.ReadFromJsonAsync<WeekDto>();
 
         return week!.Dagen.SelectMany(d => d.Activiteiten).Single(a => a.ActiviteitId == activiteitId).PlaatsingId;
     }
+
+    /// <summary>The hours every ordinary placement in this file lands at, as the API binds a TimeOnly.</summary>
+    private const string Negen = "09:00:00";
+
+    private const string NegenVijftig = "09:50:00";
 
     /// <summary>The age the klas in <see cref="ZetOpAsync"/> teaches, and one it does not.</summary>
     private const string Leeftijd = "K3";

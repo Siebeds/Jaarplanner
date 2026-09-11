@@ -27,6 +27,11 @@ public sealed class WeekplanningServiceTests
     /// <summary>A Wednesday well inside the school year, and open in every fixture here.</summary>
     private static readonly DateOnly Woensdag = new(2026, 9, 9);
 
+    /// <summary>The block most tests plan: nine to ten to ten. Clock times since 2026-09-11 (ADR-0028).</summary>
+    private static readonly TimeOnly Begin = new(9, 0);
+
+    private static readonly TimeOnly Einde = new(9, 50);
+
     /// <param name="leeftijd">
     /// The subthema's age, which is the whole of its scope since 2026-08-30 (Art. IX.2). It replaced a klasId
     /// here: what the service checks is now whether the plan's klas TEACHES this age.
@@ -60,7 +65,7 @@ public sealed class WeekplanningServiceTests
     {
         var (service, opslag, klas, _) = Maak();
 
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
 
         var dag = Assert.Single(week.Dagen, d => d.Datum == Woensdag);
         var gepland = Assert.Single(dag.Activiteiten);
@@ -83,7 +88,7 @@ public sealed class WeekplanningServiceTests
     {
         var (service, _, klas, _) = Maak();
 
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
 
         Assert.Equal(new DateOnly(2026, 9, 7), week.Van);
         Assert.Equal(new DateOnly(2026, 9, 13), week.Tot);
@@ -101,7 +106,7 @@ public sealed class WeekplanningServiceTests
         var (service, opslag, klas, _) = Maak();
 
         var fout = await Assert.ThrowsAsync<OngeldigeDagplanningFout>(() =>
-            service.PlanActiviteitAsync(klas.Id, ActiviteitId, new DateOnly(2026, 11, 3), volgorde: 0));
+            service.PlanActiviteitAsync(klas.Id, ActiviteitId, new DateOnly(2026, 11, 3), Begin, Einde));
 
         Assert.Contains("Herfstvakantie", fout.Message, StringComparison.Ordinal);
 
@@ -124,7 +129,7 @@ public sealed class WeekplanningServiceTests
         var (service, opslag, klas, _) = Maak();
 
         var fout = await Assert.ThrowsAsync<OngeldigeDagplanningFout>(() =>
-            service.PlanActiviteitAsync(klas.Id, ActiviteitId, new DateOnly(2027, 7, 14), volgorde: 0));
+            service.PlanActiviteitAsync(klas.Id, ActiviteitId, new DateOnly(2027, 7, 14), Begin, Einde));
 
         Assert.Contains("buiten schooljaar", fout.Message, StringComparison.Ordinal);
         Assert.Equal(0, opslag.AantalKeerBewaard);
@@ -148,7 +153,7 @@ public sealed class WeekplanningServiceTests
 
         // A vakantie day AND an activiteit for another age: the age error is the one reported.
         var fout = await Assert.ThrowsAsync<OngeldigeDagplanningFout>(() =>
-            service.PlanActiviteitAsync(klas.Id, vreemdeActiviteit, new DateOnly(2026, 11, 3), volgorde: 0));
+            service.PlanActiviteitAsync(klas.Id, vreemdeActiviteit, new DateOnly(2026, 11, 3), Begin, Einde));
 
         Assert.Contains("geeft die leeftijd niet", fout.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("Herfstvakantie", fout.Message, StringComparison.Ordinal);
@@ -161,7 +166,7 @@ public sealed class WeekplanningServiceTests
         var (service, _, klas, _) = Maak();
 
         await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() =>
-            service.PlanActiviteitAsync(klas.Id, Guid.NewGuid(), Woensdag, volgorde: 0));
+            service.PlanActiviteitAsync(klas.Id, Guid.NewGuid(), Woensdag, Begin, Einde));
     }
 
     /// <summary>
@@ -174,28 +179,83 @@ public sealed class WeekplanningServiceTests
         var (service, opslag, klas, _) = Maak();
         Assert.Null(opslag.Jaarplan);
 
-        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, volgorde: 0);
+        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
 
         Assert.NotNull(opslag.Jaarplan);
         Assert.Single(opslag.Jaarplan!.Activiteitplaatsingen);
     }
 
     /// <summary>
-    /// Dropping a card back where it came from must not be an error. Only a <i>different</i> placement already on the
-    /// target day is a genuine duplicate.
+    /// Dropping a block later on the same day must not be an error. Only a <i>different</i> placement of the same
+    /// activiteit already starting at the target time is a genuine duplicate.
     /// </summary>
     [Fact]
     public async Task Een_verplaatsing_naar_dezelfde_dag_is_geen_duplicaat()
     {
         var (service, opslag, klas, _) = Maak();
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
         var plaatsingId = week.Dagen.SelectMany(d => d.Activiteiten).Single().PlaatsingId;
 
-        var na = await service.VerplaatsActiviteitAsync(klas.Id, plaatsingId, Woensdag, volgorde: 3);
+        var na = await service.VerplaatsActiviteitAsync(
+            klas.Id, plaatsingId, Woensdag, new TimeOnly(11, 0), new TimeOnly(11, 50));
 
         var gepland = Assert.Single(Assert.Single(na.Dagen, d => d.Datum == Woensdag).Activiteiten);
-        Assert.Equal(3, gepland.Volgorde);
+        Assert.Equal(new TimeOnly(11, 0), gepland.Begin);
+        Assert.Equal(new TimeOnly(11, 50), gepland.Einde);
         Assert.Equal(2, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// <b>A resize is a move that keeps the start</b>, which is exactly the case the duplicate guard would refuse if it
+    /// compared the placement with itself: dragging the bottom edge of a block sends the same day and start with a
+    /// later end.
+    /// </summary>
+    [Fact]
+    public async Task Een_blok_langer_maken_is_geen_duplicaat()
+    {
+        var (service, _, klas, _) = Maak();
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
+        var plaatsingId = week.Dagen.SelectMany(d => d.Activiteiten).Single().PlaatsingId;
+
+        var na = await service.VerplaatsActiviteitAsync(klas.Id, plaatsingId, Woensdag, Begin, new TimeOnly(10, 30));
+
+        Assert.Equal(new TimeOnly(10, 30), Assert.Single(na.Dagen.SelectMany(d => d.Activiteiten)).Einde);
+    }
+
+    /// <summary>
+    /// The end before the start reaches a teacher from the time fields in the activiteit sheet, so it is a Dutch
+    /// refusal from the service rather than the aggregate's English guard reaching her as a 500 (ADR-0028).
+    /// </summary>
+    [Fact]
+    public async Task Een_einde_voor_het_begin_wordt_in_het_nederlands_geweigerd()
+    {
+        var (service, opslag, klas, _) = Maak();
+
+        var fout = await Assert.ThrowsAsync<OngeldigeDagplanningFout>(() =>
+            service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Einde, Begin));
+
+        Assert.Contains("einde", fout.Message, StringComparison.Ordinal);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    /// <summary>
+    /// The same activiteit twice from the same start is the one row that means nothing, and the refusal names the
+    /// time the way the grid labels it, so a teacher knows which block is in the way.
+    /// </summary>
+    [Fact]
+    public async Task Dezelfde_activiteit_twee_keer_op_hetzelfde_begin_wordt_geweigerd_met_het_uur()
+    {
+        var (service, _, klas, _) = Maak();
+        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
+
+        var fout = await Assert.ThrowsAsync<OngeldigeDagplanningFout>(() =>
+            service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, new TimeOnly(10, 0)));
+
+        Assert.Contains("om 9:00", fout.Message, StringComparison.Ordinal);
+        Assert.Contains("9 september 2026", fout.Message, StringComparison.Ordinal);
+
+        // Later the same day is fine: in the morning and again after lunch.
+        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, new TimeOnly(13, 30), new TimeOnly(14, 20));
     }
 
     /// <summary>
@@ -208,14 +268,14 @@ public sealed class WeekplanningServiceTests
     {
         var schooljaar = TestSchooljaar.Maak();
         var (service, opslag, klas, _) = Maak(schooljaar);
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
         var plaatsingId = week.Dagen.SelectMany(d => d.Activiteiten).Single().PlaatsingId;
 
         // The school declares that Wednesday a free day after the fact.
         schooljaar.VoegSluitingToe(
             new Schoolsluiting("Pedagogische studiedag", Woensdag, Woensdag, Sluitingssoort.VrijeDag));
 
-        var na = await service.VerplaatsActiviteitAsync(klas.Id, plaatsingId, new DateOnly(2026, 9, 10), volgorde: 0);
+        var na = await service.VerplaatsActiviteitAsync(klas.Id, plaatsingId, new DateOnly(2026, 9, 10), Begin, Einde);
 
         Assert.Single(Assert.Single(na.Dagen, d => d.Datum == new DateOnly(2026, 9, 10)).Activiteiten);
         Assert.Empty(Assert.Single(na.Dagen, d => d.Datum == Woensdag).Activiteiten);
@@ -276,7 +336,7 @@ public sealed class WeekplanningServiceTests
         var service = new WeekplanningService(opslag, Indeling);
 
         var dagInEerstePeriode = blokken[0].Start.AddDays(2);
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, dagInEerstePeriode, volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, dagInEerstePeriode, Begin, Einde);
 
         var gepland = Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten));
         Assert.True(gepland.ValtBuitenThemaperiode);
@@ -296,7 +356,7 @@ public sealed class WeekplanningServiceTests
         var service = new WeekplanningService(
             new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan), Indeling);
 
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[0].Start.AddDays(2), volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[0].Start.AddDays(2), Begin, Einde);
 
         Assert.False(Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten)).ValtBuitenThemaperiode);
     }
@@ -322,7 +382,7 @@ public sealed class WeekplanningServiceTests
         var service = new WeekplanningService(
             new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan), Indeling);
 
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[0].Start.AddDays(2), volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[0].Start.AddDays(2), Begin, Einde);
 
         Assert.False(Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten)).ValtBuitenThemaperiode);
     }
@@ -343,7 +403,7 @@ public sealed class WeekplanningServiceTests
         var service = new WeekplanningService(
             new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan), Indeling);
 
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[1].Start.AddDays(1), volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[1].Start.AddDays(1), Begin, Einde);
 
         // Between the two, so inside the widened span.
         Assert.False(Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten)).ValtBuitenThemaperiode);
@@ -357,7 +417,7 @@ public sealed class WeekplanningServiceTests
     public async Task Verwijderen_geeft_de_week_terug_waar_de_activiteit_stond()
     {
         var (service, opslag, klas, _) = Maak();
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
         var plaatsingId = week.Dagen.SelectMany(d => d.Activiteiten).Single().PlaatsingId;
 
         var na = await service.VerwijderActiviteitplaatsingAsync(klas.Id, plaatsingId);
@@ -387,7 +447,7 @@ public sealed class WeekplanningServiceTests
     {
         var (service, _, klas, _) = Maak();
 
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, volgorde: 0);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
 
         Assert.Equal(["NAT-K3-01"], Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten)).Doelcodes);
 

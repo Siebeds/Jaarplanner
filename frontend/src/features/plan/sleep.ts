@@ -1,7 +1,7 @@
 import { KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { Announcements, ScreenReaderInstructions } from "@dnd-kit/core";
 import { volleDag } from "../../lib/datum";
-import { leesSlotId } from "../activiteiten/lesuren";
+import { leesKolomId } from "./tijdsleep";
 import { t } from "../../i18n";
 
 /**
@@ -44,15 +44,11 @@ export const sleepUitleg: ScreenReaderInstructions = {
  * "2026-11-11" that is on the wire.
  */
 export function kalenderMeldingen(naamVan: (plaatsingId: string) => string): Announcements {
-  // A drop target in the day grid is a day AND a lesuur, so its id carries both. Spoken as both:
-  // "woensdag 14 oktober, lesuur 3" is the whole target, and reading the raw id aloud would not be.
-  const dag = (id: string | number) => {
-    const rauw = String(id);
-    const plek = leesSlotId(rauw);
-    return plek
-      ? t("lesuur.kiezerTitel", { dag: volleDag(plek.datum), nummer: plek.slot + 1 })
-      : volleDag(rauw);
-  };
+  // A drop target is a day, whether it is a column of the time grid or a month cell; the column's id carries a
+  // prefix, so it is unwrapped before being spoken. **The hour is deliberately not announced**: it follows the
+  // pointer and would have to be read out on every pixel of travel, and a keyboard drag, which is who these
+  // announcements are for, does not name one at all (see `tijdsleep`).
+  const dag = (id: string | number) => volleDag(leesKolomId(String(id)) ?? String(id));
   return {
     onDragStart: ({ active }) => t("slepen.opgepakt", { naam: naamVan(String(active.id)) }),
     onDragOver: ({ active, over }) =>

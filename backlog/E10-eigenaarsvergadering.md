@@ -30,6 +30,7 @@ home for that whole set.
 | F7 | hoekenverrijking | built 2026-08-30 by session `hoeken`, **story entry still owed** |
 | F8 | not yet transcribed into this file | — |
 | F9 | streefwoordenschat op subthema | **E10-01** below |
+| — | the agenda as a time grid, with free clock times | **E10-03** below. *No F-number: it came from a session on 2026-09-11, not from the meeting notes this file was opened for.* |
 
 ---
 
@@ -128,3 +129,53 @@ home for that whole set.
   Whoever finishes that work writes the real entry here: the owner's wording, the scope, the acceptance criteria
   it was actually held to, and the gates that ran. A feature on `main` with no durable record is how this repo
   gets a progress table it cannot trust.*
+
+- [~] **E10-03 — De agenda als tijdraster: vrije tijdstippen in plaats van lesuren** — *Owner request of
+  2026-09-11, in session, with his own Outlook week beside the screen. Decision record:
+  **[ADR-0028](../docs/adr/0028-tijdraster-in-plaats-van-lesuren.md)**, which supersedes his own instruction of
+  2026-08-24 that the agenda shows no clock times, and the `Volgorde` half of
+  [ADR-0023](../docs/adr/0023-activiteit-day-placement.md) decision 1.*
+
+  The owner's wording: *"ik wil zoals in outlook alle uren van de dag zien op de week/dag view met een lijntje van
+  waar we vandaag zitten ook. hierin moeten de leerkrachten hun activiteiten kunnen plannen, niet zoals nu met
+  lesuren, zij moeten de tijdstippen zelf kunnen bepalen. ook zie ik bij de hoeken dat in de weekview ze vanboven
+  staan bovenaan de dag terwijl ik ze liever op de dag zelf ook willen zien staan."*
+
+  Four defaults were put to him with their costs and accepted: the grid draws 7:00 to 18:00 and opens on 8:00,
+  planning snaps to a quarter of an hour, a new activiteit runs 50 minutes, and the existing rows are converted by
+  arithmetic rather than by a real bell schedule because they are demo data. He also ruled that **every hoek gets a
+  time**, which removes the "niet in het uurrooster" answer.
+
+  *Done when:* a teacher can drag a block to another day and another hour, pull its bottom edge to change when it
+  ends, click empty space to make something at that hour, see a line marking the current time, and read a hoek as a
+  block on the day it runs; and when the same three things are reachable without a drag, from the activiteit sheet.
+
+  **Built 2026-09-11, and `[~]` rather than `[x]` for three reasons, each of them named here rather than left for a
+  reader to discover.**
+  1. **No migration yet.** `Activiteitplaatsing.Volgorde` and `Hoekmoment.Volgorde` are gone from the model and the
+     database still has them. Session `algemene-fiches` holds the Migrations claim and asked to land its own first;
+     until that releases, `dotnet ef migrations add TijdstippenInPlaatsVanLesuren` has not been run, the Postgres
+     integration tests cannot pass, and **the app must not be restarted against the dev database**.
+  2. **No browser pass.** Everything below was verified by tests and by the type checker. The three things this
+     story exists for — a drag landing where the preview said, an edge-drag resizing a block, the now-line — are
+     exactly what jsdom cannot see, and the grid has not yet been opened in a real browser at 1440px or at 390px.
+  3. **No antagonist round.**
+
+  **What landed**
+
+  *Backend.* `Activiteitplaatsing` and `Hoekmoment` carry `Begin`/`Einde` (`TimeOnly`); the duplicate rule and the
+  unique index key on the start time; `WeekplanningService` refuses an end that is not after its start with a Dutch
+  400, and the hoek service refuses a window with no teaching day in it, because every placement now writes rows.
+  `GeplandeActiviteitWeergave` sends the two times and no longer sends `LengteInLesuren`.
+
+  *Frontend.* One `Tijdraster` draws both the day and the week (three days below `sm`), with an hour gutter, the
+  now-line in ink plus its time in words, overlapping blocks side by side, a drag preview that reads the same module
+  the drop handler reads, and a resize handle. `ruilen.ts` (the swap rule of 2026-08-31), `Lesurenraster`,
+  `lesuren.ts` and `Dagcel` are deleted; the activiteit sheet gained begin/end fields as the non-drag route.
+
+  *Gates so far:* 801 backend unit tests, `dotnet build` and `dotnet format` clean, 131 frontend tests (16 new),
+  oxlint + tsc clean.
+
+  **Owed, in order:** the migration; the browser pass at both widths; the antagonist; and then the rename
+  `LengteInLesuren` → `DuurInMinuten` (ADR-0028 decision 2), which is blocked on a stale claim over
+  `SchoolcontentBeheerService.cs` and is the one place the model still speaks in lesuren.

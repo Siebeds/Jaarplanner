@@ -55,7 +55,8 @@ export function Activiteitblad({
   bezig: boolean;
   /** What the server said about the last day action, in Dutch, already composed for the teacher. */
   fout: string | null;
-  onVerplaats: (datum: string) => void;
+  /** The day and the two times, together: this is also the non-drag route to both (WCAG 2.2 SC 2.5.7). */
+  onVerplaats: (datum: string, begin: string, einde: string) => void;
   onVerwijder: () => void;
   onSluit: () => void;
 }) {
@@ -133,6 +134,8 @@ export function Activiteitblad({
       extra={
         <Dagsectie
           datum={datum}
+          begin={activiteit.begin}
+          einde={activiteit.einde}
           vroegste={vroegste}
           laatste={laatste}
           bezig={bezig}
@@ -147,14 +150,20 @@ export function Activiteitblad({
 }
 
 /**
- * The day this activiteit is planned on, and the two things that can happen to it there.
+ * When this activiteit happens, and the two things that can happen to it there.
  *
- * A date field with a button rather than a field that commits on change: a `type="date"` input fires
- * on every complete value the browser can make of what has been typed so far, so committing on change
- * moves the activiteit to a day nobody chose on the way to the one they did.
+ * **Fields with a button rather than fields that commit on change**: a `type="date"` or `type="time"` input fires on
+ * every complete value the browser can make of what has been typed so far, so committing on change would move the
+ * activiteit to a day and an hour nobody chose on the way to the ones they did.
+ *
+ * **This is also the keyboard route to a gesture that is otherwise a drag** (ADR-0028, WCAG 2.2 SC 2.5.7). Moving a
+ * block and making it longer are a drag and an edge-drag in the grid; here they are three fields and a button, which
+ * is why the section takes all three rather than only the day it used to.
  */
 function Dagsectie({
   datum,
+  begin,
+  einde,
   vroegste,
   laatste,
   bezig,
@@ -164,16 +173,26 @@ function Dagsectie({
   onVerwijder,
 }: {
   datum: string;
+  /** `HH:mm:ss` from the server; the inputs work in `HH:mm` and the seconds are put back on submit. */
+  begin: string;
+  einde: string;
   vroegste: string;
   laatste: string;
   bezig: boolean;
   fout: string | null;
   buitenPeriode: boolean;
-  onVerplaats: (datum: string) => void;
+  onVerplaats: (datum: string, begin: string, einde: string) => void;
   onVerwijder: () => void;
 }) {
   const [nieuweDag, setNieuweDag] = useState(datum);
-  const verplaatst = nieuweDag !== datum && nieuweDag.length > 0;
+  const [nieuwBegin, setNieuwBegin] = useState(begin.slice(0, 5));
+  const [nieuwEinde, setNieuwEinde] = useState(einde.slice(0, 5));
+
+  // `HH:mm` sorts as it reads, so comparing the strings is comparing the times.
+  const ongeldig = nieuwBegin === "" || nieuwEinde === "" || nieuwEinde <= nieuwBegin;
+  const gewijzigd =
+    nieuweDag.length > 0 &&
+    (nieuweDag !== datum || nieuwBegin !== begin.slice(0, 5) || nieuwEinde !== einde.slice(0, 5));
 
   return (
     <>
@@ -195,13 +214,51 @@ function Dagsectie({
             className="mt-1.5"
           />
         </div>
-        <Knop rang="rustig" disabled={bezig || !verplaatst} onClick={() => onVerplaats(nieuweDag)}>
+        <div className="min-w-24 flex-1">
+          <label htmlFor="agenda-begin" className="text-meta font-medium text-inkt">
+            {t("hoekplaatsing.van")}
+          </label>
+          <Invoer
+            id="agenda-begin"
+            type="time"
+            step={900}
+            value={nieuwBegin}
+            disabled={bezig}
+            onChange={(e) => setNieuwBegin(e.target.value)}
+            className="mt-1.5"
+          />
+        </div>
+        <div className="min-w-24 flex-1">
+          <label htmlFor="agenda-einde" className="text-meta font-medium text-inkt">
+            {t("hoekplaatsing.tot")}
+          </label>
+          <Invoer
+            id="agenda-einde"
+            type="time"
+            step={900}
+            value={nieuwEinde}
+            disabled={bezig}
+            onChange={(e) => setNieuwEinde(e.target.value)}
+            className="mt-1.5"
+          />
+        </div>
+        <Knop
+          rang="rustig"
+          disabled={bezig || !gewijzigd || ongeldig}
+          onClick={() => onVerplaats(nieuweDag, `${nieuwBegin}:00`, `${nieuwEinde}:00`)}
+        >
           {t("periode.verplaats")}
         </Knop>
         <Knop rang="stil" disabled={bezig} onClick={onVerwijder}>
           {t("periode.haalWeg")}
         </Knop>
       </div>
+
+      {ongeldig && nieuwBegin !== "" && nieuwEinde !== "" ? (
+        <p role="alert" className="mt-2 text-meta font-medium text-attentie-inkt">
+          {t("tijdraster.eindeVoorBegin")}
+        </p>
+      ) : null}
 
       {buitenPeriode ? (
         <p className="mt-2 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">

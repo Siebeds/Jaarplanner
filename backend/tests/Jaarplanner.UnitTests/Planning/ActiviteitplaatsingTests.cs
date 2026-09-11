@@ -5,11 +5,11 @@ namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
 /// E9-03: the <see cref="Activiteitplaatsing"/> invariants and the <see cref="Jaarplan"/> verbs that create them
-/// (FR-6.2/FR-7.2, Art. IV.2, Art. IX.2/IX.3).
+/// (FR-6.2/FR-7.2, Art. IV.2, Art. IX.2/IX.3; clock times since ADR-0027).
 /// <para>
-/// These pin the three properties the rest of E9 depends on: a placement keys on a <b>real calendar date</b> and never
-/// on a derived block, a day move destroys nothing, and the <b>class boundary</b> is enforced where both classes are
-/// known.
+/// These pin the properties the rest of the agenda depends on: a placement keys on a <b>real calendar date</b> and
+/// never on a derived block, it carries a <b>clock time</b> rather than a lesuur number, and a day move destroys
+/// nothing.
 /// </para>
 /// </summary>
 public sealed class ActiviteitplaatsingTests
@@ -17,20 +17,25 @@ public sealed class ActiviteitplaatsingTests
     private static readonly DateOnly Maandag = new(2026, 9, 7);
     private static readonly DateOnly Donderdag = new(2026, 9, 10);
 
+    private static readonly TimeOnly Negen = new(9, 0);
+    private static readonly TimeOnly NegenVijftig = new(9, 50);
+
     private static Jaarplan PlanVoor(Guid klasId) => new(klasId);
 
     [Fact]
-    public void Een_plaatsing_bewaart_de_dag_als_sleutel()
+    public void Een_plaatsing_bewaart_de_dag_en_de_tijden_die_de_leerkracht_koos()
     {
         var klasId = Guid.NewGuid();
         var jaarplan = PlanVoor(klasId);
         var activiteitId = Guid.NewGuid();
 
-        var plaatsing = jaarplan.PlaatsActiviteit(activiteitId, Maandag, KoppelingStatus.Manueel, volgorde: 2);
+        var plaatsing = jaarplan.PlaatsActiviteit(
+            activiteitId, Maandag, KoppelingStatus.Manueel, new TimeOnly(10, 15), new TimeOnly(11, 0));
 
         Assert.Equal(activiteitId, plaatsing.ActiviteitId);
         Assert.Equal(Maandag, plaatsing.Datum);
-        Assert.Equal(2, plaatsing.Volgorde);
+        Assert.Equal(new TimeOnly(10, 15), plaatsing.Begin);
+        Assert.Equal(new TimeOnly(11, 0), plaatsing.Einde);
         Assert.Equal(KoppelingStatus.Manueel, plaatsing.Status);
     }
 
@@ -42,9 +47,13 @@ public sealed class ActiviteitplaatsingTests
     /// vakantie (that is what <c>Themaplaatsing.IsVervallen</c> exists for) while a Tuesday does not. Keying an
     /// activiteit on a block would import a staleness problem it does not have.
     /// </para>
+    /// <para>
+    /// <b>And no lesuur either, since ADR-0027.</b> <c>Volgorde</c> is asserted absent for the same reason the block
+    /// keys are: a slot number next to a clock time would be two answers to "when", and they would disagree.
+    /// </para>
     /// </summary>
     [Fact]
-    public void Activiteitplaatsing_heeft_geen_blok_ordinaal_of_niveau()
+    public void Activiteitplaatsing_heeft_geen_blok_ordinaal_niveau_of_lesuur()
     {
         var namen = typeof(Activiteitplaatsing)
             .GetProperties()
@@ -57,9 +66,12 @@ public sealed class ActiviteitplaatsingTests
         Assert.DoesNotContain("Ordinaal", namen);
         Assert.DoesNotContain("Week", namen);
         Assert.DoesNotContain("Maand", namen);
+        Assert.DoesNotContain("Volgorde", namen);
 
-        // And the key it does carry is a plain calendar date.
+        // And the keys it does carry are a plain calendar date and two clock times.
         Assert.Equal(typeof(DateOnly), typeof(Activiteitplaatsing).GetProperty(nameof(Activiteitplaatsing.Datum))!.PropertyType);
+        Assert.Equal(typeof(TimeOnly), typeof(Activiteitplaatsing).GetProperty(nameof(Activiteitplaatsing.Begin))!.PropertyType);
+        Assert.Equal(typeof(TimeOnly), typeof(Activiteitplaatsing).GetProperty(nameof(Activiteitplaatsing.Einde))!.PropertyType);
     }
 
     /// <summary>
@@ -97,7 +109,7 @@ public sealed class ActiviteitplaatsingTests
     {
         var jaarplan = PlanVoor(Guid.NewGuid());
 
-        var plaatsing = jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel);
+        var plaatsing = jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel, Negen, NegenVijftig);
 
         Assert.NotNull(plaatsing);
         Assert.Single(jaarplan.Activiteitplaatsingen);
@@ -105,39 +117,61 @@ public sealed class ActiviteitplaatsingTests
 
     /// <summary>
     /// A day holds several activiteiten — that is the normal case, not an edge one — so only the exact duplicate is
-    /// refused, and the same activiteit on another day stays legitimate (a reading moment on Monday and Thursday).
+    /// refused: the same activiteit starting twice at the same time on the same day. The same activiteit on another
+    /// day, or later the same day, stays legitimate.
     /// </summary>
     [Fact]
-    public void Dezelfde_activiteit_mag_op_een_andere_dag_maar_niet_twee_keer_op_dezelfde()
+    public void Dezelfde_activiteit_mag_op_een_andere_dag_of_een_ander_uur_maar_niet_twee_keer_op_hetzelfde_begin()
     {
         var klasId = Guid.NewGuid();
         var jaarplan = PlanVoor(klasId);
         var activiteitId = Guid.NewGuid();
 
-        jaarplan.PlaatsActiviteit(activiteitId, Maandag, KoppelingStatus.Manueel);
-        jaarplan.PlaatsActiviteit(activiteitId, Donderdag, KoppelingStatus.Manueel);
+        jaarplan.PlaatsActiviteit(activiteitId, Maandag, KoppelingStatus.Manueel, Negen, NegenVijftig);
+        jaarplan.PlaatsActiviteit(activiteitId, Donderdag, KoppelingStatus.Manueel, Negen, NegenVijftig);
+        jaarplan.PlaatsActiviteit(activiteitId, Maandag, KoppelingStatus.Manueel, new TimeOnly(13, 30), new TimeOnly(14, 20));
 
-        Assert.Equal(2, jaarplan.Activiteitplaatsingen.Count);
-        Assert.True(jaarplan.IsAlGeplaatstOp(activiteitId, Maandag, 0));
+        Assert.Equal(3, jaarplan.Activiteitplaatsingen.Count);
+        Assert.True(jaarplan.IsAlGeplaatstOp(activiteitId, Maandag, Negen));
+        Assert.False(jaarplan.IsAlGeplaatstOp(activiteitId, Maandag, new TimeOnly(9, 15)));
         Assert.Throws<InvalidOperationException>(() =>
-            jaarplan.PlaatsActiviteit(activiteitId, Maandag, KoppelingStatus.Manueel));
+            jaarplan.PlaatsActiviteit(activiteitId, Maandag, KoppelingStatus.Manueel, Negen, new TimeOnly(10, 0)));
     }
 
     /// <summary>
-    /// Several activiteiten on one day, and the day is ordered by the teacher's own <c>Volgorde</c> rather than by
-    /// insertion: a teacher who inserts a reading moment before the one already there expects it to stay first.
+    /// Several activiteiten on one day, and the day is ordered by the time each starts rather than by insertion: a
+    /// teacher who puts a reading moment at 8:45 after planning the one at 13:30 expects it to come first.
     /// </summary>
     [Fact]
-    public void Een_dag_wordt_geordend_op_volgorde_niet_op_invoegmoment()
+    public void Een_dag_wordt_geordend_op_beginuur_niet_op_invoegmoment()
     {
         var klasId = Guid.NewGuid();
         var jaarplan = PlanVoor(klasId);
         var laatstIngevoerd = Guid.NewGuid();
 
-        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel, volgorde: 5);
-        jaarplan.PlaatsActiviteit(laatstIngevoerd, Maandag, KoppelingStatus.Manueel, volgorde: 1);
+        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel, new TimeOnly(13, 30), new TimeOnly(14, 20));
+        jaarplan.PlaatsActiviteit(laatstIngevoerd, Maandag, KoppelingStatus.Manueel, new TimeOnly(8, 45), new TimeOnly(9, 30));
 
         Assert.Equal(laatstIngevoerd, jaarplan.Activiteitplaatsingen[0].ActiviteitId);
+    }
+
+    /// <summary>
+    /// A block that ends where it starts, or before, is not a block. The aggregate refuses it as programmer error
+    /// (English, unmapped); <c>WeekplanningService</c> is what turns the teacher's version into a Dutch 400.
+    /// </summary>
+    [Fact]
+    public void Een_einde_dat_niet_na_het_begin_ligt_wordt_geweigerd()
+    {
+        var jaarplan = PlanVoor(Guid.NewGuid());
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel, Negen, Negen));
+
+        var plaatsing = jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel, Negen, NegenVijftig);
+        Assert.Throws<ArgumentOutOfRangeException>(() => plaatsing.VerplaatsNaar(Maandag, Negen, new TimeOnly(8, 30)));
+
+        // And the refused move left the placement where it was.
+        Assert.Equal(NegenVijftig, plaatsing.Einde);
     }
 
     /// <summary>
@@ -155,12 +189,13 @@ public sealed class ActiviteitplaatsingTests
         var klasId = Guid.NewGuid();
         var jaarplan = PlanVoor(klasId);
         var plaatsing = jaarplan.PlaatsActiviteit(
-            Guid.NewGuid(), Maandag, KoppelingStatus.Voorgesteld, volgorde: 3);
+            Guid.NewGuid(), Maandag, KoppelingStatus.Voorgesteld, Negen, NegenVijftig);
 
-        plaatsing.VerplaatsNaar(Donderdag, volgorde: 1);
+        plaatsing.VerplaatsNaar(Donderdag, new TimeOnly(13, 0), new TimeOnly(14, 15));
 
         Assert.Equal(Donderdag, plaatsing.Datum);
-        Assert.Equal(1, plaatsing.Volgorde);
+        Assert.Equal(new TimeOnly(13, 0), plaatsing.Begin);
+        Assert.Equal(new TimeOnly(14, 15), plaatsing.Einde);
         Assert.Equal(KoppelingStatus.Voorgesteld, plaatsing.Status);
     }
 
@@ -178,7 +213,7 @@ public sealed class ActiviteitplaatsingTests
 
         // 2 November is an ordinary Monday until the school says otherwise.
         var plaatsing = jaarplan.PlaatsActiviteit(
-            Guid.NewGuid(), new DateOnly(2026, 11, 2), KoppelingStatus.Manueel);
+            Guid.NewGuid(), new DateOnly(2026, 11, 2), KoppelingStatus.Manueel, Negen, NegenVijftig);
         Assert.False(plaatsing.IsOpGeslotenDag(schooljaar));
 
         schooljaar.VoegSluitingToe(
@@ -202,9 +237,9 @@ public sealed class ActiviteitplaatsingTests
         var klasId = Guid.NewGuid();
         var jaarplan = PlanVoor(klasId);
 
-        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel);
-        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Aanvaard, volgorde: 1);
-        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Donderdag, KoppelingStatus.Voorgesteld);
+        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel, Negen, NegenVijftig);
+        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Aanvaard, new TimeOnly(10, 0), new TimeOnly(10, 50));
+        jaarplan.PlaatsActiviteit(Guid.NewGuid(), Donderdag, KoppelingStatus.Voorgesteld, Negen, NegenVijftig);
 
         Assert.Equal(2, jaarplan.MenselijkBeslotenActiviteitplaatsingen.Count);
     }
@@ -220,7 +255,7 @@ public sealed class ActiviteitplaatsingTests
         var klasId = Guid.NewGuid();
         var eigen = PlanVoor(klasId);
         var ander = PlanVoor(Guid.NewGuid());
-        var vreemde = ander.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel);
+        var vreemde = ander.PlaatsActiviteit(Guid.NewGuid(), Maandag, KoppelingStatus.Manueel, Negen, NegenVijftig);
 
         Assert.Throws<InvalidOperationException>(() => eigen.VerwijderActiviteitplaatsing(vreemde));
     }

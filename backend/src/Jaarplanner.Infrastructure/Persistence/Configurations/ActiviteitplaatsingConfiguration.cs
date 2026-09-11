@@ -53,16 +53,18 @@ public sealed class ActiviteitplaatsingConfiguration : IEntityTypeConfiguration<
             .HasMaxLength(16)
             .IsRequired();
 
-        // Non-nullable with a 0 default: an unset position must mean "first", never "unknown".
-        builder.Property(p => p.Volgorde).IsRequired().HasDefaultValue(0);
+        // The clock times the teacher chose (ADR-0027): TimeOnly -> PostgreSQL `time`. No default, unlike the
+        // Volgorde they replaced: "first" was a fair answer for a slot number, while a time nobody chose would be
+        // the tool deciding the teacher's day.
+        builder.Property(p => p.Begin).IsRequired();
+        builder.Property(p => p.Einde).IsRequired();
 
-        // The domain invariant, held in the database too: one activiteit at most once per day. The same activiteit
-        // on two different days is legitimate and common (a reading moment on Monday and again on Thursday), which
-        // is why the day is part of the key rather than the activiteit alone.
-        // Volgorde is part of the key because the slot is the unit of placement, not the day: the same
-        // activiteit may fill two consecutive lesuren, or run once in the morning and once after noon.
+        // The domain invariant, held in the database too: one activiteit at most once per start time per day. The
+        // same activiteit on two different days is legitimate and common (a reading moment on Monday and again on
+        // Thursday), which is why the day is part of the key rather than the activiteit alone. Begin is part of it
+        // because the same activiteit may run once in the morning and once after noon.
         // Mirrors Jaarplan.IsAlGeplaatstOp, which is where the rule is stated.
-        builder.HasIndex(p => new { p.JaarplanId, p.ActiviteitId, p.Datum, p.Volgorde }).IsUnique();
+        builder.HasIndex(p => new { p.JaarplanId, p.ActiviteitId, p.Datum, p.Begin }).IsUnique();
 
         // Reading one week — or one period — of days is this feature's entire access pattern (E9-04).
         builder.HasIndex(p => new { p.JaarplanId, p.Datum });

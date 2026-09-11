@@ -52,16 +52,27 @@ public sealed class OngeldigeDagplanningFout : Exception
         new($"{Dagnotatie.Formatteer(datum)} valt buiten schooljaar {schooljaarNaam}. Kies een dag binnen dit schooljaar.");
 
     /// <summary>
-    /// That activiteit already sits in that <b>lesuur</b> of that day.
+    /// That activiteit already starts at that <b>time</b> on that day.
     /// <para>
-    /// A day holds several activiteiten and the same activiteit may fill several lesuren, so only the exact
-    /// slot collision is refused. The sentence names the lesuur rather than the day for that reason: telling a
-    /// teacher to pick another day when picking the next hour would do sends them away from the fix.
+    /// A day holds several activiteiten and the same activiteit may run twice in one day, so only the exact
+    /// collision is refused: the same row written twice. The sentence names the time rather than only the day for
+    /// that reason: telling a teacher to pick another day when a later start would do sends them away from the fix.
     /// </para>
     /// </summary>
-    public static OngeldigeDagplanningFout ActiviteitStaatErAl(DateOnly datum, int lesuur) =>
-        new($"Deze activiteit staat al in lesuur {lesuur} op {Dagnotatie.Formatteer(datum)}. "
-            + "Kies een ander lesuur of een andere activiteit.");
+    public static OngeldigeDagplanningFout ActiviteitStaatErAl(DateOnly datum, TimeOnly begin) =>
+        new($"Deze activiteit begint al om {Dagnotatie.Formatteer(begin)} op {Dagnotatie.Formatteer(datum)}. "
+            + "Kies een ander uur of een andere activiteit.");
+
+    /// <summary>
+    /// The end of the block is not after its start (ADR-0027).
+    /// <para>
+    /// Reachable from the time fields in the activiteit sheet, so it is a Dutch 400 rather than the aggregate's
+    /// English <c>ArgumentOutOfRangeException</c>, which no handler maps. A drag in the time grid cannot produce it:
+    /// the grid never makes a block shorter than a quarter of an hour.
+    /// </para>
+    /// </summary>
+    public static OngeldigeDagplanningFout EindeNietNaBegin() =>
+        new("Het einde van de activiteit moet na het begin liggen. Kies een later einduur.");
 
     /// <summary>
     /// The subthema is for an age this class does not teach. The subthema counterpart of
@@ -114,4 +125,11 @@ internal static class Dagnotatie
     private static readonly System.Globalization.CultureInfo Nederlands = new("nl-BE");
 
     internal static string Formatteer(DateOnly datum) => datum.ToString("d MMMM yyyy", Nederlands);
+
+    /// <summary>
+    /// A clock time as the time grid labels it: <c>9:00</c>, <c>13:45</c>. The colon is escaped because an
+    /// unescaped <c>:</c> in a format string is the culture's time separator, and this must not depend on one.
+    /// </summary>
+    internal static string Formatteer(TimeOnly tijd) =>
+        tijd.ToString(@"H\:mm", System.Globalization.CultureInfo.InvariantCulture);
 }

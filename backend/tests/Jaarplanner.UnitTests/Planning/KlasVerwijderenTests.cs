@@ -248,7 +248,8 @@ public sealed class KlasVerwijderenTests
         var activiteitId = Guid.NewGuid();
 
         await MetJaarplanAsync(klasId, plan =>
-            plan.PlaatsActiviteit(activiteitId, new DateOnly(2026, 9, 7), KoppelingStatus.Manueel));
+            plan.PlaatsActiviteit(
+                activiteitId, new DateOnly(2026, 9, 7), KoppelingStatus.Manueel, new TimeOnly(9, 0), new TimeOnly(9, 50)));
 
         await using var context = Context();
         var service = new KlasBeheerService(context);
@@ -277,7 +278,8 @@ public sealed class KlasVerwijderenTests
         var (klasId, _) = await SeedAsync();
 
         await MetJaarplanAsync(klasId, plan =>
-            plan.PlaatsActiviteit(Guid.NewGuid(), new DateOnly(2026, 9, 7), KoppelingStatus.Voorgesteld));
+            plan.PlaatsActiviteit(
+                Guid.NewGuid(), new DateOnly(2026, 9, 7), KoppelingStatus.Voorgesteld, new TimeOnly(9, 0), new TimeOnly(9, 50)));
 
         await using var context = Context();
         await new KlasBeheerService(context).VerwijderKlasAsync(klasId);

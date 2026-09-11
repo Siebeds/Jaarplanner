@@ -7,6 +7,7 @@ import { volleDag } from "../../lib/datum";
 import { t } from "../../i18n";
 import { Activiteitformulier, type ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
 import { useMaakActiviteit } from "../themas/mutaties";
+import { STANDAARDDUUR } from "./tijd";
 
 /**
  * Making an activiteit that does not exist yet, from the day it is needed on.
@@ -31,7 +32,7 @@ import { useMaakActiviteit } from "../themas/mutaties";
  */
 export function Nieuweactiviteitblad({
   datum,
-  lesuur,
+  tijd,
   klasId,
   themaIds,
   /** The subthema running on this day, if one is. Used as the default, never as the only option. */
@@ -42,15 +43,21 @@ export function Nieuweactiviteitblad({
   onSluit,
 }: {
   datum: string | null;
-  lesuur?: number;
+  /** The time the new activiteit will start at, as a teacher reads it ("9:15"). */
+  tijd?: string;
   klasId: string | null;
   themaIds: string[];
   voorstelSubthemaId?: string;
   planBezig: boolean;
   /** What the server said about the placement, in Dutch, already composed for the teacher. */
   planFout: string | null;
-  /** Hand the freshly made activiteit to the screen, which owns the placement. */
-  onPlan: (activiteitId: string) => void;
+  /**
+   * Hand the freshly made activiteit to the screen, which owns the placement.
+   *
+   * Its default length travels with it: the screen knows the hour the teacher pressed, and only the activiteit she
+   * just described knows how long it runs.
+   */
+  onPlan: (activiteitId: string, duurInMinuten: number) => void;
   onSluit: () => void;
 }) {
   const id = useId();
@@ -87,7 +94,7 @@ export function Nieuweactiviteitblad({
   async function bewaarEnPlan(invoer: ActiviteitInvoer) {
     if (!actief) return;
     const nieuw = await maak.mutateAsync({ subthemaId: actief.id, invoer });
-    onPlan(nieuw.id);
+    onPlan(nieuw.id, (nieuw.lengteInLesuren ?? 1) * STANDAARDDUUR);
   }
 
   // Handed to the form rather than rendered here: it already has a place for what went wrong with
@@ -149,9 +156,9 @@ export function Nieuweactiviteitblad({
 
           {/* What Bewaren is about to do, said before it happens rather than shown afterwards. */}
           <p className="mt-3 text-meta text-inkt-zacht">
-            {lesuur === undefined
+            {tijd === undefined
               ? t("periode.enOpDeze", { dag: volleDag(datum) })
-              : t("periode.enOpDezeLesuur", { dag: volleDag(datum), nummer: lesuur })}
+              : t("tijdraster.enOpDitUur", { dag: volleDag(datum), tijd })}
           </p>
 
           {/* The activiteit was made and the placement was refused, so the two halves of Bewaren
