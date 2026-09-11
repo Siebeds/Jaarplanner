@@ -353,6 +353,13 @@
     "schooljaar": "Schooljaar",
     "hoeken": "Hoeken"
   },
+  "weergave": {
+    "titel": "Weergave",
+    "systeem": "Zoals het toestel",
+    "licht": "Licht",
+    "donker": "Donker",
+    "dezeBrowser": "Geldt alleen in deze browser."
+  },
   "klasbeheer": {
     "toevoegen": "Klas toevoegen",
     "nieuwTitel": "Nieuwe klas",

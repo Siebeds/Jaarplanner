@@ -6,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f5f6f8" />
     <title>Jaarplanner</title>
+    <!-- Runs before the first paint, so a teacher who chose a theme in this browser never sees the
+         other one flash first. Only an explicit choice is read: "zoals het toestel" needs no script,
+         the stylesheet's media query answers it. The key and shape belong to src/state/weergave.ts,
+         and weergave.test.ts pins them. -->
+    <script>
+      try {
+        var bewaard = JSON.parse(localStorage.getItem("jaarplanner-weergave") || "null");
+        var keuze = bewaard && bewaard.state && bewaard.state.keuze;
+        if (keuze === "licht" || keuze === "donker") document.documentElement.setAttribute("data-weergave", keuze);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

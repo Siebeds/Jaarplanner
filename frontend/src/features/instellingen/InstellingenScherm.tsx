@@ -12,6 +12,7 @@ import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Klasformulier } from "./Klasformulier";
 import { Hoekensectie } from "./Hoekensectie";
+import { Weergavesectie } from "./Weergavesectie";
 import { useMaakKlas, useVerwijderKlas, useWijzigKlasVolledig } from "./mutaties";
 
 /**
@@ -127,6 +128,8 @@ export function InstellingenScherm() {
         </section>
 
         <Hoekensectie klassen={klassen} laadt={laadt} />
+
+        <Weergavesectie />
         </div>
       </Schermvlak>
 

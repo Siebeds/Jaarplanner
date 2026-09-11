@@ -19,14 +19,20 @@ import type { Activiteitkleur } from "../../lib/types";
 export { ACTIVITEITKLEUREN } from "../../lib/types";
 export type { Activiteitkleur } from "../../lib/types";
 
-/** Wash plus a border a shade down, for a card or a chip carrying the colour. */
+/**
+ * Wash plus a border a shade down, for a card or a chip carrying the colour.
+ *
+ * The `dark:` half keeps each hue and drops the wash to a slate-weight tint, so ink on it stays as
+ * legible as it is on a card (ADR-0027). These live outside the token file, so the guard that checks
+ * every token has a dark value cannot see them: a seventh colour needs its `dark:` pair by hand.
+ */
 export const KLEURVLAK: Record<Activiteitkleur, string> = {
-  Klei: "bg-[hsl(18_38%_93%)] border-[hsl(18_30%_82%)]",
-  Olijf: "bg-[hsl(74_32%_92%)] border-[hsl(74_25%_78%)]",
-  Zee: "bg-[hsl(186_30%_92%)] border-[hsl(186_24%_78%)]",
-  Indigo: "bg-[hsl(232_34%_93%)] border-[hsl(232_26%_83%)]",
-  Pruim: "bg-[hsl(310_28%_93%)] border-[hsl(310_22%_83%)]",
-  Zand: "bg-[hsl(40_38%_92%)] border-[hsl(40_30%_80%)]",
+  Klei: "bg-[hsl(18_38%_93%)] border-[hsl(18_30%_82%)] dark:bg-[hsl(18_24%_20%)] dark:border-[hsl(18_20%_32%)]",
+  Olijf: "bg-[hsl(74_32%_92%)] border-[hsl(74_25%_78%)] dark:bg-[hsl(74_20%_18%)] dark:border-[hsl(74_16%_30%)]",
+  Zee: "bg-[hsl(186_30%_92%)] border-[hsl(186_24%_78%)] dark:bg-[hsl(186_22%_18%)] dark:border-[hsl(186_18%_30%)]",
+  Indigo: "bg-[hsl(232_34%_93%)] border-[hsl(232_26%_83%)] dark:bg-[hsl(232_24%_22%)] dark:border-[hsl(232_20%_34%)]",
+  Pruim: "bg-[hsl(310_28%_93%)] border-[hsl(310_22%_83%)] dark:bg-[hsl(310_18%_20%)] dark:border-[hsl(310_15%_32%)]",
+  Zand: "bg-[hsl(40_38%_92%)] border-[hsl(40_30%_80%)] dark:bg-[hsl(40_24%_19%)] dark:border-[hsl(40_20%_31%)]",
 };
 
 /**

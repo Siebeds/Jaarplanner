@@ -36,7 +36,7 @@ export function Blad({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="waas-in fixed inset-0 z-40 bg-inkt/35 backdrop-blur-[2px]" />
+        <Dialog.Overlay className="waas-in fixed inset-0 z-40 bg-waas backdrop-blur-[2px]" />
         <Dialog.Content
           onOpenAutoFocus={(event) => {
             const paneel = event.currentTarget as HTMLElement | null;

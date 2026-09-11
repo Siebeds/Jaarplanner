@@ -27,6 +27,21 @@
  *
  * Never colour alone (Art. XII, WCAG 2.2 AA): every coloured state also carries a letter,
  * label or icon. The doelsoort swatch is a square AND its letter, never the square alone.
+ *
+ * ── Dark (ADR-0027) ─────────────────────────────────────────────────────────────────────
+ * Paper becomes slate. Every colour below is declared once in `@theme` and overridden once in
+ * the `dark` block under `@layer base`, and three rules keep that override mechanical rather
+ * than a second design:
+ *   1. Surfaces keep their lightness ORDER, kaart > vlak > vlak-diep. Components compose them
+ *      by that order (a hover darkens a card, a well sits below the page), so inverting it
+ *      would invert every one of those compositions with it.
+ *   2. A signal keeps its HUE and raises its lightness, and its `-op` label becomes ink. The
+ *      hue is the meaning, so blue stays blue; lightness is what a dark ground needs changed.
+ *      A signal at 40% cannot be both a fill under a white label and text on slate. Raised,
+ *      with an ink label, it is both.
+ *   3. Every `--color-*` has a dark value. `src/state/weergave.test.ts` fails on one that
+ *      does not, because a forgotten token renders as a white patch on a dark screen and no
+ *      other test would ever notice.
  */
 @theme {
   /* ── paper and ink ─────────────────────────────────────────────────────────────────── */
@@ -117,6 +132,11 @@
   --color-gevaar: hsl(0 72% 42%);
   --color-gevaar-zacht: hsl(0 80% 97%);
 
+  /* ── waas - the scrim behind an open sheet ─────────────────────────────────────────── */
+  /* A token of its own, alpha included, because it was `inkt/35` and ink is exactly the colour
+     the dark palette turns light: the scrim would have become a pale fog over a dark screen. */
+  --color-waas: hsl(220 18% 10% / 0.35);
+
   /* ── type ──────────────────────────────────────────────────────────────────────────── */
   /* Three roles, three faces, each doing one job. Schibsted Grotesk is the voice: tight,
      editorial, used only for headings and the screen title. IBM Plex Sans is the workhorse
@@ -174,9 +194,108 @@
   --spacing-raak: 2.75rem;
 }
 
+/*
+ * When the dark palette applies.
+ *
+ * Tailwind's own `dark` reads the system setting and nothing else. A teacher can override that
+ * setting on one device (Instellingen, Weergave), which stamps `data-weergave` on <html>, so the
+ * variant is redefined to answer to both: an explicit "donker" always, otherwise the system,
+ * unless the explicit choice was "licht". Leaving Tailwind's default in place would make every
+ * `dark:` utility ignore the teacher's choice, silently and only on some devices.
+ */
+@custom-variant dark {
+  &:where([data-weergave="donker"], [data-weergave="donker"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-weergave="licht"]), :root:not([data-weergave="licht"]) *) {
+      @slot;
+    }
+  }
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+  }
+
+  :root {
+    /* Native controls (a select's list, scrollbars, the date picker) follow this and not the
+       tokens, so without it a dark page opens a white dropdown. */
+    color-scheme: light;
+
+    /* The dark palette. Rules at the top of this file; every value measured with alpha
+       composited over its real backdrop, the lowest pairs noted where they sit. */
+    @variant dark {
+      color-scheme: dark;
+
+      /* Slate, still hue 220. Same order as the paper: the card is the lightest plane. */
+      --color-vlak: hsl(220 17% 10%);
+      --color-vlak-diep: hsl(220 18% 7%);
+      --color-kaart: hsl(220 15% 14%);
+      --color-lijn: hsl(220 12% 21%);
+      --color-lijn-sterk: hsl(220 11% 29%);
+      /* 3.41:1 on kaart, the tightest of its three grounds. */
+      --color-lijn-veld: hsl(220 9% 47%);
+
+      /* The same teal, raised. `diep` is the hover, and a hover moves away from the ground,
+         which on slate is up: lighter here where the paper's is darker. 5.14:1 as text on
+         `accent-zacht`, which is the active destination in the sidebar. */
+      --color-accent: hsl(187 55% 50%);
+      --color-accent-op: hsl(187 60% 8%);
+      --color-accent-diep: hsl(187 62% 62%);
+      --color-accent-zacht: hsl(187 38% 17%);
+
+      /* Not white: pure white on slate glares, and 92% still measures 13:1 on a card.
+         `zwak` is the faintest text anywhere and measures 5.76:1 on kaart. */
+      --color-inkt: hsl(220 22% 92%);
+      --color-inkt-op: hsl(220 18% 10%);
+      --color-inkt-zacht: hsl(220 10% 71%);
+      --color-inkt-zwak: hsl(220 8% 62%);
+
+      /* Hue fixed, lightness raised, label in ink (rule 2). Labels 6.37:1 (S) to 9.39:1 (A);
+         MD as text on a card 5.82:1. Anderstalige finally reads as the yellow Art. XII names,
+         which a light ground never allowed it to be. */
+      --color-doelsoort-md: hsl(217 90% 68%);
+      --color-doelsoort-md-op: hsl(220 30% 8%);
+      --color-doelsoort-gemeenschappelijk: hsl(215 16% 66%);
+      --color-doelsoort-gemeenschappelijk-op: hsl(220 30% 8%);
+      --color-doelsoort-verdieping: hsl(142 52% 52%);
+      --color-doelsoort-verdieping-op: hsl(220 30% 8%);
+      --color-doelsoort-precurriculum: hsl(330 78% 72%);
+      --color-doelsoort-precurriculum-op: hsl(220 30% 8%);
+      --color-doelsoort-specifiek: hsl(330 58% 66%);
+      --color-doelsoort-specifiek-op: hsl(220 30% 8%);
+      --color-doelsoort-anderstalige: hsl(36 92% 58%);
+      --color-doelsoort-anderstalige-op: hsl(220 30% 8%);
+
+      /* Kept identical to their doelsoort twins where the paper palette does the same. */
+      --color-suggestie-voorgesteld: hsl(217 90% 68%);
+      --color-suggestie-aanvaard: hsl(142 52% 52%);
+      --color-suggestie-geweigerd: hsl(0 80% 70%);
+      --color-suggestie-manueel: hsl(262 70% 76%);
+
+      --color-dekking-gedekt: hsl(142 52% 52%);
+      --color-dekking-niet-gedekt: hsl(0 80% 70%);
+
+      /* The wash goes dark and the text in it goes light. Hues 30, 40 and 25 as in the paper
+         palette: an earlier draft let the ink drift to 36, which is the anderstalige hue. */
+      --color-attentie: hsl(30 85% 58%);
+      --color-attentie-zacht: hsl(40 42% 14%);
+      --color-attentie-inkt: hsl(25 90% 74%);
+
+      --color-gevaar: hsl(0 80% 70%);
+      --color-gevaar-zacht: hsl(0 42% 16%);
+
+      /* Darker and denser than the paper's: slate needs more to recede behind a sheet. */
+      --color-waas: hsl(220 40% 3% / 0.6);
+
+      /* No shadows here, and not by omission. Tailwind bakes a `--shadow-*` value into its
+         utility at build time (`.shadow-kaart` carries the literal colour), so overriding the
+         variable in this block changes nothing: that was tried, and the built CSS showed it.
+         On slate the paper's faint shadows simply vanish, which costs nothing, because the
+         card is lighter than the page and that is what reads as elevation on a dark ground. */
+    }
   }
 
   body {
