@@ -634,7 +634,7 @@
     "geldtVoor": "Geldt voor {dagen} van deze periode.",
     "afwijkendEen": "1 dag heeft nu andere uren. Ook die krijgt deze uren.",
     "afwijkendAantal": "{aantal} dagen hebben nu andere uren. Ook die krijgen deze uren.",
-    "dubbeleDag": "Op {dagen} staat deze hoek twee keer. Sleep eerst een van de twee naar een andere dag, dan kan je de uren aanpassen.",
+    "dubbeleDag": "Op {dagen} staat deze hoek meer dan één keer. Sleep eerst de extra blokken naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
     "urenMislukt": "De uren aanpassen is niet gelukt.",
     "eenSchooldag": "1 schooldag",

@@ -117,21 +117,42 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     ).toBeInTheDocument();
   });
 
-  it("weigert nieuwe uren zolang een dag de hoek twee keer heeft, en noemt die dag", () => {
-    // Tuesday dragged onto Monday morning: four rows on three days, Monday twice. Owner ruling 2026-09-11: refuse
-    // and name the day, rather than fold the two into one.
-    toon([moment("m-2", "2026-09-14", "07:00:00", "07:45:00"), ...gelijk.filter((m) => m.id !== "m-2")]);
-    openUren();
+  /*
+    A DAY HOLDING THE HOEK MORE THAN ONCE (owner ruling 2026-09-11: refuse and name the day, rather than fold).
 
-    expect(screen.getByText(t("hoekdetail.dubbeleDag", { dagen: volleDag("2026-09-14") }))).toBeInTheDocument();
-    // The overwrite warning is beside the point when saving cannot happen.
-    expect(screen.queryByText(t("hoekdetail.afwijkendEen"))).toBeNull();
-    expect(screen.getByRole("button", { name: t("hoekdetail.bewaren") })).toBeDisabled();
-    // Three days, not four rows.
-    expect(
-      screen.getByText(t("hoekdetail.geldtVoor", { dagen: t("hoekdetail.aantalSchooldagen", { aantal: 3 }) })),
-    ).toBeInTheDocument();
+    These assert the LITERAL sentence, not `t("hoekdetail.dubbeleDag")`: the server refuses the same case in its own
+    words (`Hoekplaatsing.ZetUren`), pinned by the same literal in HoekplaatsingTests, and asserting through the key
+    would let the nl.json twin drift from the server's without a single test noticing.
+  */
+  const dubbel = (dagen: string) =>
+    `Op ${dagen} staat deze hoek meer dan één keer. Sleep eerst de extra blokken naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.`;
+
+  it("noemt een dag met de hoek twee keer in de woorden van de server, en biedt dan geen uren aan", () => {
+    // Tuesday dragged onto Monday morning.
+    toon([moment("m-2", "2026-09-14", "07:00:00", "07:45:00"), ...gelijk.filter((m) => m.id !== "m-2")]);
+
+    expect(volleDag("2026-09-14")).toBe("maandag 14 september");
+    expect(screen.getByText(dubbel("maandag 14 september"))).toBeInTheDocument();
+    // No button into a form that cannot be saved: the reason stands where she reads the hours instead.
+    expect(screen.queryByRole("button", { name: t("hoekdetail.urenAanpassen") })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("zegt ook bij drie keer op één dag meer dan één keer, en niet twee", () => {
+    toon([
+      ...gelijk,
+      moment("m-5", "2026-09-14", "07:00:00", "07:45:00"),
+      moment("m-6", "2026-09-14", "12:00:00", "12:30:00"),
+    ]);
+
+    expect(screen.getByText(dubbel("maandag 14 september"))).toBeInTheDocument();
+  });
+
+  it("noemt twee dagen in kalendervolgorde, opgesomd zoals de server ze opsomt", () => {
+    // Out of order on purpose: Wednesday's extra row comes first in the list the server sent.
+    toon([moment("m-6", "2026-09-16", "07:00:00", "07:45:00"), ...gelijk, moment("m-5", "2026-09-14", "07:00:00", "07:45:00")]);
+
+    expect(screen.getByText(dubbel("maandag 14 september en woensdag 16 september"))).toBeInTheDocument();
   });
 
   it("bewaart geen einde dat voor het begin ligt", () => {

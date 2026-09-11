@@ -208,16 +208,17 @@ public sealed class Hoekplaatsing
     /// sheet warns before saving when a day currently differs, so the overwrite is one she was told about.
     /// </para>
     /// <para>
-    /// <b>A day holding the hoek twice refuses the whole change, and the refusal names the day.</b> That only happens
-    /// after a day was dragged onto another one, and at the same hours the two would be one row written twice, which
-    /// <see cref="PlanIn"/> refuses. The first version folded them into one; the owner ruled against that the same
-    /// day, because it quietly removes an appearance she placed. She drags one of the two elsewhere first.
+    /// <b>A day holding the hoek more than once refuses the whole change, and the refusal names the day.</b> That only
+    /// happens after days were dragged onto another one (twice, three times: <see cref="BewaakDag"/> only refuses the
+    /// same start), and at the same hours they would be one row written several times, which <see cref="PlanIn"/>
+    /// refuses. The first version folded them into one; the owner ruled against that the same day, because it quietly
+    /// removes appearances she placed. She drags the extra ones elsewhere first.
     /// </para>
     /// </summary>
     /// <exception cref="ArgumentException">
-    /// The end is not after the start, or a day holds this hoek twice. Either way nothing changed. Dutch, because she
-    /// can act on both, and the day is written as the detail sheet writes it (<c>maandag 14 september</c>) so the two
-    /// sentences name the same day the same way.
+    /// The end is not after the start, or a day holds this hoek more than once. Either way nothing changed. Dutch,
+    /// because she can act on both. The sentence is word for word <c>hoekdetail.dubbeleDag</c> in nl.json, with the
+    /// days written as the detail sheet writes them (<c>maandag 14 september</c>), and both tests pin the literal.
     /// </exception>
     public void ZetUren(TimeOnly begin, TimeOnly einde)
     {
@@ -234,7 +235,7 @@ public sealed class Hoekplaatsing
         {
             var dagen = dubbel.Count == 1 ? dubbel[0] : $"{string.Join(", ", dubbel[..^1])} en {dubbel[^1]}";
             throw new ArgumentException(
-                $"Op {dagen} staat deze hoek twee keer. Sleep eerst een van de twee naar een andere dag, dan kan je de uren aanpassen.");
+                $"Op {dagen} staat deze hoek meer dan één keer. Sleep eerst de extra blokken naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.");
         }
 
         foreach (var moment in _momenten)

@@ -82,7 +82,7 @@ public sealed class HoekurenEndpointsTests : IAsyncLifetime
         var geweigerd = await client.PutAsJsonAsync(
             $"/api/hoekplaatsingen/{plaatsing.Id}/uren", new { begin = "13:00:00", einde = "14:00:00" });
         Assert.Equal(HttpStatusCode.BadRequest, geweigerd.StatusCode);
-        Assert.Contains("Op maandag 14 september staat deze hoek twee keer.", await geweigerd.Content.ReadAsStringAsync());
+        Assert.Contains("Op maandag 14 september staat deze hoek meer dan één keer.", await geweigerd.Content.ReadAsStringAsync());
 
         // And nothing moved: still four rows, none at the refused hours, the dragged one where she put it.
         var na = await MomentenAsync(client, klasId);

@@ -33,9 +33,10 @@ import {
  * **It edits the hours of the run since 2026-09-11** (owner: "ik wil op het detailscherm van de hoeken
  * de mogelijkheid om de uren aan te passen"). Two rulings of the same day shape it. Every day gets the
  * new hours, the ones she moved by hand included, and when a day currently differs the form says so
- * before she saves rather than after. And a day that holds the hoek twice (one day dragged onto
- * another) blocks the save, with that day named: at the same hours the two would be one row written
- * twice, and the owner chose refusing over quietly folding them into one.
+ * before she saves rather than after. And a day that holds the hoek more than once (days dragged onto
+ * another) blocks new hours altogether, with that day named: at the same hours they would be one row
+ * written several times, and the owner chose refusing over quietly folding them into one. Then the
+ * reason stands where she reads the hours and there is no button, rather than a form she cannot save.
  *
  * **The hours are printed per group, not read off the first day.** This line used to take the first
  * appearance and present it as the run's: after she shortened only the Monday it said "8:00 - 10:00, op
@@ -95,9 +96,13 @@ export function Hoekdetailblad({
   const urenOngeldig = begin === "" || einde === "" || einde <= begin;
 
   const groepen = useMemo(() => uurgroepen(plaatsing.momenten), [plaatsing.momenten]);
-  const dubbeleDagen = useMemo(() => dagenMetTweeKeer(plaatsing.momenten), [plaatsing.momenten]);
+  const dubbeleDagen = useMemo(() => dagenMeerDanEenKeer(plaatsing.momenten), [plaatsing.momenten]);
+  // The server refuses the same case in the same words (`Hoekplaatsing.ZetUren`); both tests pin the literal.
+  const dubbeleZin =
+    dubbeleDagen.length > 0
+      ? t("hoekdetail.dubbeleDag", { dagen: DAGENLIJST.format(dubbeleDagen.map(volleDag)) })
+      : null;
   const gewoon = groepen[0];
-  // Days, not rows: a day holding the hoek twice is one day.
   const dagen = new Set(plaatsing.momenten.map((m) => m.datum)).size;
   const afwijkendeDagen = gewoon
     ? new Set(
@@ -218,6 +223,7 @@ export function Hoekdetailblad({
                     step={900}
                     value={begin}
                     disabled={zetUren.isPending}
+                    aria-describedby={dubbeleZin ? `${id}-dubbel` : undefined}
                     onChange={(e) => setBegin(e.target.value)}
                     className="mt-1"
                   />
@@ -232,6 +238,7 @@ export function Hoekdetailblad({
                     step={900}
                     value={einde}
                     disabled={zetUren.isPending}
+                    aria-describedby={dubbeleZin ? `${id}-dubbel` : undefined}
                     onChange={(e) => setEinde(e.target.value)}
                     className="mt-1"
                   />
@@ -244,13 +251,13 @@ export function Hoekdetailblad({
                 })}
               </p>
 
-              {/* Said before she saves, never after, and only where true. A doubled day blocks the save outright
-                  (owner, 2026-09-11), so it replaces the overwrite warning: telling her what saving would do to a
-                  day is beside the point when saving cannot happen. The server refuses the same case in the same
-                  words, so a second tab that raced this one still gets a sentence she can act on. */}
-              {dubbeleDagen.length > 0 ? (
-                <p className="text-meta font-medium text-attentie-inkt">
-                  {t("hoekdetail.dubbeleDag", { dagen: DAGENLIJST.format(dubbeleDagen.map(volleDag)) })}
+              {/* Said before she saves, never after, and only where true. The form is only reachable with a doubled
+                  day when the run changed under it (another tab dragged a block while this one was open), so the
+                  reason is also tied to both fields: a keyboard user who never reaches the disabled button still
+                  hears why. The overwrite warning gives way to it, since saving cannot happen. */}
+              {dubbeleZin ? (
+                <p id={`${id}-dubbel`} className="text-meta font-medium text-attentie-inkt">
+                  {dubbeleZin}
                 </p>
               ) : afwijkendeDagen > 0 ? (
                 <p className="text-meta font-medium text-attentie-inkt">
@@ -270,7 +277,7 @@ export function Hoekdetailblad({
                 <Knop
                   type="button"
                   onClick={bewaarUren}
-                  disabled={zetUren.isPending || urenOngeldig || dubbeleDagen.length > 0}
+                  disabled={zetUren.isPending || urenOngeldig || dubbeleZin !== null}
                 >
                   {zetUren.isPending ? t("hoekdetail.bewarenBezig") : t("hoekdetail.bewaren")}
                 </Knop>
@@ -291,9 +298,25 @@ export function Hoekdetailblad({
                   })}
                 </p>
               ))}
-              <Knop id={`${id}-uren`} rang="stil" type="button" disabled={drukBezig} onClick={beginUren} className="mt-2">
-                {t("hoekdetail.urenAanpassen")}
-              </Knop>
+
+              {/* A doubled day blocks new hours (owner, 2026-09-11), so the reason stands here, where she reads the
+                  hours, in place of a button that would open a form she cannot save. */}
+              {dubbeleZin ? (
+                <p id={`${id}-dubbel`} className="mt-1.5 text-meta font-medium text-attentie-inkt">
+                  {dubbeleZin}
+                </p>
+              ) : (
+                <Knop
+                  id={`${id}-uren`}
+                  rang="stil"
+                  type="button"
+                  disabled={drukBezig}
+                  onClick={beginUren}
+                  className="mt-2"
+                >
+                  {t("hoekdetail.urenAanpassen")}
+                </Knop>
+              )}
             </div>
           )}
         </div>
@@ -445,8 +468,13 @@ function uurgroepen(momenten: readonly HoekmomentWeergave[]): Uurgroep[] {
   return [...perUren.values()].sort((a, b) => b.dagen - a.dagen || a.begin.localeCompare(b.begin));
 }
 
-/** The days holding this hoek more than once, in calendar order: the case that blocks new hours for the run. */
-function dagenMetTweeKeer(momenten: readonly HoekmomentWeergave[]): string[] {
+/**
+ * The days holding this hoek more than once, in calendar order: the case that blocks new hours for the run.
+ *
+ * "More than once" and not "twice": the aggregate only refuses a second row with the same start, so days dragged onto
+ * one Monday at different hours can leave it three rows.
+ */
+function dagenMeerDanEenKeer(momenten: readonly HoekmomentWeergave[]): string[] {
   const perDag = new Map<string, number>();
   for (const moment of momenten) perDag.set(moment.datum, (perDag.get(moment.datum) ?? 0) + 1);
   return [...perDag].filter(([, aantal]) => aantal > 1).map(([datum]) => datum).sort();
