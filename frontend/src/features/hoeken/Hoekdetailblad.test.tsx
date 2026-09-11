@@ -221,11 +221,28 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     expect(sluiten).toHaveFocus();
   });
 
-  it("laat een focus op het blad zelf staan, want die was niet verloren", async () => {
-    // She clicked plain text inside the sheet, so the dialog itself holds focus. That looks exactly like a focus the
-    // browser dropped there, and only the record of the last focused control tells them apart: a refetch bringing in
-    // a doubled day must not pull her to the reason. (The Sluiten test above cannot catch this: focus on a live
-    // button is never mistaken for a lost one.)
+  it("trekt een focus die ze elders losliet niet naar de reden", async () => {
+    // Focus left Sluiten for the page, not because anything vanished. Only the record of the last focused control
+    // tells this apart from a button that vanished under her: without it, a focus on the page looks lost, and this
+    // would pull her to the reason. (The Sluiten and dialog tests cannot catch that: a focus sitting on a live
+    // element is never mistaken for a lost one.)
+    const { ververs } = toon(gelijk);
+    const sluiten = screen.getByText(t("hoekdetail.sluiten"), { selector: "button" });
+    act(() => sluiten.focus());
+    act(() => sluiten.blur());
+    expect(document.body).toHaveFocus();
+
+    ververs(maandagDubbel);
+
+    // Not pulled to the reason. Where focus does end up is Radix's business rather than this sheet's: with focus on
+    // the page and a node removed from the dialog, its FocusScope parks focus on the dialog itself.
+    const zin = await screen.findByText(dubbel("maandag 14 september"));
+    expect(zin).not.toHaveFocus();
+  });
+
+  it("laat een focus op het blad zelf staan", async () => {
+    // She clicked plain text inside the sheet, so the dialog itself holds focus; a refetch bringing in a doubled day
+    // leaves it there. A focus on the dialog is never treated as lost (see the ordering note in the component).
     const { ververs } = toon(gelijk);
     const blad = screen.getByRole("dialog");
     act(() => blad.focus());

@@ -129,13 +129,19 @@ export function Hoekdetailblad({
 
   // The same guarantee when a doubled day arrives by refetch under a control that has focus. Two controls lose it that
   // way: "Uren aanpassen", which is swapped for the reason, and Bewaren, which turns disabled in an open form. The
-  // browser then drops focus to the page (Radix parks a dropped focus on the dialog itself), or, in some browsers,
-  // leaves it on the disabled button. So focus moves to the reason only when the last control focused was one of those
-  // two AND focus now sits on the page, the dialog, or that disabled button. Anywhere else, Sluiten or a time field,
-  // it stays where she put it. Only on the change to a doubled run, never when the sheet opens on one.
+  // browser then drops focus to the page, or, in some browsers, leaves it on the disabled button. So focus moves to
+  // the reason only when the last control focused was one of those two AND focus now sits on the page or on that
+  // disabled button. Anywhere else it stays where she put it. Only on the change to a doubled run, never on opening.
   //
   // The last focused control is remembered from `focusin` because removal fires no event of its own: by the time this
   // effect runs, the button that had focus is already gone, and only this record still says it was there.
+  //
+  // ONE ORDERING ASSUMPTION, written down because nothing checks it: this effect runs before Radix's FocusScope reacts
+  // to the removal. It does today, because the query update reaches this component through useSyncExternalStore, which
+  // commits on a sync lane and flushes passive effects before the MutationObserver's microtask. If that order ever
+  // flipped (a transition, useDeferredValue), Radix would park the dropped focus on the dialog first, its focusin
+  // would overwrite the record, and nothing here would recover it. That is also why a focus on the dialog itself is
+  // never treated as lost: when it sits there, the record says so.
   const laatsteFocus = useRef<Element | null>(null);
   useEffect(() => {
     const onthoud = (gebeurtenis: FocusEvent) => {
@@ -158,7 +164,6 @@ export function Hoekdetailblad({
     const verloren =
       actief === null ||
       actief === document.body ||
-      actief.getAttribute("role") === "dialog" ||
       (actief.id === `${id}-bewaar` && actief instanceof HTMLButtonElement && actief.disabled);
     if (verloren) document.getElementById(`${id}-dubbel`)?.focus();
   }, [dubbeleZin, id]);
