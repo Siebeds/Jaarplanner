@@ -1,11 +1,11 @@
 # ADR-0030 — Roles and rights live in the app: directie, themabeheer, a hoofdleerkracht per jaar, and personal content
 
-- **Status:** Accepted for the rulings in §1. Everything in §2 is **not ruled**: each item carries a default and
-  awaits the owner's confirmation, and §2 says which.
+- **Status:** Accepted for the rulings in §1. Everything in §2 is **not ruled**: each item there carries a default
+  and awaits the owner's confirmation.
 - **Date:** 2026-09-11
 - **Deciders:** Project owner (Siebe De Saedeleir), for §1 only. The rulings were given in session on 2026-09-11,
-  partly in reply to direct questions with the options and their costs stated. Recorded the same day by session
-  `E6-01`, before any code depends on them.
+  partly in reply to direct questions with the options and their costs stated, in two rounds. Recorded the same day
+  by session `E6-01`, before any code depends on them.
 - **Amends:** [ADR-0011](0011-authn-authz-rbac-gdpr.md). **Supersedes its decision §3** ("ownership-aware
   rules"), which assigned class-scoped content to "the owning teacher" at a time when a subthema still named a
   klas. ADR-0011 §1 (personal login over Microsoft Entra ID), §2 (server-side enforcement driven by one
@@ -15,10 +15,16 @@
   (the login mechanism).
 - **Realises:** FR-10, FR-12.2, FA §3.1/§3.2. **Backlog:** E6-01, E6-02, E6-04, E6-08, E6-09, E6-10.
 
-> **Revised the same day on its antagonist's findings.** The first version (`30b7031`) presented several of the
-> recording session's own design choices as numbered owner rulings, among them "at most one hoofdleerkracht per
-> jaar per schooljaar", and it let a matrix row take doelsuggesties away from ordinary teachers without anyone
-> ruling that. §1 now quotes the owner verbatim and §2 holds everything that was inferred.
+> **Revised twice on the day it was written, on its antagonist's findings.**
+> - The first version (`30b7031`) presented several of the recording session's own design choices as numbered owner
+>   rulings, among them "at most one hoofdleerkracht per jaar per schooljaar". It also let a matrix row take
+>   doelsuggesties away from ordinary teachers without anyone ruling that.
+> - The second version (`68e296e`) fixed the body. It still had the summaries (index, backlog) carry the old claims,
+>   and it gave "leerkracht of another klas" rights on the import and on doelsuggesties while citing FA §3.2, which
+>   denies them.
+>
+> The owner has since answered four more questions (statements 10–13), which settle the import, the doelsuggesties
+> and the hoofdleerkracht appointment.
 
 ## Context
 
@@ -49,17 +55,39 @@ Unprompted statements:
 4. *"de directie kan alles van iedereen zien en aanpassen"*
 5. *"ja zij gaan een eigen entra tenant hebben"*
 
-Answers to direct questions:
+Answers to a first round of direct questions:
 
-6. *Waar leggen we vast wie directie, hoofdleerkracht of leerkracht is?* The owner chose the offered option **"In
-   de app zelf"**. The rejected option was "In Entra".
-7. *Wie mag inloggen?* The owner chose **"Enkel wie de directie toevoegde"**. The rejected option was "Iedereen
-   in de schooltenant".
-8. *Een thema is schoolbreed. Wie mag een thema zelf aanpassen?* The owner wrote in free text:
-   *"alleen de directie en een paar leekrachten/zorgcoordinatoren die de directie "*. **The answer is cut off
-   after "die de directie"; the verb is missing.**
-9. *Wie mag de activiteiten en subdoelen onder een subthema aanpassen?* The owner wrote in free text:
+6. *Waar leggen we vast wie directie, hoofdleerkracht of leerkracht is?*
+   - Chosen: **"In de app zelf"**.
+   - Rejected: "In Entra".
+7. *Wie mag inloggen?*
+   - Chosen: **"Enkel wie de directie toevoegde"**.
+   - Rejected: "Iedereen in de schooltenant".
+8. *Een thema is schoolbreed. Wie mag een thema zelf aanpassen?* The owner answered in free text:
+   *"alleen de directie en een paar leekrachten/zorgcoordinatoren die de directie "*. **The answer is cut off after
+   "die de directie"; the verb is missing.**
+9. *Wie mag de activiteiten en subdoelen onder een subthema aanpassen?* The owner answered in free text:
    *"een leerkracht mag zelf activiteiten en subdoelen voor zichzelf onder subthema's plaatsen"*.
+
+Answers to a second round, the same day. The option descriptions shown to the owner are quoted because they are
+part of what was chosen:
+
+10. *Mag ik de code voor de login schrijven zoals in ADR-0031?* The owner answered in free text: *"ja begin maar maar
+    op een worktree"*.
+11. *Hoe werkt de aanstelling van een hoofdleerkracht?*
+    - Chosen: **"Per schooljaar, meerdere mogelijk"**, described as *"Elk schooljaar kan een jaar één of meer
+      hoofdleerkrachten hebben, bijvoorbeeld bij een duobaan."*
+    - Rejected: "Per schooljaar, één per jaar" and "Vast, niet per schooljaar".
+12. *AI-doelsuggesties hangen aan een thema, en thema's mogen nu alleen directie en aangeduide mensen aanpassen. Wie
+    mag doelsuggesties maken en beoordelen?*
+    - Chosen: **"Elke leerkracht, zoals nu"**, described as *"Zo staat het in de functionele analyse (§3.2) en zo
+      werkt het vandaag: elke leerkracht laat suggesties maken en aanvaardt of weigert ze."*
+    - Rejected: "Alleen wie het thema aanpast".
+13. *Op 3 augustus besliste je dat een leerkracht thema's mag importeren uit Excel. Een import maakt thema's aan.
+    Wat geldt nu?*
+    - Chosen: **"Alleen directie en themabeheer"**, described as *"Past bij je nieuwe regel dat alleen zij thema's
+      aanpassen. Een leerkracht kan dan niet meer zelf importeren."*
+    - Rejected: "Elke leerkracht blijft importeren".
 
 ### 1.2 What they decide, read narrowly
 
@@ -67,41 +95,52 @@ Answers to direct questions:
   (statement 5), and Entra's job is to authenticate.
 - **R2. Only people directie has added can log in** (statement 7).
 - **R3. Directie sees and edits everything** (statement 4).
-- **R4. Thema's are edited by directie and by a few leerkrachten or zorgcoördinatoren** whom directie in some way
-  selects (statement 8, truncated). **This narrows statement 2 for thema's.** Statement 2 named the hoofdleerkracht
-  for "subthema's en thema's", and the answer to the direct question put thema's with directie plus a few people.
-- **R5. The subthema's of a jaar are edited by "a hoofdleerkracht" of that jaar** (statement 2).
+- **R4. Thema's are edited by directie and by a few leerkrachten or zorgcoördinatoren** (statement 8). The answer
+  is cut off before it says how those few are chosen; I2 holds the reading.
+- **R5. The subthema's of a jaar are edited by a hoofdleerkracht of that jaar** (statement 2). A hoofdleerkracht is
+  appointed **per schooljaar**, and a jaar may have **more than one** (statement 11).
 - **R6. A leerkracht may place activiteiten and subdoelen under subthema's for themselves** (statement 9).
 - **R7. A leerkracht edits only their own klassen, and can view other klassen** (statement 1).
+- **R8. Every leerkracht may have doelsuggesties generated, and may accept or reject them** (statement 12). The
+  consequence named in §4 (f) was not part of the question.
+- **R9. The FR-1 import of thema's and activiteiten is for directie and themabeheer only** (statement 13). This
+  **reverses the owner ruling of 2026-08-03** that FA §3.2 "stands as written" for the import (E1-13).
+- **R10. E6-01 is built as ADR-0031 describes, in a worktree of its own** (statement 10).
 
-"Configurable" (Art. VI.1) keeps ADR-0011's reading. **Who holds which right is data** that directie maintains.
-**What each right allows is the one matrix in code** (§3), and changing a row there is a code change.
+"Configurable" (Art. VI.1) keeps ADR-0011's reading:
+
+- **Who holds which right is data**, maintained by directie.
+- **What each right allows is the one matrix in code** (§3). Changing a row there is a code change.
 
 ## 2. Interpretations and design choices: not ruled
 
-Each item below was inferred by the recording session, not said by the owner. Each carries the default the build
-follows until the owner confirms or corrects it. **None of them affects E6-01.** E6-02, E6-04 and E6-10 must not
-treat any of them as settled.
+Each item below was inferred by the recording session, not said by the owner, and each carries the default the build
+follows until the owner confirms or corrects it.
+
+**E6-01 builds only D1.** No other item affects it, and E6-02, E6-04 and E6-10 must not treat any of them as
+settled. Items I3 and I4 of the previous revision were **ruled by statement 11** and now sit in R5.
 
 | # | Item | Default until confirmed | Where it bites |
 | --- | --- | --- | --- |
 | I1 | *"In overeenstemming van alle leerkrachten"* (statement 2) is read as an agreement between people. The tool enforces no consensus, approval or voting. | Nothing is enforced. | E6-02 |
-| I2 | R4's missing verb is read as *"designates"*: themabeheer is a right directie grants to named people. | Until E6-04 can grant it, only directie edits thema's. | E6-02, E6-04 |
-| I3 | A hoofdleerkracht is appointed **per schooljaar**, because a klas exists per schooljaar. | Per schooljaar. | E6-04 |
-| I4 | **How many** hoofdleerkrachten a jaar may have. "Enkel een" in statement 2 reads as "only a hoofdleerkracht, rather than every teacher", **not** as a uniqueness rule. | The model assumes no limit. | E6-04 |
-| I5 | Whether the hoofdleerkracht also edits the **shared** subdoelen and activiteiten under their subthema's. The owner named subthema's and thema's only. | Shared subdoelen and activiteiten follow their subthema: directie and that jaar's hoofdleerkracht. | E6-02 |
+| I2 | R4's missing verb is read as *"designates"*: themabeheer is a right directie grants to named people. The words also allow a subject reading ("who [support] the directie"). | Until E6-04 can grant it, only directie edits thema's. | E6-02, E6-04 |
+| I5 | Whether a hoofdleerkracht also edits the **shared** subdoelen and activiteiten under their subthema's. The owner named subthema's and thema's only. | Shared subdoelen and activiteiten follow their subthema: directie and that jaar's hoofdleerkrachten. | E6-02 |
 | I6 | Whether a **shared** layer of activiteiten and subdoelen remains next to personal content. Statement 9 can also mean that all of them become personal. | Existing content stays as it is, and personal content is additive. Goes with open question (a). | E6-10 |
-| I7 | **Several leerkrachten on one klas** (co-teacher, duobaan). Statement 1 says one teacher may have several klassen; the reverse is a design choice. FA §3.1 names the co-teacher. | Allowed: the assignment is many-to-many. | E6-04 |
-| D1 | The first directie account is provisioned from configuration, because nobody exists yet to add it. | As ADR-0031 decision 7. | E6-01 |
+| I7 | **Several leerkrachten on one klas** (co-teacher, duobaan). Statement 1 says one teacher may have several klassen; the reverse is a design choice. FA §3.1 names the co-teacher, and statement 11's duobaan points the same way. | Allowed: the assignment is many-to-many. | E6-04 |
+| I8 | Whether a hoofdleerkracht edits **thema's** by being hoofdleerkracht. Statement 2 says so; statement 8 says *"alleen de directie en een paar …"*. | No: a hoofdleerkracht edits thema's only when they also hold themabeheer. | E6-02 |
+| I9 | **How many** other klassen a leerkracht can view. Statement 1 says *"andere klassen"*, without a quantifier. | Every other klas, read-only, decided in one place behind the E6-09 seam. | E6-08, E6-09 |
+| D1 | The first directie account is provisioned from configuration, because nobody exists yet to add it. | As ADR-0031 decision 7. | **E6-01** |
 | D2 | The reason offered with question 6, *"Entra cannot express a hoofdleerkracht per jaar per schooljaar without a group per jaar per year"*, is the session's argument. It is not the owner's stated reason. | None: it is a rationale, not a rule. | None |
 
 ## 3. The matrix that follows
 
-This matrix supersedes FA §3.2's table for the purpose of the build. The FA itself changes only through the Art. XI
-amendment (§5). Abbreviations:
+**This matrix will supersede FA §3.2's table once part 1 of the amendment (§5) lands.** Until then it is the target
+the build works towards. E6-02 enforces nothing from it before the amendment exists.
+
+Abbreviations:
 
 - "TB" = holds themabeheer;
-- "HL" = hoofdleerkracht of the jaar concerned;
+- "HL" = a hoofdleerkracht of the jaar concerned;
 - "LK eigen" = leerkracht of the klas concerned;
 - "LK ander" = leerkracht of another klas.
 
@@ -109,84 +148,91 @@ amendment (§5). Abbreviations:
 | --- | --- | --- | --- | --- | --- |
 | Op.stap-doelen inladen/vernieuwen | ✓ | – | – | – | – |
 | Gebruikers, klassen, schooljaren en rechten beheren | ✓ | – | – | – | – |
-| Thema, themadoelen, kernwoordenschat aanpassen (R4) | ✓ | ✓ | – | – | – |
+| Thema, themadoelen, kernwoordenschat aanpassen (R4, I8) | ✓ | ✓ | – | – | – |
+| Thema's en activiteiten importeren, FR-1 (R9) | ✓ | ✓ | – | – | – |
 | Subthema van een jaar aanpassen (R5) | ✓ | – | ✓ | – | – |
 | Gedeelde subdoelen en activiteiten onder dat subthema (I5, default) | ✓ | – | ✓ | – | – |
-| Eigen activiteiten en subdoelen onder een subthema plaatsen (R6) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Doelsuggesties genereren en beoordelen (open (f): FA §3.2 stands) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Thema's en activiteiten importeren, FR-1 (open (b): the 2026-08-03 ruling stands) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Eigen activiteiten en subdoelen onder een subthema plaatsen (R6; shape: E6-10) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Doelsuggesties laten maken (R8) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Doelsuggesties aanvaarden of weigeren (R8; see §4 (f)) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7) | ✓ | – | – | ✓ | – |
-| Jaarplan, agenda en dekking bekijken (R3, R7) | ✓ | lezen | lezen | ✓ | lezen |
+| Jaarplan, agenda en dekking bekijken (R3, R7, I9) | ✓ | lezen | lezen | ✓ | lezen |
 | Exporteren | ✓ | – | – | ✓ | lezen |
 
 TB and HL are **additive** to being a leerkracht. A hoofdleerkracht of K3 who teaches K3 groen has both the HL
 column and "LK eigen" for K3 groen.
 
-The rows for personal content, doelsuggesties and the import attach to a person, not to a klas. They are therefore
-✓ for every leerkracht, and E6-10 and open questions (b) and (f) decide their final shape.
+Some rows grant ✓ to "LK ander". Each of those cites the ruling that does so:
+
+- **The doelsuggestie rows** follow R8, *"elke leerkracht"*.
+- **The personal-content row** follows R6. Personal content belongs to a person, not to a klas, so "ander" has no
+  klas to be other than. Its final shape is E6-10's (open question (a)).
 
 ## 4. Still open, named rather than guessed
 
-None of these blocks E6-01. Each is owned by the story that first needs it.
+None of these blocks E6-01. Each is owned by the story that first needs it. Six are open; (b) is settled.
 
-- **(a) Who owns personal content, and who sees it?** "Voor zichzelf" can mean the leerkracht (it follows them into
-  next year) or their klas (it stays with the planning). It also leaves open whether colleagues can see it, and
-  whose coverage it counts for. *Owner: E6-10.* Nothing personal is built until this is answered.
-- **(b) The FR-1 Excel import creates thema's.**
-  - On 2026-08-03 the owner ruled that FA §3.2 **stands as written**, so a leerkracht may import thema's and
-    activiteiten (E1-13).
-  - With that ruling came an instruction: **gate the Op.stap section, not the `/import` route**. R4 now reserves
-    editing a thema to directie and themabeheer, and the two conflict for an import that creates a thema.
-  - **The 2026-08-03 ruling stays in force until the owner re-rules.** No default here may reverse a standing
-    ruling.
-  - The frontend marker that ruling relied on (a `magBeheerder` flag plus a section constant) **no longer exists
-    in `frontend/src`**. It was lost in the ADR-0024 rebuild, so E6-02 must recreate the section distinction.
+- **(a) Who owns personal content, and who sees it?**
+  - "Voor zichzelf" can mean the leerkracht (it follows them into next year) or their klas (it stays with the
+    planning).
+  - It also leaves open whether colleagues can see it, and whose coverage it counts for.
 
-  *Owner: E6-02.*
+  *Owner: E6-10.* Nothing personal is built until this is answered.
+- **(b) The FR-1 import.** *Settled by statement 13 (R9).*
+  - The import is for directie and themabeheer only. That is also the only route by which it creates subthema's at
+    any leeftijd, a power R5 otherwise gives to that jaar's hoofdleerkrachten, and the only route by which it can
+    discard teachers' decided links (the `MenselijkeBeslissingenVerwijderen` option of the school-content import).
+  - What E6-02 still owes is the gate itself. The 2026-08-03 ruling asked to gate the section rather than the route,
+    and the frontend marker it relied on (a `magBeheerder` flag plus a section constant) **no longer exists in
+    `frontend/src`**, so E6-02 must recreate that distinction.
 - **(c) A jaar with no hoofdleerkracht appointed.** Only directie edits its subthema's until the owner rules
   otherwise. *Owner: E6-02.*
 - **(d) Teacher visibility (FR-10.2, Art. XIV "Teacher visibility").**
-  - The owner has ruled the **default**: every klas is readable (R7), and directie sees everything (R3). That
-    answers the owner's half of question 4 in `docs/besluiten-gevraagd.md`.
-  - Whether directie confirms that default, narrows it, or wants it configurable is still **directie's** call.
-    The Art. XIV bullet is therefore narrowed in the amendment, not removed.
-  - E6-08 builds the read access **behind the E6-09 seam**, so a narrower answer is a change in one place.
+  - The owner ruled that a leerkracht can view *"andere klassen"* (R7), and that directie sees everything (R3).
+  - How many other klassen is I9. Whether directie confirms, narrows or wants it configurable is **directie's** call
+    (question 4 in `docs/besluiten-gevraagd.md`). The Art. XIV bullet is therefore narrowed in the amendment, not
+    removed.
+  - E6-08 builds the read access **behind the E6-09 seam**.
 
   *Owners: E6-08 and E6-09.*
 - **(e) Zorgcoördinator rights.** FA §3.1 marks them *"eventueel beperkte bewerkrechten, ter beslissing"*, which is
-  an FA item and not an Art. XIV bullet. R4 lets a zorgcoördinator hold themabeheer. Read access to every klas
-  already follows from R7. Anything beyond that is still open. *Owner: E6-02.*
-- **(f) Doelsuggesties.**
-  - FA §3.2 grants *"AI-suggesties genereren"* to every leerkracht for their own klas.
-  - Art. IX.2 hangs `doelsuggesties[]` on the **Thema**, which R4 restricts. So "the right follows the content"
-    would take away the E2-08 flow that restored M2 ("a teacher generates doelsuggesties from `/themas`"), and
-    with it the wizard's AI assist that Art. IV.8 commits to the MVP.
-  - Nobody ruled that. **Until the owner does, FA §3.2 stands:** every leerkracht may generate and review
-    doelsuggesties.
+  an FA item and not an Art. XIV bullet. R4 lets a zorgcoördinator hold themabeheer, and R7 with I9 gives read
+  access. Anything beyond that is still open. *Owner: E6-02.*
+- **(f) What accepting a doelsuggestie does to other klassen.**
+  - R8 lets every leerkracht accept a doelsuggestie. A suggestion hangs on a **school-wide thema**, and an accepted
+    one counts for dekking in **every klas that plans that thema**. So under R8 one teacher's acceptance moves the
+    coverage figure of their colleagues' klassen, and that figure is the one the onderwijsinspectie reads.
+  - The question put to the owner described today's behaviour and did not mention this consequence.
+  - **Put it to the owner before E6-02 enforces R8.** Until then R8 stands as ruled.
 
   *Owner: E6-02.*
 - **(g) The ICT-coördinator.** Art. VI.1 puts "directie / ICT-coördinator" under one role, `Beheerder`, while R3
-  speaks of directie only. Whether an ICT-coördinator who runs the beheer also gets R3's "edits all content" is
-  open. Until ruled, the right is *"is directie"*, and an ICT-coördinator holds it only if directie grants it.
+  speaks of directie only. Whether an ICT-coördinator who runs the beheer also gets R3's "edits all content" is open.
+  Until ruled, the right is *"is directie"*, and an ICT-coördinator holds it only if directie grants it.
   *Owner: E6-04.*
 
 ## 5. The amendment this owes (Art. XI)
 
 It comes in **two parts**, each a dedicated commit that also updates CLAUDE.md and the FA.
 
-**Part 1: roles, ownership and visibility.** It is owed **before E6-02 or E6-04 build on this ADR**. It touches:
+**Part 1: roles, ownership and visibility.**
 
-- **Art. VI.1:** name the rights and restate "configurable" as in §1.2;
-- **the `Thema` line of Art. IX.2:** "owned by the team/directie" becomes directie plus themabeheer;
-- **the Art. XIV "Teacher visibility" bullet:** narrowed as in (d);
-- **FA §3.1:** the roles;
-- **FA §3.2:** the matrix;
-- **FR-3.1:** *"Leerkrachten kunnen thema's, subthema's en activiteiten toevoegen, wijzigen en verwijderen"*;
-- **FR-12.2**;
-- **ADR-0008:** a status note, since its "owned by team/directie" is superseded here in the same way.
+- **When:** owed **before E6-02 or E6-04 build on this ADR**. Both stories carry that gate.
+- **Who:** whichever of the two starts first writes it, as its first task.
+- **What it touches:**
+  - **Art. VI.1:** name the rights, and restate "configurable" as in §1.2;
+  - **the `Thema` line of Art. IX.2:** "owned by the team/directie" becomes directie plus themabeheer;
+  - **the Art. XIV "Teacher visibility" bullet:** narrowed as in §4 (d);
+  - **Art. XII:** the glossary gains hoofdleerkracht, themabeheer and gebruiker (Art. II.4);
+  - **FA §3.1:** the roles;
+  - **FA §3.2:** the matrix;
+  - **FR-3.1:** *"Leerkrachten kunnen thema's, subthema's en activiteiten toevoegen, wijzigen en verwijderen"*;
+  - **FR-10.2:** the default and the seam;
+  - **FR-12.2**;
+  - **ADR-0008:** a status note, since its "owned by team/directie" is superseded here in the same way.
 
-Part 1 can only state what §1 rules. Anything from §2 that the owner has not confirmed by then goes in as a default,
-marked as a default.
+  Part 1 can only state what §1 rules. Anything from §2 that the owner has not confirmed by then goes in as a default,
+  marked as a default.
 
 **Part 2: personal content.** It touches the `Activiteit` and `Subdoel` lines of Art. IX.2. It is owed **with
 E6-10**, because it cannot be written before open question (a) is answered.
@@ -202,6 +248,10 @@ role, and it builds no per-klas or per-jaar check.
 - **Any hoofdleerkracht may edit any thema.** Offered. Rejected by statement 8.
 - **The hoofdleerkracht of any jaar that uses the thema may edit it.** Offered. Rejected by statement 8.
 - **Only the hoofdleerkracht edits activiteiten and subdoelen.** Offered. Rejected by statement 9.
+- **One hoofdleerkracht per jaar, or a fixed appointment across schooljaren.** Offered. Rejected by statement 11.
+- **Only those who may edit the thema may generate and review its doelsuggesties.** Offered. Rejected by
+  statement 12.
+- **Every leerkracht keeps importing** (the 2026-08-03 ruling). Offered. Rejected by statement 13.
 - **Encode consensus**, so that a hoofdleerkracht's edit waits for the other teachers' approval. Not offered. It is
   recorded under I1 so that nobody builds an approval flow from the words "in overeenstemming" without asking.
 
@@ -209,14 +259,15 @@ role, and it builds no per-klas or per-jaar check.
 
 **The model gains four things**, built in the stories named, not all at once:
 
-- **a `Gebruiker`**, created by E6-01: the Entra identity (tenant id and object id), naam, e-mail, and *is
+- **a `Gebruiker`**, created by E6-01: the Entra identity (tenant id and object id), naam, sign-in address, and *is
   directie*. E6-04 adds *heeft themabeheer* and maintains both flags.
 - **a klastoewijzing `(Gebruiker × Klas)`**, in E6-04. It is many-to-many, per I7.
-- **a hoofdleerkrachtaanstelling**, in E6-04. Its scope follows I3 and its cardinality follows I4, both pending.
+- **a hoofdleerkrachtaanstelling `(Gebruiker × Schooljaar × Jaarfase)`**, in E6-04. A jaar may have several in one
+  schooljaar (R5).
 - **an owner on `Activiteit` and `Subdoel`**, in E6-10, after (a) and I6. Where there is no owner, the content is
   shared.
 
-**Staff personal data enters the system.** Naam, e-mail and two Entra identifiers are allowed under Art. VI.2,
+**Staff personal data enters the system.** Naam, address and two Entra identifiers are allowed under Art. VI.2,
 which bans pupil data only. They still need an entry in the processing register and a retention period
 (Art. VI.6), which is routed to **E7-06**.
 
@@ -241,13 +292,15 @@ added them.
   - Art. VI.5 (personal login);
   - Art. VI.6 (staff data, routed to E7-06);
   - Art. IX.2 (the `Thema` line in part 1, personal content in part 2);
-  - Art. IV.1/IV.8 (doelsuggesties and the wizard assist stay with teachers under (f));
+  - Art. II.4 and XII (the glossary, in part 1);
+  - Art. IV.1/IV.8 (doelsuggesties stay with every teacher under R8);
+  - Art. V.1 (§4 (f): an acceptance moves every planning klas's dekking);
   - Art. III (school content autonomy);
   - Art. XI (the two-part amendment);
   - Art. XIV (teacher visibility is narrowed, not closed).
 
   Zorgcoördinator rights are an FA §3.1 "ter beslissing" item, not an Art. XIV one.
-- **Backlog:** E6-01 (Gebruiker and login), E6-02 (the matrix as policies, and open questions (b), (c), (e), (f)),
-  E6-04 (users, assignments, appointments, themabeheer, and (g)), E6-08 (read, behind the E6-09 seam), E6-09
+- **Backlog:** E6-01 (Gebruiker and login), E6-02 (the matrix as policies, and open questions (b)'s gate, (c), (e),
+  (f)), E6-04 (users, assignments, appointments, themabeheer, and (g)), E6-08 (read, behind the E6-09 seam), E6-09
   `[!]`, E6-10 (personal content), E7-06 (processing register), E7-11 (the deployment gate these close).
-- **FR/NFR:** FR-3.1, FR-4, FR-10.1, FR-10.2, FR-12.2, FA §3.1/§3.2; NFR-5, NFR-6.
+- **FR/NFR:** FR-1, FR-3.1, FR-4, FR-10.1, FR-10.2, FR-12.2, FA §3.1/§3.2; NFR-5, NFR-6.
