@@ -98,6 +98,12 @@ public enum KoppelingHerkomst
 
     /// <summary>An activiteit's goal link. <b>Class/age-scoped</b> (it inherits its subthema's scope).</summary>
     Activiteit = 3,
+
+    /// <summary>
+    /// An algemene fiche's goal link (owner, 2026-09-11). <b>Class-scoped</b>, and the one layer that hangs off no
+    /// thema: see <see cref="DoelKoppelingWeergave"/> for what its fields carry instead.
+    /// </summary>
+    AlgemeneFiche = 4,
 }
 
 /// <summary>
@@ -125,8 +131,18 @@ public enum KoppelingHerkomst
 /// </para>
 /// </summary>
 /// <param name="Herkomst">Which content layer the link lives in, and therefore its scope.</param>
-/// <param name="ThemaNaam">The owning thema's name (every link resolves to exactly one thema).</param>
-/// <param name="Onderdeel">The subthema or activiteit name for an age-scoped link; null at thema level.</param>
+/// <param name="ThemaNaam">
+/// The owning thema's name: every link of the four thema layers resolves to exactly one thema. <b>For
+/// <see cref="KoppelingHerkomst.AlgemeneFiche"/> there is no thema</b>, and this carries the fiche's own name, which is
+/// the line a teacher recognises it by; the herkomst beside it says which of the two it is. Overloaded rather than
+/// renamed because the field is the heading of every row the register draws, and a rename would change a contract
+/// the screen and its tests read for one new member.
+/// </param>
+/// <param name="Onderdeel">
+/// The subthema or activiteit name for an age-scoped link; null at thema level. For an algemene fiche it carries the
+/// <b>klas</b> name, because a fiche belongs to one class rather than to an age, and "which class uses this" is the
+/// scope fact the row must not leave out.
+/// </param>
 /// <param name="Leeftijd">
 /// The jaar/fase an age-scoped link belongs to (Art. IX.2); null for the school-wide layers. Read straight off
 /// the subthema rather than looked up, so unlike the klas name it preceded there is no second row that can go

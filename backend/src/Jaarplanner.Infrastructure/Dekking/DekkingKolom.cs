@@ -55,7 +55,9 @@ public enum DekkingKolom
     Gedekt = 7,
 
     /// <summary>
-    /// The thema's that cover it, ';'-separated; empty exactly when <see cref="Gedekt"/> is "Nee".
+    /// The thema's that cover it, then the planned algemene fiches that cover it (each marked as one), ';'-separated;
+    /// empty exactly when <see cref="Gedekt"/> is "Nee". The member keeps its name because the column is the same
+    /// column; the fiches joined it on 2026-09-11 (owner ruling).
     /// <para>
     /// This column is the evidence half of Art. V: a document claiming coverage has to say <i>through what</i>. A
     /// "Ja" with nothing beside it would be an assertion a reader cannot check.

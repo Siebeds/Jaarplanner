@@ -982,4 +982,132 @@ public sealed class DekkingServiceTests
 
     private static LeerplandoelDekking Doelvan(DekkingWeergave dekking, string code) =>
         dekking.Doelen.Single(d => d.Code == code);
+
+    // --- The fifth layer: planned algemene fiches (owner ruling, 2026-09-11; Art. V.1 as amended). ---
+
+    /// <summary>A service whose opslag also answers the fiche layer, and the opslag itself so a test can read what was asked.</summary>
+    private static (DekkingService Service, FakeDekkingOpslag Opslag) MaakMetFiches(
+        IReadOnlyList<ThemaplaatsingWeergave> plaatsingen,
+        IReadOnlyList<DekkendeKoppeling> koppelingen,
+        IReadOnlyList<DekkendeFichekoppeling> fichekoppelingen,
+        IReadOnlyList<Leerplandoel> doelen)
+    {
+        var opslag = new FakeDekkingOpslag(koppelingen, doelen)
+        {
+            Leerjaar = KleuterLeerjaar,
+            Fichekoppelingen = fichekoppelingen,
+        };
+
+        return (new DekkingService(new FakeJaarplanLezer(Plan(plaatsingen)), opslag), opslag);
+    }
+
+    [Fact]
+    public async Task Een_geplande_algemene_fiche_dekt_een_doel_ook_zonder_enig_geplaatst_thema()
+    {
+        // The case the ruling was made for: the turnles covers a bewegingsopvoeding goal no thema carries, and the
+        // plan has nothing placed yet. Before 2026-09-11 this goal was a gap for the whole year.
+        var (service, opslag) = MaakMetFiches(
+            plaatsingen: [],
+            koppelingen: [],
+            fichekoppelingen: [new DekkendeFichekoppeling("LO-K3-01", "Turnen")],
+            doelen: [Doel("LO-K3-01"), Doel("NAT-K3-01")]);
+
+        var dekking = await service.BerekenAsync(KlasId);
+
+        var doel = Doelvan(dekking, "LO-K3-01");
+        Assert.True(doel.IsGedekt);
+        Assert.Equal(["Turnen"], doel.DekkendeFiches);
+        Assert.Empty(doel.DekkendeThemas);
+        Assert.Null(doel.Oorzaak);
+
+        Assert.False(Doelvan(dekking, "NAT-K3-01").IsGedekt);
+        Assert.Equal(1, dekking.AantalGedekt);
+
+        // The fiche layer is asked for THIS class, and the thema layers are still never asked about an empty set.
+        Assert.Equal(KlasId, opslag.GevraagdeFicheKlasId);
+        Assert.Equal(0, opslag.AantalKoppelingAanroepen);
+    }
+
+    [Fact]
+    public async Task Een_doel_dat_thema_en_fiche_dragen_telt_een_keer_en_noemt_beide()
+    {
+        var (service, _) = MaakMetFiches(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)],
+            koppelingen: [new DekkendeKoppeling("LO-K3-01", "Herfst")],
+            fichekoppelingen:
+            [
+                new DekkendeFichekoppeling("LO-K3-01", "Turnen"),
+                new DekkendeFichekoppeling("LO-K3-01", "Onthaal"),
+                // The same fiche twice (two layers of one read would never do this, but a fake may): named once.
+                new DekkendeFichekoppeling("LO-K3-01", "Turnen"),
+            ],
+            doelen: [Doel("LO-K3-01")]);
+
+        var dekking = await service.BerekenAsync(KlasId);
+
+        var doel = Doelvan(dekking, "LO-K3-01");
+        Assert.Equal(["Herfst"], doel.DekkendeThemas);
+        Assert.Equal(["Onthaal", "Turnen"], doel.DekkendeFiches);
+        Assert.Equal(1, dekking.AantalGedekt);
+    }
+
+    [Fact]
+    public async Task Een_fichedoel_buiten_het_bereik_verhoogt_het_cijfer_niet()
+    {
+        // The scope rule the thema layers obey applies to the fifth: a link to a goal outside the denominator cannot
+        // push the figure past it.
+        var (service, _) = MaakMetFiches(
+            plaatsingen: [],
+            koppelingen: [],
+            fichekoppelingen: [new DekkendeFichekoppeling("LO-L1-01", "Turnen")],
+            doelen: [Doel("LO-K3-01"), Doel("LO-L1-01", jaarFase: "L1")]);
+
+        var dekking = await service.BerekenAsync(KlasId);
+
+        Assert.Equal(0, dekking.AantalGedekt);
+        Assert.Equal(1, dekking.AantalLeerplandoelen);
+    }
+
+    [Fact]
+    public async Task Het_vooruitzicht_telt_de_fiches_in_beide_helften()
+    {
+        // No thema placed at all, so the old early return would have answered 0 for both figures while the
+        // dekkingsoverzicht beside them reports 1.
+        var (service, _) = MaakMetFiches(
+            plaatsingen: [],
+            koppelingen: [],
+            fichekoppelingen: [new DekkendeFichekoppeling("LO-K3-01", "Turnen")],
+            doelen: [Doel("LO-K3-01"), Doel("NAT-K3-01")]);
+
+        var vooruitzicht = await service.BerekenVooruitzichtAsync(KlasId);
+        var dekking = await service.BerekenAsync(KlasId);
+
+        Assert.Equal(1, vooruitzicht.AantalGedekt);
+        Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
+        Assert.Equal(dekking.AantalGedekt, vooruitzicht.AantalGedekt);
+    }
+
+    [Fact]
+    public async Task Het_vooruitzicht_telt_een_fichedoel_niet_dubbel_naast_een_voorstel()
+    {
+        // A standing proposal would add NAT-K3-01; LO-K3-01 is covered by the fiche in both halves, so the ceiling is
+        // exactly one more than today's figure.
+        var opslag = new FakeDekkingOpslag([], [Doel("LO-K3-01"), Doel("NAT-K3-01")])
+        {
+            Leerjaar = KleuterLeerjaar,
+            Fichekoppelingen = [new DekkendeFichekoppeling("LO-K3-01", "Turnen")],
+            KoppelingenPerThema = new Dictionary<Guid, IReadOnlyList<DekkendeKoppeling>>
+            {
+                [HerfstId] = [new DekkendeKoppeling("NAT-K3-01", "Herfst"), new DekkendeKoppeling("LO-K3-01", "Herfst")],
+            },
+        };
+        var service = new DekkingService(
+            new FakeJaarplanLezer(Plan([Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)])),
+            opslag);
+
+        var vooruitzicht = await service.BerekenVooruitzichtAsync(KlasId);
+
+        Assert.Equal(1, vooruitzicht.AantalGedekt);
+        Assert.Equal(2, vooruitzicht.AantalMogelijkGedekt);
+    }
 }

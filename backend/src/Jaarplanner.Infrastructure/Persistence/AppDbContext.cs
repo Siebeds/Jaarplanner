@@ -128,6 +128,22 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<Hoekmoment> Hoekmomenten => Set<Hoekmoment>();
 
+    /// <summary>
+    /// The recurring activities of each class that belong to no thema: the onthaal, the turnles (owner, 2026-09-11).
+    /// Like a hoek they reach a klas directly; unlike a hoek they carry doelkoppelingen that count for dekking once
+    /// the fiche is planned (Art. V.1 as amended 2026-09-11).
+    /// </summary>
+    public DbSet<AlgemeneFiche> AlgemeneFiches => Set<AlgemeneFiche>();
+
+    /// <summary>
+    /// The stretches of days an algemene fiche is planned in a class. Outside the jaarplan for the reason
+    /// <see cref="Hoekplaatsingen"/> is, and the evidence the dekking computation reads to decide a fiche is planned.
+    /// </summary>
+    public DbSet<AlgemeneFicheplaatsing> AlgemeneFicheplaatsingen => Set<AlgemeneFicheplaatsing>();
+
+    /// <summary>Where each planned fiche appears in the timetable, one row per day it happens on.</summary>
+    public DbSet<AlgemeneFichemoment> AlgemeneFichemomenten => Set<AlgemeneFichemoment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
