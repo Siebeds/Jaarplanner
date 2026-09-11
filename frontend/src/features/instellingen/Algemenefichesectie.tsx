@@ -30,8 +30,9 @@ import {
  * how they reflow read as a rendering fault. What this one adds is the goals, because a fiche carries
  * doelen and a hoek does not.
  *
- * *It was a section under Hoeken on one Instellingen page until 2026-09-11.* Its title is now the
- * page's, drawn by `AlgemeneFichesScherm`, which is why it opens with its controls and no heading.
+ * *It was a section under Hoeken on the single Instellingen page before that page was split into
+ * parts.* Its title is now the page's, drawn by `AlgemeneFichesScherm`, which is why it opens with
+ * its controls and no heading.
  *
  * **The room is chosen here, and it defaults to the class the teacher is looking at.** The Hoeken
  * part defaults to the first class, which is harmless for furniture; for goals it is not, because

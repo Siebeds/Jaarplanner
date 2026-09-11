@@ -28,8 +28,9 @@ import {
  * talking about, and it asks once above the list rather than on every row, the same way Klassen asks
  * which school year.
  *
- * *It was a section under Klassen on one Instellingen page until 2026-09-11.* Its title is now the
- * page's, drawn by `HoekenScherm`, which is why it opens with its controls rather than a heading.
+ * *It was a section under Klassen on the single Instellingen page before that page was split into
+ * parts.* Its title is now the page's, drawn by `HoekenScherm`, which is why it opens with its
+ * controls rather than a heading.
  *
  * **What is NOT here is the verrijking.** What a teacher puts in the boekenhoek for a fortnight
  * belongs to a period and lives on the agenda; what belongs here is the corner itself, which is there
