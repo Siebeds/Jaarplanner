@@ -14,11 +14,12 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// setters; an identical ref is left alone. Importing the same source twice changes nothing.
 /// </para>
 /// <para>
-/// <b>Never deletes (Art. III.4).</b> A ref the source no longer names stays in the table and is reported as
-/// <see cref="MinimumdoelImportDiff.Verdwenen"/>. A ref the source still names but whose row the mapping refused is
-/// reported apart, as <see cref="MinimumdoelImportDiff.NietIngelezen"/>, with its previous text untouched: calling it
-/// "no longer in the source" would tell a reviewer the decree dropped an eindterm it still contains. The row carries no
-/// "no longer in Op.stap" flag yet; that needs a migration and belongs with E1-21 (ADR-0032, consequences).
+/// <b>Never deletes (Art. III.4).</b> A ref the source no longer names stays in the table, is reported as
+/// <see cref="MinimumdoelImportDiff.Verdwenen"/> and, on apply, is flagged <see cref="Minimumdoel.NietMeerInOpstap"/>
+/// (E1-21, the flag ADR-0032's consequences asked for); a later import that finds it again clears the flag. A ref the
+/// source still names but whose row the mapping refused is reported apart, as
+/// <see cref="MinimumdoelImportDiff.NietIngelezen"/>, with its previous text and flag untouched: calling it "no longer
+/// in the source" would tell a reviewer the decree dropped an eindterm it still contains.
 /// </para>
 /// <para>
 /// <b>An empty source is a skip, not a disappearance.</b> If the source yields no usable row, nothing is written and the
@@ -90,7 +91,13 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             var velden = Verschillen(oud, nieuw);
             if (velden.Count == 0)
             {
+                // Present again after an import that missed it: the content is the same, only the flag goes.
                 ongewijzigd.Add(nieuw.Ref);
+                if (toepassen && oud.NietMeerInOpstap)
+                {
+                    ZetReviewVlag(oud, false);
+                }
+
                 continue;
             }
 
@@ -98,6 +105,7 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             if (toepassen)
             {
                 _context.Entry(oud).CurrentValues.SetValues(nieuw);
+                ZetReviewVlag(oud, false);
             }
         }
 
@@ -107,6 +115,11 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
 
         if (toepassen)
         {
+            foreach (var weg in verdwenen)
+            {
+                ZetReviewVlag(bestaandPerRef[weg], true);
+            }
+
             await _context.SaveChangesAsync(cancellationToken);
         }
 
@@ -152,6 +165,13 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
         aantal == 1
             ? "1 minimumdoel staat nog in de Op.stap-bron maar werd niet ingelezen. De vorige tekst blijft staan."
             : $"{aantal} minimumdoelen staan nog in de Op.stap-bron maar werden niet ingelezen. De vorige teksten blijven staan.";
+
+    /// <summary>
+    /// Sets the import-managed flag through EF's metadata, so the entity needs no mutator and stays read-only to ordinary
+    /// app code (Art. III.1), as <see cref="OpstapImportService"/> does for leerplandoelen.
+    /// </summary>
+    private void ZetReviewVlag(Minimumdoel minimumdoel, bool waarde) =>
+        _context.Entry(minimumdoel).Property(m => m.NietMeerInOpstap).CurrentValue = waarde;
 
     private static List<VeldWijziging> Verschillen(Minimumdoel oud, Minimumdoel nieuw)
     {

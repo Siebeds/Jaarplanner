@@ -7,7 +7,9 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 
 /// <summary>
 /// EF Core implementation of <see cref="IOpstapImportService"/> over <see cref="AppDbContext"/> —
-/// the one sanctioned writer of official Op.stap reference data (Art. III.1).
+/// the one sanctioned writer of official Op.stap reference data (Art. III.1). Both the Excel route
+/// (E1-15) and KOV's API (E1-21, through <see cref="LeerplandoelImportService"/>) write through here,
+/// one discipline at a time, so the non-destructive rules below hold for both.
 /// <para>
 /// <b>Upsert.</b> Identity is <see cref="Leerplandoel.Code"/> (Art. III.5). For one discipline, the
 /// service loads the persisted leerplandoelen, diffs them against the parsed file, then: inserts new
@@ -24,6 +26,34 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// is <b>flagged</b> (<see cref="Leerplandoel.NietMeerInOpstap"/> = true) and kept, so the link — and
 /// any jaarplan built on it — survives. Teacher decisions (<c>aanvaard</c>/<c>geweigerd</c>/
 /// <c>manueel</c>) are never touched by this path; the service only ever writes curriculum rows.
+/// </para>
+/// <para>
+/// <b>Absent is not the same as gone (E1-21).</b> A stored code the source still names is never called
+/// disappeared: when its goal could not be read (a malformed Excel row, an Op.stap goal the mapping
+/// refused) it is reported as <see cref="OpstapHerimportDiff.NietIngelezen"/>, and when the source lists
+/// it under a goal set the import does not take (only G is imported) as
+/// <see cref="OpstapHerimportDiff.BuitenBereik"/>, except that a stored G goal found there is a review item,
+/// <see cref="OpstapHerimportDiff.GemeenschappelijkBuitenBereik"/>. All these rows are left exactly as they were. Without this
+/// the first API import would have flagged every P, S, + and A goal the Excel route had loaded as
+/// <i>niet meer in Op.stap</i> while Op.stap still contains it — the defect E1-12's audits found for
+/// minimumdoelen.
+/// </para>
+/// <para>
+/// <b>No Excel file after the API (ADR-0032 decision 8, amended 2026-09-13).</b> The protection above runs one way: it
+/// keeps an API import from calling the Excel route's goals gone. The other way round, an Excel file would overwrite the
+/// API's wording, clear its concordance and flag every API goal the file lacks, so once an <c>Opstapversie</c> exists a
+/// <see cref="OpstapHerkomst.Bestand"/> import is refused with <see cref="OpstapImportFoutSoort.ExcelNaOpstapApi"/>, on the
+/// preview as on the apply.
+/// </para>
+/// <para>
+/// <b>Renumbered goals (E1-21, ADR-0032 decision 7).</b> A goal from KOV's API carries its UUID key
+/// (<see cref="Leerplandoel.OpstapSleutel"/>). When a stored code is absent and a new code carries the
+/// same key, the pair is reported as <see cref="OpstapHerimportDiff.Hernummerd"/>. What is written does
+/// not change: the new code is inserted and the old one flagged, because the code is the identity and a
+/// teacher's link stays on the code it was made to. The key itself is bookkeeping, not official content:
+/// storing it on a row that had none (a goal the Excel route loaded) is not reported as a change, a key
+/// that <i>changes</i> for the same code is, and a re-import without keys (the Excel route) keeps the
+/// stored one.
 /// </para>
 /// <para>
 /// <b>Disappeared-goal policy (Art. XIV seam).</b> A goal that vanished from Op.stap is <b>never</b>
@@ -111,6 +141,17 @@ public sealed class OpstapImportService : IOpstapImportService
         ArgumentNullException.ThrowIfNull(parseResultaat);
 
         var disciplineNummer = parseResultaat.DisciplineNummer;
+        var herkomst = parseResultaat.Herkomst;
+
+        // ADR-0032 decision 8, amended and ratified by the owner on 2026-09-13 (Art. VII.2): once a leerplandoelen snapshot
+        // has been imported from KOV's API, an Excel file is refused before anything else is looked at. In a discipline
+        // that import covered, a file read after it would overwrite the API's wording, clear the concordance the files do
+        // not carry and flag every API goal the file lacks. The ratified cost: goals the Excel route loaded outside goal
+        // set G can no longer be refreshed. Checked here, in the one writer, so the preview refuses what the apply refuses.
+        if (herkomst == OpstapHerkomst.Bestand && await _context.Opstapversies.AnyAsync(cancellationToken))
+        {
+            throw OpstapImportFout.ExcelNaOpstapApi();
+        }
 
         // Discipline-selection seam (E1-06, Art. XIV). The in-scope set is resolved from runtime
         // configuration/data — no discipline list is compiled in here. An out-of-scope discipline is
@@ -165,44 +206,29 @@ public sealed class OpstapImportService : IOpstapImportService
         // already exist (E1-13 round-2 audit, MINOR 4).
         if (inkomend.Count == 0)
         {
-            // Dutch inflects, so the count picks the sentence: "De 1 bestaande doelen blijven" is the plural
-            // bug this repo has shipped five times, and E1-13 renders this notice on a screen (Art. II.3).
-            // Three forms, not two: the zero case is the first import the widened condition now catches, and
-            // "Het bestaande doel blijft ongewijzigd" would be a claim about a row that does not exist.
-            var behouden = bestaand.Count switch
-            {
-                0 => "Er staan nog geen doelen voor deze discipline, dus er verandert ook niets.",
-                1 => "Het bestaande doel blijft ongewijzigd.",
-                _ => $"De {bestaand.Count} bestaande doelen blijven ongewijzigd.",
-            };
-
-            var notice = new OpstapHerimportDiff(
-                disciplineNummer,
-                toegevoegd: [],
-                gewijzigd: [],
-                ongewijzigd: [],
-                verdwenen: [],
-                verdwenenMaarGekoppeld: [],
-                overgeslagen: true,
-                opmerkingen:
-                [
-                    $"Er zijn geen geldige leerplandoelen ingelezen voor discipline {disciplineNummer}, " +
-                    $"dus is er niets toegepast. {behouden} " +
-                    "Mogelijk is het bestand leeg, onvolledig of hoort het bij een andere discipline.",
-                ]);
-
-            return new OpstapImportResultaat(notice, toegepast: false);
+            return new OpstapImportResultaat(LeegGeleverd(disciplineNummer, bestaand.Count, herkomst), toegepast: false);
         }
 
         // Integrity preflight (E1-15): refuse what the database would refuse, and refuse it identically on
         // the preview path, so an FR-2.5 review never green-lights an import that cannot land.
-        await ControleerVoorwaardenAsync(disciplineNummer, inkomend, cancellationToken);
+        await ControleerVoorwaardenAsync(disciplineNummer, inkomend, herkomst, cancellationToken);
+
+        // Codes the source names without delivering them (E1-21). Neither kind may be called disappeared.
+        var nietIngelezenGenoemd = parseResultaat.NietIngelezenCodes
+            .Concat(parseResultaat.Problemen.Select(p => p.Code).OfType<string>())
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .ToHashSet(StringComparer.Ordinal);
+        var buitenBereikGenoemd = parseResultaat.BuitenBereikCodes
+            .Select(c => c.Trim())
+            .ToHashSet(StringComparer.Ordinal);
 
         var toegevoegd = new List<string>();
         var gewijzigd = new List<LeerplandoelWijziging>();
         var ongewijzigd = new List<string>();
         var verdwenen = new List<string>();
         var verdwenenMaarGekoppeld = new List<VerdwenenGekoppeldDoel>();
+        var hernummerd = new List<HernummerdDoel>();
 
         // --- Added & changed: walk the incoming file. ---
         foreach (var (code, nieuw) in inkomend)
@@ -221,8 +247,10 @@ public sealed class OpstapImportService : IOpstapImportService
             var velden = VeldVerschillen(oud, nieuw);
             // A goal that reappears in Op.stap is no longer "gone" — clear the review flag.
             var moetVlagWissen = oud.NietMeerInOpstap;
+            // A goal the Excel route loaded has no key yet; the first API import stores it without calling it a change.
+            var moetSleutelZetten = nieuw.OpstapSleutel is not null && oud.OpstapSleutel is null;
 
-            if (velden.Count == 0 && !moetVlagWissen)
+            if (velden.Count == 0 && !moetVlagWissen && !moetSleutelZetten)
             {
                 ongewijzigd.Add(code);
                 continue;
@@ -234,36 +262,89 @@ public sealed class OpstapImportService : IOpstapImportService
             }
             else
             {
-                // No content change, but the row was flagged and is now present again.
+                // No content change: the row was flagged and is present again, or only its key was missing.
                 ongewijzigd.Add(code);
             }
 
             if (toepassen)
             {
+                var oudeSleutel = oud.OpstapSleutel;
                 var entry = _context.Entry(oud);
                 // Refresh official content through EF metadata (keeps the entity's private setters).
                 entry.CurrentValues.SetValues(nieuw);
+                // The Excel route carries no key; keep the one an API import stored rather than erase it.
+                entry.Property(l => l.OpstapSleutel).CurrentValue = nieuw.OpstapSleutel ?? oudeSleutel;
                 // SetValues copies the incoming entity's NietMeerInOpstap (false) too, which correctly
                 // clears any prior flag; set it explicitly to be unmistakable and robust to refactors.
                 ZetReviewVlag(entry, false);
             }
         }
 
-        // --- Disappeared: walk the persisted goals absent from the new file. ---
-        var verdwenenCodes = bestaand
-            .Where(l => !inkomend.ContainsKey(l.Code))
+        // --- Absent: walk the persisted goals the new file did not deliver. ---
+        var afwezig = bestaand.Where(l => !inkomend.ContainsKey(l.Code)).ToList();
+        var nietIngelezen = afwezig
             .Select(l => l.Code)
+            .Where(nietIngelezenGenoemd.Contains)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        var buitenBereikRijen = afwezig
+            .Where(l => !nietIngelezenGenoemd.Contains(l.Code) && buitenBereikGenoemd.Contains(l.Code))
+            .ToList();
+        // A stored G goal the source lists under a skipped set is still left alone, but it is a review item: the one goal
+        // set the import takes no longer holds it (E1-21, antagonist round 1 MINOR 4).
+        var gemeenschappelijkBuitenBereik = buitenBereikRijen
+            .Where(l => l.Doelsoort == Doelsoort.Gemeenschappelijk)
+            .Select(l => l.Code)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        var buitenBereik = buitenBereikRijen
+            .Where(l => l.Doelsoort != Doelsoort.Gemeenschappelijk)
+            .Select(l => l.Code)
+            .Order(StringComparer.Ordinal)
             .ToList();
 
-        if (verdwenenCodes.Count > 0)
+        // Only what the source does not name at all can have disappeared (or been renumbered). A row that was
+        // already flagged is visited after the others, so a key shared by an old flagged row and the goal that just
+        // moved pairs the new code with the goal that just moved.
+        var kandidaten = afwezig
+            .Where(l => !nietIngelezenGenoemd.Contains(l.Code) && !buitenBereikGenoemd.Contains(l.Code))
+            .OrderBy(l => l.NietMeerInOpstap)
+            .ThenBy(l => l.Code, StringComparer.Ordinal)
+            .ToList();
+
+        if (kandidaten.Count > 0)
         {
-            var gekoppeldeAantallen = await KoppelingAantallenAsync(verdwenenCodes, cancellationToken);
+            var gekoppeldeAantallen = await KoppelingAantallenAsync(
+                kandidaten.Select(l => l.Code).ToList(),
+                cancellationToken);
 
-            foreach (var code in verdwenenCodes)
+            // New codes that carry a key no other incoming goal carries: those are the ones a renumbering can explain.
+            var nieuwPerSleutel = inkomend.Values
+                .Where(l => l.OpstapSleutel is not null && !bestaandPerCode.ContainsKey(l.Code))
+                .GroupBy(l => l.OpstapSleutel!.Value)
+                .Where(g => g.Count() == 1)
+                .ToDictionary(g => g.Key, g => g.Single().Code);
+
+            foreach (var oud in kandidaten)
             {
-                var oud = bestaandPerCode[code];
+                var code = oud.Code;
+                var aantal = gekoppeldeAantallen.GetValueOrDefault(code);
 
-                if (gekoppeldeAantallen.TryGetValue(code, out var aantal) && aantal > 0)
+                if (oud.OpstapSleutel is { } sleutel && nieuwPerSleutel.Remove(sleutel, out var nieuweCode))
+                {
+                    // The same goal under a new code. Written exactly as an addition plus a disappearance, reported
+                    // as one event: the new code is inserted above, the old one is kept and flagged.
+                    hernummerd.Add(new HernummerdDoel(code, nieuweCode, aantal));
+                    toegevoegd.Remove(nieuweCode);
+                    if (toepassen)
+                    {
+                        ZetReviewVlag(_context.Entry(oud), true);
+                    }
+
+                    continue;
+                }
+
+                if (aantal > 0)
                 {
                     // Still referenced by teacher content — never delete (FK Restrict, Art. IV.2).
                     // Flag for review instead; the link and any plan built on it survive intact.
@@ -297,7 +378,7 @@ public sealed class OpstapImportService : IOpstapImportService
             {
                 await _context.SaveChangesAsync(cancellationToken);
             }
-            catch (DbUpdateException ex) when (VertaalIntegriteitsfout(ex, disciplineNummer) is { } fout)
+            catch (DbUpdateException ex) when (VertaalIntegriteitsfout(ex, disciplineNummer, herkomst) is { } fout)
             {
                 // Belt and braces behind the preflight above (E1-15). The preflight answers the same three
                 // questions before anything is written, so reaching here means the state changed under us
@@ -313,15 +394,114 @@ public sealed class OpstapImportService : IOpstapImportService
             }
         }
 
+        var opmerkingen = new List<string>();
+        if (hernummerd.Count > 0)
+        {
+            opmerkingen.Add(HernummerdMelding(hernummerd));
+        }
+
+        if (nietIngelezen.Count > 0)
+        {
+            opmerkingen.Add(NietIngelezenMelding(nietIngelezen.Count, herkomst));
+        }
+
+        if (gemeenschappelijkBuitenBereik.Count > 0)
+        {
+            opmerkingen.Add(GemeenschappelijkBuitenBereikMelding(gemeenschappelijkBuitenBereik.Count));
+        }
+
         var diff = new OpstapHerimportDiff(
             disciplineNummer,
             toegevoegd,
             gewijzigd,
             ongewijzigd,
             verdwenen,
-            verdwenenMaarGekoppeld);
+            verdwenenMaarGekoppeld,
+            overgeslagen: false,
+            opmerkingen: opmerkingen,
+            nietIngelezen: nietIngelezen,
+            buitenBereik: buitenBereik,
+            hernummerd: hernummerd,
+            gemeenschappelijkBuitenBereik: gemeenschappelijkBuitenBereik);
 
         return new OpstapImportResultaat(diff, toepassen);
+    }
+
+    /// <summary>
+    /// The notice for stored goals the source still names but whose goal was not read this time. Dutch because the
+    /// person running the import reads it (Art. II.3); inflected by count, because "1 doelen staan" is the plural bug
+    /// this repo has shipped before; and it says only what holds for every cause: the source names them, they were not
+    /// read, and the stored text was left alone. The cause is an operator matter and stays in the English problems.
+    /// </summary>
+    public static string NietIngelezenMelding(int aantal, OpstapHerkomst herkomst)
+    {
+        var bron = herkomst == OpstapHerkomst.OpstapApi ? "de Op.stap-bron" : "het bestand";
+        return aantal == 1
+            ? $"1 leerplandoel staat nog in {bron} maar werd niet ingelezen. De vorige tekst blijft staan."
+            : $"{aantal} leerplandoelen staan nog in {bron} maar werden niet ingelezen. De vorige teksten blijven staan.";
+    }
+
+    /// <summary>
+    /// The notice for renumbered goals. The clause about teacher links is added only when a renumbered code has links,
+    /// because a sentence may assert only what its own condition guarantees (the E5-03 rule).
+    /// </summary>
+    public static string HernummerdMelding(IReadOnlyCollection<HernummerdDoel> hernummerd)
+    {
+        var melding = hernummerd.Count == 1
+            ? "1 leerplandoel heeft in Op.stap een nieuwe code gekregen. Het wordt onder de nieuwe code toegevoegd; " +
+              "de oude code blijft staan en wordt gemarkeerd als niet meer in Op.stap."
+            : $"{hernummerd.Count} leerplandoelen hebben in Op.stap een nieuwe code gekregen. Ze worden onder de nieuwe " +
+              "code toegevoegd; de oude codes blijven staan en worden gemarkeerd als niet meer in Op.stap.";
+
+        return hernummerd.Any(h => h.AantalKoppelingen > 0)
+            ? melding + " Wat leerkrachten aan een oude code koppelden, blijft daaraan gekoppeld."
+            : melding;
+    }
+
+    /// <summary>
+    /// The notice for stored gemeenschappelijke goals the source lists under a goal set the import does not take. It says
+    /// what this branch knows and nothing more: stored as gemeenschappelijk, listed by the source under a doelsoort that
+    /// is not read, left as it was. Only the API path names skipped goal sets, so the source is named as Op.stap.
+    /// </summary>
+    public static string GemeenschappelijkBuitenBereikMelding(int aantal) =>
+        aantal == 1
+            ? "1 leerplandoel staat in de toepassing als gemeenschappelijk doel, maar in de Op.stap-bron bij een " +
+              "doelsoort die niet ingelezen wordt. Het blijft ongewijzigd staan."
+            : $"{aantal} leerplandoelen staan in de toepassing als gemeenschappelijk doel, maar in de Op.stap-bron bij " +
+              "een doelsoort die niet ingelezen wordt. Ze blijven ongewijzigd staan.";
+
+    /// <summary>
+    /// The skip for a discipline that delivered no usable goal. Three forms, not two: the zero case is a first import,
+    /// and "Het bestaande doel blijft ongewijzigd" would be a claim about a row that does not exist. The last sentence
+    /// guesses at a cause only for a file, because a file can be the wrong one; the API names its own discipline.
+    /// </summary>
+    private static OpstapHerimportDiff LeegGeleverd(string disciplineNummer, int aantalBestaand, OpstapHerkomst herkomst)
+    {
+        // Dutch inflects, so the count picks the sentence: "De 1 bestaande doelen blijven" is the plural
+        // bug this repo has shipped five times, and E1-13 renders this notice on a screen (Art. II.3).
+        var behouden = aantalBestaand switch
+        {
+            0 => "Er staan nog geen doelen voor deze discipline, dus er verandert ook niets.",
+            1 => "Het bestaande doel blijft ongewijzigd.",
+            _ => $"De {aantalBestaand} bestaande doelen blijven ongewijzigd.",
+        };
+
+        var melding = herkomst == OpstapHerkomst.OpstapApi
+            ? $"De Op.stap-bron leverde geen bruikbare leerplandoelen voor discipline {disciplineNummer}, " +
+              $"dus is er niets toegepast. {behouden}"
+            : $"Er zijn geen geldige leerplandoelen ingelezen voor discipline {disciplineNummer}, " +
+              $"dus is er niets toegepast. {behouden} " +
+              "Mogelijk is het bestand leeg, onvolledig of hoort het bij een andere discipline.";
+
+        return new OpstapHerimportDiff(
+            disciplineNummer,
+            toegevoegd: [],
+            gewijzigd: [],
+            ongewijzigd: [],
+            verdwenen: [],
+            verdwenenMaarGekoppeld: [],
+            overgeslagen: true,
+            opmerkingen: [melding]);
     }
 
     /// <summary>
@@ -339,6 +519,7 @@ public sealed class OpstapImportService : IOpstapImportService
     private async Task ControleerVoorwaardenAsync(
         string disciplineNummer,
         IReadOnlyDictionary<string, Leerplandoel> inkomend,
+        OpstapHerkomst herkomst,
         CancellationToken cancellationToken)
     {
         if (inkomend.Count == 0)
@@ -369,7 +550,7 @@ public sealed class OpstapImportService : IOpstapImportService
             .ToListAsync(cancellationToken);
         if (elders.Count > 0)
         {
-            throw OpstapImportFout.CodeInAndereDiscipline(disciplineNummer, elders);
+            throw OpstapImportFout.CodeInAndereDiscipline(disciplineNummer, elders, herkomst: herkomst);
         }
 
         // 3. Every concordance key must resolve to a loaded Minimumdoel: MinimumdoelRef is a Restrict FK, so a row
@@ -410,7 +591,10 @@ public sealed class OpstapImportService : IOpstapImportService
     /// artefact worth logging.
     /// </para>
     /// </summary>
-    private static OpstapImportFout? VertaalIntegriteitsfout(DbUpdateException ex, string disciplineNummer)
+    private static OpstapImportFout? VertaalIntegriteitsfout(
+        DbUpdateException ex,
+        string disciplineNummer,
+        OpstapHerkomst herkomst)
     {
         if (ex.InnerException is not Npgsql.PostgresException fout)
         {
@@ -426,7 +610,7 @@ public sealed class OpstapImportService : IOpstapImportService
             ("23503", var c) when c.Contains("discipline", StringComparison.OrdinalIgnoreCase) =>
                 OpstapImportFout.OnbekendeDiscipline(disciplineNummer, ex),
             ("23505", var c) when c.Contains("leerplandoelen", StringComparison.OrdinalIgnoreCase) =>
-                OpstapImportFout.CodeInAndereDiscipline(disciplineNummer, [], ex),
+                OpstapImportFout.CodeInAndereDiscipline(disciplineNummer, [], ex, herkomst),
             _ => null,
         };
     }
@@ -489,7 +673,9 @@ public sealed class OpstapImportService : IOpstapImportService
 
     /// <summary>
     /// Computes the field-level differences between a persisted leerplandoel and the re-imported one,
-    /// over the official-content fields only (identity <c>code</c> is unchanged by definition).
+    /// over the official-content fields only (identity <c>code</c> is unchanged by definition). The Op.stap
+    /// key counts only when a stored key is replaced by a different one: a key appearing where there was
+    /// none is bookkeeping, a key that changes under the same code is something a reviewer should see.
     /// </summary>
     private static IReadOnlyList<VeldWijziging> VeldVerschillen(Leerplandoel oud, Leerplandoel nieuw)
     {
@@ -505,6 +691,10 @@ public sealed class OpstapImportService : IOpstapImportService
         Vergelijk(wijzigingen, nameof(Leerplandoel.Toelichting), oud.Toelichting, nieuw.Toelichting);
         Vergelijk(wijzigingen, nameof(Leerplandoel.Woordenschat), oud.Woordenschat, nieuw.Woordenschat);
         Vergelijk(wijzigingen, nameof(Leerplandoel.MinimumdoelRef), oud.MinimumdoelRef, nieuw.MinimumdoelRef);
+        if (oud.OpstapSleutel is { } oudeSleutel && nieuw.OpstapSleutel is { } nieuweSleutel && oudeSleutel != nieuweSleutel)
+        {
+            Vergelijk(wijzigingen, nameof(Leerplandoel.OpstapSleutel), oudeSleutel.ToString("D"), nieuweSleutel.ToString("D"));
+        }
 
         return wijzigingen;
     }

@@ -47,6 +47,15 @@ public sealed class Minimumdoel
     /// <summary>The decreed description of the eindterm.</summary>
     public string Omschrijving { get; private set; }
 
+    /// <summary>
+    /// Import-managed review marker (E1-21, ADR-0032 consequences): <c>true</c> when the last applied minimumdoelen
+    /// import no longer found this ref anywhere in the source, neither as a usable row nor as a refused one. The row is
+    /// <b>kept</b>, because leerplandoelen concord to it through a Restrict FK and a vanished eindterm is for a human to
+    /// review (Art. III.4). It is not decreed content: the only writer is the import, and a later import that finds the
+    /// ref again clears it. Mirrors <see cref="Leerplandoel.NietMeerInOpstap"/>.
+    /// </summary>
+    public bool NietMeerInOpstap { get; private set; }
+
     private static string Require(string value, string paramName)
     {
         if (string.IsNullOrWhiteSpace(value))

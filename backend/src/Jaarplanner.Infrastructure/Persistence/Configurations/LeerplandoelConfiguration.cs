@@ -52,6 +52,12 @@ public sealed class LeerplandoelConfiguration : IEntityTypeConfiguration<Leerpla
             .HasDefaultValue(false)
             .IsRequired();
 
+        // The goal's UUID key in KOV's Op.stap API (E1-21, ADR-0032 decision 7). Not unique, deliberately: when a goal
+        // is renumbered the old code is kept (flagged) beside the new one, and both carry the key. Indexed because the
+        // re-import pairs a vanished code with a new one through it.
+        builder.Property(l => l.OpstapSleutel).HasColumnName("opstap_sleutel");
+        builder.HasIndex(l => l.OpstapSleutel);
+
         // The grouping/browse key is the composite (domein, subdomein) — subdomein names
         // are not globally unique (Art. VII.0), so this index backs roll-ups and filters.
         builder.HasIndex(l => new { l.Domein, l.Subdomein });

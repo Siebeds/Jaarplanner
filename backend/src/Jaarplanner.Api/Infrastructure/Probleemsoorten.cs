@@ -42,6 +42,9 @@ public static class Probleemsoorten
     public const string OpstapCodeInAndereDiscipline =
         "urn:jaarplanner:opstap-import:code-in-andere-discipline";
 
+    /// <summary>An Op.stap Excel file after the curriculum came from KOV's API (409; E1-21, ADR-0032 decision 8).</summary>
+    public const string OpstapExcelNaOpstapApi = "urn:jaarplanner:opstap-import:excel-na-opstap-api";
+
     /// <summary>
     /// The <c>type</c> URI for an Op.stap import refusal.
     /// <para>
@@ -55,6 +58,7 @@ public static class Probleemsoorten
         OpstapImportFoutSoort.OnbekendeDiscipline => OpstapOnbekendeDiscipline,
         OpstapImportFoutSoort.OntbrekendeMinimumdoelen => OpstapOntbrekendeMinimumdoelen,
         OpstapImportFoutSoort.CodeInAndereDiscipline => OpstapCodeInAndereDiscipline,
+        OpstapImportFoutSoort.ExcelNaOpstapApi => OpstapExcelNaOpstapApi,
         _ => null,
     };
 }
