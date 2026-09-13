@@ -475,6 +475,67 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         Assert.Equal(0, gefilterdeFacetten.GetProperty("aantalZonderLeerplandoel").GetInt32());
     }
 
+    /// <summary>
+    /// Antagonist round 2, MINOR 1 (a), on PostgreSQL: a goal KOV dropped stays stored, flagged and concorded, so its
+    /// minimumdoel keeps its place under the goal's discipline, gets no reason, and the preview counts no change.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_minimumdoel_waar_een_opgeslagen_verdwenen_doel_naar_verwijst_houdt_zijn_plaats_zonder_reden()
+    {
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7"), G("2.1.GL3.11", "6-2.5.4")));
+        await Post(Pad, new { versie = "1.2" });
+        _bron.Geef(Wiskunde(G("2.1.GL3.11", "6-2.5.4")));
+
+        var voorbeeld = await Post($"{Pad}/voorbeeld", body: null);
+        await Post(Pad, new { versie = "1.2" });
+        var register = await Get("/api/minimumdoelen?zoek=4-2.1.7");
+
+        Assert.Equal(["2.1.GL3.10"], Codes(Discipline(voorbeeld, "2").GetProperty("diff").GetProperty("verdwenen")));
+        Assert.Equal(0, voorbeeld.GetProperty("aantalRedenenGewijzigd").GetInt32());
+        var regel = Assert.Single(register.GetProperty("regels").EnumerateArray());
+        Assert.Equal("2", regel.GetProperty("disciplineNummer").GetString());
+        Assert.Equal(JsonValueKind.Null, regel.GetProperty("zonderLeerplandoelReden").ValueKind);
+
+        await using var context = _db.MaakContext();
+        Assert.Null((await context.Minimumdoelen.SingleAsync(m => m.Ref == "4-2.1.7")).ZonderLeerplandoelReden);
+        Assert.True((await context.Leerplandoelen.SingleAsync(l => l.Code == "2.1.GL3.10")).NietMeerInOpstap);
+    }
+
+    /// <summary>
+    /// Antagonist round 2, MINOR 2, on PostgreSQL: a first apply in which no discipline writes (the snapshot's only
+    /// discipline is one this application does not know) and no reason changes still records the version, is offered as
+    /// something to write, and from then on the Excel route refuses (Art. VII.2).
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_eerste_toepassing_zonder_gewijzigd_doel_legt_de_versie_vast_en_sluit_de_excelroute()
+    {
+        _bron.Geef(new LeerplandoelBronDiscipline(
+            "12",
+            "Burgerschap",
+            [G("12.1.GL1.1", "4-2.1.7", discipline: "12"), G("12.1.GL1.2", "6-2.5.4", discipline: "12")],
+            [],
+            [],
+            []));
+
+        var voorbeeld = await Post($"{Pad}/voorbeeld", body: null);
+        var toepassing = await Post(Pad, new { versie = "1.2" });
+        var excel = await VerstuurWerkboek("/api/opstap-import/voorbeeld");
+
+        Assert.Equal(JsonValueKind.Null, voorbeeld.GetProperty("vorigeVersie").ValueKind);
+        Assert.True(Discipline(voorbeeld, "12").GetProperty("diff").GetProperty("overgeslagen").GetBoolean());
+        Assert.Equal(0, voorbeeld.GetProperty("aantalRedenenGewijzigd").GetInt32());
+        Assert.True(voorbeeld.GetProperty("schrijftIets").GetBoolean());
+        Assert.True(toepassing.GetProperty("toegepast").GetBoolean());
+        Assert.Equal(HttpStatusCode.Conflict, excel.StatusCode);
+        Assert.Equal(
+            Probleemsoorten.OpstapExcelNaOpstapApi,
+            (await excel.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("type").GetString());
+
+        await using var context = _db.MaakContext();
+        Assert.Equal("1.2", (await context.Opstapversies.SingleAsync()).Versie);
+        Assert.Empty(await context.Leerplandoelen.ToListAsync());
+    }
+
     /// <summary>One Wiskunde goal as the Op.stap Excel route carries it: its own wording, and no concordance in column D.</summary>
     private async Task<HttpResponseMessage> VerstuurWerkboek(string url, string code = "2.1.GL3.10")
     {

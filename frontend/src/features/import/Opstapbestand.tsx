@@ -172,8 +172,10 @@ export function Opstapbestand() {
 
             <Rijproblemen problemen={getoond.problemen} />
 
-            {/* Same rule as the school-content side: nothing to load means no load button. */}
-            {getoond.toegepast || diff.isLeeg || diff.overgeslagen ? null : (
+            {/* Same rule as the school-content side: nothing to load means no load button. Read from the server's
+                `schrijftIets` since E1-22 fix round 2: a report whose rows are only unread or already flagged loads
+                nothing, even though it is not empty. */}
+            {getoond.toegepast || !diff.schrijftIets ? null : (
               <div className="flex flex-wrap items-center gap-2">
                 <Knop
                   rang="rustig"

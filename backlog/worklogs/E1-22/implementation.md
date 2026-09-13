@@ -276,6 +276,43 @@ Both verdicts are committed with this round: [`antagonist.md`](antagonist.md), [
 - All servers and the container of this round stopped; ports 55441, 5243, 5244 and 9342 released.
 - Not run: the antagonist and the test-runner (the orchestrator's).
 
+## Fix round 2 (2026-09-13, after round 2 on `617e44e`: test-runner PASS; antagonist 0 MAJOR, 4 MINOR, 1 QUESTION)
+
+Both round-2 verdicts are committed with this round ([`antagonist.md`](antagonist.md), [`test-report.md`](test-report.md)).
+
+| # | Finding | Resolution | Tests |
+| --- | --- | --- | --- |
+| MINOR 1 | The reason could claim more than the snapshot proves: (a) a goal KOV dropped stays stored, flagged and concorded, so its minimumdoel keeps its register place, yet got `GeenDoelInOpstap` and was counted; (b) a minimumdoel KOV withdrew got "geen enkel doel verwijst ernaar", unproven | `LeerplandoelImportService` now computes what points at each minimumdoel **after** this import, identically for preview and apply: the stored concordance, with every goal of a discipline the shared writer took over replaced by its snapshot version (a dropped goal keeps its ref). No reason for a minimumdoel in that set, and none for a minimumdoel flagged `NietMeerInOpstap`. `ZonderLeerplandoelBepaling` takes that set as `zonderReden`; `Minimumdoel.cs`'s definition lists all four no-reason cases. Snapshot 1.2 still gives exactly the six (live test and browser). | `Een_minimumdoel_waar_een_opgeslagen_verdwenen_doel_naar_verwijst_krijgt_geen_reden` (unit, preview count 0), `Een_minimumdoel_dat_niet_meer_in_opstap_staat_krijgt_geen_reden` (unit, preview count 0), `Een_ref_die_de_aanroeper_uitsluit_krijgt_geen_reden`; PostgreSQL `Een_minimumdoel_waar_een_opgeslagen_verdwenen_doel_naar_verwijst_houdt_zijn_plaats_zonder_reden` (register row under discipline 2, reason null, preview count 0) |
+| MINOR 2 | A first apply with no version recorded counted as "the same version" | `andereVersie = vorige is null \|\| …` in the flag and the version-row condition; `alleenVersie` in `Opstaprapport.tsx` matches. A first apply therefore always records the version, is offered, and closes the Excel route (Art. VII.2). Not reachable with live data (the test-runner's note: a first API apply over Excel rows always rewrites `MinimumdoelRef`), so proven in tests, not in the browser. | Unit `Een_eerste_toepassing_legt_de_versie_vast_ook_als_er_geen_doel_verandert`; PostgreSQL `Een_eerste_toepassing_zonder_gewijzigd_doel_legt_de_versie_vast_en_sluit_de_excelroute` (only an unknown discipline, reasons unchanged, `schrijftIets` true, one version row, Excel preview 409); Vitest `biedt een eerste doorvoering zonder gewijzigd doel aan met de zin over de versie` |
+| MINOR 3 | Comments over-claimed; the minimumdoelen return notice named a "vervallen" mark no screen shows on a minimumdoel | The key-only exception is stated wherever `SchrijftIets` is described (`OpstapImportService` class note, `ILeerplandoelImportService`, the controller, `types.ts` twice). The minimumdoelen notice is now "1 minimumdoel staat weer in de Op.stap-bron." / "{n} minimumdoelen staan weer in de Op.stap-bron.", its doc says what holds. (The leerplandoelen notice keeps "vervallen": the register does show "Vervallen in Op.stap" on a flagged leerplandoel.) | `De_melding_over_teruggekeerde_minimumdoelen_is_verbogen` |
+| MINOR 4 | No test that a preview never clears the flag; Excel load button keyed on `!isLeeg` | Preview tests in both services; the Excel *Inladen* button now shows on `diff.schrijftIets`. | `Het_voorbeeld_van_een_teruggekeerd_minimumdoel_laat_de_markering_staan`, `Het_voorbeeld_van_een_teruggekeerd_doel_laat_de_markering_staan` |
+| QUESTION | Where is the ruling recorded? | Dated amendment note on ADR-0032 decision 5 ("Amended 2026-09-13 by owner ruling"), original text kept, the two columns and the migration named, no constitution change. | — |
+| Test-runner observation | After a repeat fetch no button carried the accent | *Op.stap ophalen* is `hoofd` whenever there is nothing to write (before any report and after one that writes nothing), `rustig` while *Doorvoeren* is offered: one primary action, never two (ADR-0024). Measured on the idle screen: 6.10:1 light, 7.06:1 dark. | Vitest: the repeat-fetch test asserts the accent on *Op.stap ophalen*; the first-apply test asserts it is not there beside *Doorvoeren* |
+
+### Verification after fix round 2
+
+*(PostgreSQL 17.5 in a throwaway container `jp-e122-f2` on port 55442. Docker Desktop was running throughout this round; it did
+not stop, so no restart was needed.)*
+
+- `pnpm lint`: **clean**. `pnpm test`: **33 files, 233 tests passed**. `pnpm build`: **passes**.
+- `dotnet build Jaarplanner.sln -c Release`: **0 warnings, 0 errors**. `dotnet format --verify-no-changes`: **clean**.
+- `dotnet test -c Release --no-build`, `JAARPLANNER_TEST_POSTGRES` set, live switch off: **unit 1,130 passed, 4 skipped**;
+  **integration 346 passed, 1 skipped**; **0 failed**. The full integration project ran.
+- Live, `JAARPLANNER_LIVE_OPSTAP=1`, once: **unit 4/4, integration 2/2**; the KOV → PostgreSQL test still asserts exactly the
+  six reasons on snapshot 1.2.
+- Byte check: **438 `.cs` files, 0** control characters beyond tab/LF/CR, **0** U+00A0.
+- **Browser** (API `bin-run` on 5245 against a migrated `jp_e122_browser`, Vite on 5246, headless Chrome CDP on 9343, KOV
+  live, empty database): *Op.stap ophalen* → *Doorvoeren* (998) → the leerplandoelen preview with the accent on *Doorvoeren*
+  only and "Bij 6 minimumdoelen verandert de uitleg in het register." → *Doorvoeren* → a repeat *Op.stap ophalen*: "Er
+  verandert niets" for both, no *Doorvoeren*, no status, **the accent on *Op.stap ophalen*** (6.10 / 7.06). Database after:
+  one `opstapversies` row, exactly the six reasons. Register: "998 minimumdoelen", Frans (10) last of the disciplines, the
+  six with their reason; no horizontal overflow at 390. Screenshots in
+  `C:\Users\siebe\AppData\Local\Temp\claude\C--Source-Jaarplanner\862efea7-537c-42c4-98ee-d05011f28abd\scratchpad\shots-f2\`:
+  `f2-01-ophalen-idle-accent-licht-1440`, `f2-02-…-390`, `f2-03-register-zes-met-reden-licht-1440`, `f2-04-…-390`. The MINOR 1
+  and MINOR 2 edge cases are not reachable with KOV's live data and rest on the tests above.
+- All servers and the container of this round stopped; ports 55442, 5245, 5246 and 9343 released.
+- Not run: the antagonist and the test-runner (the orchestrator's).
+
 ## Open questions / Art. XIV touched
 
 - No Art. XIV decision assumed. The discipline selection (`IDisciplineSelectie`) is untouched; a narrower selection would

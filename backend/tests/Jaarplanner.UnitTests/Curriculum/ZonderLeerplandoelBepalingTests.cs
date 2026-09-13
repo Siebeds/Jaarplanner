@@ -44,6 +44,25 @@ public sealed class ZonderLeerplandoelBepalingTests
         Assert.Equal(new ZonderLeerplandoelBepaling.Uitkomst(ZonderLeerplandoelReden.GeenDoelInOpstap, null), uitkomst["K-1.2.6"]);
     }
 
+    /// <summary>
+    /// Antagonist round 2, MINOR 1: a ref the caller names (a stored goal points at it, or it is itself no longer in
+    /// Op.stap) gets no reason, even where the snapshot alone would have said "no goal" or named a set.
+    /// </summary>
+    [Fact]
+    public void Een_ref_die_de_aanroeper_uitsluit_krijgt_geen_reden()
+    {
+        var bron = Bron([], [new MinimumdoelVerwijzing("6-7.1.6", "Z", Geweigerd: false)]);
+
+        var uitkomst = ZonderLeerplandoelBepaling.Bepaal(
+            ["6-7.1.6", "4-2.1.7", "K-1.2.6"],
+            bron,
+            new HashSet<string>(["6-7.1.6", "4-2.1.7"], StringComparer.Ordinal));
+
+        Assert.Null(uitkomst["6-7.1.6"].Reden);
+        Assert.Null(uitkomst["4-2.1.7"].Reden);
+        Assert.Equal(ZonderLeerplandoelReden.GeenDoelInOpstap, uitkomst["K-1.2.6"].Reden);
+    }
+
     [Fact]
     public void Een_importeerbaar_doel_in_een_discipline_die_niet_ingelezen_wordt_geeft_geen_reden()
     {

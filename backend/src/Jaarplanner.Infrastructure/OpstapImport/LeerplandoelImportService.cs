@@ -69,6 +69,13 @@ public sealed class LeerplandoelImportService : ILeerplandoelImportService
                 .ToListAsync(cancellationToken))
             .ToHashSet(StringComparer.Ordinal);
 
+        // The concordance as stored before this import, for the reason per minimumdoel below (E1-22 fix round 2).
+        var verwijzingNaImport = await _context.Leerplandoelen
+            .AsNoTracking()
+            .Where(l => l.MinimumdoelRef != null)
+            .Select(l => new { l.Code, l.MinimumdoelRef })
+            .ToDictionaryAsync(l => l.Code, l => l.MinimumdoelRef!, StringComparer.Ordinal, cancellationToken);
+
         // Disposed without a commit on any exception, which rolls every discipline back.
         await using var transactie = toepassen
             ? await _context.Database.BeginTransactionAsync(cancellationToken)
@@ -98,10 +105,40 @@ public sealed class LeerplandoelImportService : ILeerplandoelImportService
                 discipline.Problemen));
         }
 
+        // What points at each minimumdoel once this import is written, the same for the preview as for the apply: the
+        // stored concordance, with every goal of a discipline the shared writer took over replaced by its snapshot
+        // version. A goal the snapshot dropped stays stored (flagged) and still points where it pointed, so its
+        // minimumdoel keeps its place in the register and gets no reason (antagonist round 2, MINOR 1). Under the opt-in
+        // purge an unlinked dropped goal would be removed and point nowhere; that policy is not registered.
+        for (var i = 0; i < bron.Disciplines.Count; i++)
+        {
+            if (disciplines[i].Diff.Overgeslagen)
+            {
+                continue;
+            }
+
+            foreach (var doel in bron.Disciplines[i].Leerplandoelen)
+            {
+                if (doel.MinimumdoelRef is { } minimumdoelRef)
+                {
+                    verwijzingNaImport[doel.Code] = minimumdoelRef;
+                }
+                else
+                {
+                    verwijzingNaImport.Remove(doel.Code);
+                }
+            }
+        }
+
         // Why a stored minimumdoel has no loaded leerplandoel (E1-22, owner ruling 2026-09-13 "Reden tonen"), derived from
         // this snapshot for every stored minimumdoel and written with the apply, so it always describes the loaded version.
+        // No reason for one a stored goal points at, nor for one that is itself no longer in Op.stap: a goal may still
+        // point at a withdrawn minimumdoel's old address, so "no goal refers to it" would be unproven.
         var minimumdoelen = await _context.Minimumdoelen.ToListAsync(cancellationToken);
-        var redenen = ZonderLeerplandoelBepaling.Bepaal(minimumdoelen.Select(m => m.Ref), bron);
+        var zonderReden = verwijzingNaImport.Values
+            .Concat(minimumdoelen.Where(m => m.NietMeerInOpstap).Select(m => m.Ref))
+            .ToHashSet(StringComparer.Ordinal);
+        var redenen = ZonderLeerplandoelBepaling.Bepaal(minimumdoelen.Select(m => m.Ref), bron, zonderReden);
         var redenGewijzigd = minimumdoelen
             .Where(m =>
                 m.ZonderLeerplandoelReden != redenen[m.Ref].Reden ||
@@ -110,10 +147,12 @@ public sealed class LeerplandoelImportService : ILeerplandoelImportService
 
         // What an apply writes (E1-22, antagonist round 1 MAJOR). A version equal to the last applied one does not make
         // this false by itself: a widened discipline selection makes the same snapshot add goals, which the diffs show.
+        // A first apply counts as another version (antagonist round 2, MINOR 2): it records the first version, which is
+        // what closes the Excel route (Art. VII.2) and what the reasons' "de doorgevoerde versie" refers to.
         var disciplinesSchrijven = disciplines.Any(d => d.Diff.SchrijftIets);
-        var andereVersie = vorige is not null &&
-            (!string.Equals(vorige.Versie, bron.Versie, StringComparison.Ordinal) ||
-             !string.Equals(vorige.Hash, bron.Hash, StringComparison.Ordinal));
+        var andereVersie = vorige is null ||
+            !string.Equals(vorige.Versie, bron.Versie, StringComparison.Ordinal) ||
+            !string.Equals(vorige.Hash, bron.Hash, StringComparison.Ordinal);
         var schrijftIets = disciplinesSchrijven || redenGewijzigd.Count > 0 || andereVersie;
 
         if (transactie is not null)
@@ -126,7 +165,7 @@ public sealed class LeerplandoelImportService : ILeerplandoelImportService
                 entry.Property(m => m.ZonderLeerplandoelDoelsets).CurrentValue = redenen[minimumdoel.Ref].Doelsets;
             }
 
-            // The version is recorded when the curriculum rows changed or KOV's version did. An apply that only updates
+            // The version is recorded when the curriculum rows changed or KOV's version did (a first apply included). An apply that only updates
             // reasons, or writes nothing, adds no row: a duplicate would move "doorgevoerd op" to today for a snapshot
             // that was already applied (antagonist round 1 MAJOR).
             if (disciplinesSchrijven || andereVersie)

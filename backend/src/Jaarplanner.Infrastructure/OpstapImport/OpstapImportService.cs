@@ -31,8 +31,9 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// <b>Gone once, reported once (E1-22).</b> Only a code that is not flagged yet is <see cref="OpstapHerimportDiff.Verdwenen"/>
 /// or <see cref="OpstapHerimportDiff.VerdwenenMaarGekoppeld"/>; one an earlier import flagged is
 /// <see cref="OpstapHerimportDiff.EerderVerdwenen"/>, which writes nothing and asks no review, and one that comes back is
-/// <see cref="OpstapHerimportDiff.Teruggekeerd"/>. <see cref="OpstapHerimportDiff.SchrijftIets"/> is therefore true exactly
-/// when an apply writes a row, for the Excel route as for the API.
+/// <see cref="OpstapHerimportDiff.Teruggekeerd"/>. <see cref="OpstapHerimportDiff.SchrijftIets"/> is therefore true when an
+/// apply writes a row the report shows, for the Excel route as for the API, with one write it does not count: an apply also
+/// stores an Op.stap key on an Excel-loaded row that is otherwise unchanged (bookkeeping, see "Renumbered goals" below).
 /// </para>
 /// <para>
 /// <b>Absent is not the same as gone (E1-21).</b> A stored code the source still names is never called

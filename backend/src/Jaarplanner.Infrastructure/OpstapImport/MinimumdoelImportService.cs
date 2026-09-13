@@ -184,13 +184,14 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             : $"{aantal} minimumdoelen staan niet meer in de Op.stap-bron. Ze blijven in de toepassing staan en worden niet verwijderd.";
 
     /// <summary>
-    /// The notice for flagged refs the source names again with the same content (E1-22). "Vervallen" is the word the
-    /// register shows on a flagged goal; the sentence says the source has them and that the flag goes, nothing more.
+    /// The notice for flagged refs the source names again with the same content (E1-22). It says what holds: the source
+    /// has them again. It said, until fix round 2, that they were no longer marked "vervallen", a mark no screen shows on
+    /// a minimumdoel (antagonist round 2, MINOR 3).
     /// </summary>
     public static string TeruggekeerdMelding(int aantal) =>
         aantal == 1
-            ? "1 minimumdoel staat weer in de Op.stap-bron en wordt niet langer als vervallen gemarkeerd."
-            : $"{aantal} minimumdoelen staan weer in de Op.stap-bron en worden niet langer als vervallen gemarkeerd.";
+            ? "1 minimumdoel staat weer in de Op.stap-bron."
+            : $"{aantal} minimumdoelen staan weer in de Op.stap-bron.";
 
     /// <summary>
     /// The notice for refs the source still names but whose row was not imported this time. It asserts only what holds

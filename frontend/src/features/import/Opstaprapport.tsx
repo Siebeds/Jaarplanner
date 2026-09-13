@@ -86,12 +86,14 @@ export function LeerplandoelenRapport({ antwoord }: { antwoord: LeerplandoelImpo
   const allesLeeg = disciplines.every((d) => d.diff.isLeeg);
   const nietGelezen = som((d) => d.nietIngelezen.length);
   const terug = som((d) => d.teruggekeerd.length);
-  // A version other than the last applied one is recorded by the apply even when no curriculum row changes, so that
-  // one case gets its own sentence instead of a Doorvoeren beside "Er verandert niets" with no explanation.
+  // A version other than the last applied one (a first apply included) is recorded by the apply even when no curriculum
+  // row changes, so that one case gets its own sentence instead of a Doorvoeren beside "Er verandert niets" with no
+  // explanation. Mirrors the server's rule (antagonist round 2, MINOR 2).
   const alleenVersie =
     !antwoord.toegepast &&
-    antwoord.vorigeVersie !== null &&
-    (antwoord.vorigeVersie.versie !== antwoord.versie || antwoord.vorigeVersie.hash !== antwoord.hash) &&
+    (antwoord.vorigeVersie === null ||
+      antwoord.vorigeVersie.versie !== antwoord.versie ||
+      antwoord.vorigeVersie.hash !== antwoord.hash) &&
     !disciplines.some((d) => d.diff.schrijftIets);
   const hernummerd = disciplines.flatMap((d) => d.diff.hernummerd);
   const gewijzigd = disciplines.flatMap((d) => d.diff.gewijzigd);

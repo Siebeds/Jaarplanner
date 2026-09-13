@@ -272,6 +272,27 @@ describe("Opstapimport", () => {
     expect(screen.queryByRole("button", { name: t("importeren.kov.doorvoeren") })).not.toBeInTheDocument();
     expect(screen.queryByText(t("importeren.kov.nietDoorgevoerd"))).not.toBeInTheDocument();
     expect(screen.queryByText(t("importeren.kov.versieVastleggen", { versie: "1.2" }))).not.toBeInTheDocument();
+    // Nothing to write, so the accent goes back to the one action left (test-runner round 2).
+    expect(screen.getByRole("button", { name: t("importeren.kov.ophalen") }).className).toMatch(/\bbg-accent\b/);
+  });
+
+  it("biedt een eerste doorvoering zonder gewijzigd doel aan met de zin over de versie (antagonist round 2 MINOR 2)", async () => {
+    routeer({
+      [STAND]: () => ({ body: DOORGEVOERD }),
+      [MD_VOORBEELD]: () => ({ body: NIETS_NIEUW_MD }),
+      [LP_VOORBEELD]: () => ({
+        body: lp([discipline("12", "Burgerschap", { overgeslagen: true, isLeeg: true, opmerkingen: ["Discipline 12 staat niet in de toepassing."] })], {
+          vorigeVersie: null,
+          schrijftIets: true,
+        }),
+      }),
+    });
+    toon();
+
+    klik(await screen.findByText(t("importeren.kov.ophalen")).then((knop) => knop.textContent!));
+    expect(await screen.findByText(t("importeren.kov.versieVastleggen", { versie: "1.2" }))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("importeren.kov.doorvoeren") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("importeren.kov.ophalen") }).className).not.toMatch(/\bbg-accent\b/);
   });
 
   it("zegt waarom doorvoeren wordt aangeboden als alleen de versie of de uitleg bij minimumdoelen verandert", async () => {

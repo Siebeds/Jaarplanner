@@ -8,9 +8,13 @@ namespace Jaarplanner.Application.Curriculum.Import;
 /// <para>
 /// <b>It says only what the snapshot proves (the E5-03 rule).</b> In order:
 /// <list type="number">
-/// <item>a mapped (importable) leerplandoel concords to it → <b>no reason</b>. Either it is loaded, and the minimumdoel is
-/// not without a leerplandoel, or its discipline was not imported (a selection, an unknown discipline), which is not a
-/// fact about the minimumdoel;</item>
+/// <item>the caller names the ref in <c>zonderReden</c> → <b>no reason</b>. The caller passes the refs a stored leerplandoel
+/// still points at once the import is written (a goal KOV dropped stays stored, flagged and concorded, so the minimumdoel
+/// keeps its place in the register) and the refs of minimumdoelen that are themselves no longer in Op.stap (a goal may
+/// still point at a withdrawn minimumdoel's old address, so "no goal refers to it" would be unproven). Antagonist round 2,
+/// MINOR 1;</item>
+/// <item>a mapped (importable) leerplandoel concords to it → <b>no reason</b>. Either it is loaded, or its discipline was
+/// not imported (a selection, an unknown discipline), which is not a fact about the minimumdoel;</item>
 /// <item>a goal of the imported set concords to it and the mapping refused that goal → <see cref="ZonderLeerplandoelReden.DoelNietIngelezen"/>;</item>
 /// <item>only goals of sets the import does not take concord to it → <see cref="ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets"/>, naming the sets;</item>
 /// <item>no goal of the snapshot concords to it → <see cref="ZonderLeerplandoelReden.GeenDoelInOpstap"/>.</item>
@@ -25,7 +29,13 @@ public static class ZonderLeerplandoelBepaling
     public readonly record struct Uitkomst(ZonderLeerplandoelReden? Reden, string? Doelsets);
 
     /// <summary>Decides the reason for each of <paramref name="minimumdoelRefs"/> against <paramref name="bron"/>.</summary>
-    public static IReadOnlyDictionary<string, Uitkomst> Bepaal(IEnumerable<string> minimumdoelRefs, LeerplandoelBronResultaat bron)
+    /// <param name="minimumdoelRefs">The stored minimumdoelen to decide for.</param>
+    /// <param name="bron">The snapshot.</param>
+    /// <param name="zonderReden">Refs that get no reason whatever the snapshot says (see the class note).</param>
+    public static IReadOnlyDictionary<string, Uitkomst> Bepaal(
+        IEnumerable<string> minimumdoelRefs,
+        LeerplandoelBronResultaat bron,
+        IReadOnlySet<string>? zonderReden = null)
     {
         ArgumentNullException.ThrowIfNull(minimumdoelRefs);
         ArgumentNullException.ThrowIfNull(bron);
@@ -42,7 +52,7 @@ public static class ZonderLeerplandoelBepaling
         var uitkomsten = new Dictionary<string, Uitkomst>(StringComparer.Ordinal);
         foreach (var minimumdoelRef in minimumdoelRefs)
         {
-            uitkomsten[minimumdoelRef] = importeerbaar.Contains(minimumdoelRef)
+            uitkomsten[minimumdoelRef] = zonderReden?.Contains(minimumdoelRef) == true || importeerbaar.Contains(minimumdoelRef)
                 ? new Uitkomst(null, null)
                 : verwijzingen.TryGetValue(minimumdoelRef, out var goals)
                     ? goals.Any(v => v.Geweigerd)

@@ -83,6 +83,17 @@ without asking KOV first. That is recorded here as the context the ruling was ta
    and that figure assumes every discipline is imported; a narrower selection (Art. XIV "Disciplines first", still open)
    leaves more. *Implementer's default, not part of the ruling:* a dekkingsoverzicht names any minimumdoel with no loaded
    concorded leerplandoel as such, rather than presenting it as a gap the teachers left.
+   *Amended 2026-09-13 by owner ruling ("Reden tonen", in session, E1-22):* the minimumdoelen register shows, per
+   minimumdoel no loaded leerplandoel concords, **why**, but only what the applied snapshot proves: only goals of goal
+   sets that are not imported concord to it (the sets named in Dutch), no goal of the snapshot concords to it, or a G
+   goal that does was refused by the mapping. In every other case (no leerplandoelen import yet, its discipline outside
+   the selection, a stored leerplandoel that still points at it, the minimumdoel itself no longer in Op.stap) nothing is
+   said beyond "no loaded leerplandoel refers to it". Every applied leerplandoelen import derives the reason from its
+   snapshot and stores it on `Minimumdoel` in two nullable columns (`zonder_leerplandoel_reden`,
+   `zonder_leerplandoel_doelsets`; migration `20260913164907_MinimumdoelZonderLeerplandoelReden`). This is import
+   metadata like `NietMeerInOpstap`: not decreed content, written only by the import, read by no coverage code, so no
+   constitution amendment is needed (the E1-22 round-2 audit agreed). On snapshot 1.2: `6-7.1.6` is reached only by a
+   zwemdoel (Z), the other five by no goal at all.
 6. **Versions are pinned** (E1-21). The leerplandoelen import requests a numbered snapshot, never `latest`, and records
    the version and hash, so a dekkingscijfer can name the curriculum version it was computed against.
 7. **The goal's UUID `key` is stored beside its code** (E1-21). `code` stays the identity (Art. III.5); the key lets the

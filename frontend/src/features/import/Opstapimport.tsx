@@ -108,7 +108,6 @@ export function Opstapimport() {
     setBezig(null);
   }
 
-  const heeftVerslag = md.antwoord !== null || lp.antwoord !== null;
   const teSchrijven =
     (md.antwoord !== null && !md.antwoord.toegepast && schrijftMinimumdoelen(md.antwoord)) ||
     (lp.antwoord !== null && !lp.antwoord.toegepast && schrijftLeerplandoelen(lp.antwoord));
@@ -143,8 +142,10 @@ export function Opstapimport() {
               </dd>
             </dl>
             <div>
-              {/* The accent follows the next step: on this button until there is a report, then on Doorvoeren. */}
-              <Knop rang={heeftVerslag ? "rustig" : "hoofd"} disabled={bezig !== null} onClick={() => void ophalen()}>
+              {/* The accent is on the next step: on Doorvoeren while a report has something to write, on this button
+                  otherwise (before any report, and after one that writes nothing). So the screen always has one
+                  primary action and never two (ADR-0024; test-runner round 2 found the idle state without one). */}
+              <Knop rang={teSchrijven ? "rustig" : "hoofd"} disabled={bezig !== null} onClick={() => void ophalen()}>
                 {bezig === "ophalen" ? t("importeren.bezig") : t("importeren.kov.ophalen")}
               </Knop>
             </div>

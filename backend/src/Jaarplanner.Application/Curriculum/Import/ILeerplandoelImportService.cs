@@ -43,10 +43,11 @@ public interface ILeerplandoelImportService
 /// <param name="Problemen">G goals that were not imported, and why (operator diagnostics, English).</param>
 /// <param name="Toegepast">False for a preview; true when the apply committed.</param>
 /// <param name="SchrijftIets">
-/// True when applying this report writes anything (E1-22): a discipline whose diff writes a curriculum row, a reason per
-/// minimumdoel that changes, or a version other than the one last applied, which is recorded. The one definition a
-/// screen may offer an apply on. Equal version and hash do <b>not</b> make it false by themselves: a widened discipline
-/// selection makes the same snapshot add goals.
+/// True when applying this report writes something the report shows (E1-22): a discipline whose diff writes a curriculum
+/// row, a reason per minimumdoel that changes, or a version other than the one last applied (a first apply included),
+/// which is recorded. The one definition a screen may offer an apply on. Not counted: an apply also stores an Op.stap key
+/// on an Excel-loaded row that is otherwise unchanged, which is bookkeeping. Equal version and hash do <b>not</b> make it
+/// false by themselves: a widened discipline selection makes the same snapshot add goals.
 /// </param>
 /// <param name="AantalRedenenGewijzigd">How many stored minimumdoelen get a different reason for having no leerplandoel.</param>
 public sealed record LeerplandoelImportResultaat(

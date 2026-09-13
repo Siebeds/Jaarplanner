@@ -180,7 +180,10 @@ export interface OpstapHerimportDiff {
   eerderVerdwenen: string[];
   /** Flagged earlier, delivered again unchanged: the apply clears the flag. */
   teruggekeerd: string[];
-  /** True when applying writes a curriculum row. Server-computed, so there is one definition (E1-22). */
+  /**
+   * True when applying writes a curriculum row the report shows. Server-computed, so there is one definition (E1-22).
+   * Not counted: an apply also stores an Op.stap key on an Excel-loaded row that is otherwise unchanged.
+   */
   schrijftIets: boolean;
   overgeslagen: boolean;
   /** Dutch notices: why a file did nothing, or that its discipline is out of the configured selection. */
@@ -316,8 +319,9 @@ export interface LeerplandoelImportAntwoord {
   disciplines: LeerplandoelDisciplineResultaat[];
   toegepast: boolean;
   /**
-   * True when applying writes anything: a curriculum row, a reason per minimumdoel, or a version other than the last one
-   * applied. The server's one definition; the screen offers *Doorvoeren* on it and on nothing else (E1-22).
+   * True when applying writes something this report shows: a curriculum row, a reason per minimumdoel, or a version
+   * other than the last one applied (a first apply included). Not counted: an Op.stap key stored on an Excel-loaded row
+   * that is otherwise unchanged. The server's one definition; the screen offers *Doorvoeren* on it and on nothing else.
    */
   schrijftIets: boolean;
   /** How many minimumdoelen get a different reason, in the register, for having no leerplandoel. */

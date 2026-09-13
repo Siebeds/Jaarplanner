@@ -260,12 +260,26 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
     [Fact]
     public void De_melding_over_teruggekeerde_minimumdoelen_is_verbogen()
     {
-        Assert.Equal(
-            "1 minimumdoel staat weer in de Op.stap-bron en wordt niet langer als vervallen gemarkeerd.",
-            MinimumdoelImportService.TeruggekeerdMelding(1));
-        Assert.Equal(
-            "2 minimumdoelen staan weer in de Op.stap-bron en worden niet langer als vervallen gemarkeerd.",
-            MinimumdoelImportService.TeruggekeerdMelding(2));
+        Assert.Equal("1 minimumdoel staat weer in de Op.stap-bron.", MinimumdoelImportService.TeruggekeerdMelding(1));
+        Assert.Equal("2 minimumdoelen staan weer in de Op.stap-bron.", MinimumdoelImportService.TeruggekeerdMelding(2));
+    }
+
+    /// <summary>Antagonist round 2, MINOR 4: a preview of a return reports it and leaves the flag set.</summary>
+    [Fact]
+    public async Task Het_voorbeeld_van_een_teruggekeerd_minimumdoel_laat_de_markering_staan()
+    {
+        _bron.Geef(Md("1.1"), Md("1.2"));
+        await _service.ImporteerAsync(toepassen: true);
+        _bron.Geef(Md("1.1"));
+        await _service.ImporteerAsync(toepassen: true);
+        _bron.Geef(Md("1.1"), Md("1.2"));
+
+        var voorbeeld = await _service.ImporteerAsync(toepassen: false);
+
+        Assert.Equal(["K-1.2"], voorbeeld.Diff.Teruggekeerd);
+        Assert.True(voorbeeld.Diff.SchrijftIets);
+        _context.ChangeTracker.Clear();
+        Assert.True((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2")).NietMeerInOpstap);
     }
 
     [Fact]

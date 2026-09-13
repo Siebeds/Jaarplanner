@@ -287,6 +287,21 @@ public sealed class OpstapImportServiceTests : IDisposable
         Assert.True(await _context.Leerplandoelen.Where(l => l.Code == "LP-2").Select(l => l.NietMeerInOpstap).SingleAsync());
     }
 
+    /// <summary>Antagonist round 2, MINOR 4: a preview of a return reports it and leaves the flag set.</summary>
+    [Fact]
+    public async Task Het_voorbeeld_van_een_teruggekeerd_doel_laat_de_markering_staan()
+    {
+        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
+        await _service.ImporteerAsync(Parse(Doel("LP-1")), toepassen: true);
+
+        var voorbeeld = await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: false);
+
+        Assert.Equal(["LP-2"], voorbeeld.Diff.Teruggekeerd);
+        Assert.True(voorbeeld.Diff.SchrijftIets);
+        _context.ChangeTracker.Clear();
+        Assert.True(await _context.Leerplandoelen.Where(l => l.Code == "LP-2").Select(l => l.NietMeerInOpstap).SingleAsync());
+    }
+
     /// <summary>Under the opt-in purge an already flagged, unlinked code is still removed: that is a write, so it is <c>Verdwenen</c>.</summary>
     [Fact]
     public async Task Onder_de_opt_in_opruiming_blijft_een_al_gemarkeerd_ongekoppeld_doel_een_schrijfactie()

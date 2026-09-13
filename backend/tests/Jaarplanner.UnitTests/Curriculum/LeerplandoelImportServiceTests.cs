@@ -307,6 +307,68 @@ public sealed class LeerplandoelImportServiceTests : IDisposable
         Assert.Equal(0, (await _service.ImporteerAsync("1.2", toepassen: false)).AantalRedenenGewijzigd);
     }
 
+    /// <summary>
+    /// Antagonist round 2, MINOR 1 (a): a goal KOV dropped stays stored, flagged and concorded, so its minimumdoel keeps
+    /// its place in the register. It gets no reason, and the preview does not count a change the register will not show.
+    /// </summary>
+    [Fact]
+    public async Task Een_minimumdoel_waar_een_opgeslagen_verdwenen_doel_naar_verwijst_krijgt_geen_reden()
+    {
+        _bron.Geef(Discipline("2", [Doel("2.1.GL3.10", minimumdoelRef: "4-2.1.7"), Doel("2.1.GL3.11")]));
+        await _service.ImporteerAsync("1.2", toepassen: true);
+        _bron.Geef(Discipline("2", [Doel("2.1.GL3.11")]));
+
+        var voorbeeld = await _service.ImporteerAsync("1.2", toepassen: false);
+        await _service.ImporteerAsync("1.2", toepassen: true);
+
+        Assert.Equal(["2.1.GL3.10"], Assert.Single(voorbeeld.Disciplines).Diff.Verdwenen);
+        Assert.Equal(0, voorbeeld.AantalRedenenGewijzigd);
+        _context.ChangeTracker.Clear();
+        Assert.Null((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "4-2.1.7")).ZonderLeerplandoelReden);
+        Assert.True((await _context.Leerplandoelen.SingleAsync(l => l.Code == "2.1.GL3.10")).NietMeerInOpstap);
+    }
+
+    /// <summary>
+    /// Antagonist round 2, MINOR 1 (b): a minimumdoel that is itself no longer in Op.stap gets no reason. A goal may still
+    /// point at its old address, which the source drops, so "no goal refers to it" is unproven.
+    /// </summary>
+    [Fact]
+    public async Task Een_minimumdoel_dat_niet_meer_in_opstap_staat_krijgt_geen_reden()
+    {
+        var ingetrokken = new Minimumdoel("6-9.9.9", "6-", "9.9.9", "Een ingetrokken minimumdoel.");
+        _context.Minimumdoelen.Add(ingetrokken);
+        _context.Entry(ingetrokken).Property(m => m.NietMeerInOpstap).CurrentValue = true;
+        await _context.SaveChangesAsync();
+        _bron.Geef(Discipline("2", [Doel("2.1.GL3.10", minimumdoelRef: "4-2.1.7")]));
+
+        var voorbeeld = await _service.ImporteerAsync("1.2", toepassen: false);
+        await _service.ImporteerAsync("1.2", toepassen: true);
+
+        Assert.Equal(0, voorbeeld.AantalRedenenGewijzigd);
+        _context.ChangeTracker.Clear();
+        Assert.Null((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "6-9.9.9")).ZonderLeerplandoelReden);
+    }
+
+    /// <summary>
+    /// Antagonist round 2, MINOR 2: a first apply records the version even when no discipline writes and no reason changes
+    /// (here the only discipline is outside the selection), so it is offered and it closes the Excel route.
+    /// </summary>
+    [Fact]
+    public async Task Een_eerste_toepassing_legt_de_versie_vast_ook_als_er_geen_doel_verandert()
+    {
+        _bron.Geef(Discipline("2", [Doel("2.1.GL3.10", minimumdoelRef: "4-2.1.7")]));
+        var service = Service(new DisciplineSelectieOptions { Modus = DisciplineSelectieModus.Selectie, Disciplines = ["9.1"] });
+
+        var voorbeeld = await service.ImporteerAsync("1.2", toepassen: false);
+        await service.ImporteerAsync("1.2", toepassen: true);
+
+        Assert.True(Assert.Single(voorbeeld.Disciplines).Diff.Overgeslagen);
+        Assert.Equal(0, voorbeeld.AantalRedenenGewijzigd);
+        Assert.Null(voorbeeld.VorigeVersie);
+        Assert.True(voorbeeld.SchrijftIets);
+        Assert.Equal("1.2", (await _context.Opstapversies.SingleAsync()).Versie);
+    }
+
     private sealed class VasteBron : ILeerplandoelBron
     {
         private Func<LeerplandoelBronResultaat> _antwoord = () => throw new InvalidOperationException("no answer set");
