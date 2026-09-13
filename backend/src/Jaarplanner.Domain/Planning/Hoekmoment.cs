@@ -77,7 +77,11 @@ public sealed class Hoekmoment
         Datum = datum;
     }
 
-    private static (TimeOnly Begin, TimeOnly Einde) RequireTijden(TimeOnly begin, TimeOnly einde) =>
+    /// <summary>
+    /// The one rule about a pair of times. Internal so <see cref="Hoekplaatsing.ZetUren"/> can ask it before touching
+    /// any row, which is what keeps a refused change from leaving a run half rewritten.
+    /// </summary>
+    internal static (TimeOnly Begin, TimeOnly Einde) RequireTijden(TimeOnly begin, TimeOnly einde) =>
         einde > begin
             ? (begin, einde)
             : throw new ArgumentException("Het einde van de hoek moet na het begin liggen. Kies een later einduur.");

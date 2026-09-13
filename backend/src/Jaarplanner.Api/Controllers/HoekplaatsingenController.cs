@@ -62,6 +62,17 @@ public sealed class HoekplaatsingenController : ControllerBase
         Ok(await _service.VerplaatsMomentAsync(
             plaatsingId, momentId, invoer.Datum, invoer.Begin, invoer.Einde, cancellationToken));
 
+    /// <summary>
+    /// Gives every appearance of a placed hoek the same hours (owner, 2026-09-11). Each stays on its own day; moving
+    /// the run to other days is not this route.
+    /// </summary>
+    [HttpPut("/api/hoekplaatsingen/{plaatsingId:guid}/uren")]
+    public async Task<ActionResult<HoekplaatsingWeergave>> ZetUren(
+        Guid plaatsingId,
+        [FromBody] Hoekuren invoer,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.ZetUrenAsync(plaatsingId, invoer.Begin, invoer.Einde, cancellationToken));
+
     /// <summary>Adds an enrichment: what is in the corner over these days.</summary>
     [HttpPost("/api/hoekplaatsingen/{plaatsingId:guid}/verrijkingen")]
     public async Task<ActionResult<HoekplaatsingWeergave>> VoegVerrijkingToe(
@@ -98,6 +109,11 @@ public sealed class HoekplaatsingenController : ControllerBase
     /// <param name="Begin">When the corner opens that day, as <c>HH:mm:ss</c>.</param>
     /// <param name="Einde">When it closes. Must lie after <paramref name="Begin"/>.</param>
     public sealed record HoekmomentVerplaatsing(DateOnly Datum, TimeOnly Begin, TimeOnly Einde);
+
+    /// <summary>The hours every day of a run should have.</summary>
+    /// <param name="Begin">When the corner opens, as <c>HH:mm:ss</c>.</param>
+    /// <param name="Einde">When it closes. Must lie after <paramref name="Begin"/>.</param>
+    public sealed record Hoekuren(TimeOnly Begin, TimeOnly Einde);
 
     /// <summary>What is in the corner, over which days.</summary>
     /// <param name="Van">First day of the enrichment, inclusive. Must fall inside the placement.</param>

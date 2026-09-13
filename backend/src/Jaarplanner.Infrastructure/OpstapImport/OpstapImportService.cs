@@ -372,10 +372,10 @@ public sealed class OpstapImportService : IOpstapImportService
             throw OpstapImportFout.CodeInAndereDiscipline(disciplineNummer, elders);
         }
 
-        // 3. Every concordance key must resolve to a loaded Minimumdoel: MinimumdoelRef is a Restrict FK, and
-        //    nothing can insert a Minimumdoel until the decreed source lands (E1-12), so an MD-concorded row
-        //    cannot be persisted. Because the import commits in one transaction, one such row blocks the
-        //    whole file — which is exactly why the reviewer must hear it on the preview.
+        // 3. Every concordance key must resolve to a loaded Minimumdoel: MinimumdoelRef is a Restrict FK, so a row
+        //    concorded to a minimumdoel that has not been imported (E1-12, POST /api/opstap-import/minimumdoelen)
+        //    cannot be persisted. Because the import commits in one transaction, one such row blocks the whole
+        //    file — which is exactly why the reviewer must hear it on the preview.
         var refs = inkomend.Values
             .Select(l => l.MinimumdoelRef)
             .Where(r => r is not null)

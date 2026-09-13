@@ -17,6 +17,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Personal login (E6-01, ADR-0031): the framework's own OpenID Connect handler for the Entra sign-in. -->
+    <!-- Microsoft.Identity.Web was the first choice and was dropped: the API calls no downstream API. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.9" />
+    <!-- Wraps the session cookie's Data Protection keys with a Key Vault key in the cloud, ONLY when -->
+    <!-- DataProtection:KeyVaultSleutel is configured (no-op locally and in tests — ADR-0031 decision 5). -->
+    <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Keys" Version="1.6.4" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
     <!-- Transitive pin, NOT a direct dependency (E7-12). Microsoft.AspNetCore.OpenApi still -->
     <!-- resolves Microsoft.OpenApi 2.0.0 — true as of 10.0.10, so bumping it does not help — -->

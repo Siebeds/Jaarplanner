@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigationType } from "react-router-dom";
+import { Aanmeldregel } from "../../app/Aanmeldregel";
+import { Schermvlak } from "../../app/Schermkop";
 import { IcoonKruis } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -84,6 +86,16 @@ export function Instellingenindeling() {
       </nav>
 
       <Outlet />
+
+      {/* Who is signed in, and signing out, below `lg` only (E6-01). A phone's bottom bar has no room
+          for a sixth tab and no sidebar to put this in, so it sits at the foot of Instellingen; from
+          `lg` the sidebar carries it instead, so a viewport never offers two ways out. In a
+          `Schermvlak` of its own so it takes the page's gutter and measure. */}
+      <div className="lg:hidden">
+        <Schermvlak smal>
+          <Aanmeldregel className="border-t border-lijn pt-2" />
+        </Schermvlak>
+      </div>
     </>
   );
 }

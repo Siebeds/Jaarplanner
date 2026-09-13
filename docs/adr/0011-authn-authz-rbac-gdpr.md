@@ -1,6 +1,6 @@
 # ADR-0011 — AuthN/AuthZ, RBAC & GDPR data minimisation
 
-- **Status:** Accepted
+- **Status:** Accepted. **Decision §3 superseded by [ADR-0030](0030-rollen-en-rechten-in-de-app.md) on 2026-09-11**: it assigned class-scoped content to "the owning teacher", and since ADR-0025 that content has no owning klas. §1, §2 and §4 stand. The text below is left as written.
 - **Date:** 2026-06-29
 - **Deciders:** Architect (Siebe De Saedeleir / team)
 - **Ratified:** 2026-06-29 — **Microsoft Entra ID confirmed** as the identity provider (directie/auteur). The IdP seam is retained but Entra is the chosen implementation.

@@ -1,6 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Schil } from "./Schil";
 
 /**
@@ -11,16 +12,30 @@ import { Schil } from "./Schil";
  * rail on a route where this component still reserves 240 runs the first inches of the page under
  * Instellingen's column.
  */
+/*
+  The navigation inside the shell reads who is signed in (E6-01), so it needs a query client. The
+  network never answers here: the signed-in row draws nothing and the shell is what it was before.
+*/
 const rendermetPad = (pad: string) =>
   render(
-    <MemoryRouter initialEntries={[pad]}>
-      <Routes>
-        <Route element={<Schil />}>
-          <Route path="*" element={null} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={[pad]}>
+        <Routes>
+          <Route element={<Schil />}>
+            <Route path="*" element={null} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
+
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("Schil", () => {
   it("houdt in Instellingen plaats vrij voor de kolom naast de rail", () => {

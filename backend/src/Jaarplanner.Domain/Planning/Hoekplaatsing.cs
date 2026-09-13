@@ -200,6 +200,54 @@ public sealed class Hoekplaatsing
     public bool VerwijderMoment(Guid momentId) => _momenten.RemoveAll(m => m.Id == momentId) > 0;
 
     /// <summary>
+    /// Gives every appearance of this run the same hours, each on the day it is already on (owner, 2026-09-11: <i>"ik
+    /// wil op het detailscherm van de hoeken de mogelijkheid om de uren aan te passen"</i>).
+    /// <para>
+    /// <b>Every appearance, the ones moved by hand included.</b> The owner ruled it that way the same day: new hours
+    /// typed for the run mean "the hoek runs then", and a Thursday she once shortened is part of the run. The detail
+    /// sheet warns before saving when a day currently differs, so the overwrite is one she was told about.
+    /// </para>
+    /// <para>
+    /// <b>A day holding the hoek more than once refuses the whole change, and the refusal names the day.</b> That only
+    /// happens after days were dragged onto another one (twice, three times: <see cref="BewaakDag"/> only refuses the
+    /// same start), and at the same hours they would be one row written several times, which <see cref="PlanIn"/>
+    /// refuses. The first version folded them into one; the owner ruled against that the same day, because it quietly
+    /// removes appearances she placed. She drags the extra ones elsewhere first.
+    /// </para>
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// The end is not after the start, or a day holds this hoek more than once. Either way nothing changed. Dutch,
+    /// because she can act on both. The sentence is word for word <c>hoekdetail.dubbeleDag</c> in nl.json, with the
+    /// days written as the detail sheet writes them (<c>maandag 14 september</c>), and both tests pin the literal.
+    /// </exception>
+    public void ZetUren(TimeOnly begin, TimeOnly einde)
+    {
+        // Both checks come before anything is touched, so a refusal leaves the run exactly as it was.
+        Hoekmoment.RequireTijden(begin, einde);
+
+        var dubbel = _momenten
+            .GroupBy(m => m.Datum)
+            .Where(dag => dag.Count() > 1)
+            .OrderBy(dag => dag.Key)
+            .Select(dag => dag.Key.ToString("dddd d MMMM", Nederlands))
+            .ToList();
+        if (dubbel.Count > 0)
+        {
+            var dagen = dubbel.Count == 1 ? dubbel[0] : $"{string.Join(", ", dubbel[..^1])} en {dubbel[^1]}";
+            throw new ArgumentException(
+                $"Op {dagen} staat deze hoek meer dan één keer. Sleep er eerst één naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.");
+        }
+
+        foreach (var moment in _momenten)
+        {
+            moment.Verplaats(moment.Datum, begin, einde);
+        }
+    }
+
+    // Days in a refusal the teacher reads, in calendar order and written as the detail sheet writes them.
+    private static readonly System.Globalization.CultureInfo Nederlands = new("nl-BE");
+
+    /// <summary>
     /// Moves the placement to a new range.
     /// <para>
     /// <b>Enrichments block the move; appearances travel with it.</b> The asymmetry is deliberate and it tracks

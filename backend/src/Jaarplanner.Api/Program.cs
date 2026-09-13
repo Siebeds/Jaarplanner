@@ -1,5 +1,6 @@
 using Jaarplanner.Api.Configuration;
 using Jaarplanner.Api.Infrastructure;
+using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Infrastructure;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -46,10 +47,15 @@ builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
 
 // The single authorisation seam for curriculum reference-data administration (E1-15, Art. VI.1,
 // ADR-0011 §2): one named policy that the Op.stap import endpoints — and E1-12's decreed-minimumdoelen
-// import when it lands — authorise against. It currently authorises everyone, because the API has no
-// authentication scheme and no role matrix yet (E6-01/E6-02, and E7-11 as a deployment gate). See
+// import when it lands — authorise against. Since E6-01 it requires a signed-in person (ADR-0031 amends
+// ADR-0022 §1); the role half, directie, is E6-02's, and E7-11 stays a deployment gate until then. See
 // CurriculumbeheerAutorisatie for what changes when the role matrix arrives.
 builder.Services.AddCurriculumbeheerAutorisatie();
+
+// Personal login (E6-01, ADR-0031): a session cookie issued after an Entra sign-in (or the development sign-in, on a
+// developer's machine), and a fallback policy under which every endpoint needs that session unless it says otherwise.
+// Who may do what once signed in is E6-02's; this only establishes who someone is.
+var authenticatie = builder.AddJaarplannerAuthenticatie();
 
 // Data access + database health check live in Infrastructure (Art. VIII — keep Api thin).
 // This registers AppDbContext (UseNpgsql, connection string from configuration) and a
@@ -64,7 +70,13 @@ app.UseExceptionHandler();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    // Anonymous: it describes the API, and a developer reads it without signing in.
+    app.MapOpenApi().AllowAnonymous();
+}
+else
+{
+    // HTTPS only, remembered by the browser (ADR-0031, Art. VI.5).
+    app.UseHsts();
 }
 
 app.UseHttpsRedirection();
@@ -74,21 +86,19 @@ app.UseHttpsRedirection();
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = _ => false,
-});
+}).AllowAnonymous();
 
 // Readiness: includes the Postgres DbContext check (tag "ready"); reports Unhealthy (503)
 // when the database is unreachable rather than crashing the app.
 app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = registration => registration.Tags.Contains("ready"),
-});
+}).AllowAnonymous();
 
-// Enforces the [Authorize] metadata on the endpoints that carry it (today: the curriculum import,
-// E1-15). Called explicitly rather than relied on implicitly: an endpoint carrying authorisation
-// metadata with no authorisation middleware in the pipeline throws at request time, so the seam must
-// be visibly wired here. No UseAuthentication() yet — there is no scheme to authenticate against
-// until E6-01, and the policy is written not to require one.
-app.UseAuthorization();
+// Authenticate, refuse a state-changing /api request without the anti-forgery header, then authorise. Called
+// explicitly rather than relied on implicitly: an endpoint carrying authorisation metadata with no authorisation
+// middleware in the pipeline throws at request time, so the seam must be visibly wired here.
+app.UseJaarplannerAuthenticatie(authenticatie);
 
 app.MapControllers();
 

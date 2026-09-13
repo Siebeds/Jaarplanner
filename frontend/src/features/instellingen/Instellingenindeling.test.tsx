@@ -1,6 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Instellingenindeling, Onderdeelwissel } from "./Instellingenindeling";
 import { t } from "../../i18n";
 
@@ -12,17 +13,31 @@ import { t } from "../../i18n";
  * run over all links with a name: both shapes must agree, and a test that picked one would pass with
  * the other one wrong.
  */
+/*
+  The frame shows who is signed in on a phone (E6-01), so it needs a query client. The network never
+  answers here: that row draws nothing, and the frame is exactly what these tests were written for.
+*/
 const rendermetPad = (pad: string) =>
   render(
-    <MemoryRouter initialEntries={[pad]}>
-      <Routes>
-        <Route path="instellingen" element={<Instellingenindeling />}>
-          <Route path="*" element={<Onderdeelwissel />} />
-        </Route>
-        <Route path="agenda" element={<p>agenda-scherm</p>} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={[pad]}>
+        <Routes>
+          <Route path="instellingen" element={<Instellingenindeling />}>
+            <Route path="*" element={<Onderdeelwissel />} />
+          </Route>
+          <Route path="agenda" element={<p>agenda-scherm</p>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
+
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /*
   Two different component types, as KlassenScherm and HoekenScherm are, so a switch unmounts one

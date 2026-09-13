@@ -75,6 +75,25 @@ public interface IHoekplaatsingService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gives every appearance of the run the same hours, each on the day it is already on (owner, 2026-09-11).
+    /// <para>
+    /// <b>All of them, the ones moved by hand included</b>, which is the owner's ruling of the same day. One call
+    /// rather than one <see cref="VerplaatsMomentAsync"/> per day, so a run never ends up half at the old hours
+    /// because the eighth of fifteen requests failed.
+    /// </para>
+    /// </summary>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such placement.</exception>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentValidatieFout">
+    /// The end is not after the start, or a day holds the hoek twice (one day dragged onto another). The second is
+    /// refused with the day named rather than folded into one row, by the owner's ruling of 2026-09-11.
+    /// </exception>
+    Task<HoekplaatsingWeergave> ZetUrenAsync(
+        Guid plaatsingId,
+        TimeOnly begin,
+        TimeOnly einde,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds an enrichment: what is in the corner over these days (owner, 2026-08-31).
     /// <para>
     /// A placement may hold several, for successive stretches of its window. They may not overlap, which

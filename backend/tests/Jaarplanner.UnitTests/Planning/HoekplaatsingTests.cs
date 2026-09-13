@@ -91,6 +91,99 @@ public sealed class HoekplaatsingTests
     }
 
     [Fact]
+    public void Nieuwe_uren_gelden_voor_elke_dag_ook_een_die_apart_verzet_was()
+    {
+        // Owner ruling 2026-09-11: new hours for the run reach the Tuesday she once lengthened by hand as well.
+        var plaatsing = Plaatsing();
+        plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
+        var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
+        plaatsing.VerplaatsMoment(dinsdag.Id, dinsdag.Datum, HalfTwee, new TimeOnly(15, 0));
+
+        plaatsing.ZetUren(new TimeOnly(9, 0), new TimeOnly(10, 30));
+
+        Assert.All(plaatsing.Momenten, m => Assert.Equal(new TimeOnly(9, 0), m.Begin));
+        Assert.All(plaatsing.Momenten, m => Assert.Equal(new TimeOnly(10, 30), m.Einde));
+        // Each stays on its own day: this changes when, never which days.
+        Assert.Equal([new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 8)], plaatsing.Momenten.Select(m => m.Datum).Order());
+    }
+
+    /// <summary>
+    /// The refusal for a day holding the hoek more than once, word for word. Its twin is <c>hoekdetail.dubbeleDag</c> in
+    /// nl.json, and <c>Hoekdetailblad.test.tsx</c> pins the same literal against the rendered sheet: a change to either
+    /// sentence fails one of the two tests instead of letting the sheet and the server drift apart.
+    /// </summary>
+    private static string Dubbel(string dagen) =>
+        $"Op {dagen} staat deze hoek meer dan één keer. Sleep er eerst één naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.";
+
+    [Fact]
+    public void Nieuwe_uren_worden_geweigerd_zolang_een_dag_de_hoek_meer_dan_een_keer_heeft()
+    {
+        // Tuesday dragged onto Monday morning: legal on its own, because it starts at another time than Monday's own
+        // row. At the same hours the two would be one row written twice. Owner ruling 2026-09-11: refuse and name the
+        // day, rather than fold the two into one and quietly lose an appearance she placed.
+        var plaatsing = Plaatsing();
+        var maandag = plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
+        var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
+        plaatsing.VerplaatsMoment(dinsdag.Id, maandag.Datum, new TimeOnly(9, 0), new TimeOnly(9, 50));
+
+        var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(new TimeOnly(10, 0), new TimeOnly(11, 0)));
+
+        Assert.Equal(Dubbel("maandag 7 september"), fout.Message);
+        Assert.Equal(2, plaatsing.Momenten.Count);
+        Assert.Equal(HalfTwee, plaatsing.Momenten.Single(m => m.Id == maandag.Id).Begin);
+        Assert.Equal(new TimeOnly(9, 0), plaatsing.Momenten.Single(m => m.Id == dinsdag.Id).Begin);
+    }
+
+    [Fact]
+    public void Drie_keer_op_een_dag_is_ook_meer_dan_een_keer()
+    {
+        // Tuesday and Wednesday both dragged onto Monday at their own hours: BewaakDag allows it, since no two start
+        // together. The sentence must not say "twice" here, which is why it says "meer dan één keer".
+        var plaatsing = Plaatsing();
+        plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
+        var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
+        var woensdag = plaatsing.PlanIn(new DateOnly(2026, 9, 9), HalfTwee, TweeUurTwintig);
+        plaatsing.VerplaatsMoment(dinsdag.Id, new DateOnly(2026, 9, 7), new TimeOnly(9, 0), new TimeOnly(9, 50));
+        plaatsing.VerplaatsMoment(woensdag.Id, new DateOnly(2026, 9, 7), new TimeOnly(11, 0), new TimeOnly(11, 50));
+
+        var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(new TimeOnly(10, 0), new TimeOnly(11, 0)));
+
+        Assert.Equal(Dubbel("maandag 7 september"), fout.Message);
+        Assert.Equal(3, plaatsing.Momenten.Count(m => m.Datum == new DateOnly(2026, 9, 7)));
+    }
+
+    [Fact]
+    public void Twee_dagen_met_de_hoek_meer_dan_een_keer_worden_allebei_genoemd_in_kalendervolgorde()
+    {
+        // Thursday onto Wednesday first, then Tuesday onto Monday, so the order the rows were changed in is not the
+        // calendar order the sentence must use.
+        var plaatsing = Plaatsing();
+        plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
+        var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
+        plaatsing.PlanIn(new DateOnly(2026, 9, 9), HalfTwee, TweeUurTwintig);
+        var donderdag = plaatsing.PlanIn(new DateOnly(2026, 9, 10), HalfTwee, TweeUurTwintig);
+        plaatsing.VerplaatsMoment(donderdag.Id, new DateOnly(2026, 9, 9), new TimeOnly(9, 0), new TimeOnly(9, 50));
+        plaatsing.VerplaatsMoment(dinsdag.Id, new DateOnly(2026, 9, 7), new TimeOnly(9, 0), new TimeOnly(9, 50));
+
+        var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(new TimeOnly(10, 0), new TimeOnly(11, 0)));
+
+        Assert.Equal(Dubbel("maandag 7 september en woensdag 9 september"), fout.Message);
+    }
+
+    [Fact]
+    public void Nieuwe_uren_met_een_einde_voor_het_begin_laten_de_reeks_zoals_ze_was()
+    {
+        var plaatsing = Plaatsing();
+        plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
+
+        var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(TweeUurTwintig, HalfTwee));
+
+        Assert.Contains("einde", fout.Message);
+        var moment = Assert.Single(plaatsing.Momenten);
+        Assert.Equal((HalfTwee, TweeUurTwintig), (moment.Begin, moment.Einde));
+    }
+
+    [Fact]
     public void Een_losse_dag_kan_weg_zonder_de_rest_mee_te_nemen()
     {
         var plaatsing = Plaatsing();

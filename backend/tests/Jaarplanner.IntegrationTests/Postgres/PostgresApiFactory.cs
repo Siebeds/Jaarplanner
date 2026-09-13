@@ -16,11 +16,19 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// endpoint test exercises the same database guarantees the deployed app has.
 /// </para>
 /// </summary>
-public sealed class PostgresApiFactory : WebApplicationFactory<Program>
+public sealed class PostgresApiFactory : JaarplannerApiFactory
 {
     private readonly string _connectionString;
 
-    public PostgresApiFactory(string connectionString) => _connectionString = connectionString;
+    /// <remarks>
+    /// The session keys go to this factory's own throwaway database, as they would in production: it is the one host
+    /// where that is safe, so it is the one that keeps the real persistence under test.
+    /// </remarks>
+    public PostgresApiFactory(string connectionString)
+    {
+        _connectionString = connectionString;
+        SessiesleutelsInDatabase = true;
+    }
 
     /// <summary>
     /// The canned completion the stubbed <see cref="IAiClient"/> returns, or <c>null</c> to make any model call fail
@@ -35,6 +43,7 @@ public sealed class PostgresApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        base.ConfigureWebHost(builder);
         builder.UseEnvironment(Environments.Development);
 
         // Supply the connection string through configuration, the same key production reads, so the

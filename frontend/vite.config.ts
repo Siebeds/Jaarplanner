@@ -45,7 +45,10 @@ export default defineConfig({
     port: 5177,
     strictPort: true,
     proxy: {
-      "/api": { target: API_TARGET, changeOrigin: true, secure: false },
+      // `xfwd` sends X-Forwarded-For with the real client address. The API's development sign-in refuses any
+      // request whose forwarded client is not loopback (ADR-0031 decision 6), and without this header a device on
+      // the local network that reaches a dev server started with `--host` would arrive at the API as loopback.
+      "/api": { target: API_TARGET, changeOrigin: true, secure: false, xfwd: true },
     },
   },
   test: {

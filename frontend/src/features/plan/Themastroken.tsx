@@ -1,4 +1,4 @@
-import type { Themavak } from "./themavakken";
+import { themaLabel, type Themavak } from "./themavakken";
 import { t } from "../../i18n";
 import { weekdagIndex } from "../../lib/datum";
 import { cn } from "../../lib/cn";
@@ -59,11 +59,7 @@ export function Themastroken({
   // three weeks after it in a six week period.
   const toonNaam = isStart || weekdagIndex(datum) === 0;
 
-  const naam = leeg
-    ? t("periode.geenThema")
-    : vak.themas.length === 1
-      ? vak.themas[0].naam
-      : t("periode.themaMeer", { naam: vak.themas[0].naam, aantal: vak.themas.length - 1 });
+  const naam = themaLabel(vak);
 
   return (
     <div aria-hidden="true" className={cn("pointer-events-none flex", className)}>

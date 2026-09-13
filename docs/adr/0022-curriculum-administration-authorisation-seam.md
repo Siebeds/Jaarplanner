@@ -1,6 +1,6 @@
 # ADR-0022 — Curriculum-administration authorisation seam (one named policy), and one endpoint per import source
 
-- **Status:** Accepted
+- **Status:** Accepted. **§1 amended by [ADR-0031](0031-sessielogin-via-de-api.md) on 2026-09-11:** once an authentication scheme exists, the policy also requires an authenticated user, because ASP.NET Core's fallback policy does not reach an endpoint that names a policy of its own. The role half is still E6-02's. The text below is left as written.
 - **Date:** 2026-07-31
 - **Deciders:** Architect (Siebe De Saedeleir / team), implementer of E1-15
 - **Complements:** [ADR-0011](0011-authn-authz-rbac-gdpr.md) (AuthN/AuthZ, RBAC & GDPR). **Supersedes nothing.** ADR-0011's decision §2 — *"enforce role-based authorisation server-side … driven by the configurable §3.2 permission matrix (not compiled-in role checks scattered through code)"* — stands unchanged; this ADR records the first concrete enforcement point built against it, which ADR-0011 could not name because it predates it by a month.

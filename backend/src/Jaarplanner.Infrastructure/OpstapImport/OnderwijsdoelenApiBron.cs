@@ -1,0 +1,176 @@
+using System.Text.Json;
+using Jaarplanner.Application.Curriculum.Import;
+using Jaarplanner.Domain.Curriculum;
+using Microsoft.Extensions.Options;
+
+namespace Jaarplanner.Infrastructure.OpstapImport;
+
+/// <summary>
+/// Reads the decreed minimumdoelen from KOV's Op.stap API (<c>GET /agodi/onderwijsdoelen/opstap</c>, ADR-0032) and maps
+/// each row through <see cref="OnderwijsdoelMapping"/>. A typed <see cref="HttpClient"/>, registered by
+/// <see cref="OpstapApiRegistratie"/>; the only caller is the import, never a teacher request (ADR-0032 decision 2).
+/// <para>
+/// <b>All or nothing.</b> The endpoint pages through <c>$$meta.next</c> and announces the total in <c>$$meta.count</c>. A
+/// read that ends with fewer rows than announced is refused as a whole, because a partial list would report every missing
+/// eindterm as <i>verdwenen</i> and invite a reviewer to believe the decree shrank. For the same reason a row that cannot
+/// be identified by a well-formed <c>uniqueCode</c> refuses the whole read. Every failure to read (network, timeout, error
+/// status, unexpected JSON, paging that does not end or leaves KOV's host, an unidentifiable row) becomes one
+/// <see cref="OpstapBronFout"/>, raised before the import writes anything.
+/// </para>
+/// </summary>
+public sealed class OnderwijsdoelenApiBron : IMinimumdoelBron
+{
+    /// <summary>The endpoint's path, relative to <see cref="OpstapApiOptions.BasisUrl"/>.</summary>
+    internal const string Pad = "agodi/onderwijsdoelen/opstap";
+
+    /// <summary>A bound on paging, far above the two or three pages a thousand rows take.</summary>
+    internal const int MaxPaginas = 100;
+
+    private static readonly JsonSerializerOptions JsonOpties = new(JsonSerializerDefaults.Web);
+
+    private readonly HttpClient _http;
+    private readonly OpstapApiOptions _opties;
+    private readonly TimeProvider _tijd;
+
+    /// <summary>The DI constructor.</summary>
+    public OnderwijsdoelenApiBron(HttpClient http, IOptions<OpstapApiOptions> opties)
+        : this(http, opties, TimeProvider.System)
+    {
+    }
+
+    /// <summary>The test constructor: a fixed clock decides which rows have expired.</summary>
+    internal OnderwijsdoelenApiBron(HttpClient http, IOptions<OpstapApiOptions> opties, TimeProvider tijd)
+    {
+        ArgumentNullException.ThrowIfNull(http);
+        ArgumentNullException.ThrowIfNull(opties);
+        ArgumentNullException.ThrowIfNull(tijd);
+
+        _http = http;
+        _opties = opties.Value;
+        _tijd = tijd;
+    }
+
+    /// <inheritdoc />
+    public async Task<MinimumdoelBronResultaat> HaalOpAsync(CancellationToken cancellationToken = default)
+    {
+        var basis = MetSlotSlash(_opties.BasisUrl);
+        var peildatum = _tijd.GetUtcNow();
+
+        var minimumdoelen = new List<Minimumdoel>();
+        var problemen = new List<MinimumdoelBronProbleem>();
+        var gezien = new HashSet<string>(StringComparer.Ordinal);
+        var bezocht = new HashSet<string>(StringComparer.Ordinal);
+        int? aangekondigd = null;
+        var gelezen = 0;
+
+        string? volgende = $"{Pad}?limit={_opties.PaginaGrootte}";
+        for (var pagina = 0; volgende is not null; pagina++)
+        {
+            if (pagina >= MaxPaginas || !bezocht.Add(volgende))
+            {
+                throw new OpstapBronFout(
+                    $"Paging through {Pad} did not end after {pagina} pages (next = '{volgende}').");
+            }
+
+            var adres = new Uri(basis, volgende.TrimStart('/'));
+            if (Uri.Compare(adres, basis, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+            {
+                // An absolute next link would otherwise be followed to whatever host the response names.
+                throw new OpstapBronFout($"The next link '{volgende}' leaves {basis.GetLeftPart(UriPartial.Authority)}; refused.");
+            }
+
+            var inhoud = await LeesPaginaAsync(adres, cancellationToken);
+            aangekondigd ??= inhoud.Meta?.Count;
+
+            foreach (var resultaat in inhoud.Results
+                ?? throw new OpstapBronFout($"A page of {Pad} has no 'results' array."))
+            {
+                gelezen++;
+                // A row that cannot be identified by a well-formed uniqueCode refuses the whole read. It could be a
+                // minimumdoel that is already stored, and the report would then call that one vanished while the source
+                // still lists it (antagonist, E1-12 round 2). Rows that are identified but unusable are reported instead.
+                if (resultaat.Expanded is null)
+                {
+                    throw new OpstapBronFout(
+                        $"Row {resultaat.Href ?? "(no href)"} of {Pad} is not expanded ($$expanded is missing); " +
+                        "a read whose rows cannot all be identified is refused.");
+                }
+
+                var (doel, probleem) = OnderwijsdoelMapping.Map(resultaat.Expanded, resultaat.Href, peildatum);
+                if (probleem is { } reden)
+                {
+                    if (!OnderwijsdoelMapping.IsWelgevormdeRef(reden.Sleutel))
+                    {
+                        throw new OpstapBronFout(
+                            $"Row {resultaat.Href ?? "(no href)"} of {Pad} has no usable uniqueCode ({reden.Reden}); " +
+                            "a read whose rows cannot all be identified is refused.");
+                    }
+
+                    problemen.Add(reden);
+                }
+                else if (!gezien.Add(doel!.Ref))
+                {
+                    problemen.Add(new MinimumdoelBronProbleem(
+                        doel.Ref,
+                        "uniqueCode occurs more than once in the source; the first row was kept."));
+                }
+                else
+                {
+                    minimumdoelen.Add(doel);
+                }
+            }
+
+            volgende = inhoud.Meta?.Next;
+        }
+
+        if (aangekondigd is { } totaal && totaal != gelezen)
+        {
+            throw new OpstapBronFout(
+                $"{Pad} announced {totaal} rows and {gelezen} were read; a partial read is refused.");
+        }
+
+        return new MinimumdoelBronResultaat(minimumdoelen, problemen);
+    }
+
+    private async Task<OnderwijsdoelenPaginaDto> LeesPaginaAsync(Uri adres, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var antwoord = await _http.GetAsync(adres, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (!antwoord.IsSuccessStatusCode)
+            {
+                throw new OpstapBronFout(
+                    $"GET {adres} answered {(int)antwoord.StatusCode} {antwoord.ReasonPhrase}.");
+            }
+
+            await using var stroom = await antwoord.Content.ReadAsStreamAsync(cancellationToken);
+            return await JsonSerializer.DeserializeAsync<OnderwijsdoelenPaginaDto>(stroom, JsonOpties, cancellationToken)
+                ?? throw new OpstapBronFout($"GET {adres} answered an empty body.");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The caller gave up; that is not the source's fault and must not be reported as one.
+            throw;
+        }
+        catch (OperationCanceledException ex)
+        {
+            // HttpClient reports its own timeout as a cancellation the caller never asked for.
+            throw new OpstapBronFout($"GET {adres} timed out after {_http.Timeout}.", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new OpstapBronFout($"GET {adres} failed: {ex.Message}", ex);
+        }
+        catch (JsonException ex)
+        {
+            throw new OpstapBronFout($"GET {adres} did not answer the expected JSON: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// A base address without a trailing slash would make <c>new Uri(basis, relative)</c> drop its last segment, so a
+    /// configured <c>https://host/prefix</c> is read as <c>https://host/prefix/</c>.
+    /// </summary>
+    private static Uri MetSlotSlash(Uri basis) =>
+        basis.AbsoluteUri.EndsWith('/') ? basis : new Uri(basis.AbsoluteUri + "/");
+}
