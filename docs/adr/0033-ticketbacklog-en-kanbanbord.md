@@ -74,8 +74,10 @@ that the board has the **full flow** of columns including a test column.
    `git fetch --prune` for a remote branch already deleted on the server, or waiting for the merge of the branch that
    holds the ticket. **It never adopts another copy itself**, so git stays the only thing that merges. A newer copy
    that agrees on the state is named, with its last Werklog line, and does not stop the write. When the remedy is a
-   merge of `main` that may conflict on the ticket file, the refusal says which frontmatter to keep: the branch's
-   state fields when the caller holds the ticket, `main`'s otherwise (rounds 8 and 9 each broke the other case).
+   merge of `main` that may conflict on the ticket file, the refusal says which frontmatter to keep, decided by the
+   branch's own copy and not by who runs the command: its state fields (`status`, `opgepakt-door`, `branch`,
+   `geblokkeerd`, `pr`) when that copy holds the ticket or blocks it, `main`'s otherwise. Rounds 8, 9 and 10 each
+   broke a case by keying the rule on something else; round 10's was the owner's `release`, which lost a block.
 
    Four rules keep the flows inside that check. After the merge (on the local `main` or the fetched `origin/main`) a
    ticket is written on `main` and no longer on its work branch, so the PR number goes in before the merge. A blocked

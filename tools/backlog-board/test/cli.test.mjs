@@ -804,43 +804,84 @@ test('after a conflicting git merge main, keeping main\'s frontmatter lets the n
   }
 });
 
-test('the session holding a ticket keeps its hold when main moved on: the refusal says so, and the resolution works', () => {
+/** On main: the architect's sharpened text, with the Werklog line and the bijgewerkt a hand edit requires. */
+function architectSharpensOnMain(r) {
+  r.git('switch', '-q', 'main');
+  const sharpened = setFields(
+    r.read(REL).replace(/(## Aanleiding\n\n)Ingevuld\./, '$1Scherper verwoord door de architect.'),
+    { bijgewerkt: '2026-09-13 23:58' },
+  ).trimEnd();
+  r.write(REL, `${sharpened}\n- 2026-09-13 23:58 · architect · tekst aangescherpt\n`);
+  r.commit('Architect sharpens FB-001');
+}
+
+/** Resolves a conflicted `git merge main` the way HOLD_HINT says: this branch's state fields, main's text, every line. */
+function mergeMainKeepingState(r) {
+  assert.throws(() => r.git('merge', '-q', 'main'), 'the merge conflicts on the ticket file');
+  // the branch's own copy, from its commit: the working file holds conflict markers right now
+  const own = parseTicket(r.git('show', `HEAD:${REL}`), { file: REL.slice(REL.lastIndexOf('/') + 1), folder: REL.slice(0, REL.lastIndexOf('/')) });
+  resolveKeepingMain(r, REL);
+  const f = own.fields;
+  r.write(REL, setFields(r.read(REL), { status: f.status, 'opgepakt-door': f['opgepakt-door'], branch: f.branch, geblokkeerd: f.geblokkeerd, pr: f.pr }));
+  r.git('add', REL);
+  r.git('commit', '-q', '--no-edit');
+}
+
+const HOLD_HINT_RE = /deze versie houdt het ticket vast of blokkeert het, dus houd status, opgepakt-door, branch, geblokkeerd en pr van deze branch/;
+
+test('the session holding a ticket keeps its hold and its PR number when main moved on', () => {
   const ctx = setup();
   const { r, run } = ctx;
   try {
     readyTicket(ctx);
     pickedUp(ctx);
-
-    // on main, the architect's sharpened text arrives with the Werklog line a hand edit requires
-    r.git('switch', '-q', 'main');
-    const sharpened = r
-      .read(REL)
-      .replace(/(## Aanleiding\n\n)Ingevuld\./, '$1Scherper verwoord door de architect.')
-      .trimEnd();
-    r.write(REL, `${sharpened}\n- 2026-09-13 23:58 · architect · tekst aangescherpt\n`);
-    r.commit('Architect sharpens FB-001');
+    assert.equal(run('pr', 'FB-001', '52', '--by', 's1').status, 0);
+    r.commit('FB-001 PR number');
+    architectSharpensOnMain(r);
 
     r.git('switch', '-q', 'feature/a');
     let out = run('log', 'FB-001', '--by', 's1', 'bezig');
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /jij houdt het ticket vast, dus houd status, opgepakt-door, branch en geblokkeerd van je branch/);
-
-    // resolve as the refusal says: the branch's state fields, main's text, every Werklog line
-    assert.throws(() => r.git('merge', '-q', 'main'), 'the merge conflicts on the ticket file');
-    // the branch's own copy, from its commit: the working file holds conflict markers right now
-    const own = parseTicket(r.git('show', `HEAD:${REL}`), { file: REL.slice(REL.lastIndexOf('/') + 1), folder: REL.slice(0, REL.lastIndexOf('/')) });
-    resolveKeepingMain(r, REL);
-    const f = own.fields;
-    r.write(REL, setFields(r.read(REL), { status: f.status, 'opgepakt-door': f['opgepakt-door'], branch: f.branch, geblokkeerd: f.geblokkeerd }));
-    r.git('add', REL);
-    r.git('commit', '-q', '--no-edit');
+    assert.match(out.stderr, HOLD_HINT_RE);
+    mergeMainKeepingState(r);
 
     const p = fieldsOf(r);
     assert.equal(p.fields.status, 'in-uitvoering');
     assert.equal(p.fields['opgepakt-door'], 's1');
+    assert.equal(p.fields.pr, '52');
     assert.match(p.sections.find((s) => s.title === 'Aanleiding').body, /Scherper verwoord/);
     out = run('status', 'FB-001', 'te-testen', '--by', 's1');
     assert.equal(out.status, 0, out.stderr);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("the owner's release of a blocked ticket after main moved on keeps the block", () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    pickedUp(ctx);
+    assert.equal(run('block', 'FB-001', '--by', 's1', 'welke', 'discipline?').status, 0);
+    r.commit('Block FB-001');
+    architectSharpensOnMain(r);
+
+    // the session stopped; the owner releases in a checkout of its branch
+    r.git('switch', '-q', 'feature/a');
+    let out = run('release', 'FB-001', '--by', 'eigenaar', '--log', 'sessie gestopt');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, HOLD_HINT_RE);
+    mergeMainKeepingState(r);
+    out = run('release', 'FB-001', '--by', 'eigenaar', '--log', 'sessie gestopt');
+    assert.equal(out.status, 0, out.stderr);
+    r.commit('Release FB-001');
+
+    r.git('switch', '-q', 'main');
+    r.git('switch', '-q', '-c', 'feature/b');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 1, 'the open question still stops the next session');
+    assert.match(out.stderr, /geblokkeerd \(welke discipline\?\)/);
   } finally {
     r.cleanup();
   }

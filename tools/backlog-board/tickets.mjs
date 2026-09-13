@@ -179,15 +179,17 @@ function relation(copy, mine) {
 // A copy that sits on main: main itself, a checkout of main, or the fetched main of a remote.
 const onMainLine = (s) => isMainSource(s) || (s.remote && /\/main$/.test(s.name));
 
-// How to resolve a conflict in the ticket file after `git merge main`. Which frontmatter wins depends
-// on who holds the ticket: a checkout that is behind main without holding it takes main's state; the
-// session that holds it keeps its own state fields and takes main's text (audit rounds 8 and 9: one
-// rule for both cases either re-instated a state main had moved past or dropped a live hold).
+// How to resolve a conflict in the ticket file after `git merge main`. Which frontmatter wins depends on
+// what THIS checkout's copy says, not on who runs the command: a copy that holds the ticket (whoever
+// holds it) or blocks it keeps its own state fields and takes main's text; any other copy takes main's
+// frontmatter. Audit rounds 8, 9 and 10 each broke the rule by keying it on something else: one rule for
+// all, then the caller (which sent the owner's `release` down the wrong branch and lost a block).
 const CONFLICT_HINT =
   ' Geeft dat een conflict in het ticketbestand, houd dan de frontmatter van main en alle werklogregels van beide kanten, in volgorde van tijd.';
 const HOLD_HINT =
-  ' Geeft dat een conflict in het ticketbestand: jij houdt het ticket vast, dus houd status, opgepakt-door, branch en geblokkeerd ' +
-  'van je branch, neem de rest van de tekst van main, en alle werklogregels van beide kanten, in volgorde van tijd.';
+  ' Geeft dat een conflict in het ticketbestand: deze versie houdt het ticket vast of blokkeert het, dus houd status, ' +
+  'opgepakt-door, branch, geblokkeerd en pr van deze branch, neem de rest van de tekst van main, en alle werklogregels van ' +
+  'beide kanten, in volgorde van tijd.';
 const mainRemedy = (remote, holds) =>
   (remote
     ? 'Haal main eerst binnen (git pull op main) en daarna in je branch (git merge main).'
@@ -293,12 +295,12 @@ async function checkCurrent(root, ticket, by, { pickup = false, release = false 
     throw new Fail(`Op ${upstream} staat een nieuwere versie van ${id}. Haal ze eerst binnen met git pull.`);
   }
 
-  const holdsIt = f.status === 'in-uitvoering' && f['opgepakt-door'] === by;
+  const copyHolds = f.status === 'in-uitvoering' || Boolean(f.geblokkeerd);
   const conflict = newer.find((c) => stateKey(c.parsed.fields) !== stateKey(f));
   if (conflict) {
     throw new Fail(
       `Op ${sourceLabel(conflict.source)} staat een nieuwere versie van ${id}: ${describe(conflict.parsed.fields)}. ` +
-        `Deze checkout zegt: ${describe(f)}. ${remedyFor(conflict, holdsIt)}`,
+        `Deze checkout zegt: ${describe(f)}. ${remedyFor(conflict, copyHolds)}`,
     );
   }
 

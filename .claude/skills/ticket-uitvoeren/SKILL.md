@@ -81,8 +81,9 @@ The board shows the card under *In uitvoering* as soon as the file changes, even
   say which in the log.
 - Stay inside the ticket. Anything else you notice becomes a new TB ticket or a question, never silent extra work.
 - If the CLI refuses because `main` moved on for your ticket (the architect sharpened its text, say), `git merge main`.
-  On a conflict in the ticket file you hold the ticket, so keep your branch's `status`, `opgepakt-door`, `branch` and
-  `geblokkeerd`, take `main`'s text, and keep every Werklog line from both sides in time order. The refusal says so.
+  On a conflict in the ticket file your copy holds the ticket, so keep your branch's `status`, `opgepakt-door`,
+  `branch`, `geblokkeerd` and `pr`, take `main`'s text, and keep every Werklog line from both sides in time order. The
+  refusal says so.
 
 ## 5. Gates
 

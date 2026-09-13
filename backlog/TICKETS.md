@@ -221,9 +221,10 @@ andere status, een andere houder, een blokkering), dan weigert de CLI en zegt ze
   (het ticket werd lokaal teruggegeven of vrijgegeven), push die branch dan.
 
 Geeft `git merge main` een conflict in het ticketbestand, neem dan alle werklogregels van beide kanten, in volgorde van
-tijd, en de tekst van `main`. Voor de frontmatter hangt het ervan af wie het ticket vasthoudt: houd je het zelf vast
-(`in-uitvoering` door jou), houd dan `status`, `opgepakt-door`, `branch` en `geblokkeerd` van je branch; anders de
-frontmatter van `main`. De melding van de CLI zegt welk van de twee geldt. Een teruggave of vrijgave telt pas als
+tijd, en de tekst van `main`. Voor de frontmatter kijk je naar de versie van je branch: houdt die het ticket vast
+(`in-uitvoering`, door wie ook) of is ze geblokkeerd, houd dan `status`, `opgepakt-door`, `branch`, `geblokkeerd` en
+`pr` van je branch; anders de frontmatter van `main`. Dat geldt ook voor de eigenaar die een `release` doet. De melding
+van de CLI zegt welk van de twee geldt. Een teruggave of vrijgave telt pas als
 ze gecommit is; op een branch die al gepusht is, push je ze ook.
 
 Merget de eigenaar een PR niet, dan wacht het afgewerkte werk op een merge die niet komt: hij zet het ticket in een
