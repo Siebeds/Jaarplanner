@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-13
-bijgewerkt: 2026-09-13 20:25
+bijgewerkt: 2026-09-13 23:00
 opgepakt-door: ticket-backlog
 branch: feature/ticket-backlog
-pr:
+pr: 54
 geblokkeerd:
 fr: []
 ---
@@ -73,3 +73,4 @@ nog als vervolg binnen een lopende epic, en de functioneel architect werkt in ee
 - 2026-09-13 20:17 · ticket-backlog · antagonist ronde 10: VIOLATIONS FOUND (1 MAJOR: de conflictregel hing af van wie het commando draait, waardoor een release van de eigenaar een blokkering verloor); de regel kijkt nu naar de versie zelf en houdt ook het PR-nummer, 84 tests groen
 - 2026-09-13 20:25 · ticket-backlog · eigenaar: stopt de antagonist-rondes na ronde 10; ronde 11 afgebroken, de fixes van ronde 10 zijn niet opnieuw geaudit (backlog/worklogs/TB-001/antagonist.md)
 - 2026-09-13 20:25 · ticket-backlog · in-uitvoering → klaar: ticketbacklog, bord, CLI, skills, ADR-0033 en het Art. II.6-amendement af; 84 tests groen, browserpass drie keer groen
+- 2026-09-13 23:00 · owner-push · PR #54
