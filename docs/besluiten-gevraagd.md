@@ -1,31 +1,20 @@
 # Beslissingen die we nodig hebben van de directie
 
-*Bijgewerkt: 30 augustus 2026. Bedoeld om door te sturen: geen technische kennis vereist.*
+*Bijgewerkt: 13 september 2026. Bedoeld om door te sturen: geen technische kennis vereist.*
 
 Hieronder staan de vragen waarop we een antwoord nodig hebben om verder te kunnen bouwen. Ze staan op volgorde van dringendheid. Bij elke vraag staat waarom ze belangrijk is en wat er gebeurt zolang ze open blijft.
 
-We **gokken niet** op een antwoord. Waar een keuze nog openstaat, bouwen we zo dat ze later zonder herbouw kan worden omgezet, maar sommige zaken (de eerste vraag) kunnen we zonder antwoord helemaal niet maken. Op twee punten geldt die belofte niet meer: **vraag 6** in zijn geheel, en het uitvoerformaat in **vraag 5**. Bij allebei staat het met zoveel woorden vermeld.
+We **gokken niet** op een antwoord. Waar een keuze nog openstaat, bouwen we zo dat ze later zonder herbouw kan worden omgezet. Op twee punten geldt die belofte niet meer: **vraag 6** in zijn geheel, en het uitvoerformaat in **vraag 5**. Bij allebei staat het met zoveel woorden vermeld.
 
 ---
 
-## 1. De lijst met minimumdoelen (eindtermen): **blokkeert het belangrijkste onderdeel**
+## 1. Waar halen we de doelen vandaan? **Beslist, graag uw bevestiging**
 
-**Wat we vragen:** de officiële lijst van de door de overheid vastgelegde **minimumdoelen** voor het basisonderwijs, mét de tekst van elk doel. Een Excel of CSV is prima, in de vorm waarin ze gepubliceerd is.
+**Wat er veranderd is.** Hier vroegen we eerder om een bestand met de officiële minimumdoelen (eindtermen). Dat bestand is **niet meer nodig**. Op 11 september 2026 heeft de projecteigenaar beslist dat de tool de doelen rechtstreeks ophaalt bij Katholiek Onderwijs Vlaanderen, via de Op.stap-koppeling die zij publiceren voor wie software bouwt. Daarin staan de minimumdoelen mét hun tekst, en bij elk leerplandoel naar welk minimumdoel het verwijst.
 
-Per rij hebben we vier gegevens nodig:
+**Wat we vragen:** bevestig dat u akkoord gaat met die bron, en met een tweede keuze die eraan vastzit: voorlopig halen we alleen de **gemeenschappelijke doelen** op. De zwemdoelen en de doelen Vlaamse Gebarentaal laten we voorlopig weg.
 
-| Gegeven | Voorbeeld |
-| --- | --- |
-| Leeftijdsaanduiding | `K-` (einde 3e kleuter), `4-` (4e leerjaar) of `6-` (6e leerjaar) |
-| Nummer | `12` |
-| Referentie (leeftijd + nummer samen) | `6-12` |
-| **Omschrijving: de eigenlijke tekst van het doel** | *"De leerling kan …"* |
-
-**Waarom dit nodig is.** De Op.stap-bestanden vertellen ons bij elk leerplandoel *naar welk* minimumdoel het verwijst (bijvoorbeeld `6-12`), maar nooit *wat* dat minimumdoel zegt. We hebben dus het verwijsnummer zonder de tekst: een voetnootnummer zonder voetnoot.
-
-**Gevolg zolang dit ontbreekt.** De tool kan **niet aantonen dat de minimumdoelen gedekt zijn**. Dat is precies het niveau waarop de onderwijsinspectie kijkt, en het is de kernbelofte van de toepassing. Alles eromheen werkt al; dit ene ontbrekende bestand houdt het tegen.
-
-**Belangrijk om te weten:** de referenties in die lijst moeten **exact** overeenkomen met de codes in de Op.stap-bestanden. Stuur eventueel eerst een klein stukje van de lijst door. Dan controleren we of de nummering overeenkomt vóór iemand het volledige bestand samenstelt. Een gedeeltelijke lijst (bijvoorbeeld één leeftijdsniveau) is ook al bruikbaar om de invoer te testen.
+**Gevolg zolang dit openstaat.** Niets ligt stil: we bouwen verder op de beslissing van de projecteigenaar. Het ophalen van de minimumdoelen is gebouwd. Aantonen dat de minimumdoelen gedekt zijn, het niveau waarop de onderwijsinspectie kijkt, kan pas wanneer ook de leerplandoelen via dezelfde weg zijn ingelezen. Dat moet nog gebouwd worden.
 
 ---
 

@@ -20,10 +20,11 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// <para>
 /// <b>What is faked and what is not.</b> Only the source is replaced, by a fixed list, because CI must not depend on KOV's
 /// uptime; the live API has its own opt-in contract test (<c>OnderwijsdoelenLiveContractTests</c>). Everything from the
-/// controller to the table is real, <b>including the DI registration</b>. Once <c>AddOpstapApi</c> is called from
-/// <c>DependencyInjection.cs</c>, the fake replaces an existing registration rather than supplying a missing one. Until
-/// then every test here fails with a 500, and <see cref="De_echte_bron_is_geregistreerd"/> is the one that says why: a
-/// controller no running application can reach is the defect E1-15 and E2-08 were filed for.
+/// controller to the table is real, <b>including the DI registration</b>: <c>AddOpstapApi</c> is called from
+/// <c>DependencyInjection.cs</c>, so the fake replaces an existing registration rather than supplying a missing one.
+/// <see cref="De_echte_bron_is_geregistreerd"/> pins that. Without it every other test here fails with a 500, which is
+/// how the branch's CI went red before the line landed (2026-09-13): a controller no running application can reach is
+/// the defect E1-15 and E2-08 were filed for.
 /// </para>
 /// </summary>
 public sealed class OpstapMinimumdoelenImportEndpointsTests : IAsyncLifetime

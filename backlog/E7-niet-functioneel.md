@@ -145,6 +145,14 @@
   described by counting endpoints. *Written here, on the story that outlives E5-05, because E5-05's own entry first
   claimed this was "routed to E7-11" while nothing had been written on E7-11 — the same defect this file's E7-03 note
   and the E4-08 precedent in [`README.md`](README.md) both already record. Ronde 2 caught it.*
+  *Blast radius grew, along a third new dimension (2026-09-13, E1-12).* Two more routes behind `Curriculumbeheer`:
+  `POST /api/opstap-import/minimumdoelen` and `POST /api/opstap-import/minimumdoelen/voorbeeld`. Since E6-01 they need a
+  session, so they are open to **every signed-in person** rather than anonymous, which is the E6-02 half this gate still
+  waits on (FA §3.2 and ADR-0030 give *Op.stap-doelen inladen/vernieuwen* to the beheerder only). The new dimension is
+  **outbound traffic to a third party**: every call, the preview included, reads KOV's Op.stap API live, and there is no
+  rate limit, so any signed-in person can make the school's server call KOV in a loop, under usage notes the owner
+  accepted in [ADR-0032](../docs/adr/0032-opstap-api-als-importbron.md). The apply writes decreed minimumdoel texts,
+  never deletes (Art. III.4). No code change is asked for here: the role binding is E6-02's one line on the same policy.
 
   *Blast radius grew (2026-07-29, E3-01 audit).* E3-01 added four anonymous routes: `POST /api/schooljaren`, and on a class's jaarplan `POST …/generatie`, the status/vergrendeling PUTs and `DELETE …/plaatsingen/{id}`. The last one destroys an accepted, locked placement — and there is **no soft-delete and no audit trail anywhere**, so it is unrecoverable. More precisely, and worth knowing when sizing this gate: **the strongest anonymous stop in the codebase is now two calls instead of one.** Before E3-01's fix round, `DELETE /api/klassen/{id}` was a hard refusal while any placement held a human decision; now an anonymous caller deletes the placements first, then the class. That is not a security *regression* — the guard was never access control, it exists to stop incidental loss — but this enumeration is what a reader uses to judge the exposure, so it must say so.
 
