@@ -153,7 +153,7 @@ export function Opstapimport() {
       </Vak>
 
       {md.antwoord || md.laadt || md.fout ? (
-        <Stapvak titel={t("importeren.kov.minimumdoelen")} staat={md}>
+        <Stapvak titel={t("importeren.kov.minimumdoelen")} staat={md} schrijft={md.antwoord ? schrijftMinimumdoelen(md.antwoord) : false}>
           {md.antwoord ? <MinimumdoelenRapport antwoord={md.antwoord} /> : null}
         </Stapvak>
       ) : null}
@@ -163,7 +163,7 @@ export function Opstapimport() {
           <p className="text-body text-inkt-zacht">{t("importeren.kov.eerstMinimumdoelen")}</p>
         </Vak>
       ) : lp.antwoord || lp.laadt || lp.fout ? (
-        <Stapvak titel={t("importeren.kov.leerplandoelen")} staat={lp}>
+        <Stapvak titel={t("importeren.kov.leerplandoelen")} staat={lp} schrijft={lp.antwoord ? schrijftLeerplandoelen(lp.antwoord) : false}>
           {lp.antwoord ? <LeerplandoelenRapport antwoord={lp.antwoord} /> : null}
         </Stapvak>
       ) : null}
@@ -212,18 +212,28 @@ export function Opstapimport() {
 /**
  * A section for one step: its report, a placeholder while the first answer is out, and the server's refusal under it.
  * The status names whether the report in view was written, so a reader can never mistake a preview for an import.
+ *
+ * **No status on a preview that writes nothing.** "Nog niet doorgevoerd" beside "Er verandert niets" is true and points
+ * at an action that does not exist, since no Doorvoeren is offered for it; say less (seen in the browser pass).
  */
 function Stapvak<T extends { toegepast: boolean }>({
   titel,
   staat,
+  schrijft,
   children,
 }: {
   titel: string;
   staat: Staat<T>;
+  /** Whether applying the report in view would write anything. */
+  schrijft: boolean;
   children: ReactNode;
 }) {
+  const status =
+    staat.antwoord && (staat.antwoord.toegepast || schrijft) ? (
+      <Doorvoerstatus toegepast={staat.antwoord.toegepast} />
+    ) : null;
   return (
-    <Vak titel={titel} merk={staat.antwoord ? <Doorvoerstatus toegepast={staat.antwoord.toegepast} /> : null}>
+    <Vak titel={titel} merk={status}>
       <div className="flex flex-col gap-4">
         {staat.antwoord ? (
           children

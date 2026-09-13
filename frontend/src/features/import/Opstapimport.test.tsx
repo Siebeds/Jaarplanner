@@ -220,6 +220,8 @@ describe("Opstapimport", () => {
     expect(gestuurd(MD_VOORBEELD)).toHaveLength(1);
     expect(gestuurd(LP_VOORBEELD)).toHaveLength(1);
     expect(screen.queryByRole("button", { name: t("importeren.kov.doorvoeren") })).not.toBeInTheDocument();
+    // "Nog niet doorgevoerd" would point at an action that is not offered (seen in the browser pass).
+    expect(screen.queryByText(t("importeren.kov.nietDoorgevoerd"))).not.toBeInTheDocument();
   });
 
   it("biedt het Excel-bestand aan zolang er geen versie doorgevoerd is, en daarna niet meer, met de reden", async () => {

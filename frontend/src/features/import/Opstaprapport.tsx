@@ -195,11 +195,14 @@ function Tellingen({ items }: { items: { label: string; aantal: number; stil?: b
 /**
  * One row per discipline, four numbers each: the data this report exists for, set as a real table because it is one.
  * The discipline number leads in the mono face so a directie reader can find "9.2" without reading thirteen names.
+ *
+ * Capped in width. At 1440 a full-width table put the last column 1,100 pixels from the name it belongs to, and a row
+ * that long is read by guessing which line the eye is on (seen in the browser pass, not by any test).
  */
 function Disciplinetabel({ antwoord }: { antwoord: LeerplandoelImportAntwoord }) {
   const kop = "px-1 pb-1.5 text-right text-micro uppercase text-inkt-zwak sm:px-2";
   return (
-    <table className="w-full border-collapse text-meta">
+    <table className="w-full max-w-2xl border-collapse text-meta">
       <thead>
         <tr className="border-b border-lijn">
           <th scope="col" className="pb-1.5 pr-2 text-left text-micro uppercase text-inkt-zwak">
