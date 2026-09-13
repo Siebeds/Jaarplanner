@@ -106,24 +106,23 @@ Vaste namen, vaste volgorde, als `## Kop`. Geen andere `##`-koppen en geen `#`-k
 
 Elke sectie behalve het Werklog moet inhoud hebben; schrijf "Niets." of "Geen." als er echt niets te zeggen is.
 Hulptekst tussen `<!--` en `-->` telt niet als inhoud en verschijnt niet op het bord. De **Acceptatiecriteria** zijn
-een lijst met minstens één `- [ ]`-regel, elk controleerbaar door een tester. Het **Werklog** is de laatste sectie en
+een lijst met minstens één `- [ ]`-regel, elk controleerbaar bij een test. Het **Werklog** is de laatste sectie en
 groeit alleen: één regel per gebeurtenis, `- JJJJ-MM-DD UU:MM · wie · wat`, en oude regels worden nooit aangepast.
 
 ## Statussen en kolommen
 
 | Kolom op het bord | Status in het bestand | Wie zet ze |
 | --- | --- | --- |
-| Nieuw | `nieuw` | functioneel architect |
+| Nieuw | `nieuw` | functioneel architect, bij het aanmaken |
 | Klaar voor bouw | `klaar-voor-bouw` | de eigenaar, als het ticket verfijnd en afgesproken is |
 | In uitvoering | `in-uitvoering` | de agent, in de eerste commit op zijn branch |
 | In review | *(afgeleid)* | niemand: zie hieronder |
 | Te testen | `te-testen` | de agent, in de laatste commit van zijn branch (alleen FB) |
-| Klaar | `klaar` | de eigenaar na zijn test (FB), of de agent in zijn laatste commit (TB) |
+| Klaar | `klaar` | de eigenaar, na de test van de functioneel architect (FB), of de agent in zijn laatste commit (TB) |
 
 **In review** is geen status die iemand schrijft. Het bord zet een kaart daar zolang de eindstatus van de agent
 (`te-testen` of `klaar`) al op een branch of in een worktree staat, maar **nog niet op `main`**: het werk is af en wacht
-op jouw merge. Na de merge en een `git pull` staat de status ook op `main` en schuift de kaart vanzelf door, ook als de
-branch daarna nog een commit krijgt.
+op jouw merge. Na de merge en een `git pull` staat de status ook op `main` en schuift de kaart vanzelf door.
 
 Toegestane overgangen (de CLI dwingt ze af):
 
@@ -134,24 +133,25 @@ Toegestane overgangen (de CLI dwingt ze af):
 - `klaar` → `klaar-voor-bouw` als een ticket heropend wordt
 
 Wie een ticket terugzet naar `klaar-voor-bouw` of `nieuw`, maakt `opgepakt-door`, `branch` en `pr` leeg: de volgende
-bouwronde begint opnieuw. Het werklog bewaart wat er gebeurd is.
+bouwronde begint opnieuw. Het werklog bewaart wat er gebeurd is. Een **geblokkeerd** ticket wordt niet opgepakt en
+niet teruggegeven: de sessie die het vasthoudt, houdt het tot de vraag beantwoord is.
 
-De CLI weet niet wie hem aanroept. Dat een functioneel ticket alleen door de eigenaar op `klaar` gezet wordt, en
-dat de functioneel architect geen status wijzigt, zijn afspraken (zie *Wie doet wat*), geen slot.
+De CLI weet niet wie hem aanroept. Wie welke status zet, is een afspraak (zie *Wie doet wat*), geen slot.
 
 ## Wie doet wat
 
-*(Beslissing van de eigenaar, 2026-09-13.)* Alleen de eigenaar wijzigt statussen, op zijn eigen pc, waar ook het bord
-draait en de agent-sessies werken. De functioneel architect maakt enkel tickets aan.
+*(Beslissingen van de eigenaar, 2026-09-13.)* Het bord en de agent-sessies draaien alleen op de pc van de eigenaar. De
+functioneel architect maakt tickets aan en test ze; de eigenaar zet hun status.
 
 - **Functioneel architect:** maakt tickets aan met de skill `ticket-aanmaken`, op `main`, in een eigen clone van de
-  repo, en pusht ze. Een ticket begint altijd als `nieuw`. De architect wijzigt **geen status**, en past een bestaand
-  ticket alleen inhoudelijk aan zolang het `nieuw` is, na een `git pull`. Heeft de eigenaar het intussen op
+  repo, en pusht ze. Een ticket begint altijd als `nieuw`. De architect wijzigt **geen status**, en mag de tekst van
+  een ticket aanscherpen zolang het `nieuw` is, na een `git pull`. Heeft de eigenaar het intussen op
   `klaar-voor-bouw` gezet maar nog niet gepusht, dan botst dat bij de volgende pull als merge-conflict op dat ene
-  ticket: houd dan de status van de eigenaar en de tekst van de architect.
-- **Eigenaar:** zet tickets op `klaar-voor-bouw`, test functionele tickets in `te-testen` met de skill `ticket-testen`
-  en zet ze op `klaar`, of terug naar `klaar-voor-bouw` met de bevinding. Hij merget en kijkt op het bord. Omdat dit
-  allemaal op zijn pc gebeurt, ziet de CLI daar elke lokale branch en worktree van de sessies.
+  ticket: houd dan de status van de eigenaar en de tekst van de architect. De architect **test** functionele tickets
+  in `te-testen` en meldt het resultaat aan de eigenaar.
+- **Eigenaar:** zet tickets op `klaar-voor-bouw`, verwerkt de test van de architect met de skill `ticket-testen` (naar
+  `klaar`, of terug naar `klaar-voor-bouw` met de bevinding), merget, en kijkt op het bord. Omdat dat en het werk van
+  de sessies op zijn pc gebeurt, ziet de CLI daar elke branch en worktree.
 - **Agent-sessie:** werkt volgens de skill `ticket-uitvoeren`, op de pc van de eigenaar. Heeft het werk nog geen
   ticket en geen story, dan maakt de agent **eerst** een TB-ticket aan, vóór er een bestand verandert.
 
@@ -178,9 +178,8 @@ Het leest, zonder iets te veranderen:
 3. van elke worktree de tickets met wijzigingen die nog niet gecommit zijn.
 
 Van alle versies van een ticket toont het de versie met de recentste `bijgewerkt`. Het bord doet zelf geen `fetch` of
-`pull`: nieuwe tickets van de functioneel architect verschijnen zodra jij `main` binnentrekt, en werk van een sessie op
-een andere pc pas als die branch lokaal staat. Een ticket dat de structuur niet volgt, verschijnt bovenaan in een rode
-balk met de fout en staat niet op het bord tot het hersteld is.
+`pull`: nieuwe tickets van de functioneel architect verschijnen zodra jij `main` binnentrekt. Een ticket dat de
+structuur niet volgt, verschijnt bovenaan in een rode balk met de fout en staat niet op het bord tot het hersteld is.
 
 ## De opdrachten
 
@@ -196,21 +195,24 @@ zijn Engels, wat ze in het ticket schrijven is Nederlands.
 | `node tools/backlog-board/tickets.mjs status <id> <status> --by <wie>` | status wijzigen; opties `--branch`, `--pr`, `--log "..."` |
 | `node tools/backlog-board/tickets.mjs log <id> --by <wie> "..."` | een regel in het werklog |
 | `node tools/backlog-board/tickets.mjs block <id> --by <wie> "reden"` / `unblock <id> --by <wie>` | geblokkeerd aan of uit |
-| `node tools/backlog-board/tickets.mjs pr <id> <nummer> --by <wie>` | het PR-nummer invullen |
+| `node tools/backlog-board/tickets.mjs pr <id> <nummer> --by <wie>` | het PR-nummer invullen, vóór de merge |
 
-Elke wijziging via de CLI zet `bijgewerkt` en schrijft een werklogregel, **altijd op de nieuwste versie van het
-ticket**: staat er op een andere branch, in een worktree of op een opgehaalde remote branch een nieuwere versie, dan
-neemt de CLI die eerst over in deze checkout, en zegt dat. Zo gaat er niets verloren: geen blokkering, geen
-PR-nummer, geen notitie van een sessie die het ticket teruggaf. De CLI weigert:
+Elke wijziging via de CLI zet `bijgewerkt` en schrijft een werklogregel. Voor ze iets schrijft, kijkt ze of er elders
+een **nieuwere** versie van het ticket staat: een versie met werklogregels die deze checkout niet heeft. Zegt die iets
+anders over het ticket (een andere status, een andere houder, een blokkering), dan weigert de CLI en zegt ze wat het
+oplost:
 
-- als een andere sessie het ticket in uitvoering heeft: alleen die sessie wijzigt het;
-- als twee versies uit elkaar gelopen zijn (elk heeft werklogregels die de andere mist): breng ze eerst samen;
-- als de nieuwere versie op de remote van je eigen branch staat: doe eerst `git pull`;
-- als je een geblokkeerd ticket wilt oppakken: eerst moet de vraag beantwoord zijn (`unblock`).
+- de nieuwere versie staat op `main`: haal main binnen in je branch (`git merge main`);
+- ze staat op de remote van je eigen branch: `git pull`;
+- ze staat op een andere branch of worktree: daar wordt het ticket bewerkt; wacht op de merge, of vraag de eigenaar;
+- ze staat op een remote branch die op de server al verwijderd is: `git fetch --prune`.
 
-De controle ziet wat deze pc ziet: de lokale branches en worktrees, en de remote branches van de laatste `git fetch`
-of `git pull`. Een branch die alleen op een andere pc staat, ziet ze niet; daarvoor dient de afspraak onder *Wie doet
-wat*. Een branch die op de server verwijderd is, blijft lokaal bestaan als `origin/...` tot je `git fetch --prune`
-doet. Een verlaten branch die een ticket vasthoudt, maakt de eigenaar vrij door die branch te verwijderen. Wie een ticket
-toch met de hand aanpast, moet `bijgewerkt` zelf bijwerken, anders kan een oudere versie op een andere branch het
-halen.
+De CLI neemt zelf nooit een versie over; dat doet git, zodat een latere merge klopt. Een nieuwere versie met dezelfde
+status houdt niemand tegen, maar de CLI noemt ze en toont haar laatste werklogregel (bijvoorbeeld de notitie van een
+sessie die het ticket teruggaf). Na de merge schrijf je een ticket op `main`, niet meer op de branch: zet het
+PR-nummer er dus vóór de merge in.
+
+Een verlaten sessie die een ticket vasthoudt, ruimt de eigenaar op: `git worktree remove` voor een worktree (wat daar
+niet gecommit is, gaat verloren), anders `git branch -D`. Wie een ticket toch met de hand aanpast, schrijft er ook een
+werklogregel bij en werkt `bijgewerkt` bij: zonder werklogregel ziet de controle de wijziging niet, en zonder
+`bijgewerkt` kan een oudere versie het op het bord halen.

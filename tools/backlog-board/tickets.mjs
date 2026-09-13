@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Command line for the ticket backlog. Every write a session makes to a ticket goes through here, so
 // the frontmatter, `bijgewerkt` and the Werklog stay in the one shape the board reads. It edits files
-// in the current checkout only and never runs a git command that changes anything: committing stays
-// with whoever called it.
+// in the current checkout only and never runs a git command that changes anything: committing, and
+// bringing another branch's copy in, stay with whoever called it.
 //
 // Command and option names are English (Art. II.2: tooling identifiers); the values it writes and the
 // messages it prints are Dutch, because they are ticket content and their readers are the owner and
-// the functional architect.
+// the functional architect (Art. II.6).
 
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -17,7 +17,7 @@ import { COLUMNS, FINAL_STATUS, FOLDERS, PRIORITIES, STATUSES, transitionAllowed
 import { normalise, parseTicket } from './lib/parse.mjs';
 import { appendWorklog, formatNumber, renderNewTicket, setFields, slugify, timestamp, worklogLine } from './lib/write.mjs';
 import { allTicketIds, collectVersions, mainRoot, readWorkingFiles, repoRoot } from './lib/sources.mjs';
-import { buildBoard, sourceLabel, winnerOf } from './lib/board.mjs';
+import { buildBoard, sourceLabel } from './lib/board.mjs';
 
 const COORD = process.env.JAARPLANNER_COORD ?? 'C:/source/Jaarplanner/.claude/coordination';
 
@@ -27,7 +27,7 @@ const USAGE = `Gebruik: node tools/backlog-board/tickets.mjs <opdracht> ...
       Alle tickets: main, branches, worktrees en opgehaalde remote branches, met wie ze vasthoudt
       en of ze geblokkeerd zijn.
   check [bestand ...] [--all]
-      Controleert de structuur van de tickets in deze checkout, of van het hele bord met --all.
+      Controleert de structuur van de tickets in deze checkout, of van het hele board met --all.
   next-id FB|TB
       Het volgende vrije nummer.
   new FB|TB --title "<titel>" --by <wie> [--priority hoog|middel|laag]
@@ -40,22 +40,31 @@ const USAGE = `Gebruik: node tools/backlog-board/tickets.mjs <opdracht> ...
   unblock <id> --by <wie>
   pr <id> <nummer> --by <wie>
 
-Elke schrijfopdracht werkt op de nieuwste versie: staat er elders een nieuwere, dan wordt die eerst
-overgenomen. Ze weigert als een andere sessie het ticket vasthoudt, als twee versies uit elkaar
-gelopen zijn, als de nieuwere versie op je eigen upstream staat (eerst git pull), of als je een
-geblokkeerd ticket wilt oppakken.
+Een schrijfopdracht weigert als er elders een nieuwere versie van het ticket staat met een andere
+status, houder of blokkering, en zegt welk git-commando dat oplost. Ze neemt nooit zelf een versie
+over. Na de merge schrijf je op main, niet meer op de branch; een geblokkeerd ticket wordt niet
+opgepakt en niet teruggegeven.
 
 Statussen: ${STATUSES.join(', ')}.`;
 
 class Fail extends Error {}
 
+// stderr is captured, so git's own English "fatal: ..." never reaches a Dutch reader.
 function git(root, args) {
-  return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true }).trim();
+  return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
 function currentBranch(root) {
   try {
     return git(root, ['branch', '--show-current']);
+  } catch {
+    return '';
+  }
+}
+
+function upstreamOf(root) {
+  try {
+    return git(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}']);
   } catch {
     return '';
   }
@@ -87,7 +96,7 @@ async function findTicket(root, id) {
   const hits = names.filter((n) => n.startsWith(wanted) && n.endsWith('.md'));
   if (hits.length === 0) {
     throw new Fail(
-      `${prefix}-${m[2]} bestaat niet in deze checkout (${folder}). Staat het ticket op main? Haal main dan eerst binnen in je branch.`,
+      `${prefix}-${m[2]} bestaat niet in deze checkout (${folder}). Staat het ticket op main? Haal main dan eerst binnen in je branch (git merge main).`,
     );
   }
   if (hits.length > 1) throw new Fail(`Meerdere bestanden gebruiken ${prefix}-${m[2]}: ${hits.join(', ')}. Los dat eerst op.`);
@@ -105,66 +114,93 @@ function requireValid(ticket) {
   );
 }
 
-function upstreamOf(root) {
-  try {
-    return git(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}']);
-  } catch {
-    return '';
-  }
-}
+// ---- the guard against writing on a stale copy --------------------------------------------------
+//
+// Four earlier designs failed an audit each: letting the newest `bijgewerkt` win let a stale copy undo
+// a pickup; refusing on any text difference froze tickets; comparing status only dropped blocks; and
+// adopting the newest copy's text into this checkout made git merges conflict, because git merges on
+// history and not on text. What is left is what git itself guarantees, used two ways:
+//
+// - The Werklog only ever grows, so another copy is NEWER than this one exactly when it has Werklog
+//   lines this one lacks. No clock and no text comparison is involved.
+// - A newer copy that says something different about the ticket (its status, who holds it, whether it
+//   is blocked) means this checkout is behind. The guard refuses and names the git command that brings
+//   the newer copy in, so the merge is git's to do, never this tool's.
+//
+// It sees what this machine sees: local branches, worktrees, and remote branches as of the last fetch.
 
-// The Werklog only ever grows, so it tells whether one copy descends from another: a copy is an
-// ancestor of the winner exactly when every Werklog line it has is also in the winner.
 const worklogKey = (w) => `${w.at}|${w.by}|${w.text}`;
-const descendsFrom = (newer, older) => {
-  const lines = new Set(newer.worklog.map(worklogKey));
-  return older.worklog.every((w) => lines.has(worklogKey(w)));
+const hasLinesMissingFrom = (copy, mine) => {
+  const have = new Set(mine.worklog.map(worklogKey));
+  return copy.worklog.some((w) => !have.has(worklogKey(w)));
 };
 
-/**
- * Every write is made on the newest copy of the ticket. When a newer copy exists elsewhere (another
- * branch, a worktree, a fetched remote branch), it is adopted into this checkout first and the write
- * is applied on top of it, so nothing on it is lost: not a block, not a PR number, not the note a
- * session left when it gave the ticket back. Two earlier designs lost exactly those, one by refusing
- * too much and one by letting a stale copy win.
- *
- * It refuses instead when adopting would be wrong:
- * - the newer copy is on this branch's own upstream: pull it, so the next push does not conflict;
- * - the two copies have diverged (each has Werklog lines the other lacks): someone has to merge them;
- * - the ticket is in progress under another session: only that session changes it.
- *
- * It sees what this machine sees, as of the last fetch. A branch that exists only on another PC is
- * invisible to it; the skills carry the rule for that case (ADR-0033).
- */
-async function currentBase(root, ticket, by) {
+const stateKey = (f) => [f.status, f.status === 'in-uitvoering' ? f['opgepakt-door'] : '', f.geblokkeerd ?? ''].join('|');
+function describe(f) {
+  let s = f.status;
+  if (f.status === 'in-uitvoering') s += ` door ${f['opgepakt-door']} op branch ${f.branch}`;
+  if (f.geblokkeerd) s += `, geblokkeerd (${f.geblokkeerd})`;
+  return s;
+}
+const isMainSource = (s) => s.type === 'main' || (s.type === 'worktree' && s.branch === 'main');
+
+/** Refuses a write this checkout is not in a position to make; returns notices worth printing. */
+async function checkCurrent(root, ticket) {
   const { versions } = await collectVersions(await mainRoot(), undefined, { remotes: true });
-  const same = versions.filter((v) => v.folder === ticket.folder && v.file === ticket.file);
-  const winner = winnerOf(same);
   const id = ticket.parsed.id;
-  let base = { text: ticket.text, parsed: ticket.parsed, from: null };
-  if (winner && normalise(winner.text) !== normalise(ticket.text)) {
-    const label = sourceLabel(winner.source);
-    if (winner.source.remote && winner.source.name === upstreamOf(root)) {
-      throw new Fail(`Op ${label} staat een nieuwere versie van ${id}. Haal ze eerst binnen met git pull.`);
-    }
-    if (!descendsFrom(winner.parsed, ticket.parsed)) {
-      throw new Fail(
-        `De versie van ${id} in deze checkout en die op ${label} zijn uit elkaar gelopen: elk heeft werklogregels die de andere niet heeft. ` +
-          'Breng ze eerst samen, of vraag de eigenaar welke geldt.',
-      );
-    }
-    base = { text: winner.text, parsed: winner.parsed, from: winner.source };
+  const mine = ticket.parsed;
+  const f = mine.fields;
+  const copies = versions
+    .filter((v) => v.folder === ticket.folder && v.file === ticket.file)
+    .map((v) => ({ ...v, parsed: parseTicket(v.text ?? '', { file: v.file, folder: v.folder }) }))
+    .filter((v) => v.parsed.valid);
+  const branch = currentBranch(root);
+
+  // After the merge, the ticket lives on main. A write left on the work branch (a PR number, say)
+  // would sit on an unmerged branch that the board then shows as newer than main.
+  const onMain = copies.find((c) => c.source.type === 'main');
+  if (branch && branch !== 'main' && (f.status === 'te-testen' || f.status === 'klaar') && onMain?.parsed.fields.status === f.status) {
+    throw new Fail(`Het werk van ${id} staat al op main (${f.status}). Wijzig het ticket op main, niet meer op ${branch}.`);
   }
-  const f = base.parsed.fields;
-  if (f.status === 'in-uitvoering' && f['opgepakt-door'] !== by) {
-    const seen = base.from ? ` (gezien op ${sourceLabel(base.from)})` : '';
-    let hint = 'Alleen die sessie wijzigt het ticket. Is ze gestopt, dan geeft ze het terug, of verwijdert de eigenaar haar branch.';
-    if (base.from?.remote) {
-      hint += ` Bestaat ${base.from.name} niet meer op de server, ruim de verouderde verwijzing dan op met git fetch --prune.`;
+
+  const newer = copies.filter((c) => normalise(c.text) !== normalise(ticket.text) && hasLinesMissingFrom(c.parsed, mine));
+
+  // This branch's own upstream is ahead for this ticket: pull, so the next push does not conflict.
+  const upstream = upstreamOf(root);
+  const ahead = upstream && newer.find((c) => c.source.remote && c.source.name === upstream);
+  if (ahead) throw new Fail(`Op ${upstream} staat een nieuwere versie van ${id}. Haal ze eerst binnen met git pull.`);
+
+  const conflict = newer.find((c) => stateKey(c.parsed.fields) !== stateKey(f));
+  if (conflict) {
+    const where = sourceLabel(conflict.source);
+    let remedy;
+    if (isMainSource(conflict.source)) {
+      remedy = 'Haal main binnen in je branch (git merge main) en probeer opnieuw.';
+    } else {
+      remedy =
+        'Dat ticket wordt daar bewerkt: wacht op de merge, of vraag de eigenaar. Is die sessie gestopt, dan ruimt de eigenaar ' +
+        'haar werk op (git worktree remove voor een worktree, anders git branch -D), en verliest daarmee wat daar niet gecommit is.';
     }
-    throw new Fail(`${id} is in uitvoering door ${f['opgepakt-door']} op branch ${f.branch}${seen}. ${hint}`);
+    if (conflict.source.remote) {
+      remedy += ` Bestaat ${conflict.source.name} niet meer op de server, ruim de verwijzing dan op met git fetch --prune.`;
+    }
+    throw new Fail(`Op ${where} staat een nieuwere versie van ${id}: ${describe(conflict.parsed.fields)}. Deze checkout zegt: ${describe(f)}. ${remedy}`);
   }
-  return base;
+
+  // Newer copies that agree on the state (a ticket given back on a branch that was never merged, for
+  // instance) do not stop the write, but what they add is not here: say so, with their last line.
+  return newer.map((c) => {
+    const last = c.parsed.worklog.at(-1);
+    return `Let op: op ${sourceLabel(c.source)} staat een nieuwere versie van ${id} met dezelfde status. Laatste werklogregel daar: "${last?.text ?? ''}".`;
+  });
+}
+
+async function loadForWrite(id) {
+  const root = await repoRoot();
+  const ticket = await findTicket(root, id);
+  requireValid(ticket);
+  for (const notice of await checkCurrent(root, ticket)) console.log(notice);
+  return { root, ticket };
 }
 
 async function save(ticket, text) {
@@ -179,15 +215,6 @@ async function save(ticket, text) {
 function edit(ticket, fields, by, message) {
   const at = timestamp();
   return appendWorklog(setFields(ticket.text, { ...fields, bijgewerkt: at }), worklogLine(at, by, message));
-}
-
-async function loadForWrite(id, by) {
-  const root = await repoRoot();
-  const found = await findTicket(root, id);
-  requireValid(found);
-  const base = await currentBase(root, found, by);
-  if (base.from) console.log(`Eerst overgenomen: de nieuwere versie van ${found.parsed.id} op ${sourceLabel(base.from)}.`);
-  return { root, ticket: { ...found, text: base.text, parsed: base.parsed } };
 }
 
 // ---- commands ---------------------------------------------------------------------------------
@@ -305,7 +332,7 @@ async function cmdNew(values, positionals) {
   const priority = values.priority ?? 'middel';
   if (!PRIORITIES.includes(priority)) throw new Fail(`Prioriteit moet ${PRIORITIES.join(', ')} zijn.`);
   const status = values.status ?? (prefix === 'TB' ? 'in-uitvoering' : 'nieuw');
-  // A functional ticket always starts as nieuw: only the owner moves it on (owner ruling 2026-09-13).
+  // A functional ticket always starts as nieuw: the architect only creates (owner ruling 2026-09-13).
   const allowed = prefix === 'TB' ? ['nieuw', 'klaar-voor-bouw', 'in-uitvoering'] : ['nieuw'];
   if (!allowed.includes(status)) throw new Fail(`Een nieuw ${prefix}-ticket start als ${allowed.join(' of ')}.`);
   const root = await repoRoot();
@@ -353,20 +380,26 @@ async function cmdStatus(values, positionals) {
   const [id, to] = positionals;
   const by = requireBy(values);
   if (!STATUSES.includes(to)) throw new Fail(`Onbekende status "${to ?? ''}". Toegestaan: ${STATUSES.join(', ')}.`);
-  const { root, ticket } = await loadForWrite(id, by);
-  const from = ticket.parsed.fields.status;
+  const { root, ticket } = await loadForWrite(id);
+  const f = ticket.parsed.fields;
+  const from = f.status;
   if (from === to) throw new Fail(`${ticket.parsed.id} staat al op ${to}.`);
   if (!transitionAllowed(ticket.prefix, from, to)) {
     const hint = to === 'klaar' && ticket.prefix === 'FB' ? ' Een functioneel ticket gaat eerst naar te-testen.' : '';
     throw new Fail(`Van ${from} naar ${to} mag niet voor een ${ticket.prefix}-ticket.${hint}`);
   }
-  // A block is how a ticket waits for the owner on an open decision (Art. XIV): nobody starts it.
-  if (to === 'in-uitvoering' && ticket.parsed.fields.geblokkeerd) {
-    throw new Fail(`${ticket.parsed.id} is geblokkeerd: ${ticket.parsed.fields.geblokkeerd}. Pak het pas op als die vraag beantwoord is (unblock).`);
+  // A block is how a ticket waits for the owner on an open decision (Art. XIV). Nobody starts a blocked
+  // ticket, and the session that holds one keeps it until the question is answered: given back on an
+  // unmerged branch, the block would be invisible to whoever picks it up next from main.
+  if (f.geblokkeerd && to === 'in-uitvoering') {
+    throw new Fail(`${ticket.parsed.id} is geblokkeerd: ${f.geblokkeerd}. Pak het pas op als die vraag beantwoord is (unblock).`);
+  }
+  if (f.geblokkeerd && from === 'in-uitvoering' && to === 'klaar-voor-bouw') {
+    throw new Fail(`${ticket.parsed.id} is geblokkeerd: ${f.geblokkeerd}. Houd het ticket tot de vraag beantwoord is; geef het daarna terug.`);
   }
   const fields = { status: to };
   if (to === 'in-uitvoering') {
-    const branch = values.branch || ticket.parsed.fields.branch || currentBranch(root);
+    const branch = values.branch || f.branch || currentBranch(root);
     if (!branch || branch === 'main') {
       throw new Fail('Werk aan een ticket gebeurt op een eigen branch. Maak die eerst aan, of geef --branch op.');
     }
@@ -387,7 +420,7 @@ async function cmdStatus(values, positionals) {
 async function cmdAnnotate(values, positionals, kind) {
   const [id, ...rest] = positionals;
   const by = requireBy(values);
-  const { ticket } = await loadForWrite(id, by);
+  const { ticket } = await loadForWrite(id);
   const text = rest.join(' ').trim();
   let fields = {};
   let message = text;

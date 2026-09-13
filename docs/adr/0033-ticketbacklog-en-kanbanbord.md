@@ -12,7 +12,7 @@
 The owner asked on 2026-09-13 for a second way into the backlog:
 
 - A **functional architect / tester**, not a developer and working with AI, logs new work as Markdown files in the
-  repo, on `main`.
+  repo, on `main`. (Who does what exactly was settled later the same day: decision 10.)
 - Several Claude Code sessions pick those tickets up, and **update the ticket file** as they progress.
 - The owner wants a **visual kanban board**, local to his PC, that reads only those files: the card shows a clear
   title, a click shows the details.
@@ -25,7 +25,7 @@ in worktrees on their own branches**, so a status an agent writes on its branch 
 board that reads only `main` could never show that anyone is working on anything. The owner was offered three
 answers (the board also reads worktrees and branches; agents push small claim commits to `main`; main only) and
 chose the first. He also ruled that tickets are **Dutch**, that the epics stay **side by side** with the tickets, and
-that the board has the **full flow** of columns including a tester column.
+that the board has the **full flow** of columns including a test column.
 
 ## Decision
 
@@ -41,10 +41,9 @@ that the board has the **full flow** of columns including a tester column.
    `klaar`. The board adds a sixth column, **In review**, that nobody writes: an agent writes its final status
    (`te-testen` for FB, `klaar` for TB) in the **last commit of its branch**, and while that status is visible on a
    branch or worktree but `main` does not have it yet, the card sits in In review. The merge moves it on without
-   anyone having to remember to. The column is decided by **main's status**, not by where the newest copy lives, so a
-   commit the branch gains after its merge (a PR number, say) does not pull the card back; and a checkout on `main`
-   with an uncommitted edit counts as `main`. Writing `in-review` into the file instead was rejected because the merge would carry it onto `main`,
-   where nobody would ever move it again.
+   anyone having to remember to. The column is decided by **main's status**, not by where the newest copy lives, and
+   a checkout on `main` with an uncommitted edit counts as `main`. Writing `in-review` into the file instead was
+   rejected because the merge would carry it onto `main`, where nobody would ever move it again.
 4. **What the board reads.** The local `main`; each local branch not merged into `main`, but only the ticket files it
    changed since its merge base (a file a branch never touched is `main`'s old copy and must not compete); and each
    worktree's uncommitted edits. Of all versions of a ticket, the newest `bijgewerkt` wins, and on a tie the one
@@ -56,21 +55,29 @@ that the board has the **full flow** of columns including a tester column.
    hue also carries a text label, and Markdown from a ticket is escaped before it is rendered.
 6. **Every write goes through one CLI**, `tools/backlog-board/tickets.mjs` (`new`, `status`, `log`, `block`,
    `unblock`, `pr`, plus `list`, `check`, `next-id`). It enforces the allowed transitions, sets `bijgewerkt`,
-   appends the Werklog line, and refuses to touch or produce an invalid ticket. **Every write is made on the
-   newest copy.** When a newer copy exists elsewhere, the CLI adopts it into the current checkout first and applies
-   the write on top, so nothing on it is lost. It refuses instead when another session holds the ticket (only that
-   session changes it), when the two copies have **diverged**, and when the newer copy is on the checkout's own
-   upstream (pull first); and it never lets a **blocked** ticket be picked up, because a block is how a ticket waits
-   for an open decision (Art. XIV). Divergence is decided on the Werklog, which only grows: a copy descends from
-   another exactly when every Werklog line it has is also in the other. *Why this design, after two that failed:* the
-   first guard let a write on a stale copy win, so a Werklog line on `main` undid a pickup (audit round 1). The second
-   refused whenever the texts differed and froze tickets for the tester and the next session (round 2). The third
-   compared status only and silently dropped blocks and give-back notes (round 3). Adopting the newest copy keeps
-   every field without freezing anyone. The guard reads local branches, worktrees and remote-tracking branches as of
-   the last fetch; a branch that exists only on another PC is invisible to it. That gap is closed by roles,
-   not by code: every status change is the owner's, on his PC, and the functional architect only creates tickets and
-   edits their text while they are `nieuw` (decision 10). A new number is the highest number
-   visible anywhere on this machine plus one, reserved for the moment of creation through the groepschat claim
+   appends the Werklog line, and refuses to touch or produce an invalid ticket.
+
+   **Before every write it checks for a newer copy.** A copy is newer exactly when it has Werklog lines this
+   checkout's copy lacks: the Werklog only grows, so no clock and no text comparison is involved. If a newer copy says
+   something different about the ticket (its status, who holds it, whether it is blocked), the CLI refuses and names
+   the git command that brings the newer copy in: `git merge main`, `git pull` for the checkout's own upstream,
+   `git fetch --prune` for a remote branch already deleted on the server, or waiting for the merge of the branch that
+   holds the ticket. **It never adopts another copy itself**, so git stays the only thing that merges. A newer copy
+   that agrees on the state is named, with its last Werklog line, and does not stop the write.
+
+   Two rules keep the flows inside that check. After the merge a ticket is written on `main` and no longer on its
+   work branch, so the PR number goes in before the merge. And a blocked ticket is neither picked up nor given back: a
+   block is how a ticket waits for an open decision (Art. XIV), and given back on an unmerged branch it would be
+   invisible to the next session.
+
+   *Why this design, after four that failed an audit each:* letting the newest `bijgewerkt` win let a stale copy undo
+   a pickup (round 1); refusing on any text difference froze tickets for the tester and for the next session
+   (round 2); comparing status alone dropped blocks and give-back notes (round 3); adopting the newest copy's text made
+   later git merges conflict, because git merges on history and not on text (round 4).
+
+   The check reads local branches, worktrees and remote-tracking branches as of the last fetch. A branch that exists
+   only on another PC is invisible to it; decision 10 is why that does not arise today. A new number is the highest
+   number visible anywhere on this machine plus one, reserved for the moment of creation through the groepschat claim
    directory when it exists.
 7. **No work without a ticket or a story.** A session that is asked to change files for work that has neither
    creates a TB ticket first, before the first edit. Three skills carry the procedures: `ticket-aanmaken`,
@@ -80,11 +87,19 @@ that the board has the **full flow** of columns including a tester column.
    still open, for work that epic needs to be finished. The progress table in `backlog/README.md` keeps counting
    stories only.
 9. **CI checks the tickets** on every push: the tool's tests and `tickets.mjs check`.
-10. **Roles** (owner ruling 2026-09-13). The functional architect only creates tickets, always as `nieuw`, in their
-    own clone, and may sharpen a ticket's text while it is still `nieuw`. The owner changes every status, on his own
-    PC, where the board runs and the sessions work: he moves FB tickets to `klaar-voor-bouw` and closes them after his
-    own test (`ticket-testen`). So every status write happens where the guard sees every session's branch and
-    worktree; the architect's clone, which cannot see them, never writes one.
+10. **Roles** (owner rulings 2026-09-13). In his words: the architect only puts tickets on `nieuw`, he himself changes
+    their status, and the board is shown only on his PC. Asked further the same day, he ruled that the functional
+    architect tests functional tickets and he records the result, that the agent sessions run only on his PC, and that
+    the architect may sharpen a ticket's text while it is still `nieuw`. So:
+    - the **functional architect** creates tickets, always as `nieuw`, in their own clone; sharpens their text while
+      they are `nieuw`; and tests functional tickets in `te-testen`, reporting the result;
+    - the **owner** changes the status of those tickets on his own PC: he moves them to `klaar-voor-bouw` and records
+      the architect's test result (`ticket-testen`);
+    - **agent sessions** still write their own statuses on their branches (`in-uitvoering`, `te-testen`, `klaar`, a
+      give-back), on the owner's PC.
+
+    Every status write therefore happens on the machine whose branches and worktrees the check in decision 6 can see;
+    the architect's clone, which cannot see them, writes none.
 
 ## Alternatives considered
 
@@ -111,17 +126,18 @@ that the board has the **full flow** of columns including a tester column.
   tickets.
 - **The board only knows this PC.** A session on another machine or in the cloud is invisible until its branch exists
   locally; the board does not look at `refs/remotes`.
-- **`bijgewerkt` decides.** A hand edit that forgets to update it can lose to an older version on another branch. The
-  CLI always updates it and always writes on the newest copy; `TICKETS.md` says so for hand edits. A hand edit that
-  adds no Werklog line is also invisible to the divergence check.
-- **A remote branch deleted on the server lingers** as `origin/...` until `git fetch --prune`, and while it holds a
-  ticket the CLI refuses a pickup with that remedy in its message. An abandoned local branch that holds a ticket is
-  freed by deleting it.
-- **The stale-copy guard only sees this machine** plus what it last fetched. Agents push only when the owner asks,
-  so from the functional architect's clone an in-progress branch is usually invisible. Decision 10 carries that
-  case: the architect never writes a status and edits only `nieuw` tickets. The one overlap left (the owner promotes
-  a ticket without pushing, the architect edits its text) surfaces as a merge conflict on that file at the next pull,
-  not as a silent loss. Two clones can also mint the same FB number; the board flags both
+- **`bijgewerkt` decides on the board, the Werklog decides in the CLI.** A hand edit that forgets `bijgewerkt` can lose
+  to an older version on another branch, and a hand edit that adds no Werklog line is invisible to the CLI's
+  newer-copy check. The CLI does both for every write it makes; `TICKETS.md` asks the same of hand edits.
+- **A remote branch deleted on the server lingers** as `origin/...` until `git fetch --prune`; while it holds a ticket
+  the CLI refuses a pickup and names that remedy. An abandoned session that holds a ticket is freed by the owner
+  removing its work: `git worktree remove` for a worktree (losing what was not committed there), otherwise
+  `git branch -D`.
+- **The newer-copy check only sees this machine** plus what it last fetched. Decision 10 keeps that sufficient today:
+  the sessions run on the owner's PC and the architect's clone writes no status. If sessions ever run elsewhere
+  without pushing, their pickups become invisible to the owner's PC and this has to be revisited. The one overlap
+  left (the owner promotes a ticket without pushing, the architect edits its text) surfaces as a merge conflict on
+  that file at the next pull, not as a silent loss. Two clones can also mint the same FB number; the board flags both
   files and `TICKETS.md` gives the one permitted rename.
 - **`bijgewerkt` is local time without a zone.** Everyone writing tickets today works in Belgian time. A writer whose
   clock is in another zone (a cloud session, a CI runner) would produce versions that win or lose by the offset.
@@ -131,21 +147,21 @@ that the board has the **full flow** of columns including a tester column.
   `bijgewerkt` unless they are newer.
 - **The functional architect commits directly to `main`.** That needs push rights and no branch protection that blocks
   them; the owner has to arrange that or move them to PRs.
-- **Tickets are Dutch**, where Art. II.6 kept the backlog English. The owner ruled it for these two folders and their guide (`TICKETS.md` and the two folder READMEs) only,
-  because their readers are the functional architect and the owner, and it is recorded as an amendment to Art. II.6
-  in the constitution's ratification log. The tool's command and option names stay English (Art. II.2). Its messages
-  and the board are Dutch for the same readers, and they sit outside the product, so the `nl.json` catalogue
-  (Art. II.3, X.3) does not bind them. The three skill names stay Dutch, like `groepschat` (owner ruling, recorded in
-  II.6).
+- **Tickets are Dutch**, where Art. II.6 kept the backlog English. The owner ruled it for these two folders and their
+  guide (`TICKETS.md` and the two folder READMEs) only, because their readers are the functional architect and the
+  owner, and it is recorded as an amendment to Art. II.6 in the constitution's ratification log. The tool's command
+  and option names stay English (Art. II.2). Its messages and the board are Dutch for the same readers, and they sit
+  outside the product, so the `nl.json` catalogue (Art. II.3, X.3) does not bind them. The three skill names stay
+  Dutch, like `groepschat` (owner ruling, recorded in II.6).
 
 ## Compliance trace
 
 - **Constitution:** Art. II.6 (amended with this ADR: ticket text is Dutch) and II.2 (the tool's identifiers and
-  command names stay English); Art. X (Definition of Done): ticket work runs the same gates as story work, and the tool has its
-  own tests in CI; Art. XIII: the antagonist still audits every significant change, and a ticket grants no exemption;
-  Art. VI: tickets are committed to the repo, so they never carry pupil data or secrets (stated in the skills and in
-  `TICKETS.md`); Art. XIV and XI: a ticket never settles an open decision. One that needs one is blocked with the
-  question and routed to the owner. The constitution, the functional analysis and the ADRs outrank a ticket exactly
-  as they outrank a story.
+  command names stay English); Art. X (Definition of Done): ticket work runs the same gates as story work, and the
+  tool has its own tests in CI; Art. XIII: the antagonist still audits every significant change, and a ticket grants
+  no exemption; Art. VI: tickets are committed to the repo, so they never carry pupil data or secrets (stated in the
+  skills and in `TICKETS.md`); Art. XIV and XI: a ticket never settles an open decision. One that needs one is blocked
+  with the question and routed to the owner, and a blocked ticket is neither picked up nor given back. The
+  constitution, the functional analysis and the ADRs outrank a ticket exactly as they outrank a story.
 - **Backlog:** all epics, unchanged; new work from 2026-09-13 onwards.
 - **FR/NFR:** none. This is how the team works, not what the product does.

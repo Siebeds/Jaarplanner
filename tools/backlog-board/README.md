@@ -24,8 +24,8 @@ node tools/backlog-board/tickets.mjs --help
 ```
 
 `list`, `check`, `next-id`, `new`, `status`, `log`, `block`, `unblock`, `pr`. Every write goes through here so
-`bijgewerkt` and the Werklog stay in the shape the board reads, and every write refuses a copy that is not the
-current one.
+`bijgewerkt` and the Werklog stay in the shape the board reads, and every write refuses when a newer copy elsewhere
+says a different status, holder or block (naming the git command that fixes it).
 
 ## Test it
 

@@ -17,11 +17,10 @@ Format and statuses: [`backlog/TICKETS.md`](../../../backlog/TICKETS.md). Talk t
 Dutch; commits stay English.
 
 Change a ticket's frontmatter **only through the CLI** (`node tools/backlog-board/tickets.mjs …`). It sets `bijgewerkt`,
-which is how the board decides which version is newest, it writes the Werklog line, and it always writes on the newest copy: a newer
-copy elsewhere is adopted into your checkout first, so a block, a PR number or a give-back note on it is kept. It
-refuses when another session holds the ticket, when two copies have diverged, when the newer copy is on your own
-upstream (pull first), and when you try to pick up a blocked ticket. Do not work around a refusal: its message names
-the remedy.
+which is how the board decides which version is newest, and it writes the Werklog line. Before every write it checks
+for a newer copy elsewhere (one with Werklog lines yours lacks). If that copy says a different status, holder or block,
+it refuses and names the git command that fixes it (`git merge main`, `git pull`, `git fetch --prune`, or wait for
+the merge). It never adopts another copy itself. Do not work around a refusal.
 
 ## 0. Is there a ticket?
 
@@ -40,10 +39,10 @@ lead's backlog corrections), exactly as in CLAUDE.md.
 
 ## 1. Check the ticket and claim it
 
-- It must be `klaar-voor-bouw` (check with `list`, which sees every branch), or `in-uitvoering` by you because you just
-  created it. `in-uitvoering` by someone else: stop and pick another. Blocked (`geblokkeerd` in `list`): stop too; it
-  waits for an answer from the owner. `nieuw`: it is not refined yet; ask the owner
-  whether to move it to `klaar-voor-bouw` first.
+- It must be `klaar-voor-bouw` (check with `list`, which sees every branch and shows blocks), or `in-uitvoering` by
+  you because you just created it. `in-uitvoering` by someone else: stop and pick another. Blocked (`geblokkeerd` in
+  `list`): stop too; it waits for an answer from the owner. `nieuw`: it is not refined yet; ask the owner whether to
+  move it to `klaar-voor-bouw` first.
 - Join the groepschat (`groepschat` skill) and claim `ticket-<ID>` (for example `ticket-FB-012`). A refused claim means
   another session has it.
 - Read the whole ticket, the FR numbers it cites and the constitution articles it touches. If it conflicts with
@@ -72,7 +71,8 @@ The board shows the card under *In uitvoering* as soon as the file changes, even
 - `node tools/backlog-board/tickets.mjs log FB-012 --by <sessie-id> "<één zin>"` at moments the owner would want
   to know: a decision taken, a part finished, a gate result. Not a diary.
 - Waiting for the owner or directie: `block FB-012 --by <sessie-id> "<de vraag>"`, then ask. `unblock` once it is
-  answered.
+  answered. While it is blocked you keep the ticket: the CLI will not let you give it back, because a block left on
+  an unmerged branch would be invisible to whoever picks the ticket up next.
 - Tick an acceptance criterion (`- [ ]` to `- [x]`) only when you have the evidence (a test, a browser check), and
   say which in the log.
 - Stay inside the ticket. Anything else you notice becomes a new TB ticket or a question, never silent extra work.
@@ -85,7 +85,7 @@ Unchanged from CLAUDE.md: the relevant tests, `dotnet format`, `pnpm lint`, a re
 ## 6. The final status goes in the last commit
 
 ```bash
-# functional ticket: the owner closes it after his test
+# functional ticket: the functional architect tests it, the owner records the result
 node tools/backlog-board/tickets.mjs status FB-012 te-testen --by <sessie-id> --log "<wat er gebouwd is, gates groen>"
 # technical ticket
 node tools/backlog-board/tickets.mjs status TB-003 klaar --by <sessie-id> --log "<wat er gebouwd is, gates groen>"
@@ -95,11 +95,13 @@ Commit it with, or right after, the last change. The card now sits under **In re
 the merge and a pull it moves to *Te testen* or *Klaar* by itself.
 
 Push and open a PR only when the owner asks (the existing rule). If you do, record the number **before the merge**:
-push, open the PR, run `pr FB-012 <nummer> --by <sessie-id>`, commit and push that too, so the number travels in the
-same merge.
+push, open the PR, run `pr FB-012 <nummer> --by <sessie-id>`, commit and push that too. After the merge the CLI
+refuses any write on your branch: the ticket then lives on `main`.
 
 **Stopping without finishing?** Give it back so another session can take it:
-`status FB-012 klaar-voor-bouw --by <sessie-id> --log "teruggegeven: <waarom, en wat er al staat>"`, and commit.
+`status FB-012 klaar-voor-bouw --by <sessie-id> --log "teruggegeven: <waarom, en wat er al staat>"`, and commit. The
+next session sees your note when it picks the ticket up. A blocked ticket cannot be given back: keep it and tell the
+owner.
 
 ## 7. Release
 
@@ -107,8 +109,10 @@ Release `ticket-<ID>` and your other claims, set your session file to `done`, an
 
 ## Rules
 
-- **Never set an FB ticket to `klaar`:** that is the owner's decision, after his test (`ticket-testen`). The CLI cannot tell who is
-  calling, so it will not stop you; this rule is yours to keep.
-- Never change another ticket, not even with a Werklog line. If something about it needs saying, ask its session or
-  the owner.
-- Never create or edit an FB ticket on `main` as an agent: the functional architect owns `main`'s tickets.
+- **Never set an FB ticket to `klaar`:** that is the owner's decision, after the functional architect's test
+  (`ticket-testen`). The CLI cannot tell who is calling, so it will not stop you; this rule is yours to keep.
+- Never change another session's ticket, not even with a Werklog line. If something about it needs saying, ask that
+  session or the owner.
+- Never create an FB ticket, and never change one on `main` on your own initiative: FB tickets are the functional
+  architect's to create and the owner's to move. When the owner asks you to record a test result with him
+  (`ticket-testen`), you act as his hands, with `--by eigenaar`.

@@ -8,6 +8,7 @@ import { parseTicket } from '../lib/parse.mjs';
 import { GIT_ENV, tempRepo, ticketPath } from './helpers.mjs';
 
 const CLI = fileURLToPath(new URL('../tickets.mjs', import.meta.url));
+const REL = ticketPath('FB', 1, 'thema-dupliceren');
 
 const runIn = ({ coord }, cwd, ...args) =>
   spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env: { ...process.env, JAARPLANNER_COORD: coord } });
@@ -31,19 +32,34 @@ function setup() {
   return { r, coord, run, fill };
 }
 
-const fieldsOf = (r, rel) => {
+const fieldsOf = (r, rel = REL, base) => {
   const [, folder, file] = /^(.*)\/([^/]+)$/.exec(rel);
-  return parseTicket(r.read(rel), { file, folder });
+  return parseTicket(r.read(rel, base), { file, folder });
 };
 
 /** A functional ticket FB-001, filled in and committed on main as klaar-voor-bouw. */
 function readyTicket({ r, run, fill }) {
   assert.equal(run('new', 'FB', '--title', 'Thema dupliceren', '--by', 'fa').status, 0);
-  const rel = ticketPath('FB', 1, 'thema-dupliceren');
-  fill(rel);
-  assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'fa').status, 0);
+  fill(REL);
+  assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'eigenaar').status, 0);
   r.commit('FB-001 ready');
-  return rel;
+  return REL;
+}
+
+/** FB-001 picked up on feature/a by s1 and committed there. */
+function pickedUp(ctx, branch = 'feature/a', by = 's1') {
+  ctx.r.git('switch', '-q', '-c', branch);
+  const out = ctx.run('status', 'FB-001', 'in-uitvoering', '--by', by);
+  assert.equal(out.status, 0, out.stderr);
+  ctx.r.commit(`Start FB-001 on ${branch}`);
+}
+
+function addOrigin(r) {
+  const origin = path.join(r.dir, 'origin.git');
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin], { env: GIT_ENV });
+  r.git('remote', 'add', 'origin', origin);
+  r.git('push', '-q', '-u', 'origin', 'main');
+  return origin;
 }
 
 test('a functional ticket from creation to te-testen, through the allowed transitions only', () => {
@@ -51,37 +67,37 @@ test('a functional ticket from creation to te-testen, through the allowed transi
   try {
     let out = run('new', 'FB', '--title', 'Thema dupliceren', '--by', 'fa', '--fr', 'FR-7.2');
     assert.equal(out.status, 0, out.stderr);
-    const rel = ticketPath('FB', 1, 'thema-dupliceren');
-    assert.ok(out.stdout.includes(rel));
+    assert.ok(out.stdout.includes(REL));
     assert.deepEqual(fs.readdirSync(path.join(coord, 'claims')), [], 'the number reservation is released');
     assert.match(fs.readFileSync(path.join(coord, 'groepschat.md'), 'utf8'), /\| fa \| FB-001 \| INFO \| created FB-001 \(nieuw\): Thema dupliceren/);
 
     assert.equal(run('check').status, 1, 'unfilled sections fail the check');
-    fill(rel);
+    fill(REL);
     out = run('check');
     assert.equal(out.status, 0, out.stdout);
 
     out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--branch', 'feature/x');
     assert.equal(out.status, 1, 'a functional ticket is refined before it is built');
-    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'fa').status, 0);
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'eigenaar').status, 0);
     r.commit('FB-001 ready');
 
     r.git('switch', '-q', '-c', 'feature/x');
     out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--log', 'opgepakt');
     assert.equal(out.status, 0, out.stderr);
-    let p = fieldsOf(r, rel);
+    assert.equal(out.stderr, '', 'no git noise on a branch without an upstream');
+    let p = fieldsOf(r);
     assert.equal(p.fields['opgepakt-door'], 's1');
     assert.equal(p.fields.branch, 'feature/x', 'the branch defaults to the current one');
 
-    assert.equal(run('status', 'FB-001', 'klaar', '--by', 's1').status, 1, 'no skipping the tester');
+    assert.equal(run('status', 'FB-001', 'klaar', '--by', 's1').status, 1, 'no skipping the test');
     assert.equal(run('block', 'FB-001', '--by', 's1', 'wacht', 'op', 'de', 'eigenaar').status, 0);
-    assert.equal(fieldsOf(r, rel).fields.geblokkeerd, 'wacht op de eigenaar');
+    assert.equal(fieldsOf(r).fields.geblokkeerd, 'wacht op de eigenaar');
     assert.equal(run('unblock', 'FB-001', '--by', 's1').status, 0);
     out = run('status', 'FB-001', 'te-testen', '--by', 's1', '--pr', '52');
     assert.equal(out.status, 0, out.stderr);
     assert.match(out.stdout, /1 van 2 acceptatiecriteria/);
 
-    p = fieldsOf(r, rel);
+    p = fieldsOf(r);
     assert.equal(p.valid, true, p.errors.join('\n'));
     assert.equal(p.fields.status, 'te-testen');
     assert.equal(p.fields.pr, '52');
@@ -97,9 +113,9 @@ test('a functional ticket from creation to te-testen, through the allowed transi
       ],
     );
 
-    // the tester sends it back: the build fields are cleared for the next round
-    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'tester', '--log', 'Bevinding: knop ontbreekt').status, 0);
-    p = fieldsOf(r, rel);
+    // sent back after a failed test: the build fields are cleared for the next round
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'eigenaar', '--log', 'Bevinding: knop ontbreekt').status, 0);
+    p = fieldsOf(r);
     assert.equal(p.fields['opgepakt-door'], '');
     assert.equal(p.fields.branch, '');
   } finally {
@@ -107,22 +123,19 @@ test('a functional ticket from creation to te-testen, through the allowed transi
   }
 });
 
-test('a write on a stale copy is refused, so an old status can never be stamped newer', () => {
+test('a write on a stale copy is refused: a Werklog line on main cannot undo a pickup', () => {
   const ctx = setup();
   const { r, run } = ctx;
   try {
-    const rel = readyTicket(ctx);
-    r.git('switch', '-q', '-c', 'feature/a');
-    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
-    r.commit('Start FB-001');
-
-    // on main the copy is still klaar-voor-bouw: a Werklog line there would win and undo the pickup
+    readyTicket(ctx);
+    pickedUp(ctx);
     r.git('switch', '-q', 'main');
-    const before = r.read(rel);
+    const before = r.read(REL);
     const out = run('log', 'FB-001', '--by', 'lead', 'even kijken');
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /in uitvoering door s1 op branch feature\/a/);
-    assert.equal(r.read(rel), before, 'nothing was written');
+    assert.match(out.stderr, /Op branch feature\/a staat een nieuwere versie van FB-001: in-uitvoering door s1 op branch feature\/a/);
+    assert.match(out.stderr, /wacht op de merge/);
+    assert.equal(r.read(REL), before, 'nothing was written');
 
     // and a second session cannot pick up a ticket another session already has
     r.git('switch', '-q', '-c', 'feature/b');
@@ -132,107 +145,83 @@ test('a write on a stale copy is refused, so an old status can never be stamped 
   }
 });
 
-test('after a post-merge commit on the branch, the tester can still close the ticket on main', () => {
+test("an owner's write on main cannot run ahead of an unmerged final status", () => {
   const ctx = setup();
   const { r, run } = ctx;
   try {
     readyTicket(ctx);
-    r.git('switch', '-q', '-c', 'feature/a');
-    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
+    pickedUp(ctx);
     assert.equal(run('status', 'FB-001', 'te-testen', '--by', 's1').status, 0);
-    r.commit('FB-001 done');
+    r.commit('FB-001 done, PR open');
     r.git('switch', '-q', 'main');
-    r.git('merge', '-q', '--no-ff', '-m', 'merge a', 'feature/a');
-
-    r.git('switch', '-q', 'feature/a');
-    assert.equal(run('pr', 'FB-001', '52', '--by', 's1').status, 0);
-    r.commit('FB-001 PR number, after the merge');
-    r.git('switch', '-q', 'main');
-
-    const out = run('status', 'FB-001', 'klaar', '--by', 'tester', '--log', 'getest');
-    assert.equal(out.status, 0, out.stderr);
-    assert.equal(fieldsOf(r, ticketPath('FB', 1, 'thema-dupliceren')).fields.pr, '52', 'the PR number recorded after the merge is kept');
+    const out = run('block', 'FB-001', '--by', 'eigenaar', 'wacht');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /te-testen/);
+    assert.match(out.stderr, /wacht op de merge/);
   } finally {
     r.cleanup();
   }
 });
 
-test('a ticket given back on an unmerged branch can be picked up by the next session', () => {
+test('after the merge the ticket is written on main, and the tester closes it with the PR number kept', () => {
   const ctx = setup();
   const { r, run } = ctx;
   try {
     readyTicket(ctx);
-    r.git('switch', '-q', '-c', 'feature/a');
-    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
-    r.commit('Start FB-001');
-    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 's1', '--log', 'teruggegeven').status, 0);
+    pickedUp(ctx);
+    assert.equal(run('status', 'FB-001', 'te-testen', '--by', 's1').status, 0);
+    assert.equal(run('pr', 'FB-001', '52', '--by', 's1').status, 0, 'the PR number goes in before the merge');
+    r.commit('FB-001 done');
+    r.git('switch', '-q', 'main');
+    r.git('merge', '-q', '--no-ff', '-m', 'merge a', 'feature/a');
+
+    r.git('switch', '-q', 'feature/a');
+    let out = run('log', 'FB-001', '--by', 's1', 'nog iets');
+    assert.equal(out.status, 1, 'no writes on the work branch after the merge');
+    assert.match(out.stderr, /staat al op main/);
+
+    r.git('switch', '-q', 'main');
+    out = run('status', 'FB-001', 'klaar', '--by', 'eigenaar', '--log', 'getest');
+    assert.equal(out.status, 0, out.stderr);
+    assert.equal(fieldsOf(r).fields.pr, '52');
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a ticket given back on an unmerged branch can be picked up, and its note is shown', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    pickedUp(ctx);
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 's1', '--log', 'teruggegeven: datamodel staat er al').status, 0);
     r.commit('Give FB-001 back');
 
     r.git('switch', '-q', 'main');
     r.git('switch', '-q', '-c', 'feature/b');
     const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
     assert.equal(out.status, 0, out.stderr);
-    const log = fieldsOf(r, ticketPath('FB', 1, 'thema-dupliceren')).worklog.map((w) => w.text);
-    assert.ok(log.includes('in-uitvoering → klaar-voor-bouw: teruggegeven'), 'the give-back note travels to the next session');
+    assert.match(out.stdout, /Let op: op branch feature\/a staat een nieuwere versie van FB-001 met dezelfde status/);
+    assert.match(out.stdout, /teruggegeven: datamodel staat er al/);
   } finally {
     r.cleanup();
   }
 });
 
-test('in a second clone, the guard sees a fetched branch that holds the ticket', () => {
+test('a blocked ticket is neither given back nor picked up', () => {
   const ctx = setup();
   const { r, run } = ctx;
   try {
     readyTicket(ctx);
-    const origin = path.join(r.dir, 'origin.git');
-    execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin], { env: GIT_ENV });
-    r.git('remote', 'add', 'origin', origin);
-    r.git('push', '-q', 'origin', 'main');
-    r.git('switch', '-q', '-c', 'feature/a');
-    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
-    r.commit('Start FB-001');
-    r.git('push', '-q', 'origin', 'feature/a');
-
-    // the functional architect's own clone, on main, after a fetch
-    const clone = path.join(r.dir, 'architect');
-    execFileSync('git', ['clone', '-q', origin, clone], { env: GIT_ENV });
-    const out = runIn(ctx, clone, 'log', 'FB-001', '--by', 'fa', 'een aanvulling');
-    assert.equal(out.status, 1);
-    assert.match(out.stderr, /in uitvoering door s1 op branch feature\/a \(gezien op remote branch origin\/feature\/a\)/);
-  } finally {
-    r.cleanup();
-  }
-});
-
-function addOrigin(r) {
-  const origin = path.join(r.dir, 'origin.git');
-  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin], { env: GIT_ENV });
-  r.git('remote', 'add', 'origin', origin);
-  r.git('push', '-q', '-u', 'origin', 'main');
-  return origin;
-}
-
-test('a ticket given back while blocked stays blocked for the next session', () => {
-  const ctx = setup();
-  const { r, run } = ctx;
-  try {
-    const rel = readyTicket(ctx);
-    r.git('switch', '-q', '-c', 'feature/a');
-    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
+    pickedUp(ctx);
     assert.equal(run('block', 'FB-001', '--by', 's1', 'open', 'vraag', 'Art.', 'XIV').status, 0);
-    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 's1', '--log', 'teruggegeven: wacht op besluit').status, 0);
-    r.commit('Give FB-001 back, blocked');
-
-    r.git('switch', '-q', 'main');
-    r.git('switch', '-q', '-c', 'feature/b');
-    let out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
-    assert.equal(out.status, 1, 'a blocked ticket is not picked up');
-    assert.match(out.stderr, /geblokkeerd: open vraag Art\. XIV/);
-
-    assert.equal(run('unblock', 'FB-001', '--by', 'eigenaar', 'beslist').status, 0);
-    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    let out = run('status', 'FB-001', 'klaar-voor-bouw', '--by', 's1');
+    assert.equal(out.status, 1, 'the session keeps a blocked ticket');
+    assert.match(out.stderr, /Houd het ticket tot de vraag beantwoord is/);
+    assert.equal(run('unblock', 'FB-001', '--by', 's1', 'beslist').status, 0);
+    out = run('status', 'FB-001', 'klaar-voor-bouw', '--by', 's1');
     assert.equal(out.status, 0, out.stderr);
-    assert.ok(fieldsOf(r, rel).worklog.some((w) => w.text.includes('teruggegeven: wacht op besluit')));
   } finally {
     r.cleanup();
   }
@@ -251,27 +240,46 @@ test("the owner's block on main stops a pickup from a branch that forked before 
     r.git('switch', '-q', 'feature/c');
     const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's3');
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /geblokkeerd: welke disciplines\?/);
+    assert.match(out.stderr, /geblokkeerd \(welke disciplines\?\)/);
+    assert.match(out.stderr, /git merge main/);
+    r.git('merge', '-q', 'main');
+    assert.match(run('status', 'FB-001', 'in-uitvoering', '--by', 's3').stderr, /is geblokkeerd: welke disciplines\?/);
   } finally {
     r.cleanup();
   }
 });
 
-test('two copies that have diverged are refused, not silently overwritten', () => {
+test('a newer copy with the same state does not stop a write, and is named', () => {
   const ctx = setup();
   const { r, run } = ctx;
   try {
-    const rel = readyTicket(ctx);
+    readyTicket(ctx);
     r.git('switch', '-q', '-c', 'feature/x');
     assert.equal(run('log', 'FB-001', '--by', 's1', 'op de branch').status, 0);
     r.commit('log on the branch');
     r.git('switch', '-q', 'main');
-    r.write(rel, `${r.read(rel).trimEnd()}\n- 2026-09-13 09:00 · fa · met de hand op main\n`);
-    r.commit('hand edit on main');
+    const out = run('log', 'FB-001', '--by', 'eigenaar', 'op main');
+    assert.equal(out.status, 0, out.stderr);
+    assert.match(out.stdout, /Let op: op branch feature\/x/);
+  } finally {
+    r.cleanup();
+  }
+});
 
-    const out = run('log', 'FB-001', '--by', 'fa', 'nog iets');
+test('in a second clone, the guard sees a fetched branch that holds the ticket', () => {
+  const ctx = setup();
+  const { r } = ctx;
+  try {
+    readyTicket(ctx);
+    const origin = addOrigin(r);
+    pickedUp(ctx);
+    r.git('push', '-q', 'origin', 'feature/a');
+
+    const clone = path.join(r.dir, 'architect');
+    execFileSync('git', ['clone', '-q', origin, clone], { env: GIT_ENV });
+    const out = runIn(ctx, clone, 'log', 'FB-001', '--by', 'fa', 'een aanvulling');
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /uit elkaar gelopen/);
+    assert.match(out.stderr, /Op remote branch origin\/feature\/a staat een nieuwere versie van FB-001: in-uitvoering door s1/);
   } finally {
     r.cleanup();
   }
@@ -283,9 +291,7 @@ test('a branch deleted on the server is named as stale, and git fetch --prune fr
   try {
     readyTicket(ctx);
     const origin = addOrigin(r);
-    r.git('switch', '-q', '-c', 'feature/d');
-    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's4').status, 0);
-    r.commit('Start FB-001');
+    pickedUp(ctx, 'feature/d', 's4');
     r.git('push', '-q', 'origin', 'feature/d');
     r.git('switch', '-q', 'main');
     r.git('branch', '-D', 'feature/d');
@@ -303,7 +309,7 @@ test('a branch deleted on the server is named as stale, and git fetch --prune fr
   }
 });
 
-test('a newer copy on your own upstream asks for a pull instead of being adopted', () => {
+test('a newer copy on your own upstream asks for a pull', () => {
   const ctx = setup();
   const { r, run } = ctx;
   try {
@@ -318,7 +324,34 @@ test('a newer copy on your own upstream asks for a pull instead of being adopted
     execFileSync('git', ['-C', clone, 'fetch', '-q'], { env: GIT_ENV });
     const out = runIn(ctx, clone, 'log', 'FB-001', '--by', 'tester', 'x');
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /remote branch origin\/main.*git pull/);
+    assert.match(out.stderr, /Op origin\/main staat een nieuwere versie van FB-001\. Haal ze eerst binnen met git pull/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a PR merged on the server and fetched but not pulled asks for a pull, even with the work branch still local', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    const origin = addOrigin(r);
+    pickedUp(ctx);
+    assert.equal(run('status', 'FB-001', 'te-testen', '--by', 's1', '--pr', '7').status, 0);
+    r.commit('FB-001 done');
+    r.git('push', '-q', 'origin', 'feature/a');
+    r.git('switch', '-q', 'main');
+
+    // the merge happens on the server (here: from a second clone)
+    const server = path.join(r.dir, 'server-merge');
+    execFileSync('git', ['clone', '-q', origin, server], { env: GIT_ENV });
+    execFileSync('git', ['-C', server, 'merge', '-q', '--no-ff', '-m', 'Merge PR 7', 'origin/feature/a'], { env: GIT_ENV });
+    execFileSync('git', ['-C', server, 'push', '-q', 'origin', 'main'], { env: GIT_ENV });
+
+    r.git('fetch', '-q');
+    const out = run('status', 'FB-001', 'klaar', '--by', 'eigenaar');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /git pull/);
   } finally {
     r.cleanup();
   }
