@@ -17,8 +17,8 @@ Format and statuses: [`backlog/TICKETS.md`](../../../backlog/TICKETS.md). Talk t
 Dutch; commits stay English.
 
 Change a ticket's frontmatter **only through the CLI** (`node tools/backlog-board/tickets.mjs …`). It sets `bijgewerkt`,
-which is how the board decides which version is newest, it writes the Werklog line, and it refuses to write to a copy
-that is not the current one. When it refuses with *"heeft elders een nieuwere versie"*, you are in the wrong
+which is how the board decides which version is newest, it writes the Werklog line, and it refuses a write when a newer copy
+elsewhere says the ticket is in another state (another status, or in progress under someone else). When it refuses with *"heeft elders een nieuwere versie"*, you are in the wrong
 checkout: do not work around it.
 
 ## 0. Is there a ticket?
@@ -33,7 +33,8 @@ checkout: do not work around it.
   let the owner confirm your pick.
 
 Exempt from the rule: answering questions, explaining, read-only investigation, edits to ticket files themselves, and
-bookkeeping (the coordination state, epic checkboxes and the progress table).
+bookkeeping (the coordination state under `.claude/coordination/`, epic checkboxes, the progress table and the technical
+lead's backlog corrections), exactly as in CLAUDE.md.
 
 ## 1. Check the ticket and claim it
 

@@ -56,10 +56,16 @@ that the board has the **full flow** of columns including a tester column.
    hue also carries a text label, and Markdown from a ticket is escaped before it is rendered.
 6. **Every write goes through one CLI**, `tools/backlog-board/tickets.mjs` (`new`, `status`, `log`, `block`,
    `unblock`, `pr`, plus `list`, `check`, `next-id`). It enforces the allowed transitions, sets `bijgewerkt`,
-   appends the Werklog line, and refuses to touch or produce an invalid ticket. **It also refuses to write to a copy
-   that is not the current one**: any write on a stale copy (a Werklog line on `main` while a branch has the ticket in
-   progress) would stamp the old status with a newer `bijgewerkt` and make it the board's truth, and a second session
-   could then pick the ticket up again. The first audit reproduced exactly that before this guard existed. A new number is the highest number
+   appends the Werklog line, and refuses to touch or produce an invalid ticket. **It also refuses a write when a
+   newer copy elsewhere says the ticket is in a different state** (another status, or in progress under someone
+   else): a write on a stale copy (a Werklog line on `main` while a branch has the ticket in progress) would stamp the
+   old status with a newer `bijgewerkt` and make it the board's truth, and a second session could then pick the
+   ticket up again. The first audit reproduced exactly that before this guard existed. The guard compares **state,
+   not text**: the second audit showed that a text comparison froze a ticket for the tester once its branch gained a
+   PR number after the merge, and froze it for everyone once a session gave it back on a branch that was never
+   merged. It reads local branches, worktrees and remote-tracking branches as of the last fetch; a branch that exists
+   only on another PC is invisible to it. That gap is closed by a process rule, not by code: the functional
+   architect, working in their own clone, changes an existing ticket only while it is `nieuw` (`TICKETS.md`). A new number is the highest number
    visible anywhere on this machine plus one, reserved for the moment of creation through the groepschat claim
    directory when it exists.
 7. **No work without a ticket or a story.** A session that is asked to change files for work that has neither
@@ -98,6 +104,10 @@ that the board has the **full flow** of columns including a tester column.
   locally; the board does not look at `refs/remotes`.
 - **`bijgewerkt` decides.** A hand edit that forgets to update it can lose to an older version on another branch. The
   CLI always updates it and refuses to write to a stale copy; `TICKETS.md` says so for hand edits.
+- **The stale-copy guard only sees this machine** plus what it last fetched. Agents push only when the owner asks,
+  so from the functional architect's clone an in-progress branch is usually invisible; the `nieuw`-only rule for
+  editing existing tickets carries that case. Two clones can also mint the same FB number; the board flags both
+  files and `TICKETS.md` gives the one permitted rename.
 - **`bijgewerkt` is local time without a zone.** Everyone writing tickets today works in Belgian time. A writer whose
   clock is in another zone (a cloud session, a CI runner) would produce versions that win or lose by the offset.
   Nothing in the current flow writes tickets from such a place; if one ever does, store an offset.

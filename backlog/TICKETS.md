@@ -24,7 +24,10 @@ die een lokaal kanbanbord uitleest. Het besluit en de afwegingen staan in
 
 **Bestandsnaam:** `FB-012-korte-titel.md` of `TB-003-korte-titel.md`: het nummer met minstens drie cijfers, daarna
 de titel in kleine letters met koppeltekens. **Een bestandsnaam verandert nooit meer**, ook niet als de titel wijzigt:
-het bord volgt een ticket over branches heen via zijn bestandsnaam.
+het bord volgt een ticket over branches heen via zijn bestandsnaam. Eén uitzondering: krijgen twee tickets hetzelfde
+nummer (twee clones die tegelijk een ticket aanmaakten), dan krijgt het jongste een nieuw nummer via `next-id`: hernoem
+het bestand en pas `id` aan, zolang niemand het opgepakt heeft. Haal `main` binnen vlak voor `new` en push meteen
+daarna, dan gebeurt het bijna nooit.
 
 Maak een ticket nooit met de hand aan maar met `tickets.mjs new` (zie onder): dan klopt het nummer en staat de
 structuur er al.
@@ -139,9 +142,11 @@ afspraak (skill `ticket-uitvoeren`), geen slot.
 ## Wie doet wat
 
 - **Functioneel architect:** maakt tickets aan met de skill `ticket-aanmaken`, op `main`, in een eigen clone van de
-  repo, en zet ze op `klaar-voor-bouw` als ze verfijnd zijn. Pas een ticket dat `in-uitvoering` is niet inhoudelijk
-  aan: dat botst met de branch van de agent, en de CLI weigert het ook (zie onder). Aanvullingen worden een nieuw
-  ticket, of worden eerst met de eigenaar besproken.
+  repo, en zet ze op `klaar-voor-bouw` als ze verfijnd zijn. **Een bestaand ticket past de functioneel architect
+  alleen aan zolang het `nieuw` is.** Vanaf `klaar-voor-bouw` kan een sessie op de pc van de eigenaar het al opgepakt
+  hebben op een branch die nog niet gepusht is, en die branch ziet een eigen clone niet (ook de CLI niet). Wil je dan
+  toch iets wijzigen, vraag het eerst na bij de eigenaar, die het op het bord ziet; anders wordt de aanvulling een
+  nieuw ticket.
 - **Agent-sessie:** werkt volgens de skill `ticket-uitvoeren`. Heeft het werk nog geen ticket en geen story, dan maakt
   de agent **eerst** een TB-ticket aan, vóór er een bestand verandert.
 - **Functioneel tester:** test tickets in `te-testen` met de skill `ticket-testen` en zet ze op `klaar`, of terug naar
@@ -192,7 +197,11 @@ zijn Engels, wat ze in het ticket schrijven is Nederlands.
 | `node tools/backlog-board/tickets.mjs pr <id> <nummer> --by <wie>` | het PR-nummer invullen |
 
 Elke wijziging via de CLI zet `bijgewerkt` en schrijft een werklogregel. **Een schrijfopdracht weigert als er elders
-een nieuwere versie van het ticket staat** (op een andere branch of in een andere worktree): anders zou een regel op
-een oude kopie de oude status weer de nieuwste maken. Pas het ticket dus aan waar het werk gebeurt. Wie een ticket
+een nieuwere versie staat die een andere status zegt**, of die zegt dat iemand anders het ticket vasthoudt: anders
+zou een regel op een oude kopie de oude status weer de nieuwste maken. Pas het ticket dus aan waar het werk gebeurt.
+Een nieuwere versie met dezelfde status (een PR-nummer dat na de merge op de branch kwam, of een ticket dat op een
+branch teruggegeven werd) houdt niemand tegen. De controle ziet wat deze pc ziet: de lokale branches en worktrees, en
+de branches die met `git fetch` of `git pull` binnengehaald zijn. Een branch die alleen op een andere pc staat, ziet
+ze niet; daarvoor dient de afspraak onder *Wie doet wat*. Wie een ticket
 toch met de hand aanpast, moet `bijgewerkt` zelf bijwerken, anders kan een oudere versie op een andere branch het
 halen.

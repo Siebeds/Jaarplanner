@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-13
-bijgewerkt: 2026-09-13 15:39
+bijgewerkt: 2026-09-13 15:57
 opgepakt-door: ticket-backlog
 branch: feature/ticket-backlog
 pr:
@@ -58,3 +58,4 @@ nog als vervolg binnen een lopende epic, en de functioneel architect werkt in ee
 - 2026-09-13 14:21 · ticket-backlog · browserpass op 1440 en 390 px, licht en donker: vier gebreken gevonden en opgelost (kolommen, criteria, bewaarde zoekterm, contrast van de randen)
 - 2026-09-13 14:41 · ticket-backlog · antagonist ronde 1: VIOLATIONS FOUND (5 MAJOR, 6 MINOR); code en documenten aangepast, 48 tests groen; het Art. II.6-amendement wacht op de eigenaar
 - 2026-09-13 15:39 · ticket-backlog · eigenaar: Art. II.6-amendement geratificeerd, vervolgstories alleen binnen een lopende epic, functioneel architect in een eigen clone
+- 2026-09-13 15:57 · ticket-backlog · antagonist ronde 2: VIOLATIONS FOUND (3 MAJOR rond de bewaking op oude kopieën); bewaking vergelijkt nu status in plaats van tekst en ziet opgehaalde remote branches, 52 tests groen, browserpass opnieuw gedraaid

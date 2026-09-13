@@ -29,7 +29,10 @@ function inline(raw) {
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1<em>$2</em>');
   s = s.replace(/(^|[^_\w])_([^_\s][^_]*?)_(?!\w)/g, '$1<em>$2</em>');
-  return s.replace(PARKED, (_, i) => parked[Number(i)]);
+  // A link can hold a parked code span, so restore until nothing parked is left. Each pass expands
+  // one level of nesting and there are at most two (code inside a link).
+  for (let pass = 0; pass < 3 && s.includes(MARK); pass++) s = s.replace(PARKED, (_, i) => parked[Number(i)]);
+  return s;
 }
 
 function isTableStart(lines, i) {

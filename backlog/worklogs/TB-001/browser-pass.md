@@ -34,6 +34,24 @@ Light: body text on card 16.18, muted text on card 6.38 and on the column 5.26, 
 blocked flag 5.58, warning flag 5.75, muted text on the composited flag tint 5.51, the kind bars against the card 7.54
 and 6.13. Dark: every pair above is between 6.23 and 12.30.
 
+## Rerun on the audit fix rounds
+
+The same pass was run twice more against the demo repository, rebuilt each time for the current format (TB gained
+*Open vragen*): once on `8543ff9` (round-1 fixes), and once on the round-2 fixes, with one ticket extended so its
+*Gewenst gedrag* holds a code span inside a link (`` [`FB-004`](https://example.com/fb-004) ``), the case round 2
+found broken in the renderer.
+
+| Check | Result on the round-2 code |
+| --- | --- |
+| Placement, 1440×1000 | Unchanged from the first pass: Nieuw FB-002, FB-003 · In uitvoering FB-004, FB-001 · In review TB-002 · Te testen FB-005 · Klaar FB-006, TB-001 · invalid strip FB-007; no horizontal overflow |
+| Code span inside a link | The drawer renders `<a href="https://example.com/fb-004">` around `<code>FB-004</code>`; no private-use placeholder character anywhere in the drawer text |
+| Keyboard, deep link, filter, search | Unchanged: Tab reaches the invalid-strip link, Enter opens, Escape closes with focus returned; `#FB-001` opens; *Technisch* shows TB-002 and TB-001; "woordenschat" shows FB-004 |
+| 390×844 | No overflow on the board (`scrollWidth` 390) or in the drawer (390 wide) |
+| Dark mode, live update | Unchanged: dark ground `rgb(20, 23, 27)`; clearing `geblokkeerd` on disk removes the flag without a reload |
+| Malformed request | `GET http://a:99999/` with a valid Host header gets `400 Bad Request`, and the next `/api/board` request still answers 200 |
+
+The screenshots below are from the first pass; the layout did not change in the fix rounds.
+
 ## Screenshots
 
 `board-1440.png`, `board-390.png`, `board-dark.png`, `detail-1440.png`, `detail-390.png`,

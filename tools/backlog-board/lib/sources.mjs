@@ -122,10 +122,10 @@ async function refs(root, patterns) {
     });
 }
 
-async function mergedRefs(root, cache, main, all) {
-  const key = main + '|' + all.map((r) => r.sha).join(',');
+async function mergedRefs(root, cache, main, all, patterns) {
+  const key = main + '|' + patterns.join(',') + '|' + all.map((r) => r.sha).join(',');
   if (cache.merged.key !== key) {
-    const out = await git(root, ['for-each-ref', `--merged=${main}`, '--format=%(refname)', 'refs/heads']);
+    const out = await git(root, ['for-each-ref', `--merged=${main}`, '--format=%(refname)', ...patterns]);
     cache.merged = { key, refs: new Set(out.split('\n').filter(Boolean)) };
   }
   return cache.merged.refs;
@@ -185,19 +185,25 @@ function relative(root, dir) {
 }
 
 /**
+ * @param {{ remotes?: boolean }} options  `remotes` also reads unmerged remote-tracking branches
+ *   (`refs/remotes`). The board never does (it shows this PC); the CLI's stale-copy guard does, so a
+ *   branch another machine pushed and this clone fetched still counts.
  * @returns {Promise<{ versions: Array<{ source: object, folder: string, file: string, text: string }>, sources: object[] }>}
  */
-export async function collectVersions(root, cache = createCache()) {
-  const heads = await refs(root, ['refs/heads']);
+export async function collectVersions(root, cache = createCache(), { remotes = false } = {}) {
+  const patterns = remotes ? ['refs/heads', 'refs/remotes'] : ['refs/heads'];
+  const heads = (await refs(root, patterns)).filter((r) => !r.ref.endsWith('/HEAD'));
   const main = heads.find((r) => r.ref === 'refs/heads/main');
   if (!main) throw new Error('Er is geen lokale branch "main" in deze repo.');
-  const merged = await mergedRefs(root, cache, main.sha, heads);
+  const merged = await mergedRefs(root, cache, main.sha, heads, patterns);
   const trees = await worktrees(root);
 
-  // Commit sources: main, unmerged branches, and detached unmerged worktree HEADs.
+  // Commit sources: main, unmerged branches, and detached unmerged worktree HEADs. A remote-tracking
+  // branch at the same commit as a local one adds nothing, so it is skipped.
   const commitSources = [{ source: { type: 'main', name: 'main' }, sha: main.sha }];
   for (const r of heads) {
     if (r.ref === main.ref || merged.has(r.ref)) continue;
+    if (commitSources.some((c) => c.sha === r.sha)) continue;
     commitSources.push({ source: { type: 'branch', name: r.name }, sha: r.sha });
   }
   for (const w of trees) {

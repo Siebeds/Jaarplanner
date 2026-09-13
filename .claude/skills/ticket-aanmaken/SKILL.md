@@ -105,3 +105,11 @@ Show the user the finished ticket (title, criteria, scenarios) and ask for a go.
   protection refuses it, tell the user, because this flow needs direct push rights on `main` (ADR-0033).
 - **TB:** commit it on the work branch as the first commit of the work (`Add TB-003: <titel>`), then go back to the
   `ticket-uitvoeren` skill **at its step 1** (the claim and the constitution check). Do not push unless the owner asks.
+
+## Changing an existing ticket
+
+In the functional architect's own clone, the CLI's guard cannot see a branch that exists only on the owner's PC, and
+agents push only when the owner asks. So **change an existing FB ticket only while it is `nieuw`.** From
+`klaar-voor-bouw` on, a session may already hold it: ask the owner to check the board first, or log the addition as a
+new ticket. Pull `main` right before `new` and push right after it, so two clones rarely mint the same number; if
+they do, `backlog/TICKETS.md` describes the one permitted rename.

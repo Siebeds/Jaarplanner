@@ -102,21 +102,35 @@ function requireValid(ticket) {
   );
 }
 
+// What a write must not overrule: the status, and for work in progress also who holds it. Other fields
+// (a PR number, Werklog lines) may differ between copies without either copy being wrong about the
+// ticket's state.
+const stateOf = (f) => (f.status === 'in-uitvoering' ? `in-uitvoering door ${f['opgepakt-door']}` : f.status);
+
 /**
- * Refuses to write to a copy that is not the current one. Without this, any write on a stale copy
- * (a Werklog line on main while a branch has the ticket in progress, say) stamps the old status with
- * a newer `bijgewerkt`, and the board then shows the old status as the truth.
+ * Refuses a write when a newer copy elsewhere says the ticket is in a different state. Without this,
+ * a write on a stale copy (a Werklog line on main while a branch has the ticket in progress, say)
+ * stamps the old status with a newer `bijgewerkt`, the board shows the old status as the truth, and a
+ * second session can pick the ticket up again.
+ *
+ * It compares state, not text: a branch that gained a PR number after its merge, or a ticket given
+ * back on a branch that was never merged, must not freeze the ticket for the tester or the next
+ * session. And it sees what this machine sees: local branches, worktrees, and remote-tracking
+ * branches as of the last fetch. A branch that exists only on another PC is invisible to it; the
+ * skills carry the rule for that case.
  */
 async function requireCurrent(ticket) {
-  const { versions } = await collectVersions(await mainRoot());
+  const { versions } = await collectVersions(await mainRoot(), undefined, { remotes: true });
   const same = versions.filter((v) => v.folder === ticket.folder && v.file === ticket.file);
   const winner = winnerOf(same);
   if (!winner || normalise(winner.text) === normalise(ticket.text)) return;
   const w = winner.parsed.fields;
+  const mine = ticket.parsed.fields;
+  if (stateOf(w) === stateOf(mine)) return;
   throw new Fail(
-    `${ticket.parsed.id} heeft elders een nieuwere versie: ${sourceLabel(winner.source)} (status ${w.status}, bijgewerkt ${w.bijgewerkt}). ` +
-      `Deze checkout heeft status ${ticket.parsed.fields.status}, bijgewerkt ${ticket.parsed.fields.bijgewerkt}. ` +
-      'Pas het ticket aan waar het werk gebeurt, of haal die versie eerst binnen.',
+    `${ticket.parsed.id} heeft elders een nieuwere versie: ${sourceLabel(winner.source)} (${stateOf(w)}, bijgewerkt ${w.bijgewerkt}). ` +
+      `Deze checkout zegt: ${stateOf(mine)}, bijgewerkt ${mine.bijgewerkt}. ` +
+      'Pas het ticket aan waar het werk gebeurt, of vraag de eigenaar wie het vasthoudt.',
   );
 }
 

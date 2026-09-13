@@ -37,6 +37,13 @@ test('emphasis never reaches into markup the renderer already built', () => {
   assert.equal(renderMarkdown('`a_b_c` en _nadruk_'), '<p><code>a_b_c</code> en <em>nadruk</em></p>');
 });
 
+test('a code span inside a link survives, nested placeholders and all', () => {
+  assert.equal(
+    renderMarkdown('[`FB-001`](https://example.com/x)'),
+    '<p><a href="https://example.com/x" target="_blank" rel="noreferrer noopener"><code>FB-001</code></a></p>',
+  );
+});
+
 test('the renderer source is plain text, so git and review tools can read it', () => {
   const src = fs.readFileSync(new URL('../public/markdown.js', import.meta.url), 'utf8');
   const control = [...src].filter((ch) => ch.charCodeAt(0) < 32 && !'\n\r\t'.includes(ch));

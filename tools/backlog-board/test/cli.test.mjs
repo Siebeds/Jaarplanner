@@ -2,12 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseTicket } from '../lib/parse.mjs';
-import { tempRepo, ticketPath } from './helpers.mjs';
+import { GIT_ENV, tempRepo, ticketPath } from './helpers.mjs';
 
 const CLI = fileURLToPath(new URL('../tickets.mjs', import.meta.url));
+
+const runIn = ({ coord }, cwd, ...args) =>
+  spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env: { ...process.env, JAARPLANNER_COORD: coord } });
 
 function setup() {
   const r = tempRepo();
@@ -16,7 +19,7 @@ function setup() {
   const coord = path.join(r.dir, 'coordination');
   fs.mkdirSync(path.join(coord, 'claims'), { recursive: true });
   fs.writeFileSync(path.join(coord, 'groepschat.md'), '# Groepschat\n');
-  const run = (...args) => spawnSync(process.execPath, [CLI, ...args], { cwd: r.repo, encoding: 'utf8', env: { ...process.env, JAARPLANNER_COORD: coord } });
+  const run = (...args) => runIn({ coord }, r.repo, ...args);
   const fill = (rel) =>
     r.write(
       rel,
@@ -118,12 +121,81 @@ test('a write on a stale copy is refused, so an old status can never be stamped 
     const before = r.read(rel);
     const out = run('log', 'FB-001', '--by', 'lead', 'even kijken');
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /nieuwere versie: branch feature\/a \(status in-uitvoering/);
+    assert.match(out.stderr, /nieuwere versie: branch feature\/a \(in-uitvoering door s1/);
     assert.equal(r.read(rel), before, 'nothing was written');
 
     // and a second session cannot pick up a ticket another session already has
     r.git('switch', '-q', '-c', 'feature/b');
     assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's2').status, 1);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('after a post-merge commit on the branch, the tester can still close the ticket on main', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    r.git('switch', '-q', '-c', 'feature/a');
+    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
+    assert.equal(run('status', 'FB-001', 'te-testen', '--by', 's1').status, 0);
+    r.commit('FB-001 done');
+    r.git('switch', '-q', 'main');
+    r.git('merge', '-q', '--no-ff', '-m', 'merge a', 'feature/a');
+
+    r.git('switch', '-q', 'feature/a');
+    assert.equal(run('pr', 'FB-001', '52', '--by', 's1').status, 0);
+    r.commit('FB-001 PR number, after the merge');
+    r.git('switch', '-q', 'main');
+
+    const out = run('status', 'FB-001', 'klaar', '--by', 'tester', '--log', 'getest');
+    assert.equal(out.status, 0, out.stderr);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a ticket given back on an unmerged branch can be picked up by the next session', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    r.git('switch', '-q', '-c', 'feature/a');
+    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
+    r.commit('Start FB-001');
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 's1', '--log', 'teruggegeven').status, 0);
+    r.commit('Give FB-001 back');
+
+    r.git('switch', '-q', 'main');
+    r.git('switch', '-q', '-c', 'feature/b');
+    const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 0, out.stderr);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('in a second clone, the guard sees a fetched branch that holds the ticket', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    const origin = path.join(r.dir, 'origin.git');
+    execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin], { env: GIT_ENV });
+    r.git('remote', 'add', 'origin', origin);
+    r.git('push', '-q', 'origin', 'main');
+    r.git('switch', '-q', '-c', 'feature/a');
+    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
+    r.commit('Start FB-001');
+    r.git('push', '-q', 'origin', 'feature/a');
+
+    // the functional architect's own clone, on main, after a fetch
+    const clone = path.join(r.dir, 'architect');
+    execFileSync('git', ['clone', '-q', origin, clone], { env: GIT_ENV });
+    const out = runIn(ctx, clone, 'log', 'FB-001', '--by', 'fa', 'een aanvulling');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /origin\/feature\/a \(in-uitvoering door s1/);
   } finally {
     r.cleanup();
   }
