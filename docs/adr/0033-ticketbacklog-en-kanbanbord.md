@@ -73,7 +73,9 @@ that the board has the **full flow** of columns including a test column.
    the git command that brings the newer copy in: `git merge main`, `git pull` for the checkout's own upstream,
    `git fetch --prune` for a remote branch already deleted on the server, or waiting for the merge of the branch that
    holds the ticket. **It never adopts another copy itself**, so git stays the only thing that merges. A newer copy
-   that agrees on the state is named, with its last Werklog line, and does not stop the write.
+   that agrees on the state is named, with its last Werklog line, and does not stop the write. When the remedy is a
+   merge of `main` that may conflict on the ticket file, the refusal says which frontmatter to keep: the branch's
+   state fields when the caller holds the ticket, `main`'s otherwise (rounds 8 and 9 each broke the other case).
 
    Four rules keep the flows inside that check. After the merge (on the local `main` or the fetched `origin/main`) a
    ticket is written on `main` and no longer on its work branch, so the PR number goes in before the merge. A blocked

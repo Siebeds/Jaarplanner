@@ -179,13 +179,23 @@ function relation(copy, mine) {
 // A copy that sits on main: main itself, a checkout of main, or the fetched main of a remote.
 const onMainLine = (s) => isMainSource(s) || (s.remote && /\/main$/.test(s.name));
 
-// Printed only when main is ahead of this checkout for the ticket, so main's state is the one to keep.
+// How to resolve a conflict in the ticket file after `git merge main`. Which frontmatter wins depends
+// on who holds the ticket: a checkout that is behind main without holding it takes main's state; the
+// session that holds it keeps its own state fields and takes main's text (audit rounds 8 and 9: one
+// rule for both cases either re-instated a state main had moved past or dropped a live hold).
 const CONFLICT_HINT =
   ' Geeft dat een conflict in het ticketbestand, houd dan de frontmatter van main en alle werklogregels van beide kanten, in volgorde van tijd.';
-const MAIN_REMEDY = `Haal main binnen in je branch (git merge main) en probeer opnieuw.${CONFLICT_HINT}`;
-const ORIGIN_MAIN_REMEDY = `Haal main eerst binnen (git pull op main) en daarna in je branch (git merge main).${CONFLICT_HINT}`;
+const HOLD_HINT =
+  ' Geeft dat een conflict in het ticketbestand: jij houdt het ticket vast, dus houd status, opgepakt-door, branch en geblokkeerd ' +
+  'van je branch, neem de rest van de tekst van main, en alle werklogregels van beide kanten, in volgorde van tijd.';
+const mainRemedy = (remote, holds) =>
+  (remote
+    ? 'Haal main eerst binnen (git pull op main) en daarna in je branch (git merge main).'
+    : 'Haal main binnen in je branch (git merge main) en probeer opnieuw.') + (holds ? HOLD_HINT : CONFLICT_HINT);
+const MAIN_REMEDY = mainRemedy(false, false);
+const ORIGIN_MAIN_REMEDY = mainRemedy(true, false);
 
-function remedyFor(conflict) {
+function remedyFor(conflict, holds = false) {
   const s = conflict.source;
   const g = conflict.parsed.fields;
   if (s.type === 'worktree') {
@@ -193,7 +203,7 @@ function remedyFor(conflict) {
       ? `Die versie staat nog niet gecommit in ${s.name}: ze moet eerst op main gecommit worden, en daarna haal je main binnen in je branch (git merge main).`
       : `Die versie staat nog niet gecommit in ${s.name}: laat die sessie haar werk afmaken, of vraag de eigenaar.`;
   }
-  if (onMainLine(s)) return s.remote ? ORIGIN_MAIN_REMEDY : MAIN_REMEDY;
+  if (onMainLine(s)) return mainRemedy(Boolean(s.remote), holds);
   let remedy;
   if (g.status === 'in-uitvoering') {
     remedy =
@@ -283,11 +293,12 @@ async function checkCurrent(root, ticket, by, { pickup = false, release = false 
     throw new Fail(`Op ${upstream} staat een nieuwere versie van ${id}. Haal ze eerst binnen met git pull.`);
   }
 
+  const holdsIt = f.status === 'in-uitvoering' && f['opgepakt-door'] === by;
   const conflict = newer.find((c) => stateKey(c.parsed.fields) !== stateKey(f));
   if (conflict) {
     throw new Fail(
       `Op ${sourceLabel(conflict.source)} staat een nieuwere versie van ${id}: ${describe(conflict.parsed.fields)}. ` +
-        `Deze checkout zegt: ${describe(f)}. ${remedyFor(conflict)}`,
+        `Deze checkout zegt: ${describe(f)}. ${remedyFor(conflict, holdsIt)}`,
     );
   }
 

@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-13
-bijgewerkt: 2026-09-13 19:23
+bijgewerkt: 2026-09-13 19:57
 opgepakt-door: ticket-backlog
 branch: feature/ticket-backlog
 pr:
@@ -68,3 +68,5 @@ nog als vervolg binnen een lopende epic, en de functioneel architect werkt in ee
 - 2026-09-13 18:36 · ticket-backlog · antagonist ronde 6: VIOLATIONS FOUND (1 MAJOR: een afgesplitste versie die het ticket vasthoudt werd genegeerd); die telt nu weer mee, een versie op main is nooit afgesplitst, nieuw commando release; eigenaar: hij wijzigt geen vastgehouden ticket maar vraagt de sessie; 76 tests groen
 - 2026-09-13 18:56 · ticket-backlog · antagonist ronde 7: VIOLATIONS FOUND (2 MAJOR: afgewerkt werk op een afgesplitste branch telde niet mee, een vervangen gepushte kopie hield het ticket vast); beide opgelost, conflictregel en release van een geblokkeerd ticket beschreven, 79 tests groen
 - 2026-09-13 19:23 · ticket-backlog · antagonist ronde 8: geen MAJOR, 5 MINOR; conflictregel houdt nu de frontmatter van main, weg voor een niet-gemergde PR beschreven, blokkering bij opruimen, push-melding, niet-gecommitte teruggave maakt niets vrij, documentatie gelijkgetrokken; 82 tests groen
+- 2026-09-13 19:53 · ticket-backlog · eigenaar: bevestigt de procedure voor een PR die hij niet merget (ticket op die branch terug naar klaar-voor-bouw en daar committen, of de branch verwijderen)
+- 2026-09-13 19:57 · ticket-backlog · antagonist ronde 9: VIOLATIONS FOUND (1 MAJOR: de conflictregel liet een sessie die het ticket vasthoudt het ongemerkt loslaten); de melding zegt nu per geval welke frontmatter je houdt, handleiding gecorrigeerd, 83 tests groen, browserpass derde keer groen

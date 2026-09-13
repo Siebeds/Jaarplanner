@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseTicket } from '../lib/parse.mjs';
+import { setFields } from '../lib/write.mjs';
 import { GIT_ENV, tempRepo, ticketPath } from './helpers.mjs';
 
 const CLI = fileURLToPath(new URL('../tickets.mjs', import.meta.url));
@@ -797,6 +798,48 @@ test('after a conflicting git merge main, keeping main\'s frontmatter lets the n
     r.git('commit', '-q', '--no-edit');
 
     out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--log', 'tweede ronde');
+    assert.equal(out.status, 0, out.stderr);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('the session holding a ticket keeps its hold when main moved on: the refusal says so, and the resolution works', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    pickedUp(ctx);
+
+    // on main, the architect's sharpened text arrives with the Werklog line a hand edit requires
+    r.git('switch', '-q', 'main');
+    const sharpened = r
+      .read(REL)
+      .replace(/(## Aanleiding\n\n)Ingevuld\./, '$1Scherper verwoord door de architect.')
+      .trimEnd();
+    r.write(REL, `${sharpened}\n- 2026-09-13 23:58 · architect · tekst aangescherpt\n`);
+    r.commit('Architect sharpens FB-001');
+
+    r.git('switch', '-q', 'feature/a');
+    let out = run('log', 'FB-001', '--by', 's1', 'bezig');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /jij houdt het ticket vast, dus houd status, opgepakt-door, branch en geblokkeerd van je branch/);
+
+    // resolve as the refusal says: the branch's state fields, main's text, every Werklog line
+    assert.throws(() => r.git('merge', '-q', 'main'), 'the merge conflicts on the ticket file');
+    // the branch's own copy, from its commit: the working file holds conflict markers right now
+    const own = parseTicket(r.git('show', `HEAD:${REL}`), { file: REL.slice(REL.lastIndexOf('/') + 1), folder: REL.slice(0, REL.lastIndexOf('/')) });
+    resolveKeepingMain(r, REL);
+    const f = own.fields;
+    r.write(REL, setFields(r.read(REL), { status: f.status, 'opgepakt-door': f['opgepakt-door'], branch: f.branch, geblokkeerd: f.geblokkeerd }));
+    r.git('add', REL);
+    r.git('commit', '-q', '--no-edit');
+
+    const p = fieldsOf(r);
+    assert.equal(p.fields.status, 'in-uitvoering');
+    assert.equal(p.fields['opgepakt-door'], 's1');
+    assert.match(p.sections.find((s) => s.title === 'Aanleiding').body, /Scherper verwoord/);
+    out = run('status', 'FB-001', 'te-testen', '--by', 's1');
     assert.equal(out.status, 0, out.stderr);
   } finally {
     r.cleanup();

@@ -152,7 +152,8 @@ statussen op hun branch (oppakken, te testen, teruggeven).
   in `te-testen` en meldt het resultaat aan de eigenaar.
 - **Eigenaar:** zet tickets op `klaar-voor-bouw`, verwerkt de test van de architect met de skill `ticket-testen` (naar
   `klaar`, of terug naar `klaar-voor-bouw` met de bevinding), merget, en kijkt op het bord. Elke statuswijziging
-  commit hij meteen op `main`, zodat de sessies ze zien. Omdat dat en het werk van
+  commit hij meteen op `main`, zodat de sessies ze zien, met twee uitzonderingen die op de branch zelf gebeuren: een
+  `release` van een gestopte sessie en het terugzetten van een PR die hij niet merget (zie *De opdrachten*). Omdat dat en het werk van
   de sessies op zijn pc gebeurt, ziet de CLI daar elke branch en worktree.
 - **Agent-sessie:** werkt volgens de skill `ticket-uitvoeren`, op de pc van de eigenaar. Heeft het werk nog geen
   ticket en geen story, dan maakt de agent **eerst** een TB-ticket aan, vóór er een bestand verandert.
@@ -219,13 +220,15 @@ andere status, een andere houder, een blokkering), dan weigert de CLI en zegt ze
 - ze staat op een remote branch die op de server al verwijderd is: `git fetch --prune`; is ze daar alleen verouderd
   (het ticket werd lokaal teruggegeven of vrijgegeven), push die branch dan.
 
-Geeft `git merge main` een conflict in het ticketbestand, houd dan de frontmatter van `main` (main liep voor, daarom
-weigerde de CLI) en alle werklogregels van beide kanten, in volgorde van tijd. Een teruggave of vrijgave telt pas als
+Geeft `git merge main` een conflict in het ticketbestand, neem dan alle werklogregels van beide kanten, in volgorde van
+tijd, en de tekst van `main`. Voor de frontmatter hangt het ervan af wie het ticket vasthoudt: houd je het zelf vast
+(`in-uitvoering` door jou), houd dan `status`, `opgepakt-door`, `branch` en `geblokkeerd` van je branch; anders de
+frontmatter van `main`. De melding van de CLI zegt welk van de twee geldt. Een teruggave of vrijgave telt pas als
 ze gecommit is; op een branch die al gepusht is, push je ze ook.
 
 Merget de eigenaar een PR niet, dan wacht het afgewerkte werk op een merge die niet komt: hij zet het ticket in een
-checkout van die branch terug naar `klaar-voor-bouw` en commit dat daar (de enige statuswijziging die hij niet op
-`main` commit), of hij verwijdert de branch, waarna de versie op `main` weer geldt.
+checkout van die branch terug naar `klaar-voor-bouw` en commit dat daar, of hij verwijdert de branch, waarna de versie
+op `main` weer geldt.
 
 De CLI neemt zelf nooit een versie over; dat doet git, zodat een latere merge klopt. Een nieuwere versie met dezelfde
 status houdt niemand tegen, maar de CLI noemt ze en toont haar laatste werklogregel (bijvoorbeeld de notitie van een

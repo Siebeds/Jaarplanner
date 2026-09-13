@@ -50,6 +50,9 @@ found broken in the renderer.
 | Dark mode, live update | Unchanged: dark ground `rgb(20, 23, 27)`; clearing `geblokkeerd` on disk removes the flag without a reload |
 | Malformed request | `GET http://a:99999/` with a valid Host header gets `400 Bad Request`, and the next `/api/board` request still answers 200 |
 
+A third run on `723dd55` (after audit round 8, the last fix round that touched the tool), on a freshly rebuilt demo
+repository and a restarted server, gave the same results on every row of the table above.
+
 The screenshots below are from the first pass; the layout did not change in the fix rounds.
 
 ## Screenshots
