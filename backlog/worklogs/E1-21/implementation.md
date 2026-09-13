@@ -251,6 +251,35 @@ where it is (2 goals).
 - The constitution amendment is its own commit (Art. XI.1), ahead of the fix commit.
 - Not re-run: the antagonist and the test-runner. Both are the orchestrator's.
 
+## Fix round 3 (2026-09-13, after round 3 on `66a26ac`: test-runner PASS with one note; antagonist 0 MAJOR, 2 MINOR, 1 QUESTION)
+
+*Owner answer to the round-3 question, 2026-09-13 ("Na de leerplandoelen"):* "until the first API import" means the first
+applied import of the **leerplandoelen** (an `opstapversies` row), which is what the code already checks. Between the
+minimumdoelen import and that point the Excel route still works, harmlessly.
+
+| # | Finding | Resolution | Test |
+| --- | --- | --- | --- |
+| MINOR 1 | "The first API import" was broader than the code, which also counts the minimumdoelen import; VII.2's "overwrite … flag every API goal" was unqualified | Narrowed to "the first API import of the leerplandoelen (a snapshot applied)" in `CONSTITUTION.md` VII.2, the 2026-09-13 log entry (corrected in place, since it has not reached `main`, with the owner's clarification recorded) and XIV; in the functional analysis; in E1-03's note and E1-21's fix-round-2 note; and in this worklog's contract. VII.2 now says "in a discipline that import covered", as the code comment does. Constitution and functional analysis in their own commit (Art. XI.1). | text |
+| MINOR 2 | Functional analysis: "blijven zoals ze zijn en kunnen niet meer bijgewerkt worden" is false for a removal | Now: "Van doelen die via Excel buiten de gemeenschappelijke doelen (G) werden ingelezen, kan de tekst niet meer bijgewerkt worden; verdwijnt zo'n doel uit Op.stap, dan wordt het nog wel gemarkeerd." | text |
+| Test-runner note | Round 2's stricter emptiness rule also applies between rows and cells, so `<colgroup>`/`<col>` refused a whole table | `colgroup` and `col` joined the text-free set (`thead`/`tbody`/`tfoot` were already in it). A `<caption>` carries text, so a table with one is still refused, never flattened without it. Snapshot 1.2 still converts with 0 refusals (live contract test). | `Kolomdefinities_houden_een_tabel_niet_tegen_een_bijschrift_wel` |
+| Cosmetic | Broken comment reflow in `OpstapImportService.cs` | Rewritten, and narrowed to the leerplandoelen snapshot. | — |
+
+### Verification after fix round 3
+
+*(PostgreSQL 17.5 in a throwaway container on port 55437.)*
+
+- `dotnet format Jaarplanner.sln --verify-no-changes`: **exit 0** (a `dotnet format` pass ran first).
+- `dotnet build Jaarplanner.sln -c Release`: **0 warnings, 0 errors**.
+- `dotnet test Jaarplanner.sln --no-build -c Release` with `JAARPLANNER_TEST_POSTGRES`, live switch off, as CI runs it:
+  **unit 1,106 passed, 4 skipped** (the live contract tests); **integration 338 passed, 1 skipped** (the live KOV →
+  PostgreSQL test); **0 failed**.
+- Live unit contract tests, `JAARPLANNER_LIVE_OPSTAP=1`, once: **4/4**. The snapshot-1.2 contract still asserts no
+  problem over all 5,835 G goals, so adding `colgroup`/`col` to the text-free set changed nothing in the real data.
+- Byte check: no U+0001, U+0002 or U+00A0 in any `.cs` file of the tree.
+- The constitution and functional-analysis correction is its own commit (Art. XI.1), ahead of the code and docs commit.
+- Not re-run: the antagonist and the test-runner, which are the orchestrator's; the live integration test (asked for the
+  live unit tests only this round).
+
 ## Not done, and why
 
 1. **Minimumdoel-level coverage is not computed**; by owner ruling R1 that clause now belongs to **E5-04** ("a minimumdoel
@@ -379,7 +408,7 @@ Once an API import has been applied (an `opstapversies` row exists), `POST /api/
 `urn:jaarplanner:opstap-import:excel-na-opstap-api` (`Probleemsoorten.OpstapExcelNaOpstapApi`), detail "Er is al een versie
 van Op.stap ingelezen via Katholiek Onderwijs Vlaanderen. Daarna wordt geen Excel-bestand van Op.stap meer ingelezen. Er
 is niets gewijzigd." (fix round 2; the round-1 sentence claimed where every leerplandoel comes from). Ratified by the
-owner on 2026-09-13 (Art. VII.2): the route stays available until the first API import and refuses every file after it,
+owner on 2026-09-13 (Art. VII.2): the route stays available until the first API import of the leerplandoelen (a snapshot applied) and refuses every file after it,
 and goals the Excel route loaded outside goal set G can no longer be refreshed by any route. Today's Excel screen shows
 the detail under "Niet gelukt". E1-22 reworks the screen
 and decides whether the upload is offered at all after an API import (noted in its backlog entry).

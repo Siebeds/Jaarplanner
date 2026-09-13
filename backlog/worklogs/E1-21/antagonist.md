@@ -103,3 +103,23 @@ build; MINOR 2–4 and QUESTION 3 closed). New findings are sentences the fix ro
 - **QUESTION** — option (b) freezes non-G reference data, and until E1-22 the Op.stap upload control can only refuse while
   the API import has no screen (E3-06 shape). *Orchestrator: E1-21 and E1-22 land together on `feature/e1-opstap-api` in
   one PR, so the interim state never reaches `main`; the freeze went to the owner (see MINOR 2).*
+
+## Round 3 (2026-09-13, on `01d5189..66a26ac`): VIOLATIONS FOUND — 0 CRITICAL, 0 MAJOR, 2 MINOR, 1 QUESTION
+
+*Verdict pasted by the orchestrator.* Every round-2 finding closed (the 409 sentence true against its trigger and pinned
+by value; the ADR cost clause holds against the code; `5c7880c` is its own commit and its log entry follows the
+2026-09-11 precedent; `IsLeeg` now allows only `TekstlozeOpmaak`, every other element traced to a refusal or a kept
+address; question 12's 27 and 8-of-8 confirmed; the `IConcordantieQuery` PostgreSQL test real; both nits fixed).
+
+- **MINOR 1** — "the first API import" (`CONSTITUTION.md:160`, `:251` log entry, `:318`; functional analysis `:277`;
+  `backlog/E1-curriculum-content.md:30`) covers more than the guard: only the leerplandoelen apply writes an
+  `opstapversies` row (`LeerplandoelImportService.cs:103`), so after a minimumdoelen-only API import the Excel route still
+  reads files. Harmless (no API leerplandoelen exist yet), but the binding text over-claims; VII.2's "overwrite … every API
+  goal the file lacks" is also unqualified where the code comment says "in a discipline that import covered". Narrow to
+  "the first API import of the leerplandoelen" (owner's nod needed), or extend the guard.
+- **MINOR 2** — functional analysis `:277` says non-G Excel goals "blijven zoals ze zijn", while VII.2 says a removal by
+  KOV is still flagged through the API path (true: `OpstapImportService.cs:310-314`).
+- **QUESTION (owner)** — did "until the first API import" mean the first leerplandoelen import (what the code does)?
+- Cosmetic, not a finding: the comment reflow at `OpstapImportService.cs:146-151` is broken.
+
+Not run by the auditor: the PostgreSQL suite and the live tests (123 targeted unit tests passed).

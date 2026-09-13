@@ -81,7 +81,7 @@ internal static partial class OpstapHtml
     private static readonly HashSet<string> TekstlozeOpmaak = new(StringComparer.OrdinalIgnoreCase)
     {
         "p", "div", "span", "br", "hr", "strong", "b", "em", "i", "u",
-        "table", "thead", "tbody", "tfoot", "tr", "td", "th",
+        "table", "thead", "tbody", "tfoot", "tr", "td", "th", "colgroup", "col",
     };
 
     /// <summary>Converts one HTML fragment to plain text; returns an empty string for null or blank input.</summary>

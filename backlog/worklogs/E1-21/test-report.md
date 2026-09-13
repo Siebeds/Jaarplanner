@@ -77,3 +77,30 @@ PostgreSQL 337 passed / 1 skipped / 0 failed (2 min 47 s); live 4/4 unit and 1/1
   E1-03 and E1-04." stands unstruck before the re-scoping note.
 
 Cleanup: API and container `jp-e121-tr2` stopped, port claims released, the owner's `jaarplanner-db` untouched.
+
+---
+
+# Round 3 (2026-09-13, on `66a26ac`): PASS
+
+*Pasted by the orchestrator.* Unit + integration suites, live KOV tests, two mutations and a scratch probe (all reverted).
+
+| # | Item | Result | Evidence |
+|---|---|---|---|
+| 1a | Release build | PASS | `--no-incremental`: 0 warnings, 0 errors. |
+| 1b | Format | PASS | `--verify-no-changes` exit 0. |
+| 1c | Unit | PASS | 1,105 passed, 4 skipped (live), 0 failed. |
+| 1d | Full integration on PostgreSQL | PASS | Own container on 55437: 338 passed, 1 skipped (live), 0 failed, 3 min 22 s. |
+| 2 | Live (`JAARPLANNER_LIVE_OPSTAP=1`) | PASS | Unit 4/4: snapshot 1.2 still 0 refusals after the `IsLeeg` change; 5,835 G, 4,983 concorded to 992, skipped + 105, A 67, P 762, S 436, V 247, Z 28, no `</` in stored text. Integration `OpstapApiLiveImportTests` 1/1 (21 s): 998 minimumdoelen, 5,835 goals, 4,983→992, all keyed, the same six without a G goal, repeat apply changes nothing. |
+| 3a | 409 exact sentence | PASS | `Excel_na_een_api_import_zegt_alleen_wat_waar_is` pins it word for word; the PostgreSQL test checks the HTTP detail on preview and apply. Old sentence only in historical worklogs. |
+| 3b | svg/iframe table refusal | PASS, mutation killed | Restoring the old `img|a` check makes both cases of `Een_tabel_met_een_ander_element_dan_opmaak_is_niet_leeg_en_wordt_geweigerd` fail. |
+| 3c | Concordance both directions | PASS, mutation killed | `MinimumdoelRef == sleutel` → `Code == sleutel` makes `Na_de_import_beantwoordt_de_concordantie_beide_richtingen` fail (expected two codes, got none). Rows written through the real endpoint, read through DI's `IConcordantieQuery`. |
+| 4 | Round-2 results still hold | PASS (from tests) | Relied on the PostgreSQL test (same HTTP pipeline) rather than the running app. |
+
+Round-2 nits: both fixed.
+
+**Behaviour note (not a defect):** the stricter `IsLeeg` also applies to the markup between rows and cells
+(`OpstapHtml.cs:383`, `:392`), so a table with `<colgroup>`/`<col>` is now refused as a whole (probe:
+`<table><colgroup><col><col></colgroup><tr><td>a</td><td>b</td></tr></table>` was `a | b`, now refused). It refuses rather
+than alters, and 1.2 has none, but a later snapshot using `colgroup`/`col` would lose whole goals.
+
+Cleanup: mutations and probe reverted (clean at `66a26ac`), container `jp-e121-tr3` removed, claim `port-55437` released.

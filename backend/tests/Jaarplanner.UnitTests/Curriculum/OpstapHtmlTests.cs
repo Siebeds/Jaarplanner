@@ -236,6 +236,22 @@ public sealed class OpstapHtmlTests
     }
 
     /// <summary>
+    /// Column definitions carry no content, so they do not stop a table from flattening (test-runner, round 3: the
+    /// stricter emptiness rule of round 2 refused such a table whole). A caption does carry text, so a table with one is
+    /// refused rather than flattened without it.
+    /// </summary>
+    [Fact]
+    public void Kolomdefinities_houden_een_tabel_niet_tegen_een_bijschrift_wel()
+    {
+        Assert.Equal(
+            "a | b",
+            OpstapHtml.NaarTekst("<table><colgroup><col style=\"width: 50%\"><col></colgroup><tbody><tr><td>a</td><td>b</td></tr></tbody></table>"));
+        Assert.Contains(
+            "<caption>",
+            OpstapHtml.OnvertaalbareOpmaak("<table><caption>Legende</caption><tr><td>a</td><td>b</td></tr></table>"));
+    }
+
+    /// <summary>
     /// Two levels of numbers flattened onto one would read "1. 1. 2." without their level, so an ordered list inside an
     /// ordered list is refused. An ordered list inside an unordered one keeps both: its numbers and the parent's dashes.
     /// </summary>
