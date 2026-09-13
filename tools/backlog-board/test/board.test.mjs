@@ -12,11 +12,15 @@ const version = (type, text, { file = 'FB-001-een-ticket.md', folder = FOLDERS.F
 });
 const cards = (board) => board.columns.flatMap((c) => c.cards);
 
-test('columnOf: a final status off main is In review, on main it is itself', () => {
-  assert.equal(columnOf('te-testen', 'branch'), 'in-review');
-  assert.equal(columnOf('klaar', 'worktree'), 'in-review');
-  assert.equal(columnOf('te-testen', 'main'), 'te-testen');
-  assert.equal(columnOf('in-uitvoering', 'worktree'), 'in-uitvoering');
+test('columnOf: a final status is In review only while main does not have it yet', () => {
+  assert.equal(columnOf('te-testen', { type: 'branch' }, 'in-uitvoering'), 'in-review');
+  assert.equal(columnOf('klaar', { type: 'worktree', branch: 'feature/x' }, undefined), 'in-review');
+  assert.equal(columnOf('te-testen', { type: 'main' }, 'te-testen'), 'te-testen');
+  // a branch that gained a commit after its merge: newer copy, same status as main
+  assert.equal(columnOf('te-testen', { type: 'branch' }, 'te-testen'), 'te-testen');
+  // the tester's uncommitted close in a checkout of main is not waiting for any merge
+  assert.equal(columnOf('klaar', { type: 'worktree', branch: 'main' }, 'te-testen'), 'klaar');
+  assert.equal(columnOf('in-uitvoering', { type: 'worktree' }, 'klaar-voor-bouw'), 'in-uitvoering');
 });
 
 test('the newest bijgewerkt wins, wherever it is', () => {

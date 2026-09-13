@@ -33,10 +33,20 @@ const fieldsOf = (r, rel) => {
   return parseTicket(r.read(rel), { file, folder });
 };
 
+/** A functional ticket FB-001, filled in and committed on main as klaar-voor-bouw. */
+function readyTicket({ r, run, fill }) {
+  assert.equal(run('new', 'FB', '--title', 'Thema dupliceren', '--by', 'fa').status, 0);
+  const rel = ticketPath('FB', 1, 'thema-dupliceren');
+  fill(rel);
+  assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'fa').status, 0);
+  r.commit('FB-001 ready');
+  return rel;
+}
+
 test('a functional ticket from creation to te-testen, through the allowed transitions only', () => {
   const { r, coord, run, fill } = setup();
   try {
-    let out = run('nieuw', 'FB', '--titel', 'Thema dupliceren', '--door', 'fa', '--fr', 'FR-7.2');
+    let out = run('new', 'FB', '--title', 'Thema dupliceren', '--by', 'fa', '--fr', 'FR-7.2');
     assert.equal(out.status, 0, out.stderr);
     const rel = ticketPath('FB', 1, 'thema-dupliceren');
     assert.ok(out.stdout.includes(rel));
@@ -48,23 +58,23 @@ test('a functional ticket from creation to te-testen, through the allowed transi
     out = run('check');
     assert.equal(out.status, 0, out.stdout);
 
-    out = run('status', 'FB-001', 'in-uitvoering', '--door', 's1', '--branch', 'feature/x');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--branch', 'feature/x');
     assert.equal(out.status, 1, 'a functional ticket is refined before it is built');
-    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--door', 'fa').status, 0);
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'fa').status, 0);
     r.commit('FB-001 ready');
 
     r.git('switch', '-q', '-c', 'feature/x');
-    out = run('status', 'FB-001', 'in-uitvoering', '--door', 's1', '--log', 'opgepakt');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--log', 'opgepakt');
     assert.equal(out.status, 0, out.stderr);
     let p = fieldsOf(r, rel);
     assert.equal(p.fields['opgepakt-door'], 's1');
     assert.equal(p.fields.branch, 'feature/x', 'the branch defaults to the current one');
 
-    assert.equal(run('status', 'FB-001', 'klaar', '--door', 's1').status, 1, 'no skipping the tester');
-    assert.equal(run('blokkeer', 'FB-001', '--door', 's1', 'wacht', 'op', 'de', 'eigenaar').status, 0);
+    assert.equal(run('status', 'FB-001', 'klaar', '--by', 's1').status, 1, 'no skipping the tester');
+    assert.equal(run('block', 'FB-001', '--by', 's1', 'wacht', 'op', 'de', 'eigenaar').status, 0);
     assert.equal(fieldsOf(r, rel).fields.geblokkeerd, 'wacht op de eigenaar');
-    assert.equal(run('deblokkeer', 'FB-001', '--door', 's1').status, 0);
-    out = run('status', 'FB-001', 'te-testen', '--door', 's1', '--pr', '52');
+    assert.equal(run('unblock', 'FB-001', '--by', 's1').status, 0);
+    out = run('status', 'FB-001', 'te-testen', '--by', 's1', '--pr', '52');
     assert.equal(out.status, 0, out.stderr);
     assert.match(out.stdout, /1 van 2 acceptatiecriteria/);
 
@@ -85,7 +95,7 @@ test('a functional ticket from creation to te-testen, through the allowed transi
     );
 
     // the tester sends it back: the build fields are cleared for the next round
-    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--door', 'tester', '--log', 'Bevinding: knop ontbreekt').status, 0);
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'tester', '--log', 'Bevinding: knop ontbreekt').status, 0);
     p = fieldsOf(r, rel);
     assert.equal(p.fields['opgepakt-door'], '');
     assert.equal(p.fields.branch, '');
@@ -94,20 +104,46 @@ test('a functional ticket from creation to te-testen, through the allowed transi
   }
 });
 
+test('a write on a stale copy is refused, so an old status can never be stamped newer', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    const rel = readyTicket(ctx);
+    r.git('switch', '-q', '-c', 'feature/a');
+    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
+    r.commit('Start FB-001');
+
+    // on main the copy is still klaar-voor-bouw: a Werklog line there would win and undo the pickup
+    r.git('switch', '-q', 'main');
+    const before = r.read(rel);
+    const out = run('log', 'FB-001', '--by', 'lead', 'even kijken');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /nieuwere versie: branch feature\/a \(status in-uitvoering/);
+    assert.equal(r.read(rel), before, 'nothing was written');
+
+    // and a second session cannot pick up a ticket another session already has
+    r.git('switch', '-q', '-c', 'feature/b');
+    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's2').status, 1);
+  } finally {
+    r.cleanup();
+  }
+});
+
 test('a technical ticket starts in progress on the current branch and ends at klaar', () => {
   const { r, run, fill } = setup();
   try {
-    assert.equal(run('nieuw', 'TB', '--titel', 'Iets', '--door', 's1').status, 1, 'not on main');
+    assert.equal(run('new', 'TB', '--title', 'Iets', '--by', 's1').status, 1, 'not on main');
     r.git('switch', '-q', '-c', 'feature/t');
-    const out = run('nieuw', 'TB', '--titel', 'Build sneller maken', '--door', 's1');
+    const out = run('new', 'TB', '--title', 'Build sneller maken', '--by', 's1');
     assert.equal(out.status, 0, out.stderr);
     const rel = ticketPath('TB', 1, 'build-sneller-maken');
     fill(rel);
     let p = fieldsOf(r, rel);
+    assert.equal(p.valid, true, p.errors.join('\n'));
     assert.equal(p.fields.status, 'in-uitvoering');
     assert.equal(p.fields.branch, 'feature/t');
-    assert.equal(run('status', 'TB-001', 'te-testen', '--door', 's1').status, 1);
-    assert.equal(run('status', 'TB-001', 'klaar', '--door', 's1').status, 0);
+    assert.equal(run('status', 'TB-001', 'te-testen', '--by', 's1').status, 1);
+    assert.equal(run('status', 'TB-001', 'klaar', '--by', 's1').status, 0);
     p = fieldsOf(r, rel);
     assert.equal(p.fields.status, 'klaar');
   } finally {
@@ -122,14 +158,14 @@ test('numbering skips ids held on other branches and by a live reservation', () 
     r.write(ticketPath('TB', 7), 'placeholder');
     r.commit('TB-007 elsewhere');
     r.git('switch', '-q', 'main');
-    assert.equal(run('nummer', 'TB').stdout.trim(), 'TB-008');
+    assert.equal(run('next-id', 'TB').stdout.trim(), 'TB-008');
 
     fs.writeFileSync(path.join(coord, 'claims', 'ticketnr-TB-008.md'), 'owner: someone\n');
     r.git('switch', '-q', '-c', 'feature/n');
-    const out = run('nieuw', 'TB', '--titel', 'Volgende', '--door', 's2');
+    const out = run('new', 'TB', '--title', 'Volgende', '--by', 's2');
     assert.equal(out.status, 0, out.stderr);
     assert.ok(out.stdout.includes('TB-009-volgende.md'));
-    assert.ok(fs.existsSync(path.join(coord, 'claims', 'ticketnr-TB-008.md')), 'another session\'s reservation is left alone');
+    assert.ok(fs.existsSync(path.join(coord, 'claims', 'ticketnr-TB-008.md')), "another session's reservation is left alone");
   } finally {
     r.cleanup();
   }
@@ -138,12 +174,12 @@ test('numbering skips ids held on other branches and by a live reservation', () 
 test('commands refuse to touch an invalid ticket and explain unknown input', () => {
   const { r, run } = setup();
   try {
-    assert.equal(run('nieuw', 'FB', '--titel', 'Half', '--door', 'fa').status, 0);
-    const out = run('status', 'FB-001', 'klaar-voor-bouw', '--door', 'fa');
+    assert.equal(run('new', 'FB', '--title', 'Half', '--by', 'fa').status, 0);
+    const out = run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'fa');
     assert.equal(out.status, 1);
     assert.match(out.stderr, /volgt de structuur niet/);
-    assert.match(run('status', 'FB-999', 'klaar', '--door', 'x').stderr, /bestaat niet in deze checkout/);
-    assert.match(run('status', 'FB-001', 'klaar-voor-bouw').stderr, /--door/);
+    assert.match(run('status', 'FB-999', 'klaar', '--by', 'x').stderr, /bestaat niet in deze checkout/);
+    assert.match(run('status', 'FB-001', 'klaar-voor-bouw').stderr, /--by/);
     assert.match(run('verzin').stderr, /Onbekende opdracht/);
   } finally {
     r.cleanup();

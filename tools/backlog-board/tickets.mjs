@@ -1,8 +1,12 @@
 #!/usr/bin/env node
-// Command line for the ticket backlog. Every write a session makes to a ticket should go through
-// here, so the frontmatter, `bijgewerkt` and the Werklog stay in the one shape the board reads.
-// It edits files in the current checkout only and never runs a git command that changes anything:
-// committing stays with whoever called it.
+// Command line for the ticket backlog. Every write a session makes to a ticket goes through here, so
+// the frontmatter, `bijgewerkt` and the Werklog stay in the one shape the board reads. It edits files
+// in the current checkout only and never runs a git command that changes anything: committing stays
+// with whoever called it.
+//
+// Command and option names are English (Art. II.2: tooling identifiers); the values it writes and the
+// messages it prints are Dutch, because they are ticket content and their readers are the owner and
+// the functional architect.
 
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -10,30 +14,33 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { COLUMNS, FINAL_STATUS, FOLDERS, PRIORITIES, STATUSES, transitionAllowed } from './lib/format.mjs';
-import { parseTicket } from './lib/parse.mjs';
+import { normalise, parseTicket } from './lib/parse.mjs';
 import { appendWorklog, formatNumber, renderNewTicket, setFields, slugify, timestamp, worklogLine } from './lib/write.mjs';
 import { allTicketIds, collectVersions, mainRoot, readWorkingFiles, repoRoot } from './lib/sources.mjs';
-import { buildBoard } from './lib/board.mjs';
+import { buildBoard, sourceLabel, winnerOf } from './lib/board.mjs';
 
 const COORD = process.env.JAARPLANNER_COORD ?? 'C:/source/Jaarplanner/.claude/coordination';
 
 const USAGE = `Gebruik: node tools/backlog-board/tickets.mjs <opdracht> ...
 
-  lijst [--status <kolom>] [--soort FB|TB]
-      Alle tickets zoals het board ze ziet (main, branches en worktrees).
-  check [bestand ...] [--alle]
-      Controleert de structuur van de tickets in deze checkout, of van het hele board met --alle.
-  nummer FB|TB
+  list [--status <kolom>] [--kind FB|TB]
+      Alle tickets zoals het bord ze ziet (main, branches en worktrees).
+  check [bestand ...] [--all]
+      Controleert de structuur van de tickets in deze checkout, of van het hele bord met --all.
+  next-id FB|TB
       Het volgende vrije nummer.
-  nieuw FB|TB --titel "<titel>" --door <wie> [--prioriteit hoog|middel|laag]
-              [--status <status>] [--branch <branch>] [--fr FR-7.2,FR-7.3]
+  new FB|TB --title "<titel>" --by <wie> [--priority hoog|middel|laag]
+            [--status <status>] [--branch <branch>] [--fr FR-7.2,FR-7.3]
       Maakt een nieuw ticket aan met de vaste structuur. Vul daarna de secties in.
-  status <id> <status> --door <wie> [--branch <branch>] [--pr <nummer>] [--log "<tekst>"]
+  status <id> <status> --by <wie> [--branch <branch>] [--pr <nummer>] [--log "<tekst>"]
       Zet de status, werkt "bijgewerkt" bij en schrijft een regel in het werklog.
-  log <id> --door <wie> "<tekst>"
-  blokkeer <id> --door <wie> "<reden>"
-  deblokkeer <id> --door <wie>
-  pr <id> <nummer> --door <wie>
+  log <id> --by <wie> "<tekst>"
+  block <id> --by <wie> "<reden>"
+  unblock <id> --by <wie>
+  pr <id> <nummer> --by <wie>
+
+Elke schrijfopdracht weigert als er elders (op een andere branch of in een andere worktree) een
+nieuwere versie van het ticket bestaat: pas het ticket aan waar het werk gebeurt.
 
 Statussen: ${STATUSES.join(', ')}.`;
 
@@ -52,8 +59,8 @@ function currentBranch(root) {
 }
 
 function requireBy(values) {
-  if (!values.door) throw new Fail('Geef met --door aan wie dit doet (je sessie-id of je naam).');
-  return values.door;
+  if (!values.by) throw new Fail('Geef met --by aan wie dit doet (je sessie-id of je naam).');
+  return values.by;
 }
 
 function parsePrefix(value) {
@@ -95,6 +102,24 @@ function requireValid(ticket) {
   );
 }
 
+/**
+ * Refuses to write to a copy that is not the current one. Without this, any write on a stale copy
+ * (a Werklog line on main while a branch has the ticket in progress, say) stamps the old status with
+ * a newer `bijgewerkt`, and the board then shows the old status as the truth.
+ */
+async function requireCurrent(ticket) {
+  const { versions } = await collectVersions(await mainRoot());
+  const same = versions.filter((v) => v.folder === ticket.folder && v.file === ticket.file);
+  const winner = winnerOf(same);
+  if (!winner || normalise(winner.text) === normalise(ticket.text)) return;
+  const w = winner.parsed.fields;
+  throw new Fail(
+    `${ticket.parsed.id} heeft elders een nieuwere versie: ${sourceLabel(winner.source)} (status ${w.status}, bijgewerkt ${w.bijgewerkt}). ` +
+      `Deze checkout heeft status ${ticket.parsed.fields.status}, bijgewerkt ${ticket.parsed.fields.bijgewerkt}. ` +
+      'Pas het ticket aan waar het werk gebeurt, of haal die versie eerst binnen.',
+  );
+}
+
 async function save(ticket, text) {
   const reparsed = parseTicket(text, { file: ticket.file, folder: ticket.folder });
   if (!reparsed.valid) {
@@ -109,24 +134,31 @@ function edit(ticket, fields, by, message) {
   return appendWorklog(setFields(ticket.text, { ...fields, bijgewerkt: at }), worklogLine(at, by, message));
 }
 
+async function loadForWrite(id) {
+  const root = await repoRoot();
+  const ticket = await findTicket(root, id);
+  requireValid(ticket);
+  await requireCurrent(ticket);
+  return { root, ticket };
+}
+
 // ---- commands ---------------------------------------------------------------------------------
 
 async function cmdList(values) {
-  const root = await mainRoot();
-  const { versions } = await collectVersions(root);
+  const { versions } = await collectVersions(await mainRoot());
   const board = buildBoard(versions);
-  const soort = values.soort ? parsePrefix(values.soort) : null;
+  const kind = values.kind ? parsePrefix(values.kind) : null;
   const rows = [];
   for (const column of board.columns) {
     if (values.status && column.id !== values.status) continue;
     for (const t of column.cards) {
-      if (soort && t.prefix !== soort) continue;
+      if (kind && t.prefix !== kind) continue;
       rows.push([t.id, column.title, t.fields.prioriteit, t.fields['opgepakt-door'] || '-', t.fields.titel, t.source.label]);
     }
   }
   if (!values.status) {
     for (const t of board.invalid) {
-      if (soort && t.prefix !== soort) continue;
+      if (kind && t.prefix !== kind) continue;
       rows.push([t.id, 'ONGELDIG', '-', '-', t.errors[0], t.source.label]);
     }
   }
@@ -156,7 +188,7 @@ function report(tickets) {
 }
 
 async function cmdCheck(values, files) {
-  if (values.alle) {
+  if (values.all) {
     const { versions } = await collectVersions(await mainRoot());
     const board = buildBoard(versions);
     return report([...board.columns.flatMap((c) => c.cards), ...board.invalid]);
@@ -168,8 +200,7 @@ async function cmdCheck(values, files) {
       const full = path.resolve(f);
       const folder = path.relative(root, path.dirname(full)).split(path.sep).join('/');
       const text = await fs.readFile(full, 'utf8');
-      const p = parseTicket(text, { file: path.basename(full), folder });
-      tickets.push({ ...p, file: p.file, folder });
+      tickets.push(parseTicket(text, { file: path.basename(full), folder }));
     }
     return report(tickets);
   }
@@ -185,7 +216,7 @@ async function nextNumber(prefix) {
   return { next: max + 1, ids };
 }
 
-async function cmdNumber(positionals) {
+async function cmdNextId(positionals) {
   const prefix = parsePrefix(positionals[0]);
   const { next } = await nextNumber(prefix);
   console.log(`${prefix}-${formatNumber(next)}`);
@@ -193,8 +224,9 @@ async function cmdNumber(positionals) {
 }
 
 // A number is reserved through the groepschat claim directory when this machine has one, so two
-// sessions creating a ticket at the same moment cannot both take it. The claim lives only until the
-// file exists: from then on every session's `nummer` sees the file itself.
+// sessions creating a ticket at the same moment cannot both take it. The claim (`ticketnr-<ID>`) lives
+// only until the file exists: from then on every session's `next-id` sees the file itself. It is not
+// logged as CLAIM/RELEASE; the INFO line announcing the new ticket is the record.
 async function reserve(id, by) {
   const dir = path.join(COORD, 'claims');
   if (!existsSync(dir)) return { release: async () => {} };
@@ -217,9 +249,9 @@ async function announce(by, id, text) {
 async function cmdNew(values, positionals) {
   const prefix = parsePrefix(positionals[0]);
   const by = requireBy(values);
-  const title = (values.titel ?? '').trim();
-  if (!title) throw new Fail('Geef een titel op met --titel "...".');
-  const priority = values.prioriteit ?? 'middel';
+  const title = (values.title ?? '').trim();
+  if (!title) throw new Fail('Geef een titel op met --title "...".');
+  const priority = values.priority ?? 'middel';
   if (!PRIORITIES.includes(priority)) throw new Fail(`Prioriteit moet ${PRIORITIES.join(', ')} zijn.`);
   const status = values.status ?? (prefix === 'TB' ? 'in-uitvoering' : 'nieuw');
   const allowed = prefix === 'TB' ? ['nieuw', 'klaar-voor-bouw', 'in-uitvoering'] : ['nieuw', 'klaar-voor-bouw'];
@@ -269,9 +301,7 @@ async function cmdStatus(values, positionals) {
   const [id, to] = positionals;
   const by = requireBy(values);
   if (!STATUSES.includes(to)) throw new Fail(`Onbekende status "${to ?? ''}". Toegestaan: ${STATUSES.join(', ')}.`);
-  const root = await repoRoot();
-  const ticket = await findTicket(root, id);
-  requireValid(ticket);
+  const { root, ticket } = await loadForWrite(id);
   const from = ticket.parsed.fields.status;
   if (from === to) throw new Fail(`${ticket.parsed.id} staat al op ${to}.`);
   if (!transitionAllowed(ticket.prefix, from, to)) {
@@ -298,20 +328,18 @@ async function cmdStatus(values, positionals) {
   return 0;
 }
 
-async function cmdLog(values, positionals, kind) {
+async function cmdAnnotate(values, positionals, kind) {
   const [id, ...rest] = positionals;
   const by = requireBy(values);
-  const root = await repoRoot();
-  const ticket = await findTicket(root, id);
-  requireValid(ticket);
+  const { ticket } = await loadForWrite(id);
   const text = rest.join(' ').trim();
   let fields = {};
   let message = text;
-  if (kind === 'blokkeer') {
+  if (kind === 'block') {
     if (!text) throw new Fail('Geef de reden op waarom het ticket geblokkeerd is.');
     fields = { geblokkeerd: text };
     message = `geblokkeerd: ${text}`;
-  } else if (kind === 'deblokkeer') {
+  } else if (kind === 'unblock') {
     if (!ticket.parsed.fields.geblokkeerd) throw new Fail(`${ticket.parsed.id} is niet geblokkeerd.`);
     fields = { geblokkeerd: '' };
     message = `niet langer geblokkeerd${text ? `: ${text}` : ''}`;
@@ -335,16 +363,16 @@ async function main(argv) {
     args: argv,
     allowPositionals: true,
     options: {
-      titel: { type: 'string' },
-      door: { type: 'string' },
-      prioriteit: { type: 'string' },
+      title: { type: 'string' },
+      by: { type: 'string' },
+      priority: { type: 'string' },
       status: { type: 'string' },
-      soort: { type: 'string' },
+      kind: { type: 'string' },
       branch: { type: 'string' },
       pr: { type: 'string' },
       fr: { type: 'string' },
       log: { type: 'string' },
-      alle: { type: 'boolean' },
+      all: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
   });
@@ -353,25 +381,25 @@ async function main(argv) {
     console.log(USAGE);
     return command ? 0 : 1;
   }
-  if (values.status && command === 'lijst' && !COLUMNS.some((c) => c.id === values.status)) {
+  if (values.status && command === 'list' && !COLUMNS.some((c) => c.id === values.status)) {
     throw new Fail(`Onbekende kolom "${values.status}". Toegestaan: ${COLUMNS.map((c) => c.id).join(', ')}.`);
   }
   switch (command) {
-    case 'lijst':
+    case 'list':
       return cmdList(values);
     case 'check':
       return cmdCheck(values, rest);
-    case 'nummer':
-      return cmdNumber(rest);
-    case 'nieuw':
+    case 'next-id':
+      return cmdNextId(rest);
+    case 'new':
       return cmdNew(values, rest);
     case 'status':
       return cmdStatus(values, rest);
     case 'log':
-    case 'blokkeer':
-    case 'deblokkeer':
+    case 'block':
+    case 'unblock':
     case 'pr':
-      return cmdLog(values, rest, command);
+      return cmdAnnotate(values, rest, command);
     default:
       throw new Fail(`Onbekende opdracht "${command}".\n\n${USAGE}`);
   }

@@ -15,26 +15,29 @@ Tickets are how new work enters the Jaarplanner backlog. The format, statuses an
 [`backlog/TICKETS.md`](../../../backlog/TICKETS.md) (read it first) and decided in
 [ADR-0033](../../../docs/adr/0033-ticketbacklog-en-kanbanbord.md).
 
-**Speak Dutch with the user. Ticket text is Dutch** (owner ruling 2026-09-13); commit messages stay English.
+**Speak Dutch with the user. Ticket text is Dutch** (owner ruling 2026-09-13); commit messages stay English. The
+CLI's commands and options are English.
 
 ## 0. Which kind of ticket
 
 - **FB (functioneel):** the functional architect or tester logs something a teacher or the directie needs. Created on
   `main`, in their own clone.
 - **TB (technisch):** an agent session logs an improvement the owner started himself, before changing any file.
-  Created on the branch of that work. The `ticket-uitvoeren` skill sends you here and continues afterwards.
+  Created on the branch of that work. The `ticket-uitvoeren` skill sends you here and takes over again afterwards.
 
 ## 1. Get to the right place
 
 - **FB:** `git switch main`, then `git pull --ff-only`. `git status` must be clean; if it is not, stop and ask what the
-  changes are. Never create an FB ticket on another branch.
+  changes are. Never create an FB ticket on another branch. If you are in the shared checkout
+  `C:\source\Jaarplanner` while other sessions run, claim `maintree` first (groepschat skill); in the functional
+  architect's own clone this does not apply.
 - **TB:** you must be on the work branch, never on `main`. No branch yet? Create it from an up-to-date `main` first
   (a worktree when other sessions run, per the groepschat skill), for example `ticket/<korte-slug>`.
 
 ## 2. Check that it does not exist already
 
 ```bash
-node tools/backlog-board/tickets.mjs lijst
+node tools/backlog-board/tickets.mjs list
 grep -ril "<kernwoord>" backlog/functionele-backlog backlog/technische-backlog backlog/E*.md
 ```
 
@@ -62,7 +65,8 @@ Rules that keep tickets buildable:
   dupliceren"), under 90 characters.
 - **No pupil names or other personal data, no secrets.** Tickets are committed to the repository (Art. VI).
 - **A ticket does not outrank the constitution.** If the wish contradicts `CONSTITUTION.md` or needs a decision that is
-  still open (Art. XIV), say so plainly and write it under *Open vragen*; an FB ticket then stays `nieuw`.
+  still open (Art. XIV), say so plainly and write it under *Open vragen*. An FB ticket then stays `nieuw`; a TB ticket
+  is blocked right after creation with `block` (step 4), so nobody builds it until the owner answers.
 
 ## 4. Create the file with the CLI
 
@@ -70,9 +74,11 @@ Never choose the number yourself and never write the file from scratch.
 
 ```bash
 # FB, on main
-node tools/backlog-board/tickets.mjs nieuw FB --titel "Leerkracht kan een thema dupliceren" --door "<naam>" --prioriteit middel --fr FR-7.2
+node tools/backlog-board/tickets.mjs new FB --title "Leerkracht kan een thema dupliceren" --by "<naam>" --priority middel --fr FR-7.2
 # TB, on the work branch: starts in-uitvoering on the current branch
-node tools/backlog-board/tickets.mjs nieuw TB --titel "Build van de backend sneller maken" --door <sessie-id>
+node tools/backlog-board/tickets.mjs new TB --title "Build van de backend sneller maken" --by <sessie-id>
+# a TB ticket that waits for a decision
+node tools/backlog-board/tickets.mjs block TB-004 --by <sessie-id> "<de vraag aan de eigenaar>"
 ```
 
 An FB ticket starts as `nieuw`. Add `--status klaar-voor-bouw` only when the user says it has been refined and agreed.
@@ -97,5 +103,5 @@ Show the user the finished ticket (title, criteria, scenarios) and ask for a go.
 - **FB:** `git add <pad>` and `git commit -m "Add FB-012: <titel>"`. **Push only after the user explicitly agrees**:
   `git push origin main`. If the push is rejected because `main` moved, `git pull --rebase` and push again; if branch
   protection refuses it, tell the user, because this flow needs direct push rights on `main` (ADR-0033).
-- **TB:** commit it on the work branch as the first commit of the work (`Add TB-003: <titel>`) and continue with the
-  `ticket-uitvoeren` skill at its step 3. Do not push unless the owner asks.
+- **TB:** commit it on the work branch as the first commit of the work (`Add TB-003: <titel>`), then go back to the
+  `ticket-uitvoeren` skill **at its step 1** (the claim and the constitution check). Do not push unless the owner asks.

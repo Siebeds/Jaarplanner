@@ -20,10 +20,13 @@ git pull --ff-only
 git status   # must be clean
 ```
 
+In the shared checkout `C:\source\Jaarplanner`, with other sessions running, claim `maintree` first (groepschat
+skill). In the tester's own clone this does not apply.
+
 ## 2. Pick a ticket
 
 ```bash
-node tools/backlog-board/tickets.mjs lijst --status te-testen
+node tools/backlog-board/tickets.mjs list --status te-testen
 ```
 
 A ticket under *In review* is not testable yet: its code is not on `main`.
@@ -36,9 +39,9 @@ the `app-starten` skill) and walk through each scenario. For every criterion, no
 ## 4. Decide
 
 - **Everything works:**
-  `node tools/backlog-board/tickets.mjs status FB-012 klaar --door "<naam>" --log "getest: alle criteria in orde"`
+  `node tools/backlog-board/tickets.mjs status FB-012 klaar --by "<naam>" --log "getest: alle criteria in orde"`
 - **Something does not work** (a criterion fails):
-  `node tools/backlog-board/tickets.mjs status FB-012 klaar-voor-bouw --door "<naam>" --log "Bevinding: <stap>, verwacht <x>, gezien <y>"`
+  `node tools/backlog-board/tickets.mjs status FB-012 klaar-voor-bouw --by "<naam>" --log "Bevinding: <stap>, verwacht <x>, gezien <y>"`
   The ticket goes back to *Klaar voor bouw* and a session picks it up again.
 - **A different problem that the ticket never asked for:** leave this ticket's status alone and log the new problem
   as its own FB ticket with the `ticket-aanmaken` skill.

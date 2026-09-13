@@ -86,6 +86,43 @@ test('after the merge the final statuses show from main, and the branch drops ou
   }
 });
 
+test('a commit on a branch after its merge does not pull the card back to In review', async () => {
+  const { r } = scenario();
+  try {
+    r.git('switch', '-q', 'feature/a');
+    const done = { number: 1, status: 'te-testen', by: 'sessie-a', branch: 'feature/a', fields: { 'opgepakt-door': 'sessie-a' } };
+    r.write(FB1, filledTicket({ ...done, updated: '2026-09-02 11:00' }));
+    r.commit('FB-001 done');
+    r.git('switch', '-q', 'main');
+    r.git('merge', '-q', '--no-ff', '-m', 'merge a', 'feature/a');
+
+    // the PR number is recorded on the branch after the merge: a newer copy, the same status
+    r.git('switch', '-q', 'feature/a');
+    r.write(FB1, filledTicket({ ...done, updated: '2026-09-02 12:00', fields: { ...done.fields, pr: '52' } }));
+    r.commit('FB-001 PR number');
+    r.git('switch', '-q', 'main');
+
+    const t = byId(buildBoard((await collectVersions(r.repo)).versions));
+    assert.equal(t['FB-001'].source.name, 'feature/a', 'the branch copy is the newest');
+    assert.equal(t['FB-001'].column, 'te-testen', 'but the work is on main, so it waits for the tester');
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("the tester's uncommitted close in the main checkout shows as Klaar, not as waiting for a merge", async () => {
+  const r = tempRepo();
+  try {
+    r.write(FB1, filledTicket({ number: 1, status: 'te-testen', updated: '2026-09-01 10:00' }));
+    r.commit('base');
+    r.write(FB1, filledTicket({ number: 1, status: 'klaar', updated: '2026-09-01 11:00' }));
+    const t = byId(buildBoard((await collectVersions(r.repo)).versions));
+    assert.equal(t['FB-001'].column, 'klaar');
+  } finally {
+    r.cleanup();
+  }
+});
+
 test('an uncommitted edit in the main checkout itself counts as a worktree version', async () => {
   const r = tempRepo();
   try {

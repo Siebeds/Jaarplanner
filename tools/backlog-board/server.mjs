@@ -75,7 +75,7 @@ const HEADERS = {
   'Cache-Control': 'no-store',
 };
 
-const server = http.createServer(async (req, res) => {
+async function handle(req, res) {
   if (!hostAllowed(req)) {
     res.writeHead(403, HEADERS).end('Alleen bereikbaar via localhost.');
     return;
@@ -84,7 +84,13 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(405, HEADERS).end();
     return;
   }
-  const url = new URL(req.url, `http://localhost:${port}`);
+  let url;
+  try {
+    url = new URL(req.url, `http://localhost:${port}`);
+  } catch {
+    res.writeHead(400, HEADERS).end('Ongeldige aanvraag.');
+    return;
+  }
   if (url.pathname === '/api/board') {
     if (!payload) await refresh();
     res.writeHead(200, { ...HEADERS, 'Content-Type': 'application/json; charset=utf-8' }).end(payload);
@@ -105,6 +111,15 @@ const server = http.createServer(async (req, res) => {
   }
   const body = await fs.readFile(path.join(here, 'public', hit[0]));
   res.writeHead(200, { ...HEADERS, 'Content-Type': hit[1] }).end(body);
+}
+
+// One bad request must never take the board down: every failure becomes a response.
+const server = http.createServer((req, res) => {
+  handle(req, res).catch((e) => {
+    console.error(`Fout bij ${req.url}: ${e.message}`);
+    if (!res.headersSent) res.writeHead(500, HEADERS);
+    res.end();
+  });
 });
 
 // Keep proxies and the browser from closing an idle event stream.

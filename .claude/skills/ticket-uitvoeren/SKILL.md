@@ -17,29 +17,34 @@ Format and statuses: [`backlog/TICKETS.md`](../../../backlog/TICKETS.md). Talk t
 Dutch; commits stay English.
 
 Change a ticket's frontmatter **only through the CLI** (`node tools/backlog-board/tickets.mjs …`). It sets `bijgewerkt`,
-which is how the board decides which version is newest, and it writes the Werklog line.
+which is how the board decides which version is newest, it writes the Werklog line, and it refuses to write to a copy
+that is not the current one. When it refuses with *"heeft elders een nieuwere versie"*, you are in the wrong
+checkout: do not work around it.
 
 ## 0. Is there a ticket?
 
 - **The user names an FB or TB id:** go to step 1.
 - **The user names a story `E<n>-<nn>`:** that is the `jaarplan-build` flow, not this one.
 - **The user asks for a change that has neither:** look for a matching open ticket with
-  `node tools/backlog-board/tickets.mjs lijst`. None? Create a **TB ticket first** with the `ticket-aanmaken` skill
-  (branch first, then `nieuw TB`, which starts it `in-uitvoering`), commit it, and continue at step 4.
-- **"Neem het volgende ticket":** `lijst --status klaar-voor-bouw`, highest priority first, skip blocked ones, and
+  `node tools/backlog-board/tickets.mjs list`. None? Create the branch (step 2), then a **TB ticket** with the
+  `ticket-aanmaken` skill. It starts `in-uitvoering` and its creation commit is your first commit, so after it go to
+  **step 1** and then skip step 3.
+- **"Neem het volgende ticket":** `list --status klaar-voor-bouw`, highest priority first, skip blocked ones, and
   let the owner confirm your pick.
 
-Exempt from the rule: answering questions, explaining, read-only investigation, and edits to ticket files themselves.
+Exempt from the rule: answering questions, explaining, read-only investigation, edits to ticket files themselves, and
+bookkeeping (the coordination state, epic checkboxes and the progress table).
 
 ## 1. Check the ticket and claim it
 
-- It must be `klaar-voor-bouw` (check with `lijst`, which sees every branch). `in-uitvoering` by someone else: stop and
-  pick another. `nieuw`: it is not refined yet; ask the owner whether to move it to `klaar-voor-bouw` first.
+- It must be `klaar-voor-bouw` (check with `list`, which sees every branch), or `in-uitvoering` by you because you just
+  created it. `in-uitvoering` by someone else: stop and pick another. `nieuw`: it is not refined yet; ask the owner
+  whether to move it to `klaar-voor-bouw` first.
 - Join the groepschat (`groepschat` skill) and claim `ticket-<ID>` (for example `ticket-FB-012`). A refused claim means
   another session has it.
 - Read the whole ticket, the FR numbers it cites and the constitution articles it touches. If it conflicts with
-  `CONSTITUTION.md` or needs an open decision (Art. XIV), do not build: `blokkeer` it with the question (step 5) and
-  tell the owner.
+  `CONSTITUTION.md` or needs an open decision (Art. XIV), do not build: write the question under *Open vragen*,
+  `block` the ticket with it (step 4), and tell the owner.
 
 ## 2. Branch
 
@@ -49,8 +54,10 @@ in that checkout; if it does not, your `main` is older than the ticket.
 
 ## 3. Move it to in-uitvoering, as the first commit
 
+Skip this step for a TB ticket you just created: it is already `in-uitvoering`.
+
 ```bash
-node tools/backlog-board/tickets.mjs status FB-012 in-uitvoering --door <sessie-id> --log "opgepakt"
+node tools/backlog-board/tickets.mjs status FB-012 in-uitvoering --by <sessie-id> --log "opgepakt"
 git add backlog/ && git commit -m "Start FB-012: <titel>"
 ```
 
@@ -58,10 +65,10 @@ The board shows the card under *In uitvoering* as soon as the file changes, even
 
 ## 4. While you work
 
-- `node tools/backlog-board/tickets.mjs log FB-012 --door <sessie-id> "<één zin>"` at moments the owner would want
+- `node tools/backlog-board/tickets.mjs log FB-012 --by <sessie-id> "<één zin>"` at moments the owner would want
   to know: a decision taken, a part finished, a gate result. Not a diary.
-- Waiting for the owner or directie: `blokkeer FB-012 --door <sessie-id> "<de vraag>"`, then ask. `deblokkeer` once
-  it is answered.
+- Waiting for the owner or directie: `block FB-012 --by <sessie-id> "<de vraag>"`, then ask. `unblock` once it is
+  answered.
 - Tick an acceptance criterion (`- [ ]` to `- [x]`) only when you have the evidence (a test, a browser check), and
   say which in the log.
 - Stay inside the ticket. Anything else you notice becomes a new TB ticket or a question, never silent extra work.
@@ -75,17 +82,20 @@ Unchanged from CLAUDE.md: the relevant tests, `dotnet format`, `pnpm lint`, a re
 
 ```bash
 # functional ticket: the tester closes it later
-node tools/backlog-board/tickets.mjs status FB-012 te-testen --door <sessie-id> --log "<wat er gebouwd is, gates groen>"
+node tools/backlog-board/tickets.mjs status FB-012 te-testen --by <sessie-id> --log "<wat er gebouwd is, gates groen>"
 # technical ticket
-node tools/backlog-board/tickets.mjs status TB-003 klaar --door <sessie-id> --log "<wat er gebouwd is, gates groen>"
+node tools/backlog-board/tickets.mjs status TB-003 klaar --by <sessie-id> --log "<wat er gebouwd is, gates groen>"
 ```
 
 Commit it with, or right after, the last change. The card now sits under **In review** until the owner merges; after
-the merge and a pull it moves to *Te testen* or *Klaar* by itself. Push and open a PR only when the owner asks (the
-existing rule); if a PR is opened, record it with `pr FB-012 <nummer> --door <sessie-id>` and commit that.
+the merge and a pull it moves to *Te testen* or *Klaar* by itself.
+
+Push and open a PR only when the owner asks (the existing rule). If you do, record the number **before the merge**:
+push, open the PR, run `pr FB-012 <nummer> --by <sessie-id>`, commit and push that too, so the number travels in the
+same merge.
 
 **Stopping without finishing?** Give it back so another session can take it:
-`status FB-012 klaar-voor-bouw --door <sessie-id> --log "teruggegeven: <waarom, en wat er al staat>"`, and commit.
+`status FB-012 klaar-voor-bouw --by <sessie-id> --log "teruggegeven: <waarom, en wat er al staat>"`, and commit.
 
 ## 7. Release
 
@@ -93,6 +103,8 @@ Release `ticket-<ID>` and your other claims, set your session file to `done`, an
 
 ## Rules
 
-- Never set an FB ticket to `klaar`: that is the tester's decision (`ticket-testen`). The CLI refuses it anyway.
-- Never edit another ticket's content. At most, add a Werklog line through the CLI.
+- **Never set an FB ticket to `klaar`:** that is the tester's decision (`ticket-testen`). The CLI cannot tell who is
+  calling, so it will not stop you; this rule is yours to keep.
+- Never change another ticket, not even with a Werklog line. If something about it needs saying, ask its session or
+  the owner.
 - Never create or edit an FB ticket on `main` as an agent: the functional architect owns `main`'s tickets.

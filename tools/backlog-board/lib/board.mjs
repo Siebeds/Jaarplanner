@@ -6,6 +6,9 @@ import { parseTicket } from './parse.mjs';
 
 const SOURCE_RANK = { worktree: 3, branch: 2, main: 1 };
 
+// A worktree checked out on main is main with uncommitted edits, not work waiting for a merge.
+const isMain = (source) => source.type === 'main' || (source.type === 'worktree' && source.branch === 'main');
+
 function newer(a, b) {
   const at = a.parsed.fields.bijgewerkt ?? '';
   const bt = b.parsed.fields.bijgewerkt ?? '';
@@ -13,19 +16,32 @@ function newer(a, b) {
   return SOURCE_RANK[a.source.type] >= SOURCE_RANK[b.source.type] ? a : b;
 }
 
-function sourceLabel(source) {
+export function sourceLabel(source) {
   if (source.type === 'main') return 'main';
   if (source.type === 'branch') return `branch ${source.name}`;
   return `worktree ${source.name}${source.branch ? ` (${source.branch})` : ''}, niet gecommit`;
 }
 
 /**
- * The newest valid version wins; `bijgewerkt` decides, and on a tie the version closest to the work
- * (worktree, then branch, then main). An agent's final status seen anywhere but main means "done,
- * waiting for the merge": that is the In review column.
+ * The version that counts, among the versions of ONE ticket file: the newest valid `bijgewerkt`,
+ * and on a tie the one closest to the work (worktree, then branch, then main). Null when none is
+ * valid. Each entry is `{ source, text, parsed? }`; `parsed` is filled in when missing.
  */
-export function columnOf(status, sourceType) {
-  if ((status === 'te-testen' || status === 'klaar') && sourceType !== 'main') return 'in-review';
+export function winnerOf(entries) {
+  for (const e of entries) e.parsed ??= parseTicket(e.text ?? '', { file: e.file, folder: e.folder });
+  const valid = entries.filter((e) => e.parsed.valid);
+  return valid.length ? valid.reduce(newer) : null;
+}
+
+/**
+ * An agent's final status (te-testen / klaar) is "In review" only while main does not have it yet.
+ * Deciding on main's status, rather than on where the winning copy lives, keeps a card in Te testen
+ * when a branch gains a commit after its merge (a PR number, say): that copy is newer, but the work
+ * is already on main.
+ */
+export function columnOf(status, source, mainStatus) {
+  const final = status === 'te-testen' || status === 'klaar';
+  if (final && !isMain(source) && mainStatus !== status) return 'in-review';
   return status;
 }
 
@@ -45,18 +61,16 @@ export function buildBoard(versions) {
   const groups = new Map();
   for (const v of versions) {
     const key = `${v.folder}/${v.file}`;
-    const parsed = parseTicket(v.text ?? '', { file: v.file, folder: v.folder });
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push({ ...v, parsed });
+    groups.get(key).push({ ...v });
   }
 
   const tickets = [];
   for (const [key, entries] of groups) {
-    const valid = entries.filter((e) => e.parsed.valid);
-    const winner = valid.length
-      ? valid.reduce(newer)
-      : entries.reduce((a, b) => (SOURCE_RANK[a.source.type] >= SOURCE_RANK[b.source.type] ? a : b));
+    const best = winnerOf(entries);
+    const winner = best ?? entries.reduce((a, b) => (SOURCE_RANK[a.source.type] >= SOURCE_RANK[b.source.type] ? a : b));
     const p = winner.parsed;
+    const mainEntry = entries.find((e) => e.source.type === 'main' && e.parsed.valid);
     const warnings = [...p.warnings];
     for (const other of entries) {
       if (other !== winner && !other.parsed.valid) {
@@ -72,7 +86,7 @@ export function buildBoard(versions) {
       valid: p.valid,
       errors: [...p.errors],
       warnings,
-      column: p.valid ? columnOf(p.fields.status, winner.source.type) : null,
+      column: p.valid ? columnOf(p.fields.status, winner.source, mainEntry?.parsed.fields.status) : null,
       fields: p.fields,
       criteria: p.criteria,
       sections: p.sections,

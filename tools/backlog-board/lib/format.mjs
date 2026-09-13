@@ -51,7 +51,9 @@ export const REQUIRED_VALUES = ['id', 'titel', 'soort', 'status', 'prioriteit', 
 // the file.
 export const SECTIONS = {
   FB: ['Aanleiding', 'Gewenst gedrag', 'Acceptatiecriteria', "Testscenario's", 'Buiten scope', 'Open vragen', 'Werklog'],
-  TB: ['Aanleiding', 'Voorgestelde wijziging', 'Acceptatiecriteria', 'Buiten scope', 'Werklog'],
+  // TB has Open vragen too: it is the path the owner starts without refinement, so it is where an open
+  // decision (Art. XIV) must have somewhere to be written down.
+  TB: ['Aanleiding', 'Voorgestelde wijziging', 'Acceptatiecriteria', 'Buiten scope', 'Open vragen', 'Werklog'],
 };
 
 // Sections that may be empty. Everything else needs content once HTML comments are stripped.

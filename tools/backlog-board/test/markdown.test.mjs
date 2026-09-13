@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { renderMarkdown } from '../public/markdown.js';
 
 test('HTML in a ticket is shown as text, never executed', () => {
@@ -26,6 +27,20 @@ test('comments disappear; tables, quotes and fences render', () => {
   assert.match(renderMarkdown('| a | b |\n| --- | --- |\n| 1 | 2 |'), /<table><thead><tr><th>a<\/th><th>b<\/th><\/tr><\/thead><tbody><tr><td>1<\/td><td>2<\/td><\/tr><\/tbody><\/table>/);
   assert.match(renderMarkdown('> let op'), /<blockquote><p>let op<\/p><\/blockquote>/);
   assert.match(renderMarkdown('```\n<b>x</b>\n```'), /<pre><code>&lt;b&gt;x&lt;\/b&gt;<\/code><\/pre>/);
+});
+
+test('emphasis never reaches into markup the renderer already built', () => {
+  assert.equal(
+    renderMarkdown('[a](https://x.com/a_b) snake_.'),
+    '<p><a href="https://x.com/a_b" target="_blank" rel="noreferrer noopener">a</a> snake_.</p>',
+  );
+  assert.equal(renderMarkdown('`a_b_c` en _nadruk_'), '<p><code>a_b_c</code> en <em>nadruk</em></p>');
+});
+
+test('the renderer source is plain text, so git and review tools can read it', () => {
+  const src = fs.readFileSync(new URL('../public/markdown.js', import.meta.url), 'utf8');
+  const control = [...src].filter((ch) => ch.charCodeAt(0) < 32 && !'\n\r\t'.includes(ch));
+  assert.deepEqual(control, []);
 });
 
 test('consecutive lines keep their line breaks', () => {

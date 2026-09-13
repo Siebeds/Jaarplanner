@@ -40,8 +40,10 @@ that the board has the **full flow** of columns including a tester column.
 3. **Statuses and columns.** The file holds one of `nieuw`, `klaar-voor-bouw`, `in-uitvoering`, `te-testen`,
    `klaar`. The board adds a sixth column, **In review**, that nobody writes: an agent writes its final status
    (`te-testen` for FB, `klaar` for TB) in the **last commit of its branch**, and while that status is visible on a
-   branch or worktree but not on `main`, the card sits in In review. The merge moves it on without anyone having to
-   remember to. Writing `in-review` into the file instead was rejected because the merge would carry it onto `main`,
+   branch or worktree but `main` does not have it yet, the card sits in In review. The merge moves it on without
+   anyone having to remember to. The column is decided by **main's status**, not by where the newest copy lives, so a
+   commit the branch gains after its merge (a PR number, say) does not pull the card back; and a checkout on `main`
+   with an uncommitted edit counts as `main`. Writing `in-review` into the file instead was rejected because the merge would carry it onto `main`,
    where nobody would ever move it again.
 4. **What the board reads.** The local `main`; each local branch not merged into `main`, but only the ticket files it
    changed since its merge base (a file a branch never touched is `main`'s old copy and must not compete); and each
@@ -52,17 +54,21 @@ that the board has the **full flow** of columns including a tester column.
    It sits outside `frontend/` on purpose: ADR-0024's design system, the `nl.json` rule (Art. II.3) and Art. XII's
    colour budget govern the app a teacher sees, not a tool only the team runs. It still follows their spirit: every
    hue also carries a text label, and Markdown from a ticket is escaped before it is rendered.
-6. **Every write goes through one CLI**, `tools/backlog-board/tickets.mjs` (`nieuw`, `status`, `log`, `blokkeer`,
-   `deblokkeer`, `pr`, plus `lijst`, `check`, `nummer`). It enforces the allowed transitions, sets `bijgewerkt`,
-   appends the Werklog line, and refuses to touch or produce an invalid ticket. A new number is the highest number
+6. **Every write goes through one CLI**, `tools/backlog-board/tickets.mjs` (`new`, `status`, `log`, `block`,
+   `unblock`, `pr`, plus `list`, `check`, `next-id`). It enforces the allowed transitions, sets `bijgewerkt`,
+   appends the Werklog line, and refuses to touch or produce an invalid ticket. **It also refuses to write to a copy
+   that is not the current one**: any write on a stale copy (a Werklog line on `main` while a branch has the ticket in
+   progress) would stamp the old status with a newer `bijgewerkt` and make it the board's truth, and a second session
+   could then pick the ticket up again. The first audit reproduced exactly that before this guard existed. A new number is the highest number
    visible anywhere on this machine plus one, reserved for the moment of creation through the groepschat claim
    directory when it exists.
 7. **No work without a ticket or a story.** A session that is asked to change files for work that has neither
    creates a TB ticket first, before the first edit. Three skills carry the procedures: `ticket-aanmaken`,
    `ticket-uitvoeren` and `ticket-testen`.
 8. **Side by side with the epics.** Stories `E<n>-<nn>` are finished in their epic files through `jaarplan-build` and
-   do not get tickets. New work comes in as tickets. The progress table in `backlog/README.md` keeps counting stories
-   only.
+   do not get tickets. New work comes in as tickets. A new story is filed only as a follow-up inside an epic that is
+   still open, for work that epic needs to be finished. The progress table in `backlog/README.md` keeps counting
+   stories only.
 9. **CI checks the tickets** on every push: the tool's tests and `tickets.mjs check`.
 
 ## Alternatives considered
@@ -91,18 +97,25 @@ that the board has the **full flow** of columns including a tester column.
 - **The board only knows this PC.** A session on another machine or in the cloud is invisible until its branch exists
   locally; the board does not look at `refs/remotes`.
 - **`bijgewerkt` decides.** A hand edit that forgets to update it can lose to an older version on another branch. The
-  CLI prevents this for every write it makes; `TICKETS.md` says so for hand edits.
+  CLI always updates it and refuses to write to a stale copy; `TICKETS.md` says so for hand edits.
+- **`bijgewerkt` is local time without a zone.** Everyone writing tickets today works in Belgian time. A writer whose
+  clock is in another zone (a cloud session, a CI runner) would produce versions that win or lose by the offset.
+  Nothing in the current flow writes tickets from such a place; if one ever does, store an offset.
 - **Merge detection assumes merge commits**, which is how this repo merges today. After a squash merge the branch tip
   is not an ancestor of `main`, so the branch keeps showing until it is deleted; its versions then lose on
   `bijgewerkt` unless they are newer.
 - **The functional architect commits directly to `main`.** That needs push rights and no branch protection that blocks
   them; the owner has to arrange that or move them to PRs.
-- **Tickets are Dutch**, where `CLAUDE.md` keeps backlog text in English. This is the owner's ruling for these two
-  folders only: the readers are the functional architect and the owner.
+- **Tickets are Dutch**, where Art. II.6 kept the backlog English. The owner ruled it for these two folders only,
+  because their readers are the functional architect and the owner, and it is recorded as an amendment to Art. II.6
+  in the constitution's ratification log. The tool's command and option names stay English (Art. II.2). Its messages
+  and the board are Dutch for the same readers, and they sit outside the product, so the `nl.json` catalogue
+  (Art. II.3, X.3) does not bind them.
 
 ## Compliance trace
 
-- **Constitution:** Art. X (Definition of Done): ticket work runs the same gates as story work, and the tool has its
+- **Constitution:** Art. II.6 (amended with this ADR: ticket text is Dutch) and II.2 (the tool's identifiers and
+  command names stay English); Art. X (Definition of Done): ticket work runs the same gates as story work, and the tool has its
   own tests in CI; Art. XIII: the antagonist still audits every significant change, and a ticket grants no exemption;
   Art. VI: tickets are committed to the repo, so they never carry pupil data or secrets (stated in the skills and in
   `TICKETS.md`); Art. XIV and XI: a ticket never settles an open decision. One that needs one is blocked with the
