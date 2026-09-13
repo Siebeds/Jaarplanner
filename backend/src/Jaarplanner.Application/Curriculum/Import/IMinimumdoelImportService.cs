@@ -31,8 +31,8 @@ public sealed record MinimumdoelImportResultaat(
     bool Toegepast);
 
 /// <summary>
-/// The reviewable report of one minimumdoelen import (FR-2.5): what the source adds, changes, leaves as it is, and no
-/// longer publishes, compared with the database.
+/// The reviewable report of one minimumdoelen import (FR-2.5): what the source adds, changes, leaves as it is, could not
+/// be read for, and no longer publishes, compared with the database.
 /// </summary>
 public sealed class MinimumdoelImportDiff
 {
@@ -42,6 +42,7 @@ public sealed class MinimumdoelImportDiff
         IReadOnlyList<MinimumdoelWijziging> gewijzigd,
         IReadOnlyList<string> ongewijzigd,
         IReadOnlyList<string> verdwenen,
+        IReadOnlyList<string> nietIngelezen,
         bool overgeslagen = false,
         IReadOnlyList<string>? opmerkingen = null)
     {
@@ -49,6 +50,7 @@ public sealed class MinimumdoelImportDiff
         Gewijzigd = gewijzigd;
         Ongewijzigd = ongewijzigd;
         Verdwenen = verdwenen;
+        NietIngelezen = nietIngelezen;
         Overgeslagen = overgeslagen;
         Opmerkingen = opmerkingen ?? [];
     }
@@ -63,10 +65,18 @@ public sealed class MinimumdoelImportDiff
     public IReadOnlyList<string> Ongewijzigd { get; }
 
     /// <summary>
-    /// Refs in the database that the source no longer publishes. <b>Kept, never deleted</b>: leerplandoelen may concord
-    /// to them (Restrict FK), and an eindterm leaving the decree is for a human to review, not for an import to act on.
+    /// Refs in the database that the source <b>no longer names at all</b>, neither as a usable row nor as a refused one.
+    /// <b>Kept, never deleted</b>: leerplandoelen may concord to them (Restrict FK), and an eindterm leaving the decree is
+    /// for a human to review, not for an import to act on.
     /// </summary>
     public IReadOnlyList<string> Verdwenen { get; }
+
+    /// <summary>
+    /// Refs in the database that the source <b>still names</b>, but whose row could not be imported this time (the reason
+    /// is in the result's <c>Problemen</c>). Their previous text stays as it was. Kept apart from <see cref="Verdwenen"/>
+    /// because telling a reviewer that the decree dropped an eindterm it still contains would be false (Art. III.4).
+    /// </summary>
+    public IReadOnlyList<string> NietIngelezen { get; }
 
     /// <summary>
     /// True when the import was deliberately skipped, for example because the source returned no usable rows. The
@@ -77,11 +87,13 @@ public sealed class MinimumdoelImportDiff
     /// <summary>Notices for the person running the import, in Dutch because that person acts on them (Art. II.3).</summary>
     public IReadOnlyList<string> Opmerkingen { get; }
 
-    /// <summary>True when the import changes nothing.</summary>
-    public bool IsLeeg => Toegevoegd.Count == 0 && Gewijzigd.Count == 0 && Verdwenen.Count == 0;
+    /// <summary>True when the import changes nothing and leaves nothing unread.</summary>
+    public bool IsLeeg =>
+        Toegevoegd.Count == 0 && Gewijzigd.Count == 0 && Verdwenen.Count == 0 && NietIngelezen.Count == 0;
 
-    /// <summary>True when a human should look before (or after) applying: a skip, a change, or a disappearance.</summary>
-    public bool VereistReview => Overgeslagen || Gewijzigd.Count > 0 || Verdwenen.Count > 0;
+    /// <summary>True when a human should look: a skip, a change, a disappearance, or a row that could not be read.</summary>
+    public bool VereistReview =>
+        Overgeslagen || Gewijzigd.Count > 0 || Verdwenen.Count > 0 || NietIngelezen.Count > 0;
 }
 
 /// <summary>A minimumdoel whose decreed content changed in the source.</summary>

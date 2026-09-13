@@ -71,7 +71,14 @@ public sealed class OnderwijsdoelenApiBron : IMinimumdoelBron
                     $"Paging through {Pad} did not end after {pagina} pages (next = '{volgende}').");
             }
 
-            var inhoud = await LeesPaginaAsync(new Uri(basis, volgende.TrimStart('/')), cancellationToken);
+            var adres = new Uri(basis, volgende.TrimStart('/'));
+            if (Uri.Compare(adres, basis, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+            {
+                // An absolute next link would otherwise be followed to whatever host the response names.
+                throw new OpstapBronFout($"The next link '{volgende}' leaves {basis.GetLeftPart(UriPartial.Authority)}; refused.");
+            }
+
+            var inhoud = await LeesPaginaAsync(adres, cancellationToken);
             aangekondigd ??= inhoud.Meta?.Count;
 
             foreach (var resultaat in inhoud.Results

@@ -100,18 +100,42 @@ public sealed class OpstapHtmlTests
                 "<ul><li>de isolator</li></ul><img src=\"https://x/energiebron.png\" alt=\"De energiebron\"/>" +
                 "<img src=\"https://x/lamp.png\" alt=\"De lamp\"/><img src=\"https://x/zonder.png\"/>"));
 
+    /// <summary><c>2.1.GL3.10</c> in the curriculum: stripping the tag would have written 102.</summary>
     [Fact]
-    public void Gekende_opmaak_levert_geen_onbekende_tags() =>
-        Assert.Empty(OpstapHtml.OnbekendeTags(
-            "<p>a<br/><strong>b</strong> <em>c</em></p><ul><li><a href=\"x\">d</a></li></ul><img alt=\"e\"/>" +
-            "<math><mfrac><mn>1</mn><mn>2</mn></mfrac></math>"));
+    public void Een_superscript_wordt_een_macht() =>
+        Assert.Equal("10^2=10x10= 100", OpstapHtml.NaarTekst("10<sup>2</sup>=10x10= 100"));
+
+    /// <summary>
+    /// A raw <c>&lt;</c> used as a sign is text. <c>2.1.GL1.2</c> in the curriculum would otherwise have lost
+    /// <c>&lt;, &gt;</c> to the tag stripper, and <c>2.3.GL2.48</c> its <c>(&lt; 1 week)</c> as soon as a <c>&gt;</c>
+    /// followed.
+    /// </summary>
+    [Theory]
+    [InlineData("<p>De leerlingen kennen de tekens =, ≠, <, > (tussen getallen).</p>", "De leerlingen kennen de tekens =, ≠, <, > (tussen getallen).")]
+    [InlineData("<p>kort (< 1 week) of lang (> 1 week)</p>", "kort (< 1 week) of lang (> 1 week)")]
+    public void Een_kale_kleiner_dan_is_tekst(string html, string verwacht) =>
+        Assert.Equal(verwacht, OpstapHtml.NaarTekst(html));
+
+    [Fact]
+    public void Gekende_opmaak_is_vertaalbaar() =>
+        Assert.Empty(OpstapHtml.OnvertaalbareOpmaak(
+            "<p>a<br/><strong>b</strong> <em>c</em> 10<sup>2</sup> =, <, ></p><ul><li><a href=\"x\">d</a></li></ul>" +
+            "<img alt=\"e\"/><math><mfrac><mn>1</mn><mn>2</mn></mfrac></math>"));
 
     /// <summary>MathML is known only in the fraction shape; any other shape is named, not guessed at.</summary>
     [Fact]
     public void Onbekende_opmaak_wordt_bij_naam_genoemd() =>
         Assert.Equal(
-            ["table", "math", "msup", "mn"],
-            OpstapHtml.OnbekendeTags("<table><tr>x</tr></table><math><msup><mn>2</mn><mn>3</mn></msup></math>")
-                .Where(t => t != "tr")
-                .ToArray());
+            ["<table>", "<tr>", "<math>", "<msup>", "<mn>"],
+            OpstapHtml.OnvertaalbareOpmaak("<table><tr>x</tr></table><math><msup><mn>2</mn><mn>3</mn></msup></math>"));
+
+    /// <summary>Each of these would lose content if stripped, so each is refused rather than converted.</summary>
+    [Theory]
+    [InlineData("<ol><li>eerst</li><li>dan</li></ol>", "<ol>")]
+    [InlineData("H<sub>2</sub>O", "<sub>")]
+    [InlineData("<img src=\"x.png\"/>", "<img> without alt text")]
+    [InlineData("<img src=\"x.png\" alt=\"\"/>", "<img> without alt text")]
+    [InlineData("<a href='https://x'>woordenlijst</a>", "<a> without a double-quoted href")]
+    public void Opmaak_die_inhoud_zou_verliezen_wordt_genoemd(string html, string verwacht) =>
+        Assert.Contains(verwacht, OpstapHtml.OnvertaalbareOpmaak(html));
 }

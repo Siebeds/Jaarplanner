@@ -14,10 +14,11 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// setters; an identical ref is left alone. Importing the same source twice changes nothing.
 /// </para>
 /// <para>
-/// <b>Never deletes (Art. III.4).</b> A ref the source no longer publishes stays in the table and is named in the report.
-/// Leerplandoelen concord to minimumdoelen through a Restrict FK, and an eindterm leaving the decree is something a
-/// human looks at, not something an import acts on. The row carries no "no longer in Op.stap" flag yet; that needs a
-/// migration and belongs with E1-21 (ADR-0032, consequences).
+/// <b>Never deletes (Art. III.4).</b> A ref the source no longer names stays in the table and is reported as
+/// <see cref="MinimumdoelImportDiff.Verdwenen"/>. A ref the source still names but whose row the mapping refused is
+/// reported apart, as <see cref="MinimumdoelImportDiff.NietIngelezen"/>, with its previous text untouched: calling it
+/// "no longer in the source" would tell a reviewer the decree dropped an eindterm it still contains. The row carries no
+/// "no longer in Op.stap" flag yet; that needs a migration and belongs with E1-21 (ADR-0032, consequences).
 /// </para>
 /// <para>
 /// <b>An empty source is a skip, not a disappearance.</b> If the source yields no usable row, nothing is written and the
@@ -52,6 +53,7 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
                 gewijzigd: [],
                 ongewijzigd: [],
                 verdwenen: [],
+                nietIngelezen: [],
                 overgeslagen: true,
                 opmerkingen:
                 [
@@ -64,6 +66,9 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
         var bestaand = await _context.Minimumdoelen.ToListAsync(cancellationToken);
         var bestaandPerRef = bestaand.ToDictionary(m => m.Ref, StringComparer.Ordinal);
         var inkomendeRefs = bron.Minimumdoelen.Select(m => m.Ref).ToHashSet(StringComparer.Ordinal);
+        // A refused row is named by its uniqueCode when it has one, so a ref already in the table that appears here is
+        // still in the source; only its row could not be read.
+        var genoemdMaarGeweigerd = bron.Problemen.Select(p => p.Sleutel).ToHashSet(StringComparer.Ordinal);
 
         var toegevoegd = new List<string>();
         var gewijzigd = new List<MinimumdoelWijziging>();
@@ -96,15 +101,24 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             }
         }
 
-        var verdwenen = bestaand
-            .Where(m => !inkomendeRefs.Contains(m.Ref))
-            .Select(m => m.Ref)
-            .Order(StringComparer.Ordinal)
-            .ToList();
+        var afwezig = bestaand.Where(m => !inkomendeRefs.Contains(m.Ref)).Select(m => m.Ref).ToList();
+        var nietIngelezen = afwezig.Where(genoemdMaarGeweigerd.Contains).Order(StringComparer.Ordinal).ToList();
+        var verdwenen = afwezig.Where(r => !genoemdMaarGeweigerd.Contains(r)).Order(StringComparer.Ordinal).ToList();
 
         if (toepassen)
         {
             await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        var opmerkingen = new List<string>();
+        if (verdwenen.Count > 0)
+        {
+            opmerkingen.Add(VerdwenenMelding(verdwenen.Count));
+        }
+
+        if (nietIngelezen.Count > 0)
+        {
+            opmerkingen.Add(NietIngelezenMelding(nietIngelezen.Count));
         }
 
         var diff = new MinimumdoelImportDiff(
@@ -112,13 +126,14 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             gewijzigd.OrderBy(w => w.Ref, StringComparer.Ordinal).ToList(),
             ongewijzigd.Order(StringComparer.Ordinal).ToList(),
             verdwenen,
-            opmerkingen: verdwenen.Count == 0 ? [] : [VerdwenenMelding(verdwenen.Count)]);
+            nietIngelezen,
+            opmerkingen: opmerkingen);
 
         return new MinimumdoelImportResultaat(diff, bron.Problemen, toepassen);
     }
 
     /// <summary>
-    /// The notice for refs the source no longer publishes. Dutch, because directie reads it (Art. II.3), and inflected by
+    /// The notice for refs the source no longer names. Dutch, because directie reads it (Art. II.3), and inflected by
     /// count, because "1 minimumdoelen staan" is the plural bug this repo has shipped before. It says only what the code
     /// guarantees: the rows stay.
     /// </summary>
@@ -126,6 +141,16 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
         aantal == 1
             ? "1 minimumdoel staat niet meer in de Op.stap-bron. Het blijft in de toepassing staan en wordt niet verwijderd."
             : $"{aantal} minimumdoelen staan niet meer in de Op.stap-bron. Ze blijven in de toepassing staan en worden niet verwijderd.";
+
+    /// <summary>
+    /// The notice for refs the source still names but could not be read this time. It asserts only what that branch
+    /// guarantees: the source lists them, and the text already in the application was not touched. Why a row was refused
+    /// is an operator matter and stays in the English <c>Problemen</c>.
+    /// </summary>
+    public static string NietIngelezenMelding(int aantal) =>
+        aantal == 1
+            ? "1 minimumdoel staat nog in de Op.stap-bron maar kon niet ingelezen worden. De vorige tekst blijft staan."
+            : $"{aantal} minimumdoelen staan nog in de Op.stap-bron maar konden niet ingelezen worden. De vorige tekst blijft staan.";
 
     private static List<VeldWijziging> Verschillen(Minimumdoel oud, Minimumdoel nieuw)
     {

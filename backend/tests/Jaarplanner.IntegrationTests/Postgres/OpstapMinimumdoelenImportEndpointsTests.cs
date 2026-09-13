@@ -20,9 +20,10 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// <para>
 /// <b>What is faked and what is not.</b> Only the source is replaced, by a fixed list, because CI must not depend on KOV's
 /// uptime; the live API has its own opt-in contract test (<c>OnderwijsdoelenLiveContractTests</c>). Everything from the
-/// controller to the table is real, <b>including the DI registration</b>: the fake replaces an existing registration
-/// rather than supplying a missing one, and <see cref="De_echte_bron_is_geregistreerd"/> pins that the real source is
-/// wired. A controller that no running application can reach is the defect E1-15 and E2-08 were filed for.
+/// controller to the table is real, <b>including the DI registration</b>. Once <c>AddOpstapApi</c> is called from
+/// <c>DependencyInjection.cs</c>, the fake replaces an existing registration rather than supplying a missing one. Until
+/// then every test here fails with a 500, and <see cref="De_echte_bron_is_geregistreerd"/> is the one that says why: a
+/// controller no running application can reach is the defect E1-15 and E2-08 were filed for.
 /// </para>
 /// </summary>
 public sealed class OpstapMinimumdoelenImportEndpointsTests : IAsyncLifetime
@@ -167,7 +168,7 @@ public sealed class OpstapMinimumdoelenImportEndpointsTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         var probleem = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(Probleemtitels.BronNietBereikbaar, probleem.GetProperty("title").GetString());
+        Assert.Equal(Probleemtitels.OpstapNietOpgehaald, probleem.GetProperty("title").GetString());
         Assert.Equal(OpstapBronFout.Melding, probleem.GetProperty("detail").GetString());
         // The English cause is for the log, never for the person who pressed the button.
         Assert.DoesNotContain("answered", probleem.GetRawText(), StringComparison.Ordinal);

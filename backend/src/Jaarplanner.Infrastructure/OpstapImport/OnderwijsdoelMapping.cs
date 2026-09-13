@@ -49,14 +49,18 @@ internal static partial class OnderwijsdoelMapping
             return Probleem(sleutel, $"validity ended on {einde:yyyy-MM-dd}; not imported.");
         }
 
-        var onbekend = OpstapHtml.OnbekendeTags(rij.Title).Concat(OpstapHtml.OnbekendeTags(rij.Description)).Distinct().ToList();
-        if (onbekend.Count > 0)
+        var onvertaalbaar = OpstapHtml.OnvertaalbareOpmaak(rij.Title)
+            .Concat(OpstapHtml.OnvertaalbareOpmaak(rij.Description))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (onvertaalbaar.Count > 0)
         {
-            // Refused rather than stripped: a tag whose meaning is unknown may carry part of the decreed text (a fraction
-            // once did), and Art. III.1 forbids altering it. A missing row is loud; a rewritten one is not.
+            // Refused rather than stripped: markup whose meaning cannot be kept may carry part of the decreed text (a
+            // fraction and a superscript both did), and Art. III.1 forbids altering it. A missing row is loud; a
+            // rewritten one is not.
             return Probleem(
                 sleutel,
-                $"contains markup the mapping does not know ({string.Join(", ", onbekend.Select(t => $"<{t}>"))}); " +
+                $"contains markup the mapping cannot convert faithfully ({string.Join(", ", onvertaalbaar)}); " +
                 "not imported, because stripping it could change the decreed text.");
         }
 

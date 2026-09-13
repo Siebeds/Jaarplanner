@@ -205,6 +205,27 @@ public sealed class OnderwijsdoelenApiBronTests
         Assert.Equal("6/4.1.1", Assert.Single(resultaat.Problemen).Sleutel);
     }
 
+    /// <summary>The caller cannot choose the host, and neither can a response: an absolute next link elsewhere is refused.</summary>
+    [Fact]
+    public async Task Een_volgende_pagina_op_een_andere_host_wordt_geweigerd()
+    {
+        var elders = Pagina1.Replace(
+            "\"/agodi/onderwijsdoelen/opstap?limit=2&keyOffset=2026-05-22T07%253A19%253A35Z%2C92410\"",
+            "\"https://elders.test/agodi/onderwijsdoelen/opstap?limit=2\"",
+            StringComparison.Ordinal);
+        var gevraagd = new List<string>();
+        var bron = Bron((verzoek, _) =>
+        {
+            gevraagd.Add(verzoek.RequestUri!.AbsoluteUri);
+            return Json(elders);
+        });
+
+        var fout = await Assert.ThrowsAsync<OpstapBronFout>(() => bron.HaalOpAsync());
+
+        Assert.Contains("leaves https://voorbeeld.test", fout.TechnischeOorzaak, StringComparison.Ordinal);
+        Assert.Single(gevraagd);
+    }
+
     private sealed class NepHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> antwoord)
         : HttpMessageHandler
     {

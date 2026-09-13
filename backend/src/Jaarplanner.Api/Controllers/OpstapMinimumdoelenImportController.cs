@@ -11,12 +11,17 @@ namespace Jaarplanner.Api.Controllers;
 /// (ADR-0022), behind the same <see cref="CurriculumbeheerAutorisatie.Beleid"/> policy as the Excel import beside it.
 /// <para>
 /// <b>No request body, on purpose.</b> The source is fixed by configuration (<c>Opstap:Api</c>) and never chosen by the
-/// caller, so this endpoint cannot be pointed at another host.
+/// caller, and the source refuses a paging link that leaves that host, so neither a caller nor a response can point the
+/// import somewhere else.
 /// </para>
 /// <para>
 /// <b>A source that cannot be read answers 502</b> with the Dutch sentence from <see cref="OpstapBronFout"/>, which says
-/// only what the person who pressed the button can act on. The technical cause goes to the log in English
-/// (Art. II.3 as amended 2026-07-30). Nothing has been written at that point.
+/// only what holds for every cause: nothing was fetched and nothing changed. The technical cause goes to the log in
+/// English (Art. II.3 as amended 2026-07-30).
+/// </para>
+/// <para>
+/// <b>Preview and apply each read the source.</b> This endpoint has no version to pin, so what an apply commits is its
+/// own report, which a screen must show rather than the preview's (E1-22).
 /// </para>
 /// <para>
 /// <b>Layering (Art. VIII).</b> This controller consumes Application types only: the import port lives in
@@ -82,7 +87,7 @@ public sealed class OpstapMinimumdoelenImportController : ControllerBase
             return StatusCode(StatusCodes.Status502BadGateway, new ProblemDetails
             {
                 Status = StatusCodes.Status502BadGateway,
-                Title = Probleemtitels.BronNietBereikbaar,
+                Title = Probleemtitels.OpstapNietOpgehaald,
                 Detail = fout.Message,
             });
         }

@@ -33,11 +33,17 @@ than falsified (a ref nobody imported still answers 409).
 
 1. **`services.AddOpstapApi(configuration);` in `Infrastructure/DependencyInjection.cs`.** That file was claimed by
    session E6-01 all afternoon; an `ASK` went up at 18:25 and had no answer when this worklog was written. A claim is a
-   lock, so the line is not added. Until it lands the endpoint answers 500 and `De_echte_bron_is_geregistreerd` fails —
-   that test exists precisely so the gap cannot pass silently (the E1-15 / E2-08 defect class).
+   lock, so the line is not added. Until it lands the endpoint answers 500 and all six tests in
+   `OpstapMinimumdoelenImportEndpointsTests` fail; `De_echte_bron_is_geregistreerd` is the one that names the cause, so
+   the gap cannot pass silently (the E1-15 / E2-08 defect class). *(Corrected after the antagonist's round 1: this said
+   only that one test failed.)*
 2. **The frontend** (E1-22): a button, the report, and removal of E1-13's notice `import.opstap.voorwaarde`, which
    becomes false the moment the import runs. Needs `nl.json`, also held by E6-01.
 3. **The ADR index row** (`docs/adr/README.md`) and the **progress row** (`backlog/README.md`), both held by E6-01.
+4. **Question 1 in `docs/besluiten-gevraagd.md`** still asks directie for the decreed minimumdoelen file and says the
+   tool is blocked on it. The owner's API ruling makes that false, and the document is marked for forwarding to
+   directie. It must be rewritten to report the ruling (and whether directie is asked to confirm it). Held by E6-01;
+   missed in the first version of this list and added after the antagonist's round 1 (MAJOR 5).
 
 ## Findings from the real data (2026-09-11), and what they changed
 
@@ -75,3 +81,28 @@ The first live contract run failed, which is what it is for. Every rule in `Opst
 - `dotnet format --verify-no-changes` on the touched files.
 
 Gates (antagonist, and a test-runner once the DI line lands) are recorded in `antagonist.md` beside this file.
+
+## Fix round 1 (2026-09-11 to 2026-09-13, after the antagonist's round 1: 5 MAJOR, 4 MINOR, 2 QUESTION)
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 MAJOR | `CurriculumbeheerAutorisatieTests` counted 2 `api/opstap-import*` routes; there are 4 | The test now names the four routes, so the next one is added on purpose. |
+| 2 MAJOR | A previously imported ref whose row the mapping refuses was reported as *verdwenen* | New bucket `MinimumdoelImportDiff.NietIngelezen`: refs the source still names (a refused row's `Sleutel` is its `uniqueCode`) are kept apart, with `NietIngelezenMelding` ("staat nog in de Op.stap-bron maar kon niet ingelezen worden. De vorige tekst blijft staan."). `Verdwenen` now means "named nowhere in the source". Test added. |
+| 3 MAJOR | The converter's guard admitted text-changing markup | A `<` that starts no tag is escaped before stripping (`=, ≠, <, >`, `(< 1 week)`); `<sup>x</sup>` becomes `^x`; `ol` and `sub` left the known set; an image without alt text and a link without a double-quoted `href` are refused. `OnbekendeTags` became `OnvertaalbareOpmaak`. Tests use the shapes of `2.1.GL3.10` and `2.1.GL1.2`. E1-21 carries a warning to census its corpus. |
+| 4 MAJOR | Dependent text not amended | Functional analysis (FR-2 intro, FR-2.1, the koppeling paragraph, the data flow, the assumptions, the open question marked as decided, the plan step), `CLAUDE.md` (Status and goals data flow), `CONSTITUTION.md` Art. V.6. |
+| 5 MAJOR | `besluiten-gevraagd.md` question 1 still asks directie for the file; the log row was silent on directie | The ratification-log row now says directie has not confirmed the ruling and that question 1 must be rewritten; item 4 under Outstanding. The file itself is held by E6-01. |
+| 6 MINOR | Status clauses said one test fails | Backlog, this worklog and the test-class doc now say all six fail until the DI line lands. |
+| 7 MINOR | E1-22 pointed at a deleted notice | Retargeted at `doelen.geenMinimumdoelenTitel` / `doelen.geenMinimumdoelenActie` and the register's count; the inner join in `MinimumdoelenQuery` is stated as a certainty. |
+| 8 MINOR | The 502 promised that a retry helps | `OpstapBronFout.Melding` now says only that nothing was fetched and nothing changed; the title is `Probleemtitels.OpstapNietOpgehaald` ("Op.stap niet opgehaald"). |
+| 9 MINOR | An absolute `$$meta.next` could leave KOV's host | Refused as an `OpstapBronFout`; test added. |
+| 10 QUESTION | VII.2 bound clauses beyond the rulings | "Every minimumdoel is imported" and the coverage-view duty are marked as the implementer's in VII.2 and ADR-0032; the duty is generalised to any minimumdoel with no loaded concorded leerplandoel, and the "six" is tied to all disciplines being imported. Put to the owner. |
+| 11 QUESTION | E1-22 design points | Recorded in E1-22 as "decide and record". |
+
+### Verification after fix round 1 (2026-09-13)
+
+- `dotnet build` succeeded; `dotnet format --verify-no-changes` on the touched paths: clean.
+- `dotnet test tests/Jaarplanner.UnitTests`: **901 passed, 1 skipped** (the opt-in live test).
+- Live contract test against KOV (`JAARPLANNER_LIVE_OPSTAP=1`): **passed** (998 minimumdoelen, no problems, named rows exact).
+- Integration tests **without** PostgreSQL (`--filter "FullyQualifiedName!~Jaarplanner.IntegrationTests.Postgres"`): **68/68**, including the fixed route inventory.
+- PostgreSQL, the Op.stap and curriculum classes (`OpstapMinimumdoelenImportEndpointsTests`, `OpstapImportEndpointsTests`, `Referentiedata*`, `Minimumdoel*`, `Doelen*`): **29 passed, 6 failed**, the six being exactly `OpstapMinimumdoelenImportEndpointsTests`, which cannot activate the controller until the DI line lands.
+- **The full PostgreSQL half did not complete, and is reported as not run.** A full run started on 2026-09-11 stalled for hours with 3.6 GB of 31.4 GB free (other sessions' processes) and was killed by the system. Before the kill it had printed the expected Op.stap failures plus six unrelated failures in the same second (`WeekplanningEndpointsTests`, `JaarplanPersistentieTests`, `DekkingEndpointsTests`, `OpstapImportEndpointsTests.Herimport_rapporteert…`, `SchoolcontentImportEndpointsTests`, `AggregaatGroeiTests`). One of those, `Herimport_rapporteert…`, passed in the targeted run above; the other five were not re-run. Their simultaneous timestamp points at the stall, but that is an inference, not a result.

@@ -43,8 +43,9 @@ public static class Probleemtitels
     public const string PeriodeIsBezet = "Periode is bezet";
 
     /// <summary>
-    /// A source outside this application could not be read (502, E1-12): KOV's Op.stap API was unreachable, too slow, or
-    /// answered something the import does not recognise. Nothing was changed, and the request itself was fine.
+    /// KOV's Op.stap data could not be fetched (502, E1-12): the API was unreachable or too slow, or it answered something
+    /// the import does not recognise. Worded to hold for all of those; "niet bereikbaar" would be false for a source that
+    /// answered. Nothing was changed, and the request itself was fine.
     /// </summary>
-    public const string BronNietBereikbaar = "Bron niet bereikbaar";
+    public const string OpstapNietOpgehaald = "Op.stap niet opgehaald";
 }

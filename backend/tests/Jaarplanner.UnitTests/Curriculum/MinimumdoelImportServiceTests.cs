@@ -168,6 +168,40 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
             MinimumdoelImportService.VerdwenenMelding(4));
     }
 
+    /// <summary>
+    /// A ref the source still names but whose row is refused this time is not "no longer in the source" (antagonist,
+    /// E1-12 round 1): it gets its own bucket, and its previous text stays.
+    /// </summary>
+    [Fact]
+    public async Task Een_geweigerde_rij_van_een_bestaand_minimumdoel_is_niet_verdwenen()
+    {
+        _bron.Geef(Md("1.1"), Md("1.2", "De vorige tekst."));
+        await _service.ImporteerAsync(toepassen: true);
+        var probleem = new MinimumdoelBronProbleem("K-1.2", "contains markup the mapping cannot convert faithfully (<sub>).");
+        _bron.Geef([Md("1.1")], [probleem]);
+
+        var resultaat = await _service.ImporteerAsync(toepassen: true);
+
+        Assert.Empty(resultaat.Diff.Verdwenen);
+        Assert.Equal(["K-1.2"], resultaat.Diff.NietIngelezen);
+        Assert.True(resultaat.Diff.VereistReview);
+        Assert.False(resultaat.Diff.IsLeeg);
+        Assert.Equal([MinimumdoelImportService.NietIngelezenMelding(1)], resultaat.Diff.Opmerkingen);
+        _context.ChangeTracker.Clear();
+        Assert.Equal("De vorige tekst.", (await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2")).Omschrijving);
+    }
+
+    [Fact]
+    public void De_melding_over_niet_ingelezen_minimumdoelen_is_verbogen()
+    {
+        Assert.Equal(
+            "1 minimumdoel staat nog in de Op.stap-bron maar kon niet ingelezen worden. De vorige tekst blijft staan.",
+            MinimumdoelImportService.NietIngelezenMelding(1));
+        Assert.Equal(
+            "3 minimumdoelen staan nog in de Op.stap-bron maar konden niet ingelezen worden. De vorige tekst blijft staan.",
+            MinimumdoelImportService.NietIngelezenMelding(3));
+    }
+
     private sealed class VasteBron : IMinimumdoelBron
     {
         private Func<MinimumdoelBronResultaat> _antwoord = () => new MinimumdoelBronResultaat([], []);

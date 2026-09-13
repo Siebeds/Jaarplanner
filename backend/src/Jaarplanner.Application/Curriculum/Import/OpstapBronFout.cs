@@ -6,17 +6,17 @@ namespace Jaarplanner.Application.Curriculum.Import;
 /// anything is written, so the database is exactly as it was.
 /// <para>
 /// Two audiences, two languages (Art. II.3 as amended 2026-07-30). <see cref="Exception.Message"/> is the Dutch sentence
-/// for the person who pressed the button, and it says only what that person can act on: nothing changed, try again
-/// later. <see cref="TechnischeOorzaak"/> is English and meant for the log, because a changed response shape is
-/// something only an operator can fix.
+/// for the person who pressed the button, and it says only what holds for <b>every</b> cause: the data was not fetched
+/// and nothing changed. It deliberately does not say "try again later", because a changed response shape or a partial
+/// read will not fix itself (antagonist, E1-12 round 1). <see cref="TechnischeOorzaak"/> is English and meant for the
+/// log, because those causes are something only an operator can fix.
 /// </para>
 /// </summary>
 public sealed class OpstapBronFout : Exception
 {
     /// <summary>The Dutch message for whoever ran the import. One source for the wording (Art. II.3 clause 3).</summary>
     public const string Melding =
-        "De Op.stap-gegevens van Katholiek Onderwijs Vlaanderen konden niet opgehaald worden. " +
-        "Er is niets gewijzigd. Probeer het later opnieuw.";
+        "De Op.stap-gegevens van Katholiek Onderwijs Vlaanderen konden niet opgehaald worden. Er is niets gewijzigd.";
 
     /// <summary>Constructs the fault.</summary>
     /// <param name="technischeOorzaak">What went wrong, in English, for the operator log.</param>
