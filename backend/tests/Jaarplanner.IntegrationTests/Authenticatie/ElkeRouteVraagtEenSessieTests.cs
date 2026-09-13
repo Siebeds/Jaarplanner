@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using Jaarplanner.Api.Infrastructure;
 using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -31,11 +32,16 @@ public sealed class ElkeRouteVraagtEenSessieTests : IClassFixture<JaarplannerApi
     /// <item>the two health checks, which a load balancer calls;</item>
     /// <item>signing in and signing out;</item>
     /// <item>the development sign-in, which exists only in Development (and the tests run in Development);</item>
-    /// <item>the OpenAPI document, Development only.</item>
+    /// <item>the OpenAPI document, Development only;</item>
+    /// <item>the frontend's index.html for a client route, which holds no data and must load before a sign-in
+    /// (ADR-0034). Its route excludes api/ and health/, so it cannot open an API path.</item>
     /// </list>
     /// </summary>
     private static readonly string[] AnoniemToegestaan =
     [
+        // MapFallbackToFile maps HEAD beside GET.
+        "GET " + SpaHosting.Route,
+        "HEAD " + SpaHosting.Route,
         "GET health",
         "GET health/ready",
         "GET api/aanmelden",
