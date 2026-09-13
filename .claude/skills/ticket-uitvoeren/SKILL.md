@@ -17,9 +17,11 @@ Format and statuses: [`backlog/TICKETS.md`](../../../backlog/TICKETS.md). Talk t
 Dutch; commits stay English.
 
 Change a ticket's frontmatter **only through the CLI** (`node tools/backlog-board/tickets.mjs …`). It sets `bijgewerkt`,
-which is how the board decides which version is newest, it writes the Werklog line, and it refuses a write when a newer copy
-elsewhere says the ticket is in another state (another status, or in progress under someone else). When it refuses with *"heeft elders een nieuwere versie"*, you are in the wrong
-checkout: do not work around it.
+which is how the board decides which version is newest, it writes the Werklog line, and it always writes on the newest copy: a newer
+copy elsewhere is adopted into your checkout first, so a block, a PR number or a give-back note on it is kept. It
+refuses when another session holds the ticket, when two copies have diverged, when the newer copy is on your own
+upstream (pull first), and when you try to pick up a blocked ticket. Do not work around a refusal: its message names
+the remedy.
 
 ## 0. Is there a ticket?
 
@@ -39,7 +41,8 @@ lead's backlog corrections), exactly as in CLAUDE.md.
 ## 1. Check the ticket and claim it
 
 - It must be `klaar-voor-bouw` (check with `list`, which sees every branch), or `in-uitvoering` by you because you just
-  created it. `in-uitvoering` by someone else: stop and pick another. `nieuw`: it is not refined yet; ask the owner
+  created it. `in-uitvoering` by someone else: stop and pick another. Blocked (`geblokkeerd` in `list`): stop too; it
+  waits for an answer from the owner. `nieuw`: it is not refined yet; ask the owner
   whether to move it to `klaar-voor-bouw` first.
 - Join the groepschat (`groepschat` skill) and claim `ticket-<ID>` (for example `ticket-FB-012`). A refused claim means
   another session has it.

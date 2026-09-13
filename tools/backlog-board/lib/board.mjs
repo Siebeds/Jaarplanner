@@ -18,7 +18,7 @@ function newer(a, b) {
 
 export function sourceLabel(source) {
   if (source.type === 'main') return 'main';
-  if (source.type === 'branch') return `branch ${source.name}`;
+  if (source.type === 'branch') return `${source.remote ? 'remote branch' : 'branch'} ${source.name}`;
   return `worktree ${source.name}${source.branch ? ` (${source.branch})` : ''}, niet gecommit`;
 }
 

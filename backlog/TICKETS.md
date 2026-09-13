@@ -146,7 +146,8 @@ afspraak (skill `ticket-uitvoeren`), geen slot.
   alleen aan zolang het `nieuw` is.** Vanaf `klaar-voor-bouw` kan een sessie op de pc van de eigenaar het al opgepakt
   hebben op een branch die nog niet gepusht is, en die branch ziet een eigen clone niet (ook de CLI niet). Wil je dan
   toch iets wijzigen, vraag het eerst na bij de eigenaar, die het op het bord ziet; anders wordt de aanvulling een
-  nieuw ticket.
+  nieuw ticket. Haal `main` binnen (`git pull`) vlak voor elke wijziging aan een bestaand ticket. Wie een ticket uit
+  `nieuw` haalt, ook de eigenaar, doet dat op `main` en pusht meteen, zodat een eigen clone het na een pull ziet.
 - **Agent-sessie:** werkt volgens de skill `ticket-uitvoeren`. Heeft het werk nog geen ticket en geen story, dan maakt
   de agent **eerst** een TB-ticket aan, vóór er een bestand verandert.
 - **Functioneel tester:** test tickets in `te-testen` met de skill `ticket-testen` en zet ze op `klaar`, of terug naar
@@ -187,7 +188,7 @@ zijn Engels, wat ze in het ticket schrijven is Nederlands.
 
 | Opdracht | Wat het doet |
 | --- | --- |
-| `node tools/backlog-board/tickets.mjs list [--status <kolom>] [--kind FB\|TB]` | alle tickets zoals het bord ze ziet |
+| `node tools/backlog-board/tickets.mjs list [--status <kolom>] [--kind FB\|TB]` | alle tickets, ook op opgehaalde remote branches, met wie ze vasthoudt en of ze geblokkeerd zijn |
 | `node tools/backlog-board/tickets.mjs check [bestand ...] [--all]` | controleert de structuur (in deze checkout, of met `--all` het hele bord) |
 | `node tools/backlog-board/tickets.mjs next-id FB\|TB` | het volgende vrije nummer |
 | `node tools/backlog-board/tickets.mjs new FB\|TB --title "..." --by <wie>` | nieuw ticket met de vaste structuur; opties `--priority`, `--status`, `--branch`, `--fr` |
@@ -196,12 +197,19 @@ zijn Engels, wat ze in het ticket schrijven is Nederlands.
 | `node tools/backlog-board/tickets.mjs block <id> --by <wie> "reden"` / `unblock <id> --by <wie>` | geblokkeerd aan of uit |
 | `node tools/backlog-board/tickets.mjs pr <id> <nummer> --by <wie>` | het PR-nummer invullen |
 
-Elke wijziging via de CLI zet `bijgewerkt` en schrijft een werklogregel. **Een schrijfopdracht weigert als er elders
-een nieuwere versie staat die een andere status zegt**, of die zegt dat iemand anders het ticket vasthoudt: anders
-zou een regel op een oude kopie de oude status weer de nieuwste maken. Pas het ticket dus aan waar het werk gebeurt.
-Een nieuwere versie met dezelfde status (een PR-nummer dat na de merge op de branch kwam, of een ticket dat op een
-branch teruggegeven werd) houdt niemand tegen. De controle ziet wat deze pc ziet: de lokale branches en worktrees, en
-de branches die met `git fetch` of `git pull` binnengehaald zijn. Een branch die alleen op een andere pc staat, ziet
-ze niet; daarvoor dient de afspraak onder *Wie doet wat*. Wie een ticket
+Elke wijziging via de CLI zet `bijgewerkt` en schrijft een werklogregel, **altijd op de nieuwste versie van het
+ticket**: staat er op een andere branch, in een worktree of op een opgehaalde remote branch een nieuwere versie, dan
+neemt de CLI die eerst over in deze checkout, en zegt dat. Zo gaat er niets verloren: geen blokkering, geen
+PR-nummer, geen notitie van een sessie die het ticket teruggaf. De CLI weigert:
+
+- als een andere sessie het ticket in uitvoering heeft: alleen die sessie wijzigt het;
+- als twee versies uit elkaar gelopen zijn (elk heeft werklogregels die de andere mist): breng ze eerst samen;
+- als de nieuwere versie op de remote van je eigen branch staat: doe eerst `git pull`;
+- als je een geblokkeerd ticket wilt oppakken: eerst moet de vraag beantwoord zijn (`unblock`).
+
+De controle ziet wat deze pc ziet: de lokale branches en worktrees, en de remote branches van de laatste `git fetch`
+of `git pull`. Een branch die alleen op een andere pc staat, ziet ze niet; daarvoor dient de afspraak onder *Wie doet
+wat*. Een branch die op de server verwijderd is, blijft lokaal bestaan als `origin/...` tot je `git fetch --prune`
+doet. Een verlaten branch die een ticket vasthoudt, maakt de eigenaar vrij door die branch te verwijderen. Wie een ticket
 toch met de hand aanpast, moet `bijgewerkt` zelf bijwerken, anders kan een oudere versie op een andere branch het
 halen.

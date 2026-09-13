@@ -56,16 +56,20 @@ that the board has the **full flow** of columns including a tester column.
    hue also carries a text label, and Markdown from a ticket is escaped before it is rendered.
 6. **Every write goes through one CLI**, `tools/backlog-board/tickets.mjs` (`new`, `status`, `log`, `block`,
    `unblock`, `pr`, plus `list`, `check`, `next-id`). It enforces the allowed transitions, sets `bijgewerkt`,
-   appends the Werklog line, and refuses to touch or produce an invalid ticket. **It also refuses a write when a
-   newer copy elsewhere says the ticket is in a different state** (another status, or in progress under someone
-   else): a write on a stale copy (a Werklog line on `main` while a branch has the ticket in progress) would stamp the
-   old status with a newer `bijgewerkt` and make it the board's truth, and a second session could then pick the
-   ticket up again. The first audit reproduced exactly that before this guard existed. The guard compares **state,
-   not text**: the second audit showed that a text comparison froze a ticket for the tester once its branch gained a
-   PR number after the merge, and froze it for everyone once a session gave it back on a branch that was never
-   merged. It reads local branches, worktrees and remote-tracking branches as of the last fetch; a branch that exists
-   only on another PC is invisible to it. That gap is closed by a process rule, not by code: the functional
-   architect, working in their own clone, changes an existing ticket only while it is `nieuw` (`TICKETS.md`). A new number is the highest number
+   appends the Werklog line, and refuses to touch or produce an invalid ticket. **Every write is made on the
+   newest copy.** When a newer copy exists elsewhere, the CLI adopts it into the current checkout first and applies
+   the write on top, so nothing on it is lost. It refuses instead when another session holds the ticket (only that
+   session changes it), when the two copies have **diverged**, and when the newer copy is on the checkout's own
+   upstream (pull first); and it never lets a **blocked** ticket be picked up, because a block is how a ticket waits
+   for an open decision (Art. XIV). Divergence is decided on the Werklog, which only grows: a copy descends from
+   another exactly when every Werklog line it has is also in the other. *Why this design, after two that failed:* the
+   first guard let a write on a stale copy win, so a Werklog line on `main` undid a pickup (audit round 1). The second
+   refused whenever the texts differed and froze tickets for the tester and the next session (round 2). The third
+   compared status only and silently dropped blocks and give-back notes (round 3). Adopting the newest copy keeps
+   every field without freezing anyone. The guard reads local branches, worktrees and remote-tracking branches as of
+   the last fetch; a branch that exists only on another PC is invisible to it. That gap is closed by a process rule,
+   not by code: the functional architect, working in their own clone, pulls first and changes an existing ticket only
+   while it is `nieuw` (`TICKETS.md`). A new number is the highest number
    visible anywhere on this machine plus one, reserved for the moment of creation through the groepschat claim
    directory when it exists.
 7. **No work without a ticket or a story.** A session that is asked to change files for work that has neither
@@ -103,7 +107,11 @@ that the board has the **full flow** of columns including a tester column.
 - **The board only knows this PC.** A session on another machine or in the cloud is invisible until its branch exists
   locally; the board does not look at `refs/remotes`.
 - **`bijgewerkt` decides.** A hand edit that forgets to update it can lose to an older version on another branch. The
-  CLI always updates it and refuses to write to a stale copy; `TICKETS.md` says so for hand edits.
+  CLI always updates it and always writes on the newest copy; `TICKETS.md` says so for hand edits. A hand edit that
+  adds no Werklog line is also invisible to the divergence check.
+- **A remote branch deleted on the server lingers** as `origin/...` until `git fetch --prune`, and while it holds a
+  ticket the CLI refuses a pickup with that remedy in its message. An abandoned local branch that holds a ticket is
+  freed by deleting it.
 - **The stale-copy guard only sees this machine** plus what it last fetched. Agents push only when the owner asks,
   so from the functional architect's clone an in-progress branch is usually invisible; the `nieuw`-only rule for
   editing existing tickets carries that case. Two clones can also mint the same FB number; the board flags both

@@ -109,7 +109,8 @@ Show the user the finished ticket (title, criteria, scenarios) and ask for a go.
 ## Changing an existing ticket
 
 In the functional architect's own clone, the CLI's guard cannot see a branch that exists only on the owner's PC, and
-agents push only when the owner asks. So **change an existing FB ticket only while it is `nieuw`.** From
+agents push only when the owner asks. So **change an existing FB ticket only while it is `nieuw`**, and run
+`git pull --ff-only` right before the change, so "nieuw" is today's answer and not yesterday's. From
 `klaar-voor-bouw` on, a session may already hold it: ask the owner to check the board first, or log the addition as a
 new ticket. Pull `main` right before `new` and push right after it, so two clones rarely mint the same number; if
 they do, `backlog/TICKETS.md` describes the one permitted rename.

@@ -121,7 +121,7 @@ test('a write on a stale copy is refused, so an old status can never be stamped 
     const before = r.read(rel);
     const out = run('log', 'FB-001', '--by', 'lead', 'even kijken');
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /nieuwere versie: branch feature\/a \(in-uitvoering door s1/);
+    assert.match(out.stderr, /in uitvoering door s1 op branch feature\/a/);
     assert.equal(r.read(rel), before, 'nothing was written');
 
     // and a second session cannot pick up a ticket another session already has
@@ -151,6 +151,7 @@ test('after a post-merge commit on the branch, the tester can still close the ti
 
     const out = run('status', 'FB-001', 'klaar', '--by', 'tester', '--log', 'getest');
     assert.equal(out.status, 0, out.stderr);
+    assert.equal(fieldsOf(r, ticketPath('FB', 1, 'thema-dupliceren')).fields.pr, '52', 'the PR number recorded after the merge is kept');
   } finally {
     r.cleanup();
   }
@@ -171,6 +172,8 @@ test('a ticket given back on an unmerged branch can be picked up by the next ses
     r.git('switch', '-q', '-c', 'feature/b');
     const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
     assert.equal(out.status, 0, out.stderr);
+    const log = fieldsOf(r, ticketPath('FB', 1, 'thema-dupliceren')).worklog.map((w) => w.text);
+    assert.ok(log.includes('in-uitvoering → klaar-voor-bouw: teruggegeven'), 'the give-back note travels to the next session');
   } finally {
     r.cleanup();
   }
@@ -195,7 +198,127 @@ test('in a second clone, the guard sees a fetched branch that holds the ticket',
     execFileSync('git', ['clone', '-q', origin, clone], { env: GIT_ENV });
     const out = runIn(ctx, clone, 'log', 'FB-001', '--by', 'fa', 'een aanvulling');
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /origin\/feature\/a \(in-uitvoering door s1/);
+    assert.match(out.stderr, /in uitvoering door s1 op branch feature\/a \(gezien op remote branch origin\/feature\/a\)/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+function addOrigin(r) {
+  const origin = path.join(r.dir, 'origin.git');
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin], { env: GIT_ENV });
+  r.git('remote', 'add', 'origin', origin);
+  r.git('push', '-q', '-u', 'origin', 'main');
+  return origin;
+}
+
+test('a ticket given back while blocked stays blocked for the next session', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    const rel = readyTicket(ctx);
+    r.git('switch', '-q', '-c', 'feature/a');
+    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
+    assert.equal(run('block', 'FB-001', '--by', 's1', 'open', 'vraag', 'Art.', 'XIV').status, 0);
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 's1', '--log', 'teruggegeven: wacht op besluit').status, 0);
+    r.commit('Give FB-001 back, blocked');
+
+    r.git('switch', '-q', 'main');
+    r.git('switch', '-q', '-c', 'feature/b');
+    let out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 1, 'a blocked ticket is not picked up');
+    assert.match(out.stderr, /geblokkeerd: open vraag Art\. XIV/);
+
+    assert.equal(run('unblock', 'FB-001', '--by', 'eigenaar', 'beslist').status, 0);
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 0, out.stderr);
+    assert.ok(fieldsOf(r, rel).worklog.some((w) => w.text.includes('teruggegeven: wacht op besluit')));
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("the owner's block on main stops a pickup from a branch that forked before it", () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    r.git('branch', 'feature/c');
+    assert.equal(run('block', 'FB-001', '--by', 'eigenaar', 'welke', 'disciplines?').status, 0);
+    r.commit('Block FB-001');
+    assert.match(run('list', '--status', 'klaar-voor-bouw').stdout, /FB-001\s+Klaar voor bouw\s+middel\s+ja/);
+
+    r.git('switch', '-q', 'feature/c');
+    const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's3');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /geblokkeerd: welke disciplines\?/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('two copies that have diverged are refused, not silently overwritten', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    const rel = readyTicket(ctx);
+    r.git('switch', '-q', '-c', 'feature/x');
+    assert.equal(run('log', 'FB-001', '--by', 's1', 'op de branch').status, 0);
+    r.commit('log on the branch');
+    r.git('switch', '-q', 'main');
+    r.write(rel, `${r.read(rel).trimEnd()}\n- 2026-09-13 09:00 · fa · met de hand op main\n`);
+    r.commit('hand edit on main');
+
+    const out = run('log', 'FB-001', '--by', 'fa', 'nog iets');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /uit elkaar gelopen/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a branch deleted on the server is named as stale, and git fetch --prune frees the ticket', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    const origin = addOrigin(r);
+    r.git('switch', '-q', '-c', 'feature/d');
+    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's4').status, 0);
+    r.commit('Start FB-001');
+    r.git('push', '-q', 'origin', 'feature/d');
+    r.git('switch', '-q', 'main');
+    r.git('branch', '-D', 'feature/d');
+    execFileSync('git', ['-C', origin, 'branch', '-D', 'feature/d'], { env: GIT_ENV }); // a PR closed on the server
+
+    r.git('switch', '-q', '-c', 'feature/e');
+    let out = run('status', 'FB-001', 'in-uitvoering', '--by', 's5');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /git fetch --prune/);
+    r.git('fetch', '-q', '--prune');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's5');
+    assert.equal(out.status, 0, out.stderr);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a newer copy on your own upstream asks for a pull instead of being adopted', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    const origin = addOrigin(r);
+    const clone = path.join(r.dir, 'tester');
+    execFileSync('git', ['clone', '-q', origin, clone], { env: GIT_ENV });
+    assert.equal(run('block', 'FB-001', '--by', 'eigenaar', 'even', 'wachten').status, 0);
+    r.commit('Block FB-001');
+    r.git('push', '-q', 'origin', 'main');
+
+    execFileSync('git', ['-C', clone, 'fetch', '-q'], { env: GIT_ENV });
+    const out = runIn(ctx, clone, 'log', 'FB-001', '--by', 'tester', 'x');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /remote branch origin\/main.*git pull/);
   } finally {
     r.cleanup();
   }

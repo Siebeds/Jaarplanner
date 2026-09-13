@@ -204,7 +204,8 @@ export async function collectVersions(root, cache = createCache(), { remotes = f
   for (const r of heads) {
     if (r.ref === main.ref || merged.has(r.ref)) continue;
     if (commitSources.some((c) => c.sha === r.sha)) continue;
-    commitSources.push({ source: { type: 'branch', name: r.name }, sha: r.sha });
+    const remote = r.ref.startsWith('refs/remotes/');
+    commitSources.push({ source: { type: 'branch', name: r.name, ...(remote ? { remote: true } : {}) }, sha: r.sha });
   }
   for (const w of trees) {
     if (w.branch || w.head === main.sha) continue;
