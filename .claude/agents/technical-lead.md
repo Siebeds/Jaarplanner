@@ -102,6 +102,7 @@ grep -rn 'BLOCKED\|ASK' /c/source/Jaarplanner/.claude/coordination/groepschat.md
   done
   ```
 - **Stalled sessions.** A session file whose `updated:` is over ~45 minutes old while it still holds claims. Report it; break the claims only if the evidence says the session is gone (no commits in its worktree, no chat lines), and post `INFO` naming what you broke.
+- **Tickets** ([ADR-0033](../../docs/adr/0033-ticketbacklog-en-kanbanbord.md)). `node tools/backlog-board/tickets.mjs lijst` shows every ticket as the board sees it, across `main`, unmerged branches and worktrees; `tickets.mjs check --alle` lists every structural error. A ticket `in-uitvoering` whose `opgepakt-door` has no live session and no `ticket-<ID>` claim is abandoned work, exactly like an ownerless `[~]`. A card in *In review* is finished work waiting on the owner's merge: report it under branch hygiene. An invalid ticket or a number used by two files is a finding. You never change a ticket's status on a session's behalf; you may add a Werklog line through the CLI.
 
 ### 3. Collisions between sessions
 

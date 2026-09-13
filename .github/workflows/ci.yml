@@ -114,3 +114,24 @@ jobs:
 
       - name: Build
         run: corepack pnpm build
+
+  tickets:
+    name: Backlog tickets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # The board and CLI have no dependencies; their tests build throwaway git repos in the temp dir.
+      - name: Test the board and CLI
+        working-directory: tools/backlog-board
+        run: node --test "test/*.test.mjs"
+
+      # Blocking: a ticket that breaks the fixed structure (ADR-0033, backlog/TICKETS.md) fails the job.
+      - name: Check ticket structure
+        run: node tools/backlog-board/tickets.mjs check

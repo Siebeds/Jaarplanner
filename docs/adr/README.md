@@ -43,6 +43,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0030](0030-rollen-en-rechten-in-de-app.md) | **Roles and rights live in the app**, Entra only authenticates (own school tenant); only invited people log in; directie sees and edits everything; thema's for directie and a few people; a jaar's subthema's for its **hoofdleerkrachten** (per schooljaar, several allowed); a leerkracht edits their own klassen, can view others and may add **personal** activiteiten/subdoelen; every leerkracht may generate and review doelsuggesties; the FR-1 import is directie + themabeheer. §1 quotes the owner's rulings verbatim, §2 holds the defaults that are **not** ruled, §4 six open questions; the matrix binds once amendment part 1 lands (supersedes 0011 §3) | Accepted (§1) |
 | [0031](0031-sessielogin-via-de-api.md) | Personal login as a **session held by the API**: Entra ID over OpenID Connect with the framework's own handler, an encrypted `HttpOnly` cookie and no token in the browser; every `/api` route requires a session by default and answers 401, never a redirect; authenticated means invited; a development sign-in and a test scheme that issue the same cookie path; first-login binding on the UPN of a member account onto an unbound invitation only, failing closed without `acct` (amends 0022 §1) | Accepted |
 | [0032](0032-opstap-api-als-importbron.md) | **KOV's Op.stap API is the curriculum import source**, read by the backend into the database through a preview and an apply; only **G** goals for now (Z and V skipped); the Excel import stays until the API import has run in production (supersedes 0006 in part: the source) | Accepted |
+| [0033](0033-ticketbacklog-en-kanbanbord.md) | **A Markdown ticket backlog beside the epics**: `backlog/functionele-backlog/` (FB, on `main`) and `backlog/technische-backlog/` (TB, on the work branch) in one fixed Dutch format defined once in `tools/backlog-board/lib/format.mjs`; every write through one CLI; a read-only local kanban board that reads `main`, unmerged branches and worktrees, with *In review* derived and never written; no work without a ticket or a story (supersedes nothing) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -78,6 +79,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0030 | Art. VI.1/VI.2/VI.5/VI.6, IX.2, II.4, XII, IV, V.1, III, XI, XIV (two-part amendment owed: VI.1, IX.2 `Thema`, XII, XIV before E6-02/E6-04; IX.2 personal content with E6-10) | E6-01/02/04/08/09/10, E7-06, E7-11 | FR-1, FR-3.1, FR-4, FR-10.1/10.2, FR-12.2, FA §3.1/§3.2; NFR-5/6 |
 | 0031 | Art. VI.1/VI.2/VI.4/VI.5/VI.6, VIII, II.3 | E6-01; E7-11 (authentication half), E6-02, E6-04, E7-06 | FR-10; NFR-5/6 |
 | 0032 | Art. VII.2, III.1/III.3/III.4, V.2/V.6, XIV | E1-12, E1-21/22/23; E1-03/04 | FR-2.1–2.5, FR-9.3 |
+| 0033 | Art. X, XIII, VI, XI/XIV | all epics, side by side; tickets from 2026-09-13 | none (team workflow) |
 
 ## Open decisions referenced by ADRs
 
