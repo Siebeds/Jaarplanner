@@ -6,8 +6,8 @@
   declined to ask KOV about its usage notes first; only **G** goals are imported for now, with Z (zwemdoelen) and V
   (Vlaamse gebarentaal) named as skipped. Recorded in [ADR-0032](../../../docs/adr/0032-opstap-api-als-importbron.md),
   `CONSTITUTION.md` Art. VII.2 and the ratification log.
-- **Status:** `[~]`. Built and tested; **not reachable** until one DI line lands (below); substantive minimumdoel-level
-  coverage waits on E1-21.
+- **Status:** `[~]`. Built, tested and wired (the DI line landed 2026-09-13, see the last section); substantive
+  minimumdoel-level coverage waits on E1-21.
 
 ## What was built
 
@@ -31,7 +31,8 @@ than falsified (a ref nobody imported still answers 409).
 
 ## Outstanding, and why it is not done here
 
-1. **`services.AddOpstapApi(configuration);` in `Infrastructure/DependencyInjection.cs`.** That file was claimed by
+1. ~~**`services.AddOpstapApi(configuration);` in `Infrastructure/DependencyInjection.cs`.**~~ *Done 2026-09-13, see
+   "Merge with main and the DI line" at the end.* That file was claimed by
    session E6-01 all afternoon; an `ASK` went up at 18:25 and had no answer when this worklog was written. A claim is a
    lock, so the line is not added. Until it lands the endpoint answers 500 and all six tests in
    `OpstapMinimumdoelenImportEndpointsTests` fail; `De_echte_bron_is_geregistreerd` is the one that names the cause, so
@@ -157,3 +158,23 @@ Round 3 confirmed both round-2 MAJORs resolved against live data. Its four MINOR
 
 These fixes had no independent audit round of their own. They are text, one tested line of code (`IsLeeg`) and one
 tested string.
+
+## Merge with main and the DI line (2026-09-13)
+
+The pushed branch (`5d44b65`) was red on CI and conflicted with `main`:
+
+- **Backend gates failed in the Test step** (Build passed). The cause was the one this worklog predicted: without
+  `AddOpstapApi` in `DependencyInjection.cs`, the six `OpstapMinimumdoelenImportEndpointsTests` fail on a real PostgreSQL,
+  which CI has and the local runs without `JAARPLANNER_TEST_POSTGRES` skip. The tests did their job.
+- **The merge conflict** was in `Probleemtitels.cs`: `OpstapNietOpgehaald` (this story) and E6-01's `NietAangemeld` /
+  `GeenToegang` were appended at the same place. All three kept.
+
+E6-01 merged to `main` as PR #48 (`7e23dcf`), releasing `DependencyInjection.cs`, so the line was added beside the
+Excel import's `IOpstapImportService` registration, after `main` was merged in.
+
+### Verification (2026-09-13, merged tree)
+
+- `dotnet build -c Release`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: clean.
+- `dotnet test` against a throwaway PostgreSQL 17.5 container (the CI image): **unit 931 passed, 1 skipped** (the opt-in
+  live test); **integration 328 passed, 0 skipped**, so every PostgreSQL test ran, the six above included. This is also
+  the first complete PostgreSQL run of this branch, which fix round 1 reported as not run.
