@@ -145,9 +145,9 @@ De school start met haar eigen, bestaande inhoud in Excel: thema's, subthema's e
 
 ### FR-2 — Leerplandoelen vanuit Op.stap (Katholiek Onderwijs Vlaanderen)
 
-De doelen worden niet door de school opgesteld. De school volgt het leerplan "Op.stap, leerroutes voor iedereen" van Katholiek Onderwijs Vlaanderen. Dat leerplan bevat de leerplandoelen én de decretale minimumdoelen (de eindtermen van de Vlaamse overheid, letterlijk opgenomen) en stelt de doelen per discipline beschikbaar als Excelbestand.
+De doelen worden niet door de school opgesteld. De school volgt het leerplan "Op.stap, leerroutes voor iedereen" van Katholiek Onderwijs Vlaanderen. Dat leerplan bevat de leerplandoelen én de decretale minimumdoelen (de eindtermen van de Vlaamse overheid, letterlijk opgenomen) en stelt de doelen beschikbaar via een API van Katholiek Onderwijs Vlaanderen, en daarnaast als Excelbestand per discipline. *(Bijgewerkt 2026-09-11: de projecteigenaar besliste dat de API de bron is, zie ADR-0032.)*
 
-- **FR-2.1** — De leerplandoelen worden ingeladen vanuit de Op.stap-Excelbestanden (één bestand per discipline), met behoud van de structuur: doelsoort, unieke code, jaar/fase, domein/subdomein/cluster en de concordantie met de minimumdoelen.
+- **FR-2.1** — De leerplandoelen en de decretale minimumdoelen worden ingeladen vanuit de Op.stap-API van Katholiek Onderwijs Vlaanderen, met behoud van de structuur: doelsoort, unieke code, jaar/fase, domein/subdomein/cluster en de concordantie met de minimumdoelen. Voorlopig worden enkel de gemeenschappelijke doelen (G) ingeladen. *(Bijgewerkt 2026-09-11, ADR-0032. Voorheen: vanuit de Op.stap-Excelbestanden, één bestand per discipline.)*
 - **FR-2.2** — De tool herkent de doelsoort (MD = minimumdoel, G = gemeenschappelijk, + = verdieping, P/S/A = illustratief) en kan daarop filteren, bv. om enkel de minimumdoelen of enkel de gemeenschappelijke doelen te tonen.
 - **FR-2.3** — De minimumdoelen worden via de concordantie aan de leerplandoelen gekoppeld, zodat dekking ook op minimumdoelniveau aangetoond kan worden (zie FR-9).
 - **FR-2.4** — De school past de officiële inhoud van de doelen niet aan; interne ordening en labels zijn wel mogelijk.
@@ -274,11 +274,11 @@ Dit hoofdstuk is bestemd voor de ontwikkelaar en is indicatief. De directie hoef
 - **Database** — PostgreSQL voor de opslag van schooljaren, klassen, leerplandoelen (met doelsoort, code, jaar/fase, domein en concordantie met de minimumdoelen), thema's, activiteiten en jaarplannen.
 - **AI** — Azure AI Foundry voor het genereren van de doel-matching en de jaarplanning.
 - **Hosting** — Microsoft Azure.
-- **Koppeling leerplandoelen** — de leerplandoelen worden ingeladen vanuit de Op.stap-Excelbestanden (Katholiek Onderwijs Vlaanderen), één per discipline, met behoud van de kolomstructuur (doelsoort, code, jaar/fase, domein/subdomein/cluster, concordantie). De gestructureerde Excel-import is het basismechanisme; een eventuele geautomatiseerde koppeling kan later onderzocht worden.
+- **Koppeling leerplandoelen** — de leerplandoelen en minimumdoelen worden door de backend ingeladen vanuit de Op.stap-API van Katholiek Onderwijs Vlaanderen en in de eigen databank bewaard; de tool raadpleegt de API nooit op het moment dat een leerkracht werkt. Wat een nieuwe versie verandert, wordt eerst ter controle getoond en pas na bevestiging doorgevoerd. *(Bijgewerkt 2026-09-11, ADR-0032. De Excel-import was het basismechanisme en blijft beschikbaar, maar is niet langer de bron.)*
 
 ### Vereenvoudigde gegevensstroom
 
-Op.stap-Excelbestanden inladen (leerplandoelen) + Excel-upload van thema's/activiteiten → de backend valideert en bewaart in PostgreSQL → de backend roept de AI-dienst aan met de relevante gegevens → het resultaat (matching/jaarplan) wordt bewaard en getoond in de frontend → de leerkracht past aan → de wijzigingen gaan terug naar de database.
+Op.stap-doelen ophalen via de API van Katholiek Onderwijs Vlaanderen + Excel-upload van thema's/activiteiten → de backend valideert en bewaart in PostgreSQL → de backend roept de AI-dienst aan met de relevante gegevens → het resultaat (matching/jaarplan) wordt bewaard en getoond in de frontend → de leerkracht past aan → de wijzigingen gaan terug naar de database.
 
 ## 9. MVP-scope en fasering
 
@@ -315,7 +315,7 @@ De wens is om in de eerste versie alle functionaliteiten op te nemen ("one-shot"
 ## 10. Aannames
 
 - De school levert haar bestaande thema's, subthema's en activiteiten aan in Excel.
-- De school volgt het leerplan Op.stap van Katholiek Onderwijs Vlaanderen; de leerplandoelen worden ingeladen vanuit de Op.stap-Excelbestanden (één per discipline), waarin de decretale minimumdoelen verwerkt zijn.
+- De school volgt het leerplan Op.stap van Katholiek Onderwijs Vlaanderen; de leerplandoelen en de decretale minimumdoelen worden ingeladen vanuit de Op.stap-API van Katholiek Onderwijs Vlaanderen (bijgewerkt 2026-09-11, ADR-0032).
 - De tool wordt in de eerste versie door één school gebruikt.
 - Er worden geen leerlinggegevens verwerkt in de MVP.
 - De school beschikt over (of voorziet) de nodige cloud- en AI-omgeving (Azure).
@@ -325,7 +325,7 @@ De wens is om in de eerste versie alle functionaliteiten op te nemen ("one-shot"
 Onderstaande punten bepalen mee de uitwerking. Antwoorden hierop laten toe deze analyse te verfijnen tot een definitieve versie.
 
 - **Disciplines**: welke disciplines uit Op.stap nemen we mee in de eerste versie — alle, of een selectie om mee te starten?
-- **Op.stap-doelen ophalen**: importeren we de Excelbestanden manueel (download per discipline van de PRO.-site), of komt er een geautomatiseerde/online koppeling?
+- ~~**Op.stap-doelen ophalen**: importeren we de Excelbestanden manueel (download per discipline van de PRO.-site), of komt er een geautomatiseerde/online koppeling?~~ **Beslist door de projecteigenaar op 2026-09-11:** de Op.stap-API van Katholiek Onderwijs Vlaanderen, en voorlopig enkel de G-doelen (ADR-0032).
 - **Ordening**: Op.stap ordent per jaar/fase (JK–L6) met minimumdoelen op mijlpalen (einde K3, L4, L6). Volgt de tool die ordening, en hoe gaan we om met graadklassen of menggroepen?
 - **Kalenderindeling**: in welke eenheden plannen leerkrachten — per maand, per week, per lesblok of per themaperiode?
 - Hoeveel klassen en leerkrachten zijn er in de eerste versie?
@@ -342,7 +342,7 @@ Onderstaande punten bepalen mee de uitwerking. Antwoorden hierop laten toe deze 
 
 - De directie bezorgt feedback en beantwoordt de open vragen (hoofdstuk 11).
 - Op basis daarvan wordt deze analyse verfijnd tot versie 1.0, met een concrete planning en opleverdata.
-- De bestaande Excel-bestanden (thema's/activiteiten) worden verzameld en de Op.stap-leerplandoelen (per discipline) worden klaargezet als startgegevens.
+- De bestaande Excel-bestanden (thema's/activiteiten) worden verzameld en de Op.stap-doelen worden via de API ingeladen als startgegevens.
 
 ---
 

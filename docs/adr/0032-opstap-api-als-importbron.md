@@ -59,10 +59,13 @@ without asking KOV first. That is recorded here as the context the ruling was ta
    no markup ever reaches a screen. **The conversion may not change what the decree says** (Art. III.1): a MathML
    fraction becomes `1/2` (stripping its tags would have written `12`; 98 occur), a link keeps its address (the Frans
    minimumdoelen point at their word list), an image becomes its alt text, and KOV's literal angle brackets around
-   examples (`< bv. … >`, 126 rows) stay text. A row with markup the mapping does not know is **refused, not stripped**.
+   examples (`< bv. … >`, 126 rows) stay text, as does a raw `<` used as a sign, and `10<sup>2</sup>` becomes `10^2`.
+   Markup the conversion cannot keep (an unknown tag, `<ol>`, `<sub>`, an image without alt text, a link without a
+   double-quoted address) makes the row **refused, not stripped**.
    Taking `uniqueCode` verbatim removes the padding hazard E1-12 recorded (`6-1` against `6-01`): nothing is
    concatenated any more. A row whose `validity.endDate` has passed is not imported.
-   **All 998 are imported**, whatever the goal-set scope of decision 5, because the decree applies in full.
+   **All 998 are imported**, whatever the goal-set scope of decision 5, because the decree applies in full. *(This
+   sentence is the implementer's reading; the owner's ruling did not address it.)*
 4. **An import is a human action, never automatic.** Each source has a preview that writes nothing and an apply, both
    behind `Curriculumbeheer` (ADR-0022), both returning the review report (FR-2.5). The import is non-destructive: a
    minimumdoel that is absent from the source is **kept and reported**, never deleted, because leerplandoelen concord to
@@ -74,7 +77,9 @@ without asking KOV first. That is recorded here as the context the ruling was ta
    `MinimumdoelRef`, which is what coverage reads. **The consequence, measured on snapshot 1.2:** 992 of the 998
    minimumdoelen stay reachable through a G goal. `6-7.1.6` is reachable only through a Z goal, and five (`K-1.2.6`,
    `4-2.2.23`, `6-2.2.3`, `6-6.2.5`, `6-6.3.9`) through no goal at all. Those six can never be gedekt under this scope,
-   and a dekkingsoverzicht must say so rather than present them as a gap the teachers left.
+   and that figure assumes every discipline is imported; a narrower selection (Art. XIV "Disciplines first", still open)
+   leaves more. *Implementer's default, not part of the ruling:* a dekkingsoverzicht names any minimumdoel with no loaded
+   concorded leerplandoel as such, rather than presenting it as a gap the teachers left.
 6. **Versions are pinned** (E1-21). The leerplandoelen import requests a numbered snapshot, never `latest`, and records
    the version and hash, so a dekkingscijfer can name the curriculum version it was computed against.
 7. **The goal's UUID `key` is stored beside its code** (E1-21). `code` stays the identity (Art. III.5); the key lets the
