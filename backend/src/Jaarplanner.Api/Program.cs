@@ -81,6 +81,14 @@ else
 
 app.UseHttpsRedirection();
 
+// The built frontend (E7-04, ADR-0034). The API serves it from wwwroot, so the browser stays on one origin and the
+// session cookie of ADR-0031 needs no CORS. Before authentication on purpose: the bundle holds no data, and a browser
+// without a session must be able to load the page that sends it to the sign-in. A folder without wwwroot, as on a
+// developer's machine where Vite serves the frontend, serves nothing here. UseDefaultFiles turns "/" into
+// "/index.html": the fallback below cannot, because its route constraint never matches an empty path.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 // Liveness: 200 as long as the app is running. Excludes the DB check so the API stays
 // observably "up" even when Postgres is down (the DB state surfaces on /health/ready).
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
@@ -101,6 +109,11 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
 app.UseJaarplannerAuthenticatie(authenticatie);
 
 app.MapControllers();
+
+// Every other path without a file extension is a client route (BrowserRouter, ADR-0021), so a deep link or a bookmark
+// opened cold gets index.html instead of a 404 (E7-04). Anonymous for the same reason as the static files. Never for
+// api/ or health/: an unknown API path stays an API answer, not a 200 carrying a page that no fetch can parse.
+app.MapFallbackToFile(SpaHosting.Route, "index.html").AllowAnonymous();
 
 app.Run();
 

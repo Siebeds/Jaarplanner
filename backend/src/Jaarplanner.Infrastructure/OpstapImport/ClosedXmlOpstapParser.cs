@@ -102,7 +102,8 @@ public sealed class ClosedXmlOpstapParser : IOpstapParser
         new(
             code: Cell(row, OpstapKolom.Code),
             doelsoort: doelsoort,
-            jaarFase: Cell(row, OpstapKolom.JaarFase),
+            // "3K" and "K3" are one jaar/fase; only the canonical form is stored (owner ruling 2026-08-03, E1-21).
+            jaarFase: Jaarfasen.Normaliseer(Cell(row, OpstapKolom.JaarFase)),
             domein: Cell(row, OpstapKolom.Domein),
             subdomein: Cell(row, OpstapKolom.Subdomein),
             disciplineNummer: disciplineNummer,

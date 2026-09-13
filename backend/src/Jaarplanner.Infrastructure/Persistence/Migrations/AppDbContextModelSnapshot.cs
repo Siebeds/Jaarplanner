@@ -152,6 +152,10 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("niet_meer_in_opstap");
 
+                    b.Property<Guid?>("OpstapSleutel")
+                        .HasColumnType("uuid")
+                        .HasColumnName("opstap_sleutel");
+
                     b.Property<string>("Subdomein")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -176,6 +180,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("MinimumdoelRef");
 
+                    b.HasIndex("OpstapSleutel");
+
                     b.HasIndex("Domein", "Subdomein");
 
                     b.ToTable("leerplandoelen", (string)null);
@@ -192,6 +198,12 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
+                    b.Property<bool>("NietMeerInOpstap")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("niet_meer_in_opstap");
+
                     b.Property<string>("Nr")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -201,9 +213,47 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ZonderLeerplandoelDoelsets")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("zonder_leerplandoel_doelsets");
+
+                    b.Property<string>("ZonderLeerplandoelReden")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("zonder_leerplandoel_reden");
+
                     b.HasKey("Ref");
 
                     b.ToTable("minimumdoelen", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Curriculum.Opstapversie", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("ToegepastOp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Versie")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ToegepastOp");
+
+                    b.ToTable("opstapversies", (string)null);
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Activiteitplaatsing", b =>

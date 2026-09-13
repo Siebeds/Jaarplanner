@@ -58,4 +58,34 @@ public sealed class JaarfasenTests
         Assert.Equal(["JK", "K2", "K3"], Jaarfasen.Kleuter);
         Assert.Equal(["L1", "L2", "L3", "L4", "L5", "L6"], Jaarfasen.Lager);
     }
+
+    /// <summary>
+    /// The import half of that ruling (E1-12's identity-hazard clause, carried by E1-21): the other ordering becomes the
+    /// canonical one, so an Op.stap source that writes <c>3K</c> still lands on the same goals as a class on <c>K3</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("1K", "JK")]
+    [InlineData("2K", "K2")]
+    [InlineData("3K", "K3")]
+    [InlineData("3k", "K3")]
+    [InlineData("1L", "L1")]
+    [InlineData("6L", "L6")]
+    [InlineData(" 4L ", "L4")]
+    public void De_andere_volgorde_wordt_de_canonieke_vorm(string bron, string verwacht) =>
+        Assert.Equal(verwacht, Jaarfasen.Normaliseer(bron));
+
+    /// <summary>
+    /// A normaliser, not a validator: canonical codes and P/S fases pass through, and an ambiguous code is not guessed at
+    /// (<c>K1</c> could be read as the jongste kleuter, which is the silent reinterpretation the ruling forbids).
+    /// </summary>
+    [Theory]
+    [InlineData("JK", "JK")]
+    [InlineData("K3", "K3")]
+    [InlineData("L2", "L2")]
+    [InlineData("F3", "F3")]
+    [InlineData("K1", "K1")]
+    [InlineData("7L", "7L")]
+    [InlineData(" ZW ", "ZW")]
+    public void Al_de_rest_blijft_zoals_het_is(string bron, string verwacht) =>
+        Assert.Equal(verwacht, Jaarfasen.Normaliseer(bron));
 }

@@ -114,6 +114,32 @@ public sealed class OpstapMinimumdoelenImportEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// E1-22, antagonist round 1 MAJOR, on PostgreSQL: once a vanished minimumdoel is flagged, a repeat fetch of the same
+    /// source lists it as already gone and has nothing to write, so the screen offers no apply.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_herhaalde_ophaling_na_een_verdwenen_minimumdoel_heeft_niets_te_schrijven()
+    {
+        _bron.Geef(Md("K-1.3.9"), Md("4-5.2.1"));
+        await Post(Pad);
+        _bron.Geef(Md("K-1.3.9"));
+        var weg = await Post(Pad);
+
+        var herhaling = await Post($"{Pad}/voorbeeld");
+
+        Assert.Equal(["4-5.2.1"], Refs(weg.GetProperty("diff").GetProperty("verdwenen")));
+        var diff = herhaling.GetProperty("diff");
+        Assert.Empty(diff.GetProperty("verdwenen").EnumerateArray());
+        Assert.Equal(["4-5.2.1"], Refs(diff.GetProperty("eerderVerdwenen")));
+        Assert.False(diff.GetProperty("schrijftIets").GetBoolean());
+        Assert.True(diff.GetProperty("isLeeg").GetBoolean());
+        Assert.False(diff.GetProperty("vereistReview").GetBoolean());
+
+        await using var context = _db.MaakContext();
+        Assert.True((await context.Minimumdoelen.SingleAsync(m => m.Ref == "4-5.2.1")).NietMeerInOpstap);
+    }
+
+    /// <summary>
     /// <b>E1-12's done-when, on the database that enforces it:</b> once the decreed minimumdoelen are in, an Op.stap row
     /// concorded to one of them commits. Before E1-12 the same row answered 409 because <c>MinimumdoelRef</c> is a
     /// Restrict FK and no <c>Minimumdoel</c> could exist (the characterisation test in

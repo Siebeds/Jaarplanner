@@ -17,7 +17,7 @@ import type { LeerplandoelFilterQuery, MinimumdoelFilterQuery } from "../../lib/
 import { Doelenboom } from "./Doelenboom";
 import { Doeldetail } from "./Doeldetail";
 import { Bestemmingsblad } from "../koppelen/Bestemmingsblad";
-import { Minimumdoelenlijst } from "./Minimumdoelenlijst";
+import { Laadlink, Minimumdoelenlijst } from "./Minimumdoelenlijst";
 import { Filterblad } from "./Filterblad";
 import { useActieveSelectie } from "../../lib/selectie";
 import { useDoelenfilter } from "../../state/doelenfilter";
@@ -104,7 +104,9 @@ export function DoelenScherm() {
   // Each doel sits in exactly one domein, so the domein counts under the active filter add up to
   // the number of doelen the filter matches.
   const aantalDoelen = facetten?.domeinen.reduce((som, d) => som + d.aantal, 0) ?? 0;
-  const aantalMinimumdoelen = minimumdoelFacetten?.domeinen.reduce((som, d) => som + d.aantal, 0) ?? 0;
+  // Not so for a minimumdoel: it sits in every subdomein its goals do, and in none when no loaded goal concords it, so
+  // the same sum over-counted the first and missed the second. The server counts minimumdoelen instead (E1-22).
+  const aantalMinimumdoelen = minimumdoelFacetten?.aantalTreffers ?? 0;
 
   const leegRegister = bron === "leerplandoelen" && facetten !== undefined && facetten.totaalAantalDoelen === 0;
   const geenTreffers = bron === "leerplandoelen" && !leegRegister && facetten !== undefined && aantalDoelen === 0;
@@ -207,7 +209,7 @@ export function DoelenScherm() {
           <div className="min-w-0">
             {bron === "leerplandoelen" ? (
               leegRegister ? (
-                <Leegte titel={t("doelen.leegTitel")} actie={<p className="text-meta text-inkt-zacht">{t("doelen.leegActie")}</p>} />
+                <Leegte titel={t("doelen.leegTitel")} actie={<Laadlink />} />
               ) : geenTreffers ? (
                 <Leegte
                   titel={t("doelen.geenTreffersTitel")}
@@ -230,7 +232,7 @@ export function DoelenScherm() {
                 />
               )
             ) : (
-              <Minimumdoelenlijst filter={minimumdoelFilter} onKiesDoel={setGekozenCode} />
+              <Minimumdoelenlijst filter={minimumdoelFilter} onKiesDoel={setGekozenCode} onWisFilters={wisAlles} />
             )}
           </div>
 

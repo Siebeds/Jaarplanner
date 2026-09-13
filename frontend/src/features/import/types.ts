@@ -148,6 +148,16 @@ export interface VerdwenenGekoppeldDoel {
   aantalKoppelingen: number;
 }
 
+/**
+ * A goal KOV renumbered (E1-21): the old code stays and is flagged, the new code is added, and teacher links stay on
+ * the old one. Reported instead of an addition plus a disappearance.
+ */
+export interface HernummerdDoel {
+  oudeCode: string;
+  nieuweCode: string;
+  aantalKoppelingen: number;
+}
+
 /** The FR-2.5 review report for one discipline. */
 export interface OpstapHerimportDiff {
   disciplineNummer: string;
@@ -158,6 +168,23 @@ export interface OpstapHerimportDiff {
   verdwenen: string[];
   /** Gone from the file and still in use. Never deleted (Art. IV.2). */
   verdwenenMaarGekoppeld: VerdwenenGekoppeldDoel[];
+  /** Stored, still named by the source, not read this time: left as it was. The reason is operator-only. */
+  nietIngelezen: string[];
+  /** Stored, in a goal set the API import does not take (only G is taken): left alone, not a review item. */
+  buitenBereik: string[];
+  /** Stored here as gemeenschappelijk, listed by KOV under a skipped goal set: left alone, a review item. */
+  gemeenschappelijkBuitenBereik: string[];
+  /** Renumbered goals; each pair sits here instead of in `toegevoegd` and `verdwenen`. */
+  hernummerd: HernummerdDoel[];
+  /** Still absent and already flagged by an earlier import: nothing to write, not a review item (E1-22). */
+  eerderVerdwenen: string[];
+  /** Flagged earlier, delivered again unchanged: the apply clears the flag. */
+  teruggekeerd: string[];
+  /**
+   * True when applying writes a curriculum row the report shows. Server-computed, so there is one definition (E1-22).
+   * Not counted: an apply also stores an Op.stap key on an Excel-loaded row that is otherwise unchanged.
+   */
+  schrijftIets: boolean;
   overgeslagen: boolean;
   /** Dutch notices: why a file did nothing, or that its discipline is out of the configured selection. */
   opmerkingen: string[];
@@ -180,4 +207,123 @@ export interface OpstapImportAntwoord {
   problemen: OpstapRijProbleem[];
   diff: OpstapHerimportDiff;
   toegepast: boolean;
+}
+
+// --- Op.stap from KOV's API (E1-12, E1-21), read by the screen of E1-22 ------------------------
+
+/** An applied leerplandoelen import: the numbered snapshot it read and when. */
+export interface OpstapversieWeergave {
+  versie: string;
+  hash: string;
+  /** ISO date-time. */
+  toegepastOp: string;
+}
+
+/**
+ * What the screen needs before anyone presses a button (`GET /api/opstap-import/stand`): whether the minimumdoelen are
+ * in, because the leerplandoelen import refuses until they are, and whether a snapshot was applied, because the Excel
+ * route refuses every file from then on. Read from our database; it never waits on KOV.
+ */
+export interface OpstapImportStand {
+  aantalMinimumdoelen: number;
+  laatsteVersie: OpstapversieWeergave | null;
+}
+
+/**
+ * A source row that was not imported. `reden` is English and for the operator: this screen shows how many there are
+ * and never the reason (E1-21 antagonist round 1, QUESTION 3). Named so a component cannot reach for it by accident.
+ */
+export interface MinimumdoelBronProbleem {
+  sleutel: string;
+  reden: string;
+}
+
+/** A minimumdoel whose decreed content changed at KOV. */
+export interface MinimumdoelWijziging {
+  ref: string;
+  velden: VeldWijziging[];
+}
+
+/** The FR-2.5 review report of one minimumdoelen import (E1-12). */
+export interface MinimumdoelImportDiff {
+  toegevoegd: string[];
+  gewijzigd: MinimumdoelWijziging[];
+  ongewijzigd: string[];
+  /** No longer named by the source at all and not flagged yet: the apply flags them; kept, never deleted. */
+  verdwenen: string[];
+  /** Still named by the source, not read this time: the stored text stays. */
+  nietIngelezen: string[];
+  /** Still absent and already flagged by an earlier import: nothing to write, not a review item (E1-22). */
+  eerderVerdwenen: string[];
+  /** Flagged earlier, named again unchanged: the apply clears the flag. */
+  teruggekeerd: string[];
+  /** True when applying writes anything. Server-computed, so there is one definition (E1-22). */
+  schrijftIets: boolean;
+  overgeslagen: boolean;
+  /** Dutch, for directie: rendered as given (Art. II.3 as ratified 2026-07-30). */
+  opmerkingen: string[];
+  isLeeg: boolean;
+  vereistReview: boolean;
+}
+
+/** `POST /api/opstap-import/minimumdoelen(/voorbeeld)`. */
+export interface MinimumdoelImportAntwoord {
+  isVolledigVerwerkt: boolean;
+  problemen: MinimumdoelBronProbleem[];
+  diff: MinimumdoelImportDiff;
+  /** False for a preview, or for an apply the server skipped; true when changes were committed. */
+  toegepast: boolean;
+}
+
+/** How many goals of a goal set KOV publishes that this import does not take (only G is taken, owner 2026-09-11). */
+export interface DoelsetTelling {
+  /** KOV's own mark: P, S, +, A, Z or V. */
+  doelset: string;
+  aantal: number;
+}
+
+/** A G goal that was not imported. `reden` is English and operator-only, as for `MinimumdoelBronProbleem`. */
+export interface LeerplandoelBronProbleem {
+  code: string;
+  reden: string;
+}
+
+/** One discipline's part of a leerplandoelen report. */
+export interface LeerplandoelDisciplineResultaat {
+  /** This repo's form (`9.1`), never KOV's `9-1`. */
+  disciplineNummer: string;
+  /** KOV's title. */
+  disciplineNaam: string;
+  diff: OpstapHerimportDiff;
+  overgeslagenDoelsets: DoelsetTelling[];
+  problemen: LeerplandoelBronProbleem[];
+}
+
+/** `POST /api/opstap-import/leerplandoelen(/voorbeeld)` (E1-21, contract in its worklog). */
+export interface LeerplandoelImportAntwoord {
+  isVolledigVerwerkt: boolean;
+  /** The numbered snapshot that was read. The apply must send exactly this back. */
+  versie: string;
+  hash: string;
+  /** When KOV published it (ISO), or null. */
+  snapshotTijdstip: string | null;
+  vorigeVersie: OpstapversieWeergave | null;
+  /**
+   * KOV's own changelog for this version, plain text, about 220 kB for 1.2. Null has two causes the payload does not tell
+   * apart (none published, or markup the server could not keep), so a null renders without a reason.
+   */
+  wijzigingslog: string | null;
+  /** Summed over the whole snapshot. */
+  overgeslagenDoelsets: DoelsetTelling[];
+  problemen: LeerplandoelBronProbleem[];
+  disciplines: LeerplandoelDisciplineResultaat[];
+  toegepast: boolean;
+  /**
+   * True when applying writes something this report shows: a curriculum row, a reason per minimumdoel, or a version
+   * other than the last one applied (a first apply included). Not counted: an Op.stap key stored on an Excel-loaded row
+   * that is otherwise unchanged. The server's one definition; the screen offers *Doorvoeren* on it and on nothing else.
+   */
+  schrijftIets: boolean;
+  /** How many minimumdoelen get a different reason, in the register, for having no leerplandoel. */
+  aantalRedenenGewijzigd: number;
 }
