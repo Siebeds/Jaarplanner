@@ -274,7 +274,7 @@ Dit hoofdstuk is bestemd voor de ontwikkelaar en is indicatief. De directie hoef
 - **Database** — PostgreSQL voor de opslag van schooljaren, klassen, leerplandoelen (met doelsoort, code, jaar/fase, domein en concordantie met de minimumdoelen), thema's, activiteiten en jaarplannen.
 - **AI** — Azure AI Foundry voor het genereren van de doel-matching en de jaarplanning.
 - **Hosting** — Microsoft Azure.
-- **Koppeling leerplandoelen** — de leerplandoelen en minimumdoelen worden door de backend ingeladen vanuit de Op.stap-API van Katholiek Onderwijs Vlaanderen en in de eigen databank bewaard; de tool raadpleegt de API nooit op het moment dat een leerkracht werkt. Wat een nieuwe versie verandert, wordt eerst ter controle getoond en pas na bevestiging doorgevoerd. *(Bijgewerkt 2026-09-11, ADR-0032. De Excel-import was het basismechanisme en blijft beschikbaar, maar is niet langer de bron.)*
+- **Koppeling leerplandoelen** — de leerplandoelen en minimumdoelen worden door de backend ingeladen vanuit de Op.stap-API van Katholiek Onderwijs Vlaanderen en in de eigen databank bewaard; de tool raadpleegt de API nooit op het moment dat een leerkracht werkt. Wat een nieuwe versie verandert, wordt eerst ter controle getoond en pas na bevestiging doorgevoerd. *(Bijgewerkt 2026-09-11, ADR-0032. De Excel-import was het basismechanisme en is niet langer de bron. Bijgewerkt 2026-09-13, beslissing van de projecteigenaar: de Excel-import blijft beschikbaar tot de eerste import via de API en weigert daarna elk bestand. Doelen die via Excel buiten de gemeenschappelijke doelen (G) werden ingelezen, blijven zoals ze zijn en kunnen niet meer bijgewerkt worden.)*
 
 ### Vereenvoudigde gegevensstroom
 
