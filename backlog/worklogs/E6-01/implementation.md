@@ -23,7 +23,8 @@
     exists;
   - the Entra handler: the framework's OpenIdConnect, PKCE, scopes `openid profile`, no saved tokens;
   - the fallback policy;
-  - Key Vault wrapping of the Data Protection keys, when configured.
+  - Key Vault wrapping of the Data Protection keys, required outside Development since the code round (the first
+    build wrapped them only when configured).
 - `CsrfHeaderControle`: state-changing `/api` requests must carry `X-Jaarplanner-Csrf`. The OIDC callbacks are exempt by
   name.
 - The development sign-in (`OntwikkelAanmelding`) has three locks:
@@ -38,7 +39,8 @@
 - Migration `20260911150216_GebruikersEnSessiesleutels` creates `gebruikers` and `data_protection_keys`. It was
   regenerated on top of PR #44's migration, because E6-01 reached main second.
 - `System.Security.Cryptography.Xml` is pinned to 10.0.12. The Data Protection package pulled in 10.0.9, which carries
-  six high-severity advisories.
+  five high-severity advisories. The pin does not reach the running API, which loads the shared framework's copy; see
+  E7-12.
 
 **Frontend (`85ec582`)**
 

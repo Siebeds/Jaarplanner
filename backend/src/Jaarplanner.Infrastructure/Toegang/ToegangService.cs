@@ -2,6 +2,7 @@ using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Toegang;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Jaarplanner.Infrastructure.Toegang;
 
@@ -70,8 +71,10 @@ public sealed class ToegangService : IToegangService
         int bijgewerkt;
         try
         {
+            // The address is part of the condition too, so an invitation edited in between (E6-04 will make them
+            // editable) is not bound under an address it no longer carries.
             bijgewerkt = await _context.Gebruikers
-                .Where(g => g.Id == uitnodiging.Id && g.EntraObjectId == null)
+                .Where(g => g.Id == uitnodiging.Id && g.Email == email && g.EntraObjectId == null)
                 .ExecuteUpdateAsync(
                     zet => zet
                         .SetProperty(g => g.EntraTenantId, tenantId)
@@ -79,9 +82,11 @@ public sealed class ToegangService : IToegangService
                         .SetProperty(g => g.Naam, naam),
                     cancellationToken);
         }
-        catch (Exception fout) when (fout is DbUpdateException or System.Data.Common.DbException)
+        catch (Exception fout) when (IsUniekeIndexSchending(fout))
         {
-            // The unique (tenant, object) index: this account is already bound to another invitation.
+            // Only the unique (tenant, object) index: this account was bound to another invitation in the meantime.
+            // Every other database fault propagates, so the sign-in lands on "aanmelden mislukt" rather than telling
+            // an invited teacher that nobody invited them.
             bijgewerkt = 0;
         }
 
@@ -133,6 +138,9 @@ public sealed class ToegangService : IToegangService
         _context.Gebruikers.SingleOrDefaultAsync(
             g => g.EntraTenantId == tenantId && g.EntraObjectId == objectId,
             cancellationToken);
+
+    private static bool IsUniekeIndexSchending(Exception fout) =>
+        (fout as PostgresException ?? fout.InnerException as PostgresException)?.SqlState == PostgresErrorCodes.UniqueViolation;
 
     private static GebruikerWeergave Weergave(Gebruiker gebruiker) =>
         new(gebruiker.Id, gebruiker.Naam, gebruiker.Email, gebruiker.IsDirectie);

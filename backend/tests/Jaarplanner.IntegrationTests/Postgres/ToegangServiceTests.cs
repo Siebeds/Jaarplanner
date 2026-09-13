@@ -1,7 +1,11 @@
+using System.Data.Common;
 using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Toegang;
+using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.Toegang;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Npgsql;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
@@ -47,6 +51,57 @@ public sealed class ToegangServiceTests : IAsyncLifetime
         var bewaard = await context.Gebruikers.SingleAsync(g => g.Id == uitnodiging.Id);
         Assert.Equal(School, bewaard.EntraTenantId);
         Assert.Equal(objectId, bewaard.EntraObjectId);
+        Assert.Equal("An Peeters", bewaard.Naam);
+    }
+
+    /*
+      The three races below are provoked, not hoped for: an interceptor binds a row on its own connection just before the
+      service's UPDATE runs, which is exactly the window between the service's read and its write. Each one failed to be
+      noticed by any test before (antagonist, E6-01 code round 2): making the write unconditional again, or swallowing
+      every database fault, left the whole suite green.
+    */
+
+    [PostgresFact]
+    public async Task Een_ander_account_dat_de_uitnodiging_net_eerder_koppelde_houdt_ze()
+    {
+        var uitnodiging = await NodigUitAsync("an@school.be");
+        var eerste = Guid.NewGuid();
+        var dienst = DienstMet(new KoppeltVlakVoorDeUpdate(_db.ConnectionString, uitnodiging.Id, eerste));
+
+        var resultaat = await dienst.MeldAanMetEntraAsync(Lid(Guid.NewGuid(), "an@school.be"), School);
+
+        Assert.Equal(Aanmeldweigering.NietUitgenodigd, resultaat.Weigering);
+        await using var context = _db.MaakContext();
+        Assert.Equal(eerste, (await context.Gebruikers.SingleAsync(g => g.Id == uitnodiging.Id)).EntraObjectId);
+    }
+
+    [PostgresFact]
+    public async Task Hetzelfde_account_dat_de_uitnodiging_net_eerder_koppelde_komt_binnen()
+    {
+        var uitnodiging = await NodigUitAsync("an@school.be");
+        var objectId = Guid.NewGuid();
+        var dienst = DienstMet(new KoppeltVlakVoorDeUpdate(_db.ConnectionString, uitnodiging.Id, objectId));
+
+        var resultaat = await dienst.MeldAanMetEntraAsync(Lid(objectId, "an@school.be"), School);
+
+        Assert.Equal(uitnodiging.Id, resultaat.Gebruiker?.Id);
+    }
+
+    [PostgresFact]
+    public async Task Een_account_dat_intussen_aan_een_andere_uitnodiging_hangt_komt_binnen_als_die()
+    {
+        // The unique (tenant, object) index is what refuses the second binding here, and the service must read that
+        // refusal as "bound elsewhere", not as a fault.
+        var uitnodiging = await NodigUitAsync("an@school.be");
+        var andere = await NodigUitAsync("an.oud@school.be");
+        var objectId = Guid.NewGuid();
+        var dienst = DienstMet(new KoppeltVlakVoorDeUpdate(_db.ConnectionString, andere.Id, objectId));
+
+        var resultaat = await dienst.MeldAanMetEntraAsync(Lid(objectId, "an@school.be"), School);
+
+        Assert.Equal(andere.Id, resultaat.Gebruiker?.Id);
+        await using var context = _db.MaakContext();
+        Assert.Null((await context.Gebruikers.SingleAsync(g => g.Id == uitnodiging.Id)).EntraObjectId);
     }
 
     [PostgresFact]
@@ -149,6 +204,55 @@ public sealed class ToegangServiceTests : IAsyncLifetime
     }
 
     private ToegangService Dienst() => new(_db.MaakContext());
+
+    private ToegangService DienstMet(DbCommandInterceptor interceptor) =>
+        new(new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(_db.ConnectionString)
+            .AddInterceptors(interceptor)
+            .Options));
+
+    /// <summary>
+    /// Binds one row to the school's tenant and <c>objectId</c> on a connection of its own, once, just before the first
+    /// UPDATE of <c>gebruikers</c> runs: the moment another first login would have won the race.
+    /// </summary>
+    private sealed class KoppeltVlakVoorDeUpdate : DbCommandInterceptor
+    {
+        private readonly string _verbinding;
+        private readonly Guid _gebruikerId;
+        private readonly Guid _objectId;
+        private bool _gedaan;
+
+        public KoppeltVlakVoorDeUpdate(string verbinding, Guid gebruikerId, Guid objectId)
+        {
+            _verbinding = verbinding;
+            _gebruikerId = gebruikerId;
+            _objectId = objectId;
+        }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (!_gedaan
+                && command.CommandText.Contains("UPDATE", StringComparison.OrdinalIgnoreCase)
+                && command.CommandText.Contains("gebruikers", StringComparison.Ordinal))
+            {
+                _gedaan = true;
+                await using var verbinding = new NpgsqlConnection(_verbinding);
+                await verbinding.OpenAsync(cancellationToken);
+                await using var koppel = verbinding.CreateCommand();
+                koppel.CommandText = "UPDATE gebruikers SET \"EntraTenantId\" = @t, \"EntraObjectId\" = @o WHERE \"Id\" = @id";
+                koppel.Parameters.AddWithValue("t", School);
+                koppel.Parameters.AddWithValue("o", _objectId);
+                koppel.Parameters.AddWithValue("id", _gebruikerId);
+                await koppel.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            return result;
+        }
+    }
 
     private static EntraIdentiteit Lid(Guid objectId, string upn, string? naam = null) =>
         new(School, objectId, upn, naam, IsLid: true);

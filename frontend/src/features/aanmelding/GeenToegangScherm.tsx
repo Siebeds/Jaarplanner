@@ -10,9 +10,11 @@ export type Aanmeldfout = "geweigerd" | "mislukt";
  * Where a sign-in ends when it does not end in a session (E6-01, ADR-0031). Two cases, one page:
  *
  * - **`geweigerd`** (`/geen-toegang`): Microsoft knows the person and Jaarplanner does not let them in.
- * - **`mislukt`** (`/aanmelden-mislukt`): the sign-in itself did not complete. Consent was cancelled, Entra returned
- *   an error, or the round trip took too long. Nobody refused anything, so the refusal's sentences would be false
- *   here and this case has its own.
+ * - **`mislukt`** (`/aanmelden-mislukt`): the sign-in itself did not complete. Among the causes: consent was
+ *   cancelled, Entra returned an error, the round trip took too long, or the app's own check failed while handling
+ *   the answer (a database outage during the invitation gate lands here too). Nobody refused anything, so the
+ *   refusal's sentences would be false here, and because the cause may be on either side, this case's own sentence
+ *   says only that signing in did not work.
  *
  * **Outside the shell, and it asks the API nothing when it opens.** The shell's navigation reads the
  * signed-in person, and every read here would answer 401, send the browser to the sign-in, have

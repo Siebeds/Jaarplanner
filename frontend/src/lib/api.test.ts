@@ -44,6 +44,35 @@ describe("apiFetch en de sessie", () => {
     expect(omleiding).toHaveBeenCalledTimes(1);
   });
 
+  /*
+    The decision itself, not only that a 401 asks for it. A fresh copy of the module per test, because the
+    once-per-page flag lives in module state and a test that navigated would leave it set for the next one.
+  */
+  it.each(["/geen-toegang", "/aanmelden-mislukt"])("stuurt nooit door vanaf %s, waar dat een lus zou geven", async (pad) => {
+    vi.resetModules();
+    const { aanmeldOmleiding: omleiding } = await import("./api");
+    const navigeer = vi.spyOn(omleiding, "navigeer").mockImplementation(() => {});
+    window.history.pushState({}, "", pad);
+
+    omleiding.stuurDoor();
+
+    expect(navigeer).not.toHaveBeenCalled();
+  });
+
+  it("stuurt elders door naar de aanmelding, met de huidige plaats als terugkeeradres, en maar een keer", async () => {
+    vi.resetModules();
+    const { aanmeldOmleiding: omleiding } = await import("./api");
+    const navigeer = vi.spyOn(omleiding, "navigeer").mockImplementation(() => {});
+    window.history.pushState({}, "", "/agenda?week=3");
+
+    omleiding.stuurDoor();
+    omleiding.stuurDoor();
+
+    expect(navigeer).toHaveBeenCalledTimes(1);
+    expect(navigeer).toHaveBeenCalledWith(`/api/aanmelden?terugNaar=${encodeURIComponent("/agenda?week=3")}`);
+    window.history.pushState({}, "", "/");
+  });
+
   it("stuurt niet door bij een andere fout", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 403 })));
     const omleiding = vi.spyOn(aanmeldOmleiding, "stuurDoor").mockImplementation(() => {});

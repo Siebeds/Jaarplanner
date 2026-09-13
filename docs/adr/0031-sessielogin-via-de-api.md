@@ -117,8 +117,10 @@ A browser SPA can log in to Entra in two ways:
    - **No front-channel logout.** Entra calls it from a cross-site iframe, where a `SameSite=Lax` cookie is never
      sent, so it could not end this session anyway.
    - `GET /api/ik` tells the frontend who is logged in: naam, sign-in address, and whether the person is directie.
-   - **A sign-in that does not complete** lands on `/aanmelden-mislukt`, a Dutch page offering to try again. That
-     covers cancelled consent, an error returned by Entra, and an expired correlation cookie. It is wired through
+   - **A sign-in that does not complete** lands on `/aanmelden-mislukt`, a Dutch page offering to try again. The
+     causes include cancelled consent, an error returned by Entra and an expired correlation cookie. The list is not
+     exhaustive: the handler also routes here any exception thrown while it processes the token, the invitation
+     gate's own database call included. So the page says only that signing in did not work, never whose side failed. It is wired through
      `OnRemoteFailure` and `AccessDeniedPath`; without them the framework answers with an English 500 in a
      top-level page. It is a page of its own because the refusal page's sentences would be false for it: nobody
      refused anything.
@@ -232,8 +234,9 @@ A browser SPA can log in to Entra in two ways:
 - **Forwarded headers.** The app has no `UseForwardedHeaders`, so on App Service set
   `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`. Otherwise the sign-in's `redirect_uri` and the post-logout address
   are built with `http`, and Entra refuses them.
-- An ASP.NET Core runtime at or above the release that patches `System.Security.Cryptography.Xml`. The package pin
-  does not reach a web project, which loads the shared framework's copy.
+- The .NET and ASP.NET Core shared frameworks at **10.0.10 or later**, the first release that patches the five
+  `System.Security.Cryptography.Xml` advisories. The package pin does not reach a web project, which loads the
+  shared framework's copy.
 - One real-tenant round trip before the gate opens. The tests stop at the configured events and a static discovery
   document.
 

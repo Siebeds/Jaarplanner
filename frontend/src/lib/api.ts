@@ -46,7 +46,11 @@ export const aanmeldOmleiding = {
     if (omleidingBezig || ZONDER_OMLEIDING.has(window.location.pathname)) return;
     omleidingBezig = true;
     const terug = `${window.location.pathname}${window.location.search}`;
-    window.location.assign(`${BASE_URL}/api/aanmelden?terugNaar=${encodeURIComponent(terug)}`);
+    aanmeldOmleiding.navigeer(`${BASE_URL}/api/aanmelden?terugNaar=${encodeURIComponent(terug)}`);
+  },
+  /** The navigation itself, apart so a test can replace it and still run the decision above. */
+  navigeer(adres: string): void {
+    window.location.assign(adres);
   },
 };
 

@@ -35,8 +35,9 @@
          and -mmjf-rqrv-855v); `dotnet list package vulnerable` is clean at 10.0.12. Remove this pin once Data
          Protection itself depends on a patched version.
          THE PIN DOES NOT REACH THE RUNNING API: the Api is a web project, so it loads this assembly from the ASP.NET
-         Core shared framework, not from this package. What protects the deployed app is the runtime patch level, which
-         E7-12 carries as a deployment requirement. -->
+         Core shared framework, not from this package. What protects the deployed app is the runtime patch level:
+         10.0.10 or later, the first patched release per the GitHub advisory database. E7-11 carries it as a
+         deployment requirement. -->
     <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.12" />
   </ItemGroup>
 

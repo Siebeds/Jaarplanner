@@ -666,7 +666,7 @@
     },
     "mislukt": {
       "titel": "Aanmelden is niet gelukt",
-      "uitleg": "Het aanmelden bij Microsoft werd onderbroken of liep mis. Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan de directie."
+      "uitleg": "Het aanmelden werd onderbroken of liep mis. Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan de directie."
     }
   }
 }

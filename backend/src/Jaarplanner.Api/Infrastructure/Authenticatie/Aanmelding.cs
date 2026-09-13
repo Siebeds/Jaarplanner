@@ -46,8 +46,8 @@ public static class Aanmelding
 
     /// <summary>
     /// Registers the cookie, the Entra sign-in when <see cref="AuthenticatieModus.Entra"/>, the fallback policy that
-    /// makes every endpoint require a session, and the Key Vault protection of the Data Protection keys when a key is
-    /// configured. Returns the options, because the pipeline needs to know which sign-in to map.
+    /// makes every endpoint require a session, and the Key Vault protection of the Data Protection keys, which is
+    /// required outside Development. Returns the options, because the pipeline needs to know which sign-in to map.
     /// </summary>
     public static AuthenticatieOpties AddJaarplannerAuthenticatie(this WebApplicationBuilder builder)
     {
@@ -230,9 +230,11 @@ public static class Aanmelding
 
         o.Events.OnTokenValidated = context => BeoordeelAanmeldingAsync(context, tenantId);
 
-        // A sign-in that does not complete (cancelled consent, an error returned by Entra, an expired correlation
-        // cookie) would otherwise surface as an English 500 in a top-level page. It lands on a Dutch page with a way
-        // to try again instead, and the reason goes to the log.
+        // A sign-in that does not complete would otherwise surface as an English 500 in a top-level page. That covers
+        // cancelled consent, an error returned by Entra and an expired correlation cookie, but not only those: the
+        // handler also routes here anything thrown while it processes the token, the invitation gate's own database
+        // call included. So the page it lands on says only that signing in did not work, never whose side failed.
+        // The reason goes to the log.
         o.AccessDeniedPath = AanmeldenMisluktPad;
         o.Events.OnRemoteFailure = context =>
         {
