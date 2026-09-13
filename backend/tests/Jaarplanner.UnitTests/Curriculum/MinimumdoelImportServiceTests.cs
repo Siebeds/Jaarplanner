@@ -264,6 +264,33 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
         Assert.Equal("2 minimumdoelen staan weer in de Op.stap-bron.", MinimumdoelImportService.TeruggekeerdMelding(2));
     }
 
+    /// <summary>
+    /// Antagonist round 3, MINOR 1: the apply that flags a minimumdoel no longer in Op.stap clears its stored reason for
+    /// having no leerplandoel in the same write, so a flagged minimumdoel never keeps one; a preview clears nothing.
+    /// </summary>
+    [Fact]
+    public async Task Het_markeren_van_een_verdwenen_minimumdoel_wist_zijn_reden()
+    {
+        _bron.Geef(Md("1.1"), Md("1.2"));
+        await _service.ImporteerAsync(toepassen: true);
+        var weg = await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2");
+        _context.Entry(weg).Property(m => m.ZonderLeerplandoelReden).CurrentValue = ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets;
+        _context.Entry(weg).Property(m => m.ZonderLeerplandoelDoelsets).CurrentValue = "Z";
+        await _context.SaveChangesAsync();
+        _bron.Geef(Md("1.1"));
+
+        await _service.ImporteerAsync(toepassen: false);
+        _context.ChangeTracker.Clear();
+        Assert.Equal(ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets, (await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2")).ZonderLeerplandoelReden);
+
+        await _service.ImporteerAsync(toepassen: true);
+        _context.ChangeTracker.Clear();
+        var gemarkeerd = await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2");
+        Assert.True(gemarkeerd.NietMeerInOpstap);
+        Assert.Null(gemarkeerd.ZonderLeerplandoelReden);
+        Assert.Null(gemarkeerd.ZonderLeerplandoelDoelsets);
+    }
+
     /// <summary>Antagonist round 2, MINOR 4: a preview of a return reports it and leaves the flag set.</summary>
     [Fact]
     public async Task Het_voorbeeld_van_een_teruggekeerd_minimumdoel_laat_de_markering_staan()

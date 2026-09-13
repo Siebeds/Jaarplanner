@@ -133,10 +133,15 @@ public sealed class LeerplandoelImportService : ILeerplandoelImportService
         // Why a stored minimumdoel has no loaded leerplandoel (E1-22, owner ruling 2026-09-13 "Reden tonen"), derived from
         // this snapshot for every stored minimumdoel and written with the apply, so it always describes the loaded version.
         // No reason for one a stored goal points at, nor for one that is itself no longer in Op.stap: a goal may still
-        // point at a withdrawn minimumdoel's old address, so "no goal refers to it" would be unproven.
+        // point at a withdrawn minimumdoel's old address, so "no goal refers to it" would be unproven. "No longer in
+        // Op.stap" is read from this import's own read of KOV (a stored ref absent from the minimumdoelen index the source
+        // resolved against) as well as from the flag the minimumdoelen import sets, which may not have run yet
+        // (antagonist round 3, MINOR 1).
         var minimumdoelen = await _context.Minimumdoelen.ToListAsync(cancellationToken);
         var zonderReden = verwijzingNaImport.Values
-            .Concat(minimumdoelen.Where(m => m.NietMeerInOpstap).Select(m => m.Ref))
+            .Concat(minimumdoelen
+                .Where(m => m.NietMeerInOpstap || bron.GepubliceerdeMinimumdoelen?.Contains(m.Ref) == false)
+                .Select(m => m.Ref))
             .ToHashSet(StringComparer.Ordinal);
         var redenen = ZonderLeerplandoelBepaling.Bepaal(minimumdoelen.Select(m => m.Ref), bron, zonderReden);
         var redenGewijzigd = minimumdoelen

@@ -95,7 +95,8 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
                 : null,
             Wijzigingslog(gevraagd, snapshot.Changelog),
             disciplines,
-            verwijzingen);
+            verwijzingen,
+            minimumdoelPerHref.Values.ToHashSet(StringComparer.Ordinal));
     }
 
     /// <summary>The newest numbered version, from the 63-byte hash of <c>latest</c>; the data itself is never read as latest.</summary>

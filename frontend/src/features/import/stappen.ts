@@ -48,7 +48,11 @@ export function schrijftMinimumdoelen(antwoord: MinimumdoelImportAntwoord): bool
   return antwoord.diff.schrijftIets;
 }
 
-/** The same for the leerplandoelen: curriculum rows, reasons per minimumdoel, or a version not applied yet. */
+/**
+ * The same for the leerplandoelen, as the server decides it (`schrijftIets`): a curriculum row, a reason per minimumdoel,
+ * or a version other than the last one applied (a first apply included). Not counted: an Op.stap key stored on an
+ * Excel-loaded row that is otherwise unchanged.
+ */
 export function schrijftLeerplandoelen(antwoord: LeerplandoelImportAntwoord): boolean {
   return antwoord.schrijftIets;
 }

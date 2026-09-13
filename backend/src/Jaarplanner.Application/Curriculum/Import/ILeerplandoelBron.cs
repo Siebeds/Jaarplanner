@@ -36,7 +36,8 @@ public sealed class LeerplandoelBronResultaat
         DateTimeOffset? snapshotTijdstip,
         string? wijzigingslog,
         IReadOnlyList<LeerplandoelBronDiscipline> disciplines,
-        IReadOnlyList<MinimumdoelVerwijzing>? verwijzingen = null)
+        IReadOnlyList<MinimumdoelVerwijzing>? verwijzingen = null,
+        IReadOnlySet<string>? gepubliceerdeMinimumdoelen = null)
     {
         Versie = versie;
         Hash = hash;
@@ -44,7 +45,16 @@ public sealed class LeerplandoelBronResultaat
         Wijzigingslog = wijzigingslog;
         Disciplines = disciplines;
         Verwijzingen = verwijzingen ?? [];
+        GepubliceerdeMinimumdoelen = gepubliceerdeMinimumdoelen;
     }
+
+    /// <summary>
+    /// The refs (<c>uniqueCode</c>) of the minimumdoelen KOV published at the moment of this read: the index the source
+    /// resolves goals' concordance against (E1-22 fix round 3). A stored minimumdoel not in it is no longer in Op.stap as
+    /// far as this read can tell, whether or not the minimumdoelen import has flagged it yet. Null when the source does not
+    /// say (a test double), and then nothing is concluded from it.
+    /// </summary>
+    public IReadOnlySet<string>? GepubliceerdeMinimumdoelen { get; }
 
     /// <summary>
     /// The goals of the snapshot that point at a minimumdoel and are <b>not</b> among the mapped leerplandoelen: goals of a

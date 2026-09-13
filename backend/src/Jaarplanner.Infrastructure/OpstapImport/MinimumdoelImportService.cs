@@ -139,6 +139,11 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             foreach (var weg in verdwenen)
             {
                 ZetReviewVlag(bestaandPerRef[weg], true);
+                // A minimumdoel no longer in Op.stap keeps no reason for having no leerplandoel (E1-22 fix round 3):
+                // "no goal refers to it" is unproven once its address is gone, and Minimumdoel says a flagged row has none.
+                var entry = _context.Entry(bestaandPerRef[weg]);
+                entry.Property(m => m.ZonderLeerplandoelReden).CurrentValue = null;
+                entry.Property(m => m.ZonderLeerplandoelDoelsets).CurrentValue = null;
             }
 
             await _context.SaveChangesAsync(cancellationToken);

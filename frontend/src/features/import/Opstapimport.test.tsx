@@ -277,8 +277,10 @@ describe("Opstapimport", () => {
   });
 
   it("biedt een eerste doorvoering zonder gewijzigd doel aan met de zin over de versie (antagonist round 2 MINOR 2)", async () => {
+    // A stand the server can produce beside `vorigeVersie: null` (both read opstapversies), which is also the state in
+    // which the Excel upload is still offered (antagonist round 3, MINOR 4).
     routeer({
-      [STAND]: () => ({ body: DOORGEVOERD }),
+      [STAND]: () => ({ body: { aantalMinimumdoelen: 998, laatsteVersie: null } }),
       [MD_VOORBEELD]: () => ({ body: NIETS_NIEUW_MD }),
       [LP_VOORBEELD]: () => ({
         body: lp([discipline("12", "Burgerschap", { overgeslagen: true, isLeeg: true, opmerkingen: ["Discipline 12 staat niet in de toepassing."] })], {
@@ -292,7 +294,15 @@ describe("Opstapimport", () => {
     klik(await screen.findByText(t("importeren.kov.ophalen")).then((knop) => knop.textContent!));
     expect(await screen.findByText(t("importeren.kov.versieVastleggen", { versie: "1.2" }))).toBeInTheDocument();
     expect(screen.getByRole("button", { name: t("importeren.kov.doorvoeren") })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: t("importeren.kov.ophalen") }).className).not.toMatch(/\bbg-accent\b/);
+
+    // With the Excel upload opened as well, exactly one button on the screen carries the accent.
+    klik(t("importeren.opstap.excelTonen"));
+    expect(screen.getByRole("button", { name: t("importeren.bekijkVoorbeeld") })).toBeInTheDocument();
+    const accent = screen
+      .getAllByRole("button")
+      .filter((knop) => /\bbg-accent\b/.test(knop.className))
+      .map((knop) => knop.textContent);
+    expect(accent).toEqual([t("importeren.kov.doorvoeren")]);
   });
 
   it("zegt waarom doorvoeren wordt aangeboden als alleen de versie of de uitleg bij minimumdoelen verandert", async () => {

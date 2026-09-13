@@ -95,3 +95,52 @@ says less; E6-02 note accurate; the "meer dan eens" line holds). New findings:
 
 Checks by the auditor: Vitest import/doelen/i18n 28 passed; unit tests filtered to Curriculum 419 passed / 4 live skipped;
 PostgreSQL, live tests and browser not run by the auditor.
+
+## Round 3 (2026-09-13, on `617e44e..9c2aed8`): VIOLATIONS FOUND — 0 CRITICAL, 0 MAJOR, 4 MINOR
+
+*Verdict pasted by the orchestrator.* Each round-2 finding is closed where it was named (the stored-pointer rule exact
+under the registered policy; preview and apply share one computation and the count sentence is true for the database the
+preview read; `vorige is null || …` in the flag, the version row and `alleenVersie`, with a PostgreSQL test for one version
+row and the Excel 409 afterwards; the `TeruggekeerdMelding` doc and notice true; preview tests keep the flag; the Excel
+button reads `diff.schrijftIets`; exactly one primary action whenever the stand has loaded). The QUESTION is resolved in
+form; its content is MINOR 2.
+
+- **MINOR 1 — "no longer in Op.stap" is read from a flag only the other import sets.** (a) Reachable through the screen:
+  KOV withdraws M, which has a stored reason; the minimumdoelen preview writes (M `verdwenen`), the leerplandoelen preview
+  still sees M unflagged and changes nothing, so *Doorvoeren* flags M and skips the leerplandoelen apply
+  (`Opstapimport.tsx:78-103`, `:90`) — M ends flagged **with** a reason, contradicting `Minimumdoel.cs:61-62`, and the next
+  fetch offers *Doorvoeren* for a write the first press should have made. (b) A direct `POST /api/opstap-import/leerplandoelen`
+  resolves concordance against KOV's live minimumdoelen index (`CurriculumApiBron.cs:87`); a minimumdoel KOV withdrew after
+  our last minimumdoelen apply (G goal refused, `CurriculumdoelMapping.cs:113-116`; other refs dropped,
+  `CurriculumApiBron.cs:241-243`) can be stored with `GeenDoelInOpstap` although a snapshot goal refers to its address.
+  **Required:** decide "no longer in Op.stap" from this import's own read of KOV (expose the live index refs in
+  `LeerplandoelBronResultaat`, add every stored ref not in it to `zonderReden`), and either clear the reason when the
+  minimumdoelen import flags a row or narrow the wording in `Minimumdoel.cs:61-62`, the service comment `:135-136` and the
+  backlog's fix-round-2 line. Unit test for a withdrawn, not-yet-flagged ref.
+- **MINOR 2 — ADR-0032 decision 5's new note** lists "a stored leerplandoel that still points at it" among the cases the
+  register tells only "no loaded leerplandoel refers to it" — false, the register lists such a minimumdoel under that
+  goal's discipline (`MinimumdoelenQuery.cs:211-229`; this round's own PostgreSQL test asserts it). And it puts the case
+  list, the two columns, the migration and the no-amendment argument under "by owner ruling", where the owner ruled only
+  "Reden tonen" in answer to "Moet de lijst die reden per minimumdoel tonen?". **Required:** state the ruling as that
+  question and answer; mark the rest as the implementer's realisation; drop or correct the stored-pointer case.
+- **MINOR 3 — `stappen.ts:39-53`** still calls the leerplandoelen `schrijftIets` "writes anything" (no key-only exception)
+  and says "or a version not applied yet" where the server compares against the **last** applied version
+  (`LeerplandoelImportService.cs:153-155`); so the worklog's "stated wherever `SchrijftIets` is described" is false.
+  **Required:** word it like `types.ts:319-325`, or narrow the worklog sentence.
+- **MINOR 4 — the first-apply Vitest** ("biedt een eerste doorvoering zonder gewijzigd doel aan …") serves a stand with
+  `laatsteVersie` 1.1 beside a leerplandoelen answer with `vorigeVersie: null` — a combination the server cannot return
+  (both read `opstapversies`). **Required:** `{ aantalMinimumdoelen: 998, laatsteVersie: null }`, so the accent assertion
+  also covers the screen with the Excel toggle.
+
+For the record (not a violation): a first apply in which every discipline is skipped still closes the Excel route while
+importing nothing, as ratified Art. VII.2 ("a snapshot applied") says; a PostgreSQL test proves it.
+
+Auditor's runs: Vitest import/doelen/i18n 29 passed; unit filtered to Curriculum 425 passed / 4 live skipped; PostgreSQL,
+`pnpm lint`, `dotnet format` and browser not run by the auditor.
+
+## Owner decision after round 3 (2026-09-13)
+
+The project owner, in session: *"stop hierna maar met de antagonist rondes en rondt deze us af"*. No round 4 is run. The
+four round-3 MINORs are fixed in a final fix round **without an independent re-audit**; that fix round is verified by the
+test-runner's gates and the orchestrator's own build and test run only. Recorded so E1-22's `[x]` is read for what it is:
+three audit rounds (1 MAJOR, then 4 MINOR + 1 QUESTION, then 4 MINOR), the last fix round un-re-audited by owner decision.

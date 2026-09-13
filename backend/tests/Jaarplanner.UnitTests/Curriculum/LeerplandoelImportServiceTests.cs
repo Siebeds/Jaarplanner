@@ -350,6 +350,28 @@ public sealed class LeerplandoelImportServiceTests : IDisposable
     }
 
     /// <summary>
+    /// Antagonist round 3, MINOR 1: a minimumdoel KOV no longer publishes gets no reason even before the minimumdoelen
+    /// import has flagged it. "No longer in Op.stap" is read from this import's own read of KOV's minimumdoelen list.
+    /// </summary>
+    [Fact]
+    public async Task Een_minimumdoel_dat_kov_niet_meer_publiceert_krijgt_geen_reden_ook_zonder_markering()
+    {
+        _context.Minimumdoelen.Add(new Minimumdoel("6-9.9.8", "6-", "9.9.8", "Een minimumdoel dat KOV introk."));
+        await _context.SaveChangesAsync();
+        _bron.GepubliceerdeMinimumdoelen = new HashSet<string>(["4-2.1.7"], StringComparer.Ordinal);
+        _bron.Geef(Discipline("2", [Doel("2.1.GL3.10", minimumdoelRef: "4-2.1.7")]));
+
+        var voorbeeld = await _service.ImporteerAsync("1.2", toepassen: false);
+        await _service.ImporteerAsync("1.2", toepassen: true);
+
+        Assert.Equal(0, voorbeeld.AantalRedenenGewijzigd);
+        _context.ChangeTracker.Clear();
+        var ingetrokken = await _context.Minimumdoelen.SingleAsync(m => m.Ref == "6-9.9.8");
+        Assert.False(ingetrokken.NietMeerInOpstap);
+        Assert.Null(ingetrokken.ZonderLeerplandoelReden);
+    }
+
+    /// <summary>
     /// Antagonist round 2, MINOR 2: a first apply records the version even when no discipline writes and no reason changes
     /// (here the only discipline is outside the selection), so it is offered and it closes the Excel route.
     /// </summary>
@@ -380,6 +402,9 @@ public sealed class LeerplandoelImportServiceTests : IDisposable
         /// <summary>The goals that point at a minimumdoel without being imported, for the reason per minimumdoel (E1-22).</summary>
         public IReadOnlyList<MinimumdoelVerwijzing> Verwijzingen { get; set; } = [];
 
+        /// <summary>The minimumdoelen KOV publishes in this read, or null for "not said" (E1-22 fix round 3).</summary>
+        public IReadOnlySet<string>? GepubliceerdeMinimumdoelen { get; set; }
+
         public void Geef(params LeerplandoelBronDiscipline[] disciplines) =>
             _antwoord = () => new LeerplandoelBronResultaat(
                 "1.2",
@@ -394,7 +419,8 @@ public sealed class LeerplandoelImportServiceTests : IDisposable
                     d.Problemen,
                     d.BuitenBereikCodes,
                     d.OvergeslagenDoelsets)).ToList(),
-                Verwijzingen);
+                Verwijzingen,
+                GepubliceerdeMinimumdoelen);
 
         public void Faal(OpstapBronFout fout) => _antwoord = () => throw fout;
 

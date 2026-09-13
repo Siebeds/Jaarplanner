@@ -191,3 +191,134 @@ None.
 - Removed: container `jp-e122-tr2`.
 - Released: ports 55447, 5248, 5249 and 9347. No claim is left for `E1-22-test-runner`.
 - Restored: the three mutated files, with `git checkout`, before the Release rebuild. `git status` shows no change under `backend/`.
+
+---
+
+# E1-22 — Test report (round 3, after fix round 2)
+
+**Verdict:** PASS
+**Mode:** both (full gates, with the full integration project on PostgreSQL 17.5; live KOV once; five backend and two frontend mutations, all reverted; a real browser pass in headless Chrome 152 over CDP, driven from Bash, against the live KOV API)
+**Tree verified:** `story/E1-22` @ `9c2aed8`, worktree `.claude/worktrees/agent-afddb294927345066`. Read and run only; nothing committed. The only other uncommitted change in the worktree is `backlog/worklogs/E1-22/antagonist.md`, which another session is writing. I did not touch it.
+
+## Criteria checked
+
+- **1. Full gates** -> **PASS**. Every figure matches the implementer's report. The commands are listed under *Commands run*.
+  - Frontend: lint clean, **233/233**, build OK.
+  - Backend: Release **0 warnings**, format clean, unit **1130 passed / 4 skipped**.
+  - Integration, the full project on PostgreSQL: **346 passed / 1 skipped / 0 failed**.
+  - Live: **4/4 and 2/2**.
+  - `OpstapApiLiveImportTests` checks, against KOV snapshot 1.2, with an exact ordered `Assert.Equal`:
+    - the six minimumdoelen without a G goal: `4-2.2.23`, `6-2.2.3`, `6-6.2.5`, `6-6.3.9`, `6-7.1.6`, `K-1.2.6`;
+    - their reasons: five `GeenDoelInOpstap`, and `6-7.1.6` `AlleenOvergeslagenDoelsets`/`Z`;
+    - a single `opstapversies` row after the repeat.
+- **2. The new tests assert what the fix claims, and fail without it** -> **PASS**. Each mutation was applied, built, run and reverted with `git checkout`.
+  - **Group A**, in `LeerplandoelImportService.cs`, three mutations at once. Each breaks a differently named test, so one build attributes all three.
+    - *(a)* The stored-leerplandoel rule is removed: `zonderReden` starts from `Enumerable.Empty<string>()` instead of `verwijzingNaImport.Values`.
+    - *(b)* The withdrawn-minimumdoel rule is removed: `Where(m => false)` instead of `Where(m => m.NietMeerInOpstap)`.
+    - *(c)* The version rule goes back to `vorige is not null && (...)`.
+    - **Unit, 3 failed:**
+      - `Een_minimumdoel_waar_een_opgeslagen_verdwenen_doel_naar_verwijst_krijgt_geen_reden` (a);
+      - `Een_minimumdoel_dat_niet_meer_in_opstap_staat_krijgt_geen_reden` (b);
+      - `Een_eerste_toepassing_legt_de_versie_vast_ook_als_er_geen_doel_verandert` (c).
+    - **PostgreSQL, 2 failed:**
+      - `Een_minimumdoel_waar_een_opgeslagen_verdwenen_doel_naar_verwijst_houdt_zijn_plaats_zonder_reden` (a);
+      - `Een_eerste_toepassing_zonder_gewijzigd_doel_legt_de_versie_vast_en_sluit_de_excelroute` (c).
+    - Nothing else failed.
+  - **Group B** (does a preview keep the flag?): in both services, a preview that meets a returned ref clears the flag *and saves*. The mutation added `ZetReviewVlag(..., false); await _context.SaveChangesAsync(...)` next to `teruggekeerd.Add`, in `MinimumdoelImportService.cs:101` and `OpstapImportService.cs:277`.
+    - **Unit, 2 failed:** `Het_voorbeeld_van_een_teruggekeerd_minimumdoel_laat_de_markering_staan` and `Het_voorbeeld_van_een_teruggekeerd_doel_laat_de_markering_staan`.
+    - *Why I did not simply delete the `if (toepassen)` guard:* a preview never calls `SaveChangesAsync` (`MinimumdoelImportService.cs:137-145`, `OpstapImportService.cs:401-405`). So removing the guard alone changes nothing in the database, and no test can or needs to catch it. The tests pin the persisted flag, which is the behaviour the fix claims.
+  - **Frontend.** Two mutations at once, each breaking one test.
+    - *F1:* the *Op.stap ophalen* accent uses the old rule, `md.antwoord !== null || lp.antwoord !== null ? "rustig" : "hoofd"`. It fails `biedt bij een herhaalde ophaling na een verdwenen doel geen doorvoeren aan`, on the new accent assertion.
+    - *F2:* `alleenVersie` goes back to `vorigeVersie !== null && (...)`. It fails `biedt een eerste doorvoering zonder gewijzigd doel aan met de zin over de versie`.
+    - The result was 2 failed / 10 passed. After the revert it was 12/12.
+  - **After every revert:**
+    - `git diff` under `backend/` and `frontend/` is empty;
+    - the Release rebuild has 0 warnings;
+    - unit is 1130 / 4 skipped;
+    - the PostgreSQL import and query classes pass 24/24.
+- **3. Browser, fresh DB, 1440 and 390** -> **PASS**. The starting point was an empty migrated database: "Nog geen minimumdoelen" in the register, and `md=0 lp=0 versies=0`.
+  - **Excel section opened before the first fetch:** one accent, *Op.stap ophalen*, rgb(18,108,120). The Excel *Voorbeeld bekijken* is white.
+  - **Minimumdoelen preview:** 998 nieuw and "Nog niet doorgevoerd". The only accent is *Doorvoeren*; *Op.stap ophalen* is rustig. The DB was still `0/0/0`.
+  - **Leerplandoelen preview**, after that *Doorvoeren*:
+    - 5.835 nieuw, and the discipline table 1 ... 9.3, 10, 11;
+    - **"Bij 6 minimumdoelen verandert de uitleg in het register."**;
+    - the accent **only on *Doorvoeren***: *Op.stap ophalen*, the changelog toggle, the Excel toggle, the Excel buttons and *Bestand kiezen* all carry none;
+    - at 390, the same single accent and `scrollWidth` 390;
+    - the DB at `md=998 lp=0 versies=0 redenen=0`.
+  - **After the leerplandoelen *Doorvoeren*:**
+    - the stand reads "Versie 1.2, doorgevoerd op 13 september 2026";
+    - there is no *Doorvoeren*, and *Op.stap ophalen* carries the accent;
+    - the DB reads `md=998 lp=5835 versies=1 redenen=6`.
+  - **Repeat *Op.stap ophalen*:**
+    - "Er verandert niets aan de minimumdoelen." and "Er verandert niets aan de leerplandoelen.";
+    - no *Doorvoeren* and no status line;
+    - the Excel refusal line in place of the Excel upload;
+    - **exactly one accent, *Op.stap ophalen***: 6.10:1 light and 7.06:1 dark (measured, composited);
+    - `scrollWidth` 390 at 390.
+    - The DB after the repeat has **one `opstapversies` row**, the same row as before the repeat (`1.2 / 8f470a12-231f-5817-7a8b-6582195e2583 / 18:14:34.328 UTC`), and `md=998 lp=5835 redenen=6`.
+  - **Stored reasons:** exactly six rows, matching ADR-0032 decision 5:
+    - `4-2.2.23`, `6-2.2.3`, `6-6.2.5`, `6-6.3.9` and `K-1.2.6`: `GeenDoelInOpstap`;
+    - `6-7.1.6`: `AlleenOvergeslagenDoelsets` / `Z`.
+  - **Register:**
+    - "998 minimumdoelen" with the repeat note;
+    - group order: Nederlands en communicatie, Wiskunde, Wetenschap en techniek, Aardrijkskunde, Geschiedenis, Muzische vorming, Lichamelijke opvoeding en motoriek, ICT, Veilige en gezonde levensstijl, Leren leren, Sociaal en emotioneel leren, **Frans (10) last among the disciplines**, then **"Zonder ingeladen leerplandoel (6)"**;
+    - `6-7.1.6` reads "Alleen zwemdoelen verwijzen ernaar, en die worden niet ingelezen.", and the other five read "In de doorgevoerde versie van Op.stap verwijst geen enkel doel ernaar.";
+    - the reason lines measure 6.51:1; at 390 `scrollWidth` is 390.
+    - The register is paged ("Nog 200 tonen"): the last group appeared after five clicks.
+- **4. Rounds 1-2 still hold** -> **PASS**.
+  - The flow ran in order: stand, preview, *Doorvoeren*, the automatic leerplandoelen preview, *Doorvoeren*.
+  - No preview wrote anything (DB checked after each step).
+  - "Nog niet doorgevoerd" appears only on an unapplied preview.
+  - The Excel route closes once a version is applied.
+  - Discipline order is numeric.
+  - The API log has 0 `fail:` lines and 0 exceptions; its 4 warnings are unrelated (EF query splitting, the https port, DataProtection).
+  - Dutch field labels, and the Excel-history repeat, were not re-exercised in this browser pass: a fresh DB has no *wijzigt* rows. Fix round 2 did not touch them; round 2 verified them in a browser, and Vitest still covers them.
+
+## Commands run
+
+- `pnpm install --frozen-lockfile && pnpm lint` -> clean.
+- `pnpm test` -> **33 files / 233 tests passed**.
+- `pnpm build` -> OK (the existing chunk-size notice only).
+- `dotnet build backend/Jaarplanner.sln -c Release --no-incremental` -> **0 warnings, 0 errors**.
+- `dotnet format backend/Jaarplanner.sln --verify-no-changes` -> exit 0.
+- `dotnet test tests/Jaarplanner.UnitTests -c Release --no-build` -> **1130 passed, 4 skipped, 0 failed**.
+- `JAARPLANNER_TEST_POSTGRES=(Port=55451) dotnet test tests/Jaarplanner.IntegrationTests -c Release --no-build` -> **346 passed, 1 skipped, 0 failed**.
+  - This was the **full project**, in the throwaway container `jp-e122-tr3` (postgres:17.5).
+- Live, once (`JAARPLANNER_LIVE_OPSTAP=1`) -> unit `~LiveContract` **4/4**, integration `~Live` **2/2**.
+- The mutation runs described above, each followed by `git checkout`, a rebuild and a green re-run.
+- `dotnet dotnet-ef database update --no-build -c Release` on a fresh `jp_tr3_browser` -> every migration, through `20260913164907_MinimumdoelZonderLeerplandoelReden`.
+- Browser setup:
+  - API: a copy of the Release output on 5251, run from the scratchpad so the mutation rebuilds could not lock it; Development, development sign-in as `directie@jaarplanner.local`;
+  - Vite on 5252, with `VITE_API_PROXY_TARGET=http://localhost:5251`;
+  - headless Chrome, CDP on 9351.
+
+## Evidence
+
+The screenshots are in `C:/Users/siebe/AppData/Local/Temp/claude/C--Source-Jaarplanner/862efea7-537c-42c4-98ee-d05011f28abd/scratchpad/tr3/shots/`:
+
+| File | State |
+| --- | --- |
+| `r3-01-excel-open-voor-ophalen-licht-1440` | Excel section open before any fetch: one accent (*Op.stap ophalen*) |
+| `r3-02-md-voorbeeld-licht-1440` | Minimumdoelen preview, 998 nieuw, accent on *Doorvoeren* |
+| `r3-03-lp-voorbeeld-licht-1440`, `r3-04-lp-voorbeeld-licht-390` | Leerplandoelen preview: "Bij 6 minimumdoelen verandert de uitleg in het register.", the accent only on *Doorvoeren* |
+| `r3-05-lp-doorgevoerd-licht-1440` | Applied; stand "Versie 1.2, doorgevoerd op 13 september 2026"; accent back on *Op.stap ophalen* |
+| `r3-06-herhaling-niets-licht-1440`, `r3-07-herhaling-niets-licht-390`, `r3-08-herhaling-niets-donker-1440` | Repeat fetch: "Er verandert niets" twice, no *Doorvoeren*, *Op.stap ophalen* accented |
+| `r3-09-register-zes-met-reden-licht-1440`, `r3-10-register-zes-met-reden-licht-390` | "Zonder ingeladen leerplandoel (6)", each with its reason |
+
+In the full-page 1440 captures the sidebar ends at the viewport height. That is an artifact of full-page capture with a sticky sidebar (noted in round 2), not a product state.
+
+## Observations (not defects)
+
+- **Docker Desktop stayed up this round;** no restart was needed.
+- **Not reachable with live data,** as the implementer says: the MINOR 1 cases (a stored dropped goal; a withdrawn minimumdoel) and the MINOR 2 case (a first apply with nothing to write). They rest on the unit and PostgreSQL tests above, and the mutations show those tests bite.
+
+## Defects
+
+None.
+
+## Cleanup
+
+- Stopped by port: API (5251), Vite (5252) and Chrome (9351).
+- Removed: container `jp-e122-tr3`.
+- Released: ports 55451, 5251, 5252 and 9351. `mine E1-22-test-runner` is empty.
+- Every mutated file is restored. `git status` shows only the other session's `antagonist.md` and this report.

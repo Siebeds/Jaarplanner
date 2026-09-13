@@ -60,8 +60,10 @@ public sealed class Minimumdoel
     /// Import-managed (E1-22): why no loaded leerplandoel concords this minimumdoel, as the last applied leerplandoelen
     /// import derived it from its snapshot. Null when a stored leerplandoel points at it (flagged or not), when the snapshot
     /// holds an importable goal that does, when the minimumdoel itself is no longer in Op.stap, or when nothing is known.
+    /// "No longer in Op.stap" means flagged <see cref="NietMeerInOpstap"/> (the minimumdoelen import clears the reason in
+    /// the apply that sets the flag) or absent from the minimumdoelen list the leerplandoelen import itself read.
     /// Recomputed on every applied leerplandoelen import, so it describes the version that is loaded. Not decreed
-    /// content (Art. III.1): like <see cref="NietMeerInOpstap"/>, its only writer is the import.
+    /// content (Art. III.1): like <see cref="NietMeerInOpstap"/>, only the imports write it.
     /// </summary>
     public ZonderLeerplandoelReden? ZonderLeerplandoelReden { get; private set; }
 
