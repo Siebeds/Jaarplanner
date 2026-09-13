@@ -43,6 +43,13 @@ public static class Probleemtitels
     public const string PeriodeIsBezet = "Periode is bezet";
 
     /// <summary>
+    /// KOV's Op.stap data could not be fetched (502, E1-12): the API was unreachable or too slow, or it answered something
+    /// the import does not recognise. Worded to hold for all of those; "niet bereikbaar" would be false for a source that
+    /// answered. Nothing was changed, and the request itself was fine.
+    /// </summary>
+    public const string OpstapNietOpgehaald = "Op.stap niet opgehaald";
+
+    /// <summary>
     /// The request carries no session (401, E6-01). The frontend answers it by sending the browser to the sign-in, so a
     /// teacher rarely reads it; it is Dutch because a teacher is who it would be for.
     /// </summary>

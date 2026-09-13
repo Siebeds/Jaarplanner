@@ -114,6 +114,11 @@ public static class DependencyInjection
         // rather than only from its own unit tests, which was the whole defect E1-15 exists to fix.
         services.AddScoped<IOpstapImportService, OpstapImportService>();
 
+        // The decreed minimumdoelen read from KOV's Op.stap API (E1-12, ADR-0032): the typed HttpClient source and the
+        // import service behind POST /api/opstap-import/minimumdoelen(/voorbeeld). Kept in OpstapApiRegistratie so the
+        // API source grows there (E1-21, E1-23) rather than here.
+        services.AddOpstapApi(configuration);
+
         // The school-content (thema/subthema/activiteit) Excel parser/validator: validates
         // required columns/fields and produces clear per-row diagnostics (E1-07, FR-1.1/1.2). A
         // pure parser/validator (no persistence) so it is stateless and singleton-safe.
