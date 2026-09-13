@@ -1,219 +1,251 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { IcoonChevron } from "../../components/Iconen";
 import { Knop } from "../../components/ui/Knop";
-import { Veld, Invoer } from "../../components/ui/Veld";
-import { ApiError } from "../../lib/api";
+import { Laadvlak } from "../../components/ui/Laadvlak";
+import { cn } from "../../lib/cn";
+import { datumVanTijdstip } from "../../lib/datum";
 import { t } from "../../i18n";
-import { Bestandkiezer } from "./Bestandkiezer";
-import { Beperkt, Foutvlak, Opmerkingen, Telling, Vak } from "./Meldingen";
-import { importeerOpstap, voorbeeldOpstap } from "./api";
-import type { OpstapImportAntwoord, OpstapRijProbleem } from "./types";
+import { Foutvlak, Vak } from "./Meldingen";
+import { Opstapbestand } from "./Opstapbestand";
+import { Doorvoerstatus, LeerplandoelenRapport, MinimumdoelenRapport } from "./Opstaprapport";
+import {
+  importeerLeerplandoelen,
+  importeerMinimumdoelen,
+  useOpstapStand,
+  voorbeeldLeerplandoelen,
+  voorbeeldMinimumdoelen,
+} from "./api";
+import { getal } from "./opmaak";
+import { RUST, schrijftLeerplandoelen, schrijftMinimumdoelen, voer, type Staat } from "./stappen";
+import type { LeerplandoelImportAntwoord, MinimumdoelImportAntwoord } from "./types";
 
 /**
- * Loading one discipline's official Op.stap goal file (FR-2.1, re-import FR-2.5).
+ * The Op.stap tab of Inladen: importing the curriculum from KOV's API (FR-2.1, FR-2.5, ADR-0032; E1-22).
  *
- * **This is reference data, so nothing here edits anything.** The importer adds and updates
- * leerplandoelen and it never deletes: a goal that vanished from the file is reported and kept, and a
- * goal that vanished while school content still links it is reported louder and still kept
- * (Art. IV.2). The screen therefore has no destructive control at all, which is why it has no opt-in
- * where the school-content side does.
+ * **One flow, two steps, in the order the data demands.** *Op.stap ophalen* reads both sources and shows what an import
+ * would change, writing nothing; *Doorvoeren* writes it. The minimumdoelen come first because every concorded
+ * leerplandoel points at one through a Restrict FK, and the leerplandoelen preview answers 409 until they are in. So on
+ * a first run the screen previews the minimumdoelen alone and says why the leerplandoelen wait; once those are through,
+ * it fetches the leerplandoelen preview by itself and offers *Doorvoeren* again. Whether the minimumdoelen are in comes
+ * from `GET /api/opstap-import/stand`, which reads our database: asking the leerplandoelen preview would cost a 13 MB
+ * read of KOV and a 409 dressed as an error on exactly the path a first-time directie takes.
  *
- * **`vereistReview` is not rendered as a standing state.** It is true whenever anything disappeared,
- * and a disappeared goal stays absent from every later file, so a banner keyed on it would be
- * permanent from the first gap onward. What is shown is scoped to the run in front of the reader.
+ * **The apply's own report replaces the preview's** (decide-and-record (b)). Preview and apply are two reads of KOV. For
+ * the leerplandoelen the apply sends back the version the preview named, so it writes that snapshot; the minimumdoelen
+ * have no version, so what was written is whatever the second read said. Either way only the apply's answer is true
+ * about what is now stored. While an apply runs, the preview stays on screen, because it is what is being written.
  *
- * **The row problems stay English.** `reden` is an operator diagnostic about the OFFICIAL file:
- * nobody using this application can fix a malformed row in a file the school downloaded from
- * Op.stap. Translating it would be inventing Dutch for an audience that cannot act on it. So it sits
- * under a Dutch heading saying these are technical details, never as the primary sentence, and never
- * phrased as something the reader did wrong.
+ * **Errors are the server's Dutch** (`detail` of a 409 or 502, Art. II.3 as ratified 2026-07-30), shown under the step
+ * they belong to. A refused leerplandoelen apply after a successful minimumdoelen apply leaves both on screen, which is
+ * what happened.
+ *
+ * **The Excel upload** (`Opstapbestand`) is offered only while no leerplandoelen snapshot has been applied. After one,
+ * the server refuses every file (Art. VII.2), so offering it would be a control that can only be refused (the E3-06
+ * rule); one line says why it is gone instead, since a directie who used it will look for it.
  */
 export function Opstapimport() {
-  const [bestand, setBestand] = useState<File | null>(null);
-  const [discipline, setDiscipline] = useState("");
-  const [voorbeeld, setVoorbeeld] = useState<OpstapImportAntwoord | null>(null);
-  const [uitkomst, setUitkomst] = useState<OpstapImportAntwoord | null>(null);
-  const [bezig, setBezig] = useState<"voorbeeld" | "import" | null>(null);
-  const [fout, setFout] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const stand = useOpstapStand();
 
-  function herbegin(volgende: () => void) {
-    setVoorbeeld(null);
-    setUitkomst(null);
-    setFout(null);
-    volgende();
+  const [md, setMd] = useState<Staat<MinimumdoelImportAntwoord>>(RUST);
+  const [lp, setLp] = useState<Staat<LeerplandoelImportAntwoord>>(RUST);
+  /** The leerplandoelen cannot be previewed yet: no minimumdoel is stored. */
+  const [lpWacht, setLpWacht] = useState(false);
+  const [bezig, setBezig] = useState<"ophalen" | "doorvoeren" | null>(null);
+  const [excelOpen, setExcelOpen] = useState(false);
+
+  async function ophalen() {
+    if (!stand.data) return;
+    const minimumdoelenIn = stand.data.aantalMinimumdoelen > 0;
+
+    setBezig("ophalen");
+    setLpWacht(!minimumdoelenIn);
+    setMd({ antwoord: null, fout: null, laadt: true });
+    setLp({ antwoord: null, fout: null, laadt: minimumdoelenIn });
+
+    await Promise.all([
+      voer(voorbeeldMinimumdoelen, setMd, null),
+      minimumdoelenIn ? voer(voorbeeldLeerplandoelen, setLp, null) : Promise.resolve(null),
+    ]);
+    setBezig(null);
   }
 
-  async function voerUit(soort: "voorbeeld" | "import") {
-    if (!bestand || discipline.trim().length === 0) return;
-    setBezig(soort);
-    setFout(null);
-    try {
-      const invoer = { bestand, disciplineNummer: discipline.trim() };
-      if (soort === "voorbeeld") {
-        setVoorbeeld(await voorbeeldOpstap(invoer));
-        setUitkomst(null);
-      } else {
-        setUitkomst(await importeerOpstap(invoer));
-        setVoorbeeld(null);
+  async function doorvoeren() {
+    setBezig("doorvoeren");
+    let minimumdoelenDoorgevoerd = false;
+
+    if (md.antwoord && !md.antwoord.toegepast && schrijftMinimumdoelen(md.antwoord)) {
+      const vorige = md.antwoord;
+      setMd({ antwoord: vorige, fout: null, laadt: true });
+      const uitkomst = await voer(importeerMinimumdoelen, setMd, vorige);
+      if (!uitkomst) {
+        // Nothing of the leerplandoelen is applied after a refused minimumdoelen step: it may be what they need.
+        setBezig(null);
+        return;
       }
-    } catch (e) {
-      setFout(e instanceof ApiError && e.detail ? e.detail : t("importeren.mislukt"));
-    } finally {
-      setBezig(null);
+      minimumdoelenDoorgevoerd = uitkomst.toegepast;
     }
+
+    if (lp.antwoord && !lp.antwoord.toegepast && schrijftLeerplandoelen(lp.antwoord)) {
+      const vorige = lp.antwoord;
+      setLp({ antwoord: vorige, fout: null, laadt: true });
+      await voer(() => importeerLeerplandoelen(vorige.versie), setLp, vorige);
+    } else if (minimumdoelenDoorgevoerd && lp.antwoord === null) {
+      // The leerplandoelen waited on these minimumdoelen, or their preview was refused for a minimumdoel that was not
+      // stored yet. Now it can be read; it is shown as a preview and applied by a second press, never by this one.
+      const nieuweStand = await stand.refetch();
+      if ((nieuweStand.data?.aantalMinimumdoelen ?? 0) > 0) {
+        setLpWacht(false);
+        setLp({ antwoord: null, fout: null, laadt: true });
+        await voer(voorbeeldLeerplandoelen, setLp, null);
+      }
+    }
+
+    // A curriculum import moves what every screen reads: the register, the goal pickers, dekking. Refetching what is
+    // mounted is cheaper than keeping a list of those keys in step with the rest of the app.
+    await queryClient.invalidateQueries();
+    setBezig(null);
   }
 
-  const getoond = uitkomst ?? voorbeeld;
-  const diff = getoond?.diff ?? null;
-  const klaar = bestand !== null && discipline.trim().length > 0;
+  const teSchrijven =
+    (md.antwoord !== null && !md.antwoord.toegepast && schrijftMinimumdoelen(md.antwoord)) ||
+    (lp.antwoord !== null && !lp.antwoord.toegepast && schrijftLeerplandoelen(lp.antwoord));
 
   return (
     <div className="flex flex-col gap-4">
-      <Vak titel={t("importeren.opstap.titel")}>
-        <div className="flex flex-col gap-4">
-          <Bestandkiezer
-            bestand={bestand}
-            onKies={(nieuw) => herbegin(() => setBestand(nieuw))}
-            uitgeschakeld={bezig !== null}
-          />
-
-          <Veld label={t("importeren.opstap.discipline")}>
-            {(id) => (
-              <Invoer
-                id={id}
-                inputMode="decimal"
-                value={discipline}
-                disabled={bezig !== null}
-                onChange={(e) => herbegin(() => setDiscipline(e.target.value))}
-              />
-            )}
-          </Veld>
-
-          <div>
-            <Knop rang="hoofd" disabled={!klaar || bezig !== null} onClick={() => voerUit("voorbeeld")}>
-              {bezig === "voorbeeld" ? t("importeren.bezig") : t("importeren.bekijkVoorbeeld")}
-            </Knop>
+      <Vak titel={t("importeren.kov.titel")}>
+        {stand.isPending ? (
+          <Laadvlak className="h-16" />
+        ) : stand.isError ? (
+          <div className="flex flex-col items-start gap-3">
+            <Foutvlak titel={t("importeren.kov.standMislukt")} />
+            <Knop onClick={() => void stand.refetch()}>{t("importeren.kov.opnieuw")}</Knop>
           </div>
-
-          {fout ? <Foutvlak titel={t("importeren.mislukt")} tekst={fout} /> : null}
-        </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-1.5 text-meta">
+              <dt className="text-inkt-zacht">{t("importeren.kov.minimumdoelen")}</dt>
+              <dd className="text-inkt">
+                {stand.data.aantalMinimumdoelen > 0
+                  ? t("importeren.kov.ingeladen", { aantal: getal(stand.data.aantalMinimumdoelen) })
+                  : t("importeren.kov.nogNietIngeladen")}
+              </dd>
+              <dt className="text-inkt-zacht">{t("importeren.kov.leerplandoelen")}</dt>
+              <dd className="text-inkt">
+                {stand.data.laatsteVersie
+                  ? t("importeren.kov.versieDoorgevoerd", {
+                      versie: stand.data.laatsteVersie.versie,
+                      datum: datumVanTijdstip(stand.data.laatsteVersie.toegepastOp),
+                    })
+                  : t("importeren.kov.nogGeenVersie")}
+              </dd>
+            </dl>
+            <div>
+              {/* The accent is on the next step: on Doorvoeren while a report has something to write, on this button
+                  otherwise (before any report, and after one that writes nothing). So the screen always has one
+                  primary action and never two (ADR-0024; test-runner round 2 found the idle state without one). */}
+              <Knop rang={teSchrijven ? "rustig" : "hoofd"} disabled={bezig !== null} onClick={() => void ophalen()}>
+                {bezig === "ophalen" ? t("importeren.bezig") : t("importeren.kov.ophalen")}
+              </Knop>
+            </div>
+          </div>
+        )}
       </Vak>
 
-      {getoond && diff ? (
-        <Vak
-          titel={getoond.toegepast ? t("importeren.opstap.gedaan") : t("importeren.opstap.voorbeeld")}
-          merk={<span className="mono shrink-0 text-micro uppercase text-inkt-zwak">{diff.disciplineNummer}</span>}
-        >
-          <div className="flex flex-col gap-4">
-            {diff.isLeeg || diff.overgeslagen ? (
-              <p className="text-body text-inkt-zacht">{t("importeren.opstap.leeg")}</p>
-            ) : (
-              <>
-                <div className="flex flex-wrap gap-x-8 gap-y-3 rounded-veld bg-vlak-diep/60 px-3 py-2.5">
-                  <Telling label={t("importeren.nieuw")} aantal={diff.toegevoegd.length} />
-                  <Telling label={t("importeren.gewijzigd")} aantal={diff.gewijzigd.length} />
-                  <Telling label={t("importeren.ongewijzigd")} aantal={diff.ongewijzigd.length} stil />
-                  <Telling label={t("importeren.opstap.verdwenen")} aantal={diff.verdwenen.length} />
-                </div>
+      {md.antwoord || md.laadt || md.fout ? (
+        <Stapvak titel={t("importeren.kov.minimumdoelen")} staat={md} schrijft={md.antwoord ? schrijftMinimumdoelen(md.antwoord) : false}>
+          {md.antwoord ? <MinimumdoelenRapport antwoord={md.antwoord} /> : null}
+        </Stapvak>
+      ) : null}
 
-                {diff.gewijzigd.length > 0 ? (
-                  <div>
-                    <h3 className="text-micro uppercase text-inkt-zwak">{t("importeren.opstap.watVerandert")}</h3>
-                    <div className="mt-2">
-                      <Beperkt
-                        items={diff.gewijzigd}
-                        hoeveel={8}
-                        render={(wijziging) => (
-                          <li key={wijziging.code} className="flex flex-wrap items-baseline gap-x-2 text-meta">
-                            <span className="mono shrink-0 font-medium text-inkt">{wijziging.code}</span>
-                            <span className="min-w-0 text-inkt-zacht">
-                              {wijziging.velden.map((veld) => veld.veld).join(", ")}
-                            </span>
-                          </li>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* Kept, never deleted, and the sentence says so: this is a list of what stays put. */}
-                {diff.verdwenenMaarGekoppeld.length > 0 ? (
-                  <div className="rounded-veld border border-attentie/40 bg-attentie-zacht p-3">
-                    <p className="text-meta font-medium text-attentie-inkt">
-                      {t("importeren.opstap.verdwenenGekoppeld", { aantal: diff.verdwenenMaarGekoppeld.length })}
-                    </p>
-                    <div className="mt-2">
-                      <Beperkt
-                        items={diff.verdwenenMaarGekoppeld}
-                        hoeveel={8}
-                        render={(doel) => (
-                          <li key={doel.code} className="flex flex-wrap items-baseline gap-x-2 text-meta text-attentie-inkt">
-                            <span className="mono shrink-0 font-medium">{doel.code}</span>
-                            <span>{t("importeren.opstap.koppelingen", { aantal: doel.aantalKoppelingen })}</span>
-                          </li>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-
-                <Opmerkingen titel={t("importeren.opmerkingen")} regels={diff.opmerkingen} />
-              </>
-            )}
-
-            <Rijproblemen problemen={getoond.problemen} />
-
-            {/* Same rule as the school-content side: nothing to load means no load button. */}
-            {getoond.toegepast || diff.isLeeg || diff.overgeslagen ? null : (
-              <div className="flex flex-wrap items-center gap-2">
-                <Knop
-                  rang="hoofd"
-                  disabled={!getoond.isBestandGeldig || bezig !== null}
-                  onClick={() => voerUit("import")}
-                >
-                  {bezig === "import" ? t("importeren.bezig") : t("importeren.voerUit")}
-                </Knop>
-                {!getoond.isBestandGeldig ? (
-                  <p className="text-meta text-inkt-zacht">{t("importeren.opstap.eerstNakijken")}</p>
-                ) : null}
-              </div>
-            )}
-          </div>
+      {lpWacht ? (
+        <Vak titel={t("importeren.kov.leerplandoelen")}>
+          <p className="text-body text-inkt-zacht">{t("importeren.kov.eerstMinimumdoelen")}</p>
         </Vak>
+      ) : lp.antwoord || lp.laadt || lp.fout ? (
+        <Stapvak titel={t("importeren.kov.leerplandoelen")} staat={lp} schrijft={lp.antwoord ? schrijftLeerplandoelen(lp.antwoord) : false}>
+          {lp.antwoord ? <LeerplandoelenRapport antwoord={lp.antwoord} /> : null}
+        </Stapvak>
+      ) : null}
+
+      {teSchrijven ? (
+        <div>
+          <Knop rang="hoofd" disabled={bezig !== null} onClick={() => void doorvoeren()}>
+            {bezig === "doorvoeren" ? t("importeren.bezig") : t("importeren.kov.doorvoeren")}
+          </Knop>
+        </div>
+      ) : null}
+
+      <p role="status" className="sr-only">
+        {bezig ? t("importeren.bezig") : ""}
+      </p>
+
+      {stand.data ? (
+        stand.data.laatsteVersie === null ? (
+          <div>
+            <button
+              type="button"
+              aria-expanded={excelOpen}
+              onClick={() => setExcelOpen((open) => !open)}
+              className="flex min-h-raak items-center gap-2 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:text-inkt"
+            >
+              <IcoonChevron
+                aria-hidden="true"
+                className={cn("h-4 w-4 shrink-0 transition-transform duration-200", excelOpen && "rotate-180")}
+              />
+              {t("importeren.opstap.excelTonen")}
+            </button>
+            {excelOpen ? (
+              <div className="mt-2">
+                <Opstapbestand />
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-meta text-inkt-zacht">{t("importeren.opstap.excelNietMeer")}</p>
+        )
       ) : null}
     </div>
   );
 }
 
-/** Rows the parser could not read, in the language of whoever can act on them. */
-function Rijproblemen({ problemen }: { problemen: OpstapRijProbleem[] }) {
-  if (problemen.length === 0) return null;
+/**
+ * A section for one step: its report, a placeholder while the first answer is out, and the server's refusal under it.
+ * The status names whether the report in view was written, so a reader can never mistake a preview for an import.
+ *
+ * **No status on a preview that writes nothing.** "Nog niet doorgevoerd" beside "Er verandert niets" is true and points
+ * at an action that does not exist, since no Doorvoeren is offered for it; say less (seen in the browser pass).
+ */
+function Stapvak<T extends { toegepast: boolean }>({
+  titel,
+  staat,
+  schrijft,
+  children,
+}: {
+  titel: string;
+  staat: Staat<T>;
+  /** Whether applying the report in view would write anything. */
+  schrijft: boolean;
+  children: ReactNode;
+}) {
+  const status =
+    staat.antwoord && (staat.antwoord.toegepast || schrijft) ? (
+      <Doorvoerstatus toegepast={staat.antwoord.toegepast} />
+    ) : null;
   return (
-    <div className="rounded-veld border border-lijn bg-vlak-diep/60 p-3">
-      <p className="text-meta font-medium text-inkt">
-        {t("importeren.problemen", { aantal: problemen.length })}
-      </p>
-      <p className="mt-0.5 text-meta text-inkt-zacht">{t("importeren.opstap.technisch")}</p>
-      <div className="mt-2">
-        <Beperkt
-          items={problemen}
-          render={(probleem, i) => (
-            <li
-              key={`${probleem.rijNummer}-${probleem.code ?? ""}-${i}`}
-              className="flex flex-col gap-0.5 text-meta sm:flex-row sm:gap-2"
-            >
-              <span className="mono shrink-0 font-medium text-inkt-zacht">
-                {t("importeren.rij", { nummer: probleem.rijNummer })}
-                {probleem.code ? ` · ${probleem.code}` : ""}
-              </span>
-              {/* English, deliberately: see the component docstring. `lang` is set so a screen reader
-                  switches voice instead of reading English with Dutch phonemes. */}
-              <span lang="en" className="mono min-w-0 break-words text-inkt">
-                {probleem.reden}
-              </span>
-            </li>
-          )}
-        />
+    <Vak titel={titel} merk={status}>
+      <div className="flex flex-col gap-4">
+        {staat.antwoord ? (
+          children
+        ) : staat.laadt ? (
+          <div aria-hidden="true" className="flex flex-col gap-2">
+            <Laadvlak className="h-14" />
+            <Laadvlak className="h-24" />
+          </div>
+        ) : null}
+        {staat.fout ? <Foutvlak titel={t("importeren.mislukt")} tekst={staat.fout} /> : null}
       </div>
-    </div>
+    </Vak>
   );
 }

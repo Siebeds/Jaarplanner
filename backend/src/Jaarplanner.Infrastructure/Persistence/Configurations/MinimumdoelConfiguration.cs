@@ -27,5 +27,15 @@ public sealed class MinimumdoelConfiguration : IEntityTypeConfiguration<Minimumd
             .HasColumnName("niet_meer_in_opstap")
             .HasDefaultValue(false)
             .IsRequired();
+
+        // Import-managed (E1-22): why no loaded leerplandoel concords it, recomputed by every applied leerplandoelen
+        // import. Stored by name, so a reordered enum cannot silently change what a row says.
+        builder.Property(m => m.ZonderLeerplandoelReden)
+            .HasColumnName("zonder_leerplandoel_reden")
+            .HasConversion<string>()
+            .HasMaxLength(32);
+        builder.Property(m => m.ZonderLeerplandoelDoelsets)
+            .HasColumnName("zonder_leerplandoel_doelsets")
+            .HasMaxLength(32);
     }
 }

@@ -11,10 +11,10 @@ type Bron = "school" | "opstap";
  * Getting data in: the school's own content (FR-1) and the official Op.stap goals (FR-2).
  *
  * **One screen, two flows, and a switch rather than two routes.** They are the same task from a
- * teacher's side, "load a spreadsheet", and they are nothing alike underneath: one is editable school
- * content the uploader wrote, the other is decreed reference data nobody may edit. Putting them side
- * by side under one heading and one switch is what makes the difference visible, where two menu items
- * would only make it findable.
+ * teacher's side, "get our data in", and they are nothing alike underneath: one is editable school
+ * content the uploader wrote in a spreadsheet, the other is decreed reference data nobody may edit,
+ * fetched from KOV's Op.stap API since E1-22 (ADR-0032). Putting them side by side under one heading
+ * and one switch is what makes the difference visible, where two menu items would only make it findable.
  *
  * Deliberately not in the bottom bar. Loading files is something a school does at the start of a year
  * and after a curriculum update, not something anyone does daily, and a fifth item in a four-item bar

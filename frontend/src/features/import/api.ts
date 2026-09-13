@@ -1,5 +1,13 @@
-import { apiFetch } from "../../lib/api";
-import type { OpstapImportAntwoord, SchoolcontentImportAntwoord, SchoolcontentImportModus } from "./types";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch, get, post } from "../../lib/api";
+import type {
+  LeerplandoelImportAntwoord,
+  MinimumdoelImportAntwoord,
+  OpstapImportAntwoord,
+  OpstapImportStand,
+  SchoolcontentImportAntwoord,
+  SchoolcontentImportModus,
+} from "./types";
 
 /**
  * The four upload calls, plus the template link.
@@ -74,4 +82,41 @@ export function importeerOpstap(invoer: OpstapInvoer): Promise<OpstapImportAntwo
     method: "POST",
     body: opstapFormulier(invoer),
   });
+}
+
+// --- Op.stap from KOV's API (E1-22) ------------------------------------------------------------
+//
+// The backend reads KOV; the browser never does (ADR-0032 decision 1). Each call below is one read of KOV by the
+// server, so a preview and an apply are two reads: the leerplandoelen apply sends back the version its preview named,
+// which pins what is written, and the minimumdoelen have no version, which is why the screen shows each apply's own
+// report rather than keeping the preview's.
+
+export const OPSTAP_STAND_SLEUTEL = ["opstap-stand"] as const;
+
+/** Whether the minimumdoelen are in and which snapshot was applied last. Our database only. */
+export function useOpstapStand() {
+  return useQuery({
+    queryKey: OPSTAP_STAND_SLEUTEL,
+    queryFn: () => get<OpstapImportStand>("/api/opstap-import/stand"),
+  });
+}
+
+/** Reads the decreed minimumdoelen and reports what an import would change, writing nothing. */
+export function voorbeeldMinimumdoelen(): Promise<MinimumdoelImportAntwoord> {
+  return post<MinimumdoelImportAntwoord>("/api/opstap-import/minimumdoelen/voorbeeld");
+}
+
+/** Reads the decreed minimumdoelen again and applies them. */
+export function importeerMinimumdoelen(): Promise<MinimumdoelImportAntwoord> {
+  return post<MinimumdoelImportAntwoord>("/api/opstap-import/minimumdoelen");
+}
+
+/** Reads the newest numbered snapshot and reports what an import would change, writing nothing. */
+export function voorbeeldLeerplandoelen(): Promise<LeerplandoelImportAntwoord> {
+  return post<LeerplandoelImportAntwoord>("/api/opstap-import/leerplandoelen/voorbeeld", {});
+}
+
+/** Applies exactly `versie`, the snapshot the preview showed, even if KOV published a newer one since. */
+export function importeerLeerplandoelen(versie: string): Promise<LeerplandoelImportAntwoord> {
+  return post<LeerplandoelImportAntwoord>("/api/opstap-import/leerplandoelen", { versie });
 }

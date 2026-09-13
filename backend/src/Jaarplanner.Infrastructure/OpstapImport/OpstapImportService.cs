@@ -28,6 +28,14 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// <c>manueel</c>) are never touched by this path; the service only ever writes curriculum rows.
 /// </para>
 /// <para>
+/// <b>Gone once, reported once (E1-22).</b> Only a code that is not flagged yet is <see cref="OpstapHerimportDiff.Verdwenen"/>
+/// or <see cref="OpstapHerimportDiff.VerdwenenMaarGekoppeld"/>; one an earlier import flagged is
+/// <see cref="OpstapHerimportDiff.EerderVerdwenen"/>, which writes nothing and asks no review, and one that comes back is
+/// <see cref="OpstapHerimportDiff.Teruggekeerd"/>. <see cref="OpstapHerimportDiff.SchrijftIets"/> is therefore true when an
+/// apply writes a row the report shows, for the Excel route as for the API, with one write it does not count: an apply also
+/// stores an Op.stap key on an Excel-loaded row that is otherwise unchanged (bookkeeping, see "Renumbered goals" below).
+/// </para>
+/// <para>
 /// <b>Absent is not the same as gone (E1-21).</b> A stored code the source still names is never called
 /// disappeared: when its goal could not be read (a malformed Excel row, an Op.stap goal the mapping
 /// refused) it is reported as <see cref="OpstapHerimportDiff.NietIngelezen"/>, and when the source lists
@@ -229,6 +237,8 @@ public sealed class OpstapImportService : IOpstapImportService
         var verdwenen = new List<string>();
         var verdwenenMaarGekoppeld = new List<VerdwenenGekoppeldDoel>();
         var hernummerd = new List<HernummerdDoel>();
+        var eerderVerdwenen = new List<string>();
+        var teruggekeerd = new List<string>();
 
         // --- Added & changed: walk the incoming file. ---
         foreach (var (code, nieuw) in inkomend)
@@ -260,9 +270,15 @@ public sealed class OpstapImportService : IOpstapImportService
             {
                 gewijzigd.Add(new LeerplandoelWijziging(code, velden));
             }
+            else if (moetVlagWissen)
+            {
+                // Flagged by an earlier import and delivered again unchanged: the flag clears. A write, so it is reported
+                // as one rather than hidden among the unchanged (E1-22).
+                teruggekeerd.Add(code);
+            }
             else
             {
-                // No content change: the row was flagged and is present again, or only its key was missing.
+                // No content change and no flag: only the Op.stap key was missing, which is bookkeeping (see the class note).
                 ongewijzigd.Add(code);
             }
 
@@ -344,6 +360,16 @@ public sealed class OpstapImportService : IOpstapImportService
                     continue;
                 }
 
+                if (oud.NietMeerInOpstap && !(aantal == 0 && _verwijderVerweesdeNietGekoppelde))
+                {
+                    // Gone since an earlier import that already flagged it: the apply would set a flag that is set, so
+                    // it writes nothing and it is not a review item again. Without this every repeat fetch of an
+                    // unchanged source re-reported it as gone and offered an apply that changed nothing (E1-22,
+                    // antagonist round 1 MAJOR). Under the opt-in purge an unlinked one is still removed, a real write.
+                    eerderVerdwenen.Add(code);
+                    continue;
+                }
+
                 if (aantal > 0)
                 {
                     // Still referenced by teacher content — never delete (FK Restrict, Art. IV.2).
@@ -410,6 +436,11 @@ public sealed class OpstapImportService : IOpstapImportService
             opmerkingen.Add(GemeenschappelijkBuitenBereikMelding(gemeenschappelijkBuitenBereik.Count));
         }
 
+        if (teruggekeerd.Count > 0)
+        {
+            opmerkingen.Add(TeruggekeerdMelding(teruggekeerd.Count, herkomst));
+        }
+
         var diff = new OpstapHerimportDiff(
             disciplineNummer,
             toegevoegd,
@@ -422,9 +453,23 @@ public sealed class OpstapImportService : IOpstapImportService
             nietIngelezen: nietIngelezen,
             buitenBereik: buitenBereik,
             hernummerd: hernummerd,
-            gemeenschappelijkBuitenBereik: gemeenschappelijkBuitenBereik);
+            gemeenschappelijkBuitenBereik: gemeenschappelijkBuitenBereik,
+            eerderVerdwenen: eerderVerdwenen.Order(StringComparer.Ordinal).ToList(),
+            teruggekeerd: teruggekeerd.Order(StringComparer.Ordinal).ToList());
 
         return new OpstapImportResultaat(diff, toepassen);
+    }
+
+    /// <summary>
+    /// The notice for flagged goals the source delivers again unchanged (E1-22). "Vervallen" is the word the register
+    /// shows on a flagged goal. One sentence per source, so the Excel route never reads "de Op.stap-bron" about a file.
+    /// </summary>
+    public static string TeruggekeerdMelding(int aantal, OpstapHerkomst herkomst)
+    {
+        var bron = herkomst == OpstapHerkomst.OpstapApi ? "de Op.stap-bron" : "het bestand";
+        return aantal == 1
+            ? $"1 leerplandoel staat weer in {bron} en wordt niet langer als vervallen gemarkeerd."
+            : $"{aantal} leerplandoelen staan weer in {bron} en worden niet langer als vervallen gemarkeerd.";
     }
 
     /// <summary>

@@ -170,17 +170,32 @@ export interface LeerplandoelFilterQuery {
 
 // --- Minimumdoelen (the decreed eindtermen, Art. VII.0) ---
 
+/**
+ * One row of the minimumdoelen register: a minimumdoel in one (discipline, domein, subdomein) bucket of its concorded
+ * leerplandoelen. A minimumdoel no loaded leerplandoel concords arrives once, last, with the three bucket fields null
+ * and no codes (E1-22). That null means no loaded goal refers to it, never that the teachers left something out.
+ */
 export interface MinimumdoelRegel {
   ref: string;
   leeftijd: string;
   nr: string;
+  /** Decreed text, plain, with its list items on lines of their own (`\n- `): render with `whitespace-pre-line`. */
   omschrijving: string;
-  disciplineNummer: string;
+  disciplineNummer: string | null;
   disciplineNaam: string | null;
-  domein: string;
-  subdomein: string;
+  domein: string | null;
+  subdomein: string | null;
   leerplandoelCodes: string[];
+  /**
+   * On a row without a bucket only: why no loaded leerplandoel concords it, as the last applied leerplandoelen import
+   * derived it from its snapshot (owner ruling 2026-09-13). Null when that is not known, and then nothing is said.
+   */
+  zonderLeerplandoelReden: ZonderLeerplandoelReden | null;
+  /** With `AlleenOvergeslagenDoelsets`: KOV's goal-set marks (`Z`, `V`, …). Empty otherwise. */
+  zonderLeerplandoelDoelsets: string[];
 }
+
+export type ZonderLeerplandoelReden = "AlleenOvergeslagenDoelsets" | "GeenDoelInOpstap" | "DoelNietIngelezen";
 
 export interface MinimumdoelenPagina {
   regels: MinimumdoelRegel[];
@@ -190,7 +205,13 @@ export interface MinimumdoelenPagina {
 }
 
 export interface MinimumdoelFacetten {
+  /** Every stored minimumdoel, whatever the filter. */
   totaalAantalMinimumdoelen: number;
+  /** Distinct minimumdoelen the filter matches. The facet counts below are rows, and summing them is not this. */
+  aantalTreffers: number;
+  /** Of those, the ones no loaded leerplandoel concords. */
+  aantalZonderLeerplandoel: number;
+  /** Rows per discipline: what the register lists under that heading. */
   disciplines: DisciplineFacet[];
   domeinen: DomeinFacet[];
   jaarFasen: JaarFaseFacet[];

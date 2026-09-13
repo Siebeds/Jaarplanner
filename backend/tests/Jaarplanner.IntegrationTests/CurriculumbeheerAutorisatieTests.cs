@@ -50,7 +50,7 @@ public sealed class CurriculumbeheerAutorisatieTests : IClassFixture<Jaarplanner
 
         // Named rather than counted, so the next import route is added here on purpose: the Excel import (E1-15), the
         // minimumdoelen import from KOV's API (E1-12) and the leerplandoelen import from it (E1-21), each a commit and a
-        // preview.
+        // preview, and the read of the import state the screen orders its flow by (E1-22).
         Assert.Equal(
             [
                 "api/opstap-import",
@@ -58,6 +58,7 @@ public sealed class CurriculumbeheerAutorisatieTests : IClassFixture<Jaarplanner
                 "api/opstap-import/leerplandoelen/voorbeeld",
                 "api/opstap-import/minimumdoelen",
                 "api/opstap-import/minimumdoelen/voorbeeld",
+                "api/opstap-import/stand",
                 "api/opstap-import/voorbeeld",
             ],
             endpoints.Select(e => e.RoutePattern.RawText!).Order(StringComparer.Ordinal).ToArray());

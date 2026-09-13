@@ -118,8 +118,10 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
 
         Assert.True(eerste.GetProperty("toegepast").GetBoolean());
         Assert.True(eerste.GetProperty("isVolledigVerwerkt").GetBoolean());
+        Assert.True(eerste.GetProperty("schrijftIets").GetBoolean());
         Assert.Equal("1.2", _bron.GevraagdeVersie);
         Assert.True(Discipline(tweede, "2").GetProperty("diff").GetProperty("isLeeg").GetBoolean());
+        Assert.False(tweede.GetProperty("schrijftIets").GetBoolean());
         Assert.Equal("1.2", tweede.GetProperty("vorigeVersie").GetProperty("versie").GetString());
 
         await using var context = _db.MaakContext();
@@ -128,9 +130,105 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         Assert.Null(doelen[0].MinimumdoelRef);
         Assert.Equal(["4-2.1.7", "6-2.5.4"], doelen.Skip(1).Select(l => l.MinimumdoelRef!).ToArray());
         Assert.All(doelen, l => Assert.NotNull(l.OpstapSleutel));
-        var versies = await context.Opstapversies.ToListAsync();
-        Assert.Equal(2, versies.Count);
-        Assert.All(versies, v => Assert.Equal(("1.2", "8f470a12-231f-5817-7a8b-6582195e2583"), (v.Versie, v.Hash)));
+        // One row: the second apply of the same snapshot wrote nothing, so it records no second version (E1-22, antagonist
+        // round 1 MAJOR; until then this asserted two rows).
+        var versie = Assert.Single(await context.Opstapversies.ToListAsync());
+        Assert.Equal(("1.2", "8f470a12-231f-5817-7a8b-6582195e2583"), (versie.Versie, versie.Hash));
+    }
+
+    /// <summary>
+    /// E1-22, antagonist round 1 MAJOR, on an API-only database: after a snapshot drops a goal and the apply flags it, a
+    /// repeat fetch of that snapshot lists the goal as already gone, writes nothing, and a press anyway adds no version row.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_herhaalde_ophaling_na_een_verdwenen_doel_heeft_niets_te_schrijven()
+    {
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7"), G("2.1.GL3.11", "4-2.1.7")));
+        await Post(Pad, new { versie = "1.2" });
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7")));
+        var weg = await Post(Pad, new { versie = "1.2" });
+
+        var herhaling = await Post($"{Pad}/voorbeeld", body: null);
+        var toepassing = await Post(Pad, new { versie = "1.2" });
+
+        Assert.Equal(["2.1.GL3.11"], Codes(Discipline(weg, "2").GetProperty("diff").GetProperty("verdwenen")));
+        var diff = Discipline(herhaling, "2").GetProperty("diff");
+        Assert.Empty(diff.GetProperty("verdwenen").EnumerateArray());
+        Assert.Equal(["2.1.GL3.11"], Codes(diff.GetProperty("eerderVerdwenen")));
+        Assert.False(diff.GetProperty("schrijftIets").GetBoolean());
+        Assert.True(diff.GetProperty("isLeeg").GetBoolean());
+        Assert.False(herhaling.GetProperty("schrijftIets").GetBoolean());
+        Assert.False(toepassing.GetProperty("schrijftIets").GetBoolean());
+
+        await using var context = _db.MaakContext();
+        Assert.Equal(2, await context.Opstapversies.CountAsync());
+        Assert.True((await context.Leerplandoelen.SingleAsync(l => l.Code == "2.1.GL3.11")).NietMeerInOpstap);
+    }
+
+    /// <summary>
+    /// The same on a database with Excel history (the case the worklog first filed as a quirk): a G goal the Excel route
+    /// loaded and KOV lacks is flagged by the first API import, and from then on is already gone.
+    /// </summary>
+    [PostgresFact]
+    public async Task Na_een_exceldoel_dat_kov_niet_heeft_heeft_een_herhaalde_ophaling_niets_te_schrijven()
+    {
+        var excel = await VerstuurWerkboek("/api/opstap-import", "2.1.GK3.6");
+        Assert.True(excel.IsSuccessStatusCode, await excel.Content.ReadAsStringAsync());
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7")));
+
+        var api = await Post(Pad, new { versie = "1.2" });
+        var herhaling = await Post($"{Pad}/voorbeeld", body: null);
+
+        Assert.Equal(["2.1.GK3.6"], Codes(Discipline(api, "2").GetProperty("diff").GetProperty("verdwenen")));
+        var diff = Discipline(herhaling, "2").GetProperty("diff");
+        Assert.Equal(["2.1.GK3.6"], Codes(diff.GetProperty("eerderVerdwenen")));
+        Assert.False(diff.GetProperty("schrijftIets").GetBoolean());
+        Assert.False(herhaling.GetProperty("schrijftIets").GetBoolean());
+    }
+
+    /// <summary>
+    /// Owner ruling 2026-09-13 "Reden tonen", on PostgreSQL: the apply stores a reason per minimumdoel from the snapshot,
+    /// the register shows it on the row without a bucket, disciplines come in numeric order (2 before 10), and a repeat
+    /// fetch has no reason left to change.
+    /// </summary>
+    [PostgresFact]
+    public async Task Het_register_toont_de_reden_per_minimumdoel_zonder_leerplandoel_en_ordent_disciplines_als_getal()
+    {
+        await using (var context = _db.MaakContext())
+        {
+            context.Minimumdoelen.AddRange(
+                new Minimumdoel("6-7.1.6", "6-", "7.1.6", "De leerlingen kunnen zwemmen."),
+                new Minimumdoel("K-1.2.6", "K-", "1.2.6", "De kleuters kunnen luisteren."),
+                new Minimumdoel("4-9.9.9", "4-", "9.9.9", "Een doel met een geweigerd leerplandoel."));
+            await context.SaveChangesAsync();
+        }
+
+        _bron.Verwijzingen =
+        [
+            new MinimumdoelVerwijzing("6-7.1.6", "Z", Geweigerd: false),
+            new MinimumdoelVerwijzing("4-9.9.9", "G", Geweigerd: true),
+        ];
+        _bron.Geef(
+            Wiskunde(G("2.1.GL3.10", "4-2.1.7")),
+            new LeerplandoelBronDiscipline("10", "Frans", [G("10.1.GL5.1", "6-2.5.4", jaarFase: "L5", discipline: "10")], [], [], []));
+
+        var toepassing = await Post(Pad, new { versie = "1.2" });
+        var register = await Get("/api/minimumdoelen?aantal=200");
+        var herhaling = await Post($"{Pad}/voorbeeld", body: null);
+
+        Assert.Equal(3, toepassing.GetProperty("aantalRedenenGewijzigd").GetInt32());
+        var regels = register.GetProperty("regels").EnumerateArray().ToList();
+        Assert.Equal(
+            ["4-2.1.7", "6-2.5.4", "4-9.9.9", "6-7.1.6", "K-1.2.6"],
+            regels.Select(r => r.GetProperty("ref").GetString()!).ToArray());
+        Assert.Equal(["2", "10"], regels.Take(2).Select(r => r.GetProperty("disciplineNummer").GetString()!).ToArray());
+        Assert.Equal(JsonValueKind.Null, regels[0].GetProperty("zonderLeerplandoelReden").ValueKind);
+        Assert.Equal("DoelNietIngelezen", regels[2].GetProperty("zonderLeerplandoelReden").GetString());
+        Assert.Equal("AlleenOvergeslagenDoelsets", regels[3].GetProperty("zonderLeerplandoelReden").GetString());
+        Assert.Equal(["Z"], regels[3].GetProperty("zonderLeerplandoelDoelsets").EnumerateArray().Select(s => s.GetString()!).ToArray());
+        Assert.Equal("GeenDoelInOpstap", regels[4].GetProperty("zonderLeerplandoelReden").GetString());
+        Assert.Equal(0, herhaling.GetProperty("aantalRedenenGewijzigd").GetInt32());
+        Assert.False(herhaling.GetProperty("schrijftIets").GetBoolean());
     }
 
     [PostgresFact]
@@ -228,9 +326,11 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
     /// coverage computation yet (E5-04). What E1-21 makes true is its input:
     /// <list type="bullet">
     /// <item>a G goal a class covers now carries a ref to a decreed minimumdoel that exists;</item>
-    /// <item>the minimumdoelen register, which only lists minimumdoelen with a concorded goal, lists it.</item>
+    /// <item>the minimumdoelen register lists that minimumdoel under the goal's discipline.</item>
     /// </list>
-    /// Before E1-21 both were empty for want of a concorded goal.
+    /// Before E1-21 both were empty for want of a concorded goal. (Until E1-22 the register listed only minimumdoelen with
+    /// a concorded goal; it now lists the others too, without a bucket, which
+    /// <see cref="Het_register_toont_ook_de_minimumdoelen_zonder_ingeladen_leerplandoel"/> pins.)
     /// </summary>
     [PostgresFact]
     public async Task Na_de_import_draagt_een_gedekt_G_doel_zijn_minimumdoel_en_staat_dat_in_het_register()
@@ -305,15 +405,146 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         Assert.Empty(await concordantie.LeerplandoelenVoorMinimumdoelAsync("6-2.5.4"));
     }
 
+    /// <summary>
+    /// E1-22: the state the import screen orders its flow by. Before an apply it names the stored minimumdoelen and no
+    /// version, which is the condition under which the screen still offers the Excel upload; after one it names the
+    /// snapshot, the condition under which the Excel route refuses. It reads our database only, so the fake source is
+    /// never asked.
+    /// </summary>
+    [PostgresFact]
+    public async Task De_stand_noemt_de_minimumdoelen_en_de_laatst_doorgevoerde_versie()
+    {
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7")));
+
+        var ervoor = await Get("/api/opstap-import/stand");
+        var aanroepenErvoor = _bron.Aanroepen;
+        await Post(Pad, new { versie = "1.2" });
+        var erna = await Get("/api/opstap-import/stand");
+
+        Assert.Equal(0, aanroepenErvoor);
+        Assert.Equal(2, ervoor.GetProperty("aantalMinimumdoelen").GetInt32());
+        Assert.Equal(JsonValueKind.Null, ervoor.GetProperty("laatsteVersie").ValueKind);
+        Assert.Equal(2, erna.GetProperty("aantalMinimumdoelen").GetInt32());
+        Assert.Equal("1.2", erna.GetProperty("laatsteVersie").GetProperty("versie").GetString());
+        Assert.Equal("8f470a12-231f-5817-7a8b-6582195e2583", erna.GetProperty("laatsteVersie").GetProperty("hash").GetString());
+    }
+
+    /// <summary>
+    /// E1-22 on the database the ordering and the null handling depend on: a minimumdoel no loaded goal concords (here
+    /// <c>6-2.5.4</c>, as <c>6-7.1.6</c> and five others are in snapshot 1.2, ADR-0032 decision 5) is listed once, after the
+    /// concorded ones and without a bucket; a search finds it; a taxonomy filter drops it; and the facets count
+    /// minimumdoelen, with no empty option. Before the leerplandoelen import both are listed that way.
+    /// </summary>
+    [PostgresFact]
+    public async Task Het_register_toont_ook_de_minimumdoelen_zonder_ingeladen_leerplandoel()
+    {
+        var voorDeImport = await Get("/api/minimumdoelen");
+        Assert.Equal(2, voorDeImport.GetProperty("totaal").GetInt32());
+        Assert.All(voorDeImport.GetProperty("regels").EnumerateArray(), r =>
+            Assert.Equal(JsonValueKind.Null, r.GetProperty("disciplineNummer").ValueKind));
+
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7"), G("2.1.GL3.11", "4-2.1.7")));
+        await Post(Pad, new { versie = "1.2" });
+
+        var register = await Get("/api/minimumdoelen");
+        var regels = register.GetProperty("regels").EnumerateArray().ToList();
+        Assert.Equal(2, register.GetProperty("totaal").GetInt32());
+        Assert.Equal(["4-2.1.7", "6-2.5.4"], regels.Select(r => r.GetProperty("ref").GetString()!).ToArray());
+        Assert.Equal("2", regels[0].GetProperty("disciplineNummer").GetString());
+        Assert.Equal("Wiskunde", regels[0].GetProperty("disciplineNaam").GetString());
+        Assert.Equal(["2.1.GL3.10", "2.1.GL3.11"], Codes(regels[0].GetProperty("leerplandoelCodes")));
+        Assert.Equal(JsonValueKind.Null, regels[1].GetProperty("disciplineNummer").ValueKind);
+        Assert.Equal(JsonValueKind.Null, regels[1].GetProperty("domein").ValueKind);
+        Assert.Empty(regels[1].GetProperty("leerplandoelCodes").EnumerateArray());
+
+        var zoek = await Get("/api/minimumdoelen?zoek=kansen");
+        Assert.Equal(["6-2.5.4"], zoek.GetProperty("regels").EnumerateArray().Select(r => r.GetProperty("ref").GetString()!).ToArray());
+
+        var gefilterd = await Get("/api/minimumdoelen?domein=Getallenkennis");
+        Assert.Equal(["4-2.1.7"], gefilterd.GetProperty("regels").EnumerateArray().Select(r => r.GetProperty("ref").GetString()!).ToArray());
+
+        var facetten = await Get("/api/minimumdoelen/facetten");
+        Assert.Equal(2, facetten.GetProperty("totaalAantalMinimumdoelen").GetInt32());
+        Assert.Equal(2, facetten.GetProperty("aantalTreffers").GetInt32());
+        Assert.Equal(1, facetten.GetProperty("aantalZonderLeerplandoel").GetInt32());
+        Assert.Equal(["2"], facetten.GetProperty("disciplines").EnumerateArray().Select(d => d.GetProperty("nummer").GetString()!).ToArray());
+        Assert.Equal(["L3"], facetten.GetProperty("jaarFasen").EnumerateArray().Select(j => j.GetProperty("jaarFase").GetString()!).ToArray());
+
+        var gefilterdeFacetten = await Get("/api/minimumdoelen/facetten?domein=Getallenkennis");
+        Assert.Equal(1, gefilterdeFacetten.GetProperty("aantalTreffers").GetInt32());
+        Assert.Equal(0, gefilterdeFacetten.GetProperty("aantalZonderLeerplandoel").GetInt32());
+    }
+
+    /// <summary>
+    /// Antagonist round 2, MINOR 1 (a), on PostgreSQL: a goal KOV dropped stays stored, flagged and concorded, so its
+    /// minimumdoel keeps its place under the goal's discipline, gets no reason, and the preview counts no change.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_minimumdoel_waar_een_opgeslagen_verdwenen_doel_naar_verwijst_houdt_zijn_plaats_zonder_reden()
+    {
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7"), G("2.1.GL3.11", "6-2.5.4")));
+        await Post(Pad, new { versie = "1.2" });
+        _bron.Geef(Wiskunde(G("2.1.GL3.11", "6-2.5.4")));
+
+        var voorbeeld = await Post($"{Pad}/voorbeeld", body: null);
+        await Post(Pad, new { versie = "1.2" });
+        var register = await Get("/api/minimumdoelen?zoek=4-2.1.7");
+
+        Assert.Equal(["2.1.GL3.10"], Codes(Discipline(voorbeeld, "2").GetProperty("diff").GetProperty("verdwenen")));
+        Assert.Equal(0, voorbeeld.GetProperty("aantalRedenenGewijzigd").GetInt32());
+        var regel = Assert.Single(register.GetProperty("regels").EnumerateArray());
+        Assert.Equal("2", regel.GetProperty("disciplineNummer").GetString());
+        Assert.Equal(JsonValueKind.Null, regel.GetProperty("zonderLeerplandoelReden").ValueKind);
+
+        await using var context = _db.MaakContext();
+        Assert.Null((await context.Minimumdoelen.SingleAsync(m => m.Ref == "4-2.1.7")).ZonderLeerplandoelReden);
+        Assert.True((await context.Leerplandoelen.SingleAsync(l => l.Code == "2.1.GL3.10")).NietMeerInOpstap);
+    }
+
+    /// <summary>
+    /// Antagonist round 2, MINOR 2, on PostgreSQL: a first apply in which no discipline writes (the snapshot's only
+    /// discipline is one this application does not know) and no reason changes still records the version, is offered as
+    /// something to write, and from then on the Excel route refuses (Art. VII.2).
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_eerste_toepassing_zonder_gewijzigd_doel_legt_de_versie_vast_en_sluit_de_excelroute()
+    {
+        _bron.Geef(new LeerplandoelBronDiscipline(
+            "12",
+            "Burgerschap",
+            [G("12.1.GL1.1", "4-2.1.7", discipline: "12"), G("12.1.GL1.2", "6-2.5.4", discipline: "12")],
+            [],
+            [],
+            []));
+
+        var voorbeeld = await Post($"{Pad}/voorbeeld", body: null);
+        var toepassing = await Post(Pad, new { versie = "1.2" });
+        var excel = await VerstuurWerkboek("/api/opstap-import/voorbeeld");
+
+        Assert.Equal(JsonValueKind.Null, voorbeeld.GetProperty("vorigeVersie").ValueKind);
+        Assert.True(Discipline(voorbeeld, "12").GetProperty("diff").GetProperty("overgeslagen").GetBoolean());
+        Assert.Equal(0, voorbeeld.GetProperty("aantalRedenenGewijzigd").GetInt32());
+        Assert.True(voorbeeld.GetProperty("schrijftIets").GetBoolean());
+        Assert.True(toepassing.GetProperty("toegepast").GetBoolean());
+        Assert.Equal(HttpStatusCode.Conflict, excel.StatusCode);
+        Assert.Equal(
+            Probleemsoorten.OpstapExcelNaOpstapApi,
+            (await excel.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("type").GetString());
+
+        await using var context = _db.MaakContext();
+        Assert.Equal("1.2", (await context.Opstapversies.SingleAsync()).Versie);
+        Assert.Empty(await context.Leerplandoelen.ToListAsync());
+    }
+
     /// <summary>One Wiskunde goal as the Op.stap Excel route carries it: its own wording, and no concordance in column D.</summary>
-    private async Task<HttpResponseMessage> VerstuurWerkboek(string url)
+    private async Task<HttpResponseMessage> VerstuurWerkboek(string url, string code = "2.1.GL3.10")
     {
         using var werkboek = new XLWorkbook();
         var blad = werkboek.AddWorksheet("Leerplandoelen");
         blad.Cell(1, (int)OpstapKolom.Doelsoort).Value = "Doelsoort";
         blad.Cell(1, (int)OpstapKolom.Code).Value = "Code";
         blad.Cell(2, (int)OpstapKolom.Doelsoort).Value = "G";
-        blad.Cell(2, (int)OpstapKolom.Code).Value = "2.1.GL3.10";
+        blad.Cell(2, (int)OpstapKolom.Code).Value = code;
         blad.Cell(2, (int)OpstapKolom.JaarFase).Value = "L3";
         blad.Cell(2, (int)OpstapKolom.Domein).Value = "Getallenkennis";
         blad.Cell(2, (int)OpstapKolom.Subdomein).Value = "Natuurlijke getallen";
@@ -403,6 +634,9 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
 
         public int Aanroepen { get; private set; }
 
+        /// <summary>The goals that point at a minimumdoel without being imported (E1-22).</summary>
+        public IReadOnlyList<MinimumdoelVerwijzing> Verwijzingen { get; set; } = [];
+
         public void Geef(params LeerplandoelBronDiscipline[] disciplines) =>
             _antwoord = () => new LeerplandoelBronResultaat(
                 "1.2",
@@ -418,7 +652,8 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
                         l.OpstapSleutel)).ToList(),
                     d.Problemen,
                     d.BuitenBereikCodes,
-                    d.OvergeslagenDoelsets)).ToList());
+                    d.OvergeslagenDoelsets)).ToList(),
+                Verwijzingen);
 
         public void Faal(OpstapBronFout fout) => _antwoord = () => throw fout;
 

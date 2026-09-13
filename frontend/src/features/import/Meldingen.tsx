@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { getal } from "./opmaak";
 
 /**
  * The three shapes a message takes on this screen, kept apart on purpose.
@@ -80,7 +81,7 @@ export function Opmerkingen({ titel, regels }: { titel: string; regels: string[]
 export function Telling({ label, aantal, stil }: { label: string; aantal: number; stil?: boolean }) {
   return (
     <div className="min-w-0">
-      <p className={cn("mono text-sectie", stil || aantal === 0 ? "text-inkt-zwak" : "text-inkt")}>{aantal}</p>
+      <p className={cn("mono text-sectie", stil || aantal === 0 ? "text-inkt-zwak" : "text-inkt")}>{getal(aantal)}</p>
       <p className="text-micro uppercase text-inkt-zwak">{label}</p>
     </div>
   );

@@ -72,6 +72,47 @@ describe("de Nederlandse catalogus", () => {
   });
 });
 
+describe("de Op.stap-import en het minimumdoelenregister (E1-22)", () => {
+  it("zeggen niet dat de doelen uit een bestand komen", () => {
+    // E1-12 and E1-21 made that false: both kinds of goal come from KOV's API now. The register said the minimumdoelen
+    // came "uit het decretale bestand" and the leerplandoelen from "de Op.stap-bestanden". Only the Excel upload's own
+    // keys (importeren.opstap) may still speak of a file.
+    const fout = SLEUTELS.filter(
+      ([sleutel, waarde]) =>
+        (sleutel.startsWith("doelen.") || sleutel.startsWith("importeren.kov.")) && /bestand/i.test(waarde),
+    );
+    expect(fout.map(([sleutel]) => sleutel)).toEqual([]);
+  });
+
+  it("stellen een minimumdoel zonder ingeladen leerplandoel nooit voor als iets wat de leerkrachten lieten liggen", () => {
+    // The E5-03 rule on a branch whose condition proves one thing: no loaded leerplandoel refers to it. Whether it is
+    // covered, missing or waiting for a teacher is not in that condition, and the six of ADR-0032 decision 5 cannot be
+    // covered by anyone under the G-only scope.
+    const gatwoorden = /\b(gedekt|dekking|ontbreekt|ontbreken|mist|missen|gat|vergeten|koppel\w*)\b/i;
+    // Extended in fix round 1 to the reasons per minimumdoel (owner ruling 2026-09-13 "Reden tonen"), the goal-set names
+    // they are built from, and the note that a minimumdoel can appear more than once.
+    const fout = SLEUTELS.filter(
+      ([sleutel, waarde]) =>
+        /^doelen\.(zonderLeerplandoel|reden|doelset|herhaald)/.test(sleutel) && gatwoorden.test(waarde),
+    );
+    expect(SLEUTELS.filter(([sleutel]) => /^doelen\.reden/.test(sleutel)).length).toBe(3);
+    expect(fout.map(([sleutel]) => sleutel)).toEqual([]);
+  });
+
+  it("hebben bij elk meervoud een enkelvoud", () => {
+    // "1 leerplandoelen staan niet meer in Op.stap" is the plural bug this repo has shipped before. Every counted
+    // sentence of this story is a pair `…Een` / `…Meer`, chosen by count at the call site.
+    const meervouden = SLEUTELS.map(([sleutel]) => sleutel).filter((sleutel) =>
+      /^(importeren\.kov|doelen)\..*Meer$/.test(sleutel),
+    );
+    const zonderEnkelvoud = meervouden.filter(
+      (sleutel) => !SLEUTELS.some(([ander]) => ander === sleutel.replace(/Meer$/, "Een")),
+    );
+    expect(meervouden.length).toBeGreaterThan(0);
+    expect(zonderEnkelvoud).toEqual([]);
+  });
+});
+
 describe("de componenten", () => {
   it("renderen geen Nederlandse tekst die niet uit de catalogus komt", () => {
     // JSX text between two tags. Anything that came from the catalogue arrives inside braces, so
