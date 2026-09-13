@@ -64,50 +64,72 @@ function codes(aantal: number, voorvoegsel: string): string[] {
   return Array.from({ length: aantal }, (_, i) => `${voorvoegsel}${i + 1}`);
 }
 
+/**
+ * The fixtures compute `schrijftIets` the way the server does, unless a test sets it: the screen must follow the server's
+ * flag, and a fixture that disagreed with the server would test a screen nobody can see.
+ */
 function md(diff: Partial<MinimumdoelImportDiff> = {}, rest: Partial<MinimumdoelImportAntwoord> = {}): MinimumdoelImportAntwoord {
+  const basis = {
+    toegevoegd: [],
+    gewijzigd: [],
+    ongewijzigd: [],
+    verdwenen: [],
+    nietIngelezen: [],
+    eerderVerdwenen: [],
+    teruggekeerd: [],
+    overgeslagen: false,
+    opmerkingen: [],
+    isLeeg: false,
+    vereistReview: false,
+    ...diff,
+  };
+  const schrijft =
+    !basis.overgeslagen &&
+    basis.toegevoegd.length + basis.gewijzigd.length + basis.verdwenen.length + basis.teruggekeerd.length > 0;
   return {
     isVolledigVerwerkt: true,
     problemen: [],
     toegepast: false,
     ...rest,
-    diff: {
-      toegevoegd: [],
-      gewijzigd: [],
-      ongewijzigd: [],
-      verdwenen: [],
-      nietIngelezen: [],
-      overgeslagen: false,
-      opmerkingen: [],
-      isLeeg: false,
-      vereistReview: false,
-      ...diff,
-    },
+    diff: { ...basis, schrijftIets: diff.schrijftIets ?? schrijft },
   };
 }
 
 function discipline(nummer: string, naam: string, diff: Partial<OpstapHerimportDiff>): LeerplandoelDisciplineResultaat {
+  const basis = {
+    disciplineNummer: nummer,
+    toegevoegd: [],
+    gewijzigd: [],
+    ongewijzigd: [],
+    verdwenen: [],
+    verdwenenMaarGekoppeld: [],
+    nietIngelezen: [],
+    buitenBereik: [],
+    gemeenschappelijkBuitenBereik: [],
+    hernummerd: [],
+    eerderVerdwenen: [],
+    teruggekeerd: [],
+    overgeslagen: false,
+    opmerkingen: [],
+    isLeeg: false,
+    vereistReview: false,
+    ...diff,
+  };
+  const schrijft =
+    !basis.overgeslagen &&
+    basis.toegevoegd.length +
+      basis.gewijzigd.length +
+      basis.verdwenen.length +
+      basis.verdwenenMaarGekoppeld.length +
+      basis.hernummerd.length +
+      basis.teruggekeerd.length >
+      0;
   return {
     disciplineNummer: nummer,
     disciplineNaam: naam,
     overgeslagenDoelsets: [],
     problemen: [],
-    diff: {
-      disciplineNummer: nummer,
-      toegevoegd: [],
-      gewijzigd: [],
-      ongewijzigd: [],
-      verdwenen: [],
-      verdwenenMaarGekoppeld: [],
-      nietIngelezen: [],
-      buitenBereik: [],
-      gemeenschappelijkBuitenBereik: [],
-      hernummerd: [],
-      overgeslagen: false,
-      opmerkingen: [],
-      isLeeg: false,
-      vereistReview: false,
-      ...diff,
-    },
+    diff: { ...basis, schrijftIets: diff.schrijftIets ?? schrijft },
   };
 }
 
@@ -123,6 +145,8 @@ function lp(disciplines: LeerplandoelDisciplineResultaat[], rest: Partial<Leerpl
     problemen: [],
     disciplines,
     toegepast: false,
+    schrijftIets: disciplines.some((d) => d.diff.schrijftIets),
+    aantalRedenenGewijzigd: 0,
     ...rest,
   };
 }
@@ -224,6 +248,86 @@ describe("Opstapimport", () => {
     expect(screen.queryByText(t("importeren.kov.nietDoorgevoerd"))).not.toBeInTheDocument();
   });
 
+  it("biedt bij een herhaalde ophaling na een verdwenen doel geen doorvoeren aan (antagonist round 1 MAJOR)", async () => {
+    // What the server now answers on a repeat fetch of an unchanged snapshot after a goal left and was flagged: the
+    // flagged rows sit in `eerderVerdwenen`, which writes nothing, and the version is the one already applied.
+    const hash = "8f470a12-231f-5817-7a8b-6582195e2583";
+    routeer({
+      [STAND]: () => ({
+        body: { aantalMinimumdoelen: 998, laatsteVersie: { versie: "1.2", hash, toegepastOp: "2026-09-13T10:00:00+00:00" } },
+      }),
+      [MD_VOORBEELD]: () => ({ body: md({ ongewijzigd: codes(997, "K-1."), eerderVerdwenen: ["K-9.9.9"], isLeeg: true }) }),
+      [LP_VOORBEELD]: () => ({
+        body: lp(
+          [discipline("2", "Wiskunde", { ongewijzigd: ["2.1.GL3.10"], eerderVerdwenen: ["2.1.GK3.6"], isLeeg: true })],
+          { vorigeVersie: { versie: "1.2", hash, toegepastOp: "2026-09-13T10:00:00+00:00" } },
+        ),
+      }),
+    });
+    toon();
+
+    klik(await screen.findByText(t("importeren.kov.ophalen")).then((knop) => knop.textContent!));
+    expect(await screen.findByText(t("importeren.kov.mdNiets"))).toBeInTheDocument();
+    expect(await screen.findByText(t("importeren.kov.lpNiets"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("importeren.kov.doorvoeren") })).not.toBeInTheDocument();
+    expect(screen.queryByText(t("importeren.kov.nietDoorgevoerd"))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("importeren.kov.versieVastleggen", { versie: "1.2" }))).not.toBeInTheDocument();
+  });
+
+  it("zegt waarom doorvoeren wordt aangeboden als alleen de versie of de uitleg bij minimumdoelen verandert", async () => {
+    routeer({
+      [STAND]: () => ({ body: DOORGEVOERD }),
+      [MD_VOORBEELD]: () => ({ body: NIETS_NIEUW_MD }),
+      [LP_VOORBEELD]: () => ({
+        body: lp([discipline("2", "Wiskunde", { ongewijzigd: ["2.1.GL3.10"], isLeeg: true })], {
+          vorigeVersie: { versie: "1.1", hash: "h", toegepastOp: "2026-09-01T10:00:00+00:00" },
+          schrijftIets: true,
+          aantalRedenenGewijzigd: 6,
+        }),
+      }),
+    });
+    toon();
+
+    klik(await screen.findByText(t("importeren.kov.ophalen")).then((knop) => knop.textContent!));
+    expect(await screen.findByText(t("importeren.kov.lpNiets"))).toBeInTheDocument();
+    expect(screen.getByText(t("importeren.kov.versieVastleggen", { versie: "1.2" }))).toBeInTheDocument();
+    expect(screen.getByText(t("importeren.kov.redenenMeer", { aantal: "6" }))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("importeren.kov.doorvoeren") })).toBeInTheDocument();
+  });
+
+  it("noemt gewijzigde velden in het Nederlands, niet met hun code (antagonist round 1 MINOR)", async () => {
+    routeer({
+      [STAND]: () => ({ body: DOORGEVOERD }),
+      [MD_VOORBEELD]: () => ({
+        body: md({ gewijzigd: [{ ref: "K-1.3.9", velden: [{ veld: "Omschrijving", oudeWaarde: "a", nieuweWaarde: "b" }] }] }),
+      }),
+      [LP_VOORBEELD]: () => ({
+        body: lp([
+          discipline("2", "Wiskunde", {
+            gewijzigd: [
+              {
+                code: "2.1.GL3.10",
+                velden: [
+                  { veld: "MinimumdoelRef", oudeWaarde: null, nieuweWaarde: "4-2.1.7" },
+                  { veld: "JaarFase", oudeWaarde: "3K", nieuweWaarde: "K3" },
+                  { veld: "Onbekend", oudeWaarde: "x", nieuweWaarde: "y" },
+                ],
+              },
+            ],
+          }),
+        ]),
+      }),
+    });
+    toon();
+
+    klik(await screen.findByText(t("importeren.kov.ophalen")).then((knop) => knop.textContent!));
+    expect(await screen.findByText(t("importeren.veld.Omschrijving"))).toBeInTheDocument();
+    expect(
+      screen.getByText(`${t("importeren.veld.MinimumdoelRef")}, ${t("importeren.veld.JaarFase")}, Onbekend`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/MinimumdoelRef|JaarFase/)).not.toBeInTheDocument();
+  });
+
   it("biedt het Excel-bestand aan zolang er geen versie doorgevoerd is, en daarna niet meer, met de reden", async () => {
     routeer({ [STAND]: () => ({ body: LEEG }) });
     const { unmount } = toon();
@@ -231,6 +335,9 @@ describe("Opstapimport", () => {
     klik(await screen.findByRole("button", { name: t("importeren.opstap.excelTonen") }).then((knop) => knop.textContent!));
     expect(screen.getByText(t("importeren.opstap.titel"))).toBeInTheDocument();
     expect(screen.getByLabelText(t("importeren.kiesBestand"))).toBeInTheDocument();
+    // Under the API flow the accent stays on *Op.stap ophalen*: the Excel button is `rustig` (antagonist round 1 MINOR).
+    expect(screen.getByRole("button", { name: t("importeren.bekijkVoorbeeld") }).className).not.toMatch(/\bbg-accent\b/);
+    expect(screen.getByRole("button", { name: t("importeren.kov.ophalen") }).className).toMatch(/\bbg-accent\b/);
     expect(screen.queryByText(t("importeren.opstap.excelNietMeer"))).not.toBeInTheDocument();
     unmount();
 

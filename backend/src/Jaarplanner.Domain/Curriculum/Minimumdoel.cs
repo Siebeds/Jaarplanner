@@ -56,6 +56,20 @@ public sealed class Minimumdoel
     /// </summary>
     public bool NietMeerInOpstap { get; private set; }
 
+    /// <summary>
+    /// Import-managed (E1-22): why no loaded leerplandoel concords this minimumdoel, as the last applied leerplandoelen
+    /// import derived it from its snapshot; null when a goal that could be imported concords to it, or when nothing is
+    /// known. Recomputed on every applied leerplandoelen import, so it describes the version that is loaded. Not decreed
+    /// content (Art. III.1): like <see cref="NietMeerInOpstap"/>, its only writer is the import.
+    /// </summary>
+    public ZonderLeerplandoelReden? ZonderLeerplandoelReden { get; private set; }
+
+    /// <summary>
+    /// With <see cref="Curriculum.ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets"/>: KOV's marks of those goal sets,
+    /// comma-separated and sorted (<c>Z</c>, <c>V,Z</c>). Null otherwise.
+    /// </summary>
+    public string? ZonderLeerplandoelDoelsets { get; private set; }
+
     private static string Require(string value, string paramName)
     {
         if (string.IsNullOrWhiteSpace(value))

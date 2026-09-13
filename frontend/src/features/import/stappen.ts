@@ -1,6 +1,6 @@
 import { ApiError } from "../../lib/api";
 import { t } from "../../i18n";
-import type { LeerplandoelImportAntwoord, MinimumdoelImportAntwoord, OpstapHerimportDiff } from "./types";
+import type { LeerplandoelImportAntwoord, MinimumdoelImportAntwoord } from "./types";
 
 /**
  * The two steps of the Op.stap import from KOV's API (E1-22): the state each one is in, how a call is run, and when a
@@ -37,25 +37,18 @@ export async function voer<T>(
 }
 
 /**
- * Anything the apply would write. A report whose only entries are unread or out-of-scope rows writes nothing, so it
- * offers no *Doorvoeren*: a button that changes nothing is the control the E3-06 rule forbids.
+ * Whether applying this report writes anything, as the server decides it (`diff.schrijftIets`). Only then is
+ * *Doorvoeren* offered: a button that changes nothing is the control the E3-06 rule forbids.
+ *
+ * Not reconstructed from the buckets here. The first version did that and counted every `verdwenen` entry as a write,
+ * while the server re-reported rows it had flagged long ago, so a repeat fetch of an unchanged source offered an apply
+ * that set a flag that was already set (E1-22, antagonist round 1 MAJOR). One definition, server-side, is the fix.
  */
 export function schrijftMinimumdoelen(antwoord: MinimumdoelImportAntwoord): boolean {
-  const { diff } = antwoord;
-  return !diff.overgeslagen && diff.toegevoegd.length + diff.gewijzigd.length + diff.verdwenen.length > 0;
+  return antwoord.diff.schrijftIets;
 }
 
-/** Same rule for the leerplandoelen, over every discipline the apply would touch. */
+/** The same for the leerplandoelen: curriculum rows, reasons per minimumdoel, or a version not applied yet. */
 export function schrijftLeerplandoelen(antwoord: LeerplandoelImportAntwoord): boolean {
-  return antwoord.disciplines.some(({ diff }) => !diff.overgeslagen && teSchrijven(diff) > 0);
-}
-
-function teSchrijven(diff: OpstapHerimportDiff): number {
-  return (
-    diff.toegevoegd.length +
-    diff.gewijzigd.length +
-    diff.verdwenen.length +
-    diff.verdwenenMaarGekoppeld.length +
-    diff.hernummerd.length
-  );
+  return antwoord.schrijftIets;
 }

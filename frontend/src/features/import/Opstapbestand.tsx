@@ -6,6 +6,7 @@ import { t } from "../../i18n";
 import { Bestandkiezer } from "./Bestandkiezer";
 import { Beperkt, Foutvlak, Opmerkingen, Telling, Vak } from "./Meldingen";
 import { importeerOpstap, voorbeeldOpstap } from "./api";
+import { veldLabel } from "./opmaak";
 import type { OpstapImportAntwoord, OpstapRijProbleem } from "./types";
 
 /**
@@ -24,9 +25,9 @@ import type { OpstapImportAntwoord, OpstapRijProbleem } from "./types";
  * (Art. IV.2). The screen therefore has no destructive control at all, which is why it has no opt-in
  * where the school-content side does.
  *
- * **`vereistReview` is not rendered as a standing state.** It is true whenever anything disappeared,
- * and a disappeared goal stays absent from every later file, so a banner keyed on it would be
- * permanent from the first gap onward. What is shown is scoped to the run in front of the reader.
+ * **`vereistReview` is not rendered as a standing state.** It is scoped to the run in front of the reader. (Since E1-22 a
+ * goal an earlier import already flagged is `eerderVerdwenen` and no longer re-reported as disappeared, so the flag stops
+ * being permanent; the reason for not rendering it as a banner stands anyway.)
  *
  * **The row problems stay English.** `reden` is an operator diagnostic about the OFFICIAL file:
  * nobody using this application can fix a malformed row in a file the school downloaded from
@@ -96,7 +97,9 @@ export function Opstapbestand() {
           </Veld>
 
           <div>
-            <Knop rang="hoofd" disabled={!klaar || bezig !== null} onClick={() => voerUit("voorbeeld")}>
+            {/* `rustig`, both here and on Inladen below: this upload sits under the API flow, whose buttons carry the one
+                accent, so a screen never shows two accent buttons (E1-22, antagonist round 1 MINOR). */}
+            <Knop rang="rustig" disabled={!klaar || bezig !== null} onClick={() => voerUit("voorbeeld")}>
               {bezig === "voorbeeld" ? t("importeren.bezig") : t("importeren.bekijkVoorbeeld")}
             </Knop>
           </div>
@@ -133,7 +136,7 @@ export function Opstapbestand() {
                           <li key={wijziging.code} className="flex flex-wrap items-baseline gap-x-2 text-meta">
                             <span className="mono shrink-0 font-medium text-inkt">{wijziging.code}</span>
                             <span className="min-w-0 text-inkt-zacht">
-                              {wijziging.velden.map((veld) => veld.veld).join(", ")}
+                              {wijziging.velden.map((veld) => veldLabel(veld.veld)).join(", ")}
                             </span>
                           </li>
                         )}
@@ -173,7 +176,7 @@ export function Opstapbestand() {
             {getoond.toegepast || diff.isLeeg || diff.overgeslagen ? null : (
               <div className="flex flex-wrap items-center gap-2">
                 <Knop
-                  rang="hoofd"
+                  rang="rustig"
                   disabled={!getoond.isBestandGeldig || bezig !== null}
                   onClick={() => voerUit("import")}
                 >

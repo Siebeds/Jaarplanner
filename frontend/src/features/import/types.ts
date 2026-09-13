@@ -176,6 +176,12 @@ export interface OpstapHerimportDiff {
   gemeenschappelijkBuitenBereik: string[];
   /** Renumbered goals; each pair sits here instead of in `toegevoegd` and `verdwenen`. */
   hernummerd: HernummerdDoel[];
+  /** Still absent and already flagged by an earlier import: nothing to write, not a review item (E1-22). */
+  eerderVerdwenen: string[];
+  /** Flagged earlier, delivered again unchanged: the apply clears the flag. */
+  teruggekeerd: string[];
+  /** True when applying writes a curriculum row. Server-computed, so there is one definition (E1-22). */
+  schrijftIets: boolean;
   overgeslagen: boolean;
   /** Dutch notices: why a file did nothing, or that its discipline is out of the configured selection. */
   opmerkingen: string[];
@@ -240,10 +246,16 @@ export interface MinimumdoelImportDiff {
   toegevoegd: string[];
   gewijzigd: MinimumdoelWijziging[];
   ongewijzigd: string[];
-  /** No longer named by the source at all: kept and flagged, never deleted. */
+  /** No longer named by the source at all and not flagged yet: the apply flags them; kept, never deleted. */
   verdwenen: string[];
   /** Still named by the source, not read this time: the stored text stays. */
   nietIngelezen: string[];
+  /** Still absent and already flagged by an earlier import: nothing to write, not a review item (E1-22). */
+  eerderVerdwenen: string[];
+  /** Flagged earlier, named again unchanged: the apply clears the flag. */
+  teruggekeerd: string[];
+  /** True when applying writes anything. Server-computed, so there is one definition (E1-22). */
+  schrijftIets: boolean;
   overgeslagen: boolean;
   /** Dutch, for directie: rendered as given (Art. II.3 as ratified 2026-07-30). */
   opmerkingen: string[];
@@ -303,4 +315,11 @@ export interface LeerplandoelImportAntwoord {
   problemen: LeerplandoelBronProbleem[];
   disciplines: LeerplandoelDisciplineResultaat[];
   toegepast: boolean;
+  /**
+   * True when applying writes anything: a curriculum row, a reason per minimumdoel, or a version other than the last one
+   * applied. The server's one definition; the screen offers *Doorvoeren* on it and on nothing else (E1-22).
+   */
+  schrijftIets: boolean;
+  /** How many minimumdoelen get a different reason, in the register, for having no leerplandoel. */
+  aantalRedenenGewijzigd: number;
 }

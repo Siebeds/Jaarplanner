@@ -60,6 +60,8 @@ public sealed class OpstapLeerplandoelenImportController : ControllerBase
     /// <param name="Problemen">G goals that were not imported, and why (operator diagnostics, English).</param>
     /// <param name="Disciplines">One review report per discipline (FR-2.5).</param>
     /// <param name="Toegepast">False for a preview; true when the apply committed.</param>
+    /// <param name="SchrijftIets">True when applying this report writes anything (E1-22); a screen offers an apply only then.</param>
+    /// <param name="AantalRedenenGewijzigd">How many minimumdoelen get a different reason for having no leerplandoel.</param>
     public sealed record LeerplandoelImportAntwoord(
         bool IsVolledigVerwerkt,
         string Versie,
@@ -70,7 +72,9 @@ public sealed class OpstapLeerplandoelenImportController : ControllerBase
         IReadOnlyList<DoelsetTelling> OvergeslagenDoelsets,
         IReadOnlyList<LeerplandoelBronProbleem> Problemen,
         IReadOnlyList<LeerplandoelDisciplineResultaat> Disciplines,
-        bool Toegepast);
+        bool Toegepast,
+        bool SchrijftIets,
+        int AantalRedenenGewijzigd);
 
     /// <summary>Reads a snapshot and reports what an import would change, <b>without writing anything</b>.</summary>
     [HttpPost("voorbeeld")]
@@ -144,7 +148,9 @@ public sealed class OpstapLeerplandoelenImportController : ControllerBase
             resultaat.OvergeslagenDoelsets,
             resultaat.Problemen,
             resultaat.Disciplines,
-            resultaat.Toegepast));
+            resultaat.Toegepast,
+            resultaat.SchrijftIets,
+            resultaat.AantalRedenenGewijzigd));
     }
 
     private static ProblemDetails OngeldigeVersie(string versie) =>

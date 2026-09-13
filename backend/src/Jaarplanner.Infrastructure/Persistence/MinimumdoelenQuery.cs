@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Curriculum;
+using Jaarplanner.Domain.Curriculum;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jaarplanner.Infrastructure.Persistence;
@@ -55,6 +56,8 @@ public sealed class MinimumdoelenQuery : IMinimumdoelenQuery
                 r.DisciplineNummer,
                 r.Domein,
                 r.Subdomein,
+                r.Reden,
+                r.Doelsets,
             })
             .Select(g => new
             {
@@ -65,11 +68,24 @@ public sealed class MinimumdoelenQuery : IMinimumdoelenQuery
                 g.Key.DisciplineNummer,
                 g.Key.Domein,
                 g.Key.Subdomein,
+                g.Key.Reden,
+                g.Key.Doelsets,
+                // The whole-number part of the discipline number ("9" of "9.2"), for a numeric order in SQL.
+                Hoofd = g.Key.DisciplineNummer == null
+                    ? null
+                    : g.Key.DisciplineNummer.Contains(".")
+                        ? g.Key.DisciplineNummer.Substring(0, g.Key.DisciplineNummer.IndexOf("."))
+                        : g.Key.DisciplineNummer,
                 Codes = g.Where(r => r.LeerplandoelCode != null).Select(r => r.LeerplandoelCode!).Distinct().ToList(),
             })
             // Rows without a bucket last, explicitly: PostgreSQL sorts NULL last ascending and LINQ to Objects (the
             // in-memory provider) first, so leaving it to the provider would order the two differently.
             .OrderBy(r => r.DisciplineNummer == null)
+            // Disciplines in their numeric order (1, 2, …, 9.1, 9.2, 9.3, 10, 11), as DisciplinenummerVergelijker orders
+            // the facets: a shorter whole-number part first, then that part, then the full number. As text, "10" sorted
+            // before "2" and put Frans between Nederlands and Wiskunde (E1-22, antagonist round 1 MINOR).
+            .ThenBy(r => r.Hoofd == null ? 0 : r.Hoofd.Length)
+            .ThenBy(r => r.Hoofd)
             .ThenBy(r => r.DisciplineNummer)
             .ThenBy(r => r.Domein)
             .ThenBy(r => r.Subdomein)
@@ -91,7 +107,9 @@ public sealed class MinimumdoelenQuery : IMinimumdoelenQuery
                 r.DisciplineNummer is null ? null : disciplineNamen.GetValueOrDefault(r.DisciplineNummer),
                 r.Domein,
                 r.Subdomein,
-                r.Codes))
+                r.Codes,
+                r.Reden,
+                r.Doelsets is null ? [] : r.Doelsets.Split(',', StringSplitOptions.RemoveEmptyEntries)))
             .ToList();
 
         return new MinimumdoelenPagina(regels, totaal, overslaan, aantal);
@@ -205,6 +223,9 @@ public sealed class MinimumdoelenQuery : IMinimumdoelenQuery
             Subdomein = l == null ? null : l.Subdomein,
             JaarFase = l == null ? null : l.JaarFase,
             LeerplandoelCode = l == null ? null : l.Code,
+            // The import's reason travels only on the row without a bucket, which is the only row it is about.
+            Reden = l == null ? m.ZonderLeerplandoelReden : null,
+            Doelsets = l == null ? m.ZonderLeerplandoelDoelsets : null,
         };
 
     /// <summary>Only the rows that carry a concorded leerplandoel: the rows every facet dimension is made of.</summary>
@@ -273,6 +294,8 @@ public sealed class MinimumdoelenQuery : IMinimumdoelenQuery
         public string? Subdomein { get; set; }
         public string? JaarFase { get; set; }
         public string? LeerplandoelCode { get; set; }
+        public ZonderLeerplandoelReden? Reden { get; set; }
+        public string? Doelsets { get; set; }
     }
 }
 

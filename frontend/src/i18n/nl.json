@@ -53,6 +53,17 @@
     "zonderLeerplandoel": "Zonder ingeladen leerplandoel",
     "zonderLeerplandoelEen": "Geen enkel ingeladen leerplandoel verwijst naar dit minimumdoel.",
     "zonderLeerplandoelMeer": "Geen enkel ingeladen leerplandoel verwijst naar deze minimumdoelen.",
+    "redenDoelsets": "Alleen {doelsets} verwijzen ernaar, en die worden niet ingelezen.",
+    "redenGeenDoel": "In de doorgevoerde versie van Op.stap verwijst geen enkel doel ernaar.",
+    "redenNietIngelezen": "Een gemeenschappelijk doel verwijst ernaar, maar dat doel kon niet ingelezen worden.",
+    "doelsetZ": "zwemdoelen",
+    "doelsetV": "doelen voor Vlaamse Gebarentaal",
+    "doelsetP": "precurriculumdoelen",
+    "doelsetS": "specifieke doelen",
+    "doelsetPlus": "verdiepingsdoelen",
+    "doelsetA": "doelen voor anderstalige nieuwkomers",
+    "doelsetOnbekend": "doelen uit doelset {doelset}",
+    "herhaald": "Een minimumdoel kan meer dan eens voorkomen: onder elke discipline en elk subdomein waarin een ingeladen leerplandoel ernaar verwijst.",
     "nogTonen": "Nog {aantal} tonen",
     "foutTitel": "Doelen niet geladen"
   },
@@ -475,7 +486,27 @@
       "problemenLpEen": "1 leerplandoel uit Op.stap kon niet ingelezen worden.",
       "problemenLpMeer": "{aantal} leerplandoelen uit Op.stap konden niet ingelezen worden.",
       "problemenMelden": "Meld dit aan wie de toepassing beheert.",
-      "wijzigingslog": "Wijzigingen in versie {versie} volgens Katholiek Onderwijs Vlaanderen"
+      "wijzigingslog": "Wijzigingen in versie {versie} volgens Katholiek Onderwijs Vlaanderen",
+      "terug": "terug",
+      "versieVastleggen": "Doorvoeren legt versie {versie} vast als de doorgevoerde versie.",
+      "redenenEen": "Bij 1 minimumdoel verandert de uitleg in het register.",
+      "redenenMeer": "Bij {aantal} minimumdoelen verandert de uitleg in het register."
+    },
+    "veld": {
+      "Doelsoort": "doelsoort",
+      "JaarFase": "jaar of fase",
+      "Domein": "domein",
+      "Subdomein": "subdomein",
+      "Cluster": "cluster",
+      "Tekst": "tekst",
+      "Voorbeelden": "voorbeelden",
+      "Toelichting": "toelichting",
+      "Woordenschat": "woordenschat",
+      "MinimumdoelRef": "minimumdoel",
+      "OpstapSleutel": "Op.stap-sleutel",
+      "Leeftijd": "leeftijd",
+      "Nr": "nummer",
+      "Omschrijving": "omschrijving"
     }
   },
   "algemeen": {

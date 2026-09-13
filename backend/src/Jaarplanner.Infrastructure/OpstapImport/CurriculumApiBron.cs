@@ -85,6 +85,7 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
 
         var items = snapshot.Items ?? throw new OpstapBronFout($"Snapshot {gevraagd} has no 'items' array.");
         var minimumdoelPerHref = await MinimumdoelIndexAsync(cancellationToken);
+        var (disciplines, verwijzingen) = Verwerk(gevraagd, items, minimumdoelPerHref);
 
         return new LeerplandoelBronResultaat(
             gevraagd,
@@ -93,7 +94,8 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
                 ? tijdstip
                 : null,
             Wijzigingslog(gevraagd, snapshot.Changelog),
-            Verwerk(gevraagd, items, minimumdoelPerHref));
+            disciplines,
+            verwijzingen);
     }
 
     /// <summary>The newest numbered version, from the 63-byte hash of <c>latest</c>; the data itself is never read as latest.</summary>
@@ -131,11 +133,14 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
         return index;
     }
 
-    private static List<LeerplandoelBronDiscipline> Verwerk(
+    private static (List<LeerplandoelBronDiscipline> Disciplines, List<MinimumdoelVerwijzing> Verwijzingen) Verwerk(
         string versie,
         IReadOnlyList<KrcItemDto> items,
         IReadOnlyDictionary<string, string> minimumdoelPerHref)
     {
+        // The goals that point at a minimumdoel without being imported, for the reason a minimumdoel has no loaded
+        // leerplandoel (E1-22). The mapped G goals carry theirs in MinimumdoelRef.
+        var verwijzingen = new List<MinimumdoelVerwijzing>();
         var perHref = new Dictionary<string, KrcItemDto>(StringComparer.Ordinal);
         foreach (var item in items.Where(i => !string.IsNullOrWhiteSpace(i.Href)))
         {
@@ -193,6 +198,7 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
             {
                 verzameling.BuitenBereik.Add(code);
                 verzameling.Overgeslagen[doelset] = verzameling.Overgeslagen.GetValueOrDefault(doelset) + 1;
+                VoegVerwijzingenToe(verwijzingen, doel, minimumdoelPerHref, doelset, geweigerd: false);
                 continue;
             }
 
@@ -201,6 +207,7 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
             if (probleem is { } reden)
             {
                 verzameling.Problemen.Add(reden);
+                VoegVerwijzingenToe(verwijzingen, doel, minimumdoelPerHref, doelset, geweigerd: true);
             }
             else
             {
@@ -214,7 +221,7 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
             throw new OpstapBronFout($"Snapshot {versie} holds no goal of goal set G; refused.");
         }
 
-        return disciplines.Values
+        var resultaat = disciplines.Values
             .Select(v => new LeerplandoelBronDiscipline(
                 v.Nummer,
                 v.Naam,
@@ -226,6 +233,31 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
                     .Select(t => new DoelsetTelling(t.Key, t.Value))
                     .ToList()))
             .ToList();
+
+        return (resultaat, verwijzingen);
+    }
+
+    /// <summary>
+    /// Records where a goal that is not imported points. A reference that does not resolve to a published minimumdoel is
+    /// left out: it cannot explain a minimumdoel that exists, and for a skipped goal it is not this import's to refuse.
+    /// </summary>
+    private static void VoegVerwijzingenToe(
+        List<MinimumdoelVerwijzing> verwijzingen,
+        KrcItemDto doel,
+        IReadOnlyDictionary<string, string> minimumdoelPerHref,
+        string doelset,
+        bool geweigerd)
+    {
+        foreach (var href in (doel.MinimumGoals ?? [])
+                     .Where(h => !string.IsNullOrWhiteSpace(h))
+                     .Select(h => h.Trim())
+                     .Distinct(StringComparer.Ordinal))
+        {
+            if (minimumdoelPerHref.TryGetValue(href, out var minimumdoelRef))
+            {
+                verwijzingen.Add(new MinimumdoelVerwijzing(minimumdoelRef, doelset, geweigerd));
+            }
+        }
     }
 
     /// <summary>Walks from a goal to its discipline, or null when any step is not the item type the tree promises.</summary>

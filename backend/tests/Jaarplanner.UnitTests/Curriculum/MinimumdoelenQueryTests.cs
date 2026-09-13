@@ -161,6 +161,67 @@ public sealed class MinimumdoelenQueryTests
         Assert.Equal("Wiskunde", pagina.Regels[0].DisciplineNaam);
     }
 
+    /// <summary>
+    /// E1-22 round 1 (antagonist MINOR): disciplines in their numeric order, as the facets order them, not as text (which
+    /// put 10 between 1 and 2); the rows without a bucket stay last.
+    /// </summary>
+    [Fact]
+    public async Task Disciplines_staan_in_hun_numerieke_volgorde_en_zonder_bucket_blijft_laatst()
+    {
+        var options = Options();
+
+        await using (var ctx = new AppDbContext(options))
+        {
+            ctx.Disciplines.AddRange(
+                new Discipline("1", "Nederlands"), new Discipline("2", "Wiskunde"),
+                new Discipline("9.1", "Veilige en gezonde levensstijl"), new Discipline("10", "Frans"));
+            ctx.Minimumdoelen.AddRange(
+                new Minimumdoel("K-01", "K-", "1", "a"), new Minimumdoel("K-02", "K-", "2", "b"),
+                new Minimumdoel("K-03", "K-", "3", "c"), new Minimumdoel("K-04", "K-", "4", "d"),
+                new Minimumdoel("K-05", "K-", "5", "zonder"));
+            ctx.Leerplandoelen.AddRange(
+                Leerdoel("FR-1", "K-01", "10"), Leerdoel("NL-1", "K-02", "1"),
+                Leerdoel("VG-1", "K-03", "9.1"), Leerdoel("WI-1", "K-04", "2"));
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var query = new AppDbContext(options);
+        var pagina = await new MinimumdoelenQuery(query).ZoekAsync(new MinimumdoelFilter());
+
+        Assert.Equal(["1", "2", "9.1", "10", "(zonder)"], pagina.Regels.Select(r => r.DisciplineNummer ?? "(zonder)").ToArray());
+    }
+
+    /// <summary>The import's reason travels on the row without a bucket, and only there (owner ruling 2026-09-13).</summary>
+    [Fact]
+    public async Task De_reden_zonder_leerplandoel_staat_alleen_op_de_rij_zonder_bucket()
+    {
+        var options = Options();
+
+        await using (var ctx = new AppDbContext(options))
+        {
+            ctx.Disciplines.Add(new Discipline("2", "Wiskunde"));
+            var zwemmen = new Minimumdoel("6-7.1.6", "6-", "7.1.6", "De leerlingen kunnen zwemmen.");
+            var tellen = new Minimumdoel("4-2.1.7", "4-", "2.1.7", "De leerlingen kunnen tellen.");
+            ctx.Minimumdoelen.AddRange(zwemmen, tellen);
+            ctx.Entry(zwemmen).Property(m => m.ZonderLeerplandoelReden).CurrentValue = ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets;
+            ctx.Entry(zwemmen).Property(m => m.ZonderLeerplandoelDoelsets).CurrentValue = "V,Z";
+            // A stale reason on a minimumdoel that does have a goal is not shown: the row has a bucket.
+            ctx.Entry(tellen).Property(m => m.ZonderLeerplandoelReden).CurrentValue = ZonderLeerplandoelReden.GeenDoelInOpstap;
+            ctx.Leerplandoelen.Add(Leerdoel("2.1.GL3.10", "4-2.1.7", "2", "Getallen", "Tellen"));
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var query = new AppDbContext(options);
+        var pagina = await new MinimumdoelenQuery(query).ZoekAsync(new MinimumdoelFilter());
+
+        var metBucket = pagina.Regels.Single(r => r.Ref == "4-2.1.7");
+        var zonder = pagina.Regels.Single(r => r.Ref == "6-7.1.6");
+        Assert.Null(metBucket.ZonderLeerplandoelReden);
+        Assert.Empty(metBucket.ZonderLeerplandoelDoelsets);
+        Assert.Equal(ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets, zonder.ZonderLeerplandoelReden);
+        Assert.Equal(["V", "Z"], zonder.ZonderLeerplandoelDoelsets);
+    }
+
     /// <summary>Right after the minimumdoelen import no leerplandoel exists yet, and the register still lists every minimumdoel.</summary>
     [Fact]
     public async Task Zonder_enig_leerplandoel_staan_alle_minimumdoelen_in_de_lijst()

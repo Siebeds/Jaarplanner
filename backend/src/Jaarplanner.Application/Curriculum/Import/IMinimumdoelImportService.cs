@@ -47,7 +47,9 @@ public sealed class MinimumdoelImportDiff
         IReadOnlyList<string> verdwenen,
         IReadOnlyList<string> nietIngelezen,
         bool overgeslagen = false,
-        IReadOnlyList<string>? opmerkingen = null)
+        IReadOnlyList<string>? opmerkingen = null,
+        IReadOnlyList<string>? eerderVerdwenen = null,
+        IReadOnlyList<string>? teruggekeerd = null)
     {
         Toegevoegd = toegevoegd;
         Gewijzigd = gewijzigd;
@@ -56,6 +58,8 @@ public sealed class MinimumdoelImportDiff
         NietIngelezen = nietIngelezen;
         Overgeslagen = overgeslagen;
         Opmerkingen = opmerkingen ?? [];
+        EerderVerdwenen = eerderVerdwenen ?? [];
+        Teruggekeerd = teruggekeerd ?? [];
     }
 
     /// <summary>Refs the source publishes that the database does not hold yet: these are inserted.</summary>
@@ -68,11 +72,25 @@ public sealed class MinimumdoelImportDiff
     public IReadOnlyList<string> Ongewijzigd { get; }
 
     /// <summary>
-    /// Refs in the database that the source <b>no longer names at all</b>, neither as a usable row nor as a refused one.
-    /// <b>Kept, never deleted</b>: leerplandoelen may concord to them (Restrict FK), and an eindterm leaving the decree is
-    /// for a human to review, not for an import to act on.
+    /// Refs in the database that the source <b>no longer names at all</b>, neither as a usable row nor as a refused one,
+    /// and that are <b>not flagged yet</b>: the apply flags them <c>NietMeerInOpstap</c>. <b>Kept, never deleted</b>:
+    /// leerplandoelen may concord to them (Restrict FK), and an eindterm leaving the decree is for a human to review, not
+    /// for an import to act on. A ref an earlier import already flagged is in <see cref="EerderVerdwenen"/> instead.
     /// </summary>
     public IReadOnlyList<string> Verdwenen { get; }
+
+    /// <summary>
+    /// Refs still absent from the source that an earlier applied import already flagged (E1-22, antagonist round 1
+    /// MAJOR). Applying writes nothing for them and they are not a review item: they were one when they left. Kept apart
+    /// from <see cref="Verdwenen"/> so a repeat fetch of an unchanged source does not look like something to apply.
+    /// </summary>
+    public IReadOnlyList<string> EerderVerdwenen { get; }
+
+    /// <summary>
+    /// Refs an earlier import flagged that the source names again with the same content: the apply clears the flag. A
+    /// flagged ref that returns with changed content is in <see cref="Gewijzigd"/>, whose apply clears it too.
+    /// </summary>
+    public IReadOnlyList<string> Teruggekeerd { get; }
 
     /// <summary>
     /// Refs in the database that the source <b>still names</b>, but whose row was not imported this time (the reason
@@ -96,11 +114,23 @@ public sealed class MinimumdoelImportDiff
     /// shows only in the result's <c>Problemen</c>.
     /// </summary>
     public bool IsLeeg =>
-        !Overgeslagen && Toegevoegd.Count == 0 && Gewijzigd.Count == 0 && Verdwenen.Count == 0 && NietIngelezen.Count == 0;
+        !Overgeslagen && Toegevoegd.Count == 0 && Gewijzigd.Count == 0 && Verdwenen.Count == 0 &&
+        NietIngelezen.Count == 0 && Teruggekeerd.Count == 0;
 
-    /// <summary>True when a human should look: a skip, a change, a disappearance, or a stored minimumdoel whose row was not imported.</summary>
+    /// <summary>
+    /// True when a human should look: a skip, a change, a new disappearance, a return, or a stored minimumdoel whose row
+    /// was not imported. A ref that was already flagged (<see cref="EerderVerdwenen"/>) is not a reason.
+    /// </summary>
     public bool VereistReview =>
-        Overgeslagen || Gewijzigd.Count > 0 || Verdwenen.Count > 0 || NietIngelezen.Count > 0;
+        Overgeslagen || Gewijzigd.Count > 0 || Verdwenen.Count > 0 || NietIngelezen.Count > 0 || Teruggekeerd.Count > 0;
+
+    /// <summary>
+    /// True when applying this report writes anything: an insert, a content change, a flag set or a flag cleared. The one
+    /// definition a screen may offer an apply on (E1-22, the E3-06 rule): unread rows and rows that were already flagged
+    /// write nothing.
+    /// </summary>
+    public bool SchrijftIets =>
+        !Overgeslagen && Toegevoegd.Count + Gewijzigd.Count + Verdwenen.Count + Teruggekeerd.Count > 0;
 }
 
 /// <summary>A minimumdoel whose decreed content changed in the source.</summary>

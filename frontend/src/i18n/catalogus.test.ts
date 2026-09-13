@@ -89,9 +89,13 @@ describe("de Op.stap-import en het minimumdoelenregister (E1-22)", () => {
     // covered, missing or waiting for a teacher is not in that condition, and the six of ADR-0032 decision 5 cannot be
     // covered by anyone under the G-only scope.
     const gatwoorden = /\b(gedekt|dekking|ontbreekt|ontbreken|mist|missen|gat|vergeten|koppel\w*)\b/i;
+    // Extended in fix round 1 to the reasons per minimumdoel (owner ruling 2026-09-13 "Reden tonen"), the goal-set names
+    // they are built from, and the note that a minimumdoel can appear more than once.
     const fout = SLEUTELS.filter(
-      ([sleutel, waarde]) => sleutel.startsWith("doelen.zonderLeerplandoel") && gatwoorden.test(waarde),
+      ([sleutel, waarde]) =>
+        /^doelen\.(zonderLeerplandoel|reden|doelset|herhaald)/.test(sleutel) && gatwoorden.test(waarde),
     );
+    expect(SLEUTELS.filter(([sleutel]) => /^doelen\.reden/.test(sleutel)).length).toBe(3);
     expect(fout.map(([sleutel]) => sleutel)).toEqual([]);
   });
 

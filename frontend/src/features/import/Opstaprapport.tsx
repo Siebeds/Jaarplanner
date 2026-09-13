@@ -4,7 +4,7 @@ import { t, telWoord, type Vertaalsleutel } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { datumVanTijdstip } from "../../lib/datum";
 import { Beperkt, Telling } from "./Meldingen";
-import { getal } from "./opmaak";
+import { getal, veldLabel } from "./opmaak";
 import type {
   DoelsetTelling,
   LeerplandoelImportAntwoord,
@@ -53,6 +53,7 @@ export function MinimumdoelenRapport({ antwoord }: { antwoord: MinimumdoelImport
             { label: t("importeren.gewijzigd"), aantal: diff.gewijzigd.length },
             { label: t("importeren.ongewijzigd"), aantal: diff.ongewijzigd.length, stil: true },
             { label: t("importeren.opstap.verdwenen"), aantal: diff.verdwenen.length },
+            ...(diff.teruggekeerd.length > 0 ? [{ label: t("importeren.kov.terug"), aantal: diff.teruggekeerd.length }] : []),
             ...(diff.nietIngelezen.length > 0
               ? [{ label: t("importeren.kov.nietGelezen"), aantal: diff.nietIngelezen.length }]
               : []),
@@ -84,6 +85,14 @@ export function LeerplandoelenRapport({ antwoord }: { antwoord: LeerplandoelImpo
 
   const allesLeeg = disciplines.every((d) => d.diff.isLeeg);
   const nietGelezen = som((d) => d.nietIngelezen.length);
+  const terug = som((d) => d.teruggekeerd.length);
+  // A version other than the last applied one is recorded by the apply even when no curriculum row changes, so that
+  // one case gets its own sentence instead of a Doorvoeren beside "Er verandert niets" with no explanation.
+  const alleenVersie =
+    !antwoord.toegepast &&
+    antwoord.vorigeVersie !== null &&
+    (antwoord.vorigeVersie.versie !== antwoord.versie || antwoord.vorigeVersie.hash !== antwoord.hash) &&
+    !disciplines.some((d) => d.diff.schrijftIets);
   const hernummerd = disciplines.flatMap((d) => d.diff.hernummerd);
   const gewijzigd = disciplines.flatMap((d) => d.diff.gewijzigd);
   const gekoppeld = disciplines.flatMap((d) => d.diff.verdwenenMaarGekoppeld);
@@ -113,12 +122,25 @@ export function LeerplandoelenRapport({ antwoord }: { antwoord: LeerplandoelImpo
                 aantal: som((d) => d.verdwenen.length + d.verdwenenMaarGekoppeld.length),
               },
               ...(hernummerd.length > 0 ? [{ label: t("importeren.kov.nieuweCode"), aantal: hernummerd.length }] : []),
+              ...(terug > 0 ? [{ label: t("importeren.kov.terug"), aantal: terug }] : []),
               ...(nietGelezen > 0 ? [{ label: t("importeren.kov.nietGelezen"), aantal: nietGelezen }] : []),
             ]}
           />
           <Disciplinetabel antwoord={antwoord} />
         </>
       )}
+
+      {alleenVersie ? (
+        <p className="text-body text-inkt-zacht">{t("importeren.kov.versieVastleggen", { versie: antwoord.versie })}</p>
+      ) : null}
+
+      {antwoord.aantalRedenenGewijzigd > 0 ? (
+        <p className="text-meta text-inkt-zacht">
+          {antwoord.aantalRedenenGewijzigd === 1
+            ? t("importeren.kov.redenenEen")
+            : t("importeren.kov.redenenMeer", { aantal: getal(antwoord.aantalRedenenGewijzigd) })}
+        </p>
+      ) : null}
 
       {/* Kept, never deleted, and the sentence says so: this lists what stays put. */}
       {gekoppeld.length > 0 ? (
@@ -274,7 +296,7 @@ function Wijzigingen({ titel, items }: { titel: string; items: { code: string; v
           render={(wijziging) => (
             <li key={wijziging.code} className="flex flex-wrap items-baseline gap-x-2 text-meta">
               <span className="mono shrink-0 font-medium text-inkt">{wijziging.code}</span>
-              <span className="min-w-0 text-inkt-zacht">{wijziging.velden.map((veld) => veld.veld).join(", ")}</span>
+              <span className="min-w-0 text-inkt-zacht">{wijziging.velden.map((veld) => veldLabel(veld.veld)).join(", ")}</span>
             </li>
           )}
         />

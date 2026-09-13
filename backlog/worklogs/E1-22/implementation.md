@@ -9,7 +9,8 @@
   on an existing screen, so it reuses the import screen's `Vak`, `Telling`, `Beperkt`, `Foutvlak` and the token set; no new hue,
   no new token. The accent follows the next step (on *Op.stap ophalen* until there is a report, then on *Doorvoeren*), so a
   screen never shows two primary actions. One deliberate deviation from the skill: the count and column labels stay in the
-  existing uppercase micro style, because the brief is to extend the screen, not restyle it.
+  existing uppercase micro style, because the brief is to extend the screen, not restyle it. *(Fix round 1: the
+  two-primary claim was false while the Excel disclosure was open, whose buttons were `hoofd`; they are `rustig` now.)*
 
 ## What was built
 
@@ -201,15 +202,79 @@ stopped (see the report).
 
 ## Not done, and why
 
-1. **Discipline groups sort as 1, 10, 2, …** in the register (Frans between Nederlands and Wiskunde): `MinimumdoelenQuery`
-   has ordered `DisciplineNummer` as a string since E1-16; the facets use `DisciplinenummerVergelijker`. Visible now that the
-   data is real. Not changed here (pre-existing, outside the story); worth a one-line follow-up.
-2. **A repeat apply on a database with Excel history offers *Doorvoeren* again**: `verdwenen` keeps listing goals the Excel
-   route loaded and KOV lacks (E1-21 recorded this), so the report "writes something" (it re-flags and records another
-   version row). Honest, but repetitive; a durable "already flagged" notion is E1-21/E1-23 territory.
-3. **Changed fields are shown by their model names** (`Tekst`, `MinimumdoelRef`), as the Excel report already did.
+1. ~~**Discipline groups sort as 1, 10, 2, …**~~ *Fixed in fix round 1 (antagonist MINOR): numeric order on the server.*
+2. ~~**A repeat apply on a database with Excel history offers *Doorvoeren* again** … "Honest, but repetitive".~~ *Corrected
+   in fix round 1: that was not honest, it was the antagonist's MAJOR. It also happened on an API-only database the first
+   time a snapshot dropped a goal, and every press recorded a duplicate version row. Both imports now report an already
+   flagged row as `eerderVerdwenen`, which writes nothing, and the server decides `schrijftIets`.*
+3. ~~**Changed fields are shown by their model names**~~ *Fixed in fix round 1: Dutch labels, with the identifier as fallback.*
 4. **No per-code list of additions** by design; a directie who wants the codes has the register.
 5. `CLAUDE.md` lines 21 and 137 and `docs/adr/README.md` are held by other sessions; nothing in them was touched.
+
+## Owner ruling 2026-09-13 (in session): "Reden tonen"
+
+Asked "Moet de lijst die reden per minimumdoel tonen?", the owner answered "Reden tonen". The register therefore shows, per
+minimumdoel in "Zonder ingeladen leerplandoel", why no loaded leerplandoel concords it, but only what is known (the E5-03
+rule). Built in fix round 1, below.
+
+**No constitution amendment, argued.** Art. IX.1 lists a `Minimumdoel`'s *functional* fields (ref, leeftijd, nr,
+omschrijving: the decreed content). The two new columns are import metadata of the same kind as `NietMeerInOpstap`
+(E1-21, on both curriculum entities) and `Leerplandoel.OpstapSleutel`, which were added without an amendment: derived from
+KOV's snapshot, written only by the import through EF metadata (the entity has no mutator), never shown or used as decreed
+text, and recomputed by every applied leerplandoelen import. Art. III.1 (decreed content never mutated) is untouched,
+because none of the four decreed fields changes. Had the reason been something a teacher could edit, or something coverage
+counted, the answer would differ; it is neither.
+
+## Fix round 1 (2026-09-13, after round 1 on `6fe98a6`: test-runner PASS; antagonist 1 MAJOR, 4 MINOR, 1 QUESTION)
+
+Both verdicts are committed with this round: [`antagonist.md`](antagonist.md), [`test-report.md`](test-report.md).
+
+| # | Finding | Resolution | Tests |
+| --- | --- | --- | --- |
+| MAJOR | A repeat fetch offered "Nog niet doorgevoerd" + *Doorvoeren* for an apply that changed nothing; the apply added a duplicate `Opstapversie` | **At the source, in both services and so for the Excel route too.** `verdwenen` / `verdwenenMaarGekoppeld` now hold only rows not flagged yet (a real write); a row an earlier import flagged is `eerderVerdwenen` (no write, not a review item, no notice); a flagged row delivered again unchanged is `teruggekeerd` (the flag clears, a write, with a Dutch notice; it used to hide in `ongewijzigd`). Each diff carries a server-computed `schrijftIets`; the leerplandoelen answer carries one over the whole report (a discipline writes, a reason per minimumdoel changes, or the version differs from the last applied one). A version row is added only when a discipline writes or the version is new. **Not** "version and hash equal ⇒ nothing": a widened selection makes the same snapshot add goals (tested). Under the opt-in purge an already flagged, unlinked row is still `verdwenen`, because the purge removes it. `stappen.ts` now reads `schrijftIets` instead of reconstructing it. A version-only report gets its own sentence ("Doorvoeren legt versie {versie} vast als de doorgevoerde versie."). Storing an Op.stap key on an Excel row stays bookkeeping and does not count as a write (it rides along with the next apply). | Unit: `Een_al_gemarkeerd_minimumdoel_wordt_niet_opnieuw_als_verdwenen_gemeld_en_er_valt_niets_te_schrijven`, `Een_al_gemarkeerd_doel_wordt_niet_opnieuw_als_verdwenen_gemeld` (linked and unlinked), `Onder_de_opt_in_opruiming_…`, the return tests, `Een_herhaalde_toepassing_van_dezelfde_versie_schrijft_niets_en_legt_geen_tweede_versie_vast`, `Een_andere_versie_zonder_gewijzigde_doelen_wordt_toch_vastgelegd`, `Een_verbrede_selectie_bij_dezelfde_versie_heeft_wel_iets_te_schrijven`. PostgreSQL: `Een_herhaalde_ophaling_na_een_verdwenen_doel_heeft_niets_te_schrijven` (API-only), `Na_een_exceldoel_dat_kov_niet_heeft_heeft_een_herhaalde_ophaling_niets_te_schrijven` (Excel history), `Een_herhaalde_ophaling_na_een_verdwenen_minimumdoel_heeft_niets_te_schrijven`; `De_toepassing_laadt_…` now expects one version row (it asserted two). Vitest: `biedt bij een herhaalde ophaling na een verdwenen doel geen doorvoeren aan`, `zegt waarom doorvoeren wordt aangeboden als alleen de versie of de uitleg …`. Live: `OpstapApiLiveImportTests` expects one version row after the repeat apply and `schrijftIets` false. |
+| Owner ruling | "Reden tonen" | `ZonderLeerplandoelReden` (enum) + `ZonderLeerplandoelDoelsets` on `Minimumdoel`, migration `20260913164907_MinimumdoelZonderLeerplandoelReden` (two nullable columns, nothing else). The source now reports every snapshot goal that points at a minimumdoel without being imported (`MinimumdoelVerwijzing`: skipped-set goals, and refused G goals); `ZonderLeerplandoelBepaling` (pure, Application) decides per ref: an importable goal → no reason; a refused G goal → `DoelNietIngelezen`; only skipped sets → `AlleenOvergeslagenDoelsets` + the sets; nothing → `GeenDoelInOpstap`. An importable goal whose discipline was not imported (a selection, an unknown discipline) gives no reason: that is not a fact about the minimumdoel. Recomputed for every stored minimumdoel on every leerplandoelen apply; a preview counts what would change (`aantalRedenenGewijzigd`, shown as "Bij {n} minimumdoelen verandert de uitleg in het register."), and a change is a write, so a database migrated before this round gets its reasons at the next apply. The register returns the reason on the row without a bucket only; the frontend renders "Alleen zwemdoelen verwijzen ernaar, en die worden niet ingelezen.", "In de doorgevoerde versie van Op.stap verwijst geen enkel doel ernaar." or "Een gemeenschappelijk doel verwijst ernaar, maar dat doel kon niet ingelezen worden."; no reason, no sentence. Set names in Dutch (zwemdoelen, doelen voor Vlaamse Gebarentaal, …), joined with `Intl.ListFormat`. **Live, snapshot 1.2:** `6-7.1.6` AlleenOvergeslagenDoelsets `Z`; `4-2.2.23`, `6-2.2.3`, `6-6.2.5`, `6-6.3.9`, `K-1.2.6` GeenDoelInOpstap; no other minimumdoel has a reason: as the coordinator predicted. | `ZonderLeerplandoelBepalingTests` (2), `De_reden_per_minimumdoel_wordt_uit_de_snapshot_afgeleid_en_met_de_toepassing_opgeslagen`, `De_reden_zonder_leerplandoel_staat_alleen_op_de_rij_zonder_bucket`; PostgreSQL `Het_register_toont_de_reden_per_minimumdoel_zonder_leerplandoel_en_ordent_disciplines_als_getal`; live `OpstapApiLiveImportTests` asserts the six reasons against KOV; Vitest `zegt per minimumdoel zonder leerplandoel waarom, maar alleen wat de import weet`; catalogue guard extended to `doelen.reden*`, `doelen.doelset*`, `doelen.herhaald` (and counts the three reasons). |
+| MINOR | Changed fields shown as identifiers | `veldLabel` in `opmaak.ts`: 14 identifiers mapped to `importeren.veld.*`, unknown ones shown as sent; used in both reports (`Opstaprapport.tsx` and the Excel report in `Opstapbestand.tsx`). | Vitest `noemt gewijzigde velden in het Nederlands, niet met hun code` (incl. the fallback) |
+| MINOR | Register sorted disciplines as text | `MinimumdoelenQuery` orders by (no bucket last, length of the whole-number part, that part, the full number), computed in SQL, which matches `DisciplinenummerVergelijker` for every real number. | `Disciplines_staan_in_hun_numerieke_volgorde_en_zonder_bucket_blijft_laatst` (in-memory); the PostgreSQL register test puts 2 before 10; browser: … 9.3, 10 Frans, then the group without a bucket |
+| MINOR | Two accent buttons when the Excel disclosure was open | Both Excel buttons are `rustig`; the worklog's design claim ("a screen never shows two primary actions") is now true. Measured: "Voorbeeld bekijken" ink on white 17.78:1, no accent. | Vitest asserts the Excel button has no `bg-accent` while *Op.stap ophalen* has it |
+| MINOR | `Minimumdoelenlijst.tsx` comment gave reasons its branch cannot prove | Now: "no loaded leerplandoel refers to it. The reason, when known, comes from the import … when it is not known, nothing more is said." | — |
+| QUESTION | "Laad ze in bij Inladen" shown to every role | Carry-forward note on **E6-02** (`backlog/E6-beheer-rollen-samenwerking.md`): gate that link (and the Doelen header's Inladen button) on the same role once `Curriculumbeheer` narrows. | — |
+| Test-runner note | Group headings count rows (sum 1,090) while the header counts 998 minimumdoelen | A neutral line above the list, shown only when rows outnumber minimumdoelen (so only when a minimumdoel really is listed twice): "Een minimumdoel kan meer dan eens voorkomen: onder elke discipline en elk subdomein waarin een ingeladen leerplandoel ernaar verwijst." | Vitest `zegt dat een minimumdoel meer dan eens kan voorkomen, maar alleen als dat zo is` |
+
+### Verification after fix round 1
+
+*(PostgreSQL 17.5 in a throwaway container `jp-e122-f1` on port 55441.)*
+
+- `pnpm lint`: **clean**. `pnpm test`: **33 files, 232 tests passed**. `pnpm build`: **passes** (existing chunk-size notice).
+- `dotnet build Jaarplanner.sln -c Release`: **0 warnings, 0 errors** (a first attempt surfaced one CS8631 in a new test and a
+  missing `using` in the live test; both fixed before the counts below).
+- `dotnet format Jaarplanner.sln --verify-no-changes`: **clean after one `dotnet format` pass** (line endings of the comment
+  block added to `MinimumdoelenQuery.cs`).
+- `dotnet test -c Release --no-build`, `JAARPLANNER_TEST_POSTGRES` set, live switch off, as CI runs it: **unit 1,124 passed,
+  4 skipped** (live); **integration 344 passed, 1 skipped** (live); **0 failed**. The full integration project ran.
+- Live, `JAARPLANNER_LIVE_OPSTAP=1`, once: **unit 4/4, integration 2/2** (the KOV → PostgreSQL test now also asserts one
+  version row after the repeat apply and the six reasons above).
+- Byte check (`node` over every `.cs` under `backend/src` and `backend/tests`): **438 files, 0** control characters other
+  than tab/LF/CR, **0** U+00A0.
+- **Browser re-check** (API `bin-run` on 5243 against a migrated `jp_e122_browser`, Vite on 5244, headless Chrome CDP on
+  9342, KOV live). To get a realistic "gone" row, `assets/opstap-xlsx/Wiskunde.xlsx` was loaded through the Excel route
+  first (319 goals, three of them G goals KOV lacks). Then *Op.stap ophalen* → *Doorvoeren* (998 minimumdoelen) → the
+  leerplandoelen preview: 5.582 nieuw, 253 wijzigt, 3 weg; changed fields read "voorbeelden, toelichting, minimumdoel";
+  "Bij 6 minimumdoelen verandert de uitleg in het register." → *Doorvoeren* → "Versie 1.2, doorgevoerd op 13 september
+  2026". **Then a repeat *Op.stap ophalen*: "Er verandert niets aan de minimumdoelen.", "Er verandert niets aan de
+  leerplandoelen.", no status, no *Doorvoeren*** (the case the MAJOR was about, on an Excel-history database). Database
+  after: 1 `opstapversies` row, 3 flagged leerplandoelen, exactly six stored reasons (above). Register: "998 minimumdoelen",
+  the repeat note, groups 1 … 9.3, 10 Frans, then "Zonder ingeladen leerplandoel (6)" with a reason under each. No
+  horizontal overflow at 390. Screenshots in
+  `C:\Users\siebe\AppData\Local\Temp\claude\C--Source-Jaarplanner\862efea7-537c-42c4-98ee-d05011f28abd\scratchpad\shots-f1\`:
+  `f1-01-excel-voorbeeld-rustig-licht-1440` (Excel buttons `rustig`, accent on *Op.stap ophalen*),
+  `f1-02-lp-voorbeeld-na-excel-licht-1440`, `f1-03-lp-doorgevoerd-licht-1440`, `f1-04-herhaling-niets-te-doen-licht-1440`,
+  `f1-05-…-390`, `f1-06-register-boven-notitie-licht-1440`, `f1-07-register-zes-met-reden-licht-1440`, `f1-08-…-390`,
+  `f1-09-…-donker-1440`.
+- **Contrast of what is new**, measured in the browser with alpha composited (light / dark): reason lines 6.51 / 7.58; the
+  repeat note 6.08 / 8.44; "Bij 6 minimumdoelen verandert …" is the same `text-meta text-inkt-zacht` on white as the reason
+  lines (6.51); Excel buttons 17.78 (rustig).
+- All servers and the container of this round stopped; ports 55441, 5243, 5244 and 9342 released.
+- Not run: the antagonist and the test-runner (the orchestrator's).
 
 ## Open questions / Art. XIV touched
 

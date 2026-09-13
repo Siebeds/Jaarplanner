@@ -186,7 +186,16 @@ export interface MinimumdoelRegel {
   domein: string | null;
   subdomein: string | null;
   leerplandoelCodes: string[];
+  /**
+   * On a row without a bucket only: why no loaded leerplandoel concords it, as the last applied leerplandoelen import
+   * derived it from its snapshot (owner ruling 2026-09-13). Null when that is not known, and then nothing is said.
+   */
+  zonderLeerplandoelReden: ZonderLeerplandoelReden | null;
+  /** With `AlleenOvergeslagenDoelsets`: KOV's goal-set marks (`Z`, `V`, …). Empty otherwise. */
+  zonderLeerplandoelDoelsets: string[];
 }
+
+export type ZonderLeerplandoelReden = "AlleenOvergeslagenDoelsets" | "GeenDoelInOpstap" | "DoelNietIngelezen";
 
 export interface MinimumdoelenPagina {
   regels: MinimumdoelRegel[];

@@ -1,3 +1,5 @@
+using Jaarplanner.Domain.Curriculum;
+
 namespace Jaarplanner.Application.Curriculum;
 
 /// <summary>
@@ -25,6 +27,11 @@ namespace Jaarplanner.Application.Curriculum;
 /// <param name="Domein">The domein of this bucket; null when no loaded goal concords it.</param>
 /// <param name="Subdomein">The subdomein of this bucket; null when no loaded goal concords it.</param>
 /// <param name="LeerplandoelCodes">Codes of the concorded leerplandoelen in this bucket, for cross-reference.</param>
+/// <param name="ZonderLeerplandoelReden">
+/// On a row without a bucket only: why no loaded leerplandoel concords it, as the last applied leerplandoelen import
+/// derived it (owner ruling 2026-09-13); null when that is not known. Always null on a row with a bucket.
+/// </param>
+/// <param name="ZonderLeerplandoelDoelsets">With a reason that names goal sets: KOV's marks, sorted. Empty otherwise.</param>
 public sealed record MinimumdoelRegelWeergave(
     string Ref,
     string Leeftijd,
@@ -34,7 +41,9 @@ public sealed record MinimumdoelRegelWeergave(
     string? DisciplineNaam,
     string? Domein,
     string? Subdomein,
-    IReadOnlyList<string> LeerplandoelCodes);
+    IReadOnlyList<string> LeerplandoelCodes,
+    ZonderLeerplandoelReden? ZonderLeerplandoelReden,
+    IReadOnlyList<string> ZonderLeerplandoelDoelsets);
 
 /// <summary>One page of minimumdoelen plus the total the filter matches.</summary>
 /// <param name="Regels">The rows of this page, ordered (discipline, domein, subdomein, leeftijd, nr).</param>

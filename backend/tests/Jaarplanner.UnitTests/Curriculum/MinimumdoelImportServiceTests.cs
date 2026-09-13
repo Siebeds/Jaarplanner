@@ -222,9 +222,50 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
         _bron.Geef(Md("1.1"), Md("1.2"));
         var resultaat = await _service.ImporteerAsync(toepassen: true);
 
-        Assert.Equal(["K-1.1", "K-1.2"], resultaat.Diff.Ongewijzigd);
+        // Since E1-22 a return is its own bucket: clearing the flag is a write, so it is reported as one.
+        Assert.Equal(["K-1.1"], resultaat.Diff.Ongewijzigd);
+        Assert.Equal(["K-1.2"], resultaat.Diff.Teruggekeerd);
+        Assert.True(resultaat.Diff.SchrijftIets);
+        Assert.False(resultaat.Diff.IsLeeg);
+        Assert.Equal([MinimumdoelImportService.TeruggekeerdMelding(1)], resultaat.Diff.Opmerkingen);
         _context.ChangeTracker.Clear();
         Assert.False((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2")).NietMeerInOpstap);
+    }
+
+    /// <summary>
+    /// E1-22, antagonist round 1 MAJOR: once a vanished minimumdoel is flagged, a later read of the same source reports it
+    /// as already gone, writes nothing, asks for no review and says nothing, so no screen offers an apply that would only
+    /// re-set a flag that is set.
+    /// </summary>
+    [Fact]
+    public async Task Een_al_gemarkeerd_minimumdoel_wordt_niet_opnieuw_als_verdwenen_gemeld_en_er_valt_niets_te_schrijven()
+    {
+        _bron.Geef(Md("1.1"), Md("1.2"));
+        await _service.ImporteerAsync(toepassen: true);
+        _bron.Geef(Md("1.1"));
+        var eerste = await _service.ImporteerAsync(toepassen: true);
+
+        var herhaling = await _service.ImporteerAsync(toepassen: false);
+
+        Assert.Equal(["K-1.2"], eerste.Diff.Verdwenen);
+        Assert.True(eerste.Diff.SchrijftIets);
+        Assert.Empty(herhaling.Diff.Verdwenen);
+        Assert.Equal(["K-1.2"], herhaling.Diff.EerderVerdwenen);
+        Assert.False(herhaling.Diff.SchrijftIets);
+        Assert.True(herhaling.Diff.IsLeeg);
+        Assert.False(herhaling.Diff.VereistReview);
+        Assert.Empty(herhaling.Diff.Opmerkingen);
+    }
+
+    [Fact]
+    public void De_melding_over_teruggekeerde_minimumdoelen_is_verbogen()
+    {
+        Assert.Equal(
+            "1 minimumdoel staat weer in de Op.stap-bron en wordt niet langer als vervallen gemarkeerd.",
+            MinimumdoelImportService.TeruggekeerdMelding(1));
+        Assert.Equal(
+            "2 minimumdoelen staan weer in de Op.stap-bron en worden niet langer als vervallen gemarkeerd.",
+            MinimumdoelImportService.TeruggekeerdMelding(2));
     }
 
     [Fact]

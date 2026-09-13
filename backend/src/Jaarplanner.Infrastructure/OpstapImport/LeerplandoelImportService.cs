@@ -98,9 +98,42 @@ public sealed class LeerplandoelImportService : ILeerplandoelImportService
                 discipline.Problemen));
         }
 
+        // Why a stored minimumdoel has no loaded leerplandoel (E1-22, owner ruling 2026-09-13 "Reden tonen"), derived from
+        // this snapshot for every stored minimumdoel and written with the apply, so it always describes the loaded version.
+        var minimumdoelen = await _context.Minimumdoelen.ToListAsync(cancellationToken);
+        var redenen = ZonderLeerplandoelBepaling.Bepaal(minimumdoelen.Select(m => m.Ref), bron);
+        var redenGewijzigd = minimumdoelen
+            .Where(m =>
+                m.ZonderLeerplandoelReden != redenen[m.Ref].Reden ||
+                !string.Equals(m.ZonderLeerplandoelDoelsets, redenen[m.Ref].Doelsets, StringComparison.Ordinal))
+            .ToList();
+
+        // What an apply writes (E1-22, antagonist round 1 MAJOR). A version equal to the last applied one does not make
+        // this false by itself: a widened discipline selection makes the same snapshot add goals, which the diffs show.
+        var disciplinesSchrijven = disciplines.Any(d => d.Diff.SchrijftIets);
+        var andereVersie = vorige is not null &&
+            (!string.Equals(vorige.Versie, bron.Versie, StringComparison.Ordinal) ||
+             !string.Equals(vorige.Hash, bron.Hash, StringComparison.Ordinal));
+        var schrijftIets = disciplinesSchrijven || redenGewijzigd.Count > 0 || andereVersie;
+
         if (transactie is not null)
         {
-            _context.Opstapversies.Add(new Opstapversie(bron.Versie, bron.Hash, _tijd.GetUtcNow()));
+            foreach (var minimumdoel in redenGewijzigd)
+            {
+                // Through EF's metadata, like the review flag: the entity has no mutator (Art. III.1).
+                var entry = _context.Entry(minimumdoel);
+                entry.Property(m => m.ZonderLeerplandoelReden).CurrentValue = redenen[minimumdoel.Ref].Reden;
+                entry.Property(m => m.ZonderLeerplandoelDoelsets).CurrentValue = redenen[minimumdoel.Ref].Doelsets;
+            }
+
+            // The version is recorded when the curriculum rows changed or KOV's version did. An apply that only updates
+            // reasons, or writes nothing, adds no row: a duplicate would move "doorgevoerd op" to today for a snapshot
+            // that was already applied (antagonist round 1 MAJOR).
+            if (disciplinesSchrijven || andereVersie)
+            {
+                _context.Opstapversies.Add(new Opstapversie(bron.Versie, bron.Hash, _tijd.GetUtcNow()));
+            }
+
             await _context.SaveChangesAsync(cancellationToken);
             await transactie.CommitAsync(cancellationToken);
         }
@@ -114,7 +147,9 @@ public sealed class LeerplandoelImportService : ILeerplandoelImportService
             disciplines,
             bron.OvergeslagenDoelsets,
             bron.Problemen,
-            Toegepast: toepassen);
+            Toegepast: toepassen,
+            SchrijftIets: schrijftIets,
+            AantalRedenenGewijzigd: redenGewijzigd.Count);
     }
 
     /// <summary>

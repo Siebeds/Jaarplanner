@@ -6,7 +6,7 @@ import { knopklassen } from "../../components/ui/knopklassen";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { Leegte } from "../../components/ui/Leegte";
 import { cn } from "../../lib/cn";
-import { t } from "../../i18n";
+import { t, type Vertaalsleutel } from "../../i18n";
 
 /**
  * The decreed minimumdoelen, grouped by the discipline of the leerplandoelen they are concorded to.
@@ -21,9 +21,9 @@ import { t } from "../../i18n";
  *
  * **A minimumdoel no loaded leerplandoel concords has a group of its own, last** (E1-22). Right after the minimumdoelen
  * import that is all 998 of them, and after the G goals six (ADR-0032 decision 5). It gets no discipline heading,
- * because it has none to borrow, and one sentence that says exactly what its render condition proves: no loaded goal
- * refers to it. Never that something is missing or uncovered, because the teachers did not leave it out: Op.stap's G
- * goals do not reach it, or its discipline is not loaded yet.
+ * because it has none to borrow, and one sentence that says exactly what its render condition proves: no loaded
+ * leerplandoel refers to it. The reason, when known, comes from the import and is shown per minimumdoel (owner ruling
+ * 2026-09-13 "Reden tonen"); when it is not known, nothing more is said. Never that something is missing or uncovered.
  *
  * **Three empty states, never collapsed** (the E1-16 lesson): nothing stored, nothing matching the filter, and a failed
  * read. The first used to say the minimumdoelen "come from the decretale bestand", which E1-12 made false, and it was
@@ -65,9 +65,13 @@ export function Minimumdoelenlijst({
   const totaal = lijst.data.pages[lijst.data.pages.length - 1].totaal;
   const rest = totaal - regels.length;
   const groepen = groepeerPerDiscipline(regels);
+  // More rows than minimumdoelen proves some minimumdoel is listed twice, which is when the group counts stop adding up
+  // to the count above the list (the test-runner's observation, E1-22 round 1). Said then, and only then.
+  const herhaald = totaal > facetten.data.aantalTreffers;
 
   return (
     <>
+      {herhaald ? <p className="mb-3 text-meta text-inkt-zacht">{t("doelen.herhaald")}</p> : null}
       <ul className="flex flex-col gap-2">
         {groepen.map((groep) => {
           const zonder = groep.nummer === null;
@@ -104,6 +108,7 @@ export function Minimumdoelenlijst({
                     </div>
                     {/* The decreed text lists its items on lines of their own ("\n- "): keep them there. */}
                     <p className="mt-1.5 whitespace-pre-line text-body text-inkt">{regel.omschrijving}</p>
+                    {zonder && reden(regel) ? <p className="mt-1.5 text-meta text-inkt-zacht">{reden(regel)}</p> : null}
                     {regel.leerplandoelCodes.length > 0 ? (
                       <ul className="mt-2 flex flex-wrap gap-1">
                         {regel.leerplandoelCodes.map((code) => (
@@ -150,6 +155,41 @@ export function Laadlink() {
       {t("doelen.laadIn")}
     </Link>
   );
+}
+
+/** KOV's goal-set marks as Dutch plural nouns, for the reason sentence. An unknown mark is named as a mark. */
+const DOELSET_NAAM: Record<string, Vertaalsleutel> = {
+  Z: "doelen.doelsetZ",
+  V: "doelen.doelsetV",
+  P: "doelen.doelsetP",
+  S: "doelen.doelsetS",
+  "+": "doelen.doelsetPlus",
+  A: "doelen.doelsetA",
+};
+
+const OPSOMMING = new Intl.ListFormat("nl", { type: "conjunction" });
+
+/**
+ * Why no loaded leerplandoel refers to this minimumdoel, as the import derived it (owner ruling 2026-09-13), or null.
+ * Each sentence says what its reason proves about the applied snapshot and nothing about coverage (the E5-03 rule);
+ * no reason, or a reason that names no set, says nothing at all.
+ */
+function reden(regel: MinimumdoelRegel): string | null {
+  switch (regel.zonderLeerplandoelReden) {
+    case "AlleenOvergeslagenDoelsets": {
+      if (regel.zonderLeerplandoelDoelsets.length === 0) return null;
+      const namen = regel.zonderLeerplandoelDoelsets.map((set) =>
+        DOELSET_NAAM[set] ? t(DOELSET_NAAM[set]) : t("doelen.doelsetOnbekend", { doelset: set }),
+      );
+      return t("doelen.redenDoelsets", { doelsets: OPSOMMING.format(namen) });
+    }
+    case "GeenDoelInOpstap":
+      return t("doelen.redenGeenDoel");
+    case "DoelNietIngelezen":
+      return t("doelen.redenNietIngelezen");
+    default:
+      return null;
+  }
 }
 
 interface Groep {

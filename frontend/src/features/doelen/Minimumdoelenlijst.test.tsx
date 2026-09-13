@@ -26,6 +26,8 @@ function regel(overrides: Partial<MinimumdoelRegel> = {}): MinimumdoelRegel {
     domein: "Getallenkennis",
     subdomein: "Natuurlijke getallen",
     leerplandoelCodes: ["2.1.GL3.10"],
+    zonderLeerplandoelReden: null,
+    zonderLeerplandoelDoelsets: [],
     ...overrides,
   };
 }
@@ -113,6 +115,46 @@ describe("Minimumdoelenlijst", () => {
 
     expect(await screen.findByText(t("doelen.zonderLeerplandoelMeer"))).toBeInTheDocument();
     expect(screen.getByText("K-1.1.3")).toBeInTheDocument();
+  });
+
+  it("zegt per minimumdoel zonder leerplandoel waarom, maar alleen wat de import weet (owner ruling 2026-09-13)", async () => {
+    toon({
+      facetten: facetten({ aantalTreffers: 5, aantalZonderLeerplandoel: 5, disciplines: [] }),
+      regels: [
+        regel({ ref: "6-7.1.6", ...ZONDER, zonderLeerplandoelReden: "AlleenOvergeslagenDoelsets", zonderLeerplandoelDoelsets: ["Z"] }),
+        regel({ ref: "6-9.9.1", ...ZONDER, zonderLeerplandoelReden: "AlleenOvergeslagenDoelsets", zonderLeerplandoelDoelsets: ["V", "Z"] }),
+        regel({ ref: "K-1.2.6", ...ZONDER, zonderLeerplandoelReden: "GeenDoelInOpstap" }),
+        regel({ ref: "4-9.9.9", ...ZONDER, zonderLeerplandoelReden: "DoelNietIngelezen" }),
+        regel({ ref: "6-9.9.9", ...ZONDER, zonderLeerplandoelReden: null }),
+      ],
+    });
+
+    expect(
+      await screen.findByText(t("doelen.redenDoelsets", { doelsets: t("doelen.doelsetZ") })),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(t("doelen.redenDoelsets", { doelsets: `${t("doelen.doelsetV")} en ${t("doelen.doelsetZ")}` })),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t("doelen.redenGeenDoel"))).toBeInTheDocument();
+    expect(screen.getByText(t("doelen.redenNietIngelezen"))).toBeInTheDocument();
+    // Five rows, four reasons: the one without a known reason gets no sentence at all.
+    const zinnen = [t("doelen.redenGeenDoel"), t("doelen.redenNietIngelezen")];
+    expect(screen.getAllByText((_, el) => el?.tagName === "P" && (zinnen.includes(el.textContent ?? "") || (el.textContent ?? "").startsWith("Alleen ")))).toHaveLength(4);
+    expect(document.body.textContent).not.toMatch(/gedekt|ontbre|niet gekoppeld/i);
+  });
+
+  it("zegt dat een minimumdoel meer dan eens kan voorkomen, maar alleen als dat zo is", async () => {
+    const tweeKeer = [regel(), regel({ disciplineNummer: "3", disciplineNaam: "Wetenschap en techniek", domein: "Natuur", subdomein: "Leven" })];
+    const { unmount } = toon({
+      facetten: facetten({ aantalTreffers: 1, aantalZonderLeerplandoel: 0, disciplines: [{ nummer: "2", naam: "Wiskunde", aantal: 1 }, { nummer: "3", naam: "Wetenschap en techniek", aantal: 1 }] }),
+      regels: tweeKeer,
+    });
+    expect(await screen.findByText(t("doelen.herhaald"))).toBeInTheDocument();
+    unmount();
+
+    toon({ facetten: facetten({ aantalTreffers: 1, aantalZonderLeerplandoel: 0 }), regels: [regel()] });
+    expect(await screen.findByText("Wiskunde")).toBeInTheDocument();
+    expect(screen.queryByText(t("doelen.herhaald"))).not.toBeInTheDocument();
   });
 
   it("houdt de regels van de decretale tekst op hun eigen lijn", async () => {

@@ -35,14 +35,24 @@ public sealed class LeerplandoelBronResultaat
         string hash,
         DateTimeOffset? snapshotTijdstip,
         string? wijzigingslog,
-        IReadOnlyList<LeerplandoelBronDiscipline> disciplines)
+        IReadOnlyList<LeerplandoelBronDiscipline> disciplines,
+        IReadOnlyList<MinimumdoelVerwijzing>? verwijzingen = null)
     {
         Versie = versie;
         Hash = hash;
         SnapshotTijdstip = snapshotTijdstip;
         Wijzigingslog = wijzigingslog;
         Disciplines = disciplines;
+        Verwijzingen = verwijzingen ?? [];
     }
+
+    /// <summary>
+    /// The goals of the snapshot that point at a minimumdoel and are <b>not</b> among the mapped leerplandoelen: goals of a
+    /// goal set that is not imported, and G goals the mapping refused (E1-22). With the mapped goals'
+    /// <see cref="Leerplandoel.MinimumdoelRef"/> this is what <see cref="ZonderLeerplandoelBepaling"/> needs to say why a
+    /// minimumdoel has no loaded leerplandoel. A reference that does not resolve to a published minimumdoel is left out.
+    /// </summary>
+    public IReadOnlyList<MinimumdoelVerwijzing> Verwijzingen { get; }
 
     /// <summary>The numbered snapshot that was read, e.g. <c>1.2</c>.</summary>
     public string Versie { get; }
@@ -116,6 +126,14 @@ public sealed class LeerplandoelBronDiscipline
     /// <summary>How many goals of this discipline each skipped goal set holds.</summary>
     public IReadOnlyList<DoelsetTelling> OvergeslagenDoelsets { get; }
 }
+
+/// <summary>A goal of the snapshot that points at a minimumdoel without being imported (E1-22).</summary>
+/// <param name="MinimumdoelRef">The <c>uniqueCode</c> of the minimumdoel it points at.</param>
+/// <param name="Doelset">KOV's goal-set mark of the goal (<c>Z</c>, <c>V</c>, …, or <c>G</c> for a refused one).</param>
+/// <param name="Geweigerd">
+/// True for a goal of the imported set that the mapping refused; false for a goal of a set that is not imported at all.
+/// </param>
+public readonly record struct MinimumdoelVerwijzing(string MinimumdoelRef, string Doelset, bool Geweigerd);
 
 /// <summary>How many goals one goal set holds, for the skipped-sets count in the report.</summary>
 /// <param name="Doelset">KOV's goal-set identifier: <c>P</c>, <c>S</c>, <c>+</c>, <c>A</c>, <c>Z</c> or <c>V</c>.</param>

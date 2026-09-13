@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Jaarplanner.Domain.Curriculum;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
@@ -62,12 +63,35 @@ public sealed class OpstapApiLiveImportTests : IAsyncLifetime
         Assert.Equal(4983, await context.Leerplandoelen.CountAsync(l => l.MinimumdoelRef != null));
         Assert.Equal(992, await context.Leerplandoelen.Where(l => l.MinimumdoelRef != null).Select(l => l.MinimumdoelRef).Distinct().CountAsync());
         Assert.Equal(0, await context.Leerplandoelen.CountAsync(l => l.OpstapSleutel == null));
-        Assert.Equal(["1.2", "1.2"], await context.Opstapversies.Select(v => v.Versie).ToListAsync());
+        // One row: the repeat apply of the same snapshot writes nothing and records no second version (E1-22, antagonist
+        // round 1 MAJOR; this asserted two rows until then).
+        Assert.Equal(["1.2"], await context.Opstapversies.Select(v => v.Versie).ToListAsync());
+        Assert.False(herhaling.GetProperty("schrijftIets").GetBoolean());
 
         // ADR-0032 decision 5 on the database: exactly the six minimumdoelen no G goal concords.
         var geconcordeerd = context.Leerplandoelen.Where(l => l.MinimumdoelRef != null).Select(l => l.MinimumdoelRef!);
         var zonderGDoel = await context.Minimumdoelen.Where(m => !geconcordeerd.Contains(m.Ref)).Select(m => m.Ref).OrderBy(r => r).ToListAsync();
         Assert.Equal(["4-2.2.23", "6-2.2.3", "6-6.2.5", "6-6.3.9", "6-7.1.6", "K-1.2.6"], zonderGDoel);
+
+        // Owner ruling 2026-09-13 "Reden tonen", against KOV's real snapshot 1.2: 6-7.1.6 is reached only by a zwemdoel (Z),
+        // the other five by no goal at all (ADR-0032 decision 5). Every other minimumdoel has a G goal and no reason.
+        var redenen = (await context.Minimumdoelen
+                .Where(m => m.ZonderLeerplandoelReden != null)
+                .OrderBy(m => m.Ref)
+                .Select(m => new { m.Ref, m.ZonderLeerplandoelReden, m.ZonderLeerplandoelDoelsets })
+                .ToListAsync())
+            .Select(m => (m.Ref, m.ZonderLeerplandoelReden!.Value, m.ZonderLeerplandoelDoelsets))
+            .ToList();
+        Assert.Equal(
+            [
+                ("4-2.2.23", ZonderLeerplandoelReden.GeenDoelInOpstap, (string?)null),
+                ("6-2.2.3", ZonderLeerplandoelReden.GeenDoelInOpstap, null),
+                ("6-6.2.5", ZonderLeerplandoelReden.GeenDoelInOpstap, null),
+                ("6-6.3.9", ZonderLeerplandoelReden.GeenDoelInOpstap, null),
+                ("6-7.1.6", ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets, "Z"),
+                ("K-1.2.6", ZonderLeerplandoelReden.GeenDoelInOpstap, null),
+            ],
+            redenen);
     }
 
     private static int Som(JsonElement antwoord, string bak) =>

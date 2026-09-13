@@ -225,6 +225,88 @@ public sealed class LeerplandoelImportServiceTests : IDisposable
         Assert.Empty(await _context.Opstapversies.ToListAsync());
     }
 
+    /// <summary>
+    /// E1-22, antagonist round 1 MAJOR: applying the snapshot that was already applied writes nothing and records no
+    /// second version, which would have moved "doorgevoerd op" to today.
+    /// </summary>
+    [Fact]
+    public async Task Een_herhaalde_toepassing_van_dezelfde_versie_schrijft_niets_en_legt_geen_tweede_versie_vast()
+    {
+        _bron.Geef(Discipline("2", [Doel("2.1.GL3.10", minimumdoelRef: "4-2.1.7")]));
+        var eerste = await _service.ImporteerAsync("1.2", toepassen: true);
+
+        var voorbeeld = await _service.ImporteerAsync("1.2", toepassen: false);
+        var herhaling = await _service.ImporteerAsync("1.2", toepassen: true);
+
+        Assert.True(eerste.SchrijftIets);
+        Assert.False(voorbeeld.SchrijftIets);
+        Assert.Equal(0, voorbeeld.AantalRedenenGewijzigd);
+        Assert.False(herhaling.SchrijftIets);
+        Assert.Single(await _context.Opstapversies.ToListAsync());
+    }
+
+    /// <summary>A version other than the last applied one is recorded even when no goal changes: the stand must name it.</summary>
+    [Fact]
+    public async Task Een_andere_versie_zonder_gewijzigde_doelen_wordt_toch_vastgelegd()
+    {
+        _bron.Geef(Discipline("2", [Doel("2.1.GL3.10", minimumdoelRef: "4-2.1.7")]));
+        await _service.ImporteerAsync("1.2", toepassen: true);
+        _context.Opstapversies.Add(new Opstapversie("1.3", "nieuwer", Nu.AddDays(1)));
+        await _context.SaveChangesAsync();
+
+        var voorbeeld = await _service.ImporteerAsync("1.2", toepassen: false);
+        await _service.ImporteerAsync("1.2", toepassen: true);
+
+        Assert.True(Assert.Single(voorbeeld.Disciplines).Diff.IsLeeg);
+        Assert.True(voorbeeld.SchrijftIets);
+        Assert.Equal(3, await _context.Opstapversies.CountAsync());
+    }
+
+    /// <summary>The same version is no proof of nothing to write: a widened selection makes the same snapshot add goals.</summary>
+    [Fact]
+    public async Task Een_verbrede_selectie_bij_dezelfde_versie_heeft_wel_iets_te_schrijven()
+    {
+        _bron.Geef(
+            Discipline("2", [Doel("2.1.GL3.10")]),
+            Discipline("9.1", [Doel("9-1.1.GL1.1", discipline: "9.1")], naam: "Veilige en gezonde levensstijl"));
+        await Service(new DisciplineSelectieOptions { Modus = DisciplineSelectieModus.Selectie, Disciplines = ["2"] })
+            .ImporteerAsync("1.2", toepassen: true);
+
+        var verbreed = await _service.ImporteerAsync("1.2", toepassen: false);
+
+        Assert.True(verbreed.SchrijftIets);
+        Assert.Equal(["9-1.1.GL1.1"], verbreed.Disciplines[1].Diff.Toegevoegd);
+    }
+
+    /// <summary>
+    /// Owner ruling 2026-09-13 "Reden tonen": the apply stores, per minimumdoel, why no loaded leerplandoel concords it,
+    /// derived from its snapshot; a preview counts what would change and writes nothing.
+    /// </summary>
+    [Fact]
+    public async Task De_reden_per_minimumdoel_wordt_uit_de_snapshot_afgeleid_en_met_de_toepassing_opgeslagen()
+    {
+        _context.Minimumdoelen.AddRange(
+            new Minimumdoel("6-7.1.6", "6-", "7.1.6", "De leerlingen kunnen zwemmen."),
+            new Minimumdoel("K-1.2.6", "K-", "1.2.6", "De kleuters kunnen luisteren."));
+        await _context.SaveChangesAsync();
+        _bron.Verwijzingen = [new MinimumdoelVerwijzing("6-7.1.6", "Z", Geweigerd: false)];
+        _bron.Geef(Discipline("2", [Doel("2.1.GL3.10", minimumdoelRef: "4-2.1.7")]));
+
+        var voorbeeld = await _service.ImporteerAsync("1.2", toepassen: false);
+        _context.ChangeTracker.Clear();
+        Assert.Null((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "6-7.1.6")).ZonderLeerplandoelReden);
+        var toepassing = await _service.ImporteerAsync("1.2", toepassen: true);
+
+        Assert.Equal(2, voorbeeld.AantalRedenenGewijzigd);
+        Assert.Equal(2, toepassing.AantalRedenenGewijzigd);
+        _context.ChangeTracker.Clear();
+        var zwemmen = await _context.Minimumdoelen.SingleAsync(m => m.Ref == "6-7.1.6");
+        Assert.Equal((ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets, "Z"), (zwemmen.ZonderLeerplandoelReden!.Value, zwemmen.ZonderLeerplandoelDoelsets));
+        Assert.Equal(ZonderLeerplandoelReden.GeenDoelInOpstap, (await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2.6")).ZonderLeerplandoelReden);
+        Assert.Null((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "4-2.1.7")).ZonderLeerplandoelReden);
+        Assert.Equal(0, (await _service.ImporteerAsync("1.2", toepassen: false)).AantalRedenenGewijzigd);
+    }
+
     private sealed class VasteBron : ILeerplandoelBron
     {
         private Func<LeerplandoelBronResultaat> _antwoord = () => throw new InvalidOperationException("no answer set");
@@ -232,6 +314,9 @@ public sealed class LeerplandoelImportServiceTests : IDisposable
         public string? GevraagdeVersie { get; private set; }
 
         public int Aanroepen { get; private set; }
+
+        /// <summary>The goals that point at a minimumdoel without being imported, for the reason per minimumdoel (E1-22).</summary>
+        public IReadOnlyList<MinimumdoelVerwijzing> Verwijzingen { get; set; } = [];
 
         public void Geef(params LeerplandoelBronDiscipline[] disciplines) =>
             _antwoord = () => new LeerplandoelBronResultaat(
@@ -246,7 +331,8 @@ public sealed class LeerplandoelImportServiceTests : IDisposable
                     d.Leerplandoelen.Select(Kopie).ToList(),
                     d.Problemen,
                     d.BuitenBereikCodes,
-                    d.OvergeslagenDoelsets)).ToList());
+                    d.OvergeslagenDoelsets)).ToList(),
+                Verwijzingen);
 
         public void Faal(OpstapBronFout fout) => _antwoord = () => throw fout;
 

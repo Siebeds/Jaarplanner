@@ -246,10 +246,72 @@ public sealed class OpstapImportServiceTests : IDisposable
         await _service.ImporteerAsync(Parse(Doel("LP-1")), toepassen: true);
         Assert.True(await _context.Leerplandoelen.Where(l => l.Code == "LP-2").Select(l => l.NietMeerInOpstap).SingleAsync());
 
-        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
+        var terug = await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
 
         var lp2 = await _context.Leerplandoelen.SingleAsync(l => l.Code == "LP-2");
         Assert.False(lp2.NietMeerInOpstap);
+        // E1-22: the return is reported as the write it is, not hidden among the unchanged.
+        Assert.Equal(["LP-2"], terug.Diff.Teruggekeerd);
+        Assert.Equal(["LP-1"], terug.Diff.Ongewijzigd);
+        Assert.True(terug.Diff.SchrijftIets);
+        Assert.Equal([OpstapImportService.TeruggekeerdMelding(1, OpstapHerkomst.Bestand)], terug.Diff.Opmerkingen);
+    }
+
+    /// <summary>
+    /// E1-22, antagonist round 1 MAJOR, for the shared writer and so for the Excel route too: a code an earlier import
+    /// flagged is reported once. The next import of the same content lists it as already gone, linked or not, writes
+    /// nothing and asks no review.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Een_al_gemarkeerd_doel_wordt_niet_opnieuw_als_verdwenen_gemeld(bool gekoppeld)
+    {
+        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
+        if (gekoppeld)
+        {
+            await LinkThemadoelAsync("LP-2", KoppelingStatus.Aanvaard);
+        }
+
+        var eerste = await _service.ImporteerAsync(Parse(Doel("LP-1")), toepassen: true);
+        var herhaling = await _service.ImporteerAsync(Parse(Doel("LP-1")), toepassen: false);
+
+        Assert.True(eerste.Diff.SchrijftIets);
+        Assert.Empty(herhaling.Diff.Verdwenen);
+        Assert.Empty(herhaling.Diff.VerdwenenMaarGekoppeld);
+        Assert.Equal(["LP-2"], herhaling.Diff.EerderVerdwenen);
+        Assert.False(herhaling.Diff.SchrijftIets);
+        Assert.True(herhaling.Diff.IsLeeg);
+        Assert.False(herhaling.Diff.VereistReview);
+        Assert.Empty(herhaling.Diff.Opmerkingen);
+        Assert.True(await _context.Leerplandoelen.Where(l => l.Code == "LP-2").Select(l => l.NietMeerInOpstap).SingleAsync());
+    }
+
+    /// <summary>Under the opt-in purge an already flagged, unlinked code is still removed: that is a write, so it is <c>Verdwenen</c>.</summary>
+    [Fact]
+    public async Task Onder_de_opt_in_opruiming_blijft_een_al_gemarkeerd_ongekoppeld_doel_een_schrijfactie()
+    {
+        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
+        await _service.ImporteerAsync(Parse(Doel("LP-1")), toepassen: true);
+        var purgeService = new OpstapImportService(_context, AlleInScope, verwijderVerweesdeNietGekoppelde: true);
+
+        var result = await purgeService.ImporteerAsync(Parse(Doel("LP-1")), toepassen: true);
+
+        Assert.Equal(["LP-2"], result.Diff.Verdwenen.ToArray());
+        Assert.Empty(result.Diff.EerderVerdwenen);
+        Assert.True(result.Diff.SchrijftIets);
+        Assert.False(await _context.Leerplandoelen.AnyAsync(l => l.Code == "LP-2"));
+    }
+
+    [Fact]
+    public void De_melding_over_teruggekeerde_doelen_noemt_de_bron_en_is_verbogen()
+    {
+        Assert.Equal(
+            "1 leerplandoel staat weer in de Op.stap-bron en wordt niet langer als vervallen gemarkeerd.",
+            OpstapImportService.TeruggekeerdMelding(1, OpstapHerkomst.OpstapApi));
+        Assert.Equal(
+            "3 leerplandoelen staan weer in het bestand en worden niet langer als vervallen gemarkeerd.",
+            OpstapImportService.TeruggekeerdMelding(3, OpstapHerkomst.Bestand));
     }
 
     // --- Integrity preflight (E1-15): the refusals fire on the PREVIEW path too. ---
