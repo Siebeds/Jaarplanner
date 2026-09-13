@@ -8,7 +8,7 @@ namespace Jaarplanner.Api.Infrastructure;
 /// <para>
 /// <b>Why this exists (E1-13 fix round 1, antagonist MAJOR 3).</b> The Op.stap import answers <b>409</b> for
 /// two refusals whose owners are opposite: the decreed minimumdoelen are not loaded (nothing the uploader can
-/// do, and nothing that will change until E1-12 lands) and the file's codes already belong to another
+/// do with this file; they are loaded through the minimumdoelen import, E1-12) and the file's codes already belong to another
 /// discipline (the uploader fixes it, by correcting the discipline number or by uploading the other file).
 /// Status and <see cref="Probleemtitels.ImportNietDoorgevoerd"/> were identical for both, so the import screen
 /// applied one "the application cannot read this yet" frame to each and printed it two lines above the
@@ -34,7 +34,7 @@ public static class Probleemsoorten
     /// <summary>The stated discipline is not an official Op.stap discipline (400).</summary>
     public const string OpstapOnbekendeDiscipline = "urn:jaarplanner:opstap-import:onbekende-discipline";
 
-    /// <summary>The file concords to decreed minimumdoelen that are not loaded (409, blocked on E1-12).</summary>
+    /// <summary>The file concords to decreed minimumdoelen that are not loaded (409; E1-12's import loads them).</summary>
     public const string OpstapOntbrekendeMinimumdoelen =
         "urn:jaarplanner:opstap-import:ontbrekende-minimumdoelen";
 

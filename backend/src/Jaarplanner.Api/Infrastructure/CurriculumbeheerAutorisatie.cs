@@ -31,7 +31,7 @@ public static class CurriculumbeheerAutorisatie
 {
     /// <summary>
     /// The policy name every curriculum reference-data administration endpoint authorises against
-    /// (today: the Op.stap goal import; expected next: E1-12's decreed-minimumdoelen import).
+    /// (the Op.stap goal import from Excel, E1-15, and the decreed-minimumdoelen import from KOV's API, E1-12).
     /// </summary>
     public const string Beleid = "Curriculumbeheer";
 

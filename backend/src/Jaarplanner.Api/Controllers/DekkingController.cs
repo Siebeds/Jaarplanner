@@ -17,7 +17,7 @@ namespace Jaarplanner.Api.Controllers;
 /// satisfied"; E5-02 built the screen, and E5-03, E5-06 and E5-05 the percentage, the export and the gap-analyse, so
 /// that sentence is now history rather than a caveat.</i> What the surface still buys is that the figure can be
 /// verified against a real database by anyone, including a story's own gates. <b>FR-9 remains unsatisfied on two
-/// counts:</b> minimumdoel level (E5-04) is blocked on E1-12, and that is the level Art. V.2 names; and FR-9.4's
+/// counts:</b> minimumdoel level (E5-04) is blocked on E1-12 and E1-21, and that is the level Art. V.2 names; and FR-9.4's
 /// school-wide and per-class overviews for directie (E6-06, Art. V.5) are unbuilt. <i>This sentence read "for one
 /// reason only" until antagonist ronde 1 named the second (2026-08-19) — in the same commit that swept six other
 /// comments for describing E5-05 as unbuilt, which is the lesson: a list of absences is a checkable claim, and
@@ -72,8 +72,8 @@ namespace Jaarplanner.Api.Controllers;
 /// unresolved: <c>aantalGedekt</c> is <c>null</c> in that state and <c>isBetrouwbaar</c> is <c>false</c>, per the
 /// directie ruling of 2026-07-28 that coverage must not claim what it cannot prove. And it says nothing about
 /// <b>minimumdoel</b>-level coverage, the level the onderwijsinspectie actually tests (Art. V.2): that is E5-04 and
-/// it is blocked on E1-12, because no <c>Minimumdoel</c> row can exist until directie supplies the decreed source
-/// file. Each doel carries its <c>minimumdoelRef</c> so that roll-up needs no second pass, but the roll-up is not
+/// it is blocked on E1-12 and E1-21, because minimumdoelen imported from KOV's API (E1-12) have no concorded
+/// leerplandoel until the G goals are imported from the same API (E1-21, ADR-0032). Each doel carries its <c>minimumdoelRef</c> so that roll-up needs no second pass, but the roll-up is not
 /// here and must not be read as present.
 /// </para>
 /// </summary>

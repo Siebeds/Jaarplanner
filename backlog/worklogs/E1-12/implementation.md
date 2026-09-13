@@ -42,17 +42,20 @@ than falsified (a ref nobody imported still answers 409).
    (`doelen.geenMinimumdoelenTitel` / `doelen.geenMinimumdoelenActie`) and count, which become false the moment the
    import runs. Needs `nl.json`, also held by E6-01. *(This item first named `import.opstap.voorwaarde`, which
    `891195d` had already deleted; corrected after the antagonist's round 2.)*
-3. **The ADR index row** (`docs/adr/README.md`) and the **progress row** (`backlog/README.md`), both held by E6-01.
-4. **Question 1 in `docs/besluiten-gevraagd.md`** still asks directie for the decreed minimumdoelen file and says the
-   tool is blocked on it. The owner's API ruling makes that false, and the document is marked for forwarding to
-   directie. It must be rewritten to report the ruling (and whether directie is asked to confirm it). Held by E6-01;
-   missed in the first version of this list and added after the antagonist's round 1 (MAJOR 5).
+3. ~~**The ADR index row** (`docs/adr/README.md`) and the **progress row** (`backlog/README.md`), both held by E6-01.~~
+   *Done 2026-09-13* once E6-01 merged: ADR-0032 has its index and traceability rows, and the E1 row and M1 gap 1 no
+   longer say E1-12 waits on a file from directie.
+4. ~~**Question 1 in `docs/besluiten-gevraagd.md`** still asks directie for the decreed minimumdoelen file and says the
+   tool is blocked on it.~~ *Done 2026-09-13:* question 1 now reports the owner's ruling (the API as source, G goals
+   only) and asks directie to confirm it; the intro no longer calls question 1 impossible to build without an answer.
+   Missed in the first version of this list and added after the antagonist's round 1 (MAJOR 5).
 5. **Owner confirmation of two constitutional clauses** (antagonist round 1 Q10, round 2 Q7): Art. VII.2's "every
    decreed minimumdoel is imported" and its coverage-view duty are marked as the implementer's and have not been ruled.
    Asked in the session of 2026-09-13; whoever next holds `docs/besluiten-gevraagd.md` records the question there if it
    is still open.
-6. **The stale lock** (round 2 Q8): E6-01 has held `DependencyInjection.cs` and the four documents above since
-   2026-09-11 and has been silent since 18:05 that day. Breaking it is the technical lead's or the owner's call.
+6. ~~**The stale lock** (round 2 Q8): E6-01 has held `DependencyInjection.cs` and the four documents above since
+   2026-09-11 and has been silent since 18:05 that day.~~ *Resolved 2026-09-13:* E6-01 merged as PR #48 and released
+   them; nobody had to break the lock.
 
 ## Findings from the real data (2026-09-11), and what they changed
 
@@ -178,3 +181,19 @@ Excel import's `IOpstapImportService` registration, after `main` was merged in.
 - `dotnet test` against a throwaway PostgreSQL 17.5 container (the CI image): **unit 931 passed, 1 skipped** (the opt-in
   live test); **integration 328 passed, 0 skipped**, so every PostgreSQL test ran, the six above included. This is also
   the first complete PostgreSQL run of this branch, which fix round 1 reported as not run.
+- CI on PR #49 at `f0e8fcf`: Backend and Frontend gates pass, on both the push and the pull_request run.
+
+## Fix round 4 (2026-09-13, after the antagonist's audit of the merge and the DI line: 1 MAJOR, 4 MINOR)
+
+The audit found the code sound; every finding was in the written record.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 MAJOR | Outstanding items 3, 4, 6 still blamed E6-01's lock, and the texts it guarded were still false | Done rather than reworded, since the files were free: `besluiten-gevraagd.md` question 1 reports the ruling and asks directie to confirm; `backlog/README.md` E1 row (plus E1-15's "waits on directie") and M1 gap 1; ADR-0032 index and traceability rows. Items 3, 4, 6 struck with what resolved them. |
+| 2 MINOR | CLAUDE.md said "not yet merged" / "awaiting merge", false once merged | Both now say E1-12 closes with E1-21. |
+| 3 MINOR | "Pass against the real registration" overstated the tests | E1-12's clause says five tests fake the source, one proves the registration resolves, no request has reached KOV through the app, and names what is owed before `[x]`. |
+| 4 MINOR | Code comments still described E1-12 as not landed | `CurriculumbeheerAutorisatie.Beleid`, `Program.cs` and the test-class doc; the same sweep also found and fixed `Probleemsoorten` (twice) and `DekkingController` (twice, one of which still said directie must supply the file). |
+| 5 MINOR | E7-11's route list lacked the new routes | Added, with the outbound-traffic dimension. |
+
+Also corrected while in `backlog/README.md`: the E1 row counted 20 stories where the epic file has 23 (E1-21/22/23 were
+filed by this story).

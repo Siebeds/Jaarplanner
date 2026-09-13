@@ -46,8 +46,8 @@ builder.Services.AddExceptionHandler<OpstapImportExceptionHandler>();
 builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
 
 // The single authorisation seam for curriculum reference-data administration (E1-15, Art. VI.1,
-// ADR-0011 §2): one named policy that the Op.stap import endpoints — and E1-12's decreed-minimumdoelen
-// import when it lands — authorise against. Since E6-01 it requires a signed-in person (ADR-0031 amends
+// ADR-0011 §2): one named policy that both Op.stap import sources authorise against, the Excel goal import
+// (E1-15) and the decreed-minimumdoelen import from KOV's API (E1-12). Since E6-01 it requires a signed-in person (ADR-0031 amends
 // ADR-0022 §1); the role half, directie, is E6-02's, and E7-11 stays a deployment gate until then. See
 // CurriculumbeheerAutorisatie for what changes when the role matrix arrives.
 builder.Services.AddCurriculumbeheerAutorisatie();
