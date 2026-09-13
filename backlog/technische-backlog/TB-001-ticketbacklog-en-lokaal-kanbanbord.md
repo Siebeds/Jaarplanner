@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-13
-bijgewerkt: 2026-09-13 14:15
+bijgewerkt: 2026-09-13 14:21
 opgepakt-door: ticket-backlog
 branch: feature/ticket-backlog
 pr:
@@ -37,7 +37,7 @@ eigenaar zelf start, moet eerst een technisch ticket krijgen, in een andere kleu
 - [x] Gegeven een eindstatus op een branch die nog niet in `main` zit, wanneer het bord laadt, dan staat de kaart in In review, en na de merge in Te testen of Klaar (`test/sources.test.mjs`).
 - [x] Gegeven een ticket dat de structuur breekt, wanneer het bord laadt, dan staat het in de rode balk met de fout en faalt `tickets.mjs check` (`test/parse.test.mjs`, `test/board.test.mjs`).
 - [x] Gegeven een statuswijziging via de CLI, dan zijn alleen de toegestane overgangen mogelijk en worden `bijgewerkt` en een werklogregel geschreven (`test/cli.test.mjs`).
-- [ ] Gegeven het bord in een echte browser, wanneer ik het bekijk op desktop en op 390 px breed, dan is alles leesbaar en bedienbaar met het toetsenbord.
+- [x] Gegeven het bord in een echte browser, wanneer ik het bekijk op desktop en op 390 px breed, dan is alles leesbaar en bedienbaar met het toetsenbord (`backlog/worklogs/TB-001/browser-pass.md`).
 - [ ] Gegeven de volledige wijziging, wanneer de antagonist ze audit, dan zijn alle bevindingen opgelost of uitdrukkelijk opzij gezet.
 
 ## Buiten scope
@@ -49,3 +49,4 @@ statuswijziging na een merge op GitHub.
 
 - 2026-09-13 14:11 · ticket-backlog · aangemaakt (status in-uitvoering)
 - 2026-09-13 14:15 · ticket-backlog · formaat, CLI, bord, skills en ADR-0033 gebouwd; 43 tests groen
+- 2026-09-13 14:21 · ticket-backlog · browserpass op 1440 en 390 px, licht en donker: vier gebreken gevonden en opgelost (kolommen, criteria, bewaarde zoekterm, contrast van de randen)

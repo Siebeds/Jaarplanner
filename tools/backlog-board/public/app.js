@@ -33,7 +33,9 @@ const el = {
   q: $('#q'),
 };
 
-const prefs = { kind: 'alle', q: '', allDone: false, ...loadPrefs() };
+// The kind filter and the Klaar toggle persist; the search does not, because a remembered search
+// would silently hide cards on the next visit.
+const prefs = { kind: 'alle', allDone: false, ...loadPrefs(), q: '' };
 let data = null;
 let live = false;
 let openKey = null;
@@ -50,7 +52,7 @@ function loadPrefs() {
 
 function savePrefs() {
   try {
-    localStorage.setItem('backlogbord', JSON.stringify(prefs));
+    localStorage.setItem('backlogbord', JSON.stringify({ kind: prefs.kind, allDone: prefs.allDone }));
   } catch {
     // private window or blocked storage: the filters just do not persist
   }
