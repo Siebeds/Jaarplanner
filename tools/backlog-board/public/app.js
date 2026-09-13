@@ -16,7 +16,7 @@ const HINT = {
   'klaar-voor-bouw': 'mag opgepakt worden',
   'in-uitvoering': 'een sessie werkt eraan',
   'in-review': 'klaar, wacht op de merge',
-  'te-testen': 'op main, wacht op de tester',
+  'te-testen': 'op main, klaar om te testen',
   klaar: 'afgerond',
 };
 const DONE_LIMIT = 12;

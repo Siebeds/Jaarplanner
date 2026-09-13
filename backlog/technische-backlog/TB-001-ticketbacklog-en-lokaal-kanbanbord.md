@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-13
-bijgewerkt: 2026-09-13 16:19
+bijgewerkt: 2026-09-13 16:25
 opgepakt-door: ticket-backlog
 branch: feature/ticket-backlog
 pr:
@@ -61,3 +61,4 @@ nog als vervolg binnen een lopende epic, en de functioneel architect werkt in ee
 - 2026-09-13 15:57 · ticket-backlog · antagonist ronde 2: VIOLATIONS FOUND (3 MAJOR rond de bewaking op oude kopieën); bewaking vergelijkt nu status in plaats van tekst en ziet opgehaalde remote branches, 52 tests groen, browserpass opnieuw gedraaid
 - 2026-09-13 16:00 · ticket-backlog · eigenaar: amendement uitgebreid naar de handleiding en de skillnamen, eerste amendement en commitvolgorde bevestigd, afspraak 'alleen aanpassen zolang nieuw' bevestigd
 - 2026-09-13 16:19 · ticket-backlog · antagonist ronde 3: VIOLATIONS FOUND (2 MAJOR: blokkering viel weg, verweesde remote branch); elke schrijfactie werkt nu op de nieuwste versie en neemt die eerst over, geblokkeerde tickets worden niet opgepakt, 57 tests groen
+- 2026-09-13 16:25 · ticket-backlog · eigenaar: tweede ratificatierij bevestigd; rollen: de architect maakt enkel tickets aan (altijd nieuw), alleen de eigenaar wijzigt statussen op zijn pc en test zelf

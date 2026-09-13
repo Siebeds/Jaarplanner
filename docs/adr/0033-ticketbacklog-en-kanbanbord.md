@@ -67,9 +67,9 @@ that the board has the **full flow** of columns including a tester column.
    refused whenever the texts differed and froze tickets for the tester and the next session (round 2). The third
    compared status only and silently dropped blocks and give-back notes (round 3). Adopting the newest copy keeps
    every field without freezing anyone. The guard reads local branches, worktrees and remote-tracking branches as of
-   the last fetch; a branch that exists only on another PC is invisible to it. That gap is closed by a process rule,
-   not by code: the functional architect, working in their own clone, pulls first and changes an existing ticket only
-   while it is `nieuw` (`TICKETS.md`). A new number is the highest number
+   the last fetch; a branch that exists only on another PC is invisible to it. That gap is closed by roles,
+   not by code: every status change is the owner's, on his PC, and the functional architect only creates tickets and
+   edits their text while they are `nieuw` (decision 10). A new number is the highest number
    visible anywhere on this machine plus one, reserved for the moment of creation through the groepschat claim
    directory when it exists.
 7. **No work without a ticket or a story.** A session that is asked to change files for work that has neither
@@ -80,6 +80,11 @@ that the board has the **full flow** of columns including a tester column.
    still open, for work that epic needs to be finished. The progress table in `backlog/README.md` keeps counting
    stories only.
 9. **CI checks the tickets** on every push: the tool's tests and `tickets.mjs check`.
+10. **Roles** (owner ruling 2026-09-13). The functional architect only creates tickets, always as `nieuw`, in their
+    own clone, and may sharpen a ticket's text while it is still `nieuw`. The owner changes every status, on his own
+    PC, where the board runs and the sessions work: he moves FB tickets to `klaar-voor-bouw` and closes them after his
+    own test (`ticket-testen`). So every status write happens where the guard sees every session's branch and
+    worktree; the architect's clone, which cannot see them, never writes one.
 
 ## Alternatives considered
 
@@ -113,8 +118,10 @@ that the board has the **full flow** of columns including a tester column.
   ticket the CLI refuses a pickup with that remedy in its message. An abandoned local branch that holds a ticket is
   freed by deleting it.
 - **The stale-copy guard only sees this machine** plus what it last fetched. Agents push only when the owner asks,
-  so from the functional architect's clone an in-progress branch is usually invisible; the `nieuw`-only rule for
-  editing existing tickets carries that case. Two clones can also mint the same FB number; the board flags both
+  so from the functional architect's clone an in-progress branch is usually invisible. Decision 10 carries that
+  case: the architect never writes a status and edits only `nieuw` tickets. The one overlap left (the owner promotes
+  a ticket without pushing, the architect edits its text) surfaces as a merge conflict on that file at the next pull,
+  not as a silent loss. Two clones can also mint the same FB number; the board flags both
   files and `TICKETS.md` gives the one permitted rename.
 - **`bijgewerkt` is local time without a zone.** Everyone writing tickets today works in Belgian time. A writer whose
   clock is in another zone (a cloud session, a CI runner) would produce versions that win or lose by the offset.

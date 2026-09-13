@@ -305,7 +305,8 @@ async function cmdNew(values, positionals) {
   const priority = values.priority ?? 'middel';
   if (!PRIORITIES.includes(priority)) throw new Fail(`Prioriteit moet ${PRIORITIES.join(', ')} zijn.`);
   const status = values.status ?? (prefix === 'TB' ? 'in-uitvoering' : 'nieuw');
-  const allowed = prefix === 'TB' ? ['nieuw', 'klaar-voor-bouw', 'in-uitvoering'] : ['nieuw', 'klaar-voor-bouw'];
+  // A functional ticket always starts as nieuw: only the owner moves it on (owner ruling 2026-09-13).
+  const allowed = prefix === 'TB' ? ['nieuw', 'klaar-voor-bouw', 'in-uitvoering'] : ['nieuw'];
   if (!allowed.includes(status)) throw new Fail(`Een nieuw ${prefix}-ticket start als ${allowed.join(' of ')}.`);
   const root = await repoRoot();
   let branch = values.branch ?? '';

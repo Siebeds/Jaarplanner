@@ -376,6 +376,7 @@ test('commands refuse to touch an invalid ticket and explain unknown input', () 
     assert.match(run('status', 'FB-999', 'klaar', '--by', 'x').stderr, /bestaat niet in deze checkout/);
     assert.match(run('status', 'FB-001', 'klaar-voor-bouw').stderr, /--by/);
     assert.match(run('verzin').stderr, /Onbekende opdracht/);
+    assert.match(run('new', 'FB', '--title', 'Al verfijnd', '--by', 'fa', '--status', 'klaar-voor-bouw').stderr, /start als nieuw/);
   } finally {
     r.cleanup();
   }

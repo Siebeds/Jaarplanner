@@ -14,9 +14,9 @@ die een lokaal kanbanbord uitleest. Het besluit en de afwegingen staan in
 | | Functioneel (FB) | Technisch (TB) |
 | --- | --- | --- |
 | Map | `backlog/functionele-backlog/` | `backlog/technische-backlog/` |
-| Wie maakt het aan | de functioneel architect of tester | een agent-sessie, wanneer de eigenaar zelf een verbetering start die nog geen ticket heeft |
+| Wie maakt het aan | de functioneel architect | een agent-sessie, wanneer de eigenaar zelf een verbetering start die nog geen ticket heeft |
 | Waar | rechtstreeks op `main` | op de branch van het werk zelf |
-| Eerste status | `nieuw` (of `klaar-voor-bouw` als het al verfijnd is) | meestal meteen `in-uitvoering` |
+| Eerste status | altijd `nieuw`; de eigenaar zet het verder | meestal meteen `in-uitvoering` |
 | Eindstatus van de agent | `te-testen` | `klaar` |
 | Kleur op het bord | blauw, label *Functioneel* | oranjebruin, label *Technisch* |
 
@@ -114,11 +114,11 @@ groeit alleen: één regel per gebeurtenis, `- JJJJ-MM-DD UU:MM · wie · wat`, 
 | Kolom op het bord | Status in het bestand | Wie zet ze |
 | --- | --- | --- |
 | Nieuw | `nieuw` | functioneel architect |
-| Klaar voor bouw | `klaar-voor-bouw` | functioneel architect of de eigenaar, als het ticket verfijnd en afgesproken is |
+| Klaar voor bouw | `klaar-voor-bouw` | de eigenaar, als het ticket verfijnd en afgesproken is |
 | In uitvoering | `in-uitvoering` | de agent, in de eerste commit op zijn branch |
 | In review | *(afgeleid)* | niemand: zie hieronder |
 | Te testen | `te-testen` | de agent, in de laatste commit van zijn branch (alleen FB) |
-| Klaar | `klaar` | de tester (FB), of de agent in zijn laatste commit (TB) |
+| Klaar | `klaar` | de eigenaar na zijn test (FB), of de agent in zijn laatste commit (TB) |
 
 **In review** is geen status die iemand schrijft. Het bord zet een kaart daar zolang de eindstatus van de agent
 (`te-testen` of `klaar`) al op een branch of in een worktree staat, maar **nog niet op `main`**: het werk is af en wacht
@@ -136,26 +136,27 @@ Toegestane overgangen (de CLI dwingt ze af):
 Wie een ticket terugzet naar `klaar-voor-bouw` of `nieuw`, maakt `opgepakt-door`, `branch` en `pr` leeg: de volgende
 bouwronde begint opnieuw. Het werklog bewaart wat er gebeurd is.
 
-De CLI weet niet wie hem aanroept. Dat een functioneel ticket alleen door de tester op `klaar` gezet wordt, is een
-afspraak (skill `ticket-uitvoeren`), geen slot.
+De CLI weet niet wie hem aanroept. Dat een functioneel ticket alleen door de eigenaar op `klaar` gezet wordt, en
+dat de functioneel architect geen status wijzigt, zijn afspraken (zie *Wie doet wat*), geen slot.
 
 ## Wie doet wat
 
-- **Functioneel architect:** maakt tickets aan met de skill `ticket-aanmaken`, op `main`, in een eigen clone van de
-  repo, en zet ze op `klaar-voor-bouw` als ze verfijnd zijn. **Een bestaand ticket past de functioneel architect
-  alleen aan zolang het `nieuw` is.** Vanaf `klaar-voor-bouw` kan een sessie op de pc van de eigenaar het al opgepakt
-  hebben op een branch die nog niet gepusht is, en die branch ziet een eigen clone niet (ook de CLI niet). Wil je dan
-  toch iets wijzigen, vraag het eerst na bij de eigenaar, die het op het bord ziet; anders wordt de aanvulling een
-  nieuw ticket. Haal `main` binnen (`git pull`) vlak voor elke wijziging aan een bestaand ticket. Wie een ticket uit
-  `nieuw` haalt, ook de eigenaar, doet dat op `main` en pusht meteen, zodat een eigen clone het na een pull ziet.
-- **Agent-sessie:** werkt volgens de skill `ticket-uitvoeren`. Heeft het werk nog geen ticket en geen story, dan maakt
-  de agent **eerst** een TB-ticket aan, vóór er een bestand verandert.
-- **Functioneel tester:** test tickets in `te-testen` met de skill `ticket-testen` en zet ze op `klaar`, of terug naar
-  `klaar-voor-bouw` met de bevinding.
-- **Eigenaar:** merget, en kijkt op het bord.
+*(Beslissing van de eigenaar, 2026-09-13.)* Alleen de eigenaar wijzigt statussen, op zijn eigen pc, waar ook het bord
+draait en de agent-sessies werken. De functioneel architect maakt enkel tickets aan.
 
-Wie tickets aanmaakt of test in de gedeelde checkout `C:\source\Jaarplanner` terwijl er andere sessies lopen, claimt
-eerst `maintree` in de groepschat voor een `git switch` of `git pull` daar. In een eigen clone speelt dat niet.
+- **Functioneel architect:** maakt tickets aan met de skill `ticket-aanmaken`, op `main`, in een eigen clone van de
+  repo, en pusht ze. Een ticket begint altijd als `nieuw`. De architect wijzigt **geen status**, en past een bestaand
+  ticket alleen inhoudelijk aan zolang het `nieuw` is, na een `git pull`. Heeft de eigenaar het intussen op
+  `klaar-voor-bouw` gezet maar nog niet gepusht, dan botst dat bij de volgende pull als merge-conflict op dat ene
+  ticket: houd dan de status van de eigenaar en de tekst van de architect.
+- **Eigenaar:** zet tickets op `klaar-voor-bouw`, test functionele tickets in `te-testen` met de skill `ticket-testen`
+  en zet ze op `klaar`, of terug naar `klaar-voor-bouw` met de bevinding. Hij merget en kijkt op het bord. Omdat dit
+  allemaal op zijn pc gebeurt, ziet de CLI daar elke lokale branch en worktree van de sessies.
+- **Agent-sessie:** werkt volgens de skill `ticket-uitvoeren`, op de pc van de eigenaar. Heeft het werk nog geen
+  ticket en geen story, dan maakt de agent **eerst** een TB-ticket aan, vóór er een bestand verandert.
+
+Wie in de gedeelde checkout `C:\source\Jaarplanner` een `git switch` of `git pull` doet terwijl er sessies lopen,
+claimt eerst `maintree` in de groepschat. In de eigen clone van de architect speelt dat niet.
 
 Lange verslagen (antagonist, testrapport, schermafbeeldingen) gaan zoals voorheen naar `backlog/worklogs/<id>/`;
 het werklog in het ticket zelf houdt één regel per gebeurtenis.

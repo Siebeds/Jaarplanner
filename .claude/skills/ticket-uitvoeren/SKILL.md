@@ -85,7 +85,7 @@ Unchanged from CLAUDE.md: the relevant tests, `dotnet format`, `pnpm lint`, a re
 ## 6. The final status goes in the last commit
 
 ```bash
-# functional ticket: the tester closes it later
+# functional ticket: the owner closes it after his test
 node tools/backlog-board/tickets.mjs status FB-012 te-testen --by <sessie-id> --log "<wat er gebouwd is, gates groen>"
 # technical ticket
 node tools/backlog-board/tickets.mjs status TB-003 klaar --by <sessie-id> --log "<wat er gebouwd is, gates groen>"
@@ -107,7 +107,7 @@ Release `ticket-<ID>` and your other claims, set your session file to `done`, an
 
 ## Rules
 
-- **Never set an FB ticket to `klaar`:** that is the tester's decision (`ticket-testen`). The CLI cannot tell who is
+- **Never set an FB ticket to `klaar`:** that is the owner's decision, after his test (`ticket-testen`). The CLI cannot tell who is
   calling, so it will not stop you; this rule is yours to keep.
 - Never change another ticket, not even with a Werklog line. If something about it needs saying, ask its session or
   the owner.

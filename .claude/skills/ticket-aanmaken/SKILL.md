@@ -3,7 +3,7 @@ name: ticket-aanmaken
 description: >-
   Create a new ticket in the Jaarplanner ticket backlog (backlog/functionele-backlog or
   backlog/technische-backlog), always in the one fixed structure the local kanban board reads.
-  Use when the functional architect or tester wants to log a wish, a change or a bug ("maak een
+  Use when the functional architect (or the owner) wants to log a wish, a change or a bug ("maak een
   ticket", "nieuw ticket", "zet dit in de functionele backlog", "/ticket-aanmaken"), and when an
   agent session must first create a technical ticket because the owner started work that has no
   ticket and no backlog story yet. Never write a ticket file by hand instead of using this skill.
@@ -20,8 +20,8 @@ CLI's commands and options are English.
 
 ## 0. Which kind of ticket
 
-- **FB (functioneel):** the functional architect or tester logs something a teacher or the directie needs. Created on
-  `main`, in their own clone.
+- **FB (functioneel):** the functional architect logs something a teacher or the directie needs. Created on `main`, in
+  their own clone, always as `nieuw`: only the owner changes a status (owner ruling 2026-09-13).
 - **TB (technisch):** an agent session logs an improvement the owner started himself, before changing any file.
   Created on the branch of that work. The `ticket-uitvoeren` skill sends you here and takes over again afterwards.
 
@@ -81,7 +81,7 @@ node tools/backlog-board/tickets.mjs new TB --title "Build van de backend snelle
 node tools/backlog-board/tickets.mjs block TB-004 --by <sessie-id> "<de vraag aan de eigenaar>"
 ```
 
-An FB ticket starts as `nieuw`. Add `--status klaar-voor-bouw` only when the user says it has been refined and agreed.
+An FB ticket always starts as `nieuw`; the CLI accepts nothing else for FB. The owner moves it on, on his own PC.
 
 ## 5. Fill in the sections
 
@@ -108,9 +108,10 @@ Show the user the finished ticket (title, criteria, scenarios) and ask for a go.
 
 ## Changing an existing ticket
 
-In the functional architect's own clone, the CLI's guard cannot see a branch that exists only on the owner's PC, and
-agents push only when the owner asks. So **change an existing FB ticket only while it is `nieuw`**, and run
-`git pull --ff-only` right before the change, so "nieuw" is today's answer and not yesterday's. From
-`klaar-voor-bouw` on, a session may already hold it: ask the owner to check the board first, or log the addition as a
-new ticket. Pull `main` right before `new` and push right after it, so two clones rarely mint the same number; if
-they do, `backlog/TICKETS.md` describes the one permitted rename.
+The functional architect **never changes a status**: only the owner does, on his PC, where the board runs and the
+sessions work (owner ruling 2026-09-13). The architect may still sharpen a ticket's text **while it is `nieuw`**,
+after `git pull --ff-only`. From `klaar-voor-bouw` on, a session may already hold it on the owner's PC, where the
+architect's clone cannot look: log the addition as a new ticket, or ask the owner. If the owner promoted a ticket
+that the architect then edited, the next pull shows a merge conflict on that one file: keep the owner's status and
+the architect's text. Pull `main` right before `new` and push right after it, so two clones rarely mint the same
+number; if they do, `backlog/TICKETS.md` describes the one permitted rename.
