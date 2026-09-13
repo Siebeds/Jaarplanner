@@ -123,3 +123,23 @@ address; question 12's 27 and 8-of-8 confirmed; the `IConcordantieQuery` Postgre
 - Cosmetic, not a finding: the comment reflow at `OpstapImportService.cs:146-151` is broken.
 
 Not run by the auditor: the PostgreSQL suite and the live tests (123 targeted unit tests passed).
+
+## Round 4 (2026-09-13, on `66a26ac..d3a6cf1`): COMPLIANT
+
+*Verdict pasted by the orchestrator.* No finding at MINOR or above; every round-3 finding closed. The narrowed wording
+("the first API import of the leerplandoelen (a snapshot applied)") appears in all five places and matches the code (only
+the leerplandoelen apply writes an `opstapversies` row; the guard checks for it); the log entry records the owner's
+clarification and was corrected in place before reaching `main`; `961439c` touches only the constitution and the
+functional analysis (Art. XI.1). The functional-analysis sentence on non-G Excel goals is true in both halves. The
+`colgroup`/`col` entries are what `IsLeeg` reads; a `<caption>` table is still refused, never flattened without its
+caption. `OpstapHtmlTests` 62/62 at `d3a6cf1`; format clean on the changed files; full suites and PostgreSQL not re-run by
+the auditor.
+
+Observations, recorded so they are not rediscovered (none is a finding):
+- `OpstapImportService.cs:147` "before anything else is looked at" is true inside the service; the controller parses the
+  workbook first, so a corrupt `.xlsx` after an API import gets the 400, not the 409 (still refused, nothing written).
+- The E1-21 status line said the live KOV → PostgreSQL import "last ran green in fix round 2"; the test-runner also ran it
+  green in the round-3 gate. *Corrected by the orchestrator at land time.*
+- The functional analysis freezes only "de tekst" where VII.2 freezes the whole row: narrower, not contradictory.
+- ADR-0032 decision 8 (`:96`) says "once an API import has been applied", pinned by its own parenthetical to the
+  `opstapversies` row, i.e. the narrowed trigger.

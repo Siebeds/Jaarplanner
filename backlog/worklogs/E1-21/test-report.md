@@ -104,3 +104,18 @@ Round-2 nits: both fixed.
 than alters, and 1.2 has none, but a later snapshot using `colgroup`/`col` would lose whole goals.
 
 Cleanup: mutations and probe reverted (clean at `66a26ac`), container `jp-e121-tr3` removed, claim `port-55437` released.
+
+---
+
+# Orchestrator check on `d3a6cf1` (fix round 3), 2026-09-13
+
+No test-runner round was spawned for fix round 3: its code delta is two tags added to `OpstapHtml`'s text-free set plus
+one unit test (`Kolomdefinities_houden_een_tabel_niet_tegen_een_bijschrift_wel`); the rest is text. Independent check by
+the orchestrator in the worktree instead:
+
+- `dotnet build backend/Jaarplanner.sln -c Release`: 0 warnings, 0 errors.
+- `dotnet format backend/Jaarplanner.sln --verify-no-changes`: exit 0.
+- Unit: **1,106 passed, 4 skipped** (live), 0 failed.
+- Integration **without** PostgreSQL: 106 passed, 230 skipped, 0 failed. The PostgreSQL half was **not** re-run here; its
+  last full run is the test-runner's round 3 on `66a26ac` (338 passed, 1 skipped, 0 failed) and the implementer's on
+  `d3a6cf1` (the same figures). Stated so the gap is visible rather than implied away.
