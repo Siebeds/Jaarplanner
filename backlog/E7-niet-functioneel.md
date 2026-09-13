@@ -43,10 +43,18 @@
   (`MapFallbackToFile("index.html")`) or a static host does (Azure Static Web Apps handles it via
   `navigationFallback`); either is fine, but **one of them must**. *Done when (added):* a deep link to a
   non-root route, opened cold in a browser against the deployed app, renders that screen.
+  *Demo environment, 2026-09-13 ([ADR-0034](../docs/adr/0034-demo-omgeving-op-azure.md)):* **the API now hosts the SPA.**
+  - `UseStaticFiles` serves the bundle from `wwwroot`.
+  - An anonymous `MapFallbackToFile` on `SpaHosting.Route` answers every other path without a file extension with
+    `index.html`. The route excludes `api/` and `health/`, and `SpaHostingTests` pins all three behaviours.
+  - A demo environment runs on App Service F1 in an EU region; ADR-0034 records which one and why.
+  - **This story stays open.** Its subject is the school's own hosting, and the demo holds no school data (see the
+    owner's ruling under E7-11).
 
 - [ ] **E7-05 — Security: encryption + server-side AI keys (NFR-5, Art. VI.4/VI.5)**
   TLS in transit, encryption at rest; AI keys via Key Vault, never in frontend or repo.
   *Done when:* a security review confirms no key exposure and encryption everywhere.
+  *Owed by the demo environment, 2026-09-13 ([ADR-0034](../docs/adr/0034-demo-omgeving-op-azure.md) decision 5):* the demo app connects to PostgreSQL as the **server administrator**, which holds DDL rights, `CREATEDB` and `CREATEROLE`. Accepted there because it holds only fictional data. **Before any environment holds real data**, give the app a role of its own with DML rights only, and keep the admin credential for `infra/migrate-db.ps1`.
 
 - [ ] **E7-06 — Privacy/GDPR: no pupil data, processing register, retention (NFR-6, Art. VI.2)**
   Staff/curriculum data only; verwerkingsregister + bewaartermijnen documented.
@@ -64,6 +72,7 @@
 - [ ] **E7-09 — Backup & restore (NFR-9)**
   Regular DB backups; documented restore.
   *Done when:* a restore is demonstrated from a backup.
+  *Demo environment, 2026-09-13 ([ADR-0034](../docs/adr/0034-demo-omgeving-op-azure.md)):* its PostgreSQL server keeps the platform's 7-day local backups, without geo-redundancy. No restore has been demonstrated, so this story stays open.
 
 - [ ] **E7-10 — WCAG 2.2 AA conformance**
   App-wide WCAG 2.2 AA: keyboard-operable drag-and-drop, AA contrast, colour-plus-label encoding (doelsoort/status/coverage), labelled controls, focus order; **axe** checks gated in CI + manual keyboard/screen-reader passes on the anchor screens.
@@ -91,8 +100,9 @@
   *Why this is logged as a gate, not a story note:* the drift is pre-existing and systemic (auth is E6/ADR-0011 work, not yet built), but it has been growing silently with every epic as new endpoints land. Art. VI.1/VI.5 require role-based access via a personal login; "no auth anywhere" is not a waiver the constitution grants, so the exposure must be **visible and tracked** rather than implicit.
   *Done when:* every mutating endpoint requires an authenticated principal and the Art. VI §3.2 role matrix is enforced; **and no deployment to a reachable environment happens before then.** Ref: Art. VI.1/VI.2/VI.5, Art. IV.2, NFR-5, ADR-0011.
   *Authentication half closed, 2026-09-11 (E6-01, [ADR-0031](../docs/adr/0031-sessielogin-via-de-api.md)).*
-  - **Done:** every route requires a session except the anonymous list pinned by `ElkeRouteVraagtEenSessieTests`: health, sign-in/out, the development sign-in in Development only, and OpenAPI in Development only.
+  - **Done:** every route requires a session except the anonymous list pinned by `ElkeRouteVraagtEenSessieTests`: health, sign-in/out, the development sign-in in Development only, OpenAPI in Development only, and, since 2026-09-13, the frontend's `index.html` for a client route (`SpaHosting.Route`, which excludes `api/` and `health/`; [ADR-0034](../docs/adr/0034-demo-omgeving-op-azure.md) amends ADR-0031 decision 2).
   - **Still open, so this stays `[!]`:** the role matrix (E6-02). A signed-in leerkracht can still edit another klas, and every signed-in person can still run the curriculum import.
+  - **Owner ruling, 2026-09-13 ([ADR-0034](../docs/adr/0034-demo-omgeving-op-azure.md) decision 1): the owner waived this entry's deployment clause for one demo environment.** The owner's words: *"niet E6-02 bouwen, doe maar infra en deploy"*. The waiver covers the clause *"no deployment to a reachable environment happens before then"*, not Art. VI.1, which the code still does not meet. How that environment is run (fictional data only, only accounts in the owner's own tenant, no AI configured) is ADR-0034's reading of the offer the owner accepted, not the owner's own words. **The gate still holds for any environment with real school data**, so this entry stays `[!]`.
   - **Deployment prerequisites this gate must also see met before anything is reachable.** They were written in ADR-0031 and are copied here so the gate owns them:
     - an app registration in the school's tenant: single tenant, web platform; redirect URI `https://<host>/api/signin-oidc`; post-logout redirect URI `https://<host>/`; no front-channel logout; scopes `openid profile`; the `acct` optional claim in the ID token; *assignment required* on, with the staff group assigned;
     - the client secret in Key Vault as `Authenticatie--Entra--ClientSecret`;
