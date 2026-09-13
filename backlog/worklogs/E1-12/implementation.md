@@ -140,3 +140,20 @@ E1-21 also carries the audit's count: today's converter would refuse 43 G goals 
 - Integration without PostgreSQL: **68/68**. PostgreSQL, Op.stap and curriculum classes: **29 passed, 6 failed**, the six
   being the DI-blocked `OpstapMinimumdoelenImportEndpointsTests`, unchanged from fix round 1.
 - The full PostgreSQL half is still not run (memory; see fix round 1).
+
+## Fix round 3 (2026-09-13, after the antagonist's narrow round 3: 0 MAJOR, 4 MINOR)
+
+Round 3 confirmed both round-2 MAJORs resolved against live data. Its four MINORs, all doc and copy accuracy:
+
+1. English docs said "could not" where "was not imported" is what holds; fixed in `IMinimumdoelImportService`. `IsLeeg`
+   was true for a skipped import, in which every stored minimumdoel went unread: it is now false when `Overgeslagen`, and
+   the skip test asserts it.
+2. The plural `NietIngelezenMelding` now inflects both sentences ("De vorige teksten blijven staan."); test updated.
+3. The FR-2.2 note is dated 2026-09-13 and marked as the developer's reading, not confirmed by the owner; the
+   CLAUDE.md marker is dated to when it was written.
+4. `OpstapBronFout`, `IMinimumdoelBron` and `IMinimumdoelImportService` describe the refusal as "refused as a whole",
+   covering a complete read refused for an unidentifiable row; ADR-0032 decision 3 lists the non-plain `sup` and the
+   unclosed link.
+
+These fixes had no independent audit round of their own. They are text, one tested line of code (`IsLeeg`) and one
+tested string.

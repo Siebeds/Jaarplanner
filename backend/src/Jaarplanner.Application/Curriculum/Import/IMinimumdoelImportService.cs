@@ -17,7 +17,10 @@ public interface IMinimumdoelImportService
     /// False for the preview (FR-2.5): nothing is written. True to commit the additions and changes.
     /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <exception cref="OpstapBronFout">The source could not be read. Nothing has been written.</exception>
+    /// <exception cref="OpstapBronFout">
+    /// The read of the source was refused as a whole (see <c>OnderwijsdoelenApiBron</c> for the causes). Nothing has been
+    /// written.
+    /// </exception>
     Task<MinimumdoelImportResultaat> ImporteerAsync(bool toepassen, CancellationToken cancellationToken = default);
 }
 
@@ -31,8 +34,8 @@ public sealed record MinimumdoelImportResultaat(
     bool Toegepast);
 
 /// <summary>
-/// The reviewable report of one minimumdoelen import (FR-2.5): what the source adds, changes, leaves as it is, could not
-/// be read for, and no longer publishes, compared with the database.
+/// The reviewable report of one minimumdoelen import (FR-2.5): what the source adds, changes, leaves as it is, names
+/// without it being imported, and no longer publishes, compared with the database.
 /// </summary>
 public sealed class MinimumdoelImportDiff
 {
@@ -72,7 +75,7 @@ public sealed class MinimumdoelImportDiff
     public IReadOnlyList<string> Verdwenen { get; }
 
     /// <summary>
-    /// Refs in the database that the source <b>still names</b>, but whose row could not be imported this time (the reason
+    /// Refs in the database that the source <b>still names</b>, but whose row was not imported this time (the reason
     /// is in the result's <c>Problemen</c>). Their previous text stays as it was. Kept apart from <see cref="Verdwenen"/>
     /// because telling a reviewer that the decree dropped an eindterm it still contains would be false (Art. III.4).
     /// </summary>
@@ -88,13 +91,14 @@ public sealed class MinimumdoelImportDiff
     public IReadOnlyList<string> Opmerkingen { get; }
 
     /// <summary>
-    /// True when nothing in the database changes and no stored minimumdoel went unread. A refused row for a ref that is
-    /// not stored yet shows only in the result's <c>Problemen</c>.
+    /// True when the import ran, changes nothing in the database and left no stored minimumdoel unimported. A skipped
+    /// import is never empty, because every stored minimumdoel went unread; a refused row for a ref that is not stored yet
+    /// shows only in the result's <c>Problemen</c>.
     /// </summary>
     public bool IsLeeg =>
-        Toegevoegd.Count == 0 && Gewijzigd.Count == 0 && Verdwenen.Count == 0 && NietIngelezen.Count == 0;
+        !Overgeslagen && Toegevoegd.Count == 0 && Gewijzigd.Count == 0 && Verdwenen.Count == 0 && NietIngelezen.Count == 0;
 
-    /// <summary>True when a human should look: a skip, a change, a disappearance, or a row that could not be read.</summary>
+    /// <summary>True when a human should look: a skip, a change, a disappearance, or a stored minimumdoel whose row was not imported.</summary>
     public bool VereistReview =>
         Overgeslagen || Gewijzigd.Count > 0 || Verdwenen.Count > 0 || NietIngelezen.Count > 0;
 }

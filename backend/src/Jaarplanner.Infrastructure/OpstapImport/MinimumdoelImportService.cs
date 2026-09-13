@@ -151,7 +151,7 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
     public static string NietIngelezenMelding(int aantal) =>
         aantal == 1
             ? "1 minimumdoel staat nog in de Op.stap-bron maar werd niet ingelezen. De vorige tekst blijft staan."
-            : $"{aantal} minimumdoelen staan nog in de Op.stap-bron maar werden niet ingelezen. De vorige tekst blijft staan.";
+            : $"{aantal} minimumdoelen staan nog in de Op.stap-bron maar werden niet ingelezen. De vorige teksten blijven staan.";
 
     private static List<VeldWijziging> Verschillen(Minimumdoel oud, Minimumdoel nieuw)
     {

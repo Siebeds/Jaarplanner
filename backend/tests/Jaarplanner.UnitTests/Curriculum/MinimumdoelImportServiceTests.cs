@@ -125,6 +125,8 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
         var resultaat = await _service.ImporteerAsync(toepassen: true);
 
         Assert.True(resultaat.Diff.Overgeslagen);
+        // Every stored minimumdoel went unread, so a skip is not an empty import (antagonist, E1-12 round 3).
+        Assert.False(resultaat.Diff.IsLeeg);
         Assert.False(resultaat.Toegepast);
         Assert.Empty(resultaat.Diff.Verdwenen);
         Assert.Equal([probleem], resultaat.Problemen);
@@ -198,7 +200,7 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
             "1 minimumdoel staat nog in de Op.stap-bron maar werd niet ingelezen. De vorige tekst blijft staan.",
             MinimumdoelImportService.NietIngelezenMelding(1));
         Assert.Equal(
-            "3 minimumdoelen staan nog in de Op.stap-bron maar werden niet ingelezen. De vorige tekst blijft staan.",
+            "3 minimumdoelen staan nog in de Op.stap-bron maar werden niet ingelezen. De vorige teksten blijven staan.",
             MinimumdoelImportService.NietIngelezenMelding(3));
     }
 

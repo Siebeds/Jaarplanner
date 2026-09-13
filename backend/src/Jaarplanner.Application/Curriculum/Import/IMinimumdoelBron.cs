@@ -12,7 +12,10 @@ public interface IMinimumdoelBron
     /// Reads every decreed minimumdoel the source publishes today, mapped to <see cref="Minimumdoel"/>, together with the
     /// rows that could not be mapped.
     /// </summary>
-    /// <exception cref="OpstapBronFout">The source could not be read at all. Nothing has been written.</exception>
+    /// <exception cref="OpstapBronFout">
+    /// The read was refused as a whole: the source could not be reached or read, or its answer cannot be trusted as a
+    /// whole (a partial list, a row that cannot be identified). Nothing has been written.
+    /// </exception>
     Task<MinimumdoelBronResultaat> HaalOpAsync(CancellationToken cancellationToken = default);
 }
 

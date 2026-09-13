@@ -1,9 +1,10 @@
 namespace Jaarplanner.Application.Curriculum.Import;
 
 /// <summary>
-/// KOV's Op.stap source could not be read at all: the network failed, the request timed out, the API answered with an
-/// error status, or it answered with something that is not the shape the mapping expects (ADR-0032). Raised before
-/// anything is written, so the database is exactly as it was.
+/// A read of KOV's Op.stap source was refused as a whole (ADR-0032): the network failed, the request timed out, the API
+/// answered with an error status or with something that is not the shape the mapping expects, or the answer arrived but
+/// cannot be trusted as a whole (a partial list, a paging link to another host, a row that cannot be identified; see
+/// <c>OnderwijsdoelenApiBron</c>). Raised before anything is written, so the database is exactly as it was.
 /// <para>
 /// Two audiences, two languages (Art. II.3 as amended 2026-07-30). <see cref="Exception.Message"/> is the Dutch sentence
 /// for the person who pressed the button, and it says only what holds for <b>every</b> cause: the data was not fetched
