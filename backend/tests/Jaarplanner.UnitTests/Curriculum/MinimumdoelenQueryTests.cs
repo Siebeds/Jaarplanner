@@ -126,4 +126,146 @@ public sealed class MinimumdoelenQueryTests
         Assert.Equal(2, d1.Aantal);
         Assert.Equal(1, d2.Aantal);
     }
+
+    /// <summary>
+    /// E1-22: a minimumdoel no loaded leerplandoel concords is listed, once, without a bucket and after every bucket.
+    /// Before E1-22 the inner join hid it, and right after the minimumdoelen import that was every one of them.
+    /// </summary>
+    [Fact]
+    public async Task Een_minimumdoel_zonder_geconcordeerd_leerplandoel_staat_als_laatste_in_de_lijst_zonder_bucket()
+    {
+        var options = Options();
+
+        await using (var ctx = new AppDbContext(options))
+        {
+            ctx.Disciplines.Add(new Discipline("2", "Wiskunde"));
+            ctx.Minimumdoelen.AddRange(
+                new Minimumdoel("6-7.1.6", "6-", "7.1.6", "De leerlingen kunnen zwemmen."),
+                new Minimumdoel("4-2.1.7", "4-", "2.1.7", "De leerlingen kunnen tellen tot 1000."));
+            ctx.Leerplandoelen.Add(Leerdoel("2.1.GL3.10", "4-2.1.7", "2", "Getallen", "Tellen"));
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var query = new AppDbContext(options);
+        var pagina = await new MinimumdoelenQuery(query).ZoekAsync(new MinimumdoelFilter());
+
+        Assert.Equal(2, pagina.Totaal);
+        Assert.Equal(["4-2.1.7", "6-7.1.6"], pagina.Regels.Select(r => r.Ref).ToArray());
+
+        var zonder = pagina.Regels[1];
+        Assert.Null(zonder.DisciplineNummer);
+        Assert.Null(zonder.DisciplineNaam);
+        Assert.Null(zonder.Domein);
+        Assert.Null(zonder.Subdomein);
+        Assert.Empty(zonder.LeerplandoelCodes);
+        Assert.Equal("Wiskunde", pagina.Regels[0].DisciplineNaam);
+    }
+
+    /// <summary>Right after the minimumdoelen import no leerplandoel exists yet, and the register still lists every minimumdoel.</summary>
+    [Fact]
+    public async Task Zonder_enig_leerplandoel_staan_alle_minimumdoelen_in_de_lijst()
+    {
+        var options = Options();
+
+        await using (var ctx = new AppDbContext(options))
+        {
+            ctx.Minimumdoelen.AddRange(
+                new Minimumdoel("K-1.3.9", "K-", "1.3.9", "Mondelinge interactie."),
+                new Minimumdoel("4-2.1.7", "4-", "2.1.7", "Tellen tot 1000."),
+                new Minimumdoel("6-2.5.4", "6-", "2.5.4", "Kansen berekenen."));
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var query = new AppDbContext(options);
+        var sut = new MinimumdoelenQuery(query);
+
+        var pagina = await sut.ZoekAsync(new MinimumdoelFilter());
+        var facetten = await sut.HaalFacettenAsync(new MinimumdoelFilter());
+
+        Assert.Equal(3, pagina.Totaal);
+        Assert.All(pagina.Regels, r => Assert.Null(r.DisciplineNummer));
+        Assert.Equal(3, facetten.TotaalAantalMinimumdoelen);
+        Assert.Equal(3, facetten.AantalTreffers);
+        Assert.Equal(3, facetten.AantalZonderLeerplandoel);
+        Assert.Empty(facetten.Disciplines);
+        Assert.Empty(facetten.Domeinen);
+        Assert.Empty(facetten.JaarFasen);
+    }
+
+    /// <summary>
+    /// The taxonomy dimensions exist only through a concorded goal, so filtering on one drops a minimumdoel without a
+    /// bucket rather than matching it on a null.
+    /// </summary>
+    [Fact]
+    public async Task Een_taxonomiefilter_laat_een_minimumdoel_zonder_leerplandoel_weg()
+    {
+        var options = Options();
+
+        await using (var ctx = new AppDbContext(options))
+        {
+            ctx.Disciplines.Add(new Discipline("1", "Nederlands"));
+            ctx.Minimumdoelen.AddRange(
+                new Minimumdoel("K-01", "K-", "1", "Met een leerplandoel."),
+                new Minimumdoel("K-02", "K-", "2", "Zonder leerplandoel."));
+            ctx.Leerplandoelen.Add(Leerdoel("NL-001", "K-01", "1", "Taal", "Lezen"));
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var query = new AppDbContext(options);
+        var sut = new MinimumdoelenQuery(query);
+
+        foreach (var filter in new[]
+                 {
+                     new MinimumdoelFilter(Discipline: "1"),
+                     new MinimumdoelFilter(Domein: "Taal"),
+                     new MinimumdoelFilter(Domein: "Taal", Subdomein: "Lezen"),
+                     new MinimumdoelFilter(JaarFase: "K3"),
+                 })
+        {
+            var pagina = await sut.ZoekAsync(filter);
+            var facetten = await sut.HaalFacettenAsync(filter);
+
+            Assert.Equal(["K-01"], pagina.Regels.Select(r => r.Ref).ToArray());
+            Assert.Equal(1, facetten.AantalTreffers);
+            Assert.Equal(0, facetten.AantalZonderLeerplandoel);
+        }
+    }
+
+    /// <summary>
+    /// The header count of the register is minimumdoelen, not rows: a minimumdoel in two buckets counts once, and one
+    /// without a bucket counts too. Summing the domein facets (what the screen did before E1-22) gives rows.
+    /// </summary>
+    [Fact]
+    public async Task Facetten_tellen_de_treffers_per_minimumdoel_en_niet_per_bucket()
+    {
+        var options = Options();
+
+        await using (var ctx = new AppDbContext(options))
+        {
+            ctx.Disciplines.AddRange(new Discipline("1", "Nederlands"), new Discipline("2", "Wiskunde"));
+            ctx.Minimumdoelen.AddRange(
+                new Minimumdoel("K-10", "K-", "10", "In twee buckets."),
+                new Minimumdoel("K-11", "K-", "11", "In een bucket."),
+                new Minimumdoel("K-12", "K-", "12", "Zonder bucket."));
+            ctx.Leerplandoelen.AddRange(
+                Leerdoel("NL-010", "K-10", "1", "Taal", "Lezen"),
+                Leerdoel("WIS-010", "K-10", "2", "Getallen", "Optellen"),
+                Leerdoel("NL-011", "K-11", "1", "Taal", "Schrijven"));
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var query = new AppDbContext(options);
+        var sut = new MinimumdoelenQuery(query);
+
+        var facetten = await sut.HaalFacettenAsync(new MinimumdoelFilter());
+        var pagina = await sut.ZoekAsync(new MinimumdoelFilter());
+
+        Assert.Equal(3, facetten.TotaalAantalMinimumdoelen);
+        Assert.Equal(3, facetten.AantalTreffers);
+        Assert.Equal(1, facetten.AantalZonderLeerplandoel);
+        Assert.Equal(3, facetten.Domeinen.Sum(d => d.Aantal)); // rows in buckets: K-10 twice, K-11 once
+        Assert.Equal(4, pagina.Totaal); // every row the register lists: three in buckets, one without
+        Assert.DoesNotContain(facetten.Disciplines, d => string.IsNullOrEmpty(d.Nummer));
+        Assert.DoesNotContain(facetten.Domeinen, d => string.IsNullOrEmpty(d.Domein));
+    }
 }

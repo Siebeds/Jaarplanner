@@ -3,7 +3,8 @@ namespace Jaarplanner.Application.Curriculum;
 /// <summary>
 /// Read access to the minimumdoelen register behind the "Bekijk minimumdoelen" toggle on the Doelen
 /// screen (FR-2.4). It groups minimumdoelen by the (discipline, domein, subdomein) of their concorded
-/// leerplandoelen, since a minimumdoel has no discipline of its own (Art. VII.0 / IX.1).
+/// leerplandoelen, since a minimumdoel has no discipline of its own (Art. VII.0 / IX.1). A minimumdoel no
+/// loaded leerplandoel concords is listed once, after every bucket, without one (E1-22).
 /// <para>
 /// <b>Read-only, structurally.</b> Minimumdoelen are decreed reference data (Art. III.1); this interface
 /// has no write method. The port belongs in Application; the EF Core implementation lives in Infrastructure
@@ -14,7 +15,8 @@ public interface IMinimumdoelenQuery
 {
     /// <summary>
     /// One page of minimumdoelen matching <paramref name="filter"/>, ordered
-    /// (discipline, domein, subdomein, leeftijd, nr), together with the total the filter matches.
+    /// (discipline, domein, subdomein, leeftijd, nr) with the rows without a bucket last, together with the total
+    /// number of rows the filter matches.
     /// </summary>
     Task<MinimumdoelenPagina> ZoekAsync(
         MinimumdoelFilter filter,

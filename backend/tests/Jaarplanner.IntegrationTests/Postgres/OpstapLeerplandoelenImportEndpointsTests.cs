@@ -228,9 +228,11 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
     /// coverage computation yet (E5-04). What E1-21 makes true is its input:
     /// <list type="bullet">
     /// <item>a G goal a class covers now carries a ref to a decreed minimumdoel that exists;</item>
-    /// <item>the minimumdoelen register, which only lists minimumdoelen with a concorded goal, lists it.</item>
+    /// <item>the minimumdoelen register lists that minimumdoel under the goal's discipline.</item>
     /// </list>
-    /// Before E1-21 both were empty for want of a concorded goal.
+    /// Before E1-21 both were empty for want of a concorded goal. (Until E1-22 the register listed only minimumdoelen with
+    /// a concorded goal; it now lists the others too, without a bucket, which
+    /// <see cref="Het_register_toont_ook_de_minimumdoelen_zonder_ingeladen_leerplandoel"/> pins.)
     /// </summary>
     [PostgresFact]
     public async Task Na_de_import_draagt_een_gedekt_G_doel_zijn_minimumdoel_en_staat_dat_in_het_register()
@@ -303,6 +305,76 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         Assert.Equal("De leerlingen kunnen tellen tot 1000.", minimumdoel.Omschrijving);
         Assert.Null(await concordantie.MinimumdoelVoorLeerplandoelAsync("2.1.GL2.1"));
         Assert.Empty(await concordantie.LeerplandoelenVoorMinimumdoelAsync("6-2.5.4"));
+    }
+
+    /// <summary>
+    /// E1-22: the state the import screen orders its flow by. Before an apply it names the stored minimumdoelen and no
+    /// version, which is the condition under which the screen still offers the Excel upload; after one it names the
+    /// snapshot, the condition under which the Excel route refuses. It reads our database only, so the fake source is
+    /// never asked.
+    /// </summary>
+    [PostgresFact]
+    public async Task De_stand_noemt_de_minimumdoelen_en_de_laatst_doorgevoerde_versie()
+    {
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7")));
+
+        var ervoor = await Get("/api/opstap-import/stand");
+        var aanroepenErvoor = _bron.Aanroepen;
+        await Post(Pad, new { versie = "1.2" });
+        var erna = await Get("/api/opstap-import/stand");
+
+        Assert.Equal(0, aanroepenErvoor);
+        Assert.Equal(2, ervoor.GetProperty("aantalMinimumdoelen").GetInt32());
+        Assert.Equal(JsonValueKind.Null, ervoor.GetProperty("laatsteVersie").ValueKind);
+        Assert.Equal(2, erna.GetProperty("aantalMinimumdoelen").GetInt32());
+        Assert.Equal("1.2", erna.GetProperty("laatsteVersie").GetProperty("versie").GetString());
+        Assert.Equal("8f470a12-231f-5817-7a8b-6582195e2583", erna.GetProperty("laatsteVersie").GetProperty("hash").GetString());
+    }
+
+    /// <summary>
+    /// E1-22 on the database the ordering and the null handling depend on: a minimumdoel no loaded goal concords (here
+    /// <c>6-2.5.4</c>, as <c>6-7.1.6</c> and five others are in snapshot 1.2, ADR-0032 decision 5) is listed once, after the
+    /// concorded ones and without a bucket; a search finds it; a taxonomy filter drops it; and the facets count
+    /// minimumdoelen, with no empty option. Before the leerplandoelen import both are listed that way.
+    /// </summary>
+    [PostgresFact]
+    public async Task Het_register_toont_ook_de_minimumdoelen_zonder_ingeladen_leerplandoel()
+    {
+        var voorDeImport = await Get("/api/minimumdoelen");
+        Assert.Equal(2, voorDeImport.GetProperty("totaal").GetInt32());
+        Assert.All(voorDeImport.GetProperty("regels").EnumerateArray(), r =>
+            Assert.Equal(JsonValueKind.Null, r.GetProperty("disciplineNummer").ValueKind));
+
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7"), G("2.1.GL3.11", "4-2.1.7")));
+        await Post(Pad, new { versie = "1.2" });
+
+        var register = await Get("/api/minimumdoelen");
+        var regels = register.GetProperty("regels").EnumerateArray().ToList();
+        Assert.Equal(2, register.GetProperty("totaal").GetInt32());
+        Assert.Equal(["4-2.1.7", "6-2.5.4"], regels.Select(r => r.GetProperty("ref").GetString()!).ToArray());
+        Assert.Equal("2", regels[0].GetProperty("disciplineNummer").GetString());
+        Assert.Equal("Wiskunde", regels[0].GetProperty("disciplineNaam").GetString());
+        Assert.Equal(["2.1.GL3.10", "2.1.GL3.11"], Codes(regels[0].GetProperty("leerplandoelCodes")));
+        Assert.Equal(JsonValueKind.Null, regels[1].GetProperty("disciplineNummer").ValueKind);
+        Assert.Equal(JsonValueKind.Null, regels[1].GetProperty("domein").ValueKind);
+        Assert.Empty(regels[1].GetProperty("leerplandoelCodes").EnumerateArray());
+
+        var zoek = await Get("/api/minimumdoelen?zoek=kansen");
+        Assert.Equal(["6-2.5.4"], zoek.GetProperty("regels").EnumerateArray().Select(r => r.GetProperty("ref").GetString()!).ToArray());
+
+        var gefilterd = await Get("/api/minimumdoelen?domein=Getallenkennis");
+        Assert.Equal(["4-2.1.7"], gefilterd.GetProperty("regels").EnumerateArray().Select(r => r.GetProperty("ref").GetString()!).ToArray());
+
+        var facetten = await Get("/api/minimumdoelen/facetten");
+        Assert.Equal(2, facetten.GetProperty("totaalAantalMinimumdoelen").GetInt32());
+        Assert.Equal(2, facetten.GetProperty("aantalTreffers").GetInt32());
+        Assert.Equal(1, facetten.GetProperty("aantalZonderLeerplandoel").GetInt32());
+        Assert.Equal(["2"], facetten.GetProperty("disciplines").EnumerateArray().Select(d => d.GetProperty("nummer").GetString()!).ToArray());
+        Assert.Equal(["L3"], facetten.GetProperty("jaarFasen").EnumerateArray().Select(j => j.GetProperty("jaarFase").GetString()!).ToArray());
+
+        var gefilterdeFacetten = await Get("/api/minimumdoelen/facetten?domein=Getallenkennis");
+        Assert.Equal(1, gefilterdeFacetten.GetProperty("aantalTreffers").GetInt32());
+        Assert.Equal(0, gefilterdeFacetten.GetProperty("aantalZonderLeerplandoel").GetInt32());
     }
 
     /// <summary>One Wiskunde goal as the Op.stap Excel route carries it: its own wording, and no concordance in column D.</summary>

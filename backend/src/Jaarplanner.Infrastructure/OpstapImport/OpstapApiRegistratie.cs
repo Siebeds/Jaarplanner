@@ -36,6 +36,10 @@ public static class OpstapApiRegistratie
         services.AddScoped<IMinimumdoelImportService, MinimumdoelImportService>();
         services.AddScoped<ILeerplandoelImportService, LeerplandoelImportService>();
 
+        // What the import screen reads before anything runs (E1-22). A database read, registered here with the imports
+        // it describes rather than in DependencyInjection.cs, for the reason in this class's summary.
+        services.AddScoped<IOpstapImportStandQuery, OpstapImportStandQuery>();
+
         return services;
 
         static void StelIn(IServiceProvider provider, HttpClient client)

@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { del, get, naarQuery, post, put } from "./api";
 import type {
   DekkingWeergave,
@@ -110,11 +110,28 @@ export function useMinimumdoelFacetten(filter: MinimumdoelFilterQuery, opties?: 
   });
 }
 
-export function useMinimumdoelen(filter: MinimumdoelFilterQuery, opties?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: minimumdoelSleutels.lijst(filter),
-    queryFn: () => get<MinimumdoelenPagina>(`/api/minimumdoelen${minimumdoelQuery(filter)}`),
-    enabled: opties?.enabled ?? true,
+/**
+ * The minimumdoelen register, a page at a time (E1-22).
+ *
+ * Paged because it has to be: after the Op.stap import the register holds one row per minimumdoel and bucket, over a
+ * thousand, and the server caps a page at 200. The list used to fetch one page of 200 and stop, which read as "that is
+ * all of them" while the count above it said otherwise. The key extends the list key, so an import's invalidation of
+ * `minimumdoelen` still reaches it.
+ */
+export const MINIMUMDOELEN_PAGINA = 200;
+
+export function useMinimumdoelenPaginas(filter: MinimumdoelFilterQuery) {
+  return useInfiniteQuery({
+    queryKey: [...minimumdoelSleutels.lijst(filter), "paginas"] as const,
+    queryFn: ({ pageParam }) =>
+      get<MinimumdoelenPagina>(
+        `/api/minimumdoelen${minimumdoelQuery({ ...filter, overslaan: pageParam, aantal: MINIMUMDOELEN_PAGINA })}`,
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (laatste) => {
+      const volgende = laatste.overslaan + laatste.regels.length;
+      return laatste.regels.length > 0 && volgende < laatste.totaal ? volgende : undefined;
+    },
   });
 }
 
