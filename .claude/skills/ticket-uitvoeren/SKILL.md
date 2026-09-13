@@ -18,8 +18,8 @@ Dutch; commits stay English.
 
 Change a ticket's frontmatter **only through the CLI** (`node tools/backlog-board/tickets.mjs …`). It sets `bijgewerkt`,
 which is how the board decides which version is newest, and it writes the Werklog line. Before every write it checks
-for a newer copy elsewhere (one that has every Werklog line yours has, and more; a copy that split off,
-like a ticket given back on a branch that was never merged, does not count). If that copy says a different status, holder or block,
+for a newer copy elsewhere (one that has every Werklog line yours has, and more; a copy that split off only
+counts while it holds the ticket or carries a block, and a copy on `main` always counts). If that copy says a different status, holder or block,
 it refuses and names the git command that fixes it (`git merge main`, `git pull`, `git fetch --prune`, or wait for
 the merge). It never adopts another copy itself. Do not work around a refusal.
 
@@ -58,7 +58,8 @@ in that checkout; if it does not, your `main` is older than the ticket.
 
 ## 3. Move it to in-uitvoering, as the first commit
 
-Skip this step for a TB ticket you just created: it is already `in-uitvoering`.
+Skip this step for a TB ticket you just created: it is already `in-uitvoering`. A pickup starts from `main`'s
+latest copy of the ticket: if `main` has moved on for it, the CLI refuses until you `git merge main`.
 
 ```bash
 node tools/backlog-board/tickets.mjs status FB-012 in-uitvoering --by <sessie-id> --log "opgepakt"
@@ -114,6 +115,8 @@ Release `ticket-<ID>` and your other claims, set your session file to `done`, an
 
 - **Never set an FB ticket to `klaar`:** that is the owner's decision, after the functional architect's test
   (`ticket-testen`). The CLI cannot tell who is calling, so it will not stop you; this rule is yours to keep.
+- The owner does not change a ticket you hold: he asks you (owner ruling 2026-09-13). If he asks you to block it or
+  give it back, do so. If you stop without giving it back, he frees it with `release`.
 - Never change another session's ticket, not even with a Werklog line. If something about it needs saying, ask that
   session or the owner.
 - Never create an FB ticket, and never change one on `main` on your own initiative: FB tickets are the functional

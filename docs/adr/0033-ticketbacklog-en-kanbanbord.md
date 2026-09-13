@@ -60,7 +60,10 @@ that the board has the **full flow** of columns including a test column.
    **Before every write it checks for a newer copy.** A copy is newer exactly when it has every Werklog line this
    checkout's copy has, and more: the Werklog only grows, so no clock and no text comparison is involved. A copy that
    has split off (each has lines the other lacks: a ticket given back on a branch that was never merged, a branch that
-   only logged a line, a commit left behind after a merge) is not newer, and is only named. If a newer copy says
+   only logged a line, a commit left behind after a merge) is not newer: it is only named, unless it still holds the
+   ticket or carries a block this copy lacks, in which case it refuses the write as well. A copy on `main` (or the
+   fetched `origin/main`) is never split off: a checkout behind main merges main in, and a pickup always starts from
+   main's latest copy. If a newer copy says
    something different about the ticket (its status, who holds it, whether it is blocked), the CLI refuses and names
    the git command that brings the newer copy in: `git merge main`, `git pull` for the checkout's own upstream,
    `git fetch --prune` for a remote branch already deleted on the server, or waiting for the merge of the branch that
@@ -71,14 +74,17 @@ that the board has the **full flow** of columns including a test column.
    ticket is written on `main` and no longer on its work branch, so the PR number goes in before the merge. A blocked
    ticket is neither picked up nor given back: a block is how a ticket waits for an open decision (Art. XIV), and
    given back on an unmerged branch it would be invisible to the next session. A ticket in progress is changed only
-   by the session that holds it. And a pickup is never written on `main`, whatever `--branch` says.
+   by the session that holds it: the owner asks that session rather than writing over it (owner ruling 2026-09-13),
+   and frees a ticket whose session stopped with `release`, which logs the reason and the former holder. And a
+   pickup is never written on `main`, and names the branch of its own checkout.
 
    *Why this design, after four that failed an audit each:* letting the newest `bijgewerkt` win let a stale copy undo
    a pickup (round 1); refusing on any text difference froze tickets for the tester and for the next session
    (round 2); comparing status alone dropped blocks and give-back notes (round 3); adopting the newest copy's text made
    later git merges conflict, because git merges on history and not on text (round 4). Round 5 then found the
    fifth design counting a split-off copy as newer, which froze a ticket for every writer after a give-back; "newer"
-   now means strictly ahead.
+   now means strictly ahead. Round 6 found the opposite edge: ignoring every split-off copy let two sessions hold one
+   ticket, so a split-off copy still counts while it holds the ticket or blocks it.
 
    The check reads local branches, worktrees and remote-tracking branches as of the last fetch. A branch that exists
    only on another PC is invisible to it; decision 10 is why that does not arise today. A new number is the highest
@@ -137,8 +143,8 @@ that the board has the **full flow** of columns including a test column.
   newer-copy check. The CLI does both for every write it makes; `TICKETS.md` asks the same of hand edits.
 - **A remote branch deleted on the server lingers** as `origin/...` until `git fetch --prune`; while it holds a ticket
   the CLI refuses a pickup and names that remedy. An abandoned session that holds a ticket is freed by the owner
-  removing its work: `git worktree remove` for a worktree (losing what was not committed there), otherwise
-  `git branch -D`.
+  with `release` in a checkout of its branch; after that he may remove its work (`git worktree remove`, losing what
+  was not committed there, or `git branch -D`).
 - **The newer-copy check only sees this machine** plus what it last fetched. Decision 10 keeps that sufficient today:
   the sessions run on the owner's PC and the architect's clone writes no status. If sessions ever run elsewhere
   without pushing, their pickups become invisible to the owner's PC and this has to be revisited. The one overlap

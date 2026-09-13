@@ -198,11 +198,15 @@ zijn Engels, wat ze in het ticket schrijven is Nederlands.
 | `node tools/backlog-board/tickets.mjs log <id> --by <wie> "..."` | een regel in het werklog |
 | `node tools/backlog-board/tickets.mjs block <id> --by <wie> "reden"` / `unblock <id> --by <wie>` | geblokkeerd aan of uit |
 | `node tools/backlog-board/tickets.mjs pr <id> <nummer> --by <wie>` | het PR-nummer invullen, vóór de merge |
+| `node tools/backlog-board/tickets.mjs release <id> --by eigenaar --log "reden"` | alleen de eigenaar: een ticket vrijgeven waarvan de sessie gestopt is |
 
 Elke wijziging via de CLI zet `bijgewerkt` en schrijft een werklogregel. Voor ze iets schrijft, kijkt ze of er elders
 een **nieuwere** versie van het ticket staat: een versie die alle werklogregels van deze checkout heeft, en meer. Een
 versie die afgesplitst is (elk heeft regels die de andere mist, zoals een teruggegeven ticket op een branch die nooit
-gemerged werd) telt niet mee; de CLI noemt ze alleen. Zegt een nieuwere versie iets anders over het ticket (een
+gemerged werd) telt niet mee zolang ze teruggegeven en niet geblokkeerd is; de CLI noemt ze dan alleen. Houdt ze het
+ticket nog vast of draagt ze een blokkering, dan telt ze wel. Een versie op `main` is nooit afgesplitst: loop je op
+`main` achter, dan haal je main eerst binnen, en zeker vóór je een ticket oppakt. Zegt een nieuwere versie iets
+anders over het ticket (een
 andere status, een andere houder, een blokkering), dan weigert de CLI en zegt ze wat het oplost:
 
 - de nieuwere versie is nog niet gecommit (bijvoorbeeld een wijziging van de eigenaar in zijn checkout van `main`):
@@ -219,7 +223,10 @@ PR-nummer er dus vóór de merge in. Een ticket in uitvoering wijzigt alleen de 
 ticket pak je nooit op `main` op. Een teruggegeven TB-ticket leeft op zijn branch tot die gemerged is: wie het
 oppakt, werkt op die branch verder.
 
-Een verlaten sessie die een ticket vasthoudt, ruimt de eigenaar op: `git worktree remove` voor een worktree (wat daar
-niet gecommit is, gaat verloren), anders `git branch -D`. Wie een ticket toch met de hand aanpast, schrijft er ook een
+Een ticket dat een sessie vasthoudt, wijzigt de eigenaar niet: hij vraagt de sessie in haar eigen venster om het te
+blokkeren of terug te geven (beslissing van de eigenaar, 2026-09-13). Is die sessie gestopt, dan geeft hij het vrij
+met `release`, in een checkout van haar branch (is de worktree al weg: `git worktree add <map> <branch>`), en commit
+dat. Daarna kan hij haar werk opruimen: `git worktree remove` voor een worktree (wat daar niet gecommit is, gaat
+verloren), anders `git branch -D`. Wie een ticket toch met de hand aanpast, schrijft er ook een
 werklogregel bij en werkt `bijgewerkt` bij: zonder werklogregel ziet de controle de wijziging niet, en zonder
 `bijgewerkt` kan een oudere versie het op het bord halen.

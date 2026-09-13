@@ -508,6 +508,186 @@ test('a pickup is never written on main, and only the holder changes a ticket in
   }
 });
 
+test('a session cannot take a ticket back while another session holds it on a split-off copy', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    pickedUp(ctx);
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 's1', '--log', 'teruggegeven').status, 0);
+    r.commit('Give FB-001 back');
+    r.git('switch', '-q', 'main');
+    pickedUp(ctx, 'feature/b', 's2');
+    r.git('switch', '-q', 'feature/a');
+    const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /s2 houdt het ticket vast/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a branch that only logged a line cannot pick up a ticket another session holds', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    r.git('switch', '-q', '-c', 'feature/x');
+    assert.equal(run('log', 'FB-001', '--by', 's1', 'een regel').status, 0);
+    r.commit('a log line');
+    r.git('switch', '-q', 'main');
+    pickedUp(ctx, 'feature/b', 's2');
+    r.git('switch', '-q', 'feature/x');
+    const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's3');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /s2 houdt het ticket vast/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a pickup starts from main, and the owner then cannot write over the holder', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    r.git('branch', 'feature/c');
+    assert.equal(run('log', 'FB-001', '--by', 'eigenaar', 'een notitie').status, 0);
+    r.commit('owner note');
+    r.git('switch', '-q', 'feature/c');
+    let out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1');
+    assert.equal(out.status, 1, 'main moved on for this ticket');
+    assert.match(out.stderr, /git merge main/);
+    r.git('merge', '-q', 'main');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1');
+    assert.equal(out.status, 0, out.stderr);
+    r.commit('Start FB-001');
+
+    r.git('switch', '-q', 'main');
+    out = run('block', 'FB-001', '--by', 'eigenaar', 'stop');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /s1 houdt het ticket vast: laat het aan die sessie/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('after the owner closed a ticket on main, a write on its old work branch is refused', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    pickedUp(ctx);
+    assert.equal(run('status', 'FB-001', 'te-testen', '--by', 's1').status, 0);
+    r.commit('FB-001 done');
+    r.git('switch', '-q', 'main');
+    r.git('merge', '-q', '--no-ff', '-m', 'merge a', 'feature/a');
+    r.git('switch', '-q', 'feature/a');
+    r.write(REL, `${r.read(REL).trimEnd()}\n- 2026-09-13 23:59 · s1 · achtergebleven regel\n`);
+    r.commit('left behind after the merge');
+    r.git('switch', '-q', 'main');
+    assert.equal(run('status', 'FB-001', 'klaar', '--by', 'eigenaar').status, 0);
+    r.commit('FB-001 closed');
+
+    r.git('switch', '-q', 'feature/a');
+    const out = run('log', 'FB-001', '--by', 's1', 'nog iets');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /Op main staat een nieuwere versie van FB-001: klaar/);
+    assert.match(out.stderr, /git merge main/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a ticket that exists on main but not yet in this branch asks for git merge main', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    r.git('branch', 'feature/old');
+    readyTicket(ctx);
+    r.git('switch', '-q', 'feature/old');
+    const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /staat nog niet in deze checkout maar wel op main\. Haal main binnen in je branch \(git merge main\)/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a newer copy on the fetched origin/main names git pull on main, then git merge main', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    const origin = addOrigin(r);
+    const other = path.join(r.dir, 'other-clone');
+    execFileSync('git', ['clone', '-q', origin, other], { env: GIT_ENV });
+    assert.equal(runIn(ctx, other, 'block', 'FB-001', '--by', 'eigenaar', 'wacht', 'even').status, 0);
+    execFileSync('git', ['-C', other, 'commit', '-q', '-am', 'Block FB-001'], { env: GIT_ENV });
+    execFileSync('git', ['-C', other, 'push', '-q', 'origin', 'main'], { env: GIT_ENV });
+
+    r.git('fetch', '-q');
+    r.git('switch', '-q', '-c', 'feature/z');
+    const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /git pull op main/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('the owner frees a ticket whose session stopped with release, and the next session takes it', () => {
+  const { r, run, fill } = setup();
+  try {
+    r.git('switch', '-q', '-c', 'feature/t');
+    assert.equal(run('new', 'TB', '--title', 'Werk dat bleef liggen', '--by', 's1').status, 0);
+    const rel = ticketPath('TB', 1, 'werk-dat-bleef-liggen');
+    fill(rel);
+    r.commit('Add TB-001');
+
+    let out = run('status', 'TB-001', 'klaar-voor-bouw', '--by', 'eigenaar');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /release/);
+    assert.equal(run('release', 'TB-001', '--by', 'eigenaar').status, 1, 'a reason is required');
+    out = run('release', 'TB-001', '--by', 'eigenaar', '--log', 'sessie gestopt');
+    assert.equal(out.status, 0, out.stderr);
+    r.commit('Release TB-001');
+
+    out = run('status', 'TB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 0, out.stderr);
+    assert.ok(fieldsOf(r, rel).worklog.some((w) => w.text === 'vrijgegeven: sessie gestopt (was in uitvoering door s1)'));
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a pickup cannot name a branch other than its own checkout', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    r.git('switch', '-q', '-c', 'feature/x');
+    const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--branch', 'feature/y');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /--branch moet de branch van deze checkout zijn \(feature\/x\)/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a repository without a main branch gets a Dutch message, without a developer prefix', () => {
+  const ctx = setup();
+  try {
+    ctx.r.git('branch', '-m', 'main', 'trunk');
+    const out = ctx.run('list');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /Er is geen lokale branch "main" in deze repo/);
+    assert.doesNotMatch(out.stderr, /Unexpected/);
+  } finally {
+    ctx.r.cleanup();
+  }
+});
+
 test('outside a repository the CLI says so in Dutch, without a stack trace', () => {
   const ctx = setup();
   try {

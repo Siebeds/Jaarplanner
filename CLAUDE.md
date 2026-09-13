@@ -109,7 +109,7 @@ Database / EF Core:
 
 Tickets and the backlog board (Node only, no install; see [`backlog/TICKETS.md`](backlog/TICKETS.md)):
 - `node tools/backlog-board/server.mjs --open` (or double-click `tools/backlog-board/start-board.cmd`) — the local kanban board on http://localhost:5199
-- `node tools/backlog-board/tickets.mjs list | check | next-id | new | status | log | block | unblock | pr` — every write to a ticket goes through here (`--help` for the options)
+- `node tools/backlog-board/tickets.mjs list | check | next-id | new | status | log | block | unblock | pr | release` — every write to a ticket goes through here (`--help` for the options)
 - `cd tools/backlog-board && node --test "test/*.test.mjs"` — the tool's own tests
 
 Coordination between parallel sessions (see the working agreement above; protocol in [`.claude/skills/groepschat/SKILL.md`](.claude/skills/groepschat/SKILL.md)):

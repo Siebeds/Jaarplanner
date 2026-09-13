@@ -194,7 +194,10 @@ export async function collectVersions(root, cache = createCache(), { remotes = f
   const patterns = remotes ? ['refs/heads', 'refs/remotes'] : ['refs/heads'];
   const heads = (await refs(root, patterns)).filter((r) => !r.ref.endsWith('/HEAD'));
   const main = heads.find((r) => r.ref === 'refs/heads/main');
-  if (!main) throw new Error('Er is geen lokale branch "main" in deze repo.');
+  if (!main) {
+    // Dutch and without a prefix: the reader can act on it (Art. II.3).
+    throw Object.assign(new Error('Er is geen lokale branch "main" in deze repo.'), { code: 'NO_MAIN' });
+  }
   const merged = await mergedRefs(root, cache, main.sha, heads, patterns);
   const trees = await worktrees(root);
 

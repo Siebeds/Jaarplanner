@@ -39,6 +39,8 @@ const USAGE = `Gebruik: node tools/backlog-board/tickets.mjs <opdracht> ...
   block <id> --by <wie> "<reden>"
   unblock <id> --by <wie>
   pr <id> <nummer> --by <wie>
+  release <id> --by <wie> --log "<reden>"
+      Alleen de eigenaar: een ticket vrijgeven waarvan de sessie gestopt is, in een checkout van haar branch.
 
 Een schrijfopdracht weigert als er elders een nieuwere versie van het ticket staat met een andere
 status, houder of blokkering, en zegt welk git-commando dat oplost. Ze neemt nooit zelf een versie
@@ -96,7 +98,15 @@ async function findTicket(root, id) {
   const hits = names.filter((n) => n.startsWith(wanted) && n.endsWith('.md'));
   if (hits.length === 0) {
     const { versions } = await collectVersions(await mainRoot(), undefined, { remotes: true });
-    const elsewhere = [...new Set(versions.filter((v) => v.folder === folder && v.file.startsWith(wanted)).map((v) => sourceLabel(v.source)))];
+    const found = versions.filter((v) => v.folder === folder && v.file.startsWith(wanted));
+    if (found.some((v) => onMainLine(v.source))) {
+      const localMain = found.some((v) => isMainSource(v.source));
+      throw new Fail(
+        `${prefix}-${m[2]} staat nog niet in deze checkout maar wel op main. ` +
+          (localMain ? 'Haal main binnen in je branch (git merge main).' : ORIGIN_MAIN_REMEDY),
+      );
+    }
+    const elsewhere = [...new Set(found.map((v) => sourceLabel(v.source)))];
     if (elsewhere.length) {
       // A TB ticket lives on the branch of its work until it is merged, also after it was given back.
       throw new Fail(
@@ -168,24 +178,44 @@ function relation(copy, mine) {
 // A copy that sits on main: main itself, a checkout of main, or the fetched main of a remote.
 const onMainLine = (s) => isMainSource(s) || (s.remote && /\/main$/.test(s.name));
 
+const MAIN_REMEDY = 'Haal main binnen in je branch (git merge main) en probeer opnieuw.';
+const ORIGIN_MAIN_REMEDY = 'Haal main eerst binnen (git pull op main) en daarna in je branch (git merge main).';
+
 function remedyFor(conflict) {
   const s = conflict.source;
+  const g = conflict.parsed.fields;
   if (s.type === 'worktree') {
     return isMainSource(s)
       ? `Die versie staat nog niet gecommit in ${s.name}: ze moet eerst op main gecommit worden, en daarna haal je main binnen in je branch (git merge main).`
       : `Die versie staat nog niet gecommit in ${s.name}: laat die sessie haar werk afmaken, of vraag de eigenaar.`;
   }
-  if (isMainSource(s)) return 'Haal main binnen in je branch (git merge main) en probeer opnieuw.';
-  let remedy =
-    conflict.parsed.fields.status === 'in-uitvoering'
-      ? 'Dat ticket wordt daar bewerkt: laat het aan die sessie, of vraag de eigenaar. Is die sessie gestopt, dan ruimt de eigenaar haar werk op (git worktree remove voor een worktree, anders git branch -D); wat daar niet gecommit is, gaat dan verloren.'
-      : 'Dat werk wacht op de merge van die branch; wijzig het ticket daarna.';
+  if (onMainLine(s)) return s.remote ? ORIGIN_MAIN_REMEDY : MAIN_REMEDY;
+  let remedy;
+  if (g.status === 'in-uitvoering') {
+    remedy =
+      `${g['opgepakt-door']} houdt het ticket vast: laat het aan die sessie, en vraag haar in haar eigen venster om het te blokkeren of terug te geven. ` +
+      'Is die sessie gestopt, dan geeft de eigenaar het vrij met release, in een checkout van die branch.';
+  } else if (g.geblokkeerd) {
+    remedy = 'Die blokkering moet eerst op die branch opgelost worden (unblock), of de eigenaar ruimt die branch op.';
+  } else {
+    remedy = 'Dat werk wacht op de merge van die branch; wijzig het ticket daarna.';
+  }
   if (s.remote) remedy += ` Bestaat ${s.name} niet meer op de server, ruim de verwijzing dan op met git fetch --prune.`;
   return remedy;
 }
 
-/** Refuses a write this checkout is not in a position to make; returns notices worth printing. */
-async function checkCurrent(root, ticket, by) {
+/**
+ * Refuses a write this checkout is not in a position to make; returns notices worth printing.
+ *
+ * Which other copies count:
+ * - a copy strictly ahead of this one (`newer`) counts whenever it says a different state;
+ * - a copy on main (or the fetched origin/main) is never "split off": if it has lines this one lacks,
+ *   this checkout is behind main for this ticket, and a pickup must start from main's latest copy;
+ * - a split-off copy elsewhere still counts while it HOLDS the ticket or carries a block this copy
+ *   lacks (audit round 6: ignoring it let two sessions hold one ticket), and stops counting once it is
+ *   handed back and unblocked (audit round 5: counting it froze the ticket after a give-back).
+ */
+async function checkCurrent(root, ticket, by, { pickup = false, release = false } = {}) {
   const { versions } = await collectVersions(await mainRoot(), undefined, { remotes: true });
   const id = ticket.parsed.id;
   const mine = ticket.parsed;
@@ -205,8 +235,12 @@ async function checkCurrent(root, ticket, by) {
   }
 
   const others = copies.filter((c) => normalise(c.text) !== normalise(ticket.text));
-  const newer = others.filter((c) => relation(c.parsed, mine) === 'newer');
-  const diverged = others.filter((c) => relation(c.parsed, mine) === 'diverged');
+  const kind = (c) => {
+    const r = relation(c.parsed, mine);
+    return r === 'diverged' && onMainLine(c.source) ? 'newer' : r;
+  };
+  const newer = others.filter((c) => kind(c) === 'newer');
+  const diverged = others.filter((c) => kind(c) === 'diverged');
 
   // This branch's own upstream has something for this ticket that this checkout lacks: pull first, so
   // the next push does not conflict.
@@ -223,9 +257,31 @@ async function checkCurrent(root, ticket, by) {
     );
   }
 
-  // A ticket in progress is changed only by the session that holds it.
-  if (f.status === 'in-uitvoering' && f['opgepakt-door'] !== by) {
-    throw new Fail(`${id} is in uitvoering door ${f['opgepakt-door']} op branch ${f.branch}: alleen die sessie wijzigt het ticket.`);
+  // A pickup starts from main's latest copy of the ticket, so the branch never diverges from main on it.
+  const mainAhead = pickup && newer.find((c) => onMainLine(c.source));
+  if (mainAhead) {
+    throw new Fail(
+      `Op ${sourceLabel(mainAhead.source)} staat een nieuwere versie van ${id}, en een ticket pak je op vanaf de laatste ` +
+        `versie op main. ${remedyFor(mainAhead)}`,
+    );
+  }
+
+  // A split-off copy still counts while it holds the ticket or carries a block this one lacks.
+  const holding = diverged.find((c) => {
+    const g = c.parsed.fields;
+    return (g.status === 'in-uitvoering' && g['opgepakt-door'] !== by) || (g.geblokkeerd && !f.geblokkeerd);
+  });
+  if (holding) {
+    throw new Fail(`Op ${sourceLabel(holding.source)} staat een versie van ${id} die nog meetelt: ${describe(holding.parsed.fields)}. ${remedyFor(holding)}`);
+  }
+
+  // A ticket in progress is changed only by the session that holds it; `release` is the owner's way
+  // to free a ticket whose session has stopped, and it logs who did it.
+  if (!release && f.status === 'in-uitvoering' && f['opgepakt-door'] !== by) {
+    throw new Fail(
+      `${id} is in uitvoering door ${f['opgepakt-door']} op branch ${f.branch}: alleen die sessie wijzigt het ticket. ` +
+        'Is die sessie gestopt, dan geeft de eigenaar het hier vrij met release.',
+    );
   }
 
   const notices = newer.map(
@@ -235,17 +291,18 @@ async function checkCurrent(root, ticket, by) {
   for (const c of diverged) {
     if (stateKey(c.parsed.fields) === stateKey(f)) continue;
     notices.push(
-      `Let op: op ${sourceLabel(c.source)} staat een afgesplitste versie van ${id} (${describe(c.parsed.fields)}). Ze telt niet mee; is die branch verlaten, dan kan de eigenaar ze opruimen.`,
+      `Let op: op ${sourceLabel(c.source)} staat een afgesplitste versie van ${id} (${describe(c.parsed.fields)}), teruggegeven en niet geblokkeerd. ` +
+        'Ze telt niet mee; is die branch verlaten, dan kan de eigenaar ze opruimen.',
     );
   }
   return notices;
 }
 
-async function loadForWrite(id, by) {
+async function loadForWrite(id, by, options = {}) {
   const root = await repoRoot();
   const ticket = await findTicket(root, id);
   requireValid(ticket);
-  for (const notice of await checkCurrent(root, ticket, by)) console.log(notice);
+  for (const notice of await checkCurrent(root, ticket, by, options)) console.log(notice);
   return { root, ticket };
 }
 
@@ -388,7 +445,8 @@ async function cmdNew(values, positionals) {
     if (!here || here === 'main') {
       throw new Fail('Werk aan een ticket gebeurt op een eigen branch. Maak die eerst aan en werk daar.');
     }
-    branch ||= here;
+    if (branch && branch !== here) throw new Fail(`--branch moet de branch van deze checkout zijn (${here}), niet ${branch}.`);
+    branch = here;
   }
   const fr = (values.fr ?? '')
     .split(',')
@@ -427,7 +485,7 @@ async function cmdStatus(values, positionals) {
   const [id, to] = positionals;
   const by = requireBy(values);
   if (!STATUSES.includes(to)) throw new Fail(`Onbekende status "${to ?? ''}". Toegestaan: ${STATUSES.join(', ')}.`);
-  const { root, ticket } = await loadForWrite(id, by);
+  const { root, ticket } = await loadForWrite(id, by, { pickup: to === 'in-uitvoering' });
   const f = ticket.parsed.fields;
   const from = f.status;
   if (from === to) throw new Fail(`${ticket.parsed.id} staat al op ${to}.`);
@@ -446,12 +504,15 @@ async function cmdStatus(values, positionals) {
   }
   const fields = { status: to };
   if (to === 'in-uitvoering') {
-    // The pickup is written in the checkout it names: never on main, whatever --branch says.
+    // The pickup names the branch of the checkout it is written in: never main, and never another branch.
     const here = currentBranch(root);
     if (!here || here === 'main') {
       throw new Fail('Een ticket pak je op in de checkout van zijn eigen branch, niet op main. Maak die branch eerst aan en werk daar.');
     }
-    Object.assign(fields, { 'opgepakt-door': by, branch: values.branch || here });
+    if (values.branch && values.branch !== here) {
+      throw new Fail(`--branch moet de branch van deze checkout zijn (${here}), niet ${values.branch}.`);
+    }
+    Object.assign(fields, { 'opgepakt-door': by, branch: here });
   }
   if (to === 'klaar-voor-bouw' || to === 'nieuw') Object.assign(fields, { 'opgepakt-door': '', branch: '', pr: '' });
   if (values.pr) fields.pr = values.pr;
@@ -488,6 +549,23 @@ async function cmdAnnotate(values, positionals, kind) {
   } else if (!text) {
     throw new Fail('Geef de tekst voor het werklog op.');
   }
+  const saved = await save(ticket, edit(ticket, fields, by, message));
+  console.log(`${saved.id}: ${message}`);
+  return 0;
+}
+
+// The owner's way to free a ticket whose session stopped: back to klaar-voor-bouw, in a checkout of
+// the branch that holds it, with the reason and the former holder in the Werklog. A block stays.
+async function cmdRelease(values, positionals) {
+  const [id] = positionals;
+  const by = requireBy(values);
+  const reason = (values.log ?? '').trim();
+  if (!reason) throw new Fail('Geef met --log de reden op, bijvoorbeeld --log "sessie gestopt".');
+  const { ticket } = await loadForWrite(id, by, { release: true });
+  const f = ticket.parsed.fields;
+  if (f.status !== 'in-uitvoering') throw new Fail(`${ticket.parsed.id} is niet in uitvoering (${f.status}); er is niets vrij te geven.`);
+  const fields = { status: 'klaar-voor-bouw', 'opgepakt-door': '', branch: '', pr: '' };
+  const message = `vrijgegeven: ${reason} (was in uitvoering door ${f['opgepakt-door']})`;
   const saved = await save(ticket, edit(ticket, fields, by, message));
   console.log(`${saved.id}: ${message}`);
   return 0;
@@ -537,6 +615,8 @@ async function main(argv) {
     case 'unblock':
     case 'pr':
       return cmdAnnotate(values, rest, command);
+    case 'release':
+      return cmdRelease(values, rest);
     default:
       throw new Fail(`Onbekende opdracht "${command}".\n\n${USAGE}`);
   }
@@ -545,7 +625,7 @@ async function main(argv) {
 try {
   process.exitCode = await main(process.argv.slice(2));
 } catch (e) {
-  if (e instanceof Fail || e?.code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION') {
+  if (e instanceof Fail || e?.code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || e?.code === 'NO_MAIN') {
     console.error(e.message);
   } else if (/not a git repository/i.test(String(e?.message))) {
     console.error('Deze map hoort niet bij een git-repository. Draai de opdracht vanuit de Jaarplanner-repo.');
