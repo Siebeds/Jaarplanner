@@ -203,8 +203,10 @@ zijn Engels, wat ze in het ticket schrijven is Nederlands.
 Elke wijziging via de CLI zet `bijgewerkt` en schrijft een werklogregel. Voor ze iets schrijft, kijkt ze of er elders
 een **nieuwere** versie van het ticket staat: een versie die alle werklogregels van deze checkout heeft, en meer. Een
 versie die afgesplitst is (elk heeft regels die de andere mist, zoals een teruggegeven ticket op een branch die nooit
-gemerged werd) telt niet mee zolang ze teruggegeven en niet geblokkeerd is; de CLI noemt ze dan alleen. Houdt ze het
-ticket nog vast of draagt ze een blokkering, dan telt ze wel. Een versie op `main` is nooit afgesplitst: loop je op
+gemerged werd) telt niet mee zolang ze echt teruggegeven is (`klaar-voor-bouw` of `nieuw`, niet geblokkeerd) of haar
+afgewerkte werk al op `main` staat; de CLI noemt ze dan alleen. Houdt ze het ticket nog vast, draagt ze een
+blokkering, of wacht haar afgewerkte werk nog op de merge, dan telt ze wel. Een versie die helemaal vervat zit in een
+andere zichtbare versie (een oude gepushte kopie van een branch die lokaal al verder is) telt niet mee. Een versie op `main` is nooit afgesplitst: loop je op
 `main` achter, dan haal je main eerst binnen, en zeker vóór je een ticket oppakt. Zegt een nieuwere versie iets
 anders over het ticket (een
 andere status, een andere houder, een blokkering), dan weigert de CLI en zegt ze wat het oplost:
@@ -214,7 +216,12 @@ andere status, een andere houder, een blokkering), dan weigert de CLI en zegt ze
 - de nieuwere versie staat op `main`: haal main binnen in je branch (`git merge main`);
 - ze staat op de remote van je eigen branch: `git pull`;
 - ze staat op een andere branch of worktree: daar wordt het ticket bewerkt; wacht op de merge, of vraag de eigenaar;
-- ze staat op een remote branch die op de server al verwijderd is: `git fetch --prune`.
+- ze staat op een remote branch die op de server al verwijderd is: `git fetch --prune`; is ze daar alleen verouderd
+  (het ticket werd lokaal teruggegeven of vrijgegeven), push die branch dan.
+
+Geeft `git merge main` een conflict in het ticketbestand, houd dan de frontmatter van je branch en alle
+werklogregels van beide kanten, in volgorde van tijd. Wie een ticket teruggeeft of vrijgeeft op een branch die al
+gepusht is, pusht dat ook.
 
 De CLI neemt zelf nooit een versie over; dat doet git, zodat een latere merge klopt. Een nieuwere versie met dezelfde
 status houdt niemand tegen, maar de CLI noemt ze en toont haar laatste werklogregel (bijvoorbeeld de notitie van een
@@ -227,6 +234,9 @@ Een ticket dat een sessie vasthoudt, wijzigt de eigenaar niet: hij vraagt de ses
 blokkeren of terug te geven (beslissing van de eigenaar, 2026-09-13). Is die sessie gestopt, dan geeft hij het vrij
 met `release`, in een checkout van haar branch (is de worktree al weg: `git worktree add <map> <branch>`), en commit
 dat. Daarna kan hij haar werk opruimen: `git worktree remove` voor een worktree (wat daar niet gecommit is, gaat
-verloren), anders `git branch -D`. Wie een ticket toch met de hand aanpast, schrijft er ook een
+verloren), anders `git branch -D`. `release` is de enige manier waarop een **geblokkeerd** ticket zijn houder
+verliest: de blokkering blijft op die branch staan en houdt het ticket tegen tot de eigenaar de vraag beantwoordt en
+het daar deblokkeert (`unblock`). Ruimt hij de branch op terwijl de vraag nog open is, dan zet hij de blokkering
+daarna op `main` (`block`), anders gaat ze verloren. Wie een ticket toch met de hand aanpast, schrijft er ook een
 werklogregel bij en werkt `bijgewerkt` bij: zonder werklogregel ziet de controle de wijziging niet, en zonder
 `bijgewerkt` kan een oudere versie het op het bord halen.

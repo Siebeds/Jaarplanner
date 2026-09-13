@@ -675,6 +675,87 @@ test('a pickup cannot name a branch other than its own checkout', () => {
   }
 });
 
+test('finished work waiting for its merge still claims the ticket against a re-pickup elsewhere', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    pickedUp(ctx);
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 's1', '--log', 'teruggegeven').status, 0);
+    r.commit('Give FB-001 back');
+    r.git('switch', '-q', 'main');
+    pickedUp(ctx, 'feature/b', 's2');
+    assert.equal(run('status', 'FB-001', 'te-testen', '--by', 's2').status, 0);
+    r.commit('FB-001 done by s2, PR open');
+
+    r.git('switch', '-q', 'feature/a');
+    const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's3');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /te-testen/);
+    assert.match(out.stderr, /wacht op de merge van die branch/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a pushed copy that a local give-back or release replaced no longer holds the ticket', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    addOrigin(r);
+    pickedUp(ctx);
+    r.git('push', '-q', 'origin', 'feature/a'); // pushed while held
+    assert.equal(run('release', 'FB-001', '--by', 'eigenaar', '--log', 'sessie gestopt').status, 0);
+    r.commit('Release FB-001'); // not pushed
+
+    r.git('switch', '-q', 'main');
+    r.git('switch', '-q', '-c', 'feature/b');
+    let out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 0, out.stderr);
+
+    // with the local branch gone, only the stale pushed copy is left, and the message names git push
+    r.git('checkout', '-q', '--', '.');
+    r.git('switch', '-q', 'main');
+    r.git('branch', '-D', 'feature/a', 'feature/b');
+    r.git('switch', '-q', '-c', 'feature/c');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's3');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /git push/);
+    assert.match(out.stderr, /git fetch --prune/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a blocked ticket released by the owner keeps its block until he answers it', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    pickedUp(ctx);
+    assert.equal(run('block', 'FB-001', '--by', 's1', 'welke', 'discipline?').status, 0);
+    r.commit('Block FB-001');
+    assert.equal(run('release', 'FB-001', '--by', 'eigenaar', '--log', 'sessie gestopt').status, 0);
+    r.commit('Release FB-001');
+
+    r.git('switch', '-q', 'main');
+    r.git('switch', '-q', '-c', 'feature/b');
+    let out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 1, 'the block on the released copy still counts');
+    assert.match(out.stderr, /geblokkeerd \(welke discipline\?\)/);
+
+    r.git('switch', '-q', 'feature/a');
+    assert.equal(run('unblock', 'FB-001', '--by', 'eigenaar', 'beantwoord').status, 0);
+    r.commit('Unblock FB-001');
+    r.git('switch', '-q', 'feature/b');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 0, out.stderr);
+  } finally {
+    r.cleanup();
+  }
+});
+
 test('a repository without a main branch gets a Dutch message, without a developer prefix', () => {
   const ctx = setup();
   try {

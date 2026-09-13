@@ -178,8 +178,10 @@ function relation(copy, mine) {
 // A copy that sits on main: main itself, a checkout of main, or the fetched main of a remote.
 const onMainLine = (s) => isMainSource(s) || (s.remote && /\/main$/.test(s.name));
 
-const MAIN_REMEDY = 'Haal main binnen in je branch (git merge main) en probeer opnieuw.';
-const ORIGIN_MAIN_REMEDY = 'Haal main eerst binnen (git pull op main) en daarna in je branch (git merge main).';
+const CONFLICT_HINT =
+  ' Geeft dat een conflict in het ticketbestand, houd dan de frontmatter van je branch en alle werklogregels van beide kanten, in volgorde van tijd.';
+const MAIN_REMEDY = `Haal main binnen in je branch (git merge main) en probeer opnieuw.${CONFLICT_HINT}`;
+const ORIGIN_MAIN_REMEDY = `Haal main eerst binnen (git pull op main) en daarna in je branch (git merge main).${CONFLICT_HINT}`;
 
 function remedyFor(conflict) {
   const s = conflict.source;
@@ -200,7 +202,11 @@ function remedyFor(conflict) {
   } else {
     remedy = 'Dat werk wacht op de merge van die branch; wijzig het ticket daarna.';
   }
-  if (s.remote) remedy += ` Bestaat ${s.name} niet meer op de server, ruim de verwijzing dan op met git fetch --prune.`;
+  if (s.remote) {
+    remedy +=
+      ` Is het ticket op die branch al teruggegeven of vrijgegeven maar nog niet gepusht, push die branch dan (git push).` +
+      ` Bestaat ${s.name} niet meer op de server, ruim de verwijzing op met git fetch --prune.`;
+  }
   return remedy;
 }
 
@@ -234,7 +240,26 @@ async function checkCurrent(root, ticket, by, { pickup = false, release = false 
     throw new Fail(`Het werk van ${id} staat al op main (${f.status}). Wijzig het ticket op main, niet meer op ${branch}.`);
   }
 
-  const others = copies.filter((c) => normalise(c.text) !== normalise(ticket.text));
+  // A copy that another visible copy fully contains is superseded: a branch pushed while the ticket was
+  // held and then given back or released locally leaves its old copy on origin/... (audit round 7). A
+  // copy on main keeps counting: main is where a pickup starts.
+  const keysOf = (p) => new Set(p.worklog.map(worklogKey));
+  const differing = copies.filter((c) => normalise(c.text) !== normalise(ticket.text)).map((c) => ({ c, keys: keysOf(c.parsed) }));
+  const pool = [...differing, { c: null, keys: keysOf(mine) }];
+  const superseded = (x) => pool.some((y) => y.c !== x.c && y.keys.size > x.keys.size && [...x.keys].every((k) => y.keys.has(k)));
+  const others = differing.filter((x) => onMainLine(x.c.source) || !superseded(x)).map((x) => x.c);
+
+  // Worklog lines that are on main, so a split-off copy's finished work can be recognised as merged.
+  const mainKeys = new Set(copies.filter((c) => onMainLine(c.source)).flatMap((c) => c.parsed.worklog.map(worklogKey)));
+  if (branch === 'main') for (const k of keysOf(mine)) mainKeys.add(k);
+  const handedBack = (g) => (g.status === 'klaar-voor-bouw' || g.status === 'nieuw') && !g.geblokkeerd;
+  const mergedFinal = (c) => {
+    const g = c.parsed.fields;
+    if (g.status !== 'te-testen' && g.status !== 'klaar') return false;
+    const line = [...c.parsed.worklog].reverse().find((w) => /→ (te-testen|klaar)(:|$)/.test(w.text));
+    return Boolean(line && mainKeys.has(worklogKey(line)));
+  };
+
   const kind = (c) => {
     const r = relation(c.parsed, mine);
     return r === 'diverged' && onMainLine(c.source) ? 'newer' : r;
@@ -266,10 +291,13 @@ async function checkCurrent(root, ticket, by, { pickup = false, release = false 
     );
   }
 
-  // A split-off copy still counts while it holds the ticket or carries a block this one lacks.
+  // A split-off copy stops counting only when it is really handed back (klaar-voor-bouw or nieuw, not
+  // blocked) or its finished work is already on main. Anything else (held, blocked, or finished and
+  // waiting for its merge) still claims the ticket (audit rounds 6 and 7).
   const holding = diverged.find((c) => {
     const g = c.parsed.fields;
-    return (g.status === 'in-uitvoering' && g['opgepakt-door'] !== by) || (g.geblokkeerd && !f.geblokkeerd);
+    if (handedBack(g) || mergedFinal(c)) return false;
+    return !(g.status === 'in-uitvoering' && g['opgepakt-door'] === by);
   });
   if (holding) {
     throw new Fail(`Op ${sourceLabel(holding.source)} staat een versie van ${id} die nog meetelt: ${describe(holding.parsed.fields)}. ${remedyFor(holding)}`);
@@ -289,7 +317,7 @@ async function checkCurrent(root, ticket, by, { pickup = false, release = false 
       `Let op: op ${sourceLabel(c.source)} staat een nieuwere versie van ${id} met dezelfde status. Laatste werklogregel daar: "${c.parsed.worklog.at(-1)?.text ?? ''}".`,
   );
   for (const c of diverged) {
-    if (stateKey(c.parsed.fields) === stateKey(f)) continue;
+    if (!handedBack(c.parsed.fields) || stateKey(c.parsed.fields) === stateKey(f)) continue;
     notices.push(
       `Let op: op ${sourceLabel(c.source)} staat een afgesplitste versie van ${id} (${describe(c.parsed.fields)}), teruggegeven en niet geblokkeerd. ` +
         'Ze telt niet mee; is die branch verlaten, dan kan de eigenaar ze opruimen.',
@@ -555,7 +583,9 @@ async function cmdAnnotate(values, positionals, kind) {
 }
 
 // The owner's way to free a ticket whose session stopped: back to klaar-voor-bouw, in a checkout of
-// the branch that holds it, with the reason and the former holder in the Werklog. A block stays.
+// the branch that holds it, with the reason and the former holder in the Werklog. It is the one way a
+// blocked ticket leaves its holder: the block stays on that copy, which keeps counting (a blocked copy
+// is never "handed back") until the owner answers the question and unblocks it there.
 async function cmdRelease(values, positionals) {
   const [id] = positionals;
   const by = requireBy(values);

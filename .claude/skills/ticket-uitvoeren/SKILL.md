@@ -18,8 +18,8 @@ Dutch; commits stay English.
 
 Change a ticket's frontmatter **only through the CLI** (`node tools/backlog-board/tickets.mjs …`). It sets `bijgewerkt`,
 which is how the board decides which version is newest, and it writes the Werklog line. Before every write it checks
-for a newer copy elsewhere (one that has every Werklog line yours has, and more; a copy that split off only
-counts while it holds the ticket or carries a block, and a copy on `main` always counts). If that copy says a different status, holder or block,
+for a newer copy elsewhere (one that has every Werklog line yours has, and more; a copy that split off stops
+counting only once it is really handed back or its finished work is on `main`, and a copy on `main` always counts). If that copy says a different status, holder or block,
 it refuses and names the git command that fixes it (`git merge main`, `git pull`, `git fetch --prune`, or wait for
 the merge). It never adopts another copy itself. Do not work around a refusal.
 
@@ -59,7 +59,8 @@ in that checkout; if it does not, your `main` is older than the ticket.
 ## 3. Move it to in-uitvoering, as the first commit
 
 Skip this step for a TB ticket you just created: it is already `in-uitvoering`. A pickup starts from `main`'s
-latest copy of the ticket: if `main` has moved on for it, the CLI refuses until you `git merge main`.
+latest copy of the ticket: if `main` has moved on for it, the CLI refuses until you `git merge main`. If that merge
+conflicts in the ticket file, keep your branch's frontmatter and every Werklog line from both sides, in time order.
 
 ```bash
 node tools/backlog-board/tickets.mjs status FB-012 in-uitvoering --by <sessie-id> --log "opgepakt"
@@ -104,7 +105,7 @@ fetched `origin/main`) has your final status, the CLI refuses any write on your 
 **Stopping without finishing?** Give it back so another session can take it:
 `status FB-012 klaar-voor-bouw --by <sessie-id> --log "teruggegeven: <waarom, en wat er al staat>"`, and commit. The
 next session sees your note when it picks the ticket up. A blocked ticket cannot be given back: keep it and tell the
-owner. A TB ticket lives on its branch until that branch is merged, so whoever takes it next continues on that same
+owner. If your branch was already pushed, push the give-back too, or the old pushed copy keeps holding the ticket. A TB ticket lives on its branch until that branch is merged, so whoever takes it next continues on that same
 branch; an FB ticket's next session starts from `main`, and your branch's copy then no longer counts.
 
 ## 7. Release

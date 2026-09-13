@@ -60,8 +60,11 @@ that the board has the **full flow** of columns including a test column.
    **Before every write it checks for a newer copy.** A copy is newer exactly when it has every Werklog line this
    checkout's copy has, and more: the Werklog only grows, so no clock and no text comparison is involved. A copy that
    has split off (each has lines the other lacks: a ticket given back on a branch that was never merged, a branch that
-   only logged a line, a commit left behind after a merge) is not newer: it is only named, unless it still holds the
-   ticket or carries a block this copy lacks, in which case it refuses the write as well. A copy on `main` (or the
+   only logged a line, a commit left behind after a merge) is not newer. It stops counting only when it is really
+   handed back (`klaar-voor-bouw` or `nieuw`, not blocked) or its finished work is already on `main`; while it holds
+   the ticket, carries a block, or holds finished work that still waits for its merge, it refuses the write as well.
+   A copy that another visible copy fully contains (an old pushed copy of a branch that went further locally) is
+   superseded and does not count. A copy on `main` (or the
    fetched `origin/main`) is never split off: a checkout behind main merges main in, and a pickup always starts from
    main's latest copy. If a newer copy says
    something different about the ticket (its status, who holds it, whether it is blocked), the CLI refuses and names
@@ -75,7 +78,9 @@ that the board has the **full flow** of columns including a test column.
    ticket is neither picked up nor given back: a block is how a ticket waits for an open decision (Art. XIV), and
    given back on an unmerged branch it would be invisible to the next session. A ticket in progress is changed only
    by the session that holds it: the owner asks that session rather than writing over it (owner ruling 2026-09-13),
-   and frees a ticket whose session stopped with `release`, which logs the reason and the former holder. And a
+   and frees a ticket whose session stopped with `release`, which logs the reason and the former holder. `release` is
+   the one way a blocked ticket leaves its holder: the block stays on that copy, which keeps counting until the owner
+   answers and unblocks it there. And a
    pickup is never written on `main`, and names the branch of its own checkout.
 
    *Why this design, after four that failed an audit each:* letting the newest `bijgewerkt` win let a stale copy undo
@@ -84,7 +89,8 @@ that the board has the **full flow** of columns including a test column.
    later git merges conflict, because git merges on history and not on text (round 4). Round 5 then found the
    fifth design counting a split-off copy as newer, which froze a ticket for every writer after a give-back; "newer"
    now means strictly ahead. Round 6 found the opposite edge: ignoring every split-off copy let two sessions hold one
-   ticket, so a split-off copy still counts while it holds the ticket or blocks it.
+   ticket, so a split-off copy still counts while it holds the ticket or blocks it. Round 7 tightened both sides of that line:
+   finished work waiting for its merge counts too, and an old pushed copy that a local give-back superseded does not.
 
    The check reads local branches, worktrees and remote-tracking branches as of the last fetch. A branch that exists
    only on another PC is invisible to it; decision 10 is why that does not arise today. A new number is the highest

@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-13
-bijgewerkt: 2026-09-13 18:36
+bijgewerkt: 2026-09-13 18:56
 opgepakt-door: ticket-backlog
 branch: feature/ticket-backlog
 pr:
@@ -66,3 +66,4 @@ nog als vervolg binnen een lopende epic, en de functioneel architect werkt in ee
 - 2026-09-13 17:25 · ticket-backlog · antagonist ronde 5: VIOLATIONS FOUND (1 MAJOR: een afgesplitste versie gold als nieuwer); nieuwer betekent nu strikt voor, houdercontrole terug, geen pickup op main, 67 tests groen
 - 2026-09-13 17:25 · ticket-backlog · aanvulling: antagonist ronde 4 (op 80cfd61) gaf VIOLATIONS FOUND (6 MAJOR: overnemen van tekst brak latere merges, plus twee keer te ruim gelezen beslissingen van de eigenaar); opgelost in e9e8832, deze regel ontbrak
 - 2026-09-13 18:36 · ticket-backlog · antagonist ronde 6: VIOLATIONS FOUND (1 MAJOR: een afgesplitste versie die het ticket vasthoudt werd genegeerd); die telt nu weer mee, een versie op main is nooit afgesplitst, nieuw commando release; eigenaar: hij wijzigt geen vastgehouden ticket maar vraagt de sessie; 76 tests groen
+- 2026-09-13 18:56 · ticket-backlog · antagonist ronde 7: VIOLATIONS FOUND (2 MAJOR: afgewerkt werk op een afgesplitste branch telde niet mee, een vervangen gepushte kopie hield het ticket vast); beide opgelost, conflictregel en release van een geblokkeerd ticket beschreven, 79 tests groen
