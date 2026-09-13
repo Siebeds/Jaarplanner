@@ -629,6 +629,15 @@
     "uurrooster": "In het uurrooster",
     "opUur": "{periode}, op {dagen}",
     "geenUur": "Deze hoek kreeg nog geen uur.",
+    "urenAanpassen": "Uren aanpassen",
+    "van": "Van",
+    "tot": "Tot",
+    "geldtVoor": "Geldt voor {dagen} van deze periode.",
+    "afwijkendEen": "1 dag heeft nu andere uren. Ook die krijgt deze uren.",
+    "afwijkendAantal": "{aantal} dagen hebben nu andere uren. Ook die krijgen deze uren.",
+    "dubbeleDag": "Op {dagen} staat deze hoek meer dan één keer. Sleep er eerst één naar een andere dag, tot geen dag de hoek meer dan één keer heeft. Dan kan je de uren aanpassen.",
+    "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
+    "urenMislukt": "De uren aanpassen is niet gelukt.",
     "eenSchooldag": "1 schooldag",
     "aantalSchooldagen": "{aantal} schooldagen",
     "verrijking": "Verrijking",
@@ -652,5 +661,21 @@
     "verwijderBezig": "Bezig met weghalen",
     "verwijderMislukt": "Weghalen is niet gelukt.",
     "sluiten": "Sluiten"
+  },
+  "aanmelding": {
+    "afmelden": "Afmelden",
+    "afmeldenAls": "Afmelden ({naam})",
+    "afmeldenMislukt": "Afmelden is niet gelukt. Probeer het opnieuw.",
+    "geenToegang": {
+      "titel": "Geen toegang met dit account",
+      "uitleg": "Je bent aangemeld bij Microsoft, maar met dit account kan je Jaarplanner niet gebruiken.",
+      "watNu": "Meld je aan met je schoolaccount. Lukt dat niet, vraag dan aan de directie om je toe te voegen.",
+      "opnieuw": "Opnieuw proberen",
+      "anderAccount": "Met een ander account aanmelden"
+    },
+    "mislukt": {
+      "titel": "Aanmelden is niet gelukt",
+      "uitleg": "Het aanmelden werd onderbroken of liep mis. Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan de directie."
+    }
   }
 }

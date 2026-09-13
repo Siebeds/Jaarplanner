@@ -963,7 +963,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
     /// <c>IPlanningsblokIndeling</c>. Only the two things a test must not do for real — call Azure and touch
     /// Postgres — are replaced.
     /// </summary>
-    public sealed class Factory : WebApplicationFactory<Program>
+    public sealed class Factory : JaarplannerApiFactory
     {
         private readonly string _dbNaam = $"e3_01_endpoints_{Guid.NewGuid():N}";
 
@@ -979,6 +979,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            base.ConfigureWebHost(builder);
             builder.UseEnvironment(Environments.Development);
 
             builder.ConfigureServices(services =>

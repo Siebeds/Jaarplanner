@@ -12,6 +12,7 @@ using Jaarplanner.Application.Planning.Hoeken;
 using Jaarplanner.Application.Planning.Weekplanning;
 using Jaarplanner.Application.Planning.Rooster;
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
@@ -23,11 +24,14 @@ using Jaarplanner.Infrastructure.Planning;
 using Jaarplanner.Infrastructure.PlanningBeheer;
 using Jaarplanner.Infrastructure.SchoolcontentBeheer;
 using Jaarplanner.Infrastructure.SchoolcontentImport;
+using Jaarplanner.Infrastructure.Toegang;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Jaarplanner.Infrastructure;
 
@@ -246,6 +250,27 @@ public static class DependencyInjection
         // "opgemaakt op" stamp rather than merely assert that one exists.
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IDekkingExport, ClosedXmlDekkingExport>();
+
+        // Who may log in (E6-01, ADR-0031 decision 3). The Api's sign-in hands Entra's claims to this service and it
+        // decides; nothing here knows about OpenID Connect.
+        services.AddScoped<IToegangService, ToegangService>();
+
+        // The keys that encrypt the session cookie live in this database (ADR-0031 decision 5), so a restart or a
+        // second instance keeps everyone signed in. The Api adds Key Vault protection of them in the cloud.
+        services.AddDataProtection()
+            .SetApplicationName("Jaarplanner")
+            .PersistKeysToDbContext<AppDbContext>();
+
+        // The first directie account, created while nobody exists yet (ADR-0031 decision 7). Registered only when the
+        // address is configured, so an environment that does not ask for it never writes a row at startup.
+        if (configuration[EersteDirectieBootstrap.ConfiguratieSleutel] is { } eersteDirectie
+            && !string.IsNullOrWhiteSpace(eersteDirectie))
+        {
+            services.AddHostedService(sp => new EersteDirectieBootstrap(
+                sp.GetRequiredService<IServiceScopeFactory>(),
+                eersteDirectie.Trim(),
+                sp.GetRequiredService<ILogger<EersteDirectieBootstrap>>()));
+        }
 
         // Demo data for the E3-06 review session, OPT-IN ONLY. The flag is checked HERE rather than only
         // inside the service, so an environment that does not ask for it never registers a hosted service

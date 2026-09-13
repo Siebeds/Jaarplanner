@@ -9,6 +9,51 @@
  */
 const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "";
 
+/**
+ * Sent on every request. The API refuses a state-changing request without it (ADR-0031 decision 5):
+ * a form on another site cannot set a header, so this is what tells the API that the request came
+ * from this app rather than from a page that borrowed the teacher's session cookie.
+ */
+export const CSRF_HEADER = "X-Jaarplanner-Csrf";
+
+/** The page a person lands on when Entra knows them and the app does not let them in. */
+export const GEEN_TOEGANG_PAD = "/geen-toegang";
+
+/** The page a sign-in lands on when it did not complete. */
+export const AANMELDEN_MISLUKT_PAD = "/aanmelden-mislukt";
+
+/** The pages a 401 must never navigate away from: each would loop through Microsoft's silent sign-in. */
+const ZONDER_OMLEIDING = new Set([GEEN_TOEGANG_PAD, AANMELDEN_MISLUKT_PAD]);
+
+let omleidingBezig = false;
+
+/**
+ * What a 401 does: send the whole browser to the sign-in, which returns it here afterwards.
+ *
+ * A full navigation and not a fetch, because the sign-in is a redirect to Microsoft and back that
+ * only a top-level page can follow. Once per page: several queries fail at the same moment on an
+ * expired session, and each would otherwise start its own navigation.
+ *
+ * *Never from the refusal page or the failed-sign-in page.* Someone whose account the app refused
+ * would otherwise be signed in again by Microsoft without a click, refused again, and sent back
+ * here, in a loop.
+ *
+ * An object with a method rather than a bare function so a test can replace it: jsdom cannot
+ * navigate.
+ */
+export const aanmeldOmleiding = {
+  stuurDoor(): void {
+    if (omleidingBezig || ZONDER_OMLEIDING.has(window.location.pathname)) return;
+    omleidingBezig = true;
+    const terug = `${window.location.pathname}${window.location.search}`;
+    aanmeldOmleiding.navigeer(`${BASE_URL}/api/aanmelden?terugNaar=${encodeURIComponent(terug)}`);
+  },
+  /** The navigation itself, apart so a test can replace it and still run the decision above. */
+  navigeer(adres: string): void {
+    window.location.assign(adres);
+  },
+};
+
 export class ApiError extends Error {
   readonly status: number;
   readonly detail?: string;
@@ -50,11 +95,17 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
+    // The session is a cookie the API set (ADR-0031). Same-origin is fetch's default already; it is
+    // written out because a cross-origin VITE_API_BASE_URL would silently drop it.
+    credentials: "same-origin",
     headers: {
       ...(isFormulier ? {} : { "Content-Type": "application/json" }),
+      [CSRF_HEADER]: "1",
       ...init?.headers,
     },
   });
+
+  if (response.status === 401) aanmeldOmleiding.stuurDoor();
 
   if (!response.ok) {
     const { detail, title } = await leesProbleem(response);

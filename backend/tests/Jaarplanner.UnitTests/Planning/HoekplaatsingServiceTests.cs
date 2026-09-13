@@ -362,6 +362,69 @@ public sealed class HoekplaatsingServiceTests
             () => Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, dinsdag.Datum, Einde, Begin));
     }
 
+    /* ------------------------------------------------------------------------------------------------
+       THE HOURS OF THE WHOLE RUN (owner, 2026-09-11: "ik wil op het detailscherm van de hoeken de
+       mogelijkheid om de uren aan te passen"). Every day gets them, the ones moved by hand included,
+       which is the owner's ruling of the same day.
+       ------------------------------------------------------------------------------------------------ */
+
+    [Fact]
+    public async Task Zet_de_uren_van_elke_dag_ook_van_een_dag_die_apart_verlengd_was()
+    {
+        var plaatsing = await EenWeekIngepland();
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
+        await Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, dinsdag.Datum, Begin, new TimeOnly(15, 0));
+
+        var na = await Service().ZetUrenAsync(plaatsing.Id, new TimeOnly(9, 0), new TimeOnly(10, 30));
+
+        Assert.Equal(4, na.Momenten.Count);
+        Assert.All(na.Momenten, m => Assert.Equal(new TimeOnly(9, 0), m.Begin));
+        Assert.All(na.Momenten, m => Assert.Equal(new TimeOnly(10, 30), m.Einde));
+
+        // Saved, not only answered: a fresh context reads the same.
+        var gelezen = await Service().HaalVoorBereikAsync(_klasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4));
+        Assert.All(Assert.Single(gelezen).Momenten, m => Assert.Equal(new TimeOnly(10, 30), m.Einde));
+    }
+
+    [Fact]
+    public async Task Weigert_nieuwe_uren_zolang_een_dag_de_hoek_twee_keer_heeft_en_laat_alles_staan()
+    {
+        var plaatsing = await EenWeekIngepland();
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
+        // Tuesday onto Wednesday morning, so Wednesday holds two appearances and Tuesday none.
+        await Service().VerplaatsMomentAsync(
+            plaatsing.Id, dinsdag.Id, new DateOnly(2026, 9, 2), new TimeOnly(9, 0), new TimeOnly(9, 50));
+
+        // A 400 naming the day (owner ruling 2026-09-11), not a quiet fold into one row.
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().ZetUrenAsync(plaatsing.Id, new TimeOnly(9, 0), new TimeOnly(10, 30)));
+        Assert.Contains("woensdag 2 september", fout.Message);
+
+        var gelezen = await Service().HaalVoorBereikAsync(_klasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4));
+        var momenten = Assert.Single(gelezen).Momenten;
+        Assert.Equal(4, momenten.Count);
+        Assert.Contains(momenten, m => m.Begin == new TimeOnly(9, 0) && m.Einde == new TimeOnly(9, 50));
+    }
+
+    [Fact]
+    public async Task Weigert_uren_die_eindigen_voor_ze_beginnen_en_verandert_niets()
+    {
+        var plaatsing = await EenWeekIngepland();
+
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().ZetUrenAsync(plaatsing.Id, Einde, Begin));
+
+        var gelezen = await Service().HaalVoorBereikAsync(_klasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4));
+        Assert.All(Assert.Single(gelezen).Momenten, m => Assert.Equal(Begin, m.Begin));
+    }
+
+    [Fact]
+    public async Task Uren_voor_een_plaatsing_die_niet_bestaat_geven_niet_gevonden()
+    {
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => Service().ZetUrenAsync(Guid.NewGuid(), Begin, Einde));
+    }
+
     [Fact]
     public async Task Een_moment_dat_niet_bestaat_geeft_niet_gevonden()
     {

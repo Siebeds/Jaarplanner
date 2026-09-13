@@ -504,7 +504,8 @@ function Blok({
 
   return (
     <div
-      className="absolute z-10 px-0.5"
+      // Above its neighbours while its edge is being pulled, so the end-time tag hanging below it is never covered.
+      className={cn("absolute px-0.5", rekEinde !== null ? "z-30" : "z-10")}
       style={{
         top: (blok.begin - rasterVan) * PX_PER_MINUUT,
         height: Math.max(einde - blok.begin, KORTSTE) * PX_PER_MINUUT,
@@ -514,7 +515,7 @@ function Blok({
     >
       <div
         className={cn(
-          "relative h-full overflow-hidden rounded-veld border",
+          "group/blok relative h-full overflow-hidden rounded-veld border",
           kleur ? KLEURVLAK[kleur] : blok.doel.soort === "hoek" ? "border-lijn bg-vlak" : "border-lijn bg-vlak-diep/50",
           blok.activiteit?.valtBuitenThemaperiode && "border-l-2 border-l-attentie",
           isDragging && "opacity-40",
@@ -565,8 +566,21 @@ function Blok({
             setRekEinde(null);
           }}
           naam={blok.naam}
+          actief={rekEinde !== null}
         />
       </div>
+
+      {/* The end it will get, while the edge is being pulled. A block under half an hour prints no time at all, so
+          without this the only way to aim a resize at 10:15 would be to count gridlines. Outside the clipped box so
+          it can hang over the edge it describes. */}
+      {rekEinde !== null ? (
+        <span
+          aria-hidden="true"
+          className="mono pointer-events-none absolute -bottom-2.5 right-1.5 rounded bg-inkt px-1 py-0.5 text-[0.625rem] font-medium text-inkt-op"
+        >
+          {toonTijd(rekEinde)}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -574,23 +588,33 @@ function Blok({
 /**
  * The bottom edge of a block, dragged to change when it ends.
  *
+ * **A grip shows where to pull** (owner, 2026-09-11: "ik wil dat dat iets duidelijk wordt, bv als je hovert over de
+ * onderkant van de blok dat je een tekentje ziet dat je er aan kan trekken"). Until then the edge was an invisible
+ * strip that only the cursor gave away, so it was found by accident or not at all. Two short ink lines centred on the
+ * edge, the mark a sheet handle uses for "pull here", in ink because the accent is rationed and none of its five uses
+ * is this. They appear when the pointer is anywhere on the block and darken on the edge itself; on a touchscreen,
+ * where no hover can reveal them, they stay faintly visible.
+ *
  * **Its own pointer handling rather than a second dnd-kit draggable.** dnd-kit moves a thing from one place to
  * another; this changes one number and never leaves the block. It also has to stop the press from reaching the
  * draggable underneath, which is what `stopPropagation` on `pointerdown` does: without it, grabbing the edge would
  * start a move instead.
  *
- * **Pointer capture, so the edge keeps following the finger** once it has left the six-pixel strip, which is what
- * happens immediately. Deliberately no keyboard role: a 6px edge is not a keyboard target, and the same change is a
- * pair of time fields in the activiteit sheet, where a keyboard user does it with real inputs.
+ * **Pointer capture, so the edge keeps following the finger** once it has left the strip, which is what happens
+ * immediately. Deliberately no keyboard role: an 8px edge is not a keyboard target. The same change is a pair of time
+ * fields in the activiteit sheet; for a hoek, the detail sheet sets the hours of the whole run rather than of one day.
  */
 function Rekgreep({
   onRek,
   onKlaar,
   naam,
+  actief,
 }: {
   onRek: (deltaPx: number) => void;
   onKlaar: () => void;
   naam: string;
+  /** Being pulled right now, so the grip stays drawn even where the pointer has left the block. */
+  actief: boolean;
 }) {
   const start = useRef<number | null>(null);
 
@@ -618,7 +642,18 @@ function Rekgreep({
         start.current = null;
         onKlaar();
       }}
-      className="absolute inset-x-0 bottom-0 z-10 h-1.5 cursor-ns-resize touch-none"
-    />
+      className="group/greep absolute inset-x-0 bottom-0 z-10 flex h-2 cursor-ns-resize touch-none items-end justify-center pb-0.5"
+    >
+      <span
+        className={cn(
+          "block h-[5px] w-4 border-y transition-opacity duration-150 motion-reduce:transition-none",
+          actief
+            ? "border-inkt opacity-100"
+            : // Full strength on a touchscreen, never a faded version: there the grip is the ONLY sign the edge moves,
+              // and inkt-zacht at 60% composited to about 2.6:1, under the 3:1 a control needs (SC 1.4.11).
+              "border-inkt-zacht opacity-0 group-hover/blok:opacity-100 group-hover/greep:border-inkt pointer-coarse:opacity-100",
+        )}
+      />
+    </span>
   );
 }

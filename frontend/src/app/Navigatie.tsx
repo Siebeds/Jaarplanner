@@ -2,6 +2,7 @@ import { useLayoutEffect } from "react";
 import { NavLink, useMatch } from "react-router-dom";
 import { BESTEMMINGEN, ONDERAAN, type Bestemming } from "./routes";
 import { Merk } from "./Merk";
+import { Aanmeldregel } from "./Aanmeldregel";
 import { IcoonHoek } from "../components/Iconen";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { useZijkolom } from "./zijkolom";
@@ -135,6 +136,14 @@ export function Navigatie() {
             className={index === 0 ? "lg:mt-auto lg:border-t lg:border-lijn lg:pt-2" : undefined}
           />
         ))}
+
+        {/* Who is signed in, and signing out (E6-01): below everything a teacher does all year, from
+            `lg` only. The phone keeps its five tabs and finds the same row at the foot of
+            Instellingen, so each viewport has one way out, never two. The rule belongs to the row
+            rather than to this item, so it only appears once there is a name to put under it. */}
+        <li className="hidden lg:block">
+          <Aanmeldregel smal={smal} className="lg:mt-2 lg:border-t lg:border-lijn lg:pt-2" />
+        </li>
       </ul>
     </nav>
   );

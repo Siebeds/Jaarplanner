@@ -250,7 +250,7 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
     /// and seeds a klas + leerplandoel codes the CRUD flow references. One shared in-memory database name
     /// per factory instance keeps all requests on the same store.
     /// </summary>
-    public sealed class Factory : WebApplicationFactory<Program>
+    public sealed class Factory : JaarplannerApiFactory
     {
         private readonly string _dbNaam = $"e1_10_endpoints_{Guid.NewGuid():N}";
         private readonly Lock _seedLock = new();
@@ -260,6 +260,7 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            base.ConfigureWebHost(builder);
             builder.UseEnvironment(Environments.Development);
 
             builder.ConfigureServices(services =>
