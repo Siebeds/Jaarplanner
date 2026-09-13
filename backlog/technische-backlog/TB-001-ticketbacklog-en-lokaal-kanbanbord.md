@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-13
-bijgewerkt: 2026-09-13 14:41
+bijgewerkt: 2026-09-13 15:39
 opgepakt-door: ticket-backlog
 branch: feature/ticket-backlog
 pr:
@@ -47,9 +47,9 @@ statuswijziging na een merge op GitHub.
 
 ## Open vragen
 
-De taal: de eigenaar besliste dat tickets Nederlands zijn, maar Art. II.6 van de grondwet zegt dat de backlog Engels
-blijft. Dat vraagt een amendement dat alleen de eigenaar kan ratificeren (antagonist, ronde 1). Tot dan is dit ticket
-niet af.
+Geen meer. De taalvraag (Art. II.6 hield de backlog Engels) is op 2026-09-13 door de eigenaar beslist met een
+amendement: tickets zijn Nederlands, de CLI-opdrachten blijven Engels. Ook beslist die dag: een nieuwe story mag alleen
+nog als vervolg binnen een lopende epic, en de functioneel architect werkt in een eigen clone.
 
 ## Werklog
 
@@ -57,3 +57,4 @@ niet af.
 - 2026-09-13 14:15 · ticket-backlog · formaat, CLI, bord, skills en ADR-0033 gebouwd; 43 tests groen
 - 2026-09-13 14:21 · ticket-backlog · browserpass op 1440 en 390 px, licht en donker: vier gebreken gevonden en opgelost (kolommen, criteria, bewaarde zoekterm, contrast van de randen)
 - 2026-09-13 14:41 · ticket-backlog · antagonist ronde 1: VIOLATIONS FOUND (5 MAJOR, 6 MINOR); code en documenten aangepast, 48 tests groen; het Art. II.6-amendement wacht op de eigenaar
+- 2026-09-13 15:39 · ticket-backlog · eigenaar: Art. II.6-amendement geratificeerd, vervolgstories alleen binnen een lopende epic, functioneel architect in een eigen clone
