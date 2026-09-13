@@ -288,7 +288,7 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
     /// and one already carrying a <c>voorgesteld</c> suggestion, for the review tests.
     /// </para>
     /// </summary>
-    public sealed class Factory : WebApplicationFactory<Program>
+    public sealed class Factory : JaarplannerApiFactory
     {
         private const string LeerdoelCode = "NAT-K3-01";
         private readonly string _dbNaam = $"e2_05_endpoints_{Guid.NewGuid():N}";
@@ -298,6 +298,7 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            base.ConfigureWebHost(builder);
             builder.UseEnvironment(Environments.Development);
 
             builder.ConfigureServices(services =>

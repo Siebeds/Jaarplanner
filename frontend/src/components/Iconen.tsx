@@ -183,6 +183,16 @@ export function IcoonKruis(props: IconProps) {
   );
 }
 
+/** Afmelden: a door frame, and an arrow leaving through it. */
+export function IcoonAfmelden(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M13.75 4.75h3.5a2 2 0 0 1 2 2v10.5a2 2 0 0 1-2 2h-3.5" />
+      <path d="M14.25 12H4.25M7.75 8.25 4 12l3.75 3.75" />
+    </Icoon>
+  );
+}
+
 export function IcoonPijlRechts(props: IconProps) {
   return (
     <Icoon {...props}>

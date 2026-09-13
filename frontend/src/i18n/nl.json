@@ -661,5 +661,21 @@
     "verwijderBezig": "Bezig met weghalen",
     "verwijderMislukt": "Weghalen is niet gelukt.",
     "sluiten": "Sluiten"
+  },
+  "aanmelding": {
+    "afmelden": "Afmelden",
+    "afmeldenAls": "Afmelden ({naam})",
+    "afmeldenMislukt": "Afmelden is niet gelukt. Probeer het opnieuw.",
+    "geenToegang": {
+      "titel": "Geen toegang met dit account",
+      "uitleg": "Je bent aangemeld bij Microsoft, maar met dit account kan je Jaarplanner niet gebruiken.",
+      "watNu": "Meld je aan met je schoolaccount. Lukt dat niet, vraag dan aan de directie om je toe te voegen.",
+      "opnieuw": "Opnieuw proberen",
+      "anderAccount": "Met een ander account aanmelden"
+    },
+    "mislukt": {
+      "titel": "Aanmelden is niet gelukt",
+      "uitleg": "Het aanmelden werd onderbroken of liep mis. Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan de directie."
+    }
   }
 }

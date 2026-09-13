@@ -704,6 +704,60 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("themadoelen", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Toegang.Gebruiker", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<Guid?>("EntraObjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EntraTenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDirectie")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Naam")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("EntraTenantId", "EntraObjectId")
+                        .IsUnique();
+
+                    b.ToTable("gebruikers", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FriendlyName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Xml")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("data_protection_keys", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Curriculum.Discipline", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Curriculum.Discipline", null)

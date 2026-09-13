@@ -1,6 +1,8 @@
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
+using Jaarplanner.Domain.Toegang;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -23,7 +25,7 @@ namespace Jaarplanner.Infrastructure.Persistence;
 /// rows; nothing updates official content.
 /// </para>
 /// </summary>
-public class AppDbContext : DbContext
+public class AppDbContext : DbContext, IDataProtectionKeyContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -143,6 +145,18 @@ public class AppDbContext : DbContext
 
     /// <summary>Where each planned fiche appears in the timetable, one row per day it happens on.</summary>
     public DbSet<AlgemeneFichemoment> AlgemeneFichemomenten => Set<AlgemeneFichemoment>();
+
+    /// <summary>
+    /// The staff who may log in (E6-01, ADR-0030 R2): invited by directie, bound to an Entra account on first login.
+    /// Staff data only (Art. VI.2), with its register entry owed by E7-06.
+    /// </summary>
+    public DbSet<Gebruiker> Gebruikers => Set<Gebruiker>();
+
+    /// <summary>
+    /// The ASP.NET Core Data Protection keys that encrypt the session cookie (ADR-0031 decision 5). Kept here so a
+    /// restart or a second instance does not log everyone out. Framework-owned rows; nothing in the app reads them.
+    /// </summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
