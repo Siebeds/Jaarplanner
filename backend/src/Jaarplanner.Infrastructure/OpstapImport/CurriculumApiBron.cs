@@ -1,6 +1,7 @@
 using System.Globalization;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Domain.Curriculum;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Jaarplanner.Infrastructure.OpstapImport;
@@ -44,15 +45,18 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
 
     private readonly HttpClient _http;
     private readonly OpstapApiOptions _opties;
+    private readonly ILogger<CurriculumApiBron> _logger;
 
     /// <summary>The DI constructor.</summary>
-    public CurriculumApiBron(HttpClient http, IOptions<OpstapApiOptions> opties)
+    public CurriculumApiBron(HttpClient http, IOptions<OpstapApiOptions> opties, ILogger<CurriculumApiBron> logger)
     {
         ArgumentNullException.ThrowIfNull(http);
         ArgumentNullException.ThrowIfNull(opties);
+        ArgumentNullException.ThrowIfNull(logger);
 
         _http = http;
         _opties = opties.Value;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -88,7 +92,7 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
             DateTimeOffset.TryParse(snapshot.Timestamp, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var tijdstip)
                 ? tijdstip
                 : null,
-            Wijzigingslog(snapshot.Changelog),
+            Wijzigingslog(gevraagd, snapshot.Changelog),
             Verwerk(gevraagd, items, minimumdoelPerHref));
     }
 
@@ -259,11 +263,30 @@ public sealed class CurriculumApiBron : ILeerplandoelBron
                 : null;
     }
 
-    /// <summary>KOV's changelog for the version as plain text, or null when there is none or it cannot be kept faithfully.</summary>
-    private static string? Wijzigingslog(string? html) =>
-        string.IsNullOrWhiteSpace(html) || OpstapHtml.OnvertaalbareOpmaak(html).Count > 0
-            ? null
-            : OpstapHtml.NaarTekst(html);
+    /// <summary>
+    /// KOV's changelog for the version as plain text, or null when there is none or it cannot be kept faithfully. The
+    /// report cannot tell those two nulls apart, so the second is logged as an English operator warning (E1-21,
+    /// antagonist round 1 MINOR 3); the changelog is not curriculum data, so it does not refuse the read.
+    /// </summary>
+    private string? Wijzigingslog(string versie, string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return null;
+        }
+
+        var onvertaalbaar = OpstapHtml.OnvertaalbareOpmaak(html);
+        if (onvertaalbaar.Count > 0)
+        {
+            _logger.LogWarning(
+                "KOV's changelog for snapshot {Versie} carries markup the conversion cannot keep ({Opmaak}); the report omits it.",
+                versie,
+                string.Join(", ", onvertaalbaar));
+            return null;
+        }
+
+        return OpstapHtml.NaarTekst(html);
+    }
 
     private sealed class Verzameling(string nummer, string naam)
     {

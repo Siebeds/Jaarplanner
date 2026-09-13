@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Infrastructure.OpstapImport;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Jaarplanner.UnitTests.Curriculum;
@@ -25,6 +26,7 @@ public sealed class CurriculumApiBronTests
     private string _onderwijsdoelen =
         """{"$$meta":{"count":1},"results":[{"href":"/agodi/onderwijsdoelen/opstap/93408","$$expanded":{"key":93408,"code":"2.1.7","uniqueCode":"4-2.1.7","title":"<p>x</p>"}}]}""";
     private HttpStatusCode _snapshotStatus = HttpStatusCode.OK;
+    private readonly OpvangLogger _logger = new();
 
     private CurriculumApiBron Bron()
     {
@@ -41,7 +43,7 @@ public sealed class CurriculumApiBronTests
         }));
 
         // Deliberately without a trailing slash: the source must not drop the "api" segment.
-        return new CurriculumApiBron(http, Options.Create(new OpstapApiOptions { BasisUrl = new Uri("https://voorbeeld.test/api") }));
+        return new CurriculumApiBron(http, Options.Create(new OpstapApiOptions { BasisUrl = new Uri("https://voorbeeld.test/api") }), _logger);
     }
 
     [Fact]
@@ -99,6 +101,37 @@ public sealed class CurriculumApiBronTests
 
         Assert.Equal("TOEGEVOEGD\n- 2.1.GL2.1 - nieuw doel", resultaat.Wijzigingslog);
         Assert.Equal(new DateTimeOffset(2026, 8, 27, 10, 3, 7, TimeSpan.Zero), resultaat.SnapshotTijdstip!.Value.AddTicks(-resultaat.SnapshotTijdstip.Value.Ticks % TimeSpan.TicksPerSecond));
+    }
+
+    /// <summary>
+    /// A changelog the conversion cannot keep is left out rather than guessed at, and because the report cannot say which
+    /// of its two nulls it is, the refusal goes to the operator log (antagonist round 1, MINOR 3). The read goes on: the
+    /// changelog is KOV's note, not curriculum data.
+    /// </summary>
+    [Fact]
+    public async Task Een_wijzigingslog_dat_niet_trouw_om_te_zetten_is_valt_weg_en_wordt_gelogd()
+    {
+        _snapshot.Changelog = "<p>H<sub>2</sub>O</p>";
+
+        var resultaat = await Bron().HaalOpAsync("1.2");
+
+        Assert.Null(resultaat.Wijzigingslog);
+        Assert.Equal(2, resultaat.Disciplines[0].Leerplandoelen.Count);
+        var melding = Assert.Single(_logger.Meldingen);
+        Assert.Equal(LogLevel.Warning, melding.Niveau);
+        Assert.Contains("snapshot 1.2", melding.Tekst, StringComparison.Ordinal);
+        Assert.Contains("<sub>", melding.Tekst, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Zonder_wijzigingslog_is_er_niets_te_melden()
+    {
+        _snapshot.Changelog = null;
+
+        var resultaat = await Bron().HaalOpAsync("1.2");
+
+        Assert.Null(resultaat.Wijzigingslog);
+        Assert.Empty(_logger.Meldingen);
     }
 
     [Fact]
@@ -272,6 +305,9 @@ public sealed class CurriculumApiBronTests
 
         public string Versie { get; set; } = "1.2";
 
+        public string? Changelog { get; set; } =
+            "<p class=\"snapshot-change-section\"><strong>TOEGEVOEGD</strong></p><ul><li>2.1.GL2.1 - nieuw doel</li></ul>";
+
         public List<Dictionary<string, object?>> Items { get; } = [];
 
         public Dictionary<string, object?> Doel(string code) =>
@@ -285,7 +321,7 @@ public sealed class CurriculumApiBronTests
             {
                 ["version"] = Versie,
                 ["timestamp"] = "2026-08-27T10:03:07.098307+00:00",
-                ["changelog"] = "<p class=\"snapshot-change-section\"><strong>TOEGEVOEGD</strong></p><ul><li>2.1.GL2.1 - nieuw doel</li></ul>",
+                ["changelog"] = Changelog,
                 ["snapshotKey"] = "ffe87311-61c8-410e-8b58-97a5501d6696",
                 ["items"] = Items,
             });
@@ -321,6 +357,25 @@ public sealed class CurriculumApiBronTests
             Items.Add(item);
             return item;
         }
+    }
+
+    /// <summary>Records what the source logs, so a test can read the operator warning.</summary>
+    private sealed class OpvangLogger : ILogger<CurriculumApiBron>
+    {
+        public List<(LogLevel Niveau, string Tekst)> Meldingen { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            Meldingen.Add((logLevel, formatter(state, exception)));
     }
 
     private sealed class NepHandler(Func<HttpRequestMessage, HttpResponseMessage> antwoord) : HttpMessageHandler

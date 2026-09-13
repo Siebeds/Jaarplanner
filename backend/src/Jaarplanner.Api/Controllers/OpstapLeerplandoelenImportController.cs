@@ -15,7 +15,9 @@ namespace Jaarplanner.Api.Controllers;
 /// <b>The version is the only thing a caller chooses.</b> The preview takes an optional <c>versie</c> and, without one,
 /// reads the newest numbered snapshot and names it in its answer. The apply <b>requires</b> it, so it commits exactly the
 /// snapshot the reviewer saw even if KOV publishes a newer one in between (ADR-0032 decision 6). A version is digits and
-/// dots only; the host stays fixed by configuration (<c>Opstap:Api</c>), as for the minimumdoelen.
+/// dots only. The host is fixed by configuration (<c>Opstap:Api</c>), as for the minimumdoelen, and neither typed client
+/// follows a redirect (<see cref="Jaarplanner.Infrastructure.OpstapImport.OpstapApiRegistratie"/>), so a response cannot
+/// move the read to another host either. The body is streamed and not size-capped.
 /// </para>
 /// <para>
 /// <b>Errors.</b> A source that cannot be read answers <b>502</b> with the Dutch sentence of <see cref="OpstapBronFout"/>

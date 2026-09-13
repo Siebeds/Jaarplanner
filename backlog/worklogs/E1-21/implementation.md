@@ -7,8 +7,9 @@
   imported for now), recorded in [ADR-0032](../../../docs/adr/0032-opstap-api-als-importbron.md) and `CONSTITUTION.md` Art. VII.2.
 - **FR / Article:** FR-2.1–2.5; Art. III.1, III.3, III.4, III.5; Art. V.2, V.6; Art. VII.2; Art. VIII; ADR-0032 decisions 5–7;
   ADR-0022 (one endpoint per import source, `Curriculumbeheer`).
-- **Status:** built; unit, PostgreSQL and live gates run (below). **The done-when's last clause is not met and cannot be by
-  this story** (see "Not done"). Checkbox left to the orchestrator.
+- **Status:** built, gated once (round 1: test-runner FAIL on the coverage clause only, antagonist 2 MAJOR / 4 MINOR /
+  3 QUESTION), fix round 1 done (below). The coverage clause moved to E5-04 by owner ruling R1. Checkbox left to the
+  orchestrator.
 
 ## What was built
 
@@ -123,7 +124,7 @@ where it is (2 goals).
 
 1. **Absent is not gone** (`OpstapImportService`). The story did not name it, and it would have been a MAJOR: the Excel
    files hold every goal set, so a G-only import would have flagged every stored P, S, + and A goal *niet meer in Op.stap*
-   (66 in Wiskunde alone) while KOV lists them. Stored codes the source names under a skipped set are `BuitenBereik`
+   (63 in Wiskunde alone: + 17, P 38, S 8; this read 66 until the test-runner's round-1 count) while KOV lists them. Stored codes the source names under a skipped set are `BuitenBereik`
    (untouched, not a review item); stored codes whose G goal the mapping refused are `NietIngelezen` (untouched, review
    item, Dutch notice), as E1-12 does for minimumdoelen. The Excel route benefits too: a malformed row whose code is
    stored is no longer flagged.
@@ -165,7 +166,10 @@ where it is (2 goals).
   `OnderwijsdoelenLiveContractTests` **1/1** (unit); `OpstapApiLiveImportTests` **1/1** (integration, 19 s). That last test
   runs through the application with nothing faked:
   - 998 minimumdoelen and 5,835 G goals land, 4,983 of the goals concorded to 992 minimumdoelen, and no goal lacks its key;
-  - two applies of 1.2 are recorded, and the second leaves every discipline's diff empty;
+  - two applies of 1.2 are recorded, and the second leaves every discipline's diff empty. *That holds on this test's
+    database, which has no Excel history (qualified after the test-runner's round 1): where the Excel route loaded
+    goals KOV no longer has, such as Wiskunde's three, every repeat apply keeps reporting those as gone, behaviour that
+    predates this story;*
   - exactly the six minimumdoelen of ADR-0032 decision 5 have no G goal.
 
   This also records the request through the registered source that E1-12's status note named as owed before its `[x]`.
@@ -178,14 +182,52 @@ where it is (2 goals).
   the tree, and all the counts above were taken after that fix.
 - Not run: the antagonist audit and an independent test-runner pass. Both belong to the orchestrator.
 
+## Owner rulings, 2026-09-13 (after the round-1 gates)
+
+- **R1.** E1-21, E1-12, E1-03 and E1-04 close on the **input**: G goals concorded to the loaded minimumdoelen, proven on
+  PostgreSQL. The clause "minimumdoel-level coverage returns real results" moves to **E5-04**, which owns the
+  computation. The orchestrator flips the checkboxes at land time; the texts were rewritten in fix round 1.
+- **R2.** App-authored bracketed markers inside reference text (`[afbeelding: …]`, `[lege tabel …]`) are acceptable. This
+  decides E1-22's point (c).
+
+## Fix round 1 (2026-09-13, after round 1: test-runner FAIL on the coverage clause only; antagonist 2 MAJOR, 4 MINOR, 3 QUESTION)
+
+| # | Finding | Resolution | Test |
+| --- | --- | --- | --- |
+| MAJOR 1 | An Excel re-import after an API import flags ≈4,700 goals and clears ≈858 concordances | Option (b): `OpstapImportService` refuses a `Herkomst.Bestand` import once an `Opstapversie` exists, before anything else, on preview and apply, with `OpstapImportFout.ExcelNaOpstapApi` → 409, new type `urn:jaarplanner:opstap-import:excel-na-opstap-api`. The Dutch detail says only what that branch guarantees (the doelen come from Op.stap now, the file was not read, nothing changed); it deliberately does not say the file would overwrite goals, which a discipline selection can make false. ADR-0032 decision 8 amended with a dated note. The Excel screen renders the detail, so no UI change; recorded in E1-22. | `Na_een_api_import_weigert_de_excelroute_en_wijzigt_niets` (PostgreSQL: API import, then the Excel preview and apply both 409, rows and concordance unchanged); `Een_excelbestand_na_een_api_import_wordt_geweigerd` (×2), `Na_een_api_import_blijft_de_api_zelf_importeren`, `Excel_na_een_api_import_zegt_alleen_wat_waar_is`, and `Elke_weigeringssoort_heeft_een_eigen_type_uri` covers the new kind |
+| MAJOR 2 | A table of images becomes `[lege tabel …]`; an empty-text link is lost; a nested `ol` flattens | `IsLeeg` counts an `img` or `a` as content: a multi-cell table of images is now refused (block content), a link cell keeps its address, a one-cell table still unwraps. An `ol` inside an `ol` is refused. Both doc comments (`OpstapHtml` bullets, `OpstapBeschrijving` "what the split drops") now claim only this. Re-run over snapshot 1.2: still 0 refused. | `Een_tabel_van_afbeeldingen_is_niet_leeg_en_wordt_geweigerd`, `Een_cel_met_alleen_een_link_zonder_tekst_houdt_het_adres`, `Een_geneste_geordende_lijst_wordt_geweigerd` |
+| MINOR 1 | Cyclic closure chain; status lines over-claim after merge | Applied R1: E1-03, E1-04, E1-12, E1-21 texts re-scoped, E1-12's owed live request marked done, E5-04 and its three "blocked on E1-12" lines unblocked with the carry-forward (the six, the MD filter). `CLAUDE.md` and `backlog/README.md` are held by another session and left to the orchestrator. | text |
+| MINOR 2 | Redirects followed; body uncapped | Both typed clients get a `SocketsHttpHandler { AllowAutoRedirect = false }` through `ConfigurePrimaryHttpMessageHandler`, so a 3xx is a non-success status and refuses the read. No size cap: the body is streamed from the one configured host, and the controller doc now says so. | `Geen_van_beide_bronnen_volgt_een_doorverwijzing` (×2, on the handler the real registration builds) |
+| MINOR 3 | A null `wijzigingslog` has two meanings; the refusal is not logged | `CurriculumApiBron` takes an `ILogger` and logs an English warning naming the version and the markup; the contract states that a null renders without a reason. | `Een_wijzigingslog_dat_niet_trouw_om_te_zetten_is_valt_weg_en_wordt_gelogd`, `Zonder_wijzigingslog_is_er_niets_te_melden` |
+| MINOR 4 | `BuitenBereik` silences a stored G goal KOV moved into a skipped set | New bucket `GemeenschappelijkBuitenBereik` (review item, not in `IsLeeg`), with a Dutch notice limited to what the branch knows: stored as gemeenschappelijk, listed by the source under a doelsoort that is not read, left as it was. | `Een_opgeslagen_G_doel_in_een_overgeslagen_doelset_vraagt_nazicht`, `De_melding_over_G_doelen_buiten_het_bereik_is_verbogen` |
+| QUESTION 1 | "Mogelijke aanpak…" / "Verdere referenties": toelichting or voorbeelden? | The toelichting reading stays the default and is question 12 in `docs/besluiten-gevraagd.md` (36 goals; in 6 KOV's own Excel had it under voorbeelden). The same edit corrected two sentences there the API import made stale (question 1's "moet nog gebouwd worden", question 3's "één bestand per vak"). | text |
+| QUESTION 2 | App-authored Dutch in reference text | Decided by R2: acceptable. | — |
+| QUESTION 3 | Will E1-22 show the English `problemen`? | Contract and E1-22 entry: a count plus the Dutch `nietIngelezen` consequence only. | text |
+| Test-runner | Wiskunde non-G count 66 → 63 (+ 17, P 38, S 8); "the second apply leaves every diff empty" | Both corrected in this worklog (the second qualified: only without Excel history). | text |
+
+### Verification after fix round 1
+
+*(PostgreSQL 17.5 in a throwaway container on port 55434.)*
+
+- `dotnet format Jaarplanner.sln --verify-no-changes`: **exit 0**, after one `dotnet format` pass that re-wrapped lines in
+  `OpstapHtml.cs`, `OpstapImportService.cs` and the endpoint test.
+- `dotnet build Jaarplanner.sln -c Release`: **0 warnings, 0 errors**.
+- `dotnet test Jaarplanner.sln --no-build -c Release` with `JAARPLANNER_TEST_POSTGRES`, live switch off, as CI runs it, on
+  the formatted tree: **unit 1,103 passed, 4 skipped** (the live contract tests); **integration 337 passed, 1 skipped**
+  (the live KOV → PostgreSQL test); **0 failed**. An identical run before the whitespace-only format pass gave the same
+  counts.
+- Live, `JAARPLANNER_LIVE_OPSTAP=1`, run once before the whitespace-only format pass: unit **4/4**, integration **1/1**
+  (23 s). `Snapshot_1_2_komt_via_de_echte_registratie_zonder_problemen_binnen` asserts no problem over all 5,835 G goals,
+  so the stricter MAJOR 2 guard still refuses nothing in snapshot 1.2.
+- Byte check: no U+0001, U+0002 or U+00A0 in any `.cs` file of the tree.
+- Not re-run: the antagonist and the test-runner. Both are the orchestrator's.
+
 ## Not done, and why
 
-1. **Minimumdoel-level coverage is not computed**, so the done-when's last clause ("minimumdoel-level coverage returns
-   real results") is not met. That computation is **E5-04** ("a minimumdoel shows covered iff ≥1 concorded leerplandoel is
-   covered"), unbuilt, and out of this story's scope. What E1-21 makes true, and proves on PostgreSQL: a G goal a class
-   covers carries a ref to a loaded minimumdoel (`GET /api/klassen/{id}/dekking` → `minimumdoelRef`), and the minimumdoelen
-   register, which lists only minimumdoelen with a concorded goal, lists it. **Decision for the orchestrator/owner:**
-   whether E1-12, E1-03 and E1-04 close on that, or wait for E5-04.
+1. **Minimumdoel-level coverage is not computed**; by owner ruling R1 that clause now belongs to **E5-04** ("a minimumdoel
+   shows covered iff ≥1 concorded leerplandoel is covered"). What E1-21 makes true, and proves on PostgreSQL: a G goal a
+   class covers carries a ref to a loaded minimumdoel (`GET /api/klassen/{id}/dekking` → `minimumdoelRef`), and the
+   minimumdoelen register, which lists only minimumdoelen with a concorded goal, lists it.
 2. **The frontend** (E1-22): nothing reads the new endpoint yet; `frontend/src/features/import/types.ts` does not know the
    three new diff buckets (they are additive, so the Excel screen keeps working; it shows the new Dutch notices through
    `opmerkingen`).
@@ -201,9 +243,11 @@ where it is (2 goals).
 
 - No Art. XIV decision was assumed. "Disciplines first" still goes through `IDisciplineSelectie` untouched.
 - **App-authored Dutch in reference text, second instance:** `[lege tabel van 4 rijen en 5 kolommen]` joins E1-12's
-  `[afbeelding: …]` (E1-22 decide-and-record (c)); one goal carries it.
+  `[afbeelding: …]` (E1-22 decide-and-record (c)); one goal carries it. *Decided by owner ruling R2 (2026-09-13):
+  acceptable.*
 - **Implementer's reading, not ruled:** that `Mogelijke aanpak/indeling/onderzoekscontexten` and `Verdere referenties`
-  belong in toelichting rather than voorbeelden.
+  belong in toelichting rather than voorbeelden. *Kept as the default and put to directie as question 12 in
+  `docs/besluiten-gevraagd.md` (fix round 1).*
 - The skipped goal sets are counted, not named per goal, in the report (1,645 codes); the codes travel only as
   `buitenBereik` for stored rows.
 
@@ -260,6 +304,7 @@ Body **required**: `{ "versie": "<the versie the preview returned>" }`. Writes, 
         "verdwenenMaarGekoppeld": [ { "code": "…", "aantalKoppelingen": 2 } ],
         "nietIngelezen": [ … ],                   // stored, still in Op.stap, refused this time: untouched (review)
         "buitenBereik": [ … ],                    // stored, in a skipped goal set (P/S/+/A…): untouched (no review)
+        "gemeenschappelijkBuitenBereik": [ … ],   // stored here as G, in a skipped goal set at KOV: untouched (review; fix round 1)
         "hernummerd": [ { "oudeCode": "…", "nieuweCode": "…", "aantalKoppelingen": 0 } ],
         "overgeslagen": false,                    // true: outside the selection, unknown discipline, or nothing usable
         "opmerkingen": [ "…" ],                   // Dutch, for directie; render as given
@@ -275,8 +320,12 @@ Body **required**: `{ "versie": "<the versie the preview returned>" }`. Writes, 
 Notes for the screen:
 - **Skipped goal sets** appear twice: per discipline and summed over the snapshot, as `{ doelset, aantal }`. Only G is
   imported (owner ruling); `buitenBereik` lists the stored codes this touches, and they are not a review item.
-- **Source problems** are English operator diagnostics, per discipline and summed; they are not directie copy. The Dutch
-  consequence is the `nietIngelezen` notice in `opmerkingen` (only when such a code is stored).
+- **Source problems** (`problemen[].reden`) are English and **operator-only**, per discipline and summed. The screen shows
+  their **count**, and the Dutch consequence is the `nietIngelezen` notice in `opmerkingen` (only when such a code is
+  stored); it never renders the English reason to directie (antagonist round 1, QUESTION 3).
+- **A null `wijzigingslog` renders without a reason.** It has two causes the payload does not tell apart: KOV published no
+  changelog for the version, or the changelog carries markup the conversion cannot keep. The second is logged as an
+  English operator warning (fix round 1, MINOR 3), so the screen needs no wording for it.
 - **Every code of a discipline sits in exactly one bucket**; `hernummerd` replaces an addition plus a disappearance.
 - **The changelog is available** (`wijzigingslog`, KOV's own words, Dutch, plain text with `\n- ` list lines, like
   `Minimumdoel.Omschrijving`); it is long, so collapse it.
@@ -292,4 +341,13 @@ Notes for the screen:
 | 400 | `versie` that is not a number such as `1.2` (both routes) | detail "'…' is geen Op.stap-versie. Een versie is een nummer zoals 1.2." |
 | 401 | No session | framework default, as for the other import routes |
 | 409 | A discipline cannot land: a concordance to a minimumdoel that is not loaded (`type` = `Probleemsoorten.OpstapOntbrekendeMinimumdoelen`), or a code stored under another discipline (`…OpstapCodeInAndereDiscipline`, API wording) | `OpstapImportExceptionHandler`, title `Import niet doorgevoerd`, Dutch detail; on an apply **nothing** was written |
-| 502 | KOV could not be read or its answer is untrustworthy (network, timeout, status, shape, version mismatch, whole-read refusal) | title `Op.stap niet opgehaald`, detail `OpstapBronFout.Melding` ("De Op.stap-gegevens van Katholiek Onderwijs Vlaanderen konden niet opgehaald worden. Er is niets gewijzigd."); the English cause is logged only |
+| 502 | KOV could not be read or its answer is untrustworthy (network, timeout, status, a redirect, shape, version mismatch, whole-read refusal) | title `Op.stap niet opgehaald`, detail `OpstapBronFout.Melding` ("De Op.stap-gegevens van Katholiek Onderwijs Vlaanderen konden niet opgehaald worden. Er is niets gewijzigd."); the English cause is logged only |
+
+### The Excel route after an API import (fix round 1)
+
+Once an API import has been applied (an `opstapversies` row exists), `POST /api/opstap-import` and `…/voorbeeld` answer
+**409** before reading anything into the database: title `Import niet doorgevoerd`, `type`
+`urn:jaarplanner:opstap-import:excel-na-opstap-api` (`Probleemsoorten.OpstapExcelNaOpstapApi`), detail "De leerplandoelen
+komen nu uit Op.stap, via Katholiek Onderwijs Vlaanderen, en niet meer uit een Excel-bestand. Daarom is dit bestand niet
+ingelezen. Er is niets gewijzigd." Today's Excel screen shows that detail under "Niet gelukt". E1-22 reworks the screen
+and decides whether the upload is offered at all after an API import (noted in its backlog entry).

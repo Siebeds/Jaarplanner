@@ -32,10 +32,18 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// disappeared: when its goal could not be read (a malformed Excel row, an Op.stap goal the mapping
 /// refused) it is reported as <see cref="OpstapHerimportDiff.NietIngelezen"/>, and when the source lists
 /// it under a goal set the import does not take (only G is imported) as
-/// <see cref="OpstapHerimportDiff.BuitenBereik"/>. Both rows are left exactly as they were. Without this
+/// <see cref="OpstapHerimportDiff.BuitenBereik"/>, except that a stored G goal found there is a review item,
+/// <see cref="OpstapHerimportDiff.GemeenschappelijkBuitenBereik"/>. All these rows are left exactly as they were. Without this
 /// the first API import would have flagged every P, S, + and A goal the Excel route had loaded as
 /// <i>niet meer in Op.stap</i> while Op.stap still contains it — the defect E1-12's audits found for
 /// minimumdoelen.
+/// </para>
+/// <para>
+/// <b>No Excel file after the API (ADR-0032 decision 8, amended 2026-09-13).</b> The protection above runs one way: it
+/// keeps an API import from calling the Excel route's goals gone. The other way round, an Excel file would overwrite the
+/// API's wording, clear its concordance and flag every API goal the file lacks, so once an <c>Opstapversie</c> exists a
+/// <see cref="OpstapHerkomst.Bestand"/> import is refused with <see cref="OpstapImportFoutSoort.ExcelNaOpstapApi"/>, on the
+/// preview as on the apply.
 /// </para>
 /// <para>
 /// <b>Renumbered goals (E1-21, ADR-0032 decision 7).</b> A goal from KOV's API carries its UUID key
@@ -134,6 +142,15 @@ public sealed class OpstapImportService : IOpstapImportService
 
         var disciplineNummer = parseResultaat.DisciplineNummer;
         var herkomst = parseResultaat.Herkomst;
+
+        // ADR-0032 decision 8, amended 2026-09-13 (E1-21, antagonist round 1 MAJOR 1): once the curriculum has come from
+        // KOV's API, an Excel file is refused before anything else is looked at. Read after it, a file would overwrite the
+        // API's wording, clear the concordance the files do not carry and flag every goal the file lacks. Checked here,
+        // in the one writer, so the preview refuses exactly what the apply refuses.
+        if (herkomst == OpstapHerkomst.Bestand && await _context.Opstapversies.AnyAsync(cancellationToken))
+        {
+            throw OpstapImportFout.ExcelNaOpstapApi();
+        }
 
         // Discipline-selection seam (E1-06, Art. XIV). The in-scope set is resolved from runtime
         // configuration/data — no discipline list is compiled in here. An out-of-scope discipline is
@@ -269,9 +286,19 @@ public sealed class OpstapImportService : IOpstapImportService
             .Where(nietIngelezenGenoemd.Contains)
             .Order(StringComparer.Ordinal)
             .ToList();
-        var buitenBereik = afwezig
+        var buitenBereikRijen = afwezig
+            .Where(l => !nietIngelezenGenoemd.Contains(l.Code) && buitenBereikGenoemd.Contains(l.Code))
+            .ToList();
+        // A stored G goal the source lists under a skipped set is still left alone, but it is a review item: the one goal
+        // set the import takes no longer holds it (E1-21, antagonist round 1 MINOR 4).
+        var gemeenschappelijkBuitenBereik = buitenBereikRijen
+            .Where(l => l.Doelsoort == Doelsoort.Gemeenschappelijk)
             .Select(l => l.Code)
-            .Where(c => !nietIngelezenGenoemd.Contains(c) && buitenBereikGenoemd.Contains(c))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        var buitenBereik = buitenBereikRijen
+            .Where(l => l.Doelsoort != Doelsoort.Gemeenschappelijk)
+            .Select(l => l.Code)
             .Order(StringComparer.Ordinal)
             .ToList();
 
@@ -377,6 +404,11 @@ public sealed class OpstapImportService : IOpstapImportService
             opmerkingen.Add(NietIngelezenMelding(nietIngelezen.Count, herkomst));
         }
 
+        if (gemeenschappelijkBuitenBereik.Count > 0)
+        {
+            opmerkingen.Add(GemeenschappelijkBuitenBereikMelding(gemeenschappelijkBuitenBereik.Count));
+        }
+
         var diff = new OpstapHerimportDiff(
             disciplineNummer,
             toegevoegd,
@@ -388,7 +420,8 @@ public sealed class OpstapImportService : IOpstapImportService
             opmerkingen: opmerkingen,
             nietIngelezen: nietIngelezen,
             buitenBereik: buitenBereik,
-            hernummerd: hernummerd);
+            hernummerd: hernummerd,
+            gemeenschappelijkBuitenBereik: gemeenschappelijkBuitenBereik);
 
         return new OpstapImportResultaat(diff, toepassen);
     }
@@ -423,6 +456,18 @@ public sealed class OpstapImportService : IOpstapImportService
             ? melding + " Wat leerkrachten aan een oude code koppelden, blijft daaraan gekoppeld."
             : melding;
     }
+
+    /// <summary>
+    /// The notice for stored gemeenschappelijke goals the source lists under a goal set the import does not take. It says
+    /// what this branch knows and nothing more: stored as gemeenschappelijk, listed by the source under a doelsoort that
+    /// is not read, left as it was. Only the API path names skipped goal sets, so the source is named as Op.stap.
+    /// </summary>
+    public static string GemeenschappelijkBuitenBereikMelding(int aantal) =>
+        aantal == 1
+            ? "1 leerplandoel staat in de toepassing als gemeenschappelijk doel, maar in de Op.stap-bron bij een " +
+              "doelsoort die niet ingelezen wordt. Het blijft ongewijzigd staan."
+            : $"{aantal} leerplandoelen staan in de toepassing als gemeenschappelijk doel, maar in de Op.stap-bron bij " +
+              "een doelsoort die niet ingelezen wordt. Ze blijven ongewijzigd staan.";
 
     /// <summary>
     /// The skip for a discipline that delivered no usable goal. Three forms, not two: the zero case is a first import,

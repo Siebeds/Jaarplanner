@@ -91,6 +91,15 @@ without asking KOV first. That is recorded here as the context the ruling was ta
 8. **The Excel path stays for now, demoted.** `ClosedXmlOpstapParser` and `POST /api/opstap-import` remain until the
    API import has run in production; whether to remove them is a later decision. *This is the implementer's default,
    not part of the owner's ruling.*
+   *Amended 2026-09-13 (E1-21 fix round 1, option (b) of the antagonist's round-1 MAJOR 1; an implementation decision,
+   not an owner ruling):* **once an API import has been applied** (an `opstapversies` row exists), the Excel route
+   **refuses**, on the preview as on the apply, with a 409 of type `urn:jaarplanner:opstap-import:excel-na-opstap-api`,
+   and writes nothing. Read after the API import, an Excel file would have overwritten the API's wording, cleared the
+   concordance the files do not carry and flagged every API goal the file lacks as *niet meer in Op.stap*: measured on
+   snapshot 1.2 against the repo's twelve files, about 4,700 goals flagged and 858 concordances cleared. Protecting the
+   API rows inside the shared writer instead (option (a)) was rejected because it would still revert the overlapping
+   goals (253 in Wiskunde) to the Excel wording. Before any API import the Excel route works as it did. Removing it
+   stays a later decision.
 
 ## Alternatives considered
 

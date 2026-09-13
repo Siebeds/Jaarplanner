@@ -505,6 +505,83 @@ public sealed class OpstapImportServiceTests : IDisposable
             OpstapImportService.HernummerdMelding([new HernummerdDoel("A", "B", 0), new HernummerdDoel("C", "D", 2)]));
     }
 
+    /// <summary>
+    /// ADR-0032 decision 8, amended 2026-09-13 (antagonist round 1, MAJOR 1): once the curriculum came from KOV's API, an
+    /// Excel file is refused on the preview as on the apply, and the API's goals stay exactly as they were.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Een_excelbestand_na_een_api_import_wordt_geweigerd(bool toepassen)
+    {
+        await _service.ImporteerAsync(
+            new OpstapParseResult(Discipline, [Doel("LP-1", tekst: "uit de API", sleutel: Guid.NewGuid())], [], OpstapHerkomst.OpstapApi),
+            toepassen: true);
+        _context.Opstapversies.Add(new Opstapversie("1.2", "8f470a12", DateTimeOffset.UnixEpoch));
+        await _context.SaveChangesAsync();
+
+        var fout = await Assert.ThrowsAsync<OpstapImportFout>(
+            () => _service.ImporteerAsync(Parse(Doel("LP-1", tekst: "uit Excel")), toepassen));
+
+        Assert.Equal(OpstapImportFoutSoort.ExcelNaOpstapApi, fout.Soort);
+        _context.ChangeTracker.Clear();
+        var doel = await _context.Leerplandoelen.SingleAsync();
+        Assert.Equal("uit de API", doel.Tekst);
+        Assert.False(doel.NietMeerInOpstap);
+    }
+
+    [Fact]
+    public async Task Na_een_api_import_blijft_de_api_zelf_importeren()
+    {
+        _context.Opstapversies.Add(new Opstapversie("1.2", "8f470a12", DateTimeOffset.UnixEpoch));
+        await _context.SaveChangesAsync();
+
+        var result = await _service.ImporteerAsync(
+            new OpstapParseResult(Discipline, [Doel("LP-1")], [], OpstapHerkomst.OpstapApi),
+            toepassen: true);
+
+        Assert.Equal(["LP-1"], result.Diff.Toegevoegd);
+    }
+
+    /// <summary>
+    /// Antagonist round 1, MINOR 4: a stored G goal the source lists under a skipped goal set is left alone like any
+    /// out-of-scope code, but it is a review item, not silently out of scope.
+    /// </summary>
+    [Fact]
+    public async Task Een_opgeslagen_G_doel_in_een_overgeslagen_doelset_vraagt_nazicht()
+    {
+        await _service.ImporteerAsync(
+            Parse(Doel("LP-1"), Doel("LP-G"), Doel("LP-P", doelsoort: Doelsoort.Precurriculum)),
+            toepassen: true);
+        var parse = new OpstapParseResult(Discipline, [Doel("LP-1")], [], OpstapHerkomst.OpstapApi, buitenBereikCodes: ["LP-G", "LP-P"]);
+
+        var result = await _service.ImporteerAsync(parse, toepassen: true);
+
+        Assert.Equal(["LP-G"], result.Diff.GemeenschappelijkBuitenBereik);
+        Assert.Equal(["LP-P"], result.Diff.BuitenBereik);
+        Assert.Empty(result.Diff.Verdwenen);
+        Assert.True(result.Diff.VereistReview);
+        Assert.False(result.Diff.IsLeeg);
+        Assert.Equal([OpstapImportService.GemeenschappelijkBuitenBereikMelding(1)], result.Diff.Opmerkingen);
+        _context.ChangeTracker.Clear();
+        var g = await _context.Leerplandoelen.SingleAsync(l => l.Code == "LP-G");
+        Assert.False(g.NietMeerInOpstap);
+        Assert.Equal("tekst", g.Tekst);
+    }
+
+    [Fact]
+    public void De_melding_over_G_doelen_buiten_het_bereik_is_verbogen()
+    {
+        Assert.Equal(
+            "1 leerplandoel staat in de toepassing als gemeenschappelijk doel, maar in de Op.stap-bron bij een doelsoort " +
+            "die niet ingelezen wordt. Het blijft ongewijzigd staan.",
+            OpstapImportService.GemeenschappelijkBuitenBereikMelding(1));
+        Assert.Equal(
+            "2 leerplandoelen staan in de toepassing als gemeenschappelijk doel, maar in de Op.stap-bron bij een doelsoort " +
+            "die niet ingelezen wordt. Ze blijven ongewijzigd staan.",
+            OpstapImportService.GemeenschappelijkBuitenBereikMelding(2));
+    }
+
     private async Task LinkThemadoelAsync(string leerplandoelCode, KoppelingStatus status)
     {
         var thema = new Thema($"Thema voor {leerplandoelCode}", duurWeken: 4);

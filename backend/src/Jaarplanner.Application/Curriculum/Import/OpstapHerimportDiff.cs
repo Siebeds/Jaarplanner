@@ -27,7 +27,8 @@ public sealed class OpstapHerimportDiff
         IReadOnlyList<string>? opmerkingen = null,
         IReadOnlyList<string>? nietIngelezen = null,
         IReadOnlyList<string>? buitenBereik = null,
-        IReadOnlyList<HernummerdDoel>? hernummerd = null)
+        IReadOnlyList<HernummerdDoel>? hernummerd = null,
+        IReadOnlyList<string>? gemeenschappelijkBuitenBereik = null)
     {
         DisciplineNummer = disciplineNummer;
         Toegevoegd = toegevoegd;
@@ -40,6 +41,7 @@ public sealed class OpstapHerimportDiff
         NietIngelezen = nietIngelezen ?? [];
         BuitenBereik = buitenBereik ?? [];
         Hernummerd = hernummerd ?? [];
+        GemeenschappelijkBuitenBereik = gemeenschappelijkBuitenBereik ?? [];
     }
 
     /// <summary>The discipline this re-import covers.</summary>
@@ -99,9 +101,18 @@ public sealed class OpstapHerimportDiff
     /// Codes in the database (for this discipline) that the source still names under a goal set this import does
     /// <b>not</b> take (E1-21: only goal set G is imported, owner ruling 2026-09-11). Typically P, S, + or A goals loaded
     /// earlier from the Excel route. Left untouched and <b>not</b> a review item: they are outside the ruled scope, not
-    /// missing from Op.stap.
+    /// missing from Op.stap. A stored <b>gemeenschappelijk</b> goal found there is not in this list but in
+    /// <see cref="GemeenschappelijkBuitenBereik"/>.
     /// </summary>
     public IReadOnlyList<string> BuitenBereik { get; }
+
+    /// <summary>
+    /// Codes stored here as a <b>gemeenschappelijk</b> (G) goal that the source lists under a goal set this import does
+    /// not take (E1-21, antagonist round 1 MINOR 4). Left untouched, like <see cref="BuitenBereik"/>, but a review item:
+    /// the one goal set the import does take no longer holds the goal, and a reviewer should know. What changed at KOV,
+    /// and why, the import cannot tell.
+    /// </summary>
+    public IReadOnlyList<string> GemeenschappelijkBuitenBereik { get; }
 
     /// <summary>
     /// Goals the source renumbered: a stored code is absent, and a new code carries the same Op.stap <c>key</c> (E1-21,
@@ -122,7 +133,8 @@ public sealed class OpstapHerimportDiff
         Verdwenen.Count == 0 &&
         VerdwenenMaarGekoppeld.Count == 0 &&
         NietIngelezen.Count == 0 &&
-        Hernummerd.Count == 0;
+        Hernummerd.Count == 0 &&
+        GemeenschappelijkBuitenBereik.Count == 0;
 
     /// <summary>
     /// True when something needs human review: a skip notice, a change, a disappearance, a renumbering, or a stored goal
@@ -134,7 +146,8 @@ public sealed class OpstapHerimportDiff
         Verdwenen.Count > 0 ||
         VerdwenenMaarGekoppeld.Count > 0 ||
         NietIngelezen.Count > 0 ||
-        Hernummerd.Count > 0;
+        Hernummerd.Count > 0 ||
+        GemeenschappelijkBuitenBereik.Count > 0;
 }
 
 /// <summary>

@@ -28,8 +28,10 @@ public static class OpstapApiRegistratie
         services.Configure<OpstapApiOptions>(configuration.GetSection(OpstapApiOptions.SectionName));
         services.TryAddSingleton(TimeProvider.System);
 
-        services.AddHttpClient<IMinimumdoelBron, OnderwijsdoelenApiBron>(StelIn);
-        services.AddHttpClient<ILeerplandoelBron, CurriculumApiBron>(StelIn);
+        services.AddHttpClient<IMinimumdoelBron, OnderwijsdoelenApiBron>(StelIn)
+            .ConfigurePrimaryHttpMessageHandler(ZonderDoorverwijzing);
+        services.AddHttpClient<ILeerplandoelBron, CurriculumApiBron>(StelIn)
+            .ConfigurePrimaryHttpMessageHandler(ZonderDoorverwijzing);
 
         services.AddScoped<IMinimumdoelImportService, MinimumdoelImportService>();
         services.AddScoped<ILeerplandoelImportService, LeerplandoelImportService>();
@@ -43,5 +45,10 @@ public static class OpstapApiRegistratie
             client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Jaarplanner/1.0");
         }
+
+        // The configured base URL is the only host either source may read (ADR-0032). A redirect would take the read to
+        // whatever host a response names, so none is followed: a 3xx is a non-success status and refuses the read
+        // (E1-21, antagonist round 1 MINOR 2).
+        static HttpMessageHandler ZonderDoorverwijzing() => new SocketsHttpHandler { AllowAutoRedirect = false };
     }
 }

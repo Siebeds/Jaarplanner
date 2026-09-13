@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ClosedXML.Excel;
 using Jaarplanner.Api.Infrastructure;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Planning;
@@ -245,6 +246,63 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         Assert.Equal("4-2.1.7", doel.GetProperty("minimumdoelRef").GetString());
         Assert.Equal(1, register.GetProperty("totaal").GetInt32());
         Assert.Contains("4-2.1.7", register.GetProperty("regels").GetRawText(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// ADR-0032 decision 8, amended 2026-09-13 (antagonist round 1, MAJOR 1), on the real pipeline: after an API import an
+    /// Op.stap Excel file answers 409 on the preview and on the apply, and the API's goals stay as they were. Without the
+    /// refusal this Wiskunde row would have taken the Excel wording and lost its concordance, and the goal the file lacks
+    /// would have been flagged as no longer in Op.stap.
+    /// </summary>
+    [PostgresFact]
+    public async Task Na_een_api_import_weigert_de_excelroute_en_wijzigt_niets()
+    {
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7"), G("2.1.GL2.1", minimumdoelRef: null)));
+        await Post(Pad, new { versie = "1.2" });
+
+        var voorbeeld = await VerstuurWerkboek("/api/opstap-import/voorbeeld");
+        var toepassing = await VerstuurWerkboek("/api/opstap-import");
+
+        foreach (var response in new[] { voorbeeld, toepassing })
+        {
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            var probleem = await response.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal(Probleemsoorten.OpstapExcelNaOpstapApi, probleem.GetProperty("type").GetString());
+            Assert.Equal(OpstapImportFout.ExcelNaOpstapApi().Message, probleem.GetProperty("detail").GetString());
+        }
+
+        await using var context = _db.MaakContext();
+        var doelen = await context.Leerplandoelen.OrderBy(l => l.Code).ToListAsync();
+        Assert.Equal(["2.1.GL2.1", "2.1.GL3.10"], doelen.Select(l => l.Code).ToArray());
+        Assert.All(doelen, l => Assert.False(l.NietMeerInOpstap));
+        Assert.Equal("4-2.1.7", doelen[1].MinimumdoelRef);
+        Assert.Equal("De leerlingen kunnen 2.1.GL3.10.", doelen[1].Tekst);
+    }
+
+    /// <summary>One Wiskunde goal as the Op.stap Excel route carries it: its own wording, and no concordance in column D.</summary>
+    private async Task<HttpResponseMessage> VerstuurWerkboek(string url)
+    {
+        using var werkboek = new XLWorkbook();
+        var blad = werkboek.AddWorksheet("Leerplandoelen");
+        blad.Cell(1, (int)OpstapKolom.Doelsoort).Value = "Doelsoort";
+        blad.Cell(1, (int)OpstapKolom.Code).Value = "Code";
+        blad.Cell(2, (int)OpstapKolom.Doelsoort).Value = "G";
+        blad.Cell(2, (int)OpstapKolom.Code).Value = "2.1.GL3.10";
+        blad.Cell(2, (int)OpstapKolom.JaarFase).Value = "L3";
+        blad.Cell(2, (int)OpstapKolom.Domein).Value = "Getallenkennis";
+        blad.Cell(2, (int)OpstapKolom.Subdomein).Value = "Natuurlijke getallen";
+        blad.Cell(2, (int)OpstapKolom.Tekst).Value = "Tekst uit Excel.";
+        using var stroom = new MemoryStream();
+        werkboek.SaveAs(stroom);
+
+        using var inhoud = new MultipartFormDataContent();
+        var bestand = new ByteArrayContent(stroom.ToArray());
+        bestand.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        inhoud.Add(bestand, "bestand", "Wiskunde.xlsx");
+        inhoud.Add(new StringContent("2"), "disciplineNummer");
+
+        return await _factory.CreateClient().PostAsync(url, inhoud);
     }
 
     private static LeerplandoelBronDiscipline Wiskunde(params Leerplandoel[] doelen) =>

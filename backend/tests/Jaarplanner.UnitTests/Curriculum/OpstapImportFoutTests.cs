@@ -103,6 +103,22 @@ public sealed class OpstapImportFoutTests
     /// From KOV's API there is no file to check (E1-21), so that path says where the goals belong according to the
     /// source instead of "Controleer of dit bestand …". Both paths keep the same closing sentences.
     /// </summary>
+    /// <summary>
+    /// The Excel route after an API import (E1-21 round 1, MAJOR 1). Addressed to directie, and it says only what holds
+    /// whenever it is raised: it does not claim the file would overwrite goals, which a discipline selection can make false.
+    /// </summary>
+    [Fact]
+    public void Excel_na_een_api_import_zegt_alleen_wat_waar_is()
+    {
+        var fout = OpstapImportFout.ExcelNaOpstapApi();
+
+        Assert.Equal(OpstapImportFoutSoort.ExcelNaOpstapApi, fout.Soort);
+        Assert.Equal(
+            "De leerplandoelen komen nu uit Op.stap, via Katholiek Onderwijs Vlaanderen, en niet meer uit een " +
+            "Excel-bestand. Daarom is dit bestand niet ingelezen. Er is niets gewijzigd.",
+            fout.Message);
+    }
+
     [Fact]
     public void Code_in_andere_discipline_uit_de_api_noemt_geen_bestand()
     {

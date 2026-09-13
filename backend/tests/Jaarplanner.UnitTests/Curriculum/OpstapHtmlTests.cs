@@ -199,6 +199,40 @@ public sealed class OpstapHtmlTests
     public void Een_lege_tabel_wordt_benoemd(string html, string verwacht) =>
         Assert.Equal(verwacht, OpstapHtml.NaarTekst(html));
 
+    /// <summary>
+    /// An image is content without text (antagonist round 1, MAJOR 2). A table of images was read as empty and written as
+    /// "[lege tabel …]", losing every alt text; now it is refused. A one-cell layout table still unwraps to the image.
+    /// </summary>
+    [Fact]
+    public void Een_tabel_van_afbeeldingen_is_niet_leeg_en_wordt_geweigerd()
+    {
+        Assert.Contains("<table>", OpstapHtml.OnvertaalbareOpmaak(
+            "<table><tr><td><img alt=\"appel\"></td><td><img alt=\"peer\"></td></tr></table>"));
+        Assert.Equal("[afbeelding: appel]", OpstapHtml.NaarTekst("<table><tr><td><img alt=\"appel\"></td></tr></table>"));
+    }
+
+    /// <summary>A link without text is not empty either: its address is what it says, so the cell keeps it.</summary>
+    [Fact]
+    public void Een_cel_met_alleen_een_link_zonder_tekst_houdt_het_adres()
+    {
+        const string html = "<table><tr><td><a href=\"https://x.test/a\"></a></td><td><a href=\"https://x.test/b\"></a></td></tr></table>";
+
+        Assert.Empty(OpstapHtml.OnvertaalbareOpmaak(html));
+        Assert.Equal("(https://x.test/a) | (https://x.test/b)", OpstapHtml.NaarTekst(html));
+    }
+
+    /// <summary>
+    /// Two levels of numbers flattened onto one would read "1. 1. 2." without their level, so an ordered list inside an
+    /// ordered list is refused. An ordered list inside an unordered one keeps both: its numbers and the parent's dashes.
+    /// </summary>
+    [Fact]
+    public void Een_geneste_geordende_lijst_wordt_geweigerd()
+    {
+        Assert.Contains("<ol>", OpstapHtml.OnvertaalbareOpmaak("<ol><li>a<ol><li>b</li></ol></li><li>c</li></ol>"));
+        Assert.Contains("<ol>", OpstapHtml.OnvertaalbareOpmaak("<ol><li>a<ul><li>b<ol><li>c</li></ol></li></ul></li></ol>"));
+        Assert.Equal("- x\n1. y", OpstapHtml.NaarTekst("<ul><li>x<ol><li>y</li></ol></li></ul>"));
+    }
+
     [Fact]
     public void Vet_blijft_gemarkeerd_als_daarom_gevraagd_wordt() =>
         Assert.Equal(

@@ -14,7 +14,8 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// <item>A <c>&lt;</c> that does not start a tag (<c>=, ≠, &lt;, &gt;</c>, <c>(&lt; 1 week)</c>) is text and is kept.</item>
 /// <item>A paragraph, line break, horizontal rule or list end becomes a newline; an unordered list item a line starting
 /// with <c>"- "</c>, an ordered one a line starting with its number (<c>"1. "</c>), because the numbering is part of what an
-/// ordered list says.</item>
+/// ordered list says. An ordered list inside another ordered list is refused: flattened, its numbers would repeat
+/// without their level.</item>
 /// <item>MathML is converted element by element, not stripped: a fraction becomes <c>1/2</c> (stripping would have written
 /// <c>12</c>), an operator keeps its sign between spaces (<c>7/10 - 3/10</c>, <c>kans = 1/6</c>), <c>mrow</c> groups and
 /// <c>semantics</c> keeps its presentation and drops its <c>annotation</c> (the same formula again in LaTeX). Only the
@@ -23,8 +24,10 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// <item>KaTeX renders a formula twice, as MathML and as a visual copy in <c>&lt;span class="katex-html"&gt;</c>. The
 /// visual copy is dropped and the MathML kept, or the formula would be written three times in a row.</item>
 /// <item>A table becomes one line per row with its cells between <c>" | "</c>. A one-cell table is layout, not data, and
-/// its content stands in its place. A table whose cells are all empty is a drawing (a grid to count): it becomes
-/// <c>[lege tabel van 4 rijen en 5 kolommen]</c>, the same kind of marker an image without text gets.</item>
+/// its content stands in its place. A table whose cells hold no text, no image and no link is a drawing (a grid to
+/// count): it becomes <c>[lege tabel van 4 rijen en 5 kolommen]</c>, the same kind of marker an image without text gets.
+/// An image or a link is content even without text: in a table of several cells an image is refused and a link keeps
+/// its address.</item>
 /// <item>A closed link with a double-quoted address keeps it: <c>Word (https://…)</c>. An image becomes its alt text on a
 /// line of its own.</item>
 /// <item>Entities are decoded only <b>after</b> the tags are gone, so KOV's escaped angle-bracket notation around
@@ -416,14 +419,20 @@ internal static partial class OpstapHtml
         return "<br>" + string.Join("<br>", regels.Select(r => string.Join(" | ", r))) + "<br>";
     }
 
-    /// <summary>True when a fragment holds no text: only whitespace, non-breaking spaces and tags.</summary>
+    /// <summary>
+    /// True when a fragment holds nothing: no text, and no image or link, which carry content (alt text, an address)
+    /// without text of their own. Testing text alone read a table of images as empty and lost its alt texts (E1-21,
+    /// antagonist round 1 MAJOR 2).
+    /// </summary>
     private static bool IsLeeg(string fragment) =>
+        !InhoudZonderTekst().IsMatch(fragment) &&
         string.IsNullOrWhiteSpace(WebUtility.HtmlDecode(Tag().Replace(fragment, string.Empty)).Replace((char)0xA0, ' '));
 
     /// <summary>
     /// Numbers the items of every ordered list (<c>1. </c>, <c>2. </c>, from <c>start</c> when given), leaving the items
     /// of unordered lists, nested or not, for the ordinary dash. An <c>ol</c> with any other attribute (<c>type</c>,
-    /// <c>reversed</c>), or tags that do not balance, is left as it was, so the guard refuses it.
+    /// <c>reversed</c>), an <c>ol</c> inside another <c>ol</c>, or tags that do not balance, is left as it was, so the
+    /// guard refuses it.
     /// </summary>
     private static string NummerOrdeLijsten(string html)
     {
@@ -447,7 +456,10 @@ internal static partial class OpstapHtml
             switch (naam, sluit)
             {
                 case ("ol", false):
-                    if (!string.IsNullOrWhiteSpace(StartAttribuut().Replace(attributen, string.Empty)))
+                    // A second level of numbers flattened onto the first would read "1. 1. 2. 2." without saying which
+                    // belongs to which (antagonist round 1, MAJOR 2); none occurs in snapshot 1.2, so it is refused.
+                    if (!string.IsNullOrWhiteSpace(StartAttribuut().Replace(attributen, string.Empty))
+                        || stapel.Any(niveau => niveau is not null))
                     {
                         return html;
                     }
@@ -540,6 +552,9 @@ internal static partial class OpstapHtml
 
     [GeneratedRegex(@"<(?:br|p|div|ul|ol|li|table|hr|img|h[1-6])\b", RegexOptions.IgnoreCase)]
     private static partial Regex Blokopmaak();
+
+    [GeneratedRegex(@"<(?:img|a)\b", RegexOptions.IgnoreCase)]
+    private static partial Regex InhoudZonderTekst();
 
     [GeneratedRegex(@"<(/?)(ol|ul|li)\b([^>]*)>", RegexOptions.IgnoreCase)]
     private static partial Regex LijstTag();

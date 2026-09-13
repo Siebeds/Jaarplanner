@@ -27,10 +27,12 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// </list>
 /// </para>
 /// <para>
-/// <b>Nothing is lost, only placed.</b> Every line of the converted description lands in exactly one of the three fields,
-/// in document order, and only the three bare labels are dropped. A heading this class does not recognise therefore puts
-/// text in the wrong field at worst, never out of the record; and a description without any heading comes back as its
-/// full text in <c>Toelichting</c>, exactly as <see cref="OpstapHtml.NaarTekst(string?)"/> would convert it.
+/// <b>What the split drops, and what it does not promise.</b> Of the converted text, it drops only the bare labels (and a
+/// colon after one); every other line lands in one of the three fields, in document order <i>within</i> that field. The
+/// order <i>between</i> fields is not kept: a toelichting section after the examples is joined to the toelichting before
+/// them. A heading this class does not recognise leaves its text in the section above it. A description without any
+/// heading comes back whole in <c>Toelichting</c>, as <see cref="OpstapHtml.NaarTekst(string?)"/> converts it. The split
+/// works on that conversion, so it is only as faithful as <see cref="OpstapHtml"/>, which refuses what it cannot keep.
 /// </para>
 /// </summary>
 internal static partial class OpstapBeschrijving
