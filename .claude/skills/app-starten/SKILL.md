@@ -11,8 +11,23 @@ description: >-
 # App starten — API + frontend, locally
 
 Recipe for bringing up the Jaarplanner **for the owner to look at**: the API on the owner's dev database
-(`jaarplanner` on the local PostgreSQL 17 service) and the Vite dev server proxying `/api` to it. Every
-step below was run end to end on 2026-09-10; each trap listed has cost a session real time.
+`jaarplanner` and the Vite dev server proxying `/api` to it. Every step below was run end to end on
+2026-09-10; each trap listed has cost a session real time.
+
+**The owner works on two machines, and they differ.** Find out which one you are on before step 2:
+
+| | Machine A | Machine B (set up 2026-09-13) |
+|---|---|---|
+| PostgreSQL | Windows service `postgresql-x64-17` | Docker container `jaarplanner-db`, host port 5433 |
+| pnpm | only through `corepack pnpm` | `corepack pnpm`; also installed globally in `%APPDATA%\npm` |
+| `.claude/coordination/` | exists | did not exist on 2026-09-13 |
+
+```bash
+powershell -NoProfile -Command "Get-Service postgresql-x64-17 -ErrorAction SilentlyContinue | Select Status"
+```
+
+prints the service on machine A and nothing on machine B. The machine B route was run end to end on
+2026-09-13, on a commit from before E6-01, so the sign-in checks in step 6 have not been run there yet.
 
 Use **Bash** (Git Bash) for everything except where PowerShell is named. Report to the owner in **Dutch**.
 
@@ -42,7 +57,9 @@ for p in 5184 5185 5177; do printf '%s http=%s claim=%s\n' "$p" \
   the next free port for the API (5185, 5186, …) and point Vite at it in step 5. That is all it costs.
 
 Join the groepschat and claim what you use (protocol: `.claude/skills/groepschat/SKILL.md`):
-`port-<api>`, `port-5177`, and `maintree` only while you run a git command that moves HEAD.
+`port-<api>`, `port-5177`, and `maintree` only while you run a git command that moves HEAD. If `$COORD` does
+not exist, no session on this machine has joined the groepschat yet: the claim column above stays empty
+and there is nobody to collide with.
 
 **Run it from the tree that holds the code the owner wants to see.** Usually the main tree on `main` (or the
 branch he is working on). Check with `git -C $REPO status -sb` before starting; switching branches later
@@ -50,8 +67,31 @@ under a running Vite changes what he sees mid-look.
 
 ## 2. Database: running, and migrated
 
+**Machine A**, the Windows service:
+
 ```bash
 powershell -NoProfile -Command "Get-Service postgresql-x64-17 | Select Status"   # must be Running
+```
+
+**Machine B**, the Docker container. Docker Desktop has to be running first; start it from the Start menu, or
+with `"/c/Program Files/Docker/Docker/Docker Desktop.exe" &`, and give it a minute.
+
+```bash
+docker info --format '{{.ServerVersion}}'                            # must print a version, e.g. 29.7.2
+cd $REPO && docker compose up -d db
+docker inspect --format '{{.State.Health.Status}}' jaarplanner-db   # must be healthy
+```
+
+- **`docker info` exits 0 on an engine that failed to start.** It then prints *"Error response from daemon:
+  Docker Desktop is unable to start"* with exit code 0, so a readiness loop that checks only the exit code
+  reports a daemon that is not there. Accept only a version number. The reason for the failure is in the `[E]`
+  lines of `%LOCALAPPDATA%\Docker\log\host\com.docker.backend.exe.log`, not in Docker's error dialog.
+- `docker compose up` reads the gitignored `.env` in the repo root (a copy of `.env.example`). Without it,
+  compose refuses to start with *"set POSTGRES_USER in .env"*.
+
+Then, on either machine:
+
+```bash
 cd $REPO/backend && dotnet ef migrations list \
   --project src/Jaarplanner.Infrastructure --startup-project src/Jaarplanner.Api | tail -5
 ```
@@ -65,7 +105,8 @@ dotnet ef database update --project src/Jaarplanner.Infrastructure --startup-pro
 
 The connection string comes from **user-secrets**, key `ConnectionStrings:Postgres`
 (`dotnet user-secrets list` in `backend/src/Jaarplanner.Api`). It must use `Host=127.0.0.1` and
-`SSL Mode=Disable`, or Npgsql hangs. `dotnet ef` 8.x works against this EF 10 model.
+`SSL Mode=Disable`, or Npgsql hangs. On machine B it also needs `Port=5433` and the password from `.env`.
+`dotnet ef` 8.x works against this EF 10 model.
 
 ## 3. Which database — decide before anything writes
 
@@ -75,6 +116,9 @@ database instead (copy the connection string, change `Database=`, migrate it, pa
 `ConnectionStrings__Postgres`). **Any other key name is ignored silently** and you land on `jaarplanner`
 anyway, with every symptom saying it worked. Never create or delete rows in `jaarplanner` to "try something";
 the owner may have a page open on it.
+
+The two machines do not share this database. Machine B's was created empty on 2026-09-13 and started with
+only what the demo seeder (step 4) put in it.
 
 ## 4. Build and start the API
 
@@ -113,7 +157,9 @@ Then, **in the background, with the `cd` inside the same command**:
 cd $REPO/frontend && VITE_API_PROXY_TARGET=http://localhost:5185 corepack pnpm dev > $LOGS/vite.log 2>&1
 ```
 
-- **pnpm is not on PATH**; only `corepack pnpm` works.
+- **Use `corepack pnpm` on both machines.** On machine A pnpm is not on PATH at all. On machine B it is
+  installed globally in `%APPDATA%\npm`, but a session started before that install inherits a PATH without
+  it, so plain `pnpm` fails there while `corepack pnpm` works (both checked 2026-09-13).
 - **A background command does not inherit the directory you think it does.** Started without its own `cd`,
   `pnpm dev` ran outside `frontend/`, missed `frontend/.npmrc` (which turns off pnpm 11's pre-run install
   check) and died with *"'pnpm' is not recognized … Command failed: pnpm install"*. That error looks like a
@@ -160,7 +206,7 @@ ports, so no other session kills or reuses them.
 
 ## 7. When a server dies on its own
 
-On this machine the harness stops background tasks when memory runs low (the notification says *"stopped
+On machine A the harness stops background tasks when memory runs low (the notification says *"stopped
 because the system is running low on memory"*). On 2026-09-10 that killed the API and left Vite running,
 so the page loaded and every request through it failed. **Check each port separately** with the step 1
 loop, confirm a surviving listener is yours by its command line (PowerShell:
