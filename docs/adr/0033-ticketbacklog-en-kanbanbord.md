@@ -54,7 +54,7 @@ that the board has the **full flow** of columns including a test column.
    colour budget govern the app a teacher sees, not a tool only the team runs. It still follows their spirit: every
    hue also carries a text label, and Markdown from a ticket is escaped before it is rendered.
 6. **Every write goes through one CLI**, `tools/backlog-board/tickets.mjs` (`new`, `status`, `log`, `block`,
-   `unblock`, `pr`, plus `list`, `check`, `next-id`). It enforces the allowed transitions, sets `bijgewerkt`,
+   `unblock`, `pr`, `release`, plus `list`, `check`, `next-id`). It enforces the allowed transitions, sets `bijgewerkt`,
    appends the Werklog line, and refuses to touch or produce an invalid ticket.
 
    **Before every write it checks for a newer copy.** A copy is newer exactly when it has every Werklog line this
@@ -63,8 +63,10 @@ that the board has the **full flow** of columns including a test column.
    only logged a line, a commit left behind after a merge) is not newer. It stops counting only when it is really
    handed back (`klaar-voor-bouw` or `nieuw`, not blocked) or its finished work is already on `main`; while it holds
    the ticket, carries a block, or holds finished work that still waits for its merge, it refuses the write as well.
-   A copy that another visible copy fully contains (an old pushed copy of a branch that went further locally) is
-   superseded and does not count. A copy on `main` (or the
+   A copy that another committed copy fully contains (an old pushed copy of a branch that went further locally) is
+   superseded and does not count; an uncommitted copy in another session's worktree supersedes nothing, because it
+   can still be discarded. A PR the owner will not merge leaves finished work that nobody will merge: he sets the
+   ticket back to `klaar-voor-bouw` in a checkout of that branch and commits it there, or deletes the branch. A copy on `main` (or the
    fetched `origin/main`) is never split off: a checkout behind main merges main in, and a pickup always starts from
    main's latest copy. If a newer copy says
    something different about the ticket (its status, who holds it, whether it is blocked), the CLI refuses and names

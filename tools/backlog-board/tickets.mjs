@@ -45,7 +45,8 @@ const USAGE = `Gebruik: node tools/backlog-board/tickets.mjs <opdracht> ...
 Een schrijfopdracht weigert als er elders een nieuwere versie van het ticket staat met een andere
 status, houder of blokkering, en zegt welk git-commando dat oplost. Ze neemt nooit zelf een versie
 over. Na de merge schrijf je op main, niet meer op de branch; een geblokkeerd ticket wordt niet
-opgepakt en niet teruggegeven.
+opgepakt en niet teruggegeven (alleen release door de eigenaar geeft het vrij, en dan blijft de
+blokkering staan).
 
 Statussen: ${STATUSES.join(', ')}.`;
 
@@ -178,8 +179,9 @@ function relation(copy, mine) {
 // A copy that sits on main: main itself, a checkout of main, or the fetched main of a remote.
 const onMainLine = (s) => isMainSource(s) || (s.remote && /\/main$/.test(s.name));
 
+// Printed only when main is ahead of this checkout for the ticket, so main's state is the one to keep.
 const CONFLICT_HINT =
-  ' Geeft dat een conflict in het ticketbestand, houd dan de frontmatter van je branch en alle werklogregels van beide kanten, in volgorde van tijd.';
+  ' Geeft dat een conflict in het ticketbestand, houd dan de frontmatter van main en alle werklogregels van beide kanten, in volgorde van tijd.';
 const MAIN_REMEDY = `Haal main binnen in je branch (git merge main) en probeer opnieuw.${CONFLICT_HINT}`;
 const ORIGIN_MAIN_REMEDY = `Haal main eerst binnen (git pull op main) en daarna in je branch (git merge main).${CONFLICT_HINT}`;
 
@@ -198,14 +200,19 @@ function remedyFor(conflict) {
       `${g['opgepakt-door']} houdt het ticket vast: laat het aan die sessie, en vraag haar in haar eigen venster om het te blokkeren of terug te geven. ` +
       'Is die sessie gestopt, dan geeft de eigenaar het vrij met release, in een checkout van die branch.';
   } else if (g.geblokkeerd) {
-    remedy = 'Die blokkering moet eerst op die branch opgelost worden (unblock), of de eigenaar ruimt die branch op.';
+    remedy =
+      'Die blokkering moet eerst op die branch opgelost worden (unblock). Ruimt de eigenaar die branch op terwijl de vraag nog ' +
+      'open is, dan zet hij de blokkering meteen daarna op main (block), anders gaat ze verloren.';
   } else {
-    remedy = 'Dat werk wacht op de merge van die branch; wijzig het ticket daarna.';
+    remedy =
+      'Dat werk wacht op de merge van die branch; wijzig het ticket daarna. Wordt die PR niet gemerged, dan zet de eigenaar het ' +
+      'ticket in een checkout van die branch terug naar klaar-voor-bouw en commit dat daar, of verwijdert hij de branch.';
   }
   if (s.remote) {
     remedy +=
-      ` Is het ticket op die branch al teruggegeven of vrijgegeven maar nog niet gepusht, push die branch dan (git push).` +
-      ` Bestaat ${s.name} niet meer op de server, ruim de verwijzing op met git fetch --prune.`;
+      ` Werd het ticket op ${s.name} ooit teruggegeven of vrijgegeven zonder dat dat gepusht werd, doe het dan opnieuw in een ` +
+      `checkout van die branch en push, of verwijder de remote branch. Bestaat ${s.name} niet meer op de server, ruim de ` +
+      'verwijzing op met git fetch --prune.';
   }
   return remedy;
 }
@@ -245,7 +252,9 @@ async function checkCurrent(root, ticket, by, { pickup = false, release = false 
   // copy on main keeps counting: main is where a pickup starts.
   const keysOf = (p) => new Set(p.worklog.map(worklogKey));
   const differing = copies.filter((c) => normalise(c.text) !== normalise(ticket.text)).map((c) => ({ c, keys: keysOf(c.parsed) }));
-  const pool = [...differing, { c: null, keys: keysOf(mine) }];
+  // Only committed copies (and this checkout's own) may supersede: an uncommitted give-back in another
+  // session's worktree can still be discarded, so it must not free the ticket for anyone else yet.
+  const pool = [...differing.filter((x) => x.c.source.type !== 'worktree'), { c: null, keys: keysOf(mine) }];
   const superseded = (x) => pool.some((y) => y.c !== x.c && y.keys.size > x.keys.size && [...x.keys].every((k) => y.keys.has(k)));
   const others = differing.filter((x) => onMainLine(x.c.source) || !superseded(x)).map((x) => x.c);
 

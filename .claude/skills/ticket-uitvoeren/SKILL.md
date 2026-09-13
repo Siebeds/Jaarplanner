@@ -60,7 +60,8 @@ in that checkout; if it does not, your `main` is older than the ticket.
 
 Skip this step for a TB ticket you just created: it is already `in-uitvoering`. A pickup starts from `main`'s
 latest copy of the ticket: if `main` has moved on for it, the CLI refuses until you `git merge main`. If that merge
-conflicts in the ticket file, keep your branch's frontmatter and every Werklog line from both sides, in time order.
+conflicts in the ticket file, keep `main`'s frontmatter (main was ahead, that is why the CLI refused) and every Werklog
+line from both sides, in time order.
 
 ```bash
 node tools/backlog-board/tickets.mjs status FB-012 in-uitvoering --by <sessie-id> --log "opgepakt"
@@ -105,7 +106,9 @@ fetched `origin/main`) has your final status, the CLI refuses any write on your 
 **Stopping without finishing?** Give it back so another session can take it:
 `status FB-012 klaar-voor-bouw --by <sessie-id> --log "teruggegeven: <waarom, en wat er al staat>"`, and commit. The
 next session sees your note when it picks the ticket up. A blocked ticket cannot be given back: keep it and tell the
-owner. If your branch was already pushed, push the give-back too, or the old pushed copy keeps holding the ticket. A TB ticket lives on its branch until that branch is merged, so whoever takes it next continues on that same
+owner. Commit the give-back: until it is committed it frees the ticket for nobody. If your branch was already pushed,
+push the give-back too, so the server's copy matches; once your local branch is gone, an unpushed give-back is lost
+and the old pushed copy holds the ticket again. A TB ticket lives on its branch until that branch is merged, so whoever takes it next continues on that same
 branch; an FB ticket's next session starts from `main`, and your branch's copy then no longer counts.
 
 ## 7. Release

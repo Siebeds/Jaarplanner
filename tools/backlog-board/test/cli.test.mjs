@@ -721,7 +721,7 @@ test('a pushed copy that a local give-back or release replaced no longer holds t
     r.git('switch', '-q', '-c', 'feature/c');
     out = run('status', 'FB-001', 'in-uitvoering', '--by', 's3');
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /git push/);
+    assert.match(out.stderr, /doe het dan opnieuw in een checkout van die branch en push, of verwijder de remote branch/);
     assert.match(out.stderr, /git fetch --prune/);
   } finally {
     r.cleanup();
@@ -748,6 +748,103 @@ test('a blocked ticket released by the owner keeps its block until he answers it
     r.git('switch', '-q', 'feature/a');
     assert.equal(run('unblock', 'FB-001', '--by', 'eigenaar', 'beantwoord').status, 0);
     r.commit('Unblock FB-001');
+    r.git('switch', '-q', 'feature/b');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 0, out.stderr);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/** Resolves a conflicted ticket file the documented way: main's frontmatter, every Werklog line of both sides. */
+function resolveKeepingMain(r, rel) {
+  const [, folder, file] = /^(.*)\/([^/]+)$/.exec(rel);
+  const mainText = r.git('show', `main:${rel}`);
+  const ours = parseTicket(r.git('show', `HEAD:${rel}`), { file, folder }).worklog;
+  const theirs = parseTicket(mainText, { file, folder }).worklog;
+  const lines = new Map();
+  for (const w of [...ours, ...theirs]) lines.set(`${w.at}|${w.by}|${w.text}`, w);
+  const worklog = [...lines.values()].sort((a, b) => a.at.localeCompare(b.at)).map((w) => `- ${w.at} · ${w.by} · ${w.text}`);
+  r.write(rel, `${mainText.replace(/## Werklog[\s\S]*$/, '## Werklog\n\n')}${worklog.join('\n')}\n`);
+}
+
+test('after a conflicting git merge main, keeping main\'s frontmatter lets the next round start', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    pickedUp(ctx);
+    assert.equal(run('status', 'FB-001', 'te-testen', '--by', 's1').status, 0);
+    r.commit('FB-001 done');
+    const doneCommit = r.git('rev-parse', 'HEAD');
+    assert.equal(run('pr', 'FB-001', '52', '--by', 's1').status, 0);
+    r.commit('FB-001 PR number');
+
+    // the PR was merged at the te-testen commit, before the PR-number commit landed
+    r.git('switch', '-q', 'main');
+    r.git('merge', '-q', '--no-ff', '-m', 'merge PR', doneCommit);
+    let out = run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'eigenaar', '--log', 'Bevinding: knop ontbreekt');
+    assert.equal(out.status, 0, out.stderr);
+    r.commit('FB-001 back after the test');
+
+    r.git('switch', '-q', 'feature/a');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /houd dan de frontmatter van main/);
+    assert.throws(() => r.git('merge', '-q', 'main'), 'the merge conflicts on the ticket file');
+    resolveKeepingMain(r, REL);
+    r.git('add', REL);
+    r.git('commit', '-q', '--no-edit');
+
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--log', 'tweede ronde');
+    assert.equal(out.status, 0, out.stderr);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('an uncommitted give-back in another worktree does not free the ticket yet', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    const wt = path.join(r.dir, 'wt-s1');
+    r.git('worktree', 'add', '-q', '-b', 'feature/a', wt, 'main');
+    assert.equal(runIn(ctx, wt, 'status', 'FB-001', 'in-uitvoering', '--by', 's1').status, 0);
+    r.commit('Start FB-001', wt);
+    assert.equal(runIn(ctx, wt, 'status', 'FB-001', 'klaar-voor-bouw', '--by', 's1', '--log', 'teruggegeven').status, 0); // not committed
+
+    r.git('switch', '-q', '-c', 'feature/b');
+    let out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /s1 houdt het ticket vast/);
+    r.git('switch', '-q', 'main');
+    r.commit('Give FB-001 back', wt);
+    r.git('switch', '-q', 'feature/b');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 0, out.stderr);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a PR the owner will not merge: he sets the ticket back on its branch, and the next session starts from main', () => {
+  const ctx = setup();
+  const { r, run } = ctx;
+  try {
+    readyTicket(ctx);
+    pickedUp(ctx);
+    assert.equal(run('status', 'FB-001', 'te-testen', '--by', 's1').status, 0);
+    r.commit('FB-001 done, PR open');
+    r.git('switch', '-q', 'main');
+    r.git('switch', '-q', '-c', 'feature/b');
+    let out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /Wordt die PR niet gemerged/);
+
+    r.git('switch', '-q', 'feature/a');
+    assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'eigenaar', '--log', 'PR niet gemerged').status, 0);
+    r.commit('FB-001 back, PR not merged');
     r.git('switch', '-q', 'feature/b');
     out = run('status', 'FB-001', 'in-uitvoering', '--by', 's2');
     assert.equal(out.status, 0, out.stderr);

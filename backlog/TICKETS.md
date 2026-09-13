@@ -219,9 +219,13 @@ andere status, een andere houder, een blokkering), dan weigert de CLI en zegt ze
 - ze staat op een remote branch die op de server al verwijderd is: `git fetch --prune`; is ze daar alleen verouderd
   (het ticket werd lokaal teruggegeven of vrijgegeven), push die branch dan.
 
-Geeft `git merge main` een conflict in het ticketbestand, houd dan de frontmatter van je branch en alle
-werklogregels van beide kanten, in volgorde van tijd. Wie een ticket teruggeeft of vrijgeeft op een branch die al
-gepusht is, pusht dat ook.
+Geeft `git merge main` een conflict in het ticketbestand, houd dan de frontmatter van `main` (main liep voor, daarom
+weigerde de CLI) en alle werklogregels van beide kanten, in volgorde van tijd. Een teruggave of vrijgave telt pas als
+ze gecommit is; op een branch die al gepusht is, push je ze ook.
+
+Merget de eigenaar een PR niet, dan wacht het afgewerkte werk op een merge die niet komt: hij zet het ticket in een
+checkout van die branch terug naar `klaar-voor-bouw` en commit dat daar (de enige statuswijziging die hij niet op
+`main` commit), of hij verwijdert de branch, waarna de versie op `main` weer geldt.
 
 De CLI neemt zelf nooit een versie over; dat doet git, zodat een latere merge klopt. Een nieuwere versie met dezelfde
 status houdt niemand tegen, maar de CLI noemt ze en toont haar laatste werklogregel (bijvoorbeeld de notitie van een
