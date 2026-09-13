@@ -116,11 +116,12 @@ that the board has the **full flow** of columns including a tester column.
   `bijgewerkt` unless they are newer.
 - **The functional architect commits directly to `main`.** That needs push rights and no branch protection that blocks
   them; the owner has to arrange that or move them to PRs.
-- **Tickets are Dutch**, where Art. II.6 kept the backlog English. The owner ruled it for these two folders only,
+- **Tickets are Dutch**, where Art. II.6 kept the backlog English. The owner ruled it for these two folders and their guide (`TICKETS.md` and the two folder READMEs) only,
   because their readers are the functional architect and the owner, and it is recorded as an amendment to Art. II.6
   in the constitution's ratification log. The tool's command and option names stay English (Art. II.2). Its messages
   and the board are Dutch for the same readers, and they sit outside the product, so the `nl.json` catalogue
-  (Art. II.3, X.3) does not bind them.
+  (Art. II.3, X.3) does not bind them. The three skill names stay Dutch, like `groepschat` (owner ruling, recorded in
+  II.6).
 
 ## Compliance trace
 
