@@ -60,8 +60,8 @@ without asking KOV first. That is recorded here as the context the ruling was ta
    fraction becomes `1/2` (stripping its tags would have written `12`; 49 occur), a link keeps its address (the Frans
    minimumdoelen point at their word list), an image becomes its alt text, and KOV's literal angle brackets around
    examples (`< bv. … >`, 126 rows) stay text, as does a raw `<` used as a sign, and `10<sup>2</sup>` becomes `10^2`.
-   Markup the conversion cannot keep (an unknown tag, `<ol>`, `<sub>`, an image without alt text, a link without a
-   double-quoted address) makes the row **refused, not stripped**.
+   Markup the conversion cannot keep (an unknown tag, `<ol>`, `<sub>`, a `<sup>` that is not a plain number, an image
+   without alt text, an unclosed link or one without a double-quoted address) makes the row **refused, not stripped**.
    Taking `uniqueCode` verbatim removes the padding hazard E1-12 recorded (`6-1` against `6-01`): nothing is
    concatenated any more. A row whose `validity.endDate` has passed is not imported.
    **All 998 are imported**, whatever the goal-set scope of decision 5, because the decree applies in full. *(This

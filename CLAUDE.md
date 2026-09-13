@@ -181,7 +181,7 @@ One Excel file per discipline. Hidden columns may be empty. **Keep this mapping 
 ## Testing
 - **Backend (xUnit):** unit-test the dekking/concordance logic, the Op.stap API mapping and its HTML conversion, and the Excel import. Integration-test the API against a Postgres test container.
 - **Frontend (Vitest + Testing Library):** kalender (drag-and-drop), suggestion accept/reject, and the dekkingsoverzicht.
-- **Highest-risk logic = the Op.stap import (the API mapping and its HTML-to-text conversion, and the Excel parser while it exists) and the coverage calculation** — cover them well. *(Amended 2026-09-11 in step with Art. V.6.)*
+- **Highest-risk logic = the Op.stap import (the API mapping and its HTML-to-text conversion, and the Excel parser while it exists) and the coverage calculation** — cover them well. *(Amended 2026-09-13, in step with the Art. V.6 amendment of 2026-09-11.)*
 
 ## Roadmap (MVP first)
 MVP core (functional analysis FR-1..FR-10): Excel import of thema's/activiteiten (FR-1), inladen van Op.stap-leerplandoelen (FR-2), thema-/activiteitenbeheer (FR-3), AI-matching (FR-4), AI-jaarplangeneratie (FR-5), kalender + drag-and-drop (FR-6), manuele bewerking (FR-7), (her)generatie (FR-8), dekkingsoverzicht incl. minimumdoelniveau (FR-9), rollen/rechten + inkijken (FR-10).
