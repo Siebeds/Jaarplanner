@@ -2,10 +2,10 @@
 id: TB-001
 titel: Ticketbacklog en lokaal kanbanbord
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-13
-bijgewerkt: 2026-09-13 20:17
+bijgewerkt: 2026-09-13 20:25
 opgepakt-door: ticket-backlog
 branch: feature/ticket-backlog
 pr:
@@ -38,7 +38,7 @@ eigenaar zelf start, moet eerst een technisch ticket krijgen, in een andere kleu
 - [x] Gegeven een ticket dat de structuur breekt, wanneer het bord laadt, dan staat het in de rode balk met de fout en faalt `tickets.mjs check` (`test/parse.test.mjs`, `test/board.test.mjs`).
 - [x] Gegeven een statuswijziging via de CLI, dan zijn alleen de toegestane overgangen mogelijk en worden `bijgewerkt` en een werklogregel geschreven (`test/cli.test.mjs`).
 - [x] Gegeven het bord in een echte browser, wanneer ik het bekijk op desktop en op 390 px breed, dan is alles leesbaar en bedienbaar met het toetsenbord (`backlog/worklogs/TB-001/browser-pass.md`).
-- [ ] Gegeven de volledige wijziging, wanneer de antagonist ze audit, dan zijn alle bevindingen opgelost of uitdrukkelijk opzij gezet.
+- [x] Gegeven de volledige wijziging, wanneer de antagonist ze audit, dan zijn alle bevindingen opgelost of uitdrukkelijk opzij gezet (tien rondes, `backlog/worklogs/TB-001/antagonist.md`; de eigenaar stopte de audits na ronde 10, dus de fixes van ronde 10 zijn niet opnieuw geaudit).
 
 ## Buiten scope
 
@@ -71,3 +71,5 @@ nog als vervolg binnen een lopende epic, en de functioneel architect werkt in ee
 - 2026-09-13 19:53 · ticket-backlog · eigenaar: bevestigt de procedure voor een PR die hij niet merget (ticket op die branch terug naar klaar-voor-bouw en daar committen, of de branch verwijderen)
 - 2026-09-13 19:57 · ticket-backlog · antagonist ronde 9: VIOLATIONS FOUND (1 MAJOR: de conflictregel liet een sessie die het ticket vasthoudt het ongemerkt loslaten); de melding zegt nu per geval welke frontmatter je houdt, handleiding gecorrigeerd, 83 tests groen, browserpass derde keer groen
 - 2026-09-13 20:17 · ticket-backlog · antagonist ronde 10: VIOLATIONS FOUND (1 MAJOR: de conflictregel hing af van wie het commando draait, waardoor een release van de eigenaar een blokkering verloor); de regel kijkt nu naar de versie zelf en houdt ook het PR-nummer, 84 tests groen
+- 2026-09-13 20:25 · ticket-backlog · eigenaar: stopt de antagonist-rondes na ronde 10; ronde 11 afgebroken, de fixes van ronde 10 zijn niet opnieuw geaudit (backlog/worklogs/TB-001/antagonist.md)
+- 2026-09-13 20:25 · ticket-backlog · in-uitvoering → klaar: ticketbacklog, bord, CLI, skills, ADR-0033 en het Art. II.6-amendement af; 84 tests groen, browserpass drie keer groen
