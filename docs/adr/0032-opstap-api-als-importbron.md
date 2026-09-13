@@ -57,7 +57,7 @@ without asking KOV first. That is recorded here as the context the ruling was ta
    `Ref` = `uniqueCode` verbatim, `Leeftijd` = its prefix (`K-`, `4-`, `6-`), `Nr` = `code`, which must equal the rest
    of `uniqueCode`, and `Omschrijving` = `title` followed by `description`, both converted from HTML to plain text so
    no markup ever reaches a screen. **The conversion may not change what the decree says** (Art. III.1): a MathML
-   fraction becomes `1/2` (stripping its tags would have written `12`; 98 occur), a link keeps its address (the Frans
+   fraction becomes `1/2` (stripping its tags would have written `12`; 49 occur), a link keeps its address (the Frans
    minimumdoelen point at their word list), an image becomes its alt text, and KOV's literal angle brackets around
    examples (`< bv. … >`, 126 rows) stay text, as does a raw `<` used as a sign, and `10<sup>2</sup>` becomes `10^2`.
    Markup the conversion cannot keep (an unknown tag, `<ol>`, `<sub>`, an image without alt text, a link without a
@@ -74,7 +74,10 @@ without asking KOV first. That is recorded here as the context the ruling was ta
 5. **Scope for now: G goals only (owner ruling 2026-09-11).** The leerplandoelen import (E1-21) takes goal set **G**
    and skips P, S, +, A, **Z (zwemdoelen) and V (Vlaamse gebarentaal)**, counting what it skipped in the report. G maps
    to `Doelsoort.Gemeenschappelijk`. The API path never produces `Doelsoort.Minimumdoel`: the concordance travels in
-   `MinimumdoelRef`, which is what coverage reads. **The consequence, measured on snapshot 1.2:** 992 of the 998
+   `MinimumdoelRef`, which is what coverage reads. A doelsoort filter "only MD" at leerplandoel level therefore matches
+   nothing on this path; FR-2.2's and Art. V.3's "enkel de minimumdoelen" is served by the minimumdoel-level view.
+   *(Implementer's reading, recorded so E5 does not build a filter that cannot match.)* **The consequence, measured on
+   snapshot 1.2:** 992 of the 998
    minimumdoelen stay reachable through a G goal. `6-7.1.6` is reachable only through a Z goal, and five (`K-1.2.6`,
    `4-2.2.23`, `6-2.2.3`, `6-6.2.5`, `6-6.3.9`) through no goal at all. Those six can never be gedekt under this scope,
    and that figure assumes every discipline is imported; a narrower selection (Art. XIV "Disciplines first", still open)
@@ -120,7 +123,9 @@ without asking KOV first. That is recorded here as the context the ruling was ta
 - **E1-12** (this ADR's first story): the minimumdoelen import from the API, with preview and apply.
 - **E1-21**: leerplandoelen from `krcItems` (G only, pinned version, `key`, HTML split into voorbeelden, woordenschat
   and toelichting).
-- **E1-22**: the import screen for the API source, replacing E1-13's notice that the minimumdoelen are not loaded.
+- **E1-22**: the import screen for the API source, and the minimumdoelen register's empty state
+  (`doelen.geenMinimumdoelenTitel` / `doelen.geenMinimumdoelenActie`) and count, which E1-12 makes false. (E1-13's
+  notice `import.opstap.voorwaarde` was already deleted by `891195d`.)
 - **E1-23**: a scheduled version check in production that prepares a review for directie and never applies it.
 - The ADR index row in `docs/adr/README.md`, owed by whoever next holds that file.
 
