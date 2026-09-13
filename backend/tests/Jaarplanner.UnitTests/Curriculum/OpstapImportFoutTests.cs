@@ -98,4 +98,41 @@ public sealed class OpstapImportFoutTests
         // The preflight has no underlying fault, and must not invent one.
         Assert.Null(OpstapImportFout.OnbekendeDiscipline("99").InnerException);
     }
+
+    /// <summary>
+    /// The Excel route after an API import (E1-21 rounds 1 and 2). Addressed to directie, and it says only what the trigger
+    /// proves: no claim that the file would overwrite goals, and none about where every leerplandoel comes from.
+    /// </summary>
+    [Fact]
+    public void Excel_na_een_api_import_zegt_alleen_wat_waar_is()
+    {
+        var fout = OpstapImportFout.ExcelNaOpstapApi();
+
+        Assert.Equal(OpstapImportFoutSoort.ExcelNaOpstapApi, fout.Soort);
+        Assert.Equal(
+            "Er is al een versie van Op.stap ingelezen via Katholiek Onderwijs Vlaanderen. Daarna wordt geen " +
+            "Excel-bestand van Op.stap meer ingelezen. Er is niets gewijzigd.",
+            fout.Message);
+    }
+
+    /// <summary>
+    /// From KOV's API there is no file to check (E1-21), so that path says where the goals belong according to the
+    /// source instead of "Controleer of dit bestand …". Both paths keep the same closing sentences.
+    /// </summary>
+    [Fact]
+    public void Code_in_andere_discipline_uit_de_api_noemt_geen_bestand()
+    {
+        var metDetail = OpstapImportFout
+            .CodeInAndereDiscipline("3", [new DoelInAndereDiscipline("WIS-1", "2")], herkomst: OpstapHerkomst.OpstapApi).Message;
+        var zonderDetail = OpstapImportFout.CodeInAndereDiscipline("3", [], herkomst: OpstapHerkomst.OpstapApi).Message;
+
+        Assert.Equal(
+            "Deze codes staan al bij een andere discipline: WIS-1 (discipline 2). Volgens de Op.stap-bron horen ze bij " +
+            "discipline 3. Er is niets gewijzigd. Verhuist een doel echt naar een andere discipline, dan moet iemand dat " +
+            "eerst bevestigen.",
+            metDetail);
+        Assert.StartsWith("Een of meer codes uit de Op.stap-bron staan al bij een andere discipline.", zonderDetail, StringComparison.Ordinal);
+        Assert.DoesNotContain("bestand", metDetail + zonderDetail, StringComparison.Ordinal);
+        Assert.Equal(Staart(zonderDetail), Staart(metDetail));
+    }
 }

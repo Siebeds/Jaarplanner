@@ -24,8 +24,16 @@ public sealed class OpstapHerimportDiff
         IReadOnlyList<string> verdwenen,
         IReadOnlyList<VerdwenenGekoppeldDoel> verdwenenMaarGekoppeld,
         bool overgeslagen = false,
-        IReadOnlyList<string>? opmerkingen = null)
+        IReadOnlyList<string>? opmerkingen = null,
+        IReadOnlyList<string>? nietIngelezen = null,
+        IReadOnlyList<string>? buitenBereik = null,
+        IReadOnlyList<HernummerdDoel>? hernummerd = null,
+        IReadOnlyList<string>? gemeenschappelijkBuitenBereik = null,
+        IReadOnlyList<string>? eerderVerdwenen = null,
+        IReadOnlyList<string>? teruggekeerd = null)
     {
+        EerderVerdwenen = eerderVerdwenen ?? [];
+        Teruggekeerd = teruggekeerd ?? [];
         DisciplineNummer = disciplineNummer;
         Toegevoegd = toegevoegd;
         Gewijzigd = gewijzigd;
@@ -34,6 +42,10 @@ public sealed class OpstapHerimportDiff
         VerdwenenMaarGekoppeld = verdwenenMaarGekoppeld;
         Overgeslagen = overgeslagen;
         Opmerkingen = opmerkingen ?? [];
+        NietIngelezen = nietIngelezen ?? [];
+        BuitenBereik = buitenBereik ?? [];
+        Hernummerd = hernummerd ?? [];
+        GemeenschappelijkBuitenBereik = gemeenschappelijkBuitenBereik ?? [];
     }
 
     /// <summary>The discipline this re-import covers.</summary>
@@ -49,20 +61,34 @@ public sealed class OpstapHerimportDiff
     public IReadOnlyList<string> Ongewijzigd { get; }
 
     /// <summary>
-    /// Codes in the database (for this discipline) that are <b>absent</b> from the new file and are
-    /// <b>not referenced</b> by any teacher content. Whether the import removes them is policy (see the
+    /// Codes in the database (for this discipline) that are <b>absent</b> from the new file, <b>not referenced</b> by any
+    /// teacher content and <b>not flagged yet</b>. Whether the import removes them is policy (see the
     /// import service) — the <b>conservative default is flag-and-keep</b> (mark
-    /// <c>NietMeerInOpstap = true</c>, never delete); an actual purge is an explicit directie opt-in.
+    /// <c>NietMeerInOpstap = true</c>, never delete); an actual purge is an explicit directie opt-in, under which an
+    /// already flagged code is listed here too, because the purge removes it.
     /// </summary>
     public IReadOnlyList<string> Verdwenen { get; }
 
     /// <summary>
-    /// Codes absent from the new file but <b>still referenced</b> by teacher content (a
-    /// <c>DoelKoppeling</c>). These are <b>never</b> deleted (FK Restrict, Art. IV.2); instead they
+    /// Codes absent from the new file, <b>still referenced</b> by teacher content (a <c>DoelKoppeling</c>) and not
+    /// flagged yet. These are <b>never</b> deleted (FK Restrict, Art. IV.2); instead they
     /// are flagged for review (<c>NietMeerInOpstap = true</c>). This list is the headline of the
     /// non-destructive guarantee.
     /// </summary>
     public IReadOnlyList<VerdwenenGekoppeldDoel> VerdwenenMaarGekoppeld { get; }
+
+    /// <summary>
+    /// Codes still absent that an earlier applied import already flagged (E1-22, antagonist round 1 MAJOR), linked or not.
+    /// Applying writes nothing for them and they are not a review item: they were one when they left, and the register
+    /// marks them "vervallen". Kept apart so a repeat fetch of an unchanged source does not look like something to apply.
+    /// </summary>
+    public IReadOnlyList<string> EerderVerdwenen { get; }
+
+    /// <summary>
+    /// Codes an earlier import flagged that the source delivers again with the same content: the apply clears the flag. A
+    /// flagged code that returns with changed content is in <see cref="Gewijzigd"/>, whose apply clears it too.
+    /// </summary>
+    public IReadOnlyList<string> Teruggekeerd { get; }
 
     /// <summary>
     /// True when the (re-)import was deliberately <b>skipped</b> as a safety measure — e.g. the parse
@@ -80,20 +106,96 @@ public sealed class OpstapHerimportDiff
     /// </summary>
     public IReadOnlyList<string> Opmerkingen { get; }
 
-    /// <summary>True when the re-import changes nothing (no adds, changes, or disappearances).</summary>
+    /// <summary>
+    /// Codes in the database (for this discipline) that the source <b>still names</b>, but whose goal was not imported
+    /// this time because it could not be read: a malformed Excel row, or an Op.stap goal the mapping refused (E1-21). The
+    /// stored row is <b>left exactly as it was</b>, flag included. Kept apart from <see cref="Verdwenen"/> because telling a
+    /// reviewer that Op.stap dropped a goal it still contains would be false (Art. III.4), the defect E1-12 fixed for
+    /// minimumdoelen.
+    /// </summary>
+    public IReadOnlyList<string> NietIngelezen { get; }
+
+    /// <summary>
+    /// Codes in the database (for this discipline) that the source still names under a goal set this import does
+    /// <b>not</b> take (E1-21: only goal set G is imported, owner ruling 2026-09-11). Typically P, S, + or A goals loaded
+    /// earlier from the Excel route. Left untouched and <b>not</b> a review item: they are outside the ruled scope, not
+    /// missing from Op.stap. A stored <b>gemeenschappelijk</b> goal found there is not in this list but in
+    /// <see cref="GemeenschappelijkBuitenBereik"/>.
+    /// </summary>
+    public IReadOnlyList<string> BuitenBereik { get; }
+
+    /// <summary>
+    /// Codes stored here as a <b>gemeenschappelijk</b> (G) goal that the source lists under a goal set this import does
+    /// not take (E1-21, antagonist round 1 MINOR 4). Left untouched, like <see cref="BuitenBereik"/>, but a review item:
+    /// the one goal set the import does take no longer holds the goal, and a reviewer should know. What changed at KOV,
+    /// and why, the import cannot tell.
+    /// </summary>
+    public IReadOnlyList<string> GemeenschappelijkBuitenBereik { get; }
+
+    /// <summary>
+    /// Goals the source renumbered: a stored code is absent, and a new code carries the same Op.stap <c>key</c> (E1-21,
+    /// ADR-0032 decision 7). Applying inserts the new code and flags the old one <c>NietMeerInOpstap</c>, exactly as for
+    /// an addition plus a disappearance, because the code is the identity (Art. III.5) and teacher links stay on the code
+    /// they were made to. The pair is reported here <b>instead of</b> in <see cref="Toegevoegd"/> and
+    /// <see cref="Verdwenen"/>/<see cref="VerdwenenMaarGekoppeld"/>, so every code sits in exactly one bucket.
+    /// </summary>
+    public IReadOnlyList<HernummerdDoel> Hernummerd { get; }
+
+    /// <summary>
+    /// True when the re-import changes nothing and left no stored goal unread. Codes <see cref="BuitenBereik"/> do not
+    /// count: the import was never meant to read them.
+    /// </summary>
     public bool IsLeeg =>
         Toegevoegd.Count == 0 &&
         Gewijzigd.Count == 0 &&
         Verdwenen.Count == 0 &&
-        VerdwenenMaarGekoppeld.Count == 0;
+        VerdwenenMaarGekoppeld.Count == 0 &&
+        NietIngelezen.Count == 0 &&
+        Hernummerd.Count == 0 &&
+        GemeenschappelijkBuitenBereik.Count == 0 &&
+        Teruggekeerd.Count == 0;
 
-    /// <summary>True when something needs human review: a skip notice, a change, or a disappearance.</summary>
+    /// <summary>
+    /// True when something needs human review: a skip notice, a change, a new disappearance, a renumbering, a return, a
+    /// stored goal whose new version could not be read, or a stored gemeenschappelijk goal the source lists under a goal
+    /// set this import does not take (<see cref="GemeenschappelijkBuitenBereik"/>). A code that was already flagged
+    /// (<see cref="EerderVerdwenen"/>) is not a reason.
+    /// </summary>
     public bool VereistReview =>
         Overgeslagen ||
         Gewijzigd.Count > 0 ||
         Verdwenen.Count > 0 ||
-        VerdwenenMaarGekoppeld.Count > 0;
+        VerdwenenMaarGekoppeld.Count > 0 ||
+        NietIngelezen.Count > 0 ||
+        Hernummerd.Count > 0 ||
+        GemeenschappelijkBuitenBereik.Count > 0 ||
+        Teruggekeerd.Count > 0;
+
+    /// <summary>
+    /// True when applying this report writes a curriculum row: an insert, a content change, a flag set or cleared, or a
+    /// purge. The one definition a screen may offer an apply on (E1-22, the E3-06 rule). Storing an Op.stap key on a row
+    /// the Excel route loaded is bookkeeping and does not count: it rides along with the next apply that does write.
+    /// </summary>
+    public bool SchrijftIets =>
+        !Overgeslagen &&
+        Toegevoegd.Count +
+        Gewijzigd.Count +
+        Verdwenen.Count +
+        VerdwenenMaarGekoppeld.Count +
+        Hernummerd.Count +
+        Teruggekeerd.Count > 0;
 }
+
+/// <summary>
+/// A goal the source renumbered (E1-21): the old code is gone, the new code carries the same Op.stap <c>key</c>.
+/// </summary>
+/// <param name="OudeCode">The stored code, which is kept and flagged <c>NietMeerInOpstap</c>.</param>
+/// <param name="NieuweCode">The code the source uses now, which is inserted.</param>
+/// <param name="AantalKoppelingen">
+/// How many teacher links still reference the old code. They are <b>not</b> moved: the code is the identity, and moving
+/// a link is a decision for a teacher, not for an import.
+/// </param>
+public readonly record struct HernummerdDoel(string OudeCode, string NieuweCode, int AantalKoppelingen);
 
 /// <summary>
 /// A single field-level change to a leerplandoel's official content during re-import: the field

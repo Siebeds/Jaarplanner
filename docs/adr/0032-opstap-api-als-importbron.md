@@ -83,6 +83,21 @@ without asking KOV first. That is recorded here as the context the ruling was ta
    and that figure assumes every discipline is imported; a narrower selection (Art. XIV "Disciplines first", still open)
    leaves more. *Implementer's default, not part of the ruling:* a dekkingsoverzicht names any minimumdoel with no loaded
    concorded leerplandoel as such, rather than presenting it as a gap the teachers left.
+   *Amended 2026-09-13 by owner ruling (in session, E1-22):* asked "Moet de lijst die reden per minimumdoel tonen?", the
+   owner answered "Reden tonen".
+   *Implementer's realisation, not part of the ruling:* the minimumdoelen register shows, per minimumdoel no loaded
+   leerplandoel concords, the reason, but only what the applied snapshot proves: only goals of goal sets that are not
+   imported concord to it (the sets named in Dutch), no goal of the snapshot concords to it, or a G goal that does was
+   refused by the mapping. Otherwise it says nothing beyond "no loaded leerplandoel refers to it": when no leerplandoelen
+   import has run yet, when an importable goal concords to it but its discipline was not imported, or when the
+   minimumdoel itself is no longer in Op.stap (flagged, or absent from the minimumdoelen list the import read). A
+   minimumdoel a stored leerplandoel still points at, such as a goal KOV dropped, is not in that group at all: it is
+   listed under that goal's discipline. Every applied leerplandoelen import derives the reason from its snapshot and
+   stores it on `Minimumdoel` in two nullable columns (`zonder_leerplandoel_reden`, `zonder_leerplandoel_doelsets`;
+   migration `20260913164907_MinimumdoelZonderLeerplandoelReden`); the minimumdoelen import clears it when it flags a
+   minimumdoel. This is import metadata like `NietMeerInOpstap`: not decreed content, written only by the two imports,
+   read by no coverage code, so no constitution amendment is needed (the E1-22 round-2 audit agreed). On snapshot 1.2:
+   `6-7.1.6` is reached only by a zwemdoel (Z), the other five by no goal at all.
 6. **Versions are pinned** (E1-21). The leerplandoelen import requests a numbered snapshot, never `latest`, and records
    the version and hash, so a dekkingscijfer can name the curriculum version it was computed against.
 7. **The goal's UUID `key` is stored beside its code** (E1-21). `code` stays the identity (Art. III.5); the key lets the
@@ -91,6 +106,19 @@ without asking KOV first. That is recorded here as the context the ruling was ta
 8. **The Excel path stays for now, demoted.** `ClosedXmlOpstapParser` and `POST /api/opstap-import` remain until the
    API import has run in production; whether to remove them is a later decision. *This is the implementer's default,
    not part of the owner's ruling.*
+   *Amended 2026-09-13 (E1-21 fix round 1, option (b) of the antagonist's round-1 MAJOR 1) and **ratified by the owner
+   the same day** ([`CONSTITUTION.md`](../../CONSTITUTION.md) Art. VII.2 and its ratification log; directie has not
+   confirmed it):* **once an API import has been applied** (an `opstapversies` row exists), the Excel route
+   **refuses**, on the preview as on the apply, with a 409 of type `urn:jaarplanner:opstap-import:excel-na-opstap-api`,
+   and writes nothing. Read after the API import, an Excel file would have overwritten the API's wording, cleared the
+   concordance the files do not carry and flagged every API goal the file lacks as *niet meer in Op.stap*: measured on
+   snapshot 1.2 against the repo's twelve files, about 4,700 goals flagged and 858 concordances cleared. Protecting the
+   API rows inside the shared writer instead (option (a)) was rejected because it would still revert the overlapping
+   goals (253 in Wiskunde) to the Excel wording. Before any API import the Excel route works as it did. Removing it
+   stays a later decision.
+   *The cost, ratified with it:* goals the Excel route loaded outside goal set G (P, S, +, A) stay as the file wrote
+   them and can no longer be refreshed by any route. A removal by KOV is still flagged through the API path, because
+   such a code is then named nowhere in the source; a changed wording is not picked up.
 
 ## Alternatives considered
 

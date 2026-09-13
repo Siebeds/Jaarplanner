@@ -79,7 +79,8 @@ export function Doeldetail({
         <Sectie titel={t("doel.minimumdoel")}>
           <div className="rounded-kaart border border-lijn bg-vlak/70 p-3">
             <span className="mono text-[0.6875rem] font-medium text-doelsoort-md">{data.minimumdoel.ref}</span>
-            <p className="mt-1 text-body text-inkt">{data.minimumdoel.omschrijving}</p>
+            {/* Decreed text with its list items on lines of their own ("\n- "), as the register shows it (E1-22). */}
+            <p className="mt-1 whitespace-pre-line text-body text-inkt">{data.minimumdoel.omschrijving}</p>
           </div>
         </Sectie>
       ) : null}

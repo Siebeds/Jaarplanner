@@ -56,6 +56,22 @@ public class ClosedXmlOpstapParserTests
         Assert.Equal("1", doel.DisciplineNummer);
     }
 
+    /// <summary>
+    /// "3K" and "K3" are one jaar/fase, and only the canonical form is stored (owner ruling 2026-08-03; the clause E1-12
+    /// handed to E1-21), so nothing downstream compares one against the other and finds no goals.
+    /// </summary>
+    [Theory]
+    [InlineData("3K", "K3")]
+    [InlineData("1K", "JK")]
+    [InlineData("5L", "L5")]
+    [InlineData("F2", "F2")]
+    public void Normalises_the_jaar_fase_to_the_canonical_form(string bron, string verwacht)
+    {
+        var result = Parse(new OpstapWorkbookBuilder().MetHeader().MetRij(jaarFase: bron));
+
+        Assert.Equal(verwacht, Assert.Single(result.Leerplandoelen).JaarFase);
+    }
+
     [Theory]
     [InlineData("MD", Doelsoort.Minimumdoel)]
     [InlineData("G", Doelsoort.Gemeenschappelijk)]

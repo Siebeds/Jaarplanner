@@ -41,6 +41,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>The decreed minimumdoelen (read-only reference data — Art. III.1, IX.1).</summary>
     public DbSet<Minimumdoel> Minimumdoelen => Set<Minimumdoel>();
 
+    /// <summary>The applied imports of KOV's curriculum, one row each (E1-21, ADR-0032 decision 6).</summary>
+    public DbSet<Opstapversie> Opstapversies => Set<Opstapversie>();
+
     /// <summary>The class groups (Art. IX.3) — anchor for the class/age-scoped school content.</summary>
     public DbSet<Klas> Klassen => Set<Klas>();
 

@@ -21,4 +21,10 @@ public sealed class OpstapApiOptions
 
     /// <summary>Rows per page when reading the minimumdoelen list. About a thousand exist, so 500 means two requests.</summary>
     public int PaginaGrootte { get; set; } = 500;
+
+    /// <summary>
+    /// The key of the Op.stap curriculum document whose snapshots hold the leerplandoelen (E1-21):
+    /// <c>/documents/{key}/snapshots/{versie}/krcItems</c>. Default: the one KOV publishes (ADR-0032).
+    /// </summary>
+    public Guid CurriculumDocument { get; set; } = new("bdc19260-bd4c-46a8-8009-b2a54f381120");
 }

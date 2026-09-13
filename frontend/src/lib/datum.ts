@@ -91,6 +91,15 @@ export function volleDag(isoDatum: string): string {
   return VOLLE_DAG.format(lokaleDatum(isoDatum));
 }
 
+/**
+ * "13 september 2026", from an ISO date-time such as `2026-09-13T14:03:07+00:00`, in the reader's own time zone. Not
+ * through `lokaleDatum`, which takes a calendar date: a moment near midnight UTC is another day in Brussels.
+ */
+const DAG_MAAND_JAAR = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "long", year: "numeric" });
+export function datumVanTijdstip(isoTijdstip: string): string {
+  return DAG_MAAND_JAAR.format(new Date(isoTijdstip));
+}
+
 /** "ma", "di", ... for the column heads of a month grid. */
 const WEEKDAG_KORT = new Intl.DateTimeFormat("nl-BE", { weekday: "short" });
 export function weekdagKort(isoDatum: string): string {

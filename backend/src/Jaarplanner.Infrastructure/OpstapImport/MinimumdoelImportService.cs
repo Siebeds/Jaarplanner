@@ -14,11 +14,14 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// setters; an identical ref is left alone. Importing the same source twice changes nothing.
 /// </para>
 /// <para>
-/// <b>Never deletes (Art. III.4).</b> A ref the source no longer names stays in the table and is reported as
-/// <see cref="MinimumdoelImportDiff.Verdwenen"/>. A ref the source still names but whose row the mapping refused is
-/// reported apart, as <see cref="MinimumdoelImportDiff.NietIngelezen"/>, with its previous text untouched: calling it
-/// "no longer in the source" would tell a reviewer the decree dropped an eindterm it still contains. The row carries no
-/// "no longer in Op.stap" flag yet; that needs a migration and belongs with E1-21 (ADR-0032, consequences).
+/// <b>Never deletes (Art. III.4).</b> A ref the source no longer names stays in the table, is reported as
+/// <see cref="MinimumdoelImportDiff.Verdwenen"/> and, on apply, is flagged <see cref="Minimumdoel.NietMeerInOpstap"/>
+/// (E1-21, the flag ADR-0032's consequences asked for); once flagged, a later import reports it as
+/// <see cref="MinimumdoelImportDiff.EerderVerdwenen"/>, which writes nothing, and an import that finds it again reports it
+/// as <see cref="MinimumdoelImportDiff.Teruggekeerd"/> and clears the flag (E1-22). A ref the
+/// source still names but whose row the mapping refused is reported apart, as
+/// <see cref="MinimumdoelImportDiff.NietIngelezen"/>, with its previous text and flag untouched: calling it "no longer
+/// in the source" would tell a reviewer the decree dropped an eindterm it still contains.
 /// </para>
 /// <para>
 /// <b>An empty source is a skip, not a disappearance.</b> If the source yields no usable row, nothing is written and the
@@ -73,6 +76,7 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
         var toegevoegd = new List<string>();
         var gewijzigd = new List<MinimumdoelWijziging>();
         var ongewijzigd = new List<string>();
+        var teruggekeerd = new List<string>();
 
         foreach (var nieuw in bron.Minimumdoelen)
         {
@@ -90,7 +94,21 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             var velden = Verschillen(oud, nieuw);
             if (velden.Count == 0)
             {
-                ongewijzigd.Add(nieuw.Ref);
+                if (oud.NietMeerInOpstap)
+                {
+                    // Present again after an import that flagged it: the content is the same, only the flag goes. A
+                    // write, so it is reported as one rather than hidden among the unchanged (E1-22).
+                    teruggekeerd.Add(nieuw.Ref);
+                    if (toepassen)
+                    {
+                        ZetReviewVlag(oud, false);
+                    }
+                }
+                else
+                {
+                    ongewijzigd.Add(nieuw.Ref);
+                }
+
                 continue;
             }
 
@@ -98,15 +116,36 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             if (toepassen)
             {
                 _context.Entry(oud).CurrentValues.SetValues(nieuw);
+                ZetReviewVlag(oud, false);
             }
         }
 
-        var afwezig = bestaand.Where(m => !inkomendeRefs.Contains(m.Ref)).Select(m => m.Ref).ToList();
-        var nietIngelezen = afwezig.Where(genoemdMaarGeweigerd.Contains).Order(StringComparer.Ordinal).ToList();
-        var verdwenen = afwezig.Where(r => !genoemdMaarGeweigerd.Contains(r)).Order(StringComparer.Ordinal).ToList();
+        var afwezig = bestaand.Where(m => !inkomendeRefs.Contains(m.Ref)).ToList();
+        var nietIngelezen = afwezig
+            .Select(m => m.Ref)
+            .Where(genoemdMaarGeweigerd.Contains)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        // Gone from the source: newly (the apply flags it, a write and a review item) or since an earlier import that
+        // already flagged it (nothing to write, not a review item). Without the split a repeat fetch of an unchanged
+        // source re-reported every flagged ref as gone and offered an apply that set a flag that was already set
+        // (E1-22, antagonist round 1 MAJOR).
+        var nietGenoemd = afwezig.Where(m => !genoemdMaarGeweigerd.Contains(m.Ref)).ToList();
+        var verdwenen = nietGenoemd.Where(m => !m.NietMeerInOpstap).Select(m => m.Ref).Order(StringComparer.Ordinal).ToList();
+        var eerderVerdwenen = nietGenoemd.Where(m => m.NietMeerInOpstap).Select(m => m.Ref).Order(StringComparer.Ordinal).ToList();
 
         if (toepassen)
         {
+            foreach (var weg in verdwenen)
+            {
+                ZetReviewVlag(bestaandPerRef[weg], true);
+                // A minimumdoel no longer in Op.stap keeps no reason for having no leerplandoel (E1-22 fix round 3):
+                // "no goal refers to it" is unproven once its address is gone, and Minimumdoel says a flagged row has none.
+                var entry = _context.Entry(bestaandPerRef[weg]);
+                entry.Property(m => m.ZonderLeerplandoelReden).CurrentValue = null;
+                entry.Property(m => m.ZonderLeerplandoelDoelsets).CurrentValue = null;
+            }
+
             await _context.SaveChangesAsync(cancellationToken);
         }
 
@@ -121,13 +160,20 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             opmerkingen.Add(NietIngelezenMelding(nietIngelezen.Count));
         }
 
+        if (teruggekeerd.Count > 0)
+        {
+            opmerkingen.Add(TeruggekeerdMelding(teruggekeerd.Count));
+        }
+
         var diff = new MinimumdoelImportDiff(
             toegevoegd.Order(StringComparer.Ordinal).ToList(),
             gewijzigd.OrderBy(w => w.Ref, StringComparer.Ordinal).ToList(),
             ongewijzigd.Order(StringComparer.Ordinal).ToList(),
             verdwenen,
             nietIngelezen,
-            opmerkingen: opmerkingen);
+            opmerkingen: opmerkingen,
+            eerderVerdwenen: eerderVerdwenen,
+            teruggekeerd: teruggekeerd.Order(StringComparer.Ordinal).ToList());
 
         return new MinimumdoelImportResultaat(diff, bron.Problemen, toepassen);
     }
@@ -143,6 +189,16 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             : $"{aantal} minimumdoelen staan niet meer in de Op.stap-bron. Ze blijven in de toepassing staan en worden niet verwijderd.";
 
     /// <summary>
+    /// The notice for flagged refs the source names again with the same content (E1-22). It says what holds: the source
+    /// has them again. It said, until fix round 2, that they were no longer marked "vervallen", a mark no screen shows on
+    /// a minimumdoel (antagonist round 2, MINOR 3).
+    /// </summary>
+    public static string TeruggekeerdMelding(int aantal) =>
+        aantal == 1
+            ? "1 minimumdoel staat weer in de Op.stap-bron."
+            : $"{aantal} minimumdoelen staan weer in de Op.stap-bron.";
+
+    /// <summary>
     /// The notice for refs the source still names but whose row was not imported this time. It asserts only what holds
     /// for every cause, markup it cannot keep as well as an expired validity: the source lists them, they were not read
     /// in, and the text already in the application was not touched. The cause is an operator matter and stays in the
@@ -152,6 +208,13 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
         aantal == 1
             ? "1 minimumdoel staat nog in de Op.stap-bron maar werd niet ingelezen. De vorige tekst blijft staan."
             : $"{aantal} minimumdoelen staan nog in de Op.stap-bron maar werden niet ingelezen. De vorige teksten blijven staan.";
+
+    /// <summary>
+    /// Sets the import-managed flag through EF's metadata, so the entity needs no mutator and stays read-only to ordinary
+    /// app code (Art. III.1), as <see cref="OpstapImportService"/> does for leerplandoelen.
+    /// </summary>
+    private void ZetReviewVlag(Minimumdoel minimumdoel, bool waarde) =>
+        _context.Entry(minimumdoel).Property(m => m.NietMeerInOpstap).CurrentValue = waarde;
 
     private static List<VeldWijziging> Verschillen(Minimumdoel oud, Minimumdoel nieuw)
     {

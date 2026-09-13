@@ -10,11 +10,11 @@ We **gokken niet** op een antwoord. Waar een keuze nog openstaat, bouwen we zo d
 
 ## 1. Waar halen we de doelen vandaan? **Beslist, graag uw bevestiging**
 
-**Wat er veranderd is.** Hier vroegen we eerder om een bestand met de officiële minimumdoelen (eindtermen). Dat bestand is **niet meer nodig**. Op 11 september 2026 heeft de projecteigenaar beslist dat de tool de doelen rechtstreeks ophaalt bij Katholiek Onderwijs Vlaanderen, via de Op.stap-koppeling die zij publiceren voor wie software bouwt. Daarin staan de minimumdoelen mét hun tekst, en bij elk leerplandoel naar welk minimumdoel het verwijst.
+**Wat er veranderd is.** Hier vroegen we eerder om een bestand met de officiële minimumdoelen (eindtermen). Dat bestand is **niet meer nodig**. Op 11 september 2026 heeft de projecteigenaar beslist dat de tool de doelen rechtstreeks ophaalt bij Katholiek Onderwijs Vlaanderen, via de Op.stap-koppeling die zij publiceren voor wie software bouwt. Daarin staan de minimumdoelen mét hun tekst, en bij de leerplandoelen die naar een minimumdoel verwijzen, welk minimumdoel dat is.
 
 **Wat we vragen:** bevestig dat u akkoord gaat met die bron, en met een tweede keuze die eraan vastzit: voorlopig halen we alleen de **gemeenschappelijke doelen** op. De zwemdoelen en de doelen Vlaamse Gebarentaal laten we voorlopig weg.
 
-**Gevolg zolang dit openstaat.** Niets ligt stil: we bouwen verder op de beslissing van de projecteigenaar. Het ophalen van de minimumdoelen is gebouwd. Aantonen dat de minimumdoelen gedekt zijn, het niveau waarop de onderwijsinspectie kijkt, kan pas wanneer ook de leerplandoelen via dezelfde weg zijn ingelezen. Dat moet nog gebouwd worden.
+**Gevolg zolang dit openstaat.** Niets ligt stil: we bouwen verder op de beslissing van de projecteigenaar. Het ophalen van de minimumdoelen en van de gemeenschappelijke leerplandoelen is gebouwd. Bij 4.983 van de 5.835 gemeenschappelijke leerplandoelen staat naar welk minimumdoel ze verwijzen; de andere verwijzen in Op.stap zelf naar geen enkel minimumdoel. Het overzicht dat per minimumdoel toont of het gedekt is, het niveau waarop de onderwijsinspectie kijkt, moet nog gebouwd worden.
 
 ---
 
@@ -32,7 +32,7 @@ We **gokken niet** op een antwoord. Waar een keuze nog openstaat, bouwen we zo d
 
 **Wat we vragen:** nemen we vanaf het begin alle 13 disciplines mee, of starten we met een selectie (bijvoorbeeld enkel de vakken van de klassen die als eerste met de tool werken)?
 
-**Waarom.** Het inladen van de leerplandoelen gebeurt per discipline, met één bestand per vak. Minder disciplines betekent sneller kunnen starten en minder bestanden te verzamelen.
+**Waarom.** Minder disciplines betekent minder leerplandoelen om te overlopen bij de start.
 
 **Gevolg zolang dit openstaat.** Geen blokkering: de keuze is een instelling, geen herbouw. Wel: in overzichten verschijnen momenteel alle 13 disciplines, ook als er nog geen doelen voor ingeladen zijn.
 
@@ -150,6 +150,20 @@ Onder een thema hangen de **subthema's**, en die zijn per **leeftijd**: een subt
 - **Nog iets dat u moet weten om dit eerlijk te kunnen beoordelen:** het scherm waarop een leerkracht één activiteit zou verhuizen, bestaat vandaag niet. De regel zit in de tool, maar er is geen knop die hem oproept. Wij melden dat, omdat een regel over iets wat niemand kan zien, ook niet in de praktijk kan blijken tegen te vallen.
 - **En er is een grovere weg die wél op een scherm staat, dus die moet u er bij lezen.** Een leerkracht kan van een subthema de **leeftijd** wijzigen in het bewerkformulier. Daarmee verhuist niet één activiteit maar het hele subthema, met al zijn activiteiten en al zijn doelen, in één keer naar een andere leeftijd. Daar houdt vandaag niets haar tegen. De regel hierboven weigert dus de kleine beweging en laat de grote toe.
   > *Waarom wij dat niet meteen ook dichtgezet hebben.* Het is een aparte vraag met een ander antwoord: één activeit verhuizen is een vergissing of het niet, maar een subthema dat onder de verkeerde leeftijd is aangemaakt, is iets wat een school echt wil kunnen rechtzetten. Dat vraagt eerder een waarschuwing die zegt hoeveel er meeverhuist dan een weigering. Wij bouwen daar niets op een gok; het staat als openstaand punt in de backlog (E1-19) en u krijgt het als aparte vraag zodra we ze goed kunnen stellen.
+
+---
+
+## 12. Waar horen de tips voor de klaspraktijk bij een leerplandoel: bij de voorbeelden of bij de toelichting?
+
+**Wat er speelt.** Bij een leerplandoel toont de tool de uitleg die Katholiek Onderwijs Vlaanderen erbij geeft, verdeeld over *voorbeelden*, *toelichting* en *woordenschat*, voor zover het doel die heeft. Katholiek Onderwijs Vlaanderen levert die uitleg als één tekst met tussentitels, en de tool verdeelt die tekst. Bij 27 gemeenschappelijke doelen volgen na de voorbeelden nog stukken met een titel als *"Mogelijke aanpak in de klaspraktijk"*, *"Mogelijke indeling voor de klaspraktijk"* of *"Verdere referenties"*.
+
+**Wat de tool nu doet.** Die stukken komen bij de **toelichting**, met hun titel erbij. Er gaat geen tekst verloren. De vraag is alleen in welk vak een leerkracht ze terugvindt.
+
+**Wat we vragen:** is dat goed, of horen ze voor u bij de **voorbeelden**?
+
+**Waarom we het vragen.** Kiest u voor de voorbeelden, dan verhuizen die stukken bij de volgende keer inlezen, voor die 27 doelen, van het ene vak naar het andere. Aan de tekst zelf verandert niets. 8 van die 27 doelen stonden ook in de Excel-bestanden van Op.stap die we eerder gebruikten, en bij alle 8 stonden die stukken daar onder de voorbeelden.
+
+**Gevolg zolang dit openstaat.** Niets ligt stil. De tool houdt het bij de toelichting tot u iets anders zegt.
 
 ---
 

@@ -20,5 +20,22 @@ public sealed class MinimumdoelConfiguration : IEntityTypeConfiguration<Minimumd
         builder.Property(m => m.Leeftijd).HasMaxLength(8).IsRequired();
         builder.Property(m => m.Nr).HasMaxLength(32).IsRequired();
         builder.Property(m => m.Omschrijving).IsRequired();
+
+        // Import-managed review flag (E1-21, ADR-0032 consequences): set when an applied import no longer finds the ref,
+        // cleared when a later one does. Never written by normal app code; defaults false, as for leerplandoelen.
+        builder.Property(m => m.NietMeerInOpstap)
+            .HasColumnName("niet_meer_in_opstap")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        // Import-managed (E1-22): why no loaded leerplandoel concords it, recomputed by every applied leerplandoelen
+        // import. Stored by name, so a reordered enum cannot silently change what a row says.
+        builder.Property(m => m.ZonderLeerplandoelReden)
+            .HasColumnName("zonder_leerplandoel_reden")
+            .HasConversion<string>()
+            .HasMaxLength(32);
+        builder.Property(m => m.ZonderLeerplandoelDoelsets)
+            .HasColumnName("zonder_leerplandoel_doelsets")
+            .HasMaxLength(32);
     }
 }

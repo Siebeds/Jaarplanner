@@ -30,6 +30,16 @@ public enum OpstapImportFoutSoort
     /// something an upload decides silently.
     /// </summary>
     CodeInAndereDiscipline = 2,
+
+    /// <summary>
+    /// An Op.stap Excel file was offered after an API import of the curriculum had been applied (E1-21). In a discipline
+    /// that import covered, a file read after it would overwrite the API's wording with its own, clear the concordance the
+    /// files do not carry and flag every API goal the file lacks, so the Excel route refuses every file once an API import
+    /// has been applied (ADR-0032 decision 8, amended and ratified by the owner on 2026-09-13, Art. VII.2). Before any API
+    /// import it works as it always did. <b>The cost, ratified with it:</b> goals the Excel route loaded outside goal set G
+    /// can no longer be refreshed by any route.
+    /// </summary>
+    ExcelNaOpstapApi = 3,
 }
 
 /// <summary>A leerplandoel code and the discipline it is currently loaded under, for a refusal notice.</summary>
@@ -126,23 +136,46 @@ public sealed class OpstapImportFout : Exception
     /// caller only knows that the primary key broke, in which case the sentence names no code.
     /// </param>
     /// <param name="innerException">The underlying database fault, when this came from a failed write.</param>
+    /// <param name="herkomst">
+    /// Where the goals came from. The advice differs: an uploaded file may simply be the wrong one, while KOV's API says
+    /// which discipline a goal belongs to and there is no file to check (E1-21). One sentence per source, so neither
+    /// path ever reads "dit bestand" about something that is not a file.
+    /// </param>
     public static OpstapImportFout CodeInAndereDiscipline(
         string disciplineNummer,
         IEnumerable<DoelInAndereDiscipline> doelen,
-        Exception? innerException = null)
+        Exception? innerException = null,
+        OpstapHerkomst herkomst = OpstapHerkomst.Bestand)
     {
         var genoemd = doelen.Select(d => $"{d.Code} (discipline {d.DisciplineNummer})").ToList();
+        var bron = herkomst == OpstapHerkomst.OpstapApi ? "de Op.stap-bron" : "dit bestand";
         var opening = genoemd.Count > 0
             ? $"Deze codes staan al bij een andere discipline: {Opsomming(genoemd)}."
-            : "Een of meer codes uit dit bestand staan al bij een andere discipline.";
+            : $"Een of meer codes uit {bron} staan al bij een andere discipline.";
+        var advies = herkomst == OpstapHerkomst.OpstapApi
+            ? $"Volgens de Op.stap-bron horen ze bij discipline {disciplineNummer}."
+            : $"Controleer of dit bestand bij discipline {disciplineNummer} hoort.";
 
         return new(
             OpstapImportFoutSoort.CodeInAndereDiscipline,
-            $"{opening} Controleer of dit bestand bij discipline {disciplineNummer} hoort. " +
+            $"{opening} {advies} " +
             "Er is niets gewijzigd. Verhuist een doel echt naar een andere discipline, dan moet iemand " +
             "dat eerst bevestigen.",
             innerException);
     }
+
+    /// <summary>
+    /// An Op.stap Excel file after an API import (E1-21). The sentence says only what the trigger proves: a version of
+    /// Op.stap has been imported from KOV, after which no Op.stap Excel file is read, and nothing changed. It says nothing
+    /// about where every leerplandoel comes from (goals the Excel route loaded outside goal set G stay as the file wrote
+    /// them), nor that the file would overwrite goals (with a discipline selection its discipline may hold none from the
+    /// API). Antagonist rounds 1 and 2.
+    /// </summary>
+    public static OpstapImportFout ExcelNaOpstapApi() =>
+        new(
+            OpstapImportFoutSoort.ExcelNaOpstapApi,
+            "Er is al een versie van Op.stap ingelezen via Katholiek Onderwijs Vlaanderen. Daarna wordt geen " +
+            "Excel-bestand van Op.stap meer ingelezen. Er is niets gewijzigd.");
 
     /// <summary>Renders ": a, b, c" when values are known, and nothing when they are not.</summary>
     private static string Toelichting(IEnumerable<string> waarden)
