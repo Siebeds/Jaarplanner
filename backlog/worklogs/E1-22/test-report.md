@@ -322,3 +322,17 @@ None.
 - Removed: container `jp-e122-tr3`.
 - Released: ports 55451, 5251, 5252 and 9351. `mine E1-22-test-runner` is empty.
 - Every mutated file is restored. `git status` shows only the other session's `antagonist.md` and this report.
+
+---
+
+# Orchestrator's final gate run on `0672527` (fix round 3), 2026-09-13
+
+Fix round 3 was not re-audited and not re-verified by a test-runner (owner decision: "stop hierna maar met de antagonist
+rondes en rondt deze us af"). Its only independent check is this run, in the story worktree at `0672527`:
+
+- Frontend: `pnpm lint` exit 0; `pnpm test` 33 files, **233 passed**; `pnpm build` exit 0.
+- Backend: `dotnet build -c Release` 0 warnings, 0 errors; `dotnet format --verify-no-changes` exit 0.
+- Unit: **1,132 passed**, 4 skipped (live), 0 failed.
+- Integration on a throwaway PostgreSQL 17.5 (port 55460): **346 passed**, 1 skipped (live), 0 failed.
+- Not run here: the live KOV tests and a browser pass (fix round 3 changed no user-visible string; the implementer ran the
+  live tests once on `0672527`: 4/4 unit, 2/2 integration, still exactly the six reasons).
