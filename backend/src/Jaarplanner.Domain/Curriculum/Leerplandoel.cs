@@ -43,6 +43,10 @@ public sealed class Leerplandoel
     /// <param name="toelichting">Optional clarification (Excel L).</param>
     /// <param name="woordenschat">Optional indicative vocabulary (Excel M).</param>
     /// <param name="minimumdoelRef">Optional concordance key to a <see cref="Minimumdoel"/> (Excel D).</param>
+    /// <param name="opstapSleutel">
+    /// The goal's UUID <c>key</c> in KOV's Op.stap API (E1-21, ADR-0032 decision 7), or <c>null</c> when the goal came
+    /// from the Excel route, which carries none.
+    /// </param>
     public Leerplandoel(
         string code,
         Doelsoort doelsoort,
@@ -55,7 +59,8 @@ public sealed class Leerplandoel
         string? voorbeelden = null,
         string? toelichting = null,
         string? woordenschat = null,
-        string? minimumdoelRef = null)
+        string? minimumdoelRef = null,
+        Guid? opstapSleutel = null)
     {
         Code = Require(code, nameof(code));
         Doelsoort = ValidateDoelsoort(doelsoort);
@@ -69,6 +74,7 @@ public sealed class Leerplandoel
         Toelichting = Optional(toelichting);
         Woordenschat = Optional(woordenschat);
         MinimumdoelRef = Optional(minimumdoelRef);
+        OpstapSleutel = opstapSleutel;
         NietMeerInOpstap = false;
     }
 
@@ -107,6 +113,13 @@ public sealed class Leerplandoel
 
     /// <summary>Optional concordance key to a <see cref="Minimumdoel"/> (Excel D); null when not concorded.</summary>
     public string? MinimumdoelRef { get; private set; }
+
+    /// <summary>
+    /// The goal's UUID <c>key</c> in KOV's Op.stap API, stored beside the code (E1-21, ADR-0032 decision 7).
+    /// <see cref="Code"/> stays the identity (Art. III.5); the key only lets a re-import tell a renumbered goal from a
+    /// removed one plus a new one. Null for a goal that came from the Excel route, which carries no key.
+    /// </summary>
+    public Guid? OpstapSleutel { get; private set; }
 
     /// <summary>
     /// Import-managed review marker: <c>true</c> when this leerplandoel was present in an earlier

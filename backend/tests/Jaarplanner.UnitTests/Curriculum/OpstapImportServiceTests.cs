@@ -53,7 +53,8 @@ public sealed class OpstapImportServiceTests : IDisposable
         string tekst = "tekst",
         string jaarFase = "L1",
         string? minimumdoelRef = null,
-        Doelsoort doelsoort = Doelsoort.Gemeenschappelijk) =>
+        Doelsoort doelsoort = Doelsoort.Gemeenschappelijk,
+        Guid? sleutel = null) =>
         new(
             code: code,
             doelsoort: doelsoort,
@@ -62,7 +63,8 @@ public sealed class OpstapImportServiceTests : IDisposable
             subdomein: "Getalbegrip",
             disciplineNummer: Discipline,
             tekst: tekst,
-            minimumdoelRef: minimumdoelRef);
+            minimumdoelRef: minimumdoelRef,
+            opstapSleutel: sleutel);
 
     private static OpstapParseResult Parse(params Leerplandoel[] doelen) =>
         new(Discipline, doelen, []);
@@ -314,6 +316,193 @@ public sealed class OpstapImportServiceTests : IDisposable
 
         Assert.Equal(["LP-1"], result.Diff.Toegevoegd.ToArray());
         Assert.Equal("4-12", (await _context.Leerplandoelen.SingleAsync()).MinimumdoelRef);
+    }
+
+    // --- Named but not delivered, renumbered, and the Op.stap key (E1-21). ---
+
+    /// <summary>
+    /// A malformed row whose code is stored is still in the file. Calling it disappeared, and flagging it, would say
+    /// Op.stap dropped a goal it contains: the defect E1-12's audits found for minimumdoelen, on the Excel path too.
+    /// </summary>
+    [Fact]
+    public async Task Een_rij_met_een_probleem_waarvan_de_code_opgeslagen_is_is_niet_verdwenen()
+    {
+        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2", tekst: "vorige tekst")), toepassen: true);
+        var parse = new OpstapParseResult(Discipline, [Doel("LP-1")], [new OpstapRijProbleem(3, "Unknown or missing doelsoort code 'X'.", "LP-2")]);
+
+        var result = await _service.ImporteerAsync(parse, toepassen: true);
+
+        Assert.Empty(result.Diff.Verdwenen);
+        Assert.Equal(["LP-2"], result.Diff.NietIngelezen);
+        Assert.True(result.Diff.VereistReview);
+        Assert.False(result.Diff.IsLeeg);
+        Assert.Equal([OpstapImportService.NietIngelezenMelding(1, OpstapHerkomst.Bestand)], result.Diff.Opmerkingen);
+        var lp2 = await _context.Leerplandoelen.SingleAsync(l => l.Code == "LP-2");
+        Assert.False(lp2.NietMeerInOpstap);
+        Assert.Equal("vorige tekst", lp2.Tekst);
+    }
+
+    [Fact]
+    public async Task Een_goal_die_de_api_niet_kon_lezen_is_niet_verdwenen()
+    {
+        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
+        var parse = new OpstapParseResult(Discipline, [Doel("LP-1")], [], OpstapHerkomst.OpstapApi, nietIngelezenCodes: ["LP-2"]);
+
+        var result = await _service.ImporteerAsync(parse, toepassen: true);
+
+        Assert.Equal(["LP-2"], result.Diff.NietIngelezen);
+        Assert.Equal([OpstapImportService.NietIngelezenMelding(1, OpstapHerkomst.OpstapApi)], result.Diff.Opmerkingen);
+        Assert.False((await _context.Leerplandoelen.SingleAsync(l => l.Code == "LP-2")).NietMeerInOpstap);
+    }
+
+    /// <summary>
+    /// Only goal set G is imported from the API. A stored P goal the source still lists is outside that scope, not gone,
+    /// and it is not a review item: the owner ruled the scope.
+    /// </summary>
+    [Fact]
+    public async Task Een_code_buiten_het_importbereik_blijft_onaangeroerd_en_vraagt_geen_nazicht()
+    {
+        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-P", doelsoort: Doelsoort.Precurriculum)), toepassen: true);
+        var parse = new OpstapParseResult(Discipline, [Doel("LP-1")], [], OpstapHerkomst.OpstapApi, buitenBereikCodes: ["LP-P"]);
+
+        var result = await _service.ImporteerAsync(parse, toepassen: true);
+
+        Assert.Equal(["LP-P"], result.Diff.BuitenBereik);
+        Assert.Empty(result.Diff.Verdwenen);
+        Assert.Empty(result.Diff.Opmerkingen);
+        Assert.True(result.Diff.IsLeeg);
+        Assert.False(result.Diff.VereistReview);
+        Assert.False((await _context.Leerplandoelen.SingleAsync(l => l.Code == "LP-P")).NietMeerInOpstap);
+    }
+
+    /// <summary>
+    /// ADR-0032 decision 7: the key tells a renumbered goal from a removed one plus a new one. What is written does not
+    /// change (the code is the identity, and a teacher's link stays on the code it was made to); only the report does.
+    /// </summary>
+    [Fact]
+    public async Task Een_hernummerd_doel_wordt_als_een_gebeurtenis_gemeld()
+    {
+        var sleutel = Guid.NewGuid();
+        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-OUD", sleutel: sleutel)), toepassen: true);
+        await LinkThemadoelAsync("LP-OUD", KoppelingStatus.Aanvaard);
+
+        var result = await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-NIEUW", sleutel: sleutel)), toepassen: true);
+
+        var hernummerd = Assert.Single(result.Diff.Hernummerd);
+        Assert.Equal(new HernummerdDoel("LP-OUD", "LP-NIEUW", 1), hernummerd);
+        Assert.Empty(result.Diff.Toegevoegd);
+        Assert.Empty(result.Diff.Verdwenen);
+        Assert.Empty(result.Diff.VerdwenenMaarGekoppeld);
+        Assert.True(result.Diff.VereistReview);
+        Assert.Equal([OpstapImportService.HernummerdMelding([hernummerd])], result.Diff.Opmerkingen);
+        Assert.True((await _context.Leerplandoelen.SingleAsync(l => l.Code == "LP-OUD")).NietMeerInOpstap);
+        Assert.False((await _context.Leerplandoelen.SingleAsync(l => l.Code == "LP-NIEUW")).NietMeerInOpstap);
+        Assert.Equal("LP-OUD", (await _context.Themadoelen.SingleAsync()).Koppeling.LeerplandoelCode);
+    }
+
+    [Fact]
+    public async Task Een_nieuwe_code_zonder_gedeelde_sleutel_blijft_een_toevoeging()
+    {
+        await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-OUD", sleutel: Guid.NewGuid())), toepassen: true);
+
+        var result = await _service.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-NIEUW", sleutel: Guid.NewGuid())), toepassen: true);
+
+        Assert.Empty(result.Diff.Hernummerd);
+        Assert.Equal(["LP-NIEUW"], result.Diff.Toegevoegd);
+        Assert.Equal(["LP-OUD"], result.Diff.Verdwenen);
+    }
+
+    /// <summary>A goal loaded from Excel has no key; the first API import stores it without calling that a change.</summary>
+    [Fact]
+    public async Task Een_sleutel_op_een_doel_uit_excel_zetten_is_geen_wijziging()
+    {
+        await _service.ImporteerAsync(Parse(Doel("LP-1")), toepassen: true);
+        var sleutel = Guid.NewGuid();
+
+        var result = await _service.ImporteerAsync(Parse(Doel("LP-1", sleutel: sleutel)), toepassen: true);
+
+        Assert.Empty(result.Diff.Gewijzigd);
+        Assert.Equal(["LP-1"], result.Diff.Ongewijzigd);
+        _context.ChangeTracker.Clear();
+        Assert.Equal(sleutel, (await _context.Leerplandoelen.SingleAsync()).OpstapSleutel);
+    }
+
+    [Fact]
+    public async Task Een_andere_sleutel_onder_dezelfde_code_wordt_gemeld()
+    {
+        var oud = Guid.NewGuid();
+        var nieuw = Guid.NewGuid();
+        await _service.ImporteerAsync(Parse(Doel("LP-1", sleutel: oud)), toepassen: true);
+
+        var result = await _service.ImporteerAsync(Parse(Doel("LP-1", sleutel: nieuw)), toepassen: true);
+
+        var veld = Assert.Single(Assert.Single(result.Diff.Gewijzigd).Velden);
+        Assert.Equal(new VeldWijziging(nameof(Leerplandoel.OpstapSleutel), oud.ToString("D"), nieuw.ToString("D")), veld);
+    }
+
+    /// <summary>The Excel route carries no key; re-importing a file must not erase the one an API import stored.</summary>
+    [Fact]
+    public async Task Een_herimport_zonder_sleutel_houdt_de_opgeslagen_sleutel()
+    {
+        var sleutel = Guid.NewGuid();
+        await _service.ImporteerAsync(Parse(Doel("LP-1", tekst: "oud", sleutel: sleutel)), toepassen: true);
+
+        await _service.ImporteerAsync(Parse(Doel("LP-1", tekst: "nieuw")), toepassen: true);
+
+        _context.ChangeTracker.Clear();
+        var doel = await _context.Leerplandoelen.SingleAsync();
+        Assert.Equal("nieuw", doel.Tekst);
+        Assert.Equal(sleutel, doel.OpstapSleutel);
+    }
+
+    /// <summary>"Mogelijk is het bestand leeg" is false about an API read, so that path says less (the E5-03 rule).</summary>
+    [Fact]
+    public async Task Een_lege_levering_uit_de_api_noemt_geen_bestand()
+    {
+        var result = await _service.ImporteerAsync(new OpstapParseResult(Discipline, [], [], OpstapHerkomst.OpstapApi), toepassen: true);
+
+        Assert.True(result.Diff.Overgeslagen);
+        Assert.Equal(
+            ["De Op.stap-bron leverde geen bruikbare leerplandoelen voor discipline 2, dus is er niets toegepast. " +
+             "Er staan nog geen doelen voor deze discipline, dus er verandert ook niets."],
+            result.Diff.Opmerkingen);
+    }
+
+    [Fact]
+    public async Task Een_code_uit_de_api_die_bij_een_andere_discipline_staat_noemt_geen_bestand()
+    {
+        _context.Disciplines.Add(new Discipline("3", "Wetenschap en techniek"));
+        _context.Leerplandoelen.Add(new Leerplandoel("LP-1", Doelsoort.Gemeenschappelijk, "L1", "Natuur", "Levende natuur", "3", tekst: "tekst"));
+        await _context.SaveChangesAsync();
+
+        var fout = await Assert.ThrowsAsync<OpstapImportFout>(() => _service.ImporteerAsync(
+            new OpstapParseResult(Discipline, [Doel("LP-1")], [], OpstapHerkomst.OpstapApi),
+            toepassen: false));
+
+        Assert.DoesNotContain("bestand", fout.Message, StringComparison.Ordinal);
+        Assert.Contains("Volgens de Op.stap-bron horen ze bij discipline 2.", fout.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Server-composed Dutch: the guard reads the value, because no catalogue keeps it in step (CLAUDE.md).</summary>
+    [Fact]
+    public void De_meldingen_zijn_verbogen_en_zeggen_alleen_wat_hun_voorwaarde_waarborgt()
+    {
+        Assert.Equal(
+            "1 leerplandoel staat nog in de Op.stap-bron maar werd niet ingelezen. De vorige tekst blijft staan.",
+            OpstapImportService.NietIngelezenMelding(1, OpstapHerkomst.OpstapApi));
+        Assert.Equal(
+            "3 leerplandoelen staan nog in het bestand maar werden niet ingelezen. De vorige teksten blijven staan.",
+            OpstapImportService.NietIngelezenMelding(3, OpstapHerkomst.Bestand));
+        Assert.Equal(
+            "1 leerplandoel heeft in Op.stap een nieuwe code gekregen. Het wordt onder de nieuwe code toegevoegd; " +
+            "de oude code blijft staan en wordt gemarkeerd als niet meer in Op.stap.",
+            OpstapImportService.HernummerdMelding([new HernummerdDoel("A", "B", 0)]));
+        // The sentence about teacher links appears only when a renumbered code has one.
+        Assert.Equal(
+            "2 leerplandoelen hebben in Op.stap een nieuwe code gekregen. Ze worden onder de nieuwe code toegevoegd; " +
+            "de oude codes blijven staan en worden gemarkeerd als niet meer in Op.stap. " +
+            "Wat leerkrachten aan een oude code koppelden, blijft daaraan gekoppeld.",
+            OpstapImportService.HernummerdMelding([new HernummerdDoel("A", "B", 0), new HernummerdDoel("C", "D", 2)]));
     }
 
     private async Task LinkThemadoelAsync(string leerplandoelCode, KoppelingStatus status)

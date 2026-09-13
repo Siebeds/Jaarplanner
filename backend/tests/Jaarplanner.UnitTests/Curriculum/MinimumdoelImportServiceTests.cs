@@ -204,6 +204,56 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
             MinimumdoelImportService.NietIngelezenMelding(3));
     }
 
+    /// <summary>
+    /// The flag ADR-0032's consequences asked for (E1-21): a minimumdoel the source no longer names is kept, and marked;
+    /// when it returns, the mark goes and the row is otherwise unchanged.
+    /// </summary>
+    [Fact]
+    public async Task Een_verdwenen_minimumdoel_wordt_gemarkeerd_en_bij_terugkeer_weer_vrijgegeven()
+    {
+        _bron.Geef(Md("1.1"), Md("1.2"));
+        await _service.ImporteerAsync(toepassen: true);
+        _bron.Geef(Md("1.1"));
+        await _service.ImporteerAsync(toepassen: true);
+        _context.ChangeTracker.Clear();
+        Assert.True((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2")).NietMeerInOpstap);
+        Assert.False((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.1")).NietMeerInOpstap);
+
+        _bron.Geef(Md("1.1"), Md("1.2"));
+        var resultaat = await _service.ImporteerAsync(toepassen: true);
+
+        Assert.Equal(["K-1.1", "K-1.2"], resultaat.Diff.Ongewijzigd);
+        _context.ChangeTracker.Clear();
+        Assert.False((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2")).NietMeerInOpstap);
+    }
+
+    [Fact]
+    public async Task Het_voorbeeld_markeert_niets()
+    {
+        _bron.Geef(Md("1.1"), Md("1.2"));
+        await _service.ImporteerAsync(toepassen: true);
+        _bron.Geef(Md("1.1"));
+
+        await _service.ImporteerAsync(toepassen: false);
+
+        _context.ChangeTracker.Clear();
+        Assert.False(await _context.Minimumdoelen.AnyAsync(m => m.NietMeerInOpstap));
+    }
+
+    /// <summary>A refused row is still in the source, so it is not marked as gone.</summary>
+    [Fact]
+    public async Task Een_geweigerde_rij_wordt_niet_gemarkeerd()
+    {
+        _bron.Geef(Md("1.1"), Md("1.2"));
+        await _service.ImporteerAsync(toepassen: true);
+        _bron.Geef([Md("1.1")], [new MinimumdoelBronProbleem("K-1.2", "contains markup the mapping cannot convert faithfully (<sub>).")]);
+
+        await _service.ImporteerAsync(toepassen: true);
+
+        _context.ChangeTracker.Clear();
+        Assert.False((await _context.Minimumdoelen.SingleAsync(m => m.Ref == "K-1.2")).NietMeerInOpstap);
+    }
+
     private sealed class VasteBron : IMinimumdoelBron
     {
         private Func<MinimumdoelBronResultaat> _antwoord = () => new MinimumdoelBronResultaat([], []);

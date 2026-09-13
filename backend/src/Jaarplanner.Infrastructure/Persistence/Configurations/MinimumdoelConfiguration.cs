@@ -20,5 +20,12 @@ public sealed class MinimumdoelConfiguration : IEntityTypeConfiguration<Minimumd
         builder.Property(m => m.Leeftijd).HasMaxLength(8).IsRequired();
         builder.Property(m => m.Nr).HasMaxLength(32).IsRequired();
         builder.Property(m => m.Omschrijving).IsRequired();
+
+        // Import-managed review flag (E1-21, ADR-0032 consequences): set when an applied import no longer finds the ref,
+        // cleared when a later one does. Never written by normal app code; defaults false, as for leerplandoelen.
+        builder.Property(m => m.NietMeerInOpstap)
+            .HasColumnName("niet_meer_in_opstap")
+            .HasDefaultValue(false)
+            .IsRequired();
     }
 }

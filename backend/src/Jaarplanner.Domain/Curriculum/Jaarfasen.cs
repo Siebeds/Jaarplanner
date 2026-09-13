@@ -56,6 +56,34 @@ public static class Jaarfasen
     /// <summary>Every code this vocabulary knows: the three kleuter jaren and the six leerjaren.</summary>
     public static IReadOnlyList<string> Alle { get; } = [.. Kleuter, .. Lager];
 
+    /// <summary>
+    /// The canonical form of a jaar/fase code as an Op.stap source writes it (owner ruling 2026-08-03, inherited by
+    /// E1-21 from E1-12's identity-hazard clause): the other ordering, <c>1K</c>/<c>2K</c>/<c>3K</c> and
+    /// <c>1L</c>…<c>6L</c>, becomes <c>JK</c>/<c>K2</c>/<c>K3</c> and <c>L1</c>…<c>L6</c>, so nothing downstream ever
+    /// compares <c>3K</c> against <c>K3</c> and finds no goals.
+    /// <para>
+    /// <b>Anything else comes back trimmed and otherwise untouched</b>, including the canonical codes themselves and the
+    /// fase codes of P/S goals (<c>F1</c>…). This is a normaliser, not a validator: guessing that <c>K1</c> means the
+    /// jongste kleuter would be exactly the silent reinterpretation the ruling exists to prevent, so it is left for the
+    /// caller to refuse.
+    /// </para>
+    /// </summary>
+    /// <param name="code">The code as the source wrote it.</param>
+    public static string Normaliseer(string code)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+
+        var waarde = code.Trim();
+        return waarde.ToUpperInvariant() switch
+        {
+            "1K" => "JK",
+            "2K" => "K2",
+            "3K" => "K3",
+            ['1' or '2' or '3' or '4' or '5' or '6', 'L'] => $"L{waarde[0]}",
+            _ => waarde,
+        };
+    }
+
     /// <summary>Whether <paramref name="code"/> is one of the nine known jaar/fase codes.</summary>
     /// <remarks>
     /// P/S goals carry a fase that is none of the nine (Art. VII.1 column F), so this is deliberately NOT a

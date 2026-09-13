@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Domain.Curriculum;
 using Microsoft.Extensions.Options;
@@ -17,6 +16,10 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// status, unexpected JSON, paging that does not end or leaves KOV's host, an unidentifiable row) becomes one
 /// <see cref="OpstapBronFout"/>, raised before the import writes anything.
 /// </para>
+/// <para>
+/// <b>Shared with the curriculum source (E1-21).</b> The leerplandoelen point at a minimumdoel by its href in this list,
+/// so <see cref="CurriculumApiBron"/> reads it too, through <see cref="LeesRijenAsync"/>, under the same paging rules.
+/// </para>
 /// </summary>
 public sealed class OnderwijsdoelenApiBron : IMinimumdoelBron
 {
@@ -25,8 +28,6 @@ public sealed class OnderwijsdoelenApiBron : IMinimumdoelBron
 
     /// <summary>A bound on paging, far above the two or three pages a thousand rows take.</summary>
     internal const int MaxPaginas = 100;
-
-    private static readonly JsonSerializerOptions JsonOpties = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _http;
     private readonly OpstapApiOptions _opties;
@@ -53,17 +54,66 @@ public sealed class OnderwijsdoelenApiBron : IMinimumdoelBron
     /// <inheritdoc />
     public async Task<MinimumdoelBronResultaat> HaalOpAsync(CancellationToken cancellationToken = default)
     {
-        var basis = MetSlotSlash(_opties.BasisUrl);
         var peildatum = _tijd.GetUtcNow();
+        var rijen = await LeesRijenAsync(_http, _opties, cancellationToken);
 
         var minimumdoelen = new List<Minimumdoel>();
         var problemen = new List<MinimumdoelBronProbleem>();
         var gezien = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var resultaat in rijen)
+        {
+            // A row that cannot be identified by a well-formed uniqueCode refuses the whole read. It could be a
+            // minimumdoel that is already stored, and the report would then call that one vanished while the source
+            // still lists it (antagonist, E1-12 round 2). Rows that are identified but unusable are reported instead.
+            if (resultaat.Expanded is null)
+            {
+                throw NietExpanded(resultaat);
+            }
+
+            var (doel, probleem) = OnderwijsdoelMapping.Map(resultaat.Expanded, resultaat.Href, peildatum);
+            if (probleem is { } reden)
+            {
+                if (!OnderwijsdoelMapping.IsWelgevormdeRef(reden.Sleutel))
+                {
+                    throw new OpstapBronFout(
+                        $"Row {resultaat.Href ?? "(no href)"} of {Pad} has no usable uniqueCode ({reden.Reden}); " +
+                        "a read whose rows cannot all be identified is refused.");
+                }
+
+                problemen.Add(reden);
+            }
+            else if (!gezien.Add(doel!.Ref))
+            {
+                problemen.Add(new MinimumdoelBronProbleem(
+                    doel.Ref,
+                    "uniqueCode occurs more than once in the source; the first row was kept."));
+            }
+            else
+            {
+                minimumdoelen.Add(doel);
+            }
+        }
+
+        return new MinimumdoelBronResultaat(minimumdoelen, problemen);
+    }
+
+    /// <summary>
+    /// Every row of the endpoint, all pages, under the all-or-nothing rules above: a paging link that loops or leaves
+    /// KOV's host, a page without <c>results</c>, and a total that differs from <c>$$meta.count</c> each refuse the read.
+    /// Identifying the rows is left to the caller, which knows what it needs from them.
+    /// </summary>
+    internal static async Task<IReadOnlyList<OnderwijsdoelResultaatDto>> LeesRijenAsync(
+        HttpClient http,
+        OpstapApiOptions opties,
+        CancellationToken cancellationToken)
+    {
+        var basis = KovHttp.MetSlotSlash(opties.BasisUrl);
+        var rijen = new List<OnderwijsdoelResultaatDto>();
         var bezocht = new HashSet<string>(StringComparer.Ordinal);
         int? aangekondigd = null;
-        var gelezen = 0;
 
-        string? volgende = $"{Pad}?limit={_opties.PaginaGrootte}";
+        string? volgende = $"{Pad}?limit={opties.PaginaGrootte}";
         for (var pagina = 0; volgende is not null; pagina++)
         {
             if (pagina >= MaxPaginas || !bezocht.Add(volgende))
@@ -79,98 +129,25 @@ public sealed class OnderwijsdoelenApiBron : IMinimumdoelBron
                 throw new OpstapBronFout($"The next link '{volgende}' leaves {basis.GetLeftPart(UriPartial.Authority)}; refused.");
             }
 
-            var inhoud = await LeesPaginaAsync(adres, cancellationToken);
+            var inhoud = await KovHttp.LeesJsonAsync<OnderwijsdoelenPaginaDto>(http, adres, cancellationToken);
             aangekondigd ??= inhoud.Meta?.Count;
 
-            foreach (var resultaat in inhoud.Results
-                ?? throw new OpstapBronFout($"A page of {Pad} has no 'results' array."))
-            {
-                gelezen++;
-                // A row that cannot be identified by a well-formed uniqueCode refuses the whole read. It could be a
-                // minimumdoel that is already stored, and the report would then call that one vanished while the source
-                // still lists it (antagonist, E1-12 round 2). Rows that are identified but unusable are reported instead.
-                if (resultaat.Expanded is null)
-                {
-                    throw new OpstapBronFout(
-                        $"Row {resultaat.Href ?? "(no href)"} of {Pad} is not expanded ($$expanded is missing); " +
-                        "a read whose rows cannot all be identified is refused.");
-                }
-
-                var (doel, probleem) = OnderwijsdoelMapping.Map(resultaat.Expanded, resultaat.Href, peildatum);
-                if (probleem is { } reden)
-                {
-                    if (!OnderwijsdoelMapping.IsWelgevormdeRef(reden.Sleutel))
-                    {
-                        throw new OpstapBronFout(
-                            $"Row {resultaat.Href ?? "(no href)"} of {Pad} has no usable uniqueCode ({reden.Reden}); " +
-                            "a read whose rows cannot all be identified is refused.");
-                    }
-
-                    problemen.Add(reden);
-                }
-                else if (!gezien.Add(doel!.Ref))
-                {
-                    problemen.Add(new MinimumdoelBronProbleem(
-                        doel.Ref,
-                        "uniqueCode occurs more than once in the source; the first row was kept."));
-                }
-                else
-                {
-                    minimumdoelen.Add(doel);
-                }
-            }
-
+            rijen.AddRange(inhoud.Results ?? throw new OpstapBronFout($"A page of {Pad} has no 'results' array."));
             volgende = inhoud.Meta?.Next;
         }
 
-        if (aangekondigd is { } totaal && totaal != gelezen)
+        if (aangekondigd is { } totaal && totaal != rijen.Count)
         {
             throw new OpstapBronFout(
-                $"{Pad} announced {totaal} rows and {gelezen} were read; a partial read is refused.");
+                $"{Pad} announced {totaal} rows and {rijen.Count} were read; a partial read is refused.");
         }
 
-        return new MinimumdoelBronResultaat(minimumdoelen, problemen);
+        return rijen;
     }
 
-    private async Task<OnderwijsdoelenPaginaDto> LeesPaginaAsync(Uri adres, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var antwoord = await _http.GetAsync(adres, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (!antwoord.IsSuccessStatusCode)
-            {
-                throw new OpstapBronFout(
-                    $"GET {adres} answered {(int)antwoord.StatusCode} {antwoord.ReasonPhrase}.");
-            }
-
-            await using var stroom = await antwoord.Content.ReadAsStreamAsync(cancellationToken);
-            return await JsonSerializer.DeserializeAsync<OnderwijsdoelenPaginaDto>(stroom, JsonOpties, cancellationToken)
-                ?? throw new OpstapBronFout($"GET {adres} answered an empty body.");
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            // The caller gave up; that is not the source's fault and must not be reported as one.
-            throw;
-        }
-        catch (OperationCanceledException ex)
-        {
-            // HttpClient reports its own timeout as a cancellation the caller never asked for.
-            throw new OpstapBronFout($"GET {adres} timed out after {_http.Timeout}.", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new OpstapBronFout($"GET {adres} failed: {ex.Message}", ex);
-        }
-        catch (JsonException ex)
-        {
-            throw new OpstapBronFout($"GET {adres} did not answer the expected JSON: {ex.Message}", ex);
-        }
-    }
-
-    /// <summary>
-    /// A base address without a trailing slash would make <c>new Uri(basis, relative)</c> drop its last segment, so a
-    /// configured <c>https://host/prefix</c> is read as <c>https://host/prefix/</c>.
-    /// </summary>
-    private static Uri MetSlotSlash(Uri basis) =>
-        basis.AbsoluteUri.EndsWith('/') ? basis : new Uri(basis.AbsoluteUri + "/");
+    /// <summary>The refusal for a row whose content was not expanded, shared with the curriculum source.</summary>
+    internal static OpstapBronFout NietExpanded(OnderwijsdoelResultaatDto rij) =>
+        new(
+            $"Row {rij.Href ?? "(no href)"} of {Pad} is not expanded ($$expanded is missing); " +
+            "a read whose rows cannot all be identified is refused.");
 }

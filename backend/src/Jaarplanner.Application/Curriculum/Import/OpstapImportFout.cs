@@ -126,19 +126,29 @@ public sealed class OpstapImportFout : Exception
     /// caller only knows that the primary key broke, in which case the sentence names no code.
     /// </param>
     /// <param name="innerException">The underlying database fault, when this came from a failed write.</param>
+    /// <param name="herkomst">
+    /// Where the goals came from. The advice differs: an uploaded file may simply be the wrong one, while KOV's API says
+    /// which discipline a goal belongs to and there is no file to check (E1-21). One sentence per source, so neither
+    /// path ever reads "dit bestand" about something that is not a file.
+    /// </param>
     public static OpstapImportFout CodeInAndereDiscipline(
         string disciplineNummer,
         IEnumerable<DoelInAndereDiscipline> doelen,
-        Exception? innerException = null)
+        Exception? innerException = null,
+        OpstapHerkomst herkomst = OpstapHerkomst.Bestand)
     {
         var genoemd = doelen.Select(d => $"{d.Code} (discipline {d.DisciplineNummer})").ToList();
+        var bron = herkomst == OpstapHerkomst.OpstapApi ? "de Op.stap-bron" : "dit bestand";
         var opening = genoemd.Count > 0
             ? $"Deze codes staan al bij een andere discipline: {Opsomming(genoemd)}."
-            : "Een of meer codes uit dit bestand staan al bij een andere discipline.";
+            : $"Een of meer codes uit {bron} staan al bij een andere discipline.";
+        var advies = herkomst == OpstapHerkomst.OpstapApi
+            ? $"Volgens de Op.stap-bron horen ze bij discipline {disciplineNummer}."
+            : $"Controleer of dit bestand bij discipline {disciplineNummer} hoort.";
 
         return new(
             OpstapImportFoutSoort.CodeInAndereDiscipline,
-            $"{opening} Controleer of dit bestand bij discipline {disciplineNummer} hoort. " +
+            $"{opening} {advies} " +
             "Er is niets gewijzigd. Verhuist een doel echt naar een andere discipline, dan moet iemand " +
             "dat eerst bevestigen.",
             innerException);

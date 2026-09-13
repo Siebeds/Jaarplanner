@@ -98,4 +98,25 @@ public sealed class OpstapImportFoutTests
         // The preflight has no underlying fault, and must not invent one.
         Assert.Null(OpstapImportFout.OnbekendeDiscipline("99").InnerException);
     }
+
+    /// <summary>
+    /// From KOV's API there is no file to check (E1-21), so that path says where the goals belong according to the
+    /// source instead of "Controleer of dit bestand …". Both paths keep the same closing sentences.
+    /// </summary>
+    [Fact]
+    public void Code_in_andere_discipline_uit_de_api_noemt_geen_bestand()
+    {
+        var metDetail = OpstapImportFout
+            .CodeInAndereDiscipline("3", [new DoelInAndereDiscipline("WIS-1", "2")], herkomst: OpstapHerkomst.OpstapApi).Message;
+        var zonderDetail = OpstapImportFout.CodeInAndereDiscipline("3", [], herkomst: OpstapHerkomst.OpstapApi).Message;
+
+        Assert.Equal(
+            "Deze codes staan al bij een andere discipline: WIS-1 (discipline 2). Volgens de Op.stap-bron horen ze bij " +
+            "discipline 3. Er is niets gewijzigd. Verhuist een doel echt naar een andere discipline, dan moet iemand dat " +
+            "eerst bevestigen.",
+            metDetail);
+        Assert.StartsWith("Een of meer codes uit de Op.stap-bron staan al bij een andere discipline.", zonderDetail, StringComparison.Ordinal);
+        Assert.DoesNotContain("bestand", metDetail + zonderDetail, StringComparison.Ordinal);
+        Assert.Equal(Staart(zonderDetail), Staart(metDetail));
+    }
 }

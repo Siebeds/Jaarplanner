@@ -48,10 +48,18 @@ public sealed class CurriculumbeheerAutorisatieTests : IClassFixture<Jaarplanner
             .Where(e => e.RoutePattern.RawText?.StartsWith("api/opstap-import", StringComparison.Ordinal) == true)
             .ToList();
 
-        // Named rather than counted, so the next import route is added here on purpose: the Excel import (E1-15) and
-        // the minimumdoelen import from KOV's API (E1-12), each a commit and a preview.
+        // Named rather than counted, so the next import route is added here on purpose: the Excel import (E1-15), the
+        // minimumdoelen import from KOV's API (E1-12) and the leerplandoelen import from it (E1-21), each a commit and a
+        // preview.
         Assert.Equal(
-            ["api/opstap-import", "api/opstap-import/minimumdoelen", "api/opstap-import/minimumdoelen/voorbeeld", "api/opstap-import/voorbeeld"],
+            [
+                "api/opstap-import",
+                "api/opstap-import/leerplandoelen",
+                "api/opstap-import/leerplandoelen/voorbeeld",
+                "api/opstap-import/minimumdoelen",
+                "api/opstap-import/minimumdoelen/voorbeeld",
+                "api/opstap-import/voorbeeld",
+            ],
             endpoints.Select(e => e.RoutePattern.RawText!).Order(StringComparer.Ordinal).ToArray());
         Assert.All(endpoints, endpoint =>
         {
