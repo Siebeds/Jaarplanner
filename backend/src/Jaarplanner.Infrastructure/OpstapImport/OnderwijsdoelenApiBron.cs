@@ -12,9 +12,10 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// <para>
 /// <b>All or nothing.</b> The endpoint pages through <c>$$meta.next</c> and announces the total in <c>$$meta.count</c>. A
 /// read that ends with fewer rows than announced is refused as a whole, because a partial list would report every missing
-/// eindterm as <i>verdwenen</i> and invite a reviewer to believe the decree shrank. Every failure to read (network,
-/// timeout, error status, unexpected JSON, paging that does not end) becomes one <see cref="OpstapBronFout"/>, raised
-/// before the import writes anything.
+/// eindterm as <i>verdwenen</i> and invite a reviewer to believe the decree shrank. For the same reason a row that cannot
+/// be identified by a well-formed <c>uniqueCode</c> refuses the whole read. Every failure to read (network, timeout, error
+/// status, unexpected JSON, paging that does not end or leaves KOV's host, an unidentifiable row) becomes one
+/// <see cref="OpstapBronFout"/>, raised before the import writes anything.
 /// </para>
 /// </summary>
 public sealed class OnderwijsdoelenApiBron : IMinimumdoelBron
@@ -85,17 +86,26 @@ public sealed class OnderwijsdoelenApiBron : IMinimumdoelBron
                 ?? throw new OpstapBronFout($"A page of {Pad} has no 'results' array."))
             {
                 gelezen++;
+                // A row that cannot be identified by a well-formed uniqueCode refuses the whole read. It could be a
+                // minimumdoel that is already stored, and the report would then call that one vanished while the source
+                // still lists it (antagonist, E1-12 round 2). Rows that are identified but unusable are reported instead.
                 if (resultaat.Expanded is null)
                 {
-                    problemen.Add(new MinimumdoelBronProbleem(
-                        resultaat.Href ?? "(no href)",
-                        "The row is not expanded ($$expanded is missing)."));
-                    continue;
+                    throw new OpstapBronFout(
+                        $"Row {resultaat.Href ?? "(no href)"} of {Pad} is not expanded ($$expanded is missing); " +
+                        "a read whose rows cannot all be identified is refused.");
                 }
 
                 var (doel, probleem) = OnderwijsdoelMapping.Map(resultaat.Expanded, resultaat.Href, peildatum);
                 if (probleem is { } reden)
                 {
+                    if (!OnderwijsdoelMapping.IsWelgevormdeRef(reden.Sleutel))
+                    {
+                        throw new OpstapBronFout(
+                            $"Row {resultaat.Href ?? "(no href)"} of {Pad} has no usable uniqueCode ({reden.Reden}); " +
+                            "a read whose rows cannot all be identified is refused.");
+                    }
+
                     problemen.Add(reden);
                 }
                 else if (!gezien.Add(doel!.Ref))

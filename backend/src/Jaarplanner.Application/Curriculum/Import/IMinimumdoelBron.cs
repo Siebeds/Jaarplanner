@@ -42,6 +42,9 @@ public sealed class MinimumdoelBronResultaat
 /// data is nothing a teacher or directie can fix, so it is an operator diagnostic (Art. II.3 as amended 2026-07-30),
 /// the same choice <c>OpstapRijProbleem</c> made for the Excel path.
 /// </summary>
-/// <param name="Sleutel">The row's identifier in the source (its <c>uniqueCode</c> when it has one, else its href).</param>
+/// <param name="Sleutel">
+/// The row's <c>uniqueCode</c>, always a well-formed ref: a row that cannot be identified makes the whole read fail with
+/// <see cref="OpstapBronFout"/>, so the import can tell a minimumdoel that was not read from one that vanished.
+/// </param>
 /// <param name="Reden">Why the row was left out.</param>
 public readonly record struct MinimumdoelBronProbleem(string Sleutel, string Reden);

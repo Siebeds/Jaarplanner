@@ -195,10 +195,10 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
     public void De_melding_over_niet_ingelezen_minimumdoelen_is_verbogen()
     {
         Assert.Equal(
-            "1 minimumdoel staat nog in de Op.stap-bron maar kon niet ingelezen worden. De vorige tekst blijft staan.",
+            "1 minimumdoel staat nog in de Op.stap-bron maar werd niet ingelezen. De vorige tekst blijft staan.",
             MinimumdoelImportService.NietIngelezenMelding(1));
         Assert.Equal(
-            "3 minimumdoelen staan nog in de Op.stap-bron maar konden niet ingelezen worden. De vorige tekst blijft staan.",
+            "3 minimumdoelen staan nog in de Op.stap-bron maar werden niet ingelezen. De vorige tekst blijft staan.",
             MinimumdoelImportService.NietIngelezenMelding(3));
     }
 

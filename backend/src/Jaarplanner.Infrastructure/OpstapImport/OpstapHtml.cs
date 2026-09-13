@@ -5,24 +5,28 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 
 /// <summary>
 /// Turns the HTML fragments KOV's API uses for goal texts into plain text (ADR-0032 decision 3), <b>without changing
-/// what the decreed text says</b> (Art. III.1). The rules come from the real data of 2026-09-11: the 998 minimumdoelen
-/// use <c>p</c>, <c>ul</c>, <c>li</c>, <c>br</c>, <c>strong</c>, <c>em</c>, <c>a</c>, <c>img</c> and one MathML shape;
-/// the curriculum (<c>krcItems</c>, E1-21) adds <c>sup</c> and a raw <c>&lt;</c> used as a comparison sign.
+/// what the decreed text says</b> (Art. III.1). The rules were fitted to the 998 minimumdoelen of 2026-09-11 (which use
+/// <c>p</c>, <c>ul</c>, <c>li</c>, <c>br</c>, <c>strong</c>, <c>em</c>, <c>a</c>, <c>img</c> and one MathML shape) plus
+/// two shapes found in the curriculum's G goals: a plain <c>sup</c> and a raw <c>&lt;</c> used as a comparison sign.
+/// They are <b>not</b> fitted to the rest of the curriculum, which also carries tables, <c>ol</c>, <c>hr</c> and MathML
+/// beyond fractions; those are refused (see below), which is what E1-21 must resolve shape by shape.
 /// <list type="bullet">
 /// <item>A <c>&lt;</c> that does not start a tag (<c>=, ≠, &lt;, &gt;</c>, <c>(&lt; 1 week)</c>) is text and is kept.</item>
 /// <item>A paragraph, line break or list end becomes a newline; an unordered list item a line starting with <c>"- "</c>.</item>
 /// <item>A MathML fraction <c>&lt;math&gt;&lt;mfrac&gt;&lt;mn&gt;1&lt;/mn&gt;&lt;mn&gt;2&lt;/mn&gt;&lt;/mfrac&gt;&lt;/math&gt;</c>
-/// becomes <c>1/2</c>, and a superscript <c>10&lt;sup&gt;2&lt;/sup&gt;</c> becomes <c>10^2</c>. Stripping their tags would
-/// have written <c>12</c> and <c>102</c>: different numbers.</item>
-/// <item>A link keeps its address: <c>Word (https://…)</c>. An image becomes its alt text on a line of its own.</item>
+/// becomes <c>1/2</c>, and a superscript that is a plain number, <c>10&lt;sup&gt;2&lt;/sup&gt;</c>, becomes <c>10^2</c>.
+/// Stripping their tags would have written <c>12</c> and <c>102</c>: different numbers.</item>
+/// <item>A closed link with a double-quoted address keeps it: <c>Word (https://…)</c>. An image becomes its alt text on a
+/// line of its own.</item>
 /// <item>Entities are decoded only <b>after</b> the tags are gone, so KOV's escaped angle-bracket notation around
 /// examples (<c>&amp;lt; bv. tanden poetsen &amp;gt;</c>) stays visible text.</item>
 /// </list>
 /// <para>
-/// <b>What this class cannot convert faithfully, it does not guess at.</b> <see cref="OnvertaalbareOpmaak"/> names it
-/// (an unknown tag, an ordered list whose numbers would be lost, an image without alt text, a link without a quoted
-/// address), and the mapping refuses the row rather than import a text it may have altered. A missing minimumdoel is loud
-/// (its leerplandoelen refuse to import); a silently rewritten one is not.
+/// <b>What this class cannot convert faithfully, it does not guess at.</b> <see cref="OnvertaalbareOpmaak"/> names it: an
+/// unknown tag, any <c>sup</c> that is not a plain number, a link that is not closed or whose address is not
+/// double-quoted, an image without an <c>alt</c> attribute of its own. The mapping then refuses the row rather than import
+/// a text it may have altered. A missing minimumdoel is loud (its leerplandoelen refuse to import); a silently rewritten
+/// one is not.
 /// </para>
 /// <para>
 /// <b>Why plain text and not sanitised HTML.</b> Nothing downstream should ever have to decide whether a stored
@@ -32,9 +36,10 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 internal static partial class OpstapHtml
 {
     /// <summary>
-    /// Tags whose meaning <see cref="NaarTekst"/> preserves. MathML is known only in the fraction shape, <c>sup</c> only
-    /// as a superscript, <c>img</c> only with alt text and <c>a</c> only with a double-quoted address, which
-    /// <see cref="OnvertaalbareOpmaak"/> checks separately. <c>ol</c> and <c>sub</c> are deliberately absent.
+    /// Tag names whose meaning <see cref="NaarTekst"/> can preserve. Being on this list is necessary, not sufficient:
+    /// <c>sup</c>, <c>a</c> and <c>img</c> are only convertible in the shapes <see cref="OnvertaalbareOpmaak"/> checks for.
+    /// MathML is handled only as the fraction shape, before this list is consulted. <c>ol</c> and <c>sub</c> are
+    /// deliberately absent.
     /// </summary>
     private static readonly HashSet<string> BekendeTags = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -98,15 +103,23 @@ internal static partial class OpstapHtml
             }
         }
 
-        if (Afbeelding().Matches(voorbereid).Any(img => !AltTekst().Match(img.Value).Success
-            || string.IsNullOrWhiteSpace(AltTekst().Match(img.Value).Groups[1].Value)))
+        // Voorbereid has rewritten every plain-number superscript, so any <sup> still standing is one it could not keep
+        // (an attribute, markup inside, "n+1", an ordinal like "2de").
+        if (SupOpening().IsMatch(voorbereid))
+        {
+            gevonden.Add("<sup> other than a plain number");
+        }
+
+        if (Afbeelding().Matches(voorbereid).Any(img =>
+                AltTekst().Match(img.Value) is not { Success: true } alt || string.IsNullOrWhiteSpace(alt.Groups[1].Value)))
         {
             gevonden.Add("<img> without alt text");
         }
 
-        if (LinkOpening().Matches(voorbereid).Any(a => !Adres().IsMatch(a.Value)))
+        // Link() converts only a closed link with a double-quoted address; any <a> it leaves behind would lose that address.
+        if (LinkOpening().IsMatch(Link().Replace(voorbereid, "$2 ($1)")))
         {
-            gevonden.Add("<a> without a double-quoted href");
+            gevonden.Add("<a> without a closing tag or a double-quoted href");
         }
 
         return gevonden.Distinct(StringComparer.Ordinal).ToList();
@@ -129,23 +142,25 @@ internal static partial class OpstapHtml
     [GeneratedRegex(@"<math>\s*<mfrac>\s*<mn>([^<]*)</mn>\s*<mn>([^<]*)</mn>\s*</mfrac>\s*</math>", RegexOptions.IgnoreCase)]
     private static partial Regex Breuk();
 
-    [GeneratedRegex(@"<sup>([^<]*)</sup>", RegexOptions.IgnoreCase)]
+    /// <summary>Only a plain number: <c>2</c> in <c>10&lt;sup&gt;2&lt;/sup&gt;</c>. Anything else stays for the guard.</summary>
+    [GeneratedRegex(@"<sup>\s*(\d+)\s*</sup>", RegexOptions.IgnoreCase)]
     private static partial Regex Superscript();
+
+    [GeneratedRegex(@"<sup\b", RegexOptions.IgnoreCase)]
+    private static partial Regex SupOpening();
 
     [GeneratedRegex(@"<img\b[^>]*>", RegexOptions.IgnoreCase)]
     private static partial Regex Afbeelding();
 
-    [GeneratedRegex(@"\balt\s*=\s*""([^""]*)""", RegexOptions.IgnoreCase)]
+    /// <summary>The <c>alt</c> attribute itself, not the tail of another name such as <c>data-alt</c>.</summary>
+    [GeneratedRegex(@"(?<![\w-])alt\s*=\s*""([^""]*)""", RegexOptions.IgnoreCase)]
     private static partial Regex AltTekst();
 
-    [GeneratedRegex(@"<a\b[^>]*?\bhref\s*=\s*""([^""]*)""[^>]*>(.*?)</a>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    [GeneratedRegex(@"<a\b[^>]*?(?<![\w-])href\s*=\s*""([^""]*)""[^>]*>(.*?)</a>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex Link();
 
-    [GeneratedRegex(@"<a\b[^>]*>", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"<a\b", RegexOptions.IgnoreCase)]
     private static partial Regex LinkOpening();
-
-    [GeneratedRegex(@"\bhref\s*=\s*""[^""]*""", RegexOptions.IgnoreCase)]
-    private static partial Regex Adres();
 
     [GeneratedRegex(@"<br\s*/?>|</(?:p|div|ul|li|h[1-6])\s*>", RegexOptions.IgnoreCase)]
     private static partial Regex Regeleinde();

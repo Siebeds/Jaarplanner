@@ -1,7 +1,7 @@
 # E1-12 — antagonist audit, round 1 (2026-09-11)
 
 Audited: `git diff fbe317a..HEAD` on `story/E1-12-opstap-api-minimumdoelen` (`4002de7` + `024e3ef`).
-Verdict: **VIOLATIONS FOUND** — 5 MAJOR, 4 MINOR, 2 QUESTION. Saved verbatim below; the fix round is recorded in
+Verdict: **VIOLATIONS FOUND** — 5 MAJOR, 4 MINOR, 2 QUESTION. The findings are saved in full below and the checks section is abridged; the fix round is recorded in
 `implementation.md` under "Fix round 1".
 
 ---

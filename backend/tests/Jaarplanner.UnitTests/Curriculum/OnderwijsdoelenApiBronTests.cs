@@ -193,16 +193,46 @@ public sealed class OnderwijsdoelenApiBronTests
     }
 
     [Fact]
-    public async Task Een_onbruikbare_rij_wordt_gemeld_en_de_rest_ingelezen()
+    public async Task Een_herkende_maar_onbruikbare_rij_wordt_gemeld_en_de_rest_ingelezen()
     {
-        var kapot = Pagina2.Replace("\"uniqueCode\": \"6-4.1.1\"", "\"uniqueCode\": \"6/4.1.1\"", StringComparison.Ordinal);
+        var kapot = Pagina2.Replace("Australië, Nieuw-Zeeland;", "H<sub>2</sub>O;", StringComparison.Ordinal);
         var bron = Bron((verzoek, _) =>
             Json(verzoek.RequestUri!.Query.Contains("keyOffset", StringComparison.Ordinal) ? kapot : Pagina1));
 
         var resultaat = await bron.HaalOpAsync();
 
         Assert.Equal(2, resultaat.Minimumdoelen.Count);
-        Assert.Equal("6/4.1.1", Assert.Single(resultaat.Problemen).Sleutel);
+        Assert.Equal("6-4.1.1", Assert.Single(resultaat.Problemen).Sleutel);
+    }
+
+    /// <summary>
+    /// A row nobody can identify could be a stored minimumdoel, and the report would then call it vanished while the
+    /// source still lists it. So it refuses the read as a whole (antagonist, E1-12 round 2).
+    /// </summary>
+    [Theory]
+    [InlineData("\"uniqueCode\": \"6-4.1.1\"", "\"uniqueCode\": \"6/4.1.1\"")]
+    [InlineData("\"uniqueCode\": \"6-4.1.1\",", "")]
+    public async Task Een_rij_zonder_bruikbare_uniqueCode_weigert_de_hele_lezing(string oud, string nieuw)
+    {
+        var kapot = Pagina2.Replace(oud, nieuw, StringComparison.Ordinal);
+        var bron = Bron((verzoek, _) =>
+            Json(verzoek.RequestUri!.Query.Contains("keyOffset", StringComparison.Ordinal) ? kapot : Pagina1));
+
+        var fout = await Assert.ThrowsAsync<OpstapBronFout>(() => bron.HaalOpAsync());
+
+        Assert.Contains("cannot all be identified", fout.TechnischeOorzaak, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Een_rij_zonder_expanded_weigert_de_hele_lezing()
+    {
+        var zonder = Pagina2.Replace("\"$$expanded\":", "\"nietexpanded\":", StringComparison.Ordinal);
+        var bron = Bron((verzoek, _) =>
+            Json(verzoek.RequestUri!.Query.Contains("keyOffset", StringComparison.Ordinal) ? zonder : Pagina1));
+
+        var fout = await Assert.ThrowsAsync<OpstapBronFout>(() => bron.HaalOpAsync());
+
+        Assert.Contains("not expanded", fout.TechnischeOorzaak, StringComparison.Ordinal);
     }
 
     /// <summary>The caller cannot choose the host, and neither can a response: an absolute next link elsewhere is refused.</summary>

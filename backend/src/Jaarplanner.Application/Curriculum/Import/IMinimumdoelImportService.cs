@@ -87,7 +87,10 @@ public sealed class MinimumdoelImportDiff
     /// <summary>Notices for the person running the import, in Dutch because that person acts on them (Art. II.3).</summary>
     public IReadOnlyList<string> Opmerkingen { get; }
 
-    /// <summary>True when the import changes nothing and leaves nothing unread.</summary>
+    /// <summary>
+    /// True when nothing in the database changes and no stored minimumdoel went unread. A refused row for a ref that is
+    /// not stored yet shows only in the result's <c>Problemen</c>.
+    /// </summary>
     public bool IsLeeg =>
         Toegevoegd.Count == 0 && Gewijzigd.Count == 0 && Verdwenen.Count == 0 && NietIngelezen.Count == 0;
 

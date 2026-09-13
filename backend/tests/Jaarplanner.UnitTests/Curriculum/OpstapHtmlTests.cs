@@ -72,7 +72,7 @@ public sealed class OpstapHtmlTests
     public void KOVs_hoekhaken_rond_een_voorbeeld_blijven_staan(string html, string verwacht) =>
         Assert.Equal(verwacht, OpstapHtml.NaarTekst(html));
 
-    /// <summary>98 MathML fractions on 2026-09-11. Stripping the tags would have turned 1/10 into 110.</summary>
+    /// <summary>49 MathML fractions on 2026-09-11. Stripping the tags would have turned 1/10 into 110.</summary>
     [Fact]
     public void Een_mathml_breuk_wordt_teller_schuine_streep_noemer() =>
         Assert.Equal(
@@ -135,7 +135,13 @@ public sealed class OpstapHtmlTests
     [InlineData("H<sub>2</sub>O", "<sub>")]
     [InlineData("<img src=\"x.png\"/>", "<img> without alt text")]
     [InlineData("<img src=\"x.png\" alt=\"\"/>", "<img> without alt text")]
-    [InlineData("<a href='https://x'>woordenlijst</a>", "<a> without a double-quoted href")]
+    [InlineData("<a href='https://x'>woordenlijst</a>", "<a> without a closing tag or a double-quoted href")]
+    [InlineData("<a href=\"u\">w", "<a> without a closing tag or a double-quoted href")]
+    [InlineData("10<sup class=\"x\">2</sup>", "<sup> other than a plain number")]
+    [InlineData("10<sup><em>2</em></sup>", "<sup> other than a plain number")]
+    [InlineData("x<sup>n+1</sup>", "<sup> other than a plain number")]
+    [InlineData("2<sup>de</sup>", "<sup> other than a plain number")]
+    [InlineData("<img data-alt=\"q\" src=\"x\">", "<img> without alt text")]
     public void Opmaak_die_inhoud_zou_verliezen_wordt_genoemd(string html, string verwacht) =>
         Assert.Contains(verwacht, OpstapHtml.OnvertaalbareOpmaak(html));
 }

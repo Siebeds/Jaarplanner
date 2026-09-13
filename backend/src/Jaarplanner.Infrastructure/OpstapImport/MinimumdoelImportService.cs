@@ -66,8 +66,8 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
         var bestaand = await _context.Minimumdoelen.ToListAsync(cancellationToken);
         var bestaandPerRef = bestaand.ToDictionary(m => m.Ref, StringComparer.Ordinal);
         var inkomendeRefs = bron.Minimumdoelen.Select(m => m.Ref).ToHashSet(StringComparer.Ordinal);
-        // A refused row is named by its uniqueCode when it has one, so a ref already in the table that appears here is
-        // still in the source; only its row could not be read.
+        // Every refused row is keyed by a well-formed uniqueCode (the source refuses a read with an unidentifiable row),
+        // so a ref already in the table that appears here is still in the source; only its row was not imported.
         var genoemdMaarGeweigerd = bron.Problemen.Select(p => p.Sleutel).ToHashSet(StringComparer.Ordinal);
 
         var toegevoegd = new List<string>();
@@ -143,14 +143,15 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             : $"{aantal} minimumdoelen staan niet meer in de Op.stap-bron. Ze blijven in de toepassing staan en worden niet verwijderd.";
 
     /// <summary>
-    /// The notice for refs the source still names but could not be read this time. It asserts only what that branch
-    /// guarantees: the source lists them, and the text already in the application was not touched. Why a row was refused
-    /// is an operator matter and stays in the English <c>Problemen</c>.
+    /// The notice for refs the source still names but whose row was not imported this time. It asserts only what holds
+    /// for every cause, markup it cannot keep as well as an expired validity: the source lists them, they were not read
+    /// in, and the text already in the application was not touched. The cause is an operator matter and stays in the
+    /// English <c>Problemen</c> ("kon niet", the first wording, was false for an expiry the import chose to skip).
     /// </summary>
     public static string NietIngelezenMelding(int aantal) =>
         aantal == 1
-            ? "1 minimumdoel staat nog in de Op.stap-bron maar kon niet ingelezen worden. De vorige tekst blijft staan."
-            : $"{aantal} minimumdoelen staan nog in de Op.stap-bron maar konden niet ingelezen worden. De vorige tekst blijft staan.";
+            ? "1 minimumdoel staat nog in de Op.stap-bron maar werd niet ingelezen. De vorige tekst blijft staan."
+            : $"{aantal} minimumdoelen staan nog in de Op.stap-bron maar werden niet ingelezen. De vorige tekst blijft staan.";
 
     private static List<VeldWijziging> Verschillen(Minimumdoel oud, Minimumdoel nieuw)
     {

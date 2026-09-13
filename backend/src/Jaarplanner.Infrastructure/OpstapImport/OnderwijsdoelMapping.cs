@@ -76,6 +76,12 @@ internal static partial class OnderwijsdoelMapping
         return (new Minimumdoel(rij.UniqueCode!, leeftijd, nr, omschrijving), null);
     }
 
+    /// <summary>
+    /// True when <paramref name="waarde"/> has the shape of a minimumdoel ref (<c>K-</c>, <c>4-</c> or <c>6-</c> and a
+    /// dotted number). The source uses it to refuse a read with a row it cannot identify (E1-12 round 2).
+    /// </summary>
+    public static bool IsWelgevormdeRef(string? waarde) => UniqueCodeVorm().IsMatch(waarde ?? string.Empty);
+
     private static (Minimumdoel?, MinimumdoelBronProbleem?) Probleem(string sleutel, string reden) =>
         (null, new MinimumdoelBronProbleem(sleutel, reden));
 
