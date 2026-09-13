@@ -179,12 +179,18 @@ home for that whole set.
   arithmetic rather than by a real bell schedule because they are demo data. He also ruled that **every hoek gets a
   time**, which removes the "niet in het uurrooster" answer.
 
+  > **The first of those four is no longer what ships**, and the sentence above is kept rather than rewritten because
+  > it is what he accepted at the time. Later the same day he looked at the day view and split it in two: the grid
+  > **draws the whole 24 hours** and the **default window is 7:00–18:00, opened on 7:00**. See *Day-view corrections*
+  > at the end of this entry, and the amendment on decision 5 of ADR-0028.
+
   *Done when:* a teacher can drag a block to another day and another hour, pull its bottom edge to change when it
   ends, click empty space to make something at that hour, see a line marking the current time, and read a hoek as a
   block on the day it runs; and when the same three things are reachable without a drag, from the activiteit sheet.
 
-  **Built 2026-09-11. `[~]` rather than `[x]`: the antagonist has not seen it.** That is the only gate left; the
-  migration and the browser pass below are done.
+  **Built 2026-09-11. `[~]` rather than `[x]`: the antagonist has not seen most of it.** That is the only gate left;
+  the migration and the browser pass below are done. *Narrowed the same day: the three day-view corrections at the
+  end of this entry have had their own antagonist round. Everything else here has not.*
 
   **The migration is written, hand-edited and applied.** `20260911131815_TijdstippenInPlaatsVanLesuren` adds the two
   columns nullable, derives them from the slot they replace, makes them required and only then drops `Volgorde`. The
@@ -220,9 +226,48 @@ home for that whole set.
   *Gates:* **801 unit + 256 integration tests on real PostgreSQL, 0 skipped**, `dotnet build` and `dotnet format`
   clean, 131 frontend tests (16 new), oxlint + tsc clean, and the browser pass above.
 
-  **Owed:** the antagonist round; and then the rename `LengteInLesuren` → `DuurInMinuten` (ADR-0028 decision 2),
-  which is blocked on a stale claim over `SchoolcontentBeheerService.cs` and is the one place the model still
-  speaks in lesuren.
+  **Day-view corrections, 2026-09-11 (same day, after the owner looked at it).** He reported three things about the
+  day view and ruled on all three in session.
+
+  1. *"ik zie geen die twee strepen bovenaan de dag zijn wat raar, moeten daar niet andere dingen staan?"* — they
+     were the themaperiode band and the subthema band with their labels dropped. The rule that drops a label exists
+     for a row of seven columns, where the Monday carries the name for the row; it was keyed on the day count, which
+     is not the same question. **Ruling: show the names** (he was offered three options and chose this one). The
+     predicate is now "is a Monday in this row?", which also fixes the case nobody had reported: the **phone week
+     view** is three days starting at the anchored day, so an anchor past Monday gave the same two nameless bars at
+     390px. Verified in a browser both before and after.
+  2. Planning outside 7:00–18:00. **Ruling, verbatim:** *"ik wil gewoon kunnen scrollen maar default moet het wel op
+     7u-18u staan"* — so no expand control was built. The grid draws the whole day and the window opens on 7:00. A
+     press on an empty 6:15 opens the sheet on "vrijdag 11 september om 6:15".
+  3. *"ook zie ik maar de helft van de 7u waardoor dit onprofessioneel oogt"* — the hour labels were centred on their
+     own line, so the topmost one hung half above the scroller's edge. They now sit just under the line, the way a
+     paper timetable writes it, and the final hour boundary gets no label at all because one there would hang off the
+     bottom the same way.
+
+  **Antagonist round on these three corrections: ran, VIOLATIONS FOUND, all addressed.** *Scope, stated so nobody
+  reads more into it than happened: it was asked to audit the six changed files, not the whole of E10-04. The
+  backend, the migration, the drag, the resize and the hoek blocks have still not been audited, so the story's own
+  gate below is not discharged by this.* It caught the phone week case in (1) as a MAJOR, and
+  two more: this entry and ADR-0028 decision 5 still named the old range (fixed above and in the ADR), and the two
+  bands are `aria-hidden` on the promise that the day announces the same facts once, which `Maandrooster` keeps and
+  this grid did not. The day view has no day button at all, so after (1) the subthema was readable on screen and
+  nowhere else. `Dagkop` now carries `themaZin` + `subthemaZin`: appended to the button's label in the week view,
+  spoken after the heading in the day view. Three MINOR findings (an over-claiming comment about the window height, a
+  comment calling `bereik` a seam in the same hunk that weakened it, a test named for behaviour it did not exercise)
+  were fixed rather than waived.
+
+  *Also measured, because the audit asked and code cannot answer it:* the first Tab into the grid does **not** drag
+  the scroll to midnight (392 through fourteen tabs), and once focus is on the column button the arrow keys and Page
+  Down do scroll it, so the late hours are keyboard-reachable.
+
+  *Still open for the owner, not blocking:* on a 390×844 phone the window is 508px, i.e. 7:00 to about 16:00 rather
+  than 18:00, because 56px an hour and the header leave no more room. He has not been asked whether that is
+  acceptable or whether the hour should be shorter on a phone.
+
+  **Owed:** the antagonist round **on the story as a whole** (the day-view corrections above have had theirs; the
+  backend, the migration, the drag, the resize and the hoek blocks have not); and then the rename `LengteInLesuren` →
+  `DuurInMinuten` (ADR-0028 decision 2), which is blocked on a stale claim over `SchoolcontentBeheerService.cs` and is
+  the one place the model still speaks in lesuren.
 
   **Also owed: a non-drag route to resize one hoek day** (WCAG 2.2 AA). *Found 2026-09-11 by the antagonist on
   `feature/hoek-uren` (rounds 1–3); recorded by the technical lead, because without it this story closes with the gap

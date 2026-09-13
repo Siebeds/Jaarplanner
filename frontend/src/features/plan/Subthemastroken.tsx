@@ -26,17 +26,28 @@ export function Subthemastroken({
   reeksen,
   datum,
   dicht,
+  altijdNaam,
   className,
 }: {
   reeksen: readonly Subthemareeks[];
   datum: string;
   /** The month cell, where a strip pays for itself in a cell that is 112 pixels tall. */
   dicht?: boolean;
+  /**
+   * There is no row of neighbouring days to carry the name instead, so the word is never dropped.
+   *
+   * The day view of the agenda: one column, and a strip with nothing written on it there is not "and it goes on" but
+   * a grey stripe with no explanation, which is exactly how the owner read it on 2026-09-11. It is the same reason
+   * `Strook` keeps the word below `xl`, at the width where the week has folded out of a row.
+   */
+  altijdNaam?: boolean;
   className?: string;
 }) {
   if (reeksen.length === 0) return null;
 
-  const toonNaam = naamOpDezeDag(datum, reeksen);
+  // `vervolg` does not mean "this run started earlier": the text already says that. It means "a neighbour on this
+  // row is naming it, so this label may be dropped", which is false the moment there is no row.
+  const toonNaam = naamOpDezeDag(datum, reeksen) || altijdNaam === true;
 
   // One name plus a count once there are three, rather than three strips: a cell that spends half
   // its height on strips has stopped being a day. Nothing is lost, the day's button lists them all.

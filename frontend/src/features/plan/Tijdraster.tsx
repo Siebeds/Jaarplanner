@@ -3,18 +3,20 @@ import { useDndMonitor, useDraggable, useDroppable } from "@dnd-kit/core";
 import { IcoonHoek } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { dagNummer, vandaag, volleDag, weekdagKort } from "../../lib/datum";
+import { dagNummer, vandaag, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
 import type { GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
 import { leesFicheId, momentSleepId } from "../hoeken/sleepids";
 import { Subthemastroken } from "./Subthemastroken";
 import { Themastroken } from "./Themastroken";
-import type { Subthemareeks } from "./subthemareeksen";
-import { vakOpDag, type Themavak } from "./themavakken";
+import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
+import { themaZin, vakOpDag, type Themavak } from "./themavakken";
 import type { Agendadag } from "./roosterdagen";
 import {
+  DAGBEGIN,
+  DAGEINDE,
+  HEEL_DE_DAG,
   KORTSTE,
-  OPENEN_OP,
   PX_PER_MINUUT,
   STANDAARDBEGIN,
   STANDAARDDUUR,
@@ -22,7 +24,6 @@ import {
   type Blokje,
   kolommen,
   minuten,
-  rasterbereik,
   rond,
   toonBereik,
   toonTijd,
@@ -101,22 +102,24 @@ export function Tijdraster({
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
 }) {
   const blokken = useMemo(() => bouwBlokken(dagen, hoekmomenten), [dagen, hoekmomenten]);
-  const bereik = useMemo(() => rasterbereik(blokken), [blokken]);
+  // The whole day, always. What a teacher sees of it is the scroller below; see `HEEL_DE_DAG`. `bereik` is an alias,
+  // not a seam: it is kept because it is the origin every position in the grid is measured from, and because
+  // `tijdsleep` reads it back off the DOM. A school that later configures its own hours would have to narrow this AND
+  // restore the two range guards on the now-line, which are deleted below precisely because nothing can fall outside
+  // a whole day.
+  const bereik = HEEL_DE_DAG;
   const hoogte = (bereik.tot - bereik.van) * PX_PER_MINUUT;
-  const uren = useMemo(
-    () => Array.from({ length: (bereik.tot - bereik.van) / 60 + 1 }, (_, i) => bereik.van + i * 60),
-    [bereik],
-  );
 
   const nu = useNu();
   const vandaagIso = vandaag();
   const toontVandaag = dagen.some((dag) => dag.datum === vandaagIso);
 
-  // The grid opens on the school day rather than at its first drawn hour: 7:00 is there for the rare early trip, and
-  // a teacher should not have to scroll past an empty hour to reach the morning.
+  // WHERE THE GRID OPENS. Scrolled to 7:00, in a box exactly the 7:00-18:00 the owner asked to see by default. The
+  // hours outside it are drawn and a scroll away, which is what makes an 8:00 opvang or a 19:30 oudercontact
+  // plannable without a control that has to be found first.
   const scrollvak = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
-    if (scrollvak.current) scrollvak.current.scrollTop = (OPENEN_OP - bereik.van) * PX_PER_MINUUT;
+    if (scrollvak.current) scrollvak.current.scrollTop = (DAGBEGIN - bereik.van) * PX_PER_MINUUT;
   }, [bereik.van]);
 
   return (
@@ -134,29 +137,49 @@ export function Tijdraster({
               isVandaag={dag.datum === vandaagIso}
               reeksen={dag.buitenSchooljaar ? LEEG : (reeksenPerDag.get(dag.datum) ?? LEEG)}
               vak={dag.buitenSchooljaar ? undefined : vakOpDag(vakken, dag.datum)}
+              // A band drops its label only when a day ON THIS ROW is carrying it, and the day that carries it is
+              // Monday (`naamOpDezeDag`, and the same rule in `Themastroken`). So the question is whether a Monday is
+              // rendered, not how many days are: the day view is one non-Monday, and the phone week view is three
+              // days starting at the anchored day, which on a Thursday is Thu-Fri-Sat and has no Monday either. Both
+              // showed two nameless grey bars, which is what the owner was looking at on 2026-09-11.
+              altijdNaam={!dagen.some((rij) => weekdagIndex(rij.datum) === 0)}
               onKiesDag={onKiesDag}
             />
           ))}
         </div>
       </div>
 
-      <div ref={scrollvak} className="max-h-[clamp(24rem,calc(100dvh-21rem),46rem)] overflow-y-auto">
+      {/* AT MOST DAGBEGIN..DAGEINDE tall, computed rather than written out, so "default 7u-18u" is one fact in one
+          place: move those constants and the box that shows them moves with them. An inline style because a Tailwind
+          arbitrary value has to be a literal, and this one is arithmetic.
+
+          At most, not exactly. The ceiling only binds from about 950 pixels of viewport; below that the middle term
+          wins and the window is shorter, and on a 390x844 phone it is 508 pixels, which is 7:00 to about 16:00. The
+          rest of the default day is a scroll away rather than on screen. Said here because the owner's default is a
+          promise about what he sees, and on a phone it is one the pixels cannot keep. */}
+      <div
+        ref={scrollvak}
+        className="overflow-y-auto"
+        style={{ maxHeight: `clamp(24rem, calc(100dvh - 21rem), ${(DAGEINDE - DAGBEGIN) * PX_PER_MINUUT}px)` }}
+      >
         <div className="flex" style={{ height: hoogte }}>
-          {/* The hour gutter. Each label sits ON its line rather than inside the hour below it, so the eye reads the
-              line as the moment the hour starts. */}
+          {/* The hour gutter. Each label hangs just UNDER its own line, the way a paper timetable and every calendar
+              app write it, so it labels the hour that follows. Centred on the line it half-hung above the line, which
+              at the top of the scroller meant the first hour of the day was drawn cut in two (owner, 2026-09-11). */}
           <div className="relative w-12 shrink-0 border-r border-lijn sm:w-14">
-            {uren.map((uur) => (
+            {UREN.map((uur) => (
               <span
                 key={uur}
-                className="absolute right-1.5 -translate-y-1/2 text-micro text-inkt-zwak"
+                className="absolute right-1.5 translate-y-0.5 text-micro text-inkt-zwak"
                 style={{ top: (uur - bereik.van) * PX_PER_MINUUT }}
               >
                 {toonTijd(uur)}
               </span>
             ))}
 
-            {/* The current time, in words, beside the line that draws it. */}
-            {toontVandaag && nu >= bereik.van && nu <= bereik.tot ? (
+            {/* The current time, in words, beside the line that draws it. No range check any more: the grid draws
+                every hour of the day, so there is no hour the now-line can fall outside of. */}
+            {toontVandaag ? (
               <span
                 className="absolute right-1 -translate-y-1/2 rounded bg-inkt px-1 py-0.5 text-[0.625rem] font-medium text-inkt-op"
                 style={{ top: (nu - bereik.van) * PX_PER_MINUUT }}
@@ -172,7 +195,7 @@ export function Tijdraster({
           >
             {/* The hour lines, drawn once across every column instead of per cell: a border per hour per day makes
                 seven columns of stacked hairlines that read as a table. */}
-            {uren.map((uur) => (
+            {UREN.map((uur) => (
               <span
                 key={uur}
                 aria-hidden="true"
@@ -195,7 +218,7 @@ export function Tijdraster({
             ))}
 
             {/* THE LINE, above the blocks so it is not hidden by a busy morning, and never catching a click. */}
-            {toontVandaag && nu >= bereik.van && nu <= bereik.tot ? (
+            {toontVandaag ? (
               <span
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-x-0 z-20 border-t-2 border-inkt"
@@ -211,6 +234,14 @@ export function Tijdraster({
 
 /** A stable empty list, so a day with nothing running does not hand a new array down every render. */
 const LEEG: Subthemareeks[] = [];
+
+/**
+ * The hour every row starts on, computed once: the range is a constant, so a `useMemo` per grid would be ceremony.
+ *
+ * The last boundary gets neither a line nor a label. A line on the very last pixel is the card's own bottom edge, and
+ * a label under it would hang outside the scroller, which is the half-cut hour this replaces at the other end.
+ */
+const UREN = Array.from({ length: (HEEL_DE_DAG.tot - HEEL_DE_DAG.van) / 60 }, (_, i) => HEEL_DE_DAG.van + i * 60);
 
 /** Every block of every visible day, of both kinds, in one list the layout and the range can both read. */
 function bouwBlokken(dagen: Agendadag[], hoekmomenten: readonly Hoekblokje[]): Rasterblok[] {
@@ -271,12 +302,15 @@ function Dagkop({
   isVandaag,
   reeksen,
   vak,
+  altijdNaam,
   onKiesDag,
 }: {
   dag: Agendadag;
   isVandaag: boolean;
   reeksen: readonly Subthemareeks[];
   vak: Themavak | undefined;
+  /** No row of days to carry a name instead, so the bands say what they are on this day too. */
+  altijdNaam: boolean;
   onKiesDag?: (datum: string) => void;
 }) {
   const kop = (
@@ -293,6 +327,13 @@ function Dagkop({
     </span>
   );
 
+  // WHAT THE BANDS SAY, FOR SOMEONE WHO CANNOT SEE THEM. Both are `aria-hidden` on the promise that the day
+  // announces the same facts once, which `Maandrooster` keeps and this grid did not: its day button named only the
+  // date, and the day view has no button at all. That was survivable while the bands were blank; now that they carry
+  // the only copy of "which subthema runs today", it is not. Only on a teaching day, which is the only day they are
+  // drawn on.
+  const watErLooptZin = dag.isLesdag ? themaZin(vak) + subthemaZin(reeksen) : "";
+
   return (
     <div
       aria-current={isVandaag ? "date" : undefined}
@@ -302,13 +343,18 @@ function Dagkop({
         <button
           type="button"
           onClick={() => onKiesDag(dag.datum)}
-          aria-label={t("periode.openDag", { dag: volleDag(dag.datum) })}
+          aria-label={t("periode.openDag", { dag: volleDag(dag.datum) }) + watErLooptZin}
           className="block w-full rounded-veld py-0.5 transition-colors duration-150 hover:bg-vlak-diep"
         >
           {kop}
         </button>
       ) : (
-        <p className="py-0.5">{kop}</p>
+        // No button to hang the clause on in the day view, so it is spoken after the date itself. The clauses open
+        // with a comma and expect a subject in front of them, which the heading is.
+        <p className="py-0.5">
+          {kop}
+          {watErLooptZin ? <span className="sr-only">{watErLooptZin}</span> : null}
+        </p>
       )}
 
       {/* A closed day says so here rather than in forty repetitions down the column. */}
@@ -318,8 +364,8 @@ function Dagkop({
         </p>
       ) : (
         <div className="flex flex-col gap-px pt-1">
-          <Themastroken vak={vak} datum={dag.datum} dicht />
-          <Subthemastroken reeksen={reeksen} datum={dag.datum} dicht />
+          <Themastroken vak={vak} datum={dag.datum} dicht altijdNaam={altijdNaam} />
+          <Subthemastroken reeksen={reeksen} datum={dag.datum} dicht altijdNaam={altijdNaam} />
         </div>
       )}
     </div>

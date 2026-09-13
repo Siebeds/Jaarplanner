@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DAGBEGIN, DAGEINDE, alsTijd, kolommen, minuten, rasterbereik, rond, toonTijd } from "./tijd";
+import { DAGBEGIN, DAGEINDE, HEEL_DE_DAG, alsTijd, kolommen, minuten, rond, toonTijd } from "./tijd";
 
 /**
  * The arithmetic the time grid is drawn from (ADR-0028).
@@ -30,15 +30,12 @@ describe("tijd", () => {
     expect(rond(523)).toBe(525);
   });
 
-  it("verbreedt het raster voor wat erbuiten valt, in plaats van het af te knippen", () => {
-    expect(rasterbereik([])).toEqual({ van: DAGBEGIN, tot: DAGEINDE });
-
-    // A trip leaving at 6:30 pulls the top of the grid to 6:00; a block that fits changes nothing.
-    expect(rasterbereik([{ begin: 390, einde: 480 }]).van).toBe(360);
-    expect(rasterbereik([{ begin: 600, einde: 650 }])).toEqual({ van: DAGBEGIN, tot: DAGEINDE });
-    // Rounded UP to the whole hour: a block ending at 19:05 needs the grid to reach 20:00, or its last five
-    // minutes are drawn outside it.
-    expect(rasterbereik([{ begin: 1020, einde: 1145 }]).tot).toBe(1200);
+  it("legt vast dat het etmaal getekend wordt en dat 7u-18u daarbinnen valt", () => {
+    // Constants, and the title says so: what the grid DRAWS and OPENS ON is asserted where it is drawn, in
+    // `Tijdraster.test.tsx`. What is pinned here is that the two are different things, because confusing them is how
+    // an hour outside the school day silently stops being clickable (owner, 2026-09-11).
+    expect(HEEL_DE_DAG).toEqual({ van: 0, tot: 24 * 60 });
+    expect([DAGBEGIN, DAGEINDE]).toEqual([7 * 60, 18 * 60]);
   });
 
   describe("kolommen", () => {
