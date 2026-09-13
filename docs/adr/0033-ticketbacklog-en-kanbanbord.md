@@ -57,23 +57,28 @@ that the board has the **full flow** of columns including a test column.
    `unblock`, `pr`, plus `list`, `check`, `next-id`). It enforces the allowed transitions, sets `bijgewerkt`,
    appends the Werklog line, and refuses to touch or produce an invalid ticket.
 
-   **Before every write it checks for a newer copy.** A copy is newer exactly when it has Werklog lines this
-   checkout's copy lacks: the Werklog only grows, so no clock and no text comparison is involved. If a newer copy says
+   **Before every write it checks for a newer copy.** A copy is newer exactly when it has every Werklog line this
+   checkout's copy has, and more: the Werklog only grows, so no clock and no text comparison is involved. A copy that
+   has split off (each has lines the other lacks: a ticket given back on a branch that was never merged, a branch that
+   only logged a line, a commit left behind after a merge) is not newer, and is only named. If a newer copy says
    something different about the ticket (its status, who holds it, whether it is blocked), the CLI refuses and names
    the git command that brings the newer copy in: `git merge main`, `git pull` for the checkout's own upstream,
    `git fetch --prune` for a remote branch already deleted on the server, or waiting for the merge of the branch that
    holds the ticket. **It never adopts another copy itself**, so git stays the only thing that merges. A newer copy
    that agrees on the state is named, with its last Werklog line, and does not stop the write.
 
-   Two rules keep the flows inside that check. After the merge a ticket is written on `main` and no longer on its
-   work branch, so the PR number goes in before the merge. And a blocked ticket is neither picked up nor given back: a
-   block is how a ticket waits for an open decision (Art. XIV), and given back on an unmerged branch it would be
-   invisible to the next session.
+   Four rules keep the flows inside that check. After the merge (on the local `main` or the fetched `origin/main`) a
+   ticket is written on `main` and no longer on its work branch, so the PR number goes in before the merge. A blocked
+   ticket is neither picked up nor given back: a block is how a ticket waits for an open decision (Art. XIV), and
+   given back on an unmerged branch it would be invisible to the next session. A ticket in progress is changed only
+   by the session that holds it. And a pickup is never written on `main`, whatever `--branch` says.
 
    *Why this design, after four that failed an audit each:* letting the newest `bijgewerkt` win let a stale copy undo
    a pickup (round 1); refusing on any text difference froze tickets for the tester and for the next session
    (round 2); comparing status alone dropped blocks and give-back notes (round 3); adopting the newest copy's text made
-   later git merges conflict, because git merges on history and not on text (round 4).
+   later git merges conflict, because git merges on history and not on text (round 4). Round 5 then found the
+   fifth design counting a split-off copy as newer, which froze a ticket for every writer after a give-back; "newer"
+   now means strictly ahead.
 
    The check reads local branches, worktrees and remote-tracking branches as of the last fetch. A branch that exists
    only on another PC is invisible to it; decision 10 is why that does not arise today. A new number is the highest
@@ -87,8 +92,9 @@ that the board has the **full flow** of columns including a test column.
    still open, for work that epic needs to be finished. The progress table in `backlog/README.md` keeps counting
    stories only.
 9. **CI checks the tickets** on every push: the tool's tests and `tickets.mjs check`.
-10. **Roles** (owner rulings 2026-09-13). In his words: the architect only puts tickets on `nieuw`, he himself changes
-    their status, and the board is shown only on his PC. Asked further the same day, he ruled that the functional
+10. **Roles** (owner rulings 2026-09-13). In his words: "de architect zal enkel tickets op nieuw zetten en ikzelf zal ze
+    van status veranderen. de frontend wordt enkel op mijn pc getoond" ("de frontend" is the kanban board, the word
+    he used for it in his first request). Asked further the same day, he ruled that the functional
     architect tests functional tickets and he records the result, that the agent sessions run only on his PC, and that
     the architect may sharpen a ticket's text while it is still `nieuw`. So:
     - the **functional architect** creates tickets, always as `nieuw`, in their own clone; sharpens their text while

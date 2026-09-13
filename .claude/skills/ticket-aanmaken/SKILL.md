@@ -21,7 +21,8 @@ CLI's commands and options are English.
 ## 0. Which kind of ticket
 
 - **FB (functioneel):** the functional architect logs something a teacher or the directie needs. Created on `main`, in
-  their own clone, always as `nieuw`: only the owner changes a status (owner ruling 2026-09-13).
+  their own clone, always as `nieuw`. The architect changes no status: of the architect and the owner, only the owner
+  does, and agent sessions set their own statuses on their branches (owner rulings 2026-09-13).
 - **TB (technisch):** an agent session logs an improvement the owner started himself, before changing any file.
   Created on the branch of that work. The `ticket-uitvoeren` skill sends you here and takes over again afterwards.
 
@@ -108,7 +109,8 @@ Show the user the finished ticket (title, criteria, scenarios) and ask for a go.
 
 ## Changing an existing ticket
 
-The functional architect **never changes a status**: only the owner does, on his PC, where the board runs and the
+The functional architect **never changes a status**: of the two of them only the owner does (sessions set their own on their
+branches), on his PC, where the board runs and the
 sessions work (owner ruling 2026-09-13). The architect may still sharpen a ticket's text **while it is `nieuw`**,
 after `git pull --ff-only`. From `klaar-voor-bouw` on, a session may already hold it on the owner's PC, where the
 architect's clone cannot look: log the addition as a new ticket, or ask the owner. If the owner promoted a ticket

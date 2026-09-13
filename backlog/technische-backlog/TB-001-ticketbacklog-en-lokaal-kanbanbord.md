@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-13
-bijgewerkt: 2026-09-13 16:59
+bijgewerkt: 2026-09-13 17:25
 opgepakt-door: ticket-backlog
 branch: feature/ticket-backlog
 pr:
@@ -63,3 +63,4 @@ nog als vervolg binnen een lopende epic, en de functioneel architect werkt in ee
 - 2026-09-13 16:19 · ticket-backlog · antagonist ronde 3: VIOLATIONS FOUND (2 MAJOR: blokkering viel weg, verweesde remote branch); elke schrijfactie werkt nu op de nieuwste versie en neemt die eerst over, geblokkeerde tickets worden niet opgepakt, 57 tests groen
 - 2026-09-13 16:25 · ticket-backlog · eigenaar: tweede ratificatierij bevestigd; rollen: de architect maakt enkel tickets aan (altijd nieuw), alleen de eigenaar wijzigt statussen op zijn pc en test zelf
 - 2026-09-13 16:59 · ticket-backlog · correctie op de regel van 16:25: de eigenaar test niet zelf. Zijn beslissing: de functioneel architect test, de eigenaar zet de status; de sessies draaien alleen op zijn pc; de architect mag de tekst aanscherpen zolang het ticket nieuw is
+- 2026-09-13 17:25 · ticket-backlog · antagonist ronde 5: VIOLATIONS FOUND (1 MAJOR: een afgesplitste versie gold als nieuwer); nieuwer betekent nu strikt voor, houdercontrole terug, geen pickup op main, 67 tests groen

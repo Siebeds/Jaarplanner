@@ -18,7 +18,8 @@ Dutch; commits stay English.
 
 Change a ticket's frontmatter **only through the CLI** (`node tools/backlog-board/tickets.mjs …`). It sets `bijgewerkt`,
 which is how the board decides which version is newest, and it writes the Werklog line. Before every write it checks
-for a newer copy elsewhere (one with Werklog lines yours lacks). If that copy says a different status, holder or block,
+for a newer copy elsewhere (one that has every Werklog line yours has, and more; a copy that split off,
+like a ticket given back on a branch that was never merged, does not count). If that copy says a different status, holder or block,
 it refuses and names the git command that fixes it (`git merge main`, `git pull`, `git fetch --prune`, or wait for
 the merge). It never adopts another copy itself. Do not work around a refusal.
 
@@ -95,13 +96,15 @@ Commit it with, or right after, the last change. The card now sits under **In re
 the merge and a pull it moves to *Te testen* or *Klaar* by itself.
 
 Push and open a PR only when the owner asks (the existing rule). If you do, record the number **before the merge**:
-push, open the PR, run `pr FB-012 <nummer> --by <sessie-id>`, commit and push that too. After the merge the CLI
-refuses any write on your branch: the ticket then lives on `main`.
+push, open the PR, run `pr FB-012 <nummer> --by <sessie-id>`, commit and push that too. Once `main` (or the
+fetched `origin/main`) has your final status, the CLI refuses any write on your branch: the ticket then lives on
+`main`.
 
 **Stopping without finishing?** Give it back so another session can take it:
 `status FB-012 klaar-voor-bouw --by <sessie-id> --log "teruggegeven: <waarom, en wat er al staat>"`, and commit. The
 next session sees your note when it picks the ticket up. A blocked ticket cannot be given back: keep it and tell the
-owner.
+owner. A TB ticket lives on its branch until that branch is merged, so whoever takes it next continues on that same
+branch; an FB ticket's next session starts from `main`, and your branch's copy then no longer counts.
 
 ## 7. Release
 

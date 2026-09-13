@@ -141,7 +141,8 @@ De CLI weet niet wie hem aanroept. Wie welke status zet, is een afspraak (zie *W
 ## Wie doet wat
 
 *(Beslissingen van de eigenaar, 2026-09-13.)* Het bord en de agent-sessies draaien alleen op de pc van de eigenaar. De
-functioneel architect maakt tickets aan en test ze; de eigenaar zet hun status.
+functioneel architect maakt tickets aan en test ze; de eigenaar zet hun status. De agent-sessies zetten hun eigen
+statussen op hun branch (oppakken, te testen, teruggeven).
 
 - **Functioneel architect:** maakt tickets aan met de skill `ticket-aanmaken`, op `main`, in een eigen clone van de
   repo, en pusht ze. Een ticket begint altijd als `nieuw`. De architect wijzigt **geen status**, en mag de tekst van
@@ -150,7 +151,8 @@ functioneel architect maakt tickets aan en test ze; de eigenaar zet hun status.
   ticket: houd dan de status van de eigenaar en de tekst van de architect. De architect **test** functionele tickets
   in `te-testen` en meldt het resultaat aan de eigenaar.
 - **Eigenaar:** zet tickets op `klaar-voor-bouw`, verwerkt de test van de architect met de skill `ticket-testen` (naar
-  `klaar`, of terug naar `klaar-voor-bouw` met de bevinding), merget, en kijkt op het bord. Omdat dat en het werk van
+  `klaar`, of terug naar `klaar-voor-bouw` met de bevinding), merget, en kijkt op het bord. Elke statuswijziging
+  commit hij meteen op `main`, zodat de sessies ze zien. Omdat dat en het werk van
   de sessies op zijn pc gebeurt, ziet de CLI daar elke branch en worktree.
 - **Agent-sessie:** werkt volgens de skill `ticket-uitvoeren`, op de pc van de eigenaar. Heeft het werk nog geen
   ticket en geen story, dan maakt de agent **eerst** een TB-ticket aan, vóór er een bestand verandert.
@@ -198,10 +200,13 @@ zijn Engels, wat ze in het ticket schrijven is Nederlands.
 | `node tools/backlog-board/tickets.mjs pr <id> <nummer> --by <wie>` | het PR-nummer invullen, vóór de merge |
 
 Elke wijziging via de CLI zet `bijgewerkt` en schrijft een werklogregel. Voor ze iets schrijft, kijkt ze of er elders
-een **nieuwere** versie van het ticket staat: een versie met werklogregels die deze checkout niet heeft. Zegt die iets
-anders over het ticket (een andere status, een andere houder, een blokkering), dan weigert de CLI en zegt ze wat het
-oplost:
+een **nieuwere** versie van het ticket staat: een versie die alle werklogregels van deze checkout heeft, en meer. Een
+versie die afgesplitst is (elk heeft regels die de andere mist, zoals een teruggegeven ticket op een branch die nooit
+gemerged werd) telt niet mee; de CLI noemt ze alleen. Zegt een nieuwere versie iets anders over het ticket (een
+andere status, een andere houder, een blokkering), dan weigert de CLI en zegt ze wat het oplost:
 
+- de nieuwere versie is nog niet gecommit (bijvoorbeeld een wijziging van de eigenaar in zijn checkout van `main`):
+  eerst committen;
 - de nieuwere versie staat op `main`: haal main binnen in je branch (`git merge main`);
 - ze staat op de remote van je eigen branch: `git pull`;
 - ze staat op een andere branch of worktree: daar wordt het ticket bewerkt; wacht op de merge, of vraag de eigenaar;
@@ -210,7 +215,9 @@ oplost:
 De CLI neemt zelf nooit een versie over; dat doet git, zodat een latere merge klopt. Een nieuwere versie met dezelfde
 status houdt niemand tegen, maar de CLI noemt ze en toont haar laatste werklogregel (bijvoorbeeld de notitie van een
 sessie die het ticket teruggaf). Na de merge schrijf je een ticket op `main`, niet meer op de branch: zet het
-PR-nummer er dus vóór de merge in.
+PR-nummer er dus vóór de merge in. Een ticket in uitvoering wijzigt alleen de sessie die het vasthoudt, en een
+ticket pak je nooit op `main` op. Een teruggegeven TB-ticket leeft op zijn branch tot die gemerged is: wie het
+oppakt, werkt op die branch verder.
 
 Een verlaten sessie die een ticket vasthoudt, ruimt de eigenaar op: `git worktree remove` voor een worktree (wat daar
 niet gecommit is, gaat verloren), anders `git branch -D`. Wie een ticket toch met de hand aanpast, schrijft er ook een

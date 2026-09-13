@@ -10,8 +10,8 @@ description: >-
 # Ticket testen
 
 A functional ticket reaches *Te testen* once its work is merged into `main`. **The functional architect tests it; the
-owner records the result**, on his own PC, where the board runs (owner rulings 2026-09-13: the architect tests, only
-the owner changes a status). Format and statuses: [`backlog/TICKETS.md`](../../../backlog/TICKETS.md). Speak Dutch
+owner records the result**, on his own PC, where the board runs (owner rulings 2026-09-13: the architect tests; of the
+two, only the owner changes a status). Format and statuses: [`backlog/TICKETS.md`](../../../backlog/TICKETS.md). Speak Dutch
 with the owner.
 
 ## 1. Get the latest main
