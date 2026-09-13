@@ -137,8 +137,9 @@ public sealed class OpstapHerimportDiff
         GemeenschappelijkBuitenBereik.Count == 0;
 
     /// <summary>
-    /// True when something needs human review: a skip notice, a change, a disappearance, a renumbering, or a stored goal
-    /// whose new version could not be read.
+    /// True when something needs human review: a skip notice, a change, a disappearance, a renumbering, a stored goal
+    /// whose new version could not be read, or a stored gemeenschappelijk goal the source lists under a goal set this
+    /// import does not take (<see cref="GemeenschappelijkBuitenBereik"/>).
     /// </summary>
     public bool VereistReview =>
         Overgeslagen ||

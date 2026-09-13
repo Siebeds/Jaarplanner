@@ -32,10 +32,12 @@ public enum OpstapImportFoutSoort
     CodeInAndereDiscipline = 2,
 
     /// <summary>
-    /// An Op.stap Excel file was offered after the curriculum was imported from KOV's API (E1-21). Read after that, a
-    /// file overwrites the API's wording with its own, clears the concordance the files do not carry and flags every
-    /// goal the file lacks, so the Excel route refuses as soon as an API import has been applied (ADR-0032 decision 8,
-    /// amended 2026-09-13). Before any API import the Excel route works as it always did.
+    /// An Op.stap Excel file was offered after an API import of the curriculum had been applied (E1-21). In a discipline
+    /// that import covered, a file read after it would overwrite the API's wording with its own, clear the concordance the
+    /// files do not carry and flag every API goal the file lacks, so the Excel route refuses every file once an API import
+    /// has been applied (ADR-0032 decision 8, amended and ratified by the owner on 2026-09-13, Art. VII.2). Before any API
+    /// import it works as it always did. <b>The cost, ratified with it:</b> goals the Excel route loaded outside goal set G
+    /// can no longer be refreshed by any route.
     /// </summary>
     ExcelNaOpstapApi = 3,
 }
@@ -163,15 +165,17 @@ public sealed class OpstapImportFout : Exception
     }
 
     /// <summary>
-    /// An Op.stap Excel file after an API import (E1-21). The sentence says only what holds whenever this is raised: the
-    /// leerplandoelen come from Op.stap now, so the file was not read, and nothing changed. It does not say the file
-    /// would overwrite goals, because with a discipline selection the file's discipline may hold none from the API.
+    /// An Op.stap Excel file after an API import (E1-21). The sentence says only what the trigger proves: a version of
+    /// Op.stap has been imported from KOV, after which no Op.stap Excel file is read, and nothing changed. It says nothing
+    /// about where every leerplandoel comes from (goals the Excel route loaded outside goal set G stay as the file wrote
+    /// them), nor that the file would overwrite goals (with a discipline selection its discipline may hold none from the
+    /// API). Antagonist rounds 1 and 2.
     /// </summary>
     public static OpstapImportFout ExcelNaOpstapApi() =>
         new(
             OpstapImportFoutSoort.ExcelNaOpstapApi,
-            "De leerplandoelen komen nu uit Op.stap, via Katholiek Onderwijs Vlaanderen, en niet meer uit een " +
-            "Excel-bestand. Daarom is dit bestand niet ingelezen. Er is niets gewijzigd.");
+            "Er is al een versie van Op.stap ingelezen via Katholiek Onderwijs Vlaanderen. Daarna wordt geen " +
+            "Excel-bestand van Op.stap meer ingelezen. Er is niets gewijzigd.");
 
     /// <summary>Renders ": a, b, c" when values are known, and nothing when they are not.</summary>
     private static string Toelichting(IEnumerable<string> waarden)

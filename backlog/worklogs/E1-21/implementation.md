@@ -222,6 +222,35 @@ where it is (2 goals).
 - Byte check: no U+0001, U+0002 or U+00A0 in any `.cs` file of the tree.
 - Not re-run: the antagonist and the test-runner. Both are the orchestrator's.
 
+## Fix round 2 (2026-09-13, after round 2 on `01d5189`: test-runner PASS with 2 nits; antagonist 0 MAJOR, 6 MINOR, 1 QUESTION)
+
+| # | Finding | Resolution | Test |
+| --- | --- | --- | --- |
+| MINOR 1 | The 409 sentence claims where every leerplandoel comes from; the ADR note records the benefit, not the cost; the enum doc is unqualified | New detail: "Er is al een versie van Op.stap ingelezen via Katholiek Onderwijs Vlaanderen. Daarna wordt geen Excel-bestand van Op.stap meer ingelezen. Er is niets gewijzigd." It asserts only what the trigger (an `opstapversies` row) proves. The factory doc, the enum doc and the writer's comment are qualified alike, and the ADR-0032 note now states the cost: Excel-loaded P/S/+/A goals can no longer be refreshed; a removal by KOV is still flagged through the API path, a wording change is not. | `Excel_na_een_api_import_zegt_alleen_wat_waar_is`; `Na_een_api_import_weigert_de_excelroute_en_wijzigt_niets` reads the factory |
+| MINOR 2 | `CONSTITUTION.md`, the functional analysis and `CLAUDE.md` still say the Excel route stays available | **Ratified by the owner on 2026-09-13** ("Bekrachtigen"). In its own commit (Art. XI.1): Art. VII.2 and the Art. XIV "Resolved" line amended, a ratification-log entry following the 2026-09-11 precedent (the cost stated, directie's confirmation outstanding), and FR's *Koppeling leerplandoelen* in the functional analysis in step. ADR-0032 cites the ratification. **`CLAUDE.md:137` ("which stays available") and `:21` (the E1 status sentence) are held by session ticket-backlog and left to the orchestrator at land time.** | text |
+| MINOR 3 | `IsLeeg` counted only `img`/`a` as content: tables of `svg`, `iframe`, `input`, `object`, `video` still became `[lege tabel …]` | A cell is empty only when it holds no text and no element beyond `TekstlozeOpmaak` (p, div, span, br, hr, strong, b, em, i, u and the table structure tags). Anything else makes it content, so the table reaches the guard. | `Een_tabel_met_een_ander_element_dan_opmaak_is_niet_leeg_en_wordt_geweigerd` (`svg`, `iframe`); the live contract test still finds 0 problems in snapshot 1.2 |
+| MINOR 4 | `besluiten-gevraagd.md`: questions 1, 3 and 12 say more than is true | Q1: 4,983 of the 5,835 G goals name a minimumdoel, and the others name none in Op.stap itself. Q3: the reason is fewer goals to review. Q12, **recounted on the real conversion** with a temporary harness (deleted): **27** G goals have such a heading after their examples (the case the question is about), and 41 have such a line at all. **8** of the 27 are also in the repo's Op.stap Excel files, and in **all 8** that text is in column K (voorbeelden). The round-1 figures (36; 6) are superseded. "Drie stukken uitleg" now reads "voor zover het doel die heeft". | recount |
+| MINOR 5 | E1-04's note claimed `IConcordantieQuery` on PostgreSQL; no PostgreSQL test called it | New PostgreSQL test over rows the API path wrote: minimumdoel → goals, goal → minimumdoel, a goal with none, a minimumdoel with none. E1-04's note now names the two tests it rests on. | `Na_de_import_beantwoordt_de_concordantie_beide_richtingen` |
+| MINOR 6 | `VereistReview` doc omitted `GemeenschappelijkBuitenBereik`; `E4-bewerking-hergeneratie.md:25` still said "blocked on E1-12" | Both corrected. | text |
+| QUESTION | Option (b) freezes non-G data; until E1-22 the upload control can only refuse (E3-06 shape) | The freeze is now ratified (MINOR 2). The orchestrator lands E1-21 and E1-22 together in one PR, so the interim screen never reaches `main`; E1-22's entry already carries the decision. | — |
+| Test-runner nit 1 | A stray `<summary>` in `OpstapImportFoutTests.cs` | Each test carries its own summary again. | — |
+| Test-runner nit 2 | E1-21's original clause not struck | Struck (`~~…~~`) before the re-scoping note, and E1-12's twin clause likewise. | — |
+
+### Verification after fix round 2
+
+*(PostgreSQL 17.5 in a throwaway container on port 55436.)*
+
+- `dotnet format Jaarplanner.sln --verify-no-changes`: **exit 0** (a `dotnet format` pass ran first).
+- `dotnet build Jaarplanner.sln -c Release`: **0 warnings, 0 errors**.
+- `dotnet test Jaarplanner.sln --no-build -c Release` with `JAARPLANNER_TEST_POSTGRES`, live switch off, as CI runs it:
+  **unit 1,105 passed, 4 skipped** (the live contract tests); **integration 338 passed, 1 skipped** (the live KOV →
+  PostgreSQL test); **0 failed**.
+- Live, `JAARPLANNER_LIVE_OPSTAP=1`, same build: unit **4/4**, integration **1/1** (24 s). The snapshot-1.2 contract
+  still asserts no problem over all 5,835 G goals, so the wider `IsLeeg` rule (MINOR 3) refuses nothing in the real data.
+- Byte check: no U+0001, U+0002 or U+00A0 in any `.cs` file of the tree.
+- The constitution amendment is its own commit (Art. XI.1), ahead of the fix commit.
+- Not re-run: the antagonist and the test-runner. Both are the orchestrator's.
+
 ## Not done, and why
 
 1. **Minimumdoel-level coverage is not computed**; by owner ruling R1 that clause now belongs to **E5-04** ("a minimumdoel
@@ -347,7 +376,10 @@ Notes for the screen:
 
 Once an API import has been applied (an `opstapversies` row exists), `POST /api/opstap-import` and `…/voorbeeld` answer
 **409** before reading anything into the database: title `Import niet doorgevoerd`, `type`
-`urn:jaarplanner:opstap-import:excel-na-opstap-api` (`Probleemsoorten.OpstapExcelNaOpstapApi`), detail "De leerplandoelen
-komen nu uit Op.stap, via Katholiek Onderwijs Vlaanderen, en niet meer uit een Excel-bestand. Daarom is dit bestand niet
-ingelezen. Er is niets gewijzigd." Today's Excel screen shows that detail under "Niet gelukt". E1-22 reworks the screen
+`urn:jaarplanner:opstap-import:excel-na-opstap-api` (`Probleemsoorten.OpstapExcelNaOpstapApi`), detail "Er is al een versie
+van Op.stap ingelezen via Katholiek Onderwijs Vlaanderen. Daarna wordt geen Excel-bestand van Op.stap meer ingelezen. Er
+is niets gewijzigd." (fix round 2; the round-1 sentence claimed where every leerplandoel comes from). Ratified by the
+owner on 2026-09-13 (Art. VII.2): the route stays available until the first API import and refuses every file after it,
+and goals the Excel route loaded outside goal set G can no longer be refreshed by any route. Today's Excel screen shows
+the detail under "Niet gelukt". E1-22 reworks the screen
 and decides whether the upload is offered at all after an API import (noted in its backlog entry).

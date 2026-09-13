@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ClosedXML.Excel;
 using Jaarplanner.Api.Infrastructure;
+using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Generatie;
@@ -277,6 +278,31 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         Assert.All(doelen, l => Assert.False(l.NietMeerInOpstap));
         Assert.Equal("4-2.1.7", doelen[1].MinimumdoelRef);
         Assert.Equal("De leerlingen kunnen 2.1.GL3.10.", doelen[1].Tekst);
+    }
+
+    /// <summary>
+    /// E1-04's "concordance is queryable", on the database and over rows the API path wrote (antagonist round 2, MINOR 5):
+    /// <see cref="IConcordantieQuery"/> answers from a minimumdoel to its concorded goals and from a goal to its minimumdoel,
+    /// and says "none" for a goal Op.stap concords to nothing.
+    /// </summary>
+    [PostgresFact]
+    public async Task Na_de_import_beantwoordt_de_concordantie_beide_richtingen()
+    {
+        _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7"), G("2.1.GL3.11", "4-2.1.7"), G("2.1.GL2.1", minimumdoelRef: null)));
+        await Post(Pad, new { versie = "1.2" });
+
+        using var scope = _factory.Services.CreateScope();
+        var concordantie = scope.ServiceProvider.GetRequiredService<IConcordantieQuery>();
+
+        var doelen = await concordantie.LeerplandoelenVoorMinimumdoelAsync("4-2.1.7");
+        var minimumdoel = await concordantie.MinimumdoelVoorLeerplandoelAsync("2.1.GL3.10");
+
+        Assert.Equal(["2.1.GL3.10", "2.1.GL3.11"], doelen.Select(l => l.Code).ToArray());
+        Assert.NotNull(minimumdoel);
+        Assert.Equal("4-2.1.7", minimumdoel.Ref);
+        Assert.Equal("De leerlingen kunnen tellen tot 1000.", minimumdoel.Omschrijving);
+        Assert.Null(await concordantie.MinimumdoelVoorLeerplandoelAsync("2.1.GL2.1"));
+        Assert.Empty(await concordantie.LeerplandoelenVoorMinimumdoelAsync("6-2.5.4"));
     }
 
     /// <summary>One Wiskunde goal as the Op.stap Excel route carries it: its own wording, and no concordance in column D.</summary>

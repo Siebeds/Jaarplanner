@@ -40,3 +40,40 @@ of the live data, and an old-vs-new HTML-converter comparison.
   present, every repeat apply keeps reporting the three flagged Wiskunde codes as gone (behaviour predating this story).
 
 Cleanup: container `jp-e121-tr` stopped, port claims released; the owner's `jaarplanner-db` untouched.
+
+---
+
+# Round 2 (2026-09-13, on `01d5189`): PASS
+
+*Pasted by the orchestrator; the test-runner's harness had no file-writing tool.* Mode: unit + integration, plus a hand
+check against the running API (worktree Release build, own PostgreSQL on 55435, development sign-in, real KOV calls, the
+real `assets/opstap-xlsx/Wiskunde.xlsx`). Judged against the re-scoped *Done when* (owner ruling R1, 2026-09-13).
+
+| # | Criterion | Result | Evidence |
+|---|---|---|---|
+| 1a | After an API import, the Excel preview and apply answer 409 with the Dutch detail | PASS | After the minimumdoelen and leerplandoelen applies of 1.2 (all 200), `Wiskunde.xlsx` got **409** on both `/api/opstap-import/voorbeeld` and `/api/opstap-import`: type `urn:jaarplanner:opstap-import:excel-na-opstap-api`, title "Import niet doorgevoerd", detail "De leerplandoelen komen nu uit Op.stap, via Katholiek Onderwijs Vlaanderen, en niet meer uit een Excel-bestand. Daarom is dit bestand niet ingelezen. Er is niets gewijzigd." |
+| 1b | …and nothing changes | PASS | Identical before/after: leerplandoelen 5,901 rows, whole-row md5 `60150762…a11`; minimumdoelen 998, md5 `634b8e53…cda`; 4,983 concorded to 992; `niet_meer_in_opstap` 3 / 0; 5,835 keys; 1 `opstapversies` row. |
+| 1c | Excel route still works without an API import | PASS | Same DB before any API import: preview and apply 200, 319 added (+ 17, G 256, P 38, S 8), 0 problems. |
+| 1d | Guard pinned by tests | PASS | `Na_een_api_import_weigert_de_excelroute_en_wijzigt_niets` (PostgreSQL); unit `Een_excelbestand_na_een_api_import_wordt_geweigerd`, `Na_een_api_import_blijft_de_api_zelf_importeren`; guard in the one writer (`OpstapImportService.cs:150`), keyed on `Herkomst.Bestand` only. |
+| 2a | Table of images refused | PASS | `Een_tabel_van_afbeeldingen_is_niet_leeg_en_wordt_geweigerd` (a one-cell image table still becomes `[afbeelding: appel]`). |
+| 2b | Link-only cell keeps its address | PASS | `Een_cel_met_alleen_een_link_zonder_tekst_houdt_het_adres`. |
+| 2c | Nested `ol` refused | PASS | `Een_geneste_geordende_lijst_wordt_geweigerd` (`ul` › `ol` kept as `- x\n1. y`). |
+| 2d | Snapshot 1.2 still 0 refusals | PASS | Live test passed; `problemen` 0 in all 13 disciplines; `[lege tabel` still on exactly `2.2.GL2.2`. |
+| 3a | No redirects on either KOV client | PASS (no live 3xx) | `Geen_van_beide_bronnen_volgt_een_doorverwijzing` asserts `AllowAutoRedirect == false` on the real registration; `KovHttp.cs:25` turns any non-success, 3xx included, into `OpstapBronFout` → 502. |
+| 3b | `GemeenschappelijkBuitenBereik` | PASS | Unit test, plus a live probe: stored P goal `2.1.PF2.1` relabelled G → preview lists it under `gemeenschappelijkBuitenBereik`, `vereistReview` true, the Dutch notice, row unchanged. |
+| 4 | Every round-1 PASS still holds | PASS | Headline counts below. |
+| R1 | Backlog texts carry the owner ruling | PASS | E1-21 *Done when* note; E5-04 (`E5-dekking-export.md:92`) owns the clause. Nit below. |
+
+**Headline counts (live, 1.2):** 5,582 added + 253 updated = 5,835 G, all keyed; 0 refused; 13 disciplines; version 1.2,
+hash `8f470a12-231f-5817-7a8b-6582195e2583`; 4,983 concorded to 992; skipped + 105, A 67, P 762, S 436, V 247, Z 28.
+
+**Gates:** Release build 0 warnings; format exit 0; unit 1,103 passed / 4 skipped / 0 failed; full integration on
+PostgreSQL 337 passed / 1 skipped / 0 failed (2 min 47 s); live 4/4 unit and 1/1 integration.
+
+**Nits (non-blocking):**
+- `OpstapImportFoutTests.cs:102-109`: the new test was inserted between an existing `<summary>` and its `[Fact]`, so one
+  test carries two summaries and `Code_in_andere_discipline_uit_de_api_noemt_geen_bestand` lost its comment.
+- `backlog/E1-curriculum-content.md:322`: the original "…returns real results. That last clause is also what closes E1-12,
+  E1-03 and E1-04." stands unstruck before the re-scoping note.
+
+Cleanup: API and container `jp-e121-tr2` stopped, port claims released, the owner's `jaarplanner-db` untouched.

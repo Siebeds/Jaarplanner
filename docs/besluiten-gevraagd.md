@@ -10,11 +10,11 @@ We **gokken niet** op een antwoord. Waar een keuze nog openstaat, bouwen we zo d
 
 ## 1. Waar halen we de doelen vandaan? **Beslist, graag uw bevestiging**
 
-**Wat er veranderd is.** Hier vroegen we eerder om een bestand met de officiële minimumdoelen (eindtermen). Dat bestand is **niet meer nodig**. Op 11 september 2026 heeft de projecteigenaar beslist dat de tool de doelen rechtstreeks ophaalt bij Katholiek Onderwijs Vlaanderen, via de Op.stap-koppeling die zij publiceren voor wie software bouwt. Daarin staan de minimumdoelen mét hun tekst, en bij elk leerplandoel naar welk minimumdoel het verwijst.
+**Wat er veranderd is.** Hier vroegen we eerder om een bestand met de officiële minimumdoelen (eindtermen). Dat bestand is **niet meer nodig**. Op 11 september 2026 heeft de projecteigenaar beslist dat de tool de doelen rechtstreeks ophaalt bij Katholiek Onderwijs Vlaanderen, via de Op.stap-koppeling die zij publiceren voor wie software bouwt. Daarin staan de minimumdoelen mét hun tekst, en bij de leerplandoelen die naar een minimumdoel verwijzen, welk minimumdoel dat is.
 
 **Wat we vragen:** bevestig dat u akkoord gaat met die bron, en met een tweede keuze die eraan vastzit: voorlopig halen we alleen de **gemeenschappelijke doelen** op. De zwemdoelen en de doelen Vlaamse Gebarentaal laten we voorlopig weg.
 
-**Gevolg zolang dit openstaat.** Niets ligt stil: we bouwen verder op de beslissing van de projecteigenaar. Het ophalen van de minimumdoelen en van de gemeenschappelijke leerplandoelen is gebouwd, en bij elk leerplandoel staat naar welk minimumdoel het verwijst. Het overzicht dat per minimumdoel toont of het gedekt is, het niveau waarop de onderwijsinspectie kijkt, moet nog gebouwd worden.
+**Gevolg zolang dit openstaat.** Niets ligt stil: we bouwen verder op de beslissing van de projecteigenaar. Het ophalen van de minimumdoelen en van de gemeenschappelijke leerplandoelen is gebouwd. Bij 4.983 van de 5.835 gemeenschappelijke leerplandoelen staat naar welk minimumdoel ze verwijzen; de andere verwijzen in Op.stap zelf naar geen enkel minimumdoel. Het overzicht dat per minimumdoel toont of het gedekt is, het niveau waarop de onderwijsinspectie kijkt, moet nog gebouwd worden.
 
 ---
 
@@ -32,7 +32,7 @@ We **gokken niet** op een antwoord. Waar een keuze nog openstaat, bouwen we zo d
 
 **Wat we vragen:** nemen we vanaf het begin alle 13 disciplines mee, of starten we met een selectie (bijvoorbeeld enkel de vakken van de klassen die als eerste met de tool werken)?
 
-**Waarom.** Het inladen van de leerplandoelen gebeurt per discipline. Minder disciplines betekent sneller kunnen starten, met minder doelen om te overlopen.
+**Waarom.** Minder disciplines betekent minder leerplandoelen om te overlopen bij de start.
 
 **Gevolg zolang dit openstaat.** Geen blokkering: de keuze is een instelling, geen herbouw. Wel: in overzichten verschijnen momenteel alle 13 disciplines, ook als er nog geen doelen voor ingeladen zijn.
 
@@ -155,13 +155,13 @@ Onder een thema hangen de **subthema's**, en die zijn per **leeftijd**: een subt
 
 ## 12. Waar horen de tips voor de klaspraktijk bij een leerplandoel: bij de voorbeelden of bij de toelichting?
 
-**Wat er speelt.** Bij elk leerplandoel toont de tool drie stukken uitleg: *voorbeelden*, *toelichting* en *woordenschat*. Katholiek Onderwijs Vlaanderen levert die uitleg als één tekst met tussentitels, en de tool verdeelt die tekst over de drie vakken. Bij 36 gemeenschappelijke doelen volgen na de voorbeelden nog stukken met een titel als *"Mogelijke aanpak in de klaspraktijk"*, *"Mogelijke indeling voor de klaspraktijk"* of *"Verdere referenties"*.
+**Wat er speelt.** Bij een leerplandoel toont de tool de uitleg die Katholiek Onderwijs Vlaanderen erbij geeft, verdeeld over *voorbeelden*, *toelichting* en *woordenschat*, voor zover het doel die heeft. Katholiek Onderwijs Vlaanderen levert die uitleg als één tekst met tussentitels, en de tool verdeelt die tekst. Bij 27 gemeenschappelijke doelen volgen na de voorbeelden nog stukken met een titel als *"Mogelijke aanpak in de klaspraktijk"*, *"Mogelijke indeling voor de klaspraktijk"* of *"Verdere referenties"*.
 
 **Wat de tool nu doet.** Die stukken komen bij de **toelichting**, met hun titel erbij. Er gaat geen tekst verloren. De vraag is alleen in welk vak een leerkracht ze terugvindt.
 
 **Wat we vragen:** is dat goed, of horen ze voor u bij de **voorbeelden**?
 
-**Waarom we het vragen.** Kiest u voor de voorbeelden, dan verhuizen die stukken bij de volgende keer inlezen, voor die 36 doelen, van het ene vak naar het andere. Aan de tekst zelf verandert niets. In de Excel-bestanden van Op.stap die we eerder gebruikten, stonden ze bij 6 van die doelen onder de voorbeelden. Die bestanden zijn op dit punt echter niet overal gelijk, dus ze beslissen de vraag niet.
+**Waarom we het vragen.** Kiest u voor de voorbeelden, dan verhuizen die stukken bij de volgende keer inlezen, voor die 27 doelen, van het ene vak naar het andere. Aan de tekst zelf verandert niets. 8 van die 27 doelen stonden ook in de Excel-bestanden van Op.stap die we eerder gebruikten, en bij alle 8 stonden die stukken daar onder de voorbeelden.
 
 **Gevolg zolang dit openstaat.** Niets ligt stil. De tool houdt het bij de toelichting tot u iets anders zegt.
 

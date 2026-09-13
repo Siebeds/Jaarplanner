@@ -145,7 +145,9 @@ public sealed class OpstapImportService : IOpstapImportService
 
         // ADR-0032 decision 8, amended 2026-09-13 (E1-21, antagonist round 1 MAJOR 1): once the curriculum has come from
         // KOV's API, an Excel file is refused before anything else is looked at. Read after it, a file would overwrite the
-        // API's wording, clear the concordance the files do not carry and flag every goal the file lacks. Checked here,
+        // API's wording, clear the concordance the files do not carry and flag every API goal the file lacks, in each discipline the API
+        // import covered. Ratified by the owner on 2026-09-13 (Art. VII.2), cost included: goals the Excel route loaded
+        // outside goal set G can no longer be refreshed by any route. Checked here,
         // in the one writer, so the preview refuses exactly what the apply refuses.
         if (herkomst == OpstapHerkomst.Bestand && await _context.Opstapversies.AnyAsync(cancellationToken))
         {

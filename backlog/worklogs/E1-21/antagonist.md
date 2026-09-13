@@ -74,3 +74,32 @@ CSRF, no secrets, version digits-and-dots only, `latest` only for the 63-byte ha
 clean. Art. IX migration additive only. Art. X curriculum unit tests 385 passed / 4 live skipped; format exit 0; the
 PostgreSQL suite was **not** run by the auditor; byte scan of changed `.cs` files clean. Art. XIV discipline selection
 honoured.
+
+## Round 2 (2026-09-13, on `01d5189`): VIOLATIONS FOUND — 0 CRITICAL, 0 MAJOR, 6 MINOR, 1 QUESTION
+
+*Verdict pasted by the orchestrator.* Every round-1 finding closed as required (MAJOR 1: check before the selection seam
+and any write, 409 via the registered type, the ADR amendment dated and appended; MAJOR 2: verified on a fresh harness
+build; MINOR 2–4 and QUESTION 3 closed). New findings are sentences the fix round wrote, plus one gap beside MAJOR 2.
+
+- **MINOR 1** — the 409 sentence "De leerplandoelen komen nu uit Op.stap … en niet meer uit een Excel-bestand" claims more
+  than the trigger proves (an applied API import of **G** goals): Excel-loaded P/S/+/A goals stay as the file wrote them,
+  and once the route refuses nothing can refresh their text. The ADR-0032 decision-8 amendment records the benefit, not
+  this cost; the enum doc (`OpstapImportFout.cs` ≈:33–38) is unqualified where the factory doc is. The other two clauses
+  hold, and the Excel screen renders the detail under "Niet gelukt".
+- **MINOR 2** — `CONSTITUTION.md:160` (VII.2), `:317` (XIV), `docs/Functionele_Analyse_Jaarplanner.md:277` and
+  `CLAUDE.md:137` still say the Excel route stays available. Owner-ratified amendment needed, dependent text in step.
+- **MINOR 3** — `OpstapHtml.IsLeeg` (:427-429) counts only `img`/`a` as content: tables of `svg`, `iframe`, `input`,
+  `object`, `video`/`audio` still become `[lege tabel …]` unrefused, while the same tags outside a table are refused.
+  Latent on 1.2.
+- **MINOR 4** — `docs/besluiten-gevraagd.md`: question 1 (lines 13, 17) says every leerplandoel names its minimumdoel
+  (852 of 5,835 G goals carry none); question 12's "36" does not reproduce (27 have voorbeelden followed by such a heading;
+  28 mention one; 41 have such a line), and the Excel evidence was consistent (all 6 overlapping goals under voorbeelden),
+  not "niet overal gelijk"; "drie stukken uitleg" shows only the pieces present; question 3's "per discipline … sneller
+  starten" is stale.
+- **MINOR 5** — E1-04's note says `IConcordantieQuery` answers in both directions on PostgreSQL; the PostgreSQL proof never
+  calls it (the only `ConcordantieQuery` test is in-memory).
+- **MINOR 6** — `OpstapHerimportDiff.cs:139-141` `VereistReview` doc omits `GemeenschappelijkBuitenBereik`;
+  `backlog/E4-bewerking-hergeneratie.md:25` still says "(E5-04, blocked on E1-12)".
+- **QUESTION** — option (b) freezes non-G reference data, and until E1-22 the Op.stap upload control can only refuse while
+  the API import has no screen (E3-06 shape). *Orchestrator: E1-21 and E1-22 land together on `feature/e1-opstap-api` in
+  one PR, so the interim state never reaches `main`; the freeze went to the owner (see MINOR 2).*

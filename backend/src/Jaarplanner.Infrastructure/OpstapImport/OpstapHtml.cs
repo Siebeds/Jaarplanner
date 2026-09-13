@@ -24,10 +24,11 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// <item>KaTeX renders a formula twice, as MathML and as a visual copy in <c>&lt;span class="katex-html"&gt;</c>. The
 /// visual copy is dropped and the MathML kept, or the formula would be written three times in a row.</item>
 /// <item>A table becomes one line per row with its cells between <c>" | "</c>. A one-cell table is layout, not data, and
-/// its content stands in its place. A table whose cells hold no text, no image and no link is a drawing (a grid to
-/// count): it becomes <c>[lege tabel van 4 rijen en 5 kolommen]</c>, the same kind of marker an image without text gets.
-/// An image or a link is content even without text: in a table of several cells an image is refused and a link keeps
-/// its address.</item>
+/// its content stands in its place. A table whose cells hold no text and no markup beyond plain formatting (<c>p</c>,
+/// <c>div</c>, <c>span</c>, <c>br</c>, <c>hr</c>, bold, italics, underline) is a drawing (a grid to count): it becomes
+/// <c>[lege tabel van 4 rijen en 5 kolommen]</c>, the same kind of marker an image without text gets. Any other element
+/// in a cell is content even without text: in a table of several cells an image or an unknown element is refused, and a
+/// link keeps its address.</item>
 /// <item>A closed link with a double-quoted address keeps it: <c>Word (https://…)</c>. An image becomes its alt text on a
 /// line of its own.</item>
 /// <item>Entities are decoded only <b>after</b> the tags are gone, so KOV's escaped angle-bracket notation around
@@ -72,6 +73,16 @@ internal static partial class OpstapHtml
     /// the only ones <see cref="Wiskunde"/> converts.
     /// </summary>
     private static readonly HashSet<string> WiskundeGroepen = new(StringComparer.Ordinal) { "math", "mrow" };
+
+    /// <summary>
+    /// The elements that carry no content of their own: layout, line breaks, emphasis and table structure. A table cell
+    /// holding only these, and no text, is empty; anything else in it is content (<see cref="IsLeeg"/>).
+    /// </summary>
+    private static readonly HashSet<string> TekstlozeOpmaak = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "p", "div", "span", "br", "hr", "strong", "b", "em", "i", "u",
+        "table", "thead", "tbody", "tfoot", "tr", "td", "th",
+    };
 
     /// <summary>Converts one HTML fragment to plain text; returns an empty string for null or blank input.</summary>
     public static string NaarTekst(string? html) => NaarTekst(html, behoudVet: false);
@@ -420,12 +431,13 @@ internal static partial class OpstapHtml
     }
 
     /// <summary>
-    /// True when a fragment holds nothing: no text, and no image or link, which carry content (alt text, an address)
-    /// without text of their own. Testing text alone read a table of images as empty and lost its alt texts (E1-21,
-    /// antagonist round 1 MAJOR 2).
+    /// True when a fragment holds nothing: no text, and no element beyond <see cref="TekstlozeOpmaak"/>. Any other element
+    /// carries content without text of its own (an image's alt text, a link's address, an <c>svg</c> or an <c>iframe</c>),
+    /// so it makes a cell non-empty and lets the table fall through to the guard instead of becoming "[lege tabel …]"
+    /// (E1-21: antagonist round 1 MAJOR 2 for images and links, round 2 MINOR 3 for every other element).
     /// </summary>
     private static bool IsLeeg(string fragment) =>
-        !InhoudZonderTekst().IsMatch(fragment) &&
+        TagNaam().Matches(fragment).All(tag => TekstlozeOpmaak.Contains(tag.Groups[1].Value)) &&
         string.IsNullOrWhiteSpace(WebUtility.HtmlDecode(Tag().Replace(fragment, string.Empty)).Replace((char)0xA0, ' '));
 
     /// <summary>
@@ -552,9 +564,6 @@ internal static partial class OpstapHtml
 
     [GeneratedRegex(@"<(?:br|p|div|ul|ol|li|table|hr|img|h[1-6])\b", RegexOptions.IgnoreCase)]
     private static partial Regex Blokopmaak();
-
-    [GeneratedRegex(@"<(?:img|a)\b", RegexOptions.IgnoreCase)]
-    private static partial Regex InhoudZonderTekst();
 
     [GeneratedRegex(@"<(/?)(ol|ul|li)\b([^>]*)>", RegexOptions.IgnoreCase)]
     private static partial Regex LijstTag();

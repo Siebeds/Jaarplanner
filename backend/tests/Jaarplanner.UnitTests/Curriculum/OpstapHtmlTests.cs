@@ -222,6 +222,20 @@ public sealed class OpstapHtmlTests
     }
 
     /// <summary>
+    /// Any element beyond plain formatting is content (antagonist round 2, MINOR 3): a table of <c>svg</c> or
+    /// <c>iframe</c> cells was still read as empty and written as "[lege tabel …]". Now it reaches the guard, which names
+    /// the element it cannot keep.
+    /// </summary>
+    [Theory]
+    [InlineData("<table><tr><td><svg viewBox=\"0 0 1 1\"></svg></td><td><svg></svg></td></tr></table>", "<svg>")]
+    [InlineData("<table><tr><td><iframe src=\"https://x.test\"></iframe></td><td> </td></tr></table>", "<iframe>")]
+    public void Een_tabel_met_een_ander_element_dan_opmaak_is_niet_leeg_en_wordt_geweigerd(string html, string element)
+    {
+        Assert.Contains(element, OpstapHtml.OnvertaalbareOpmaak(html));
+        Assert.DoesNotContain("[lege tabel", OpstapHtml.NaarTekst(html), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Two levels of numbers flattened onto one would read "1. 1. 2." without their level, so an ordered list inside an
     /// ordered list is refused. An ordered list inside an unordered one keeps both: its numbers and the parent's dashes.
     /// </summary>
