@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:29
+bijgewerkt: 2026-09-14 16:38
 opgepakt-door: themadoel-tekst
 branch: ticket/themadoel-tekst
 pr:
@@ -70,3 +70,5 @@ Geen.
 - 2026-09-14 16:10 · themadoel-tekst · aangemaakt (status in-uitvoering)
 - 2026-09-14 16:29 · themadoel-tekst · gebouwd: themadoel- en subdoelregels tonen doelsoort, code en doeltekst, klik opent Doeldetail in een Blad; 5 nieuwe Vitest-tests, volledige suite 276/276 groen, pnpm lint groen
 - 2026-09-14 16:29 · themadoel-tekst · browsercontrole (headless Chrome, wegwerpdatabank): desktop licht en donker, 390 px, Tab en Enter openen de detail, Escape sluit, geen koppelknop; op 390 px stond de status over de code, opgelost (status op de coderegel)
+- 2026-09-14 16:38 · themadoel-tekst · antagonist: 6 MINOR, alle opgelost (detail wordt na elke schrijfactie opnieuw gelezen, badge Vervallen in Op.stap in de rij, commentaar rechtgezet, tests versterkt, vervolgticket TB-017 voor de backend)
+- 2026-09-14 16:38 · themadoel-tekst · tweede browsercontrole: elementFromPoint geeft het ontkoppelknopje zijn eigen klik, status en lege ruimte openen de detail; focus keerde na Escape niet terug naar de regel, opgelost (Blad kreeg onCloseAutoFocus) en nagekeken: focus terug op de regel; badge zichtbaar op desktop en 390 px

@@ -69,7 +69,7 @@ export function Subthemahoofdstuk({
   onOntkoppelSubdoel: (subdoelId: string) => void;
   onKoppelActiviteitdoel: (activiteitId: string, leerplandoelCode: string) => void;
   /** Open the detail of a subdoel's leerplandoel; the page owns the one sheet it opens in (TB-016). */
-  onToonDoel: (leerplandoelCode: string) => void;
+  onToonDoel: (leerplandoelCode: string, knop: HTMLElement) => void;
   koppelenBezig?: boolean;
 }) {
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];

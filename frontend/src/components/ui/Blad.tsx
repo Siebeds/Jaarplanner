@@ -18,6 +18,7 @@ export function Blad({
   children,
   voet,
   maat = "normaal",
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,12 +33,21 @@ export function Blad({
    * whichever field was flexible down to nothing.
    */
   maat?: "normaal" | "breed";
+  /**
+   * Where focus goes when the sheet closes.
+   *
+   * Radix returns it to a `Dialog.Trigger`, and a sheet opened from anything else (a row in a list, a
+   * card) has none, so focus fell to the page's body and a keyboard user started again from the top
+   * (TB-016). Call `event.preventDefault()` and focus the element yourself.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="waas-in fixed inset-0 z-40 bg-waas backdrop-blur-[2px]" />
         <Dialog.Content
+          onCloseAutoFocus={onCloseAutoFocus}
           onOpenAutoFocus={(event) => {
             const paneel = event.currentTarget as HTMLElement | null;
             const eerste = paneel?.querySelector<HTMLElement>(

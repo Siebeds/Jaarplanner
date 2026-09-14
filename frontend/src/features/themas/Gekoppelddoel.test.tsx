@@ -141,6 +141,20 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
     expect(within(blad).queryByRole("button", { name: t("doel.koppelAan") })).not.toBeInTheDocument();
   });
 
+  it("geeft de focus terug aan de regel wanneer de detail sluit", async () => {
+    toon();
+    await screen.findByText(THEMADOELTEKST);
+    const knop = screen.getByRole("button", { name: new RegExp(THEMADOELTEKST) });
+
+    knop.focus();
+    fireEvent.click(knop);
+    const blad = await screen.findByRole("dialog", { name: t("doel.titel") });
+    fireEvent.keyDown(blad, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(knop).toHaveFocus();
+  });
+
   it("opent ook de detail van een subdoel", async () => {
     toon();
     await screen.findByText(SUBDOELTEKST);

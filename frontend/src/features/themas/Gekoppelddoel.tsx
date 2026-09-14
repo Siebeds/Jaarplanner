@@ -39,7 +39,8 @@ export function Gekoppelddoel({
   ontkoppelLabel: string;
   ontkoppelBezig?: boolean;
   onOntkoppel: () => void;
-  onToon: (leerplandoelCode: string) => void;
+  /** `knop` is this row's button, which gets focus back when the detail closes. */
+  onToon: (leerplandoelCode: string, knop: HTMLElement) => void;
 }) {
   const code = koppeling.leerplandoelCode;
   const { data, isPending } = useLeerplandoel(code);
@@ -48,7 +49,7 @@ export function Gekoppelddoel({
     <li className="relative flex items-start gap-2 px-3 py-2.5 transition-colors duration-150 hover:bg-inkt/[0.035]">
       <button
         type="button"
-        onClick={() => onToon(code)}
+        onClick={(event) => onToon(code, event.currentTarget)}
         className="min-w-0 flex-1 text-left after:absolute after:inset-0"
       >
         {/* THE STATUS SITS ON THE CODE LINE, not in a column of its own beside the text. As a third
