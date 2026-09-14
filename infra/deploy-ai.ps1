@@ -16,6 +16,9 @@
     ./infra/deploy-ai.ps1 -SetEvalEndpoint
     ./infra/deploy-ai.ps1 -Skip gpt-5.4-mini -SetEvalEndpoint
 #>
+# CmdletBinding makes an unknown or positional argument an error: without it a mistyped -WhatIff would be dropped into
+# $args and the script would deploy for real.
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [string]$EvaluatorObjectId,
     [string[]]$Skip = @(),
@@ -50,7 +53,8 @@ $Skip = @($Skip | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() 
 if ($Skip.Count -gt 0) {
     $compiled = (Invoke-Checked { & $az bicep build --file $template --stdout } 'az bicep build' | Out-String) | ConvertFrom-Json
     $known = @($compiled.parameters.modelDeployments.defaultValue | ForEach-Object { $_.name })
-    $unknown = @($Skip | Where-Object { $known -notcontains $_ })
+    # Case-sensitive, like the template's contains(): "GPT-5.4-MINI" would pass a case-blind check and skip nothing.
+    $unknown = @($Skip | Where-Object { $known -cnotcontains $_ })
     if ($unknown.Count -gt 0) {
         throw "-Skip names a deployment the template does not have: $($unknown -join ', '). Known: $($known -join ', ')."
     }
