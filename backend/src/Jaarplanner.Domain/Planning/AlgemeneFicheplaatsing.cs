@@ -132,10 +132,13 @@ public sealed class AlgemeneFicheplaatsing
     /// Moves or resizes one occurrence: this week the turnles is on Tuesday, and it runs a little longer.
     /// <para>
     /// <b>The day must be a school day, for the reason <see cref="Herhalingsdagen"/> gives.</b> Planning never writes
-    /// a row on a weekend or in a vakantie, so a move must not either: otherwise one occurrence can end up on a closed
-    /// Saturday, drawn in a greyed column and counted among the "schooldagen" of the run. The time grid already refuses
-    /// such a drop; this is the same rule for every other route, the detail sheet's date field first among them
-    /// (antagonist, E10-03 round 1).
+    /// a row on a weekend or in a vakantie, so a move must not either: otherwise one occurrence can end up on a
+    /// Saturday or in a vakantie and be counted among the "schooldagen" of the run. The time grid does not refuse a
+    /// weekend: it draws Saturday and Sunday as open columns, because the server's <c>IsLesdag</c> counts a weekend as
+    /// open (see <c>Weekplanningweergave</c>). So a block dragged onto a weekend inside the window reaches this refusal,
+    /// and so does a vakantie inside the window picked in the detail sheet's date field; the sheet refuses a weekend
+    /// itself, with the same sentence. Outside the window, <see cref="BewaakDag"/> answers first (antagonist, E10-03
+    /// round 1; the grid half corrected in TB-011).
     /// </para>
     /// </summary>
     /// <param name="schooljaar">The class's school year, whose open weekdays decide which days are allowed.</param>
@@ -158,8 +161,9 @@ public sealed class AlgemeneFicheplaatsing
 
         if (schooljaar.OpenWeekdagen(datum, datum).Count == 0)
         {
-            // Twin of the frontend's `fichedetail.geenSchooldag`, shown before sending for a weekend; both sides' tests
-            // pin the literal, so rewrite them together.
+            // Twin of the frontend's `fichedetail.geenSchooldag`, shown before sending for a weekend, and of the same
+            // refusal in Hoekplaatsing.VerplaatsMoment (TB-011); every side's tests pin the literal, so rewrite them
+            // together.
             throw new ArgumentException("Op die dag is er geen school. Kies een schooldag.");
         }
 
