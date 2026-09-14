@@ -267,14 +267,73 @@ public sealed class OpstapMinimumdoelenImportEndpointsTests : IAsyncLifetime
         return stream.ToArray();
     }
 
+    /// <summary>
+    /// TB-010 on the database the register runs on (antagonist round 1, MINOR 8): the decree's ordering and kind survive
+    /// the endpoint round trip, the kind is stored by its name, and the tree, its branches and the detail read them. The
+    /// in-memory tests cannot show the SQL the branch filters and the facets translate to.
+    /// </summary>
+    [PostgresFact]
+    public async Task De_ordening_en_de_soort_van_het_decreet_landen_en_ordenen_het_register()
+    {
+        _bron.Geef(
+            new Minimumdoel(
+                "4-1.1.1", "4-", "1.1.1", "De leerlingen kunnen woorden lezen.",
+                "Nederlands", "Lezen", "Vlot en vloeiend lezen", MinimumdoelSoort.TeBereikenIndividueel),
+            new Minimumdoel(
+                "6-9.1.1", "6-", "9.1.1", "De leerlingen reflecteren op hun leren.",
+                "Attitudes", "Leren leren", soort: MinimumdoelSoort.NaTeStreven),
+            Md("K-1.3.9"));
+
+        await Post(Pad);
+
+        await using (var context = _db.MaakContext())
+        {
+            var soort = await context.Database
+                .SqlQueryRaw<string>("SELECT soort AS \"Value\" FROM minimumdoelen WHERE \"Ref\" = '4-1.1.1'")
+                .SingleAsync();
+            Assert.Equal("TeBereikenIndividueel", soort);
+        }
+
+        var facetten = await Get("/api/minimumdoelen/facetten");
+        var leergebieden = facetten.GetProperty("leergebieden");
+        Assert.Equal(["Nederlands", "Attitudes"], leergebieden.EnumerateArray().Select(l => l.GetProperty("naam").GetString()!).ToArray());
+        Assert.Equal(1, facetten.GetProperty("aantalZonderOrdening").GetInt32());
+        Assert.Equal(1, leergebieden[1].GetProperty("rubrieken")[0].GetProperty("aantalZonderSubrubriek").GetInt32());
+
+        Assert.Equal(["4-1.1.1"], RefsVan(await Get("/api/minimumdoelen?leergebied=Nederlands&rubriek=Lezen&subrubriek=Vlot%20en%20vloeiend%20lezen")));
+        Assert.Equal(["6-9.1.1"], RefsVan(await Get("/api/minimumdoelen?leergebied=Attitudes&rubriek=Leren%20leren&zonderSubrubriek=true")));
+        Assert.Equal(["K-1.3.9"], RefsVan(await Get("/api/minimumdoelen?zonderOrdening=true")));
+
+        var detail = await Get("/api/minimumdoelen/6-9.1.1");
+        Assert.Equal("NaTeStreven", detail.GetProperty("soort").GetString());
+        Assert.Equal("Leren leren", detail.GetProperty("rubriek").GetString());
+        Assert.Equal(JsonValueKind.Null, detail.GetProperty("subrubriek").ValueKind);
+
+        // A branch is named from the top: a rubriek without its leergebied is refused, not matched across leergebieden.
+        var zonderTop = await _factory.CreateClient().GetAsync("/api/minimumdoelen?rubriek=Lezen");
+        Assert.Equal(HttpStatusCode.BadRequest, zonderTop.StatusCode);
+    }
+
+    private async Task<JsonElement> Get(string url)
+    {
+        var response = await _factory.CreateClient().GetAsync(url);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    private static string[] RefsVan(JsonElement pagina) =>
+        pagina.GetProperty("regels").EnumerateArray().Select(r => r.GetProperty("ref").GetString()!).ToArray();
+
     /// <summary>A source that answers whatever the test last told it to, or fails.</summary>
     private sealed class VasteBron : IMinimumdoelBron
     {
         private Func<MinimumdoelBronResultaat> _antwoord = () => new MinimumdoelBronResultaat([], []);
 
+        // A fresh entity per call, as the real source returns, with every field the mapping writes (TB-010).
         public void Geef(params Minimumdoel[] doelen) =>
             _antwoord = () => new MinimumdoelBronResultaat(
-                doelen.Select(d => new Minimumdoel(d.Ref, d.Leeftijd, d.Nr, d.Omschrijving)).ToList(),
+                doelen.Select(d => new Minimumdoel(
+                    d.Ref, d.Leeftijd, d.Nr, d.Omschrijving, d.Leergebied, d.Rubriek, d.Subrubriek, d.Soort)).ToList(),
                 []);
 
         public void Faal(OpstapBronFout fout) => _antwoord = () => throw fout;
