@@ -61,6 +61,7 @@ export function Periodekiezer({
   tot,
   loopt,
   alIngepland = [],
+  bezetLabel = t("periodekiezer.alIngepland"),
   schooljaarVan,
   schooljaarTot,
   onKies,
@@ -72,6 +73,11 @@ export function Periodekiezer({
   loopt: Loopt[];
   /** The runs this corner already has, over any months: only the visible days are drawn. */
   alIngepland?: readonly Bezet[];
+  /**
+   * What an outlined day says in words. The hoek's sentence by default; an algemene fiche passes its own, because
+   * "de hoek loopt dan al" read out over a turnles is a sentence about the wrong thing.
+   */
+  bezetLabel?: string;
   schooljaarVan: string;
   schooljaarTot: string;
   onKies: (van: string, tot: string) => void;
@@ -152,7 +158,7 @@ export function Periodekiezer({
               type="button"
               disabled={!binnenJaar}
               aria-pressed={isStart || isEind || inBereik}
-              aria-label={alBezet ? `${volleDag(datum)}, ${t("periodekiezer.alIngepland")}` : volleDag(datum)}
+              aria-label={alBezet ? `${volleDag(datum)}, ${bezetLabel}` : volleDag(datum)}
               onClick={() => kies(datum)}
               className={cn(
                 // A transparent border on every day, so the dashed one below replaces a colour rather

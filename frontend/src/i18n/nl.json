@@ -248,6 +248,7 @@
     "dagThemas": "thema's {namen}",
     "dagGeenThema": "nog geen thema in deze periode",
     "hoekenfiches": "Hoekenfiches",
+    "algemeneFiches": "Algemene fiches",
     "dagHoek": "hoek {naam}",
     "dagHoeken": "hoeken {namen}"
   },
@@ -616,6 +617,7 @@
     "kiezerTitel": "{dag} om {tijd}",
     "enOpDitUur": "Bewaren maakt de activiteit en plant ze meteen op {dag} om {tijd}.",
     "hoekenwerk": "hoekenwerk",
+    "algemeneFiche": "algemene fiche",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen."
   },
   "hoeken": {
@@ -676,9 +678,56 @@
   "hoekenpaneel": {
     "titel": "Hoekenfiches",
     "sluiten": "Hoekenfiches sluiten",
+    "algemeenTitel": "Algemene fiches",
+    "algemeenSluiten": "Algemene fiches sluiten",
     "geenKlas": "Kies eerst een klas.",
     "geenHoeken": "Deze klas heeft nog geen hoeken.",
-    "naarInstellingen": "Hoeken instellen"
+    "naarInstellingen": "Hoeken instellen",
+    "geenAlgemeneFiches": "Deze klas heeft nog geen algemene fiches.",
+    "naarAlgemeneFiches": "Algemene fiches instellen",
+    "mislukt": "Deze lijst kon niet geladen worden. Probeer het later opnieuw."
+  },
+  "ficheplaatsing": {
+    "titel": "{naam} inplannen",
+    "alIngepland": "Al ingepland",
+    "bekijk": "{periode} bekijken",
+    "periode": "Periode",
+    "kiesEinddag": "Kies de laatste dag.",
+    "einddagVerplicht": "Kies eerst de laatste dag.",
+    "totEindeSchooljaar": "Tot het einde van het schooljaar",
+    "kalenderAlIngepland": "de fiche staat dan al in de agenda",
+    "weekdagen": "Op welke dagen?",
+    "weekdagVerplicht": "Kies minstens één dag.",
+    "wanneer": "Hoe laat?",
+    "van": "Van",
+    "tot": "Tot",
+    "uurUitleg": "De fiche komt op dit uur op elke gekozen dag van de periode. Vakanties en vrije dagen worden overgeslagen.",
+    "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
+    "plaats": "Inplannen",
+    "bezig": "Bezig met inplannen",
+    "mislukt": "Inplannen is niet gelukt."
+  },
+  "fichedetail": {
+    "periode": "Periode",
+    "uurrooster": "In het uurrooster",
+    "opUur": "{periode}, op {dagen}",
+    "eenSchooldag": "1 schooldag",
+    "aantalSchooldagen": "{aantal} schooldagen",
+    "ditMoment": "Alleen {dag}",
+    "dag": "Dag",
+    "van": "Van",
+    "tot": "Tot",
+    "momentUitleg": "De andere dagen van de periode blijven zoals ze zijn.",
+    "geenSchooldag": "Op die dag is er geen school. Kies een schooldag.",
+    "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
+    "bewaren": "Bewaren",
+    "bewarenBezig": "Bezig met bewaren",
+    "momentMislukt": "Deze dag aanpassen is niet gelukt.",
+    "laatstePeriode": "Dit is de enige periode van deze fiche in de agenda. Haal je ze weg, dan telt de fiche niet meer mee voor de dekking.",
+    "verwijder": "Hele periode uit de agenda halen",
+    "verwijderBezig": "Bezig met weghalen",
+    "verwijderMislukt": "Weghalen is niet gelukt.",
+    "sluiten": "Sluiten"
   },
   "periodekiezer": {
     "vorigeMaand": "Vorige maand",
