@@ -7,10 +7,18 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.UnitTests.Schoolcontent;
 
 /// <summary>
-/// <c>Leeftijdsinhoud.UitInvoer</c> against the subthema write path's <b>own</b> validation (E6-02 slice 1, fix round 2).
-/// Slice 3 checks rights on the leeftijd of a subthema create and of an I13 re-scope before the write runs. If the
-/// rights check accepted a leeftijd the write refuses, or refused one it accepts, a hoofdleerkracht would be refused on
-/// their own leeftijd. So both run over the same inputs here, and widening one without the other fails this test.
+/// <c>Leeftijdsinhoud.UitInvoer</c> against the subthema write path's <b>own</b> validation (E6-02 slice 1, fix rounds 2
+/// and 3). Slice 3 checks rights on the leeftijd of a subthema create and of an I13 re-scope before the write runs, and
+/// may leave an input <c>UitInvoer</c> maps to null for the write to refuse.
+/// <para>
+/// <b>What a drift would cost.</b> If the rights check refused what the write accepts, a caller deferring to the write
+/// would let the write through with <b>no rights check at all</b>. Drifted the other way, a hoofdleerkracht would be
+/// refused on their own leeftijd.
+/// </para>
+/// <para>
+/// Both share <c>Jaarfasen.LeesLeeftijd</c> today. This runs both over the same inputs, so widening one without the
+/// other fails here. It is a tripwire against un-sharing that function, not a proof over every input.
+/// </para>
 /// </summary>
 public sealed class SubthemaLeeftijdInvoerTests : IDisposable
 {

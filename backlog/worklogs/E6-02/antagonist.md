@@ -521,3 +521,29 @@ The two pointers name the R25 carry-forward, which is `ef6468b` on `feature/e6-r
 - `RechtenEndpointsTests.cs:223-224`: "will" should be "may" for E6-03's future delete.
 
 **Checks run:** each rewritten predicate proved equivalent (`VereisLeeftijd`, `WatIsErMisMet`, `UitInvoer`); no sentence, status, stored form, `nl.json`, controller or migration changed; reflection plus metadata test together cover all seven endpoints; E7-06 text verified; R25 premises hold. Run: `dotnet build` 0/0; filtered unit tests 303 passed; `CurriculumbeheerAutorisatieTests` 5 passed; `dotnet format --verify-no-changes` exit 0.
+
+## Code slice 1 — audit round 4
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool). Condensed in layout only.*
+
+**Verdict:** COMPLIANT (0 CRITICAL, 0 MAJOR, 0 MINOR, 0 QUESTION; two non-blocking nits)
+**Scope audited:** `git diff 5245dbe 464e47a` (`464e47a`, 9 files), plus every site the new comments describe: the callers of `LeesLeeftijd`/`WatIsErMisMet`, `SchoolcontentImportService.cs:291, :937`, `Subthema.Require`, `Rechtenmatrix` (delete and import rows), `EfRechtenbronnen`, `ActiviteitenController`, `SchoolcontentImportController`, the `RechtenEndpointsTests` assertions, ADR-0022/0031 status lines, the ratification log and Art. XIV.
+
+| Round 3 | Status |
+| --- | --- |
+| MINOR A `UitInvoer` / test stakes | Resolved: `<returns>` states why deferring is safe and what drift costs (fail open); the test calls itself a tripwire. |
+| MINOR B `LeesLeeftijd` headline | Resolved: callers enumerated correctly (incl. `Hoofdleerkrachtaanstelling`); the import's two inline copies named accurately, same set today. |
+| MINOR C ADR index | Resolved in both places: no-op → session (ADR-0031, 2026-09-11) → directie row (2026-09-14); Art. XIV no longer carries the question. |
+| MINOR D E8-07 "today" | Resolved: describes the declared row (`MakerZonderKoppelingen`, `Doelkoppelingen.Any()`), conditional on slice 3 applying it. |
+| Nits (5) | All resolved: one `VereisLeeftijd` summary; `WatIsErMisMet` doc reattached; E7-11 pins match `RechtenEndpointsTests.cs:120-143`; "may"; tripwire. |
+
+### Non-blocking nits
+- `LeesLeeftijd`'s headline ("the rule for a leeftijd in a request body") is slightly wider than its callers: the wizard's step-6 `SubthemaOpbouwContext.Leeftijd` is a body leeftijd with no validation. Harmless today: it is advisory, not stored, and gated at route level. Slice 3's wizard-only write actions (I22) must route their leeftijd through `LeesLeeftijd`. *(The orchestrator passed this to the slice-3 implementer while it was building.)*
+- "the import is gated as a whole (ADR-0030 R27)" describes the declared gate: `SchoolcontentImportController` carries no policy on this branch (session fallback only). `SchoolcontentImporteren` lands in slice 3. The load-bearing clause (no per-leeftijd rights check depends on the import's copy) is true either way. The phrasing was the antagonist's own round-3 wording.
+
+### Merge condition (not a finding)
+Met: `ef6468b` is on `feature/e6-rollen-rechten`, not on `main`. It holds only if this branch merges back through that branch.
+
+**Checks run:** a diff filter found no changed `.cs` line that is neither comment nor blank; no `nl.json`, frontend, controller, policy, model or migration changed. Run: `dotnet build` 0/0; `dotnet format --verify-no-changes` exit 0; UnitTests 1340 passed, 4 skipped; `RechtenEndpointsTests` + `CurriculumbeheerAutorisatieTests` 5 passed. The 16 Postgres cases were not re-run (no local credential available to the auditor); immaterial, as their only change is one word in a comment and the suite compiles.
+
+*Orchestrator's note on the test gate for fix round 3:* no test-runner round was run on `464e47a`, because the change is comment- and doc-only (verified by the diff filter above); the implementer ran the full unit suite (1340 passed) and the two touched integration suites (21 passed), and the build and format gates are green.

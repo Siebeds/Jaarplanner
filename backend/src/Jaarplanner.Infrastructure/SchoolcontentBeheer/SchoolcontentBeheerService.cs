@@ -889,19 +889,16 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         return code;
     }
 
-    /// <summary>Verifies the klas exists; class scoping is structural for a subthema (Art. IX.2).</summary>
     /// <summary>
-    /// Refuses a leeftijd that is not one of the nine Op.stap jaar/fase codes.
+    /// Refuses a leeftijd that is not one of the nine Op.stap jaar/fase codes. The rule is
+    /// <see cref="Jaarfasen.LeesLeeftijd"/>, which the rights check on a body leeftijd (<c>Leeftijdsinhoud.UitInvoer</c>)
+    /// shares, so the two cannot drift apart.
     /// <para>
-    /// <b>This validation is new and it is what replaced the foreign key.</b> While a subthema named its klas,
-    /// a nonsense leeftijd was merely untidy: the KlasId still said whose it was. Now the leeftijd is the entire
-    /// scope, so a subthema stored as "5-6" is not a subthema with an odd label, it is a subthema no class can
-    /// ever reach. Refusing it at the door is the only place that costs nothing.
+    /// <b>This validation is what replaced the foreign key.</b> While a subthema named its klas, a nonsense leeftijd
+    /// was merely untidy: the KlasId still said whose it was. Now the leeftijd is the entire scope, so a subthema
+    /// stored as "5-6" is not a subthema with an odd label, it is a subthema no class can ever reach. Refusing it at
+    /// the door is the only place that costs nothing.
     /// </para>
-    /// </summary>
-    /// <summary>
-    /// Refuses a leeftijd that is not one of the nine codes. The rule is <see cref="Jaarfasen.LeesLeeftijd"/>, which the
-    /// rights check on a body leeftijd (<c>Leeftijdsinhoud.UitInvoer</c>) shares, so the two cannot drift apart.
     /// </summary>
     private static void VereisLeeftijd(string leeftijd)
     {

@@ -45,11 +45,15 @@ public sealed record Leeftijdsinhoud(string Leeftijd)
     /// The resource for a leeftijd that did not come from the database. It goes through
     /// <see cref="Jaarfasen.LeesLeeftijd"/>, the same function the subthema create and re-scope validate with
     /// (<c>SchoolcontentBeheerService.VereisLeeftijd</c>). So it accepts exactly what those writes accept, in the
-    /// trimmed form they store. A test runs both over the same inputs.
+    /// trimmed form they store. <c>SubthemaLeeftijdInvoerTests</c> runs both over a set of inputs, as a tripwire
+    /// against the function being un-shared.
     /// </summary>
     /// <returns>
-    /// <c>null</c> when the input is no leeftijd at all. The caller lets the write refuse it, with the write's own 400
-    /// and sentence, or refuses it the same way. It never skips the rights check on a null.
+    /// <c>null</c> when the input is no leeftijd at all. The caller may then let the write refuse it, with the write's
+    /// own 400 and sentence, or refuse it the same way. <b>Deferring to the write is safe only because the write refuses
+    /// exactly these inputs:</b> it validates with the same function, <see cref="Jaarfasen.LeesLeeftijd"/>, which
+    /// <c>SubthemaLeeftijdInvoerTests</c> pins. If the two ever differed, a null here could send an input the write
+    /// accepts past the rights check.
     /// </returns>
     public static Leeftijdsinhoud? UitInvoer(string? leeftijd) =>
         Jaarfasen.LeesLeeftijd(leeftijd) is { } code ? new Leeftijdsinhoud(code) : null;

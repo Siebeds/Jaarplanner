@@ -1265,3 +1265,33 @@ Development:
   - UnitTests: 1340 passed, 4 skipped (live KOV opt-in).
   - IntegrationTests: 383 passed, 1 skipped (live Op.stap opt-in).
 - No frontend file changed.
+
+### Fix round 3
+
+- **Input:** "Code slice 1 — audit round 3" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 4 MINOR, all wording, plus nits.
+  The test-runner passed round 3; the orchestrator committed both in `5245dbe`.
+- **Branch:** `story/E6-02-fundament`, on top of `5245dbe`.
+- **Scope, per the orchestrator:** slice 1 is already merged into `feature/e6-rollen-rechten` (`0073bd7`), and slices
+  2 and 3 run from there. So this round changes doc comments, test comments and docs only, kept local to the blocks
+  named. **No executable line changed:** a diff filter over every changed `.cs` line found none that is not a comment
+  or blank. The FR-1 import is deliberately **not** routed through `LeesLeeftijd`; B took the "narrow the headline"
+  option instead.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| A | `UitInvoer` offered "let the write refuse it" without saying why that is safe, and the test named the wrong consequence of a drift | The `<returns>` of `Leeftijdsinhoud.UitInvoer` now says deferring to the write is safe **only because the write refuses exactly these inputs**: it uses the same function (`Jaarfasen.LeesLeeftijd`), pinned by `SubthemaLeeftijdInvoerTests`. Otherwise a null could send an input the write accepts past the rights check. The test summary now states the stakes: if the rights check refused what the write accepts, a caller deferring to the write would let the write through with no rights check at all; the other drift refuses a hoofdleerkracht on their own leeftijd. It also calls itself a tripwire, not a proof over every input. |
+| B | `LeesLeeftijd` called itself "the one rule" for a leeftijd from outside the database | The headline is narrowed to "the rule for a leeftijd in a request body, and for `WatIsErMisMet`". The doc lists `WatIsErMisMet`'s callers, including the hoofdleerkracht appointment (`Hoofdleerkrachtaanstelling`). It names the FR-1 import's own inline copy (`IsBekend` on the trimmed value, in `SchoolcontentImportService`'s subthema leeftijd check and in `LeeftijdVoor`): same set today, not reached by a change here, and no rights check depends on it (R27). |
+| C | The ADR index said the ADR-0022 seam was a no-op until 2026-09-14, and still listed it as depending on an open Art. XIV decision | Both places in `docs/adr/README.md` now give the two steps: a no-op until E6-01 made it require a session (ADR-0031, 2026-09-11), then bound to the directie row by E6-02 slice 1 (2026-09-14). The open-decisions paragraph says the question was settled by the Art. VI.1 ratification of 2026-09-14, and keeps ADR-0022 as the example of what a seam does not buy you. |
+| D | E8-07 said a `geweigerd`/`voorgesteld` link blocks the maker's delete "today", though no route applies that row yet | `backlog/E8-fast-follow.md` now describes the declared rule: `ActiviteitVerwijderen`, as declared in slice 1, counts every link (`EfRechtenbronnen`), whatever its status. So once slice 3 applies it to `DELETE api/activiteiten/{id}`, such a link withholds the maker's delete. |
+| nit | `VereisLeeftijd` had two stacked `<summary>` blocks and a stale, unattached "Verifies the klas exists" one | Merged into one summary (the rule, then the "what replaced the foreign key" paragraph, with "is new" dropped). The stale klas summary is removed: no method verifies a klas there, and a subthema has had no klas scope since ADR-0025. |
+| nit | `WatIsErMisMet`'s doc block sat above `LeerjaarVoor`, separated by a blank line | Moved onto `WatIsErMisMet`, text unchanged, with a one-line note saying it was reattached. |
+| nit | E7-11 claimed 403/400/401 on both Op.stap routes | `backlog/E7-niet-functioneel.md` now says exactly what is pinned: 403 on both `POST /api/opstap-import` and `GET /api/opstap-import/stand`, and 400 and 401 on the `POST` only. |
+| nit | "will" for E6-03's future delete | Changed to "may" in the schooljaar cascade test comment. |
+
+**Gates:**
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: clean.
+- UnitTests, full suite: 1340 passed, 4 skipped (live KOV opt-in).
+- IntegrationTests, filtered to the two touched suites (`RechtenEndpointsTests`, `CurriculumbeheerAutorisatieTests`)
+  against the local `jaarplanner-db`: 21 passed.
+- No migration or frontend file changed.
