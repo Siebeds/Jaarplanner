@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:56
+bijgewerkt: 2026-09-14 12:58
 opgepakt-door: kindrapport
 branch: ticket/TB-005-ontwikkelingsrapport-scope
-pr:
+pr: 58
 geblokkeerd:
 fr: []
 ---
@@ -86,3 +86,4 @@ in `docs/besluiten-gevraagd.md` en houdt het werk niet tegen (R20, R27).
 - 2026-09-14 12:56 · kindrapport · Antagonist ronde 4: 0 MAJOR, 4 MINOR, 2 vragen, verwerkt; de eigenaar besliste R31 (alleen de K3-leerkrachten passen de K3-set en de sterrenschaal aan, de directie bekijkt ze). De kleine correcties na ronde 4 zijn niet meer geauditeerd.
 - 2026-09-14 12:56 · kindrapport · Acceptatiecriteria afgevinkt: ADR-0035 §1 citeert R1 tot R31 letterlijk, apart van D1 tot D16; Art. I.2, VI.2, VI.6 en VI.7 in de grondwet; alle afhankelijke teksten in de amendementscommit ac60a42 en de correcties daarna; vraag 15 in besluiten-gevraagd.md; vier antagonistrondes, elke bevinding verwerkt
 - 2026-09-14 12:56 · kindrapport · in-uitvoering → klaar: Klaar: ADR-0035 en het amendement op Art. I, IV, VI, IX en XII brengen het ontwikkelingsrapport voor de derde kleuter binnen scope; geen broncode; de bouw volgt als FB-tickets na E6-02
+- 2026-09-14 12:58 · kindrapport · PR #58
