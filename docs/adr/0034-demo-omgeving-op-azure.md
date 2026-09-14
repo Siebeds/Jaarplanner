@@ -114,6 +114,15 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
      - the local API runs in Development with the development sign-in, against the demo database, as the existing
        directie. It writes no `Gebruiker`, and it runs with the demo's key setting, so every Data Protection key it
        could create is wrapped. The script deletes an unwrapped key row that appears anyway, and the run then fails.
+   - *Amended 2026-09-14 (TB-008).* During a migration the password is also in the environment of `dotnet dnx`,
+     dotnet-ef, the two `dotnet msbuild` evaluations dotnet-ef runs, and its design-time host (`dotnet exec`). All of
+     them end with the run.
+     - `migrate-db.ps1` builds before it reads the password, without build servers, and runs dotnet-ef with
+       `--no-build`.
+     - It sets `MSBUILDDISABLENODEREUSE` while the password is set, so dotnet-ef's evaluations cannot run on a reusable
+       MSBuild node, another session's included, that outlives the script.
+     - An `az` command may start an Azure CLI telemetry process that outlives it by a few seconds, with the same
+       environment. For a seed run that includes the `az` processes its local API starts (TB-003 above).
 6. **The network, a demo trade-off.**
    - F1 has no virtual network integration, so PostgreSQL keeps its public endpoint. Its firewall rule
      `AllowAllAzureServicesAndResourcesWithinAzureIps` admits **any Azure-hosted address, in any tenant**, not only

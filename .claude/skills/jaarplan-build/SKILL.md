@@ -85,5 +85,5 @@ Everything lands under `backlog/worklogs/<story-id>/` — one folder per story, 
 - **You claim and check off the backlog**, not the agents — they can't safely coordinate the shared file.
 - **Never mark `[x]` without PASS + COMPLIANT.** A red gate means the story is not done (Art. X).
 - **Never hard-assume an open decision** — block the story `[!]` and ask.
-- **No secrets, no pupil data, AI keys server-side only** — these are CRITICAL; an antagonist CRITICAL is a hard stop.
+- **No secrets, no pupil data outside the K3 ontwikkelingsrapport, AI keys server-side only** — these are CRITICAL; an antagonist CRITICAL is a hard stop. Pupil data inside the ontwikkelingsrapport is allowed and is checked against Art. VI.7 (amended 2026-09-14, ADR-0035).
 - Keep changes small and reviewable; honour the Dutch domain language + i18n rules.

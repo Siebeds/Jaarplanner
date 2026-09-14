@@ -67,14 +67,15 @@ De Jaarplanner (werktitel) is een webtoepassing die:
 - Flexibele kalender met drag-and-drop en manuele bewerking.
 - (Her)generatie, dekkingsoverzicht, samenwerking en export.
 - Gebruikersbeheer met rollen en rechten.
+- Een ontwikkelingsrapport per kind voor de derde kleuter (FR-13, toegevoegd op 14-09-2026).
 
 #### Buiten scope (mogelijk latere fase)
 
-- Opvolging en rapportering op leerlingniveau.
+- Opvolging en rapportering op leerlingniveau, **behalve het ontwikkelingsrapport van de derde kleuter** (FR-13, toegevoegd op 14-09-2026, [ADR-0035](adr/0035-ontwikkelingsrapport-derde-kleuter.md)). Daarbuiten blijft het buiten scope: niets volgt een kind van het ene schooljaar of de ene klas naar de volgende.
 - Integratie met bestaande schooladministratie- of leerlingvolgsystemen (bv. Smartschool, Informat).
 - Toegang voor ouders of leerlingen.
 - Automatisch genereren van het concrete lesmateriaal zelf.
-- Evaluatie en puntenbeheer.
+- Evaluatie en puntenbeheer, behalve de sterren van het ontwikkelingsrapport (FR-13). Een ster is een label, geen punt: er komen geen totalen, gemiddelden of vergelijkingen tussen kinderen of klassen.
 
 ### 2.4 Definities en begrippen
 
@@ -102,7 +103,7 @@ De Jaarplanner (werktitel) is een webtoepassing die:
 
 - **Beheerder (directie / ICT-coördinator)** — werkt vanuit de beheerpagina: stelt schooljaren, klassen, leerkrachten en rechten in, beheert het inladen van de Op.stap-leerplandoelen, heeft zicht op alle jaarplannen en trekt schoolbrede en per-klas overzichten (zie FR-9 en FR-12).
 - **Leerkracht** — beheert het jaarplan van de eigen klas(sen); voert thema's en activiteiten in of importeert ze; gebruikt de AI-suggesties; past de kalender manueel aan; kan plannen van collega's inkijken voor afstemming.
-- **Zorgcoördinator / co-teacher (optioneel)** — leesrechten over meerdere klassen, eventueel beperkte bewerkrechten — ter beslissing.
+- **Zorgcoördinator / co-teacher (optioneel)** — leesrechten over meerdere klassen, eventueel beperkte bewerkrechten — ter beslissing. *(Verfijnd op 14-09-2026, [ADR-0035](adr/0035-ontwikkelingsrapport-derde-kleuter.md): de directie kan een gebruiker het recht **Leerlingzorg** geven. Wie het heeft, leest alle ontwikkelingsrapporten van de derde kleuter en wijzigt niets. Voor de rest geldt A.11.)*
 
 ### 3.2 Toegangsrechten
 
@@ -248,6 +249,29 @@ De beheerder/directie werkt vanuit een centrale beheerpagina (admin). Daar worde
 - **FR-12.3** — Vanuit de beheerpagina kan de directie schoolbrede en per-klas overzichten en rapporten trekken (o.a. dekking en voortgang over alle klassen/leerjaren heen — zie FR-9) en exporteren.
 - **FR-12.4** — Een jaarplan van een vorig schooljaar kan als basis gekopieerd worden naar een nieuw jaar — al dan niet in de eerste versie: ter beslissing.
 
+### FR-13: Ontwikkelingsrapport (derde kleuter)
+
+*Toegevoegd op 14-09-2026, op beslissing van de projecteigenaar ([ADR-0035](adr/0035-ontwikkelingsrapport-derde-kleuter.md)). De bindende regels staan in [`CONSTITUTION.md` Art. VI.7 en IX.4](../CONSTITUTION.md#article-vi--roles-privacy--security). De directie heeft dit nog niet bevestigd (vraag 15 in [`besluiten-gevraagd.md`](besluiten-gevraagd.md)).*
+
+Drie keer per schooljaar schrijven de leerkrachten van de derde kleuter een ontwikkelingsrapport per kind. De ouders krijgen het als PDF- of Word-bestand. Dit is het enige deel van de tool dat gegevens over kinderen bevat.
+
+- **FR-13.1**: Een leerkracht van een K3-klas voert de kinderen van zijn klas met de hand in, één per één, met voornaam en achternaam. De tool heeft geen andere velden over een kind. Wat de leerkracht in de teksten schrijft, is vrije tekst.
+- **FR-13.2**: Elke K3-leerkracht beheert één gedeelde set **rapportdoelen** voor heel K3. Een rapportdoel heeft een titel en bundelt subdoelen uit de eigen thema's. Elke K3-leerkracht beheert ook één **sterrenschaal** voor heel K3: elke gradatie heeft een label en een kleur. Set en schaal gelden altijd, niet per schooljaar, dus een wijziging werkt ook door op oude rapporten. Alleen de K3-leerkrachten passen ze aan; de directie kan ze bekijken.
+- **FR-13.3**: Per kind zijn er drie vaste evaluatiemomenten. Per moment kiest de leerkracht voor elk rapportdoel een ster en schrijft hij er een tekst bij. Per moment schrijft hij ook een algemeen besluit.
+- **FR-13.4**: De leerkracht kan de tekst bij een rapportdoel en het algemene besluit laten herwerken door AI.
+  - Alleen die tekst gaat naar de AI. Voor hij vertrekt, worden de namen van de kinderen van de klas vervangen. De leerkracht krijgt een melding dat een bijnaam of een andere naam niet vervangen wordt.
+  - Hij aanvaardt het voorstel, past het aan of weigert het. Een weigering wordt bewaard, zonder de voorgestelde tekst.
+- **FR-13.5**: Per moment kan de leerkracht een kindtekening toevoegen, als foto of scan. De tool verwijdert de metagegevens van de foto, zoals de plaats waar ze genomen werd.
+- **FR-13.6**: Het rapport is te downloaden als PDF en als Word, in een nieuw ontwerp. De ouder ziet per rapportdoel de titel, de ster met zijn label en de tekst. De subdoelen ziet alleen de leerkracht, in de tool.
+- **FR-13.7**: Wie de rapporten van een kind leest:
+  - de leerkrachten van de klas;
+  - de directie;
+  - wie het recht Leerlingzorg heeft.
+
+  Leerkrachten van andere klassen zien ze niet. Na het schooljaar kan de leerkracht de rapporten nog lezen, maar niet meer wijzigen.
+- **FR-13.8**: De gegevens blijven bewaard tot de directie een schooljaar wist. De directie legt een concrete bewaartermijn vast in het verwerkingsregister, en de beheerpagina toont welke schooljaren nog gegevens over kinderen bevatten en herinnert de directie eraan.
+- **FR-13.9**: Een ontwikkelingsrapport telt nooit mee voor de dekking.
+
 ## 6. Niet-functionele requirements
 
 Dit zijn de kwaliteitseisen waaraan de tool moet voldoen, los van de concrete functies.
@@ -257,7 +281,11 @@ Dit zijn de kwaliteitseisen waaraan de tool moet voldoen, los van de concrete fu
 - **NFR-3** — Performance: een jaarplan wordt binnen een redelijke tijd gegenereerd (richtwaarde: enkele tot tientallen seconden); de kalender reageert vlot.
 - **NFR-4** — Beschikbaarheid & hosting: webtoepassing, bereikbaar via de browser, gehost in de cloud (bv. Microsoft Azure), zonder lokale installatie.
 - **NFR-5** — Beveiliging: toegang via persoonlijke login; rolgebaseerde rechten; gegevens versleuteld tijdens transport en in opslag.
-- **NFR-6** — Privacy (GDPR/AVG): de tool verwerkt in de eerste plaats curriculum- en personeelsgegevens (leerkrachtaccounts); géén gevoelige leerlinggegevens in de MVP. Een verwerkingsregister en bewaartermijnen worden voorzien.
+- **NFR-6** — Privacy (GDPR/AVG): de tool verwerkt in de eerste plaats curriculum- en personeelsgegevens (leerkrachtaccounts); géén gevoelige leerlinggegevens in de MVP, behalve in het ontwikkelingsrapport hieronder. Een verwerkingsregister en bewaartermijnen worden voorzien. *(Bijgewerkt op 14-09-2026, [ADR-0035](adr/0035-ontwikkelingsrapport-derde-kleuter.md).)*
+  - Het ontwikkelingsrapport van de derde kleuter (FR-13) verwerkt wél gegevens over kinderen: voornaam, achternaam, de sterren, de teksten, het besluit en de kindtekeningen.
+  - De teksten zijn vrije tekst en kunnen ook zorg- of gezondheidsinformatie bevatten (bijzondere gegevens, AVG art. 9).
+  - Het verwerkingsregister en een concrete bewaartermijn moeten ook die gegevens dekken.
+  - De projecteigenaar besliste dat echte gegevens mogen worden ingevoerd voordat het register en een effectbeoordeling (DPIA) er zijn. De school draagt die verantwoordelijkheid.
 - **NFR-7** — Browserondersteuning: recente versies van de courante browsers (Edge, Chrome, Firefox, Safari).
 - **NFR-8** — Schaalbaarheid: ontworpen voor één school met meerdere klassen; uitbreidbaar naar meerdere scholen in een latere fase.
 - **NFR-9** — Back-up & herstel: regelmatige back-ups van de gegevens.
@@ -265,8 +293,8 @@ Dit zijn de kwaliteitseisen waaraan de tool moet voldoen, los van de concrete fu
 ## 7. AI-werking en kwaliteitsbewaking
 
 - **Mens in de lus** — de AI stelt voor, de leerkracht beslist. Niets wordt zonder validatie als definitief beschouwd. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): bij de doelsuggesties van een thema beslist de directie of wie themabeheer heeft.)*
-- **Transparantie** — elke AI-suggestie gaat gepaard met een korte motivatie.
-- **Brongegevens** — de AI werkt op basis van de door de school ingevoerde thema's en activiteiten en de leerdoelen van de overheid — niet op basis van externe, onbekende bronnen.
+- **Transparantie** — elke AI-suggestie gaat gepaard met een korte motivatie. *(Behalve de herwerking van een tekst in het ontwikkelingsrapport, FR-13.4: daar ziet de leerkracht de oude en de nieuwe tekst naast elkaar, zonder motivatie. Bijgewerkt op 14-09-2026.)*
+- **Brongegevens** — de AI werkt op basis van de door de school ingevoerde thema's en activiteiten en de leerdoelen van de overheid — niet op basis van externe, onbekende bronnen. *(Bij de herwerking van een tekst in het ontwikkelingsrapport krijgt de AI alleen die tekst, zonder de namen van de kinderen van de klas. Bijgewerkt op 14-09-2026.)*
 - **Beperkingen** — AI-suggesties kunnen fouten of hiaten bevatten. De eindverantwoordelijkheid voor de correcte dekking ligt bij de leerkracht en de directie. De tool ondersteunt, maar vervangt geen pedagogische beoordeling.
 - **Aandachtspunt** — verwerking van schoolgegevens door een AI-dienst gebeurt bij voorkeur binnen een Europese, AVG-conforme omgeving (bv. Azure AI Foundry met EU-datazone) — te bevestigen.
 
@@ -322,7 +350,7 @@ De wens is om in de eerste versie alle functionaliteiten op te nemen ("one-shot"
 - De school levert haar bestaande thema's, subthema's en activiteiten aan in Excel.
 - De school volgt het leerplan Op.stap van Katholiek Onderwijs Vlaanderen; de leerplandoelen en de decretale minimumdoelen worden ingeladen vanuit de Op.stap-API van Katholiek Onderwijs Vlaanderen (bijgewerkt 2026-09-11, ADR-0032).
 - De tool wordt in de eerste versie door één school gebruikt.
-- Er worden geen leerlinggegevens verwerkt in de MVP.
+- Er worden geen leerlinggegevens verwerkt in de MVP, behalve in het ontwikkelingsrapport van de derde kleuter (FR-13, bijgewerkt op 14-09-2026).
 - De school beschikt over (of voorziet) de nodige cloud- en AI-omgeving (Azure).
 
 ## 11. Open vragen / beslissingen door de directie
@@ -409,12 +437,13 @@ FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generat
 
 *Herkomst: beslissingen van de projecteigenaar van 11-09-2026, 13-09-2026 en 14-09-2026, niet het Op.stap-referentiemateriaal. Door de projecteigenaar bekrachtigd op 14-09-2026.* De **projecteigenaar** besliste dit in een reeks vragen. De letterlijke vragen, en de gekozen en afgewezen antwoorden, staan in [ADR-0030 §1](adr/0030-rollen-en-rechten-in-de-app.md). De bindende tekst staat in [`CONSTITUTION.md` Art. VI.1](../CONSTITUTION.md#article-vi--roles-privacy--security). Dit punt verfijnt §3.1, §3.2, §4, FR-1.1, FR-3.1, FR-4.3 (en daarmee FR-4.2), FR-7.2, FR-10.2, FR-12.2, §7, §11, A.5 en A.7. Bij elk van die punten staat een verwijzing hierheen, behalve bij FR-4.2: dat wordt meegenomen in de verwijzing bij FR-4.3.
 
-**Rechten, geen functietitels.** Enkel wie de directie toevoegde, kan aanmelden, met een Microsoft-account van de eigen schooltenant. Welke rechten iemand heeft, houdt de tool zelf bij, niet Entra. Er zijn vier rechten, en één persoon kan er meerdere hebben:
+**Rechten, geen functietitels.** Enkel wie de directie toevoegde, kan aanmelden, met een Microsoft-account van de eigen schooltenant. Welke rechten iemand heeft, houdt de tool zelf bij, niet Entra. Er zijn vijf rechten, en één persoon kan er meerdere hebben. *(Vier sinds 13-09-2026; Leerlingzorg kwam erbij op 14-09-2026.)*
 
 - **Directie** ziet en bewerkt alles. Ze voegt gebruikers toe, koppelt leerkrachten aan klassen, stelt hoofdleerkrachten aan en geeft themabeheer, zoals FR-12.2 de beheerder laat doen; de beheerder is nu wie het directierecht heeft. De directie kan het directierecht aan iemand anders geven. Er is **geen aparte rol voor de ICT-coördinator**: die heeft het directierecht als de directie het toekent, en is anders een gewone leerkracht.
 - **Themabeheer** hebben enkele leerkrachten of zorgcoördinatoren die de directie aanduidt. Wie het heeft, past thema's aan (met hun themadoelen en kernwoordenschat) en voert de Excel-import van thema's en activiteiten uit (FR-1), met de doelkoppelingen op themadoelen en subdoelen die daarin staan. Alleen de directie mag bij de import aanvinken dat ook menselijke beslissingen verwijderd worden: met die ene schakelaar wist een nieuwe import ook besliste themadoelen en subdoelen die niet meer in het bestand staan. Hij doorloopt ook de thema-opbouwwizard helemaal. Voor een thema dat hij daar van nul opbouwt, maakt hij in de wizard, en alleen met de eigen acties van de wizard, ook de subthema's, subdoelen en activiteiten aan, op elke leeftijd. Bestaande subthema's aanpassen blijft voor de hoofdleerkracht. Naast de directie is dit het enige recht waarmee iemand **doelsuggesties** laat maken en ze aanvaardt, weigert of aanpast.
 - **Hoofdleerkracht** is een gebruiker die de directie aanstelt per schooljaar en per jaar/fase; een jaar kan er meerdere hebben (bv. bij een duobaan). Een hoofdleerkracht maakt, wijzigt en verwijdert de subthema's van zijn jaar (wie een subthema verwijdert, verwijdert ook de activiteiten en doelkoppelingen eronder, zoals vandaag) en de subdoelen. Hij koppelt met de hand doelen aan de gedeelde activiteiten, past hun inhoud aan, maakt nieuwe en verwijdert elke activiteit, met of zonder doelkoppelingen. Thema's past hij enkel aan als hij ook themabeheer heeft.
 - **Leerkracht** ben je van de klassen waaraan de directie je koppelt. Een klas kan meerdere leerkrachten hebben (co-teacher, duobaan). Een leerkracht bewerkt de planning van zijn klassen: jaarplan, (her)generatie, agenda, hoeken en algemene fiches. Andere klassen kan hij inkijken. Wie een klas van een bepaalde leeftijd heeft, past de **inhoud** van de gedeelde activiteiten onder de subthema's van die leeftijd aan, maakt nieuwe activiteiten en past de **streefwoordenschat** van die subthema's aan. Een activiteit die hij **zelf aanmaakte**, mag hij verwijderen zolang er geen doelen aan gekoppeld zijn. **Met de hand doen subdoelen, doelkoppelingen en het verwijderen van andere activiteiten enkel de directie en de hoofdleerkrachten van dat jaar**, want een doelkoppeling daar telt voor de dekking van elke klas van die leeftijd die het thema plant. De enige uitzonderingen zijn die van themabeheer: de import, en de wizard voor een thema dat daar van nul wordt opgebouwd. De rest van het subthema blijft voor de directie en de hoofdleerkracht, behalve wat de wizard voor zo'n thema aanmaakt.
+- **Leerlingzorg** *(toegevoegd op 14-09-2026, [ADR-0035](adr/0035-ontwikkelingsrapport-derde-kleuter.md))* geeft de directie aan wie ze kiest, bijvoorbeeld een zorgcoördinator. Wie het heeft, leest alle ontwikkelingsrapporten van de derde kleuter (FR-13) en wijzigt niets. De rapporten zelf vallen buiten het inkijken van andere klassen (I9): een leerkracht leest alleen de rapporten van zijn eigen klas.
 
 **De maker van een activiteit.** De tool onthoudt wie een activiteit aanmaakte. Dat bepaalt enkel wie ze mag verwijderen: wie ze maakte, mag ze verwijderen zolang er geen doelen aan gekoppeld zijn, ook zonder klas van die leeftijd en ook na het schooljaar. De activiteit blijft gedeeld, en elke leerkracht van die leeftijd ziet ze en past ze aan. Het is geen eigen inhoud voor één leerkracht; die komt met E6-10. Wat al bestond of uit de import komt, heeft geen maker en is dus puur gedeeld: enkel een hoofdleerkracht of de directie verwijdert zo'n activiteit.
 
@@ -422,7 +451,7 @@ FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generat
 
 **Graadklassen, voorlopig, tot de directie over graadklassen beslist (§11).** Een klas heeft één jaar/fase. De leerkrachten van een graadklas bewerken dus de gedeelde inhoud van die ene leeftijd, en de andere leeftijd doet een hoofdleerkracht of de directie. In de tool staat op één plaats welke leeftijden een klas rechten geeft, zodat een beslissing van de directie over graadklassen enkel die plaats verandert.
 
-**Wie geen van de vier rechten heeft**, bijvoorbeeld een zorgcoördinator zonder themabeheer, kan aanmelden en voorlopig elke klas inkijken. Voorlopig kan hij verder niets, behalve een activiteit verwijderen die hij zelf aanmaakte; of hij eigen inhoud mag toevoegen, wordt beslist met E6-10.
+**Wie geen van de vijf rechten heeft**, bijvoorbeeld een zorgcoördinator zonder themabeheer en zonder Leerlingzorg, kan aanmelden en voorlopig elke klas inkijken. Voorlopig kan hij verder niets, behalve een activiteit verwijderen die hij zelf aanmaakte; of hij eigen inhoud mag toevoegen, wordt beslist met E6-10.
 
 **Waarom doelsuggesties en doelkoppelingen niet bij elke leerkracht liggen.** Een doelsuggestie hangt aan een schoolbreed thema. Aanvaardt iemand ze, dan stijgt de dekking van élke klas die dat thema plant, ook bij collega's, en dat is het cijfer dat de onderwijsinspectie leest. Op 11-09-2026 koos de eigenaar nog voor "elke leerkracht, zoals nu". Toen dat gevolg hem op 13-09-2026 werd voorgelegd, koos hij voor de directie en themabeheer. Waar de v0.4-tekst zegt dat *de leerkracht* een AI-suggestie beoordeelt (§4, FR-4.2, FR-4.3, §7), lees voor de doelsuggesties bij een thema dus: de directie of wie themabeheer heeft. Voor het jaarplan van een klas blijft het de leerkracht van die klas. Om dezelfde reden liggen de doelkoppelingen op gedeelde activiteiten en subdoelen bij de directie en de hoofdleerkrachten: een koppeling daar telt voor elke klas van die leeftijd die het thema plant, en de eigenaar besliste dat op 13-09-2026, toen hem dat gevolg voor de parallelklassen werd voorgelegd. De import en de wizard zijn uitzonderingen die de eigenaar bewust maakte: wie themabeheer heeft, legt via de import of de wizard ook koppelingen die hij met de hand niet mag leggen. De eigenaar bevestigde de import nog eens nadat de vraag gecorrigeerd was, en beperkte de wizard tot een thema dat daar van nul wordt opgebouwd.
 
@@ -446,7 +475,7 @@ FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generat
 - *I22, hoe de tool een wizardactie herkent*: voorlopig heeft de wizard eigen acties, die enkel de directie en wie themabeheer heeft gebruiken, en enkel voor een nieuw thema. Met de gewone knoppen voor subthema's, subdoelen en activiteiten krijgt themabeheer geen extra recht, behalve dat een maker zijn eigen activiteit mag verwijderen.
 - *I23, wat een nieuw thema is*: voorlopig een thema dat de wizard zelf aanmaakte, tot die wizard afgerond of gesloten is.
 - *(c), een jaar zonder hoofdleerkracht*: voorlopig doet enkel de directie, met de hand, wat de hoofdleerkracht zou doen.
-- *(e), een zorgcoördinator, of wie geen van de vier rechten heeft*: voorlopig niets meer dan themabeheer (als de directie het toekent) en inkijken, behalve een activiteit verwijderen die hij zelf aanmaakte.
+- *(e), een zorgcoördinator, of wie geen van de vijf rechten heeft*: voorlopig niets meer dan themabeheer en Leerlingzorg (als de directie ze toekent) en inkijken, behalve een activiteit verwijderen die hij zelf aanmaakte.
 
 **Nieuwe begrippen:** gebruiker, directierecht, themabeheer, hoofdleerkracht, klastoewijzing en maker van een activiteit. Definities: zie [`CONSTITUTION.md` Art. XII](../CONSTITUTION.md#article-xii--glossary-nl--en).
 
