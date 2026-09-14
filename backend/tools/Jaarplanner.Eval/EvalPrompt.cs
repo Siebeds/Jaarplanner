@@ -32,27 +32,27 @@ public static class EvalPrompt
     private const string Nl = "\n";
 
     /// <summary>Builds the request for <paramref name="geval"/> over <paramref name="kandidaten"/>.</summary>
-    public static AiRequest Bouw(
+    public static AiRequest Build(
         EvalGeval geval,
         IReadOnlyCollection<Leerplandoel> kandidaten,
-        DoelWeergave weergave,
-        int maxSuggesties)
+        DoelWeergave goalFormat,
+        int maxSuggestions)
     {
         ArgumentNullException.ThrowIfNull(geval);
         ArgumentNullException.ThrowIfNull(kandidaten);
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxSuggesties, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxSuggestions, 1);
 
         var productie = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(
             geval.Thema,
             geval.Subthema,
-            weergave == DoelWeergave.Volledig ? kandidaten : []);
+            goalFormat == DoelWeergave.Volledig ? kandidaten : []);
 
-        var userPrompt = weergave == DoelWeergave.Volledig
+        var userPrompt = goalFormat == DoelWeergave.Volledig
             ? productie.UserPrompt
             : VervangLijst(productie.UserPrompt, kandidaten);
 
         var systemPrompt = productie.SystemPrompt + Nl +
-            $"- Stel hoogstens {maxSuggesties} leerplandoelen voor. Minder mag, een lege lijst ook.";
+            $"- Stel hoogstens {maxSuggestions} leerplandoelen voor. Minder mag, een lege lijst ook.";
 
         return new AiRequest { SystemPrompt = systemPrompt, UserPrompt = userPrompt };
     }

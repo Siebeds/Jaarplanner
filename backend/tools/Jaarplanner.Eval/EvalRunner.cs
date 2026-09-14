@@ -127,7 +127,8 @@ public sealed record EvalRapport
 /// <summary>
 /// Runs every case through every variant and every model, and records what happened. It never persists anything and
 /// never touches a school's data: the only calls are the catalogue (read-only), the embedding deployment and the chat
-/// deployments. A failed call is recorded and the run goes on; only a cancellation stops it.
+/// deployments. A failed call, a timeout included, is recorded and the run goes on; only a cancellation the caller
+/// requested stops it.
 /// </summary>
 public sealed class EvalRunner
 {
@@ -142,30 +143,30 @@ public sealed class EvalRunner
 
     /// <summary>Creates a runner over the given variants and models.</summary>
     public EvalRunner(
-        IReadOnlyList<IKandidaatSelectie> varianten,
-        IReadOnlyList<EvalModel> modellen,
-        DoelWeergave weergave,
-        int maxSuggesties,
-        IReadOnlyDictionary<string, ModelPrice>? prijzen = null,
+        IReadOnlyList<IKandidaatSelectie> variants,
+        IReadOnlyList<EvalModel> models,
+        DoelWeergave goalFormat,
+        int maxSuggestions,
+        IReadOnlyDictionary<string, ModelPrice>? prices = null,
         Action<string>? log = null,
-        TimeProvider? tijd = null,
+        TimeProvider? time = null,
         TimeSpan? throttleWait = null)
     {
-        ArgumentNullException.ThrowIfNull(varianten);
-        ArgumentNullException.ThrowIfNull(modellen);
-        if (varianten.Count == 0 || modellen.Count == 0)
+        ArgumentNullException.ThrowIfNull(variants);
+        ArgumentNullException.ThrowIfNull(models);
+        if (variants.Count == 0 || models.Count == 0)
         {
             throw new ArgumentException("A run needs at least one variant and one model.");
         }
 
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxSuggesties, 1);
-        _variants = varianten;
-        _models = modellen;
-        _goalFormat = weergave;
-        _maxSuggestions = maxSuggesties;
-        _prices = prijzen ?? new Dictionary<string, ModelPrice>();
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxSuggestions, 1);
+        _variants = variants;
+        _models = models;
+        _goalFormat = goalFormat;
+        _maxSuggestions = maxSuggestions;
+        _prices = prices ?? new Dictionary<string, ModelPrice>();
         _log = log;
-        _time = tijd ?? TimeProvider.System;
+        _time = time ?? TimeProvider.System;
         _throttleWait = throttleWait ?? TimeSpan.FromSeconds(15);
     }
 
@@ -186,9 +187,9 @@ public sealed class EvalRunner
                 KandidaatSet kandidaten;
                 try
                 {
-                    kandidaten = await variant.SelecteerAsync(geval, cancellationToken);
+                    kandidaten = await variant.SelectAsync(geval, cancellationToken);
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
                 {
                     // A failed selection may still have spent embedding tokens: they stay in the report.
                     var spent = ex as CandidateSelectionException;
@@ -232,7 +233,7 @@ public sealed class EvalRunner
                     EmbeddingModel = kandidaten.EmbeddingModel,
                 });
 
-                var request = EvalPrompt.Bouw(geval, kandidaten.Doelen, _goalFormat, _maxSuggestions);
+                var request = EvalPrompt.Build(geval, kandidaten.Doelen, _goalFormat, _maxSuggestions);
                 foreach (var model in _models)
                 {
                     resultaten.Add(await AskAsync(variant.Naam, model, geval, codes, request, cancellationToken));
@@ -288,8 +289,10 @@ public sealed class EvalRunner
                 _log,
                 cancellationToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            // Decided by the token, not the exception type: an HTTP timeout is an OperationCanceledException that
+            // nobody asked for, and it is a failed call like any other.
             _log?.Invoke($"{variant} | {model.Naam} | {geval.Id}: aanroep mislukt ({ex.Message})");
             return new GevalResultaat
             {

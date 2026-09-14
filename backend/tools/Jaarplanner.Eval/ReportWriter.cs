@@ -104,20 +104,23 @@ public static class ReportWriter
 
         sb.AppendLine("## Retrieval");
         sb.AppendLine();
-        sb.AppendLine("| Variant | Embeddingmodel | Tokens | Kost | Bij de kandidaten |");
-        sb.AppendLine("| --- | --- | ---: | ---: | ---: |");
+        sb.AppendLine("| Variant | Embeddingmodel | Tokens | Kost | Fouten | Bij de kandidaten |");
+        sb.AppendLine("| --- | --- | ---: | ---: | ---: | ---: |");
         foreach (var group in withEmbeddings.GroupBy(k => (k.Variant, k.EmbeddingModel)))
         {
+            // Tokens and cost count every case, a failed one included (it was paid for); the retrieval figure counts
+            // only cases where retrieval ran, so a failing embedding call does not read as a retrieval miss.
             var tokens = group.Sum(k => k.EmbeddingTokens);
             var price = rapport.Prijzen.GetValueOrDefault(group.Key.EmbeddingModel!);
             var cost = price?.Input is { } input ? Amount(tokens * input / 1_000_000m) : "onbekend";
+            var failed = group.Count(k => k.Fout is not null);
             sb.AppendLine($"| {Cell(group.Key.Variant)} | {Cell(group.Key.EmbeddingModel!)} | {tokens.ToString("N0", Nl)} | " +
-                $"{cost} | {Percent(CandidateRecall(group.ToList()))} |");
+                $"{cost} | {failed.ToString(Nl)} | {Percent(CandidateRecall(group.Where(k => k.Fout is null).ToList()))} |");
         }
 
         sb.AppendLine();
         sb.AppendLine("De eerste run maakt de embeddings van de catalogus en is daardoor duurder; latere runs lezen ze uit " +
-            "de cache.");
+            "de cache. Een geval dat faalde, telt mee in tokens en kost, niet in \"Bij de kandidaten\".");
         sb.AppendLine();
     }
 

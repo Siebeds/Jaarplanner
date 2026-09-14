@@ -8,7 +8,7 @@ using Jaarplanner.Infrastructure.Ai;
 namespace Jaarplanner.Eval;
 
 /// <summary>The vectors for a batch of texts, in the order the texts were given, and the tokens it cost.</summary>
-public sealed record EmbeddingAntwoord(IReadOnlyList<float[]> Vectoren, int Tokens);
+public sealed record EmbeddingResult(IReadOnlyList<float[]> Vectors, int Tokens);
 
 /// <summary>Turns texts into vectors. Faked in tests; the real one is <see cref="AzureEmbeddingClient"/>.</summary>
 public interface IEmbeddingClient
@@ -16,8 +16,8 @@ public interface IEmbeddingClient
     /// <summary>The embedding deployment, as the report and the cache name it.</summary>
     string Model { get; }
 
-    /// <summary>Embeds <paramref name="teksten"/>.</summary>
-    Task<EmbeddingAntwoord> EmbedAsync(IReadOnlyList<string> teksten, CancellationToken cancellationToken);
+    /// <summary>Embeds <paramref name="texts"/>.</summary>
+    Task<EmbeddingResult> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -53,13 +53,13 @@ public sealed class AzureEmbeddingClient : IEmbeddingClient
     public string Model { get; }
 
     /// <inheritdoc />
-    public async Task<EmbeddingAntwoord> EmbedAsync(IReadOnlyList<string> teksten, CancellationToken cancellationToken)
+    public async Task<EmbeddingResult> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(teksten);
+        ArgumentNullException.ThrowIfNull(texts);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_endpoint}/openai/v1/embeddings")
         {
-            Content = JsonContent.Create(new { model = Model, input = teksten }),
+            Content = JsonContent.Create(new { model = Model, input = texts }),
         };
 
         if (_apiKey is not null)
@@ -78,7 +78,7 @@ public sealed class AzureEmbeddingClient : IEmbeddingClient
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
 
-        var vectors = new float[teksten.Count][];
+        var vectors = new float[texts.Count][];
         foreach (var item in document.RootElement.GetProperty("data").EnumerateArray())
         {
             var index = item.GetProperty("index").GetInt32();
@@ -96,7 +96,7 @@ public sealed class AzureEmbeddingClient : IEmbeddingClient
                 ? promptTokens.GetInt32()
                 : 0;
 
-        return new EmbeddingAntwoord(vectors, tokens);
+        return new EmbeddingResult(vectors, tokens);
     }
 }
 
@@ -111,6 +111,12 @@ public sealed class EmbeddingCache
 
     /// <summary>Creates the cache in <paramref name="folder"/>, or in memory when it is null.</summary>
     public EmbeddingCache(string? folder) => _folder = folder;
+
+    /// <summary>The file the vectors of <paramref name="model"/> are written to, or null when the cache lives in memory.</summary>
+    public string? FileFor(string model) =>
+        _folder is null
+            ? null
+            : Path.Combine(_folder, $"embeddings-{string.Concat(model.Select(c => char.IsLetterOrDigit(c) || c is '-' or '.' ? c : '_'))}.json");
 
     /// <summary>The vector stored for <paramref name="text"/> under <paramref name="model"/>, if any.</summary>
     public bool TryGet(string model, string text, out float[] vector)
@@ -139,7 +145,7 @@ public sealed class EmbeddingCache
         Directory.CreateDirectory(_folder);
         foreach (var (model, vectors) in _byModel)
         {
-            File.WriteAllText(PathFor(model), JsonSerializer.Serialize(vectors));
+            File.WriteAllText(FileFor(model)!, JsonSerializer.Serialize(vectors));
         }
     }
 
@@ -156,17 +162,15 @@ public sealed class EmbeddingCache
 
     private Dictionary<string, string> Load(string model)
     {
-        if (_folder is null || !File.Exists(PathFor(model)))
+        var file = FileFor(model);
+        if (file is null || !File.Exists(file))
         {
             return new Dictionary<string, string>(StringComparer.Ordinal);
         }
 
-        return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(PathFor(model)))
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(file))
             ?? new Dictionary<string, string>(StringComparer.Ordinal);
     }
-
-    private string PathFor(string model) =>
-        Path.Combine(_folder!, $"embeddings-{string.Concat(model.Select(c => char.IsLetterOrDigit(c) || c is '-' or '.' ? c : '_'))}.json");
 
     private static string Key(string text) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 

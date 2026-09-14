@@ -12,7 +12,7 @@ public sealed class EvalPromptTests
         var geval = EvalTestData.WaterGeval("W-01");
         var kandidaten = EvalTestData.Catalogus().Where(d => d.JaarFase == "K3").ToList();
 
-        var request = EvalPrompt.Bouw(geval, kandidaten, DoelWeergave.Volledig, maxSuggesties: 8);
+        var request = EvalPrompt.Build(geval, kandidaten, DoelWeergave.Volledig, maxSuggestions: 8);
 
         var productie = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(geval.Thema, geval.Subthema, kandidaten);
         Assert.Equal(productie.UserPrompt, request.UserPrompt);
@@ -26,7 +26,7 @@ public sealed class EvalPromptTests
         var geval = EvalTestData.WaterGeval("W-01");
         var kandidaten = EvalTestData.Catalogus().Where(d => d.JaarFase == "K3").ToList();
 
-        var request = EvalPrompt.Bouw(geval, kandidaten, DoelWeergave.Compact, maxSuggesties: 5);
+        var request = EvalPrompt.Build(geval, kandidaten, DoelWeergave.Compact, maxSuggestions: 5);
 
         // The school context is the production rendering, word for word.
         var zonderDoelen = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(geval.Thema, geval.Subthema, []).UserPrompt;

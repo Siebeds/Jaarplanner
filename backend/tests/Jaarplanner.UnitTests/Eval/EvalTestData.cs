@@ -65,15 +65,15 @@ internal static class EvalTestData
 
         public int AantalAanroepen { get; private set; }
 
-        public Task<EmbeddingAntwoord> EmbedAsync(IReadOnlyList<string> teksten, CancellationToken cancellationToken)
+        public Task<EmbeddingResult> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken)
         {
             AantalAanroepen++;
-            var vectoren = teksten
+            var vectoren = texts
                 .Select(t => t.Contains("water", StringComparison.OrdinalIgnoreCase) ? new[] { 1f, 0f }
                     : t.Contains("zand", StringComparison.OrdinalIgnoreCase) ? new[] { 0f, 1f }
                     : new[] { 0.5f, 0.5f })
                 .ToList();
-            return Task.FromResult(new EmbeddingAntwoord(vectoren, teksten.Count * 10));
+            return Task.FromResult(new EmbeddingResult(vectoren, texts.Count * 10));
         }
     }
 }

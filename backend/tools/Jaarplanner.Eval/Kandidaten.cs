@@ -17,7 +17,7 @@ public interface IKandidaatSelectie
     string Naam { get; }
 
     /// <summary>Chooses the candidates for <paramref name="geval"/>.</summary>
-    Task<KandidaatSet> SelecteerAsync(EvalGeval geval, CancellationToken cancellationToken);
+    Task<KandidaatSet> SelectAsync(EvalGeval geval, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -53,7 +53,7 @@ public sealed class JaarfaseSelectie : IKandidaatSelectie
     public string Naam => "A: jaarfase, zonder retrieval";
 
     /// <inheritdoc />
-    public async Task<KandidaatSet> SelecteerAsync(EvalGeval geval, CancellationToken cancellationToken)
+    public async Task<KandidaatSet> SelectAsync(EvalGeval geval, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(geval);
         return new KandidaatSet(await Jaarfase.DoelenAsync(_catalogus, geval, cancellationToken));
@@ -65,8 +65,9 @@ public sealed class JaarfaseSelectie : IKandidaatSelectie
 /// from the subthema, of which the top <c>n</c> go to the model. Goal vectors are cached on disk; they hold only the
 /// public catalogue. The subthema's own vector is never cached, so no school content lands in the cache.
 /// <para>
-/// Each embedding call waits out a 429 on its own, so the tokens of batches that already succeeded stay counted; and a
-/// call that fails for good raises a <see cref="CandidateSelectionException"/> that still carries them.
+/// Each embedding call waits out a 429 on its own, so the tokens of batches that already succeeded stay counted; a call
+/// that fails for good (a timeout included) raises a <see cref="CandidateSelectionException"/> that still carries them.
+/// Writing the cache is an optimisation: when it fails, the selection and its error are unaffected.
 /// </para>
 /// </summary>
 public sealed class EmbeddingSelectie : IKandidaatSelectie
@@ -105,7 +106,7 @@ public sealed class EmbeddingSelectie : IKandidaatSelectie
     public string Naam => $"B: embeddings ({_embeddings.Model}), top {_top}";
 
     /// <inheritdoc />
-    public async Task<KandidaatSet> SelecteerAsync(EvalGeval geval, CancellationToken cancellationToken)
+    public async Task<KandidaatSet> SelectAsync(EvalGeval geval, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(geval);
 
@@ -137,18 +138,18 @@ public sealed class EmbeddingSelectie : IKandidaatSelectie
         {
             foreach (var batch in missing.Chunk(BatchSize))
             {
-                var answer = await EmbedAsync(batch.Select(i => texts[i]).ToList(), cancellationToken);
-                if (answer.Vectoren.Count != batch.Length)
+                var result = await EmbedAsync(batch.Select(i => texts[i]).ToList(), cancellationToken);
+                if (result.Vectors.Count != batch.Length)
                 {
                     throw new InvalidOperationException(
-                        $"The embeddings call returned {answer.Vectoren.Count} vectors for {batch.Length} texts.");
+                        $"The embeddings call returned {result.Vectors.Count} vectors for {batch.Length} texts.");
                 }
 
-                tokens += answer.Tokens;
+                tokens += result.Tokens;
                 for (var j = 0; j < batch.Length; j++)
                 {
-                    vectors[batch[j]] = answer.Vectoren[j];
-                    _cache.Put(_embeddings.Model, texts[batch[j]], answer.Vectoren[j]);
+                    vectors[batch[j]] = result.Vectors[j];
+                    _cache.Put(_embeddings.Model, texts[batch[j]], result.Vectors[j]);
                 }
 
                 added = true;
@@ -156,11 +157,12 @@ public sealed class EmbeddingSelectie : IKandidaatSelectie
 
             var query = await EmbedAsync([VraagTekst(geval)], cancellationToken);
             tokens += query.Tokens;
-            queryVector = query.Vectoren[0];
+            queryVector = query.Vectors[0];
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            // The calls that did succeed were paid for; the report must still see them.
+            // The calls that did succeed were paid for; the report must still see them. Decided by the token, not the
+            // exception type: an HTTP timeout is an OperationCanceledException that nobody asked for.
             throw new CandidateSelectionException(ex.Message, tokens, _embeddings.Model, ex);
         }
         finally
@@ -168,12 +170,12 @@ public sealed class EmbeddingSelectie : IKandidaatSelectie
             // Keep what was paid for, also when a later call failed.
             if (added)
             {
-                _cache.Save();
+                TrySaveCache();
             }
         }
 
         var top = doelen
-            .Select((doel, i) => (doel, score: Cosinus(queryVector, vectors[i])))
+            .Select((doel, i) => (doel, score: Cosine(queryVector, vectors[i])))
             .OrderByDescending(x => x.score)
             .ThenBy(x => x.doel.Code, StringComparer.Ordinal)
             .Take(_top)
@@ -183,8 +185,22 @@ public sealed class EmbeddingSelectie : IKandidaatSelectie
         return new KandidaatSet(top, tokens, _embeddings.Model);
     }
 
-    private Task<EmbeddingAntwoord> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken) =>
+    private Task<EmbeddingResult> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken) =>
         Retry.WhenThrottledAsync(() => _embeddings.EmbedAsync(texts, cancellationToken), _throttleWait, _log, cancellationToken);
+
+    // The cache only saves a later run some tokens: failing to write it must never replace the selection's result or
+    // its error (an exception thrown from a finally would).
+    private void TrySaveCache()
+    {
+        try
+        {
+            _cache.Save();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _log?.Invoke($"De embeddingcache kon niet bewaard worden ({ex.Message}); een volgende run maakt die vectoren opnieuw.");
+        }
+    }
 
     /// <summary>The text a goal is embedded with: its taxonomy, its text and its examples.</summary>
     internal static string DoelTekst(Leerplandoel doel)
@@ -253,7 +269,7 @@ public sealed class EmbeddingSelectie : IKandidaatSelectie
     }
 
     /// <summary>The cosine similarity of two vectors of equal length; 0 when either has no length.</summary>
-    internal static double Cosinus(float[] a, float[] b)
+    internal static double Cosine(float[] a, float[] b)
     {
         if (a.Length != b.Length)
         {

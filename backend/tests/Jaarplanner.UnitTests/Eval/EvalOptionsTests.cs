@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Jaarplanner.Eval;
 using Microsoft.Extensions.Configuration;
 
@@ -104,20 +105,43 @@ public sealed class EvalOptionsTests
         Assert.True(RepoGuard.IsTracked(root, Path.Combine(root, "backend", "tools", "Jaarplanner.Eval", "voorbeeld-evalset.json")));
     }
 
-    /// <summary>
-    /// The guard finds the repo from the path it checks, never from the working directory, so a runner started outside
-    /// the repo with an output folder inside it is still refused (the paths here are absolute, as they are then).
-    /// </summary>
+    /// <summary>Inside this repo: eval-data/ may be written, another folder may not, and a folder outside any repo may.</summary>
     [Fact]
-    public void De_bewaking_zoekt_de_repo_vanuit_het_pad()
+    public void De_bewaking_laat_eval_data_toe_en_weigert_de_rest_van_de_repo()
     {
         var root = RepoRoot();
         var toegestaan = Path.Combine(root, "eval-data", "rapport-1.md");
         var inDeRepo = Path.Combine(root, "docs", "eval", "rapport-1.md");
 
-        Assert.Null(RepoGuard.FirstUnsafe([toegestaan, Path.Combine(root, "eval-data", "cache", "embeddings.json")]));
+        Assert.Null(RepoGuard.FirstUnsafe([toegestaan, Path.Combine(root, "eval-data", "cache", "embeddings-x.json")]));
         Assert.Equal(inDeRepo, RepoGuard.FirstUnsafe([toegestaan, inDeRepo]));
         Assert.Null(RepoGuard.FirstUnsafe([Path.Combine(Path.GetTempPath(), $"eval-{Guid.NewGuid():N}", "rapport-1.md")]));
+    }
+
+    /// <summary>
+    /// The guard finds the repo from the path it checks, not from the working directory. The test host's working
+    /// directory is inside the Jaarplanner repo; a second repo elsewhere is still recognised, so a runner started from
+    /// outside a repo cannot write into one unnoticed. A guard that looked at the working directory fails this test.
+    /// </summary>
+    [Fact]
+    public void De_bewaking_herkent_een_andere_repo_dan_die_van_de_werkmap()
+    {
+        var andereRepo = Path.Combine(Path.GetTempPath(), $"jaarplanner-guard-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(andereRepo);
+        try
+        {
+            File.WriteAllText(Path.Combine(andereRepo, "global.json"), "{}");
+            File.WriteAllText(Path.Combine(andereRepo, ".gitignore"), "/eval-data/\n");
+            Git(andereRepo, "init", "-q");
+
+            var zichtbaar = Path.Combine(andereRepo, "docs", "rapport-1.md");
+            Assert.Equal(zichtbaar, RepoGuard.FirstUnsafe([zichtbaar]));
+            Assert.Null(RepoGuard.FirstUnsafe([Path.Combine(andereRepo, "eval-data", "rapport-1.md")]));
+        }
+        finally
+        {
+            Verwijder(andereRepo);
+        }
     }
 
     /// <summary>A real evalset where git would pick it up stands out; the tracked example and eval-data/ do not.</summary>
@@ -129,5 +153,40 @@ public sealed class EvalOptionsTests
         Assert.True(RepoGuard.IsExposed(Path.Combine(root, "backend", "echte-set.json")));
         Assert.False(RepoGuard.IsExposed(Path.Combine(root, "eval-data", "echte-set.json")));
         Assert.False(RepoGuard.IsExposed(Path.Combine(root, "backend", "tools", "Jaarplanner.Eval", "voorbeeld-evalset.json")));
+    }
+
+    private static void Git(string folder, params string[] arguments)
+    {
+        var start = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = folder,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(start)!;
+        process.WaitForExit(TimeSpan.FromSeconds(30));
+        Assert.Equal(0, process.ExitCode);
+    }
+
+    // git marks some of its files read-only, which Directory.Delete refuses on Windows.
+    private static void Verwijder(string folder)
+    {
+        if (!Directory.Exists(folder))
+        {
+            return;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+        {
+            File.SetAttributes(file, FileAttributes.Normal);
+        }
+
+        Directory.Delete(folder, recursive: true);
     }
 }

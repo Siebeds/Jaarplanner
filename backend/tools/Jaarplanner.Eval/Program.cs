@@ -68,11 +68,18 @@ internal static class Program
         var defaultRoot = RepoGuard.FindRepoRoot(Directory.GetCurrentDirectory()) ?? Directory.GetCurrentDirectory();
         var output = Path.GetFullPath(options.Out ?? Path.Combine(defaultRoot, "eval-data"));
         var reportPath = Path.Combine(output, $"rapport-{DateTime.Now:yyyyMMdd-HHmmss}.md");
-        var cacheFolder = Path.Combine(output, "cache");
+        var cache = new EmbeddingCache(Path.Combine(output, "cache"));
 
         // The report quotes the evalset (a school's own content), and this repository is public: inside a repo the
-        // runner writes only where git ignores it, and when git cannot say, it does not write.
-        var unsafeFile = RepoGuard.FirstUnsafe([reportPath, Path.Combine(cacheFolder, "embeddings.json")]);
+        // runner writes only where git ignores it, and when git cannot say, it does not write. The files checked are
+        // the ones it will write.
+        var written = new List<string> { reportPath };
+        if (options.VariantB)
+        {
+            written.Add(cache.FileFor(options.Embedding!)!);
+        }
+
+        var unsafeFile = RepoGuard.FirstUnsafe(written);
         if (unsafeFile is not null)
         {
             Console.Error.WriteLine(
@@ -134,7 +141,7 @@ internal static class Program
             variants.Add(new EmbeddingSelectie(
                 catalogus,
                 new AzureEmbeddingClient(http, options.Endpoint, options.Embedding!, options.ApiKey, entra),
-                new EmbeddingCache(cacheFolder),
+                cache,
                 options.Top,
                 log: Console.WriteLine));
         }
@@ -152,7 +159,7 @@ internal static class Program
         {
             report = await runner.RunAsync(evalset, stop.Token);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (stop.IsCancellationRequested)
         {
             Console.Error.WriteLine("Gestopt; er is geen rapport geschreven.");
             return 1;
