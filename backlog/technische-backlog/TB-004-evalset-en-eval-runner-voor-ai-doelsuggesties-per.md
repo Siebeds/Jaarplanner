@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:51
+bijgewerkt: 2026-09-14 13:08
 opgepakt-door: ai-doelsuggesties
 branch: ticket/ai-doelsuggesties-eval
 pr:
@@ -132,3 +132,4 @@ wordt gecommit, voor de tests van de runner zelf.
 - 2026-09-14 12:33 · ai-doelsuggesties · criteria 1, 2, 4 en 5 afgevinkt: EvalRunnerTests, ScoringTests, EvalOptionsTests (RepoGuard) en AzureAiFoundryClientTests groen; volledige suite 1178 unit / 117 integratie groen, format schoon; criterium 3 wacht op de deploy van de Foundry-resource
 - 2026-09-14 12:51 · ai-doelsuggesties · antagonist ronde 2: 0 major, 3 minor, 2 vragen; afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-2.md
 - 2026-09-14 12:51 · ai-doelsuggesties · open, blokkeert klaar: de regel voor ADR-0036 in docs/adr/README.md (index en traceability) wacht op de claim van kindrapport op dat bestand; daarnaast wacht criterium 3 op de deploy en ADR-0036 op aanvaarding door de eigenaar
+- 2026-09-14 13:08 · ai-doelsuggesties · antagonist ronde 3: 0 major, 6 minor (timeouts stopten de run, cachefout kon de fout verbergen, retrievaltabel telde fouten als missers, zwakke regressietest, verkeerd cachebestand, halve hernoeming); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-3.md
