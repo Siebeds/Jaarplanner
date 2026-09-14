@@ -76,7 +76,8 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
   const fout = formulier?.hoek ? wijzig.error : maak.error;
   const andere = klassen.filter((k) => k.id !== klasId);
 
-  const { mag, laadt: rechtenLaden } = useRechten();
+  // `bekend`, not "not loading": a failed `/api/ik` proves nothing about rights (fix round 1, F3).
+  const { mag, bekend: rechtenBekend } = useRechten();
   const magBewerken = mag.klasplanningBewerken(klasId);
   const klasNaam = klassen.find((k) => k.id === klasId)?.naam;
 
@@ -135,7 +136,7 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
         ) : null}
       </div>
 
-      {!rechtenLaden && !magBewerken && klasNaam ? (
+      {rechtenBekend && !magBewerken && klasNaam ? (
         <p className="text-meta text-inkt-zacht">{t("rechten.hoekenAlleenBekijken", { klas: klasNaam })}</p>
       ) : null}
 

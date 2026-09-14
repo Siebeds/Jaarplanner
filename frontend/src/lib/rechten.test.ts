@@ -177,6 +177,37 @@ describe("de rechtenmatrix van de frontend", () => {
   });
 });
 
+/*
+  The server's I26 unit cases, as far as the frontend's resource reaches: themabeheer on a thema holding nothing
+  (`Themabron` with no one else's content and no linked leeftijd) passes, on one holding content it does not, directie
+  passes both, nobody else passes either, and without a resource the column fails closed.
+*/
+describe("een thema verwijderen (I26)", () => {
+  const leeg: Rechtbron = { soort: "thema", leeg: true };
+  const vol: Rechtbron = { soort: "thema", leeg: false };
+
+  it("mag themabeheer een leeg thema, en geen thema met inhoud", () => {
+    expect(staatToe(RELATIES.TB, "ThemaVerwijderen", leeg)).toBe(true);
+    expect(staatToe(RELATIES.TB, "ThemaVerwijderen", vol)).toBe(false);
+  });
+
+  it("mag directie elk thema", () => {
+    expect(staatToe(RELATIES.Directie, "ThemaVerwijderen", vol)).toBe(true);
+  });
+
+  it.each(["HL", "HL andere leeftijd", "LK leeftijd", "LK andere leeftijd", "LK eigen", "Ander"])(
+    "mag %s ook een leeg thema niet",
+    (relatie) => {
+      expect(staatToe(RELATIES[relatie], "ThemaVerwijderen", leeg)).toBe(false);
+    },
+  );
+
+  it("faalt dicht zonder bron of met een bron van een andere soort", () => {
+    expect(staatToe(RELATIES.TB, "ThemaVerwijderen")).toBe(false);
+    expect(staatToe(RELATIES.TB, "ThemaVerwijderen", { soort: "leeftijd", leeftijd: LEEFTIJD })).toBe(false);
+  });
+});
+
 describe("de antwoorden die de schermen vragen", () => {
   it("geeft niemand iets zolang /api/ik niet geantwoord heeft", () => {
     const mag = magVoor(undefined);
@@ -203,13 +234,18 @@ describe("de antwoorden die de schermen vragen", () => {
     expect(magVoor(RELATIES["LK leeftijd"]).subthemaToevoegen).toBe(false);
   });
 
-  it("biedt 'koppel dit doel' aan wie ergens mag koppelen: directie, themabeheer, een hoofdleerkracht", () => {
-    expect(magVoor(RELATIES.Directie).ergensDoelKoppelen).toBe(true);
-    expect(magVoor(RELATIES.TB).ergensDoelKoppelen).toBe(true);
-    expect(magVoor(RELATIES.HL).ergensDoelKoppelen).toBe(true);
-    expect(magVoor(RELATIES["LK leeftijd"]).ergensDoelKoppelen).toBe(false);
-    expect(magVoor(RELATIES["LK eigen"]).ergensDoelKoppelen).toBe(false);
-    expect(magVoor(RELATIES.Ander).ergensDoelKoppelen).toBe(false);
+  it("biedt 'koppel dit doel' aan wie in de boom van deze leeftijden iets mag koppelen (F1)", () => {
+    // The thema level needs no leeftijd, so directie and themabeheer are offered it whatever the klas.
+    expect(magVoor(RELATIES.Directie).doelKoppelenVoor([])).toBe(true);
+    expect(magVoor(RELATIES.TB).doelKoppelenVoor(["L1"])).toBe(true);
+    // A hoofdleerkracht only where the sheet lists their own leeftijd: an L1 klas shows no K3 subthema.
+    expect(magVoor(RELATIES.HL).doelKoppelenVoor([LEEFTIJD])).toBe(true);
+    expect(magVoor(RELATIES.HL).doelKoppelenVoor(["L1"])).toBe(false);
+    expect(magVoor(RELATIES.HL).doelKoppelenVoor(["JK", "K2", LEEFTIJD])).toBe(true);
+    // Making activiteiten is not linking goals (R19).
+    expect(magVoor(RELATIES["LK leeftijd"]).doelKoppelenVoor([LEEFTIJD])).toBe(false);
+    expect(magVoor(RELATIES["LK eigen"]).doelKoppelenVoor([LEEFTIJD])).toBe(false);
+    expect(magVoor(RELATIES.Ander).doelKoppelenVoor([LEEFTIJD])).toBe(false);
   });
 
   it("laat directie een klas plannen ook zonder gekozen klas, en een leerkracht alleen de eigen", () => {
@@ -221,10 +257,12 @@ describe("de antwoorden die de schermen vragen", () => {
     expect(magVoor(RELATIES.HL).klasplanningBewerken(EIGEN_KLAS)).toBe(false);
   });
 
-  it("verbindt de themabeheer-rijen niet aan het verwijderen van een thema (I26)", () => {
+  it("geeft themabeheer het verwijderen van een thema alleen als het leeg is (I26)", () => {
     const tb = magVoor(RELATIES.TB);
     expect(tb.themaBewerken).toBe(true);
-    expect(tb.themaVerwijderen).toBe(false);
+    expect(tb.themaVerwijderen({ subthemas: [{}] })).toBe(false);
+    expect(tb.themaVerwijderen({ subthemas: [] })).toBe(true);
+    expect(magVoor(RELATIES.Directie).themaVerwijderen({ subthemas: [{}] })).toBe(true);
     expect(tb.menselijkeBeslissingenVerwijderen).toBe(false);
     expect(tb.curriculumbeheer).toBe(false);
     expect(tb.schoolcontentImporteren).toBe(true);

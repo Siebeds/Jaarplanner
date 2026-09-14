@@ -34,8 +34,11 @@ export function Doeldetail({
    * in here stacked on the first, and the phone showed two headers, two close buttons, and none of
    * the destinations. The screen owns both sheets so it can show one at a time.
    *
-   * Absent for a gebruiker who may link a doel nowhere (E6-02: `mag.ergensDoelKoppelen`), and the button with it: the
-   * sheet it opens would offer them nothing to press.
+   * Absent when the sheet it opens would offer this gebruiker nothing to press, and the button with it (E6-02). The
+   * sheet lists the chosen klas's subthema's, so the screen asks `mag.doelKoppelenVoor(klas.jaarFasen)`: themabeheer
+   * for the thema level, or the subdoel or goal-link right at one of that klas's leeftijden. *Until fix round 1 this
+   * asked whether the gebruiker may link a doel anywhere, which offered a hoofdleerkracht the button with a klas of
+   * another leeftijd picked.*
    */
   onKoppel?: () => void;
 }) {

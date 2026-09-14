@@ -33,7 +33,7 @@ import { Themakiezer } from "./Themakiezer";
  */
 export function PlanScherm() {
   const { klasId, schooljaarId, klas } = useActieveSelectie();
-  const { mag, laadt: rechtenLaden } = useRechten();
+  const { mag, bekend: rechtenBekend } = useRechten();
   const magPlannen = mag.klasplanningBewerken(klasId);
   const [gekozenBlok, setGekozenBlok] = useState<string | null>(null);
   const [generatieOpen, setGeneratieOpen] = useState(false);
@@ -117,8 +117,9 @@ export function PlanScherm() {
           </div>
         ) : (
           <>
-            {/* Once, and only when true: the rights have answered and this gebruiker may not plan the klas shown. */}
-            {!rechtenLaden && !magPlannen && klas ? (
+            {/* Once, and only when true: the rights have answered WITH a gebruiker, and that gebruiker may not plan the
+                klas shown. A failed `/api/ik` proves nothing about rights, so it says nothing (fix round 1, F3). */}
+            {rechtenBekend && !magPlannen && klas ? (
               <p className="mb-3 text-meta text-inkt-zacht">
                 {t("rechten.planningAlleenBekijken", { klas: klas.naam })}
               </p>

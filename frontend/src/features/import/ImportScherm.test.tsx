@@ -51,6 +51,23 @@ describe("ImportScherm: de secties per recht", () => {
     expect(screen.queryByText(t("importeren.opstap.kort"))).toBeNull();
   });
 
+  // Fix round 1, F3: a failed /api/ik proves nothing about rights, so it may not say the gebruiker lacks one.
+  it("zegt niets over rechten als /api/ik niet antwoordt, en toont geen sectie", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 500 })));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/inladen"]}>
+          <ImportScherm />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await vi.waitFor(() => expect(client.getQueryState(["ik"])?.status).toBe("error"));
+    expect(screen.queryByText(t("importeren.geenRecht"))).toBeNull();
+    expect(screen.queryByText(t("importeren.school.titel"))).toBeNull();
+  });
+
   it("geeft directie beide secties en de schakelaar, en opent Op.stap waar het adres dat vraagt", () => {
     toonScherm(DIRECTIE, "/inladen?bron=opstap");
 
@@ -93,7 +110,8 @@ describe("Schoolcontentimport: menselijke beslissingen verwijderen (R35)", () =>
       target: { files: [new File(["x"], "themas.xlsx")] },
     });
     fireEvent.click(screen.getByRole("button", { name: t("importeren.bekijkVoorbeeld") }));
-    await screen.findByText(t("importeren.school.bedreigd", { aantal: 1 }));
+    // One decided link: the singular, and "vastgelegd" rather than "jij zelf gezet" (fix round 1, F5).
+    await screen.findByText(t("importeren.school.bedreigdEen"));
   }
 
   it("biedt themabeheer het vinkje niet aan, en zegt dat de koppelingen blijven staan", async () => {

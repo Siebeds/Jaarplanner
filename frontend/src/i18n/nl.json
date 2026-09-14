@@ -475,7 +475,8 @@
       "themas": "Thema's",
       "subthemas": "Subthema's",
       "activiteiten": "Activiteiten",
-      "bedreigd": "{aantal} koppelingen die jij zelf gezet hebt, staan niet in dit bestand",
+      "bedreigd": "{aantal} vastgelegde koppelingen staan niet in dit bestand",
+      "bedreigdEen": "1 vastgelegde koppeling staat niet in dit bestand",
       "opruimen": "Verwijder die koppelingen. Laat dit uit en ze blijven staan.",
       "blijvenStaan": "Die koppelingen blijven staan.",
       "eerstHerstellen": "Herstel eerst de rijen hierboven."

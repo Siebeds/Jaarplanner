@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubthemaWeergave } from "../../lib/types";
 import { t } from "../../i18n";
@@ -69,6 +69,25 @@ describe("Subthemaformulier: de leeftijden", () => {
       .getAllByRole("option")
       .map((optie) => optie.textContent);
     expect(opties).toEqual([t("subthemabeheer.kiesLeeftijd"), "K2", "K3"]);
+  });
+
+  // Fix round 1, F4: "the list did not load" and "you may use none of it" are two facts, and only the first is a
+  // loading problem.
+  it("zegt niets over laden als de lijst er is maar geen enkele leeftijd mag", async () => {
+    toon(() => false);
+
+    const blad = await screen.findByRole("dialog");
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    await new Promise((klaar) => setTimeout(klaar, 0));
+    expect(within(blad).queryByText(t("klasbeheer.leeftijdenOnbekend"))).toBeNull();
+    expect(within(blad).queryByRole("combobox")).toBeNull();
+  });
+
+  it("zegt wel dat de leeftijden niet laadden als de lijst niet aankwam", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 500 })));
+    toon(() => true);
+
+    expect(await screen.findByText(t("klasbeheer.leeftijdenOnbekend"))).toBeInTheDocument();
   });
 
   it("verplaatst een bestaand subthema alleen naar een leeftijd waar dit ook mag (I13)", async () => {

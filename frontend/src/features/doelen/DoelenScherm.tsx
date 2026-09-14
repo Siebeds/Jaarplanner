@@ -81,6 +81,9 @@ export function DoelenScherm() {
   // What this gebruiker may do from the register (E6-02): open Inladen at all, load Op.stap from an empty state, and
   // link a doel somewhere. Each control below asks; none is shown while `/api/ik` is still answering.
   const { mag } = useRechten();
+  // The destination sheet lists the chosen klas's subthema's, so "Koppel dit doel" asks about exactly those leeftijden
+  // (fix round 1, F1): a hoofdleerkracht of K3 with an L1 klas picked would otherwise open a sheet with nothing to press.
+  const magKoppelen = mag.doelKoppelenVoor(klas?.jaarFasen ?? []);
 
   // Debounced rather than applied per keystroke: every character would otherwise be a request, and
   // on a phone keyboard that is a request per thumb press.
@@ -252,7 +255,7 @@ export function DoelenScherm() {
               <Doeldetail
                 code={gekozenCode}
                 onKies={setGekozenCode}
-                onKoppel={mag.ergensDoelKoppelen ? () => setKoppelenOpen(true) : undefined}
+                onKoppel={magKoppelen ? () => setKoppelenOpen(true) : undefined}
               />
             </div>
           </aside>
@@ -270,7 +273,7 @@ export function DoelenScherm() {
           <Doeldetail
             code={gekozenCode}
             onKies={setGekozenCode}
-            onKoppel={mag.ergensDoelKoppelen ? () => setKoppelenOpen(true) : undefined}
+            onKoppel={magKoppelen ? () => setKoppelenOpen(true) : undefined}
           />
         </Blad>
       ) : null}

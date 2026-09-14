@@ -4,7 +4,7 @@ import { Segment } from "../../components/ui/Segment";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { ApiError } from "../../lib/api";
 import { useRechten } from "../../lib/rechten";
-import { t } from "../../i18n";
+import { t, telWoord } from "../../i18n";
 import { Bestandkiezer } from "./Bestandkiezer";
 import { Beperkt, Foutvlak, Opmerkingen, Telling, Vak } from "./Meldingen";
 import { SJABLOON_PAD, importeerSchoolcontent, voorbeeldSchoolcontent } from "./api";
@@ -136,8 +136,10 @@ export function Schoolcontentimport() {
 
             {bedreigd.length > 0 ? (
               <div className="rounded-veld border border-attentie/40 bg-attentie-zacht p-3">
+                {/* "Vastgelegd", not "jij zelf gezet": the list holds every decided link, and since E6-02 the reader
+                    may be themabeheer, who sets no subdoel by hand (fix round 1, F5). */}
                 <p className="text-meta font-medium text-attentie-inkt">
-                  {t("importeren.school.bedreigd", { aantal: bedreigd.length })}
+                  {telWoord(bedreigd.length, "importeren.school.bedreigdEen", "importeren.school.bedreigd")}
                 </p>
                 <div className="mt-2">
                   <Beperkt

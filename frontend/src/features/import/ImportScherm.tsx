@@ -31,7 +31,7 @@ import { toegestaneSecties, type Bron } from "./secties";
  * is never shown, whatever the address asks.
  */
 export function ImportScherm() {
-  const { mag, laadt } = useRechten();
+  const { mag, laadt, bekend } = useRechten();
   const [zoek] = useSearchParams();
   const [gekozen, setGekozen] = useState<Bron | null>(null);
 
@@ -61,7 +61,9 @@ export function ImportScherm() {
       <Schermvlak>
         {laadt ? (
           <Laadvlak className="h-32" />
-        ) : bron === "school" ? (
+        ) : !bekend ? // `/api/ik` failed: nothing is known about rights, so no section and no sentence about them (fix
+        // round 1, F3). A 401 has already sent the browser to the sign-in.
+        null : bron === "school" ? (
           <Schoolcontentimport />
         ) : bron === "opstap" ? (
           <Opstapimport />

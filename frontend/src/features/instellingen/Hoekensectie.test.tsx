@@ -45,6 +45,30 @@ describe("Hoekensectie", () => {
     expect(screen.queryByRole("button", { name: t("themabeheer.verwijder") })).toBeNull();
   });
 
+  // Fix round 1, F3: a failed /api/ik proves nothing about rights. No control (fail closed), and no sentence saying the
+  // gebruiker may only read: that would be told to a directie too.
+  it("zegt niets over rechten als /api/ik niet antwoordt, en toont geen knoppen", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (pad: string) =>
+        String(pad).endsWith("/api/ik")
+          ? new Response("{}", { status: 500 })
+          : new Response(JSON.stringify([HOEK]), { status: 200, headers: { "Content-Type": "application/json" } }),
+      ),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <Hoekensectie klassen={[GROEN, BLAUW]} laadt={false} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("bouwhoek")).toBeInTheDocument();
+    await vi.waitFor(() => expect(client.getQueryState(["ik"])?.status).toBe("error"));
+    expect(screen.queryByText(t("rechten.hoekenAlleenBekijken", { klas: "K3 groen" }))).toBeNull();
+    expect(screen.queryByRole("button", { name: t("hoeken.toevoegen") })).toBeNull();
+  });
+
   it("geeft een leerkracht van deze klas de knoppen, zonder de regel", async () => {
     toon(ikMet({ eigenKlasIds: [GROEN.id] }));
 

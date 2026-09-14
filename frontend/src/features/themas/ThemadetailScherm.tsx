@@ -83,11 +83,14 @@ import {
  * links and the copy says "gekoppeld".
  *
  * **Each control is drawn only for whoever holds its row of the ADR-0030 §3 matrix** (E6-02 slice 4), decided in
- * `lib/rechten.ts`. The thema, its themadoelen and the doelsuggesties are directie's and themabeheer's; deleting the
- * thema is directie's here (I26 needs a wizard run's state no read carries); each chapter asks about its own leeftijd.
+ * `lib/rechten.ts`. The thema, its themadoelen and the doelsuggesties are directie's and themabeheer's. Deleting the
+ * thema is directie's, and themabeheer's while the thema is empty (I26). The server also lets themabeheer delete a
+ * thema holding only its own open wizard run's items, but this read does not carry a run's items, so that case waits
+ * for E6-05. Each chapter asks about its own leeftijd.
  * Everyone reads the whole fiche. No sentence explains a missing control: on this screen most visitors read, and a
  * hint repeated per block is the prose this interface cuts first. Open doelsuggesties are shown only to whoever may
- * decide them, since for anyone else they are proposals waiting on somebody else.
+ * decide them, since for anyone else they are proposals waiting on somebody else (owner, 2026-09-14: kept hidden).
+ * *Until fix round 1 this said no read carries the delete's fact at all; the empty thema is one it does carry.*
  */
 export function ThemadetailScherm() {
   const { themaId } = useParams<{ themaId: string }>();
@@ -176,6 +179,16 @@ export function ThemadetailScherm() {
     none of these is drawn without its right; the query client then refetches (`lib/queryClient.ts`), so the control
     goes, and this says why nothing happened. The forms and "Vraag suggesties" show their own.
   */
+  /*
+    The subthema form stays open only while this gebruiker may still use it: at least one leeftijd to make a subthema
+    at, or the right at the one being edited. After a 403 the rights are refetched, and a form left open with no
+    leeftijd to offer would be a Bewaren that can only be refused (fix round 1, F4). It then closes, like the agenda's
+    pickers, and its refusal moves to the line below.
+  */
+  const magSubthemaBlad =
+    subthemaBlad !== null &&
+    (subthemaBlad.subthema ? mag.subthemaBeheren(subthemaBlad.subthema.leeftijd) : mag.subthemaToevoegen);
+
   const geweigerd = [
     koppelThemadoel,
     ontkoppelThemadoel,
@@ -186,6 +199,8 @@ export function ThemadetailScherm() {
     beoordeel,
     verwijder,
     verwijderSubthema,
+    // The form shows its own refusal while it is open; once the rights closed it, this line does.
+    ...(magSubthemaBlad ? [] : [maakSubthema, wijzigSubthema]),
   ]
     .map((mutatie) => geenToegangZin(mutatie.error))
     .find((zin) => zin !== null);
@@ -211,7 +226,7 @@ export function ThemadetailScherm() {
           figuur={thema.duurWeken}
           onder={t(thema.duurWeken === 1 ? "themas.weekEen" : "themas.weekMeer")}
           acties={
-            mag.themaBewerken || mag.themaVerwijderen ? (
+            mag.themaBewerken || mag.themaVerwijderen(thema) ? (
               <>
                 {mag.themaBewerken ? (
                   <Bewerkknop
@@ -223,7 +238,7 @@ export function ThemadetailScherm() {
                     }}
                   />
                 ) : null}
-                {mag.themaVerwijderen ? (
+                {mag.themaVerwijderen(thema) ? (
                   <Verwijderknop
                     omrand
                     label={t("themabeheer.verwijderAria", { naam: thema.naam })}
@@ -373,7 +388,8 @@ export function ThemadetailScherm() {
 
                 Only for whoever may make that decision (R14: directie and themabeheer). For anyone
                 else a card waiting on somebody else's verdict is noise, and a card without its two
-                buttons would read as a themadoel that is not one. */}
+                buttons would read as a themadoel that is not one. Kept hidden by the owner's ruling
+                (owner, 2026-09-14), asked after the slice 4 audit. */}
             {mag.doelsuggestiesBeoordelen && openSuggesties.length > 0 ? (
               <>
                 <h3 className="mt-5 text-micro uppercase tracking-wide text-inkt-zacht">
@@ -540,7 +556,7 @@ export function ThemadetailScherm() {
         }
       />
 
-      {subthemaBlad ? (
+      {subthemaBlad && magSubthemaBlad ? (
         <Subthemaformulier
           open
           subthema={subthemaBlad.subthema}
@@ -560,7 +576,12 @@ export function ThemadetailScherm() {
                 ? maakSubthema.error
                 : undefined
           }
-          onSluit={() => setSubthemaBlad(null)}
+          // A refusal the form showed is left behind with it, so the line below does not repeat it after a close.
+          onSluit={() => {
+            maakSubthema.reset();
+            wijzigSubthema.reset();
+            setSubthemaBlad(null);
+          }}
           onBewaar={(invoer) => {
             const bestaand = subthemaBlad.subthema;
             if (bestaand) {

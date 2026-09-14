@@ -376,3 +376,43 @@ None blocking.
 - [LOW] Focus falls to `<body>` after the sheet closes on its own (all 8 cases), because the trigger no longer exists; focusing the alert fixes both notes.
 - [INFO] The frontend Vitest for the fonts callback was not mutation-run (by reading, the old callback would fail it).
 - [INFO] The race tests use a fixed 1 s waiting window rather than `pg_locks` (could fail falsely under heavy load, never pass falsely).
+
+
+# E6-02 slice 4 — Test report (round 1)
+
+**Verdict:** PASS, with one open accessibility finding (defect 1), sent to fix round 1
+**Mode:** both (unit/integration suites; real-browser pass per profile in headless Chrome over CDP at 1440 and 390)
+**Commit:** `d859a10` on `story/E6-02-frontend` (on top of `b0a193f`)
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Doelsuggestie controls only for directie and themabeheer → PASS.** Directie and TB see Vraag suggesties and the open suggestie with Aanvaard/Weiger; HL, LK and no-rights see neither the buttons nor the card (a seeded `Voorgesteld` suggestie present).
+- **Thema form → PASS** (pencil, themadoel "Doel koppelen", "afhalen", "Nieuw thema": directie and TB only). **Thema delete → PASS as built** (bin for directie only; TB gets the pencil, no bin).
+- **FR-1 import section and "menselijke beslissingen verwijderen" → PASS** (section: directie and TB; HL, LK, no-rights see "Je hebt geen recht om iets in te laden."; the opt-in on unit evidence only: `ImportScherm.test.tsx:63-111` renders a real preview with a `bedreigdeBeslissingen` entry, asserting the checkbox for directie and for TB no checkbox plus "Die koppelingen blijven staan.").
+- **Op.stap section and its `Laadlink`s → PASS** (directie gets the switch, `?bron=opstap` opens Op.stap; TB gets the thema section only; "Laad ze in bij Inladen" for directie only). **Inladen buttons → PASS** (Thema's and Doelen headers for directie and TB only).
+- **Subthema form and leeftijd select → PASS** (directie: select JK–L6; HL K3: "Leeftijd K3" stated, no select; pencil and bin only on chapters the gebruiker may manage).
+- **Subdoel and goal-link controls → PASS** (directie, and HL on K3 only; TB, LK, no-rights none). Doelen "Koppel dit doel" for directie, TB and HL; absent for LK and no-rights.
+- **Activiteit create and content → PASS** ("Activiteit toevoegen" and the edit form on K3 for LK and HL, everywhere for directie; L1 activiteiten and TB/no-rights open as "bekijken", a facts sheet with only "Sluiten"; on K3 blauw Lies gets the content form but no day section).
+- **Activiteit delete → PASS** (Lies: bin on "Kring van Lies", hers and unlinked; none on "Lies gekoppeld" or others'; HL and directie on every K3 activiteit).
+- **Planning write controls → PASS** (Lies on K3 groen: seven "Activiteit toevoegen", Subthema inplannen, Hoekenfiches, 6 draggables, the day section, an editable hoek sheet, Genereren / Thema toevoegen / Vergrendeld / Verwijder, Fiches; on K3 blauw none, hoek sheet read-only, the quiet line; TB, HL, no-rights read-only everywhere).
+- **Klaskiezer jaarfase field → PASS** (directie only). **Instellingen Gebruikers and Klassen → PASS** (Gebruikers part and klas buttons for directie; for others the part is gone, the address redirects, Klassen has no write buttons).
+- **One rights helper mirrors the server's `Rechtenmatrix` → PASS.** `RECHTENMATRIX` vs `Rechtenmatrix.cs`: the same 18 policies and columns; `staatToe` follows `StaatToe` clause for clause; `rechten.test.ts`'s `VERWACHT` equals `RechtenmatrixTests.cs`'s `Verwacht` (16 × 8), both activiteit rows tested separately. The one intended difference: no `Themabron`, so `ThemabeheerZonderAndermansInhoud` never matches (fail-closed, documented).
+- **A stale-rights 403 shows the Dutch sentence and refreshes the rights → PASS, see defect 1.** Lies had K3 groen's agenda open; directie deleted her klastoewijzing (200); she picked an activiteit for a day: `403 POST …/jaarplan/weekplanning`, then `200 /api/ik` and the active queries refetched; the picker closed, the add buttons went 7 → 0, Subthema inplannen and Hoekenfiches disappeared, the quiet line and the Dutch sentence appeared. Repeated at 1440 and 390. Unit: `queryClient.test.ts` (403 invalidates; 400 or network error does not) and the `ThemadetailScherm.test.tsx` refused-verdict test (`role=alert`).
+- **At most one quiet line, no em dash, no disabled-with-tooltip → PASS** (once each on the agenda, Thema's per periode, Hoeken, Algemene fiches, only for readers; `nl.json` 0 em dashes; no control that does nothing).
+- **Contrast (browser, alpha composited) → PASS** (quiet line 6.08:1 light / 8.44:1 dark; "Je hebt geen recht om iets in te laden." 17.29:1; the 403 sentence 9.39:1). **At 390 → PASS** (no horizontal overflow for any persona).
+
+## Commands run
+- `pnpm lint` 0; `pnpm test` 45 files, 452/452; `pnpm build` 0 (existing chunk warning); `dotnet build` 0/0; `dotnet test --no-build --filter RechtenEndpointsTests|AanmeldEndpointsTests|GebruikerbeheerEndpointsTests|RechtenmatrixTests|RechtenAfdwingingTests` (Postgres 127.0.0.1:5433) → 144 unit, 93 integration passed.
+- Throwaway DB `jp_tr_e602s4` (migrated; 5 leerplandoelen and 1 doelsuggestie by SQL; seeded over the API: schooljaar 2026-2027, K3 groen, K3 blauw, L1 rood, Tine (TB), Hugo (HL K3), Lies (LK K3 groen), Nico (no rights), thema Herfst with a themadoel, a K3 subthema with a subdoel and an L1 subthema, activiteiten with and without links, placements, a hoek and a fiche). API on 5395, Vite on 5185, stopped; `DROP DATABASE jp_tr_e602s4 WITH (FORCE)`; the owner's database untouched; `git status` clean at `d859a10`.
+
+## Evidence
+- Scripts, results and screenshots in the orchestrator's scratchpad under `tr-s4r1\` (`seed.mjs`, `browser*.mjs`, `live403.mjs`, `verslag*.json`, `live403.json`; `shots\*-themadetail-*.png`, `*-act-kring-*.png`, `*-agenda-*.png`, `*-subthema-nieuw.png`, `*-doeldetail-1440.png`, `lk-*-plaatsing.png`, `lk-blauw-hoek.png`, `themabeheer-agenda-donker.png`, `zonder-inladen.png`, `live403-*.png`).
+
+## Defects
+- **[minor, WCAG 4.1.3]** The agenda's 403 sentence is not announced and sits below the fold on a desktop: it renders in the `sleepmelding` strip (`Agendascherm.tsx:773-777`), a plain `<p>` without `role="alert"`/`aria-live`; at 1440×1000 it is at y=988–1022 (page 1086 px), almost fully out of view; focus is lost because the picker closes. The strip predates this slice; slice 4 routes the new 403 through it. (`PlanScherm.tsx:163` and `Activiteitblad.tsx:275` already use `role="alert"`.)
+- [info, pre-existing] A React warning "Cannot update a component (`DoelenScherm`) while rendering a different component" on the first `/doelen` visit with a fresh profile.
+- [info, pre-existing] Instellingen › Hoeken opens on the first klas, not the header's.
+
+## Orchestrator's frontend-design pass (antagonist F6), 2026-09-14
+Run by the orchestrator with the `frontend-design` skill over the round-1 screenshots (`zonder-recht-act-kring-390`, `lk-blauw-hoek`, `lk-blauw-plaatsing`, `themabeheer-agenda-donker`, `live403-1440-melding`), against ADR-0024 Inkt en Signaal. The read-only activiteitfiche and hoek sheet follow the thema fiche's existing idiom (small labels over facts, ink tokens, a single close button; the accent only on the focus ring; no new hue); the small upper-case labels are the app's established idiom (DEKKING, KERNWOORDENSCHAT), so the house style wins over the generic rule. The agenda quiet line is one short, muted line under the week title, legible in light and dark. **One change:** the 403 refusal renders at the page's bottom, far from the action, below the fold at 1440×1000 and unannounced; it is to use slice 2's `Aandachtsmelding` (focus once, scroll into view), which is item 6 of fix round 1. Observation, no change: on K3 blauw Lies gets "Activiteit bewerken" while that klas's planning is read-only; that is the matrix (content is shared per leeftijd, planning belongs to the klas) and predates this slice.

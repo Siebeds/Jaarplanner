@@ -54,9 +54,13 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   Curriculumbeheer: [],
   Beheer: [],
   ThemaBewerken: ["Themabeheer"],
-  // I26. The column needs the server's `Themabron` (whether the thema holds anything but its own open wizard run's
-  // items), which no read the frontend makes carries. Without it the column matches nothing here, exactly as a server
-  // resource row fails closed without its resource, so the thema delete is offered to directie only.
+  // I26. On the server the column asks the `Themabron`: whether the thema holds anything but its own open wizard run's
+  // items, and whether one of those carries a goal link the gebruiker may not remove. The frontend knows one case of it
+  // for sure, the EMPTY thema (no subthema, and so no subdoel or activiteit, since both hang under a subthema), for
+  // which the server's resolver reports no one else's content and no linked leeftijd. That is the `thema` resource
+  // below. A thema holding only its open run's items is the server's too, but no read here carries a run's items, so
+  // that case stays closed until E6-05 reads the run. *Until fix round 1 this said the frontend could know no case at
+  // all, and offered the delete to directie only.*
   ThemaVerwijderen: ["ThemabeheerZonderAndermansInhoud"],
   SchoolcontentImporteren: ["Themabeheer"],
   MenselijkeBeslissingenVerwijderen: [],
@@ -83,7 +87,12 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
 export type Rechtbron =
   | { soort: "leeftijd"; leeftijd: string }
   | { soort: "activiteit"; leeftijd: string; makerId: string | null; heeftDoelkoppelingen: boolean }
-  | { soort: "klas"; klasId: string };
+  | { soort: "klas"; klasId: string }
+  /**
+   * The part of the server's `Themabron` the frontend can know: whether the thema is empty. `useThema` reads every
+   * leeftijd's chapters, so `subthemas.length === 0` is the same fact the server's resolver decides on for it.
+   */
+  | { soort: "thema"; leeg: boolean };
 
 /** GUIDs from System.Text.Json are lowercase on every route, so this is equality; the fold only guards a future one. */
 function zelfdeId(a: string, b: string): boolean {
@@ -102,6 +111,17 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
   const kolommen = RECHTENMATRIX[rij];
 
   if (kolommen.includes("Themabeheer") && ik.heeftThemabeheer) return true;
+
+  // I26: themabeheer deletes a thema that holds nothing anyone else made. An empty thema holds nothing at all, and no
+  // goal link either, so the server's check on linked leeftijden has nothing to ask. See `RECHTENMATRIX.ThemaVerwijderen`.
+  if (
+    kolommen.includes("ThemabeheerZonderAndermansInhoud") &&
+    ik.heeftThemabeheer &&
+    bron?.soort === "thema" &&
+    bron.leeg
+  ) {
+    return true;
+  }
 
   const leeftijd = bron?.soort === "leeftijd" || bron?.soort === "activiteit" ? bron.leeftijd : null;
   if (leeftijd !== null) {
@@ -154,8 +174,11 @@ export interface Mag {
   curriculumbeheer: boolean;
   /** Thema, themadoelen, kernwoordenschat (R4, R18). */
   themaBewerken: boolean;
-  /** Deleting a thema: directie only in the frontend (I26; see `RECHTENMATRIX.ThemaVerwijderen`). */
-  themaVerwijderen: boolean;
+  /**
+   * Deleting this thema (R3; I26): directie always, themabeheer on an empty thema. A thema holding only its own open
+   * wizard run's items waits for E6-05 (see `RECHTENMATRIX.ThemaVerwijderen`).
+   */
+  themaVerwijderen: (thema: { subthemas: readonly unknown[] }) => boolean;
   /** The FR-1 import (R9, R27, R34). */
   schoolcontentImporteren: boolean;
   /** The import's "menselijke beslissingen verwijderen" option (R35): directie. */
@@ -185,11 +208,12 @@ export interface Mag {
   /** Linking goals to, or unlinking them from, shared activiteiten at this leeftijd, by hand or on create (R19). */
   doelenKoppelen: (leeftijd: string) => boolean;
   /**
-   * Linking a doel ANYWHERE: on a thema (themadoel), a subthema (subdoel) or an activiteit. The register's "Koppel dit
-   * doel" leads to all three, so it is offered to whoever may do at least one of them: directie, themabeheer, or a
-   * hoofdleerkracht of some leeftijd.
+   * Linking a doel somewhere in a tree of thema's scoped to these leeftijden: on a thema (themadoel, R4), or on a
+   * subthema or an activiteit at one of them (subdoel R24, activiteit R19). The register's destination sheet lists the
+   * chosen klas's subthema's, so its "Koppel dit doel" asks with that klas's leeftijden: a hoofdleerkracht of K3 with
+   * an L1 klas picked would otherwise open a sheet with nothing to press (fix round 1, F1).
    */
-  ergensDoelKoppelen: boolean;
+  doelKoppelenVoor: (leeftijden: readonly string[]) => boolean;
   /** Everything that writes a klas's planning: jaarplan, agenda, hoeken, algemene fiches (R7, R15; I21). */
   klasplanningBewerken: (klasId: string | null) => boolean;
 }
@@ -204,7 +228,7 @@ export function magVoor(ik: Ik | undefined): Mag {
     beheer: rij("Beheer"),
     curriculumbeheer: rij("Curriculumbeheer"),
     themaBewerken: rij("ThemaBewerken"),
-    themaVerwijderen: rij("ThemaVerwijderen"),
+    themaVerwijderen: (thema) => rij("ThemaVerwijderen", { soort: "thema", leeg: thema.subthemas.length === 0 }),
     schoolcontentImporteren: rij("SchoolcontentImporteren"),
     menselijkeBeslissingenVerwijderen: rij("MenselijkeBeslissingenVerwijderen"),
     themaOpbouw: rij("ThemaOpbouw"),
@@ -224,9 +248,9 @@ export function magVoor(ik: Ik | undefined): Mag {
     activiteitVerplaatsen: (activiteit) => rij("ActiviteitVerplaatsen", activiteitbron(activiteit)),
     subdoelenBeheren: opLeeftijd("SubdoelenBeheren"),
     doelenKoppelen: opLeeftijd("DoelenKoppelen"),
-    ergensDoelKoppelen:
+    doelKoppelenVoor: (leeftijden) =>
       rij("ThemaBewerken") ||
-      hoofdleerkrachtLeeftijden.some(
+      leeftijden.some(
         (leeftijd) =>
           rij("SubdoelenBeheren", { soort: "leeftijd", leeftijd }) ||
           rij("DoelenKoppelen", { soort: "leeftijd", leeftijd }),
@@ -237,13 +261,21 @@ export function magVoor(ik: Ik | undefined): Mag {
 }
 
 /**
- * The signed-in gebruiker's answers. `laadt` is true until `/api/ik` has answered; `mag` then holds nothing, so a
- * screen may render as a reader until it knows better and never has to take a control away.
+ * The signed-in gebruiker's answers.
+ *
+ * - `laadt` is true until `/api/ik` has answered, successfully or not.
+ * - `bekend` is true only once it answered WITH a gebruiker. Only then does an absent right mean the gebruiker lacks
+ *   it. A failed `/api/ik` leaves `laadt` false and `bekend` false: `mag` holds nothing, so no write control is
+ *   offered, and a sentence that says the gebruiker lacks a right must wait for `bekend`. Otherwise it would tell a
+ *   directie whose `/api/ik` failed that they may only read (fix round 1, F3, the E5-03 rule).
+ *
+ * Until then `mag` holds nothing, so a screen renders as a reader until it knows better and never has to take a
+ * control away.
  */
-export function useRechten(): { mag: Mag; laadt: boolean } {
+export function useRechten(): { mag: Mag; laadt: boolean; bekend: boolean } {
   const { data, isPending } = useIk();
   const mag = useMemo(() => magVoor(data), [data]);
-  return { mag, laadt: isPending };
+  return { mag, laadt: isPending, bekend: data !== undefined };
 }
 
 /** Whether a failed request was the server refusing the action for want of a right (ADR-0030, E6-02 slice 3). */

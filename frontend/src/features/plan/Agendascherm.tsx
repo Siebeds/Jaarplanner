@@ -11,8 +11,9 @@ import { Laadvlak } from "../../components/ui/Laadvlak";
 import { IcoonHoek, IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
 import { useDagacties, useJaarplan, usePlaatsSubthemaperiode, useRooster, useWeekplanning } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
-import { useRechten } from "../../lib/rechten";
+import { isGeenToegang, useRechten } from "../../lib/rechten";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
+import { Agendamelding } from "./Agendamelding";
 import { ApiError } from "../../lib/api";
 import type { GeplandeActiviteit } from "../../lib/types";
 import {
@@ -101,7 +102,9 @@ export function Agendascherm() {
   const [zoek] = useSearchParams();
   const navigeer = useNavigate();
   const { klasId, klas, schooljaarId } = useActieveSelectie();
-  const { mag, laadt: rechtenLaden } = useRechten();
+  // `bekend`, not "not loading": a failed `/api/ik` proves nothing about rights, so the quiet line waits for an answer
+  // with a gebruiker in it (fix round 1, F3).
+  const { mag, bekend: rechtenBekend } = useRechten();
   const magPlannen = mag.klasplanningBewerken(klasId);
   // Whether a subthema can be made for this klas's leeftijd, for the planner's empty state: the sentence that tells a
   // teacher to go and make one, and the links that take her there, are only for whoever may (R5, R21).
@@ -514,11 +517,6 @@ export function Agendascherm() {
   const foutTekst = (fout: unknown) =>
     fout instanceof ApiError && fout.detail ? fout.detail : fout ? t("periode.mislukt") : null;
 
-  const sleepmelding =
-    sleepFout ??
-    (acties.plaats.isError || acties.verplaats.isError || verplaatsMoment.isError
-      ? foutTekst(acties.plaats.error ?? acties.verplaats.error ?? verplaatsMoment.error)
-      : null);
 
   if (!klasId) {
     return (
@@ -670,7 +668,7 @@ export function Agendascherm() {
       <Schermvlak breed>
         {/* Once, above everything, and only when it is true: the rights have answered and this gebruiker holds no
             planning right on the klas the picker shows. It names the klas, because the picker is what changed. */}
-        {!rechtenLaden && !magPlannen && klas ? (
+        {rechtenBekend && !magPlannen && klas ? (
           <p className="mb-3 text-meta text-inkt-zacht">{t("rechten.planningAlleenBekijken", { klas: klas.naam })}</p>
         ) : null}
 
@@ -770,11 +768,7 @@ export function Agendascherm() {
         {/* ONE STRIP FOR EVERYTHING A DRAG CAN GO WRONG WITH, because from the teacher side they are one
             thing: the drop did not do what she meant. `sleepFout` wins, since a refusal decided here
             fired no request and any server error beside it belongs to an earlier attempt. */}
-        {sleepmelding ? (
-          <p className="mt-4 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-            {sleepmelding}
-          </p>
-        ) : null}
+        <Agendamelding sleepFout={sleepFout} fouten={[acties.plaats.error, acties.verplaats.error, verplaatsMoment.error]} />
       </Schermvlak>
 
       <Activiteitkiezer
@@ -799,7 +793,14 @@ export function Agendascherm() {
               // the activiteit exists to avoid.
               einde: alsTijd(kiezer.begin + duur),
             },
-            { onSuccess: () => setKiezer(null) },
+            {
+              onSuccess: () => setKiezer(null),
+              // A refusal closes the picker at once rather than when the refetched rights arrive: the refusal's alert
+              // mounts in the same render, and it can only take focus once no dialog holds it (fix round 1).
+              onError: (fout) => {
+                if (isGeenToegang(fout)) setKiezer(null);
+              },
+            },
           );
         }}
         onNieuw={() => {

@@ -75,7 +75,8 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
   const fout = formulier?.fiche ? wijzig.error : maak.error;
   const doelFout = koppel.error ?? ontkoppel.error;
 
-  const { mag, laadt: rechtenLaden } = useRechten();
+  // `bekend`, not "not loading": a failed `/api/ik` proves nothing about rights (fix round 1, F3).
+  const { mag, bekend: rechtenBekend } = useRechten();
   const magBewerken = mag.klasplanningBewerken(klasId);
 
   return (
@@ -119,7 +120,7 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
         ) : null}
       </div>
 
-      {!rechtenLaden && !magBewerken && klas ? (
+      {rechtenBekend && !magBewerken && klas ? (
         <p className="text-meta text-inkt-zacht">{t("rechten.fichesAlleenBekijken", { klas: klas.naam })}</p>
       ) : null}
 

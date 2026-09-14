@@ -835,3 +835,35 @@ MAJOR 1: the flag's only writer is `Program.cs:69-70`, and no configuration bind
 
 ### Owner decision after round 4 (2026-09-14)
 The three fix rounds were used up. The owner approved one extra mini-fix covering MINOR 1 (the two comments) and QUESTION 2 (the klas and schooljaar not-found sentences without a raw id), and the orchestrator added the test-runner's round-4 LOW notes (focus the list-level alert when the sheet closes on its own), which share that code path. **The owner waived an antagonist review of that mini-fix** ("nee skip de antagonist"). Its evidence is the diff check, the tests and the browser check reported by the implementer.
+
+## Code slice 4 — audit round 1
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff b0a193f d859a10` on `story/E6-02-frontend` (54 files, +2975/−469), plus the "Code slice 4" worklog entry, checked against the server's `Rechtenmatrix`, `EfRechtenbronnen`, every controller policy and `RechtenmatrixTests`.
+- **Verdict:** VIOLATIONS FOUND — 1 MAJOR, 5 MINOR, 1 QUESTION. No CRITICAL.
+- **Gates re-run by the auditor:** `pnpm lint` exit 0; `pnpm test` 45 files, 452/452 green, at `d859a10`.
+
+### Confirmed compliant
+- `lib/rechten.ts` mirrors `Rechtenmatrix.cs`: 18 rows, the same columns, the same `StaatToe` clauses, the union rule; fails closed on `undefined`; `VERWACHT`/`RELATIES` equal the server's `Verwacht`/`Relaties`.
+- Maker delete (R25/R33): `MapActiviteit` sends `MakerId` and every link whatever its status, the same fact as `EfRechtenbronnen`; no maker matches no one; a right-less maker reaches the bin. I13: both ends, as `SubthemasController.Wijzig`.
+- Every frontend write call maps to a gated control whose answer matches the route's policy (all controllers checked).
+- Decision (c): no caller for `useVerplaatsActiviteit`, the doelsuggestie `/leerplandoel` route, wizardruns, thema-opbouw, algemene-ficheplaatsingen, or schooljaar create; nothing to gate.
+- Decision (d): no 403 loop (only mutations trigger it; no mutation fires from any `useEffect`); an unfiltered invalidation refetches only active queries; acceptable given how rare a 403 is.
+- Carry-forwards closed: both `Laadlink`s (`curriculumbeheer`, `?bron=opstap`), the Doelen header (`magInladen`), the klaskiezer jaarfase (`beheer`), `makerId` on `ActiviteitWeergave`.
+- Art. II (no hard-coded Dutch, 10 keys in `nl.json`, em-dash guards green); no new hue; never colour alone. Contrast 6.08/8.44 not re-measured by the auditor.
+
+### Findings to address
+1. **MAJOR F1 (E3-06):** `ergensDoelKoppelen` (`rechten.ts:227-233`) holds for a hoofdleerkracht of ANY leeftijd, but `Bestemmingsblad` lists only the active klas's subthema's. HL K3 with an L1 klas picked (I20 lets a hoofdleerkracht hold no klas) → "Koppel dit doel" (`DoelenScherm.tsx`, both `Doeldetail` call sites) opens a sheet with nothing to press. Gate on the klas's `jaarFasen` (`themaBewerken || jaarFasen.some(subdoelenBeheren || doelenKoppelen)`); add the test.
+2. **MINOR F2 (I26):** an empty thema (`thema.subthemas.length === 0`, which `useThema` carries for every leeftijd) is one the server lets themabeheer delete (`EfRechtenbronnen.VoorThemaAsync` → `HeeftAndermansInhoud = false`); the UI withholds it. Add a thema resource with `leeg`, or record an owner waiver; fix the two comments that say no read carries the fact (`rechten.ts:57-60`, the `ThemadetailScherm.tsx` doc block).
+3. **MINOR F3 (E5-03):** `useRechten().laadt` is `isPending` (`rechten.ts:243-247`), false after a failed `/api/ik` (`aanmelding.ts:37-44`, `retry: false`, `staleTime: Infinity`); the four "kan je alleen bekijken" lines (`Agendascherm`, `PlanScherm`, `Hoekensectie`, `Algemenefichesectie`) and `importeren.geenRecht` then tell directie they lack a right. Gate those sentences on "rights known" (`data !== undefined`); keep the controls fail-closed.
+4. **MINOR F4 (E5-03):** `Subthemaformulier` now filters `fasen` by right, so `fasen.length === 0` can mean "filtered to none" after a live rights loss, yet shows `klasbeheer.leeftijdenOnbekend` ("kon niet geladen worden… Herlaad de pagina"). Tell the two apart (say nothing about loading, or close the form as the pickers do).
+5. **MINOR F5 (E5-03):** `importeren.school.bedreigd` ("koppelingen die jij zelf gezet hebt", `Schoolcontentimport.tsx:137-141`, `nl.json:478`) now reaches themabeheer, who cannot set a subdoel by hand; the list counts every decided link. Reword to what the list guarantees (e.g. "{aantal} vastgelegde koppelingen staan niet in dit bestand"). The new "Die koppelingen blijven staan." is itself true.
+6. **MINOR F6 (CLAUDE.md):** `frontend-design` pass not run over the new reader states (`Activiteitfiche`, read-only `Hoekdetailblad`, reader `Plaatsingkaart`, the quiet lines, the `PlanScherm` refusal alert). Run it, or have the owner waive it.
+
+### For the owner
+- **Q1 (Art. XIV visibility):** open doelsuggesties are hidden from anyone who cannot decide them (`ThemadetailScherm.tsx`, `mag.doelsuggestiesBeoordelen && openSuggesties.length > 0`). Not a violation (I9 covers jaarplan, agenda and dekking; a voorgesteld link covers nothing; `GET /api/themas/{id}/doelsuggesties` stays open). Options: (A) keep them hidden, (B) show them read-only with status and motivation, marked as awaiting directie or themabeheer, (C) show a count only.
+- **F2** may be waived instead of fixed (directie-only thema delete in the UI until E6-05).
+
+### Owner decision on Q1 (2026-09-14)
+Asked by the orchestrator with the three options; the owner chose **(A): keep open doelsuggesties hidden** from anyone who cannot decide them, as built. F6 was resolved by the orchestrator's `frontend-design` pass (recorded in `test-report.md` under slice 4 round 1): no change beyond moving the agenda's 403 refusal into `Aandachtsmelding`.

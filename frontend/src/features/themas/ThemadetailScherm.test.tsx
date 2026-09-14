@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
@@ -86,7 +86,7 @@ function json(inhoud: unknown, status = 200) {
   return new Response(JSON.stringify(inhoud), { status, headers: { "Content-Type": "application/json" } });
 }
 
-function toon(ik: Ik, opties: { weiger?: boolean } = {}) {
+function toon(ik: Ik, opties: { weiger?: boolean; thema?: ThemaWeergave } = {}) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (pad: string, init?: RequestInit) => {
@@ -97,7 +97,7 @@ function toon(ik: Ik, opties: { weiger?: boolean } = {}) {
       }
       if (pad.endsWith("/doelsuggesties")) return json([SUGGESTIE]);
       if (pad.endsWith("/api/jaarfasen")) return json(["JK", "K2", "K3", "L1"]);
-      if (pad.endsWith("/api/themas/thema-1")) return json(THEMA);
+      if (pad.endsWith("/api/themas/thema-1")) return json(opties.thema ?? THEMA);
       return json({}, 404);
     }),
   );
@@ -105,7 +105,7 @@ function toon(ik: Ik, opties: { weiger?: boolean } = {}) {
     new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }),
     { ...ik, id: IK_ID },
   );
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={["/themas/thema-1"]}>
         <Routes>
@@ -114,6 +114,7 @@ function toon(ik: Ik, opties: { weiger?: boolean } = {}) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 
 const knop = (naam: string) => screen.queryByRole("button", { name: naam });
@@ -212,6 +213,31 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(within(blad).queryByRole("button", { name: t("themabeheer.bewaar") })).toBeNull();
     expect(within(blad).queryByRole("button", { name: t("activiteit.ontkoppel", { code: "WO-2" }) })).toBeNull();
     expect(within(blad).getByRole("button", { name: t("algemeen.sluiten") })).toBeInTheDocument();
+  });
+
+  // Fix round 1, F2: the empty thema is the one I26 case the thema read carries, and the server lets themabeheer
+  // delete it (`HeeftAndermansInhoud` false, no linked leeftijd).
+  it("geeft themabeheer de prullenbak op een leeg thema, zoals de server", async () => {
+    toon(ikMet({ heeftThemabeheer: true }), { thema: { ...THEMA, themadoelen: [], subthemas: [] } });
+
+    expect(
+      await screen.findByRole("button", { name: t("themabeheer.verwijderAria", { naam: "Herfst" }) }),
+    ).toBeInTheDocument();
+  });
+
+  // Fix round 1, F4: a form left open with no leeftijd to offer is a Bewaren that can only be refused, and it used to
+  // blame the loading. When the rights go, the form goes.
+  it("sluit het subthemaformulier wanneer er geen leeftijd meer is om het te maken", async () => {
+    const client = toon(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
+    fireEvent.click(await screen.findByRole("button", { name: t("subthemabeheer.toevoegen") }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    act(() => {
+      client.setQueryData(["ik"], { ...ikMet({}), id: IK_ID });
+    });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.queryByText(t("klasbeheer.leeftijdenOnbekend"))).toBeNull();
   });
 
   it("zegt het wanneer de server een oordeel over een doelsuggestie weigert", async () => {
