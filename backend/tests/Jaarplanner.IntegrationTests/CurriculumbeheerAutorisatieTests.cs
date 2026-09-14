@@ -1,6 +1,8 @@
 using System.Net;
+using System.Reflection;
 using Jaarplanner.Api.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -65,6 +67,40 @@ public sealed class CurriculumbeheerAutorisatieTests : IClassFixture<Jaarplanner
         {
             var beleiden = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>();
             Assert.Contains(beleiden, b => b.Policy == CurriculumbeheerAutorisatie.Beleid);
+        });
+    }
+
+    /// <summary>
+    /// The same seam, read from the controllers rather than from the mapped endpoints (E6-02 slice 1, fix round 2):
+    /// every controller whose route is under <c>api/opstap-import</c> names the policy, and none opens itself or one of
+    /// its actions with <c>[AllowAnonymous]</c>. Named, so a new Op.stap controller is added here on purpose.
+    /// </summary>
+    [Fact]
+    public void Elke_controller_onder_de_opstap_importroute_noemt_het_curriculumbeheerbeleid()
+    {
+        var controllers = typeof(Program).Assembly.GetTypes()
+            .Where(t => typeof(ControllerBase).IsAssignableFrom(t) && !t.IsAbstract)
+            .Where(t => t.GetCustomAttributes<RouteAttribute>(inherit: true)
+                .Any(r => r.Template.StartsWith("api/opstap-import", StringComparison.Ordinal)))
+            .ToList();
+
+        Assert.Equal(
+            [
+                "OpstapImportController",
+                "OpstapImportStandController",
+                "OpstapLeerplandoelenImportController",
+                "OpstapMinimumdoelenImportController",
+            ],
+            controllers.Select(c => c.Name).Order(StringComparer.Ordinal).ToArray());
+        Assert.All(controllers, controller =>
+        {
+            Assert.Contains(
+                controller.GetCustomAttributes<AuthorizeAttribute>(inherit: true),
+                a => a.Policy == CurriculumbeheerAutorisatie.Beleid);
+            Assert.Empty(controller.GetCustomAttributes<AllowAnonymousAttribute>(inherit: true));
+            Assert.All(
+                controller.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly),
+                actie => Assert.Empty(actie.GetCustomAttributes<AllowAnonymousAttribute>(inherit: true)));
         });
     }
 

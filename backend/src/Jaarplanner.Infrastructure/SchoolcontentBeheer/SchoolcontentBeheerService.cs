@@ -899,9 +899,13 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     /// ever reach. Refusing it at the door is the only place that costs nothing.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Refuses a leeftijd that is not one of the nine codes. The rule is <see cref="Jaarfasen.LeesLeeftijd"/>, which the
+    /// rights check on a body leeftijd (<c>Leeftijdsinhoud.UitInvoer</c>) shares, so the two cannot drift apart.
+    /// </summary>
     private static void VereisLeeftijd(string leeftijd)
     {
-        if (!Jaarfasen.IsBekend(leeftijd?.Trim()))
+        if (Jaarfasen.LeesLeeftijd(leeftijd) is null)
         {
             throw new SchoolcontentValidatieFout(
                 $"'{leeftijd}' is geen geldige leeftijd. Kies er een uit: {string.Join(", ", Jaarfasen.Alle)}.");

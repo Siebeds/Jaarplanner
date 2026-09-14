@@ -39,3 +39,33 @@ None.
 - No automated test covers "deleting a schooljaar removes its hoofdleerkracht appointments" (cascade set in the migration and confirmed live).
 - Only a `manueel` link is exercised for "any link blocks the maker's delete".
 - `MagAsync` through the registered policies is tested only for directie and anonymous; HTTP-level tests for the other resource rows belong to slice 3.
+
+## Round 2
+
+**Verdict:** PASS
+**Mode:** unit/integration (no frontend file changed; no live spot-check needed)
+**Change verified:** `138a605` on top of `d6460ef`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session).*
+
+### Commands run
+- `dotnet build` → 0 warnings, 0 errors.
+- `dotnet test --no-build` with `JAARPLANNER_TEST_POSTGRES` on `jaarplanner-db` (127.0.0.1:5433): unit 1315 passed, 4 skipped (opt-in live KOV), 0 failed (round 1 plus 12 `LeeftijdsinhoudTests` and 2 `SchoolklokTests`); integration 382 passed, 1 skipped (opt-in live import), 0 failed (round 1 plus the new cascade test).
+- `dotnet format --verify-no-changes` → exit 0. `has-pending-model-changes` → no changes.
+
+### The new tests pin the behaviour
+- `Zonder_zone_valt_de_klok_terug_op_UTC_en_waarschuwt_een_keer`: two calls on one `Eenmalig`, offset zero, equal results, exactly one `LogLevel.Warning`. `Met_de_zone_is_het_vandaag_in_Brussel`: 22:30Z on 30 June is 1 July, no warning. Callers get a real logger (`RechtenService` required; `ClosedXmlDekkingExport` optional but supplied by DI); all 26 `ClosedXmlDekkingExportTests` pass.
+- `LeeftijdsinhoudTests`: every case asserts both `WatIsErMisMet` and `UitInvoer` (trim, case-sensitive, invalid codes, null/blank, and a K3 hoofdleerkracht passing `SubthemaBeheren` on `" K3"`).
+- `Een_schooljaar_verwijderen_ruimt_zijn_hoofdleerkrachtaanstellingen_op`: deletes one schooljaar in a fresh context so only the database cascade can remove its appointment; the other year's appointment and the gebruiker survive. Closes round 1's first note.
+
+### Criteria (round 1, from the suite)
+All six PASS: `GebruikerTests` 19/19, `SchoolcontentImportServiceTests` 17/17, `RechtenberekeningTests` 23/23, `RechtenmatrixTests` 127/127, `RechtenbeleidTests` 9/9, `CurriculumbeheerAutorisatieTests` 4/4, `RechtenEndpointsTests` 15/15, `ElkeRouteVraagtEenSessieTests` 4/4.
+
+### Defects
+None.
+
+### Non-blocking notes
+- `UitInvoer` has no production caller yet; slice 3's review should check that request-body leeftijden go through it.
+- "One warning across callers" rests on the shared static `Eenmalig`, not on a two-caller test.
+- `Met_de_zone_is_het_vandaag_in_Brussel` fails on a host without tzdata/ICU (intended; a CI image without tzdata would go red).
+- Round 1 miscounted `RechtenbeleidTests` (9, not 8).

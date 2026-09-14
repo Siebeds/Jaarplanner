@@ -1234,3 +1234,34 @@ Development:
   - UnitTests: 1315 passed, 4 skipped (live KOV opt-in).
   - IntegrationTests: 382 passed, 1 skipped (live Op.stap opt-in).
 - No frontend file changed, so the pnpm gates did not apply.
+
+### Fix round 2
+
+- **Input:**
+  - "Code slice 1 — audit round 2" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 5 MINOR, all about the wording of round-1
+    fixes;
+  - "Round 2" of `test-report.md`: PASS.
+
+  Both are the orchestrator's and are committed unedited.
+- **Branch:** `story/E6-02-fundament`, on top of `138a605`.
+- **Split of work (orchestrator's instruction):** `backlog/E7-niet-functioneel.md` and `docs/adr/README.md` are
+  claimed by another session (kindrapport, TB-005) and were **not** edited. The E7-06 half of MINOR 2, the E7-11
+  wording half of MINOR 4, and all of MINOR 3 (the ADR index) are the orchestrator's.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | `UitInvoer`'s doc named `Jaarfasen.WatIsErMisMet`, while the subthema write validates with `VereisLeeftijd`; the tests checked `UitInvoer` only against itself | **One rule now.** New `Jaarfasen.LeesLeeftijd(string?)` (trim, then exactly one of the nine codes, or null). Three callers share it: `VereisLeeftijd` (subthema create and re-scope), `Leeftijdsinhoud.UitInvoer`, and the accept branch of `WatIsErMisMet`. The accept set was already identical, so no Dutch sentence and no HTTP status changed. Both docs now name the real rule. **New `UnitTests/Schoolcontent/SubthemaLeeftijdInvoerTests`:** it runs 12 inputs through the real `MaakSubthemaAsync` and `WijzigSubthemaAsync` and asserts each is accepted iff `UitInvoer` is non-null, in the same stored form; a third test pins the write's refusal sentence. `LeeftijdsinhoudTests` now asserts fixed expected values instead of comparing with the function it is built from. |
+| 2 | The schooljaar cascade test said "the way a real delete would take them", but no route deletes a schooljaar | **Code half fixed.** The comment now says no route deletes a schooljaar yet, and that a tracked removal is how a future delete (E6-03) will take the owned closures. The E7-06 half is the orchestrator's. |
+| 3 | The ADR index still presents the ADR-0022 seam as a no-op | **Not mine:** `docs/adr/README.md` is claimed; the orchestrator does it. |
+| 4 | E7-11 says `RechtenEndpointsTests` covers every Op.stap route | **Code half fixed.** New reflection test `Elke_controller_onder_de_opstap_importroute_noemt_het_curriculumbeheerbeleid` in `CurriculumbeheerAutorisatieTests`. It finds every controller whose `[Route]` is under `api/opstap-import`, requires exactly the four (named), and requires each to carry `[Authorize(Policy = Curriculumbeheer)]`, with no `[AllowAnonymous]` on the class or any action. With the existing endpoint-metadata test, which already enumerates the seven endpoints, all seven are now pinned from both sides. The E7-11 wording is the orchestrator's. |
+| 5 | The R25 carry-forward sits under a story that will close, and nothing points to it from where the question becomes live | **Fixed.** `backlog/E8-fast-follow.md`, E8-07, now has a pointer: the owner's answer on R25 link status is owed before it lands, because it creates the first non-`Manueel` activiteit links. The `Activiteitbron.HeeftDoelkoppelingen` doc now points at the R25 carry-forward under E6-02 in `backlog/E6-beheer-rollen-samenwerking.md`, not the worklog. *That carry-forward is `ef6468b` on `feature/e6-rollen-rechten`; it reaches this branch at the merge.* |
+| nit | `LeeftijdsinhoudTests` has 12 cases, not 11 | **Noted here:** fix round 1's "(11 cases)" should read 12 (four accepted, seven refused, one rights check). The round-1 text is kept as the audited record. |
+
+**Gates:**
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format`, then `--verify-no-changes`: clean.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`):
+  - UnitTests: 1340 passed, 4 skipped (live KOV opt-in).
+  - IntegrationTests: 383 passed, 1 skipped (live Op.stap opt-in).
+- No frontend file changed.

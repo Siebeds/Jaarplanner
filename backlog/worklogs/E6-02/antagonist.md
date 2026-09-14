@@ -427,3 +427,50 @@ The matrix code is faithful to ADR-0030 §3. I compared every row and every colu
 - Art. XIV graadklassen: the seam is in place (`Leeftijdsrechten.VoorKlas`); nothing is hard-assumed.
 - Art. XIV visibility / I9: untouched. Reading still rides the fallback policy, behind E6-09.
 - The wizard's own write actions (I22, I23 and the I24/I25 defaults on `15a044c`): deferred to slice 3 / E6-05, with no resource type yet.
+
+## Code slice 1 — audit round 2
+
+*Recorded by the orchestrator from the antagonist's final message: the antagonist is read-only and has no Write tool,
+and it declined to append through Bash. Condensed in layout only; the findings are as it wrote them.*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 0 MAJOR, 5 MINOR, 0 QUESTION)
+**Scope audited:** `git diff d6460ef 138a605` (12 files); the parts of `60020b9..138a605` the fix makes newly relevant
+(the subthema write path that `UitInvoer` guards, every controller behind `Curriculumbeheer`, the `RechtenModel`
+cascades, the delete routes, the ADR index); and `ef6468b` on `feature/e6-rollen-rechten`.
+
+| Round 1 | Status |
+| --- | --- |
+| MINOR E7-11 | Resolved. One claim in the annotation goes too far (MINOR 4), taken from the round-1 text. |
+| MINOR ADR-0022 | Resolved; every claim in the pointer is true. The ADR index was not updated (MINOR 3). |
+| MINOR E7-06 | Resolved for the schema. The retention text names triggers no route can pull (MINOR 2). |
+| MINOR Schoolklok | Resolved. No behaviour change, no broken caller. |
+| MINOR Leeftijdsinhoud | Resolved in behaviour. Its doc names the wrong rule and its tests only check it against itself (MINOR 1). |
+| QUESTION R25 | Disposition adequate. The gate is not where its trigger fires (MINOR 5). |
+
+### [MINOR] 1. `UitInvoer` names a rule the subthema write does not use, and its tests only check it against itself
+- **Article/FR:** ADR-0011 §2; Art. II.3; the CLAUDE.md rule that a sentence (code comments too) asserts only what its code guarantees.
+- **Where:** `Application/Toegang/Rechtenbronnen.cs:44-54`; `Infrastructure/SchoolcontentBeheer/SchoolcontentBeheerService.cs:302, :332, :902-908`; `UnitTests/Toegang/LeeftijdsinhoudTests.cs:19-21, :33-35`.
+- **Problem:** the doc says the rule is the one a klas's jaarfase and a subthema's leeftijd obey (`Jaarfasen.WatIsErMisMet`); the subthema create and re-scope actually validate with `VereisLeeftijd` (`Jaarfasen.IsBekend(leeftijd?.Trim())`) and refuse with a different Dutch sentence. The two accept the same inputs today, but nothing ties them together and the tests compare `UitInvoer` with the function it is built from, so they cannot fail. Fail-closed if they drift.
+- **Required fix:** make one rule serve both (e.g. `VereisLeeftijd` delegating to the same predicate), or correct the doc to name `VereisLeeftijd` and its sentence; either way add a test that checks `UitInvoer` against the subthema write's own validation.
+
+### [MINOR] 2. The E7-06 retention text names removal triggers no route can pull
+- **Article/FR:** Art. VI.6, VI.2.
+- **Where:** `backlog/E7-niet-functioneel.md` (the E6-02 slice 1 carry-forward); the comment in the new schooljaar test in `RechtenEndpointsTests.cs` ("the way a real delete would take them").
+- **Problem:** the cascades are real, but no route deletes a gebruiker or a schooljaar (no `HttpDelete` on either controller; only the klas delete exists, `KlasBeheerService.cs:239`). A reader of the register would think a departing teacher's rows can be removed today.
+- **Required fix:** say that no route removes a gebruiker or a schooljaar yet, so these rows are kept indefinitely until one exists; correct the test comment to "a future delete".
+
+### [MINOR] 3. The ADR index still presents ADR-0022's seam as a no-op
+- **Where:** `docs/adr/README.md:38` and `:88` (present tense: "is deliberately a no-op until E6-02 binds it").
+- **Required fix:** mirror the ADR-0022 pointer in both places, in the past tense (bound to the directie row by E6-02 slice 1, 2026-09-14).
+
+### [MINOR] 4. E7-11 says `RechtenEndpointsTests` covers every Op.stap route; it covers two of seven endpoints
+- **Where:** the new annotation in `backlog/E7-niet-functioneel.md` (wording from round 1, `antagonist.md:335`).
+- **Problem:** all four Op.stap controllers carry the attribute (`OpstapImportController.cs:55`, `OpstapImportStandController.cs:19`, `OpstapMinimumdoelenImportController.cs:32`, `OpstapLeerplandoelenImportController.cs:30`), but the tests request only `POST /api/opstap-import` and `GET /api/opstap-import/stand`, and there is no reflection guard.
+- **Required fix:** narrow the sentence, or add a reflection test that every controller under `api/opstap-import` names the `Curriculumbeheer` policy.
+
+### [MINOR] 5. The R25 carry-forward sits under a story that will close, not where its trigger fires
+- **Where:** `ef6468b` (under E6-02); `backlog/E8-fast-follow.md:27-28` (E8-07, no pointer); `Application/Toegang/Rechtenbronnen.cs:67-70` (points to "the E6-02 worklog").
+- **Problem:** the premises hold (activiteit links only `Manueel`; `Voorgesteld` only on thema doelsuggesties; the import writes only themadoel and subdoel links; the reading lives in one expression, `EfRechtenbronnen.cs:36`), but E8-07, the story that trips it, says nothing, and the code doc points to a worklog.
+- **Required fix:** a one-line pointer on E8-07; point the `HeeftDoelkoppelingen` doc at the carry-forward.
+
+**Checks run:** every `Schoolklok` caller updated, label and conversion read the same zone, DI lifetimes fine, one warning per process via `Interlocked.Exchange`, comment now true; `UitInvoer`'s accept set proved equal to `VereisLeeftijd`'s by case analysis; the ADR-0022 pointer verified line by line; unit tests filtered to `Toegang` and `ClosedXmlDekkingExport` 217 passed; `dotnet format --verify-no-changes` exit 0. Worklog nit: `LeeftijdsinhoudTests` has 12 cases, not 11. Art. II–VIII: nothing new.

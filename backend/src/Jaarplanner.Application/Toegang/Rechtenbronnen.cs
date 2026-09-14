@@ -42,16 +42,17 @@ public interface IRechtenbronnen
 public sealed record Leeftijdsinhoud(string Leeftijd)
 {
     /// <summary>
-    /// The resource for a leeftijd that did not come from the database. It is trimmed and validated by the rule a
-    /// klas's jaarfase and a subthema's leeftijd obey (<see cref="Jaarfasen.WatIsErMisMet"/>), so it accepts exactly
-    /// what the write it guards will accept, in the form that write will store.
+    /// The resource for a leeftijd that did not come from the database. It goes through
+    /// <see cref="Jaarfasen.LeesLeeftijd"/>, the same function the subthema create and re-scope validate with
+    /// (<c>SchoolcontentBeheerService.VereisLeeftijd</c>). So it accepts exactly what those writes accept, in the
+    /// trimmed form they store. A test runs both over the same inputs.
     /// </summary>
     /// <returns>
-    /// <c>null</c> when the input is no leeftijd at all. The caller refuses the request as the service would (400 with
-    /// <see cref="Jaarfasen.WatIsErMisMet"/>'s sentence). It never skips the rights check on a null.
+    /// <c>null</c> when the input is no leeftijd at all. The caller lets the write refuse it, with the write's own 400
+    /// and sentence, or refuses it the same way. It never skips the rights check on a null.
     /// </returns>
     public static Leeftijdsinhoud? UitInvoer(string? leeftijd) =>
-        Jaarfasen.WatIsErMisMet(leeftijd) is null ? new Leeftijdsinhoud(leeftijd!.Trim()) : null;
+        Jaarfasen.LeesLeeftijd(leeftijd) is { } code ? new Leeftijdsinhoud(code) : null;
 }
 
 /// <summary>The planning of one klas (jaarplan, (her)generatie, agenda, hoeken, algemene fiches): the "LK eigen" resource.</summary>
@@ -66,6 +67,8 @@ public sealed record Klasplanning(Guid KlasId);
 /// <param name="MakerId">Who created it, or <c>null</c> (imported, older than the rule, or its maker was removed).</param>
 /// <param name="HeeftDoelkoppelingen">
 /// Whether any goal is linked to it, whatever the link's status. Counting a <c>geweigerd</c> or <c>voorgesteld</c> link
-/// as linked is the fail-closed reading of R25's "while no goal is linked to it"; see the E6-02 worklog.
+/// as linked is the fail-closed reading of R25's "while no goal is linked to it". It is neither ruled nor a listed
+/// default; the owner's answer is owed before any path creates an activiteit link that is not <c>manueel</c> (E8-07).
+/// See the R25 carry-forward under E6-02 in <c>backlog/E6-beheer-rollen-samenwerking.md</c>.
 /// </param>
 public sealed record Activiteitbron(Guid ActiviteitId, string Leeftijd, Guid? MakerId, bool HeeftDoelkoppelingen);

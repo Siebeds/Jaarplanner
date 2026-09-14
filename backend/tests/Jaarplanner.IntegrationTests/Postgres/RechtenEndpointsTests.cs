@@ -220,8 +220,8 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         await StelAanAsync(an.Id, jaar.Id, "K3");
         await StelAanAsync(an.Id, ander.Id, "L2");
 
-        // Tracked removal rather than ExecuteDelete, so the owned closures go the way a real delete would take them;
-        // the appointment is not loaded, so only the database cascade can remove it.
+        // No route deletes a schooljaar yet. A tracked removal is how a future delete (E6-03) will take the owned
+        // closures with it; the appointment is not loaded, so only the database cascade can remove it.
         await using (var verwijder = _db.MaakContext())
         {
             verwijder.Schooljaren.Remove(await verwijder.Schooljaren.SingleAsync(s => s.Id == jaar.Id));
