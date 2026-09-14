@@ -2,10 +2,10 @@
 id: TB-009
 titel: Demo-seed maakt ook activiteiten aan per subthema
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 13:13
+bijgewerkt: 2026-09-14 13:27
 opgepakt-door: demo-seed
 branch: ticket/demo-seed-activiteiten
 pr:
@@ -56,3 +56,5 @@ Geen.
 
 - 2026-09-14 12:35 · demo-seed · aangemaakt (status in-uitvoering)
 - 2026-09-14 13:13 · demo-seed · run 0ca70c4: 18 activiteiten en 18 doelen aangemaakt; tweede run: alles found; databasecontrole: 2 activiteiten per subthema, alle 18 aan de onderzoeksvraag van hun eigen subthema; antagonist ronde 1 COMPLIANT met 2 MINOR, verwerkt in fc0d70e: onderzoeksvraag op tekst gekozen, 3 zwakke doelen vervangen via doelenWeg (run: 3 weg, 4 gekoppeld; herhaalde run: niets meer); sleutels telkens ongewijzigd (1), rol en firewallregel telkens weer weg; antagonist ronde 2 loopt
+- 2026-09-14 13:27 · demo-seed · antagonist ronde 2 COMPLIANT met 3 MINOR en 1 vraag, verwerkt in c1076bf: overlap doelen/doelenWeg geweigerd (offline getest, weigering na 0,3 s voor Docker, git, build of Azure), doelenWeg werkt bij elke run en dat staat nu in README en ticket, de drie doelenWeg-regels weer uit de data, een geweigerde DELETE geeft een waarschuwing, criterium voor het verwijderpad toegevoegd en afgevinkt (3 weg, 4 gekoppeld, daarna 0 en 0); laatste run: alles found, sleutels ongewijzigd (1), rol en firewallregel weg
+- 2026-09-14 13:27 · demo-seed · in-uitvoering → klaar: 18 activiteiten in de demo, 2 per subthema, met onderzoeksvraag en doel; script idempotent, doelenWeg voor gerichte correcties; gates: 2 antagonistrondes verwerkt, runs tegen de demo
