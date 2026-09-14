@@ -5,7 +5,7 @@ soort: technisch
 status: nieuw
 prioriteit: hoog
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:36
+bijgewerkt: 2026-09-14 15:20
 opgepakt-door:
 branch:
 pr:
@@ -88,3 +88,4 @@ Nog open:
 - 2026-09-14 11:36 · ai-doelsuggesties · geblokkeerd: wacht op de eigenaar: SKU's en budget per omgeving, welke Entra-tenant, waar en wanneer echte gegevens
 - 2026-09-14 14:36 · ai-doelsuggesties · niet langer geblokkeerd
 - 2026-09-14 14:36 · ai-doelsuggesties · eigenaar besliste: dev/tst goedkoop, prd B1 maar nog niet deployen; tenant van de school; echte gegevens alleen in prd; Foundry gedeeld voor dev/tst, eigen voor prd
+- 2026-09-14 15:20 · ai-doelsuggesties · toegevoegd aan Voorgestelde wijziging: het ADR van dit ticket wijzigt ook beslissing 3 van ADR-0036, want dev en tst delen de evaluatie-resource uit TB-004
