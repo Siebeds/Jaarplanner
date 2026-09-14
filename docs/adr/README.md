@@ -85,7 +85,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0033 | Art. II.6 (amended), II.2, X, XIII, VI, XI/XIV | all epics, side by side; tickets from 2026-09-13 | none (team workflow) |
 | 0034 | Art. VI.2/VI.3/VI.4/VI.5/VI.6, VIII; Art. VI.1 unmet by the code until E6-02 (the owner waived E7-11's deployment clause for this demo, not the article) | E7-04, E7-11, E7-05, E7-09 | NFR-4/5/6/9 |
 | 0035 | Art. I.1/I.2, IV.1–IV.5, VI.1/VI.2/VI.6 and a new VI.7, a new IX.4, XII (amended in TB-005); XI.1 followed; V.1 unchanged; VI.3/VI.5, VIII, II.1/II.3, XIV (three bullets touched) | TB-005; the FB build tickets of its §6, after E6-02; E6-02/04, E7-06/09/11, E8 (note) | FR-13 (new), FR-10, FR-12.2; NFR-5/6 |
-| 0036 | Art. IV.4/IV.5/IV.6, VI.2, VI.3, VI.4, VI.6, VIII; realises 0016 for the AI evaluation; relates to 0010, 0012 and 0034 | TB-004; TB-006; E7-06; E2-09 (unchanged) | FR-4 (A.7 step 6); NFR-5/6 |
+| 0036 | Art. IV.4/IV.5/IV.6, VI.2/VI.7, VI.3, VI.4, VI.6, VIII; realises 0016 for the AI evaluation; relates to 0010, 0012 and 0034 | TB-004; TB-006; E7-06; E2-09 (unchanged) | FR-4 (A.7 step 6); NFR-5/6 |
 
 ## Open decisions referenced by ADRs
 

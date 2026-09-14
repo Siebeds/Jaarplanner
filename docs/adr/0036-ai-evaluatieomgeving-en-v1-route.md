@@ -57,7 +57,8 @@ Three technical facts shaped the rest:
      jaar/fase with a model choosing from an embedding top 25, computed in memory. No vector database until the
      measurement asks for one;
    - the repository is public, so real evalsets, reports and caches live in `eval-data/`, which git ignores, and the
-     runner refuses to write elsewhere in the repo unless git ignores it. Only an invented example is committed.
+     runner refuses to write elsewhere in the repo unless git ignores it. Only an invented example is committed
+     (Art. VI.2, VI.7).
 
 ## Alternatives considered
 
@@ -84,7 +85,7 @@ Three technical facts shaped the rest:
 - A second Azure resource, in a second EU region, to pay for and to remember to delete.
 - School content (subthema texts, no pupil data) is processed in the EU data zone for the eval. The processing
   register (E7-06) must name this resource before a real evalset is sent, and the export of a gold set must check its
-  free text for pupil names (Art. VI.2).
+  free text for pupil names (Art. VI.2, VI.7).
 - `AzureAI:ApiVersion` in an environment's configuration is now ignored.
 - The key path on the v1 route has run only against a stub. The evaluation resource has no keys
   (`disableLocalAuth`), so the eval exercises Entra only; the first host that calls a key-based resource on the v1
@@ -100,7 +101,9 @@ Three technical facts shaped the rest:
 
 - **Constitution:** Art. IV.4 (the eval grounds only on the catalogue and the evalset's school content), Art. IV.5
   (the production parser validates every answer), Art. IV.6 (the client and the embeddings stay behind fakeable
-  seams), Art. VI.2 (no pupil data in an evalset), Art. VI.3 (EU data zone), Art. VI.4 (no keys on the resource; the
-  key, where used, stays server-side), Art. VI.6 (the processing register follow-up), Art. VIII (Azure).
+  seams), Art. VI.2 and VI.7 (no pupil data in an evalset, nor in the repository or the logs: evaluation data stays in
+  the ignored `eval-data/`, and the clients log neither prompt nor answer), Art. VI.3 (EU data zone), Art. VI.4 (no
+  keys on the resource; the key, where used, stays server-side), Art. VI.6 (the processing register follow-up),
+  Art. VIII (Azure).
 - **Backlog:** TB-004; TB-006; E7-06; E2-09 (unchanged).
 - **FR/NFR:** FR-4 (step 6 of A.7), NFR-5, NFR-6.
