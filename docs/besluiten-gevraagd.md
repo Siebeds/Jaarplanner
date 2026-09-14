@@ -192,7 +192,7 @@ Onder een thema hangen de **subthema's**, en die zijn per **leeftijd**: een subt
 
 **Waarom we het vragen.** Het bepaalt wat de leerkracht van een graadklas zelf mag aanpassen, en het raakt ook vraag 11 hierboven: een activiteit kan vandaag niet van het ene leerjaar naar het andere verhuizen.
 
-**Gevolg zolang dit openstaat.** De tool werkt voor graadklassen, maar voor het tweede leerjaar moet de leerkracht de hoofdleerkracht of de directie vragen. De regel zit op één plaats in de tool, dus uw antwoord verandert enkel die plaats. Het raakt ook het ontwikkelingsrapport (vraag 15): een kleuterklas met kinderen van K2 en K3 die in de tool als K2 staat, krijgt voor zijn K3-kinderen geen ontwikkelingsrapport zolang u dit niet beslist.
+**Gevolg zolang dit openstaat.** De tool werkt voor graadklassen, maar voor het tweede leerjaar moet de leerkracht de hoofdleerkracht of de directie vragen. De regel zit op één plaats in de tool, dus uw antwoord verandert enkel die plaats. Het raakt ook het ontwikkelingsrapport (vraag 15): een kleuterklas met kinderen van K2 en K3 die in de tool als K2 staat, krijgt voor zijn K3-kinderen geen ontwikkelingsrapport zolang u dit niet beslist. Omgekeerd: staat zo'n klas als K3, dan voert de leerkracht voor het rapport alleen de K3-kinderen in.
 
 ---
 

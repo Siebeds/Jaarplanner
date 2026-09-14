@@ -599,7 +599,8 @@ draft before anything is enforced from it."*
 **A row is ratified only as far as the rulings it cites.**
 
 - **Citations count at column level.** Every "Directie" ✓ rests on R3, whatever the row cites, and a "–" grants
-  nothing, so it needs no citation.
+  nothing, so it needs no citation. One row has no directie ✓ at all: the K3 set of the ontwikkelingsrapport
+  (footnote ⁶, ADR-0035 R31).
 - Whatever a row takes from an I-item of §2, or from a lettered question of §4, is a default and is not ratified
   with Art. VI.1.
 - **Every row cites at least one ruling.** The Op.stap row rests on R3; the Exporteren row on R3 and R7, with I9 for
@@ -658,7 +659,7 @@ that this relation alone does not grant the action. It never takes away what ano
 | Een ontwikkelingsrapport invullen: gradatie, tekst, besluit, kindtekening, AI-herwerking (ADR-0035 R16, R21, R22, R26) | ✓ | – | – | – | ✓⁶ | – |
 | Een ontwikkelingsrapport lezen (ADR-0035 R16, R17, R18, R26) | ✓ | –⁶ | –⁶ | –⁶ | ✓ | –⁶ |
 | Een ontwikkelingsrapport downloaden als PDF of Word (ADR-0035 R13, R26; D5) | ✓ | – | – | – | ✓ | – |
-| De K3-rapportdoelen en de sterrenschaal aanpassen (ADR-0035 R4, R5, R6; D4) | ✓ | – | – | K3⁶ | – | – |
+| De K3-rapportdoelen en de sterrenschaal aanpassen (ADR-0035 R4, R5, R6, R31; D4) | –⁶ | – | – | K3⁶ | – | – |
 | De leerlinggegevens van een schooljaar wissen (ADR-0035 R19, R28; D7) | ✓ | – | – | – | – | – |
 
 ¹ R6 names a *leerkracht*. For a gebruiker with no klastoewijzing, including a themabeheer or hoofdleerkracht holder
@@ -683,8 +684,8 @@ on the ordinary subthema, subdoel and activiteit routes** (I22), which is what t
 ⁶ **The ontwikkelingsrapport rows** were added on 2026-09-14 from [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md)
 §3.3. The R-numbers in their labels are ADR-0035's, not this ADR's, and they are ratified by Art. VI.7 as far as they
 cite those rulings. The "Directie" ✓ on them rests on this ADR's R3, as everywhere else in the matrix, **except on the rapportdoelen row**.
-There it is a default (Art. VI.7), because ADR-0035 R6 named only the K3 leerkrachten and turned down "Directie en
-K3-leerkrachten".
+There directie has no ✓: the owner ruled that only the K3 leerkrachten edit the set, and directie views it (ADR-0035
+R31). It is the one exception to R3.
 - **The column definitions widen for these rows only.**
   - "LK eigen" covers the klas's leerlingen and their reports as well as its planning. It fills in only during the klas's
     schooljaar; after it, it reads (ADR-0035 R26) and downloads (a default) only, which overrides I21 for these rows.

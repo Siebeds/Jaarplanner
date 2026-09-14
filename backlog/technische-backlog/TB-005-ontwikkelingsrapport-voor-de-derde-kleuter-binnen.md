@@ -2,10 +2,10 @@
 id: TB-005
 titel: Ontwikkelingsrapport voor de derde kleuter binnen scope brengen: amendement en ADR
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:43
+bijgewerkt: 2026-09-14 12:56
 opgepakt-door: kindrapport
 branch: ticket/TB-005-ontwikkelingsrapport-scope
 pr:
@@ -32,7 +32,7 @@ Dit ticket legt die beslissing en de regels voor de leerlinggegevens vast, vóó
 Geen broncode. Alleen documenten:
 
 1. **ADR-0035** (`docs/adr/0035-ontwikkelingsrapport-derde-kleuter.md`). Die legt vast:
-   - de 30 antwoorden van de eigenaar, letterlijk (R1 tot R30, waarvan R23 tot R30 na de eerste audit);
+   - de 31 antwoorden van de eigenaar, letterlijk (R1 tot R31, waarvan R23 tot R31 na de eerste audit);
    - het model;
    - wie wat mag, met een vijfde recht **Leerlingzorg**;
    - de AI-herwerking zonder de namen van de klas;
@@ -44,7 +44,7 @@ Geen broncode. Alleen documenten:
    - in de grondwet: Art. I.1, I.2, IV.1 tot IV.5, VI.1, VI.2, VI.6, een nieuw VI.7, een nieuw IX.4, Art. XII en het
      ratificatielog;
    - mee in dezelfde commit:
-     - de functionele analyse (buiten scope, §3.1, een nieuwe FR-13, NFR-6, aannames, A.11);
+     - de functionele analyse (binnen en buiten scope, §3.1, een nieuwe FR-13, NFR-6, §7, aannames, A.11);
      - `CLAUDE.md` (de afspraken over leerlinggegevens en AI, de AI-conventies, het datamodel, de woordenlijst);
      - de matrix in ADR-0030, de ADR-index en de statusregels van ADR-0011 en ADR-0016;
      - E7-06 en de E8-nota;
@@ -54,12 +54,12 @@ Geen broncode. Alleen documenten:
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven ADR-0035, wanneer iemand leest wat de eigenaar besliste, dan staan de vragen, de gekozen en de niet gekozen opties letterlijk, en apart van de standaardkeuzes van de sessie.
-- [ ] Gegeven de grondwet na het amendement, dan staat het ontwikkelingsrapport voor K3 niet meer onder de niet-doelen. Toegang voor ouders, koppelingen met Informat of Smartschool en puntenbeheer blijven wel niet-doelen.
-- [ ] Gegeven Art. VI na het amendement, dan staat erin welke leerlinggegevens bewaard worden, wie ze ziet, hoe ze gewist worden en dat de namen van de kinderen van de klas vervangen worden voor een tekst naar de AI gaat.
-- [ ] Gegeven de amendementscommit, dan zijn de functionele analyse, `CLAUDE.md`, de matrix in ADR-0030, de ADR-index, ADR-0011, ADR-0016, E7-06, E8 en de drie agent- en skillbestanden in dezelfde commit bijgewerkt, en zegt geen van die teksten nog zonder uitzondering "geen leerlinggegevens".
-- [ ] Gegeven `docs/besluiten-gevraagd.md`, dan staat er een vraag aan de directie over het ontwikkelingsrapport: bevestiging, bewaartermijn in het verwerkingsregister, ouders informeren, DPIA.
-- [ ] Gegeven de antagonist-audit van de ADR en het amendement, dan is het oordeel COMPLIANT, of is elke bevinding verwerkt of uitdrukkelijk opzijgezet.
+- [x] Gegeven ADR-0035, wanneer iemand leest wat de eigenaar besliste, dan staan de vragen, de gekozen en de niet gekozen opties letterlijk, en apart van de standaardkeuzes van de sessie.
+- [x] Gegeven de grondwet na het amendement, dan staat het ontwikkelingsrapport voor K3 niet meer onder de niet-doelen. Toegang voor ouders, koppelingen met Informat of Smartschool en puntenbeheer blijven wel niet-doelen.
+- [x] Gegeven Art. VI na het amendement, dan staat erin welke leerlinggegevens bewaard worden, wie ze ziet, hoe ze gewist worden en dat de namen van de kinderen van de klas vervangen worden voor een tekst naar de AI gaat.
+- [x] Gegeven de amendementscommit, dan zijn de functionele analyse, `CLAUDE.md`, de matrix in ADR-0030, de ADR-index, ADR-0011, ADR-0016, E7-06, E8 en de drie agent- en skillbestanden in dezelfde commit bijgewerkt, en zegt geen van die teksten nog zonder uitzondering "geen leerlinggegevens".
+- [x] Gegeven `docs/besluiten-gevraagd.md`, dan staat er een vraag aan de directie over het ontwikkelingsrapport: bevestiging, bewaartermijn in het verwerkingsregister, ouders informeren, DPIA.
+- [x] Gegeven de antagonist-audit van de ADR en het amendement, dan is het oordeel COMPLIANT, of is elke bevinding verwerkt of uitdrukkelijk opzijgezet.
 
 ## Buiten scope
 
@@ -70,7 +70,7 @@ Geen broncode. Alleen documenten:
 
 ## Open vragen
 
-Geen. De eigenaar beantwoordde op 2026-09-14 alle 30 vragen (ADR-0035 §1). De bevestiging door de directie komt als vraag
+Geen. De eigenaar beantwoordde op 2026-09-14 alle 31 vragen (ADR-0035 §1). De bevestiging door de directie komt als vraag
 in `docs/besluiten-gevraagd.md` en houdt het werk niet tegen (R20, R27).
 
 ## Werklog
@@ -83,3 +83,6 @@ in `docs/besluiten-gevraagd.md` en houdt het werk niet tegen (R20, R27).
 - 2026-09-14 12:31 · kindrapport · Antagonist ronde 2: VIOLATIONS FOUND (1 MAJOR, 9 MINOR, 4 vragen), allemaal verwerkt zonder nieuwe vraag aan de eigenaar: de AI krijgt nu alleen de tekst (R21), eigen keuzes als standaard gemarkeerd, de herinnering (R28) overal, AVG art. 9 en de volledige R29 opgenomen; rapport in backlog/worklogs/TB-005/antagonist-ronde-2.md
 - 2026-09-14 12:34 · kindrapport · De eigenaar bevestigde de aanpassing aan de drie agent- en skillbestanden in zijn eigen antwoord: 'Ja, zo is het goed' (komt als R30 in ADR-0035 na ronde 3)
 - 2026-09-14 12:43 · kindrapport · Antagonist ronde 3: 0 MAJOR, 7 MINOR, 2 vragen, allemaal verwerkt: directie op de K3-set is een standaardkeuze (R6), AVG-verwijzing verbeterd (art. 13(1)/14, voorwaardelijk), namen in logs en code blijven CRITICAL, graadklas-gevolg aan de directie gemeld, R30 opgenomen; rapport in backlog/worklogs/TB-005/antagonist-ronde-3.md
+- 2026-09-14 12:56 · kindrapport · Antagonist ronde 4: 0 MAJOR, 4 MINOR, 2 vragen, verwerkt; de eigenaar besliste R31 (alleen de K3-leerkrachten passen de K3-set en de sterrenschaal aan, de directie bekijkt ze). De kleine correcties na ronde 4 zijn niet meer geauditeerd.
+- 2026-09-14 12:56 · kindrapport · Acceptatiecriteria afgevinkt: ADR-0035 §1 citeert R1 tot R31 letterlijk, apart van D1 tot D16; Art. I.2, VI.2, VI.6 en VI.7 in de grondwet; alle afhankelijke teksten in de amendementscommit ac60a42 en de correcties daarna; vraag 15 in besluiten-gevraagd.md; vier antagonistrondes, elke bevinding verwerkt
+- 2026-09-14 12:56 · kindrapport · in-uitvoering → klaar: Klaar: ADR-0035 en het amendement op Art. I, IV, VI, IX en XII brengen het ontwikkelingsrapport voor de derde kleuter binnen scope; geen broncode; de bouw volgt als FB-tickets na E6-02

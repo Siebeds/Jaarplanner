@@ -157,6 +157,7 @@ Coordination between parallel sessions (see the working agreement above; protoco
   - One timeless K3 set of `Rapportdoel`en (titled groups of decided K3 subdoelen) and one `Gradatie` scale.
   - Per `(Leerling, Evaluatiemoment 1–3)` an `Ontwikkelingsrapport` with an algemeen besluit, a `Rapportbeoordeling` per rapportdoel, and at most one `Kindtekening`.
   - Read by the klas's leerkrachten, directie and Leerlingzorg, and no other klas.
+  - The K3 set and scale are edited by K3 leerkrachten only; directie views them (R31, the one exception to "directie edits everything").
   - Never counts for dekking. Kept until directie wipes a schooljaar; the beheerpagina shows which schooljaren still hold pupil data and reminds directie.
 
 ## Op.stap Excel → model mapping

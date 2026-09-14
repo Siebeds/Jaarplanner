@@ -9,7 +9,7 @@
     ratification log records for ADR-0025.
 - **Date:** 2026-09-14
 - **Deciders:** Siebe De Saedeleir (projecteigenaar), for §1 only. The rulings were given in session `kindrapport`, as
-  answers to six rounds of multiple-choice questions, whose options and stated costs are quoted below.
+  answers to seven rounds of multiple-choice questions, whose options and stated costs are quoted below.
 - **Narrows:** [ADR-0011](0011-authn-authz-rbac-gdpr.md) §4 (*"the model has no schema for pupil PII"*) and the *"no
   pupil PII"* constraint of [ADR-0016](0016-azure-hosting-eu-residency.md). Both still hold everywhere outside the
   ontwikkelingsrapport.
@@ -38,11 +38,12 @@
 
 > **Revised after audit rounds 2 and 3** (`antagonist-ronde-2.md`, `antagonist-ronde-3.md`):
 > - only the teacher's text goes to the AI, without the rapportdoel title or the gradatie (R21);
-> - what no ruling covers is marked as a default, including directie's edit right on the K3 set, since R6 named only the
->   K3 leerkrachten;
+> - what no ruling covers is marked as a default;
+> - the owner ruled that only the K3 leerkrachten edit the K3 set and the scale, and directie views them (R31);
 > - R28's reminder is carried everywhere;
 > - AVG art. 9 (the free texts) and the conditional AVG position on the order (art. 13(1), 14 and 35(1)) are stated;
-> - the owner confirmed the agent-instruction edits (R30).
+> - the owner confirmed, by choosing the offered "Ja, zo is het goed", the rule the agent instructions now carry: pupil
+>   data stays rejected outside the report and is checked against VI.7 inside it (R30).
 
 ## Context
 
@@ -138,11 +139,15 @@ for all of K3, not per klas. **R7 was chosen against the recommendation**, with 
 | R28 | *"Je koos 'Tot directie wist'. De AVG vraagt een concrete bewaartermijn in het register. Wat doet de app?"* | **"Termijn + herinnering (Aanbevolen)"**: *"De directie legt een termijn vast in het register (bv. tot eind volgend schooljaar). De app toont op de beheerpagina welke schooljaren nog kindgegevens bevatten en herinnert eraan. Wissen blijft een handeling van de directie."* | "Termijn, geen herinnering" |
 | R29 | *"Drie agent- en skillbestanden (antagonist, implementer, jaarplan-build) behandelen 'leerlinggegevens' vandaag als harde stop. Na het amendement zouden ze elk bouwticket van het rapport blokkeren. Mag ik ze in het amendement mee aanpassen?"* | The owner chose neither option and answered in his own words: *"wat bedoel je behandelen als harde stop, ik word gefrustreerd van deze verwoordingen, het amendement mag wat ik hier vraag niet tegenhouden of blokkeren"* | "Ja, pas ze mee aan (Aanbevolen)"; "Nee, ik doe het zelf" |
 | R30 | *"In drie instructiebestanden voor de controle-agents heb ik één regel aangepast. Leerlinggegevens worden nog altijd afgekeurd, behalve in het ontwikkelingsrapport. Daar controleren de agents alleen of de nieuwe regels gevolgd worden (welke gegevens, wie ze ziet, namen vervangen voor de AI, wissen). Is dat wat je bedoelde?"* | **"Ja, zo is het goed"** | "Nee, anders" |
+| R31 | *"De K3-set gegroepeerde doelen en de sterrenschaal: mag de directie die ook aanpassen, of alleen de K3-leerkrachten?"* (asked after audit round 4, because R6 and Art. VI.1's directie right pointed opposite ways) | **"Alleen de K3-leerkrachten"**: *"Alleen de K3-leerkrachten passen de set en de schaal aan. De directie kan ze wel bekijken."* | "Ook de directie" |
 
 - **R25 and R27 were chosen against the recommendation.**
 - **R29 is read as consent to change those three texts** so that they do not stop the ontwikkelingsrapport. The
   session first answered his question in the conversation: the three texts say that pupil data is always rejected.
-  After the edits, the owner confirmed them in his own answer (R30). Pupil
+  After the edits, the owner confirmed the rule they carry by choosing the offered "Ja, zo is het goed" (R30): pupil
+  data stays rejected outside the report and is checked against VI.7 inside it. *What R30 does not cover, stated:* the
+  question spoke of "één regel", while the branch changed eight lines across the three files. The rest are dependent
+  text of R23, R24 and Art. IX.4 (Art. XI.1), and one later change to the severity line made it stricter, not looser. Pupil
   data outside the report stays a violation for them, and inside the report they check against Art. VI.7.
 
 ## 2. What changes in scope
@@ -226,14 +231,16 @@ covers R16's *"Co-teacher"* (*"lezen en mee invullen"*) without a right of its o
 | Fill in a report (gradatie, text, besluit, drawing) and ask the AI for a rewrite | ✓ | ✓ | – | – | – | – |
 | Read a report | ✓ | ✓ | ✓ | ✓ | – (R17) | – |
 | Download a report as PDF or Word | ✓ | ✓ | ✓ | – (D5) | – | – |
-| Edit the K3 rapportdoelen and gradaties | ✓ | ✓ if the klas is K3 (R6, D4) | – | – | ✓ (R6, D4) | – |
+| Edit the K3 rapportdoelen and gradaties | – (R31; views them) | ✓ if the klas is K3 (R6, D4) | – | – | ✓ (R6, D4) | – |
 | Wipe a schooljaar's pupil data (§3.7) | ✓ | – | – | – | – | – |
 
 - **R16, R17, R18 and R26 decide the read column.** Art. VI.1's default **I9** (every gebruiker reads every klas's
   jaarplan, agenda and dekking) **does not extend to the ontwikkelingsrapport**. A leerkracht of another klas, a
   hoofdleerkracht, a themabeheer holder and a gebruiker with no right read none of it (R17; R18's *"Via themabeheer"*
   not chosen).
-- **Directie** edits as well as reads, because Art. VI.1 gives it every right, and R26 says so (*"Directie kan nog
+- **Directie** edits reports as well as reads them, because Art. VI.1 gives it every right; after the schooljaar R26
+  says so too. **The K3 set and the scale are the one exception:** only the K3 leerkrachten edit them, and directie views
+  them (R31). Otherwise, as R26 put it (*"Directie kan nog
   alles"*).
 - **D4:** *"K3-leerkracht"* (R6) means a gebruiker with a klastoewijzing on a klas that grants K3, in a schooljaar that
   has not ended. That is the rule Art. VI.1 already applies to shared content. A hoofdleerkracht of K3 without such a
@@ -353,10 +360,12 @@ the rules than they give:
   - **E7-05:** before any environment holds real data, the app gets a database role of its own with DML rights only.
 - **Not gated, by the owner's ruling (R20, R27):**
   - the entry in the processing register (Art. VI.6, AVG art. 30);
-  - informing the parents (AVG art. 13);
+  - informing the parents, which is owed when the data are collected (AVG art. 13(1)), or within a month if art. 14
+    applies;
   - a **DPIA** (AVG art. 35).
-  - Evaluations of young children, partly passed through AI, meet at least two of the criteria that make a DPIA
-    required before processing starts (evaluation or scoring, and vulnerable data subjects). **The school carries that
+  - Evaluations of young children, partly passed through AI, meet at least two of the criteria that make a DPIA very
+    likely required before processing starts (evaluation or scoring, and vulnerable data subjects). If it is required,
+    processing before it does not meet art. 35(1). **The school carries that
     responsibility** (R27), and the amendment writes the owner's waiver of the order into Art. VI.6 with this cost.
 - **Always:**
   - **The repository never holds a real child's name**: not in tests, seed data, fixtures, screenshots, worklogs or
@@ -374,6 +383,9 @@ the rules than they give:
   - Today that place follows the provisional graadklas rule: a klas states one jaarfase, so a menggroep recorded as K2
     gets no report for its K3 children.
   - Directie's decision on the Art. XIV graadklas question changes that place, and this with it.
+  - The other way round, a menggroep recorded as K3 can have K2 children too. The report is for K3 (Art. I.2), so the
+    teacher enters only the K3 children. The app stores no age and cannot check it (session default, told to directie
+    in question 14).
 - **D10:** a child who changes klas during the year is deleted in one klas and added in the other. Moving a leerling with
   their reports is not built; it becomes a ticket if the school asks for it.
 
@@ -390,15 +402,16 @@ carries, as a default and not ratified**, in the way Art. VI.1 marks the default
 - **Art. IV.1:** who decides a rewrite (§3.5).
 - **Art. IV.2:** every decision on a rewrite is stored (R23). That a pending proposal is not stored is session design,
   the premise R23 was asked on.
-- **Art. IV.4:** only the teacher's text goes to the AI (R21).
 - **Art. IV.3:** a rewrite carries no motivation (R24).
+- **Art. IV.4:** only the teacher's text goes to the AI (R21).
 - **Art. IV.5:** a rewrite's JSON shape, one rewritten text.
 - **Art. VI.1:**
   - *"four rights"* becomes five, with a **Leerlingzorg** bullet (§3.4);
   - the sentence *"A zorgcoördinator is a gebruiker who may hold themabeheer"*, and default **(e)**, name Leerlingzorg
     as well;
   - the ontwikkelingsrapport is stated as outside I9;
-  - its rows join ADR-0030's §3 matrix, so the *"one matrix"* stays one.
+  - its rows join ADR-0030's §3 matrix, so the *"one matrix"* stays one;
+  - directie does not edit the K3 set and the scale (R31), the one exception to *directie sees and edits everything*.
 - **Art. VI.2:** *"No pupil personal data"*, except the ontwikkelingsrapport under a new **Art. VI.7**, which carries §3.3
   to §3.8.
 - **Art. VI.6:** for the ontwikkelingsrapport, the register entry and a concrete term are owed, and the owner's waiver of
