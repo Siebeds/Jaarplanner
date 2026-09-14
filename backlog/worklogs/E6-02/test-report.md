@@ -392,3 +392,30 @@ None blocking.
 - [LOW] Focus falls to `<body>` after the sheet closes on its own (all 8 cases), because the trigger no longer exists; focusing the alert fixes both notes.
 - [INFO] The frontend Vitest for the fonts callback was not mutation-run (by reading, the old callback would fail it).
 - [INFO] The race tests use a fixed 1 s waiting window rather than `pg_locks` (could fail falsely under heavy load, never pass falsely).
+
+
+# E6-02/E6-04 merged slices 1-3 — Test report (round 1)
+
+**Verdict:** FAIL on the audit record only (two worklogs interleaved by the merge); all code and tests green. **Fixed by the orchestrator in `9fae5fe`.**
+**Mode:** unit/integration plus one guard-removal probe in a throwaway copy (no browser pass; slice 4 has its own).
+**Change verified:** `b0a193f` on `feature/e6-rollen-rechten` (slices 1, 2 and 3 merged).
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Backend builds; full `dotnet test` green against Postgres → PASS.** `dotnet build` 0/0; UnitTests 1364 passed, 4 skipped; IntegrationTests 466 passed, 1 skipped (4 min 21 s); the five skips are the opt-in live KOV/Op.stap tests; `PostgresAvailabilityTests` passed, so the database tests really ran.
+- **`dotnet format --verify-no-changes` → PASS**; **`has-pending-model-changes` → PASS** (no changes).
+- **The sweep handles slice 2's twelve `api/gebruikers/…` routes → PASS.** Ten are writes. `{gebruikerId:guid}` gets a fresh GUID, `{klasId}` and `{schooljaarId}` the seeded ids, `{jaarfase}` `"x"`; the class-level `[Authorize(Policy = Rechtenmatrix.Beleid.Beheer)]` refuses before any lookup. `Elke_wijzigende_route_weigert_een_gebruiker_zonder_enig_recht` passed, and the stale-entry check needs no gebruikers entries. **Proof:** in a `git archive` copy of `b0a193f` with only that class-level guard removed, the sweep failed and named exactly the ten gebruikers write routes (400 for the invite and the hoofdleerkracht pair, 404 "Deze gebruiker bestaat niet (meer)." for the rest) and no other route. Copy deleted.
+- **`Program.cs` registers both `WizardrunExceptionHandler` and `GebruikerbeheerExceptionHandler`; neither shadows the other → PASS.** Both registered (lines 52, 56); their fault types each derive directly from `Exception` and do not overlap; every earlier handler returns false for anything not its own; in the probe the gebruikers faults came back with that handler's Dutch 404 and 400.
+- **The three worklogs under `backlog/worklogs/E6-02/` have no conflict markers and no duplicated sections → FAIL.** No markers and nothing lost, but the `--union` resolution interleaved slice 3's and slice 2's appended text line by line in `test-report.md` (from slice 3 round 1 on, round headers above the other slice's body) and `implementation.md` (slice 3's section cut at 158 lines, the rest under "## Code slice 2"; the fix-round headers holding both slices' bodies). `antagonist.md` was clean.
+- **Frontend gates → PASS.** `pnpm lint` 0; `pnpm test` 262/262; `pnpm build` 0 (existing >500 kB chunk warning). A first attempt failed only because the worktree had no `node_modules`; `pnpm install --frozen-lockfile` fixed it (gitignored).
+- **Auto-merged files with changes from both sides → OK** (`Infrastructure/DependencyInjection.cs`; `backlog/E7-niet-functioneel.md` keeps both slice 2's retention text and slice 3's wizard-starter carry-forward).
+
+## Evidence
+- TRX in the orchestrator's scratchpad (`trx\full.trx`): the sweep (1), `ElkeRouteVraagtEenSessieTests` (4), `GebruikerbeheerEndpointsTests` (43), `RechtenAfdwingingTests` (23), `WizardrunEndpointsTests` (16), `PostgresAvailabilityTests` (1) all passed.
+
+## Defects
+- **D1, D2 [MAJOR, audit record]** `test-report.md` and `implementation.md` interleaved by the merge (not slice 2's or slice 3's). **Resolved in `9fae5fe`:** each file rebuilt as the first parent in full followed by the second parent's own tail (the shared prefix, lines 1–107 and 1–1268, was verified identical in both parents); the diff against either parent is insertions only, and every section sits in its own block: slice 1, then slice 3 with its rounds, then slice 2 with its rounds.
+
+## Notes (not blocking)
+- [LOW, slice 3] The sweep seeds no gebruiker and fills `{jaarfase}` with `"x"`, so a lost guard on a gebruikers route shows as the service's 404 or 400 rather than a write; the sweep still catches it (it requires the 403 no-access detail), but its 404 hint points at seeding. Optional: `"gebruikerId"` (a seeded gebruiker) and `"jaarfase" => "K3"` arms in `Waarde`.
