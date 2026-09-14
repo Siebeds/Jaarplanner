@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:53
+bijgewerkt: 2026-09-14 13:28
 opgepakt-door: md-boom
 branch: ticket/minimumdoelenboom
 pr:
@@ -76,3 +76,4 @@ Directie heeft het niet bevestigd.
 ## Werklog
 
 - 2026-09-14 12:53 · md-boom · aangemaakt (status in-uitvoering)
+- 2026-09-14 13:28 · md-boom · Backend klaar: Minimumdoel draagt leergebied, rubriek, subrubriek en soort uit KOV's path en type; register per minimumdoel in de ordening van het decreet; nieuw detail GET /api/minimumdoelen/{ref}. Unit-tests groen (1159). De migratie wacht op de claim van E6-02.

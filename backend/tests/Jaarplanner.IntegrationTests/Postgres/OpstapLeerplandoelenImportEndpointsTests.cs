@@ -217,16 +217,17 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         var herhaling = await Post($"{Pad}/voorbeeld", body: null);
 
         Assert.Equal(3, toepassing.GetProperty("aantalRedenenGewijzigd").GetInt32());
-        var regels = register.GetProperty("regels").EnumerateArray().ToList();
-        Assert.Equal(
-            ["4-2.1.7", "6-2.5.4", "4-9.9.9", "6-7.1.6", "K-1.2.6"],
-            regels.Select(r => r.GetProperty("ref").GetString()!).ToArray());
-        Assert.Equal(["2", "10"], regels.Take(2).Select(r => r.GetProperty("disciplineNummer").GetString()!).ToArray());
-        Assert.Equal(JsonValueKind.Null, regels[0].GetProperty("zonderLeerplandoelReden").ValueKind);
-        Assert.Equal("DoelNietIngelezen", regels[2].GetProperty("zonderLeerplandoelReden").GetString());
-        Assert.Equal("AlleenOvergeslagenDoelsets", regels[3].GetProperty("zonderLeerplandoelReden").GetString());
-        Assert.Equal(["Z"], regels[3].GetProperty("zonderLeerplandoelDoelsets").EnumerateArray().Select(s => s.GetString()!).ToArray());
-        Assert.Equal("GeenDoelInOpstap", regels[4].GetProperty("zonderLeerplandoelReden").GetString());
+        var regels = register.GetProperty("regels").EnumerateArray().ToDictionary(r => r.GetProperty("ref").GetString()!);
+        // One row per minimumdoel (TB-010). None of these five carries the decree's ordering, so all five sit in the group
+        // without one; the order within a branch is pinned by MinimumdoelenQueryTests.
+        Assert.Equal(5, register.GetProperty("totaal").GetInt32());
+        Assert.Equal(1, regels["4-2.1.7"].GetProperty("aantalLeerplandoelen").GetInt32());
+        Assert.Equal(["L5"], regels["6-2.5.4"].GetProperty("jaarFasen").EnumerateArray().Select(f => f.GetString()!).ToArray());
+        Assert.Equal(JsonValueKind.Null, regels["4-2.1.7"].GetProperty("zonderLeerplandoelReden").ValueKind);
+        Assert.Equal("DoelNietIngelezen", regels["4-9.9.9"].GetProperty("zonderLeerplandoelReden").GetString());
+        Assert.Equal("AlleenOvergeslagenDoelsets", regels["6-7.1.6"].GetProperty("zonderLeerplandoelReden").GetString());
+        Assert.Equal(["Z"], regels["6-7.1.6"].GetProperty("zonderLeerplandoelDoelsets").EnumerateArray().Select(s => s.GetString()!).ToArray());
+        Assert.Equal("GeenDoelInOpstap", regels["K-1.2.6"].GetProperty("zonderLeerplandoelReden").GetString());
         Assert.Equal(0, herhaling.GetProperty("aantalRedenenGewijzigd").GetInt32());
         Assert.False(herhaling.GetProperty("schrijftIets").GetBoolean());
     }
@@ -441,7 +442,7 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         var voorDeImport = await Get("/api/minimumdoelen");
         Assert.Equal(2, voorDeImport.GetProperty("totaal").GetInt32());
         Assert.All(voorDeImport.GetProperty("regels").EnumerateArray(), r =>
-            Assert.Equal(JsonValueKind.Null, r.GetProperty("disciplineNummer").ValueKind));
+            Assert.Equal(0, r.GetProperty("aantalLeerplandoelen").GetInt32()));
 
         _bron.Geef(Wiskunde(G("2.1.GL3.10", "4-2.1.7"), G("2.1.GL3.11", "4-2.1.7")));
         await Post(Pad, new { versie = "1.2" });
@@ -450,12 +451,10 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         var regels = register.GetProperty("regels").EnumerateArray().ToList();
         Assert.Equal(2, register.GetProperty("totaal").GetInt32());
         Assert.Equal(["4-2.1.7", "6-2.5.4"], regels.Select(r => r.GetProperty("ref").GetString()!).ToArray());
-        Assert.Equal("2", regels[0].GetProperty("disciplineNummer").GetString());
-        Assert.Equal("Wiskunde", regels[0].GetProperty("disciplineNaam").GetString());
-        Assert.Equal(["2.1.GL3.10", "2.1.GL3.11"], Codes(regels[0].GetProperty("leerplandoelCodes")));
-        Assert.Equal(JsonValueKind.Null, regels[1].GetProperty("disciplineNummer").ValueKind);
-        Assert.Equal(JsonValueKind.Null, regels[1].GetProperty("domein").ValueKind);
-        Assert.Empty(regels[1].GetProperty("leerplandoelCodes").EnumerateArray());
+        Assert.Equal(2, regels[0].GetProperty("aantalLeerplandoelen").GetInt32());
+        Assert.Equal(["L3"], regels[0].GetProperty("jaarFasen").EnumerateArray().Select(f => f.GetString()!).ToArray());
+        Assert.Equal(0, regels[1].GetProperty("aantalLeerplandoelen").GetInt32());
+        Assert.Empty(regels[1].GetProperty("jaarFasen").EnumerateArray());
 
         var zoek = await Get("/api/minimumdoelen?zoek=kansen");
         Assert.Equal(["6-2.5.4"], zoek.GetProperty("regels").EnumerateArray().Select(r => r.GetProperty("ref").GetString()!).ToArray());
@@ -463,16 +462,23 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         var gefilterd = await Get("/api/minimumdoelen?domein=Getallenkennis");
         Assert.Equal(["4-2.1.7"], gefilterd.GetProperty("regels").EnumerateArray().Select(r => r.GetProperty("ref").GetString()!).ToArray());
 
+        // Neither fixture minimumdoel carries the decree's ordering, so the tree is empty and both sit apart (TB-010).
         var facetten = await Get("/api/minimumdoelen/facetten");
         Assert.Equal(2, facetten.GetProperty("totaalAantalMinimumdoelen").GetInt32());
         Assert.Equal(2, facetten.GetProperty("aantalTreffers").GetInt32());
-        Assert.Equal(1, facetten.GetProperty("aantalZonderLeerplandoel").GetInt32());
-        Assert.Equal(["2"], facetten.GetProperty("disciplines").EnumerateArray().Select(d => d.GetProperty("nummer").GetString()!).ToArray());
-        Assert.Equal(["L3"], facetten.GetProperty("jaarFasen").EnumerateArray().Select(j => j.GetProperty("jaarFase").GetString()!).ToArray());
+        Assert.Equal(2, facetten.GetProperty("aantalZonderOrdening").GetInt32());
+        Assert.Empty(facetten.GetProperty("leergebieden").EnumerateArray());
 
         var gefilterdeFacetten = await Get("/api/minimumdoelen/facetten?domein=Getallenkennis");
         Assert.Equal(1, gefilterdeFacetten.GetProperty("aantalTreffers").GetInt32());
-        Assert.Equal(0, gefilterdeFacetten.GetProperty("aantalZonderLeerplandoel").GetInt32());
+
+        // The detail lists the concorded goals under their jaar/fase; a ref no minimumdoel carries is a 404.
+        var detail = await Get("/api/minimumdoelen/4-2.1.7");
+        var l3 = detail.GetProperty("jaarFasen").EnumerateArray().Single(f => f.GetProperty("jaarFase").GetString() == "L3");
+        Assert.Equal(["2.1.GL3.10", "2.1.GL3.11"], l3.GetProperty("leerplandoelen").EnumerateArray().Select(l => l.GetProperty("code").GetString()!).ToArray());
+        Assert.Equal("Wiskunde", l3.GetProperty("leerplandoelen")[0].GetProperty("disciplineNaam").GetString());
+        var onbekend = await _factory.CreateClient().GetAsync("/api/minimumdoelen/K-9.9.9");
+        Assert.Equal(HttpStatusCode.NotFound, onbekend.StatusCode);
     }
 
     /// <summary>
@@ -493,7 +499,8 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         Assert.Equal(["2.1.GL3.10"], Codes(Discipline(voorbeeld, "2").GetProperty("diff").GetProperty("verdwenen")));
         Assert.Equal(0, voorbeeld.GetProperty("aantalRedenenGewijzigd").GetInt32());
         var regel = Assert.Single(register.GetProperty("regels").EnumerateArray());
-        Assert.Equal("2", regel.GetProperty("disciplineNummer").GetString());
+        // The dropped goal is still stored and concorded, so it still counts, and a minimumdoel with a goal has no reason.
+        Assert.Equal(1, regel.GetProperty("aantalLeerplandoelen").GetInt32());
         Assert.Equal(JsonValueKind.Null, regel.GetProperty("zonderLeerplandoelReden").ValueKind);
 
         await using var context = _db.MaakContext();
