@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:26
+bijgewerkt: 2026-09-14 16:27
 opgepakt-door: agenda-sleep
 branch: ticket/agenda-sleep-om-te-plannen
 pr:
@@ -54,3 +54,4 @@ Geen.
 - 2026-09-14 16:03 · agenda-sleep · aangemaakt (status in-uitvoering)
 - 2026-09-14 16:16 · agenda-sleep · gebouwd (73d944a): kwartier licht op onder muis/pen, klik kiest dat kwartier, slepen tekent en plant het bereik, Escape laat los; kiezer en nieuw-blad noemen het bereik; nl.json: twee sleutels toegevoegd op uitdrukkelijke toestemming van de eigenaar terwijl E6-02 de claim hield; pnpm lint schoon, vitest 40 bestanden/277 tests groen (6 nieuw)
 - 2026-09-14 16:26 · agenda-sleep · browsercontrole headless Chrome (playwright-core) op wegwerpdatabase jaarplanner_tb014, API 5189/Vite 5181: kwartier licht op met beginuur (12:15 op de juiste hoogte, tekst 5,51:1 licht en 8,97:1 donker), niet boven een blok of in de urenkolom; slepen 9:00-10:20 toont en plant 9:00 - 10:30 (blok in het raster), omhoog 14:20-13:05 geeft 13:00-14:30, klik op 11:12 kiest 11:00, Enter kiest 8:30, Escape laat los zonder blad, nieuw-blad noemt het bereik; 390px zonder overloop, tik kiest zijn kwartier; geen consolefouten; alle zes criteria afgevinkt
+- 2026-09-14 16:27 · agenda-sleep · correctie op de vorige regel: criterium 4 was afgevinkt voordat het bewaren bewezen was, en de 'tik' op 390px was een muisklik. Nu wel bewezen (derde ronde): een nieuwe activiteit bewaard vanuit een gesleept bereik staat als 'Nieuw TB-014, 15:00 - 15:45' in het raster, en een echte tik (pointerType touch, hasTouch op 390x844) kiest 10:30 zonder oplichtende band
