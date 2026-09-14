@@ -2,12 +2,12 @@
 id: TB-011
 titel: Hoekmoment verplaatsen weigert een dag zonder school
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:56
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-14 13:01
+opgepakt-door: TB-011
+branch: ticket/TB-011-hoekmoment-schooldag
 pr:
 geblokkeerd:
 fr: []
@@ -62,3 +62,4 @@ Geen.
 ## Werklog
 
 - 2026-09-14 12:56 · E10-03 · aangemaakt (status nieuw)
+- 2026-09-14 13:01 · TB-011 · nieuw → in-uitvoering: opgepakt, met akkoord van de eigenaar om het vanuit nieuw meteen op te pakken
