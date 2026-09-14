@@ -2,10 +2,10 @@
 id: TB-016
 titel: Thema- en subdoelen tonen hun doeltekst en openen de doeldetail bij een klik
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:38
+bijgewerkt: 2026-09-14 16:50
 opgepakt-door: themadoel-tekst
 branch: ticket/themadoel-tekst
 pr:
@@ -72,3 +72,5 @@ Geen.
 - 2026-09-14 16:29 · themadoel-tekst · browsercontrole (headless Chrome, wegwerpdatabank): desktop licht en donker, 390 px, Tab en Enter openen de detail, Escape sluit, geen koppelknop; op 390 px stond de status over de code, opgelost (status op de coderegel)
 - 2026-09-14 16:38 · themadoel-tekst · antagonist: 6 MINOR, alle opgelost (detail wordt na elke schrijfactie opnieuw gelezen, badge Vervallen in Op.stap in de rij, commentaar rechtgezet, tests versterkt, vervolgticket TB-017 voor de backend)
 - 2026-09-14 16:38 · themadoel-tekst · tweede browsercontrole: elementFromPoint geeft het ontkoppelknopje zijn eigen klik, status en lege ruimte openen de detail; focus keerde na Escape niet terug naar de regel, opgelost (Blad kreeg onCloseAutoFocus) en nagekeken: focus terug op de regel; badge zichtbaar op desktop en 390 px
+- 2026-09-14 16:48 · themadoel-tekst · rechtzetting van de regel van 16:38: bevinding 2 (zwaar detailverzoek per regel) is niet opgelost maar uitgesteld naar TB-017; de kost staat nu eerlijk in de code
+- 2026-09-14 16:50 · themadoel-tekst · in-uitvoering → klaar: afgewerkt: tweede antagonistronde (3 MINOR, 1 vraag) verwerkt: doelsuggesties vernieuwen de doeldetail ook, onKoppel is verplicht-maar-nullable zodat het register zijn knop niet stil kan verliezen, kost eerlijk beschreven, TB-017 zegt zijn volgorde; 284/284 Vitest, lint groen, mutatietest bewijst de nieuwe test; niet gepusht

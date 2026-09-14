@@ -35,6 +35,10 @@ dezelfde plaatsen botsen.
   wanneer de leerkracht op de regel klikt.
 - De tests van TB-016 (`Gekoppelddoel.test.tsx`) blijven gelden; de fetch-stub levert de velden dan in de thema.
 
+**Volgorde:** pas bouwen wanneer E6-02 op `main` staat. Daarvoor botst de wijziging met
+`feature/e6-rollen-rechten` in `SchoolcontentBeheerService.cs` en `SchoolcontentBeheerDtos.cs`. Dat is een
+volgorde, geen open beslissing; of het ticket tot dan geblokkeerd moet staan, beslist de eigenaar.
+
 ## Acceptatiecriteria
 
 - [ ] Gegeven een thema met themadoelen en subdoelen, wanneer de themapagina opent, dan doet de frontend geen
@@ -50,7 +54,7 @@ dezelfde plaatsen botsen.
 
 ## Open vragen
 
-Geen. Pas oppakken wanneer E6-02 op `main` staat.
+Geen.
 
 ## Werklog
 

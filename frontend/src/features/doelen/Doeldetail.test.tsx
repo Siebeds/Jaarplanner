@@ -7,8 +7,9 @@ import { Doeldetail } from "./Doeldetail";
 
 /**
  * "Koppel dit doel" appears exactly when the caller can take the teacher somewhere with it (TB-016). The register
- * passes a destination and must keep the button; the thema page opens this detail for a doel it already linked and
- * passes none. Since `onKoppel` became optional the compiler no longer guards the register's half, so this does.
+ * passes a destination and keeps the button; the thema page opens this detail for a doel it already linked and passes
+ * `null`. `onKoppel` is required but nullable, so the compiler makes every caller choose; this guards what each choice
+ * renders, not which one `DoelenScherm` makes.
  */
 
 const DOEL: LeerplandoelDetail = {
@@ -44,7 +45,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function toon(onKoppel?: () => void) {
+function toon(onKoppel: (() => void) | null) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
@@ -61,7 +62,7 @@ describe("Doeldetail: de koppelknop", () => {
   });
 
   it("laat de knop weg zonder bestemming, in plaats van een knop die niets doet", async () => {
-    toon();
+    toon(null);
 
     expect(await screen.findByText(DOEL.tekst)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: t("doel.koppelAan") })).not.toBeInTheDocument();

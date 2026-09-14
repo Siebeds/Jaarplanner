@@ -19,9 +19,10 @@ import { Ontkoppel } from "./Fiche";
  * whole sentence is one press away: the row opens the doel's detail.
  *
  * **The text is fetched per row**, from the same endpoint the detail reads, so opening the detail is
- * served from the cache. The thema's own read view does not carry it, and adding it there collides
- * with the E6-02 work on that service; see the ticket. A thema holds two or three themadoelen and a
- * handful of subdoelen per subthema, which is what makes one request per doel acceptable.
+ * served from the cache. That is a heavy read for two fields: the detail endpoint runs up to seven
+ * queries, once per linked doel on the page (up to three themadoelen plus the subdoelen of every
+ * leeftijd's subthema), and again after every write on this screen. It is accepted for now because the
+ * thema's own read view, where the text belongs, is being reworked by E6-02; TB-017 moves it there.
  *
  * **The whole row is the button, and the remove control sits above it.** A stretched `::after` on the
  * button covers the row, so the empty space beside the text opens the detail too; the remove

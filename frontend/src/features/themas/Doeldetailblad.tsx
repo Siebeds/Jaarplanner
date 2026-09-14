@@ -70,6 +70,7 @@ export function Doeldetailblad({
           code={keuze?.code ?? null}
           onKies={kiesLeerplandoel}
           onKiesMinimumdoel={(ref) => setKeuze({ soort: "minimumdoel", ref })}
+          onKoppel={null}
         />
       )}
     </Blad>
