@@ -1,0 +1,14 @@
+{
+  "name": "backlog-board",
+  "private": true,
+  "description": "Local kanban board and CLI for backlog/functionele-backlog and backlog/technische-backlog (ADR-0033). No dependencies.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs --open",
+    "check": "node tickets.mjs check",
+    "test": "node --test \"test/*.test.mjs\""
+  }
+}

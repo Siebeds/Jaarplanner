@@ -115,6 +115,8 @@ claim() {  # claim <resource> <session> <why>
 | Shape | Example | Claim it when |
 | --- | --- | --- |
 | `story-<id>` | `story-E4-06` | before you start a story — prevents double-assignment |
+| `ticket-<id>` | `ticket-FB-012` | before you start work on a ticket (skill `ticket-uitvoeren`, [ADR-0033](../../../docs/adr/0033-ticketbacklog-en-kanbanbord.md)) |
+| `ticketnr-<id>` | `ticketnr-TB-004` | never by hand: `tickets.mjs new` holds it for the instant of creating a ticket and deletes it once the file exists. It is not logged as CLAIM/RELEASE; the `INFO` line announcing the new ticket is the record |
 | `branch-<slug>` | `branch-feature-e4-bewerking-hergeneratie` | before you commit to an epic branch |
 | `file-<path with / as ->` | `file-frontend-src-i18n-nl.json` | before editing a shared file |
 | `port-<n>` | `port-5186` | before starting a dev server |

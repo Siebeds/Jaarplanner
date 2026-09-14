@@ -13,6 +13,7 @@ This is the working backlog for the Jaarplanner build. It is **derived from** an
 - Each **epic** is one `.md` file, aligned to the build order in [`CONSTITUTION.md` §9.3 / Art. VIII](../CONSTITUTION.md).
 - Each epic holds **stories** with a stable id (`E<epic>-<nn>`), a checkbox status, acceptance criteria, and references to the FR + Constitution article it satisfies.
 - **Update the checkbox when status changes** and keep the progress table below in sync. The Antagonist audits significant changes against the constitution — keep stories honest.
+- **Tickets (since 2026-09-13).** New work also enters as one-file-per-item tickets in [`functionele-backlog/`](functionele-backlog/README.md) (FB) and [`technische-backlog/`](technische-backlog/README.md) (TB), with their own statuses and a local kanban board: see [`TICKETS.md`](TICKETS.md) and [ADR-0033](../docs/adr/0033-ticketbacklog-en-kanbanbord.md). Stories stay in the epic files and are finished there; the progress table below counts **stories only**, never tickets.
 
 ### Status legend
 - `[ ]` **Todo** — not started

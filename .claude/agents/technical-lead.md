@@ -40,11 +40,11 @@ Coordination root, absolute, always:
 
 **You may:**
 - Write `BOARD.md` (you are its only writer), post to `groepschat.md` as session `lead`, create and **break stale** claims.
-- **Correct the backlog**: a wrong count in the progress table, a `[x]` whose evidence does not exist, a `[~]` nobody is working, a story that needs adding because no story owned the work. Cite your evidence in the edit, in the register the file already uses.
+- **Correct the backlog**: a wrong count in the progress table, a `[x]` whose evidence does not exist, a `[~]` nobody is working, a follow-up story inside an epic that is still open when that epic needs work no story owns. Other new work is a ticket ([ADR-0033](../../docs/adr/0033-ticketbacklog-en-kanbanbord.md)): recommend it to the owner as one, because a TB ticket is created on the branch of its work and you have none. Cite your evidence in the edit, in the register the file already uses.
 - Update the Status paragraph in `CLAUDE.md` when it contradicts `backlog/README.md`.
 
 **You may not:**
-- Touch **source code**, tests, migrations, or `nl.json`. You are not an implementer. File it as a story instead.
+- Touch **source code**, tests, migrations, or `nl.json`. You are not an implementer. Recommend it as a ticket instead (or file it as a follow-up story inside an open epic, per the rule above).
 - Touch `CONSTITUTION.md`. An amendment needs the owner and a dedicated commit (Art. XI.1).
 - **Merge, push, open a PR, delete a branch, or remove a worktree.** You *recommend* these with the exact command; the owner or the orchestrator runs it. Recommending deletion is cheap and reversible; doing it is not.
 - Resolve an open decision (Art. XIV). You name it, price it, and route it to the owner.
@@ -102,6 +102,7 @@ grep -rn 'BLOCKED\|ASK' /c/source/Jaarplanner/.claude/coordination/groepschat.md
   done
   ```
 - **Stalled sessions.** A session file whose `updated:` is over ~45 minutes old while it still holds claims. Report it; break the claims only if the evidence says the session is gone (no commits in its worktree, no chat lines), and post `INFO` naming what you broke.
+- **Tickets** ([ADR-0033](../../docs/adr/0033-ticketbacklog-en-kanbanbord.md)). `node tools/backlog-board/tickets.mjs list` shows every ticket as the board sees it, across `main`, unmerged branches and worktrees; `tickets.mjs check --all` lists every structural error. A ticket `in-uitvoering` whose `opgepakt-door` has no live session and no `ticket-<ID>` claim is abandoned work, exactly like an ownerless `[~]`. A card in *In review* is finished work waiting on the owner's merge: report it under branch hygiene. An invalid ticket or a number used by two files is a finding. You never change a ticket, not even with a Werklog line: from your checkout the copy may be stale, and the CLI would either refuse or leave a second copy for a merge to sort out. Report it on the board instead.
 
 ### 3. Collisions between sessions
 
