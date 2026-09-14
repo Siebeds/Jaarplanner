@@ -892,3 +892,29 @@ Asked by the orchestrator with the three options; the owner chose **(A): keep op
 ### For the owner
 - **Art. XIV graadklas:** for a klas whose leeftijd cannot be derived, the sheet widens to every subthema while `jaarFasen` is `[]`, so a hoofdleerkracht is not offered "Koppel dit doel" there. This errs on the side of hiding (no E3-06 breach); leave it to directie's graadklas decision.
 - **The silent 400 on deleting a planned thema** (routed to the owner as a ticket candidate) now reaches themabeheer too, through F2's empty thema; the ticket should name both rights.
+
+## Code slice 4 — audit round 3
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff 5b4eb4a a4d698a` on `story/E6-02-frontend` (18 files), plus `Themarij.tsx`, `Activiteitformulier.tsx` (`alleenLezen` branch, `Activiteitfiche`), `Agendascherm.tsx` (all sheets, `foutTekst`), `lib/queryClient.ts`, `lib/rechten.ts`, `Hoekplaatsingblad`/`Hoekdetailblad`.
+- **Verdict:** VIOLATIONS FOUND — 2 MINOR, 1 QUESTION. No CRITICAL, no MAJOR. F7 and test-runner item 2 resolved.
+- **Gates re-run by the auditor:** `pnpm lint` exit 0; `vitest run` 51 files, 486/486 green, at `a4d698a` (clean tree).
+
+### Confirmed compliant
+- **F7:** a 403 arriving with the new-activiteit sheet, the activiteit sheet or the planner open is placed in the sheet and never mounts on the page; each sheet announces it with its own `role="alert"` (`Planfout`, `Dagfout`, `Resultaat`). The picker path mounts at once (its `onError` close runs in the same notify batch), with the "wait until the picker closes" branch as fallback. An alert already on the page stays mounted when a sheet opens. The bookkeeping set during render settles without a loop.
+- **`useInBeeld`:** sound. It runs once on mount, uses `nearest`, never moves focus, and is guarded for jsdom; browser-measured in view at 390 with `scrollY` 0.
+- **Item 2:** `themasMetKoppelactie` covers every control `Themarij` renders (`themaBewerken`; `subdoelenBeheren`; `doelenKoppelen` with activiteiten; `activiteitBewerken && doelenKoppelen`), with the same functions and the same leeftijd, applied before the search. No right is withheld; it includes more than needed only in the safe direction.
+- **E5-03 rule:** `koppelen.nietsTeKoppelen` is guaranteed by that coverage, and the sheet is reachable only with rights known. "gemaakt maar niet ingepland" is guaranteed in the new `!actief` branch. No em dash; no hard-coded Dutch.
+- **Art. VI / VIII / XIV:** no pupil data, secrets or new dependency; no graadklas assumption.
+
+### Findings to address
+1. **MINOR F8 (the E5-03 rule on comments; WCAG 4.1.3):** `Activiteitblad.tsx:137-142` and `Activiteitblad.test.tsx:116` claim the refusal line is the same node after the refetched rights, "so it is not announced twice". For a leerkracht whose only klas at that leeftijd loses its klastoewijzing, `activiteitBewerken(leeftijd)` goes false too; `Activiteitformulier` then returns `Activiteitfiche` instead of its `Blad` form (`Activiteitformulier.tsx:158-169`), which remounts the dialog and `Dagfout`: a second announcement and scroll. The test keeps the content right constant. Fix: keep one `Blad` across the read-only flip, or narrow the comment and test to "while the content right survives" and test the remount case.
+2. **MINOR F9 (new in fix round 2; the E5-03 rule on comments; WCAG 4.1.3):** any 403 refetches every query (`queryClient.ts:17-20`), and `themasMetKoppelactie` runs on those live rights (`Bestemmingsblad.tsx:72`). After a rights loss with the sheet open, the row holding the `Koppelfout` alert is filtered out with its thema and replaced by a static, unannounced "Je kan dit doel hier nergens aan koppelen.", breaking the invariant recorded at `Themarij.tsx:253`. Fix: decide the thema list once on open (the search box's set-during-render pattern), or keep a thema whose row holds a failure; add a test.
+
+### For the orchestrator / owner
+- **QUESTION (pre-existing, not introduced here):** after a refused placement the new-activiteit sheet keeps its day line promising that Bewaren also plans the activiteit, and a second Bewaren makes a second activiteit; the planner keeps its plan button. Fix inside E6-02 or file a follow-up ticket.
+- **Residual race (not graded):** the two hoek sheets are modal but not counted in `bladOpen`; a refusal arrives while one is open only if a drag's request is still in flight. `Agendamelding.tsx:19` "only while no agenda sheet is open" claims more than the three sheets listed below it.
+
+### Orchestrator's disposition (2026-09-14)
+The QUESTION is taken inside slice 4's fix round 3 rather than filed as a ticket: after a rights loss a control that promises planning is exactly the E3-06 case this slice exists to close. The residual race is handled by narrowing the comment (or counting the hoek sheets), also in fix round 3.

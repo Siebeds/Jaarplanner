@@ -62,14 +62,20 @@ export function Bestemmingsblad({
    * the tree visibly springs back to its unfiltered self on the way.
    */
   const [vorigOpen, setVorigOpen] = useState(open);
+  // The rights the list below is decided with, taken as the sheet opens (fix round 3, F9): a refusal inside the sheet
+  // refetches the rights, and a list that followed them would drop the row holding the refusal's alert.
+  const [magBijOpenen, setMagBijOpenen] = useState(mag);
   if (open !== vorigOpen) {
     setVorigOpen(open);
-    if (open) setZoek("");
+    if (open) {
+      setZoek("");
+      setMagBijOpenen(mag);
+    }
   }
 
-  // Only the thema's with something this gebruiker can press, before the search, so the search and its count work on
-  // the list the gebruiker actually sees (fix round 2).
-  const metKoppelactie = useMemo(() => themasMetKoppelactie(themas, mag), [themas, mag]);
+  // Only the thema's with something this gebruiker could press when the sheet opened (fix rounds 2 and 3), before the
+  // search, so the search and its count work on the list the gebruiker actually sees.
+  const metKoppelactie = useMemo(() => themasMetKoppelactie(themas, magBijOpenen), [themas, magBijOpenen]);
   const takken = useMemo(
     () => (code ? filterBestemmingen(metKoppelactie, code, zoek) : []),
     [metKoppelactie, code, zoek],

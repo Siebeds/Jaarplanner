@@ -54,6 +54,7 @@ export function Subthemaplanner({
   klasId,
   klasNaam,
   magSubthemaMaken,
+  magPlannen,
   themaIds,
   dagen,
   bezig,
@@ -70,6 +71,11 @@ export function Subthemaplanner({
    * instruction to go and make one, and its links, are only for them.
    */
   magSubthemaMaken: boolean;
+  /**
+   * Whether this gebruiker may plan this klas (R7, R15). The planner opens only then; after a refusal the refetched
+   * rights can say otherwise while it is open, and its plan button goes (fix round 3, the E3-06 rule).
+   */
+  magPlannen: boolean;
   themaIds: string[];
   dagen: Dagweergave[];
   bezig: boolean;
@@ -163,8 +169,9 @@ export function Subthemaplanner({
       titel={t("periode.planSubthema")}
       voet={
         // No footer when the period has nothing to plan: the sheet then says why, and a button
-        // that can never become enabled is a button that should not be there.
-        subthemas.length === 0 ? undefined : (
+        // that can never become enabled is a button that should not be there. Nor once this gebruiker
+        // may not plan the klas: the button would only be refused (fix round 3).
+        subthemas.length === 0 || !magPlannen ? undefined : (
           <Knop
             rang="hoofd"
             vol

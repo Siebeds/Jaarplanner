@@ -448,3 +448,37 @@ None blocking.
 - [info, pre-existing] The React warning on the first `/doelen` visit.
 - [info] For a HL of K3 the link sheet also lists "Leeg thema" (0 subthema's), which offers nothing to press once opened; the sheet as a whole does offer something, so F1 holds. (Sent to fix round 2.)
 - [info] Two behaviours are proven only in the browser: the picker closing in the 403 `onError`, and `Aandachtsmelding`'s centred `scrollIntoView` (jsdom cannot evaluate it); both verified live at both widths.
+
+
+# E6-02 slice 4 — Test report (round 3)
+
+**Verdict:** FAIL (one MINOR defect in criterion (a): the fix works for a leerkracht who keeps another klas at the same leeftijd, not for one with a single klas; every other check passed)
+**Mode:** both (gates and new tests read, with mutation checks; headless Chrome over CDP at 1440×1000 and 390×844)
+**Commit:** `a4d698a` on `story/E6-02-frontend`, on top of `5b4eb4a`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Gates → PASS.** `pnpm lint` 0; `pnpm test` 51 files, 486/486; `pnpm build` 0 (usual chunk warning).
+- **The new tests pin the behaviour → PASS** (three mutations, each restored): removing the `plek !== "pagina"` guard in `Agendamelding` fails 3 tests; narrowing `dagfout` to `magPlannen` in `Activiteitblad` fails the "same alert after the day section goes" test; making `themasMetKoppelactie` return every thema fails 4 tests. `Subthemaplanner.test.tsx` pins `role=alert` with the count and each reason. Gap: no test covers a refused create from the new-activiteit sheet.
+- **(a) New-activiteit sheet → FAIL.** Carla (LK on K3 groen and K3 blauw; groen removed with the sheet open) passes at both widths: `201` create, `403` weekplanning, `200 /api/ik`; exactly one `role=alert` in the document, inside the dialog, "De activiteit is gemaakt maar niet ingepland. Je hebt geen toegang tot deze actie."; in view inside the sheet (678–712 within 77–931 at 1440; 723–775 within 195–775 at 390); page `scrollY` 0; add buttons 7→0 and 34→0; the quiet line; nothing after closing. **Lies (LK on K3 groen only) fails at both widths:** her create itself is refused (`403 POST /api/subthemas/…/activiteiten`), zero alerts, focus on "Sluiten", and the sheet shows "Er is nog geen subthema voor de leeftijd van deze klas onder de thema's van deze dag. Maak er eerst een bij het thema." (false: Bladeren exists; she lost the right); an uncaught `ApiError … 403` in the console.
+- **(b) The picker path → PASS** (the page alert the only alert, focused, in view: 932–966 of 1000, 616–650 of 844; one centred scroll 0→56 at 1440; add buttons to 0; the quiet line).
+- **(c1) Activiteit sheet, day move → PASS** (`403 PATCH …/dag`; one alert in the dialog, in the scroll area; "Verplaats" disappears and the alert stays; `scrollY` 0; no page alert after closing).
+- **(c2) Subthema planner → PASS** (`403 …/subthemaperiodes` then one per row; one alert "0 van 5 ingepland" with a line per activiteit, in the scroll area; no page scroll; nothing after closing).
+- **(d) Goal-link sheet → PASS** (HL K3 on K3 groen: Herfst, not "Leeg thema"; directie and themabeheer: both; the new empty state with Greta, HL of L2, on L2 geel: "Je kan dit doel hier nergens aan koppelen.", no "Nog geen thema's"; LK and no-rights: no "Koppel dit doel"; no horizontal overflow).
+- **Round-2 spot checks → PASS.** **Copy → PASS** (exactly the `nl.json` values, no em dash).
+
+## Commands run
+- Gates, three mutation runs, `features/plan` and `features/koppelen` re-run after restore (17 files, 132/132). Throwaway DB `jp_tr_e602s4r3` (container password; migrated; six leerplandoelen by SQL; the rest over the API); API on 5395, Vite on 5185; klastoewijzingen restored after every run. Script retries (the test-runner's own selectors and view, not the product). Teardown: all processes stopped, `DROP DATABASE jp_tr_e602s4r3 WITH (FORCE)`, `git status --short` empty at `a4d698a`.
+
+## Evidence
+- In the orchestrator's scratchpad under `tr-s4r3\`: `verslag-r3a/r3c/r3d/r3d3/r3e.json`; screenshots `shots\a-carla-*`, `a-lk-{1440,390}-blad.png` (the defect), `b-kiezer-*`, `c1-activiteit-*`, `c2-planner-*`, `d-*`. Console: the uncaught `ApiError … 403` in both Lies runs, plus the pre-existing `DoelenScherm` warning.
+
+## Defects
+- **[MINOR; WCAG 4.1.3; the E5-03 rule] A refused create from the new-activiteit sheet is not announced, and the sheet then says something false.** Repro: LK with only K3 groen opens "Nieuwe activiteit maken", types a name; directie deletes her K3 groen klastoewijzing; she presses Bewaren. Actual: `403 POST /api/subthemas/{id}/activiteiten`, `/api/ik` refetched; `keuzes` (filtered by `mag.activiteitBewerken`, added in slice 4) empties, `actief` undefined; the `laadt || !actief` branch replaces the form and its `role="alert"` for `maakFout`; with `planFout` null it shows `periode.geenSubthemaOmIn`; nothing is announced; `bewaarEnPlan` awaits `maak.mutateAsync` without a catch (uncaught rejection). Expected: one `role=alert` in the dialog with the refusal (without the "gemaakt maar niet ingepland" prefix, since nothing was created), and not "geen subthema". Test to add in `Nieuweactiviteitblad.test.tsx`.
+
+## Notes (not blocking)
+- [info, confirmed] After a refused plan, focus sits on `body` while the sheet stays open; a second Bewaren would create a second activiteit (sent to fix round 3 with the antagonist's QUESTION).
+- [info] The planner sends one POST per row; each 403 invalidates every query (6 rows gave 6 refetch cycles of about 15 requests); correct, just a lot of traffic.
+- [info] The HL-of-K3-on-L1 case for "Koppel dit doel" was not re-exercised (no K3 doel in that klas's register); covered by round 2 and `DoelenScherm.test.tsx`.
+- [info, pre-existing] The React setState-in-render warning on the first `/doelen` visit.

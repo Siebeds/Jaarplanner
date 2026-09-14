@@ -1,19 +1,21 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
 import type { KlasWeergave, LeerplandoelDetail, ThemaBibliotheekItem, ThemaWeergave } from "../../lib/types";
 import { t } from "../../i18n";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { DIRECTIE, NIEMAND, ikMet, metIk } from "../../test/rechten";
 import { Bestemmingsblad } from "./Bestemmingsblad";
 
 /**
  * The register's destination sheet lists only the thema's where the gebruiker has something to press (E6-02 slice 4,
- * fix round 2; the E3-06 rule). A hoofdleerkracht of K3 met a thema without subthema's that opened onto nothing.
+ * fix round 2; the E3-06 rule). A hoofdleerkracht of K3 met a thema without subthema's that opened onto nothing. The
+ * list is decided with the rights as the sheet opens (fix round 3, F9), so a refusal inside it keeps its row.
  */
 
 const CODE = "2.1.GL3.10";
+const WEIGERING = "Je hebt geen toegang tot deze actie.";
 
 const KLAS: KlasWeergave = {
   id: "klas-K3",
@@ -63,7 +65,18 @@ const HERFST = thema("thema-herfst", "Herfst", [
     leeftijd: "K3",
     onderzoeksvragen: [],
     subdoelen: [],
-    activiteiten: [],
+    activiteiten: [
+      {
+        id: "act-1",
+        naam: "Bladerslinger",
+        activiteitType: "Spel",
+        hoek: null,
+        verwachteUitkomsten: null,
+        onderzoeksvraagId: null,
+        kleur: null,
+        doelkoppelingen: [],
+      },
+    ],
   },
 ]);
 const LEEG = thema("thema-leeg", "Leeg thema", []);
@@ -82,7 +95,7 @@ function bibliotheekItem(item: ThemaWeergave): ThemaBibliotheekItem {
   };
 }
 
-function toon(ik: Ik, themas: ThemaWeergave[]) {
+function maakClient(ik: Ik, themas: ThemaWeergave[]) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   qc.setQueryData(["thema-bibliotheek"], themas.map(bibliotheekItem));
   for (const item of themas) qc.setQueryData(["thema-voor-klas", item.id, KLAS.id], item);
@@ -92,8 +105,11 @@ function toon(ik: Ik, themas: ThemaWeergave[]) {
     jaarFase: "K3",
     tekst: "De kleuters tellen tot tien.",
   } as unknown as LeerplandoelDetail);
-  metIk(qc, ik);
+  return metIk(qc, ik);
+}
 
+function toon(ik: Ik, themas: ThemaWeergave[]) {
+  const qc = maakClient(ik, themas);
   render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
@@ -101,12 +117,16 @@ function toon(ik: Ik, themas: ThemaWeergave[]) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  return screen.getByRole("dialog");
+  return { blad: screen.getByRole("dialog"), qc };
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("Bestemmingsblad", () => {
   it("toont een hoofdleerkracht van K3 geen leeg thema, wel het thema met een K3-subthema", () => {
-    const blad = toon(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }), [HERFST, LEEG]);
+    const { blad } = toon(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }), [HERFST, LEEG]);
 
     expect(within(blad).getByText("Herfst")).toBeInTheDocument();
     expect(within(blad).queryByText("Leeg thema")).toBeNull();
@@ -114,7 +134,7 @@ describe("Bestemmingsblad", () => {
 
   it("toont directie en themabeheer ook het lege thema, waar ze op themaniveau koppelen", () => {
     for (const ik of [DIRECTIE, ikMet({ heeftThemabeheer: true })]) {
-      const blad = toon(ik, [HERFST, LEEG]);
+      const { blad } = toon(ik, [HERFST, LEEG]);
       expect(within(blad).getByText("Herfst")).toBeInTheDocument();
       expect(within(blad).getByText("Leeg thema")).toBeInTheDocument();
       cleanup();
@@ -122,10 +142,39 @@ describe("Bestemmingsblad", () => {
   });
 
   it("zegt dat er niets te koppelen is als er thema's zijn maar geen enkele knop, niet dat er geen thema's zijn", () => {
-    const blad = toon(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }), [LEEG]);
+    const { blad } = toon(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }), [LEEG]);
 
     expect(within(blad).getByText(t("koppelen.nietsTeKoppelen"))).toBeInTheDocument();
     expect(within(blad).queryByText(t("koppelen.geenThemas"))).toBeNull();
     expect(within(blad).queryByText("Leeg thema")).toBeNull();
+  });
+
+  it("houdt een geweigerde koppeling in beeld als de vernieuwde rechten het K3-koppelrecht niet meer geven", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ detail: WEIGERING }), {
+            status: 403,
+            headers: { "Content-Type": "application/problem+json" },
+          }),
+      ),
+    );
+    const { blad, qc } = toon(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }), [HERFST, LEEG]);
+
+    // Searching opens every row down to the activiteit.
+    fireEvent.change(within(blad).getByLabelText(t("koppelen.zoek")), { target: { value: "Bladerslinger" } });
+    fireEvent.click(
+      within(blad).getByRole("button", { name: t("koppelen.koppelAanActiviteitUitleg", { activiteit: "Bladerslinger" }) }),
+    );
+    expect(await within(blad).findByRole("alert")).toHaveTextContent(WEIGERING);
+
+    // The refusal refetches the rights, and they no longer hold the goal-link right at K3.
+    act(() => {
+      qc.setQueryData(["ik"], NIEMAND);
+    });
+
+    expect(within(blad).getByRole("alert")).toHaveTextContent(WEIGERING);
+    expect(within(blad).queryByText(t("koppelen.nietsTeKoppelen"))).toBeNull();
   });
 });

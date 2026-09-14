@@ -897,6 +897,7 @@ export function Agendascherm() {
         voorstelSubthemaId={nieuw ? voorstelReeks(reeksen, nieuw.datum, rooster?.blokken ?? [])?.subthemaId : undefined}
         planBezig={acties.plaats.isPending}
         planFout={acties.plaats.isError ? foutTekst(acties.plaats.error) : null}
+        planGeweigerd={isGeenToegang(acties.plaats.error)}
         onSluit={() => setNieuw(null)}
         onPlan={(activiteitId, duur) => {
           if (!nieuw) return;
@@ -918,6 +919,7 @@ export function Agendascherm() {
         // The sheet's empty state is about THIS klas, so it needs the name and not just the id.
         klasNaam={klas?.naam ?? null}
         magSubthemaMaken={magSubthemaMaken}
+        magPlannen={magPlannen}
         themaIds={themaIdsInPeriode}
         dagen={heelDePeriode?.dagen ?? []}
         bezig={acties.plaats.isPending}

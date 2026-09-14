@@ -137,8 +137,10 @@ export function Activiteitblad({
   // THE DAY'S FAILURE, OUTSIDE THE DAY SECTION, as an alert (E6-02 slice 4, fix round 2, F7; WCAG 4.1.3). This sheet
   // stays open on a failure and is a modal dialog, so the agenda's own strip does not show a refusal that arrives while
   // it is open, and this line is where it is announced. After a refusal the refetched rights take the day section
-  // away; the line stays, in the same place in the tree so it is not announced twice, and says why. For a gebruiker
-  // without the day section it shows only a failure asked from this sheet.
+  // away; the line stays, in the same place in the tree, and says why. It stays the same element, so it is not
+  // announced twice, also when the content right goes with the refusal and the form turns into the facts:
+  // `Activiteitformulier` keeps one dialog for both (fix round 3, F8). For a gebruiker without the day section it
+  // shows only a failure asked from this sheet.
   const dagfout = fout !== null && (magPlannen || gevraagd) ? fout : null;
 
   return (

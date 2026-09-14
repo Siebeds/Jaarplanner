@@ -16,9 +16,11 @@ type Plek = "blad" | "naKiezer" | "pagina";
  * The alert takes focus once, which announces it and scrolls it into view: below a grid that fills a 1440×1000 screen a
  * plain paragraph was announced to nobody and out of view.
  *
- * **It mounts only while no agenda sheet is open** (fix round 2, F7). Every sheet is a modal dialog: its focus trap
- * takes the alert's one focus back, the page behind it is hidden from a screen reader, and the scroll moves the page
- * under the overlay. So where a refusal is shown is decided when it arrives:
+ * **It mounts only while none of the four agenda sheets that send these requests is open** (fix round 2, F7; narrowed
+ * in fix round 3): the picker, the new-activiteit sheet, the activiteit sheet and the subthema planner. Each is a modal
+ * dialog: its focus trap takes the alert's one focus back, the page behind it is hidden from a screen reader, and the
+ * scroll moves the page under the overlay. The two hoek sheets are not counted; they send none of these requests. So
+ * where a refusal is shown is decided when it arrives:
  * - with the new-activiteit sheet, the activiteit sheet or the subthema planner open, that sheet shows it as an alert
  *   of its own, and this strip never does, not after the sheet closes either;
  * - with the picker open, which has no error line, it waits here until the picker closes (the picker closes on a

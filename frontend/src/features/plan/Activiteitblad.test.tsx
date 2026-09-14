@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { Ik } from "../../lib/aanmelding";
 import type { GeplandeActiviteit, ThemaWeergave } from "../../lib/types";
 import { t } from "../../i18n";
-import { ikMet, metIk } from "../../test/rechten";
+import { NIEMAND, ikMet, metIk } from "../../test/rechten";
 import { Activiteitblad } from "./Activiteitblad";
 
 /**
@@ -67,10 +68,10 @@ const GEPLAND: GeplandeActiviteit = {
   valtBuitenThemaperiode: false,
 };
 
-function client() {
+function client(ik: Ik = ikMet({ leerkrachtLeeftijden: ["K3"], hoofdleerkrachtLeeftijden: ["K3"] })) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   qc.setQueryData(["thema-voor-klas", "thema-1", "klas-1"], THEMA);
-  return metIk(qc, ikMet({ leerkrachtLeeftijden: ["K3"], hoofdleerkrachtLeeftijden: ["K3"] }));
+  return metIk(qc, ik);
 }
 
 function Blad({ qc, magPlannen, fout, onVerplaats = vi.fn() }: {
@@ -117,6 +118,31 @@ describe("Activiteitblad na een geweigerde dagactie", () => {
     rerender(<Blad qc={qc} magPlannen={false} fout={WEIGERING} onVerplaats={verplaats} />);
     expect(screen.queryByRole("button", { name: t("periode.verplaats") })).toBeNull();
     expect(within(screen.getByRole("dialog")).getByRole("alert")).toBe(melding);
+  });
+
+  it("houdt blad en melding dezelfde als ook het inhoudsrecht wegvalt, zodat de weigering een keer klinkt", () => {
+    // A leerkracht whose only klas at K3 is this one: she may plan it and change K3's activiteiten.
+    const qc = client(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
+    const { rerender } = render(<Blad qc={qc} magPlannen fout={null} />);
+    expect(screen.getByRole("button", { name: t("themabeheer.bewaar") })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(t("periode.opDag")), { target: { value: "2026-10-07" } });
+    fireEvent.click(screen.getByRole("button", { name: t("periode.verplaats") }));
+    rerender(<Blad qc={qc} magPlannen fout={WEIGERING} />);
+    const dialoog = screen.getByRole("dialog");
+    const melding = within(dialoog).getByRole("alert");
+
+    // Directie removed her klastoewijzing: the refetched rights hold neither the planning nor the content right.
+    act(() => {
+      qc.setQueryData(["ik"], NIEMAND);
+    });
+    rerender(<Blad qc={qc} magPlannen={false} fout={WEIGERING} />);
+
+    // The facts now, in the same dialog, with the same alert: not remounted, so not announced or scrolled again.
+    expect(screen.getByRole("dialog")).toBe(dialoog);
+    expect(within(dialoog).getByRole("heading", { name: "Bladerslinger" })).toBeInTheDocument();
+    expect(within(dialoog).queryByRole("button", { name: t("themabeheer.bewaar") })).toBeNull();
+    expect(within(dialoog).getByRole("alert")).toBe(melding);
   });
 
   it("toont wie de dag niet mag plannen geen fout die bij een ander blad hoorde", () => {
