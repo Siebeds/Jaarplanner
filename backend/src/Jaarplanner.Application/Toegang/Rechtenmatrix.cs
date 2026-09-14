@@ -27,8 +27,9 @@ namespace Jaarplanner.Application.Toegang;
 /// holds for directie too. Most of it is state: the run is open, the content is under its own thema, an edit or delete
 /// reaches only what it created (I23–I25). One part is a relation (I27, with the owner's Q4 ruling of 2026-09-14): a
 /// wizard action that would remove a goal link needs <see cref="DoelenKoppelen"/> at that leeftijd, and one that changes
-/// a subthema's leeftijd needs it "at both the old and the new leeftijd" (I27 as ratified on the owner's Q5 answer of
-/// 2026-09-14). The service asks it through <see cref="StaatToe"/> like every other row. <i>Until slice 3 this paragraph said the
+/// the leeftijd of a subthema whose activiteiten carry a goal link needs it "at both the old and the new leeftijd" (I27
+/// as ratified on the owner's Q5 answer of 2026-09-14). The service asks it through <see cref="StaatToe"/> like every
+/// other row. <i>Until slice 3 this paragraph said the
 /// row needed a state the model did not have; the <c>Wizardrun</c> entity is that state. Until fix round 2 it called
 /// the whole of it state, which I27 made false.</i>
 /// </para>
@@ -112,8 +113,8 @@ public static class Rechtenmatrix
     /// (R29, R32; I18, I22–I25, I27; I26 is the thema delete, not wizard content). Who may call the wizard's own write
     /// actions: directie and themabeheer. What the run allows is <c>IWizardrunService</c>'s, for everyone: state (open,
     /// its own thema, its own items: I23–I25), narrowed by I27, under which an action that would remove a goal link also
-    /// needs <see cref="DoelenKoppelen"/> at that leeftijd, and a leeftijd change needs it "at both the old and the new
-    /// leeftijd" (the owner's Q5 answer of 2026-09-14).
+    /// needs <see cref="DoelenKoppelen"/> at that leeftijd, and a leeftijd change of a subthema whose activiteiten carry a
+    /// goal link needs it "at both the old and the new leeftijd" (the owner's Q5 answer of 2026-09-14).
     /// </summary>
     public static readonly Matrixrij Wizardinhoud = new(
         Beleid.Wizardinhoud,

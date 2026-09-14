@@ -218,3 +218,31 @@ None.
 - The old-leeftijd half of the Q4 re-scope check has no test (confirms the antagonist's round-3 MINOR 1): every refused case lacks the right at K2. Add TB+HL(K2 only) K3→K2 → 403 `GekoppeldVerhuist`, K3 kept.
 - The planned-thema test matches its 400 sentence by substring only.
 - The password in `docs/dev-setup-secrets.md` does not match the `jaarplanner-db` container.
+
+
+# E6-02 slice 3 — Test report (round 4)
+
+**Verdict:** PASS
+**Mode:** unit/integration (backend only; no Playwright until slice 4)
+**Change verified:** `08c10a2` on `story/E6-02-afdwingen`, on top of `e83a875` (PASS in round 3). No new migration.
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **1. Gates → PASS.** `dotnet build` 0/0. Full `dotnet test --no-build` (Postgres 127.0.0.1:5433, container password): UnitTests 1364 passed, 4 skipped, 0 failed; IntegrationTests 423 passed, 1 skipped, 0 failed (the new case is a line inside an existing test). `dotnet format --verify-no-changes` 0. `has-pending-model-changes --no-build` clean.
+- **2. Mutation proof, repeated by the test-runner → PASS.** In `WizardrunService.cs` line 158, `MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, …)` → `MagDoelenKoppelenAsync(gebruikerId, nieuw, …)`, rebuilt 0/0; `WizardrunEndpointsTests` + `RechtenAfdwingingTests`: 1 failed, 38 passed. The only failure: `Een_gekoppelde_wizardactiviteit_verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4` at line 259 (the new TB+HL(K2 only) K3→K2 case): `Expected 403 "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Die mag je niet naar een andere leeftijd meenemen, dus de wizard verandert de leeftijd niet.", got 200 "".` Restored with `git checkout --`; `git status --short` empty; HEAD `08c10a2`; rebuilt 0/0 and the Q4 test green again. Round 3 found this half unpinned (39/39 under the same mutation); it is now pinned.
+- **3. Round-3 criteria still hold → PASS** (re-run after the restore, 7/7 named tests): Q4 thema delete (`RechtenAfdwingingTests…_Q4` and the unit `RechtenmatrixTests.Themabeheer_verwijdert_een_thema_alleen_zonder_andermans_inhoud`); Q4 re-scope (TB, TB+HL(K3), TB+HL(K2) each 403 `GekoppeldVerhuist`; same-leeftijd 200; K3 kept, asserted after the new refusal; TB+HL(K3,K2) 200 and then K2); the planned thema's whole 400 sentence pinned through `RechtenTestOpzet.VerwachtAsync` (exact status and detail, no em dash); a refused delete keeps the rows (`…_I27`); I28; the sweep. Round-1 and round-2 criteria: full suite green.
+- **`Themabron.GekoppeldeLeeftijden` required → PASS.** No default; `StaatToe` lost its `?? []`; the build compiles, so every producer passes it (the only production producer, `EfRechtenbronnen.cs:98`, passes a materialised list); the four unit-test calls pass it explicitly.
+
+## Commands run
+- `dotnet build` 0/0 at HEAD, after the mutation and after the restore; full `dotnet test --no-build` as above; format 0; mutation then filtered test run (1 failed, 38 passed); restore and `git status --short` empty; named round-3 tests 7/7; `has-pending-model-changes` clean.
+
+## Evidence
+- Mutated failure at `WizardrunEndpointsTests.cs:259`, "Expected 403 … got 200". Full suite output saved in the orchestrator's scratchpad (`full-test.txt`).
+
+## Defects
+None.
+
+## Notes (non-blocking)
+- Environment issue, retried once: during the first mutated run Docker Desktop restarted `jaarplanner-db` (engine API 500, "the database system is starting up"); every test failed at 1 ms on an Npgsql connect timeout in `PostgresTestDatabase.MaakAsync`. Once healthy, the retry gave the result above.
+- The password in `docs/dev-setup-secrets.md` still does not match the `jaarplanner-db` container.

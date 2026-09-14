@@ -1769,3 +1769,24 @@ The server enforces all of this; without slice 4 these controls answer 403.
   - IntegrationTests: 423 passed, 1 skipped. The new case extends an existing test, so the count is unchanged.
 - Mutation probe: failed as required, then restored.
 - No frontend file changed.
+
+### Owner-approved mini-fix (after audit round 4)
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 4)": PASS;
+  - "## Code slice 3 — audit round 4": 0 CRITICAL, 0 MAJOR, 1 MINOR.
+
+  Both are the orchestrator's and are committed unedited. The three fix rounds were used up; the owner approved this
+  one extra fix, limited to that finding.
+- **The MINOR:** two doc comments in `Rechtenmatrix.cs` dropped the goal-link condition from the re-scope rule: the
+  class doc's wizard paragraph and the `Wizardinhoud` doc. The code asks `DoelenKoppelen` at both leeftijden only
+  while an activiteit under the subthema carries a goal link (`WizardrunService.WijzigSubthemaAsync`). A
+  themabeheer-only re-scope of an unlinked run subthema is pinned at 200.
+- **Fix:** both now say the rule is for "a subthema whose activiteiten carry a goal link". Only those two comment
+  blocks changed. No executable line, test or other source file.
+- **Proof:** `git diff -U0 -- backend`, filtered for changed lines that are neither blank nor start with `//`, `///`
+  or `*`, gives **0 lines**. The only changed lines are the `///` lines of those two blocks.
+- **Gates:**
+  - `dotnet build`: ✓, 0 warnings;
+  - `dotnet format --verify-no-changes`: exit 0;
+  - `Toegang` unit tests: 209 passed.

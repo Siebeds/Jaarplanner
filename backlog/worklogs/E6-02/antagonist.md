@@ -643,3 +643,24 @@ The thema delete control per Q1; the subthema form's leeftijd select (I13); the 
 - The `Wizardinhoud` range "I22–I27" includes I26. The `ThemaVerwijderen` label's "het" reads as the thema; `Matrixrij.Actie` is read by no code.
 
 **Checks run:** by reading (build, format and tests not re-run by the antagonist). Art. II, III, IV, V, VI.2, VI.4, VII, VIII, IX, XIV compliant; scope within E6-02.
+
+## Code slice 3 — audit round 4
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool). Condensed in layout only.*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 0 MAJOR, 1 MINOR, 0 QUESTION)
+**Scope audited:** `git diff e83a875 08c10a2` on `story/E6-02-afdwingen` (8 backend files, 3 worklogs), plus the re-scope path in `WizardrunService`, `EfRechtenbronnen.VoorThemaAsync`, and `RechtenTestOpzet.VerwachtAsync`. Art. VI.1 I27 read fresh from `feature/e6-rollen-rechten` HEAD (`8c95c57`, the Q5 clarification) with its ratification-log entry.
+
+**Round 3 resolved:**
+- MINOR 1: themabeheer + HL(K2 only) K3→K2 → 403 `GekoppeldVerhuist` (`WizardrunEndpointsTests.cs:242,259`), K3 kept (`:263-266`). `GekoppeldVerhuist` is thrown only at `WizardrunService.cs:161`. The K2 right is real: `beide` gets 200 at `:268`, and the mutation proof reports 200 for this case (probe not re-run).
+- Q5: closed. I27 says "at both the old and the new leeftijd", and `:158-159` asks both.
+- Nits: `Themabron.GekoppeldeLeeftijden` required (the only producer, `EfRechtenbronnen.cs:98`, passes a list; leaving it out is a compile error; an explicit null warns and then throws in `StaatToe`, failing closed); the class docs name the leeftijd-change-with-link case and keep its condition; "I22–I25, I27" cited; the `ThemaVerwijderen` label names the thema (`Matrixrij.Actie` is read by no code); the planned-thema 400 pinned by exact value, equal to `SchoolcontentBeheerService.cs:202-203`.
+
+### [MINOR] 1. Two docs drop the goal-link condition from the re-scope rule
+- **Where:** `Rechtenmatrix.cs:28-31` (class doc), `:112-116` (`Wizardinhoud` doc).
+- **Problem:** both now say a wizard leeftijd change needs `DoelenKoppelen` "at both the old and the new leeftijd" without condition. The code asks it only while an activiteit under the subthema carries a goal link (`WizardrunService.cs:157`); a themabeheer-only re-scope of an unlinked run subthema is pinned at 200 (`WizardrunEndpointsTests.cs:84,103-105`). I27's sentence refers to "that right" of the linked-activiteit sentence before it. Round 3's wording was exact; this round dropped the condition. It fails closed if followed.
+- **Required fix:** restore the condition ("…changes the leeftijd of a subthema whose activiteiten carry a goal link…"), or an owner waiver.
+
+**Checks run:** `dotnet build` 0/0 at `08c10a2`, `Toegang` unit tests 209/209, format exit 0, tree clean. Integration tests not re-run (no `JAARPLANNER_TEST_POSTGRES` in the antagonist's shell). Art. II, III, IV, V, VI.4, VI.7, VII, VIII, IX, XIV compliant; VI.1 compliant in code; scope within E6-02.
+
+Last fix round: the MINOR goes to the owner to fix or waive.
