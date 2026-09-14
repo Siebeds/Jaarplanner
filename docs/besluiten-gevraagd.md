@@ -192,7 +192,7 @@ Onder een thema hangen de **subthema's**, en die zijn per **leeftijd**: een subt
 
 **Waarom we het vragen.** Het bepaalt wat de leerkracht van een graadklas zelf mag aanpassen, en het raakt ook vraag 11 hierboven: een activiteit kan vandaag niet van het ene leerjaar naar het andere verhuizen.
 
-**Gevolg zolang dit openstaat.** De tool werkt voor graadklassen, maar voor het tweede leerjaar moet de leerkracht de hoofdleerkracht of de directie vragen. De regel zit op één plaats in de tool, dus uw antwoord verandert enkel die plaats.
+**Gevolg zolang dit openstaat.** De tool werkt voor graadklassen, maar voor het tweede leerjaar moet de leerkracht de hoofdleerkracht of de directie vragen. De regel zit op één plaats in de tool, dus uw antwoord verandert enkel die plaats. Het raakt ook het ontwikkelingsrapport (vraag 15): een kleuterklas met kinderen van K2 en K3 die in de tool als K2 staat, krijgt voor zijn K3-kinderen geen ontwikkelingsrapport zolang u dit niet beslist.
 
 ---
 
@@ -221,7 +221,7 @@ Andere leerkrachten zien ze niet. Let op: wie van u het directierecht krijgt, bi
 3. Neem deze verwerking op in het verwerkingsregister van de school. Laat de ouders weten dat de school deze gegevens bewaart, en dat teksten door een AI-dienst in de EU herwerkt kunnen worden. De namen van de kinderen van de klas worden daarbij vervangen. Een bijnaam of een andere naam die de leerkracht schrijft, wordt niet vervangen.
 4. Laat een effectbeoordeling (DPIA) doen. Voor beoordelingen van jonge kinderen, deels met AI, is die volgens de AVG heel waarschijnlijk verplicht voordat de verwerking start. Neem daarin ook op dat leerkrachten in de teksten zorg- of gezondheidsinformatie kunnen schrijven, zoals logopedie of een diagnose. Dat zijn bijzondere gegevens (AVG art. 9).
 
-**Gevolg zolang dit openstaat.** Het bouwen gaat door. De projecteigenaar besliste bewust dat echte gegevens mogen worden ingevoerd zodra het rapport gebouwd is, ook als punten 2 tot 4 dan nog niet rond zijn. Verwerken voordat de ouders geïnformeerd zijn en de DPIA gedaan is, voldoet voor die periode niet aan de AVG. De school is daarvoor verantwoordelijk. Wij raden aan om punten 2 tot 4 af te ronden voordat de eerste echte naam in de tool komt.
+**Gevolg zolang dit openstaat.** Het bouwen gaat door. De projecteigenaar besliste bewust dat echte gegevens mogen worden ingevoerd zodra het rapport gebouwd is, ook als punten 2 tot 4 dan nog niet rond zijn. Is een DPIA verplicht, wat heel waarschijnlijk is, dan voldoet verwerken voordat ze gedaan is niet aan de AVG. De ouders moeten ingelicht worden wanneer de gegevens verzameld worden. De school is daarvoor verantwoordelijk. Wij raden aan om punten 2 tot 4 af te ronden voordat de eerste echte naam in de tool komt.
 
 ---
 

@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:31
+bijgewerkt: 2026-09-14 12:43
 opgepakt-door: kindrapport
 branch: ticket/TB-005-ontwikkelingsrapport-scope
 pr:
@@ -32,7 +32,7 @@ Dit ticket legt die beslissing en de regels voor de leerlinggegevens vast, vóó
 Geen broncode. Alleen documenten:
 
 1. **ADR-0035** (`docs/adr/0035-ontwikkelingsrapport-derde-kleuter.md`). Die legt vast:
-   - de 29 antwoorden van de eigenaar, letterlijk (R1 tot R29, waarvan R23 tot R29 na de eerste audit);
+   - de 30 antwoorden van de eigenaar, letterlijk (R1 tot R30, waarvan R23 tot R30 na de eerste audit);
    - het model;
    - wie wat mag, met een vijfde recht **Leerlingzorg**;
    - de AI-herwerking zonder de namen van de klas;
@@ -56,7 +56,7 @@ Geen broncode. Alleen documenten:
 
 - [ ] Gegeven ADR-0035, wanneer iemand leest wat de eigenaar besliste, dan staan de vragen, de gekozen en de niet gekozen opties letterlijk, en apart van de standaardkeuzes van de sessie.
 - [ ] Gegeven de grondwet na het amendement, dan staat het ontwikkelingsrapport voor K3 niet meer onder de niet-doelen. Toegang voor ouders, koppelingen met Informat of Smartschool en puntenbeheer blijven wel niet-doelen.
-- [ ] Gegeven Art. VI na het amendement, dan staat erin welke leerlinggegevens bewaard worden, wie ze ziet, hoe ze gewist worden en dat de AI geen namen krijgt.
+- [ ] Gegeven Art. VI na het amendement, dan staat erin welke leerlinggegevens bewaard worden, wie ze ziet, hoe ze gewist worden en dat de namen van de kinderen van de klas vervangen worden voor een tekst naar de AI gaat.
 - [ ] Gegeven de amendementscommit, dan zijn de functionele analyse, `CLAUDE.md`, de matrix in ADR-0030, de ADR-index, ADR-0011, ADR-0016, E7-06, E8 en de drie agent- en skillbestanden in dezelfde commit bijgewerkt, en zegt geen van die teksten nog zonder uitzondering "geen leerlinggegevens".
 - [ ] Gegeven `docs/besluiten-gevraagd.md`, dan staat er een vraag aan de directie over het ontwikkelingsrapport: bevestiging, bewaartermijn in het verwerkingsregister, ouders informeren, DPIA.
 - [ ] Gegeven de antagonist-audit van de ADR en het amendement, dan is het oordeel COMPLIANT, of is elke bevinding verwerkt of uitdrukkelijk opzijgezet.
@@ -70,7 +70,7 @@ Geen broncode. Alleen documenten:
 
 ## Open vragen
 
-Geen. De eigenaar beantwoordde op 2026-09-14 alle 29 vragen (ADR-0035 §1). De bevestiging door de directie komt als vraag
+Geen. De eigenaar beantwoordde op 2026-09-14 alle 30 vragen (ADR-0035 §1). De bevestiging door de directie komt als vraag
 in `docs/besluiten-gevraagd.md` en houdt het werk niet tegen (R20, R27).
 
 ## Werklog
@@ -81,3 +81,5 @@ in `docs/besluiten-gevraagd.md` en houdt het werk niet tegen (R20, R27).
 - 2026-09-14 11:59 · kindrapport · Antagonist ronde 1: VIOLATIONS FOUND (3 MAJOR, 8 MINOR, 4 vragen); de 22 antwoorden kloppen; zeven vragen voorgelegd aan de eigenaar; rapport in backlog/worklogs/TB-005/antagonist-ronde-1.md
 - 2026-09-14 12:15 · kindrapport · Ronde 1 verwerkt: zeven nieuwe antwoorden van de eigenaar (R23 tot R29) in ADR-0035, de eigen ontwerpkeuzes als standaard gemarkeerd, en het amendement geschreven (grondwet, functionele analyse, CLAUDE.md, ADR-0030-matrix, E7-06, E8, vraag 15 aan de directie, drie agent- en skillbestanden)
 - 2026-09-14 12:31 · kindrapport · Antagonist ronde 2: VIOLATIONS FOUND (1 MAJOR, 9 MINOR, 4 vragen), allemaal verwerkt zonder nieuwe vraag aan de eigenaar: de AI krijgt nu alleen de tekst (R21), eigen keuzes als standaard gemarkeerd, de herinnering (R28) overal, AVG art. 9 en de volledige R29 opgenomen; rapport in backlog/worklogs/TB-005/antagonist-ronde-2.md
+- 2026-09-14 12:34 · kindrapport · De eigenaar bevestigde de aanpassing aan de drie agent- en skillbestanden in zijn eigen antwoord: 'Ja, zo is het goed' (komt als R30 in ADR-0035 na ronde 3)
+- 2026-09-14 12:43 · kindrapport · Antagonist ronde 3: 0 MAJOR, 7 MINOR, 2 vragen, allemaal verwerkt: directie op de K3-set is een standaardkeuze (R6), AVG-verwijzing verbeterd (art. 13(1)/14, voorwaardelijk), namen in logs en code blijven CRITICAL, graadklas-gevolg aan de directie gemeld, R30 opgenomen; rapport in backlog/worklogs/TB-005/antagonist-ronde-3.md

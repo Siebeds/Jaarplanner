@@ -9,7 +9,7 @@
     ratification log records for ADR-0025.
 - **Date:** 2026-09-14
 - **Deciders:** Siebe De Saedeleir (projecteigenaar), for §1 only. The rulings were given in session `kindrapport`, as
-  answers to five rounds of multiple-choice questions, whose options and stated costs are quoted below.
+  answers to six rounds of multiple-choice questions, whose options and stated costs are quoted below.
 - **Narrows:** [ADR-0011](0011-authn-authz-rbac-gdpr.md) §4 (*"the model has no schema for pupil PII"*) and the *"no
   pupil PII"* constraint of [ADR-0016](0016-azure-hosting-eu-residency.md). Both still hold everywhere outside the
   ontwikkelingsrapport.
@@ -35,6 +35,14 @@
 > - Also fixed: R16 and R18 are now quoted in full, E6-02's release time is corrected, the ADR no longer presumes the
 >   amendment has landed, the three Art. XIV bullets it touches are named, rapportdoel membership is specified at its
 >   edges, and the kindtekening's claims are narrowed.
+
+> **Revised after audit rounds 2 and 3** (`antagonist-ronde-2.md`, `antagonist-ronde-3.md`):
+> - only the teacher's text goes to the AI, without the rapportdoel title or the gradatie (R21);
+> - what no ruling covers is marked as a default, including directie's edit right on the K3 set, since R6 named only the
+>   K3 leerkrachten;
+> - R28's reminder is carried everywhere;
+> - AVG art. 9 (the free texts) and the conditional AVG position on the order (art. 13(1), 14 and 35(1)) are stated;
+> - the owner confirmed the agent-instruction edits (R30).
 
 ## Context
 
@@ -129,10 +137,12 @@ for all of K3, not per klas. **R7 was chosen against the recommendation**, with 
 | R27 | *"Je koos eerder 'Ja, meteen' voor echte leerlinggegevens. De AVG vraagt voor evaluaties van kinderen waarschijnlijk een effectbeoordeling (DPIA) vóór de verwerking start, plus een ingevuld verwerkingsregister. Houden we 'meteen'?"* | **"'Meteen' blijft"**: *"We leggen vast dat jij bewust afwijkt, met de risico's erbij (AVG art. 13, 30 en 35). De school draagt die verantwoordelijkheid."* | "Eerst register en DPIA (Aanbevolen)" |
 | R28 | *"Je koos 'Tot directie wist'. De AVG vraagt een concrete bewaartermijn in het register. Wat doet de app?"* | **"Termijn + herinnering (Aanbevolen)"**: *"De directie legt een termijn vast in het register (bv. tot eind volgend schooljaar). De app toont op de beheerpagina welke schooljaren nog kindgegevens bevatten en herinnert eraan. Wissen blijft een handeling van de directie."* | "Termijn, geen herinnering" |
 | R29 | *"Drie agent- en skillbestanden (antagonist, implementer, jaarplan-build) behandelen 'leerlinggegevens' vandaag als harde stop. Na het amendement zouden ze elk bouwticket van het rapport blokkeren. Mag ik ze in het amendement mee aanpassen?"* | The owner chose neither option and answered in his own words: *"wat bedoel je behandelen als harde stop, ik word gefrustreerd van deze verwoordingen, het amendement mag wat ik hier vraag niet tegenhouden of blokkeren"* | "Ja, pas ze mee aan (Aanbevolen)"; "Nee, ik doe het zelf" |
+| R30 | *"In drie instructiebestanden voor de controle-agents heb ik één regel aangepast. Leerlinggegevens worden nog altijd afgekeurd, behalve in het ontwikkelingsrapport. Daar controleren de agents alleen of de nieuwe regels gevolgd worden (welke gegevens, wie ze ziet, namen vervangen voor de AI, wissen). Is dat wat je bedoelde?"* | **"Ja, zo is het goed"** | "Nee, anders" |
 
 - **R25 and R27 were chosen against the recommendation.**
 - **R29 is read as consent to change those three texts** so that they do not stop the ontwikkelingsrapport. The
-  session first answered his question in the conversation: the three texts say that pupil data is always rejected. Pupil
+  session first answered his question in the conversation: the three texts say that pupil data is always rejected.
+  After the edits, the owner confirmed them in his own answer (R30). Pupil
   data outside the report stays a violation for them, and inside the report they check against Art. VI.7.
 
 ## 2. What changes in scope
@@ -378,9 +388,11 @@ carries, as a default and not ratified**, in the way Art. VI.1 marks the default
 - **Art. I.2:** *"Pupil-level tracking or reporting"* and *"Evaluation / grading / points management"* keep their place,
   with the ontwikkelingsrapport excepted and bounded as in §2. The other three non-goals are unchanged.
 - **Art. IV.1:** who decides a rewrite (§3.5).
-- **Art. IV.2:** a pending rewrite proposal is not stored, and every decision is (R23).
+- **Art. IV.2:** every decision on a rewrite is stored (R23). That a pending proposal is not stored is session design,
+  the premise R23 was asked on.
+- **Art. IV.4:** only the teacher's text goes to the AI (R21).
 - **Art. IV.3:** a rewrite carries no motivation (R24).
-- **Art. IV.4 and IV.5:** a rewrite is grounded on the teacher's own text, and its JSON shape.
+- **Art. IV.5:** a rewrite's JSON shape, one rewritten text.
 - **Art. VI.1:**
   - *"four rights"* becomes five, with a **Leerlingzorg** bullet (§3.4);
   - the sentence *"A zorgcoördinator is a gebruiker who may hold themabeheer"*, and default **(e)**, name Leerlingzorg
@@ -394,15 +406,18 @@ carries, as a default and not ratified**, in the way Art. VI.1 marks the default
 - **Art. IX.4 (new):** the entities of §3.1.
 - **Art. XII:** glossary entries for Ontwikkelingsrapport, Leerling, Rapportdoel, Gradatie, Evaluatiemoment,
   Rapportbeoordeling, Algemeen besluit, Kindtekening and Leerlingzorg.
+- **Art. XIV:** the bullets on graadklassen (D9), teacher visibility (R17) and export formats (R13), annotated. None is
+  added.
 - **The ratification log.**
 
 **In step, in the same commit:**
 
 - **The functional analysis:**
-  - §2 *Buiten scope*;
+  - §2.3 *Binnen scope* and *Buiten scope*;
   - §3.1's zorgcoördinator line;
   - a new FR-13;
   - NFR-6;
+  - §7 *Transparantie* and *Brongegevens*;
   - §10 *Aannames*;
   - A.11's *"vier rechten"* and (e).
 - **`CLAUDE.md`:**
@@ -414,7 +429,7 @@ carries, as a default and not ratified**, in the way Art. VI.1 marks the default
 - **ADRs:**
   - the ADR-0030 §3 matrix rows and a pointer to this ADR;
   - the ADR index;
-  - the status lines of ADR-0011 and ADR-0016.
+  - the status lines of ADR-0010, ADR-0011 and ADR-0016, and ADR-0030's header and item (e).
 - **The backlog:**
   - E7-06 (the register covers this report, its term and the AI processor);
   - the E8 note on what is out of scope.

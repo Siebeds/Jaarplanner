@@ -682,7 +682,9 @@ on the ordinary subthema, subdoel and activiteit routes** (I22), which is what t
 
 ⁶ **The ontwikkelingsrapport rows** were added on 2026-09-14 from [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md)
 §3.3. The R-numbers in their labels are ADR-0035's, not this ADR's, and they are ratified by Art. VI.7 as far as they
-cite those rulings. The "Directie" ✓ on them rests on this ADR's R3, as everywhere else in the matrix.
+cite those rulings. The "Directie" ✓ on them rests on this ADR's R3, as everywhere else in the matrix, **except on the rapportdoelen row**.
+There it is a default (Art. VI.7), because ADR-0035 R6 named only the K3 leerkrachten and turned down "Directie en
+K3-leerkrachten".
 - **The column definitions widen for these rows only.**
   - "LK eigen" covers the klas's leerlingen and their reports as well as its planning. It fills in only during the klas's
     schooljaar; after it, it reads (ADR-0035 R26) and downloads (a default) only, which overrides I21 for these rows.

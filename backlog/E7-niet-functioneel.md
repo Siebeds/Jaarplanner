@@ -60,7 +60,7 @@
   Staff/curriculum data, plus the K3 ontwikkelingsrapport since the amendment of 2026-09-14; verwerkingsregister + bewaartermijnen documented.
   *Done when:* no pupil PII path exists outside the ontwikkelingsrapport; register & retention written down.
   *Carry-forward (TB-005, [ADR-0035](../docs/adr/0035-ontwikkelingsrapport-derde-kleuter.md), 2026-09-14):* the register must also cover the K3 ontwikkelingsrapport:
-  - the data: a leerling's voornaam and achternaam, the gradaties, the texts, the algemeen besluit and the kindtekeningen;
+  - the data: a leerling's voornaam and achternaam, the gradaties, the texts, the algemeen besluit and the kindtekeningen. The texts may carry special-category data (AVG art. 9), such as care or health information;
   - the school's concrete retention term (R28). The app keeps the data until directie wipes a schooljaar, and reminds directie on the beheerpagina;
   - the AI processor for rewrites: Azure OpenAI in the EU data zone. Pseudonymised text is still personal data. Record whether Azure's abuse monitoring may keep prompts, and whether the school applies to switch it off;
   - backups: a deletion reaches a backup only once that backup expires.

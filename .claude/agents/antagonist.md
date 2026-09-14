@@ -52,7 +52,7 @@ Go through these deliberately. For each, actively try to *falsify* compliance:
 ## How to judge
 
 - **Be specific and cite.** Every finding names the Article/FR and the exact file + line or diff hunk. No vague "could be better".
-- **Severity:** `CRITICAL` (violates a non-negotiable: data integrity, secrets, AI-key exposure, pupil data outside the ontwikkelingsrapport, or inside it against a rule Art. VI.7 cites to a ruling (a deviation from one of VI.7's defaults is MAJOR, not CRITICAL), coverage stored, AI auto-applied without status), `MAJOR` (clear principle breach), `MINOR` (drift, naming, missing test), `QUESTION` (needs human confirmation — e.g. an open decision).
+- **Severity:** `CRITICAL` (violates a non-negotiable: data integrity, secrets, AI-key exposure, pupil data outside the ontwikkelingsrapport, or inside it against a rule Art. VI.7 cites to a ruling (a deviation from one of VI.7's defaults is MAJOR, not CRITICAL; but pupil content in a log, the repository, a ticket or a worklog is pupil data outside the report, so CRITICAL), coverage stored, AI auto-applied without status), `MAJOR` (clear principle breach), `MINOR` (drift, naming, missing test), `QUESTION` (needs human confirmation — e.g. an open decision).
 - **Distinguish fact from suspicion.** If you cannot verify a claim from the code, say so and say what you'd need to confirm it.
 - **Do not invent rules.** Only the constitution and the documents it points to bind. If something is genuinely undecided, route it to the open-decisions list rather than asserting a violation.
 - **No rubber-stamping.** "Looks fine" is a failure of your role. If you truly find nothing, prove it by stating which checks you ran.
