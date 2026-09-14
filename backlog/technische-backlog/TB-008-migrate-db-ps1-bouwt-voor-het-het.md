@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:58
+bijgewerkt: 2026-09-14 13:20
 opgepakt-door: demo-seed
 branch: ticket/migrate-db-build-first
-pr:
+pr: 59
 geblokkeerd:
 fr: []
 ---
@@ -58,3 +58,4 @@ Geen.
 - 2026-09-14 12:39 · demo-seed · getest op een verse checkout (geen bin/obj): build zonder aparte restore, EF 'No migrations were applied', firewallregel weer weg; tweede run met procesboomvolging: geen MSBuild-node, compilerserver, dotnet-ef- of API-proces van het script bleef draaien; criteria afgevinkt; antagonist loopt
 - 2026-09-14 12:58 · demo-seed · antagonist: 3 MINOR, verwerkt: MSBUILDDISABLENODEREUSE zolang het wachtwoord gezet is (dotnet-ef evalueert nog met MSBuild), ADR-0034 beslissing 5 aangevuld, en bewijs voor --no-build: dotnet-ef laadt Jaarplanner.Api/bin/Debug/net10.0 (ook Infrastructure.dll) en 'migrations list --no-build' gaf dezelfde 25 migraties als de broncode; het oude script faalde op een verse checkout (NETSDK1004); herhaalde run na de fix: geen migraties toegepast, omgeving hersteld, firewall schoon
 - 2026-09-14 12:58 · demo-seed · in-uitvoering → klaar: migrate-db.ps1 bouwt voor het wachtwoord gelezen wordt, zonder build-servers, EF met --no-build en zonder MSBuild-nodehergebruik; ADR-0034 aangevuld; gates: antagonist verwerkt, runs tegen de demo zonder openstaande migraties
+- 2026-09-14 13:20 · demo-seed · PR #59
