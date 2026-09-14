@@ -536,4 +536,18 @@ describe("Tijdraster onder de muis", () => {
     expect(gevraagd).toHaveBeenCalledTimes(2);
     expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 15 * 60);
   });
+
+  it("toont pas een bereik als de druk zijn eerste kwartier verlaat", () => {
+    toon([dag()]);
+
+    // Pressed at 9:00 and trembling inside that quarter: still a click, which gets the activiteit's own length, so no
+    // stretch is promised on screen.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 10), buttons: 1 });
+    expect(screen.queryByText(/^\d{1,2}:\d{2} - \d{1,2}:\d{2}$/)).not.toBeInTheDocument();
+
+    // Into the next quarter, and the stretch appears: both quarters, 9:00 to 9:30.
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 20), buttons: 1 });
+    expect(screen.getByText(toonBereik(9 * 60, 9 * 60 + 30))).toBeInTheDocument();
+  });
 });

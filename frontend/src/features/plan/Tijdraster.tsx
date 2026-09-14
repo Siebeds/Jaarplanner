@@ -587,9 +587,10 @@ function useLegePlek(
   const [zweef, setZweef] = useState<number | null>(null);
   const [trek, setTrek] = useState<Trek | null>(null);
   const lopend = useRef<Trek | null>(null);
-  // Whether the coming click belongs to a primary mouse or pen press that its release already answered, so the click
-  // must not ask a second time. Only such a press sets it. A tap and a keyboard press are answered by the click alone,
-  // and a hover clears it: nothing is held, so no answered press is waiting for its click.
+  // Whether the coming click belongs to a primary mouse or pen press, whose click this column must not answer: its
+  // release either answered it, or deliberately let it go (Escape, lost capture). Every primary press sets it. A tap
+  // and a keyboard press are answered by the click alone, and a hover clears it: nothing is held, so no press is
+  // waiting for its click.
   const doorAanwijzer = useRef(false);
 
   const zet = (volgende: Trek | null) => {
@@ -687,8 +688,8 @@ function useLegePlek(
         onVoegToe(datum, STANDAARDBEGIN);
         return;
       }
-      // Read once and cleared: it answers for the one click that follows a mouse's release, and a later click with no
-      // press before it must still be heard.
+      // Read once and cleared: it answers for the one click that follows a mouse's or pen's release, and a later click
+      // with no press before it must still be heard.
       const alBeantwoord = doorAanwijzer.current;
       doorAanwijzer.current = false;
       if (alBeantwoord) return;
