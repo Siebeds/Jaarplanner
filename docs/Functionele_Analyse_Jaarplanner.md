@@ -10,7 +10,7 @@
 | Opdrachtgever | [Naam van de basisschool] — in te vullen |
 | Doelgroep | Kleuter- en lager onderwijs (2,5 – 12 jaar), Vlaanderen |
 | Auteur | Siebe De Saedeleir |
-| Versie | 0.6 — concept ter validatie (v0.4-tekst + Bijlage A) |
+| Versie | 0.7 — concept ter validatie (v0.4-tekst + Bijlage A) |
 | Datum | 20 juni 2026 |
 | Status | Ter review door de directie |
 
@@ -28,6 +28,7 @@ Dit document is een levend document. Wijzigingen worden bijgehouden in onderstaa
 | 0.4 | 20-06-2026 | Siebe De Saedeleir | Beheerpagina expliciet: klassen instellen + schoolbrede/per-klas overzichten | Concept |
 | 0.5 | 29-06-2026 | (analyse) | Verfijningen op basis van Op.stap-referentiemateriaal — zie **[Bijlage A](#bijlage-a--verfijningen-op-basis-van-opstap-referentiemateriaal-post-v04)**. De v0.4-tekst hierboven blijft ongewijzigd als getrouwe weergave; de verfijningen staan in de bijlage en zijn verwerkt in [`CONSTITUTION.md`](../CONSTITUTION.md). | Concept — ter validatie |
 | 0.6 | 19-08-2026 | (projecteigenaar) | **A.10** toegevoegd: FR-7.3's *"ter beslissing"* over behoud/overschrijven bij een (her)generatie is voorlopig beantwoord, en FR-8.4 wordt in hetzelfde punt verfijnd. Bijlage A bevat vanaf nu ook verfijningen die **niet** uit het Op.stap-referentiemateriaal komen; A.10 vermeldt zijn eigen herkomst. Bevestiging door de directie staat open (vraag 6 in [`besluiten-gevraagd.md`](besluiten-gevraagd.md)). | Concept, ter validatie |
+| 0.7 | 13-09-2026 | (projecteigenaar) | **A.11** toegevoegd: rollen en rechten, zoals de projecteigenaar ze op 11 en 13 september 2026 besliste ([ADR-0030](adr/0030-rollen-en-rechten-in-de-app.md)). §3.1, §3.2, §4, FR-1.1, FR-3.1, FR-4.3, FR-7.2, FR-10.2, FR-12.2, §7, §11, A.5 en A.7 krijgen elk een verwijzing naar A.11; hun tekst blijft staan. De directie heeft deze regeling niet bevestigd. | Concept, ter validatie |
 
 Te valideren door: de directie van de school.
 
@@ -97,11 +98,15 @@ De Jaarplanner (werktitel) is een webtoepassing die:
 
 ### 3.1 Rollen
 
+> **Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten).** De tool kent geen functietitels meer, maar rechten: directie, themabeheer, hoofdleerkracht (per schooljaar en per jaar/fase) en leerkracht (per klas; een klas kan meerdere leerkrachten hebben). Er is geen aparte rol voor de ICT-coördinator. De opsomming hieronder is de getrouwe v0.4-tekst.
+
 - **Beheerder (directie / ICT-coördinator)** — werkt vanuit de beheerpagina: stelt schooljaren, klassen, leerkrachten en rechten in, beheert het inladen van de Op.stap-leerplandoelen, heeft zicht op alle jaarplannen en trekt schoolbrede en per-klas overzichten (zie FR-9 en FR-12).
 - **Leerkracht** — beheert het jaarplan van de eigen klas(sen); voert thema's en activiteiten in of importeert ze; gebruikt de AI-suggesties; past de kalender manueel aan; kan plannen van collega's inkijken voor afstemming.
 - **Zorgcoördinator / co-teacher (optioneel)** — leesrechten over meerdere klassen, eventueel beperkte bewerkrechten — ter beslissing.
 
 ### 3.2 Toegangsrechten
+
+> **Vervangen door de beslissingen van 13-09-2026.** Deze tabel is vervangen door de tabel in [ADR-0030 §3](adr/0030-rollen-en-rechten-in-de-app.md#3-the-matrix-that-follows); de uitleg in gewone taal staat in [A.11](#a11-rollen-en-rechten). Ze blijft hieronder staan als de getrouwe v0.4-tekst, maar geldt niet meer. Zo voert een gewone leerkracht geen thema's meer in, importeert hij niet meer, en laat hij bij een thema geen AI-doelsuggesties maken of beoordelen.
 
 Onderstaand voorstel is configureerbaar. "✓" = toegestaan, "–" = niet toegestaan, "lezen" = enkel inkijken.
 
@@ -127,7 +132,7 @@ Dit hoofdstuk beschrijft de belangrijkste "bouwstenen" van de tool in begrijpeli
 - De minimumdoelen (de decretale eindtermen) zijn via een concordantie aan de leerplandoelen gekoppeld. Daardoor kan de dekking zowel op het niveau van de leerplandoelen als op het niveau van de minimumdoelen getoond worden.
 - Een thema bevat één of meerdere subthema's en activiteiten.
 - In het jaarplan worden thema's (met hun activiteiten) toegewezen aan planningsblokken (bv. maanden) en gekoppeld aan leerplandoelen.
-- De koppeling thema ↔ leerplandoel kan door de AI voorgesteld en/of door de leerkracht bevestigd zijn.
+- De koppeling thema ↔ leerplandoel kan door de AI voorgesteld en/of door de leerkracht bevestigd zijn. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): bij een thema bevestigt de directie of wie themabeheer heeft.)*
 
 ## 5. Functionele requirements
 
@@ -137,7 +142,7 @@ De eisen zijn genummerd (FR-x). Per onderdeel volgt eerst een korte uitleg in ge
 
 De school start met haar eigen, bestaande inhoud in Excel: thema's, subthema's en activiteiten. De tool laat toe die in te lezen in plaats van alles manueel in te voeren. De leerplandoelen worden hier niet ingelezen — die worden apart ingeladen vanuit het leerplan Op.stap (zie FR-2).
 
-- **FR-1.1** — De gebruiker kan een Excel-bestand (.xlsx) opladen met thema's, subthema's en activiteiten.
+- **FR-1.1** — De gebruiker kan een Excel-bestand (.xlsx) opladen met thema's, subthema's en activiteiten. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): dat zijn de directie en wie themabeheer heeft. De projecteigenaar besliste dat op 11-09-2026.)*
 - **FR-1.2** — De tool valideert het bestand (verplichte kolommen aanwezig, geen lege verplichte velden) en toont duidelijke foutmeldingen per rij.
 - **FR-1.3** — Vóór het definitief inlezen krijgt de gebruiker een voorbeeldweergave (preview) van wat geïmporteerd zal worden.
 - **FR-1.4** — Bij herimport kan de gebruiker kiezen tussen toevoegen of bestaande gegevens bijwerken/overschrijven.
@@ -159,7 +164,7 @@ De doelen worden niet door de school opgesteld. De school volgt het leerplan "Op
 
 Leerkrachten beheren hun eigen inhoudelijke bouwstenen: thema's, subthema's en de bijhorende activiteiten.
 
-- **FR-3.1** — Leerkrachten kunnen thema's, subthema's en activiteiten toevoegen, wijzigen en verwijderen.
+- **FR-3.1** — Leerkrachten kunnen thema's, subthema's en activiteiten toevoegen, wijzigen en verwijderen. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten), en dat geldt ook voor de inleiding hierboven. Thema's beheren de directie en wie themabeheer heeft. Subthema's en subdoelen maken, wijzigen en verwijderen de directie en de hoofdleerkrachten van dat jaar. Elke leerkracht met een klas van die leeftijd past daarnaast de inhoud van de gedeelde activiteiten aan, maakt nieuwe activiteiten, en verwijdert een activiteit die hij zelf aanmaakte zolang er geen doelen aan gekoppeld zijn.)*
 - **FR-3.2** — Een activiteit kan aan één of meerdere leerdoelen gekoppeld worden.
 - **FR-3.3** — Thema's kunnen herbruikt worden over klassen heen (gedeelde themabibliotheek), zonder dat een wijziging in de ene klas de andere ongewenst beïnvloedt — gedeeld dan wel per klas: ter beslissing.
 
@@ -169,7 +174,7 @@ Dit is de kern van de tool: de AI stelt voor welke thema's en activiteiten bij w
 
 - **FR-4.1** — De tool stelt per thema/activiteit voor met welke leerdoelen het overeenkomt.
 - **FR-4.2** — Elke suggestie krijgt een korte motivatie ("waarom past dit doel hier?") zodat de leerkracht ze kan beoordelen.
-- **FR-4.3** — De leerkracht kan elke suggestie aanvaarden, weigeren of aanpassen.
+- **FR-4.3** — De leerkracht kan elke suggestie aanvaarden, weigeren of aanpassen. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): voor de doelsuggesties bij een thema zijn dat de directie en wie themabeheer heeft, en enkel zij laten ze ook maken. Dat geldt ook voor "de leerkracht" in FR-4.2.)*
 - **FR-4.4** — De tool toont welke leerdoelen (nog) niet aan een thema gekoppeld zijn.
 - **FR-4.5** — (Optioneel) De tool toont een zekerheids-/betrouwbaarheidsindicatie per suggestie.
 
@@ -197,7 +202,7 @@ Het jaarplan wordt visueel getoond als een agenda over het schooljaar, die de le
 De leerkracht behoudt altijd de volledige controle; alles wat de AI voorstelt kan handmatig overschreven worden.
 
 - **FR-7.1** — Alles wat de AI voorstelt, kan manueel overschreven worden.
-- **FR-7.2** — De leerkracht kan thema's, activiteiten en doelkoppelingen handmatig toevoegen, verplaatsen of verwijderen, los van de AI.
+- **FR-7.2** — De leerkracht kan thema's, activiteiten en doelkoppelingen handmatig toevoegen, verplaatsen of verwijderen, los van de AI. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten). In het jaarplan van de eigen klas blijft dit zo. Welke doelkoppelingen een leerkracht zelf legt, hangt af van waar ze aan hangen: op een thema doen dat de directie en wie themabeheer heeft; op een gedeelde activiteit of een subdoel de directie en de hoofdleerkrachten van dat jaar (de leerkrachten van die leeftijd bewerken daar enkel de inhoud); op een algemene fiche de leerkracht van die klas. De Excel-import, en de thema-opbouwwizard voor een thema dat in de wizard van nul wordt opgebouwd, leggen voor de directie en wie themabeheer heeft ook koppelingen op themadoelen en subdoelen.)*
 - **FR-7.3** — Manuele wijzigingen blijven behouden bij een latere gedeeltelijke hergeneratie (zie FR-8) — precieze regel voor behoud/overschrijven: ter beslissing.
 
 ### FR-8 — (Her)generatie
@@ -224,7 +229,7 @@ Voor de directie cruciaal: aantonen dat élk doel ergens in het jaar aan bod kom
 Leerkrachten moeten op elkaar kunnen afstemmen, maar wel binnen duidelijke toegangsgrenzen.
 
 - **FR-10.1** — Leerkrachten kunnen de jaarplannen van collega's bekijken (volgens hun rechten) om op elkaar af te stemmen.
-- **FR-10.2** — De zichtbaarheid is instelbaar (bv. enkel binnen dezelfde graad, of schoolbreed) — ter beslissing.
+- **FR-10.2** — De zichtbaarheid is instelbaar (bv. enkel binnen dezelfde graad, of schoolbreed) — ter beslissing. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten). De projecteigenaar besliste op 11-09-2026 dat een leerkracht andere klassen kan inkijken en dat de directie alles ziet. Voorlopig kan een leerkracht elke andere klas inkijken, enkel lezen. Dat wordt op één plaats beslist, zodat een andere keuze van de directie maar één plek raakt. De keuze zelf blijft aan de directie: vraag 4 in [`besluiten-gevraagd.md`](besluiten-gevraagd.md).)*
 - **FR-10.3** — (Optioneel) Mogelijkheid om opmerkingen achter te laten of thema's te delen tussen klassen.
 
 ### FR-11 — Export en rapportering
@@ -239,7 +244,7 @@ Het jaarplan en de dekking moeten buiten de tool bruikbaar zijn — voor de klas
 De beheerder/directie werkt vanuit een centrale beheerpagina (admin). Daar worden schooljaren, klassen, leerkrachten en rechten ingesteld, en van daaruit worden de schoolbrede en per-klas overzichten getrokken.
 
 - **FR-12.1** — De beheerder kan schooljaren aanmaken en de vakantie-/periodestructuur instellen.
-- **FR-12.2** — De beheerder kan klassen aanmaken en beheren (naam, leerjaar), leerkrachten eraan koppelen en rechten toekennen.
+- **FR-12.2** — De beheerder kan klassen aanmaken en beheren (naam, leerjaar), leerkrachten eraan koppelen en rechten toekennen. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten). Dit doet wie het directierecht heeft. Een klas kan meerdere leerkrachten hebben en een leerkracht meerdere klassen. De directie stelt per schooljaar en per jaar/fase één of meer hoofdleerkrachten aan, en geeft themabeheer en het directierecht aan wie ze kiest: dit punt laat de beheerder rechten toekennen, en de beheerder is nu wie het directierecht heeft. Een klas krijgt sinds 30-08-2026 een jaar/fase in plaats van een leerjaar, zie [ADR-0025](adr/0025-subthema-per-leeftijd.md).)*
 - **FR-12.3** — Vanuit de beheerpagina kan de directie schoolbrede en per-klas overzichten en rapporten trekken (o.a. dekking en voortgang over alle klassen/leerjaren heen — zie FR-9) en exporteren.
 - **FR-12.4** — Een jaarplan van een vorig schooljaar kan als basis gekopieerd worden naar een nieuw jaar — al dan niet in de eerste versie: ter beslissing.
 
@@ -259,7 +264,7 @@ Dit zijn de kwaliteitseisen waaraan de tool moet voldoen, los van de concrete fu
 
 ## 7. AI-werking en kwaliteitsbewaking
 
-- **Mens in de lus** — de AI stelt voor, de leerkracht beslist. Niets wordt zonder validatie als definitief beschouwd.
+- **Mens in de lus** — de AI stelt voor, de leerkracht beslist. Niets wordt zonder validatie als definitief beschouwd. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): bij de doelsuggesties van een thema beslist de directie of wie themabeheer heeft.)*
 - **Transparantie** — elke AI-suggestie gaat gepaard met een korte motivatie.
 - **Brongegevens** — de AI werkt op basis van de door de school ingevoerde thema's en activiteiten en de leerdoelen van de overheid — niet op basis van externe, onbekende bronnen.
 - **Beperkingen** — AI-suggesties kunnen fouten of hiaten bevatten. De eindverantwoordelijkheid voor de correcte dekking ligt bij de leerkracht en de directie. De tool ondersteunt, maar vervangt geen pedagogische beoordeling.
@@ -326,11 +331,11 @@ Onderstaande punten bepalen mee de uitwerking. Antwoorden hierop laten toe deze 
 
 - **Disciplines**: welke disciplines uit Op.stap nemen we mee in de eerste versie — alle, of een selectie om mee te starten?
 - ~~**Op.stap-doelen ophalen**: importeren we de Excelbestanden manueel (download per discipline van de PRO.-site), of komt er een geautomatiseerde/online koppeling?~~ **Beslist door de projecteigenaar op 2026-09-11:** de Op.stap-API van Katholiek Onderwijs Vlaanderen, en voorlopig enkel de G-doelen (ADR-0032).
-- **Ordening**: Op.stap ordent per jaar/fase (JK–L6) met minimumdoelen op mijlpalen (einde K3, L4, L6). Volgt de tool die ordening, en hoe gaan we om met graadklassen of menggroepen?
+- **Ordening**: Op.stap ordent per jaar/fase (JK–L6) met minimumdoelen op mijlpalen (einde K3, L4, L6). Volgt de tool die ordening, en hoe gaan we om met graadklassen of menggroepen? *Voor de rechten voorlopig beantwoord door de beslissingen van 13-09-2026 (zie [A.11](#a11-rollen-en-rechten)): een graadklas geeft de rechten van haar ene jaar/fase. De directie is dit nog niet gevraagd; de vraag blijft van haar.*
 - **Kalenderindeling**: in welke eenheden plannen leerkrachten — per maand, per week, per lesblok of per themaperiode?
 - Hoeveel klassen en leerkrachten zijn er in de eerste versie?
 - Zijn thema's gedeeld over de hele school (themabibliotheek) of strikt per klas?
-- Zichtbaarheid tussen leerkrachten: schoolbreed, per graad, of beperkter?
+- Zichtbaarheid tussen leerkrachten: schoolbreed, per graad, of beperkter? *Deels beslist door de projecteigenaar op 11-09-2026 (zie [A.11](#a11-rollen-en-rechten)): een leerkracht kan andere klassen inkijken, en de directie ziet alles. Hoeveel andere klassen, blijft een vraag voor de directie.*
 - **Excel-structuur van de thema's/activiteiten**: welke kolommen bevatten de bestaande bestanden vandaag? (Bepaalt het importsjabloon voor FR-1.)
 - **Overzichten**: welke schoolbrede en per-klas overzichten/rapporten heeft de directie nodig op de beheerpagina (bv. dekking per klas, per leergebied, schoolbreed) en in welk exportformaat?
 - **Exportformaten**: PDF, Excel of beide? Met welke lay-out (bv. voor inspectie of klassenmap)?
@@ -369,7 +374,7 @@ Regels: `cluster` is nullable; `subdomein`-namen zijn **niet globaal uniek** →
 - **Rijke thema-attributen** — `duurWeken` (thema 4–6, subthema ±2), `probleemstelling` + `onderzoeksvraag` per subthema, `kernwoordenschat[]` + `rijkeWoordenschat[]`, `activiteitType` (experiment, prentenboek, hoek, uitstap, spel, waarneming, beweging, onderzoek), optionele `hoek` en `verwachteUitkomsten`.
 
 ### A.5 Schoolbreed vs. per klas — beslist per niveau (vervangt FR-3.3 als open binaire vraag)
-**Schoolbreed gelijk:** thema, themadoelen, kernwoordenschat, kennisopbouw/leerlijn, welke minimumdoelen aan bod komen. **Per leeftijd:** subthema's, subdoelen, activiteiten, lessen. **Per klas:** de planning zelf (jaarplan, thema- en subthemaplaatsingen, dagplanning) en de hoeken. Eigendom: `Thema`/`Themadoel`/`kernwoordenschat` op schoolniveau (team/directie, gedeelde thema-bibliotheek); `Subthema`/`Subdoel`/`Activiteit` op leeftijdsniveau; `Hoek` op klasniveau.
+**Schoolbreed gelijk:** thema, themadoelen, kernwoordenschat, kennisopbouw/leerlijn, welke minimumdoelen aan bod komen. **Per leeftijd:** subthema's, subdoelen, activiteiten, lessen. **Per klas:** de planning zelf (jaarplan, thema- en subthemaplaatsingen, dagplanning) en de hoeken. Eigendom: `Thema`/`Themadoel`/`kernwoordenschat` op schoolniveau (team/directie, gedeelde thema-bibliotheek); `Subthema`/`Subdoel`/`Activiteit` op leeftijdsniveau; `Hoek` op klasniveau. *(Wie wat mag aanpassen, is verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): "team/directie" betekent voor een thema de directie en wie themabeheer heeft, niet elke leerkracht.)*
 
 > **Bijgewerkt 2026-08-31 na [ADR-0025](adr/0025-subthema-per-leeftijd.md).** Deze alinea zei tot dan **"per klas/leeftijd"** voor subthema's, subdoelen en activiteiten, en dat is sinds 2026-08-30 niet meer waar: de klas is uit die scope verdwenen, zodat een subthema op K3 geldt voor élke klas die K3 geeft. *Wat per klas blijft, is de planning en niet de inhoud.* De hoeken staan er nu apart bij, want die zijn wél per klas: een hoek is meubilair in één lokaal, geen inhoud die een school één keer schrijft (eigenaarsvergadering 2026-08-30, F6/F7).
 >
@@ -379,7 +384,7 @@ Regels: `cluster` is nullable; `subdomein`-namen zijn **niet globaal uniek** →
 De pedagogische cadans is **themaperiode (4–6 wk)** en **subthemaperiode (~2 wk)**; deze lijnen niet zuiver uit op maandgrenzen. De "maand"-default uit v0.4 is dus geen vanzelfsprekendheid — de keuze blijft een open beslissing en wordt achter een duidelijke naad geïsoleerd.
 
 ### A.7 Doel-eerst authoringworkflow (verfijnt FR-3/FR-4) — **MVP-feature**
-De "thema-opbouw wizard" volgens de 10-stappenmethode is een **vaste MVP-feature** (niet optioneel): (1) sterk thema → (2) 2–3 themadoelen → (3) brainstorm → (4) subthema's (~2 wk) → (5) onderzoeksvragen → (6) subdoelen uit meerdere leergebieden → (7) rijk aanbod → (8) woordenschat → (9) samenhang → (10) reflectie. AI-assistentie (FR-4) plugt in op stap 2 (themadoelen) en stap 6 (subdoelen).
+De "thema-opbouw wizard" volgens de 10-stappenmethode is een **vaste MVP-feature** (niet optioneel): (1) sterk thema → (2) 2–3 themadoelen → (3) brainstorm → (4) subthema's (~2 wk) → (5) onderzoeksvragen → (6) subdoelen uit meerdere leergebieden → (7) rijk aanbod → (8) woordenschat → (9) samenhang → (10) reflectie. AI-assistentie (FR-4) plugt in op stap 2 (themadoelen) en stap 6 (subdoelen). *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): de wizard is voor wie themabeheer heeft, en voor de directie. Subthema's, subdoelen en activiteiten maakt die er enkel aan voor een thema dat hij in de wizard van nul opbouwt.)*
 
 ### A.8 Bijkomende open vragen
 Zie de bijgewerkte open-beslissingenlijst in [`CONSTITUTION.md` Art. XIV](../CONSTITUTION.md#article-xiv--open-decisions-awaiting-directie): aanwezigheid van `cluster` per discipline, `leergebied`/Wereldoriëntatie-mapping, dekkingsdiepte (binair vs. herhaling/opbouw), en de vorm van `jaarFase`-codes (1K/2K/3K ↔ JK/K2/K3).
@@ -399,3 +404,52 @@ FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generat
 *Waarom dit hier staat en niet enkel in de constitutie:* Art. XI.1 vereist dat een amendement zijn afhankelijke tekst in dezelfde wijziging meeneemt, en de clausule in kwestie is **FR-7.3 in §5**, die *"ter beslissing"* blijft lezen. *(Niet §11: de open-vragenlijst daar heeft dit punt nooit bevat, en juist dat is waarom het elders voor een Art. XIV-item is aangezien.)* De v0.4-tekst wordt niet aangepast, want die is een getrouwe weergave; deze bijlage is de plek om hem te verfijnen, en bij tegenspraak geldt de bijlage.
 
 > *Herkomst, apart vermeld omdat deze bijlage er een heeft.* Bijlage A verzamelde tot nu toe verfijningen uit het Op.stap-referentiemateriaal. A.10 komt niet daaruit maar uit een eigenaarsbeslissing van 19-08-2026, en staat hier omdat dit de enige plek is waar de v0.4-tekst verfijnd kan worden zonder hem te herschrijven. Zie de versietabel in §1.
+
+### A.11 Rollen en rechten
+
+*Herkomst: beslissingen van de projecteigenaar van 11-09-2026, 13-09-2026 en 14-09-2026, niet het Op.stap-referentiemateriaal. Door de projecteigenaar bekrachtigd op 14-09-2026.* De **projecteigenaar** besliste dit in een reeks vragen. De letterlijke vragen, en de gekozen en afgewezen antwoorden, staan in [ADR-0030 §1](adr/0030-rollen-en-rechten-in-de-app.md). De bindende tekst staat in [`CONSTITUTION.md` Art. VI.1](../CONSTITUTION.md#article-vi--roles-privacy--security). Dit punt verfijnt §3.1, §3.2, §4, FR-1.1, FR-3.1, FR-4.3 (en daarmee FR-4.2), FR-7.2, FR-10.2, FR-12.2, §7, §11, A.5 en A.7. Bij elk van die punten staat een verwijzing hierheen, behalve bij FR-4.2: dat wordt meegenomen in de verwijzing bij FR-4.3.
+
+**Rechten, geen functietitels.** Enkel wie de directie toevoegde, kan aanmelden, met een Microsoft-account van de eigen schooltenant. Welke rechten iemand heeft, houdt de tool zelf bij, niet Entra. Er zijn vier rechten, en één persoon kan er meerdere hebben:
+
+- **Directie** ziet en bewerkt alles. Ze voegt gebruikers toe, koppelt leerkrachten aan klassen, stelt hoofdleerkrachten aan en geeft themabeheer, zoals FR-12.2 de beheerder laat doen; de beheerder is nu wie het directierecht heeft. De directie kan het directierecht aan iemand anders geven. Er is **geen aparte rol voor de ICT-coördinator**: die heeft het directierecht als de directie het toekent, en is anders een gewone leerkracht.
+- **Themabeheer** hebben enkele leerkrachten of zorgcoördinatoren die de directie aanduidt. Wie het heeft, past thema's aan (met hun themadoelen en kernwoordenschat) en voert de Excel-import van thema's en activiteiten uit (FR-1), met de doelkoppelingen op themadoelen en subdoelen die daarin staan. Alleen de directie mag bij de import aanvinken dat ook menselijke beslissingen verwijderd worden: met die ene schakelaar wist een nieuwe import ook besliste themadoelen en subdoelen die niet meer in het bestand staan. Hij doorloopt ook de thema-opbouwwizard helemaal. Voor een thema dat hij daar van nul opbouwt, maakt hij in de wizard, en alleen met de eigen acties van de wizard, ook de subthema's, subdoelen en activiteiten aan, op elke leeftijd. Bestaande subthema's aanpassen blijft voor de hoofdleerkracht. Naast de directie is dit het enige recht waarmee iemand **doelsuggesties** laat maken en ze aanvaardt, weigert of aanpast.
+- **Hoofdleerkracht** is een gebruiker die de directie aanstelt per schooljaar en per jaar/fase; een jaar kan er meerdere hebben (bv. bij een duobaan). Een hoofdleerkracht maakt, wijzigt en verwijdert de subthema's van zijn jaar (wie een subthema verwijdert, verwijdert ook de activiteiten en doelkoppelingen eronder, zoals vandaag) en de subdoelen. Hij koppelt met de hand doelen aan de gedeelde activiteiten, past hun inhoud aan, maakt nieuwe en verwijdert elke activiteit, met of zonder doelkoppelingen. Thema's past hij enkel aan als hij ook themabeheer heeft.
+- **Leerkracht** ben je van de klassen waaraan de directie je koppelt. Een klas kan meerdere leerkrachten hebben (co-teacher, duobaan). Een leerkracht bewerkt de planning van zijn klassen: jaarplan, (her)generatie, agenda, hoeken en algemene fiches. Andere klassen kan hij inkijken. Wie een klas van een bepaalde leeftijd heeft, past de **inhoud** van de gedeelde activiteiten onder de subthema's van die leeftijd aan, maakt nieuwe activiteiten en past de **streefwoordenschat** van die subthema's aan. Een activiteit die hij **zelf aanmaakte**, mag hij verwijderen zolang er geen doelen aan gekoppeld zijn. **Met de hand doen subdoelen, doelkoppelingen en het verwijderen van andere activiteiten enkel de directie en de hoofdleerkrachten van dat jaar**, want een doelkoppeling daar telt voor de dekking van elke klas van die leeftijd die het thema plant. De enige uitzonderingen zijn die van themabeheer: de import, en de wizard voor een thema dat daar van nul wordt opgebouwd. De rest van het subthema blijft voor de directie en de hoofdleerkracht, behalve wat de wizard voor zo'n thema aanmaakt.
+
+**De maker van een activiteit.** De tool onthoudt wie een activiteit aanmaakte. Dat bepaalt enkel wie ze mag verwijderen: wie ze maakte, mag ze verwijderen zolang er geen doelen aan gekoppeld zijn, ook zonder klas van die leeftijd en ook na het schooljaar. De activiteit blijft gedeeld, en elke leerkracht van die leeftijd ziet ze en past ze aan. Het is geen eigen inhoud voor één leerkracht; die komt met E6-10. Wat al bestond of uit de import komt, heeft geen maker en is dus puur gedeeld: enkel een hoofdleerkracht of de directie verwijdert zo'n activiteit.
+
+**Welk schooljaar telt, voor de gedeelde inhoud.** Subthema's, en de activiteiten en subdoelen eronder, horen bij een leeftijd en niet bij een schooljaar. Een aanstelling als hoofdleerkracht, en een koppeling aan een klas voor zover die rechten geeft op de gedeelde inhoud, telt daarom zolang het schooljaar ervan niet voorbij is, ook als het nog moet beginnen. Zo kan een hoofdleerkracht in juni het volgende jaar al voorbereiden.
+
+**Graadklassen, voorlopig, tot de directie over graadklassen beslist (§11).** Een klas heeft één jaar/fase. De leerkrachten van een graadklas bewerken dus de gedeelde inhoud van die ene leeftijd, en de andere leeftijd doet een hoofdleerkracht of de directie. In de tool staat op één plaats welke leeftijden een klas rechten geeft, zodat een beslissing van de directie over graadklassen enkel die plaats verandert.
+
+**Wie geen van de vier rechten heeft**, bijvoorbeeld een zorgcoördinator zonder themabeheer, kan aanmelden en voorlopig elke klas inkijken. Voorlopig kan hij verder niets, behalve een activiteit verwijderen die hij zelf aanmaakte; of hij eigen inhoud mag toevoegen, wordt beslist met E6-10.
+
+**Waarom doelsuggesties en doelkoppelingen niet bij elke leerkracht liggen.** Een doelsuggestie hangt aan een schoolbreed thema. Aanvaardt iemand ze, dan stijgt de dekking van élke klas die dat thema plant, ook bij collega's, en dat is het cijfer dat de onderwijsinspectie leest. Op 11-09-2026 koos de eigenaar nog voor "elke leerkracht, zoals nu". Toen dat gevolg hem op 13-09-2026 werd voorgelegd, koos hij voor de directie en themabeheer. Waar de v0.4-tekst zegt dat *de leerkracht* een AI-suggestie beoordeelt (§4, FR-4.2, FR-4.3, §7), lees voor de doelsuggesties bij een thema dus: de directie of wie themabeheer heeft. Voor het jaarplan van een klas blijft het de leerkracht van die klas. Om dezelfde reden liggen de doelkoppelingen op gedeelde activiteiten en subdoelen bij de directie en de hoofdleerkrachten: een koppeling daar telt voor elke klas van die leeftijd die het thema plant, en de eigenaar besliste dat op 13-09-2026, toen hem dat gevolg voor de parallelklassen werd voorgelegd. De import en de wizard zijn uitzonderingen die de eigenaar bewust maakte: wie themabeheer heeft, legt via de import of de wizard ook koppelingen die hij met de hand niet mag leggen. De eigenaar bevestigde de import nog eens nadat de vraag gecorrigeerd was, en beperkte de wizard tot een thema dat daar van nul wordt opgebouwd.
+
+**"Configureerbaar"** (§3.2) betekent twee dingen. *Wie* welk recht heeft, stelt de directie in de tool in. *Wat* een recht toelaat, staat in één tabel, [ADR-0030 §3](adr/0030-rollen-en-rechten-in-de-app.md#3-the-matrix-that-follows), die de tabel in §3.2 vervangt. Een rij daarin wijzigen is een aanpassing aan de code. **Een rij in die tabel geldt als beslist enkel voor zover ze naar een beslissing van de eigenaar verwijst**, ook per kolom: elk vinkje voor de directie steunt op de beslissing dat de directie alles ziet en bewerkt, en een streepje kent niets toe. Wat een rij haalt uit een voorlopige keuze of een open vraag uit de lijst hieronder, is voorlopig en wordt met deze tekst niet bekrachtigd. Waar de v0.4-tekst **"beheerder"** zegt (§3.1, FR-12), lees: wie het directierecht heeft.
+
+**Nog niet beslist.** De tool wordt gebouwd met de voorlopige keuze hieronder, tot de eigenaar anders beslist, of voor de zichtbaarheid de directie. Dezelfde lijst staat in [`CONSTITUTION.md` Art. VI.1](../CONSTITUTION.md#article-vi--roles-privacy--security) en in ADR-0030 §2 en §4:
+
+- *I1, overleg*: de tool dwingt geen overleg, goedkeuring of stemming af tussen de leerkrachten van een jaar.
+- *I2, het ontbrekende werkwoord in de beslissing van 11-09-2026*: gelezen als "aanduiden". Wie themabeheer toekent, hangt daar niet van af: dat doet de directie, volgens FR-12.2.
+- *I6 en (a), eigen inhoud*: een leerkracht mag ook activiteiten en subdoelen **voor zichzelf** toevoegen (beslist op 11-09-2026). Voorlopig blijft de gedeelde inhoud daarnaast bestaan. Van wie eigen inhoud is en wie ze ziet, wordt beslist samen met E6-10.
+- *I9 en (d), inkijken* (FR-10.2): voorlopig kan elke gebruiker, ook wie geen klas heeft, elke klas inkijken en exporteren, enkel lezen, en dat wordt op één plaats beslist. De keuze is aan de directie (vraag 4 in [`besluiten-gevraagd.md`](besluiten-gevraagd.md)).
+- *I12, een klas zonder jaar/fase* geeft haar leerkrachten voorlopig geen recht op de inhoud van een leeftijd.
+- *I13, een subthema naar een andere leeftijd verplaatsen*: voorlopig enkel wie hoofdleerkracht is op beide leeftijden, en de directie.
+- *I15, de velden van een activiteit die niet genoemd werden* (type, onderzoeksvraag, kleur, lengte): voorlopig ook inhoud, die elke leerkracht van die leeftijd aanpast.
+- *I16, de andere velden van een subthema* (naam, duur, probleemstelling, onderzoeksvragen): voorlopig voor de directie en de hoofdleerkrachten, zoals het subthema zelf. Enkel de streefwoordenschat is gedeelde inhoud.
+- *I17, een maker die geen gebruiker meer is*: voorlopig worden zijn activiteiten puur gedeeld.
+- *I18, een activiteit uit de wizard*: voorlopig is wie themabeheer heeft en de wizard gebruikte, de maker. Dat die maker ze dan mag verwijderen zolang er geen doelen aan gekoppeld zijn, is wel beslist (13-09-2026).
+- *I19, een activiteit naar een ander thema verplaatsen*: dat is geen verwijderen of ontkoppelen, want de doelkoppelingen verhuizen mee. Ze tellen daarna wel voor de klassen die het andere thema plannen. Voorlopig verplaatst dus enkel de directie of een hoofdleerkracht een activiteit met doelkoppelingen; een activiteit zonder koppelingen mag elke leerkracht van die leeftijd verplaatsen.
+- *I20, een hoofdleerkracht zonder klas*: voorlopig mag dat; de aanstelling alleen geeft het recht.
+- *I21, hoe lang een koppeling aan een klas geldt voor de planning van die klas*: voorlopig zonder einddatum, want de klas hoort al bij één schooljaar.
+- *I22, hoe de tool een wizardactie herkent*: voorlopig heeft de wizard eigen acties, die enkel de directie en wie themabeheer heeft gebruiken, en enkel voor een nieuw thema. Met de gewone knoppen voor subthema's, subdoelen en activiteiten krijgt themabeheer geen extra recht, behalve dat een maker zijn eigen activiteit mag verwijderen.
+- *I23, wat een nieuw thema is*: voorlopig een thema dat de wizard zelf aanmaakte, tot die wizard afgerond of gesloten is.
+- *(c), een jaar zonder hoofdleerkracht*: voorlopig doet enkel de directie, met de hand, wat de hoofdleerkracht zou doen.
+- *(e), een zorgcoördinator, of wie geen van de vier rechten heeft*: voorlopig niets meer dan themabeheer (als de directie het toekent) en inkijken, behalve een activiteit verwijderen die hij zelf aanmaakte.
+
+**Nieuwe begrippen:** gebruiker, directierecht, themabeheer, hoofdleerkracht, klastoewijzing en maker van een activiteit. Definities: zie [`CONSTITUTION.md` Art. XII](../CONSTITUTION.md#article-xii--glossary-nl--en).
+
+**Bevestiging door de directie.** Deze regeling is door de projecteigenaar beslist, en de directie heeft ze niet bevestigd. Enkel de zichtbaarheid staat al als vraag voor de directie klaar (vraag 4). De voorlopige regeling voor graadklassen wacht op de beslissing van de directie over graadklassen (§11); die vraag is haar nog niet gesteld.
+
+*Waarom dit hier staat en niet in §3:* Art. XI.1 vereist dat een amendement zijn afhankelijke tekst in dezelfde wijziging meeneemt. De v0.4-tekst wordt niet aangepast, want die is een getrouwe weergave; deze bijlage is de plek om hem te verfijnen, en bij tegenspraak geldt de bijlage.

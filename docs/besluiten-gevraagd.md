@@ -1,6 +1,6 @@
 # Beslissingen die we nodig hebben van de directie
 
-*Bijgewerkt: 13 september 2026. Bedoeld om door te sturen: geen technische kennis vereist.*
+*Bijgewerkt: 14 september 2026. Bedoeld om door te sturen: geen technische kennis vereist.*
 
 Hieronder staan de vragen waarop we een antwoord nodig hebben om verder te kunnen bouwen. Ze staan op volgorde van dringendheid. Bij elke vraag staat waarom ze belangrijk is en wat er gebeurt zolang ze open blijft.
 
@@ -164,6 +164,35 @@ Onder een thema hangen de **subthema's**, en die zijn per **leeftijd**: een subt
 **Waarom we het vragen.** Kiest u voor de voorbeelden, dan verhuizen die stukken bij de volgende keer inlezen, voor die 27 doelen, van het ene vak naar het andere. Aan de tekst zelf verandert niets. 8 van die 27 doelen stonden ook in de Excel-bestanden van Op.stap die we eerder gebruikten, en bij alle 8 stonden die stukken daar onder de voorbeelden.
 
 **Gevolg zolang dit openstaat.** Niets ligt stil. De tool houdt het bij de toelichting tot u iets anders zegt.
+
+---
+
+## 13. Wie mag wat aanpassen in de tool?
+
+**Wat we vragen:** gaat u akkoord met de verdeling van de rechten die de projecteigenaar op 11, 13 en 14 september 2026 besliste? In het kort:
+
+- **De directie** ziet en past alles aan. Zij voegt de gebruikers toe en beslist wie welk recht krijgt.
+- **Themabeheer** geeft de directie aan enkele leerkrachten of zorgcoördinatoren. Zij passen de schoolbrede thema's aan, lezen thema's in uit Excel, gebruiken de hulp om een nieuw thema op te bouwen, en beslissen over de doelen die de AI bij een thema voorstelt.
+- **Een hoofdleerkracht** stelt de directie aan per schooljaar en per leerjaar, één of meer. Hij beheert de subthema's en subdoelen van zijn leerjaar en koppelt er de doelen aan.
+- **Een leerkracht** bewerkt de planning van zijn eigen klassen en kan de andere klassen inkijken. Hij past de gedeelde activiteiten van zijn leerjaar aan en maakt er nieuwe bij. Een activiteit die hij zelf maakte, mag hij ook weer verwijderen, zolang er geen doelen aan hangen.
+
+**Waarom we het vragen.** De verdeling bepaalt wie het dekkingscijfer kan veranderen dat de onderwijsinspectie leest. Een doel dat aan een gedeelde activiteit of een subthema hangt, telt voor alle klassen van dat leerjaar die het thema plannen. Daarom koppelt een gewone leerkracht zelf geen doelen, en aanvaardt hij geen voorstellen van de AI.
+
+**Gevolg zolang dit openstaat.** Niets ligt stil: de tool wordt nu zo gebouwd. Wilt u iets anders, dan past de tool die ene regel aan. De volledige verdeling staat in de constitutie (artikel VI.1) en in ADR-0030.
+
+---
+
+## 14. Hoe gaan we om met graadklassen?
+
+**Wat er speelt.** Een klas heeft in de tool één leerjaar. Een graadklas, bijvoorbeeld een klas met kinderen van het eerste en het tweede leerjaar, krijgt dus maar één van de twee.
+
+**Wat we vragen:** mag een graadklas in de tool voorlopig als één leerjaar blijven staan, of moet een klas meerdere leerjaren kunnen hebben?
+
+**Wat de projecteigenaar voorlopig besliste.** Op 13 september 2026 besliste hij dat de leerkrachten van een graadklas de gedeelde inhoud bewerken van het leerjaar dat de klas in de tool heeft. De inhoud van het andere leerjaar past een hoofdleerkracht of de directie aan. Dat geldt tot u hierover beslist. Deze vraag is u nog niet eerder gesteld.
+
+**Waarom we het vragen.** Het bepaalt wat de leerkracht van een graadklas zelf mag aanpassen, en het raakt ook vraag 11 hierboven: een activiteit kan vandaag niet van het ene leerjaar naar het andere verhuizen.
+
+**Gevolg zolang dit openstaat.** De tool werkt voor graadklassen, maar voor het tweede leerjaar moet de leerkracht de hoofdleerkracht of de directie vragen. De regel zit op één plaats in de tool, dus uw antwoord verandert enkel die plaats.
 
 ---
 

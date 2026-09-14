@@ -1,0 +1,985 @@
+# E6-02 — Role-based authorization (built with E6-04)
+
+> **Which proposals are current.** The current proposals are in **"Fix round 3"** at the end of this file: the
+> ratification row, the backlog edits, the checklist and the owner questions. The CLAUDE.md edits are the ones in
+> fix round 2's "After the merge with main", with edit (d) as revised in fix round 3. Every earlier proposal heading
+> is kept as the audited record, and is superseded.
+
+## Build round 1 — Art. XI amendment, part 1 (DRAFT for the owner's approval)
+
+- **FR / Article:** FR-1.1, FR-3.1, FR-4, FR-7.2, FR-10.2, FR-12.2, FA §3.1/§3.2/§4/§7/§11; Art. IV.1, VI.1, IX.2,
+  XI, XII, XIV; ADR-0030 §5 part 1.
+- **Status of this round: a draft.** The owner ruled on 2026-09-13 (statement 16, R13) that part 1 is shown to him
+  first and approved **before** it enters the Art. XI ratification log and **before** code is written on it. No
+  source code was touched. No ratification-log row was added: its proposed text is below.
+- **Branch:** `story/E6-02-amendering`, from `main` `309cc29`. Not pushed, not merged.
+- **Gates:** no source, config or test file changed, so `dotnet build/test/format` and `pnpm lint/test/build` do not
+  apply and were **not run**. Documentation only.
+- **Tests added:** none (no code).
+
+### Files changed, and where
+
+| File | Section | What changed |
+| --- | --- | --- |
+| `CONSTITUTION.md` | Art. IV.1 | Clarifying note: "teacher confirmation" means the person who holds the right to decide that output (a leerkracht of the klas or directie for a plan; directie or themabeheer for doelsuggesties). Principle unchanged. |
+| `CONSTITUTION.md` | Art. VI.1 | Rewritten. Four rights (directie, themabeheer, hoofdleerkracht per (schooljaar, jaarfase), leerkracht via a many-to-many klastoewijzing); no separate ICT role; "configurable" restated as ADR-0030 §1.2 does; old wording quoted as replaced; R6 marked ruled-but-unshaped (part 2, E6-10); seven defaults listed and marked as defaults (who gives themabeheer, visibility, which schooljaar counts, a klas without jaarfase, a jaarfase without hoofdleerkracht, the zorgcoördinator, no consensus). |
+| `CONSTITUTION.md` | Art. IX.2, `Thema` line | "Owned by the team/directie" became "edited by directie and by whoever directie gives themabeheer", with an amendment note quoting the old words. |
+| `CONSTITUTION.md` | Art. IX.2, `doelsuggesties[]` sub-bullet | "awaiting teacher accept/reject" became "awaiting accept/reject … only directie and themabeheer generate and review them", with the reversal and its reason. |
+| `CONSTITUTION.md` | Art. XII | Five entries: Gebruiker, Directierecht, Themabeheer, Hoofdleerkracht, Klastoewijzing. |
+| `CONSTITUTION.md` | Art. XIV "Teacher visibility" | Narrowed, not removed: what the owner ruled (R3, R7), and what stays directie's (question 4). |
+| `CONSTITUTION.md` | Art. XI ratification log | **Not touched** (R13). Proposed row below. |
+| `docs/adr/0030-rollen-en-rechten-in-de-app.md` | header, revision note | Revised-date, deciders for the third round, a second revision note in the style of the first. |
+| same | §1.2 | R8 struck and pointed to R14; R11–R18 added; R17 carries the recording session's narrow reading (goal links are part of the content) and points to I11/I12. |
+| same | §1.3 (new) | Statements 14–21 verbatim, with chosen and rejected options and their descriptions. Statement 17 notes that it is the question §4 (f) required. |
+| same | §2 | Intro rewritten; I5, I7, I8 struck and pointed to R17/R15/R18; I2 and I6 annotated; I10–I13 added; an "I11 in more detail" block with the rejected alternatives and the graadklas case. |
+| same | §3 | Intro (supersedes FA §3.2 through part 1, enforced only after R13 approval); column definitions including the new **"LK leeftijd"**; a union rule; doelsuggestie rows → Directie + TB; shared-content row → Directie, HL, LK leeftijd; two wizard rows (I10, default); planning row cites R15. |
+| same | §4 | Count sentence; (f) settled by R14 (struck sentences kept); (g) settled by R16; **(h) new**: R17's dekking twin. |
+| same | §5 | "Who" struck and replaced (combined build, drafted 2026-09-13, R13); "what it touches" extended with every additional clause this draft changed; "E6-01 needs neither part" annotated. |
+| same | Alternatives, Consequences, Compliance trace | Statement-12 alternative struck ("chosen by statement 17"); nine rejected options of statements 14–21 added; klastoewijzing now "per R15"; directie may give the directie right; the Art. IV.1/IV.8 and V.1 trace lines rewritten, old text quoted. |
+| `docs/adr/0008-themalaag-level-scoping.md` | Status | Both ownership statements superseded (per-class scoping by ADR-0025; "owned by team/directie" by ADR-0030 and this amendment); the per-level principle stands. |
+| `docs/adr/0022-curriculum-administration-authorisation-seam.md` | Status | Pointer: the expected `Beheerder` role is now the directie right. |
+| `docs/adr/README.md` | index row 0030, traceability row 0030 | R8's "every leerkracht" summary replaced by the 2026-09-13 rulings; "six open questions" became five; the trace lists the extra clauses. |
+| `docs/Functionele_Analyse_Jaarplanner.md` | header, §1 version table | v0.7, row describing A.11 and every pointer. |
+| same | §3.1, §3.2 | Leading blockquote: refined / superseded by ADR-0030 §3 and A.11; v0.4 text kept. |
+| same | §4, FR-1.1, FR-3.1, FR-4.3, FR-7.2, FR-10.2, FR-12.2, §7, §11, A.5 | Inline *(Verfijnd op 13-09-2026, zie A.11: …)* pointers, v0.4 text kept, as A.10 did. |
+| same | Bijlage A.11 (new) | The rights in Dutch prose, why doelsuggesties moved, what "configureerbaar" means, "beheerder" = directierecht, the defaults (marked "voorlopig"), the new terms, directie's confirmation outstanding. |
+
+**Deliberate choice: one matrix.** The FA does not get a second copy of the table. FA §3.2 and A.11 point at
+ADR-0030 §3, and Art. VI.1 names that table as the one that supersedes FA §3.2. Two copies of a rights table drift.
+The ADR's table already uses Dutch action labels, so directie can read it. If the owner wants a Dutch copy in the FA
+for directie's review, it should be generated from the ADR table rather than maintained by hand.
+
+### Each owner ruling mapped to the text it changed
+
+| Statement | Ruling | Text changed |
+| --- | --- | --- |
+| 14 | R11: E6-01 closes; real-tenant sign-in stays on E7-11 | ADR-0030 §1.2 R11, §1.3, §2 intro, §4 intro, §5 "E6-01 needs neither part", Alternatives. Backlog: proposed below (E7-11 already lists the round trip, `backlog/E7-niet-functioneel.md` ~line 103). |
+| 15 | R12: E6-02 + E6-04 built and delivered together | ADR-0030 R12, §5 "Who", I2's default annotation, Alternatives, Compliance trace. Backlog: proposed. |
+| 16 | R13: draft first, owner approves before log and code | ADR-0030 R13, §3 intro, §5 "Who"; no ratification row added; this worklog's status line. |
+| 17 | R14: doelsuggesties generated and reviewed by directie + themabeheer only; reverses R8; settles (f) | ADR-0030 R8 struck, R14, §1.3, §3 rows, §4 (f), Alternatives, trace; Art. VI.1 (themabeheer bullet), Art. IX.2 `doelsuggesties[]`, Art. IV.1 note, Art. XII Themabeheer; FA §3.2 note, §4, FR-4.3 (+FR-4.2), §7, A.11; ADR index. |
+| 18 | R15: several leerkrachten per klas, several klassen per leerkracht; I7 ruled | ADR-0030 R15, I7 struck, §3 "LK eigen" + planning row, Consequences; Art. VI.1 (leerkracht bullet), Art. XII Klastoewijzing; FA §3.1 note, FR-12.2, A.11. |
+| 19 | R16: no separate ICT role; directie can give the directie right; settles (g) | ADR-0030 R16, §4 (g), §3 "beheren" row, Consequences; Art. VI.1 (directie bullet, "This replaces"), Art. XII Directierecht; ADR-0022 pointer; FA §3.1 note, FR-12.2, A.11 ("beheerder" = directierecht). |
+| 20 | R17: shared activiteiten/subdoelen also for every leerkracht with a klas of that leeftijd; subthema stays directie + HL; I5 ruled differently | ADR-0030 R17, I5 struck, §3 "LK leeftijd" column and row, §4 (h) (new), Alternatives; Art. VI.1 (leerkracht bullet); ADR-0008 status; FA FR-3.1, FR-7.2, A.11. |
+| 21 | R18: hoofdleerkracht edits thema's only with themabeheer; I8 ruled | ADR-0030 R18, I8 struck, §3 thema row (R4, R18); Art. VI.1 (hoofdleerkracht bullet), Art. XII Hoofdleerkracht; FA A.11. |
+
+Still **not** ruled, and written as defaults everywhere they appear: I1 (no consensus), I9 (every other klas
+readable, behind E6-09; Art. XIV visibility stays directie's), (c) (jaar without hoofdleerkracht: directie only),
+(e) (zorgcoördinator: themabeheer if given, plus read). I6 and (a) stay with E6-10. **I2 was not in the
+orchestrator's list either way**: I left it a default and annotated it (see open question 6).
+
+### Grep sweep: every other "who may" sentence
+
+Searched `CONSTITUTION.md` and the FA (and `docs/` for `Beheerder`, `elke leerkracht`, `owning teacher`,
+`team/directie`) for leerkracht / teacher / directie / Beheerder / eigen klas / iedereen / zorgcoördinator /
+co-teacher.
+
+**Changed** (the rulings made them false or misleading):
+
+- Art. IV.1 "without teacher confirmation": clarifying note (a directie or themabeheer holder decides doelsuggesties).
+- Art. VI.1: rewritten.
+- Art. IX.2 `Thema` "owned by the team/directie": amended.
+- Art. IX.2 `doelsuggesties[]` "awaiting teacher accept/reject": amended.
+- Art. XIV "Teacher visibility": narrowed.
+- FA §3.1, §3.2: pointer and superseded note.
+- FA §4 "door de leerkracht bevestigd": pointer.
+- FA FR-1.1 "De gebruiker kan … opladen": pointer (R9, already ruled 2026-09-11 but never carried into the FA).
+- FA FR-3 intro and FR-3.1: pointer (the FR-3.1 note says it covers the intro too).
+- FA FR-4.2 and FR-4.3: pointer on FR-4.3 covering both.
+- FA FR-7.2 "doelkoppelingen": pointer (which links depends on what they hang on).
+- FA FR-10.2, FR-12.2: pointers.
+- FA §7 "de leerkracht beslist": pointer.
+- FA §11 visibility question: annotated as partly decided.
+- FA A.5 "Eigendom … (team/directie …)": pointer. **Found by the sweep; not in ADR-0030 §5's list.**
+- ADR-0022 "expected `Beheerder`" (lines 13, 42, 106): status pointer, text left as written.
+- ADR-0030 "E6-01 needs neither part … existing `Beheerder` role": annotated.
+
+**Left unchanged, and why:**
+
+- Preamble "The users are teachers (per class) and directie": still true; hoofdleerkracht and themabeheer are rights
+  a teacher holds.
+- Art. II.3 "a teacher or directie can act on": about the language of a message, not rights.
+- Art. III.2 "Teachers may add internal labels and ordering only": about *what* may change on read-only goals, not
+  *who*. No labelling feature exists; if one is built, who may label is unruled.
+- Art. IV.7, IV.8 ("the teacher and directie", "AI never skips ahead of the teacher"): still true. Who uses the
+  wizard's assist is I10 (default) in ADR-0030.
+- Art. V.5, FR-9.4, FR-12.1, FR-12.3 "directie / beheerder": covered by A.11's single statement that "beheerder" means
+  whoever holds the directie right, rather than one pointer per clause.
+- Art. IX.2 `Subthema` "a teacher plans in", IX.3 `Jaarplan` "a placement the teacher has decided on", IX.3
+  `Generatieparameters` "a teacher supplies", XII `Startthema`/`Vast moment`: all about the klas's planning, which a
+  leerkracht of the klas still owns (R7, R15).
+- Art. XIV "Number of classes & teachers", "Multilingual": not rights.
+- Ratification-log rows: historical, never edited.
+- FA §2.1, §2.2 bullets, FR-5.4, FR-6.2, FR-8.x, FR-10.1, §9.1, NFR-5: planning of the own klas, or still true.
+- ADR-0011 §3, Context: already marked superseded by ADR-0030 on 2026-09-11.
+- `docs/besluiten-gevraagd.md` line 136 ("elke leerkracht een eigen lijst"): about streefwoordenschat, not rights.
+- *Noticed, out of scope:* FA §11 still lists "Zijn thema's gedeeld … of strikt per klas?" although A.5 settled it on
+  2026-06-29; CLAUDE.md's open-decisions list has the same stale line (see proposed CLAUDE.md edit (f)).
+
+### The schooljaar design gap (surfaced, not decided)
+
+- **The gap.** A hoofdleerkracht is appointed per `(Schooljaar, jaarfase)` (R5), and a klastoewijzing ties a
+  leerkracht to a `Klas`, which belongs to exactly one `Schooljaar` (`Klas.SchooljaarId`, required and immutable).
+  But a `Subthema` (and its `Subdoel`s and `Activiteit`en) is scoped by `Leeftijd` alone and carries no schooljaar
+  (`Domain/Schoolcontent/Subthema.cs`, ADR-0025). So "HL of that jaar" (R5) and "leerkracht with a klas of that
+  leeftijd" (R17) do not say **which schooljaar's** appointment or klas counts.
+- **What the model offers.** `Schooljaar` (`Domain/Planning/Schooljaar.cs`) has `Naam`, `Start`, `Eind`, closures
+  and klassen, and **no state**: nothing marks a year current, active or closed. A `TimeProvider` is registered in
+  DI (`Infrastructure/DependencyInjection.cs`). Class names are unique school-wide rather than per schooljaar
+  (`Klas.cs` remarks), so today "L3" cannot exist in two schooljaren at once. That limits how often several years
+  hold klassen side by side, but does not remove the question.
+- **Proposed default (I11, marked as a default in Art. VI.1, ADR-0030 §2 and FA A.11):** an appointment or a
+  klastoewijzing counts while its schooljaar **has not yet ended** (today ≤ `Schooljaar.Eind`), including a year
+  that has not started. Rejected alternatives and why: in ADR-0030 below the §2 table (today's year leaves the
+  summer with nobody; the UI-selected year lets a past appointment edit this year's content; a "closed" flag needs
+  new state and a directie action). Implementation note for the build: "today" should come from `TimeProvider` in the
+  school's time zone, not UTC, or the switch happens at 02:00 on the last school day. That is harmless but visible.
+- **Graadklassen.** A `Klas` has one required `Jaarfase` (ADR-0025). An L1/L2 graadklas recorded as L1 gives its
+  leerkrachten the R17 right for L1 content only, though they teach L2 pupils. **This leaves a case open**; it
+  belongs to the Art. XIV graadklas question and is named in ADR-0030 and FA A.11, not answered.
+- **A klas with no stated jaarfase (I12).** Only legacy rows. `Klasleeftijden.VoorKlasAsync` falls back to the
+  leerjaar ordinal and **widens** when it cannot derive (leerjaar 0 yields JK+K2+K3; a graadklas ordinal yields
+  "every leeftijd"). That is right for a dekking figure and wrong for a right. Proposed default: the rights check
+  reads the **stated** `Jaarfase` only and must not reuse `Klasleeftijden`' widening. **Build note:** ADR-0025
+  decision 4 says the klas↔leeftijd join lives in exactly one place. The rights check therefore needs a documented
+  sibling with the opposite failure direction (fail closed), not a copy and not a reuse.
+
+### Proposed ratification-log entry
+
+> **Superseded by the revised row in "Fix round 1" below.** Kept as the audited text.
+
+*Not added (R13). For the orchestrator to add, as a new last row of the Art. XI ratification log, once the owner
+has approved the draft. Adjust if the owner changes anything.*
+
+```markdown
+| 2026-09-13 | Siebe De Saedeleir (projecteigenaar) | Amended **Art. VI.1** to name the rights the owner ruled on 2026-09-11 and 2026-09-13 ([ADR-0030](docs/adr/0030-rollen-en-rechten-in-de-app.md) §1): **directie** (everything, and it may give the directie right to someone else; there is no separate ICT-coördinator role), **themabeheer** (thema's, the FR-1 import, and, with directie, the only right that generates and reviews doelsuggesties), **hoofdleerkracht** per `(schooljaar, jaarfase)`, several allowed (that jaarfase's subthema's; thema's only with themabeheer), and **leerkracht** through a many-to-many klastoewijzing (the klas's planning, and the shared subdoelen and activiteiten at that klas's leeftijd). "Configurable" now says what it always meant: who holds a right is data, and what a right allows is one matrix, ADR-0030 §3, which supersedes FA §3.2's table. *Amended in step (Art. XI.1):* the `Thema` and `doelsuggesties[]` lines of **Art. IX.2**, a clarifying note on **Art. IV.1**, five **Art. XII** entries, the **Art. XIV** "Teacher visibility" bullet (narrowed, not removed), FA Bijlage **A.11** with pointers at §3.1, §3.2, §4, FR-1.1, FR-3.1, FR-4.3, FR-7.2, FR-10.2, FR-12.2, §7, §11 and A.5, and the status of ADR-0008 and ADR-0022. *Why:* Art. VI.1 named three roles that no longer described the school. A subthema has had no owning klas since ADR-0025, so the "owning teacher" of ADR-0011 §3 pointed at nobody, and FA §3.2's table gave every leerkracht rights the owner has since withdrawn. *The reversal, stated:* on 2026-09-11 the owner ruled that every leerkracht generates and reviews doelsuggesties (ADR-0030 R8). ADR-0030 §4 (f) required that its consequence be put to him before anything enforced it, since one teacher's acceptance moves the dekking of every klas that plans the thema, the figure the onderwijsinspectie reads. It was put on 2026-09-13 and he changed the answer. *Scope of the ratification:* the four rights and what they allow are the **owner's** rulings. The seven defaults Art. VI.1 lists (who gives themabeheer, visibility, which schooljaar counts, a klas without jaarfase, a jaarfase without hoofdleerkracht, the zorgcoördinator, no consensus) are **not** ratified by this entry, and nor is the shape of personal content (part 2, owed with E6-10). ADR-0030 §4 (h), what R17 does to parallel klassen' dekking, was open when this was ratified. *Directie's confirmation is outstanding:* visibility is directie's to decide (question 4 in [`docs/besluiten-gevraagd.md`](docs/besluiten-gevraagd.md)); on the rest of the role model no question has been put to them yet. *Shown to the owner as a draft first*, at his request (ADR-0030 R13). |
+```
+
+*(If (h) is answered before ratification, replace the sentence about (h) with the answer.)*
+
+### Proposed CLAUDE.md edits
+
+> **Superseded by the revised edits in "Fix round 1" below.** Kept as the audited text.
+
+*CLAUDE.md is held by another session. Art. XI.1 requires these in the same change as the amendment. Exact old →
+new text.*
+
+**(a) Working agreements, "AI is advisory" bullet.**
+
+- Old: ``- **AI is advisory (human-in-the-loop).** Every AI suggestion (goal match, generated plan) must be reviewable and accept/reject-able; persist the status. Nothing is "final" without teacher confirmation.``
+- New: ``- **AI is advisory (human-in-the-loop).** Every AI suggestion (goal match, generated plan) must be reviewable and accept/reject-able; persist the status. Nothing is "final" without confirmation by the person who holds the right to decide it: a leerkracht of the klas (or directie) for a generated plan, directie or themabeheer for a thema's doelsuggesties ([`CONSTITUTION.md` Art. IV.1 and VI.1](CONSTITUTION.md#article-vi--roles-privacy--security), amended 2026-09-13).``
+
+**(b) Architecture, "AI flow" bullet, last sentence.**
+
+- Old: ``returns suggestions with a short motivation and `status = voorgesteld`. Teacher accepts/rejects in the UI.``
+- New: ``returns suggestions with a short motivation and `status = voorgesteld`. Whoever holds the right accepts/rejects in the UI: directie or themabeheer for a thema's doelsuggesties, a leerkracht of the klas for plan placements (Art. VI.1).``
+
+**(c) Data model, `Thema` bullet, and one new bullet after `AlgemeneFiche`.**
+
+- Old: ``- **Thema** — id, naam, subthema's[], activiteiten[].``
+- New: ``- **Thema** — id, naam, subthema's[], activiteiten[]. Edited by directie and themabeheer only (Art. IX.2, VI.1).``
+- Add after the `AlgemeneFiche` bullet:
+  ``- **Gebruiker and rights** — only a gebruiker directie added logs in, and the app (not Entra) records its rights: **directie** (everything; may give the directie right to someone else, e.g. an ICT-coördinator), **themabeheer** (thema's, the FR-1 import, doelsuggesties), **hoofdleerkracht** per (schooljaar, jaarfase), several allowed (that jaarfase's subthema's), and a **klastoewijzing** per klas, many-to-many (that klas's planning, plus the shared subdoelen and activiteiten at its leeftijd). What each right allows is one matrix, [ADR-0030 §3](docs/adr/0030-rollen-en-rechten-in-de-app.md#3-the-matrix-that-follows); see [`CONSTITUTION.md` Art. VI.1](CONSTITUTION.md#article-vi--roles-privacy--security), which marks its defaults as defaults.``
+
+**(d) Domain glossary: add after `Graadklas / menggroep`.**
+
+```markdown
+- **Hoofdleerkracht** — a leerkracht appointed per (schooljaar, jaarfase), several allowed, who edits that jaarfase's subthema's.
+- **Themabeheer** — the right directie gives to edit thema's, run the FR-1 import, and generate and review doelsuggesties.
+- **Directierecht** — see and edit everything and maintain gebruikers and rights; directie may give it to someone else. There is no separate ICT role.
+- **Klastoewijzing** — the many-to-many link between a gebruiker and a klas they teach.
+```
+
+**(e) Status, first paragraph: annotate rather than rewrite** (it records what E2-08 delivered).
+
+- Old: ``a teacher generates doelsuggesties from `/themas` and reviews them, verified in a browser against a real API and PostgreSQL.``
+- New: ``a teacher generates doelsuggesties from `/themas` and reviews them, verified in a browser against a real API and PostgreSQL. *(Since the owner's ruling of 2026-09-13 only directie and themabeheer may do this (Art. VI.1); E6-02 gates that control.)*``
+
+**(f) Optional, not required by this amendment:** the open-decisions line "Whether a leerplandoel/thema is shared
+school-wide or per class." has been resolved since 2026-06-29 (Art. XIV resolved list); and the "ADR-0001…0026"
+range in the header is stale (0032 exists).
+
+### Proposed backlog edits
+
+*`backlog/E6-beheer-rollen-samenwerking.md` and `backlog/README.md` are the orchestrator's.*
+
+1. **E6 "Auth & roles" ruling block:** strike the R8 bullet (`~~**R8:** every leerkracht may generate and review
+   doelsuggesties.~~ Reversed 2026-09-13, see R14`) and add:
+   - **R11:** E6-01 closes; the real-tenant sign-in stays a precondition on E7-11.
+   - **R12:** E6-02 and E6-04 are built and delivered together.
+   - **R13:** amendment part 1 is approved by the owner as a draft before it is logged or built on.
+   - **R14:** only directie and themabeheer generate and review doelsuggesties.
+   - **R15:** a klas may have several leerkrachten, a leerkracht several klassen.
+   - **R16:** no separate ICT role; directie may give the directie right.
+   - **R17:** the shared subdoelen and activiteiten are edited by directie, the jaar's hoofdleerkrachten and every
+     leerkracht with a klas of that leeftijd.
+   - **R18:** a hoofdleerkracht edits thema's only with themabeheer.
+
+   And change "Everything else in that ADR is a default" to name I1, I2, I6, I9–I13, (c), (e) and (h).
+2. **E6-01:** `[~]` → `[x]`, *"closed 2026-09-13 by owner ruling (ADR-0030 R11, statement 14). The real-tenant round
+   trip is a precondition on E7-11 and is already listed there."* No change to E7-11 is needed.
+3. **E6-02:**
+   - Title annotation: *"built and delivered together with E6-04 on `feature/e6-rollen-rechten` (ADR-0030 R12)"*.
+   - Body: replace "their shared subdoelen and activiteiten only under default I5" with "the shared subdoelen and
+     activiteiten, edited also by every leerkracht with a klas of that leeftijd (R17)". Add "doelsuggesties:
+     directie and themabeheer only (R14)".
+   - *Waits on part 1* → *"part 1 drafted 2026-09-13 on `story/E6-02-amendering`; enforce nothing from it until the
+     owner has approved it (R13)"*.
+   - *Treat nothing in ADR-0030 §2 as ruled* → name I1, I2, I6, I9, I10–I13 (I5, I7 and I8 were ruled on
+     2026-09-13).
+   - Open questions: **(f)** → *"settled by R14"*. **Add (h):** *"put R17's dekking effect on parallel klassen to the
+     owner before enforcing R17"*. Add I10–I13 as the defaults it builds on.
+   - **New done-when bullet (the E3-06 rule, "never ship a control that does nothing"):** *"E2-08's doelsuggestie
+     controls on the themadetail screen (`frontend/src/features/themas/ThemadetailScherm.tsx`:
+     `useGenereerDoelsuggesties`, and the accept/reject/aanpassen controls) are shown only to directie and
+     themabeheer. So are the thema form, the subthema form, the shared subdoel/activiteit controls and the FR-1 import
+     section, per the matrix. The client therefore needs the caller's rights, so `GET /api/ik` carries them. The
+     server still enforces; the client only hides."*
+   - **Correct the E2 carry-forward:** it names `/api/doelsuggesties/*`, but the live routes are
+     `api/themas/{themaId}/doelsuggesties`, `…/genereer` (POST), `…/{suggestieId}/status` (PUT) and
+     `…/{suggestieId}/leerplandoel` (PUT) in `DoelsuggestiesController`. All three writes fall under R14.
+4. **E6-04:**
+   - Title annotation: built with E6-02 (R12).
+   - Replace "*Not ruled, confirm with the owner before building:* … (I7 …) … (open (g))" with *"Ruled 2026-09-13:
+     several leerkrachten per klas and several klassen per leerkracht (R15); no separate ICT role, and directie may
+     give the directie right to someone else (R16). The last directie still cannot be removed or demoted."*
+   - Add: *"Show whether an appointment or klastoewijzing currently counts (I11: its schooljaar has not ended), and
+     name klassen without a stated jaarfase, which grant no leeftijd right (I12)."*
+5. **E6-10:** note that R17 presupposes a shared layer editable by every leerkracht of that leeftijd, so the story's
+   "without going through the hoofdleerkracht" rationale is weaker than when it was filed. I6 is still open.
+6. **E2-08 (optional):** one line pointing to E6-02 for the gating of its trigger.
+7. **`backlog/README.md`:** E6 progress count (E6-01 closed), and a note that E6-02/E6-04 are one delivery.
+
+### Open questions for the owner
+
+1. **§4 (h), must be asked before E6-02 enforces R17.** A decided link on a shared subdoel or activiteit counts for
+   the dekking of every klas at that leeftijd that places the thema. Under R17 the leerkracht of K3 groen can
+   therefore change K3 blauw's and K3 geel's coverage figure. Keep R17 as ruled, or narrow who may edit the **goal
+   links** (as opposed to the activiteit's other fields)?
+2. **I11, which schooljaar counts:** keep "an appointment or klastoewijzing counts while its schooljaar has not
+   ended"?
+3. **I12:** a klas without a stated jaarfase grants no leeftijd right (fail closed). Agree?
+4. **I13:** re-scoping a subthema to another leeftijd requires the subthema right at both leeftijden. Agree? (E1-19
+   still owns whether the re-scope should exist.)
+5. **I10:** the wizard's AI assist follows the content it proposes for (step 2 = themabeheer; step 6 = the R17
+   right). Agree, or should all AI goal suggestions sit with themabeheer as statement 17 does for doelsuggesties?
+6. **I2:** statement 21's chosen description ("als de directie hem ook themabeheer geeft") presupposes that directie
+   grants themabeheer, and FR-12.2 has the beheerder "rechten toekennen". Confirm, so I2 becomes a ruling? Until
+   then the draft writes "given by directie" in Art. VI.1, Art. XII and FA A.11, and lists it as a default in both
+   of the first and in A.11's "nog niet beslist". *(Found in the proofread: the first draft of Art. VI.1 stated it as
+   a fact with no default line.)*
+7. **Graadklassen:** a graadklas states one jaarfase, so its leerkrachten edit shared content of one of their two
+   ages only. Acceptable until the Art. XIV graadklas decision?
+8. **R5's scope:** does a hoofdleerkracht also **create and delete** subthema's at their jaarfase, or only edit
+   existing ones? The matrix row says "aanpassen", as the rulings do. The build will read it as the full lifecycle
+   unless told otherwise.
+9. **Directie:** should a question about the role model go into `docs/besluiten-gevraagd.md`? Today only visibility
+   (question 4) is there, so the ratification row can only say directie "has not been asked".
+10. **One matrix or two:** is a pointer from FA §3.2 to ADR-0030 §3 enough for directie's review, or does the owner
+    want a Dutch copy in the FA (see "Deliberate choice" above)?
+
+### Self-check against the task
+
+- ADR-0030: statements 14–21 in a dated §1.3 ✓; §1.2 updated, R8 struck and replaced ✓; I5/I7/I8/(f)/(g)
+  strike-and-point ✓; §3 matrix updated with the doelsuggestie rows, the shared-content row and a defined "LK
+  leeftijd" column; subthema row still Directie + HL ✓; compliance trace ✓; revision note ✓.
+- Amendment text: Art. VI.1 ✓ (rights, "configurable", ICT-coördinator per statement 19); Art. IX.2 `Thema` ✓;
+  Art. XIV visibility narrowed ✓; Art. XII ✓; FA §3.1 ✓, §3.2 ✓, FR-3.1 ✓, FR-4 ✓, FR-10.2 ✓, FR-12.2 ✓; ADR-0008 ✓;
+  grep sweep listed above ✓. Defaults are marked as defaults in every file ✓.
+- Schooljaar gap: default proposed and marked, listed as open question 2; graadklassen checked (open case named) ✓.
+- Ratification row: not added; proposed text above ✓.
+- CLAUDE.md, backlog files, ADR-0032, nl.json, Migrations: not touched ✓.
+
+### For the test-runner
+
+Nothing to run: documentation only. What should verify it is the **antagonist** pass (Art. XIII), which ADR-0030's
+history shows is where these drafts get corrected, followed by the owner's review (R13). Checks worth pointing it
+at:
+
+- Does any text state a right the rulings do not name? Watch R17's "goal links" reading, I10–I13, and "LK
+  leeftijd" in the matrix.
+- Does any default read as a ruling?
+- Do Art. VI.1, ADR-0030 §3 and FA A.11 agree row for row?
+
+## Fix round 1 — antagonist round 1 (1 MAJOR, 7 MINOR, 3 QUESTION) and owner statements 22–25
+
+- **Input:** `backlog/worklogs/E6-02/antagonist.md` (written by the orchestrator, included in this commit
+  unedited), and four owner rulings asked on 2026-09-13 after that audit (statements 22–25).
+- **Branch:** `story/E6-02-amendering`, committed on top of `49e29b6`. No amend, no push, no merge.
+- **Still a draft (R13):** no ratification-log row, no CLAUDE.md edit, and no backlog edit. Each stays a proposal
+  below. No source code. Gates are not applicable and were not run.
+
+### Per finding
+
+| # | Finding | Disposition | Where |
+| --- | --- | --- | --- |
+| 1 | **MAJOR:** ratifying Art. VI.1 would ratify I10, I13 and the R17 goal-link reading | **Fixed, with one deliberate deviation.** Art. VI.1 now says: *a row of the matrix is ratified only as far as the rulings (R-items) it cites; whatever it takes from an I-item or a lettered §4 question is a default and is not ratified, and a row citing no ruling is a default entirely.* The same rule is in ADR-0030 §2 intro and §3 intro, FA A.11 ("Configureerbaar"), and the revised ratification row, which no longer counts. The full default set is listed identically in Art. VI.1, FA A.11 and the row (below). *Deviation from the guidance, for the orchestrator to adjudicate:* the literal wording "any row citing an I-item is a default" would also un-ratify the viewing row, which cites R3 and R7 (ruled) beside I9 (not ruled). "Ratified only as far as the R-items it cites" keeps R7 ratified and I9 not. | CONSTITUTION Art. VI.1; ADR-0030 §2, §3; FA A.11 |
+| 2 | **MINOR:** R17 goal-link reading filed as narrow | **Settled by statement 22 (R19).** The R17 reading is struck with a note, and the matrix row is split: *content* of shared activiteiten/subdoelen (Directie, HL, LK leeftijd) and *goal links* on them (Directie, HL). What "content" means is **I14**, marked as the session's reading, not the owner's. From the model: `Subdoel` holds only `SubthemaId`, `Leeftijd` and its `Koppeling` (`Domain/Schoolcontent/Subdoel.cs`), so **a subdoel has no content beyond its link**; creating, changing or deleting one is a goal-link action. `Activiteit` holds naam, type, hoek, verwachte uitkomsten, onderzoeksvraag, kleur and lengte beside `Doelkoppelingen`, and all but the links are content. I14 also treats deleting or moving (E4-08) an activiteit that carries links as unlinking. FR-7.2 now states R19 flat, since it is ruled. Wizard step 6 (I10) moves to Directie and HL. | ADR-0030 R17, R19, §2 I10/I14, §3; Art. VI.1; FA FR-3.1, FR-7.2, A.11 |
+| 3 | **MINOR:** I2 stated as fact in three places | **Fixed.** Art. XII Themabeheer now reads "held by a few named …; that directie is the one who gives it is a default (I2)". Art. IX.2 `Thema` no longer says "whoever directie gives". FA FR-12.2 marks themabeheer-granting *voorlopig*, and A.11's bullet says *voorlopig kent de directie het toe*. CLAUDE.md edit (d) is revised below. | CONSTITUTION IX.2, XII; FA FR-12.2, A.11 |
+| 4 | **MINOR:** a gebruiker with none of the four rights has no column | **Fixed.** "LK ander" became **"Ander" = any gebruiker who is none of the other relations**, including one with no klastoewijzing. I9 now covers such a gebruiker (a default). Art. VI.1 and A.11 say what a gebruiker with none of the four rights may do: log in and, by default, read every klas; nothing else. The personal-content row's "Ander" cell is footnoted: R6 names a *leerkracht*, so for a gebruiker who is no leerkracht that cell is not ruled (E6-10). | Art. VI.1; ADR-0030 §2 I9, §3; FA A.11 |
+| 5 | **MINOR:** doelsuggestie "aanpassen" missing | **Fixed.** Row "Doelsuggesties aanvaarden, weigeren of aanpassen (R14)"; Art. VI.1 "accepts, rejects or adjusts"; Art. XII "generate, review and adjust"; A.11 "aanvaardt, weigert of aanpast". It covers `PUT …/doelsuggesties/{id}/leerplandoel`. | Art. VI.1, XII; ADR-0030 §3; FA A.11 |
+| 6 | **MINOR:** sweep missed ADR-0026 and ADR-0010; A.11 misreports FR-4.2; I1 missing from A.11 | **Fixed.** ADR-0026 status pointer: streefwoordenschat is a `Subthema` field and follows the subthema row (Directie, HL: R5, R21); its Consequences line "A K3-groen teacher edits K3-blauw's list" no longer holds for an ordinary leerkracht, and E10-01's done-when would need the HL right; the choice to treat it as shared content instead is put to the owner (question 6 below). The other subthema fields (naam, duurWeken, onderzoeksvragen, probleemstelling; leeftijd is I13) follow the same row. ADR-0010 status pointer on "the teacher decides". A.11 now says it refines FR-4.3 "en daarmee FR-4.2", with no pointer at FR-4.2. I1 is in A.11's list. An E10-01 note is proposed below. | ADR-0026, ADR-0010 status; FA A.11 |
+| 7 | **MINOR:** "verbatim" record elided | **Fixed.** §1.3 is rewritten with the full questions and every option's description, from the orchestrator's text, including the "(Aanbevolen)" label as the owner saw it. It records that the owner chose against the recommendation on statement 15, and which statements had no recommended option (17, 20, 22). Statements 22–25 are added as a third set. The block was spliced in by heading (awk) because it was too long to match reliably; the file was renormalised to CRLF after. | ADR-0030 §1.3 |
+| 8 | **MINOR:** dated markers assume ratification on 2026-09-13 | **Fixed.** Reworded as "owner rulings of 2026-09-13" or "beslissingen van 13-09-2026", never "amended on" a date. That covers Art. IV.1, VI.1, IX.2 and XIV; every FA "Verfijnd op" / "Vervangen op" marker plus A.5's; ADR-0008 and ADR-0022; and the proposed row, whose date is now `<ratification date>`, and CLAUDE.md edit (a). *Left as is, on purpose:* the FA version row 0.7 is dated 13-09-2026 because a version records when text was written, and ADR-0030's "drafted 2026-09-13" is the drafting date. | CONSTITUTION; FA; ADR-0008, ADR-0022 |
+| 9 | **QUESTION:** Art. XIV visibility, directie has not confirmed | **Adopted.** The bullet now says "Directie has not confirmed the owner's part, and it removes 'no other klas at all' from directie's choice." | CONSTITUTION XIV |
+| 10 | **QUESTION:** graadklas case missing from Art. VI.1 | **Now a provisional ruling (statement 25, R22)**, recorded in Art. VI.1 as "Graadklassen, provisionally, until directie decides the Art. XIV graadklas question", with the **requirement that the rights-side klas→leeftijden mapping lives in one place**. That requirement is justified by Art. XIV's seam rule and is not a new right. Also in ADR-0030 R22 and Consequences, and FA A.11. | Art. VI.1; ADR-0030 R22, Consequences; FA A.11 |
+| 11 | **QUESTION:** the MVP wizard now spans three rights | **Put to the owner** as a consequence, not a new rule (question 7 below). No text asserts a wizard rule. | worklog only |
+
+### New rulings 22–25 and the text they changed
+
+| Statement | Ruling | Text changed |
+| --- | --- | --- |
+| 22 | **R19:** goal links on shared activiteiten/subdoelen are for Directie and HL only; LK leeftijd edits content. Narrows R17 and settles §4 (h). | ADR-0030 R17 (reading struck), R19, §1.3, §2 I10/I14, §3 split rows, §4 (c)/(h), Alternatives, trace; Art. VI.1 (hoofdleerkracht and leerkracht bullets, I14, (c)); Art. XII Hoofdleerkracht; ADR-0008 status; FA FR-3.1, FR-7.2, A.11 |
+| 23 | **R20:** an appointment or klastoewijzing counts until its schooljaar ends, including a year not yet started. Rules I11. | ADR-0030 R20, I11 struck, "I11 in more detail" relabelled, §3 column definitions; Art. VI.1 "Which schooljaar counts" is moved from the defaults to the ruled text; FA A.11 |
+| 24 | **R21:** a hoofdleerkracht creates, edits and deletes their jaar's subthema's; deleting takes the activiteiten and links along. | ADR-0030 R21, §3 subthema row; Art. VI.1, Art. XII; ADR-0008, ADR-0026 status; FA FR-3.1, A.11 |
+| 25 | **R22 (provisional):** a graadklas's leerkrachten get the rights of its one jaarfase; HL or directie do the other leeftijd; pending directie's Art. XIV decision. | ADR-0030 R22, §2 graadklas bullet, Consequences; Art. VI.1; FA A.11 (and its directie-confirmation line) |
+
+**How statement 22 interacts with the rest:**
+
+- **Doelsuggesties (statement 17).** A doelsuggestie is a `DoelKoppeling` on the **thema** (Art. IX.2
+  `doelsuggesties[]`), not on a shared activiteit or subdoel. It is therefore not a goal link in statement 22's
+  sense; it has its own rows under R14 (Directie, TB). Consequence: a hoofdleerkracht, who may link goals to a
+  subdoel, may not accept a doelsuggestie. Stated in ADR-0030 §4 (h).
+- **The FR-1 import (R9, E1-18).** The import writes `Manueel` links at themadoel, subdoel **and** activiteit level
+  (`SchoolcontentImportDiff.KoppelingNiveau`: Themadoel, Subdoel, Activiteit). The import is its own row (Directie,
+  TB), so no row contradicts another. But a themabeheer holder, who may not link a goal to a shared subdoel by
+  hand, can do so wholesale through an import. That is consistent as two rulings, and it may not be intended. Stated
+  in ADR-0030 §4 (h) and put to the owner (question 5).
+
+### Recounted default set (identical in Art. VI.1, FA A.11 and the proposed row)
+
+Ten entries, none ruled: **I1** (no consensus); **I2** (directie gives themabeheer); **I6 with (a)** (shared layer
+stays; personal content's owner and visibility open); **I9 with (d)** (every gebruiker reads every klas, behind
+E6-09; directie's to narrow); **I10** (wizard AI assist follows the content); **I12** (klas without a stated jaarfase
+grants no leeftijd right); **I13** (re-scoping a subthema needs the HL right at both leeftijden); **I14** (what
+"content" means beside goal links; session's reading); **(c)** (jaar without a hoofdleerkracht: directie only, for
+subthema's and goal links); **(e)** (zorgcoördinator: themabeheer if given, plus reading).
+
+*Left the set this round:* I11 (R20), the graadklas case (R22, provisional), §4 (h) (R19), and the create/delete
+question about R5 (R21). *Still open with no default:* (a) sits with I6, and (d) with I9.
+
+### Revised proposed ratification-log entry
+
+*Not added (R13). The orchestrator adds it as the last row once the owner approves the draft, with the actual date.*
+
+```markdown
+| <ratification date> | Siebe De Saedeleir (projecteigenaar) | Amended **Art. VI.1** to name the rights the owner ruled on 2026-09-11 and 2026-09-13 ([ADR-0030](docs/adr/0030-rollen-en-rechten-in-de-app.md) §1, statements 1–25): **directie** (everything; it may give the directie right to someone else; there is no separate ICT-coördinator role), **themabeheer** (thema's, the FR-1 import, and, with directie, the only right that generates, reviews and adjusts doelsuggesties), **hoofdleerkracht** per `(schooljaar, jaarfase)`, several allowed (creates, edits and deletes that jaarfase's subthema's and links goals to its shared activiteiten and subdoelen; thema's only with themabeheer), and **leerkracht** through a many-to-many klastoewijzing (the klas's planning, and the *content* but not the goal links of the shared activiteiten and subdoelen at that klas's leeftijd). It also states which schooljaar counts (one that has not ended), rules graadklassen provisionally (the klas's one jaarfase, pending directie's Art. XIV decision, with the klas→leeftijden mapping in one place), and says what a gebruiker with none of the four rights may do. "Configurable" now says what it always meant: who holds a right is data, and what a right allows is one matrix, ADR-0030 §3, which supersedes FA §3.2's table. *Amended in step (Art. XI.1):* the `Thema` and `doelsuggesties[]` lines of **Art. IX.2**, a clarifying note on **Art. IV.1**, five **Art. XII** entries, the **Art. XIV** "Teacher visibility" bullet (narrowed, not removed), FA Bijlage **A.11** with pointers at §3.1, §3.2, §4, FR-1.1, FR-3.1, FR-4.3, FR-7.2, FR-10.2, FR-12.2, §7, §11 and A.5, the status of ADR-0008, ADR-0010, ADR-0022 and ADR-0026, and CLAUDE.md. *Why:* Art. VI.1 named three roles that no longer described the school. A subthema has had no owning klas since ADR-0025, so the "owning teacher" of ADR-0011 §3 pointed at nobody, and FA §3.2's table gave every leerkracht rights the owner has since withdrawn. *The two reversals, stated:* on 2026-09-11 the owner ruled that every leerkracht generates and reviews doelsuggesties (R8), and on 2026-09-13, when shown that one acceptance moves the dekking of every klas that plans the thema, changed it to directie and themabeheer (R14). Later the same day, shown that a goal link on a shared activiteit or subdoel moves the dekking of every parallel klas, he kept the content with the leerkrachten of that leeftijd and gave the links to directie and the hoofdleerkrachten (R19). *Scope of the ratification:* this entry ratifies the rulings (R-items) only. **A row of the ADR-0030 §3 matrix is ratified only as far as the R-items it cites**; whatever a row takes from an I-item or a lettered §4 question is a default and is not ratified here. The defaults Art. VI.1 lists (I1, I2, I6 with (a), I9 with (d), I10, I12, I13, I14, (c) and (e)) are **not** ratified, and nor is the shape of personal content (part 2, owed with E6-10). *Directie's confirmation is outstanding:* visibility is directie's to decide (question 4 in [`docs/besluiten-gevraagd.md`](docs/besluiten-gevraagd.md)), the graadklas rule waits on their Art. XIV decision, and on the rest of the role model no question has been put to them yet. *Shown to the owner as a draft first*, at his request (ADR-0030 R13). |
+```
+
+### Revised proposed CLAUDE.md edits
+
+*Replaces (a)–(f) above. (b) and (f) are unchanged; (a), (c), (d) and (e) are revised.*
+
+**(a) Working agreements, "AI is advisory" bullet.**
+
+- Old: ``- **AI is advisory (human-in-the-loop).** Every AI suggestion (goal match, generated plan) must be reviewable and accept/reject-able; persist the status. Nothing is "final" without teacher confirmation.``
+- New: ``- **AI is advisory (human-in-the-loop).** Every AI suggestion (goal match, generated plan) must be reviewable and accept/reject-able; persist the status. Nothing is "final" without confirmation by the person who holds the right to decide it: a leerkracht of the klas (or directie) for a generated plan, directie or themabeheer for a thema's doelsuggesties ([`CONSTITUTION.md` Art. IV.1 and VI.1](CONSTITUTION.md#article-vi--roles-privacy--security), on the owner's rulings of 2026-09-13).``
+
+**(b) Architecture, "AI flow":** unchanged from round 1.
+
+**(c) Data model.**
+
+- Old: ``- **Thema** — id, naam, subthema's[], activiteiten[].``
+- New: ``- **Thema** — id, naam, subthema's[], activiteiten[]. Edited by directie and themabeheer only (Art. IX.2, VI.1).``
+- Add after the `AlgemeneFiche` bullet:
+  ``- **Gebruiker and rights** — only a gebruiker directie added logs in, and the app (not Entra) records its rights: **directie** (everything; may give the directie right to someone else, e.g. an ICT-coördinator), **themabeheer** (thema's, the FR-1 import, doelsuggesties; that directie grants it is a default), **hoofdleerkracht** per (schooljaar, jaarfase), several allowed (creates, edits and deletes that jaarfase's subthema's, and alone with directie links goals to its shared activiteiten and subdoelen), and a **klastoewijzing** per klas, many-to-many (that klas's planning, plus the content, not the goal links, of the shared activiteiten and subdoelen at its leeftijd). An appointment or klastoewijzing counts until its schooljaar ends; a graadklas provisionally grants its one jaarfase. What each right allows is one matrix, [ADR-0030 §3](docs/adr/0030-rollen-en-rechten-in-de-app.md#3-the-matrix-that-follows), ratified only as far as the rulings each row cites; see [`CONSTITUTION.md` Art. VI.1](CONSTITUTION.md#article-vi--roles-privacy--security) for the defaults.``
+
+**(d) Domain glossary:** add after `Graadklas / menggroep`:
+
+```markdown
+- **Hoofdleerkracht** — a leerkracht appointed per (schooljaar, jaarfase), several allowed, who creates, edits and deletes that jaarfase's subthema's and links goals to its shared activiteiten and subdoelen.
+- **Themabeheer** — the right, held by a few named people, to edit thema's, run the FR-1 import, and generate and review doelsuggesties. That directie gives it is a default (ADR-0030 I2).
+- **Directierecht** — see and edit everything and maintain gebruikers and rights; directie may give it to someone else. There is no separate ICT role.
+- **Klastoewijzing** — the many-to-many link between a gebruiker and a klas they teach.
+```
+
+**(e) Status, first paragraph:** annotate rather than rewrite.
+
+- Old: ``a teacher generates doelsuggesties from `/themas` and reviews them, verified in a browser against a real API and PostgreSQL.``
+- New: ``a teacher generates doelsuggesties from `/themas` and reviews them, verified in a browser against a real API and PostgreSQL. *(Since the owner's rulings of 2026-09-13 only directie and themabeheer may do this (Art. VI.1); E6-02 gates that control.)*``
+
+**(f)** Optional, unchanged from round 1.
+
+### Revised proposed backlog edits (delta on round 1)
+
+1. **E6 ruling block:** also add R19 (goal links on shared content for directie and HL only), R20 (schooljaar counts
+   until it ends), R21 (HL creates and deletes the jaar's subthema's), and R22 (graadklas: its one jaarfase,
+   provisionally). The "everything else is a default" line becomes: I1, I2, I6 with (a), I9 with (d), I10, I12, I13,
+   I14, (c), (e). *This corrects round 1's list, which still named (h) and I11.*
+2. **E6-02 open questions:** (h) → *"settled by R19"*. Add I14 as a default it builds on. Add the build requirement
+   from R22: *"one place maps a klas to the leeftijden it grants rights for; it fails closed (I12) and does not reuse
+   `Klasleeftijden`' widening."*
+3. **E6-02 done-when, E3-06 rule, extended:** the goal-link controls on shared activiteiten and subdoelen
+   (`POST/DELETE /api/activiteiten/{id}/doelkoppelingen` and the subdoel controls) are shown only to directie and
+   that jaar's hoofdleerkrachten. So are the wizard's step-6 assist (I10) and its step-2 assist (Directie, TB).
+4. **E10-01 (new note):** *"Since the ADR-0030 rulings of 2026-09-13, streefwoordenschat is a `Subthema` field and
+   follows the subthema row (directie and that jaar's hoofdleerkrachten, R5, R21). The done-when's 'a teacher
+   standing in the agenda … add and remove words' therefore needs the hoofdleerkracht right, unless the owner rules
+   streefwoordenschat to be shared content (question 6 in the E6-02 worklog). See ADR-0026's status pointer."*
+5. **E1-19 (new note):** re-scoping a subthema's leeftijd is gated by default I13 (the HL right at both leeftijden)
+   once E6-02 lands; E1-19 still owns whether the re-scope exists at all.
+6. **E6-05 (new note):** the wizard spans three rights under R4, R5/R21 and R17/R19 (see question 7).
+
+### Remaining open questions for the owner
+
+*Dropped because statements 22–25 answered them:* round 1's questions 1 ((h), statement 22), 2 (I11, statement 23),
+7 (graadklassen, statement 25) and 8 (R5's lifecycle, statement 24).
+
+1. **I14:** "content" is every field of an activiteit except its goal links. A subdoel has no content beyond its link,
+   so a leerkracht of that leeftijd cannot create, change or delete a subdoel. Deleting or moving an activiteit that
+   carries goal links counts as unlinking, so it needs the hoofdleerkracht. Agree?
+2. **I10:** the wizard's AI assist. Step 2 (themadoelen) goes to Directie and TB; step 6 (subdoelen) to Directie and
+   HL. Agree? Today every gebruiker can call both.
+3. **I12:** a klas without a stated jaarfase grants no leeftijd right (fail closed). Agree?
+4. **I13:** re-scoping a subthema to another leeftijd needs the hoofdleerkracht right at both leeftijden. Agree?
+5. **The import and R19:** the FR-1 import (Directie, TB) writes `Manueel` goal links on subdoelen and activiteiten.
+   So a themabeheer holder can link goals wholesale that they may not link by hand. Intended?
+6. **Streefwoordenschat (ADR-0026, E10-01):** as a subthema field it now follows the subthema row (Directie, HL).
+   ADR-0026 designed it for every K3 teacher to edit from the agenda. Keep it with the subthema, or rule it shared
+   content (every leerkracht of that leeftijd)?
+7. **The wizard spans three rights (Art. IV.8, FA A.7).** This is a consequence of the rulings, not a new rule.
+   Steps 1–2 (thema, themadoelen) need themabeheer; the subthema steps and subdoelen (4–6) need the hoofdleerkracht;
+   activiteit content (7) needs a leerkracht of that leeftijd. No ordinary leerkracht can finish the ten steps alone.
+   The owner should know this before the wizard UI (E6-05) is designed.
+8. **I2:** confirm that directie grants themabeheer.
+9. **Directie:** add a role-model question to `docs/besluiten-gevraagd.md`?
+10. **One matrix or two:** is a pointer from FA §3.2 to ADR-0030 §3 enough for directie's review?
+
+Unchanged defaults the owner may also confirm: I1, I6, I9, (c), (e).
+
+### Files touched this round
+
+The seven of round 1 (`CONSTITUTION.md`, the FA, ADR-0008, ADR-0022, ADR-0030, `docs/adr/README.md`, this worklog),
+**plus** `docs/adr/0026-streefwoordenschat-op-subthema.md` and `docs/adr/0010-ai-advisory-architecture.md` (status
+pointers only), plus `backlog/worklogs/E6-02/antagonist.md` (the orchestrator's, included unedited).
+
+## Fix round 2 — antagonist round 2 (2 MAJOR, 9 MINOR, 1 QUESTION) and owner statements 26–31
+
+- **Input:** round 2 of `backlog/worklogs/E6-02/antagonist.md` (the orchestrator's, committed unedited), and six
+  owner rulings asked on 2026-09-13 (statements 26–29, then 30–31 to clarify statement 26's free text).
+- **Branch:** `story/E6-02-amendering`, committed on top of `e9f32d1`; then `origin/main` (`f04f131`, PR #53) merged
+  in as the orchestrator asked. No amend, no push, no other merge.
+- **Still a draft (R13):** no ratification-log row, no CLAUDE.md edit, no backlog edit; each is a proposal below. No
+  source code. Gates not applicable, not run.
+- **ADR-0030 was rewritten as a whole file** this round (`Write`), because the changes touched every section. Its
+  untouched text was carried over verbatim; `git diff` shows the real changes.
+
+### Per finding
+
+| # | Finding | Disposition | Where |
+| --- | --- | --- | --- |
+| 1 | **MAJOR:** I14 empties the subdoel half of statement 22; misquotes Art. IX.2 | **Ruled by statements 26, 30 and 31 (R23–R26).** The question for statement 26 **stated the premise**: *"Een subdoel is in het model enkel een koppeling aan een doel"*. That disclosure is recorded in §1.3 and in R24. I14 is struck and points to R23–R25; its move clause survives, corrected, as I19. The Art. IX.2 paraphrase is corrected in the I14 row, R24 and §1.3: the constitution defines a subdoel as *"a concrete, age-differentiated goal … linking to a Leerplandoel"*, and the pure-link shape is the model's (`Subdoel.cs`). | ADR-0030 R23–R26, §1.3, §2; Art. VI.1; FA A.11 |
+| 2 | **MAJOR:** Art. VI.1's "only" contradicts the import; "activiteit level" is false | **Ruled by statement 27 (R27)**, in favour of R9. Art. VI.1's themabeheer bullet now includes *"the goal links that import writes on themadoelen and subdoelen"*; the leerkracht bullet says *"goal links by hand"*; R19 says "by hand". "Activiteit level" is removed and struck in ADR-0030 §4 (h), with the correction: the import writes themadoel and subdoel links only (`SchoolcontentImportService.cs:394-396`, and `KoppelingNiveau.Activiteit` is never emitted). **§1.3 records that the question for statement 27 overstated this** ("op subdoelen en activiteiten", "op alle niveaus"), and that the orchestrating session corrected it to the owner in the same session right after the answer, saying the answer stands because the import does less than described. R27 covers what the import actually writes. | ADR-0030 R19, R27, §1.3, §4 (b), (h); Art. VI.1; FA FR-7.2, A.11 |
+| 3 | **MINOR:** uncited rows, A.11 rule differs, Exporteren anomaly | **Fixed.** The rule now says **citations count at column level** (every Directie ✓ rests on R3; a "–" grants nothing), in Art. VI.1, ADR-0030 §2 and §3, and A.11. Every row now cites a ruling: Op.stap (R3; ADR-0022), Exporteren (R3, R7; I9), the two wizard rows replaced by one R29 row. The Exporteren TB, HL and LK leeftijd cells are now "lezen" like "Ander", with footnote ⁴. | Art. VI.1; ADR-0030 §2, §3; FA A.11 |
+| 4 | **MINOR:** "Nothing else." ratified; footnote ¹ on one cell | **Fixed.** "Nothing else" is now "by default … ((e) below); whether they may add personal content is E6-10's". Default (e) covers any gebruiker with none of the four rights. Footnote ¹ now sits on the TB, HL and Ander cells. | Art. VI.1; ADR-0030 §3, §4 (e); FA A.11 |
+| 5 | **MINOR:** hoofdleerkracht defined inconsistently; R17 content right missing | **Fixed.** A hoofdleerkracht is **a gebruiker appointed per (schooljaar, jaarfase)**. Must they hold a klastoewijzing? Default **I20: no**. The HL bullet now carries shared-activiteit content, create, delete (with or without links), subdoelen and goal links by hand (R17, R19, R23–R25). | Art. VI.1, XII; ADR-0030 §2 I20, §3 HL column; FA A.11 |
+| 6 | **MINOR:** R20 broader than statement 23 | **Fixed.** R20 is scoped to the shared content ("HL" and "LK leeftijd"), which is what statement 23 asked (*"rechten op de gedeelde inhoud"*). A klastoewijzing's rights on the klas's own planning are **I21: no end date** (a default). | ADR-0030 R20, §2 I11/I21, §3, Consequences; Art. VI.1; FA A.11 |
+| 7 | **MINOR:** move called "unlinking" | **Fixed.** **I19**: a move is neither deletion nor unlinking, because Art. IX.2 has the activiteit keep its links; the links then count for the klassen that plan the other thema. So moving one with links needs the goal-link right (directie, HL); without links, any leerkracht of that leeftijd may move it; a move is not a deletion for the maker right. | ADR-0030 §2 I19, §3 move row (footnote ³); Art. VI.1; FA A.11 |
+| 8 | **MINOR:** Art. XIV and FA §11 graadklas not annotated | **Fixed.** Both are annotated as partly answered for rights, provisionally (R22), with directie not yet asked. Owner question 10 below proposes adding graadklassen to `docs/besluiten-gevraagd.md`. | CONSTITUTION Art. XIV; FA §11 |
+| 9 | **MINOR:** ratification-day phrases not listed | **Fixed.** See "Ratification checklist" below. | worklog |
+| 10 | **MINOR:** backlog edits stale in combination | **Fixed.** One consolidated set below, which supersedes every earlier set. | worklog |
+| 11 | **MINOR:** I2 residual | **Fixed.** **I2 is narrowed** to the reading of statement 8's missing verb, and it changes nothing in the build. Who grants themabeheer rests on FA FR-12.2 (the beheerder "rechten toekennen") and R16 (the beheerder is the directie right), exactly as for klastoewijzingen and hoofdleerkracht appointments. The directie bullet in Art. VI.1 and A.11 says so. The matrix row "Gebruikers, klassen … beheren" now cites **R2, R3, R16; FA FR-12.2**, so it rests on rulings. The Art. XII Themabeheer entry and the FA FR-12.2 pointer drop "voorlopig" and cite FR-12.2 instead. | Art. VI.1, XII; ADR-0030 §2 I2, §3; FA FR-12.2, A.11 |
+| 12 | **QUESTION:** wizard step 6 against Art. IV.8 | **Ruled by statement 29 (R29):** the whole wizard, both AI steps included, is for themabeheer (and directie). I10 is struck. This agrees with Art. IV.8's "step 6, the matching of FR-4", since the FR-4 doelsuggesties are themabeheer's too (R14). R29 lets themabeheer create subthema's and subdoelen at any leeftijd through the wizard; the chosen option said so. | ADR-0030 R29, §2 I10, §3; Art. VI.1; FA A.11 |
+
+### Statements 26–31: the rulings and what they changed
+
+| Statement | R-item | Text changed |
+| --- | --- | --- |
+| 26 (with the free-text addition) | **R23** leerkracht of that leeftijd edits shared activiteit content and creates activiteiten; **R24** subdoelen: directie and HL only; part of **R25** | ADR-0030 R17 note, R19, R23, R24, §1.3, §2 I14/I15, §3 rows; Art. VI.1; ADR-0008; FA FR-3.1, A.11 |
+| 27 | **R27** the FR-1 import may write goal links (themadoel and subdoel level) | ADR-0030 R19 ("by hand"), R27, §1.3 (the overstatement and its correction), §4 (b), (h); Art. VI.1; FA FR-7.2, A.11 |
+| 28 | **R28** streefwoordenschat is shared content (Directie, HL, LK leeftijd) | ADR-0030 R28, §3 row; Art. VI.1; ADR-0026 pointer (rewritten: it now agrees with ADR-0026's original promise); ADR-0008; FA A.11 |
+| 29 | **R29** the wizard is for themabeheer, all steps; retires I10 | ADR-0030 R29, §2 I10, §3 row; Art. VI.1, XII; FA FR-7.2, A.11 |
+| 30 | **R25**, **R26** "eigen" = created by that leerkracht; the app records the maker; the activiteit stays shared; not personal content | ADR-0030 R25, R26, §4 (a), Consequences (the model gains a maker on `Activiteit`), §5 part 2 note; Art. VI.1, IX.2 `Activiteit`, XII "Maker"; FA A.11 |
+| 31 | **R25** the maker deletes only while no goal is linked | ADR-0030 R25, §3 rows (footnote ²); Art. VI.1; FA FR-3.1, A.11 |
+
+- **Recorded as consequences:**
+  - *The maker is new data.* It is on `Activiteit` as a nullable reference to `Gebruiker`, empty for existing and
+    imported activiteiten, in the ADR-0030 Consequences and Art. IX.2.
+  - *It is staff data.* It links content to a named staff member, so it is routed to **E7-06**, with I17 as its
+    retention rule.
+  - *It is not R6/E6-10 personal content.* Statement 30 rejected that reading. This is stated in R26, Art. VI.1,
+    Art. IX.2, Art. XII, §4 (a) and A.11.
+- **Model detail:** statement 26's option named *"beschrijving"*, a field `Activiteit` does not have. R23 says so,
+  and I15 covers the fields it did not name.
+
+### The default set, recounted (identical in Art. VI.1, FA A.11 and the proposed row)
+
+Fifteen entries, none ruled:
+
+- I1
+- I2 (the reading of statement 8 only)
+- I6 with (a)
+- I9 with (d)
+- I12
+- I13
+- I15
+- I16
+- I17
+- I18
+- I19
+- I20
+- I21
+- (c)
+- (e)
+
+*Left the set this round:* I10 (R29), and I14 (R23–R25; its move clause lives on as I19).
+
+### Ratification checklist (what the orchestrator does on the day the owner approves)
+
+1. Add the ratification-log row below as the **last** row of Art. XI, with the real date. Main added a row on
+   2026-09-13 (PR #53), so check the order after the merge.
+2. Apply the CLAUDE.md edits in the **same** commit (Art. XI.1), re-pointed at CLAUDE.md on main (see "After the
+   merge with main" below).
+3. Apply the consolidated backlog edits below.
+4. Change these phrases, which become false on that day. File and line are as of the fix-round-2 commit; they were
+   re-checked after the merge.
+   - `docs/adr/0030-rollen-en-rechten-in-de-app.md:480-481`, §3 intro: *"drafted 2026-09-13. Under R13 the owner
+     approves that draft before anything is enforced from it."* Change to "ratified on <date>".
+   - `docs/adr/0030-…:647-648`, §5 "Who": *"Drafted 2026-09-13 … Under R13 the owner approves the draft before it is
+     logged in Art. XI"*. Change to "ratified on <date>".
+   - `docs/adr/0030-…:684`: *"Once part 1 lands, that role is the directie right"*. Change to "Since part 1 (<date>)".
+   - `docs/adr/0030-…:3`, Status: add "Part 1 of the amendment ratified on <date>".
+   - `docs/adr/README.md:43`: *"the matrix binds once amendment part 1 lands, drafted 2026-09-13 for the owner's
+     approval"*. Change to "binds since part 1 was ratified on <date>".
+   - `docs/adr/README.md:79` (it was :78 before the merge with main): *"part 1 drafted 2026-09-13 for the owner's
+     approval"*. Change to "part 1 ratified on
+     <date>".
+   - `docs/adr/0022-curriculum-administration-authorisation-seam.md:4`: *"once the Art. VI.1 amendment on those
+     rulings lands"*. Change to "since the Art. VI.1 amendment of <date>".
+   - `docs/adr/0026-streefwoordenschat-op-subthema.md:12`: *"Neither version was ratified."* Change to "The second
+     was ratified with Art. VI.1 on <date>."
+   - **Not** changed on the day, because they stay true: every "(owner) rulings of 2026-09-13" / "beslissingen van
+     13-09-2026" marker in the constitution and the FA, the FA version row 0.7 (a version records when it was
+     written), and ADR-0008's status.
+
+### Proposed ratification-log entry (current; supersedes both earlier versions)
+
+```markdown
+| <ratification date> | Siebe De Saedeleir (projecteigenaar) | Amended **Art. VI.1** to name the rights the owner ruled on 2026-09-11 and 2026-09-13 ([ADR-0030](docs/adr/0030-rollen-en-rechten-in-de-app.md) §1, statements 1–31). **Directie** sees and edits everything and maintains gebruikers, klassen, schooljaren and rights (FA FR-12.2, the beheerder now being the directie right; there is no separate ICT-coördinator role). **Themabeheer** edits thema's, runs the FR-1 import including the goal links it writes on themadoelen and subdoelen, works the whole thema-opbouw wizard, and is with directie the only right that generates, reviews and adjusts doelsuggesties. The **hoofdleerkracht**, a gebruiker appointed per `(schooljaar, jaarfase)`, several allowed, creates, edits and deletes that jaarfase's subthema's and subdoelen, links goals to its shared activiteiten by hand, and deletes any of them; thema's only with themabeheer. The **leerkracht**, through a many-to-many klastoewijzing, edits the klas's planning, and at that klas's leeftijd edits and creates shared activiteiten, edits streefwoordenschat, and deletes an activiteit they created while no goal is linked to it; the app records that maker, and the activiteit stays shared. It also states which schooljaar counts for the shared content (one that has not ended), rules graadklassen provisionally (the klas's one jaarfase, pending directie's Art. XIV decision, with the klas→leeftijden mapping in one place), and says what a gebruiker with none of the four rights may do. "Configurable" now says what it always meant: who holds a right is data, and what a right allows is one matrix, ADR-0030 §3, which supersedes FA §3.2's table. *Amended in step (Art. XI.1):* the `Thema`, `doelsuggesties[]` and `Activiteit` lines of **Art. IX.2**, a clarifying note on **Art. IV.1**, six **Art. XII** entries, the **Art. XIV** "Teacher visibility" bullet (narrowed, not removed) and graadklas bullet (partly answered for rights), FA Bijlage **A.11** with pointers at §3.1, §3.2, §4, FR-1.1, FR-3.1, FR-4.3, FR-7.2, FR-10.2, FR-12.2, §7, §11 and A.5, the status of ADR-0008, ADR-0010, ADR-0022 and ADR-0026, and CLAUDE.md. *Why:* Art. VI.1 named three roles that no longer described the school. A subthema has had no owning klas since ADR-0025, so the "owning teacher" of ADR-0011 §3 pointed at nobody, and FA §3.2's table gave every leerkracht rights the owner has since withdrawn. *The reversals and the premises, stated:* on 2026-09-11 the owner ruled that every leerkracht generates and reviews doelsuggesties (R8), and on 2026-09-13, shown that one acceptance moves the dekking of every klas that plans the thema, gave it to directie and themabeheer (R14). Shown that a goal link on shared content moves the dekking of every parallel klas, he gave those links to directie and the hoofdleerkrachten (R19). Told that a subdoel is, in the model, only a link to a goal, he kept subdoelen with them too (R24). The question on the import overstated what it writes; it was corrected in the same session and the answer stands (R27). *Scope of the ratification:* this entry ratifies the rulings (R-items) only. **A row of the ADR-0030 §3 matrix is ratified only as far as the rulings it cites, counted at column level**; whatever a row takes from an I-item or a lettered §4 question is a default and is not ratified here. The defaults Art. VI.1 lists (I1, I2, I6 with (a), I9 with (d), I12, I13, I15–I21, (c) and (e)) are **not** ratified, and nor is the shape of personal content (part 2, owed with E6-10). *Directie's confirmation is outstanding:* visibility is directie's to decide (question 4 in [`docs/besluiten-gevraagd.md`](docs/besluiten-gevraagd.md)), the graadklas rule waits on their Art. XIV decision, and on the rest of the role model no question has been put to them yet. *Shown to the owner as a draft first*, at his request (ADR-0030 R13). |
+```
+
+### Consolidated backlog edits (supersede every earlier set)
+
+*For `backlog/E6-beheer-rollen-samenwerking.md` and `backlog/README.md`, as on main after PR #53, which changed one
+line of the E6 file. Apply against that file.*
+
+1. **"Auth & roles" ruling block.** Replace the R1–R9 list with a pointer and a short list. The pointer: *"Owner
+   rulings of 2026-09-11 and 2026-09-13 ([ADR-0030 §1](../docs/adr/0030-rollen-en-rechten-in-de-app.md)), ratified
+   into Art. VI.1 on <date>"*. The list:
+   - R1–R3: rights in the app; only invited people log in; directie sees and edits everything.
+   - R4: themabeheer edits thema's.
+   - R5, R21: hoofdleerkrachten per (schooljaar, jaarfase) create, edit and delete that jaar's subthema's.
+   - R6: personal content (E6-10).
+   - R7, R15: a leerkracht edits their own klassen' planning (many-to-many) and views others.
+   - ~~R8~~ → R14: doelsuggesties for directie and themabeheer only.
+   - R9, R27: the FR-1 import for directie and themabeheer, links included.
+   - R16: no ICT role.
+   - R17, R19, R23–R26: shared activiteiten content and creation for every leerkracht of that leeftijd; subdoelen and
+     goal links by hand for directie and HL; deletion by the maker without links, otherwise HL.
+   - R20: an appointment counts until its schooljaar ends.
+   - R22: graadklas, provisionally.
+   - R28: streefwoordenschat is shared.
+   - R29: the wizard is for themabeheer.
+
+   Then: *"Everything else in that ADR is a default, not a ruling: I1, I2, I6 with (a), I9 with (d), I12, I13,
+   I15–I21, (c), (e)."*
+2. **E6-01:** `[~]` → `[x]`, *"closed 2026-09-13 by owner ruling (ADR-0030 R11). The real-tenant round trip is a
+   precondition on E7-11 and already listed there."*
+3. **E6-02** (title: *"built and delivered together with E6-04 (ADR-0030 R12)"*). Replace the body with:
+   - *What:* enforce the ADR-0030 §3 matrix server-side, as named policies declared in one place. The "HL", "LK
+     leeftijd", "LK eigen" and maker relations are resource-based handlers. Bind `Curriculumbeheer` to the directie
+     right.
+   - *Model:*
+     - a nullable maker on `Activiteit` (R26), set on create by a leerkracht, a hoofdleerkracht or the wizard (I18);
+       null for existing rows and for the FR-1 import;
+     - one place maps a klas to the leeftijden it grants rights for (R22), reading the stated `Jaarfase` only and
+       failing closed (I12), and not reusing `Klasleeftijden`' widening;
+     - appointments and klastoewijzingen count for shared content until their schooljaar ends (R20), and for the
+       klas's planning without an end date (I21).
+   - *Done when:* each action in the matrix is allowed or denied per relation and per resource, server-side, with a
+     test per row. **No control that does nothing (the E3-06 rule).**
+     - The doelsuggestie controls on the themadetail screen (`frontend/src/features/themas/ThemadetailScherm.tsx`,
+       `useGenereerDoelsuggesties` and the accept/reject/adjust controls) are shown only to directie and themabeheer.
+     - So are, each per its row: the thema form, the FR-1 import section, the wizard, the subthema form, the subdoel
+       controls, the goal-link controls on activiteiten, the activiteit delete (maker or HL), the move, and the
+       streefwoordenschat editor.
+     - `GET /api/ik` carries the caller's rights; the server still enforces.
+   - *Routes to cover:*
+     - `api/themas/{themaId}/doelsuggesties` with `…/genereer`, `…/{id}/status`, `…/{id}/leerplandoel`. The old
+       carry-forward named `/api/doelsuggesties/*`, which does not exist.
+     - `api/thema-opbouw/*`.
+     - The activiteit and subdoel routes, including `POST/DELETE /api/activiteiten/{id}/doelkoppelingen` and the
+       move.
+     - `PUT /api/subthemas/{id}` (a re-scope follows I13).
+     - The five jaarplan write routes, and `POST /api/schooljaren`.
+   - *Open questions it owns:* (b)'s gate, (c), (e). (f) and (h) are settled (R14, R19).
+   - *Defaults it builds on:* I1, I2, I9, I12, I13, I15–I21.
+4. **E6-04** (title: *"built and delivered together with E6-02 (R12)"*).
+   - Replace the "Not ruled, confirm with the owner" line with *"Ruled 2026-09-13: several leerkrachten per klas and
+     several klassen per leerkracht (R15); no separate ICT role, and directie may give the directie right (R16)."*
+   - Add: *"A hoofdleerkracht needs no klastoewijzing (I20). Show whether an appointment or klastoewijzing currently
+     counts for shared content (R20), and name klassen without a stated jaarfase, which grant no leeftijd right
+     (I12). The last directie cannot be removed or demoted; removing a gebruiker leaves their activiteiten purely
+     shared (I17)."*
+5. **E6-05:** *"The wizard is for themabeheer and directie, all steps, including subthema's and subdoelen at any
+   leeftijd (ADR-0030 R29). The maker of an activiteit it creates is the themabeheer holder (I18)."*
+6. **E6-10:** *"The activiteit maker (R26) is not personal content: the activiteit stays shared. The shared layer
+   exists and is edited by every leerkracht of that leeftijd (R17, R23); whether it remains next to personal content
+   is I6. Open question (a) is unchanged."*
+7. **E10-01:** *"Streefwoordenschat is shared content (ADR-0030 R28): directie, that jaar's hoofdleerkrachten and
+   every leerkracht with a klas of that leeftijd edit it, so the done-when stands. See ADR-0026's status pointer."*
+8. **E1-19:** *"Once E6-02 lands, re-scoping a subthema to another leeftijd needs the hoofdleerkracht right at both
+   leeftijden, or directie (default ADR-0030 I13). This story still owns whether the re-scope exists at all."*
+9. **E7-06:** *"The processing register also covers the activiteit maker (ADR-0030 R26): it links school content to
+   a named staff member. Retention when the gebruiker leaves: the activiteit becomes purely shared (I17)."*
+10. **E2-08 (optional):** *"Since the owner's rulings of 2026-09-13 its trigger and review controls are for directie
+    and themabeheer only (R14); E6-02 gates them."*
+11. **`backlog/README.md`:** E6 progress (E6-01 closed); a note that E6-02 and E6-04 are one delivery.
+
+### Remaining open questions for the owner
+
+*Answered by statements 26–31 and dropped:* fix round 1's question 1 (I14), 2 (I10), 5 (the import), 6
+(streefwoordenschat) and 7 (the wizard).
+
+1. **I15:** are the activiteit fields you did not name (type, onderzoeksvraag, kleur, lengte) content, which every
+   leerkracht of that leeftijd edits?
+2. **I16:** do the other subthema fields (naam, duur, probleemstelling, onderzoeksvragen) stay with directie and the
+   hoofdleerkracht, like the subthema itself?
+3. **I17:** when a maker is removed as a gebruiker, do their activiteiten become purely shared?
+4. **I18:** is the themabeheer holder the maker of an activiteit the wizard creates?
+5. **I19:** may a leerkracht of that leeftijd move an activiteit without goal links to another thema, and only a
+   hoofdleerkracht or directie one with links?
+6. **I20:** may a hoofdleerkracht be appointed who teaches no klas of that jaar?
+7. **I21:** does a leerkracht keep editing the planning of a klas from a past schooljaar?
+8. **I12:** does a klas without a stated jaarfase grant no leeftijd right?
+9. **I13:** does moving a subthema to another leeftijd need the hoofdleerkracht right at both leeftijden?
+10. **Directie:** add two questions to `docs/besluiten-gevraagd.md`: the role model as a whole, and **graadklassen**
+    (R22 is provisional, and directie has never been asked).
+11. **One matrix or two:** is the pointer from FA §3.2 to ADR-0030 §3 enough for directie's review?
+
+Unchanged defaults the owner may also confirm: I1, I2 (a reading only), I6, I9, (c), (e).
+
+### After the merge with main
+
+- **Merged `origin/main` at `0fcb700` into `story/E6-02-amendering` as `55f6a75`**, on top of the fix-round commit
+  `c5b8f69`.
+  - The orchestrator named `f04f131` (PR #53, E1-21/E1-22). By the time of the fetch, `origin/main` also carried
+    PR #52 (`0fcb700`, azure-demo, ADR-0034), so the merge brought in both.
+  - Nothing else was merged, and nothing was pushed.
+- **One conflict:** `docs/adr/README.md`, the index rows for 0030 and 0031. Both sides were kept: this branch's 0030
+  row and main's 0031 row, which adds *"Decision 2 amended by 0034"*. `CONSTITUTION.md`, the FA and `CLAUDE.md`
+  merged without conflict.
+- **What main changed in the files this draft cites, and why no reference moved:**
+  - *CONSTITUTION.md.* Art. VII.2's text, the Art. XIV "Op.stap import" resolution, and a new ratification-log row
+    dated 2026-09-13 (Art. VII.2), now **line 289 and the last row**. The draft cites articles and anchors, never
+    constitution line numbers, and every one of them (IV.1, VI.1, IX.2, XII, XIV, and the `#article-…` anchors)
+    still resolves. **The proposed E6-02 row goes after line 289.**
+  - *FA.* Only §8 ("Koppeling leerplandoelen"). A.11 is intact at line 408, and its anchor `#a11-rollen-en-rechten`
+    and every pointer to it still resolve.
+  - *Ratification checklist.* ADR-0030:480, :647 and :684, ADR-0022:4, ADR-0026:12 and README:43 are unchanged. The
+    README traceability row for 0030 moved from **:78 to :79** (main added a 0034 row); the checklist is corrected.
+- **The CLAUDE.md edits, re-pointed at `CLAUDE.md` on main.** PR #53 rewrote the E1 Status paragraph (line 21) and
+  touched nothing these edits target. Each "old" text below was verified present on main after the merge, at the
+  line given. *These supersede every earlier CLAUDE.md proposal in this file.*
+
+  **(a) Working agreements, line 36.**
+  - Old: ``- **AI is advisory (human-in-the-loop).** Every AI suggestion (goal match, generated plan) must be reviewable and accept/reject-able; persist the status. Nothing is "final" without teacher confirmation.``
+  - New: ``- **AI is advisory (human-in-the-loop).** Every AI suggestion (goal match, generated plan) must be reviewable and accept/reject-able; persist the status. Nothing is "final" without confirmation by the person who holds the right to decide it: a leerkracht of the klas (or directie) for a generated plan, directie or themabeheer for a thema's doelsuggesties ([`CONSTITUTION.md` Art. IV.1 and VI.1](CONSTITUTION.md#article-vi--roles-privacy--security), on the owner's rulings of 2026-09-13).``
+
+  **(b) Architecture, "AI flow", line 120, last sentence.**
+  - Old: ``returns suggestions with a short motivation and `status = voorgesteld`. Teacher accepts/rejects in the UI.``
+  - New: ``returns suggestions with a short motivation and `status = voorgesteld`. Whoever holds the right accepts/rejects in the UI: directie or themabeheer for a thema's doelsuggesties, a leerkracht of the klas for plan placements (Art. VI.1).``
+
+  **(c) Data model, line 129, plus one new bullet after the `AlgemeneFiche` bullet (line 134).**
+  - Old: ``- **Thema** — id, naam, subthema's[], activiteiten[].``
+  - New: ``- **Thema** — id, naam, subthema's[], activiteiten[]. Edited by directie and themabeheer only (Art. IX.2, VI.1).``
+  - Add: ``- **Gebruiker and rights** — only a gebruiker directie added logs in, and the app (not Entra) records its rights. **Directie** sees and edits everything and maintains gebruikers, klassen, schooljaren and rights; it may give the directie right to someone else, e.g. an ICT-coördinator. **Themabeheer** edits thema's, runs the FR-1 import (goal links included) and the whole thema-opbouw wizard, and generates and reviews doelsuggesties. A **hoofdleerkracht**, a gebruiker appointed per (schooljaar, jaarfase), several allowed, creates, edits and deletes that jaarfase's subthema's and subdoelen, links goals to its shared activiteiten by hand, and deletes any of them. A **klastoewijzing** per klas, many-to-many, gives that klas's planning plus, at its leeftijd, the content and creation of shared activiteiten, the streefwoordenschat, and deleting an activiteit one created while no goal is linked to it (the activiteit records its **maker** and stays shared). Appointments and klastoewijzingen count for shared content until their schooljaar ends; a graadklas provisionally grants its one jaarfase. What each right allows is one matrix, [ADR-0030 §3](docs/adr/0030-rollen-en-rechten-in-de-app.md#3-the-matrix-that-follows), ratified only as far as the rulings each row cites; see [`CONSTITUTION.md` Art. VI.1](CONSTITUTION.md#article-vi--roles-privacy--security) for the defaults.``
+
+  **(d) Domain glossary: add after `Graadklas / menggroep` (line 172).**
+
+  ```markdown
+  - **Hoofdleerkracht** — a gebruiker appointed per (schooljaar, jaarfase), several allowed, who creates, edits and deletes that jaarfase's subthema's and subdoelen and links goals to its shared activiteiten.
+  - **Themabeheer** — the right directie gives (FA FR-12.2) to edit thema's, run the FR-1 import and the thema-opbouw wizard, and generate and review doelsuggesties.
+  - **Directierecht** — see and edit everything and maintain gebruikers and rights; directie may give it to someone else. There is no separate ICT role.
+  - **Klastoewijzing** — the many-to-many link between a gebruiker and a klas they teach.
+  - **Maker (of an activiteit)** — the gebruiker who created it; they may delete it while no goal is linked to it. The activiteit stays shared.
+  ```
+
+  **(e) Status, line 19: annotate rather than rewrite.** The E2-08 sentence is unchanged on main.
+  - Old: ``a teacher generates doelsuggesties from `/themas` and reviews them, verified in a browser against a real API and PostgreSQL.``
+  - New: ``a teacher generates doelsuggesties from `/themas` and reviews them, verified in a browser against a real API and PostgreSQL. *(Since the owner's rulings of 2026-09-13 only directie and themabeheer may do this (Art. VI.1); E6-02 gates that control.)*``
+
+  **(f) Optional, not required by this amendment.** The open-decisions line at 196, *"Whether a leerplandoel/thema is
+  shared school-wide or per class."*, has been resolved since 2026-06-29. The header's "ADR-0001…0026" range (line 9)
+  is staler still, now that 0034 exists.
+
+## Fix round 3 — antagonist round 3 (1 MAJOR, 5 MINOR, 1 QUESTION) and owner statements 32–34
+
+- **Input:** round 3 of `backlog/worklogs/E6-02/antagonist.md` (the orchestrator's, committed unedited), and three
+  owner rulings asked on 2026-09-13 after it (statements 32–34, all on the recommended option).
+- **Branch:** committed on top of `31e059e`. `origin/main` was fetched and is still `0fcb700`, so there was no second
+  merge. No amend, no push.
+- **Still a draft (R13):** no ratification-log row, no CLAUDE.md edit, no backlog edit. No source code. Gates not
+  applicable, not run.
+
+### Per finding
+
+| # | Finding | Disposition | Where |
+| --- | --- | --- | --- |
+| 1 | **MAJOR:** R24's "only" contradicts the import and the wizard; the wizard has no write path of its own | **Ruled by statement 32 (R32)**, which narrows R29. Themabeheer creates subthema's, subdoelen and activiteiten only inside the wizard, for a thema it builds there from scratch, through separate wizard actions; changing existing subthema's stays with the hoofdleerkracht. R24 now says **"by hand"**, noting that statement 26 was about a leerkracht. The Art. VI.1 themabeheer bullet and leerkracht sentence (*"By hand, … only … The only exceptions are themabeheer's: the FR-1 import, and the wizard for a thema it builds from scratch"*) and A.11 say the same. Two new defaults: **I22** (wizard-only write actions for themabeheer and directie; **themabeheer gets no right on the ordinary subthema, subdoel and activiteit routes**) and **I23** (a new thema is one the wizard itself created, until that wizard run is finished or closed). Both are in all three lists. The wizard row is split, with footnote ⁵ on it and on the "–" of the ordinary subthema, subdoel and activiteit rows. Routed to E6-02 and E6-05 below. | ADR-0030 R24, R29, R32, §2 I22/I23, §3, §4 (b), Consequences; Art. VI.1; FA A.11 |
+| 2 | **MINOR:** maker right limited to the LK leeftijd column | **Ruled by statement 33 (R33):** the right follows the person. "maker²" is now in the TB, LK leeftijd and Ander cells (HL keeps ✓). Footnote ²: any gebruiker who created it, while no goal is linked, with or without a klas at that leeftijd, and after the schooljaar. R20 states that it does not scope the maker right. I18 keeps only the wizard-maker assignment as a default. CLAUDE.md edit (d) and backlog edit 4 (directie as a possible maker) are revised below. | ADR-0030 R20, R25, R33, §2 I18, §3; Art. VI.1; FA A.11 |
+| 3 | **MINOR:** backlog edits miss README :39/:42, E6 :24-25 and E6-04 :71 | **Fixed**, against the files on `feature/e6-rollen-rechten` (`016474e`), as asked; each edit below names the lines it replaces. | worklog |
+| 4 | **MINOR:** checklist misses the compliance-trace phrase | **Fixed:** ADR-0030:862 is added, together with the backlog lines. | worklog |
+| 5 | **MINOR:** ADR index row 0030 contradicts itself on subdoelen | **Fixed:** *"the shared activiteiten (their content; not subdoelen)"*. The same row now narrows the wizard and says the maker right follows the person. | `docs/adr/README.md:43` |
+| 6 | **MINOR:** Art. IV.8 and FA A.7 not carried for R29 | **Fixed.** Pointers at Art. IV.8 (*"the wizard's user is now a themabeheer holder, or directie"*) and at FA A.7. A.7 joins A.11's list and the FA version row; IV.8 and A.7 join the ratification row. | CONSTITUTION IV.8; FA A.7, A.11, §1 |
+| 7 | **QUESTION:** did the owner respond to the statement-27 correction? | **Yes, statement 34 (R34):** the answer stands. Recorded in §1.3 (statement 27's entry and the sixth set), R27, §4 (b) and (h), Alternatives, and the FA "Waarom" paragraph. | ADR-0030; FA A.11 |
+
+### Statements 32–34 as R-items
+
+*R30 and R31 are not used: from statement 32 on, an R-number equals its statement number.*
+
+| Statement | R-item | What it rules |
+| --- | --- | --- |
+| 32 | **R32** | Themabeheer creates subthema's and subdoelen only in the wizard, for a thema it builds there from scratch. Existing subthema's stay with the hoofdleerkracht, and the app gets separate wizard actions (ruled; their shape is I22, and "new" is I23). Narrows R29. |
+| 33 | **R33** | The maker's delete right follows the person: while no goal is linked, without a klas at that leeftijd, and after the schooljaar. R20 does not scope it. Rules the delete half of I18. |
+| 34 | **R34** | After the correction, the owner confirmed R27: through the import, themabeheer writes the goal links on themadoelen and subdoelen that are in the file. |
+
+### The unratified set (identical in Art. VI.1, FA A.11 and the proposed row)
+
+Seventeen entries: **I1**; **I2** (the reading of statement 8 only); **I6 with (a)**; **I9 with (d)**; **I12**; **I13**;
+**I15**; **I16**; **I17**; **I18** (the wizard-maker assignment only); **I19**; **I20**; **I21**; **I22**; **I23**;
+**(c)**; **(e)**.
+
+### Ratification checklist (current; supersedes fix round 2's)
+
+1. Add the ratification-log row below as the **last** row of Art. XI, with the real date. The row before it will be
+   main's 2026-09-13 Art. VII.2 row (PR #53).
+2. Apply the CLAUDE.md edits in the same commit (Art. XI.1). Those are fix round 2's "After the merge with main",
+   with (c) and (d) replaced as below.
+3. Apply the backlog edits below.
+4. Change these phrases, which become false on that day. File and line are as of the fix-round-3 commit:
+   - `docs/adr/0030-rollen-en-rechten-in-de-app.md:3`, Status: add "Part 1 of the amendment ratified on <date>".
+   - `docs/adr/0030-…:539`, §3 intro: *"drafted 2026-09-13. Under R13 the owner approves that draft before anything is
+     enforced from it."* Change to "ratified on <date>".
+   - `docs/adr/0030-…:717`, §5 "Who": *"Drafted 2026-09-13 … Under R13 the owner approves the draft before it is
+     logged in Art. XI"*. Change to "ratified on <date>".
+   - `docs/adr/0030-…:756`: *"Once part 1 lands, that role is the directie right"*. Change to "Since part 1 (<date>)".
+   - `docs/adr/0030-…:862`, compliance trace: *"Art. VI.1 (roles, configurable; amendment part 1 owed)"*. Change to
+     "amendment part 1 ratified on <date>".
+   - `docs/adr/README.md:43`: *"drafted 2026-09-13 for the owner's approval"*. Change to "ratified on <date>".
+   - `docs/adr/README.md:79`: *"part 1 drafted 2026-09-13 for the owner's approval"*. Change to "part 1 ratified on
+     <date>".
+   - `docs/adr/0022-curriculum-administration-authorisation-seam.md:4`: *"once the Art. VI.1 amendment on those
+     rulings lands"*. Change to "since the Art. VI.1 amendment of <date>".
+   - `docs/adr/0026-streefwoordenschat-op-subthema.md:12`: *"Neither version was ratified."* Change to "The second
+     was ratified with Art. VI.1 on <date>."
+   - **Backlog, on `feature/e6-rollen-rechten`** (all covered by the edits below):
+     - `backlog/README.md:39` (*"binding once part 1 of the amendment is ratified"*);
+     - `backlog/README.md:42` (*"part 1 … is drafted on `story/E6-02-amendering`; no code is written until the owner
+       ratifies it"*, *"statements 14–31"*, *"A two-part Art. XI amendment is owed"*);
+     - `backlog/E6-beheer-rollen-samenwerking.md:24-25` (*"Its matrix only binds once part 1 of the amendment
+       lands"*);
+     - `:43` (E6-02 status line, *"goes to the owner for ratification"*) and `:46` (*"Waits on part 1 …"*);
+     - `:71` (E6-04, *"Waits on part 1 of the Art. XI amendment"*).
+   - **Not** changed on the day, because they stay true: every "(owner) rulings of 2026-09-13" / "beslissingen van
+     13-09-2026" marker, the FA version row 0.7, and ADR-0008's status.
+
+### Proposed ratification-log entry (current; supersedes every earlier version)
+
+```markdown
+| <ratification date> | Siebe De Saedeleir (projecteigenaar) | Amended **Art. VI.1** to name the rights the owner ruled on 2026-09-11 and 2026-09-13 ([ADR-0030](docs/adr/0030-rollen-en-rechten-in-de-app.md) §1, statements 1–34). **Directie** sees and edits everything and maintains gebruikers, klassen, schooljaren and rights (FA FR-12.2, the beheerder now being the directie right; there is no separate ICT-coördinator role). **Themabeheer** edits thema's, runs the FR-1 import including the goal links it writes on themadoelen and subdoelen, works the thema-opbouw wizard, and is with directie the only right that generates, reviews and adjusts doelsuggesties. For a thema it builds in the wizard from scratch, and only through the wizard's own write actions, themabeheer also creates that thema's subthema's, subdoelen and activiteiten. The **hoofdleerkracht**, a gebruiker appointed per `(schooljaar, jaarfase)`, several allowed, creates, edits and deletes that jaarfase's subthema's and subdoelen, links goals to its shared activiteiten by hand, and deletes any of them; thema's only with themabeheer. The **leerkracht**, through a many-to-many klastoewijzing, edits the klas's planning, and at that klas's leeftijd edits and creates shared activiteiten and edits streefwoordenschat. The app records who made an activiteit, and that maker may delete it while no goal is linked to it, with or without a klas at that leeftijd; the activiteit stays shared. It also states which schooljaar counts for the shared content (one that has not ended), rules graadklassen provisionally (the klas's one jaarfase, pending directie's Art. XIV decision, with the klas→leeftijden mapping in one place), and says what a gebruiker with none of the four rights may do. "Configurable" now says what it always meant: who holds a right is data, and what a right allows is one matrix, ADR-0030 §3, which supersedes FA §3.2's table. *Amended in step (Art. XI.1):* the `Thema`, `doelsuggesties[]` and `Activiteit` lines of **Art. IX.2**, a clarifying note on **Art. IV.1** and a pointer on **Art. IV.8** (the wizard's user), six **Art. XII** entries, the **Art. XIV** "Teacher visibility" bullet (narrowed, not removed) and graadklas bullet (partly answered for rights), FA Bijlage **A.11** with pointers at §3.1, §3.2, §4, FR-1.1, FR-3.1, FR-4.3, FR-7.2, FR-10.2, FR-12.2, §7, §11, A.5 and A.7, the status of ADR-0008, ADR-0010, ADR-0022 and ADR-0026, and CLAUDE.md. *Why:* Art. VI.1 named three roles that no longer described the school. A subthema has had no owning klas since ADR-0025, so the "owning teacher" of ADR-0011 §3 pointed at nobody, and FA §3.2's table gave every leerkracht rights the owner has since withdrawn. *The reversals and the premises, stated:* on 2026-09-11 the owner ruled that every leerkracht generates and reviews doelsuggesties (R8), and on 2026-09-13, shown that one acceptance moves the dekking of every klas that plans the thema, gave it to directie and themabeheer (R14). Shown that a goal link on shared content moves the dekking of every parallel klas, he gave those links to directie and the hoofdleerkrachten (R19). Told that a subdoel is, in the model, only a link to a goal, he kept subdoelen with them too (R24). The question on the import overstated what it writes; after the correction the owner confirmed his answer (R27, R34). He then limited the wizard's subthema's and subdoelen to a thema built from scratch (R32). *Scope of the ratification:* this entry ratifies the rulings (R-items) only. **A row of the ADR-0030 §3 matrix is ratified only as far as the rulings it cites, counted at column level**; whatever a row takes from an I-item or a lettered §4 question is a default and is not ratified here. The defaults Art. VI.1 lists (I1, I2, I6 with (a), I9 with (d), I12, I13, I15–I23, (c) and (e)) are **not** ratified, and nor is the shape of personal content (part 2, owed with E6-10). *Directie's confirmation is outstanding:* visibility is directie's to decide (question 4 in [`docs/besluiten-gevraagd.md`](docs/besluiten-gevraagd.md)), the graadklas rule waits on their Art. XIV decision, and on the rest of the role model no question has been put to them yet. *Shown to the owner as a draft first*, at his request (ADR-0030 R13). |
+```
+
+### Revised CLAUDE.md edits (c) and (d) (replace fix round 2's; (a), (b), (e), (f) unchanged)
+
+**(c) Data model** (CLAUDE.md on main, line 129 and after line 134). The Thema line is unchanged from fix round 2. The
+added bullet becomes:
+
+``- **Gebruiker and rights** — only a gebruiker directie added logs in, and the app (not Entra) records its rights. **Directie** sees and edits everything and maintains gebruikers, klassen, schooljaren and rights; it may give the directie right to someone else, e.g. an ICT-coördinator. **Themabeheer** edits thema's, runs the FR-1 import (goal links included) and the thema-opbouw wizard, and generates and reviews doelsuggesties; through the wizard's own actions it creates subthema's, subdoelen and activiteiten only for a thema it builds from scratch. A **hoofdleerkracht**, a gebruiker appointed per (schooljaar, jaarfase), several allowed, creates, edits and deletes that jaarfase's subthema's and subdoelen, links goals to its shared activiteiten by hand, and deletes any of them. A **klastoewijzing** per klas, many-to-many, gives that klas's planning plus, at its leeftijd, the content and creation of shared activiteiten and the streefwoordenschat. An activiteit records its **maker**, who may delete it while no goal is linked to it, with or without a klas at that leeftijd; it stays shared. Appointments and klastoewijzingen count for shared content until their schooljaar ends; a graadklas provisionally grants its one jaarfase. What each right allows is one matrix, [ADR-0030 §3](docs/adr/0030-rollen-en-rechten-in-de-app.md#3-the-matrix-that-follows), ratified only as far as the rulings each row cites; see [`CONSTITUTION.md` Art. VI.1](CONSTITUTION.md#article-vi--roles-privacy--security) for the defaults.``
+
+**(d) Domain glossary** (add after line 172):
+
+```markdown
+- **Hoofdleerkracht** — a gebruiker appointed per (schooljaar, jaarfase), several allowed, who creates, edits and deletes that jaarfase's subthema's and subdoelen and links goals to its shared activiteiten.
+- **Themabeheer** — the right directie gives (FA FR-12.2) to edit thema's, run the FR-1 import and the thema-opbouw wizard, and generate and review doelsuggesties. The wizard creates subthema's and subdoelen only for a thema it builds from scratch.
+- **Directierecht** — see and edit everything and maintain gebruikers and rights; directie may give it to someone else. There is no separate ICT role.
+- **Klastoewijzing** — the many-to-many link between a gebruiker and a klas they teach.
+- **Maker (of an activiteit)** — whoever created it: a leerkracht, a hoofdleerkracht, a themabeheer holder through the wizard, or directie. They may delete it while no goal is linked to it, with or without a klas at that leeftijd and after the schooljaar. The activiteit stays shared.
+```
+
+### Consolidated backlog edits (supersede every earlier set)
+
+*Written against `feature/e6-rollen-rechten` at `016474e`, the orchestrator's branch. Line numbers refer to
+`git show feature/e6-rollen-rechten:<file>`. Apply on the day of ratification.*
+
+1. **`backlog/README.md:33-40`**, the E6 row's opening and its bullet list. Replace with:
+   > 🚧 **Started 2026-09-11.** The owner's role model ([ADR-0030 §1](../docs/adr/0030-rollen-en-rechten-in-de-app.md),
+   > superseding ADR-0011 §3) is **ratified into Art. VI.1 since <date>**. In short:
+   > - rights live in the app, and only invited people log in;
+   > - directie sees and edits everything;
+   > - thema's, the import, the wizard and doelsuggesties are for directie and themabeheer;
+   > - a jaar's subthema's and subdoelen are for its hoofdleerkrachten;
+   > - a leerkracht edits their own klassen and, at their leeftijd, the shared activiteiten, and can view other klassen.
+
+   This drops `:39`, the struck doelsuggestie bullet. It is now in the list in its ratified form.
+2. **`backlog/README.md:42`.**
+   - Replace *"Their first task, part 1 of the Art. XI amendment, is drafted on `story/E6-02-amendering`; no code is
+     written until the owner ratifies it. The owner answered eighteen further questions that day (statements 14–31 in
+     the draft of ADR-0030), which turn several of §2's defaults into rulings."* with *"Part 1 of the Art. XI
+     amendment was ratified on <date> (ADR-0030 statements 14–34), so the code can start."*
+   - Replace *"A **two-part** Art. XI amendment is owed (ADR-0030 §5): roles, ownership and visibility before E6-02,
+     personal content with E6-10."* with *"Part 2 of the amendment (personal content) is owed with E6-10."*
+   - Keep the E6-01 `[x]` sentence and the E6-10 sentence as they are.
+3. **`backlog/E6-beheer-rollen-samenwerking.md:12-25`**, the ruling block. Replace with:
+   > **The owner's rulings of 2026-09-11 and 2026-09-13 reshape this section**
+   > ([ADR-0030 §1](../docs/adr/0030-rollen-en-rechten-in-de-app.md), ratified into Art. VI.1 on <date>; it supersedes
+   > ADR-0011 §3):
+   > - R1–R3: rights in the app; only invited people log in; directie sees and edits everything.
+   > - R4, R18: themabeheer edits thema's, and a hoofdleerkracht only with themabeheer.
+   > - R5, R21, R24: hoofdleerkrachten per (schooljaar, jaarfase) create, edit and delete that jaar's subthema's and
+   >   subdoelen.
+   > - R6: personal content (E6-10).
+   > - R7, R15: a leerkracht edits their own klassen' planning (many-to-many) and views others.
+   > - ~~R8~~ → R14: doelsuggesties for directie and themabeheer only.
+   > - R9, R27, R34: the FR-1 import for directie and themabeheer, links on themadoelen and subdoelen included.
+   > - R16: no ICT role.
+   > - R17, R19, R23–R26, R33: every leerkracht of that leeftijd edits and creates shared activiteiten; goal links by
+   >   hand for directie and HL; a maker deletes their own activiteit while no goal is linked to it; otherwise HL
+   >   deletes.
+   > - R20: appointments count for shared content until their schooljaar ends.
+   > - R22: graadklas, provisionally.
+   > - R28: streefwoordenschat is shared.
+   > - R29, R32: the wizard is for themabeheer; it creates subthema's and subdoelen only for a thema built from
+   >   scratch, through its own actions.
+   >
+   > **Everything else in that ADR is a default, not a ruling:** I1, I2, I6 with (a), I9 with (d), I12, I13, I15–I23,
+   > (c), (e). The matrix is ratified only as far as the rulings each row cites.
+4. **E6-02, `:43-52`** (status line, body, done-when, "Waits on part 1", "Treat nothing", open questions). Replace with:
+   - *Status:* `[~]` since 2026-09-13 on `feature/e6-rollen-rechten`, **built and delivered together with E6-04**
+     (R12). Part 1 of the Art. XI amendment was ratified on <date>.
+   - *What:* enforce the ADR-0030 §3 matrix server-side, as named policies declared in one place. The "HL", "LK
+     leeftijd", "LK eigen" and maker relations are resource-based handlers. Bind `Curriculumbeheer` to the directie
+     right.
+   - *Model:*
+     - a nullable maker on `Activiteit` (R26). It is set on create by whoever creates the activiteit: a leerkracht, a
+       hoofdleerkracht, **directie**, or a themabeheer holder through the wizard (I18). It is null for existing rows
+       and for the FR-1 import. Its delete right follows the person (R33).
+     - one place maps a klas to the leeftijden it grants rights for (R22). It reads the stated `Jaarfase` only and
+       fails closed (I12), and does not reuse `Klasleeftijden`' widening.
+     - appointments and klastoewijzingen count for shared content until their schooljaar ends (R20), and for the
+       klas's planning without an end date (I21).
+     - **wizard-only write actions** (R32; shape I22) admit themabeheer and directie, and only for a thema the wizard
+       itself created, until that run is finished or closed (I23). Themabeheer gets no right on the ordinary
+       subthema, subdoel and activiteit routes.
+   - *Done when:* each action in the matrix is allowed or denied per relation and per resource, server-side, with a
+     test per row. **No control that does nothing (the E3-06 rule).**
+     - The doelsuggestie controls on the themadetail screen (`frontend/src/features/themas/ThemadetailScherm.tsx`,
+       `useGenereerDoelsuggesties` and the accept/reject/adjust controls) are shown only to directie and themabeheer.
+     - So are, each per its row: the thema form, the FR-1 import section (and the E1-22 carry-forward's
+       `Laadlink`s), the wizard, the subthema form, the subdoel controls, the goal-link controls, the activiteit
+       delete (maker or HL), the move, and the streefwoordenschat editor.
+     - `GET /api/ik` carries the caller's rights; the server still enforces.
+   - *Routes to cover:* `api/themas/{themaId}/doelsuggesties` with `…/genereer`, `…/{id}/status` and
+     `…/{id}/leerplandoel`; `api/thema-opbouw/*` and the new wizard write actions; the activiteit and subdoel routes,
+     including `POST/DELETE /api/activiteiten/{id}/doelkoppelingen` and the move; `PUT /api/subthemas/{id}` (a
+     re-scope follows I13); the five jaarplan write routes; and `POST /api/schooljaren`.
+   - *Open questions it owns:* (b)'s gate, (c), (e). (f) and (h) are settled (R14, R19).
+   - *Defaults it builds on:* I1, I2, I9, I12, I13, I15–I23.
+
+   Keep the E1-22 carry-forward at `:53` and the carry-forwards at `:54-57`, but correct `:55`. It names
+   `/api/doelsuggesties/*`, which does not exist; the live routes are the ones above.
+5. **E6-04.**
+   - `:68`: replace the sentence after the status with *"The owner's rulings of 2026-09-13 are ratified: several
+     leerkrachten per klas and several klassen per leerkracht (R15); no separate ICT role, and directie may give the
+     directie right (R16)."*
+   - **Delete `:71`** (*"Waits on part 1 of the Art. XI amendment"*).
+   - Replace `:72` (*"Not ruled, confirm with the owner …"*) with *"A hoofdleerkracht needs no klastoewijzing (I20).
+     Show whether an appointment or klastoewijzing currently counts for shared content (R20), and name klassen
+     without a stated jaarfase, which grant no leeftijd right (I12). The last directie cannot be removed or demoted;
+     removing a gebruiker leaves their activiteiten purely shared (I17)."*
+6. **E6-05, `:75-77`.** Add *"The wizard is for themabeheer and directie (ADR-0030 R29). It creates subthema's,
+   subdoelen and activiteiten only for a thema it builds from scratch, through **its own write actions** (R32);
+   their shape and when a thema stops being new are defaults I22 and I23, and E6-02 builds the authorisation for
+   them. The maker of an activiteit it creates is the themabeheer holder (I18)."*
+7. **E6-10, `:101-104`.** Add *"The activiteit maker (R26, R33) is not personal content: the activiteit stays shared.
+   The shared layer exists and is edited by every leerkracht of that leeftijd (R17, R23); whether it remains next to
+   personal content is I6. Open question (a) is unchanged."*
+8. **E10-01** (`backlog/E10-eigenaarsvergadering.md`). Add *"Streefwoordenschat is shared content (ADR-0030 R28):
+   directie, that jaar's hoofdleerkrachten and every leerkracht with a klas of that leeftijd edit it, so the
+   done-when stands. See ADR-0026's status pointer."*
+9. **E1-19** (`backlog/E1-curriculum-content.md`). Add *"Once E6-02 lands, re-scoping a subthema to another leeftijd
+   needs the hoofdleerkracht right at both leeftijden, or directie (default ADR-0030 I13). This story still owns
+   whether the re-scope exists at all."*
+10. **E7-06** (`backlog/E7-niet-functioneel.md`). Add *"The processing register also covers the activiteit maker
+    (ADR-0030 R26): it links school content to a named staff member, and the right follows the person (R33).
+    Retention when the gebruiker leaves: the activiteit becomes purely shared (I17)."*
+11. **E2-08** (optional). Add *"Since the owner's rulings of 2026-09-13 its trigger and review controls are for
+    directie and themabeheer only (R14); E6-02 gates them."*
+
+### Remaining open questions for the owner
+
+*Answered this round:* the reach of themabeheer's wizard right (statement 32), the maker without a klas
+(statement 33), and the import after the correction (statement 34).
+
+1. **I22:** the wizard writes through actions of its own, and themabeheer gets no right on the ordinary subthema,
+   subdoel and activiteit routes. Agree?
+2. **I23:** a thema counts as "new" from the moment the wizard creates it until that wizard run is finished or
+   closed. After that, its subthema's belong to the hoofdleerkracht. Agree?
+3. **I18:** is the themabeheer holder the maker of an activiteit the wizard creates? (Their delete right is ruled.)
+4. **I15:** are the activiteit fields you did not name (type, onderzoeksvraag, kleur, lengte) content too?
+5. **I16:** do the other subthema fields (naam, duur, probleemstelling, onderzoeksvragen) stay with directie and the
+   hoofdleerkracht?
+6. **I17:** when a maker is removed as a gebruiker, do their activiteiten become purely shared?
+7. **I19:** may a leerkracht move an activiteit without links to another thema, and only a hoofdleerkracht or
+   directie one with links?
+8. **I20:** may a hoofdleerkracht be appointed who teaches no klas of that jaar?
+9. **I21:** does a leerkracht keep editing the planning of a past schooljaar's klas?
+10. **I12:** does a klas without a stated jaarfase grant no leeftijd right?
+11. **I13:** does moving a subthema to another leeftijd need the hoofdleerkracht right at both leeftijden?
+12. **Directie:** add two questions to `docs/besluiten-gevraagd.md`: the role model as a whole, and graadklassen.
+13. **One matrix:** is the pointer from FA §3.2 to ADR-0030 §3 enough for directie's review?
+
+## Ratification (2026-09-14)
+
+- **The owner ratified part 1** in session, on the orchestrator's Dutch summary, with the five round-4 corrections
+  (statement 36). He declined the offered option to read the full draft first. He then stopped the audit rounds:
+  *"stop adien met audit rondes en rond het ticket af"*. **No antagonist audit ran on this commit, by the owner's
+  decision.** Four rounds ran on the draft before it.
+- **Merged first, both without conflicts:**
+  - `origin/main` at `9f7f30d` (PR #54, the ticket backlog), as `3c3a9a3`;
+  - `feature/e6-rollen-rechten` at `016474e`, as `85b53ec`.
+
+  The edits below were written against the merged text.
+- **Applied in the ratification commit:**
+  - **The ratification-log row**, as the last row of Art. XI, dated 2026-09-14. It states the rulings, how they were
+    ratified (the Dutch summary; the full read declined), the four audit rounds, that this commit was not audited,
+    the excluded unratified set, and directie's three outstanding points.
+  - **ADR-0030.** Status: Accepted, with part 1 ratified. R35–R37 in §1.2 and the seventh set in §1.3. The round-4
+    corrections. The S35 matrix row. Every "drafted … for the owner's approval" phrase from the checklist, now in its
+    ratified form.
+  - **The five round-4 MINORs:**
+    - (e) and I22 now say "apart from the maker's delete right (R33)", in the constitution, FA A.11 and ADR-0030;
+    - (c) says "by hand";
+    - I18 is limited to "the maker assignment only; its delete right is R33";
+    - CLAUDE.md (d) marks the wizard maker as "(by default, ADR-0030 I18)";
+    - the FR-7.2 pointer limits the wizard to a thema built from scratch;
+    - the index traceability row is extended with IX.2 `Activiteit`, IV.8, A.7, E6-05, E10-01 and E1-19.
+  - **Statement 35 (R35).** The import's `MenselijkeBeslissingenVerwijderen` option is directie-only. It is in
+    Art. VI.1, the matrix, ADR §4 (b), FA A.11, and E6-02. The ruling covers the option as a whole, for themadoelen
+    as well as subdoelen.
+  - **Statement 37 (R37).** The build follows the defaults, and they stay unratified. Stated in the log row, ADR §2
+    and the E6 backlog.
+  - **Round-4 QUESTION 1.** E6-05 now owes two defaults before it builds the wizard write actions: an expiry for an
+    abandoned run, and whether in-run edits are allowed.
+  - **CLAUDE.md edits (a)–(f),** at the lines of the merged file.
+  - **The backlog:**
+    - the README E6 row;
+    - in the E6 file: the ruling block, E6-02 (rewritten; gate struck), E6-04 (gate struck), E6-05, E6-10, and the
+      route names at line 55;
+    - notes on E10-01, E1-19, E7-06 and E2-08.
+  - **Two questions for directie** in `docs/besluiten-gevraagd.md`: 13 (the role model as a whole) and 14
+    (graadklassen).
+  - The status pointers in ADR-0022 and ADR-0026, and both ADR-0030 rows in the index.
+- **Checkboxes:** none changed. E6-02 and E6-04 stay `[~]`. `Totaal` is 65 of 119, recounted with `grep -c` from the
+  epic checkboxes.
+
+Unchanged defaults the owner may also confirm: I1, I2 (a reading only), I6, I9, (c), (e).
