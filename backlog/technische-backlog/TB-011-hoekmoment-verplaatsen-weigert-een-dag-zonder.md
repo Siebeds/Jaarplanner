@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:00
+bijgewerkt: 2026-09-14 14:15
 opgepakt-door: TB-011
 branch: ticket/TB-011-hoekmoment-schooldag
-pr:
+pr: 61
 geblokkeerd:
 fr: []
 ---
@@ -80,3 +80,4 @@ Geen.
 - 2026-09-14 13:53 · TB-011 · antagonist ronde 2: de drie bevindingen uit ronde 1 opgelost, vier nieuwe MINOR (te sterke zinnen in commentaar, tickettekst en verslag, en een verouderde fiche-hookcomment); alle vier aangepast, en Buiten scope noemt nu de weekendmomenten van vóór deze wijziging
 - 2026-09-14 14:00 · TB-011 · antagonist ronde 3: de vier bevindingen uit ronde 2 opgelost, twee nieuwe MINOR (een weekend bereikt de weigering alleen binnen de periode; het verslag miste ronde 2); beide aangepast, geen codewijziging, planningtests en dotnet format groen
 - 2026-09-14 14:00 · TB-011 · in-uitvoering → klaar: klaar: een hoekmoment verplaatsen naar een dag zonder school wordt geweigerd met de zin van de fiches; unit- en PostgreSQL-tests groen, browsercheck op 1440 en 390 px, drie antagonistrondes verwerkt; verslag in backlog/worklogs/TB-011/
+- 2026-09-14 14:15 · TB-011 · PR #61
