@@ -106,6 +106,9 @@ describe("Algemenefichedetailblad", () => {
     fireEvent.change(screen.getByLabelText(t("fichedetail.dag")), { target: { value: "2026-09-19" } });
 
     expect(screen.getByText(t("fichedetail.geenSchooldag"))).toBeInTheDocument();
+    // The literal as well as the key: the server refuses a vakantie with this same sentence
+    // (`AlgemeneFicheplaatsing.VerplaatsMoment`, pinned in `AlgemeneFicheplaatsingTests`), so the two must not drift.
+    expect(screen.getByText("Op die dag is er geen school. Kies een schooldag.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: t("fichedetail.bewaren") })).toBeDisabled();
     expect(fetchMock).not.toHaveBeenCalled();
   });

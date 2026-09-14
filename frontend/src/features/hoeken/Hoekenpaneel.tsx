@@ -73,6 +73,7 @@ export function Hoekenpaneel({
           sluiten: t("hoekenpaneel.sluiten"),
           Icoon: IcoonHoek,
           laadt: klasId !== null && hoeken.isPending,
+          mislukt: hoeken.isError,
           fiches: (hoeken.data ?? []).map((hoek) => ({
             id: hoek.id,
             sleepId: `${FICHE_VOORVOEGSEL}${hoek.id}`,
@@ -88,6 +89,7 @@ export function Hoekenpaneel({
           sluiten: t("hoekenpaneel.algemeenSluiten"),
           Icoon: IcoonFiche,
           laadt: klasId !== null && algemeneFiches.isPending,
+          mislukt: algemeneFiches.isError,
           fiches: (algemeneFiches.data ?? []).map((fiche) => ({
             id: fiche.id,
             sleepId: `${ALGEMENE_FICHE_VOORVOEGSEL}${fiche.id}`,
@@ -167,6 +169,8 @@ interface Lijst {
   sluiten: string;
   Icoon: (props: SVGProps<SVGSVGElement>) => ReactNode;
   laadt: boolean;
+  /** The request failed. Not the same as an empty list, and the panel must not say it is. */
+  mislukt: boolean;
   fiches: Paneelfiche[];
   leeg: string;
   naarInstellingen: { pad: string; label: string };
@@ -177,6 +181,16 @@ interface Lijst {
 function Fichelijst({ lijst, sleepbaar }: { lijst: Lijst; sleepbaar: boolean }) {
   if (lijst.laadt) {
     return <Laadlijst rijen={3} />;
+  }
+
+  // A failed request is not an empty class: "nog geen fiches" here would send her to Instellingen to make fiches she
+  // already has (antagonist, E10-03 round 2). So it says only what it knows, and offers no link.
+  if (lijst.mislukt) {
+    return (
+      <p role="alert" className="text-meta text-attentie-inkt">
+        {t("hoekenpaneel.mislukt")}
+      </p>
+    );
   }
 
   if (lijst.fiches.length === 0) {

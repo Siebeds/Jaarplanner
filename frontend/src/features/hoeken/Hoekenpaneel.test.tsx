@@ -78,6 +78,17 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
     expect(screen.queryByText("turnen")).not.toBeInTheDocument();
   });
 
+  it("zegt bij een mislukte lijst niet dat de klas geen fiches heeft", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("{}", { status: 500 }))));
+    zetSchermbreedte(true);
+    useHoekenpaneel.setState({ open: true, soort: "algemeen" });
+    toon();
+
+    expect(await screen.findByText(t("hoekenpaneel.mislukt"))).toBeInTheDocument();
+    expect(screen.queryByText(t("hoekenpaneel.geenAlgemeneFiches"))).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: t("hoekenpaneel.naarAlgemeneFiches") })).not.toBeInTheDocument();
+  });
+
   it("sluit op een telefoon eerst het blad, zodat ze niet twee bladen diep zit", async () => {
     zetSchermbreedte(false);
     useHoekenpaneel.setState({ open: true, soort: "algemeen" });

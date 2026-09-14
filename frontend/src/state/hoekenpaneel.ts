@@ -6,8 +6,9 @@ export type Paneelsoort = "hoeken" | "algemeen";
 interface HoekenpaneelState {
   open: boolean;
   /**
-   * Which list the panel shows. Kept while the panel is closed, so the column that slides out still has its content
-   * to animate, and so a panel that is reopened opens on the list she was using.
+   * Which list the panel shows. Kept while the panel is closed, so a panel that is reopened opens on the list she was
+   * using, and the column keeps its title while it fades out. Not its list: the panel stops asking for it on close, so
+   * the fade shows the loading rows.
    */
   soort: Paneelsoort;
   zet: (open: boolean) => void;

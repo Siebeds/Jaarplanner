@@ -104,6 +104,13 @@ public sealed class AlgemeneFicheplaatsingTests
     }
 
     /// <summary>
+    /// The whole sentence, not a fragment: its twin is the frontend's <c>fichedetail.geenSchooldag</c>, which the detail
+    /// sheet shows for a weekend before sending, and <c>Algemenefichedetailblad.test.tsx</c> pins the same literal. If
+    /// either is rewritten alone, one refusal reads two ways depending on whether the day was a weekend or a vakantie.
+    /// </summary>
+    private const string GeenSchooldag = "Op die dag is er geen school. Kies een schooldag.";
+
+    /// <summary>
     /// Planning never writes a row on a day without school, so moving one must not either (antagonist, E10-03 round 1):
     /// the detail sheet's date field reaches any day of the window, not only the open ones the grid accepts.
     /// </summary>
@@ -119,7 +126,7 @@ public sealed class AlgemeneFicheplaatsingTests
         {
             var fout = Assert.Throws<ArgumentException>(() =>
                 plaatsing.VerplaatsMoment(maandag.Id, dag, HalfElf, TwintigOverElf, jaar));
-            Assert.Contains("geen school", fout.Message);
+            Assert.Equal(GeenSchooldag, fout.Message);
         }
 
         // A refusal moves nothing.
