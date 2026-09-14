@@ -1,6 +1,9 @@
 # ADR-0010 — AI advisory architecture (injectable client, server-side, structured + validated)
 
-- **Status:** Accepted
+- **Status:** Accepted. *Pointer added with the owner's rulings of 2026-09-13
+  ([ADR-0030](0030-rollen-en-rechten-in-de-app.md) R14):* "the teacher decides" below restates Art. IV.1, which is
+  clarified to mean the person who holds the right to decide that output. For a plan that is a leerkracht of the klas
+  or directie; for a thema's doelsuggesties it is directie or themabeheer. The architecture is unchanged.
 - **Date:** 2026-06-29
 - **Deciders:** Architect (Siebe De Saedeleir / team)
 
