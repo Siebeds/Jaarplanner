@@ -640,10 +640,11 @@ that this relation alone does not grant the action. It never takes away what ano
 | Op.stap-doelen inladen/vernieuwen (R3; ADR-0022) | ✓ | – | – | – | – | – |
 | Gebruikers, klassen en schooljaren beheren, leerkrachten aan klassen koppelen, hoofdleerkrachten aanstellen, themabeheer en het directierecht toekennen (R2, R3, R16; FA FR-12.2) | ✓ | – | – | – | – | – |
 | Thema, themadoelen, kernwoordenschat aanpassen (R4, R18) | ✓ | ✓ | – | – | – | – |
+| Een thema verwijderen (R3; I26, I27) | ✓ | leeg⁶ | – | – | – | – |
 | Thema's en activiteiten importeren, FR-1, met de doelkoppelingen op themadoelen en subdoelen die erin staan (R9, R27, R34) | ✓ | ✓ | – | – | – | – |
 | Bij die import 'menselijke beslissingen verwijderen' aanvinken, voor themadoelen en subdoelen samen (R35) | ✓ | – | – | – | – | – |
 | Thema-opbouwwizard doorlopen: thema, themadoelen en de AI-hulp (R29) | ✓ | ✓ | – | – | – | – |
-| In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt (R29, R32; I18, I22–I25) | ✓ | ✓⁵ | – | – | – | – |
+| In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt (R29, R32; I18, I22–I27) | ✓ | ✓⁵ | – | – | – | – |
 | Doelsuggesties laten maken (R14) | ✓ | ✓ | – | – | – | – |
 | Doelsuggesties aanvaarden, weigeren of aanpassen (R14) | ✓ | ✓ | – | – | – | – |
 | Subthema's van een jaar aanmaken, aanpassen en verwijderen (R5, R21; (c), I13, I16) | ✓ | –⁵ | ✓ | – | – | – |
@@ -675,10 +676,27 @@ are additive and never read less than an ordinary gebruiker. Its reach beyond on
 
 ⁵ Themabeheer creates subthema's, subdoelen and activiteiten **only through the wizard's own write actions, and only
 for a thema the wizard is building from scratch** (R32). Changing existing subthema's stays with the hoofdleerkracht.
-The shape of those actions, when a thema stops being new, and the right to edit and delete what the wizard's own open run created are defaults (I22–I25). **Themabeheer holds no right
+The shape of those actions, when a thema stops being new, and the right to edit and delete what the wizard's own open run created are defaults (I22–I25), narrowed by I27: the wizard does not delete linked content without the goal-link right, and does not move a subthema holding others' work to another leeftijd. **Themabeheer holds no right
 on the ordinary subthema, subdoel and activiteit routes** (I22), which is what the "–" in those rows means, apart from the maker's delete right (R33, the maker² row).
 
+⁶ A default (I26, narrowed by I27): themabeheer deletes a thema only when it holds no subthema, subdoel or activiteit
+other than what the thema's own open wizard run created, an activiteit of that run carrying a goal link not counting
+as the run's unless the caller also holds the goal-link right at its leeftijd. Directie deletes any thema. A thema
+placed in a jaarplan is deleted by nobody. *Added 2026-09-14:* §3 had no delete row, and the slice 3 audit found the
+delete's cascade reached content R19, R24 and R25 reserve to directie and the hoofdleerkrachten. Only the directie
+column rests on a ruling (R3); the TB column is the default.
+
 TB and HL are **additive** to being a leerkracht, as the union rule above says.
+
+**How the matrix is enforced** *(E6-02, 2026-09-14)*. Each row is a named policy declared once in `Rechtenmatrix`
+(Application) and registered in one place (ADR-0011 §2). A row about no particular resource is an
+`[Authorize(Policy = …)]`; a row about a resource (a leeftijd, a klas, an activiteit, a thema) is a `[RechtOp(…)]`
+filter that resolves the resource from the route and runs before model binding, so a gebruiker without the right
+gets 403 rather than a validation 400, and an unknown id gets 404 first. The wizard row is split in two: the
+`Wizardinhoud` row says who may use the wizard's write actions, and the run's own state (open, its own items, and
+the goal-link right I27 asks) is enforced by the wizard service. Creating an activiteit with goal codes also asks
+the goal-link row (R19), on the ordinary route and in the wizard. A sweep test enumerates every write route from
+the endpoint data source and fails, naming the route, for any that a gebruiker without rights can reach.
 
 One row grants ✓ to "Ander", and it cites the ruling that does so: **the personal-content row** follows R6.
 Personal content belongs to a person, not to a klas, so "ander" has no klas to be other than. Its final shape is
