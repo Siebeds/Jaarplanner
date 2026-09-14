@@ -271,7 +271,7 @@ Drie keer per schooljaar schrijven de leerkrachten van de derde kleuter een ontw
   Leerkrachten van andere klassen zien ze niet. Na het schooljaar kan de leerkracht de rapporten nog lezen, maar niet meer wijzigen.
 - **FR-13.8**: De gegevens blijven bewaard tot de directie een schooljaar wist. De directie legt een concrete bewaartermijn vast in het verwerkingsregister, en de beheerpagina toont welke schooljaren nog gegevens over kinderen bevatten en herinnert de directie eraan.
 - **FR-13.9**: Een ontwikkelingsrapport telt nooit mee voor de dekking.
-- **FR-13.10**: Het ontwikkelingsrapport krijgt een eigen tab in de linkerzijbalk: onderaan, in een nieuwe sectie, ver onder de fiches. Alleen wie rapporten mag zien, ziet die tab. *(Toegevoegd op 14-09-2026, op beslissing van de projecteigenaar, ADR-0035 R32.)*
+- **FR-13.10**: Het ontwikkelingsrapport krijgt een eigen tab in de linkerzijbalk: onderaan, in een nieuwe sectie, ver onder de fiches *(toegevoegd op 14-09-2026, op beslissing van de projecteigenaar, ADR-0035 R32)*. Alleen wie rapporten mag zien, ziet die tab *(een standaardkeuze, ADR-0035 D18)*.
 
 ## 6. Niet-functionele requirements
 

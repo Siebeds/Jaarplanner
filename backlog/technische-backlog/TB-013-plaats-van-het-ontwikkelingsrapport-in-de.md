@@ -2,10 +2,10 @@
 id: TB-013
 titel: Plaats van het ontwikkelingsrapport in de linkerzijbalk vastleggen (R32)
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 13:42
+bijgewerkt: 2026-09-14 14:15
 opgepakt-door: kindrapport
 branch: ticket/TB-013-ontwikkelingsrapport-zijbalk
 pr:
@@ -32,14 +32,15 @@ Geen broncode. Alleen documenten:
   - een open punt voor het bouwticket: wat er op een telefoon gebeurt, waar de onderbalk vijf tabs heeft;
   - bouwticket 1 brengt de tab mee.
 - **Functionele analyse:** FR-13.10.
-- **Grondwet:** in het ratificatielog de telling van de uitspraken (R1 tot R32). R32 raakt de grondwet zelf niet.
+- **De grondwet verandert niet.** R32 is een losse uitspraak na de merge, geen geratificeerde beslissing, en de
+  standaardkeuzes in §3.10 vallen al onder de slotzin van Art. VI.7.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven ADR-0035, dan staat R32 letterlijk in §1.7, en staan de uitwerking en de standaardkeuzes D17 en D18 apart in §3.10.
-- [ ] Gegeven FR-13 in de functionele analyse, dan zegt FR-13.10 dat het ontwikkelingsrapport een eigen tab krijgt onderaan de linkerzijbalk, in een nieuwe sectie onder de fiches, alleen voor wie rapporten mag zien.
-- [ ] Gegeven de lijst met bouwtickets in ADR-0035 §6, dan brengt bouwticket 1 die tab mee, samen met het eerste scherm erachter.
-- [ ] Gegeven de antagonist-audit, dan is het oordeel COMPLIANT, of is elke bevinding verwerkt of uitdrukkelijk opzijgezet.
+- [x] Gegeven ADR-0035, dan staat R32 letterlijk in §1.7, en staan de uitwerking en de standaardkeuzes D17 en D18 apart in §3.10.
+- [x] Gegeven FR-13 in de functionele analyse, dan zegt FR-13.10 dat het ontwikkelingsrapport een eigen tab krijgt onderaan de linkerzijbalk, in een nieuwe sectie onder de fiches, alleen voor wie rapporten mag zien.
+- [x] Gegeven de lijst met bouwtickets in ADR-0035 §6, dan brengt bouwticket 1 die tab mee, samen met het eerste scherm erachter.
+- [x] Gegeven de antagonist-audit, dan is het oordeel COMPLIANT, of is elke bevinding verwerkt of uitdrukkelijk opzijgezet.
 
 ## Buiten scope
 
@@ -53,3 +54,6 @@ Geen.
 ## Werklog
 
 - 2026-09-14 13:42 · kindrapport · aangemaakt (status in-uitvoering)
+- 2026-09-14 14:15 · kindrapport · Antagonist ronde 1: VIOLATIONS FOUND (1 MAJOR, 3 MINOR, 2 vragen), verwerkt: de telling in de grondwet teruggezet (R32 is niet geratificeerd), D18 niet meer aan de eigenaar toegeschreven, D17 als plaats en niet als codekeuze, de vraag over 'ONDERAAN' en Leerlingzorg naar bouwticket 1; rapport in backlog/worklogs/TB-013/antagonist-ronde-1.md. De correcties zijn niet opnieuw geauditeerd.
+- 2026-09-14 14:15 · kindrapport · Acceptatiecriteria afgevinkt: R32 letterlijk in ADR-0035 §1.7, uitwerking en D17/D18 in §3.10, FR-13.10 in de functionele analyse, bouwticket 1 brengt de tab mee, auditbevindingen verwerkt
+- 2026-09-14 14:15 · kindrapport · in-uitvoering → klaar: Klaar: de plaats van het ontwikkelingsrapport in de linkerzijbalk staat in ADR-0035 en FR-13.10; geen broncode en geen wijziging aan de grondwet

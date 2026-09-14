@@ -9,7 +9,8 @@
     ratification log records for ADR-0025.
 - **Date:** 2026-09-14
 - **Deciders:** Siebe De Saedeleir (projecteigenaar), for §1 only. The rulings were given in session `kindrapport`, as
-  answers to seven rounds of multiple-choice questions, whose options and stated costs are quoted below.
+  answers to seven rounds of multiple-choice questions, whose options and stated costs are quoted below, and R32, given
+  unprompted after the merge of PR #58 (§1.7).
 - **Narrows:** [ADR-0011](0011-authn-authz-rbac-gdpr.md) §4 (*"the model has no schema for pupil PII"*) and the *"no
   pupil PII"* constraint of [ADR-0016](0016-azure-hosting-eu-residency.md). Both still hold everywhere outside the
   ontwikkelingsrapport.
@@ -76,7 +77,8 @@ The session built nothing and opened no ticket for the build. It put the conflic
 
 ## 1. The rulings
 
-Each question is quoted as it was put, in Dutch, with the option the owner chose and the options he did not.
+Each question is quoted as it was put, in Dutch, with the option the owner chose and the options he did not. R32
+(§1.7) is a statement he made unprompted, not an answer, and no article of the constitution ratifies it.
 
 ### 1.1 Scope and naming
 
@@ -404,12 +406,14 @@ the rules than they give:
 
 ### 3.10 Where it lives in the app (R32)
 
-- **R32:** the ontwikkelingsrapport is a destination of its own in the left sidebar, **at the bottom, in a new section,
-  well below the fiches**.
-- **D17:** from `lg`, the section sits in the group that is pushed to the bottom edge (`ONDERAAN` in
-  `frontend/src/app/routes.ts`).
-  - It stands over a rule of its own, directly above Instellingen, which stays last before the sign-in row.
+- **R32, as the session reads it** (the owner's words are in §1.7): the ontwikkelingsrapport is a destination of its
+  own in the left sidebar, at the bottom, in a new section, well below the fiches.
+- **D17:** from `lg`, the report sits in the bottom part of the sidebar, in a section with a rule of its own, above
+  Instellingen, which stays last before the sign-in row.
   - The Hoekenfiches and Algemene fiches switches, which show only on the agenda, stay where they are.
+  - *Where in the code is build ticket 1's to decide.* Today's `ONDERAAN` array in `frontend/src/app/routes.ts` means
+    "setting the school up", gives the push and the rule to its first entry only, and renders every entry as a phone
+    tab too. The report can join it, with those three things changed, or become a group of its own.
 - **D18:** the tab shows only to a gebruiker who holds a right on some ontwikkelingsrapport:
   - a klastoewijzing on a klas that grants K3;
   - directie;
@@ -417,10 +421,13 @@ the rules than they give:
 
   For anyone else it would lead to a screen with nothing they may see, and the app never ships a control that does
   nothing (the E3-06 rule). For the same reason the tab ships with the first screen behind it, in build ticket 1.
+  A gebruiker whose only right is Leerlingzorg can read reports and nothing else, so for them the tab appears once
+  reports can be read (build ticket 3) and the right exists (build ticket 8), not before.
 - **Open for the build ticket.**
   - The phone's bottom bar holds five tabs today, and the navigation's own comment says five is what fits.
   - Whether the report becomes a sixth tab there, or is reached another way on a phone, is decided in that ticket's
     `frontend-design` pass and shown to the owner.
+  - So is whether the owner's *"ONDERAAN"* means the very bottom, below Instellingen, rather than D17's place above it.
 
 ## 4. The amendment this ADR requires
 
