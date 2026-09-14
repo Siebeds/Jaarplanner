@@ -53,6 +53,16 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
      the development sign-in is not mapped outside `Ontwikkeling`, which refuses to start outside Development.
      ADR-0030 gives directie every right, so every session this environment can issue has exactly the rights the matrix
      would give it.
+   - *Amended 2026-09-14 (TB-003, owner ruling the same day).* The paragraph above is no longer true of the running
+     environment:
+     - On 2026-09-13 at 19:44 the `azure-demo` session added five non-directie invitations to the demo database:
+       `demo.leerkracht1` to `demo.leerkracht5`, accounts in the owner's tenant, each assigned to the app.
+     - No code path in the repo creates a `Gebruiker` except the bootstrap for an empty table, so they were written
+       outside the app. The coordination log records the session and the time, not the mechanism.
+     - Until E6-02 enforces the ADR-0030 matrix, a session of one of them can do nearly everything directie can.
+     - Asked on 2026-09-14 whether the waiver still holds knowing this, the owner chose *"Ja, en leg het vast"*. The
+       conditions stay as read above, with six test accounts instead of one. E7-11 stays `[!]` for any environment
+       with real school data.
 2. **The services**, all in one resource group `rg-jaarplanner-demo`, in **Belgium Central**.
    - West Europe was the first choice. At the validation before deployment on 2026-09-13 it refused all four resources:
      *"The selected region is currently not accepting new customers"*.
@@ -154,6 +164,8 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
 - F1 sleeps, so the first request after a quiet spell takes several seconds, and heavy use can exhaust the 60
   CPU-minutes a day. B1, about €11 a month, is the step up.
 - Only the first directie can sign in until E6-04 lets directie invite others.
+- *Amended 2026-09-14 (TB-003):* the bullet above stopped being true on 2026-09-13, when five leerkracht invitations
+  were added outside the app (decision 1). Their sessions carry nearly directie's rights until E6-02.
 - The AI endpoints answer 500 without configuration; E2-09 records that they should answer 503.
 - The app runs as the database administrator, and the database answers any Azure-hosted address that has the password
   (decisions 5 and 6).

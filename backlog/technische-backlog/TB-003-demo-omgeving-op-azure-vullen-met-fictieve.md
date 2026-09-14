@@ -2,10 +2,10 @@
 id: TB-003
 titel: Demo-omgeving op Azure vullen met fictieve kleuterdata
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:05
+bijgewerkt: 2026-09-14 12:15
 opgepakt-door: demo-seed
 branch: ticket/demo-seed
 pr:
@@ -59,7 +59,7 @@ Geen wijziging aan de broncode van de app.
 - [x] Gegeven de demo zonder klassen, wanneer `infra/seed-demo.ps1` draait, dan staan er vijf kleuterklassen in 2026-2027, elk met de naam van een demoleerkracht, en thema's die met een emoji beginnen.
 - [x] Gegeven een geslaagde run, wanneer het script een tweede keer draait, dan maakt het niets dubbel aan.
 - [x] Gegeven een run, dan staat er erna geen nieuwe onversleutelde rij in `data_protection_keys`, eindigt de run met een fout als er een verscheen, en zijn de firewallregel en de tijdelijke roltoewijzing weer weg, ook als de run faalt.
-- [ ] Gegeven de geseede demo, wanneer Demo Directie zich aanmeldt op de Azure-app, dan tonen Klassen, Thema's (met subthema's), Algemene fiches en Hoeken de nieuwe inhoud.
+- [x] Gegeven de geseede demo, wanneer Demo Directie zich aanmeldt op de Azure-app, dan tonen Klassen, Thema's (met subthema's), Algemene fiches en Hoeken de nieuwe inhoud.
 
 ## Buiten scope
 
@@ -80,3 +80,4 @@ Geen.
 - 2026-09-14 11:24 · demo-seed · script infra/seed-demo.ps1 en data infra/seed-demo.data.json geschreven; parse in PowerShell 5.1 en psql verify-full getest; antagonist loopt
 - 2026-09-14 11:53 · demo-seed · eerste run faalde op de aanmelding (401: PowerShell pakte de id-array uit tot een string); opruimen werkte: tijdelijke rol weg, sessiesleutels ongewijzigd (1), firewall dicht; niets geschreven
 - 2026-09-14 12:05 · demo-seed · run 0f865bf geslaagd: 5 klassen, 9 thema's (18 themadoelen), 9 subthema's (9 subdoelen), 15 fiches (15 doelen), 29 hoeken; tweede run maakte niets aan (alles found); sleutels ongewijzigd (1), rol weg, alleen AllowAllAzure-firewallregel over; criteria 1-3 afgevinkt; antagonist ronde 2: 2 MINOR over formulering, verwerkt; criterium 4 wacht op een blik van de eigenaar in de Azure-app
+- 2026-09-14 12:15 · demo-seed · in-uitvoering → klaar: criterium 4 bevestigd door de eigenaar in de Azure-app; ADR-0034 aangevuld bij beslissing 1 (eigenaar bevestigt de uitzondering, 2026-09-14); gates: 2 antagonistrondes verwerkt, 2 runs + controle na afloop
