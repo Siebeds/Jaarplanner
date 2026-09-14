@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:06
+bijgewerkt: 2026-09-14 11:24
 opgepakt-door: demo-seed
 branch: ticket/demo-seed
 pr:
@@ -29,12 +29,17 @@ Geen wijziging aan de broncode van de app.
   en er geen SQL rechtstreeks in de tabellen gaat. Zoals `migrate-db.ps1`: de connection string komt uit Key Vault en
   staat alleen in de omgeving van het proces, en de PostgreSQL-firewall staat alleen tijdens de run open voor het
   adres van de operator.
-- **De sessiesleutels blijven ongemoeid.** Een lokale API in Development kan de sessiesleutel in
-  `data_protection_keys` niet openen zonder de Key Vault-sleutel, en zou dan een nieuwe, onversleutelde sleutel in
-  de demodatabase zetten, die de Azure-app daarna kan gaan gebruiken (ADR-0031 beslissing 5 verbiedt precies dat).
-  Het script geeft daarom de operator tijdelijk *Key Vault Crypto User* op die ene sleutel, start de API met
-  `DataProtection__KeyVaultSleutel`, en telt de sleutels voor en na de run: verandert het aantal, dan stopt het met
-  een fout.
+- **Geen onversleutelde sessiesleutel.** Een lokale API in Development zonder Key Vault-instelling zou een nieuwe,
+  onversleutelde sessiesleutel in de demodatabase zetten, die de Azure-app daarna kan gaan gebruiken (ADR-0031
+  beslissing 5 verbiedt precies dat). Het script start de API daarom met `DataProtection__KeyVaultSleutel`, zodat
+  elke nieuwe sleutel ingepakt wordt of niet geschreven. Het geeft de operator voor de run *Key Vault Crypto User* op
+  die ene sleutel, zodat de API de bestaande sleutel kan gebruiken en er geen nieuwe nodig heeft. Als laatste vangnet
+  vergelijkt het de sleutelrijen voor en na: een nieuwe onversleutelde rij wordt verwijderd en de run eindigt met een
+  fout. Dat is de enige rechtstreekse schrijfactie in de database.
+- **Geheimen.** Het script bouwt de API voor het een geheim leest, en zonder build-servers. De PG-variabelen bestaan
+  alleen rond elke psql-aanroep. Het weigert een werkboom met wijzigingen (tenzij `-AllowDirty`) en een database
+  waarvan de nieuwste migratie verschilt van die van de checkout.
+- **ADR-0034** krijgt een gedateerde aanvulling bij beslissingen 5 en 6 over deze procedure.
 - **Aanmelden** via de ontwikkelaanmelding (alleen loopback, alleen Development) als de bestaande Demo Directie. Er
   wordt geen gebruiker aangemaakt of gewijzigd.
 - **Wat erin komt, allemaal fictief** (Art. VI.2, ADR-0034):
@@ -43,15 +48,16 @@ Geen wijziging aan de broncode van de app.
     G-leerplandoelen;
   - een paar subthema's per leeftijd (JK, K2, K3), met een onderzoeksvraag;
   - per klas algemene fiches en hoeken, zonder planning in de agenda.
-- **Opnieuw draaien mag:** wat er al staat (klas, thema, subthema, fiche of hoek met dezelfde naam) wordt
-  overgeslagen, niet dubbel aangemaakt.
+- **Opnieuw draaien mag:** wat er al staat (klas, thema, subthema, fiche of hoek met dezelfde naam) wordt niet
+  opnieuw aangemaakt. Een bestaand item krijgt alleen de doelkoppelingen uit het databestand die het nog mist, voor
+  zover de API ze aanvaardt; zijn andere velden blijven zoals ze zijn.
 - Alles wat het script opent (firewall, roltoewijzing, lokale API) wordt ook bij een fout weer gesloten.
 
 ## Acceptatiecriteria
 
 - [ ] Gegeven de demo zonder klassen, wanneer `infra/seed-demo.ps1` draait, dan staan er vijf kleuterklassen in 2026-2027, elk met de naam van een demoleerkracht, en thema's die met een emoji beginnen.
 - [ ] Gegeven een geslaagde run, wanneer het script een tweede keer draait, dan maakt het niets dubbel aan.
-- [ ] Gegeven een run, dan is het aantal rijen in `data_protection_keys` erna gelijk aan dat ervoor, en zijn de firewallregel en de tijdelijke rolverdeling weer weg, ook als de run faalt.
+- [ ] Gegeven een run, dan staat er erna geen nieuwe onversleutelde rij in `data_protection_keys`, eindigt de run met een fout als er een verscheen, en zijn de firewallregel en de tijdelijke roltoewijzing weer weg, ook als de run faalt.
 - [ ] Gegeven de geseede demo, wanneer Demo Directie zich aanmeldt op de Azure-app, dan tonen Klassen, Thema's (met subthema's), Algemene fiches en Hoeken de nieuwe inhoud.
 
 ## Buiten scope
@@ -70,3 +76,4 @@ Geen.
 ## Werklog
 
 - 2026-09-14 11:06 · demo-seed · aangemaakt (status in-uitvoering)
+- 2026-09-14 11:24 · demo-seed · script infra/seed-demo.ps1 en data infra/seed-demo.data.json geschreven; parse in PowerShell 5.1 en psql verify-full getest; antagonist loopt

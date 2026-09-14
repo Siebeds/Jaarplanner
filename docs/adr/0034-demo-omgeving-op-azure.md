@@ -94,6 +94,15 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
      `CREATEROLE`, membership of `azure_pg_admin`). Accepted for a demo that holds only fictional data. **Before any
      environment holds real data** the app needs a role of its own with DML rights only, and the admin credential is kept
      for `migrate-db.ps1`. That is recorded on E7-05.
+   - *Amended 2026-09-14 (TB-003).* A second operator procedure, `infra/seed-demo.ps1`, fills the demo with
+     fictional content through the app's own API. It adds three facts to this decision:
+     - during a seed run the PostgreSQL password is also in the operator's process, and in the environment of the
+       local API and of each short-lived psql container;
+     - the operator gets **Key Vault Crypto User on the Data Protection key** for the run, unless they hold a role that
+       covers it, and the script removes that assignment again;
+     - the local API runs in Development with the development sign-in, against the demo database, as the existing
+       directie. It writes no `Gebruiker`, and it runs with the demo's key setting, so every Data Protection key it
+       could create is wrapped. The script deletes an unwrapped key row that appears anyway, and the run then fails.
 6. **The network, a demo trade-off.**
    - F1 has no virtual network integration, so PostgreSQL keeps its public endpoint. Its firewall rule
      `AllowAllAzureServicesAndResourcesWithinAzureIps` admits **any Azure-hosted address, in any tenant**, not only
@@ -101,6 +110,9 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
      (`SSL Mode=VerifyFull`).
    - Migrations run from the operator's machine (`infra/migrate-db.ps1`). The script opens the firewall to that
      machine's address for the run and closes it again, also when the migration fails. The app never migrates itself.
+   - *Amended 2026-09-14 (TB-003).* `infra/seed-demo.ps1` opens the firewall the same way, for its own run, and
+     closes it again when the run ends or fails. Closing the window skips that clean-up; `infra/README.md` says how to
+     find a leftover rule.
    - **Not acceptable for production**, where private networking needs at least a Basic plan.
 7. **Entra, in the owner's tenant.**
    - A single-tenant web app registration, with the redirect URIs `https://<host>/api/signin-oidc` and `https://<host>/`.
