@@ -162,6 +162,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Hoofdleerkrachtaanstelling> Hoofdleerkrachtaanstellingen => Set<Hoofdleerkrachtaanstelling>();
 
     /// <summary>
+    /// The thema-opbouw wizard's runs (E6-02, ADR-0030 R32, I22–I25): which thema each built, and what it created, so the
+    /// wizard's own write actions can tell a thema built from scratch from any other.
+    /// </summary>
+    public DbSet<Wizardrun> Wizardruns => Set<Wizardrun>();
+
+    /// <summary>
     /// The ASP.NET Core Data Protection keys that encrypt the session cookie (ADR-0031 decision 5). Kept here so a
     /// restart or a second instance does not log everyone out. Framework-owned rows; nothing in the app reads them.
     /// </summary>

@@ -46,11 +46,16 @@ builder.Services.AddExceptionHandler<OpstapImportExceptionHandler>();
 // placement back to `voorgesteld` (Art. IV.1/IV.2) — to a 400. Planning not-found reuses the school-content 404.
 builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
 
+// The thema-opbouw wizard's refusals (E6-02 slice 3, ADR-0030 I23–I25): a run that has ended, content outside its
+// thema, or an item it did not create. 403, with the service's Dutch sentence.
+builder.Services.AddExceptionHandler<WizardrunExceptionHandler>();
+
 // The rights matrix (E6-02, Art. VI.1, ADR-0030 §3, ADR-0011 §2): every row of Rechtenmatrix becomes a named policy
 // that requires a signed-in person plus the row's own rights, decided by one handler over the per-request rights
 // service. Curriculumbeheer, the seam the Op.stap import routes already name (ADR-0022), is one of those rows and is
-// bound to directie. The other rows exist here but are applied to their routes in the next slice of E6-02, so until
-// then E7-11 stays a deployment gate.
+// bound to directie. Since slice 3 every write route names its row: [Authorize(Policy = …)] for a resource-free row,
+// [RechtOp(…)] for a resource row, and ElkeWijzigendeRouteVraagtEenRechtTests fails on a write route that names none.
+// *Until slice 3 this said the other rows were applied "in the next slice", which is this one.*
 builder.Services.AddRechtenbeleid();
 
 // Personal login (E6-01, ADR-0031): a session cookie issued after an Entra sign-in (or the development sign-in, on a

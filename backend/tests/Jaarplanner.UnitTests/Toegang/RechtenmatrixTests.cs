@@ -41,6 +41,7 @@ public sealed class RechtenmatrixTests
         [Rechtenmatrix.Beleid.ThemaBewerken] = ["Directie", "TB"],
         [Rechtenmatrix.Beleid.SchoolcontentImporteren] = ["Directie", "TB"],
         [Rechtenmatrix.Beleid.ThemaOpbouw] = ["Directie", "TB"],
+        [Rechtenmatrix.Beleid.Wizardinhoud] = ["Directie", "TB"],
         [Rechtenmatrix.Beleid.DoelsuggestiesMaken] = ["Directie", "TB"],
         [Rechtenmatrix.Beleid.DoelsuggestiesBeoordelen] = ["Directie", "TB"],
         [Rechtenmatrix.Beleid.SubthemaBeheren] = ["Directie", "HL"],

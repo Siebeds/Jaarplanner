@@ -1,4 +1,6 @@
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Planning.AlgemeneFiches;
+using Jaarplanner.Application.Toegang;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -7,6 +9,11 @@ namespace Jaarplanner.Api.Controllers;
 /// Thin REST controller (Art. VIII) for planning an algemene fiche in the agenda (owner, 2026-09-11). All logic lives
 /// in <see cref="IAlgemeneFicheplaatsingService"/>. Its own route rather than a field on the weekplanning, for the
 /// reason <see cref="HoekplaatsingenController"/> gives.
+/// <para>
+/// <b>Rights (E6-02):</b> every write is the klas's planning, <c>KlasplanningBewerken</c> (ADR-0030 R7, R15, I21),
+/// against the klas in the route or the placement's own klas. The service refuses a fiche of another klas, so a
+/// placement can never write into a klas the caller was not checked for.
+/// </para>
 /// </summary>
 [ApiController]
 public sealed class AlgemeneFicheplaatsingenController : ControllerBase
@@ -24,6 +31,7 @@ public sealed class AlgemeneFicheplaatsingenController : ControllerBase
         Ok(await _service.HaalVoorBereikAsync(klasId, van, tot, cancellationToken));
 
     [HttpPost("/api/klassen/{klasId:guid}/algemene-ficheplaatsingen")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<AlgemeneFicheplaatsingWeergave>> Plaats(
         Guid klasId,
         [FromBody] AlgemeneFicheplaatsingInvoer invoer,
@@ -34,6 +42,7 @@ public sealed class AlgemeneFicheplaatsingenController : ControllerBase
     }
 
     [HttpDelete("/api/algemene-ficheplaatsingen/{plaatsingId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFicheplaatsing, "plaatsingId")]
     public async Task<IActionResult> Verwijder(Guid plaatsingId, CancellationToken cancellationToken)
     {
         await _service.VerwijderAsync(plaatsingId, cancellationToken);
@@ -42,6 +51,7 @@ public sealed class AlgemeneFicheplaatsingenController : ControllerBase
 
     /// <summary>Moves or resizes ONE occurrence.</summary>
     [HttpPut("/api/algemene-ficheplaatsingen/{plaatsingId:guid}/momenten/{momentId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFicheplaatsing, "plaatsingId")]
     public async Task<ActionResult<AlgemeneFicheplaatsingWeergave>> VerplaatsMoment(
         Guid plaatsingId,
         Guid momentId,

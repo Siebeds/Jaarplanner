@@ -1,4 +1,6 @@
 using Jaarplanner.Application.AiAuthoring;
+using Jaarplanner.Application.Toegang;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -16,6 +18,11 @@ namespace Jaarplanner.Api.Controllers;
 /// whose <c>isGeslaagd = false</c> and a diagnostic <c>fout</c>, mirroring the result-type philosophy
 /// of the matching flow — running the assist succeeded even when the model's output was unusable.
 /// </para>
+/// <para>
+/// <b>Rights (E6-02):</b> both hooks are the row <c>ThemaOpbouw</c>, directie and themabeheer (ADR-0030 R29, which
+/// ruled the wizard's AI assist with the rest of the wizard). The wizard's own write actions are in
+/// <see cref="WizardrunsController"/>. The step-6 body's leeftijd only reaches the prompt and is never stored.
+/// </para>
 /// </summary>
 [ApiController]
 [Route("api/thema-opbouw")]
@@ -27,6 +34,7 @@ public sealed class ThemaOpbouwController : ControllerBase
 
     /// <summary>Step 2: request advisory themadoel suggestions for the thema being authored.</summary>
     [HttpPost("themadoel-suggesties")]
+    [Authorize(Policy = Rechtenmatrix.Beleid.ThemaOpbouw)]
     public async Task<ActionResult<ThemaOpbouwAdviesResultaat>> Themadoelen(
         [FromBody] ThemadoelSuggestieVerzoek verzoek,
         CancellationToken cancellationToken) =>
@@ -34,6 +42,7 @@ public sealed class ThemaOpbouwController : ControllerBase
 
     /// <summary>Step 6: request advisory subdoel suggestions for the subthema (× leeftijd) being authored.</summary>
     [HttpPost("subdoel-suggesties")]
+    [Authorize(Policy = Rechtenmatrix.Beleid.ThemaOpbouw)]
     public async Task<ActionResult<ThemaOpbouwAdviesResultaat>> Subdoelen(
         [FromBody] SubdoelSuggestieVerzoek verzoek,
         CancellationToken cancellationToken) =>

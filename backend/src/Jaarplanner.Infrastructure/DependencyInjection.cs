@@ -12,6 +12,7 @@ using Jaarplanner.Application.Planning.Hoeken;
 using Jaarplanner.Application.Planning.Weekplanning;
 using Jaarplanner.Application.Planning.Rooster;
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Application.Schoolcontent.Wizard;
 using Jaarplanner.Application.Toegang;
 using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.AiAuthoring;
@@ -215,6 +216,13 @@ public static class DependencyInjection
         // tests (Art. IV.6). It returns advisory suggestions transiently — nothing is persisted or
         // auto-applied (Art. IV.1/IV.2); the wizard persists an accepted suggestion via the beheer path.
         services.AddScoped<IThemaOpbouwAssistService, ThemaOpbouwAssistService>();
+
+        // --- E6-02 slice 3: the thema-opbouw wizard's own write actions (ADR-0030 R32, I22–I25). ---
+        // Beside the wizard's AI assist rather than with the rights services, because it is the wizard's write path: it
+        // records which thema a run built and what it created, and writes through ISchoolcontentBeheerService so every
+        // rule of a hand write applies. Scoped, sharing the request's DbContext, which its one transaction needs.
+        services.AddScoped<IWizardrunService, WizardrunService>();
+        // --- end E6-02 slice 3 ---
 
         // AI jaarplan generation (E3-01, FR-5.1, Art. IV). The persistence port keeps EF Core out of the service;
         // the service itself depends only on IAiClient (E2-01), IPlanningsblokIndeling (E3-05) and this port, so

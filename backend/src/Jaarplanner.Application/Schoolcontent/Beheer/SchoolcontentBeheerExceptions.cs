@@ -24,4 +24,12 @@ public sealed class SchoolcontentValidatieFout : Exception
         : base(message)
     {
     }
+
+    /// <summary>
+    /// The refusal of a leeftijd that is not one of the nine codes, in the one sentence every caller answers with: the
+    /// subthema write, and a controller that has to refuse a body leeftijd before its rights check can be asked (E6-02).
+    /// The rule itself is <c>Jaarfasen.LeesLeeftijd</c>; this is only its sentence.
+    /// </summary>
+    public static SchoolcontentValidatieFout OngeldigeLeeftijd(string? leeftijd) =>
+        new($"'{leeftijd}' is geen geldige leeftijd. Kies er een uit: {string.Join(", ", Jaarplanner.Domain.Curriculum.Jaarfasen.Alle)}.");
 }

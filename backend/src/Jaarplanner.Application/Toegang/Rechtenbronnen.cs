@@ -25,6 +25,23 @@ public interface IRechtenbronnen
 
     /// <summary>An activiteit with its leeftijd, maker and whether any goal is linked to it: for the activiteit rows.</summary>
     Task<Activiteitbron?> VoorActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken = default);
+
+    // --- The planning of one klas (E6-02 slice 3): every route whose resource belongs to a klas answers with it. ---
+
+    /// <summary>The planning of a klas named in the route.</summary>
+    Task<Klasplanning?> VoorKlasAsync(Guid klasId, CancellationToken cancellationToken = default);
+
+    /// <summary>The planning of the klas a hoek belongs to.</summary>
+    Task<Klasplanning?> VoorHoekAsync(Guid hoekId, CancellationToken cancellationToken = default);
+
+    /// <summary>The planning of the klas a hoekplaatsing is in.</summary>
+    Task<Klasplanning?> VoorHoekplaatsingAsync(Guid plaatsingId, CancellationToken cancellationToken = default);
+
+    /// <summary>The planning of the klas an algemene fiche belongs to.</summary>
+    Task<Klasplanning?> VoorAlgemeneFicheAsync(Guid ficheId, CancellationToken cancellationToken = default);
+
+    /// <summary>The planning of the klas an algemene ficheplaatsing is in.</summary>
+    Task<Klasplanning?> VoorAlgemeneFicheplaatsingAsync(Guid plaatsingId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

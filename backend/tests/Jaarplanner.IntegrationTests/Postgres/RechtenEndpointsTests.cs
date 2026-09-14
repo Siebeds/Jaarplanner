@@ -148,7 +148,7 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
     [PostgresFact]
     public async Task Een_met_de_hand_gemaakte_activiteit_draagt_haar_maker()
     {
-        var an = await BewaarGebruikerAsync();
+        var an = await BewaarBouwerAsync("K3");
         using var client = _factory.MaakClientVoor(an.Id);
         var subthemaId = await MaakSubthemaAsync(client, "K3");
 
@@ -322,7 +322,7 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
     [PostgresFact]
     public async Task De_rechtenbronnen_geven_leeftijd_maker_en_of_er_een_doel_aan_hangt()
     {
-        var an = await BewaarGebruikerAsync();
+        var an = await BewaarBouwerAsync("L3");
         using var client = _factory.MaakClientVoor(an.Id);
         var subthemaId = await MaakSubthemaAsync(client, "L3");
         var zonder = await MaakActiviteitAsync(client, subthemaId);
@@ -362,6 +362,19 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         await using var context = _db.MaakContext();
         context.Gebruikers.Add(gebruiker);
         await context.SaveChangesAsync();
+        return gebruiker;
+    }
+
+    /// <summary>
+    /// A gebruiker who may build content at <paramref name="leeftijd"/> by hand since slice 3 enforces the matrix:
+    /// themabeheer for the thema, and the hoofdleerkracht right of that leeftijd for the subthema, its activiteiten and
+    /// their goal links.
+    /// </summary>
+    private async Task<Gebruiker> BewaarBouwerAsync(string leeftijd)
+    {
+        var gebruiker = await BewaarGebruikerAsync(themabeheer: true);
+        var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200));
+        await StelAanAsync(gebruiker.Id, jaar.Id, leeftijd);
         return gebruiker;
     }
 

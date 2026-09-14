@@ -1,4 +1,6 @@
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Planning.Hoeken;
+using Jaarplanner.Application.Toegang;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -29,6 +31,7 @@ public sealed class HoekplaatsingenController : ControllerBase
         Ok(await _service.HaalVoorBereikAsync(klasId, van, tot, cancellationToken));
 
     [HttpPost("/api/klassen/{klasId:guid}/hoekplaatsingen")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<HoekplaatsingWeergave>> Plaats(
         Guid klasId,
         [FromBody] HoekplaatsingInvoer invoer,
@@ -39,6 +42,7 @@ public sealed class HoekplaatsingenController : ControllerBase
     }
 
     [HttpDelete("/api/hoekplaatsingen/{plaatsingId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Hoekplaatsing, "plaatsingId")]
     public async Task<IActionResult> Verwijder(Guid plaatsingId, CancellationToken cancellationToken)
     {
         await _service.VerwijderAsync(plaatsingId, cancellationToken);
@@ -54,6 +58,7 @@ public sealed class HoekplaatsingenController : ControllerBase
     /// </para>
     /// </summary>
     [HttpPut("/api/hoekplaatsingen/{plaatsingId:guid}/momenten/{momentId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Hoekplaatsing, "plaatsingId")]
     public async Task<ActionResult<HoekplaatsingWeergave>> VerplaatsMoment(
         Guid plaatsingId,
         Guid momentId,
@@ -67,6 +72,7 @@ public sealed class HoekplaatsingenController : ControllerBase
     /// the run to other days is not this route.
     /// </summary>
     [HttpPut("/api/hoekplaatsingen/{plaatsingId:guid}/uren")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Hoekplaatsing, "plaatsingId")]
     public async Task<ActionResult<HoekplaatsingWeergave>> ZetUren(
         Guid plaatsingId,
         [FromBody] Hoekuren invoer,
@@ -75,6 +81,7 @@ public sealed class HoekplaatsingenController : ControllerBase
 
     /// <summary>Adds an enrichment: what is in the corner over these days.</summary>
     [HttpPost("/api/hoekplaatsingen/{plaatsingId:guid}/verrijkingen")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Hoekplaatsing, "plaatsingId")]
     public async Task<ActionResult<HoekplaatsingWeergave>> VoegVerrijkingToe(
         Guid plaatsingId,
         [FromBody] HoekverrijkingInvoer invoer,
@@ -83,6 +90,7 @@ public sealed class HoekplaatsingenController : ControllerBase
 
     /// <summary>Rewrites one enrichment, moving its window if asked.</summary>
     [HttpPut("/api/hoekplaatsingen/{plaatsingId:guid}/verrijkingen/{verrijkingId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Hoekplaatsing, "plaatsingId")]
     public async Task<ActionResult<HoekplaatsingWeergave>> WijzigVerrijking(
         Guid plaatsingId,
         Guid verrijkingId,
@@ -98,6 +106,7 @@ public sealed class HoekplaatsingenController : ControllerBase
 
     /// <summary>Removes one enrichment.</summary>
     [HttpDelete("/api/hoekplaatsingen/{plaatsingId:guid}/verrijkingen/{verrijkingId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Hoekplaatsing, "plaatsingId")]
     public async Task<ActionResult<HoekplaatsingWeergave>> VerwijderVerrijking(
         Guid plaatsingId,
         Guid verrijkingId,

@@ -15,10 +15,16 @@ namespace Jaarplanner.Application.Toegang;
 /// (and TB where the row has it) passes.
 /// </para>
 /// <para>
-/// <b>Not expressed here, on purpose</b> (see the E6-02 worklog):
-/// the wizard's own write actions for a thema it builds from scratch (§3 row 7) need a "new thema" state the model does
-/// not have yet (I22, I23, E6-05); personal content (R6) waits for E6-10's shape; reading and exporting another klas
-/// (I9) is every signed-in gebruiker today, which the fallback policy already gives, and narrowing it is E6-09's seam.
+/// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal content (R6) waits for E6-10's shape;
+/// reading and exporting another klas (I9) is every signed-in gebruiker today, which the fallback policy already gives,
+/// and narrowing it is E6-09's seam.
+/// </para>
+/// <para>
+/// <b>The wizard's own write actions (§3 row 7) are split in two.</b> Who may call them is the row
+/// <see cref="Wizardinhoud"/> here: directie and themabeheer. What a run allows (it is open, the content is under its
+/// own thema, an edit or delete reaches only what it created: I23–I25) is state, not a relation, and holds for directie
+/// too, so <c>IWizardrunService</c> enforces it. <i>Until slice 3 this paragraph said the row needed a state the model
+/// did not have; the <c>Wizardrun</c> entity is that state.</i>
 /// </para>
 /// </summary>
 public static class Rechtenmatrix
@@ -34,6 +40,7 @@ public static class Rechtenmatrix
         public const string SchoolcontentImporteren = "SchoolcontentImporteren";
         public const string MenselijkeBeslissingenVerwijderen = "MenselijkeBeslissingenVerwijderen";
         public const string ThemaOpbouw = "ThemaOpbouw";
+        public const string Wizardinhoud = "Wizardinhoud";
         public const string DoelsuggestiesMaken = "DoelsuggestiesMaken";
         public const string DoelsuggestiesBeoordelen = "DoelsuggestiesBeoordelen";
         public const string SubthemaBeheren = "SubthemaBeheren";
@@ -77,6 +84,16 @@ public static class Rechtenmatrix
     /// <summary>§3 "Thema-opbouwwizard doorlopen: thema, themadoelen en de AI-hulp" (R29).</summary>
     public static readonly Matrixrij ThemaOpbouw = new(
         Beleid.ThemaOpbouw, "Thema-opbouwwizard doorlopen: thema, themadoelen en de AI-hulp (R29)", Kolom.Themabeheer);
+
+    /// <summary>
+    /// §3 "In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt"
+    /// (R29, R32; I18, I22–I25). Who may call the wizard's own write actions: directie and themabeheer. What the run
+    /// allows (open, its own thema, its own items) is state, enforced for everyone by <c>IWizardrunService</c>.
+    /// </summary>
+    public static readonly Matrixrij Wizardinhoud = new(
+        Beleid.Wizardinhoud,
+        "In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt (R29, R32; I18, I22-I25)",
+        Kolom.Themabeheer);
 
     /// <summary>§3 "Doelsuggesties laten maken" (R14).</summary>
     public static readonly Matrixrij DoelsuggestiesMaken = new(
@@ -162,6 +179,7 @@ public static class Rechtenmatrix
         SchoolcontentImporteren,
         MenselijkeBeslissingenVerwijderen,
         ThemaOpbouw,
+        Wizardinhoud,
         DoelsuggestiesMaken,
         DoelsuggestiesBeoordelen,
         SubthemaBeheren,

@@ -1,4 +1,6 @@
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Application.Toegang;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -11,6 +13,11 @@ namespace Jaarplanner.Api.Controllers;
 /// classroom, so the containment travels in the path and a body cannot disagree with it. Update and delete key
 /// on the hoek alone, because a corner cannot move to another room: a teacher who wants it there takes it over,
 /// which is a copy.
+/// </para>
+/// <para>
+/// <b>Rights (E6-02):</b> every write is the klas's planning, <c>KlasplanningBewerken</c> (directie and the klas's own
+/// leerkrachten; ADR-0030 R7, R15, I21), against the klas in the route or the hoek's own klas. Taking corners over
+/// writes only into the klas in the route; the klas they come from is read, which every gebruiker may (I9).
 /// </para>
 /// </summary>
 [ApiController]
@@ -25,6 +32,7 @@ public sealed class HoekenController : ControllerBase
         Ok(await _service.HaalHoekenOpAsync(klasId, cancellationToken));
 
     [HttpPost("/api/klassen/{klasId:guid}/hoeken")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<HoekWeergave>> Maak(
         Guid klasId,
         [FromBody] HoekInvoer invoer,
@@ -38,6 +46,7 @@ public sealed class HoekenController : ControllerBase
     }
 
     [HttpPut("/api/hoeken/{hoekId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Hoek, "hoekId")]
     public async Task<ActionResult<HoekWeergave>> Wijzig(
         Guid hoekId,
         [FromBody] HoekInvoer invoer,
@@ -45,6 +54,7 @@ public sealed class HoekenController : ControllerBase
         Ok(await _service.WijzigHoekAsync(hoekId, invoer, cancellationToken));
 
     [HttpDelete("/api/hoeken/{hoekId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Hoek, "hoekId")]
     public async Task<IActionResult> Verwijder(Guid hoekId, CancellationToken cancellationToken)
     {
         await _service.VerwijderHoekAsync(hoekId, cancellationToken);
@@ -56,6 +66,7 @@ public sealed class HoekenController : ControllerBase
     /// names were skipped, so the screen can name them instead of reporting a bare count.
     /// </summary>
     [HttpPost("/api/klassen/{klasId:guid}/hoeken/overnemen")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<HoekOvername>> NeemOver(
         Guid klasId,
         [FromBody] HoekOvernameVerzoek verzoek,

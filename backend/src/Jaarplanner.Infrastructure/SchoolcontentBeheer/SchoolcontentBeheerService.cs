@@ -907,8 +907,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         if (Jaarfasen.LeesLeeftijd(leeftijd) is null)
         {
-            throw new SchoolcontentValidatieFout(
-                $"'{leeftijd}' is geen geldige leeftijd. Kies er een uit: {string.Join(", ", Jaarfasen.Alle)}.");
+            throw SchoolcontentValidatieFout.OngeldigeLeeftijd(leeftijd);
         }
     }
 

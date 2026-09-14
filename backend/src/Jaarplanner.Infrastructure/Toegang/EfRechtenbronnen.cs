@@ -43,4 +43,31 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
             ? null
             : new Activiteitbron(activiteitId, gevonden.Leeftijd, gevonden.MakerId, gevonden.HeeftDoelkoppelingen);
     }
+
+    public async Task<Klasplanning?> VoorKlasAsync(Guid klasId, CancellationToken cancellationToken = default) =>
+        await _context.Klassen.AsNoTracking().AnyAsync(k => k.Id == klasId, cancellationToken)
+            ? new Klasplanning(klasId)
+            : null;
+
+    public Task<Klasplanning?> VoorHoekAsync(Guid hoekId, CancellationToken cancellationToken = default) =>
+        PlanningVanAsync(_context.Hoeken.AsNoTracking().Where(h => h.Id == hoekId).Select(h => h.KlasId), cancellationToken);
+
+    public Task<Klasplanning?> VoorHoekplaatsingAsync(Guid plaatsingId, CancellationToken cancellationToken = default) =>
+        PlanningVanAsync(
+            _context.Hoekplaatsingen.AsNoTracking().Where(p => p.Id == plaatsingId).Select(p => p.KlasId), cancellationToken);
+
+    public Task<Klasplanning?> VoorAlgemeneFicheAsync(Guid ficheId, CancellationToken cancellationToken = default) =>
+        PlanningVanAsync(_context.AlgemeneFiches.AsNoTracking().Where(f => f.Id == ficheId).Select(f => f.KlasId), cancellationToken);
+
+    public Task<Klasplanning?> VoorAlgemeneFicheplaatsingAsync(Guid plaatsingId, CancellationToken cancellationToken = default) =>
+        PlanningVanAsync(
+            _context.AlgemeneFicheplaatsingen.AsNoTracking().Where(p => p.Id == plaatsingId).Select(p => p.KlasId),
+            cancellationToken);
+
+    /// <summary>The klas of the one row the query selects, as a planning resource, or <c>null</c> when there is none.</summary>
+    private static async Task<Klasplanning?> PlanningVanAsync(IQueryable<Guid> klasIds, CancellationToken cancellationToken)
+    {
+        var gevonden = await klasIds.Select(id => (Guid?)id).SingleOrDefaultAsync(cancellationToken);
+        return gevonden is { } klasId ? new Klasplanning(klasId) : null;
+    }
 }
