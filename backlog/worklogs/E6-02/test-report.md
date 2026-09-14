@@ -69,3 +69,37 @@ None.
 - "One warning across callers" rests on the shared static `Eenmalig`, not on a two-caller test.
 - `Met_de_zone_is_het_vandaag_in_Brussel` fails on a host without tzdata/ICU (intended; a CI image without tzdata would go red).
 - Round 1 miscounted `RechtenbeleidTests` (9, not 8).
+
+## Round 3
+
+**Verdict:** PASS
+**Mode:** unit/integration (no frontend file changed; no live spot-check needed)
+**Change verified:** `f75fb15` (code) and `bdb6683` (docs only) on top of `138a605`
+
+*Recorded by the orchestrator from the test-runner's final message.*
+
+### Commands run
+- `dotnet build` → 0 warnings, 0 errors.
+- `dotnet test --no-build` with `JAARPLANNER_TEST_POSTGRES` on `jaarplanner-db` (127.0.0.1:5433): unit 1340 passed, 4 skipped (opt-in live KOV), 0 failed (round 2's 1315 plus 25 `SubthemaLeeftijdInvoerTests`: 12 create, 12 re-scope, 1 sentence); integration 383 passed, 1 skipped, 0 failed (plus the new reflection test).
+- `dotnet format --verify-no-changes` → exit 0. `has-pending-model-changes` → no changes.
+- Filtered: all 37 `SubthemaLeeftijdInvoerTests` + `LeeftijdsinhoudTests` cases pass; all 5 `CurriculumbeheerAutorisatieTests` pass, including `Elke_controller_onder_de_opstap_importroute_noemt_het_curriculumbeheerbeleid`.
+- `git diff --stat 138a605 bdb6683 -- backend/src/Jaarplanner.Api frontend` → empty.
+
+### The rights check agrees with the real write path
+`SubthemaLeeftijdInvoerTests` runs 12 inputs (trimmed valid, exact valid, invalid codes incl. lower case, blank/null) through the real `MaakSubthemaAsync` and `WijzigSubthemaAsync`: when `UitInvoer` returns a value the write succeeds and stores exactly the trimmed form; when it returns null the write throws `SchoolcontentValidatieFout`. Widening either side fails the test. The three callers of `Jaarfasen.LeesLeeftijd` are equivalent to their predecessors. `LeeftijdsinhoudTests` now asserts fixed values rather than comparing `UitInvoer` with the function it is built from.
+
+### No refusal sentence or status changed
+- Subthema leeftijd sentence identical at `138a605` and HEAD, still 400, now pinned verbatim by `De_weigering_van_het_schrijfpad_behoudt_haar_eigen_zin`.
+- Klas jaarfase sentences (`WatIsErMisMet`) byte-identical in the diff; the existing `KlasJaarfaseTests` pin them only by substring.
+- No file under `Api/` or `frontend/` changed.
+
+### The reflection test fails when a controller lacks the policy
+It requires exactly the four named controllers under `api/opstap-import`, a class-level `[Authorize(Policy = Curriculumbeheer)]` on each, and no `[AllowAnonymous]` on class or action. An action-only route or a leading-`/` template is outside it, and is covered by the endpoint-metadata test beside it.
+
+### Defects
+None.
+
+### Non-blocking notes
+- `VereisLeeftijd` now carries three stacked `<summary>` blocks (one stale from before, round 1's, round 2's); the doc comment reads badly.
+- No test pins the klas jaarfase refusal sentences word for word.
+- The endpoint test matches only a `RawText` without a leading `/` (predates this round).

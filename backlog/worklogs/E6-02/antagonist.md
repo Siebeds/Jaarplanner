@@ -474,3 +474,50 @@ cascades, the delete routes, the ADR index); and `ef6468b` on `feature/e6-rollen
 - **Required fix:** a one-line pointer on E8-07; point the `HeeftDoelkoppelingen` doc at the carry-forward.
 
 **Checks run:** every `Schoolklok` caller updated, label and conversion read the same zone, DI lifetimes fine, one warning per process via `Interlocked.Exchange`, comment now true; `UitInvoer`'s accept set proved equal to `VereisLeeftijd`'s by case analysis; the ADR-0022 pointer verified line by line; unit tests filtered to `Toegang` and `ClosedXmlDekkingExport` 217 passed; `dotnet format --verify-no-changes` exit 0. Worklog nit: `LeeftijdsinhoudTests` has 12 cases, not 11. Art. II–VIII: nothing new.
+
+## Code slice 1 — audit round 3
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool). Condensed in layout only.*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 0 MAJOR, 4 MINOR, 0 QUESTION)
+**Scope audited:** `git diff 138a605 bdb6683` (13 files: `f75fb15` code, `bdb6683` docs), plus every caller of `WatIsErMisMet`/`IsBekend`/`LeesLeeftijd`, the subthema write path, the four Op.stap controllers, the delete routes, `ActiviteitenController`, `EfRechtenbronnen`, ADR-0022's status block and `ef6468b`.
+
+| Round 2 | Status |
+| --- | --- |
+| MINOR 1 `UitInvoer` / `VereisLeeftijd` | Resolved: one predicate, tested through the real service. Doc residue: A and B. |
+| MINOR 2 E7-06 removal triggers | Resolved; every claim verified. |
+| MINOR 3 ADR index tense | Resolved in tense; overstates how long the no-op lasted (C). |
+| MINOR 4 E7-11 coverage | Resolved. *Self-correction:* `Elke_opstap_importroute_zit_achter_het_curriculumbeheerbeleid` already pinned the policy on all seven endpoints via endpoint metadata; the real defect was the status-code claim. |
+| MINOR 5 R25 pointer | Resolved, subject to the merge condition below; one word false today (D). |
+
+### [MINOR] A. `UitInvoer` offers "let the write refuse it", and the new test names the wrong consequence of a drift
+- **Where:** `Application/Toegang/Rechtenbronnen.cs:50-53` (`<returns>` of `UitInvoer`); `UnitTests/Schoolcontent/SubthemaLeeftijdInvoerTests.cs:9-14`.
+- **Problem:** deferring to the write is safe only because the write refuses exactly the inputs `UitInvoer` maps to null (same function). If the rights check refused what the write accepts, a caller that defers to the write would run it with **no rights check at all** (fail open), not refuse a hoofdleerkracht. No behaviour is wrong today, but slice 3 reads this doc and test.
+- **Required fix:** say in the `<returns>` that deferring is safe only because the write refuses exactly these inputs (same function, pinned by `SubthemaLeeftijdInvoerTests`); state the real stakes in the test summary. Slice 3's review checks that every body leeftijd reaches a rights check or a refusal.
+
+### [MINOR] B. `LeesLeeftijd` calls itself "the one rule" for a leeftijd from outside the database; the FR-1 import keeps its own copy
+- **Where:** `Domain/Curriculum/Jaarfasen.cs:95-105`; `Infrastructure/SchoolcontentImport/SchoolcontentImportService.cs:291, :936-937`; `Domain/Toegang/Hoofdleerkrachtaanstelling.cs:37`.
+- **Problem:** the import tests the leeftijd inline with `IsBekend(...Trim())`; the doc also omits the hoofdleerkracht appointment among `WatIsErMisMet`'s callers. No rights consequence (the import is gated as a whole, R27).
+- **Required fix:** narrow the headline to a request-body leeftijd and name the import's copy, or route both import sites through `LeesLeeftijd`; either way name the appointment among `WatIsErMisMet`'s callers.
+
+### [MINOR] C. The ADR index says ADR-0022's seam was a no-op until 2026-09-14; it refused anonymous requests from 2026-09-11
+- **Where:** `docs/adr/README.md:88` (and the same phrase at `:38`).
+- **Problem:** ADR-0031 made the policy require a session on 2026-09-11 (ADR-0022 status line; `CurriculumbeheerAutorisatieTests.cs:16-18`). The paragraph also still lists ADR-0022 among ADRs that depend on an unresolved Art. XIV decision, which the Art. VI.1 ratification of 2026-09-14 settled.
+- **Required fix:** write the two steps in both places: a no-op until E6-01 made it require a session (ADR-0031, 2026-09-11), and E6-02 slice 1 bound it to the directie row (2026-09-14).
+
+### [MINOR] D. The E8-07 pointer says "today" a `geweigerd`/`voorgesteld` link blocks the maker's delete; no route enforces that row today
+- **Where:** `backlog/E8-fast-follow.md:29`; `Infrastructure/Toegang/EfRechtenbronnen.cs:38`; `Api/Controllers/ActiviteitenController.cs:12-23`.
+- **Problem:** `DELETE api/activiteiten/{id}` carries no policy yet; any signed-in gebruiker can delete any activiteit until slice 3 applies `ActiviteitVerwijderen`.
+- **Required fix:** describe the declared rule: the delete row as declared in slice 1 counts every link, so once slice 3 applies it, such a link withholds the maker's delete.
+
+### Merge condition (not a finding)
+The two pointers name the R25 carry-forward, which is `ef6468b` on `feature/e6-rollen-rechten` only. They resolve if this branch merges back through that branch, or if `ef6468b` reaches `main` no later than this branch.
+
+### Non-blocking nits
+- `VereisLeeftijd` has two `<summary>` elements plus an older unattached "Verifies the klas exists" summary above them (`SchoolcontentBeheerService.cs:893-905`).
+- `WatIsErMisMet`'s doc block (`Jaarfasen.cs:134-157`) is separated from it by a blank line, so it attaches to `LeerjaarVoor`.
+- E7-11 (`E7-niet-functioneel.md:117`): 403 is pinned on both routes; 400 and 401 on the `POST` only.
+- `SubthemaLeeftijdInvoerTests` is a tripwire against un-sharing the function, not a proof over all inputs.
+- `RechtenEndpointsTests.cs:223-224`: "will" should be "may" for E6-03's future delete.
+
+**Checks run:** each rewritten predicate proved equivalent (`VereisLeeftijd`, `WatIsErMisMet`, `UitInvoer`); no sentence, status, stored form, `nl.json`, controller or migration changed; reflection plus metadata test together cover all seven endpoints; E7-06 text verified; R25 premises hold. Run: `dotnet build` 0/0; filtered unit tests 303 passed; `CurriculumbeheerAutorisatieTests` 5 passed; `dotnet format --verify-no-changes` exit 0.
