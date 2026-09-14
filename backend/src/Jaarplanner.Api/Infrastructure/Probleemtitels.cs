@@ -57,4 +57,10 @@ public static class Probleemtitels
 
     /// <summary>The session is valid but the action is not allowed for this person (403). E6-02 is what produces it.</summary>
     public const string GeenToegang = "Geen toegang";
+
+    /// <summary>
+    /// A gebruikerbeheer change was refused by the current state (409, E6-04): the sign-in name exists already, or the
+    /// change would leave the school without a directie. The request was fine and nothing was changed.
+    /// </summary>
+    public const string NietDoorgevoerd = "Niet doorgevoerd";
 }

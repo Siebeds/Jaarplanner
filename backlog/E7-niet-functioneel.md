@@ -71,7 +71,18 @@
   - a klastoewijzing is deleted with its gebruiker or its klas;
   - an aanstelling is deleted with its gebruiker or its schooljaar.
 
-  Nothing ends them earlier. An aanstelling or klastoewijzing of a past schooljaar stops granting rights on shared content when that schooljaar ends (R20), but stays stored until the klas, schooljaar or gebruiker is removed. **No route removes a gebruiker or a schooljaar yet** (the gebruiker delete is E6-04's, built in slice 2 of the combined E6-02/E6-04 build; the schooljaar delete is E6-03's), so today only a klastoewijzing can go, with its klas, and every other row here is kept indefinitely. Whether that is the retention the school wants is the register's question, not the code's.
+  An aanstelling or klastoewijzing of a past schooljaar stops granting rights on shared content when that schooljaar ends (R20), but stays stored until directie ends it by hand (below) or its klas, schooljaar or gebruiker is removed.
+
+  *Removing a gebruiker (E6-04 slice 2, 2026-09-14).* ~~No route removes a gebruiker or a schooljaar yet~~ *(struck 2026-09-14: slice 2 added `DELETE /api/gebruikers/{id}`; the schooljaar half is still true.)*
+  - **Who and when:** directie removes a gebruiker by hand, and only while another directie who can sign in remains (ADR-0031 decision 7). Nothing removes a gebruiker automatically, for instance when they leave the school; when that should happen is the register's decision.
+  - **What the removal erases:** the gebruiker row, that is their naam, their sign-in name (UPN), their Entra tenant id and object id, and their themabeheer and directie flags. Their session stops working on the next request.
+  - **What it cascades to:** their klastoewijzingen and their hoofdleerkrachtaanstellingen.
+  - **What it nulls:** `Activiteit.MakerId` on every activiteit they made (I17). The activiteiten themselves stay, as purely shared content.
+  - **Ending one by hand:** directie can end each of these facts at any time on the Gebruikers screen. Unticking a klas deletes that klastoewijzing row (`HaalKlasWegAsync`), unticking a jaarfase deletes that aanstelling row (`TrekAanstellingInAsync`), and unticking themabeheer or directie clears that flag on the gebruiker row (directie only while another directie who can sign in remains). **No history is kept:** nothing records that the fact existed, when it ended or who ended it.
+  - **The schooljaar delete is still E6-03's.** Apart from directie ending it by hand, an aanstelling therefore goes with its gebruiker, and a klastoewijzing with its gebruiker or its klas.
+  - **Who reads this data:** the beheer list (`GET /api/gebruikers`: naam, UPN, rights, klassen, appointments, whether the invitation is bound) is directie only. Any other signed-in gebruiker sees only their own rights, through `GET /api/ik`.
+
+  Whether that is the retention the school wants is the register's question, not the code's.
 
   *Carry-forward (E6-02 slice 3, 2026-09-14):* one more staff fact. `wizardruns.GestartDoorId` records which gebruiker started a thema-opbouw wizard run ([ADR-0030](../docs/adr/0030-rollen-en-rechten-in-de-app.md) R32, I24; migration `Wizardrun`), and `GET /api/thema-opbouw/wizardruns/{runId}` returns it to every signed-in gebruiker. Staff data, so Art. VI.2 allows it, and the register needs an entry. *Retention, as coded:* the column is set to null when the gebruiker is removed (FK `SET NULL`), and the run row itself is deleted with its thema (cascade). Nothing ends it earlier: a finished or closed run keeps its starter. The maker of an activiteit the wizard creates is the maker entry above (I18).
 

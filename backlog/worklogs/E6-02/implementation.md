@@ -1453,6 +1453,16 @@ personal content (R6, unbuilt). The sweep's `OpenVoorIedereen` list is therefore
 - **Themabeheer on the ordinary subthema, subdoel and activiteit routes: 403** (I22), pinned. The maker's delete
   right (R33) is not wizard-specific: `ActiviteitVerwijderen` admits the maker, themabeheer or not.
 - **No screen calls these yet.** E6-05 builds the wizard UI.
+## Code slice 2 — E6-04 beheer
+
+- **FR / Article:** FA FR-12.2, FR-10; Art. VI.1 (ratified 2026-09-14: directie maintains gebruikers and rights, may
+  give the directie right to someone else), Art. VI.2 (staff data only), Art. II.3/II.5 (Dutch in `nl.json`, server
+  Dutch only where directie acts on it, no em dash); ADR-0030 §2 I12, I17, I20, I21 and §3 row "Gebruikers, klassen en
+  schooljaren beheren …" (directie only); ADR-0031 decision 3 (invite by UPN, the unbound state) and decision 7 (the
+  last directie cannot be removed or demoted); ADR-0024 (Inkt en Signaal), ADR-0017 (WCAG 2.2 AA).
+- **Branch:** `story/E6-04-beheer`, from `feature/e6-rollen-rechten` at `0073bd7`. Not pushed, no PR.
+- **Scope held to slice 2.** No existing controller's authorisation changed (slice 3), no migration (none needed: the
+  slice 1 tables carry everything), DI in one separate block.
 
 ### Files changed
 
@@ -1716,6 +1726,218 @@ The server enforces all of this; without slice 4 these controls answer 403.
    - the wizard's leeftijd select for a subthema holding someone else's content;
    - the wizard delete of a linked activiteit, or of a subthema with linked activiteiten, for a caller without the
      goal-link right.
+| `Application/Toegang/IGebruikerBeheerService.cs` (new) | The use cases, the DTOs (`GebruikersOverzicht`, `GebruikerBeheerWeergave`, `KlastoewijzingBeheerWeergave`, `AanstellingBeheerWeergave`, `GebruikerUitnodiging`) and the faults (404 / 400 / 409, the 409s being `GebruikerBestaatAlFout` and `LaatsteDirectieFout`). |
+| `Infrastructure/Toegang/GebruikerBeheerService.cs` (new) | EF implementation. The last-directie guard locks the directie rows (`SELECT … FOR UPDATE`, id order) inside the writing transaction. "Counts for shared content" uses `Rechtenberekening.TeltNog` on `Schoolklok` and `Leeftijdsrechten.VoorKlas`, the rights' own rules. |
+| `Infrastructure/DependencyInjection.cs` | One registration, in its own commented block after the first-directie bootstrap. |
+| `Api/Controllers/GebruikersController.cs` (new) | Thin; `[Authorize(Policy = Rechtenmatrix.Beleid.Beheer)]` on the class. |
+| `Api/Infrastructure/GebruikerbeheerExceptionHandler.cs` (new), `Program.cs`, `Probleemtitels.cs` | Faults to ProblemDetails (404, 400, 409 "Niet doorgevoerd"); one registration line in `Program.cs`. |
+| `IntegrationTests/Postgres/GebruikerbeheerEndpointsTests.cs` (new) | 27 cases, below. |
+| `frontend/src/features/instellingen/gebruikerbeheer.ts` (new) | Types, the overview query (enabled only for directie), the invite, one rights mutation (PUT gives, DELETE takes), removal; writes go into the cache before the refetch and invalidate `ik`. |
+| `…/instellingen/GebruikersScherm.tsx` (new) | The part: schooljaar picker, "Gebruiker uitnodigen", the per-jaarfase hoofdleerkracht block, the ended-year notice, one row per person, removal behind `Bevestiging`. |
+| `…/instellingen/Rechtenblad.tsx` (new) | The one "Rechten" sheet: directie and themabeheer, klassen of the chosen year, hoofdleerkracht jaarfasen of the chosen year; every tick saves at once; the server's refusal shown above the boxes. |
+| `…/instellingen/Uitnodigingsblad.tsx` (new) | Microsoft sign-in name + naam; on success the new person's Rechten sheet opens. |
+| `…/instellingen/Onderdeelpoort.tsx` (new), `onderdelen.ts`, `Instellingenindeling.tsx`, `App.tsx` | Gebruikers is `alleenDirectie`; `useZichtbareOnderdelen` feeds the column and the phone switch; the gate sends a non-directie direct visit to the first visible part. `Record<Deel, ComponentType>` kept. |
+| `…/instellingen/KlassenScherm.tsx` | Read-only for non-directie (no add/edit/delete); directie sees each klas's leerkrachten by name; the missing-leeftijd callout also says the klas gives its leerkrachten no rights on shared activiteiten (I12), in the same callout. |
+| `frontend/src/i18n/nl.json` | `instellingen.gebruikers`, a `gebruikers` group, four `klasbeheer` keys. |
+| Tests: `GebruikersScherm.test.tsx`, `KlassenScherm.test.tsx` (new), `Instellingenindeling.test.tsx`, `App.test.tsx` | Below. `App.test` now controls `useIk` with a hoisted mock: its one query client would otherwise cache the first `/api/ik` answer for every later test. |
+
+### The API contract (all under the `Beheer` policy: directie only; 401 without a session, 403 for anyone else)
+
+| Route | Body | Answer |
+| --- | --- | --- |
+| `GET /api/gebruikers` | | `{ gebruikers: GebruikerBeheerWeergave[], voorbijeSchooljaarIds: guid[] }` |
+| `GET /api/gebruikers/{id}` | | `GebruikerBeheerWeergave`; 404 |
+| `POST /api/gebruikers` | `{ email, naam, isDirectie?, heeftThemabeheer? }` | 201 + `GebruikerBeheerWeergave`; 400 no single UPN; 409 duplicate |
+| `DELETE /api/gebruikers/{id}` | | 204; 409 last directie; 404 |
+| `PUT` / `DELETE /api/gebruikers/{id}/directierecht` | | 200 + gebruiker; DELETE 409 last directie |
+| `PUT` / `DELETE /api/gebruikers/{id}/themabeheer` | | 200 + gebruiker |
+| `PUT` / `DELETE /api/gebruikers/{id}/klassen/{klasId}` | | 200 + gebruiker; PUT 404 unknown klas |
+| `PUT` / `DELETE /api/gebruikers/{id}/hoofdleerkracht/{schooljaarId}/{jaarfase}` | | 200 + gebruiker; 400 unknown jaarfase; PUT 404 unknown schooljaar |
+
+`GebruikerBeheerWeergave` = `{ id, naam, email, isDirectie, heeftThemabeheer, isAangemeld, klastoewijzingen:
+[{ klasId, klasNaam, jaarfase (nullable), schooljaarId, teltVoorGedeeldeInhoud }], hoofdleerkrachtaanstellingen:
+[{ schooljaarId, jaarfase, teltVoorGedeeldeInhoud }] }`. Every write is idempotent and answers the gebruiker as they are
+afterwards. Refusals carry Dutch `detail` sentences for directie (Art. II.3), pinned by value in the tests.
+
+### Key decisions
+
+- **The guard's transaction boundary is a row lock, not SERIALIZABLE.** Both writes that can take the directie right
+  away lock every directie row in id order, then read the gebruiker, then write, then commit. A concurrent demotion
+  waits, and re-reads the locked set after the first commits, so it counts what is true then. Deterministic (no 40001
+  retry to map) and deadlock-free, because every caller locks in the same order. **Shown to be necessary:** with
+  `FOR UPDATE` removed, the race test fails (200 where 409 belongs); with it, the test passes.
+- **`teltVoorGedeeldeInhoud` is exactly what the rights service grants today.** For an appointment: its year has not
+  ended (R20). For a klastoewijzing: its year has not ended **and** the klas states a jaarfase (R22, I12); `jaarfase:
+  null` in the payload tells the screen which reason applies. `voorbijeSchooljaarIds` covers every schooljaar, so the
+  screen can say a year has ended before anything in it is ticked, and never compares dates in the browser.
+- **Every tick saves at once, one request each.** A save button over a dozen boxes would send a dozen requests that
+  can half fail, and the last-directie refusal belongs beside the box that caused it. The sheet says so once.
+- **The (c) sentence is conditioned on what it claims (the E5-03 rule).** An appointment counts until its year ends,
+  next year's included, so a jaarfase with nobody *this* year may still have a hoofdleerkracht today. That line says
+  "Niemand in dit schooljaar"; only a jaarfase with no appointment that counts anywhere says "Geen hoofdleerkracht",
+  and only then does "Zonder hoofdleerkracht past alleen de directie de subthema's van die leeftijd aan." appear.
+- **The invitation asks for "Microsoft-aanmeldnaam"**, with one line saying it can differ from the e-mail address
+  (ADR-0031 decision 3). Rights are set in the Rechten sheet, which opens straight after the invite.
+- **"Nog niet aangemeld" is text in the row and in the sheet.** The sheet adds the one sentence that states the
+  residual risk as a fact: "Wie zich als eerste met deze aanmeldnaam aanmeldt, krijgt deze rechten."
+- **Checkboxes are ink (`accent-inkt`), not the accent.** Accent uses on these screens: the primary action
+  ("Gebruiker uitnodigen", "Uitnodigen"), the active destination, the focus ring. No new hue.
+- **Removal from the sheet closes the sheet and opens `Bevestiging`**; a refusal lands under the list, as the klas
+  delete already does.
+
+### Tests added
+
+- **Backend, `GebruikerbeheerEndpointsTests` (27, Postgres):**
+  - 403 on all twelve routes for themabeheer, hoofdleerkracht, leerkracht, all three at once, and no right (theory ×5),
+    with nothing changed afterwards; 401 on all twelve without a session; a directie row is allowed.
+  - The overview: JSON names, order, `isAangemeld`, the R20 and I12 flags per item (running, ended and not-yet-started
+    year; a klas without jaarfase) and `voorbijeSchooljaarIds`.
+  - Invite: normalises the UPN and applies the flags; a duplicate differing only in case and spaces is 409 with its
+    exact Dutch sentence; four bad UPNs are 400 with their exact sentence (theory ×4).
+  - Themabeheer and directie granted and revoked, idempotent; revoking from a non-holder is a no-op.
+  - **Last directie:** demote → 409 and remove → 409, each with its exact Dutch value and no em dash. A directie may
+    remove themselves while another remains.
+  - **The race:** a second transaction holds the lock and has demoted Bert without committing. An's demotion must still
+    be waiting after one second, and after that commit it answers 409, with exactly one directie left.
+  - Klastoewijzing: link (idempotent, co-teacher allowed) and unlink (idempotent); the new link shows in that person's
+    `/api/ik` on the next request; 404 for an unknown klas or gebruiker.
+  - Hoofdleerkracht: two on one (year, K3), no klas needed (I20, visible in `/api/ik`), withdrawal; `K7`, `k3`, `3K`
+    refused with `Jaarfasen.WatIsErMisMet`'s sentence (theory ×3); an unknown schooljaar → 404.
+  - **Removal** leaves the activiteit they made with `MakerId` null and removes their klastoewijzingen and aanstellingen
+    (I17, cascade).
+- **Frontend (Vitest, 19 new cases, plus the per-part `App.test` case the new part gets automatically: 233 → 253):**
+  - `GebruikersScherm.test` (10): "nog niet aangemeld" only on the unbound row; rights as words with only the chosen
+    year's klassen and jaarfasen; ticking a klas sends one PUT on that link and stays ticked; ticking a jaarfase
+    appoints; **the last-directie refusal is shown in the server's words and the box stays ticked**; the removal
+    refusal is shown and the row stays; "Geen hoofdleerkracht" vs "Niemand in dit schooljaar", with the (c) sentence
+    only when earned; the ended-year notice once; after an invite the new person's Rechten sheet opens, and the body
+    was trimmed.
+  - `KlassenScherm.test` (3): read-only for a non-directie, with no `/api/gebruikers` request; the I12 sentence in the
+    same callout; directie sees the buttons and the leerkrachten.
+  - `Instellingenindeling.test` (+5): **the part is hidden for a non-directie** (even with TB, HL and a klas), shown to
+    directie in both shapes, hidden while `ik` is pending; the gate redirects a non-directie and keeps directie.
+  - `App.test` (+1): a non-directie opening `/instellingen/gebruikers` through the real route table lands on
+    `/instellingen/klassen`.
+
+### Gates
+
+- `cd backend && dotnet build`: ✓, 0 warnings. `dotnet format`: nothing to change; `--verify-no-changes` exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (port 5433): UnitTests 1340 passed,
+  4 skipped; IntegrationTests 410 passed, 1 skipped (383 before, plus 27 new).
+- `cd frontend && pnpm lint`: ✓ (oxlint exit 0, `tsc` exit 0). `pnpm test`: 35 files, 253 tests passed.
+  `pnpm build`: ✓ (the >500 kB chunk warning predates this change).
+
+### Browser pass (headless Chrome over the DevTools protocol, 1440×1000 and 390×844, dark and light)
+
+The API ran in Development on **port 5395** against a throwaway database, **`jp_spotcheck_e604`**, created and dropped on
+the local server (port 5433). Vite ran on **port 5185**, proxying to it. Seeded over the API:
+- schooljaren: 2026-2027 (running) and 2025-2026 (ended);
+- klassen: K3 groen, L1 blauw, L2 rood (jaarfase set to null by SQL, as on a legacy row), K3 vorig jaar;
+- gebruikers: An (themabeheer, K3 groen, HL K3; bound by SQL), Bert (K3 groen, L1 blauw, K3 vorig jaar), Carla (HL K3
+  and L1 in the ended year), Dirk (a long name, L2 rood), plus the configured first directie.
+
+What the pass showed:
+- **Directie, list:** Gebruikers is in the column and the phone switch; the rows read as intended; "Nog niet aangemeld"
+  is on every unbound row and not on An's; the hoofdleerkracht block shows K3 An Peeters, and L1 "Geen hoofdleerkracht"
+  with the (c) sentence.
+- **Directie, sheet:** ticking L1 blauw for An saved and the row updated. Unticking Directie on the only directie showed
+  "directie@jaarplanner.local is de enige met het directierecht. Geef het directierecht eerst aan iemand anders." and the
+  box stayed ticked.
+- **The ended year (2025-2026):** the notice, Carla as hoofdleerkracht of K3 and L1, and Bert's past klas.
+- **Invite:** "Eva.Janssens@School.be" was stored as `eva.janssens@school.be` and "Rechten van Eva Janssens" opened.
+- **Klassen as directie:** "Leerkrachten: An Peeters, Bert Claes"; L2 rood's callout carries the I12 line.
+- **Bert (not directie):** no Gebruikers link, no klas buttons, no leerkracht names; a direct visit to
+  `/instellingen/gebruikers` lands on `/instellingen/klassen`.
+- **390:** no horizontal overflow on the list or the invite sheet; the Rechten sheet is a bottom sheet with Klaar and
+  Gebruiker verwijderen in the footer; the long name wraps.
+- **Contrast**, measured in the browser with alpha composited:
+  - light: row meta, uitleg, dd, the (c) sentence and the stil "Gebruiker verwijderen" 6.51:1; "Nog niet aangemeld"
+    17.78:1; white on the accent button 6.10:1; the ended-year notice on `vlak-diep` 5.51:1, the lowest;
+  - dark: meta 7.58:1; the refusal alert and the I12 callout 8.00:1; the notice 8.97:1.
+- **A false alarm:** a full-page capture of the desktop sheet looked clipped on the right. The dialog's bounding box at
+  1440 is x=1024, width 416 (26rem), and a viewport-only capture shows it whole, so the clip was the capture mode, not
+  the layout.
+
+### Self-check against the brief
+
+- **Invite, rights, links, removal:** ✓, in the API, the UI and the tests.
+  - Directie invites by UPN (`NormaliseerEmail`; a duplicate is refused in Dutch).
+  - It grants and revokes themabeheer and the directie right.
+  - It links and unlinks klassen, unique per pair.
+  - It appoints and withdraws hoofdleerkrachten per (year, jaarfase), several allowed, validated by the one leeftijd
+    rule.
+  - It removes a gebruiker, with I17 and the cascades.
+- **The last directie** can be neither demoted nor removed. The count is read under a lock in the writing transaction,
+  and the race is tested and shown to need that lock: ✓.
+- **The list** shows naam, UPN, rights as words, whether the invitation is bound, klassen and appointments, and whether
+  each counts (R20): ✓. The per-jaarfase hoofdleerkracht line says it in words when a jaarfase has none: ✓.
+- **Gebruikers is for directie only:** the link is hidden, the address is redirected, and `Record<Deel, ComponentType>`
+  is kept: ✓.
+- **Klassen** is read-only for a non-directie, shows the leerkrachten by name to directie, and puts I12 in the same
+  callout: ✓.
+- **Copy and design:** every string is in `nl.json` with no em dash (the catalogue guards are green), the accent is
+  used only for its uses, and the screens work at 390 and from `lg`: ✓.
+- **Not claimed:** the *Done when* of E6-04 as a whole also needs slice 3 (the server refusing the klas routes to a
+  non-directie) and slice 4. This slice does not claim the story.
+
+### For the test-runner
+
+- **Automated:** `dotnet test` with `JAARPLANNER_TEST_POSTGRES`, filtered on `GebruikerbeheerEndpointsTests` for this
+  slice; `pnpm test` in `frontend`.
+- **By hand, setup:** run the API in Development against a throwaway database; the development sign-in is
+  `/api/aanmelden/ontwikkeling`. Seed a running and an ended schooljaar with klassen (one with its `Jaarfase` set to
+  null by SQL), and invite three or four people over the screen or the API.
+- **As the configured first directie, at `/instellingen/gebruikers`:**
+  1. Invite someone, then open their Rechten.
+  2. Tick a klas and a jaarfase.
+  3. Untick Directie on the only directie: the refusal appears.
+  4. Switch to the ended year: the notice appears.
+  5. Remove someone who made an activiteit: it stays, with maker null.
+- **As a non-directie:** Gebruikers is in neither the column nor the phone switch, `/instellingen/gebruikers` lands on
+  `/instellingen/klassen`, and there are no buttons there.
+- Check at 1440 and 390.
+
+### Open questions / Art. XIV touched
+
+1. **The Klassen part is read-only for a non-directie in the UI only.** The klas routes still admit any session until
+   slice 3 puts the `Beheer` policy on them. That follows from the split; it is noted so the merge order is clear.
+2. **No UI edits a gebruiker's name or UPN.** Neither the brief nor E6-04 asks for it. A typo in a UPN means remove and
+   invite again, which is safe only before the first login. If directie wants an edit, it needs a rule for a bound row,
+   because the UPN no longer identifies the person once the invitation is bound.
+3. **Removing yourself** (allowed while another directie remains) ends your session on the next request. The screen
+   warns no further than the `Bevestiging` text; a sentence could be added if the owner wants one.
+4. **Graadklas (Art. XIV):** untouched. A klas still grants its one stated jaarfase, through `Leeftijdsrechten`.
+
+### Fix round 1
+
+- **Input:** "Code slice 2 — audit round 1" in `backlog/worklogs/E6-02/antagonist.md` (0 CRITICAL, 1 MAJOR, 5 MINOR,
+  1 QUESTION) and "E6-04 slice 2 — Test report (round 1)" in `test-report.md` (PASS, with four notes). Both are the
+  orchestrator's, committed unedited with this fix. QUESTION 7 was decided by the orchestrator (confirm before giving up
+  your own directie right; name the consequence of removing yourself).
+- **Branch:** `story/E6-04-beheer`, on top of `224815f`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | MAJOR: the last-directie guard counted unbound invitations | **Fixed.** `LeesAndereDirectieOnderSlotAsync` still locks every directie row (`FOR UPDATE`, id order) in the writing transaction, and now reads whether each is bound (`"EntraObjectId" IS NOT NULL`). Only another directie who can sign in counts. When other directieleden exist but none has signed in, the refusal says so: "{naam} is de enige met het directierecht die zich al heeft aangemeld. De anderen met het directierecht hebben zich nog niet aangemeld, dus het directierecht kan nog niet weg." For removal: "… die zich al heeft aangemeld, en kan niet verwijderd worden. De anderen met het directierecht hebben zich nog niet aangemeld." Both are pinned by value. **Development:** the development sign-in binds nobody, so under it no directie is ever bound and the production rule would make every directie undemotable. `GebruikerbeheerOpties.OngekoppeldeDirectieKanAanmelden` (Application) is `false` by default, which is the production rule. `Program.cs` sets it to `true` only when `Authenticatie:Modus` is `Ontwikkeling`, a mode the Api refuses to start with outside Development, and nothing else sets it. The reasoning is that in that mode an unbound directie really can sign in, by being picked, so the rule's meaning ("another directie who can sign in") is unchanged. **Integration tests:** the test host starts in Development with the development sign-in, so `GebruikerbeheerEndpointsTests` runs every request through a host that sets the flag back to `false` (`_productie`), and seeds directieleden bound by default. One test runs the development rule on purpose, and a `[Fact]` pins the mapping (Entra → false, Ontwikkeling → true, default false). |
+| 2 | MINOR: the E7-06 register said no route removes a gebruiker | **Fixed** in `backlog/E7-niet-functioneel.md`, the E6-02 slice 1 carry-forward's retention paragraph only. The false clause is struck with a dated note. A list now says: removal is by directie, by hand, only while another directie who can sign in remains, never automatic; it erases the row (naam, UPN, Entra tenant and object id, themabeheer and directie flags; the session stops on the next request); it cascades to klastoewijzingen and aanstellingen; it nulls `Activiteit.MakerId` (I17); the schooljaar delete is still E6-03's; `GET /api/gebruikers` is read by directie only, and anyone else sees only their own rights through `/api/ik`. |
+| 3 | MINOR: the (c) sentence claimed more than its condition, and "die leeftijd" had no referent | **Fixed.** Now "Bij een leeftijd zonder hoofdleerkracht beheert alleen de directie de subthema's en subdoelen.": it says less, and its referent is inside the sentence. New catalogue case in `catalogus.test.ts` ("het gebruikersbeheer (E6-04)"): the sentence names "leeftijd zonder hoofdleerkracht", and mentions neither "die leeftijd" nor activiteiten. |
+| 4 | MINOR: two length sentences unpinned; a dead copy of the jaarfase sentence | **Fixed.** `Een_te_lange_naam_of_aanmeldnaam_wordt_in_het_Nederlands_geweigerd` pins "Een naam is hoogstens 256 tekens lang." and "Een aanmeldnaam is hoogstens 320 tekens lang." and checks nothing was stored. `LeesJaarfase` throws `Jaarfasen.WatIsErMisMet(jaarfase)!`, which is non-null for exactly the inputs `LeesLeeftijd` refuses, so the sentence exists once, in the domain. |
+| 5 | MINOR (suspicion): disabling every box during a save throws focus out | **Confirmed and fixed.** Boxes now wait as `aria-disabled` and ignore input, and stay focusable. Browser keyboard pass (CDP key events): Space on "L1 blauw" kept focus on it during the save (`aria-disabled=true`, `activeElement` the box) and after it; a second Space unticked it, focus still there. New Vitest: during a held save the box is `aria-disabled`, not disabled, keeps focus and shows the requested state; a second tick is ignored (one write); after the save it still has focus. |
+| 6 | MINOR: a delete racing a link gave 500 | **Fixed.** `BewaarIdempotentAsync` maps 23503 to `GebruikerbeheerNietGevondenFout` with a Dutch sentence ("De gebruiker of de klas bestaat niet meer.", or "… het schooljaar …"). New Postgres test, deterministic: another transaction deletes the klas without committing, and the link's foreign-key check waits on it. After the commit the answer is 404 with that sentence. |
+| 7 | QUESTION, decided: self-demotion and self-removal | **Built.** Unticking your **own** Directie box opens `Bevestiging` over the sheet: "Je eigen directierecht afgeven?", with "Je ziet het scherm Gebruikers dan niet meer, en je kunt het directierecht niet zelf terugzetten." and "Directierecht afgeven". The consequence says nothing about who else can restore it, because the dialog shows before the server knows whether another directie exists. Someone else's box saves at once, as before. Removing yourself shows "Je wordt meteen afgemeld en kunt je daarna niet meer aanmelden. …". **No false error flash:** after your own demotion or removal only `ik` is refetched, not the overview, and the list's failure branch shows only when there is no data. Browser: after confirming, the page went to `/instellingen/klassen` with the error text never seen in 60 polls, and no Gebruikers link. Vitest covers cancel (no request), confirm (one DELETE, `ik` refetched, the overview not, no error text), someone else's right (no dialog), and the self-removal text. |
+| TR | Notes: removal race untested; five parts past the edge at 390 | **Race:** `Een_directie_verwijderen_terwijl_een_andere_wordt_afgezet_laat_er_een_over` holds the lock with Bert demoted and uncommitted, and removing An waits, then answers 409; exactly one directie is left. **Phone switch (design judgement):** it keeps scrolling, since five labels cannot fit at 390 without shrinking type or wrapping the segment into two rows. The edge where parts are hidden now fades into the row's own background (`vlak-diep`, no new hue), and the active part is scrolled into view when the row appears. Measured: on Gebruikers only the right edge fades, on Weergave only the left (the part fully visible), and with four parts (a leerkracht, 6px over) none. The tolerance is the row's padding, so a fade never dims a part that is fully in view. |
+| + | Audit summary: `KlassenScherm`'s comment said "the server refuses them" | **Fixed.** The comment now says the matrix gives those buttons to directie alone and the server refuses them once slice 3 puts the row on the klas routes; until then the routes admit any session. |
+
+**Tests added this round:**
+- **Backend** (`GebruikerbeheerEndpointsTests`, 27 → 36): unbound-only directie → both refusals by value; allowed after the second directie is bound (demote; remove); an unbound directie invitation may itself be demoted and removed while a bound one remains; the development rule counts an unbound directie; the option's mapping; the removal race; the FK race; the length sentences.
+- **Frontend** (253 → 258): focus during a save; self-demotion confirm, cancel and no error flash; someone else's directie right without a dialog; the self-removal text; the catalogue case.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433): UnitTests 1340 passed, 4 skipped; IntegrationTests 419 passed, 1 skipped (410 + 9 new).
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 258 passed. `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+**Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604b` (created, migrated, seeded over the API, then dropped); Vite on 5185; headless Chrome at 1440 and 390, light. It covered the keyboard pass, self-demotion with its confirmation and redirect, the new (c) sentence, and the switch fades above.
 
 ### Fix round 2
 
@@ -1764,6 +1986,44 @@ The server enforces all of this; without slice 4 these controls answer 403.
    old leeftijd only, it is one condition to drop.
 2. **Slice 4 must also hide** the thema delete for themabeheer when a run activiteit carries a link at a leeftijd where
    they may not link goals, and the wizard's leeftijd select in the same case.
+  - "Code slice 2 — audit round 2" in `antagonist.md`: 0 CRITICAL, 0 MAJOR (MAJOR 1 resolved), 5 MINOR.
+  - "E6-04 slice 2 — Test report (round 2)" in `test-report.md`: FAIL, on one MINOR defect (the phone switch fade); everything else passed, including a mutation run.
+
+  Both are the orchestrator's and are committed unedited with this fix.
+- **Branch:** `story/E6-04-beheer`, on top of `3e4ee04`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | MINOR: the (c) sentence still said "alleen de directie" | **Fixed.** New wording: "Bij een leeftijd zonder hoofdleerkracht doet de directie wat een hoofdleerkracht zou doen." It claims nothing about who else may act (themabeheer through the wizard, I25–I27; the FR-1 import's subdoel links; the leerkrachten of that leeftijd on the activiteiten and the streefwoordenschat). The catalogue case now refuses any "alleen" in this key, and still refuses "die leeftijd" and "activiteit". |
+| 2 | MINOR: E7-06 said only a cascade ends these rows | **Fixed**, my paragraph only. "Nothing ends them earlier" and the "only" are gone. A new bullet says directie can end each fact by hand at any time (unticking a klas or a jaarfase deletes that row, `HaalKlasWegAsync`, `TrekAanstellingInAsync`; unticking themabeheer or directie clears the flag), and that no history is kept. The opening sentence now reads "stays stored until directie ends it by hand or its klas, schooljaar or gebruiker is removed". |
+| 3 | MINOR: server sentences | **Fixed.** (a) "… Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld." in both "enige met het directierecht" refusals. (b) The number-neutral "Wie verder het directierecht heeft, heeft zich nog niet aangemeld, …" in both "die zich al heeft aangemeld" refusals. The pinned backend tests and the two mocked sentences in `GebruikersScherm.test.tsx` follow. (c) "De gebruiker of het schooljaar bestaat niet meer." is pinned by value in a new deterministic test: another transaction deletes the schooljaar without committing, the appointment's FK check waits on it, and after the commit the answer is 404 with that sentence. |
+| 4 | MINOR: a save that loses its row to a concurrent removal gave 500 | **Mapped to a Dutch 404**, not an idempotent 204. `BewaarWijzigingAsync` wraps every tracked gebruiker save (both directie writes, both themabeheer writes, the removal) and turns `DbUpdateConcurrencyException` into `GebruikerbeheerNietGevondenFout("Deze gebruiker is intussen verwijderd.")`. No concurrency token is configured on `gebruikers`, so zero rows can only mean the row is gone, and the sentence asserts exactly that. A 404 matches what a request arriving after the removal already gets; a 204 would claim a removal this request did not do. New deterministic tests: another transaction deletes An without committing, the tracked UPDATE or DELETE waits on the row lock (asserted still pending after 1 s), and after the commit the answer is 404 with that sentence. That is a theory over `PUT …/themabeheer`, `PUT …/directierecht` and `DELETE …/{id}`, plus a fact for `DELETE …/themabeheer`. |
+| 5 | MINOR (audit) = the test-runner's defect: the fade covered the active label | **Fixed and measured.** The row now has `scroll-px-9` (scroll-padding-inline 36px), a little wider than the 32px fade: with exactly 32px it still touched the fade by 0.3px, because the fade starts a pixel inside the row's border. `scrollIntoView` "nearest" therefore stops the active part clear of both fades; at either end of the row the other edge has nothing hidden, so it has no fade. The antagonist's optional font-swap note is also taken: once `document.fonts.ready` resolves, the active part is placed and measured again. Measurements are in the table below. |
+| TR | Note: the "allowed after binding" removal test did not first assert the refusal | **Added:** it asserts 409 before the bind, then 204 after it. |
+
+**Phone switch measurements**, headless Chrome, signed in as directie (five parts), each part opened fresh as the landing route. Pixel positions are viewport x; "fades" are the drawn fade overlays. Every case: **overlap 0px, active part fully inside the row**; the label's contrast is 17.78:1 light and 13.12:1 dark.
+
+| Width | Part | Scroll | Active part | Fades |
+| --- | --- | --- | --- | --- |
+| 390 | Klassen | 0/97 | [21,94] | right [341,373] |
+| 390 | Gebruikers | 0/97 | [94,185] | right [341,373] |
+| 390 | Hoeken | 0/97 | [185,257] | right [341,373] |
+| 390 | Algemene fiches | 44/97 | [213,337] | left [17,49], right [341,373] |
+| 390 | Weergave | 97/97 | [284,369] | left [17,49] |
+| 360 | Klassen | 0/127 | [21,94] | right [311,343] |
+| 360 | Gebruikers | 0/127 | [94,185] | right [311,343] |
+| 360 | Hoeken | 0/127 | [185,257] | right [311,343] |
+| 360 | Algemene fiches | 74/127 | [183,307] | left [17,49], right [311,343] |
+| 360 | Weergave | 127/127 | [254,339] | left [17,49] |
+
+Light and dark gave identical geometry. Before the fix, the test-runner measured Algemene fiches at [249,373] at 390, its last 19.3px under the right fade. With `scroll-px-8`, this pass measured [217,341], touching the fade by 0.3px, which is why the padding is 36px.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 424 passed, 1 skipped (419 + 5 new). After the last test-only edit (the 409 before the bind), `GebruikerbeheerEndpointsTests` alone: 41 passed.
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 258 passed. `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+**Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604c` (created, migrated, seeded over the API, dropped); Vite on 5185. It ran the measurements above, and the reworded (c) sentence rendered.
 
 ### Fix round 3
 
@@ -1798,6 +2058,35 @@ The server enforces all of this; without slice 4 these controls answer 403.
   - IntegrationTests: 423 passed, 1 skipped. The new case extends an existing test, so the count is unchanged.
 - Mutation probe: failed as required, then restored.
 - No frontend file changed.
+  - "Code slice 2 — audit round 3" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 1 MINOR; all five round-2 findings resolved.
+  - "E6-04 slice 2 — Test report (round 3)" in `test-report.md`: FAIL on 1 MINOR, plus one LOW note. The round-2 fade defect is fixed (20/20).
+
+  Both are the orchestrator's and are committed unedited with this fix. Nothing was changed beyond the three items below.
+- **Branch:** `story/E6-04-beheer`, on top of `02394a3`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | Audit MINOR: after a 404 the screen still showed the removed gebruiker, with a live sheet whose next tick answered "Gebruiker <guid> is niet gevonden." | **Fixed.** A 404 from either beheer write (`useRechtWijziging`, `useVerwijderGebruiker`) now refetches the overview, the klassen and the schooljaren (`bijNietGevonden`): the boxes are built from all three, and a 404 can mean any one of them is gone. `GebruikersScherm` remembers whose sheet is open, by id and name. When the loaded list no longer holds that person, the sheet (which renders only for someone in the list) closes, and a list-level alert says "{naam} is intussen verwijderd en staat niet meer in de lijst." That condition proves the person was listed when the sheet opened and is not now. A 404 about a klas or schooljaar leaves the person listed, so the sheet stays open with the server's sentence, and the refetch drops the gone box. **The not-found sentence names no raw id:** "Deze gebruiker bestaat niet (meer).", worded that way because that branch cannot tell a removed gebruiker from an id that never existed. It is pinned by value for a GET and a toggle after a removal (the second-tab path). **New Vitest:** a 404 on a klas tick refetches the list, closes the sheet, shows the list-level alert, and the person's row is gone while the other stays. |
+| 2 | Test-runner MINOR: the late-font re-placement scrolled a keyboard-focused link out of view (WCAG 2.4.7, 2.4.11) | **Fixed.** In the `document.fonts.ready` callback, if focus is inside the row and not on the active link, the **focused** link is brought into view ("nearest") and the fades are re-measured; the active part is left alone. Otherwise the active part is placed as before. **New Vitest** (mocked `document.fonts.ready` and `scrollIntoView`): with focus on Weergave while Klassen is active, the font's arrival calls `scrollIntoView` on Weergave and never on Klassen, and Weergave keeps focus. Without focus in the row, it places the active part. **Browser, fonts held back 3 s** (CDP `Fetch` interception, cache disabled), real Tab presses: see the table below. |
+| 3 | Test-runner LOW (folded into 1): DELETE `…/directierecht` racing a removal answered "Gebruiker {guid} is niet gevonden." | **Fixed, and tested.** The two writes that take the directie lock (demotion, removal) first check the gebruiker exists (the plain not-found for an id that never existed). They then read it after the lock with `VindNaSlotAsync`, which answers "Deze gebruiker is intussen verwijderd." if the row vanished while the request waited, which is exactly when that sentence is true. **New race theory** `Een_directie_afzetten_of_verwijderen_die_intussen_verwijderd_wordt_is_404_en_geen_500`: `/directierecht` and removal of a directie, each held on the lock by an uncommitted delete (pending after 1 s), then 404 with that sentence. The concurrency path in `BewaarWijzigingAsync` uses the same `IntussenVerwijderd()`. |
+
+**Keyboard repro with the fonts held back 3 s**, directie, five parts. Positions are viewport x; the row's visible span is its inner edge. In every case the fonts were loading when Tab reached the link and loaded at the second measurement.
+
+| Width | Landing, keys | Before the font | After the font |
+| --- | --- | --- | --- |
+| 390 | Klassen, Tab 4× to Weergave | [284,369] of [17,373], in view, 0px under a fade, focused | [284,369], in view, 0px under a fade, focused |
+| 390 | Weergave, Tab 12× to Klassen | [21,91], in view, 0px, focused | [21,94], in view, 0px, focused |
+| 360 | Klassen, Tab 4× to Weergave | [254,339] of [17,343], in view, 0px, focused | [254,339], in view, 0px, focused |
+| 360 | Weergave, Tab 11× to Klassen | [21,91], in view, 0px, focused | [21,94], in view, 0px, focused |
+
+In round 3's repro, Weergave had ended at [381,466], outside the row. **The 20 landings** (5 parts × 390/360 × light/dark), re-run: identical to fix round 2's table, 0px overlap and the active part fully in the row in every case; label contrast 17.78:1 light, 13.12:1 dark.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 426 passed, 1 skipped (424 + 2 new race cases).
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 261 passed (258 + 3 new). `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+**Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604d` (created, migrated, seeded over the API, dropped); Vite on 5185; headless Chrome.
 
 ### Owner-approved mini-fix (after audit round 4)
 
@@ -1819,3 +2108,27 @@ The server enforces all of this; without slice 4 these controls answer 403.
   - `dotnet build`: ✓, 0 warnings;
   - `dotnet format --verify-no-changes`: exit 0;
   - `Toegang` unit tests: 209 passed.
+  - "Code slice 2 — audit round 4" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION.
+  - The round-4 test report in `test-report.md`: PASS, with LOW notes.
+
+  Both are the orchestrator's and are committed unedited with this fix.
+- **Why this is not a fix round:** the three fix rounds were used up. The owner explicitly approved this extra fix and **waived the antagonist review for it**, so no audit round follows. The evidence is the diff, the tests and the browser check below. Only the three items below were changed.
+- **Branch:** `story/E6-04-beheer`, on top of `ef4d23c`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | Audit MINOR (comments only) in `GebruikersScherm.tsx` | **Fixed.** The removal-refusal comment now covers both refusals that end under the list: a 409 for the last directie, after which the row stays on screen, and a 404 for a person someone else removed first, after which the refetch (`bijNietGevonden`) has dropped the row and the sentence is what is left. The `verdwenen` comment presents a 404 from the sheet as the usual path, and says any refetch without the person (such as after a successful tick) reveals the same removal; the condition proves only that the person was listed when the sheet opened and is not now. |
+| 2 | Audit QUESTION, the owner chose to fix: klas and schooljaar not-found sentences showed a raw GUID | **Fixed.** Now "Deze klas bestaat niet (meer)." and "Dit schooljaar bestaat niet (meer).", in the gebruiker sentence's style, with no id and no em dash. Both are pinned by value in `GebruikerbeheerEndpointsTests`: `Koppelen_aan_een_onbekende_klas_of_gebruiker_is_404` and `Aanstellen_in_een_onbekend_schooljaar_is_404`, with ids that do not exist. No other not-found sentence in `GebruikerBeheerService` carries an id; the gebruiker ones were reworded in fix round 3, and the two FK race sentences never had one. |
+| 3 | Test-runner LOW notes: an alert appearing after its sheet closes can render off screen at 390, and focus falls to `body` | **Fixed** with one component, `Aandachtsmelding`, used for the list-level "{naam} is intussen verwijderd …" and for the removal's refusal under the list. It has `tabIndex={-1}` and focuses itself once, on mount, deferred one task so a closing Radix dialog's own focus return cannot land after it. Focusing scrolls it into view. It never focuses on a re-render, so it cannot take focus in any other situation. **New Vitest:** a 404 on a tick closes the sheet, and the list-level alert receives focus and has `tabindex="-1"`. The existing removal-refusal test now also asserts that its alert receives focus. |
+
+**Backend diff check:** `git diff -- backend` shows exactly the two sentences in `GebruikerBeheerService.cs` and the two `Assert.Equal` pins (plus one comment line each) in `GebruikerbeheerEndpointsTests.cs`. Nothing else in the backend changed.
+
+**Browser check at 390** (headless Chrome, light). API in Development on port 5395 against throwaway `jp_spotcheck_e604e` (created, migrated, seeded over the API plus twelve extra people named to sort last, then dropped); Vite on 5185. The page was 3162px tall and the target rows sat low in it (row button at `scrollY` 2318).
+- **404 on a tick:** "Zz Persoon 12" was removed in the database while its sheet was open, then a klas was ticked. The sheet closed, and the alert "Zz Persoon 12 is intussen verwijderd en staat niet meer in de lijst." was focused (`tabindex=-1`), at [396,448] in an 844px viewport, fully in view; the page scrolled to it.
+- **404 on a removal:** "Zz Persoon 11" was removed in the database, then "Gebruiker verwijderen" was confirmed. The row was gone, and the refusal "Deze gebruiker bestaat niet (meer)." under the list was focused, at [573,607], fully in view.
+- **No focus theft:** before any of this, focus was on `body` with no alert. An ordinary tick afterwards kept focus on its box; the earlier refusal, still on screen, did not take focus again.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 426 passed, 1 skipped (the same count as before: the two pins are assertions added to existing tests).
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 262 passed (261 + 1 new). `pnpm build`: exit 0 (the >500 kB chunk warning predates this).

@@ -8,10 +8,12 @@ import { IcoonPlus } from "../../components/Iconen";
 import { useActieveSelectie } from "../../lib/selectie";
 import { useJaarfasen } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
+import { useIk } from "../../lib/aanmelding";
 import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Klasformulier } from "./Klasformulier";
 import { Onderdeelwissel } from "./Instellingenindeling";
+import { useGebruikersOverzicht, type GebruikerBeheer } from "./gebruikerbeheer";
 import { useMaakKlas, useVerwijderKlas, useWijzigKlasVolledig } from "./mutaties";
 
 /**
@@ -33,11 +35,24 @@ import { useMaakKlas, useVerwijderKlas, useWijzigKlasVolledig } from "./mutaties
  *
  * **A klas states its leeftijd and nothing else about its level.** The leerjaar is derived from it
  * server-side, so it appears nowhere on this screen: printing both would be one fact twice.
+ *
+ * **Directie defines the klassen; everyone else reads them** (E6-04, ADR-0030 §3 "Gebruikers,
+ * klassen en schooljaren beheren", directie only). For anyone else there is no add, edit or delete:
+ * the matrix gives those to directie alone, and the server refuses them once the combined E6-02/E6-04
+ * build puts that row on the klas routes (its slice 3; until then the routes still admit any
+ * session). A button the matrix does not grant would be a control that does nothing (the E3-06
+ * rule). Directie also sees who teaches each klas, read from the beheer data, which only directie
+ * may read.
  */
 export function KlassenScherm() {
   const { schooljaar, schooljaren, klassen, laadt, kiesSchooljaar } = useActieveSelectie();
   const [formulier, setFormulier] = useState<{ klas?: KlasWeergave } | null>(null);
   const [teVerwijderen, setTeVerwijderen] = useState<KlasWeergave | null>(null);
+
+  const { data: ik } = useIk();
+  const isDirectie = ik?.isDirectie === true;
+  const beheer = useGebruikersOverzicht(isDirectie);
+  const leerkrachten = leerkrachtenPerKlas(beheer.data?.gebruikers);
 
   const { data: jaarfasen } = useJaarfasen();
   const maak = useMaakKlas(schooljaar?.id ?? null);
@@ -74,18 +89,20 @@ export function KlassenScherm() {
               </Keuze>
             </label>
 
-            <Knop
-              rang="rustig"
-              className="h-9 min-h-9 px-3 text-meta"
-              disabled={schooljaar === null}
-              onClick={() => {
-                maak.reset();
-                setFormulier({});
-              }}
-            >
-              <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-              {t("klasbeheer.toevoegen")}
-            </Knop>
+            {isDirectie ? (
+              <Knop
+                rang="rustig"
+                className="h-9 min-h-9 px-3 text-meta"
+                disabled={schooljaar === null}
+                onClick={() => {
+                  maak.reset();
+                  setFormulier({});
+                }}
+              >
+                <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+                {t("klasbeheer.toevoegen")}
+              </Knop>
+            ) : null}
           </div>
 
           {laadt ? (
@@ -98,14 +115,23 @@ export function KlassenScherm() {
                 <li key={klas.id}>
                   <Klasrij
                     klas={klas}
-                    onBewerk={() => {
-                      wijzig.reset();
-                      setFormulier({ klas });
-                    }}
-                    onVerwijder={() => {
-                      verwijder.reset();
-                      setTeVerwijderen(klas);
-                    }}
+                    leerkrachten={leerkrachten ? (leerkrachten.get(klas.id) ?? []) : undefined}
+                    onBewerk={
+                      isDirectie
+                        ? () => {
+                            wijzig.reset();
+                            setFormulier({ klas });
+                          }
+                        : undefined
+                    }
+                    onVerwijder={
+                      isDirectie
+                        ? () => {
+                            verwijder.reset();
+                            setTeVerwijderen(klas);
+                          }
+                        : undefined
+                    }
                   />
                 </li>
               ))}
@@ -175,16 +201,22 @@ export function KlassenScherm() {
  * **A missing age is the one state this row raises its voice for.** Everything else is a fact to
  * read. Since the leeftijd became required on 2026-08-30 it can only be missing on a klas that
  * predates the rule, and it matters more than it did: it is no longer just the coverage denominator,
- * it is what decides which subthema's and activiteiten the class holds at all (Art. IX.2).
+ * it is what decides which subthema's and activiteiten the class holds at all (Art. IX.2). Since
+ * E6-04 it also decides rights: a klas without a stated leeftijd gives its leerkrachten no right on
+ * the shared content (ADR-0030 I12), which the same callout says rather than a second one.
  */
 function Klasrij({
   klas,
+  leerkrachten,
   onBewerk,
   onVerwijder,
 }: {
   klas: KlasWeergave;
-  onBewerk: () => void;
-  onVerwijder: () => void;
+  /** Who teaches it, by name; undefined when this person may not see that (not directie). */
+  leerkrachten?: string[];
+  /** Absent for anyone but directie: the row is then read-only. */
+  onBewerk?: () => void;
+  onVerwijder?: () => void;
 }) {
   // Every klas states a leeftijd now, so a missing one means exactly one thing: a row written before that was
   // required, which nobody has edited since. `mogelijkeJaarfasen` no longer distinguishes anything (it is the
@@ -206,9 +238,10 @@ function Klasrij({
             <p className="mt-0.5 text-meta text-inkt-zacht">
               {telWoord(klas.aantalSubthemas, "klasbeheer.eenSubthema", "klasbeheer.aantalSubthemas")}
             </p>
-            <p className="mt-1.5 inline-flex rounded-veld bg-attentie-zacht px-2 py-1 text-meta font-medium text-attentie-inkt">
-              {t("klasbeheer.leeftijdOntbreekt")}
-            </p>
+            <div className="mt-1.5 inline-flex flex-col rounded-veld bg-attentie-zacht px-2 py-1 text-meta text-attentie-inkt">
+              <p className="font-medium">{t("klasbeheer.leeftijdOntbreekt")}</p>
+              <p>{t("klasbeheer.geenLeeftijdsrechten")}</p>
+            </div>
           </>
         ) : (
           /* `jaarFasen` and not `jaarfase`: this says what the class is MEASURED against, which for a class
@@ -220,16 +253,47 @@ function Klasrij({
             {telWoord(klas.aantalSubthemas, "klasbeheer.eenSubthema", "klasbeheer.aantalSubthemas")}
           </p>
         )}
+        {leerkrachten ? (
+          <p className="mt-0.5 text-meta text-inkt-zacht">
+            {leerkrachten.length === 0
+              ? t("klasbeheer.geenLeerkracht")
+              : leerkrachten.length === 1
+                ? t("klasbeheer.eenLeerkracht", { namen: leerkrachten[0] })
+                : t("klasbeheer.leerkrachten", { namen: leerkrachten.join(", ") })}
+          </p>
+        ) : null}
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
-          {teZetten ? t("klasbeheer.leeftijdInstellen") : t("themabeheer.bewerk")}
-        </Knop>
-        <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
-          {t("themabeheer.verwijder")}
-        </Knop>
-      </div>
+      {onBewerk || onVerwijder ? (
+        <div className="flex shrink-0 items-center gap-2">
+          {onBewerk ? (
+            <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
+              {teZetten ? t("klasbeheer.leeftijdInstellen") : t("themabeheer.bewerk")}
+            </Knop>
+          ) : null}
+          {onVerwijder ? (
+            <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
+              {t("themabeheer.verwijder")}
+            </Knop>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
+}
+
+/**
+ * Who teaches each klas, by name, in the order the server sorts gebruikers (by name). `undefined`
+ * when the beheer data is not there, which for anyone but directie is always: the row then says
+ * nothing about leerkrachten rather than "nog geen leerkracht", which would be false.
+ */
+function leerkrachtenPerKlas(gebruikers: GebruikerBeheer[] | undefined): Map<string, string[]> | undefined {
+  if (!gebruikers) return undefined;
+  const perKlas = new Map<string, string[]>();
+  for (const gebruiker of gebruikers) {
+    for (const toewijzing of gebruiker.klastoewijzingen) {
+      perKlas.set(toewijzing.klasId, [...(perKlas.get(toewijzing.klasId) ?? []), gebruiker.naam]);
+    }
+  }
+  return perKlas;
 }

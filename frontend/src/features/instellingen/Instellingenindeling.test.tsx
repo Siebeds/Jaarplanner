@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Instellingenindeling, Onderdeelwissel } from "./Instellingenindeling";
+import { Onderdeelpoort } from "./Onderdeelpoort";
+import type { Ik } from "../../lib/aanmelding";
 import { t } from "../../i18n";
 
 /**
@@ -61,15 +63,46 @@ function AnderDeel() {
 
 const renderMetTweeSchermen = (ingang: string | { pathname: string; state: unknown }) =>
   render(
-    <MemoryRouter initialEntries={[ingang]}>
-      <Routes>
-        <Route path="instellingen" element={<Outlet />}>
-          <Route path="klassen" element={<EenDeel />} />
-          <Route path="hoeken" element={<AnderDeel />} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    // The switch reads who is signed in (E6-04: Gebruikers is directie only), so it needs a client.
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={[ingang]}>
+        <Routes>
+          <Route path="instellingen" element={<Outlet />}>
+            <Route path="klassen" element={<EenDeel />} />
+            <Route path="hoeken" element={<AnderDeel />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
+
+const IK: Ik = {
+  id: "ik-1",
+  naam: "An Peeters",
+  email: "an@school.be",
+  isDirectie: false,
+  heeftThemabeheer: true,
+  hoofdleerkrachtLeeftijden: ["K3"],
+  leerkrachtLeeftijden: ["K3"],
+  eigenKlasIds: ["klas-1"],
+};
+
+/** `/api/ik` answers as this person; every other request never settles. */
+function stubIk(isDirectie: boolean) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      url.endsWith("/api/ik")
+        ? Promise.resolve(
+            new Response(JSON.stringify({ ...IK, isDirectie }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          )
+        : new Promise<Response>(() => {}),
+    ),
+  );
+}
 
 describe("Instellingenindeling", () => {
   it("markeert het onderdeel waar de leerkracht is, in de kolom en in de wisselaar", () => {
@@ -118,5 +151,119 @@ describe("Instellingenindeling", () => {
   it("neemt de focus niet bij herladen of terugkeren, ook al draagt de geschiedenis de wissel nog", () => {
     renderMetTweeSchermen({ pathname: "/instellingen/hoeken", state: { vanWissel: true } });
     expect(screen.getByRole("link", { name: t("instellingen.hoeken") })).not.toHaveFocus();
+  });
+});
+
+describe("het onderdeel Gebruikers (E6-04)", () => {
+  it("staat nergens voor wie geen directie is, ook niet met themabeheer, klas en hoofdleerkracht", async () => {
+    stubIk(false);
+    rendermetPad("/instellingen/klassen");
+
+    // The signed-in row below the parts shows the name once `/api/ik` has answered.
+    expect(await screen.findByText(IK.naam)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: t("instellingen.gebruikers") })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: t("instellingen.klassen") })).toHaveLength(2);
+  });
+
+  it("staat voor directie in de kolom en in de wisselaar", async () => {
+    stubIk(true);
+    rendermetPad("/instellingen/klassen");
+
+    expect(await screen.findAllByRole("link", { name: t("instellingen.gebruikers") })).toHaveLength(2);
+  });
+
+  it("staat er niet zolang niet bekend is wie aangemeld is", () => {
+    rendermetPad("/instellingen/klassen");
+    expect(screen.queryByRole("link", { name: t("instellingen.gebruikers") })).not.toBeInTheDocument();
+  });
+
+  const renderPoort = () =>
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/instellingen/gebruikers"]}>
+          <Routes>
+            <Route path="instellingen">
+              <Route path="klassen" element={<p>klassen-scherm</p>} />
+              <Route
+                path="gebruikers"
+                element={
+                  <Onderdeelpoort deel="gebruikers">
+                    <p>gebruikers-scherm</p>
+                  </Onderdeelpoort>
+                }
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+  it("stuurt wie geen directie is bij een rechtstreeks bezoek naar het eerste onderdeel dat die mag zien", async () => {
+    stubIk(false);
+    renderPoort();
+
+    expect(await screen.findByText("klassen-scherm")).toBeInTheDocument();
+    expect(screen.queryByText("gebruikers-scherm")).not.toBeInTheDocument();
+  });
+
+  it("laat directie op het adres staan", async () => {
+    stubIk(true);
+    renderPoort();
+
+    expect(await screen.findByText("gebruikers-scherm")).toBeInTheDocument();
+  });
+});
+
+describe("de wisselaar als het lettertype laat binnenkomt (round 3)", () => {
+  // The switch places the active part again once `document.fonts.ready` resolves. jsdom has neither
+  // `document.fonts` nor `scrollIntoView`, so both are stood in here, and the stand-in records which
+  // element it was called on.
+  let lettersBinnen!: () => void;
+  const oudScroll = HTMLElement.prototype.scrollIntoView;
+  const scroll = vi.fn();
+
+  beforeEach(() => {
+    const klaar = new Promise<void>((los) => {
+      lettersBinnen = los;
+    });
+    Object.defineProperty(document, "fonts", { value: { ready: klaar }, configurable: true });
+    HTMLElement.prototype.scrollIntoView = scroll;
+    scroll.mockClear();
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(document, "fonts");
+    HTMLElement.prototype.scrollIntoView = oudScroll;
+  });
+
+  it("brengt het onderdeel met de toetsenbordfocus in beeld, niet het actieve", async () => {
+    stubIk(true);
+    renderMetTweeSchermen("/instellingen/klassen");
+    // Wait for the fifth part (directie only, so it appears once `ik` has answered): the row that can overflow.
+    await screen.findByRole("link", { name: t("instellingen.gebruikers") });
+    const ander = screen.getByRole("link", { name: t("weergave.titel") });
+    const actief = screen.getByRole("link", { name: t("instellingen.klassen") });
+
+    ander.focus();
+    scroll.mockClear();
+    lettersBinnen();
+
+    await waitFor(() => expect(scroll).toHaveBeenCalled());
+    expect(scroll.mock.contexts).toContain(ander);
+    expect(scroll.mock.contexts).not.toContain(actief);
+    expect(ander).toHaveFocus();
+  });
+
+  it("zet zonder focus in de rij het actieve onderdeel in beeld", async () => {
+    stubIk(true);
+    renderMetTweeSchermen("/instellingen/klassen");
+    const actief = await screen.findByRole("link", { name: t("instellingen.klassen") });
+    await screen.findByRole("link", { name: t("instellingen.gebruikers") });
+
+    scroll.mockClear();
+    lettersBinnen();
+
+    await waitFor(() => expect(scroll).toHaveBeenCalled());
+    expect(scroll.mock.contexts).toContain(actief);
   });
 });

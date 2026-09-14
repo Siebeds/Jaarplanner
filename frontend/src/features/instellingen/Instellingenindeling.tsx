@@ -1,11 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigationType } from "react-router-dom";
 import { Aanmeldregel } from "../../app/Aanmeldregel";
 import { Schermvlak } from "../../app/Schermkop";
 import { IcoonKruis } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { ONDERDELEN, padVan } from "./onderdelen";
+import { padVan, useZichtbareOnderdelen } from "./onderdelen";
 
 /**
  * The frame of Instellingen: its parts in a column of their own from `lg`, and the part itself.
@@ -31,8 +31,13 @@ import { ONDERDELEN, padVan } from "./onderdelen";
  *
  * Before the page in the DOM, so a keyboard user who skipped to the content reaches the other parts
  * in two presses rather than after every control on the page.
+ *
+ * **It lists only the parts this person may see** (E6-04): Gebruikers is directie only, so for
+ * anyone else it is not in the column and not in the phone switch. Both read
+ * `useZichtbareOnderdelen`, so they cannot disagree.
  */
 export function Instellingenindeling() {
+  const onderdelen = useZichtbareOnderdelen();
   return (
     <>
       <nav
@@ -56,7 +61,7 @@ export function Instellingenindeling() {
           </Link>
         </div>
         <ul className="flex flex-col gap-0.5 px-3">
-          {ONDERDELEN.map((onderdeel) => (
+          {onderdelen.map((onderdeel) => (
             <li key={onderdeel.deel}>
               <NavLink
                 to={padVan(onderdeel.deel)}
@@ -117,6 +122,12 @@ export function Instellingenindeling() {
  *
  * Hidden from `lg` with `lg:hidden`, which is `display: none`, so the column and this row are never
  * in the accessibility tree together although both carry the same name.
+ *
+ * **It says when there is more** (E6-04 fix round 1). With Gebruikers, directie has five parts, and
+ * at 390px the last one starts past the right edge: it scrolled, but nothing said so. So the edge
+ * where parts are hidden fades into the row's own background, the paper-and-ink way of saying
+ * "more this way" without a hue, and the part you are on is scrolled into view when the row
+ * appears, so Weergave is not selected off screen.
  */
 export function Onderdeelwissel() {
   const { pathname, state } = useLocation();
@@ -126,6 +137,7 @@ export function Onderdeelwissel() {
   // reload and comes back on back/forward (both POP); acting on it there would pull focus into this
   // row on page load, past the skip link and the navigation.
   const vanWissel = navigatietype !== "POP" && (state as { vanWissel?: boolean } | null)?.vanWissel === true;
+  const onderdelen = useZichtbareOnderdelen();
 
   useEffect(() => {
     // The link NavLink itself marked active, rather than one matched here by string: a trailing
@@ -133,10 +145,68 @@ export function Onderdeelwissel() {
     if (vanWissel) lijst.current?.querySelector<HTMLAnchorElement>('a[aria-current="page"]')?.focus();
   }, [vanWissel, pathname]);
 
+  // Which edges hide a part. Measured, never assumed: a teacher with four parts on a wide phone
+  // may see them all, and then no edge fades. The slack is the row's own padding and border:
+  // scrolling a part into view "nearest" leaves those few pixels hidden, and a fade over them
+  // would dim the edge of the very part that is fully in view (measured at 390, fix round 1).
+  const [verborgen, setVerborgen] = useState({ links: false, rechts: false });
+  useEffect(() => {
+    const rij = lijst.current;
+    if (!rij) return;
+    const speling = 6;
+    const meet = () =>
+      setVerborgen({
+        links: rij.scrollLeft > speling,
+        rechts: rij.scrollLeft + rij.clientWidth < rij.scrollWidth - speling,
+      });
+    const zetInBeeld = () => {
+      const actief = rij.querySelector<HTMLAnchorElement>('a[aria-current="page"]');
+      if (actief && typeof actief.scrollIntoView === "function") {
+        actief.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+      meet();
+    };
+    zetInBeeld();
+    // The display face can arrive after the first paint and widen every label without a scroll or
+    // resize event, which left the fades measured against the fallback font (seen once at 360 in fix
+    // round 2). So once the fonts are in, place the active part and measure again.
+    //
+    // **Unless the keyboard is in the row** (round 3, WCAG 2.4.7 and 2.4.11). A teacher who tabbed
+    // to another part before the font arrived had it scrolled clean out of view, still focused, when
+    // the row jumped back to the active part. Then the focused link is the one brought into view,
+    // and the active part is left where the scroll put it.
+    let actueel = true;
+    void document.fonts?.ready.then(() => {
+      if (!actueel) return;
+      const focus = document.activeElement;
+      if (focus instanceof HTMLElement && focus !== rij && rij.contains(focus) && focus.getAttribute("aria-current") !== "page") {
+        if (typeof focus.scrollIntoView === "function") focus.scrollIntoView({ block: "nearest", inline: "nearest" });
+        meet();
+        return;
+      }
+      zetInBeeld();
+    });
+    rij.addEventListener("scroll", meet, { passive: true });
+    window.addEventListener("resize", meet);
+    return () => {
+      actueel = false;
+      rij.removeEventListener("scroll", meet);
+      window.removeEventListener("resize", meet);
+    };
+  }, [onderdelen.length, pathname]);
+
   return (
     <nav aria-label={t("instellingen.titel")} className="lg:hidden">
-      <ul ref={lijst} className="inline-flex max-w-full overflow-x-auto rounded-veld border border-lijn bg-vlak-diep p-1">
-        {ONDERDELEN.map((onderdeel) => {
+      <div className="relative inline-flex max-w-full">
+      {/* `scroll-px-9` is the fade's width (`w-8`, 32px) plus a few pixels. Without it, scrolling the
+          active part into view "nearest" landed it flush against the edge, under the fade on the other
+          side: at 390 the last 19px of "Algemene fiches" measured 2.79:1 (fix round 2). With exactly
+          the fade's width it still touched the fade by a rounding fraction, because the fade starts a
+          pixel inside the row's border; 36px leaves a clear gap. The active part now stops short of
+          either edge, clear of both fades, unless the row has no further to scroll, and then that edge
+          has no fade. */}
+      <ul ref={lijst} className="inline-flex max-w-full overflow-x-auto scroll-px-9 rounded-veld border border-lijn bg-vlak-diep p-1">
+        {onderdelen.map((onderdeel) => {
           const pad = padVan(onderdeel.deel);
           return (
             <li key={onderdeel.deel} className="shrink-0">
@@ -158,6 +228,19 @@ export function Onderdeelwissel() {
           );
         })}
       </ul>
+      {verborgen.links ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-px left-px w-8 rounded-l-veld bg-linear-to-r from-vlak-diep to-transparent"
+        />
+      ) : null}
+      {verborgen.rechts ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-px right-px w-8 rounded-r-veld bg-linear-to-l from-vlak-diep to-transparent"
+        />
+      ) : null}
+      </div>
     </nav>
   );
 }

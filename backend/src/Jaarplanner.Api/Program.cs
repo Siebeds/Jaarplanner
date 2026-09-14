@@ -2,6 +2,7 @@ using Jaarplanner.Api.Configuration;
 using Jaarplanner.Api.Infrastructure;
 using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Api.Infrastructure.Autorisatie;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Infrastructure;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -50,6 +51,10 @@ builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
 // thema, or an item it did not create. 403, with the service's Dutch sentence.
 builder.Services.AddExceptionHandler<WizardrunExceptionHandler>();
 
+// Gebruikerbeheer exception handler (E6-04): no such gebruiker/klas/schooljaar → 404, a bad sign-in name or jaarfase
+// → 400, and the two 409s: a sign-in name that exists already, and the last directie (ADR-0031 decision 7).
+builder.Services.AddExceptionHandler<GebruikerbeheerExceptionHandler>();
+
 // The rights matrix (E6-02, Art. VI.1, ADR-0030 §3, ADR-0011 §2): every row of Rechtenmatrix becomes a named policy
 // that requires a signed-in person plus the row's own rights, decided by one handler over the per-request rights
 // service. Curriculumbeheer, the seam the Op.stap import routes already name (ADR-0022), is one of those rows and is
@@ -62,6 +67,12 @@ builder.Services.AddRechtenbeleid();
 // developer's machine), and a fallback policy under which every endpoint needs that session unless it says otherwise.
 // Who may do what once signed in is E6-02's; this only establishes who someone is.
 var authenticatie = builder.AddJaarplannerAuthenticatie();
+
+// The last-directie guard counts only another directie who can sign in (E6-04, ADR-0031 decision 7). Under Entra that
+// is a bound invitation. The development sign-in binds nobody and is refused outside Development, so only there does
+// an unbound directie count; this line is the one place that says so.
+builder.Services.Configure<GebruikerbeheerOpties>(opties =>
+    opties.OngekoppeldeDirectieKanAanmelden = authenticatie.Modus == AuthenticatieModus.Ontwikkeling);
 
 // Data access + database health check live in Infrastructure (Art. VIII — keep Api thin).
 // This registers AppDbContext (UseNpgsql, connection string from configuration) and a
