@@ -158,8 +158,9 @@ public sealed class AlgemeneFicheplaatsing
 
         if (schooljaar.OpenWeekdagen(datum, datum).Count == 0)
         {
-            // Twin of the frontend's `fichedetail.geenSchooldag`, shown before sending for a weekend; both sides' tests
-            // pin the literal, so rewrite them together.
+            // Twin of the frontend's `fichedetail.geenSchooldag`, shown before sending for a weekend, and of the same
+            // refusal in Hoekplaatsing.VerplaatsMoment (TB-011); every side's tests pin the literal, so rewrite them
+            // together.
             throw new ArgumentException("Op die dag is er geen school. Kies een schooldag.");
         }
 

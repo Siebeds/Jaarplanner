@@ -22,6 +22,23 @@ public sealed class HoekplaatsingTests
 
     private static Hoekplaatsing Plaatsing() => new(Guid.NewGuid(), Guid.NewGuid(), Start, Eind);
 
+    /// <summary>
+    /// The class's school year, which decides the days a moment may move to. A closed week (Monday 26 to Friday 30
+    /// October) and one vrije dag (Wednesday 7 October), both inside <see cref="Plaatsing"/>'s window and clear of the
+    /// September days the other tests move rows between.
+    /// </summary>
+    private static Schooljaar Jaar()
+    {
+        var jaar = new Schooljaar("2026-2027", new DateOnly(2026, 8, 31), new DateOnly(2027, 6, 30));
+        jaar.VoegSluitingToe(new Schoolsluiting("Herfst", new DateOnly(2026, 10, 26), new DateOnly(2026, 10, 30)));
+        jaar.VoegSluitingToe(new Schoolsluiting(
+            "Studiedag",
+            new DateOnly(2026, 10, 7),
+            new DateOnly(2026, 10, 7),
+            Sluitingssoort.VrijeDag));
+        return jaar;
+    }
+
     [Fact]
     public void Een_plaatsing_bewaart_de_periode_die_de_leraar_aanduidde()
     {
@@ -81,7 +98,7 @@ public sealed class HoekplaatsingTests
         plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
         var woensdag = plaatsing.PlanIn(new DateOnly(2026, 9, 9), HalfTwee, TweeUurTwintig);
 
-        Assert.True(plaatsing.VerplaatsMoment(woensdag.Id, new DateOnly(2026, 9, 9), new TimeOnly(10, 15), new TimeOnly(11, 30)));
+        Assert.True(plaatsing.VerplaatsMoment(woensdag.Id, new DateOnly(2026, 9, 9), new TimeOnly(10, 15), new TimeOnly(11, 30), Jaar()));
 
         var verplaatst = plaatsing.Momenten.Single(m => m.Id == woensdag.Id);
         Assert.Equal(new TimeOnly(10, 15), verplaatst.Begin);
@@ -97,7 +114,7 @@ public sealed class HoekplaatsingTests
         var plaatsing = Plaatsing();
         plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
         var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
-        plaatsing.VerplaatsMoment(dinsdag.Id, dinsdag.Datum, HalfTwee, new TimeOnly(15, 0));
+        plaatsing.VerplaatsMoment(dinsdag.Id, dinsdag.Datum, HalfTwee, new TimeOnly(15, 0), Jaar());
 
         plaatsing.ZetUren(new TimeOnly(9, 0), new TimeOnly(10, 30));
 
@@ -124,7 +141,7 @@ public sealed class HoekplaatsingTests
         var plaatsing = Plaatsing();
         var maandag = plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
         var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
-        plaatsing.VerplaatsMoment(dinsdag.Id, maandag.Datum, new TimeOnly(9, 0), new TimeOnly(9, 50));
+        plaatsing.VerplaatsMoment(dinsdag.Id, maandag.Datum, new TimeOnly(9, 0), new TimeOnly(9, 50), Jaar());
 
         var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(new TimeOnly(10, 0), new TimeOnly(11, 0)));
 
@@ -143,8 +160,8 @@ public sealed class HoekplaatsingTests
         plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
         var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
         var woensdag = plaatsing.PlanIn(new DateOnly(2026, 9, 9), HalfTwee, TweeUurTwintig);
-        plaatsing.VerplaatsMoment(dinsdag.Id, new DateOnly(2026, 9, 7), new TimeOnly(9, 0), new TimeOnly(9, 50));
-        plaatsing.VerplaatsMoment(woensdag.Id, new DateOnly(2026, 9, 7), new TimeOnly(11, 0), new TimeOnly(11, 50));
+        plaatsing.VerplaatsMoment(dinsdag.Id, new DateOnly(2026, 9, 7), new TimeOnly(9, 0), new TimeOnly(9, 50), Jaar());
+        plaatsing.VerplaatsMoment(woensdag.Id, new DateOnly(2026, 9, 7), new TimeOnly(11, 0), new TimeOnly(11, 50), Jaar());
 
         var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(new TimeOnly(10, 0), new TimeOnly(11, 0)));
 
@@ -162,8 +179,8 @@ public sealed class HoekplaatsingTests
         var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 8), HalfTwee, TweeUurTwintig);
         plaatsing.PlanIn(new DateOnly(2026, 9, 9), HalfTwee, TweeUurTwintig);
         var donderdag = plaatsing.PlanIn(new DateOnly(2026, 9, 10), HalfTwee, TweeUurTwintig);
-        plaatsing.VerplaatsMoment(donderdag.Id, new DateOnly(2026, 9, 9), new TimeOnly(9, 0), new TimeOnly(9, 50));
-        plaatsing.VerplaatsMoment(dinsdag.Id, new DateOnly(2026, 9, 7), new TimeOnly(9, 0), new TimeOnly(9, 50));
+        plaatsing.VerplaatsMoment(donderdag.Id, new DateOnly(2026, 9, 9), new TimeOnly(9, 0), new TimeOnly(9, 50), Jaar());
+        plaatsing.VerplaatsMoment(dinsdag.Id, new DateOnly(2026, 9, 7), new TimeOnly(9, 0), new TimeOnly(9, 50), Jaar());
 
         var fout = Assert.Throws<ArgumentException>(() => plaatsing.ZetUren(new TimeOnly(10, 0), new TimeOnly(11, 0)));
 
@@ -221,7 +238,41 @@ public sealed class HoekplaatsingTests
 
         var moment = plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
         Assert.Throws<ArgumentException>(
-            () => plaatsing.VerplaatsMoment(moment.Id, new DateOnly(2027, 1, 12), HalfTwee, TweeUurTwintig));
+            () => plaatsing.VerplaatsMoment(moment.Id, new DateOnly(2027, 1, 12), HalfTwee, TweeUurTwintig, Jaar()));
+    }
+
+    /// <summary>
+    /// The refusal for a day without school, word for word. It is the sentence
+    /// <see cref="AlgemeneFicheplaatsing.VerplaatsMoment"/> gives, whose tests pin the same literal together with the
+    /// frontend's <c>fichedetail.geenSchooldag</c>, so a rewrite of any one of them fails a test.
+    /// </summary>
+    private const string GeenSchooldag = "Op die dag is er geen school. Kies een schooldag.";
+
+    [Fact]
+    public void Een_moment_verplaatsen_naar_een_dag_zonder_school_wordt_geweigerd()
+    {
+        // TB-011: the service plans rows only on open weekdays, so a move must not put one on a closed day either. All
+        // three days lie inside the window, so this is the school-day rule speaking and not the window rule.
+        var plaatsing = Plaatsing();
+        var dinsdag = plaatsing.PlanIn(new DateOnly(2026, 9, 1), HalfTwee, TweeUurTwintig);
+        var jaar = Jaar();
+
+        // A Saturday, a day in the closed week and the vrije dag.
+        foreach (var dag in new[] { new DateOnly(2026, 9, 5), new DateOnly(2026, 10, 28), new DateOnly(2026, 10, 7) })
+        {
+            var fout = Assert.Throws<ArgumentException>(
+                () => plaatsing.VerplaatsMoment(dinsdag.Id, dag, new TimeOnly(9, 0), new TimeOnly(9, 50), jaar));
+            Assert.Equal(GeenSchooldag, fout.Message);
+        }
+
+        // A refusal moves nothing: the day and both times are as they were.
+        Assert.Equal(
+            (new DateOnly(2026, 9, 1), HalfTwee, TweeUurTwintig),
+            (dinsdag.Datum, dinsdag.Begin, dinsdag.Einde));
+
+        // And the rule is about closed days only: the Thursday right after the vrije dag is an ordinary school day.
+        Assert.True(plaatsing.VerplaatsMoment(dinsdag.Id, new DateOnly(2026, 10, 8), new TimeOnly(9, 0), new TimeOnly(9, 50), jaar));
+        Assert.Equal(new DateOnly(2026, 10, 8), dinsdag.Datum);
     }
 
     [Fact]
@@ -237,7 +288,7 @@ public sealed class HoekplaatsingTests
 
         var moment = plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
         Assert.Throws<ArgumentException>(
-            () => plaatsing.VerplaatsMoment(moment.Id, moment.Datum, HalfTwee, HalfTwee));
+            () => plaatsing.VerplaatsMoment(moment.Id, moment.Datum, HalfTwee, HalfTwee, Jaar()));
 
         // A refused resize leaves the row as it was.
         Assert.Equal(TweeUurTwintig, plaatsing.Momenten.Single().Einde);

@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 13:01
+bijgewerkt: 2026-09-14 13:14
 opgepakt-door: TB-011
 branch: ticket/TB-011-hoekmoment-schooldag
 pr:
@@ -41,12 +41,12 @@ Geen frontendwijziging nodig: het raster weigert een gesloten dag al.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een hoekplaatsing, wanneer één moment naar een zaterdag, een vakantiedag of een vrije dag binnen de
+- [x] Gegeven een hoekplaatsing, wanneer één moment naar een zaterdag, een vakantiedag of een vrije dag binnen de
   periode verplaatst wordt, dan weigert de server dat met "Op die dag is er geen school. Kies een schooldag." en blijft
   het moment staan waar het stond.
-- [ ] Gegeven een hoekplaatsing, wanneer één moment naar een gewone schooldag binnen de periode verplaatst wordt, dan
+- [x] Gegeven een hoekplaatsing, wanneer één moment naar een gewone schooldag binnen de periode verplaatst wordt, dan
   lukt dat zoals vandaag.
-- [ ] De nieuwe unittest dekt de zaterdag, de gesloten week en de vrije dag; de backendtests (unit en integratie op
+- [x] De nieuwe unittest dekt de zaterdag, de gesloten week en de vrije dag; de backendtests (unit en integratie op
   PostgreSQL) en `dotnet format` zijn groen.
 
 ## Buiten scope
@@ -63,3 +63,4 @@ Geen.
 
 - 2026-09-14 12:56 · E10-03 · aangemaakt (status nieuw)
 - 2026-09-14 13:01 · TB-011 · nieuw → in-uitvoering: opgepakt, met akkoord van de eigenaar om het vanuit nieuw meteen op te pakken
+- 2026-09-14 13:14 · TB-011 · gebouwd: Hoekplaatsing.VerplaatsMoment weigert een dag zonder school, de service laadt het schooljaar; criteria afgevinkt op nieuwe domein- en servicetest; unit 1135 groen, integratie op PostgreSQL 357 groen, dotnet format schoon

@@ -174,12 +174,19 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
     {
         var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
 
+        // The school year decides which days are open, as it does in PlaatsAsync. No Include for the closures: they
+        // are owned by the Schooljaar and load with it.
+        var klas = await _db.Klassen.FirstOrDefaultAsync(k => k.Id == plaatsing.KlasId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Klas {plaatsing.KlasId} is niet gevonden.");
+        var schooljaar = await _db.Schooljaren.FirstOrDefaultAsync(j => j.Id == klas.SchooljaarId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Schooljaar {klas.SchooljaarId} is niet gevonden.");
+
         // The domain owns the day, time and uniqueness rules and says them in Dutch; this only turns them into
         // the app's own fault type so the shared handler answers 400 instead of 500.
         bool gevonden;
         try
         {
-            gevonden = plaatsing.VerplaatsMoment(momentId, datum, begin, einde);
+            gevonden = plaatsing.VerplaatsMoment(momentId, datum, begin, einde, schooljaar);
         }
         catch (ArgumentException fout)
         {

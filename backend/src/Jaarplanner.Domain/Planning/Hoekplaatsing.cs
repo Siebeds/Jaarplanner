@@ -181,10 +181,23 @@ public sealed class Hoekplaatsing
     /// <summary>
     /// Moves or resizes one appearance. This is the flexibility the owner asked for: the hoek runs all fortnight,
     /// and on this one Thursday it happens after the break, or runs half an hour longer.
+    /// <para>
+    /// <b>The day must be a school day.</b> The service plans a row only on the open weekdays of the window, so a move
+    /// must not write one on a Saturday, in a vakantie or on a vrije dag either: such a row would be drawn in a closed
+    /// column and counted among the hoek's "schooldagen". The time grid already refuses that drop; this holds the rule
+    /// for every other route. It is the rule <see cref="AlgemeneFicheplaatsing.VerplaatsMoment"/> applies (TB-011).
+    /// </para>
     /// </summary>
+    /// <param name="schooljaar">The class's school year, whose open weekdays decide which days are allowed.</param>
     /// <returns><c>false</c> when this placement holds no appearance with that id.</returns>
-    public bool VerplaatsMoment(Guid momentId, DateOnly datum, TimeOnly begin, TimeOnly einde)
+    /// <exception cref="ArgumentException">
+    /// The day lies outside the placement, is a weekend day or a closure, the end is not after the start, or the hoek
+    /// already starts at that time on that day.
+    /// </exception>
+    public bool VerplaatsMoment(Guid momentId, DateOnly datum, TimeOnly begin, TimeOnly einde, Schooljaar schooljaar)
     {
+        ArgumentNullException.ThrowIfNull(schooljaar);
+
         var moment = _momenten.Find(m => m.Id == momentId);
         if (moment is null)
         {
@@ -192,6 +205,14 @@ public sealed class Hoekplaatsing
         }
 
         BewaakDag(datum, begin, momentId);
+
+        if (schooljaar.OpenWeekdagen(datum, datum).Count == 0)
+        {
+            // Word for word the refusal of AlgemeneFicheplaatsing.VerplaatsMoment, so one rule reads one way; the
+            // tests of both types pin the literal, so rewrite them together.
+            throw new ArgumentException("Op die dag is er geen school. Kies een schooldag.");
+        }
+
         moment.Verplaats(datum, begin, einde);
         return true;
     }
