@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 15:15
+bijgewerkt: 2026-09-14 15:16
 opgepakt-door: md-boom
 branch: ticket/minimumdoelenboom
-pr:
+pr: 64
 geblokkeerd:
 fr: []
 ---
@@ -88,3 +88,4 @@ de enige wijziging aan het deel *Leerplandoelen* is. Directie heeft het niet bev
 - 2026-09-14 14:47 · md-boom · Migratie 20260914124010_MinimumdoelOrdeningEnSoort toegevoegd zonder de Migrations-claim van E6-02, op uitdrukkelijke vraag van de eigenaar ('Ja, forceer ook de migratie'), gemeld in de groepschat. Integratietests op PostgreSQL groen (358), ook de nieuwe test voor ordening en soort.
 - 2026-09-14 15:12 · md-boom · Correctie op de regel over de migratie (antagonist ronde 3, MINOR 2): md-boom vroeg de eigenaar of de migratie zonder de claim van E6-02 mocht, en vermeldde eerst dat wie als tweede merget (TB-010 of 20260914114237_Wizardrun van E6-02) zijn migratie opnieuw moet genereren; de eigenaar antwoordde 'Ja, forceer ook de migratie'. Is TB-010 de tweede, dan genereert md-boom de migratie opnieuw.
 - 2026-09-14 15:15 · md-boom · in-uitvoering → klaar: Klaar. Gates groen: unit 1162, integratie op PostgreSQL 358 (na de fixes van ronde 3 de twee importklassen, 25, opnieuw groen), frontend-suite 270 en lint schoon na de merge (daarna doelen/catalogus/filter, 36, opnieuw groen), dotnet format schoon. Antagonist ronde 3: geen MAJOR, de 4 MINOR verwerkt (kop 'N ingeladen leerplandoelen verwijzen ernaar', correctie over de migratie, zoek-facetten getest, 'ingeladen' in het voorbeeld). Bewijs per criterium: AC1 MinimumdoelImportServiceTests + de PostgreSQL-endpointtest + een echte import (998 geordend); AC2 MinimumdoelenQueryTests + browser (boom, volgorde K/4/6); AC3 browser (rijen) + Minimumdoelenboom/Minimumdoeldetail-tests (zonder leerplandoel, reden); AC4 browser (detail, doorklikken heen en terug); AC5 browser (mijlpaal 4: 368, klasfilter), integratietest facetten onder zoekterm; AC6 browser (deel Leerplandoelen ongewijzigd, op het aanklikbare minimumdoel na). Na deploy: de migratie toepassen en de minimumdoelen opnieuw inladen, anders staan ze onder 'Zonder ordening'.
+- 2026-09-14 15:16 · md-boom · PR #64
