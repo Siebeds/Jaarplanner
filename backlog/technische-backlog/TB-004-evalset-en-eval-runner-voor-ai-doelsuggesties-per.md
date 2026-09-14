@@ -105,7 +105,8 @@ wordt gecommit, voor de tests van de runner zelf.
 ## Buiten scope
 
 - Het scherm voor stap 6 en de korte zin dat een aanvaard subdoel door AI voorgesteld werd: eigen ticket, na de meting.
-- De export van de gouden set uit de demo-database: eigen ticket, zodra de kleuterjuffen gekoppeld hebben.
+- De export van de gouden set uit de database van de schoolinstance (`sjceik`): eigen ticket, zodra de kleuterjuffen
+  gekoppeld hebben.
 - Embeddings in de app bewaren (pgvector of anders): pas als variant B de meting wint.
 - Managed identity van de web app naar Foundry, Application Insights, caching.
 - AI aanzetten in de demo-omgeving.
