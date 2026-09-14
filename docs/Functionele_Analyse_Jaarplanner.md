@@ -445,6 +445,8 @@ FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generat
 - *I21, hoe lang een koppeling aan een klas geldt voor de planning van die klas*: voorlopig zonder einddatum, want de klas hoort al bij één schooljaar.
 - *I22, hoe de tool een wizardactie herkent*: voorlopig heeft de wizard eigen acties, die enkel de directie en wie themabeheer heeft gebruiken, en enkel voor een nieuw thema. Met de gewone knoppen voor subthema's, subdoelen en activiteiten krijgt themabeheer geen extra recht, behalve dat een maker zijn eigen activiteit mag verwijderen.
 - *I23, wat een nieuw thema is*: voorlopig een thema dat de wizard zelf aanmaakte, tot die wizard afgerond of gesloten is.
+- *I24, wanneer een wizard stopt*: voorlopig stopt een wizard als de directie of wie themabeheer heeft hem afrondt of sluit, of 14 dagen nadat hij voor het laatst iets opsloeg, wat het eerst komt. Daarna is het thema niet meer nieuw en gelden de gewone rechten.
+- *I25, bewerken in de wizard*: voorlopig mag de wizard, zolang hij loopt, een subthema, subdoel of activiteit die hij zelf aanmaakte ook aanpassen en verwijderen, en niets anders.
 - *(c), een jaar zonder hoofdleerkracht*: voorlopig doet enkel de directie, met de hand, wat de hoofdleerkracht zou doen.
 - *(e), een zorgcoördinator, of wie geen van de vier rechten heeft*: voorlopig niets meer dan themabeheer (als de directie het toekent) en inkijken, behalve een activiteit verwijderen die hij zelf aanmaakte.
 

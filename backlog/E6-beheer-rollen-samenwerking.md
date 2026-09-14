@@ -31,7 +31,7 @@
 >   through its own actions.
 > - R37: the build follows the defaults as written until the owner changes one.
 >
-> **Everything else in that ADR is a default, not a ruling:** I1, I2, I6 with (a), I9 with (d), I12, I13, I15–I23,
+> **Everything else in that ADR is a default, not a ruling:** I1, I2, I6 with (a), I9 with (d), I12, I13, I15–I25,
 > (c), (e). The matrix is ratified only as far as the rulings each row cites.
 
 - [x] **E6-01 — Authentication (personal login)** — *built 2026-09-11 on `story/E6-01-authenticatie` and merged into `main` as PR #48 (`7e23dcf`); mechanism in [ADR-0031](../docs/adr/0031-sessielogin-via-de-api.md) (Accepted).* **Closed 2026-09-13 by owner ruling, without a round trip against a real tenant.** The code-round-1 audit asked whether E6-01 may close without one; the owner answered yes, because that round trip is a prerequisite on E7-11 before any real deployment either way. *What the `[x]` does not carry:* the last audit round (code round 2 on `e27cc53`: 0 MAJOR, 6 MINOR) was fixed in `3dff436` and not re-audited, and `worklogs/E6-01/` holds only `implementation.md`, which records code round 1 but not round 2 (the round-2 findings and fixes are in the commit message of `3dff436`).
@@ -56,7 +56,7 @@
   - A nullable **maker** on `Activiteit` (R26). It is set on create to whoever creates the activiteit: a leerkracht, a hoofdleerkracht, **directie**, or a themabeheer holder through the wizard (the last by default, I18). It is null for existing rows and for the FR-1 import. Its delete right follows the person (R33).
   - **One place maps a klas to the leeftijden it grants rights for** (R22). It reads the stated `Jaarfase` only and fails closed (I12), without reusing `Klasleeftijden`' widening.
   - Appointments and klastoewijzingen count for shared content until their schooljaar ends (R20), and for the klas's planning without an end date (I21).
-  - **Wizard-only write actions** (R32; their shape is I22). They admit themabeheer and directie, and only for a thema the wizard itself created, until that run is finished or closed (I23). Themabeheer gets no right on the ordinary subthema, subdoel and activiteit routes, apart from the maker's delete right (R33).
+  - **Wizard-only write actions** (R32; their shape is I22). They admit themabeheer and directie, and only for a thema the wizard itself created, until that run is finished or closed (I23), which is at the latest 14 days after its last write action (I24); within an open run they may also edit and delete what that run created (I25). Themabeheer gets no right on the ordinary subthema, subdoel and activiteit routes, apart from the maker's delete right (R33).
   - The FR-1 import's `MenselijkeBeslissingenVerwijderen` option is **directie-only** (R35). It governs themadoelen and subdoelen alike, because it is one switch.
 
   *Done when:* each action in the matrix is allowed or denied per relation and per resource, server-side, with a test per row. **No control that does nothing (the E3-06 rule):**
@@ -74,7 +74,7 @@
 
   Ref: FR-10/§3.2, Art. VI.1, ADR-0030.
   ~~*Waits on part 1 of the Art. XI amendment*~~ **Satisfied on 2026-09-14:** part 1 is ratified (ADR-0030 §5).
-  *Defaults it builds on* (ADR-0030 §2; the owner ruled that the build follows them, R37): I1, I2, I9, I12, I13, I15–I23.
+  *Defaults it builds on* (ADR-0030 §2; the owner ruled that the build follows them, R37): I1, I2, I9, I12, I13, I15–I25.
   *Open questions this story owns (ADR-0030 §4):*
   - **(b) Import: settled** (R9, R27, R34, R35). What this story owes is the gate, including the directie-only option. Gate the section rather than the route, as the 2026-08-03 ruling asked. The frontend marker it relied on (`magBeheerder` plus a section constant) no longer exists in `frontend/src`, so recreate it.
   - **(c)** A jaar with no hoofdleerkracht: only directie does, by hand, what a hoofdleerkracht would, until ruled otherwise.
@@ -106,9 +106,11 @@
   The 10-step goal-first wizard UI (thema → 2–3 themadoelen → subthema's → subdoelen → rijk aanbod → … → reflectie), consuming E2-07 AI assist.
   *Done when:* a thema can be built end-to-end via the wizard. Ref: Art. IV.8 (committed MVP), Gap A.7.
   *Rights (ADR-0030 R29, R32, ratified 2026-09-14):* the wizard is for themabeheer and directie. It creates subthema's, subdoelen and activiteiten only for a thema it builds from scratch, through **its own write actions**, and E6-02 builds their authorisation. Their shape (I22) and when a thema stops being new (I23) are defaults. The maker of an activiteit the wizard creates is the themabeheer holder (by default, I18).
-  *Owed before building the wizard write actions* (round-4 audit QUESTION, no owner ruling): choose two defaults and record them in ADR-0030 §2.
-  - An **expiry for an abandoned wizard run**. Nothing in the model marks a run as finished or closed.
-  - Whether the wizard may **edit** what it created earlier in the same run. R32 and the matrix grant only *aanmaken*.
+  ~~*Owed before building the wizard write actions* (round-4 audit QUESTION, no owner ruling): choose two defaults and record them in ADR-0030 §2.~~ **Answered by the owner on 2026-09-14** (ADR-0030 I24 and I25, added to Art. VI.1):
+  - a run ends when themabeheer or directie finishes or closes it, or **14 days after the wizard's last write action** in it;
+  - while the run is open, the wizard may also **edit and delete** what that same run created, and nothing else.
+
+  The combined E6-02/E6-04 build writes the wizard's write actions and their authorisation, so this story builds the screens that call them.
 
 ### Overzichten & samenwerking
 

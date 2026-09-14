@@ -95,7 +95,9 @@
 > - **The owner stopped the audit rounds after round 4**, so the ratification commit, which applies these
 >   corrections and R35–R37, was not audited.
 > - Round 4's first QUESTION (I23 has no server-visible end and no in-run edit right) got no ruling. E6-05 must
->   choose both, as defaults, before it builds the wizard write actions.
+>   choose both, as defaults, before it builds the wizard write actions. *Answered on 2026-09-14:* the owner chose
+>   both when session `E6-02` put them, for the combined build that writes those actions. They are I24 and I25 in
+>   §2, added to Art. VI.1 by a dedicated amendment.
 
 ## Context
 
@@ -533,7 +535,7 @@ follows until the owner confirms or corrects it.
 - I10 was retired by statement 29 (R29), and I14 by statements 26, 30 and 31 (R23–R25); I14's move clause survives,
   corrected, as I19. Statement 33 ruled the delete half of I18 (R33).
 - I10–I14 were added on 2026-09-13 in the first draft, I15–I21 in fix round 2 and I22–I23 in fix round 3, all by
-  session `E6-02`.
+  session `E6-02`. I24 and I25 were added on 2026-09-14 with the owner's choice of both (the round-4 note above).
 - **Statement 37 (R37):** the build follows these defaults as written. That does not ratify them. Each stays a
   default that the owner can change on its own.
 - **A row of the §3 matrix is ratified only as far as the rulings it cites**, counted at column level (§3).
@@ -563,6 +565,8 @@ follows until the owner confirms or corrects it.
 | I21 | **How long a klastoewijzing gives rights on that klas's own planning.** R20 answers the time question for the shared content only, which is what statement 23 asked. | With no end date. A klas belongs to one schooljaar already, so its planning is scoped by it; a leerkracht keeps editing the planning of a past klas. | E6-02, E6-04 |
 | I22 | **How the server tells a wizard write from a hand write.** R32 rules that the app gets separate wizard actions, not their shape. The ordinary routes (`POST api/themas/{id}/subthemas`, `POST api/subthemas/{id}/doelkoppelingen`, `POST api/subthemas/{id}/activiteiten`) are the ones the subthema and subdoel rows deny to themabeheer. | **Wizard-only write actions**, on endpoints of their own, admitting themabeheer and directie only, and only for a thema that counts as new (I23). **Themabeheer gets no right on the ordinary subthema, subdoel and activiteit routes**, apart from the maker's delete right (R33). | E6-02, E6-05 |
 | I23 | **What counts as a "new" thema** for R32. Statement 29's option said *"Wie een thema van nul opbouwt"*; statement 32's said *"voor een thema dat het daar van nul opbouwt"*. | A thema the wizard itself created, until that wizard run is finished or closed. From then on the ordinary rights apply: its subthema's and subdoelen are the hoofdleerkracht's. | E6-02, E6-05 |
+| I24 | **When a wizard run ends.** Round 4's first QUESTION: nothing in the model marks a run as finished or closed, so the "new" window of I23 had no end the server could see. | A run ends when themabeheer or directie finishes or closes it, or **14 days after the wizard's last write action** in it, whichever comes first. From then on its thema is no longer new and the ordinary rights apply. *Chosen by the owner on 2026-09-14, when session `E6-02` put the two defaults E6-05 owed; the build follows it (R37).* | E6-02, E6-05 |
+| I25 | **Whether the wizard may edit what it created earlier in the same run.** R32 and the matrix grant only *aanmaken*. | Yes, narrowly: while its run is open, the wizard's own write actions may also **edit and delete** a subthema, subdoel or activiteit **that the same run created**, and nothing else. *Chosen by the owner on 2026-09-14, with I24.* | E6-02, E6-05 |
 | D1 | The first directie account is provisioned from configuration, because nobody exists yet to add it. | As ADR-0031 decision 7. | **E6-01** |
 | D2 | The reason offered with question 6, *"Entra cannot express a hoofdleerkracht per jaar per schooljaar without a group per jaar per year"*, is the session's argument. It is not the owner's stated reason. | None: it is a rationale, not a rule. | None |
 
@@ -636,7 +640,7 @@ that this relation alone does not grant the action. It never takes away what ano
 | Thema's en activiteiten importeren, FR-1, met de doelkoppelingen op themadoelen en subdoelen die erin staan (R9, R27, R34) | ✓ | ✓ | – | – | – | – |
 | Bij die import 'menselijke beslissingen verwijderen' aanvinken, voor themadoelen en subdoelen samen (R35) | ✓ | – | – | – | – | – |
 | Thema-opbouwwizard doorlopen: thema, themadoelen en de AI-hulp (R29) | ✓ | ✓ | – | – | – | – |
-| In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt (R29, R32; I18, I22, I23) | ✓ | ✓⁵ | – | – | – | – |
+| In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt (R29, R32; I18, I22–I25) | ✓ | ✓⁵ | – | – | – | – |
 | Doelsuggesties laten maken (R14) | ✓ | ✓ | – | – | – | – |
 | Doelsuggesties aanvaarden, weigeren of aanpassen (R14) | ✓ | ✓ | – | – | – | – |
 | Subthema's van een jaar aanmaken, aanpassen en verwijderen (R5, R21; (c), I13, I16) | ✓ | –⁵ | ✓ | – | – | – |
@@ -668,7 +672,7 @@ are additive and never read less than an ordinary gebruiker. Its reach beyond on
 
 ⁵ Themabeheer creates subthema's, subdoelen and activiteiten **only through the wizard's own write actions, and only
 for a thema the wizard is building from scratch** (R32). Changing existing subthema's stays with the hoofdleerkracht.
-The shape of those actions, and when a thema stops being new, are defaults (I22, I23). **Themabeheer holds no right
+The shape of those actions, when a thema stops being new, and the right to edit and delete what the wizard's own open run created are defaults (I22–I25). **Themabeheer holds no right
 on the ordinary subthema, subdoel and activiteit routes** (I22), which is what the "–" in those rows means, apart from the maker's delete right (R33, the maker² row).
 
 TB and HL are **additive** to being a leerkracht, as the union rule above says.
@@ -946,13 +950,13 @@ added them.
   - E6-01 (Gebruiker and login; closed on R11);
   - E6-02 and E6-04, **built and delivered together** (R12):
     - the matrix as policies;
-    - (b)'s gate, (c) and (e), and the defaults I1, I2, I9, I12, I13 and I15–I23;
+    - (b)'s gate, (c) and (e), and the defaults I1, I2, I9, I12, I13 and I15–I25;
     - R19–R37, including the one-place klas→leeftijden mapping, the activiteit maker and the wizard's own write
       actions;
     - users, assignments, appointments, themabeheer and the directie right (R15, R16);
   - E6-08 (read, behind the E6-09 seam), E6-09 `[!]`, E6-10 (personal content);
   - E10-01 (streefwoordenschat is shared content, R28), E1-19 (re-scoping, I13), E6-05 (the wizard is for
-    themabeheer, R29, with its own write actions for a thema built from scratch, R32; I22, I23);
+    themabeheer, R29, with its own write actions for a thema built from scratch, R32; I22–I25);
   - E7-06 (processing register, including the maker), E7-11 (the deployment gate these close, and the real-tenant
     sign-in R11 leaves there).
 - **FR/NFR:** FR-1, FR-3.1, FR-4, FR-7.2, FR-10.1, FR-10.2, FR-12.2, FA §3.1/§3.2/§4/§7, A.7 and Bijlage A.11; NFR-5,
