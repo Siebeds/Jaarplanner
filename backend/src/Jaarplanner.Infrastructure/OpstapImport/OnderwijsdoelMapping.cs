@@ -26,9 +26,6 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// </summary>
 internal static partial class OnderwijsdoelMapping
 {
-    /// <summary>The longest level name the mapping keeps; the columns are this wide. KOV's longest is 89 characters.</summary>
-    internal const int MaxOrdeningLengte = 256;
-
     /// <summary>Maps one row, or explains why it cannot be imported. Exactly one of the two results is set.</summary>
     /// <param name="rij">The expanded row.</param>
     /// <param name="href">The row's href, used to name it when it has no usable <c>uniqueCode</c>.</param>
@@ -107,7 +104,7 @@ internal static partial class OnderwijsdoelMapping
 
         var niveaus = pad.Split(" > ", StringSplitOptions.TrimEntries);
         if (niveaus.Length is < 2 or > 3 ||
-            niveaus.Any(n => n.Length == 0 || n.Length > MaxOrdeningLengte || n.Contains('<') || n.Contains('>')))
+            niveaus.Any(n => n.Length == 0 || n.Length > Minimumdoel.MaxOrdeningLengte || n.Contains('<') || n.Contains('>')))
         {
             return (null, null, null);
         }

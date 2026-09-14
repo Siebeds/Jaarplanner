@@ -13,6 +13,12 @@ namespace Jaarplanner.Domain.Curriculum;
 /// </summary>
 public sealed class Minimumdoel
 {
+    /// <summary>
+    /// The longest level name of the decree's ordering a minimumdoel holds, and the width of the three columns. One
+    /// constant, so the mapping cannot accept a value the column would refuse (KOV's longest is 89 characters).
+    /// </summary>
+    public const int MaxOrdeningLengte = 256;
+
     // EF Core materialisation only — not an application construction path.
     private Minimumdoel()
     {
@@ -46,9 +52,9 @@ public sealed class Minimumdoel
         Nr = Require(nr, nameof(nr));
         Omschrijving = Require(omschrijving, nameof(omschrijving));
 
-        Leergebied = Optional(leergebied);
-        Rubriek = Optional(rubriek);
-        Subrubriek = Optional(subrubriek);
+        Leergebied = Niveau(leergebied, nameof(leergebied));
+        Rubriek = Niveau(rubriek, nameof(rubriek));
+        Subrubriek = Niveau(subrubriek, nameof(subrubriek));
         // A level without the one above it would be a branch of no tree: the register could not place it. A leergebied
         // without a rubriek is refused too, because every path the decree publishes has at least those two levels.
         if ((Leergebied is null) != (Rubriek is null))
@@ -131,5 +137,20 @@ public sealed class Minimumdoel
         return value.Trim();
     }
 
-    private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    /// <summary>A level of the ordering: blank is no level, and a name wider than the column is refused rather than cut.</summary>
+    private static string? Niveau(string? value, string paramName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var niveau = value.Trim();
+        if (niveau.Length > MaxOrdeningLengte)
+        {
+            throw new ArgumentException($"'{paramName}' is longer than {MaxOrdeningLengte} characters.", paramName);
+        }
+
+        return niveau;
+    }
 }

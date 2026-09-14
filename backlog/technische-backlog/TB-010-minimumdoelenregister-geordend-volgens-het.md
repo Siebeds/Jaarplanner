@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 13:28
+bijgewerkt: 2026-09-14 14:10
 opgepakt-door: md-boom
 branch: ticket/minimumdoelenboom
 pr:
@@ -77,3 +77,6 @@ Directie heeft het niet bevestigd.
 
 - 2026-09-14 12:53 · md-boom · aangemaakt (status in-uitvoering)
 - 2026-09-14 13:28 · md-boom · Backend klaar: Minimumdoel draagt leergebied, rubriek, subrubriek en soort uit KOV's path en type; register per minimumdoel in de ordening van het decreet; nieuw detail GET /api/minimumdoelen/{ref}. Unit-tests groen (1159). De migratie wacht op de claim van E6-02.
+- 2026-09-14 13:45 · md-boom · geblokkeerd: Wacht op de eigenaar: bekrachtigt hij de tekst van het amendement (Art. VII.2 en IX.1), mag de soort bewaard en getoond worden, en mag het minimumdoel in het leerplandoeldetail aanklikbaar zijn (antagonist ronde 1, MAJOR 2).
+- 2026-09-14 14:10 · md-boom · niet langer geblokkeerd
+- 2026-09-14 14:10 · md-boom · Antwoord van de eigenaar: de tekst van het amendement is bekrachtigd, de soort wordt bewaard en getoond, en het minimumdoel in het leerplandoeldetail wordt aanklikbaar. De bloktekst hierboven had 'de eigenaar' moeten zeggen in plaats van 'hij'.

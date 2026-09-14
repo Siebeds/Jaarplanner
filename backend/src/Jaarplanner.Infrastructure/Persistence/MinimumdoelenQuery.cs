@@ -174,7 +174,7 @@ public sealed class MinimumdoelenQuery : IMinimumdoelenQuery
 
         var perFase = doelen
             .GroupBy(d => d.JaarFase, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.OrderBy(d => d.Code, Nummervergelijker.Instantie).ToList(), StringComparer.Ordinal);
+            .ToDictionary(g => g.Key, g => g.OrderBy(d => d.Code, DisciplinenummerVergelijker.Instantie).ToList(), StringComparer.Ordinal);
         var fasen = Jaarfasen.Alle.Concat(OrdenJaarFasen(perFase.Keys).Where(f => !Jaarfasen.Alle.Contains(f)));
         var zonder = doelen.Count == 0;
 
@@ -300,7 +300,7 @@ public sealed class MinimumdoelenQuery : IMinimumdoelenQuery
             .Select(m => new { m.Nr, Leergebied = m.Leergebied!, Rubriek = m.Rubriek!, m.Subrubriek })
             .ToListAsync(cancellationToken);
 
-        string Laagste<T>(IEnumerable<T> groep, Func<T, string> nr) => groep.Select(nr).Min(Nummervergelijker.Instantie)!;
+        string Laagste<T>(IEnumerable<T> groep, Func<T, string> nr) => groep.Select(nr).Min(DisciplinenummerVergelijker.Instantie)!;
 
         return new Volgorde(
             geordend.GroupBy(m => m.Leergebied, StringComparer.Ordinal)
@@ -410,52 +410,14 @@ public sealed class MinimumdoelenQuery : IMinimumdoelenQuery
             }
 
             var leeftijd = LeeftijdRang(x.Leeftijd).CompareTo(LeeftijdRang(y.Leeftijd));
-            return leeftijd != 0 ? leeftijd : Nummervergelijker.Instantie.Compare(x.Nr, y.Nr);
+            return leeftijd != 0 ? leeftijd : DisciplinenummerVergelijker.Instantie.Compare(x.Nr, y.Nr);
         }
 
         private static int Vergelijk(string? laagsteA, string a, string? laagsteB, string b)
         {
-            var volgens = Nummervergelijker.Instantie.Compare(laagsteA ?? string.Empty, laagsteB ?? string.Empty);
+            var volgens = DisciplinenummerVergelijker.Instantie.Compare(laagsteA ?? string.Empty, laagsteB ?? string.Empty);
             return volgens != 0 ? volgens : string.CompareOrdinal(a, b);
         }
-    }
-}
-
-/// <summary>
-/// Orders dotted codes part by part, numbers as numbers: <c>1.1.9</c> before <c>1.1.10</c>, <c>2.1</c> before <c>10.1</c>.
-/// A part that is not a number (the <c>GL3</c> of a leerplandoel code) compares as text, and a shorter code that is a
-/// prefix of a longer one comes first.
-/// </summary>
-internal sealed class Nummervergelijker : IComparer<string>
-{
-    public static readonly Nummervergelijker Instantie = new();
-
-    public int Compare(string? x, string? y)
-    {
-        if (ReferenceEquals(x, y))
-        {
-            return 0;
-        }
-
-        if (x is null || y is null)
-        {
-            return x is null ? -1 : 1;
-        }
-
-        var a = x.Split('.');
-        var b = y.Split('.');
-        for (var i = 0; i < Math.Min(a.Length, b.Length); i++)
-        {
-            var verschil = int.TryParse(a[i], out var na) && int.TryParse(b[i], out var nb)
-                ? na.CompareTo(nb)
-                : string.CompareOrdinal(a[i], b[i]);
-            if (verschil != 0)
-            {
-                return verschil;
-            }
-        }
-
-        return a.Length.CompareTo(b.Length);
     }
 }
 

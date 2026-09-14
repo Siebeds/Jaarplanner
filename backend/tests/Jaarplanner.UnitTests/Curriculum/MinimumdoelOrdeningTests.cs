@@ -33,6 +33,15 @@ public sealed class MinimumdoelOrdeningTests
         Assert.Null(blanco.Rubriek);
     }
 
+    /// <summary>The column is this wide; a longer name is refused rather than cut, since cutting would change a decreed heading.</summary>
+    [Fact]
+    public void Een_niveau_breder_dan_de_kolom_wordt_geweigerd()
+    {
+        var lang = new string('a', Minimumdoel.MaxOrdeningLengte + 1);
+
+        Assert.Throws<ArgumentException>(() => new Minimumdoel("K-1.1", "K-", "1.1", "Tekst.", "Nederlands", lang));
+    }
+
     [Theory]
     [InlineData("Nederlands", null, null)]
     [InlineData(null, "Lezen", null)]

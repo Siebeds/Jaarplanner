@@ -214,7 +214,7 @@ public sealed class OnderwijsdoelMappingTests
     [Fact]
     public void Een_niveau_breder_dan_de_kolom_laat_de_ordening_leeg()
     {
-        var lang = new string('a', OnderwijsdoelMapping.MaxOrdeningLengte + 1);
+        var lang = new string('a', Minimumdoel.MaxOrdeningLengte + 1);
 
         var (doel, _) = OnderwijsdoelMapping.Map(Rij(path: $"Nederlands > {lang}"), href: null, Peildatum);
 

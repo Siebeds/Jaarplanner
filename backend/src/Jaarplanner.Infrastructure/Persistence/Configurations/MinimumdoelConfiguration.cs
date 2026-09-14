@@ -24,9 +24,9 @@ public sealed class MinimumdoelConfiguration : IEntityTypeConfiguration<Minimumd
         // The decree's own ordering and kind (TB-010), decreed content written by the minimumdoelen import only. Nullable,
         // because every row imported before TB-010 has none until the next import. The kind is stored by name, so a
         // reordered enum cannot silently change what a row says.
-        builder.Property(m => m.Leergebied).HasColumnName("leergebied").HasMaxLength(256);
-        builder.Property(m => m.Rubriek).HasColumnName("rubriek").HasMaxLength(256);
-        builder.Property(m => m.Subrubriek).HasColumnName("subrubriek").HasMaxLength(256);
+        builder.Property(m => m.Leergebied).HasColumnName("leergebied").HasMaxLength(Minimumdoel.MaxOrdeningLengte);
+        builder.Property(m => m.Rubriek).HasColumnName("rubriek").HasMaxLength(Minimumdoel.MaxOrdeningLengte);
+        builder.Property(m => m.Subrubriek).HasColumnName("subrubriek").HasMaxLength(Minimumdoel.MaxOrdeningLengte);
         builder.Property(m => m.Soort)
             .HasColumnName("soort")
             .HasConversion<string>()
