@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DndContext } from "@dnd-kit/core";
 import { MemoryRouter } from "react-router-dom";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Hoekenpaneel } from "./Hoekenpaneel";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
@@ -49,7 +49,7 @@ function toon(onKies = vi.fn(), onKiesAlgemeneFiche = vi.fn()) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  return { onKies, onKiesAlgemeneFiche };
+  return { onKies, onKiesAlgemeneFiche, client };
 }
 
 describe("Hoekenpaneel: één lijst per schakelaar", () => {
@@ -87,6 +87,22 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
     expect(await screen.findByText(t("hoekenpaneel.mislukt"))).toBeInTheDocument();
     expect(screen.queryByText(t("hoekenpaneel.geenAlgemeneFiches"))).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: t("hoekenpaneel.naarAlgemeneFiches") })).not.toBeInTheDocument();
+  });
+
+  it("houdt een lijst die al geladen was in beeld wanneer een verversing mislukt", async () => {
+    zetSchermbreedte(true);
+    useHoekenpaneel.setState({ open: true, soort: "algemeen" });
+    const { client } = toon();
+    expect(await screen.findByRole("button", { name: /turnen/ })).toBeInTheDocument();
+
+    // After every placement the fiche list is invalidated and refetched with the panel still open
+    // (`usePlaatsingVerversing`). A refetch that fails must not take away the list she was just dragging from.
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("{}", { status: 500 }))));
+    await client.invalidateQueries({ queryKey: ["algemene-fiches"] });
+    await waitFor(() => expect(client.getQueryState(["algemene-fiches", "k-1"])?.status).toBe("error"));
+
+    expect(screen.getByRole("button", { name: /turnen/ })).toBeInTheDocument();
+    expect(screen.queryByText(t("hoekenpaneel.mislukt"))).not.toBeInTheDocument();
   });
 
   it("sluit op een telefoon eerst het blad, zodat ze niet twee bladen diep zit", async () => {

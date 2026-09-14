@@ -73,7 +73,7 @@ export function Hoekenpaneel({
           sluiten: t("hoekenpaneel.sluiten"),
           Icoon: IcoonHoek,
           laadt: klasId !== null && hoeken.isPending,
-          mislukt: hoeken.isError,
+          mislukt: hoeken.isError && hoeken.data === undefined,
           fiches: (hoeken.data ?? []).map((hoek) => ({
             id: hoek.id,
             sleepId: `${FICHE_VOORVOEGSEL}${hoek.id}`,
@@ -89,7 +89,7 @@ export function Hoekenpaneel({
           sluiten: t("hoekenpaneel.algemeenSluiten"),
           Icoon: IcoonFiche,
           laadt: klasId !== null && algemeneFiches.isPending,
-          mislukt: algemeneFiches.isError,
+          mislukt: algemeneFiches.isError && algemeneFiches.data === undefined,
           fiches: (algemeneFiches.data ?? []).map((fiche) => ({
             id: fiche.id,
             sleepId: `${ALGEMENE_FICHE_VOORVOEGSEL}${fiche.id}`,
@@ -169,7 +169,11 @@ interface Lijst {
   sluiten: string;
   Icoon: (props: SVGProps<SVGSVGElement>) => ReactNode;
   laadt: boolean;
-  /** The request failed. Not the same as an empty list, and the panel must not say it is. */
+  /**
+   * The request failed AND there is nothing loaded to show. Not the same as an empty list, and the panel must not say
+   * it is. A failed background refetch keeps the list she was using: in TanStack Query v5 `isError` is also true then,
+   * and after every placement the fiche list IS refetched with the panel still open (antagonist, round 3).
+   */
   mislukt: boolean;
   fiches: Paneelfiche[];
   leeg: string;

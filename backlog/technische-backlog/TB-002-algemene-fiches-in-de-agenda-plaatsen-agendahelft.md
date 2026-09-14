@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:56
+bijgewerkt: 2026-09-14 12:07
 opgepakt-door: E10-03
 branch: story/E10-03-agenda
 pr:
@@ -71,3 +71,4 @@ Geen.
 - 2026-09-14 11:40 · E10-03 · Eigenaar 2026-09-14: geen gegroepeerd paneel 'Fiches', maar twee aparte schakelaars in de zijbalk (Hoekenfiches en Algemene fiches), elk met een eigen lijst. Omgebouwd.
 - 2026-09-14 11:46 · E10-03 · Criteria 1 tot 5 afgevinkt op bewijs: browser 1440 en 390 (twee schakelaars, slepen en klikken naar het blad, ma en wo sep tot jun geschreven zonder herfstvakantie, één dag aanpassen zonder slepen, vakantiedag en zaterdag geweigerd, weghalen haalt alle momenten weg, dekking 0 naar 1 naar 0 van 14, Instellingen zegt 'Staat 1 keer in de agenda'); Vitest 256/256, backend unit 1133 en integratie 357 op PostgreSQL groen. Criterium 1 herschreven naar de beslissing van de eigenaar (twee schakelaars).
 - 2026-09-14 11:56 · E10-03 · Antagonist ronde 2: geen MAJOR meer, 4 MINOR opgelost (serverzin en nl.json-tweeling vastgepind, ADR-0029 beslissing 7 aangevuld met de beslissing van de eigenaar, foutmelding in plaats van 'nog geen fiches' bij een mislukte lijst, commentaar rechtgezet); de 390-controle was gebeurd. Vitest 257/257, lint schoon, backend unit groen. Ronde 3 loopt.
+- 2026-09-14 12:07 · E10-03 · Antagonist ronde 3: 2 MINOR opgelost (een mislukte verversing verbergt de geladen lijst niet meer, met test; de aanvulling in ADR-0029 klopt nu ook voor de telefoon). Vitest 258/258, lint schoon. Laatste ronde loopt.

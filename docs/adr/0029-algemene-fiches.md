@@ -64,9 +64,9 @@ grid, waits until ADR-0028's time grid is committed, so it is built once on the 
 > (board card TB-002). A first version put the algemene fiches under the hoekenfiches in one panel called "Fiches",
 > as this decision said. The owner looked at it and ruled: *"dit vind ik niet overzichtelijk, ik wil twee secties in
 > het meest linkse side bar, hoekenfiches en algemene fiches, niet gegroepeerd als fiches"*. So the sidebar, and the
-> agenda toolbar on a phone, carry **two switches**, *Hoekenfiches* and *Algemene fiches*. Each one opens its own list
-> in the same side column. Pressing the one that is on closes the column. Pressing the other swaps the list. The
-> sentence above is kept as it was decided; this note is what ships.
+> agenda toolbar on a phone, carry **two switches**, *Hoekenfiches* and *Algemene fiches*. From `lg` each one opens its
+> own list in the same side column: pressing the one that is on closes it, and pressing the other swaps the list. On a
+> phone the chip opens that list as a sheet. The sentence above is kept as it was decided; this note is what ships.
 
 ## Consequences
 
