@@ -69,7 +69,12 @@
 
      It is spent on exactly five things: the primary action, the active destination, the
      focus ring, the fill of the year strip, and a selected row. Anywhere else and it starts
-     competing with the domain colours again, which is the whole thing this palette avoids. */
+     competing with the domain colours again, which is the whole thing this palette avoids.
+
+     A selected row includes the stretch of time being chosen in the agenda's time grid: the
+     dashed landing preview of a block being moved and of a stretch being dragged out
+     (`Landingsvak`, owner 2026-09-14, TB-014). It is a selection the teacher is making, drawn
+     only while she makes it. The hover band beside it is not, and stays ink. */
   --color-accent: hsl(187 74% 27%);
   --color-accent-op: hsl(0 0% 100%);
   --color-accent-diep: hsl(187 78% 21%);

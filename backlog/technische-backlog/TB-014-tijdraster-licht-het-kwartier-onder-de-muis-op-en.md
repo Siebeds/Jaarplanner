@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:27
+bijgewerkt: 2026-09-14 16:37
 opgepakt-door: agenda-sleep
 branch: ticket/agenda-sleep-om-te-plannen
 pr:
@@ -40,7 +40,7 @@ De eigenaar vroeg op 2026-09-14 om twee wijzigingen aan de dag- en weekweergave 
 
 ## Buiten scope
 
-- Slepen om te plannen op een aanraakscherm: daar scrolt een veeg door de uren, en een tik blijft een kwartier kiezen zoals vandaag. Oplichten bij hoveren bestaat op een aanraakscherm niet.
+- Slepen om te plannen op een aanraakscherm: daar scrolt een veeg door de uren. Een tik blijft een kwartier kiezen, maar net als een klik nu het kwartier onder de vinger (afgerond naar beneden, dus 13:40 geeft 13:30 waar het vroeger 13:45 gaf). Oplichten bij hoveren bestaat op een aanraakscherm niet.
 - De maandweergave: die heeft geen uren.
 - Een hoek of een algemene fiche plannen door te slepen in het raster: die komen uit het paneel naast de agenda, zoals vandaag.
 - De toetsenbordroute verandert niet: Enter op een lege dag kiest nog altijd 8:30, en de uren van een geplande activiteit blijven in haar blad aanpasbaar (WCAG 2.2 SC 2.5.7).
@@ -55,3 +55,4 @@ Geen.
 - 2026-09-14 16:16 · agenda-sleep · gebouwd (73d944a): kwartier licht op onder muis/pen, klik kiest dat kwartier, slepen tekent en plant het bereik, Escape laat los; kiezer en nieuw-blad noemen het bereik; nl.json: twee sleutels toegevoegd op uitdrukkelijke toestemming van de eigenaar terwijl E6-02 de claim hield; pnpm lint schoon, vitest 40 bestanden/277 tests groen (6 nieuw)
 - 2026-09-14 16:26 · agenda-sleep · browsercontrole headless Chrome (playwright-core) op wegwerpdatabase jaarplanner_tb014, API 5189/Vite 5181: kwartier licht op met beginuur (12:15 op de juiste hoogte, tekst 5,51:1 licht en 8,97:1 donker), niet boven een blok of in de urenkolom; slepen 9:00-10:20 toont en plant 9:00 - 10:30 (blok in het raster), omhoog 14:20-13:05 geeft 13:00-14:30, klik op 11:12 kiest 11:00, Enter kiest 8:30, Escape laat los zonder blad, nieuw-blad noemt het bereik; 390px zonder overloop, tik kiest zijn kwartier; geen consolefouten; alle zes criteria afgevinkt
 - 2026-09-14 16:27 · agenda-sleep · correctie op de vorige regel: criterium 4 was afgevinkt voordat het bewaren bewezen was, en de 'tik' op 390px was een muisklik. Nu wel bewezen (derde ronde): een nieuwe activiteit bewaard vanuit een gesleept bereik staat als 'Nieuw TB-014, 15:00 - 15:45' in het raster, en een echte tik (pointerType touch, hasTouch op 390x844) kiest 10:30 zonder oplichtende band
+- 2026-09-14 16:37 · agenda-sleep · antagonist ronde 1: VIOLATIONS FOUND, 0 kritiek, 0 groot, 7 klein, 4 vragen; in behandeling. Beslissingen van de eigenaar in deze sessie: nl.json-sleutels toevoegen (V4, gevraagd en beantwoord 'Ja, voeg ze toe'), en het gestippelde landingsvoorbeeld in de accentkleur houden als vijfde toepassing 'geselecteerde rij' (bevinding 1). Tickettekst over de tik rechtgezet (bevinding 7): een tik rondt nu af naar beneden

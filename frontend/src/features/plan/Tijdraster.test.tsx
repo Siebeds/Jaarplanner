@@ -336,15 +336,21 @@ describe("Tijdraster onder de muis", () => {
   });
   afterAll(() => vi.unstubAllGlobals());
 
-  it("licht het kwartier onder de muis op, met zijn beginuur erin, tot de muis weggaat", () => {
+  it("licht het kwartier onder de muis op, afgerond naar beneden, tot de muis weggaat", () => {
     toon([dag()]);
 
-    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 17) });
-    // 9:17 is inside the quarter that starts at 9:15, and the band names that start: it is what a click would ask for.
-    expect(screen.getByText("9:15")).toBeInTheDocument();
+    // 9:42 is nearer to 9:45, but it is inside the quarter that starts at 9:30, and the band names that start: it is
+    // what a click there asks for (the next test). A nearest-quarter band would say 9:45 here.
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 42) });
+    expect(screen.getByText("9:30")).toBeInTheDocument();
 
+    // A button held down with no stretch of this column running (a block dragged across it) asks nothing.
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 42), buttons: 1 });
+    expect(screen.queryByText("9:30")).not.toBeInTheDocument();
+
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 42) });
     fireEvent.pointerLeave(kolom());
-    expect(screen.queryByText("9:15")).not.toBeInTheDocument();
+    expect(screen.queryByText("9:30")).not.toBeInTheDocument();
   });
 
   it("vraagt bij een klik het kwartier dat oplicht, ook in zijn onderste helft", () => {
@@ -416,5 +422,59 @@ describe("Tijdraster onder de muis", () => {
 
     expect(gevraagd).toHaveBeenCalledTimes(1);
     expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 13 * 60 + 30);
+  });
+
+  it("vraagt aan het einde van de dag het kwartier dat de band toont, en sleept niet tot middernacht", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // The last quarter a click may start in still fits an activiteit of the default length (50 minutes): 23:00. The
+    // band stops there too, so what it names is what the click asks for, never an off-grid 23:10. Two "23:00" on
+    // screen: the hour label in the gutter, and the band.
+    fireEvent.pointerMove(kolom(), { clientY: y(23 * 60 + 40) });
+    expect(screen.getAllByText("23:00")).toHaveLength(2);
+    fireEvent.pointerDown(kolom(), { clientY: y(23 * 60 + 40) });
+    fireEvent.pointerUp(kolom(), { clientY: y(23 * 60 + 40) });
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 23 * 60);
+
+    // A stretch ends a quarter before midnight at the latest: the wire format stops at 23:59, and "tot 24:00" would
+    // say one time while another was stored.
+    fireEvent.pointerDown(kolom(), { clientY: y(22 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(23 * 60 + 55), buttons: 1 });
+    fireEvent.pointerUp(kolom(), { clientY: y(23 * 60 + 55) });
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 22 * 60, 23 * 60 + 45);
+  });
+
+  it("laat een bereik vallen als de knop is losgelaten waar de kolom het niet hoorde", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60), buttons: 1 });
+    expect(screen.getByText(toonBereik(9 * 60, 10 * 60 + 15))).toBeInTheDocument();
+
+    // The next move says no button is down: the release went somewhere else (a context menu, another window).
+    fireEvent.pointerMove(kolom(), { clientY: y(11 * 60), buttons: 0 });
+    expect(screen.queryByText(toonBereik(9 * 60, 10 * 60 + 15))).not.toBeInTheDocument();
+
+    // So a later release on this column, such as the end of a block drag dropped here, finishes nothing.
+    fireEvent.pointerUp(kolom(), { clientY: y(11 * 60) });
+    expect(gevraagd).not.toHaveBeenCalled();
+  });
+
+  it("hoort een klik zonder indrukken ervoor, ook na een klik met de muis", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // A mouse click: answered on release, and the click that follows it is not asked a second time.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerUp(kolom(), { clientY: y(9 * 60) });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(9 * 60) });
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+
+    // A click with no press before it (some assistive technology sends those) is still heard, at its own quarter.
+    fireEvent.click(kolom(), { detail: 1, clientY: y(14 * 60 + 10) });
+    expect(gevraagd).toHaveBeenCalledTimes(2);
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 14 * 60);
   });
 });

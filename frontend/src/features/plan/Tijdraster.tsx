@@ -561,13 +561,20 @@ type Trek = { anker: number; nu: number };
  * inside the 10:15 quarter asks for 9:00 to 10:30. A press that never leaves its quarter is a click: one quarter is
  * not what anybody drags out, and a click gets the activiteit's own length.
  *
- * **Mouse and pen only.** On a touchscreen a finger drawn down the grid scrolls the hours, which a phone cannot give
- * up, and there is no hover to show. A tap still picks its quarter, through the click.
+ * **Two limits at the end of the day, so that what the grid shows is what gets sent.** A click starts no later than
+ * the last quarter that still fits an activiteit of the default length, and the band stops at that quarter too,
+ * because it names what the click asks for. A stretch ends no later than a quarter before midnight: the wire format
+ * stops at 23:59, so a stretch drawn to midnight would say one time and store another.
+ *
+ * **A mouse draws a stretch, a finger does not.** On a touchscreen a finger drawn down the grid scrolls the hours,
+ * which a phone cannot give up, and there is no hover to show. A tap still picks its quarter, through the click. A pen
+ * is handled as a mouse, which draws a stretch only where the platform does not pan the scroller under it instead.
  *
  * **Its own pointer handling, not dnd-kit**, for the reason `Rekgreep` gives: nothing moves from one place to another,
- * two numbers are chosen inside one column. Capture keeps the stretch following the pointer once it leaves the column.
- * The stretch lives in a ref as well as in state because the release has to read the last move, and a render need not
- * have happened between the two.
+ * two numbers are chosen inside one column. Capture keeps the stretch following the pointer once it leaves the column,
+ * and a stretch whose release never reaches the column (capture lost, the button let go elsewhere) is dropped rather
+ * than left for some later release to finish. The stretch lives in a ref as well as in state because the release has
+ * to read the last move, and a render need not have happened between the two.
  */
 function useLegePlek(
   datum: string,
@@ -586,14 +593,14 @@ function useLegePlek(
     setTrek(volgende);
   };
 
-  // Never above the first quarter of the grid nor inside its last one, so a stretch cannot end past midnight.
-  const kwartier = (clientY: number, knop: HTMLElement) => {
-    const vak = knop.getBoundingClientRect();
-    return Math.min(Math.max(vloer((clientY - vak.top) / PX_PER_MINUUT + bereik.van), bereik.van), bereik.tot - STAP);
-  };
+  // The two limits above: the latest quarter a click (and so the band) may name, and the latest a stretch may reach.
+  const laatsteKlik = vloer(bereik.tot - STANDAARDDUUR);
+  const laatsteTrek = bereik.tot - 2 * STAP;
 
-  // One click's worth of time, kept inside the grid as the click always was.
-  const opKlik = (begin: number) => onVoegToe(datum, Math.min(begin, bereik.tot - STANDAARDDUUR));
+  const kwartier = (clientY: number, knop: HTMLElement, uiterst: number) => {
+    const vak = knop.getBoundingClientRect();
+    return Math.min(Math.max(vloer((clientY - vak.top) / PX_PER_MINUUT + bereik.van), bereik.van), uiterst);
+  };
 
   // Escape lets go of a stretch the teacher did not mean. Listened for only while one is being drawn.
   const trekt = trek !== null;
@@ -614,21 +621,22 @@ function useLegePlek(
       if (!doorAanwijzer.current || gebeurtenis.button !== 0) return;
       // No text selected while the pointer crosses the hour labels on its way down the grid.
       gebeurtenis.preventDefault();
-      const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget);
+      const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget, laatsteKlik);
       zet({ anker: hier, nu: hier });
       setZweef(null);
       gebeurtenis.currentTarget.setPointerCapture?.(gebeurtenis.pointerId);
     },
     onPointerMove(gebeurtenis: ReactPointerEvent<HTMLButtonElement>) {
       if (gebeurtenis.pointerType === "touch") return;
-      const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget);
-      if (lopend.current) {
+      if (lopend.current && (gebeurtenis.buttons & 1) === 1) {
+        const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget, laatsteTrek);
         if (hier !== lopend.current.nu) zet({ ...lopend.current, nu: hier });
         return;
       }
-      // A button held down with no stretch running is a block being dragged across this column, or a stretch that
-      // Escape let go of. Neither is asking which quarter a click would pick.
-      setZweef(gebeurtenis.buttons === 0 ? hier : null);
+      // The primary button came up where this column never heard it, so the stretch it was drawing is over.
+      if (lopend.current) zet(null);
+      // A button held down with no stretch of this column running is not asking which quarter a click would pick.
+      setZweef(gebeurtenis.buttons === 0 ? kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget, laatsteKlik) : null);
     },
     onPointerLeave() {
       setZweef(null);
@@ -637,10 +645,14 @@ function useLegePlek(
       const gesleept = lopend.current;
       if (!gesleept) return;
       zet(null);
-      if (gesleept.anker === gesleept.nu) opKlik(gesleept.anker);
+      if (gesleept.anker === gesleept.nu) onVoegToe(datum, gesleept.anker);
       else onVoegToe(datum, Math.min(gesleept.anker, gesleept.nu), Math.max(gesleept.anker, gesleept.nu) + STAP);
     },
     onPointerCancel() {
+      zet(null);
+    },
+    // Capture is let go right after a release, which has already finished the stretch; any other loss ends it.
+    onLostPointerCapture() {
       zet(null);
     },
     onClick(gebeurtenis: ReactMouseEvent<HTMLButtonElement>) {
@@ -650,8 +662,12 @@ function useLegePlek(
         onVoegToe(datum, STANDAARDBEGIN);
         return;
       }
-      if (doorAanwijzer.current) return;
-      opKlik(kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget));
+      // Read once and cleared: it answers for the one click that follows a mouse's release, and a later click with no
+      // press before it must still be heard.
+      const alBeantwoord = doorAanwijzer.current;
+      doorAanwijzer.current = false;
+      if (alBeantwoord) return;
+      onVoegToe(datum, kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget, laatsteKlik));
     },
   };
 
@@ -665,6 +681,10 @@ function useLegePlek(
 /**
  * Where something is about to be: a block in flight, or a stretch being dragged out on empty space. One look for both,
  * because to a teacher they answer the same question, and its hours written in it so the answer is not the shape alone.
+ *
+ * **In the accent, as the fifth of its five uses: a selected row.** What it draws is the stretch of time the teacher is
+ * selecting, and only while she selects it (owner, 2026-09-14, TB-014; recorded above `--color-accent` in `index.css`
+ * and in ADR-0024). The hover band is not a selection, which is why it stays ink.
  */
 function Landingsvak({ begin, einde, rasterVan }: { begin: number; einde: number; rasterVan: number }) {
   return (

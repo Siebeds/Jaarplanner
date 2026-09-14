@@ -36,6 +36,7 @@ import { Maandrooster } from "./Maandrooster";
 import { Tijdraster, type Ficheblokje, type Hoekblokje, type Tijddoel } from "./Tijdraster";
 import { STANDAARDBEGIN, alsTijd, minuten, toonTijd } from "./tijd";
 import { beginSleep, doelTijd, eindigSleep, leesKolomId } from "./tijdsleep";
+import { eindeVan, type Gevraagdeplek } from "./gevraagdeplek";
 import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Dagonderschrift } from "./Dagonderschrift";
 import { weekInBeeld } from "./weekInBeeld";
@@ -93,9 +94,6 @@ function leegteDag(datum: string) {
  * browser and is shared with nobody, which for a plan a school is inspected on is worse than not
  * having it.
  */
-/** Where a new placement was asked for: the day, its first minute and, when a stretch was dragged out, its last. */
-type Gevraagdeplek = { datum: string; begin: number; einde?: number };
-
 export function Agendascherm() {
   const { datum: routeDatum } = useParams<{ datum: string }>();
   const [zoek] = useSearchParams();
@@ -865,10 +863,8 @@ export function Agendascherm() {
               activiteitId,
               datum: kiezer.datum,
               begin: alsTijd(kiezer.begin),
-              // A stretch the teacher dragged out is what she asked for, so it wins. Otherwise the activiteit's own
-              // default length decides where the block ends, and the teacher drags the edge from there: a fixed
-              // length here would make every activiteit the same one, which is what its length exists to avoid.
-              einde: alsTijd(kiezer.einde ?? kiezer.begin + duur),
+              // A stretch she dragged out wins over the activiteit's own length (`eindeVan` says why).
+              einde: alsTijd(eindeVan(kiezer, duur)),
             },
             { onSuccess: () => setKiezer(null) },
           );
@@ -1019,7 +1015,7 @@ export function Agendascherm() {
               datum: nieuw.datum,
               begin: alsTijd(nieuw.begin),
               // The stretch she dragged out, when she did; the new activiteit's own length otherwise.
-              einde: alsTijd(nieuw.einde ?? nieuw.begin + duur),
+              einde: alsTijd(eindeVan(nieuw, duur)),
             },
             { onSuccess: () => setNieuw(null) },
           );
