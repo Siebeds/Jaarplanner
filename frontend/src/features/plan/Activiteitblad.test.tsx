@@ -120,7 +120,7 @@ describe("Activiteitblad na een geweigerde dagactie", () => {
     expect(within(screen.getByRole("dialog")).getByRole("alert")).toBe(melding);
   });
 
-  it("houdt blad en melding dezelfde als ook het inhoudsrecht wegvalt, zodat de weigering een keer klinkt", () => {
+  it("houdt blad en melding dezelfde als ook het inhoudsrecht wegvalt, zodat de weigering een keer klinkt", async () => {
     // A leerkracht whose only klas at K3 is this one: she may plan it and change K3's activiteiten.
     const qc = client(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
     const { rerender } = render(<Blad qc={qc} magPlannen fout={null} />);
@@ -133,8 +133,10 @@ describe("Activiteitblad na een geweigerde dagactie", () => {
     const melding = within(dialoog).getByRole("alert");
 
     // Directie removed her klastoewijzing: the refetched rights hold neither the planning nor the content right.
-    act(() => {
+    // Awaited for one task: TanStack Query hands `setQueryData` to its observers on the next one.
+    await act(async () => {
       qc.setQueryData(["ik"], NIEMAND);
+      await new Promise((r) => setTimeout(r, 0));
     });
     rerender(<Blad qc={qc} magPlannen={false} fout={WEIGERING} />);
 

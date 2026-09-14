@@ -918,3 +918,30 @@ Asked by the orchestrator with the three options; the owner chose **(A): keep op
 
 ### Orchestrator's disposition (2026-09-14)
 The QUESTION is taken inside slice 4's fix round 3 rather than filed as a ticket: after a rights loss a control that promises planning is exactly the E3-06 case this slice exists to close. The residual race is handled by narrowing the comment (or counting the hoek sheets), also in fix round 3.
+
+## Code slice 4 — audit round 4
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff a4d698a 960ad89` on `story/E6-02-frontend` (14 files), plus `Activiteitformulier.tsx`, `Nieuweactiviteitblad.tsx`, `Activiteitblad.tsx`, `Subthemaplanner.tsx`, `Bestemmingsblad.tsx`, `Themarij.tsx`, `Nieuweactiviteitregel.tsx`, `Doelkoppelaar.tsx`, `Blad.tsx`, `lib/queryClient.ts`, `lib/rechten.ts`, `Agendascherm.tsx` (585–970).
+- **Verdict:** VIOLATIONS FOUND — 2 MINOR. No CRITICAL, no MAJOR, no QUESTION. Every round-3 item resolved as asked; the two findings are F9's and the QUESTION's class in places the fix did not reach.
+- **Gates re-run by the auditor:** `pnpm lint` exit 0; `vitest run` 51 files, 490/490, at `960ad89` (clean tree).
+
+### Confirmed resolved
+- **Refused create (test-runner round 3):** `weigering` is computed in the same render as `maak.error`, so the form never shows it first; one alert, no "gemaakt" prefix; `geenSubthemaOmIn` reachable only when `weigering`, `laadt` and `planFout` are all empty; `.catch(() => null)` removes the unhandled rejection, and a non-403 create failure still reaches the form's `fout`. Keyed on day and hour, plus `acties.plaats.reset()` on `onNieuw`: no stale refusal survives a reopen.
+- **Refused plan (QUESTION, new-activiteit half):** "gemaakt maar niet ingepland" is guaranteed: `acties.plaats` is reset on open and filled only by `onPlan` after a successful create. No Bewaren, no day line.
+- **F8:** `Blad` keeps its children in one body `div`; `extra` is child index 1 in both states, and `Dagfout` keeps its fragment position; the test asserts that the dialog and the alert are the same elements. Keyboard: `form={id}` keeps Enter-submit in the fields; Enter in the `Dagsectie` fields no longer triggers the activiteit's Bewaren, nor Enter in the `Doelkiezer` search while creating: an improvement.
+- **F9:** the frozen list never shows a control the server refuses, because every row control reads the live `mag`. Accepted cost: after a rights loss a frozen thema can open onto nothing (the F1 state) to keep the alert. Rights gained mid-sheet appear only after a reopen (withholds only).
+- **Agendamelding comment:** "they send none of these requests" is true (`plaatsHoek` and `verwijderPlaatsing` are not among the three errors).
+- **Art. VI.1:** every new gate only withholds; nothing the server matrix denies is shown; the refusal-only sheets hide nothing the gebruiker may still do. No copy added, no em dash, no dependency, no Art. XIV assumption.
+
+### Findings to address (or waive)
+1. **MINOR F10 (the E5-03 rule on comments; WCAG 4.1.3; missed by rounds 1–3, introduced in `d859a10`):** `Themarij.tsx:207` gates `Nieuweactiviteitregel` on live `mag.activiteitBewerken && doelenKoppelen`. A 403 on its create ("Maak en koppel") shows its alert (`Nieuweactiviteitregel.tsx:144-148`), then the refetched rights unmount the form together with the alert. The frozen list keeps the subthema row but not the reason. The test header's claim in `Bestemmingsblad.test.tsx:22-23` is false here. Found by code reading. Fix: keep the regel rendered while it holds an error, with the error checked before the rights as `Activiteitrij` does, plus a test; or narrow the claim.
+2. **MINOR F11 (the E3-06 and E5-03 rules; the QUESTION's planner half):** with `!magPlannen`, `Subthemaplanner.tsx:174` drops only the footer. The select, the date fields, the verdeling, the drag handles and the preview remain, including "Zo komt het te staan" (`nl.json:221`) and `periode.pastNiet`'s instruction to widen the window (`:231`). No rights breach. Fix: when `!magPlannen`, render only `Resultaat`, at its current child position, plus a test.
+
+### Residuals (the implementer's two)
+- **Focus move on the sheet swap (cases 1, 2a): not material.** Focus lands on the refusal sheet's close button, its only action; one alert inserted.
+- **A plan failure that is not a refusal keeps the form: pre-existing (predates E6), not rights-related, not graded.** The day line still promises a plan and a second Bewaren makes a duplicate activiteit. Ticket candidate for the owner.
+
+### Note (not graded)
+- `Activiteitformulier.tsx:158-162` says "only the title, the footer and the block above that section change"; the goals section below `extra` changes as well.

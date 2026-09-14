@@ -203,64 +203,75 @@ export function Subthemaplanner({
         <Nietsomteplannen klasNaam={klasNaam} themas={themas} magSubthemaMaken={magSubthemaMaken} />
       ) : (
         <div className="flex flex-col gap-4">
-          <Veld label={t("periode.subthema")}>
-            {(id) => (
-              <Keuze id={id} value={subthemaId} onChange={(e) => {
-                  setSubthemaId(e.target.value);
-                  setVolgorde(null);
-                }}>
-                <option value="">{t("periode.kiesSubthema")}</option>
-                {subthemas.map((sub) => (
-                  <option key={sub.id} value={sub.id}>
-                    {sub.themaNaam} / {sub.naam} ({sub.activiteiten.length})
-                  </option>
-                ))}
-              </Keuze>
-            )}
-          </Veld>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Veld label={t("periode.eersteDag")}>
+          {/* WITHOUT THE RIGHT TO PLAN, ONLY THE RESULT (E6-02 slice 4, the mini-fix after audit round 4, F11; the
+              E3-06 and E5-03 rules). After a refusal the refetched rights can say this klas may not be planned: every
+              field here would feed a plan button that is gone, and the preview and its advice to widen the window
+              would promise a plan. Each is left out in its own slot, so the result keeps its place and stays the same
+              element, not announced again. */}
+          {magPlannen ? (
+            <Veld label={t("periode.subthema")}>
               {(id) => (
-                <Invoer
-                  id={id}
-                  type="date"
-                  min={lesdagen[0]}
-                  max={laatsteDag}
-                  value={eersteDag}
-                  onChange={(e) => setStartdag(e.target.value)}
-                />
+                <Keuze id={id} value={subthemaId} onChange={(e) => {
+                    setSubthemaId(e.target.value);
+                    setVolgorde(null);
+                  }}>
+                  <option value="">{t("periode.kiesSubthema")}</option>
+                  {subthemas.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.themaNaam} / {sub.naam} ({sub.activiteiten.length})
+                    </option>
+                  ))}
+                </Keuze>
               )}
             </Veld>
+          ) : null}
 
-            <Veld label={t("periode.laatsteDag")}>
-              {(id) => (
-                <Invoer
-                  id={id}
-                  type="date"
-                  min={eersteDag}
-                  max={lesdagen[lesdagen.length - 1]}
-                  value={laatsteDag}
-                  onChange={(e) => setEinddag(e.target.value)}
-                />
-              )}
-            </Veld>
-          </div>
+          {magPlannen ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Veld label={t("periode.eersteDag")}>
+                {(id) => (
+                  <Invoer
+                    id={id}
+                    type="date"
+                    min={lesdagen[0]}
+                    max={laatsteDag}
+                    value={eersteDag}
+                    onChange={(e) => setStartdag(e.target.value)}
+                  />
+                )}
+              </Veld>
+
+              <Veld label={t("periode.laatsteDag")}>
+                {(id) => (
+                  <Invoer
+                    id={id}
+                    type="date"
+                    min={eersteDag}
+                    max={lesdagen[lesdagen.length - 1]}
+                    value={laatsteDag}
+                    onChange={(e) => setEinddag(e.target.value)}
+                  />
+                )}
+              </Veld>
+            </div>
+          ) : null}
 
           {/* Not wrapped in Veld: that renders a <label for=...>, and a radiogroup has no single
               form control for a label to point at. The radiogroup names itself instead. */}
-          <Segment
-            label={t("periode.verdeling")}
-            waarde={verdeling}
-            onKies={setVerdeling}
-            className="w-full"
-            opties={[
-              { waarde: "achterElkaar", label: t("periode.achterElkaar") },
-              { waarde: "verspreid", label: t("periode.verspreid") },
-            ]}
-          />
+          {magPlannen ? (
+            <Segment
+              label={t("periode.verdeling")}
+              waarde={verdeling}
+              onKies={setVerdeling}
+              className="w-full"
+              opties={[
+                { waarde: "achterElkaar", label: t("periode.achterElkaar") },
+                { waarde: "verspreid", label: t("periode.verspreid") },
+              ]}
+            />
+          ) : null}
 
-          {gekozen ? (
+          {magPlannen && gekozen ? (
             <section className="flex flex-col gap-2">
               <h3 className="text-micro uppercase text-inkt-zwak">{t("periode.voorbeeld")}</h3>
 
@@ -319,7 +330,7 @@ export function Subthemaplanner({
               a modal dialog, so the agenda's own strip does not show a refusal that arrives while it is open. */}
           {resultaat ? <Resultaat resultaat={resultaat} /> : null}
 
-          {gekozen && beschikbaar.length > 0 ? (
+          {magPlannen && gekozen && beschikbaar.length > 0 ? (
             <p className="text-meta text-inkt-zwak">
               {telWoord(beschikbaar.length, "periode.eenLesdag", "periode.aantalLesdagen")}
             </p>

@@ -482,3 +482,38 @@ None blocking.
 - [info] The planner sends one POST per row; each 403 invalidates every query (6 rows gave 6 refetch cycles of about 15 requests); correct, just a lot of traffic.
 - [info] The HL-of-K3-on-L1 case for "Koppel dit doel" was not re-exercised (no K3 doel in that klas's register); covered by round 2 and `DoelenScherm.test.tsx`.
 - [info, pre-existing] The React setState-in-render warning on the first `/doelen` visit.
+
+
+# E6-02 slice 4 — Test report (round 4)
+
+**Verdict:** FAIL on one MINOR test-only defect. Every browser criterion (a)–(d) and every spot-check passes at 1440×1000 and 390×844; all gates green; no product code wrong.
+**Mode:** both (suites, the four tests read, six mutations plus a probe; headless Chrome over CDP with real mouse and key input)
+**Commit:** `960ad89` on `story/E6-02-frontend`, on top of `a4d698a`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Gates → PASS.** `pnpm lint` 0; 51 files, 490/490; `pnpm build` 0 (usual chunk warning).
+- **The four new or changed tests pin the behaviour → FAIL (the F9 test).** Mutations (each restored): `maakWeigering` null fails the refused-create test; removing `|| weigering` fails both refusal tests; removing the `.catch` surfaces as an unhandled rejection; keeping the plan button without `magPlannen` fails the new test; forcing a `Blad` remount fails the `Activiteitblad` identity test. **But with `themasMetKoppelactie(themas, mag)` (live rights) `Bestemmingsblad.test` stays 4/4**: TanStack Query 5.102 delivers cache changes on `setTimeout(0)`, and the tests' synchronous `act(() => qc.setQueryData(["ik"], NIEMAND))` returns before the component re-renders. A probe with an awaited tick inside `act` passes unmutated (4/4, 3/3) and fails under both mutations. Probe files deleted.
+- **(a) Lies's refused create → PASS at both widths.** `403 POST …/activiteiten`, `200 /api/ik`; exactly one `role=alert` inserted inside the dialog ("Je hebt geen toegang tot deze actie."), in view (101–135 in 77–1000; 794–828 in 770–844), page `scrollY` 0; no "gemaakt", no "geen subthema", no day line, no form, only Sluiten; 0 activiteiten created; add buttons 7→0 and 34→0; the quiet line; nothing after closing; console empty.
+- **(b) Carla's refused plan and planner → PASS at both widths.** `201` create, `403 …/weekplanning`; one alert "De activiteit is gemaakt maar niet ingepland. Je hebt geen toegang tot deze actie."; no Bewaren, no day line, no form; exactly 1 activiteit created. Planner: after the rights loss, 403 on `…/subthemaperiodes` and one per row; one alert "0 van 5 ingepland" with a reason per row, in view (627–897 in 77–1000; 481–844 in 195–844); the plan button gone; nothing after closing.
+- **(c) F8 → PASS at both widths.** `403 PUT …/weekplanning/{id}/dag`, `200 /api/ik`; the same dialog element (title "Activiteit bewerken" → "Kring van Lies", only Sluiten); the same alert element, inserted once, unchanged; focus inside the dialog; no page alert after closing; console empty. **Keyboard:** 26 Tab stops, focus never left the dialog; Enter in Dag, Van, Tot and Soort sends 0 writes; Enter in Verwachte uitkomsten and Tab-to-Bewaren+Enter each send one PUT and close; the mouse save works; the goal picker's search is outside the `<form>` (Enter sends 0 writes, no activiteit created).
+- **(d) F9 → PASS in the browser at both widths.** Hugo (HL K3) on NL-K3-02: `403 POST …/doelkoppelingen`, `200 /api/ik`; the same single alert, the row, Herfst and Bladeren stay; "nergens aan koppelen" never appeared; the row's other buttons (following live rights) disappeared; in view; nothing after closing.
+- **Spot-checks → PASS** (add-button counts and quiet lines per profile; "Koppel dit doel" per profile; Greta's empty state; the picker path focused and in view).
+
+## Commands run
+- Gates; `mut.sh` (six mutations) and `probe.sh` (the awaited-tick probe); throwaway DB `jp_tr_e602s4r4` (container password, migrated, six leerplandoelen by SQL, the rest over the API); API on 5395, Vite on 5185; every klastoewijzing and appointment restored. Teardown: servers stopped, `DROP DATABASE jp_tr_e602s4r4 WITH (FORCE)`, profiles deleted, `git status --short` empty at `960ad89`.
+
+## Evidence
+- In the orchestrator's scratchpad under `tr-s4r4\` (`verslag-*.json`, `mut.txt`, `probe.txt`, gate logs; screenshots in `shots\`).
+
+## Defects
+- **[MINOR, test-only]** `Bestemmingsblad.test.tsx` ("houdt een geweigerde koppeling in beeld…") and `Nieuweactiviteitblad.test.tsx` ("meldt een geweigerde aanmaak…, ook als de rechten niets meer laten") change the rights synchronously and assert before the component re-renders, so the F9 test survives the live-rights mutation and the refused-create test's "rights hold nothing" half is not exercised. Fix (verified by the probe): `await act(async () => { qc.setQueryData(["ik"], NIEMAND); await new Promise((r) => setTimeout(r, 0)); });`, plus an assertion in the F9 test that the new rights arrived (the row's subthema button is gone).
+
+## Notes (not blocking)
+- The new-activiteit sheet swaps to a new dialog on a refusal (focus on Sluiten; the alert inserted once).
+- After the planner refusal and after F8, focus stays in the dialog on its content container, never on `<body>`.
+- The planner sends one POST per row (5–6 × 403, each reloading every query).
+
+## Owner decision after round 4 (2026-09-14)
+The three fix rounds were used up. The owner approved one extra mini-fix for the antagonist's F10 and F11; the orchestrator added this test-only defect and the antagonist's comment nit, both on the same topic. A short check follows it.

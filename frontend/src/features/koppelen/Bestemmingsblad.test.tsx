@@ -11,7 +11,12 @@ import { Bestemmingsblad } from "./Bestemmingsblad";
 /**
  * The register's destination sheet lists only the thema's where the gebruiker has something to press (E6-02 slice 4,
  * fix round 2; the E3-06 rule). A hoofdleerkracht of K3 met a thema without subthema's that opened onto nothing. The
- * list is decided with the rights as the sheet opens (fix round 3, F9), so a refusal inside it keeps its row.
+ * list is decided with the rights as the sheet opens (fix round 3, F9), so a thema stays listed after a refusal inside
+ * it; and a row checks its own failure before the rights (`Activiteitrij`, and `Nieuweactiviteitregel` since the
+ * mini-fix after audit round 4, F10), so the refused row keeps its reason too.
+ *
+ * A change of rights is awaited for one task: TanStack Query hands `setQueryData` to its observers on the next task,
+ * so asserting straight after it tests the old rights.
  */
 
 const CODE = "2.1.GL3.10";
@@ -168,13 +173,51 @@ describe("Bestemmingsblad", () => {
       within(blad).getByRole("button", { name: t("koppelen.koppelAanActiviteitUitleg", { activiteit: "Bladerslinger" }) }),
     );
     expect(await within(blad).findByRole("alert")).toHaveTextContent(WEIGERING);
+    const subthemaKnop = { name: t("koppelen.koppelAanSubthemaUitleg", { subthema: "Bladeren" }) };
+    expect(within(blad).getByRole("button", subthemaKnop)).toBeInTheDocument();
 
     // The refusal refetches the rights, and they no longer hold the goal-link right at K3.
-    act(() => {
+    await act(async () => {
       qc.setQueryData(["ik"], NIEMAND);
+      await new Promise((r) => setTimeout(r, 0));
     });
 
+    // The new rights arrived: the subthema's own link control is gone.
+    expect(within(blad).queryByRole("button", subthemaKnop)).toBeNull();
     expect(within(blad).getByRole("alert")).toHaveTextContent(WEIGERING);
     expect(within(blad).queryByText(t("koppelen.nietsTeKoppelen"))).toBeNull();
+  });
+
+  it("houdt een geweigerde nieuwe activiteit in beeld als de vernieuwde rechten haar niet meer laten maken", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ detail: WEIGERING }), {
+            status: 403,
+            headers: { "Content-Type": "application/problem+json" },
+          }),
+      ),
+    );
+    const { blad, qc } = toon(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }), [HERFST, LEEG]);
+
+    fireEvent.change(within(blad).getByLabelText(t("koppelen.zoek")), { target: { value: "Bladeren" } });
+    fireEvent.click(within(blad).getByRole("button", { name: t("koppelen.nieuweActiviteitUitleg", { subthema: "Bladeren" }) }));
+    fireEvent.change(within(blad).getByLabelText(t("koppelen.activiteitNaam")), { target: { value: "Eikels tellen" } });
+    fireEvent.click(within(blad).getByRole("button", { name: t("koppelen.maakEnKoppel") }));
+    const melding = await within(blad).findByRole("alert");
+    expect(melding).toHaveTextContent(WEIGERING);
+
+    // The refusal refetches the rights: no create right and no goal-link right at K3 any more.
+    await act(async () => {
+      qc.setQueryData(["ik"], NIEMAND);
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(within(blad).queryByRole("button", { name: t("koppelen.koppelAanSubthemaUitleg", { subthema: "Bladeren" }) })).toBeNull();
+    // The reason stays, as the same element, and the create it refused is no longer offered.
+    expect(within(blad).getByRole("alert")).toBe(melding);
+    expect(within(blad).queryByRole("button", { name: t("koppelen.maakEnKoppel") })).toBeNull();
+    expect(within(blad).queryByLabelText(t("koppelen.activiteitNaam"))).toBeNull();
   });
 });

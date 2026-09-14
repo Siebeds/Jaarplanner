@@ -232,8 +232,10 @@ describe("ThemadetailScherm: wie wat mag", () => {
     fireEvent.click(await screen.findByRole("button", { name: t("subthemabeheer.toevoegen") }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
-    act(() => {
+    // Awaited for one task: TanStack Query hands `setQueryData` to its observers on the next one.
+    await act(async () => {
       client.setQueryData(["ik"], { ...ikMet({}), id: IK_ID });
+      await new Promise((r) => setTimeout(r, 0));
     });
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

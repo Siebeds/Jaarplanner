@@ -158,8 +158,8 @@ export function Activiteitformulier({
   // ONE DIALOG FOR BOTH STATES (E6-02 slice 4, fix round 3, F8). A refusal refetches the rights, and a gebruiker who
   // loses the content right with it turns this from the form into the facts while the sheet is open. Two dialogs
   // remounted the sheet, moved focus, and announced and scrolled a refusal in `extra` a second time. One dialog with
-  // the same slots keeps the caller's section, and what is in it, as the same elements; only the title, the footer and
-  // the block above that section change.
+  // the same slots keeps the caller's section, and what is in it, as the same elements. What switches is the title,
+  // the footer, the block above that section and the goals below it.
   const fiche = alleenLezen && activiteit ? activiteit : null;
 
   return (

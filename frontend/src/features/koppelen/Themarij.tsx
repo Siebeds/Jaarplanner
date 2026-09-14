@@ -203,15 +203,16 @@ function Subthemarij({
           </ul>
 
           {/* Making an activiteit WITH this doel on it: the create right and the goal-link right at this leeftijd
-              together (R17, R19). A leerkracht makes activiteiten on the thema screen, without a doel. */}
-          {mag.activiteitBewerken(leeftijd) && magKoppelen ? (
-            <Nieuweactiviteitregel
-              subthemaId={subtak.subthema.id}
-              subthemaNaam={subtak.subthema.naam}
-              code={code}
-              klasId={klasId}
-            />
-          ) : null}
+              together (R17, R19). A leerkracht makes activiteiten on the thema screen, without a doel. Always
+              rendered, and the regel checks its own failure before these rights, as `Activiteitrij` does: a refusal
+              refetches the rights, and a regel gated here would take its reason with it (F10). */}
+          <Nieuweactiviteitregel
+            subthemaId={subtak.subthema.id}
+            subthemaNaam={subtak.subthema.naam}
+            code={code}
+            klasId={klasId}
+            magMaken={mag.activiteitBewerken(leeftijd) && magKoppelen}
+          />
         </div>
       ) : null}
     </div>

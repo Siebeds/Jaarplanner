@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ThemaWeergave } from "../../lib/types";
 import { t } from "../../i18n";
@@ -7,9 +7,10 @@ import { ikMet, metIk } from "../../test/rechten";
 import { Subthemaplanner } from "./Subthemaplanner";
 
 /**
- * The planner after rows failed (E6-02 slice 4, fix rounds 2 and 3; WCAG 4.1.3, the E3-06 rule). The planner stays
- * open when a row failed and is a modal dialog, so it announces the failures itself; once the refetched rights say
- * the klas may not be planned, its plan button goes.
+ * The planner after rows failed (E6-02 slice 4, fix round 2, fix round 3 and the mini-fix after audit round 4; WCAG
+ * 4.1.3, the E3-06 and E5-03 rules). The planner stays open when a row failed and is a modal dialog, so it announces
+ * the failures itself. Once the refetched rights say the klas may not be planned, only the result is left: no plan
+ * button, no fields, no preview.
  */
 
 const THEMA: ThemaWeergave = {
@@ -37,12 +38,14 @@ const THEMA: ThemaWeergave = {
 
 const FOUT = "Bladerslinger: Je hebt geen toegang tot deze actie.";
 
-function toon(magPlannen: boolean) {
+function client() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   qc.setQueryData(["thema-voor-klas", "thema-1", "klas-1"], THEMA);
-  metIk(qc, ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
+  return metIk(qc, ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
+}
 
-  render(
+function Planner({ qc, magPlannen }: { qc: QueryClient; magPlannen: boolean }) {
+  return (
     <QueryClientProvider client={qc}>
       <Subthemaplanner
         open
@@ -57,14 +60,14 @@ function toon(magPlannen: boolean) {
         onPlan={vi.fn()}
         onSluit={vi.fn()}
       />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
-  return screen.getByRole("dialog");
 }
 
 describe("Subthemaplanner", () => {
   it("meldt de rijen die niet lukten, met de reden, als melding in het blad", () => {
-    const blad = toon(true);
+    render(<Planner qc={client()} magPlannen />);
+    const blad = screen.getByRole("dialog");
 
     const melding = within(blad).getByRole("alert");
     expect(melding).toHaveTextContent(t("periode.deelsGelukt", { gelukt: 0, totaal: 1 }));
@@ -72,11 +75,25 @@ describe("Subthemaplanner", () => {
     expect(within(blad).getByRole("button", { name: t("periode.markeerPeriode") })).toBeInTheDocument();
   });
 
-  it("toont geen planknop meer als de vernieuwde rechten zeggen dat deze klas niet gepland mag worden", () => {
-    const blad = toon(false);
+  it("laat alleen het resultaat staan, als hetzelfde element, als deze klas niet meer gepland mag worden", () => {
+    const qc = client();
+    const { rerender } = render(<Planner qc={qc} magPlannen />);
+    const blad = screen.getByRole("dialog");
+    fireEvent.change(within(blad).getByLabelText(t("periode.subthema")), { target: { value: "sub-1" } });
+    expect(within(blad).getByText(t("periode.voorbeeld"))).toBeInTheDocument();
+    const melding = within(blad).getByRole("alert");
+
+    // The refetched rights arrive: this klas may not be planned.
+    rerender(<Planner qc={qc} magPlannen={false} />);
 
     expect(within(blad).queryByRole("button", { name: t("periode.markeerPeriode") })).toBeNull();
-    // The reason stays.
-    expect(within(blad).getByRole("alert")).toHaveTextContent(FOUT);
+    expect(within(blad).queryByText(t("periode.voorbeeld"))).toBeNull();
+    expect(within(blad).queryByLabelText(t("periode.subthema"))).toBeNull();
+    expect(within(blad).queryByLabelText(t("periode.eersteDag"))).toBeNull();
+    expect(within(blad).queryByLabelText(t("periode.laatsteDag"))).toBeNull();
+    expect(within(blad).queryByRole("radiogroup")).toBeNull();
+    // The reason stays, as the same element, so it is not announced again.
+    expect(within(blad).getByRole("alert")).toBe(melding);
+    expect(melding).toHaveTextContent(FOUT);
   });
 });

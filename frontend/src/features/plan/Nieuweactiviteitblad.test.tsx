@@ -145,8 +145,10 @@ describe("Nieuweactiviteitblad na een weigering", () => {
     await screen.findByRole("alert");
 
     // The refusal refetches the rights, and they hold nothing at K3 any more.
-    act(() => {
+    // Awaited for one task: TanStack Query hands `setQueryData` to its observers on the next one.
+    await act(async () => {
       qc.setQueryData(["ik"], NIEMAND);
+      await new Promise((r) => setTimeout(r, 0));
     });
 
     const blad = screen.getByRole("dialog");
