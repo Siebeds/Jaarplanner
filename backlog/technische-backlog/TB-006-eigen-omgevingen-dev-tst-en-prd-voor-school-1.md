@@ -5,11 +5,11 @@ soort: technisch
 status: nieuw
 prioriteit: hoog
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:36
+bijgewerkt: 2026-09-14 14:36
 opgepakt-door:
 branch:
 pr:
-geblokkeerd: wacht op de eigenaar: SKU's en budget per omgeving, welke Entra-tenant, waar en wanneer echte gegevens
+geblokkeerd:
 fr: []
 ---
 
@@ -47,27 +47,43 @@ goedkoopste SKU's.
   netwerk), niet de template zelf.
 - [ ] Gegeven een gedeployde dev-omgeving, wanneer de eigenaar de app opent, dan meldt hij zich aan via de eigen
   app-registratie van die omgeving, en lopen de migraties met `migrate-db.ps1` voor die omgeving.
-- [ ] Gegeven prd, dan gebruikt de app een databaserol zonder DDL-rechten, laat de databank geen willekeurig Azure-adres
-  toe en is de restore beschreven en één keer geprobeerd.
+- [ ] Gegeven de parameters voor prd, dan beschrijft de template een databaserol zonder DDL-rechten, geen firewallregel
+  die elk Azure-adres toelaat en App Service B1, en slaagt een what-if zonder dat prd gedeployed wordt. De restore is
+  beschreven; de restoreproef hoort bij de eerste deploy van prd.
 - [ ] Gegeven de publieke repo, dan staan er geen geheimen, wachtwoorden of tenantgegevens van de school in git.
 
 ## Buiten scope
 
-- De Foundry-resource voor AI: die komt uit TB-004. Hoe elke omgeving hem gebruikt, volgt later.
+- Prd deployen. De template beschrijft prd, maar de eigenaar deployt het pas als er echt iets op gebeurt, zodat er geen
+  kosten lopen voor een lege omgeving (eigenaar, 2026-09-14).
+- De Foundry-resource voor AI: die komt uit TB-004. Hoe dev en tst hem gebruiken, volgt later.
 - CI/CD-pipelines: deployen blijft een handeling vanaf de pc van de eigenaar.
 - Een eigen domeinnaam.
 - Leerkrachten uitnodigen en aan klassen koppelen (E6-04).
 
 ## Open vragen
 
-- **SKU's en maandbudget per omgeving.** Het gratis jaar dekt maar één PostgreSQL B1ms. Elke extra server kost ongeveer
-  €16 per maand, een App Service B1 ongeveer €11 (prijzen uit ADR-0034).
-- **In welke Entra-tenant loggen de leerkrachten in?** Die van de eigenaar (met eigen of gastaccounts) of die van de
-  school. Dat bepaalt de app-registratie en raakt ADR-0030.
-- **Waar komen echte gegevens:** alleen in prd, of ook in tst? En wanneer: E7-11 vraagt eerst E6-02.
-- **Eén Foundry-resource voor alle omgevingen, of een eigen voor prd?**
+Beantwoord door de eigenaar op 2026-09-14:
+
+- **SKU's en budget.** Dev en tst blijven goedkoop: App Service F1 en elk een eigen PostgreSQL B1ms (ongeveer €16 per
+  maand per server na het gratis jaar). Prd krijgt App Service B1 en PostgreSQL B1ms (ongeveer €27 per maand), maar
+  wordt nog niet gedeployed (zie Buiten scope).
+- **Entra-tenant.** De leerkrachten melden zich aan in de tenant van de school, met hun eigen schoolaccount. De
+  app-registratie van elke omgeving komt daar, en vraagt een beheerder van de school. De rechten blijven in de app
+  (Art. VI.1); alleen de aanmelding gebeurt in de schooltenant.
+- **Echte gegevens** komen alleen in prd, en pas na E6-02 op `main` en de hardening hierboven. Dev en tst krijgen enkel
+  fictieve gegevens.
+- **Foundry.** Dev en tst gebruiken de gedeelde evaluatie-resource uit TB-004 (`rg-jaarplanner-ai`, Sweden Central).
+  Prd krijgt later een eigen Foundry-resource, met eigen quota, rollen en kosten.
+
+Nog open:
+
+- **De tenant-id van de school en wie er admin consent geeft.** Nodig bij de eerste deploy van dev, niet voor de
+  template; het komt niet in git.
 
 ## Werklog
 
 - 2026-09-14 11:32 · ai-doelsuggesties · aangemaakt (status nieuw)
 - 2026-09-14 11:36 · ai-doelsuggesties · geblokkeerd: wacht op de eigenaar: SKU's en budget per omgeving, welke Entra-tenant, waar en wanneer echte gegevens
+- 2026-09-14 14:36 · ai-doelsuggesties · niet langer geblokkeerd
+- 2026-09-14 14:36 · ai-doelsuggesties · eigenaar besliste: dev/tst goedkoop, prd B1 maar nog niet deployen; tenant van de school; echte gegevens alleen in prd; Foundry gedeeld voor dev/tst, eigen voor prd
