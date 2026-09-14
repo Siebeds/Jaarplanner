@@ -214,7 +214,7 @@ describe("GebruikersScherm", () => {
   });
 
   it("toont de weigering van de server als de laatste directie haar recht zou verliezen, en laat het vakje staan", async () => {
-    const reden = "An Peeters is de enige met het directierecht. Geef het directierecht eerst aan iemand anders.";
+    const reden = "An Peeters is de enige met het directierecht. Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld.";
     const an = gebruiker({ isDirectie: true });
     toon({ gebruikers: [an], voorbijeSchooljaarIds: [] }, (pad, methode) =>
       methode === "DELETE" && pad.endsWith(`/api/gebruikers/${an.id}/directierecht`)
@@ -232,7 +232,7 @@ describe("GebruikersScherm", () => {
   });
 
   it("toont de weigering ook als de laatste directie verwijderd zou worden", async () => {
-    const reden = "An Peeters is de enige met het directierecht en kan niet verwijderd worden. Geef het directierecht eerst aan iemand anders.";
+    const reden = "An Peeters is de enige met het directierecht en kan niet verwijderd worden. Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld.";
     const an = gebruiker({ isDirectie: true });
     toon({ gebruikers: [an], voorbijeSchooljaarIds: [] }, (pad, methode) =>
       methode === "DELETE" && pad.endsWith(`/api/gebruikers/${an.id}`) ? { status: 409, body: { status: 409, detail: reden } } : undefined,

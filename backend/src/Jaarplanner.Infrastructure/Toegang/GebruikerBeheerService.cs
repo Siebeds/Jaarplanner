@@ -123,7 +123,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
     {
         var gebruiker = await VindAsync(gebruikerId, cancellationToken);
         gebruiker.GeefDirectierecht();
-        await _context.SaveChangesAsync(cancellationToken);
+        await BewaarWijzigingAsync(cancellationToken);
         return await HaalGebruikerOpAsync(gebruikerId, cancellationToken);
     }
 
@@ -138,14 +138,15 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
             if (gebruiker.IsDirectie && anderen.Aanmeldbaar < 1)
             {
                 throw new LaatsteDirectieFout(anderen.Totaal == 0
-                    ? $"{gebruiker.Naam} is de enige met het directierecht. Geef het directierecht eerst aan iemand anders."
+                    ? $"{gebruiker.Naam} is de enige met het directierecht. "
+                      + "Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld."
                     : $"{gebruiker.Naam} is de enige met het directierecht die zich al heeft aangemeld. "
-                      + "De anderen met het directierecht hebben zich nog niet aangemeld, dus het directierecht kan nog niet weg.");
+                      + "Wie verder het directierecht heeft, heeft zich nog niet aangemeld, dus het directierecht kan nog niet weg.");
             }
 
             // The domain's own guard, with the same locked count: a backstop, never the only check.
             gebruiker.NeemDirectierechtAf(anderen.Aanmeldbaar);
-            await _context.SaveChangesAsync(cancellationToken);
+            await BewaarWijzigingAsync(cancellationToken);
             await transactie.CommitAsync(cancellationToken);
         }
 
@@ -156,7 +157,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
     {
         var gebruiker = await VindAsync(gebruikerId, cancellationToken);
         gebruiker.GeefThemabeheer();
-        await _context.SaveChangesAsync(cancellationToken);
+        await BewaarWijzigingAsync(cancellationToken);
         return await HaalGebruikerOpAsync(gebruikerId, cancellationToken);
     }
 
@@ -164,7 +165,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
     {
         var gebruiker = await VindAsync(gebruikerId, cancellationToken);
         gebruiker.NeemThemabeheerAf();
-        await _context.SaveChangesAsync(cancellationToken);
+        await BewaarWijzigingAsync(cancellationToken);
         return await HaalGebruikerOpAsync(gebruikerId, cancellationToken);
     }
 
@@ -178,9 +179,9 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         {
             throw new LaatsteDirectieFout(anderen.Totaal == 0
                 ? $"{gebruiker.Naam} is de enige met het directierecht en kan niet verwijderd worden. "
-                  + "Geef het directierecht eerst aan iemand anders."
+                  + "Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld."
                 : $"{gebruiker.Naam} is de enige met het directierecht die zich al heeft aangemeld, en kan niet verwijderd "
-                  + "worden. De anderen met het directierecht hebben zich nog niet aangemeld.");
+                  + "worden. Wie verder het directierecht heeft, heeft zich nog niet aangemeld.");
         }
 
         gebruiker.BevestigVerwijderbaar(anderen.Aanmeldbaar);
@@ -188,7 +189,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         // The database does the rest: klastoewijzingen and appointments cascade, and every activiteit this gebruiker
         // made keeps existing with its maker set to null (ActiviteitConfiguration), purely shared from now on (I17).
         _context.Gebruikers.Remove(gebruiker);
-        await _context.SaveChangesAsync(cancellationToken);
+        await BewaarWijzigingAsync(cancellationToken);
         await transactie.CommitAsync(cancellationToken);
     }
 
@@ -378,6 +379,26 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         if (!await _context.Gebruikers.AnyAsync(g => g.Id == gebruikerId, cancellationToken))
         {
             throw NietGevonden(gebruikerId);
+        }
+    }
+
+    /// <summary>
+    /// Saves a change to a tracked gebruiker: a right given or taken, or the row removed. When the write affects no row,
+    /// another request removed that gebruiker between this one's read and its write. No concurrency token is configured
+    /// on <c>gebruikers</c>, so nothing else can cause it. The answer is a Dutch 404, the same kind a request arriving
+    /// after the removal gets, never a 500 (antagonist, slice 2 round 2). A repeated DELETE is therefore a 404 too, not an
+    /// idempotent 204: it did not remove anyone, and the screen's own delete never sends one twice.
+    /// </summary>
+    private async Task BewaarWijzigingAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _context.ChangeTracker.Clear();
+            throw new GebruikerbeheerNietGevondenFout("Deze gebruiker is intussen verwijderd.");
         }
     }
 

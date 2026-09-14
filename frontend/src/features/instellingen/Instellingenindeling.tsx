@@ -159,14 +159,25 @@ export function Onderdeelwissel() {
         links: rij.scrollLeft > speling,
         rechts: rij.scrollLeft + rij.clientWidth < rij.scrollWidth - speling,
       });
-    const actief = rij.querySelector<HTMLAnchorElement>('a[aria-current="page"]');
-    if (actief && typeof actief.scrollIntoView === "function") {
-      actief.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
-    meet();
+    const zetInBeeld = () => {
+      const actief = rij.querySelector<HTMLAnchorElement>('a[aria-current="page"]');
+      if (actief && typeof actief.scrollIntoView === "function") {
+        actief.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+      meet();
+    };
+    zetInBeeld();
+    // The display face can arrive after the first paint and widen every label without a scroll or
+    // resize event, which left the fades measured against the fallback font (seen once at 360 in fix
+    // round 2). So once the fonts are in, place the active part and measure again.
+    let actueel = true;
+    void document.fonts?.ready.then(() => {
+      if (actueel) zetInBeeld();
+    });
     rij.addEventListener("scroll", meet, { passive: true });
     window.addEventListener("resize", meet);
     return () => {
+      actueel = false;
       rij.removeEventListener("scroll", meet);
       window.removeEventListener("resize", meet);
     };
@@ -175,7 +186,14 @@ export function Onderdeelwissel() {
   return (
     <nav aria-label={t("instellingen.titel")} className="lg:hidden">
       <div className="relative inline-flex max-w-full">
-      <ul ref={lijst} className="inline-flex max-w-full overflow-x-auto rounded-veld border border-lijn bg-vlak-diep p-1">
+      {/* `scroll-px-9` is the fade's width (`w-8`, 32px) plus a few pixels. Without it, scrolling the
+          active part into view "nearest" landed it flush against the edge, under the fade on the other
+          side: at 390 the last 19px of "Algemene fiches" measured 2.79:1 (fix round 2). With exactly
+          the fade's width it still touched the fade by a rounding fraction, because the fade starts a
+          pixel inside the row's border; 36px leaves a clear gap. The active part now stops short of
+          either edge, clear of both fades, unless the row has no further to scroll, and then that edge
+          has no fade. */}
+      <ul ref={lijst} className="inline-flex max-w-full overflow-x-auto scroll-px-9 rounded-veld border border-lijn bg-vlak-diep p-1">
         {onderdelen.map((onderdeel) => {
           const pad = padVan(onderdeel.deel);
           return (

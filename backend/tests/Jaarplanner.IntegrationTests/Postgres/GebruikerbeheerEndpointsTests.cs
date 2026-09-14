@@ -320,7 +320,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Conflict, antwoord.StatusCode);
         // The guard on the server-composed Dutch (Art. II.3): the value, read, not merely that some detail exists.
         var detail = await DetailAsync(antwoord);
-        Assert.Equal("Dirk Janssens is de enige met het directierecht. Geef het directierecht eerst aan iemand anders.", detail);
+        Assert.Equal("Dirk Janssens is de enige met het directierecht. Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld.", detail);
         Assert.DoesNotContain("—", detail);
         await using var context = _db.MaakContext();
         Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == enige.Id)).IsDirectie);
@@ -337,7 +337,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Conflict, antwoord.StatusCode);
         var detail = await DetailAsync(antwoord);
         Assert.Equal(
-            "Dirk Janssens is de enige met het directierecht en kan niet verwijderd worden. Geef het directierecht eerst aan iemand anders.",
+            "Dirk Janssens is de enige met het directierecht en kan niet verwijderd worden. Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld.",
             detail);
         Assert.DoesNotContain("—", detail);
         await using var context = _db.MaakContext();
@@ -361,12 +361,12 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Conflict, afgeven.StatusCode);
         Assert.Equal(
             "Dirk Janssens is de enige met het directierecht die zich al heeft aangemeld. "
-            + "De anderen met het directierecht hebben zich nog niet aangemeld, dus het directierecht kan nog niet weg.",
+            + "Wie verder het directierecht heeft, heeft zich nog niet aangemeld, dus het directierecht kan nog niet weg.",
             await DetailAsync(afgeven));
         Assert.Equal(HttpStatusCode.Conflict, verwijderen.StatusCode);
         Assert.Equal(
             "Dirk Janssens is de enige met het directierecht die zich al heeft aangemeld, en kan niet verwijderd worden. "
-            + "De anderen met het directierecht hebben zich nog niet aangemeld.",
+            + "Wie verder het directierecht heeft, heeft zich nog niet aangemeld.",
             await DetailAsync(verwijderen));
         await using var context = _db.MaakContext();
         Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == dirk.Id)).IsDirectie);
@@ -395,6 +395,11 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
         var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
         using var client = ClientVoor(dirk.Id);
+        using (var voorAanmelding = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}"))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, voorAanmelding.StatusCode);
+        }
+
         await BindAsync(eva.Id);
 
         using var antwoord = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}");
@@ -596,6 +601,59 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal("De gebruiker of de klas bestaat niet meer.", await DetailAsync(antwoord));
     }
 
+    /// <summary>
+    /// MINOR 4 of the slice 2 audit, round 2: a write to a gebruiker whom another request removes between the read and
+    /// the write. The other transaction has deleted An without committing, so the tracked UPDATE or DELETE waits on the
+    /// row lock and then affects no row. That is a Dutch 404, not the 500 an unmapped concurrency fault would give.
+    /// </summary>
+    [PostgresTheory]
+    [InlineData("PUT", "/themabeheer")]
+    [InlineData("PUT", "/directierecht")]
+    [InlineData("DELETE", "")]
+    public async Task Een_schrijfactie_op_een_gebruiker_die_intussen_verwijderd_wordt_is_404_en_geen_500(string methode, string achtervoegsel)
+    {
+        var an = await BewaarGebruikerAsync(naam: "An");
+
+        await using var ander = _db.MaakContext();
+        await ander.Database.BeginTransactionAsync();
+        await ander.Gebruikers.Where(g => g.Id == an.Id).ExecuteDeleteAsync();
+
+        using var client = Client();
+        var schrijf = client.SendAsync(new HttpRequestMessage(new HttpMethod(methode), $"/api/gebruikers/{an.Id}{achtervoegsel}"));
+
+        var eerst = await Task.WhenAny(schrijf, Task.Delay(TimeSpan.FromSeconds(1)));
+        Assert.NotSame(schrijf, eerst);
+
+        await ander.Database.CommitTransactionAsync();
+        using var antwoord = await schrijf;
+
+        Assert.Equal(HttpStatusCode.NotFound, antwoord.StatusCode);
+        Assert.Equal("Deze gebruiker is intussen verwijderd.", await DetailAsync(antwoord));
+    }
+
+    /// <summary>Taking themabeheer away from someone removed in between: the same 404 on the revoking write.</summary>
+    [PostgresFact]
+    public async Task Themabeheer_afnemen_van_een_gebruiker_die_intussen_verwijderd_wordt_is_404_en_geen_500()
+    {
+        var an = await BewaarGebruikerAsync(naam: "An", themabeheer: true);
+
+        await using var ander = _db.MaakContext();
+        await ander.Database.BeginTransactionAsync();
+        await ander.Gebruikers.Where(g => g.Id == an.Id).ExecuteDeleteAsync();
+
+        using var client = Client();
+        var schrijf = client.DeleteAsync($"/api/gebruikers/{an.Id}/themabeheer");
+
+        var eerst = await Task.WhenAny(schrijf, Task.Delay(TimeSpan.FromSeconds(1)));
+        Assert.NotSame(schrijf, eerst);
+
+        await ander.Database.CommitTransactionAsync();
+        using var antwoord = await schrijf;
+
+        Assert.Equal(HttpStatusCode.NotFound, antwoord.StatusCode);
+        Assert.Equal("Deze gebruiker is intussen verwijderd.", await DetailAsync(antwoord));
+    }
+
     // --- Hoofdleerkrachten (R5, I20). ---
 
     [PostgresFact]
@@ -644,6 +702,34 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, aanstellen.StatusCode);
         Assert.Equal(zin, await DetailAsync(aanstellen));
         Assert.Equal(HttpStatusCode.BadRequest, intrekken.StatusCode);
+    }
+
+    /// <summary>
+    /// The appointment's twin of the klas race: the schooljaar exists when checked and is gone at the insert. Another
+    /// transaction has deleted it (a year with no klassen, as a schooljaar with klassen cannot be deleted) without
+    /// committing, so the insert's foreign-key check waits on it and fails once it commits. Pinned by value.
+    /// </summary>
+    [PostgresFact]
+    public async Task Aanstellen_in_een_schooljaar_dat_intussen_verwijderd_wordt_is_404_en_geen_500()
+    {
+        var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200));
+        var an = await BewaarGebruikerAsync();
+
+        await using var ander = _db.MaakContext();
+        await ander.Database.BeginTransactionAsync();
+        await ander.Schooljaren.Where(s => s.Id == jaar.Id).ExecuteDeleteAsync();
+
+        using var client = Client();
+        var aanstelling = client.PutAsync($"/api/gebruikers/{an.Id}/hoofdleerkracht/{jaar.Id}/K3", null);
+
+        var eerst = await Task.WhenAny(aanstelling, Task.Delay(TimeSpan.FromSeconds(1)));
+        Assert.NotSame(aanstelling, eerst);
+
+        await ander.Database.CommitTransactionAsync();
+        using var antwoord = await aanstelling;
+
+        Assert.Equal(HttpStatusCode.NotFound, antwoord.StatusCode);
+        Assert.Equal("De gebruiker of het schooljaar bestaat niet meer.", await DetailAsync(antwoord));
     }
 
     [PostgresFact]

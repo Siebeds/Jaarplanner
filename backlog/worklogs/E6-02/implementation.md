@@ -1493,3 +1493,45 @@ What the pass showed:
 - `pnpm lint`: exit 0. `pnpm test`: 35 files, 258 passed. `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
 
 **Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604b` (created, migrated, seeded over the API, then dropped); Vite on 5185; headless Chrome at 1440 and 390, light. It covered the keyboard pass, self-demotion with its confirmation and redirect, the new (c) sentence, and the switch fades above.
+
+### Fix round 2
+
+- **Input:**
+  - "Code slice 2 — audit round 2" in `antagonist.md`: 0 CRITICAL, 0 MAJOR (MAJOR 1 resolved), 5 MINOR.
+  - "E6-04 slice 2 — Test report (round 2)" in `test-report.md`: FAIL, on one MINOR defect (the phone switch fade); everything else passed, including a mutation run.
+
+  Both are the orchestrator's and are committed unedited with this fix.
+- **Branch:** `story/E6-04-beheer`, on top of `3e4ee04`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | MINOR: the (c) sentence still said "alleen de directie" | **Fixed.** New wording: "Bij een leeftijd zonder hoofdleerkracht doet de directie wat een hoofdleerkracht zou doen." It claims nothing about who else may act (themabeheer through the wizard, I25–I27; the FR-1 import's subdoel links; the leerkrachten of that leeftijd on the activiteiten and the streefwoordenschat). The catalogue case now refuses any "alleen" in this key, and still refuses "die leeftijd" and "activiteit". |
+| 2 | MINOR: E7-06 said only a cascade ends these rows | **Fixed**, my paragraph only. "Nothing ends them earlier" and the "only" are gone. A new bullet says directie can end each fact by hand at any time (unticking a klas or a jaarfase deletes that row, `HaalKlasWegAsync`, `TrekAanstellingInAsync`; unticking themabeheer or directie clears the flag), and that no history is kept. The opening sentence now reads "stays stored until directie ends it by hand or its klas, schooljaar or gebruiker is removed". |
+| 3 | MINOR: server sentences | **Fixed.** (a) "… Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld." in both "enige met het directierecht" refusals. (b) The number-neutral "Wie verder het directierecht heeft, heeft zich nog niet aangemeld, …" in both "die zich al heeft aangemeld" refusals. The pinned backend tests and the two mocked sentences in `GebruikersScherm.test.tsx` follow. (c) "De gebruiker of het schooljaar bestaat niet meer." is pinned by value in a new deterministic test: another transaction deletes the schooljaar without committing, the appointment's FK check waits on it, and after the commit the answer is 404 with that sentence. |
+| 4 | MINOR: a save that loses its row to a concurrent removal gave 500 | **Mapped to a Dutch 404**, not an idempotent 204. `BewaarWijzigingAsync` wraps every tracked gebruiker save (both directie writes, both themabeheer writes, the removal) and turns `DbUpdateConcurrencyException` into `GebruikerbeheerNietGevondenFout("Deze gebruiker is intussen verwijderd.")`. No concurrency token is configured on `gebruikers`, so zero rows can only mean the row is gone, and the sentence asserts exactly that. A 404 matches what a request arriving after the removal already gets; a 204 would claim a removal this request did not do. New deterministic tests: another transaction deletes An without committing, the tracked UPDATE or DELETE waits on the row lock (asserted still pending after 1 s), and after the commit the answer is 404 with that sentence. That is a theory over `PUT …/themabeheer`, `PUT …/directierecht` and `DELETE …/{id}`, plus a fact for `DELETE …/themabeheer`. |
+| 5 | MINOR (audit) = the test-runner's defect: the fade covered the active label | **Fixed and measured.** The row now has `scroll-px-9` (scroll-padding-inline 36px), a little wider than the 32px fade: with exactly 32px it still touched the fade by 0.3px, because the fade starts a pixel inside the row's border. `scrollIntoView` "nearest" therefore stops the active part clear of both fades; at either end of the row the other edge has nothing hidden, so it has no fade. The antagonist's optional font-swap note is also taken: once `document.fonts.ready` resolves, the active part is placed and measured again. Measurements are in the table below. |
+| TR | Note: the "allowed after binding" removal test did not first assert the refusal | **Added:** it asserts 409 before the bind, then 204 after it. |
+
+**Phone switch measurements**, headless Chrome, signed in as directie (five parts), each part opened fresh as the landing route. Pixel positions are viewport x; "fades" are the drawn fade overlays. Every case: **overlap 0px, active part fully inside the row**; the label's contrast is 17.78:1 light and 13.12:1 dark.
+
+| Width | Part | Scroll | Active part | Fades |
+| --- | --- | --- | --- | --- |
+| 390 | Klassen | 0/97 | [21,94] | right [341,373] |
+| 390 | Gebruikers | 0/97 | [94,185] | right [341,373] |
+| 390 | Hoeken | 0/97 | [185,257] | right [341,373] |
+| 390 | Algemene fiches | 44/97 | [213,337] | left [17,49], right [341,373] |
+| 390 | Weergave | 97/97 | [284,369] | left [17,49] |
+| 360 | Klassen | 0/127 | [21,94] | right [311,343] |
+| 360 | Gebruikers | 0/127 | [94,185] | right [311,343] |
+| 360 | Hoeken | 0/127 | [185,257] | right [311,343] |
+| 360 | Algemene fiches | 74/127 | [183,307] | left [17,49], right [311,343] |
+| 360 | Weergave | 127/127 | [254,339] | left [17,49] |
+
+Light and dark gave identical geometry. Before the fix, the same pass had Algemene fiches at [217,341] under the right fade (round 1's defect, and 0.3px with `scroll-px-8`).
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 424 passed, 1 skipped (419 + 5 new). After the last test-only edit (the 409 before the bind), `GebruikerbeheerEndpointsTests` alone: 41 passed.
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 258 passed. `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+**Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604c` (created, migrated, seeded over the API, dropped); Vite on 5185. It ran the measurements above, and the reworded (c) sentence rendered.

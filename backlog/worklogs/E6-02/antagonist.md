@@ -564,3 +564,38 @@ The two pointers name the R25 carry-forward, which is `ef6468b` on `feature/e6-r
 
 ### Checks run (summary)
 Art. VI.1: `Beheer` on the whole controller (`Kolom.Geen`, directie only); 403 tested on all twelve routes × five profiles, 401 on all twelve; the frontend only hides and fails closed while `ik` loads. The guard: a real transaction, `FOR UPDATE` in id order, re-read after the lock; the race test waits then refuses; mutual removal/demotion is safe under READ COMMITTED; no deadlock cycle. Art. VI.2/VI.4/VI.6: no pupil data, minimal payload (`isAangemeld` boolean, no Entra id), no secret, every FK to `gebruikers` cascade or SET NULL. Art. II: new strings in `nl.json`, no em dash; last-directie, duplicate UPN, bad UPN and unknown jaarfase sentences pinned by value. Exception handler maps only its own three fault types; 409 title Dutch. R20 reuses `Rechtenberekening.TeltNog`, `Leeftijdsrechten.VoorKlas`, `Schoolklok.Vandaag`. UI rules: never colour alone; accent only on two primary actions and the focus ring; E3-06 respected. Art. VIII/IX/XIV: no new dependency or migration; graadklas seam reused; I9 untouched. Run by the auditor: vitest on the instellingen features, `catalogus.test.ts`, `App.test.tsx` (50 passed); `pnpm lint` clean; `dotnet format --verify-no-changes` exit 0. Not run: the Postgres suite. Open point 1 (klas routes enforced only in slice 3) is inside the single delivery (R12); the new `KlassenScherm` comment saying "the server refuses them" is false at `224815f` and must not reach `main` ahead of slice 3.
+
+## Code slice 2 — audit round 2
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool). Condensed in layout only.*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 0 MAJOR, 5 MINOR, one a suspicion). MAJOR 1 is resolved.
+**Scope audited:** `git diff 224815f 3e4ee04` (16 files), plus what the fix leans on: `Aanmelding.cs` (mode guard, session check), `ToegangService.cs` (binding), `Gebruiker`, the FKs to `gebruikers`, the rest of `GebruikerBeheerService`, the test factories, `onderdelen.ts`, `Bevestiging.tsx`, E7-06, and Art. VI.1 with I24–I28 (`2dd26a0`).
+
+### [MINOR] 1. The (c) sentence still says "alleen de directie"
+- **Where:** `nl.json:434` `gebruikers.zonderHoofdleerkracht`; rendered at `GebruikersScherm.tsx:308` (`zonder`, `:287`).
+- **Problem:** (c) says only directie does **by hand** what a hoofdleerkracht would; the sentence drops "by hand". At such a leeftijd, themabeheer still creates subthema's and subdoelen through the wizard at any leeftijd, edits and deletes run-created ones (I25, narrowed by I27), deletes a thema holding only its own run's content (I26), and the FR-1 import writes subdoel goal links (R24, R27, R34). At `3e4ee04` no subthema or subdoel route carries a policy yet, so it must not reach `main` ahead of slice 3. It stays false after slice 3 anyway. The antagonist's round-1 wording carried the same over-claim.
+- **Required fix:** say less, e.g. "Bij een leeftijd zonder hoofdleerkracht doet de directie wat een hoofdleerkracht zou doen."; make the catalogue case refuse an unqualified "alleen de directie".
+
+### [MINOR] 2. The E7-06 paragraph says only a cascade ends these rows
+- **Where:** `backlog/E7-niet-functioneel.md` retention paragraph: "Nothing ends them earlier." and "an aanstelling otherwise goes **only** with its gebruiker, …".
+- **Problem:** both are false. `HaalKlasWegAsync` (`:214-221`) and `TrekAanstellingInAsync` (`:248-260`) hard-delete the row on an untick, and unticking themabeheer or directie clears the flag. The rest of the paragraph was verified true: the erased fields, "stops on the next request" (`ValideerSessieAsync`), the cascades, MakerId SET NULL, no other gebruiker delete, no schooljaar delete, directie-only list.
+- **Required fix:** say that directie can also end each one by hand (an untick deletes the row, no history kept; the flags clear the same way); drop "Nothing ends them earlier" and the "only".
+
+### [MINOR] 3. The fix's server sentences
+- **Where:** `GebruikerBeheerService.cs:141`, `:180-181`, `:143`, `:183`, `:242`.
+- **Problem:** (a) "Geef het directierecht eerst aan iemand anders." is no longer enough: giving it to an invitation leads to a second refusal. (b) "De anderen …" is plural when there may be only one other directie. (c) "De gebruiker of het schooljaar bestaat niet meer." is unpinned.
+- **Required fix:** "… aan iemand anders die zich al heeft aangemeld."; "Wie verder het directierecht heeft, heeft zich nog niet aangemeld, …"; update the pinned tests; pin (c) by value.
+
+### [MINOR] 4. Toggles and removing a non-directie that race a removal still give a 500
+- **Where:** `GeefDirectierechtAsync` (`:122-128`), `GeefThemabeheerAsync` (`:155-161`), `NeemThemabeheerAfAsync` (`:163-169`), `VerwijderAsync` of a non-directie (`:171-193`).
+- **Problem:** a tracked save that affects 0 rows throws `DbUpdateConcurrencyException`, which nothing maps. The same class as round-1 MINOR 6.
+- **Required fix:** map it to `GebruikerbeheerNietGevondenFout` (or make a repeated delete an idempotent 204); add a deterministic test like the FK test.
+
+### [MINOR, suspicion] 5. The fade may cover the active part in the middle positions
+- **Where:** `Instellingenindeling.tsx:153-173`, `:201-212`.
+- **Problem:** `speling` decides only whether a fade shows, not what the 32px fade covers. `scrollIntoView` "nearest" leaves the active part flush at an edge. For Algemene fiches (part 4 of 5) the right fade would sit over about 27px of the active label (1.4.3). Only parts 2 and 5 were measured.
+- **Required fix:** measure parts 3 and 4 at 390px in a real browser; if they overlap, add `scroll-px-8` (scroll-padding-inline) to the `ul`. Optional: `rij.scrollTo({ left })` rather than `scrollIntoView`; a ResizeObserver for font swaps.
+
+### Checks run (summary)
+MAJOR 1: the flag's only writer is `Program.cs:69-70`, and no configuration binds it. `Modus` defaults to Entra, and `Ontwikkeling` outside Development throws at startup (`Aanmelding.cs:57-61`, `AanmeldModusTests` passed); an accidental Development deploy has only the loopback dev sign-in. The dev sign-in binds nobody, and a binding is never undone. `FOR UPDATE` covers every directie row and reads `IsGekoppeld` after the lock; a first login waits on it. The guard is a superset of ADR-0031 decision 7 and E6-04's Done-when. `PostConfigure` forcing false is sound: it keeps the Postgres wiring, the dev-rule test is deliberate, and the mapping `[Fact]` runs without Postgres. The second-branch sentence holds because the caller is a bound directie (race-only exception). Focus fix: mechanism correct; the Vitest pins it, but jsdom does not move focus off a disabled element, so the CDP pass is the evidence (not re-run). The FK test and the removal race test are deterministic and sound. QUESTION 7 copy checked against its conditions; the orchestrator's decision still goes to the owner. The fade adds no hue and is aria-hidden. Art. II, VI.2, VI.4, VIII and XIV are clean; the `KlassenScherm` comment is now true. Runs: vitest (instellingen, catalogue) 46 passed; `pnpm lint` exit 0; `dotnet format --verify-no-changes` exit 0. Postgres suite not run by the auditor: SASL authentication failed and the credentials are in a gitignored `.env`; relying on the implementer's 419 passed.

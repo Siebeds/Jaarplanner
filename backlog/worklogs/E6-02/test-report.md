@@ -146,3 +146,39 @@ None.
 - [LOW] The race test covers demotion only; removal shares the locked-count helper without its own concurrent test.
 - [INFO] A list row names a klas without jaarfase without saying it gives no rights; the sheet and the Klassen callout carry the I12 sentence.
 - [INFO] The bootstrap directie shows "Nog niet aangemeld" in Development, because the dev sign-in binds no Entra identity.
+
+
+# E6-04 slice 2 — Test report (round 2)
+
+**Verdict:** FAIL (one MINOR defect, the phone switch fade; everything else passes)
+**Mode:** both (unit/integration plus a mutation run; browser pass in headless Chrome 152 over the DevTools protocol, driven from Node with real mouse and keyboard input; no Playwright MCP in the test-runner's session)
+**Commit:** `3e4ee04` on `story/E6-04-beheer`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Gates → PASS.** `dotnet build` 0/0; UnitTests 1340 passed, 4 skipped; IntegrationTests 419 passed, 1 skipped (410 + 9 new); `GebruikerbeheerEndpointsTests` 36/36; `dotnet format --verify-no-changes` exit 0; `pnpm lint` 0; `pnpm test` 258/258; `pnpm build` 0 (existing >500 kB chunk warning).
+- **The new backend tests pin what they claim → PASS** (mutation run in a copy outside the worktree, four mutations, exactly the six predicted tests failed, 30 passed): flag always true → `Alleen_de_ontwikkelaanmelding_laat_een_directie_die_niet_gekoppeld_is_meetellen`; unbound directie counted → `Een_directie_die_zich_nog_niet_aanmeldde_telt_niet_mee_voor_de_laatste_directie` and `Zodra_een_tweede_directie_zich_aanmeldde_mag_het_directierecht_weg`; FK catch off → `Koppelen_aan_een_klas_die_intussen_verwijderd_wordt_is_404_en_geen_500` (deterministic, blocks ≥ 1 s on an uncommitted delete); `FOR UPDATE` removed → both race tests.
+- **Frontend tests → PASS on reading** (focus test asserts `aria-disabled`, `not.toBeDisabled()`, focus kept, box ticked, no second write; self-demotion tests: cancel sends nothing, confirm sends one DELETE and refetches `ik` only, no `laadMislukt`, others' rights get no dialog, self-removal text).
+- **(a) Keyboard only, focus stays on the box → PASS at 1440 and 390.** Tab to Rechten, Enter, Tab to the box, Space with 1500 ms latency: 142 samples at 10 ms, focus never left, never `disabled`, stayed in the DOM; a second Space during the save ignored (one PUT); a third after the save unticked it with focus kept.
+- **(b) Only directie unticks their own Directie → PASS at both widths.** "Je eigen directierecht afgeven?" with its consequence and "Directierecht afgeven"; cancel sends nothing. At 1440, confirming as the only directie shows the 409 in the sheet (8.00:1) and the box falls back to ticked.
+- **(b) With a second directie, confirm lands on `/instellingen/klassen` with no error flash → PASS at both widths** (route polled every 10 ms: gebruikers then klassen, nothing between; DELETE 200, GET `/api/ik` 200, no `/api/gebruikers` refetch; the Gebruikers link gone from column and switch).
+- **(c) Removing yourself says you will be signed out → PASS** (`verwijderZelfGevolg`, 13.12:1 dark, 17.78:1 light; someone else's removal shows `verwijderGevolg` with their name).
+- **(e) The reworded sentence renders → PASS** (under K3/L1/L2 "Geen hoofdleerkracht", 7.58:1 dark, 6.51:1 light; no overflow at 390).
+- **(d) Phone switch at 390 → FAIL** (defect 1). Gebruikers: only the right edge fades, active part fully in view. Weergave: only the left edge fades (scroll 93 of 97), active part in view. Scrolling by hand flips the fades; four parts (non-directie): no fade. Text under a fade on those routes belongs only to parts partly outside the row. **Algemene fiches, opened fresh:** the active part is in view but the right fade covers the end of its label.
+- **Bound-directie refusal in the browser → not reproducible, by design** (the dev sign-in counts every directie); proven by the integration tests and the mutation run.
+
+## Commands run
+- As above; browser setup: throwaway DB `jp_tr_e604_r2`, API in Development `--no-launch-profile` on :5395, Vite on :5185, Chrome 152 headless; seeded schooljaar 2026-2027, K3 blauw / L1 blauw / L2 rood, An on K3 blauw, Bert, later Eva as directie.
+- Teardown: all processes stopped, ports free; `DROP DATABASE jp_tr_e604_r2 WITH (FORCE)` (0 rows left); mutation copy deleted; `git status` clean at `3e4ee04`.
+
+## Evidence
+- Screenshots and raw measurements in the orchestrator's scratchpad under `tr\shots\` and `tr\` (`1440-a-tijdens.png`, `390-a-tijdens.png`, `1440-b-*.png`, `1440-c-zelf.png`, `390-b-na-afgeven.png`, `390-d-*.png`, `zoom-{light,dark}-*.png`; `verslag-1440.json`, `verslag-390.json`, `verslag-licht.json`).
+- Console: no errors apart from the deliberate 409; HTTP ≥ 400: only that 409.
+
+## Defects
+- **[MINOR] The phone switch fade dims the active, fully visible "Algemene fiches" label.** At 390, as directie (five parts), open `/instellingen/algemene-fiches` fresh: the row sits at scroll 8 of 97; the active part spans [249,373], inside the visible [17,373]; the right fade (Weergave hidden) covers [341,373], the last 19.3 px of the label; contrast falls below 4.5:1 for the final ~5 px, down to 2.79:1 (dark) / 2.88:1 (light). Cause: `scrollIntoView({ inline: "nearest" })` lands the part flush at the edge; the 6 px slack allows for padding, not the 32 px fade. Klassen, Gebruikers, Weergave measured clean; Hoeken clean by geometry at scroll 0; 360/375 not tested. Possible fix: `scroll-padding-inline` equal to the fade width (`scroll-px-8`), then re-measure all five landing routes.
+
+## Notes (not blocking)
+- `Zodra_een_tweede_directie_zich_aanmeldde_mag_de_eerste_verwijderd_worden` does not first assert a 409 before the bind (covered elsewhere).
+- Headless Chrome on Windows draws a classic scrollbar under the phone switch (pre-existing; phones use overlay scrollbars).

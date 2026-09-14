@@ -114,14 +114,17 @@ describe("de Op.stap-import en het minimumdoelenregister (E1-22)", () => {
 });
 
 describe("het gebruikersbeheer (E6-04)", () => {
-  it("zegt bij een leeftijd zonder hoofdleerkracht alleen wat de directie dan beheert, met de leeftijd in de zin zelf", () => {
+  it("zegt bij een leeftijd zonder hoofdleerkracht niet dat alleen de directie er iets mag, met de leeftijd in de zin zelf", () => {
     // The E5-03 rule. The sentence shows when a listed jaarfase has no appointment that counts anywhere. ADR-0030 (c)
-    // then leaves its subthema's and subdoelen to directie alone; the leerkrachten of that leeftijd still edit the shared
-    // activiteiten, so the sentence may not claim those. And it names its own referent: an earlier version pointed back
-    // with "die leeftijd" at a list that did not say which (antagonist, slice 2 round 1).
+    // says only that directie then does BY HAND what a hoofdleerkracht would. It is not "alone": themabeheer still creates
+    // subthema's and subdoelen through the wizard at any leeftijd and edits what its run made (I25), the FR-1 import writes
+    // subdoel links, and the leerkrachten of that leeftijd edit the shared activiteiten and the streefwoordenschat. Two
+    // rounds claimed too much ("past alleen de directie de subthema's aan", then "beheert alleen de directie de subthema's
+    // en subdoelen"), so any "alleen" is refused here. It also names its own referent: the first version pointed back with
+    // "die leeftijd" at a list that did not say which (antagonist, slice 2 rounds 1 and 2).
     const zin = catalogus.gebruikers.zonderHoofdleerkracht;
     expect(zin).toMatch(/leeftijd zonder hoofdleerkracht/);
-    expect(zin).not.toMatch(/\bdie leeftijd\b|activiteit/i);
+    expect(zin).not.toMatch(/\balleen\b|\bdie leeftijd\b|activiteit/i);
   });
 });
 
