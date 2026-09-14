@@ -449,16 +449,25 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     // --- Activiteit (age-scoped, through its subthema). ---
 
-    public async Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default)
+    public async Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, Guid? makerId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(creatie);
         VereisGeldigeLengte(creatie.LengteInLesuren);
         var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
 
+        // A maker who does not exist is stored as none rather than refused: the session check has already passed, so
+        // this is a gebruiker removed a moment ago (or a test identity with no row), and none is what their removal
+        // leaves on every other activiteit they made (I17). The direction is safe: no maker means only a hoofdleerkracht
+        // or directie may delete it.
+        var maker = makerId is { } id && await _context.Gebruikers.AnyAsync(g => g.Id == id, cancellationToken)
+            ? makerId
+            : null;
+
         Activiteit activiteit;
         try
         {
-            activiteit = subthema.VoegActiviteitToe(creatie.Naam, creatie.ActiviteitType, creatie.Hoek, creatie.VerwachteUitkomsten);
+            activiteit = subthema.VoegActiviteitToe(
+                creatie.Naam, creatie.ActiviteitType, creatie.Hoek, creatie.VerwachteUitkomsten, maker);
             activiteit.KiesKleur(creatie.Kleur);
             activiteit.StelLengteIn(creatie.LengteInLesuren);
         }
@@ -890,9 +899,13 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     /// ever reach. Refusing it at the door is the only place that costs nothing.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Refuses a leeftijd that is not one of the nine codes. The rule is <see cref="Jaarfasen.LeesLeeftijd"/>, which the
+    /// rights check on a body leeftijd (<c>Leeftijdsinhoud.UitInvoer</c>) shares, so the two cannot drift apart.
+    /// </summary>
     private static void VereisLeeftijd(string leeftijd)
     {
-        if (!Jaarfasen.IsBekend(leeftijd?.Trim()))
+        if (Jaarfasen.LeesLeeftijd(leeftijd) is null)
         {
             throw new SchoolcontentValidatieFout(
                 $"'{leeftijd}' is geen geldige leeftijd. Kies er een uit: {string.Join(", ", Jaarfasen.Alle)}.");
@@ -978,7 +991,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         activiteit.OnderzoeksvraagId,
         activiteit.Kleur,
         activiteit.LengteInLesuren,
-        activiteit.Doelkoppelingen.Select(MapKoppeling).ToList());
+        activiteit.Doelkoppelingen.Select(MapKoppeling).ToList(),
+        activiteit.MakerId);
 
     private static DoelKoppelingWeergave MapKoppeling(DoelKoppeling koppeling) =>
         new(koppeling.Id, koppeling.LeerplandoelCode, koppeling.Status, koppeling.AiMotivatie);

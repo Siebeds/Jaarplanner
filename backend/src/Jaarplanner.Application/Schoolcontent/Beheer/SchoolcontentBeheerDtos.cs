@@ -114,7 +114,10 @@ public sealed record ThemadoelWeergave(Guid Id, DoelKoppelingWeergave Koppeling)
 /// <summary>Read view of a subdoel (class/age-scoped; owns one goal link).</summary>
 public sealed record SubdoelWeergave(Guid Id, string Leeftijd, DoelKoppelingWeergave Koppeling);
 
-/// <summary>Read view of an activiteit with its (zero or more) goal links.</summary>
+/// <summary>
+/// Read view of an activiteit with its (zero or more) goal links. <paramref name="MakerId"/> is who created it, or
+/// null (ADR-0030 R26): the frontend compares it with <c>GET /api/ik</c>'s id to offer the maker's delete (R33).
+/// </summary>
 public sealed record ActiviteitWeergave(
     Guid Id,
     string Naam,
@@ -124,7 +127,8 @@ public sealed record ActiviteitWeergave(
     Guid? OnderzoeksvraagId,
     Activiteitkleur? Kleur,
     int LengteInLesuren,
-    IReadOnlyList<DoelKoppelingWeergave> Doelkoppelingen);
+    IReadOnlyList<DoelKoppelingWeergave> Doelkoppelingen,
+    Guid? MakerId = null);
 
 /// <summary>Read view of a subthema with its subdoelen + activiteiten.</summary>
 public sealed record SubthemaWeergave(

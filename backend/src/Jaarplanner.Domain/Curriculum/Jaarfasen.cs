@@ -93,6 +93,23 @@ public static class Jaarfasen
     public static bool IsBekend(string? code) => code is not null && Alle.Contains(code, StringComparer.Ordinal);
 
     /// <summary>
+    /// <b>The one rule for a leeftijd that arrives from outside the database</b> (a request body, a form): trimmed,
+    /// then exactly one of the nine codes. Returns the code in the form it is stored, or <c>null</c> when it is none.
+    /// <para>
+    /// No case folding and no reordering: <see cref="Normaliseer"/> is for what an Op.stap source writes, not for what a
+    /// teacher types, so <c>k3</c> and <c>3K</c> are refused here. Three callers share it so they cannot accept
+    /// different sets: the subthema create and re-scope (<c>SchoolcontentBeheerService.VereisLeeftijd</c>), the rights
+    /// check on such a leeftijd (<c>Leeftijdsinhoud.UitInvoer</c>, E6-02), and a klas's jaarfase
+    /// (<see cref="WatIsErMisMet"/>). Each keeps its own refusal sentence.
+    /// </para>
+    /// </summary>
+    public static string? LeesLeeftijd(string? invoer)
+    {
+        var code = invoer?.Trim();
+        return IsBekend(code) ? code : null;
+    }
+
+    /// <summary>
     /// The jaar/fase codes a class should be measured against: its OWN recorded jaar/fase when it has one, and
     /// otherwise whatever its <c>Leerjaar</c> ordinal can say (owner ruling, 2026-08-25).
     /// <para>
@@ -176,7 +193,7 @@ public static class Jaarfasen
             return "Kies een leeftijd: JK, K2, K3 of L1 tot L6.";
         }
 
-        return IsBekend(jaarfase.Trim())
+        return LeesLeeftijd(jaarfase) is not null
             ? null
             : $"'{jaarfase.Trim()}' is geen bekende leeftijd. Kies JK, K2, K3 of L1 tot L6.";
     }

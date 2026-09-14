@@ -1,3 +1,4 @@
+using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Microsoft.AspNetCore.Mvc;
 
@@ -54,10 +55,11 @@ public sealed class SubthemasController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Creates an activiteit by hand. The signed-in gebruiker is its maker (ADR-0030 R26), never the body.</summary>
     [HttpPost("{subthemaId:guid}/activiteiten")]
     public async Task<ActionResult<ActiviteitWeergave>> MaakActiviteit(Guid subthemaId, [FromBody] ActiviteitCreatie creatie, CancellationToken cancellationToken)
     {
-        var activiteit = await _service.MaakActiviteitAsync(subthemaId, creatie, cancellationToken);
+        var activiteit = await _service.MaakActiviteitAsync(subthemaId, Aanmelding.GebruikerId(User), creatie, cancellationToken);
         return Created($"/api/activiteiten/{activiteit.Id}", activiteit);
     }
 

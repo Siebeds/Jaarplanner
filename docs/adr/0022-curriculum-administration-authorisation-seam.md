@@ -4,6 +4,12 @@
   *Pointer added with the owner's rulings of 2026-09-13:* since the Art. VI.1 amendment ratified on 2026-09-14, the
   `Beheerder` role this ADR expects is the **directie right** ([ADR-0030](0030-rollen-en-rechten-in-de-app.md) R3,
   R16), and that is what `Curriculumbeheer` binds to in E6-02.
+  *Pointer added 2026-09-14 (E6-02 slice 1, `d6460ef`): the seam has its answer.*
+  - `Curriculumbeheer` is the Op.stap row of the [ADR-0030](0030-rollen-en-rechten-in-de-app.md) §3 matrix: **directie only**.
+  - It is declared as `Rechtenmatrix.Curriculumbeheer` in `Jaarplanner.Application/Toegang/Rechtenmatrix.cs`.
+  - `Rechtenbeleid.AddRechtenbeleid()` (`Jaarplanner.Api/Infrastructure/Autorisatie/`) registers it with every other row, and requires a signed-in user on each.
+  - `AddCurriculumbeheerAutorisatie()` and the policy body that decision 1 and its "What E6-02 changes" describe no longer exist. `CurriculumbeheerAutorisatie.Beleid` remains the name the endpoints use, with its value unchanged.
+  - Decision 1's rule stands: one named policy, applied by attribute, no inline checks. Decision 1's text is left as written.
 - **Date:** 2026-07-31
 - **Deciders:** Architect (Siebe De Saedeleir / team), implementer of E1-15
 - **Complements:** [ADR-0011](0011-authn-authz-rbac-gdpr.md) (AuthN/AuthZ, RBAC & GDPR). **Supersedes nothing.** ADR-0011's decision §2 — *"enforce role-based authorisation server-side … driven by the configurable §3.2 permission matrix (not compiled-in role checks scattered through code)"* — stands unchanged; this ADR records the first concrete enforcement point built against it, which ADR-0011 could not name because it predates it by a month.

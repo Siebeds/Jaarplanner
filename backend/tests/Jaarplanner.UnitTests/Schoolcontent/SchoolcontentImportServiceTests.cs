@@ -132,6 +132,9 @@ public sealed class SchoolcontentImportServiceTests : IDisposable
         Assert.Equal("K3", subdoel.Leeftijd);
         var activiteit = Assert.Single(subthema.Activiteiten);
         Assert.Equal("Bladeren rapen", activiteit.Naam);
+
+        // An imported activiteit has no maker and is purely shared (ADR-0030 R26, E6-02).
+        Assert.Null(activiteit.MakerId);
     }
 
     /// <summary>

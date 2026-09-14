@@ -44,8 +44,72 @@ public sealed class Gebruiker
     /// <summary>The name shown in the app: the invitation's, replaced by Entra's display name on first login.</summary>
     public string Naam { get; private set; }
 
-    /// <summary>Directie sees and edits everything (ADR-0030 R3).</summary>
+    /// <summary>
+    /// Directie sees and edits everything (ADR-0030 R3), and maintains gebruikers and their rights (R16, Art. VI.1).
+    /// Changed only through <see cref="GeefDirectierecht"/> and <see cref="NeemDirectierechtAf"/>.
+    /// </summary>
     public bool IsDirectie { get; private set; }
+
+    /// <summary>
+    /// Themabeheer (ADR-0030 R4, Art. VI.1): edits thema's, runs the FR-1 import and the thema-opbouw wizard, and is,
+    /// beside directie, the only right that generates and reviews doelsuggesties. Directie gives it (FA FR-12.2).
+    /// </summary>
+    public bool HeeftThemabeheer { get; private set; }
+
+    /// <summary>Gives this gebruiker themabeheer. Idempotent.</summary>
+    public void GeefThemabeheer() => HeeftThemabeheer = true;
+
+    /// <summary>Takes themabeheer away. Idempotent. What they built stays; only the right goes.</summary>
+    public void NeemThemabeheerAf() => HeeftThemabeheer = false;
+
+    /// <summary>Gives this gebruiker the directie right (ADR-0030 R16: directie may give it to someone else). Idempotent.</summary>
+    public void GeefDirectierecht() => IsDirectie = true;
+
+    /// <summary>
+    /// Takes the directie right away, unless this is the last gebruiker who holds it (ADR-0031 decision 7).
+    /// <para>
+    /// <b>The count is a parameter, so the guard cannot be skipped by forgetting it.</b> This entity cannot see the
+    /// others, so the caller must say how many <i>other</i> gebruikers hold the right, and must read that figure in the
+    /// same transaction as the write: two directieleden demoting each other at once would otherwise both see one other
+    /// and both succeed. That locking is the caller's (E6-04), the rule is here.
+    /// </para>
+    /// </summary>
+    /// <param name="aantalAndereDirectieleden">How many gebruikers other than this one hold the directie right.</param>
+    /// <exception cref="InvalidOperationException">This is the last directie.</exception>
+    public void NeemDirectierechtAf(int aantalAndereDirectieleden)
+    {
+        if (!IsDirectie)
+        {
+            return;
+        }
+
+        VereisAndereDirectie(aantalAndereDirectieleden);
+        IsDirectie = false;
+    }
+
+    /// <summary>
+    /// Refuses removing this gebruiker when they are the last directie (ADR-0031 decision 7): the bootstrap does not
+    /// reopen once anyone exists, so a school without directie could never administer itself again. The same
+    /// same-transaction caveat as <see cref="NeemDirectierechtAf"/> applies to the count.
+    /// </summary>
+    /// <param name="aantalAndereDirectieleden">How many gebruikers other than this one hold the directie right.</param>
+    /// <exception cref="InvalidOperationException">This is the last directie.</exception>
+    public void BevestigVerwijderbaar(int aantalAndereDirectieleden)
+    {
+        if (IsDirectie)
+        {
+            VereisAndereDirectie(aantalAndereDirectieleden);
+        }
+    }
+
+    private static void VereisAndereDirectie(int aantalAndereDirectieleden)
+    {
+        if (aantalAndereDirectieleden < 1)
+        {
+            throw new InvalidOperationException(
+                "The last gebruiker with the directie right cannot lose it (ADR-0031 decision 7).");
+        }
+    }
 
     /// <summary>The Entra tenant this person's account lives in; empty until the first login.</summary>
     public Guid? EntraTenantId { get; private set; }

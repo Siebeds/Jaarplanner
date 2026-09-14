@@ -260,6 +260,11 @@ public static class DependencyInjection
         // decides; nothing here knows about OpenID Connect.
         services.AddScoped<IToegangService, ToegangService>();
 
+        // What a signed-in gebruiker may do (E6-02, ADR-0030 §3). The rights are read per request, never from the
+        // cookie; the resolver turns a route's id into the resource a matrix row is checked against. Both are read-only.
+        services.AddScoped<IRechtenService, RechtenService>();
+        services.AddScoped<IRechtenbronnen, EfRechtenbronnen>();
+
         // The keys that encrypt the session cookie live in this database (ADR-0031 decision 5), so a restart or a
         // second instance keeps everyone signed in. The Api adds Key Vault protection of them in the cloud.
         services.AddDataProtection()

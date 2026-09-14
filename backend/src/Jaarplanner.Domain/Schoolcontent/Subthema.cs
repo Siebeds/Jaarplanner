@@ -247,13 +247,18 @@ public sealed class Subthema
     }
 
     /// <summary>Adds an activiteit to this (age-scoped) subthema.</summary>
+    /// <param name="makerId">
+    /// The gebruiker creating it by hand (ADR-0030 R26), or <c>null</c>. The FR-1 import passes none, because an
+    /// imported activiteit has no maker and is purely shared.
+    /// </param>
     public Activiteit VoegActiviteitToe(
         string naam,
         ActiviteitType activiteitType,
         string? hoek = null,
-        string? verwachteUitkomsten = null)
+        string? verwachteUitkomsten = null,
+        Guid? makerId = null)
     {
-        var activiteit = new Activiteit(Id, naam, activiteitType, hoek, verwachteUitkomsten);
+        var activiteit = new Activiteit(Id, naam, activiteitType, hoek, verwachteUitkomsten, makerId);
         _activiteiten.Add(activiteit);
         return activiteit;
     }

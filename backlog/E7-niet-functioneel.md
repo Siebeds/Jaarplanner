@@ -61,6 +61,17 @@
   *Done when:* no pupil PII path exists; register & retention written down.
   *Carry-forward (E6-01, 2026-09-11):* the first personal data the app stores lands with E6-01. That is a `Gebruiker`'s naam, e-mail, Entra tenant id and object id, plus session cookies and the Data Protection keys that encrypt them, all in the application database ([ADR-0031](../docs/adr/0031-sessielogin-via-de-api.md)). It is staff data, so Art. VI.2 allows it, but the register needs an entry for it, and a retention rule for a `Gebruiker` who leaves the school.
   *Carry-forward (E6-02 amendment, ratified 2026-09-14):* the register also covers the activiteit **maker** (ADR-0030 R26), which links school content to a named staff member; its right follows the person (R33). Retention when the gebruiker leaves: the activiteit becomes purely shared (default I17).
+  *Carry-forward (E6-02 slice 1, 2026-09-14):* three more staff facts, each tied to a named gebruiker ([ADR-0030](../docs/adr/0030-rollen-en-rechten-in-de-app.md) R4, R5, R15; migration `RechtenModel`). Staff data, so Art. VI.2 allows them, and the register needs an entry for each:
+  - `gebruikers.HeeftThemabeheer`: who holds themabeheer.
+  - `klastoewijzingen`: which gebruiker teaches which klas.
+  - `hoofdleerkrachtaanstellingen`: who is hoofdleerkracht of which jaarfase in which schooljaar.
+
+  *Retention, as the code implements it (database cascades):*
+  - the themabeheer flag is removed with the gebruiker row;
+  - a klastoewijzing is deleted with its gebruiker or its klas;
+  - an aanstelling is deleted with its gebruiker or its schooljaar.
+
+  Nothing ends them earlier. An aanstelling or klastoewijzing of a past schooljaar stops granting rights on shared content when that schooljaar ends (R20), but stays stored until the klas, schooljaar or gebruiker is removed. **No route removes a gebruiker or a schooljaar yet** (the gebruiker delete is E6-04's, built in slice 2 of the combined E6-02/E6-04 build; the schooljaar delete is E6-03's), so today only a klastoewijzing can go, with its klas, and every other row here is kept indefinitely. Whether that is the retention the school wants is the register's question, not the code's.
 
 - [ ] **E7-07 — Browser support (NFR-7)**
   Recent Edge, Chrome, Firefox, Safari.
@@ -102,7 +113,8 @@
   *Done when:* every mutating endpoint requires an authenticated principal and the Art. VI §3.2 role matrix is enforced; **and no deployment to a reachable environment happens before then.** Ref: Art. VI.1/VI.2/VI.5, Art. IV.2, NFR-5, ADR-0011.
   *Authentication half closed, 2026-09-11 (E6-01, [ADR-0031](../docs/adr/0031-sessielogin-via-de-api.md)).*
   - **Done:** every route requires a session except the anonymous list pinned by `ElkeRouteVraagtEenSessieTests`: health, sign-in/out, the development sign-in in Development only, OpenAPI in Development only, and, since 2026-09-13, the frontend's `index.html` for a client route (`SpaHosting.Route`, which excludes `api/` and `health/`; [ADR-0034](../docs/adr/0034-demo-omgeving-op-azure.md) amends ADR-0031 decision 2).
-  - **Still open, so this stays `[!]`:** the role matrix (E6-02). A signed-in leerkracht can still edit another klas, and every signed-in person can still run the curriculum import.
+  - **Still open, so this stays `[!]`:** the role matrix (E6-02). A signed-in leerkracht can still edit another klas~~, and every signed-in person can still run the curriculum import~~.
+    *Annotated 2026-09-14 (E6-02 slice 1, `d6460ef`):* the struck clause stopped being true. The Op.stap import routes (`api/opstap-import/*`, policy `Curriculumbeheer`) admit **directie only** since then. `RechtenEndpointsTests` pins 403/400/401 on `POST /api/opstap-import` and `GET /api/opstap-import/stand`, and a reflection test (`Elke_controller_onder_de_opstap_importroute_noemt_het_curriculumbeheerbeleid`, slice 1 fix round 2) pins the policy on all four Op.stap controllers, so on all seven endpoints. Every other row of the [ADR-0030](../docs/adr/0030-rollen-en-rechten-in-de-app.md) §3 matrix is declared as a named policy but reaches its routes only in E6-02 slice 3, so the first sentence still holds and this entry stays `[!]`.
   - **Owner ruling, 2026-09-13 ([ADR-0034](../docs/adr/0034-demo-omgeving-op-azure.md) decision 1): the owner waived this entry's deployment clause for one demo environment.** The owner's words: *"niet E6-02 bouwen, doe maar infra en deploy"*. The waiver covers the clause *"no deployment to a reachable environment happens before then"*, not Art. VI.1, which the code still does not meet. How that environment is run (fictional data only, only accounts in the owner's own tenant, no AI configured) is ADR-0034's reading of the offer the owner accepted, not the owner's own words. **The gate still holds for any environment with real school data**, so this entry stays `[!]`.
   - **Deployment prerequisites this gate must also see met before anything is reachable.** They were written in ADR-0031 and are copied here so the gate owns them:
     - an app registration in the school's tenant: single tenant, web platform; redirect URI `https://<host>/api/signin-oidc`; post-logout redirect URI `https://<host>/`; no front-channel logout; scopes `openid profile`; the `acct` optional claim in the ID token; *assignment required* on, with the staff group assigned;

@@ -49,7 +49,19 @@ describe("Navigatie, aangemeld", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        new Response(JSON.stringify({ id: "1", naam: "An Peeters", email: "an@school.be", isDirectie: false }), { status: 200 }),
+        new Response(
+          JSON.stringify({
+            id: "1",
+            naam: "An Peeters",
+            email: "an@school.be",
+            isDirectie: false,
+            heeftThemabeheer: false,
+            hoofdleerkrachtLeeftijden: [],
+            leerkrachtLeeftijden: [],
+            eigenKlasIds: [],
+          }),
+          { status: 200 },
+        ),
       ),
     );
 
