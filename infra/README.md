@@ -110,8 +110,9 @@ pnpm. Run the commands from the repo root.
 
 ## Demo data
 
-`infra/seed-demo.ps1` fills the demo with the fictional kleuter content in `infra/seed-demo.data.json` (TB-003):
-klassen, thema's with themadoelen and subthema's, and per klas algemene fiches and hoeken. It needs Docker besides
+`infra/seed-demo.ps1` fills the demo with the fictional kleuter content in `infra/seed-demo.data.json` (TB-003,
+TB-009): klassen, thema's with themadoelen and subthema's, the subthema's activiteiten (shared by every klas of that
+leeftijd, ADR-0025), and per klas algemene fiches and hoeken. Nothing is planned. It needs Docker besides
 the tools above and a clean working tree (or `-AllowDirty`), and it runs from the commit that is deployed, after
 `migrate-db.ps1`: it refuses when the database's newest migration and the checkout's differ.
 

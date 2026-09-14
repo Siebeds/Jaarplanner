@@ -5,8 +5,9 @@
 .DESCRIPTION
     Builds the API from this checkout, starts it on the operator's machine against the demo database, signs in as the
     demo's directie with the development sign-in, and creates what seed-demo.data.json describes: klassen, thema's with
-    their themadoelen and subthema's, and per klas algemene fiches and hoeken. All content goes through the API, so
-    every domain rule applies. The only direct database write is the safeguard's delete described below.
+    their themadoelen and subthema's, the subthema's activiteiten, and per klas algemene fiches and hoeken. All content
+    goes through the API, so every domain rule applies. The only direct database write is the safeguard's delete
+    described below.
 
     The session keys (ADR-0031 decision 5). The Data Protection keys live in the demo database, wrapped by a Key Vault
     key. The local API runs with the same DataProtection__KeyVaultSleutel setting, so any key it creates is wrapped or
@@ -24,8 +25,9 @@
     environment, which the az processes it starts for Key Vault tokens inherit. All of those end with the run. The
     build runs before any secret is read and without build servers, so no build process inherits one.
 
-    A second run creates nothing twice. Items are matched by name (klas; thema; subthema by name and leeftijd; fiche
-    and hoek within their klas), and an item that exists only gets the goal links from the data file that it lacks, as
+    A second run creates nothing twice. Items are matched by name (klas; thema; subthema by name and leeftijd;
+    activiteit within its subthema; fiche and hoek within their klas), and an item that exists only gets the goal
+    links from the data file that it lacks, as
     far as the API accepts them (a thema holds at most three themadoelen). Its other fields are left as they are.
 
     Needs: the Azure CLI signed in to the subscription, the .NET SDK from global.json, Docker (psql runs in a
@@ -315,7 +317,10 @@ try {
     if (-not $schooljaar) { throw "The demo has no schooljaar $($data.schooljaar)." }
 
     # Every goal code the data file names, checked once. A missing code is skipped rather than failing the run.
-    $allCodes = @($data.themas | ForEach-Object { $_.themadoelen; $_.subthemas | ForEach-Object { $_.subdoelen } }) +
+    $allCodes = @($data.themas | ForEach-Object {
+            $_.themadoelen
+            $_.subthemas | ForEach-Object { $_.subdoelen; $_.activiteiten | ForEach-Object { $_.doelen } }
+        }) +
         @($data.algemeneFiches | ForEach-Object { $_.doelen.PSObject.Properties | ForEach-Object { $_.Value } })
     foreach ($code in ($allCodes | Where-Object { $_ } | Sort-Object -Unique)) {
         if (Invoke-Api GET "/api/leerplandoelen/$([Uri]::EscapeDataString($code))" -AllowNotFound) { $knownCodes[$code] = $true }
@@ -377,6 +382,36 @@ try {
             }
             Add-GoalLinks -Wanted $sub.subdoelen -Present @($subthema.subdoelen | ForEach-Object { $_.koppeling.leerplandoelCode }) `
                 -Path "/api/subthemas/$($subthema.id)/doelkoppelingen" -Label 'subdoelen' -What "$($entry.naam) / $($sub.naam)"
+
+            # Activiteiten belong to the subthema, so every klas of its leeftijd sees them (ADR-0025).
+            foreach ($act in @($sub.activiteiten)) {
+                if (-not $act) { continue }
+                $what = "$($entry.naam) / $($sub.naam) / $($act.naam)"
+                $activiteit = @($subthema.activiteiten | Where-Object { $_.naam -eq $act.naam }) | Select-Object -First 1
+                if ($activiteit) {
+                    Add-Stat 'activiteiten found'
+                    Add-GoalLinks -Wanted $act.doelen -Present @($activiteit.doelkoppelingen | ForEach-Object { $_.leerplandoelCode }) `
+                        -Path "/api/activiteiten/$($activiteit.id)/doelkoppelingen" -Label 'activiteit goals' -What $what
+                    continue
+                }
+                # The API accepts only an onderzoeksvraag of the same subthema; the data file gives each one.
+                $onderzoeksvraagId = $null
+                $onderzoeksvraag = @($subthema.onderzoeksvragen) | Select-Object -First 1
+                if ($onderzoeksvraag) { $onderzoeksvraagId = $onderzoeksvraag.id }
+                $codes = @($act.doelen | Where-Object { $_ -and $knownCodes[$_] })
+                Invoke-Api POST "/api/subthemas/$($subthema.id)/activiteiten" @{
+                    naam                = $act.naam
+                    activiteitType      = $act.type
+                    hoek                = $act.hoek
+                    verwachteUitkomsten = $act.verwachteUitkomsten
+                    onderzoeksvraagId   = $onderzoeksvraagId
+                    kleur               = $null
+                    lengteInLesuren     = $act.lengteInLesuren
+                    leerplandoelCodes   = $codes
+                } | Out-Null
+                Add-Stat 'activiteiten created'
+                foreach ($code in $codes) { Add-Stat 'activiteit goals linked' }
+            }
         }
     }
 
