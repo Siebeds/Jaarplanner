@@ -1,0 +1,57 @@
+---
+id: TB-017
+titel: Themaweergave stuurt doeltekst en doelsoort mee voor thema- en subdoelen
+soort: technisch
+status: nieuw
+prioriteit: laag
+aangemaakt: 2026-09-14
+bijgewerkt: 2026-09-14 16:31
+opgepakt-door:
+branch:
+pr:
+geblokkeerd:
+fr: []
+---
+
+## Aanleiding
+
+Sinds TB-016 toont de themapagina bij elk themadoel en subdoel de doeltekst. Die tekst komt nu per regel uit
+`GET /api/leerplandoelen/{code}`, het zware detailendpoint: per code draait de server de detailquery, vijf queries
+voor "Gebruikt in" en een query voor de gerelateerde doelen, terwijl de regel alleen `tekst` en `doelsoort` nodig
+heeft. Omdat elk subthemahoofdstuk standaard openstaat en er per thema tot negen leeftijden zijn, kan dat bij het
+laden van één themapagina tientallen verzoeken worden, en na elke koppeling of ontkoppeling worden ze opnieuw
+gelezen (TB-016 maakt de detail na elke schrijfactie ongeldig). De antagonist wees dit aan bij de audit van TB-016.
+
+In TB-016 is dit bewust niet in de backend opgelost: `SchoolcontentBeheerService.cs` en `SchoolcontentBeheerDtos.cs`
+werden toen zwaar gewijzigd op de E6-02-branches (`feature/e6-rollen-rechten`), en een wijziging daar zou op
+dezelfde plaatsen botsen.
+
+## Voorgestelde wijziging
+
+- De themaweergave (`ThemaWeergave` → `ThemadoelWeergave` en `SubdoelWeergave`) krijgt per koppeling de `tekst`,
+  de `doelsoort` en `nietMeerInOpstap` van het leerplandoel mee, zoals de doelsuggesties die al meekrijgen.
+  Eén extra query per themaverzoek (codes → tekst) in `SchoolcontentBeheerService`, niet per koppeling.
+- `Gekoppelddoel` in `frontend/src/features/themas/` leest die velden uit de koppeling en haalt de detail pas op
+  wanneer de leerkracht op de regel klikt.
+- De tests van TB-016 (`Gekoppelddoel.test.tsx`) blijven gelden; de fetch-stub levert de velden dan in de thema.
+
+## Acceptatiecriteria
+
+- [ ] Gegeven een thema met themadoelen en subdoelen, wanneer de themapagina opent, dan doet de frontend geen
+  verzoek naar `/api/leerplandoelen/{code}` tot de leerkracht op een regel klikt.
+- [ ] Gegeven een thema, wanneer de themaweergave wordt opgevraagd, dan bevat elke thema- en subdoelkoppeling de
+  tekst, de doelsoort en of het doel uit Op.stap verdwenen is (integratietest tegen PostgreSQL).
+- [ ] De themapagina toont na de wijziging dezelfde regels als na TB-016 (browsercontrole op desktop en 390 px).
+
+## Buiten scope
+
+- De doelcodes bij activiteiten.
+- Het detailendpoint zelf lichter maken.
+
+## Open vragen
+
+Geen. Pas oppakken wanneer E6-02 op `main` staat.
+
+## Werklog
+
+- 2026-09-14 16:31 · themadoel-tekst · aangemaakt (status nieuw)

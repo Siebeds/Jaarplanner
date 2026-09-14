@@ -128,8 +128,11 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
 
   it("opent bij een klik de volledige doeldetail, zonder koppelknop", async () => {
     toon();
+    await screen.findByText(THEMADOELTEKST);
 
-    fireEvent.click(await screen.findByText(THEMADOELTEKST));
+    // By role, not by text: a click on the text bubbles to any ancestor with a handler, so an `<li onClick>` that no
+    // keyboard can reach would pass a text query. A native button is focusable and answers Enter and Space by itself.
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(THEMADOELTEKST) }));
 
     const blad = await screen.findByRole("dialog", { name: t("doel.titel") });
     expect(await within(blad).findByText("Met klei, verf en papier.")).toBeInTheDocument();
@@ -140,13 +143,17 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
 
   it("opent ook de detail van een subdoel", async () => {
     toon();
+    await screen.findByText(SUBDOELTEKST);
 
-    fireEvent.click(await screen.findByText(SUBDOELTEKST));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(SUBDOELTEKST) }));
 
     const blad = await screen.findByRole("dialog", { name: t("doel.titel") });
     expect(await within(blad).findByText(SUBDOELTEKST)).toBeInTheDocument();
   });
 
+  // What this does NOT guard: that the remove control sits ABOVE the row's stretched click area. jsdom does no hit
+  // testing, so removing the control's `relative z-10` still passes here while a real browser would open the sheet on
+  // an unlink. The TB-016 browser pass checks it with `elementFromPoint` (see the ticket's Werklog).
   it("ontkoppelt zonder de detail te openen", async () => {
     toon();
     await screen.findByText(THEMADOELTEKST);
@@ -160,5 +167,33 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
       ),
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("leest de doeldetail opnieuw na een ontkoppeling, zodat Gebruikt in niet achterloopt", async () => {
+    toon();
+    await screen.findByText(THEMADOELTEKST);
+    const detailReads = () =>
+      fetchMock.mock.calls.filter(([pad, init]) => pad.endsWith("/api/leerplandoelen/6.5.GK2.3") && !init?.method)
+        .length;
+    const voor = detailReads();
+
+    fireEvent.click(screen.getByRole("button", { name: t("activiteit.ontkoppel", { code: "6.5.GK2.3" }) }));
+
+    await waitFor(() => expect(detailReads()).toBeGreaterThan(voor));
+  });
+
+  it("markeert in de rij een doel dat uit Op.stap verdwenen is", async () => {
+    const oud = DOELEN["6.4.GJK.1"];
+    DOELEN["6.4.GJK.1"] = { ...oud, nietMeerInOpstap: true };
+    try {
+      toon();
+
+      const rij = await screen.findByRole("button", { name: /De kleuter beweegt op muziek\./ });
+      expect(within(rij).getByText(t("doel.vervallen"))).toBeInTheDocument();
+      const andereRij = screen.getByRole("button", { name: new RegExp(THEMADOELTEKST) });
+      expect(within(andereRij).queryByText(t("doel.vervallen"))).not.toBeInTheDocument();
+    } finally {
+      DOELEN["6.4.GJK.1"] = oud;
+    }
   });
 });

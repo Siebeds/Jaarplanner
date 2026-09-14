@@ -1,5 +1,6 @@
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Statusmerk } from "../../components/ui/Statusmerk";
+import { t } from "../../i18n";
 import { useLeerplandoel } from "../../lib/queries";
 import type { DoelKoppelingWeergave } from "../../lib/types";
 import { Ontkoppel } from "./Fiche";
@@ -58,11 +59,18 @@ export function Gekoppelddoel({
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {data ? <Doelsoortmerk soort={data.doelsoort} /> : null}
           <span className="mono text-micro font-medium text-inkt-zacht">{code}</span>
+          {/* A doel Op.stap has dropped stays linked and keeps its text, so the row is where a teacher
+              has to see that it needs reviewing (Art. III.4), not only the detail. Same mark and words
+              as the detail's. */}
+          {data?.nietMeerInOpstap ? (
+            <span className="rounded bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-medium text-attentie-inkt">
+              {t("doel.vervallen")}
+            </span>
+          ) : null}
           <Statusmerk status={koppeling.status} className="ml-auto" />
         </span>
 
-        {/* A doel the register no longer knows keeps its code and nothing else: the row still opens
-            the detail, which says why there is nothing to show. */}
+        {/* If the doel cannot be loaded the row keeps its code; the detail shows the load error. */}
         {data ? (
           <span className="mt-1 line-clamp-2 text-body text-inkt">{data.tekst}</span>
         ) : isPending ? (
