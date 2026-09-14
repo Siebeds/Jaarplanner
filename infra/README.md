@@ -108,6 +108,32 @@ pnpm. Run the commands from the repo root.
   `deployed-commit.txt` next to the app.
 - A new migration: run `migrate-db.ps1` **before** deploying the code that needs it.
 
+## Demo data
+
+`infra/seed-demo.ps1` fills the demo with the fictional kleuter content in `infra/seed-demo.data.json` (TB-003):
+klassen, thema's with themadoelen and subthema's, and per klas algemene fiches and hoeken. It needs Docker besides
+the tools above and a clean working tree (or `-AllowDirty`), and it runs from the commit that is deployed, after
+`migrate-db.ps1`: it refuses when the database's newest migration and the checkout's differ.
+
+```powershell
+./infra/seed-demo.ps1 -ServerName pg-jaarplanner-demo-<suffix> -VaultName kv-jpdemo-<suffix> -AppName jaarplanner-demo-<suffix>
+```
+
+- It builds the API from the checkout, starts it on your machine and signs in as the demo's directie with the
+  development sign-in. All content goes through the API. The one direct database write is the safeguard below.
+- The session keys (ADR-0031 decision 5). The local API gets the demo's `DataProtection__KeyVaultSleutel`, so any key
+  it creates is wrapped or not written. The script gives you *Key Vault Crypto User* on that key for the run if you
+  lack it, so the API can use the existing key and has no reason to create one. It compares the key rows before and
+  after: an unwrapped row that appeared is deleted and the run ends with an error; a new wrapped row is only reported.
+- It opens the PostgreSQL firewall to your address and removes that rule and the temporary key role again when it
+  ends or fails. Closing the window skips that; look for leftovers with
+  `az postgres flexible-server firewall-rule list --resource-group rg-jaarplanner-demo --server-name pg-jaarplanner-demo-<suffix>`
+  (only `AllowAllAzureServicesAndResourcesWithinAzureIps` belongs there) and
+  `az role assignment list --scope <vault id>/keys/dataprotection`.
+- A second run creates nothing twice: items are matched by name, and one that exists only gets the goal links from the
+  data file that it lacks. Its other fields stay as they are. Keep the data fictional (ADR-0034).
+- The teacher names in the klas names stand in for the link between leerkrachten and klassen until E6-04 builds it.
+
 ## Costs, and switching it off
 
 - F1 is free. PostgreSQL B1ms with 32 GB is free for the first 12 months of the subscription, and about €16 a month
