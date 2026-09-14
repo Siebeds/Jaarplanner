@@ -24,12 +24,12 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0008](0008-themalaag-level-scoping.md) | Two-tier themalaag with level-based ownership/scoping | Accepted (per-class scoping of Subthema/Subdoel/Activiteit superseded by 0025) |
 | [0009](0009-dekking-computed-not-stored.md) | Dekking is computed, never stored | Accepted |
 | [0010](0010-ai-advisory-architecture.md) | AI advisory architecture (injectable client, server-side, structured+validated) | Accepted |
-| [0011](0011-authn-authz-rbac-gdpr.md) | AuthN/AuthZ, RBAC & GDPR data minimisation. **§3 superseded by 0030** (2026-09-11): the ownership rules predated content per leeftijd | Accepted |
+| [0011](0011-authn-authz-rbac-gdpr.md) | AuthN/AuthZ, RBAC & GDPR data minimisation. **§3 superseded by 0030** (2026-09-11): the ownership rules predated content per leeftijd. **§4 narrowed by 0035** (2026-09-14): pupil data for the K3 ontwikkelingsrapport only | Accepted |
 | [0012](0012-secrets-config-management.md) | Secrets & configuration management | Accepted |
 | [0013](0013-planningsblok-abstraction.md) | Planningsblok abstraction for an open decision | Accepted ("configuration on the Schooljaar" clause superseded by 0020) |
 | [0014](0014-frontend-state-and-dnd.md) | Frontend state management & drag-and-drop | Accepted |
 | [0015](0015-testing-strategy.md) | Testing strategy & high-risk coverage | Accepted |
-| [0016](0016-azure-hosting-eu-residency.md) | Azure hosting & EU data residency | Accepted |
+| [0016](0016-azure-hosting-eu-residency.md) | Azure hosting & EU data residency. **The *no pupil PII* constraint narrowed by 0035** (2026-09-14): pupil data for the K3 ontwikkelingsrapport only | Accepted |
 | [0017](0017-ui-ux-design-system.md) | UI/UX approach & design system (shadcn/ui + Radix, WCAG 2.2 AA) | Accepted (decisions 1, 2, 3 and 5 superseded by 0024) |
 | [0018](0018-concordance-one-to-many-fk.md) | Concordance is a one-to-many nullable FK (M:N rejected; supersedes 0007 concordance clause) | Accepted |
 | [0019](0019-discipline-selection-config-seam.md) | Discipline-selection config seam for an open decision (Art. XIV; data-driven, not compiled in) | Accepted |
@@ -45,6 +45,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0032](0032-opstap-api-als-importbron.md) | **KOV's Op.stap API is the curriculum import source**, read by the backend into the database through a preview and an apply; only **G** goals for now (Z and V skipped); the Excel import stays until the API import has run in production (supersedes 0006 in part: the source) | Accepted |
 | [0033](0033-ticketbacklog-en-kanbanbord.md) | **A Markdown ticket backlog beside the epics**: `backlog/functionele-backlog/` (FB, on `main`) and `backlog/technische-backlog/` (TB, on the work branch) in one fixed Dutch format defined once in `tools/backlog-board/lib/format.mjs`; every write through one CLI; a read-only local kanban board that reads `main`, unmerged branches and worktrees, with *In review* derived and never written; no work without a ticket or a story; ticket text Dutch by amendment of Art. II.6 (supersedes nothing) | Accepted |
 | [0034](0034-demo-omgeving-op-azure.md) | **A demo environment on Azure** at the lowest cost: App Service F1 Linux, PostgreSQL B1ms, Key Vault, one resource group in an EU region; **the API serves the frontend** with an anonymous SPA fallback that excludes `api/` and `health/`; a self-contained publish; the owner's **waiver of E7-11's deployment clause for this demo only** (fictional data, the owner's own accounts, no AI); the app runs as the database admin, a demo trade-off. Realises 0016 for a demo; **amends 0031 decision 2** (the anonymous routes) | Accepted |
+| [0035](0035-ontwikkelingsrapport-derde-kleuter.md) | **The ontwikkelingsrapport for the derde kleuter brings pupil data into scope, for this report only**: leerlingen by hand (voornaam, achternaam) in a K3 klas; one timeless K3 set of rapportdoelen (groups of K3 subdoelen) and one star scale, edited by every K3 leerkracht; three fixed evaluatiemomenten with a gradatie and text per rapportdoel, an algemeen besluit and a kindtekening (metadata stripped); an AI rewrite that replaces the names of the klas's children before the call (best-effort, R25) and stores no proposal; PDF and Word generated on demand, never stored; a fifth right, **Leerlingzorg** (read only); kept until directie wipes a schooljaar; never counts for dekking. Narrows 0011 §4 and 0016's *no pupil PII*; extends the 0030 matrix (a fifth right and six rows); amends Art. I.1, I.2, IV.1–IV.5, VI.1, VI.2 and VI.6, and adds VI.7 and IX.4, in TB-005's amendment commit | Accepted |
 
 ## Compliance traceability matrix
 
@@ -82,6 +83,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0032 | Art. VII.2, III.1/III.3/III.4, V.2/V.6, XIV | E1-12, E1-21/22/23; E1-03/04 | FR-2.1–2.5, FR-9.3 |
 | 0033 | Art. II.6 (amended), II.2, X, XIII, VI, XI/XIV | all epics, side by side; tickets from 2026-09-13 | none (team workflow) |
 | 0034 | Art. VI.2/VI.3/VI.4/VI.5/VI.6, VIII; Art. VI.1 unmet by the code until E6-02 (the owner waived E7-11's deployment clause for this demo, not the article) | E7-04, E7-11, E7-05, E7-09 | NFR-4/5/6/9 |
+| 0035 | Art. I.1/I.2, IV.1–IV.5, VI.1/VI.2/VI.6 and a new VI.7, a new IX.4, XII (amended in TB-005); XI.1 followed; V.1 unchanged; VI.3/VI.5, VIII, II.1/II.3, XIV (three bullets touched) | TB-005; the FB build tickets of its §6, after E6-02; E6-02/04, E7-06/09/11, E8 (note) | FR-13 (new), FR-10, FR-12.2; NFR-5/6 |
 
 ## Open decisions referenced by ADRs
 

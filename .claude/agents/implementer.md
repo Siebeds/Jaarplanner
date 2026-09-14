@@ -35,8 +35,8 @@ to produce correct, reviewable code plus an honest worklog and report.
 - **Dutch domain language** in code (`Leerplandoel`, `Minimumdoel`, `Thema`, `Dekking`, …); English for infra/tooling/comments.
 - **No hard-coded Dutch in components** — every user-facing string goes in `frontend/src/i18n/nl.json`.
 - **Imported Op.stap goals are read-only** — never mutate official leerplandoel/minimumdoel content.
-- **AI is advisory** — every AI suggestion carries a persisted `status` + `motivatie`; AI client behind an injectable interface, fakeable in tests; AI keys server-side only.
-- **No secrets in the repo**; **no pupil personal data** (MVP).
+- **AI is advisory** — every AI suggestion carries a persisted `status` + `motivatie` (an ontwikkelingsrapport rewrite stores no proposal and no motivation, only the decision; Art. IV.2/IV.3 as amended 2026-09-14); AI client behind an injectable interface, fakeable in tests; AI keys server-side only.
+- **No secrets in the repo**; **no pupil personal data** outside the K3 ontwikkelingsrapport, and inside it only what Art. VI.7 allows.
 - **Dekking is computed, not stored.**
 - Do **not hard-assume** an open decision (Art. XIV) — isolate it behind a seam.
 
