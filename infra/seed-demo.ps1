@@ -240,11 +240,13 @@ try {
     }
 
     $escapedEmail = $directieEmail.Trim().ToLowerInvariant().Replace("'", "''")
-    $directieIds = Invoke-Psql "select ""Id"" from gebruikers where ""Email"" = '$escapedEmail' and ""IsDirectie"";"
+    # @(): PowerShell unrolls a one-element array returned from a function, and [0] of the string that is left would
+    # be its first character.
+    $directieIds = @(Invoke-Psql "select ""Id"" from gebruikers where ""Email"" = '$escapedEmail' and ""IsDirectie"";")
     if ($directieIds.Count -ne 1) { throw "Expected one directie $directieEmail in the demo database, found $($directieIds.Count)." }
     $directieId = $directieIds[0]
 
-    $keysBefore = Get-KeyRows
+    $keysBefore = @(Get-KeyRows)
     Write-Host "Data Protection keys before the run: $($keysBefore.Count)."
 
     $heldRoles = @(Invoke-Az role assignment list --assignee $operator --scope $keyScope --include-inherited `
@@ -424,7 +426,7 @@ finally {
 
     if ($firewallOpen -and $null -ne $keysBefore) {
         try {
-            $keysAfter = Get-KeyRows
+            $keysAfter = @(Get-KeyRows)
             $newRows = @($keysAfter | Where-Object { $keysBefore -notcontains $_ })
             $unwrapped = @($newRows | Where-Object { $_ -like '*|false' } | ForEach-Object { ($_ -split '\|')[0] })
             if ($unwrapped.Count -gt 0) {

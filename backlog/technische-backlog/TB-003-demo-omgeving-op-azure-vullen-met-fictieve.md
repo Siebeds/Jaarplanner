@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:24
+bijgewerkt: 2026-09-14 11:53
 opgepakt-door: demo-seed
 branch: ticket/demo-seed
 pr:
@@ -26,9 +26,9 @@ Een nieuw script `infra/seed-demo.ps1` met de data in `infra/seed-demo.data.json
 Geen wijziging aan de broncode van de app.
 
 - **Route: de app's eigen API, lokaal gestart tegen de demodatabase**, zodat elke domeinregel en validatie meedraait
-  en er geen SQL rechtstreeks in de tabellen gaat. Zoals `migrate-db.ps1`: de connection string komt uit Key Vault en
-  staat alleen in de omgeving van het proces, en de PostgreSQL-firewall staat alleen tijdens de run open voor het
-  adres van de operator.
+  en alle inhoud via de API gaat. Zoals `migrate-db.ps1`: de connection string komt uit Key Vault en belandt alleen in
+  het script, de lokale API en de kortlevende psql-container, en de PostgreSQL-firewall staat alleen tijdens de run
+  open voor het adres van de operator.
 - **Geen onversleutelde sessiesleutel.** Een lokale API in Development zonder Key Vault-instelling zou een nieuwe,
   onversleutelde sessiesleutel in de demodatabase zetten, die de Azure-app daarna kan gaan gebruiken (ADR-0031
   beslissing 5 verbiedt precies dat). Het script start de API daarom met `DataProtection__KeyVaultSleutel`, zodat
@@ -77,3 +77,4 @@ Geen.
 
 - 2026-09-14 11:06 · demo-seed · aangemaakt (status in-uitvoering)
 - 2026-09-14 11:24 · demo-seed · script infra/seed-demo.ps1 en data infra/seed-demo.data.json geschreven; parse in PowerShell 5.1 en psql verify-full getest; antagonist loopt
+- 2026-09-14 11:53 · demo-seed · eerste run faalde op de aanmelding (401: PowerShell pakte de id-array uit tot een string); opruimen werkte: tijdelijke rol weg, sessiesleutels ongewijzigd (1), firewall dicht; niets geschreven
