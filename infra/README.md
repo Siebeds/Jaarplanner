@@ -132,7 +132,8 @@ the tools above and a clean working tree (or `-AllowDirty`), and it runs from th
   (only `AllowAllAzureServicesAndResourcesWithinAzureIps` belongs there) and
   `az role assignment list --scope <vault id>/keys/dataprotection`.
 - A second run creates nothing twice: items are matched by name, and one that exists only gets the goal links from the
-  data file that it lacks. Its other fields stay as they are. Keep the data fictional (ADR-0034).
+  data file that it lacks. Its other fields stay as they are. An activiteit's `doelenWeg` lists goal links to remove
+  again; the script removes no other link. Keep the data fictional (ADR-0034).
 - The teacher names in the klas names stand in for the link between leerkrachten and klassen until E6-04 builds it.
 
 ## Costs, and switching it off

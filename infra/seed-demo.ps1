@@ -28,7 +28,8 @@
     A second run creates nothing twice. Items are matched by name (klas; thema; subthema by name and leeftijd;
     activiteit within its subthema; fiche and hoek within their klas), and an item that exists only gets the goal
     links from the data file that it lacks, as
-    far as the API accepts them (a thema holds at most three themadoelen). Its other fields are left as they are.
+    far as the API accepts them (a thema holds at most three themadoelen). Its other fields are left as they are. For an
+    activiteit the data file can also list withdrawn codes (doelenWeg): only those links are removed, through the API.
 
     Needs: the Azure CLI signed in to the subscription, the .NET SDK from global.json, Docker (psql runs in a
     container), and a clean working tree unless -AllowDirty is passed. Run it from the commit that is deployed, after
@@ -390,14 +391,24 @@ try {
                 $activiteit = @($subthema.activiteiten | Where-Object { $_.naam -eq $act.naam }) | Select-Object -First 1
                 if ($activiteit) {
                     Add-Stat 'activiteiten found'
+                    # A link the data file withdrew (doelenWeg) is removed; no other link is ever touched.
+                    $withdrawn = @($act.doelenWeg | Where-Object { $_ })
+                    foreach ($koppeling in @($activiteit.doelkoppelingen | Where-Object { $withdrawn -contains $_.leerplandoelCode })) {
+                        Invoke-Api DELETE "/api/activiteiten/$($activiteit.id)/doelkoppelingen/$($koppeling.id)" | Out-Null
+                        Add-Stat 'activiteit goals removed'
+                    }
                     Add-GoalLinks -Wanted $act.doelen -Present @($activiteit.doelkoppelingen | ForEach-Object { $_.leerplandoelCode }) `
                         -Path "/api/activiteiten/$($activiteit.id)/doelkoppelingen" -Label 'activiteit goals' -What $what
                     continue
                 }
-                # The API accepts only an onderzoeksvraag of the same subthema; the data file gives each one.
+                # The subthema's vraag with the data file's text, else its first one. Both belong to this subthema,
+                # which is the only kind the API accepts.
+                $vragen = @($subthema.onderzoeksvragen)
+                $onderzoeksvraag = @($vragen | Where-Object { $_.vraag -eq $sub.onderzoeksvraag }) | Select-Object -First 1
+                if (-not $onderzoeksvraag) { $onderzoeksvraag = $vragen | Select-Object -First 1 }
                 $onderzoeksvraagId = $null
-                $onderzoeksvraag = @($subthema.onderzoeksvragen) | Select-Object -First 1
                 if ($onderzoeksvraag) { $onderzoeksvraagId = $onderzoeksvraag.id }
+                else { Write-Warning "Subthema '$($sub.naam)' has no onderzoeksvraag; '$($act.naam)' is created without one." }
                 $codes = @($act.doelen | Where-Object { $_ -and $knownCodes[$_] })
                 Invoke-Api POST "/api/subthemas/$($subthema.id)/activiteiten" @{
                     naam                = $act.naam

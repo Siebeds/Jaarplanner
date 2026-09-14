@@ -25,8 +25,11 @@ Een subthema zonder activiteiten toont in de demo weinig van wat een leerkracht 
   totaal. Elke activiteit krijgt een naam, een type (bijvoorbeeld uitstap, experiment, prentenboek, hoek), een lengte
   in lesuren, verwachte uitkomsten en een G-leerplandoel. Alles fictief.
 - `infra/seed-demo.ps1`: per subthema de activiteiten aanmaken via de API, gekoppeld aan de onderzoeksvraag van dat
-  subthema. Een activiteit met dezelfde naam in hetzelfde subthema wordt niet opnieuw aangemaakt, en krijgt alleen de
-  doelen uit het databestand die ze nog mist.
+  subthema met de tekst uit het databestand (anders de eerste, met een waarschuwing als het subthema er geen heeft).
+  Een activiteit met dezelfde naam in hetzelfde subthema wordt niet opnieuw aangemaakt, en krijgt alleen de doelen uit
+  het databestand die ze nog mist. Een doel dat het databestand bij een activiteit onder `doelenWeg` zet, haalt het
+  script weer weg; een andere koppeling raakt het nooit aan. Zo zijn na de audit drie doelen vervangen die slecht bij
+  hun activiteit pasten.
 - `infra/README.md`: de opsomming van wat het script aanmaakt, aangevuld.
 
 Een activiteit hangt aan een subthema van een leeftijd, niet aan een klas (ADR-0025). Elke klas ziet dus de
@@ -34,9 +37,9 @@ activiteiten van haar leeftijd: de twee K2-klassen delen dezelfde zes, net als d
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de geseede demo, wanneer het script draait, dan heeft elk van de negen subthema's twee activiteiten, elk met een type, een lengte, verwachte uitkomsten, de onderzoeksvraag van het subthema en een doel.
-- [ ] Gegeven een geslaagde run, wanneer het script een tweede keer draait, dan maakt het geen activiteit dubbel aan.
-- [ ] Gegeven een run, dan staat er erna geen nieuwe onversleutelde rij in `data_protection_keys`, en zijn de firewallregel en de tijdelijke roltoewijzing weer weg.
+- [x] Gegeven de geseede demo, wanneer het script draait, dan heeft elk van de negen subthema's twee activiteiten, elk met een type, een lengte, verwachte uitkomsten, de onderzoeksvraag van het subthema en een doel.
+- [x] Gegeven een geslaagde run, wanneer het script een tweede keer draait, dan maakt het geen activiteit dubbel aan.
+- [x] Gegeven een run, dan staat er erna geen nieuwe onversleutelde rij in `data_protection_keys`, en zijn de firewallregel en de tijdelijke roltoewijzing weer weg.
 
 ## Buiten scope
 
