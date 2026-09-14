@@ -2,10 +2,10 @@
 id: TB-011
 titel: Hoekmoment verplaatsen weigert een dag zonder school
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 13:53
+bijgewerkt: 2026-09-14 14:00
 opgepakt-door: TB-011
 branch: ticket/TB-011-hoekmoment-schooldag
 pr:
@@ -23,11 +23,13 @@ aanvaard, en telt daarna mee als "schooldag" van de hoek. Bij het inplannen van 
 overgeslagen.
 
 Een leerkracht kon dit ook vanuit het scherm. Het tijdraster weigert geen drop op een weekend: de week- en de
-maandweergave tekenen zaterdag en zondag als gewone kolommen, omdat de server een weekend als lesdag doorgeeft. Een hoekblok naar een zaterdag slepen schreef dus een rij op die zaterdag. Een sluiting was alleen
-via een rechtstreekse API-aanroep bereikbaar, want het detailblad van een hoek heeft geen dagveld. *(Gecorrigeerd op
+maandweergave tekenen zaterdag en zondag als gewone kolommen, omdat de server een weekend als lesdag doorgeeft. Een
+hoekblok naar een zaterdag binnen de periode slepen schreef dus een rij op die zaterdag. Een sluiting was alleen via een
+rechtstreekse API-aanroep bereikbaar, want het detailblad van een hoek heeft geen dagveld. *(Gecorrigeerd op
 2026-09-14: hier stond eerst dat het raster elke gesloten dag weigert en dat het alleen via de API kon. De antagonist
-wees erop dat de weekendkolommen een drop aanvaarden; zie het werklog.)* Bij de algemene fiches zat hetzelfde gat; dat is gedicht in E10-03 (TB-002,
-PR #57). De antagonist wees het aan in ronde 2 van TB-002; de eigenaar vroeg op 2026-09-14 om dit ticket.
+wees erop dat de weekendkolommen een drop aanvaarden; zie het werklog.)* Bij de algemene fiches zat hetzelfde gat; dat
+is gedicht in E10-03 (TB-002, PR #57). De antagonist wees het aan in ronde 2 van TB-002; de eigenaar vroeg op
+2026-09-14 om dit ticket.
 
 ## Voorgestelde wijziging
 
@@ -76,3 +78,5 @@ Geen.
 - 2026-09-14 13:41 · TB-011 · aangepakt: commentaren, interface- en hookdocumentatie en tickettekst gecorrigeerd, test op de volgorde van de controles toegevoegd; de eigenaar koos een browsercheck zonder Vitest-test en laat de weekendvraag bij E9-02
 - 2026-09-14 13:41 · TB-011 · browsercheck op een wegwerpdatabase: een hoekblok van dinsdag naar zaterdag binnen de periode geeft 400 met de zin, de meldingsstrook toont hem en het blok blijft staan, op 1440 en 390 px; verslag in backlog/worklogs/TB-011/
 - 2026-09-14 13:53 · TB-011 · antagonist ronde 2: de drie bevindingen uit ronde 1 opgelost, vier nieuwe MINOR (te sterke zinnen in commentaar, tickettekst en verslag, en een verouderde fiche-hookcomment); alle vier aangepast, en Buiten scope noemt nu de weekendmomenten van vóór deze wijziging
+- 2026-09-14 14:00 · TB-011 · antagonist ronde 3: de vier bevindingen uit ronde 2 opgelost, twee nieuwe MINOR (een weekend bereikt de weigering alleen binnen de periode; het verslag miste ronde 2); beide aangepast, geen codewijziging, planningtests en dotnet format groen
+- 2026-09-14 14:00 · TB-011 · in-uitvoering → klaar: klaar: een hoekmoment verplaatsen naar een dag zonder school wordt geweigerd met de zin van de fiches; unit- en PostgreSQL-tests groen, browsercheck op 1440 en 390 px, drie antagonistrondes verwerkt; verslag in backlog/worklogs/TB-011/

@@ -9,8 +9,9 @@ Branch: `ticket/TB-011-hoekmoment-schooldag`
   closure) with *"Op die dag is er geen school. Kies een schooldag."*, the sentence
   `AlgemeneFicheplaatsing.VerplaatsMoment` already gives. The window and same-start checks still run first.
 - `HoekplaatsingService.VerplaatsMomentAsync` loads the klas and its schooljaar, as `AlgemeneFicheplaatsingService` does.
-- Documentation: `IHoekplaatsingService`, `frontend/src/features/hoeken/gegevens.ts`, and the comments on both
-  `VerplaatsMoment` methods. No production frontend code changed.
+- Documentation: `IHoekplaatsingService`, `frontend/src/features/hoeken/gegevens.ts`,
+  `frontend/src/features/algemene-fiches/gegevens.ts`, and the comments on both `VerplaatsMoment` methods. No
+  production frontend code changed.
 
 ## Gates
 
@@ -27,7 +28,9 @@ Branch: `ticket/TB-011-hoekmoment-schooldag`
    run Monday to Sunday, the server sends a Saturday as `isLesdag: true` (`Weekplanningweergave.cs`), and a column is
    only disabled on `!isLesdag`. So dragging a hoek block onto a Saturday wrote a Saturday row before this change.
    Resolved:
-   - The comments in `Hoekplaatsing.cs` and `AlgemeneFicheplaatsing.cs` now say the grid refuses a closure only.
+   - The comments in `Hoekplaatsing.cs` and `AlgemeneFicheplaatsing.cs` were corrected. Their first correction ("the
+     grid refuses a closure only") was itself too strong and was narrowed in rounds 2 and 3; the final wording is that
+     the grid does not refuse a weekend, so a weekend inside the window reaches the refusal.
    - The ticket text is corrected, with a correction note and a Werklog line.
    - The first commit message (`a54268d`) repeats the false claim; the correcting commit says so.
    - The owner chose a browser check without a Vitest test. No agenda test simulates a drop today, and building that
@@ -38,6 +41,33 @@ Branch: `ticket/TB-011-hoekmoment-schooldag`
 
 Open question the antagonist raised, **whether a weekend is a school day**: the owner left it with E9-02 on
 2026-09-14. No new work.
+
+## Antagonist, round 2: VIOLATIONS FOUND (MINOR only)
+
+Round 1's three findings were confirmed resolved. Four new MINOR findings, all resolved in `076a288`:
+
+1. The fiche comment implied the detail sheet sends a weekend to the server. It does not: the sheet refuses a weekend
+   itself (`Algemenefichedetailblad.tsx`), and only a vakantie typed in its date field reaches the server.
+2. "The time grid refuses a drop only on a closure" was still too strong: the grid also refuses days outside the school
+   year. The comments and the ticket now say only that the grid does not refuse a weekend.
+3. The fiche hook's list of refusals (`algemene-fiches/gegevens.ts`) had lacked the day without school since E10-03.
+4. This report said the 1440 screenshot shows the sentence; it shows only a clipped sliver. The text is now attributed
+   to the DOM.
+
+On its questions: the owner's choice of a browser check without a Vitest test was his own selection in session, and
+*Buiten scope* in the ticket now names weekend rows dragged before this change (movable to a school day, no longer
+resizable on their own day).
+
+## Antagonist, round 3: VIOLATIONS FOUND (MINOR only)
+
+Round 2's four findings were confirmed resolved. Two new MINOR findings, both text, resolved in the closing commit:
+
+1. "A block dragged onto a weekend reaches this refusal" holds only inside the placement's window; outside it the
+   window rule answers first, as this branch's own test and browser check 1 show. Narrowed to "inside the window" in
+   both domain comments and in the ticket.
+2. This report still described the comments in their round-1 wording and had no round-2 record. Both are fixed above.
+
+No round 4 was run: the round-3 fixes narrow two phrases and update this record, and change no code.
 
 ## Browser check (2026-09-14)
 
