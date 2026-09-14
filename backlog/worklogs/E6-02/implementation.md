@@ -1453,16 +1453,6 @@ personal content (R6, unbuilt). The sweep's `OpenVoorIedereen` list is therefore
 - **Themabeheer on the ordinary subthema, subdoel and activiteit routes: 403** (I22), pinned. The maker's delete
   right (R33) is not wizard-specific: `ActiviteitVerwijderen` admits the maker, themabeheer or not.
 - **No screen calls these yet.** E6-05 builds the wizard UI.
-## Code slice 2 — E6-04 beheer
-
-- **FR / Article:** FA FR-12.2, FR-10; Art. VI.1 (ratified 2026-09-14: directie maintains gebruikers and rights, may
-  give the directie right to someone else), Art. VI.2 (staff data only), Art. II.3/II.5 (Dutch in `nl.json`, server
-  Dutch only where directie acts on it, no em dash); ADR-0030 §2 I12, I17, I20, I21 and §3 row "Gebruikers, klassen en
-  schooljaren beheren …" (directie only); ADR-0031 decision 3 (invite by UPN, the unbound state) and decision 7 (the
-  last directie cannot be removed or demoted); ADR-0024 (Inkt en Signaal), ADR-0017 (WCAG 2.2 AA).
-- **Branch:** `story/E6-04-beheer`, from `feature/e6-rollen-rechten` at `0073bd7`. Not pushed, no PR.
-- **Scope held to slice 2.** No existing controller's authorisation changed (slice 3), no migration (none needed: the
-  slice 1 tables carry everything), DI in one separate block.
 
 ### Files changed
 
@@ -1726,6 +1716,124 @@ The server enforces all of this; without slice 4 these controls answer 403.
    - the wizard's leeftijd select for a subthema holding someone else's content;
    - the wizard delete of a linked activiteit, or of a subthema with linked activiteiten, for a caller without the
      goal-link right.
+
+### Fix round 2
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 2)": PASS, with notes on one flaky Entra test and two small test gaps;
+  - "## Code slice 3 — audit round 2": 0 CRITICAL, 0 MAJOR, 3 MINOR, 1 QUESTION.
+
+  Both are the orchestrator's and are committed unedited.
+- **Owner ruling on Q4, 2026-09-14: option (a), a goal link protects.** The orchestrator records it in the I26/I27
+  text on `feature/e6-rollen-rechten`. The constitution, the ADR and the E6 epic were not edited here.
+- **Branch:** `story/E6-02-afdwingen`, on top of `afe46bc`. No new migration: `Themabron` is not an entity, and no
+  mapping changed.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| Q4 (a) | An HL's goal link on a run-created activiteit left with a themabeheer thema delete (I26) or a wizard re-scope (I27) | **Thema delete:** `Themabron` gains `GekoppeldeLeeftijden`, the leeftijden of the open run's own activiteiten that carry a goal link, computed in `EfRechtenbronnen.VoorThemaAsync`. The resolver knows no caller, so it reports rather than decides. The `ThemaVerwijderen` branch of `StaatToe` then requires, for each of those leeftijden, `StaatToe(rechten, DoelenKoppelen, new Leeftijdsinhoud(leeftijd))`: the one goal-link rule, called, not copied. Directie passes as always. **Wizard re-scope:** when a run-created subthema's leeftijd changes and any activiteit under it carries a goal link, the caller needs `DoelenKoppelen` at **both** the old and the new leeftijd. The ruling says "its leeftijd", but a re-scope gives the link a second one: it moves into the new leeftijd's dekking. Asking at both ends is I13's logic applied to R19, and I chose the stricter reading. The caller's id now travels to `WijzigSubthemaAsync`. Its refusal has a sentence of its own, "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Die mag je niet naar een andere leeftijd meenemen, dus de wizard verandert de leeftijd niet.", because "niet in deze wizard aangemaakt" would be false for the run's own activiteit (the E5-03 rule). **Tests:** the thema delete (themabeheer 403, themabeheer+HL of K3 204, directie 204), and the matrix unit test (the Q4 cases, two leeftijden, HL without themabeheer). The re-scope: themabeheer 403; themabeheer+HL of K3 only 403; themabeheer+HL of K3 and K2 200. The same-leeftijd edit is allowed, and the database shows K3 before and K2 after. |
+| MINOR 1 | `ThemaVerwijderen` cited R4 | Doc and label now cite "(R3; I26)". The doc says the directie column rests on R3 and the themabeheer column is a default (I26, followed under R37), and it records the old citation. |
+| MINOR 2 | Docs made incomplete by I27 and C | `Rechtenmatrix`: the class doc now defines a resource row as any row with a column that needs a resource (including I26's), names `Themabron`, and says the Api asks through `[RechtOp]` or in the action. The wizard paragraph says a run's rules are state plus one relation (I27 with Q4, `DoelenKoppelen` through `StaatToe`). The `Wizardinhoud` doc and label cite I22–I27 and say I27 narrows it. `WizardrunsController`: "Rights" lists all four conditions, and "Order of answers" adds the two 403s (activiteit no longer under the thema; I27). The re-scope, subthema-delete and activiteit-delete summaries cite I27 (and Q4), and the activiteit edit summary names the thema check. |
+| MINOR 3 | "verwijdert ze niet" read as the goals | "… dus de wizard verwijdert deze activiteit niet." in the service and in the test constant. |
+| Test gaps | Test-runner and antagonist notes | **Planned thema:** an empty thema placed in K3 blauw's jaarplan (by hand, at the rooster's first block) is refused to themabeheer with the service's 400 ("staat nog 1 keer in een jaarplan"). **Subthema with links:** after themabeheer's refused delete, the subthema and its activiteit are still in the database. **I28:** an ordinary thema PUT and a themadoel POST by themabeheer leave the run's stored `LaatsteSchrijfactieOp` exactly unchanged. |
+| Nit | `WizardrunService` overstated what READ COMMITTED guarantees | The summary now says the rights question reads the rows as committed just before the write and takes no lock. A link another request adds in between is not seen: the same narrow window the filter-side checks accept, the thema delete's included. |
+| Left, as instructed | The item 404 sentences ("… bestaat niet meer") | Unchanged: a codebase-wide pattern, out of scope. |
+
+**Files changed:**
+
+- Application: `Rechtenmatrix` (docs, labels, the `StaatToe` branch, the column doc), `Rechtenbronnen` (`Themabron`),
+  `IWizardrunService` (re-scope signature and doc).
+- Infrastructure: `EfRechtenbronnen` (`VoorThemaAsync`), `WizardrunService` (Q4 re-scope, sentences, doc).
+- Api: `WizardrunsController` (docs; the caller passed to the re-scope).
+- Tests: `RechtenmatrixTests`, `RechtenAfdwingingTests` (+2), `WizardrunEndpointsTests` (+2, one assertion added).
+
+**Gates:**
+
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: exit 0.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db`, using the container's own password
+  (the one in `docs/dev-setup-secrets.md` does not match; that doc was not edited):
+  - UnitTests: 1364 passed, 4 skipped.
+  - IntegrationTests: 423 passed, 1 skipped.
+- No frontend file changed.
+
+**Open, for the orchestrator:**
+
+1. The Q4 re-scope asks the goal-link right at both leeftijden (the stricter reading, above). If the owner meant the
+   old leeftijd only, it is one condition to drop.
+2. **Slice 4 must also hide** the thema delete for themabeheer when a run activiteit carries a link at a leeftijd where
+   they may not link goals, and the wizard's leeftijd select in the same case.
+
+### Fix round 3
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 3)": PASS;
+  - "## Code slice 3 — audit round 3": 0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION, plus non-blocking nits.
+
+  Both are the orchestrator's and are committed unedited.
+- **Owner answer on Q5, 2026-09-14: both leeftijden.** A wizard re-scope of a subthema whose run activiteiten carry a
+  goal link needs `DoelenKoppelen` at the old and the new leeftijd, as built. It is ratified in I27's text on
+  `feature/e6-rollen-rechten` (`8c95c57`: "When the wizard changes a subthema's leeftijd, that right is needed at both
+  the old and the new leeftijd."). The constitution was not edited here.
+- **Branch:** `story/E6-02-afdwingen`, on top of `e83a875`. No new migration. Nothing else was changed.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| MINOR 1 | The old-leeftijd half of the Q4 re-scope check was untested | `…verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4` gains the missing case: themabeheer + HL of **K2 only** re-scoping K3→K2 gets 403 with `GekoppeldVerhuist` in full, and the database still holds K3 (asserted right after the refusals). **Mutation proof:** with `MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, …)` changed to read `nieuw` (one line), the test **failed** ("Expected 403 …, got 200"). On the real code it passes. The file was restored from a copy, diffed identical, and rebuilt. |
+| Nit | `Themabron.GekoppeldeLeeftijden` defaulted to null, read as "none" | Required, with no default and no `?? []` in `StaatToe`: a second producer that forgets it is now a compile error, not a silent allow. The two unit-test constructions pass `[]`. |
+| Nit | Class-level summaries missed the Q4 leeftijd-change-with-link case | `IWizardrunService` (the fourth bullet), `WizardrunService` (the order of questions) and the `WizardrunWeigering` doc now name it: "remove a goal link or carry one to another leeftijd without the caller's goal-link right there". |
+| Nit | `Wizardinhoud` cited "I22–I27", which includes I26 (the thema delete) | Doc and label cite "I22–I25, I27", and the doc says why I26 is left out. |
+| Nit | The re-scope rule was cited without the ratified wording | Quoted as "at both the old and the new leeftijd" with the Q5 answer in: the `Rechtenmatrix` class doc, the `Wizardinhoud` doc, the `IWizardrunService` class and method docs, the `WizardrunService` re-scope comment, and the `WizardrunsController` "Rights" item and re-scope summary. |
+| Nit | The `ThemaVerwijderen` label's "het" read as the thema | "… themabeheer alleen als het thema niets anders bevat dan wat de eigen open wizard van dat thema aanmaakte, en geen doelkoppeling die de themabeheerder niet mag ontkoppelen (R3; I26)". |
+| Nit | The planned-thema test matched its 400 by substring | Pinned by value through `VerwachtAsync`, with the thema's name read back: "Thema '…' staat nog 1 keer in een jaarplan en kan niet verwijderd worden. Verwijder het thema eerst uit die jaarplannen." |
+
+**Gates:**
+
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: exit 0.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (the container's password):
+  - UnitTests: 1364 passed, 4 skipped.
+  - IntegrationTests: 423 passed, 1 skipped. The new case extends an existing test, so the count is unchanged.
+- Mutation probe: failed as required, then restored.
+- No frontend file changed.
+
+### Owner-approved mini-fix (after audit round 4)
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 4)": PASS;
+  - "## Code slice 3 — audit round 4": 0 CRITICAL, 0 MAJOR, 1 MINOR.
+
+  Both are the orchestrator's and are committed unedited. The three fix rounds were used up; the owner approved this
+  one extra fix, limited to that finding.
+- **The MINOR:** two doc comments in `Rechtenmatrix.cs` dropped the goal-link condition from the re-scope rule: the
+  class doc's wizard paragraph and the `Wizardinhoud` doc. The code asks `DoelenKoppelen` at both leeftijden only
+  while an activiteit under the subthema carries a goal link (`WizardrunService.WijzigSubthemaAsync`). A
+  themabeheer-only re-scope of an unlinked run subthema is pinned at 200.
+- **Fix:** both now say the rule is for "a subthema whose activiteiten carry a goal link". Only those two comment
+  blocks changed. No executable line, test or other source file.
+- **Proof:** `git diff -U0 -- backend`, filtered for changed lines that are neither blank nor start with `//`, `///`
+  or `*`, gives **0 lines**. The only changed lines are the `///` lines of those two blocks.
+- **Gates:**
+  - `dotnet build`: ✓, 0 warnings;
+  - `dotnet format --verify-no-changes`: exit 0;
+  - `Toegang` unit tests: 209 passed.
+## Code slice 2 — E6-04 beheer
+
+- **FR / Article:** FA FR-12.2, FR-10; Art. VI.1 (ratified 2026-09-14: directie maintains gebruikers and rights, may
+  give the directie right to someone else), Art. VI.2 (staff data only), Art. II.3/II.5 (Dutch in `nl.json`, server
+  Dutch only where directie acts on it, no em dash); ADR-0030 §2 I12, I17, I20, I21 and §3 row "Gebruikers, klassen en
+  schooljaren beheren …" (directie only); ADR-0031 decision 3 (invite by UPN, the unbound state) and decision 7 (the
+  last directie cannot be removed or demoted); ADR-0024 (Inkt en Signaal), ADR-0017 (WCAG 2.2 AA).
+- **Branch:** `story/E6-04-beheer`, from `feature/e6-rollen-rechten` at `0073bd7`. Not pushed, no PR.
+- **Scope held to slice 2.** No existing controller's authorisation changed (slice 3), no migration (none needed: the
+  slice 1 tables carry everything), DI in one separate block.
+
+### Files changed
+
+| File | Why |
+| --- | --- |
 | `Application/Toegang/IGebruikerBeheerService.cs` (new) | The use cases, the DTOs (`GebruikersOverzicht`, `GebruikerBeheerWeergave`, `KlastoewijzingBeheerWeergave`, `AanstellingBeheerWeergave`, `GebruikerUitnodiging`) and the faults (404 / 400 / 409, the 409s being `GebruikerBestaatAlFout` and `LaatsteDirectieFout`). |
 | `Infrastructure/Toegang/GebruikerBeheerService.cs` (new) | EF implementation. The last-directie guard locks the directie rows (`SELECT … FOR UPDATE`, id order) inside the writing transaction. "Counts for shared content" uses `Rechtenberekening.TeltNog` on `Schoolklok` and `Leeftijdsrechten.VoorKlas`, the rights' own rules. |
 | `Infrastructure/DependencyInjection.cs` | One registration, in its own commented block after the first-directie bootstrap. |
@@ -1942,50 +2050,6 @@ What the pass showed:
 ### Fix round 2
 
 - **Input:**
-  - "# E6-02 slice 3 — Test report (round 2)": PASS, with notes on one flaky Entra test and two small test gaps;
-  - "## Code slice 3 — audit round 2": 0 CRITICAL, 0 MAJOR, 3 MINOR, 1 QUESTION.
-
-  Both are the orchestrator's and are committed unedited.
-- **Owner ruling on Q4, 2026-09-14: option (a), a goal link protects.** The orchestrator records it in the I26/I27
-  text on `feature/e6-rollen-rechten`. The constitution, the ADR and the E6 epic were not edited here.
-- **Branch:** `story/E6-02-afdwingen`, on top of `afe46bc`. No new migration: `Themabron` is not an entity, and no
-  mapping changed.
-
-| # | Finding | Resolution |
-| --- | --- | --- |
-| Q4 (a) | An HL's goal link on a run-created activiteit left with a themabeheer thema delete (I26) or a wizard re-scope (I27) | **Thema delete:** `Themabron` gains `GekoppeldeLeeftijden`, the leeftijden of the open run's own activiteiten that carry a goal link, computed in `EfRechtenbronnen.VoorThemaAsync`. The resolver knows no caller, so it reports rather than decides. The `ThemaVerwijderen` branch of `StaatToe` then requires, for each of those leeftijden, `StaatToe(rechten, DoelenKoppelen, new Leeftijdsinhoud(leeftijd))`: the one goal-link rule, called, not copied. Directie passes as always. **Wizard re-scope:** when a run-created subthema's leeftijd changes and any activiteit under it carries a goal link, the caller needs `DoelenKoppelen` at **both** the old and the new leeftijd. The ruling says "its leeftijd", but a re-scope gives the link a second one: it moves into the new leeftijd's dekking. Asking at both ends is I13's logic applied to R19, and I chose the stricter reading. The caller's id now travels to `WijzigSubthemaAsync`. Its refusal has a sentence of its own, "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Die mag je niet naar een andere leeftijd meenemen, dus de wizard verandert de leeftijd niet.", because "niet in deze wizard aangemaakt" would be false for the run's own activiteit (the E5-03 rule). **Tests:** the thema delete (themabeheer 403, themabeheer+HL of K3 204, directie 204), and the matrix unit test (the Q4 cases, two leeftijden, HL without themabeheer). The re-scope: themabeheer 403; themabeheer+HL of K3 only 403; themabeheer+HL of K3 and K2 200. The same-leeftijd edit is allowed, and the database shows K3 before and K2 after. |
-| MINOR 1 | `ThemaVerwijderen` cited R4 | Doc and label now cite "(R3; I26)". The doc says the directie column rests on R3 and the themabeheer column is a default (I26, followed under R37), and it records the old citation. |
-| MINOR 2 | Docs made incomplete by I27 and C | `Rechtenmatrix`: the class doc now defines a resource row as any row with a column that needs a resource (including I26's), names `Themabron`, and says the Api asks through `[RechtOp]` or in the action. The wizard paragraph says a run's rules are state plus one relation (I27 with Q4, `DoelenKoppelen` through `StaatToe`). The `Wizardinhoud` doc and label cite I22–I27 and say I27 narrows it. `WizardrunsController`: "Rights" lists all four conditions, and "Order of answers" adds the two 403s (activiteit no longer under the thema; I27). The re-scope, subthema-delete and activiteit-delete summaries cite I27 (and Q4), and the activiteit edit summary names the thema check. |
-| MINOR 3 | "verwijdert ze niet" read as the goals | "… dus de wizard verwijdert deze activiteit niet." in the service and in the test constant. |
-| Test gaps | Test-runner and antagonist notes | **Planned thema:** an empty thema placed in K3 blauw's jaarplan (by hand, at the rooster's first block) is refused to themabeheer with the service's 400 ("staat nog 1 keer in een jaarplan"). **Subthema with links:** after themabeheer's refused delete, the subthema and its activiteit are still in the database. **I28:** an ordinary thema PUT and a themadoel POST by themabeheer leave the run's stored `LaatsteSchrijfactieOp` exactly unchanged. |
-| Nit | `WizardrunService` overstated what READ COMMITTED guarantees | The summary now says the rights question reads the rows as committed just before the write and takes no lock. A link another request adds in between is not seen: the same narrow window the filter-side checks accept, the thema delete's included. |
-| Left, as instructed | The item 404 sentences ("… bestaat niet meer") | Unchanged: a codebase-wide pattern, out of scope. |
-
-**Files changed:**
-
-- Application: `Rechtenmatrix` (docs, labels, the `StaatToe` branch, the column doc), `Rechtenbronnen` (`Themabron`),
-  `IWizardrunService` (re-scope signature and doc).
-- Infrastructure: `EfRechtenbronnen` (`VoorThemaAsync`), `WizardrunService` (Q4 re-scope, sentences, doc).
-- Api: `WizardrunsController` (docs; the caller passed to the re-scope).
-- Tests: `RechtenmatrixTests`, `RechtenAfdwingingTests` (+2), `WizardrunEndpointsTests` (+2, one assertion added).
-
-**Gates:**
-
-- `dotnet build`: ✓, 0 warnings.
-- `dotnet format --verify-no-changes`: exit 0.
-- `has-pending-model-changes`: none.
-- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db`, using the container's own password
-  (the one in `docs/dev-setup-secrets.md` does not match; that doc was not edited):
-  - UnitTests: 1364 passed, 4 skipped.
-  - IntegrationTests: 423 passed, 1 skipped.
-- No frontend file changed.
-
-**Open, for the orchestrator:**
-
-1. The Q4 re-scope asks the goal-link right at both leeftijden (the stricter reading, above). If the owner meant the
-   old leeftijd only, it is one condition to drop.
-2. **Slice 4 must also hide** the thema delete for themabeheer when a run activiteit carries a link at a leeftijd where
-   they may not link goals, and the wizard's leeftijd select in the same case.
   - "Code slice 2 — audit round 2" in `antagonist.md`: 0 CRITICAL, 0 MAJOR (MAJOR 1 resolved), 5 MINOR.
   - "E6-04 slice 2 — Test report (round 2)" in `test-report.md`: FAIL, on one MINOR defect (the phone switch fade); everything else passed, including a mutation run.
 
@@ -2028,36 +2092,6 @@ Light and dark gave identical geometry. Before the fix, the test-runner measured
 ### Fix round 3
 
 - **Input:**
-  - "# E6-02 slice 3 — Test report (round 3)": PASS;
-  - "## Code slice 3 — audit round 3": 0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION, plus non-blocking nits.
-
-  Both are the orchestrator's and are committed unedited.
-- **Owner answer on Q5, 2026-09-14: both leeftijden.** A wizard re-scope of a subthema whose run activiteiten carry a
-  goal link needs `DoelenKoppelen` at the old and the new leeftijd, as built. It is ratified in I27's text on
-  `feature/e6-rollen-rechten` (`8c95c57`: "When the wizard changes a subthema's leeftijd, that right is needed at both
-  the old and the new leeftijd."). The constitution was not edited here.
-- **Branch:** `story/E6-02-afdwingen`, on top of `e83a875`. No new migration. Nothing else was changed.
-
-| # | Finding | Resolution |
-| --- | --- | --- |
-| MINOR 1 | The old-leeftijd half of the Q4 re-scope check was untested | `…verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4` gains the missing case: themabeheer + HL of **K2 only** re-scoping K3→K2 gets 403 with `GekoppeldVerhuist` in full, and the database still holds K3 (asserted right after the refusals). **Mutation proof:** with `MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, …)` changed to read `nieuw` (one line), the test **failed** ("Expected 403 …, got 200"). On the real code it passes. The file was restored from a copy, diffed identical, and rebuilt. |
-| Nit | `Themabron.GekoppeldeLeeftijden` defaulted to null, read as "none" | Required, with no default and no `?? []` in `StaatToe`: a second producer that forgets it is now a compile error, not a silent allow. The two unit-test constructions pass `[]`. |
-| Nit | Class-level summaries missed the Q4 leeftijd-change-with-link case | `IWizardrunService` (the fourth bullet), `WizardrunService` (the order of questions) and the `WizardrunWeigering` doc now name it: "remove a goal link or carry one to another leeftijd without the caller's goal-link right there". |
-| Nit | `Wizardinhoud` cited "I22–I27", which includes I26 (the thema delete) | Doc and label cite "I22–I25, I27", and the doc says why I26 is left out. |
-| Nit | The re-scope rule was cited without the ratified wording | Quoted as "at both the old and the new leeftijd" with the Q5 answer in: the `Rechtenmatrix` class doc, the `Wizardinhoud` doc, the `IWizardrunService` class and method docs, the `WizardrunService` re-scope comment, and the `WizardrunsController` "Rights" item and re-scope summary. |
-| Nit | The `ThemaVerwijderen` label's "het" read as the thema | "… themabeheer alleen als het thema niets anders bevat dan wat de eigen open wizard van dat thema aanmaakte, en geen doelkoppeling die de themabeheerder niet mag ontkoppelen (R3; I26)". |
-| Nit | The planned-thema test matched its 400 by substring | Pinned by value through `VerwachtAsync`, with the thema's name read back: "Thema '…' staat nog 1 keer in een jaarplan en kan niet verwijderd worden. Verwijder het thema eerst uit die jaarplannen." |
-
-**Gates:**
-
-- `dotnet build`: ✓, 0 warnings.
-- `dotnet format --verify-no-changes`: exit 0.
-- `has-pending-model-changes`: none.
-- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (the container's password):
-  - UnitTests: 1364 passed, 4 skipped.
-  - IntegrationTests: 423 passed, 1 skipped. The new case extends an existing test, so the count is unchanged.
-- Mutation probe: failed as required, then restored.
-- No frontend file changed.
   - "Code slice 2 — audit round 3" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 1 MINOR; all five round-2 findings resolved.
   - "E6-04 slice 2 — Test report (round 3)" in `test-report.md`: FAIL on 1 MINOR, plus one LOW note. The round-2 fade defect is fixed (20/20).
 
@@ -2091,23 +2125,6 @@ In round 3's repro, Weergave had ended at [381,466], outside the row. **The 20 l
 ### Owner-approved mini-fix (after audit round 4)
 
 - **Input:**
-  - "# E6-02 slice 3 — Test report (round 4)": PASS;
-  - "## Code slice 3 — audit round 4": 0 CRITICAL, 0 MAJOR, 1 MINOR.
-
-  Both are the orchestrator's and are committed unedited. The three fix rounds were used up; the owner approved this
-  one extra fix, limited to that finding.
-- **The MINOR:** two doc comments in `Rechtenmatrix.cs` dropped the goal-link condition from the re-scope rule: the
-  class doc's wizard paragraph and the `Wizardinhoud` doc. The code asks `DoelenKoppelen` at both leeftijden only
-  while an activiteit under the subthema carries a goal link (`WizardrunService.WijzigSubthemaAsync`). A
-  themabeheer-only re-scope of an unlinked run subthema is pinned at 200.
-- **Fix:** both now say the rule is for "a subthema whose activiteiten carry a goal link". Only those two comment
-  blocks changed. No executable line, test or other source file.
-- **Proof:** `git diff -U0 -- backend`, filtered for changed lines that are neither blank nor start with `//`, `///`
-  or `*`, gives **0 lines**. The only changed lines are the `///` lines of those two blocks.
-- **Gates:**
-  - `dotnet build`: ✓, 0 warnings;
-  - `dotnet format --verify-no-changes`: exit 0;
-  - `Toegang` unit tests: 209 passed.
   - "Code slice 2 — audit round 4" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION.
   - The round-4 test report in `test-report.md`: PASS, with LOW notes.
 

@@ -110,11 +110,6 @@ None.
 **Verdict:** FAIL
 **Mode:** unit/integration (backend only; no Playwright until slice 4)
 **Change verified:** `d85c0a5` on `story/E6-02-afdwingen` (from `0073bd7`), incl. migration `20260914114237_Wizardrun`
-# E6-04 slice 2 — Test report (round 1)
-
-**Verdict:** PASS
-**Mode:** both (unit/integration, and a browser pass in headless Chrome over the DevTools protocol, driven from Bash with real mouse and keyboard input; no Playwright MCP in the test-runner's session)
-**Commit:** `224815f` on `story/E6-04-beheer`
 
 *Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
 
@@ -159,6 +154,107 @@ None.
 **Verdict:** PASS
 **Mode:** unit/integration (backend only; no Playwright until slice 4)
 **Change verified:** `afe46bc` on `story/E6-02-afdwingen`, on top of `d85c0a5`. No new migration.
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Gates → PASS.** `dotnet build` 0/0; UnitTests 1364 passed, 4 skipped (live KOV opt-in); IntegrationTests 418 passed, 1 skipped (live Op.stap opt-in), 1 failed under load: `AanmeldEndpointsTests.Entra_een_token_zonder_acct_krijgt_geen_sessie_maar_de_weigeringspagina` (1 ms), which passed 11/11 when its class ran alone. It tests the Entra refusal page, not the 403 writer this round changed: classed as flaky, not a product defect. `dotnet format --verify-no-changes` exit 0; `has-pending-model-changes` clean.
+- **D1 → PASS.** `Wizardinhoud` removed from one route at a time, rebuilt, sweep + `WizardrunEndpointsTests` + `RechtenAfdwingingTests` run, restored with `git checkout --`:
+  - `DELETE …/wizardruns/{runId}/subthemas/{subthemaId}` → sweep FAIL, names the route, "answered 204";
+  - `DELETE …/subthemas/{subthemaId}/subdoelen/{subdoelId}` → FAIL, names the route, "answered 204";
+  - `DELETE …/wizardruns/{runId}/activiteiten/{activiteitId}` (the round-1 blind spot) → FAIL, names the route, "answered 204";
+  - control, `[RechtOp]` off `PUT api/hoeken/{hoekId}` → FAIL, "answered 400" (and a per-row test failed too).
+  The sweep asserts the detail "Je hebt geen toegang tot deze actie." and sends the wizard item routes the seeded run's own items. On the three wizard probes the other 35 tests stayed green: the sweep is the only net for those guards, and it holds.
+- **D2 → PASS** (committed tests, null and omitted): ordinary create — HL 400 `GeenLeeftijd`, no-rights 400 `GeenLeeftijd` (by design, pinned); ordinary PUT — HL 400, no-rights 403; wizard create — TB 400, HL 403; wizard PUT — TB 400, HL 403. `GeenLeeftijd` = "Een subthema heeft een leeftijd nodig. Kies er een uit: JK, K2, K3, L1, L2, L3, L4, L5, L6."
+- **I26 → PASS.** `[RechtOp(ThemaVerwijderen, Rechtbron.Thema)]`, column `ThemabeheerZonderAndermansInhoud`: HL content → TB 403 (full detail), directie 204; empty → TB 204; only the open run's items → TB 204; after `afronden` → TB 403, directie 204; missing thema → 404 first; unit test over all eight relations, fails closed without a `Themabron`. The planned/scheduled refusal holds by reading (service check after the rights check, unchanged; tested for directie only).
+- **I27 → PASS.** Re-scope of a run subthema holding a leerkracht's activiteit → 403 "…dus de wizard verandert de leeftijd niet." (leeftijd stays K3), same-leeftijd edit 200, re-scope with only the run's items allowed. Linked activiteit delete → TB 403, TB+HL 204. Subthema whose activiteiten carry links → TB 403, TB+HL 204. A run activiteit moved away by directie → 403 on wizard PUT and DELETE.
+- **Wizard sentences → PASS** (each asserted in full with an em-dash check; "Deze wizard is niet gevonden." on POST, afronden and GET).
+- **Round-1 criteria still hold → PASS** (`RechtenAfdwingingTests` now 21; I9 reads; R35; the 14-day edge; I22–I25 and I18 with exact sentences).
+
+## Commands run
+- `dotnet build` (also after the probes) → 0/0. `dotnet test --no-build` (Postgres 127.0.0.1:5433) → the numbers above. `--filter AanmeldEndpointsTests` → 11/11. `dotnet format --verify-no-changes` → 0. `has-pending-model-changes --no-build` → clean.
+- Four guard-removal probes, each restored. Final `git status --short` and `git diff` empty; HEAD `afe46bc`.
+
+## Defects
+None.
+
+## Notes (non-blocking)
+- The password in `docs/dev-setup-secrets.md` does not match the `jaarplanner-db` container (first run: 293 failures with `28P01`); the container's own `POSTGRES_PASSWORD` was used.
+- One flaky test (above).
+- TB on a planned thema delete is not pinned by a test.
+- The subthema-with-links refused delete does not assert the subthema still exists.
+
+
+# E6-02 slice 3 — Test report (round 3)
+
+**Verdict:** PASS
+**Mode:** unit/integration (backend only; no Playwright until slice 4)
+**Change verified:** `e83a875` on `story/E6-02-afdwingen`, on top of `afe46bc`. No new migration.
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **1. Gates → PASS.** `dotnet build` 0/0. Full `dotnet test --no-build` (Postgres 127.0.0.1:5433, container password): UnitTests 1364 passed, 4 skipped, 0 failed; IntegrationTests 423 passed, 1 skipped, 0 failed (round 2's 419 + 4 new; round 2's flaky `AanmeldEndpointsTests` did not recur). `dotnet format --verify-no-changes` 0. `has-pending-model-changes --no-build` clean.
+- **2a. Q4 thema delete (`Een_doel_op_een_activiteit_van_de_open_wizard_beschermt_het_thema_tegen_themabeheer_Q4`) → PASS.** A thema holding only its open run's own subthema and activiteit, with a K3 HL's goal link on that activiteit: TB 403 ("Je hebt geen toegang tot deze actie."), directie 204; on an identical thema TB+HL(K3) 204. Unit (`Themabeheer_verwijdert_een_thema_alleen_zonder_andermans_inhoud`): TB false; TB+HL(K3) true; TB+HL(L1) false; HL alone false; directie true; two linked leeftijden with the right at one false; `bron: null` false.
+- **2b. Q4 re-scope (`Een_gekoppelde_wizardactiviteit_verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4`) → PASS for the listed cases.** TB K3→K2 403 (`GekoppeldVerhuist` in full); TB+HL(K3) K3→K2 403; same-leeftijd edit 200; database still K3; TB+HL(K3,K2) 200 and the database then holds K2.
+- **2c. Planned thema (`Een_gepland_thema_verwijdert_ook_themabeheer_niet_I26`) → PASS.** TB gets the service's 400 ("staat nog 1 keer in een jaarplan") after the rights filter lets it through.
+- **2d. Rows remain after the refused delete → PASS.** Both the subthema and the activiteit found in a fresh context after the 403 `SubthemaMetDoelen`; the TB+HL delete then gets 204.
+- **2e. I28 (`Een_gewone_thema_of_themadoelwijziging_verschuift_het_venster_van_de_wizard_niet_I28`) → PASS.** An ordinary thema PUT and a themadoel POST leave the stored `LaatsteSchrijfactieOp` exactly equal (read from the database).
+- **3. Sweep with the guard removed → PASS.** `Wizardinhoud` removed from `DELETE …/wizardruns/{runId}/activiteiten/{activiteitId}`: the sweep failed and named the route ("answered 204 … every write route must answer 403 …"; 1 failed, 39 passed). Restored with `git checkout --`.
+- **4. Round-1 and round-2 criteria still hold → PASS.** Full suite green; `RechtenAfdwingingTests` 23, `WizardrunEndpointsTests` 16, `ElkeWijzigendeRouteVraagtEenRechtTests` 1, `ElkeRouteVraagtEenSessieTests` 4, `CurriculumbeheerAutorisatieTests` 5, `RechtenEndpointsTests` 16, `RechtenbeleidTests` 9, `SchoolcontentImportEndpointsTests` 9; unit Toegang/Schoolcontent/GebruikerTests 230. The changed `ActiviteitMetDoelen` sentence is identical in service and test, and covered by the em-dash check with `GekoppeldVerhuist`.
+
+## Extra mutation probes (each restored)
+- Thema-delete Q4 clause replaced by `&& true` → the unit ThemaVerwijderen test and the Q4 thema-delete test fail ("Expected 403 … got 204").
+- New-leeftijd half of the re-scope check dropped → the Q4 re-scope test fails ("Expected 403 `GekoppeldVerhuist` … got 200").
+- Old-leeftijd half (the check reads `nieuw` twice) → `WizardrunEndpointsTests` and `RechtenAfdwingingTests` pass 39/39: **unpinned** (see Notes).
+
+## Commands run
+- `dotnet build` 0/0 at HEAD and after every probe and restore; `dotnet test --no-build` as above; format 0; `has-pending-model-changes` clean; four probes, each restored and rebuilt. Final `git status --short`: only the antagonist's round-3 worklog append (another writer), no backend change; HEAD `e83a875`.
+
+## Defects
+None.
+
+## Notes (non-blocking)
+- The old-leeftijd half of the Q4 re-scope check has no test (confirms the antagonist's round-3 MINOR 1): every refused case lacks the right at K2. Add TB+HL(K2 only) K3→K2 → 403 `GekoppeldVerhuist`, K3 kept.
+- The planned-thema test matches its 400 sentence by substring only.
+- The password in `docs/dev-setup-secrets.md` does not match the `jaarplanner-db` container.
+
+
+# E6-02 slice 3 — Test report (round 4)
+
+**Verdict:** PASS
+**Mode:** unit/integration (backend only; no Playwright until slice 4)
+**Change verified:** `08c10a2` on `story/E6-02-afdwingen`, on top of `e83a875` (PASS in round 3). No new migration.
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **1. Gates → PASS.** `dotnet build` 0/0. Full `dotnet test --no-build` (Postgres 127.0.0.1:5433, container password): UnitTests 1364 passed, 4 skipped, 0 failed; IntegrationTests 423 passed, 1 skipped, 0 failed (the new case is a line inside an existing test). `dotnet format --verify-no-changes` 0. `has-pending-model-changes --no-build` clean.
+- **2. Mutation proof, repeated by the test-runner → PASS.** In `WizardrunService.cs` line 158, `MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, …)` → `MagDoelenKoppelenAsync(gebruikerId, nieuw, …)`, rebuilt 0/0; `WizardrunEndpointsTests` + `RechtenAfdwingingTests`: 1 failed, 38 passed. The only failure: `Een_gekoppelde_wizardactiviteit_verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4` at line 259 (the new TB+HL(K2 only) K3→K2 case): `Expected 403 "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Die mag je niet naar een andere leeftijd meenemen, dus de wizard verandert de leeftijd niet.", got 200 "".` Restored with `git checkout --`; `git status --short` empty; HEAD `08c10a2`; rebuilt 0/0 and the Q4 test green again. Round 3 found this half unpinned (39/39 under the same mutation); it is now pinned.
+- **3. Round-3 criteria still hold → PASS** (re-run after the restore, 7/7 named tests): Q4 thema delete (`RechtenAfdwingingTests…_Q4` and the unit `RechtenmatrixTests.Themabeheer_verwijdert_een_thema_alleen_zonder_andermans_inhoud`); Q4 re-scope (TB, TB+HL(K3), TB+HL(K2) each 403 `GekoppeldVerhuist`; same-leeftijd 200; K3 kept, asserted after the new refusal; TB+HL(K3,K2) 200 and then K2); the planned thema's whole 400 sentence pinned through `RechtenTestOpzet.VerwachtAsync` (exact status and detail, no em dash); a refused delete keeps the rows (`…_I27`); I28; the sweep. Round-1 and round-2 criteria: full suite green.
+- **`Themabron.GekoppeldeLeeftijden` required → PASS.** No default; `StaatToe` lost its `?? []`; the build compiles, so every producer passes it (the only production producer, `EfRechtenbronnen.cs:98`, passes a materialised list); the four unit-test calls pass it explicitly.
+
+## Commands run
+- `dotnet build` 0/0 at HEAD, after the mutation and after the restore; full `dotnet test --no-build` as above; format 0; mutation then filtered test run (1 failed, 38 passed); restore and `git status --short` empty; named round-3 tests 7/7; `has-pending-model-changes` clean.
+
+## Evidence
+- Mutated failure at `WizardrunEndpointsTests.cs:259`, "Expected 403 … got 200". Full suite output saved in the orchestrator's scratchpad (`full-test.txt`).
+
+## Defects
+None.
+
+## Notes (non-blocking)
+- Environment issue, retried once: during the first mutated run Docker Desktop restarted `jaarplanner-db` (engine API 500, "the database system is starting up"); every test failed at 1 ms on an Npgsql connect timeout in `PostgresTestDatabase.MaakAsync`. Once healthy, the retry gave the result above.
+- The password in `docs/dev-setup-secrets.md` still does not match the `jaarplanner-db` container.
+# E6-04 slice 2 — Test report (round 1)
+
+**Verdict:** PASS
+**Mode:** both (unit/integration, and a browser pass in headless Chrome over the DevTools protocol, driven from Bash with real mouse and keyboard input; no Playwright MCP in the test-runner's session)
+**Commit:** `224815f` on `story/E6-04-beheer`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
 - **Invite by UPN, normalised; a case/whitespace duplicate refused in Dutch → PASS.** `"  Eva.Janssens@School.be "` stored as `eva.janssens@school.be`; `" EVA.JANSSENS@school.be  "` showed "De uitnodiging is niet bewaard. / Er is al een gebruiker met de aanmeldnaam eva.janssens@school.be." API: 409 on a duplicate, 400 "Vul één Microsoft-aanmeldnaam in, zoals an.peeters@school.be." on `"an peeters"`; both pinned by value.
 - **Grant/revoke themabeheer and the directie right → PASS** (row reads "Directie · Themabeheer · …"; unticking removes both; DB `IsDirectie=f`, `HeeftThemabeheer=f`).
 - **Link/unlink leerkrachten to klassen, many-to-many → PASS** (one toewijzing left after unticking; Klassen shows "Leerkrachten: An Peeters, Bert Claes, Eva Janssens"; Bert holds two klassen).
@@ -202,38 +298,6 @@ None.
 *Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
 
 ## Criteria checked
-- **Gates → PASS.** `dotnet build` 0/0; UnitTests 1364 passed, 4 skipped (live KOV opt-in); IntegrationTests 418 passed, 1 skipped (live Op.stap opt-in), 1 failed under load: `AanmeldEndpointsTests.Entra_een_token_zonder_acct_krijgt_geen_sessie_maar_de_weigeringspagina` (1 ms), which passed 11/11 when its class ran alone. It tests the Entra refusal page, not the 403 writer this round changed: classed as flaky, not a product defect. `dotnet format --verify-no-changes` exit 0; `has-pending-model-changes` clean.
-- **D1 → PASS.** `Wizardinhoud` removed from one route at a time, rebuilt, sweep + `WizardrunEndpointsTests` + `RechtenAfdwingingTests` run, restored with `git checkout --`:
-  - `DELETE …/wizardruns/{runId}/subthemas/{subthemaId}` → sweep FAIL, names the route, "answered 204";
-  - `DELETE …/subthemas/{subthemaId}/subdoelen/{subdoelId}` → FAIL, names the route, "answered 204";
-  - `DELETE …/wizardruns/{runId}/activiteiten/{activiteitId}` (the round-1 blind spot) → FAIL, names the route, "answered 204";
-  - control, `[RechtOp]` off `PUT api/hoeken/{hoekId}` → FAIL, "answered 400" (and a per-row test failed too).
-  The sweep asserts the detail "Je hebt geen toegang tot deze actie." and sends the wizard item routes the seeded run's own items. On the three wizard probes the other 35 tests stayed green: the sweep is the only net for those guards, and it holds.
-- **D2 → PASS** (committed tests, null and omitted): ordinary create — HL 400 `GeenLeeftijd`, no-rights 400 `GeenLeeftijd` (by design, pinned); ordinary PUT — HL 400, no-rights 403; wizard create — TB 400, HL 403; wizard PUT — TB 400, HL 403. `GeenLeeftijd` = "Een subthema heeft een leeftijd nodig. Kies er een uit: JK, K2, K3, L1, L2, L3, L4, L5, L6."
-- **I26 → PASS.** `[RechtOp(ThemaVerwijderen, Rechtbron.Thema)]`, column `ThemabeheerZonderAndermansInhoud`: HL content → TB 403 (full detail), directie 204; empty → TB 204; only the open run's items → TB 204; after `afronden` → TB 403, directie 204; missing thema → 404 first; unit test over all eight relations, fails closed without a `Themabron`. The planned/scheduled refusal holds by reading (service check after the rights check, unchanged; tested for directie only).
-- **I27 → PASS.** Re-scope of a run subthema holding a leerkracht's activiteit → 403 "…dus de wizard verandert de leeftijd niet." (leeftijd stays K3), same-leeftijd edit 200, re-scope with only the run's items allowed. Linked activiteit delete → TB 403, TB+HL 204. Subthema whose activiteiten carry links → TB 403, TB+HL 204. A run activiteit moved away by directie → 403 on wizard PUT and DELETE.
-- **Wizard sentences → PASS** (each asserted in full with an em-dash check; "Deze wizard is niet gevonden." on POST, afronden and GET).
-- **Round-1 criteria still hold → PASS** (`RechtenAfdwingingTests` now 21; I9 reads; R35; the 14-day edge; I22–I25 and I18 with exact sentences).
-
-## Commands run
-- `dotnet build` (also after the probes) → 0/0. `dotnet test --no-build` (Postgres 127.0.0.1:5433) → the numbers above. `--filter AanmeldEndpointsTests` → 11/11. `dotnet format --verify-no-changes` → 0. `has-pending-model-changes --no-build` → clean.
-- Four guard-removal probes, each restored. Final `git status --short` and `git diff` empty; HEAD `afe46bc`.
-
-## Defects
-None.
-
-## Notes (non-blocking)
-- The password in `docs/dev-setup-secrets.md` does not match the `jaarplanner-db` container (first run: 293 failures with `28P01`); the container's own `POSTGRES_PASSWORD` was used.
-- One flaky test (above).
-- TB on a planned thema delete is not pinned by a test.
-- The subthema-with-links refused delete does not assert the subthema still exists.
-
-
-# E6-02 slice 3 — Test report (round 3)
-
-**Verdict:** PASS
-**Mode:** unit/integration (backend only; no Playwright until slice 4)
-**Change verified:** `e83a875` on `story/E6-02-afdwingen`, on top of `afe46bc`. No new migration.
 - **Gates → PASS.** `dotnet build` 0/0; UnitTests 1340 passed, 4 skipped; IntegrationTests 419 passed, 1 skipped (410 + 9 new); `GebruikerbeheerEndpointsTests` 36/36; `dotnet format --verify-no-changes` exit 0; `pnpm lint` 0; `pnpm test` 258/258; `pnpm build` 0 (existing >500 kB chunk warning).
 - **The new backend tests pin what they claim → PASS** (mutation run in a copy outside the worktree, four mutations, exactly the six predicted tests failed, 30 passed): flag always true → `Alleen_de_ontwikkelaanmelding_laat_een_directie_die_niet_gekoppeld_is_meetellen`; unbound directie counted → `Een_directie_die_zich_nog_niet_aanmeldde_telt_niet_mee_voor_de_laatste_directie` and `Zodra_een_tweede_directie_zich_aanmeldde_mag_het_directierecht_weg`; FK catch off → `Koppelen_aan_een_klas_die_intussen_verwijderd_wordt_is_404_en_geen_500` (deterministic, blocks ≥ 1 s on an uncommitted delete); `FOR UPDATE` removed → both race tests.
 - **Frontend tests → PASS on reading** (focus test asserts `aria-disabled`, `not.toBeDisabled()`, focus kept, box ticked, no second write; self-demotion tests: cancel sends nothing, confirm sends one DELETE and refetches `ik` only, no `laadMislukt`, others' rights get no dialog, self-removal text).
@@ -270,37 +334,6 @@ None.
 *Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
 
 ## Criteria checked
-- **1. Gates → PASS.** `dotnet build` 0/0. Full `dotnet test --no-build` (Postgres 127.0.0.1:5433, container password): UnitTests 1364 passed, 4 skipped, 0 failed; IntegrationTests 423 passed, 1 skipped, 0 failed (round 2's 419 + 4 new; round 2's flaky `AanmeldEndpointsTests` did not recur). `dotnet format --verify-no-changes` 0. `has-pending-model-changes --no-build` clean.
-- **2a. Q4 thema delete (`Een_doel_op_een_activiteit_van_de_open_wizard_beschermt_het_thema_tegen_themabeheer_Q4`) → PASS.** A thema holding only its open run's own subthema and activiteit, with a K3 HL's goal link on that activiteit: TB 403 ("Je hebt geen toegang tot deze actie."), directie 204; on an identical thema TB+HL(K3) 204. Unit (`Themabeheer_verwijdert_een_thema_alleen_zonder_andermans_inhoud`): TB false; TB+HL(K3) true; TB+HL(L1) false; HL alone false; directie true; two linked leeftijden with the right at one false; `bron: null` false.
-- **2b. Q4 re-scope (`Een_gekoppelde_wizardactiviteit_verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4`) → PASS for the listed cases.** TB K3→K2 403 (`GekoppeldVerhuist` in full); TB+HL(K3) K3→K2 403; same-leeftijd edit 200; database still K3; TB+HL(K3,K2) 200 and the database then holds K2.
-- **2c. Planned thema (`Een_gepland_thema_verwijdert_ook_themabeheer_niet_I26`) → PASS.** TB gets the service's 400 ("staat nog 1 keer in een jaarplan") after the rights filter lets it through.
-- **2d. Rows remain after the refused delete → PASS.** Both the subthema and the activiteit found in a fresh context after the 403 `SubthemaMetDoelen`; the TB+HL delete then gets 204.
-- **2e. I28 (`Een_gewone_thema_of_themadoelwijziging_verschuift_het_venster_van_de_wizard_niet_I28`) → PASS.** An ordinary thema PUT and a themadoel POST leave the stored `LaatsteSchrijfactieOp` exactly equal (read from the database).
-- **3. Sweep with the guard removed → PASS.** `Wizardinhoud` removed from `DELETE …/wizardruns/{runId}/activiteiten/{activiteitId}`: the sweep failed and named the route ("answered 204 … every write route must answer 403 …"; 1 failed, 39 passed). Restored with `git checkout --`.
-- **4. Round-1 and round-2 criteria still hold → PASS.** Full suite green; `RechtenAfdwingingTests` 23, `WizardrunEndpointsTests` 16, `ElkeWijzigendeRouteVraagtEenRechtTests` 1, `ElkeRouteVraagtEenSessieTests` 4, `CurriculumbeheerAutorisatieTests` 5, `RechtenEndpointsTests` 16, `RechtenbeleidTests` 9, `SchoolcontentImportEndpointsTests` 9; unit Toegang/Schoolcontent/GebruikerTests 230. The changed `ActiviteitMetDoelen` sentence is identical in service and test, and covered by the em-dash check with `GekoppeldVerhuist`.
-
-## Extra mutation probes (each restored)
-- Thema-delete Q4 clause replaced by `&& true` → the unit ThemaVerwijderen test and the Q4 thema-delete test fail ("Expected 403 … got 204").
-- New-leeftijd half of the re-scope check dropped → the Q4 re-scope test fails ("Expected 403 `GekoppeldVerhuist` … got 200").
-- Old-leeftijd half (the check reads `nieuw` twice) → `WizardrunEndpointsTests` and `RechtenAfdwingingTests` pass 39/39: **unpinned** (see Notes).
-
-## Commands run
-- `dotnet build` 0/0 at HEAD and after every probe and restore; `dotnet test --no-build` as above; format 0; `has-pending-model-changes` clean; four probes, each restored and rebuilt. Final `git status --short`: only the antagonist's round-3 worklog append (another writer), no backend change; HEAD `e83a875`.
-
-## Defects
-None.
-
-## Notes (non-blocking)
-- The old-leeftijd half of the Q4 re-scope check has no test (confirms the antagonist's round-3 MINOR 1): every refused case lacks the right at K2. Add TB+HL(K2 only) K3→K2 → 403 `GekoppeldVerhuist`, K3 kept.
-- The planned-thema test matches its 400 sentence by substring only.
-- The password in `docs/dev-setup-secrets.md` does not match the `jaarplanner-db` container.
-
-
-# E6-02 slice 3 — Test report (round 4)
-
-**Verdict:** PASS
-**Mode:** unit/integration (backend only; no Playwright until slice 4)
-**Change verified:** `08c10a2` on `story/E6-02-afdwingen`, on top of `e83a875` (PASS in round 3). No new migration.
 - **Gates → PASS.** `dotnet build` 0/0; UnitTests 1340 passed, 4 skipped; IntegrationTests 424 passed, 1 skipped; `dotnet format --verify-no-changes` 0; `pnpm lint` 0; `pnpm test` 258/258; `pnpm build` 0.
 - **The new race tests are deterministic and pin the 404 and the Dutch sentence → PASS, with a scope note.** Five unmutated runs in a copy outside the worktree: runs 2–5 clean (each write pending > 1 s on the row or FK lock, then 404); run 1 failed all 7 in 1 ms at the moment of the test-runner's own teardown (fixture setup) and did not recur. Mutation `catch (DbUpdateConcurrencyException) when (DateTime.UtcNow.Year < 2000)` → exactly the four `BewaarWijzigingAsync` tests fail (NotFound expected, InternalServerError actual). Scope: three toggles and the removal; the fourth toggle (DELETE directierecht) answers 404 "Gebruiker {guid} is niet gevonden." via the `FOR UPDATE` path, never a 500, but a different sentence.
 - **No fade overlaps the active part; five parts × 390/360 × light/dark → PASS.** 20 cold-cache landings: box and text overlap 0, the active part fully inside the row (Algemene fiches [212.8,337.3] vs fade [341,373] at 390; [182.8,307.3] vs [311,343] at 360), matching the implementer's table.
@@ -336,23 +369,6 @@ None.
 *Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
 
 ## Criteria checked
-- **1. Gates → PASS.** `dotnet build` 0/0. Full `dotnet test --no-build` (Postgres 127.0.0.1:5433, container password): UnitTests 1364 passed, 4 skipped, 0 failed; IntegrationTests 423 passed, 1 skipped, 0 failed (the new case is a line inside an existing test). `dotnet format --verify-no-changes` 0. `has-pending-model-changes --no-build` clean.
-- **2. Mutation proof, repeated by the test-runner → PASS.** In `WizardrunService.cs` line 158, `MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, …)` → `MagDoelenKoppelenAsync(gebruikerId, nieuw, …)`, rebuilt 0/0; `WizardrunEndpointsTests` + `RechtenAfdwingingTests`: 1 failed, 38 passed. The only failure: `Een_gekoppelde_wizardactiviteit_verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4` at line 259 (the new TB+HL(K2 only) K3→K2 case): `Expected 403 "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Die mag je niet naar een andere leeftijd meenemen, dus de wizard verandert de leeftijd niet.", got 200 "".` Restored with `git checkout --`; `git status --short` empty; HEAD `08c10a2`; rebuilt 0/0 and the Q4 test green again. Round 3 found this half unpinned (39/39 under the same mutation); it is now pinned.
-- **3. Round-3 criteria still hold → PASS** (re-run after the restore, 7/7 named tests): Q4 thema delete (`RechtenAfdwingingTests…_Q4` and the unit `RechtenmatrixTests.Themabeheer_verwijdert_een_thema_alleen_zonder_andermans_inhoud`); Q4 re-scope (TB, TB+HL(K3), TB+HL(K2) each 403 `GekoppeldVerhuist`; same-leeftijd 200; K3 kept, asserted after the new refusal; TB+HL(K3,K2) 200 and then K2); the planned thema's whole 400 sentence pinned through `RechtenTestOpzet.VerwachtAsync` (exact status and detail, no em dash); a refused delete keeps the rows (`…_I27`); I28; the sweep. Round-1 and round-2 criteria: full suite green.
-- **`Themabron.GekoppeldeLeeftijden` required → PASS.** No default; `StaatToe` lost its `?? []`; the build compiles, so every producer passes it (the only production producer, `EfRechtenbronnen.cs:98`, passes a materialised list); the four unit-test calls pass it explicitly.
-
-## Commands run
-- `dotnet build` 0/0 at HEAD, after the mutation and after the restore; full `dotnet test --no-build` as above; format 0; mutation then filtered test run (1 failed, 38 passed); restore and `git status --short` empty; named round-3 tests 7/7; `has-pending-model-changes` clean.
-
-## Evidence
-- Mutated failure at `WizardrunEndpointsTests.cs:259`, "Expected 403 … got 200". Full suite output saved in the orchestrator's scratchpad (`full-test.txt`).
-
-## Defects
-None.
-
-## Notes (non-blocking)
-- Environment issue, retried once: during the first mutated run Docker Desktop restarted `jaarplanner-db` (engine API 500, "the database system is starting up"); every test failed at 1 ms on an Npgsql connect timeout in `PostgresTestDatabase.MaakAsync`. Once healthy, the retry gave the result above.
-- The password in `docs/dev-setup-secrets.md` still does not match the `jaarplanner-db` container.
 - **Gates → PASS.** `dotnet build` 0/0; UnitTests 1340 passed, 4 skipped; IntegrationTests 426 passed, 1 skipped (+2 race cases); `dotnet format --verify-no-changes` 0; `pnpm lint` 0; `pnpm test` 261/261 (+3); `pnpm build` 0 (usual chunk warning).
 - **The new race tests are deterministic and pin the sentence → PASS.** `Een_directie_afzetten_of_verwijderen_die_intussen_verwijderd_wordt_is_404_en_geen_500` covers `/directierecht` and removal, asserting 404 and exactly "Deze gebruiker is intussen verwijderd."; the request waits on `LeesAndereDirectieOnderSlotAsync`'s `FOR UPDATE` (the target's row included) and then reaches `VindNaSlotAsync`. Mutation (copy outside the worktree): `VindNaSlotAsync` throwing `NietGevonden()` → exactly the two new cases fail (Expected "…intussen verwijderd.", Actual "Deze gebruiker bestaat niet (meer)."). Unmutated, the 8 race tests passed 8/8 three runs in a row. The lifecycle test also pins "Deze gebruiker bestaat niet (meer)." on a GET and a PUT after removal.
 - **Late font while a keyboard user is in the row; focus stays fully in view → PASS.** Directie, 390 and 360, cold cache, woff held back (measured before the font arrived): land on Klassen, Tab 4× to Weergave, font held 3 s → Weergave keeps focus and `:focus-visible`, 0 px outside the row, 0 px under a fade ([284.3,369] vs visible [17,373] at 390; [254.3,339] vs [17,343] at 360; round 3 pushed it to [381,466]). Land on Weergave, Shift+Tab 4× (3 s) and forward Tab 12× (8 s) to Klassen → focus stays, box [21,93.9], 0 px outside, 0 px under a fade at both widths (round 3: [-76,-3.1]). The next Tab behaves normally; controls with the font undelayed give the same positions.
