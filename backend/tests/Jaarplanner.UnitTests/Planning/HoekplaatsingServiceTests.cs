@@ -342,6 +342,29 @@ public sealed class HoekplaatsingServiceTests
     }
 
     [Fact]
+    public async Task Weigert_een_moment_op_een_dag_zonder_school_en_laat_het_staan()
+    {
+        // TB-011. Tuesday 1 to Friday 18 September holds a Saturday and the Herfst week seeded above, both inside the
+        // window, so only the school year the service loads can refuse them.
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18), Begin, Einde));
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
+
+        foreach (var dag in new[] { new DateOnly(2026, 9, 5), new DateOnly(2026, 9, 8) })
+        {
+            var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+                () => Service().VerplaatsMomentAsync(plaatsing.Id, dinsdag.Id, dag, new TimeOnly(9, 0), new TimeOnly(9, 50)));
+            Assert.Equal("Op die dag is er geen school. Kies een schooldag.", fout.Message);
+        }
+
+        // Nothing was saved: a fresh context still finds the row on its Tuesday at its own hours.
+        var gelezen = await Service().HaalVoorBereikAsync(_klasId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 18));
+        var moment = Assert.Single(gelezen).Momenten.Single(m => m.Id == dinsdag.Id);
+        Assert.Equal((new DateOnly(2026, 9, 1), Begin, Einde), (moment.Datum, moment.Begin, moment.Einde));
+    }
+
+    [Fact]
     public async Task Weigert_twee_keer_dezelfde_hoek_met_hetzelfde_begin_op_een_dag()
     {
         var plaatsing = await EenWeekIngepland();

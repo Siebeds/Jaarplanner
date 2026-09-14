@@ -39,6 +39,7 @@ import { beginSleep, doelTijd, eindigSleep, leesKolomId } from "./tijdsleep";
 import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Dagonderschrift } from "./Dagonderschrift";
 import { weekInBeeld } from "./weekInBeeld";
+import { leesWeergave, weergaveZoek, type Weergave } from "./weergave";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
@@ -69,20 +70,13 @@ import { themaIdsOpDag, themavakken } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
 import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
 
-type Weergave = "maand" | "week" | "dag";
-
-/** Anything else in the URL means the default, rather than an error page over a typo in a link. */
 /** A day with nothing on it, for the render before the range is known. */
 function leegteDag(datum: string) {
   return { datum, isLesdag: true, sluitingsnaam: null, activiteiten: [], buitenSchooljaar: false };
 }
 
-function leesWeergave(waarde: string | null): Weergave {
-  return waarde === "week" || waarde === "dag" ? waarde : "maand";
-}
-
 /**
- * The agenda: the school year as a calendar, opening on the month (FR-6.2, FR-7.2).
+ * The agenda: the school year as a calendar, opening on the week (FR-6.2, FR-7.2).
  *
  * It used to be a screen per themaperiode, reached from a board of periods. The board is still
  * there, at /agenda/periodes, because placing a thema in a period and judging the generator's
@@ -183,7 +177,7 @@ export function Agendascherm() {
   function ga(volgende: { datum?: string; weergave?: Weergave; push?: boolean }) {
     const datum = volgende.datum ?? anker;
     const zicht = volgende.weergave ?? weergave;
-    navigeer(`/agenda/dag/${datum}${zicht === "maand" ? "" : `?weergave=${zicht}`}`, { replace: !volgende.push });
+    navigeer(`/agenda/dag/${datum}${weergaveZoek(zicht)}`, { replace: !volgende.push });
   }
 
   function openDag(datum: string) {

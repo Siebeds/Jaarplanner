@@ -277,8 +277,9 @@ export interface HoekmomentVerplaatsing {
  * whole run is a different verb and is not this hook.
  *
  * **It does not invalidate optimistically and it is not meant to.** The server refuses a day outside
- * the placement's window and a second appearance of the same hoek starting at the same time, and both
- * refusals are things the teacher has to see rather than watch get undone.
+ * the placement's window, a day without school (a weekend day or a closure, TB-011) and a second
+ * appearance of the same hoek starting at the same time, and all three refusals are things the teacher
+ * has to see rather than watch get undone.
  */
 export function useVerplaatsHoekmoment() {
   const ververs = usePlaatsingVerversing();
