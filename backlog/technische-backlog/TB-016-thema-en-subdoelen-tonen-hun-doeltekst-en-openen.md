@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:10
+bijgewerkt: 2026-09-14 16:29
 opgepakt-door: themadoel-tekst
 branch: ticket/themadoel-tekst
 pr:
@@ -44,15 +44,15 @@ Waarom geen backend: de themaweergave (`SchoolcontentBeheerService`) wordt op di
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met themadoelen, wanneer de themapagina opent, dan toont elke themadoelregel de code én de
+- [x] Gegeven een thema met themadoelen, wanneer de themapagina opent, dan toont elke themadoelregel de code én de
   doeltekst van het leerplandoel.
-- [ ] Gegeven een subthema met subdoelen, wanneer het subthema openstaat, dan toont elke subdoelregel de code én de
+- [x] Gegeven een subthema met subdoelen, wanneer het subthema openstaat, dan toont elke subdoelregel de code én de
   doeltekst.
-- [ ] Wanneer de leerkracht op een doelregel klikt, dan opent een paneel met de volledige doeldetail (tekst,
+- [x] Wanneer de leerkracht op een doelregel klikt, dan opent een paneel met de volledige doeldetail (tekst,
   minimumdoel, voorbeelden, toelichting, gebruikt in), zonder de knop "Koppel dit doel".
-- [ ] Wanneer de leerkracht op het ontkoppelknopje van een regel klikt, dan wordt het doel ontkoppeld en opent de
+- [x] Wanneer de leerkracht op het ontkoppelknopje van een regel klikt, dan wordt het doel ontkoppeld en opent de
   detail niet.
-- [ ] De regel is met het toetsenbord bereikbaar en te openen, en is leesbaar op 390 px breed en op desktop
+- [x] De regel is met het toetsenbord bereikbaar en te openen, en is leesbaar op 390 px breed en op desktop
   (bekeken in een echte browser).
 
 ## Buiten scope
@@ -68,3 +68,5 @@ Geen.
 ## Werklog
 
 - 2026-09-14 16:10 · themadoel-tekst · aangemaakt (status in-uitvoering)
+- 2026-09-14 16:29 · themadoel-tekst · gebouwd: themadoel- en subdoelregels tonen doelsoort, code en doeltekst, klik opent Doeldetail in een Blad; 5 nieuwe Vitest-tests, volledige suite 276/276 groen, pnpm lint groen
+- 2026-09-14 16:29 · themadoel-tekst · browsercontrole (headless Chrome, wegwerpdatabank): desktop licht en donker, 390 px, Tab en Enter openen de detail, Escape sluit, geen koppelknop; op 390 px stond de status over de code, opgelost (status op de coderegel)
