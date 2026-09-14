@@ -6,7 +6,7 @@ Project context for Claude Code. Read this at the start of every session.
 >
 > **Backlog & progress:** the build plan lives in [`backlog/`](backlog/README.md) — epics (E0–E8) aligned to the build order, with checkbox-tracked stories citing their FR + Constitution article. **Consult it to know what to do next, and update the story checkbox + the progress table in [`backlog/README.md`](backlog/README.md) as work completes.** The backlog is subordinate to the constitution — if a story conflicts, fix the story. **Since 2026-09-13 new work also enters as tickets** in `backlog/functionele-backlog/` and `backlog/technische-backlog/` ([`backlog/TICKETS.md`](backlog/TICKETS.md), [ADR-0033](docs/adr/0033-ticketbacklog-en-kanbanbord.md)), shown on a local kanban board in `tools/backlog-board/`; see the working agreement *No work without a ticket or a story*.
 >
-> **Architecture decisions:** the technical architecture is recorded as ADRs in [`docs/adr/`](docs/adr/README.md) (ADR-0001…0034), each with a **compliance trace** to the Constitution article(s) and backlog epic(s) it realises (see the traceability matrix in the ADR index). Consult the relevant ADR before building a component; record any new significant decision as a new ADR (supersede, never rewrite). ADRs are subordinate to the constitution.
+> **Architecture decisions:** the technical architecture is recorded as ADRs in [`docs/adr/`](docs/adr/README.md) (ADR-0001…0035), each with a **compliance trace** to the Constitution article(s) and backlog epic(s) it realises (see the traceability matrix in the ADR index). Consult the relevant ADR before building a component; record any new significant decision as a new ADR (supersede, never rewrite). ADRs are subordinate to the constitution.
 >
 > **UI/UX:** the current design approach is [ADR-0024](docs/adr/0024-single-frontend-inkt-en-signaal.md) — one frontend at `frontend/`, direction "Inkt en Signaal": the chrome is paper and ink plus one rationed accent, because Art. XII already spends every other usable hue on meaning, Radix primitives without shadcn, design tokens in `frontend/src/index.css`, mobile-first with a two column layout from `lg`. It supersedes decisions 1, 2, 3 and 5 of [ADR-0017](docs/adr/0017-ui-ux-design-system.md), which still governs WCAG 2.2 AA and Dutch copy; the older narrative in [`docs/ux/ui-ux-approach.md`](docs/ux/ui-ux-approach.md) predates the rebuild, so read the ADRs first where they disagree.
 
@@ -33,9 +33,14 @@ Full requirements live in [`docs/Functionele_Analyse_Jaarplanner.md`](docs/Funct
 - **Domain language is Dutch.** Use Dutch names for domain entities and concepts in code (`Leerplandoel`, `Minimumdoel`, `Doelsoort`, `Thema`, `Jaarplan`, `Dekking`, …). Keep generic/infrastructure code, technical identifiers, tooling, and comments in **English**. Rationale: *leerplandoel* vs *minimumdoel* have no clean English equivalent — translating loses meaning.
 - **User-facing strings are Dutch** and centralised in `frontend/src/i18n/nl.json` — never hard-code Dutch text in components.
 - **Imported Op.stap goals are read-only reference data.** Never mutate the official content of a leerplandoel/minimumdoel. Teachers may add internal labels/ordering only.
-- **AI is advisory (human-in-the-loop).** Every AI suggestion (goal match, generated plan) must be reviewable and accept/reject-able; persist the status. Nothing is "final" without confirmation by the person who holds the right to decide it: a leerkracht of the klas (or directie) for a generated plan, directie or themabeheer for a thema's doelsuggesties ([`CONSTITUTION.md` Art. IV.1 and VI.1](CONSTITUTION.md#article-vi--roles-privacy--security), ratified 2026-09-14).
+- **AI is advisory (human-in-the-loop).** Every AI suggestion (goal match, generated plan) must be reviewable and accept/reject-able; persist the status. Nothing is "final" without confirmation by the person who holds the right to decide it: a leerkracht of the klas (or directie) for a generated plan, directie or themabeheer for a thema's doelsuggesties ([`CONSTITUTION.md` Art. IV.1 and VI.1](CONSTITUTION.md#article-vi--roles-privacy--security), ratified 2026-09-14). *One exception (amended 2026-09-14, [ADR-0035](docs/adr/0035-ontwikkelingsrapport-derde-kleuter.md)):* an AI **rewrite** of a text in the K3 ontwikkelingsrapport stores no proposal and carries no motivation. The teacher's decision is stored: `aanvaard`, `manueel`, or `geweigerd` without the text.
 - **No secrets in the repo.** .NET user-secrets locally, Azure Key Vault in the cloud. AI keys live server-side only — never expose them to the frontend. *One narrow ratified exception (2026-07-30):* throw-away **local/CI test-database** credentials may be committed — see [`CONSTITUTION.md` Art. VI.4](CONSTITUTION.md#article-vi--roles-privacy--security). Nothing else qualifies.
-- **No pupil personal data in the MVP** (GDPR). Staff accounts only; host in an EU region.
+- **No pupil personal data, except in the K3 ontwikkelingsrapport** (GDPR; amended 2026-09-14, [`CONSTITUTION.md` Art. VI.2 and VI.7](CONSTITUTION.md#article-vi--roles-privacy--security), [ADR-0035](docs/adr/0035-ontwikkelingsrapport-derde-kleuter.md)). Staff accounts only: no pupil ever logs in. Host in an EU region. Inside the report:
+  - only a voornaam, an achternaam, the gradaties, the texts, the algemeen besluit and a kindtekening with its metadata stripped;
+  - the names of the klas's children are replaced before any AI call;
+  - no pupil content in logs.
+
+  **No real child's name ever goes in the repo**: not in tests, seeds, screenshots, worklogs or tickets.
 - **Any UI work starts with the `frontend-design` skill.** *(Standing instruction from the project owner, 2026-07-29.)* Before building a new screen or changing how an existing one looks, invoke the **`frontend-design`** skill and design deliberately against this application's own principles — not the generic defaults. That means:
   - **The users are non-technical teachers and a directie, in Dutch.** *Overzichtelijk* beats exhaustive. The data must dominate; explanatory prose is the first thing to cut, and it never gets repeated per row when once above the list will do.
   - **Colour is already spoken for.** Art. XII fixes six doelsoort hues, and the tokens spend more on suggestiestatus and dekking. The chrome therefore gets **one** structural hue plus one attention hue — a second chrome accent competes with the signal the tool exists to send. Never introduce a hue without checking what it collides with. *Renamed 2026-08-30 (ADR-0024):* that structural hue was the token `petrol` in the frontend that has now been retired; it is `--color-accent` (hue 187) in the current one, declared in `frontend/src/index.css`, and the rule tightened rather than changed — the accent is rationed to exactly five uses (primary action, active destination, focus ring, year-strip fill, selected row), listed above its declaration. The principle is unchanged; only the name and the file moved.
@@ -145,7 +150,14 @@ Coordination between parallel sessions (see the working agreement above; protoco
   - A **klastoewijzing** per klas, many-to-many, gives that klas's planning. At its leeftijd it also gives the content and creation of shared activiteiten, and the streefwoordenschat.
   - An activiteit records its **maker**, who may delete it while no goal is linked to it, with or without a klas at that leeftijd. It stays shared.
   - Appointments and klastoewijzingen count for shared content until their schooljaar ends. A graadklas provisionally grants its one jaarfase.
+  - **Leerlingzorg**, given by directie (for example to a zorgcoördinator), reads every ontwikkelingsrapport and edits nothing ([ADR-0035](docs/adr/0035-ontwikkelingsrapport-derde-kleuter.md), 2026-09-14).
   - What each right allows is one matrix, [ADR-0030 §3](docs/adr/0030-rollen-en-rechten-in-de-app.md#3-the-matrix-that-follows), ratified only as far as the rulings each row cites. The defaults it lists are followed, not ratified (R37).
+- **Ontwikkelingsrapport** — K3 only, and the one place pupil data lives ([`CONSTITUTION.md` Art. IX.4 and VI.7](CONSTITUTION.md#article-vi--roles-privacy--security), [ADR-0035](docs/adr/0035-ontwikkelingsrapport-derde-kleuter.md)).
+  - A `Leerling` (voornaam, achternaam, klas).
+  - One timeless K3 set of `Rapportdoel`en (titled groups of decided K3 subdoelen) and one `Gradatie` scale.
+  - Per `(Leerling, Evaluatiemoment 1–3)` an `Ontwikkelingsrapport` with an algemeen besluit, a `Rapportbeoordeling` per rapportdoel, and at most one `Kindtekening`.
+  - Read by the klas's leerkrachten, directie and Leerlingzorg, and no other klas.
+  - Never counts for dekking. Kept until directie wipes a schooljaar.
 
 ## Op.stap Excel → model mapping
 > **Source changed 2026-09-11 ([ADR-0032](docs/adr/0032-opstap-api-als-importbron.md), [`CONSTITUTION.md` Art. VII.2](CONSTITUTION.md#article-vii--opstap-taxonomy--excel--model-mapping)):** Op.stap is imported from **KOV's Op.stap API** (`api.katholiekonderwijs.vlaanderen`), by the backend only, and for now **only G goals**. The minimumdoelen mapping lives in `OnderwijsdoelMapping`; the leerplandoelen mapping in `CurriculumdoelMapping` (E1-21). The table below describes the older Excel route, which is no longer the source and **stays available only until the first API import of the leerplandoelen (a snapshot applied); after it, it refuses every file** (Art. VII.2 as amended 2026-09-13, owner-ratified). The Excel files in `assets/opstap-xlsx/` also have empty concordance columns B–D.
@@ -189,12 +201,13 @@ One Excel file per discipline. Hidden columns may be empty. **Keep this mapping 
 - **Directierecht** — see and edit everything and maintain gebruikers and rights; directie may give it to someone else. There is no separate ICT role.
 - **Klastoewijzing** — the many-to-many link between a gebruiker and a klas they teach.
 - **Maker (of an activiteit)** — whoever created it: a leerkracht, a hoofdleerkracht, directie, or (by default, ADR-0030 I18) a themabeheer holder through the wizard. They may delete it while no goal is linked to it, with or without a klas at that leeftijd and after the schooljaar. The activiteit stays shared.
+- **Ontwikkelingsrapport** — the K3 report per child, three times a year, for the parents; the one place pupil data lives. **Rapportdoel** — a titled group of K3 subdoelen a child is rated on. **Gradatie** — a labelled, coloured star on the one K3 scale. **Leerlingzorg** — the right to read every ontwikkelingsrapport.
 
 ## AI conventions (Azure AI Foundry)
 - All AI calls are server-side; keys via Key Vault / user-secrets. Prefer an **EU data zone**.
 - Always request **structured JSON** (goal codes + one-line motivation; or month→themes for plan generation) and validate it before use.
-- Ground the model only on the school's own data (doelen + thema's/activiteiten) — no external sources.
-- Return suggestions as `voorgesteld`; never auto-apply. Surface the motivation in the UI.
+- Ground the model only on the school's own data (doelen + thema's/activiteiten) — no external sources. An ontwikkelingsrapport rewrite is grounded on the teacher's own text only, and the names of the klas's children are replaced before the call.
+- Return suggestions as `voorgesteld`; never auto-apply. Surface the motivation in the UI. *Exception:* an ontwikkelingsrapport rewrite is an unstored proposal with no motivation, and only the teacher's decision is stored ([ADR-0035](docs/adr/0035-ontwikkelingsrapport-derde-kleuter.md) §3.5).
 - The matching/plan logic must be testable with a **faked AI client** — inject the client behind an interface.
 
 ## Testing
@@ -203,7 +216,7 @@ One Excel file per discipline. Hidden columns may be empty. **Keep this mapping 
 - **Highest-risk logic = the Op.stap import (the API mapping and its HTML-to-text conversion, and the Excel parser while it exists) and the coverage calculation** — cover them well. *(Amended 2026-09-13, in step with the Art. V.6 amendment of 2026-09-11.)*
 
 ## Roadmap (MVP first)
-MVP core (functional analysis FR-1..FR-10): Excel import of thema's/activiteiten (FR-1), inladen van Op.stap-leerplandoelen (FR-2), thema-/activiteitenbeheer (FR-3), AI-matching (FR-4), AI-jaarplangeneratie (FR-5), kalender + drag-and-drop (FR-6), manuele bewerking (FR-7), (her)generatie (FR-8), dekkingsoverzicht incl. minimumdoelniveau (FR-9), rollen/rechten + inkijken (FR-10).
+MVP core (functional analysis FR-1..FR-10): Excel import of thema's/activiteiten (FR-1), inladen van Op.stap-leerplandoelen (FR-2), thema-/activiteitenbeheer (FR-3), AI-matching (FR-4), AI-jaarplangeneratie (FR-5), kalender + drag-and-drop (FR-6), manuele bewerking (FR-7), (her)generatie (FR-8), dekkingsoverzicht incl. minimumdoelniveau (FR-9), rollen/rechten + inkijken (FR-10). **Added by the amendment of 2026-09-14:** the K3 ontwikkelingsrapport (FR-13, [ADR-0035](docs/adr/0035-ontwikkelingsrapport-derde-kleuter.md)), built after E6-02.
 
 Fast-follow: multi-class dekkingsdashboard (FR-9.4), samenwerking/opmerkingen (FR-10.3), kopiëren vorig schooljaar (FR-12.3), Op.stap-leerroutes.
 

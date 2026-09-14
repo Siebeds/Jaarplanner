@@ -17,6 +17,8 @@
   seam), [ADR-0025](0025-subthema-per-leeftijd.md) (content per leeftijd), [ADR-0031](0031-sessielogin-via-de-api.md)
   (the login mechanism).
 - **Realises:** FR-10, FR-12.2, FA §3.1/§3.2. **Backlog:** E6-01, E6-02, E6-04, E6-08, E6-09, E6-10.
+- **Extended by:** [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md) (2026-09-14): a fifth right, Leerlingzorg, and
+  the ontwikkelingsrapport rows of §3, with footnote ⁶. Nothing else in this ADR changes.
 
 > **Revised twice on the day it was written, on its antagonist's findings.**
 > - The first version (`30b7031`) presented several of the recording session's own design choices as numbered owner
@@ -651,6 +653,12 @@ that this relation alone does not grant the action. It never takes away what ano
 | Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7, R15; I21) | ✓ | – | – | – | ✓ | – |
 | Jaarplan, agenda en dekking bekijken (R3, R7; I9) | ✓ | lezen | lezen | lezen | ✓ | lezen |
 | Exporteren (R3, R7; I9) | ✓ | lezen⁴ | lezen⁴ | lezen⁴ | ✓ | lezen⁴ |
+| Leerlingen van een K3-klas toevoegen, wijzigen, verwijderen (ADR-0035 R14, R15, R26; D8, D9) | ✓ | – | – | – | ✓⁶ | – |
+| Een ontwikkelingsrapport invullen: gradatie, tekst, besluit, kindtekening, AI-herwerking (ADR-0035 R16, R21, R22, R26) | ✓ | – | – | – | ✓⁶ | – |
+| Een ontwikkelingsrapport lezen (ADR-0035 R16, R17, R18, R26) | ✓ | –⁶ | –⁶ | –⁶ | ✓ | –⁶ |
+| Een ontwikkelingsrapport downloaden als PDF of Word (ADR-0035 R13, R26; D5) | ✓ | – | – | – | ✓ | – |
+| De K3-rapportdoelen en de sterrenschaal aanpassen (ADR-0035 R4, R5, R6; D4) | ✓ | – | – | K3⁶ | – | – |
+| De leerlinggegevens van een schooljaar wissen (ADR-0035 R19, R28; D7) | ✓ | – | – | – | – | – |
 
 ¹ R6 names a *leerkracht*. For a gebruiker with no klastoewijzing, including a themabeheer or hoofdleerkracht holder
 who teaches no klas (I20), this ✓ is not ruled; E6-10 decides it with (a).
@@ -670,6 +678,18 @@ are additive and never read less than an ordinary gebruiker. Its reach beyond on
 for a thema the wizard is building from scratch** (R32). Changing existing subthema's stays with the hoofdleerkracht.
 The shape of those actions, and when a thema stops being new, are defaults (I22, I23). **Themabeheer holds no right
 on the ordinary subthema, subdoel and activiteit routes** (I22), which is what the "–" in those rows means, apart from the maker's delete right (R33, the maker² row).
+
+⁶ **The ontwikkelingsrapport rows** were added on 2026-09-14 from [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md)
+§3.3. The R-numbers in them are ADR-0035's, not this ADR's, and they are ratified by Art. VI.7 as far as they cite
+those rulings.
+- "LK eigen" fills in only during the klas's schooljaar. After it, it reads and downloads only (ADR-0035 R26), which
+  overrides I21 for these rows.
+- "LK leeftijd" on the rapportdoelen row means a klastoewijzing on a klas that grants K3 (D4).
+- A sixth relation applies to these rows only: **Leerlingzorg**, a right directie gives, reads every ontwikkelingsrapport
+  and does nothing else (ADR-0035 R18).
+- I9 does not reach these rows, so TB, HL, "LK leeftijd" and "Ander" read no report (ADR-0035 R17). A gebruiker who
+  holds several relations still holds their union: a hoofdleerkracht who is also a leerkracht of the klas reads that
+  klas's reports as "LK eigen".
 
 TB and HL are **additive** to being a leerkracht, as the union rule above says.
 

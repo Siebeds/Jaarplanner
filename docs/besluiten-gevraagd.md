@@ -196,6 +196,35 @@ Onder een thema hangen de **subthema's**, en die zijn per **leeftijd**: een subt
 
 ---
 
+## 15. Het ontwikkelingsrapport van de derde kleuter: gegevens over kinderen in de tool **Beslist, graag uw bevestiging**
+
+**Wat er veranderd is.** Tot nu toe bewaarde de tool geen gegevens over kinderen. Op 14 september 2026 besliste de projecteigenaar dat de leerkrachten van de derde kleuter er hun ontwikkelingsrapport in mogen maken:
+
+- drie keer per jaar per kind een ster en een tekst per gegroepeerd doel;
+- een algemeen besluit en een kindtekening;
+- te downloaden als PDF of Word, voor de ouders.
+
+Daarvoor komen de voornaam en de achternaam van de kinderen in de tool. De AI mag een tekst herwerken. De namen van de kinderen van de klas worden daarbij vervangen, maar een bijnaam of een andere naam niet.
+
+**Wie ziet wat.** De rapporten zien:
+
+- de leerkrachten van de klas;
+- de directie;
+- wie van u het nieuwe recht **Leerlingzorg** krijgt, bijvoorbeeld de zorgcoördinator.
+
+Andere leerkrachten zien ze niet.
+
+**Wat we vragen:**
+
+1. Bevestig dat u akkoord gaat dat de tool deze gegevens over kinderen bewaart. De school is er verantwoordelijk voor.
+2. Leg een concrete bewaartermijn vast, bijvoorbeeld tot het einde van het volgende schooljaar. De tool wist niets vanzelf. U wist een schooljaar, en de beheerpagina toont welke schooljaren nog gegevens over kinderen bevatten.
+3. Neem deze verwerking op in het verwerkingsregister van de school. Laat de ouders weten dat de school deze gegevens bewaart, en dat teksten, zonder de namen, door een AI-dienst in de EU herwerkt kunnen worden.
+4. Laat een effectbeoordeling (DPIA) doen. Voor beoordelingen van jonge kinderen, deels met AI, is die volgens de AVG heel waarschijnlijk verplicht voordat de verwerking start.
+
+**Gevolg zolang dit openstaat.** Het bouwen gaat door. De projecteigenaar besliste bewust dat echte gegevens mogen worden ingevoerd zodra het rapport gebouwd is, ook als punten 2 tot 4 dan nog niet rond zijn. Wij raden aan om ze af te ronden voordat de eerste echte naam in de tool komt.
+
+---
+
 ## Ter info: wat we zelf beslist hebben
 
 Deze keuzes hebben we genomen zonder ze aan u voor te leggen, omdat ze het bouwen betreffen en niet het onderwijs. Ze zijn omkeerbaar. Laat weten als u er anders over denkt.
