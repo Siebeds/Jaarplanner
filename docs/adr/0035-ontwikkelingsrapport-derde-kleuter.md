@@ -45,6 +45,9 @@
 > - the owner confirmed, by choosing the offered "Ja, zo is het goed", the rule the agent instructions now carry: pupil
 >   data stays rejected outside the report and is checked against VI.7 inside it (R30).
 
+> **Added after PR #58 was merged, on TB-013:** R32, the owner's placement of the report in the sidebar (§1.7), and
+> its carrying out in §3.10 with D17 and D18.
+
 ## Context
 
 The owner asked, on 2026-09-14, to start building a report per child:
@@ -149,6 +152,16 @@ for all of K3, not per klas. **R7 was chosen against the recommendation**, with 
   question spoke of "één regel", while the branch changed eight lines across the three files. The rest are dependent
   text of R23, R24 and Art. IX.4 (Art. XI.1), and one later change to the severity line made it stricter, not looser. Pupil
   data outside the report stays a violation for them, and inside the report they check against Art. VI.7.
+
+### 1.7 Added by the owner after PR #58 was merged (TB-013)
+
+- **R32**, given unprompted rather than as an answer to a question:
+
+  > *"ahja mss dat ik nog niet vermeld had maar wel verwacht, het kindvolgsysteem/rapport moet ook een nieuwe linker
+  > sidepane tabje worden ONDERAAN, dus nog veel onder de fiches in een nieuwe sectie"*
+
+- It places the ontwikkelingsrapport in the app's navigation. It does not touch the constitution, and Art. VI.7 does
+  not cite it. How it is carried out is §3.10.
 
 ## 2. What changes in scope
 
@@ -389,6 +402,26 @@ the rules than they give:
 - **D10:** a child who changes klas during the year is deleted in one klas and added in the other. Moving a leerling with
   their reports is not built; it becomes a ticket if the school asks for it.
 
+### 3.10 Where it lives in the app (R32)
+
+- **R32:** the ontwikkelingsrapport is a destination of its own in the left sidebar, **at the bottom, in a new section,
+  well below the fiches**.
+- **D17:** from `lg`, the section sits in the group that is pushed to the bottom edge (`ONDERAAN` in
+  `frontend/src/app/routes.ts`).
+  - It stands over a rule of its own, directly above Instellingen, which stays last before the sign-in row.
+  - The Hoekenfiches and Algemene fiches switches, which show only on the agenda, stay where they are.
+- **D18:** the tab shows only to a gebruiker who holds a right on some ontwikkelingsrapport:
+  - a klastoewijzing on a klas that grants K3;
+  - directie;
+  - Leerlingzorg.
+
+  For anyone else it would lead to a screen with nothing they may see, and the app never ships a control that does
+  nothing (the E3-06 rule). For the same reason the tab ships with the first screen behind it, in build ticket 1.
+- **Open for the build ticket.**
+  - The phone's bottom bar holds five tabs today, and the navigation's own comment says five is what fits.
+  - Whether the report becomes a sixth tab there, or is reached another way on a phone, is decided in that ticket's
+    `frontend-design` pass and shown to the owner.
+
 ## 4. The amendment this ADR requires
 
 One dedicated commit (Art. XI.1). **Art. VI.7 marks every D-item, and every other part of the session's design it
@@ -508,7 +541,8 @@ question to directie is more than a formality. By R20 and R27 the build does not
 Build tickets, to be created as FB tickets by the functional architect, or by a session at the owner's request, each as
 `nieuw`:
 
-1. Leerlingen van een K3-klas beheren: toevoegen met de hand, wijzigen, verwijderen (R14, R15, D8, D9).
+1. Leerlingen van een K3-klas beheren: toevoegen met de hand, wijzigen, verwijderen (R14, R15, D8, D9). Dit ticket
+   brengt ook de nieuwe sectie onderaan de linkerzijbalk, als ingang van het ontwikkelingsrapport (R32, D17, D18).
 2. De K3-rapportdoelen en de sterrenschaal beheren (R3 to R7, D1 to D4, D11, D12).
 3. Een ontwikkelingsrapport invullen per evaluatiemoment: gradatie en tekst per rapportdoel, algemeen besluit (R8, R9,
    R26).
@@ -548,4 +582,4 @@ Also:
     - Directie's confirmation of this ADR is outstanding.
 - **Backlog:** TB-005; the FB build tickets of §6; E7-05, E7-06, E7-09, E7-11; E6-02 and E6-04 (the policy layer and
   the beheer of rights); the E8 note.
-- **FR/NFR:** FR-13 (new, in the functional analysis); FR-10, FR-11 (untouched), FR-12.2; NFR-5, NFR-6.
+- **FR/NFR:** FR-13 (new, in the functional analysis, with FR-13.10 for the sidebar section); FR-10, FR-11 (untouched), FR-12.2; NFR-5, NFR-6.
