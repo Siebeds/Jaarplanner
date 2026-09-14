@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:01
+bijgewerkt: 2026-09-14 11:16
 opgepakt-door: E10-03
 branch: story/E10-03-agenda
 pr:
@@ -63,3 +63,4 @@ Geen.
 ## Werklog
 
 - 2026-09-14 11:01 · E10-03 · aangemaakt (status in-uitvoering)
+- 2026-09-14 11:16 · E10-03 · Frontend gebouwd: fichepaneel met algemene fiches, plaatsingsblad, detailblad en momenten in het tijdraster; pnpm lint schoon, Vitest 247/247 groen.

@@ -33,7 +33,7 @@ import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { Maandrooster } from "./Maandrooster";
-import { Tijdraster, type Hoekblokje, type Tijddoel } from "./Tijdraster";
+import { Tijdraster, type Ficheblokje, type Hoekblokje, type Tijddoel } from "./Tijdraster";
 import { STANDAARDBEGIN, alsTijd, minuten, toonTijd } from "./tijd";
 import { beginSleep, doelTijd, eindigSleep, leesKolomId } from "./tijdsleep";
 import { Activiteitkiezer } from "./Activiteitkiezer";
@@ -53,6 +53,16 @@ import {
   useVerwijderHoekplaatsing,
   useHoeken,
 } from "../hoeken/gegevens";
+import { Algemeneficheplaatsingblad } from "../algemene-fiches/Algemeneficheplaatsingblad";
+import { Algemenefichedetailblad } from "../algemene-fiches/Algemenefichedetailblad";
+import {
+  useAlgemeneFicheplaatsingen,
+  useAlgemeneFiches,
+  usePlaatsAlgemeneFiche,
+  useVerplaatsFichemoment,
+  useVerwijderAlgemeneFicheplaatsing,
+} from "../algemene-fiches/gegevens";
+import { ALGEMENE_FICHE_VOORVOEGSEL, fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
 import { roosterdagen } from "./roosterdagen";
 import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
 import { themaIdsOpDag, themavakken } from "./themavakken";
@@ -120,6 +130,15 @@ export function Agendascherm() {
   // The placement whose detail sheet is open, by id rather than by value: the list is refetched after
   // a delete, and holding a copy would keep a sheet describing a row that is gone.
   const [geopendeHoek, setGeopendeHoek] = useState<string | null>(null);
+  // The same pair for an algemene fiche (ADR-0029): the one that landed, and the planned one that is open. The open
+  // one also remembers the occurrence it was opened from, because that day is what its sheet lets her change without
+  // a drag; opened from a list of whole periods it names none.
+  const [gevallenAlgemeneFiche, setGevallenAlgemeneFiche] = useState<{
+    ficheId: string;
+    datum: string;
+    begin: number | null;
+  } | null>(null);
+  const [geopendeFiche, setGeopendeFiche] = useState<{ plaatsingId: string; momentId: string | null } | null>(null);
 
   const { data: rooster } = useRooster(schooljaarId);
   const { data: plan, isSuccess: planGeladen } = useJaarplan(klasId);
@@ -212,6 +231,15 @@ export function Agendascherm() {
   const verwijderPlaatsing = useVerwijderHoekplaatsing();
   const verplaatsMoment = useVerplaatsHoekmoment();
 
+  // The algemene fiches, read the way the hoeken are and for the same reasons: their own request over the visible
+  // range, and a second one over the whole year for the placement sheet's "Al ingepland".
+  const { data: fichePlaatsingen } = useAlgemeneFicheplaatsingen(klasId, van, tot);
+  const { data: jaarFichePlaatsingen } = useAlgemeneFicheplaatsingen(klasId, rooster?.start ?? "", rooster?.eind ?? "");
+  const { data: algemeneFiches } = useAlgemeneFiches(klasId);
+  const plaatsFiche = usePlaatsAlgemeneFiche(klasId);
+  const verwijderFichePlaatsing = useVerwijderAlgemeneFicheplaatsing();
+  const verplaatsFichemoment = useVerplaatsFichemoment();
+
   // The planner spreads over the whole period, so it needs every day of it rather than the days the
   // current view happens to be showing. A separate query with its own key: asking the view's query
   // for a wider range would refetch the grid every time the teacher changed week.
@@ -271,6 +299,22 @@ export function Agendascherm() {
         })),
       ),
     [hoekplaatsingen],
+  );
+
+  // The algemene fiches' occurrences, built the same way and for the same reason: each is a row she can move alone.
+  const ficheblokjes = useMemo<Ficheblokje[]>(
+    () =>
+      (fichePlaatsingen ?? []).flatMap((plaatsing) =>
+        plaatsing.momenten.map((moment) => ({
+          plaatsingId: plaatsing.id,
+          momentId: moment.id,
+          naam: plaatsing.ficheNaam,
+          datum: moment.datum,
+          begin: moment.begin,
+          einde: moment.einde,
+        })),
+      ),
+    [fichePlaatsingen],
   );
 
   /**
@@ -366,8 +410,15 @@ export function Agendascherm() {
         kaart.set(momentSleepId(plaatsing.id, moment.id), plaatsing.hoekNaam);
       }
     }
+    // The algemene fiches, from the panel and in the grid, for the same reason.
+    for (const fiche of algemeneFiches ?? []) kaart.set(`${ALGEMENE_FICHE_VOORVOEGSEL}${fiche.id}`, fiche.naam);
+    for (const plaatsing of fichePlaatsingen ?? []) {
+      for (const moment of plaatsing.momenten) {
+        kaart.set(fichemomentSleepId(plaatsing.id, moment.id), plaatsing.ficheNaam);
+      }
+    }
     return kaart;
-  }, [planning, hoeken, hoekplaatsingen]);
+  }, [planning, hoeken, hoekplaatsingen, algemeneFiches, fichePlaatsingen]);
 
   function schuif(richting: -1 | 1) {
     // A week view showing three days pages by three, so nothing is skipped and nothing repeats.
@@ -411,8 +462,17 @@ export function Agendascherm() {
       });
     }
 
+    for (const blokje of ficheblokjes) {
+      kaart.set(fichemomentSleepId(blokje.plaatsingId, blokje.momentId), {
+        datum: blokje.datum,
+        begin: minuten(blokje.begin),
+        duur: minuten(blokje.einde) - minuten(blokje.begin),
+        doel: { soort: "fiche", plaatsingId: blokje.plaatsingId, momentId: blokje.momentId },
+      });
+    }
+
     return kaart;
-  }, [planning, hoekblokjes]);
+  }, [planning, hoekblokjes, ficheblokjes]);
 
   /**
    * Saves a block's day and times, through whichever endpoint owns its kind.
@@ -428,8 +488,16 @@ export function Agendascherm() {
         begin: alsTijd(begin),
         einde: alsTijd(einde),
       });
-    } else {
+    } else if (doel.soort === "hoek") {
       verplaatsMoment.mutate({
+        plaatsingId: doel.plaatsingId,
+        momentId: doel.momentId,
+        datum,
+        begin: alsTijd(begin),
+        einde: alsTijd(einde),
+      });
+    } else {
+      verplaatsFichemoment.mutate({
         plaatsingId: doel.plaatsingId,
         momentId: doel.momentId,
         datum,
@@ -444,6 +512,7 @@ export function Agendascherm() {
     setSleepFout(null);
     acties.verplaats.reset();
     verplaatsMoment.reset();
+    verplaatsFichemoment.reset();
 
     const sleepId = String(active.id);
     // Two kinds of target. A column of the time grid names a day AND, through the pointer, an hour; a month cell
@@ -469,6 +538,15 @@ export function Agendascherm() {
       // null and offers its own default rather than inventing one from where the pointer happened to be.
       plaatsHoek.reset();
       setGevallenFiche({ hoekId, datum, begin: doelBegin });
+      return;
+    }
+
+    // An algemene fiche from the panel is the same case with one more question (which weekdays), so it opens its own
+    // sheet with the same three facts the drop carries.
+    const algemeneFicheId = leesAlgemeneFicheId(sleepId);
+    if (algemeneFicheId !== null) {
+      plaatsFiche.reset();
+      setGevallenAlgemeneFiche({ ficheId: algemeneFicheId, datum, begin: doelBegin });
       return;
     }
 
@@ -504,8 +582,10 @@ export function Agendascherm() {
 
   const sleepmelding =
     sleepFout ??
-    (acties.plaats.isError || acties.verplaats.isError || verplaatsMoment.isError
-      ? foutTekst(acties.plaats.error ?? acties.verplaats.error ?? verplaatsMoment.error)
+    (acties.plaats.isError || acties.verplaats.isError || verplaatsMoment.isError || verplaatsFichemoment.isError
+      ? foutTekst(
+          acties.plaats.error ?? acties.verplaats.error ?? verplaatsMoment.error ?? verplaatsFichemoment.error,
+        )
       : null);
 
   if (!klasId) {
@@ -678,6 +758,10 @@ export function Agendascherm() {
               plaatsHoek.reset();
               setGevallenFiche({ hoekId, datum: anker, begin: null });
             }}
+            onKiesAlgemeneFiche={(ficheId) => {
+              plaatsFiche.reset();
+              setGevallenAlgemeneFiche({ ficheId, datum: anker, begin: null });
+            }}
           />
 
           <div className="mt-3">
@@ -713,6 +797,7 @@ export function Agendascherm() {
               <Tijdraster
                 dagen={zichtbareDagen.length > 0 ? zichtbareDagen : [leegteDag(anker)]}
                 hoekmomenten={hoekblokjes}
+                fichemomenten={ficheblokjes}
                 reeksenPerDag={stroken}
                 vakken={vakken}
                 onVoegToe={(datum, tijd) => setKiezer({ datum, begin: tijd })}
@@ -720,6 +805,10 @@ export function Agendascherm() {
                 onOpenHoek={(plaatsingId) => {
                   verwijderPlaatsing.reset();
                   setGeopendeHoek(plaatsingId);
+                }}
+                onOpenFiche={(plaatsingId, momentId) => {
+                  verwijderFichePlaatsing.reset();
+                  setGeopendeFiche({ plaatsingId, momentId });
                 }}
                 // In the week a column heading opens that day; in the day view it would go where it already is.
                 onKiesDag={weergave === "week" ? openDag : undefined}
@@ -837,6 +926,57 @@ export function Agendascherm() {
             }
           />
         ) : null;
+      })()}
+
+      {/* THE ALGEMENE FICHE'S PAIR OF SHEETS, arranged as the hoek's pair above and for the same reasons: the
+          placement sheet is mounted only while a fiche has landed and keyed on the drop, and the detail sheet is
+          looked up by id on every render, in the visible range and in the year, so it disappears with its row. */}
+      {gevallenAlgemeneFiche && rooster ? (
+        <Algemeneficheplaatsingblad
+          open
+          key={`${gevallenAlgemeneFiche.ficheId}-${gevallenAlgemeneFiche.datum}-${gevallenAlgemeneFiche.begin ?? "geen"}`}
+          ficheId={gevallenAlgemeneFiche.ficheId}
+          ficheNaam={(algemeneFiches ?? []).find((f) => f.id === gevallenAlgemeneFiche.ficheId)?.naam ?? ""}
+          startdag={gevallenAlgemeneFiche.datum}
+          startuur={gevallenAlgemeneFiche.begin}
+          loopt={looptSubthema}
+          ingepland={(jaarFichePlaatsingen ?? []).filter((p) => p.algemeneFicheId === gevallenAlgemeneFiche.ficheId)}
+          schooljaarVan={rooster.start}
+          schooljaarTot={rooster.eind}
+          bezig={plaatsFiche.isPending}
+          fout={plaatsFiche.error}
+          onOpenPlaatsing={(plaatsingId) => {
+            setGevallenAlgemeneFiche(null);
+            verwijderFichePlaatsing.reset();
+            setGeopendeFiche({ plaatsingId, momentId: null });
+          }}
+          onSluit={() => setGevallenAlgemeneFiche(null)}
+          onPlaats={(invoer) => plaatsFiche.mutate(invoer, { onSuccess: () => setGevallenAlgemeneFiche(null) })}
+        />
+      ) : null}
+
+      {(() => {
+        if (!geopendeFiche) return null;
+        const open =
+          (fichePlaatsingen ?? []).find((p) => p.id === geopendeFiche.plaatsingId) ??
+          (jaarFichePlaatsingen ?? []).find((p) => p.id === geopendeFiche.plaatsingId);
+        if (!open) return null;
+        const fiche = (algemeneFiches ?? []).find((f) => f.id === open.algemeneFicheId);
+        return (
+          <Algemenefichedetailblad
+            open
+            key={`${open.id}-${geopendeFiche.momentId ?? "periode"}`}
+            plaatsing={open}
+            momentId={geopendeFiche.momentId}
+            // The count is placements, not occurrences (`AlgemeneFicheWeergave.AantalPlaatsingen`), so one means this
+            // placement is the fiche's only one.
+            enigePeriodeMetDoelen={fiche !== undefined && fiche.aantalPlaatsingen === 1 && fiche.doelen.length > 0}
+            bezig={verwijderFichePlaatsing.isPending}
+            fout={verwijderFichePlaatsing.error}
+            onSluit={() => setGeopendeFiche(null)}
+            onVerwijder={() => verwijderFichePlaatsing.mutate(open.id, { onSuccess: () => setGeopendeFiche(null) })}
+          />
+        );
       })()}
 
       <Nieuweactiviteitblad

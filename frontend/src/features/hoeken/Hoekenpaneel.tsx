@@ -1,76 +1,107 @@
+import type { ReactNode } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Link } from "react-router-dom";
 import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
-import { IcoonHoek, IcoonKruis } from "../../components/Iconen";
+import { IcoonFiche, IcoonHoek, IcoonKruis } from "../../components/Iconen";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
-import { useHoeken, type HoekWeergave } from "./gegevens";
+import { useHoeken } from "./gegevens";
 import { FICHE_VOORVOEGSEL } from "./sleepids";
+import { useAlgemeneFiches } from "../algemene-fiches/gegevens";
+import { ALGEMENE_FICHE_VOORVOEGSEL } from "../algemene-fiches/sleepids";
 
 /**
- * The hoekenfiches, beside the agenda: the corners this class has, while she plans (owner, 2026-08-30).
+ * The fiches beside the agenda: the corners this class has and, under them, its algemene fiches, while she plans
+ * (owner, 2026-08-30 for the hoeken; 2026-09-11 for the algemene fiches, "het mag eronder komen te staan").
  *
- * **Two shapes for one panel, because the app has two.** From `lg` it is a column standing in the
- * space the navigation's labels were using, which is why the navigation collapses to an icon rail
- * when this opens. On a phone there is no sidebar to stand beside, so it is a sheet from the bottom,
- * which is the shape every other secondary surface in this app already uses.
+ * **One panel with two lists, not a second panel.** Both are a short list of things a teacher defined once in
+ * Instellingen and drags onto a day, and two switches for two columns that would both want the same 240px is a
+ * choice she would have to make every time. So the panel is called *Fiches* and each list keeps its own heading and
+ * glyph; the words and the glyph tell them apart, never a colour (Art. XII).
  *
- * **The choice is a media QUERY and not a `lg:hidden` class, and that is not a style preference.**
- * The sheet is a Radix dialog, which portals its content to `document.body`, so a wrapper with
- * `lg:hidden` hides the wrapper and nothing else: on a 1600px screen both shapes rendered at once and
- * the sheet's overlay dimmed the whole agenda behind the column. Found by looking at it, not by a
- * test.
+ * **Two shapes for one panel, because the app has two.** From `lg` it is a column standing in the space the
+ * navigation's labels were using, which is why the navigation collapses to an icon rail when this opens. On a phone
+ * there is no sidebar to stand beside, so it is a sheet from the bottom.
  *
- * **A fiche says what a corner is, not when it runs** (owner, 2026-09-10). Each fiche used to carry a
- * row per run under it ("Ingepland 1 sep – 4 sep"), which cluttered a list whose job is showing the
- * corners side by side, and answered a question she only asks while planning. The runs are now in the
- * placement sheet, which a click on a fiche opens at every width, and each run opens from there.
+ * **The choice is a media QUERY and not a `lg:hidden` class, and that is not a style preference.** The sheet is a
+ * Radix dialog, which portals its content to `document.body`, so a wrapper with `lg:hidden` hides the wrapper and
+ * nothing else: on a 1600px screen both shapes rendered at once and the sheet's overlay dimmed the whole agenda.
  *
- * **A fiche is dragged onto a day of the agenda.** That is why this component is mounted inside the
- * agenda's `DndContext` even though it is `fixed` and paints nowhere near it: dnd-kit registers a
- * draggable through React context, not through the DOM tree.
+ * **A fiche says what it is, not when it runs** (owner, 2026-09-10). The runs are in the placement sheet, which a
+ * click on a fiche opens at every width, and each run opens from there.
+ *
+ * **A fiche is dragged onto a day of the agenda.** That is why this component is mounted inside the agenda's
+ * `DndContext` even though it is `fixed` and paints nowhere near it: dnd-kit registers a draggable through React
+ * context, not through the DOM tree.
  */
 export function Hoekenpaneel({
   klasId,
   onKies,
+  onKiesAlgemeneFiche,
 }: {
   klasId: string | null;
   /**
-   * A fiche was CHOSEN rather than dragged. The agenda opens the placement sheet with the day it is
-   * standing on as the start, the one thing a click can say that a drag says with its landing point.
-   *
-   * **At every width since 2026-09-10.** It used to be the phone path only, and beside the agenda a
-   * fiche could only be dragged. That was harmless while a corner's runs were listed under its fiche.
-   * With the runs in the sheet instead, a corner that takes no lesuur would have had no way back to
-   * them short of dropping its fiche on some arbitrary day.
+   * A hoekfiche was CHOSEN rather than dragged. The agenda opens the placement sheet with the day it is standing on
+   * as the start, the one thing a click can say that a drag says with its landing point.
    */
   onKies: (hoekId: string) => void;
+  /** The same, for an algemene fiche. */
+  onKiesAlgemeneFiche: (ficheId: string) => void;
 }) {
   const open = useHoekenpaneel((s) => s.open);
   const zet = useHoekenpaneel((s) => s.zet);
   const breed = useMediaQuery(BREED);
-  const { data: hoeken, isPending } = useHoeken(open ? klasId : null);
+  const { data: hoeken, isPending: hoekenLaden } = useHoeken(open ? klasId : null);
+  const { data: algemeneFiches, isPending: fichesLaden } = useAlgemeneFiches(open ? klasId : null);
 
-  // On a phone this panel is a sheet over the calendar and the placement sheet is about to open on top
-  // of it, so it closes first rather than leaving her two sheets deep. Beside the agenda the column
-  // stays: the placement sheet opens on the other side of the screen.
-  function kies(hoekId: string) {
+  // On a phone this panel is a sheet over the calendar and the placement sheet is about to open on top of it, so it
+  // closes first rather than leaving her two sheets deep. Beside the agenda the column stays.
+  function kies(kiezer: (id: string) => void, id: string) {
     if (!breed) zet(false);
-    onKies(hoekId);
+    kiezer(id);
   }
 
-  const inhoud = (
-    <Fichelijst
-      hoeken={hoeken}
-      laadt={klasId !== null && isPending}
-      heeftKlas={klasId !== null}
-      sleepbaar={breed}
-      onKies={kies}
-    />
-  );
+  const inhoud =
+    klasId === null ? (
+      <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>
+    ) : (
+      <div className="flex flex-col gap-6">
+        <Fichegroep
+          titel={t("hoekenpaneel.hoeken")}
+          Icoon={IcoonHoek}
+          laadt={hoekenLaden}
+          fiches={(hoeken ?? []).map((hoek) => ({
+            id: hoek.id,
+            sleepId: `${FICHE_VOORVOEGSEL}${hoek.id}`,
+            naam: hoek.naam,
+            omschrijving: hoek.omschrijving,
+          }))}
+          leeg={t("hoekenpaneel.geenHoeken")}
+          naarInstellingen={{ pad: "/instellingen/hoeken", label: t("hoekenpaneel.naarInstellingen") }}
+          sleepbaar={breed}
+          onKies={(id) => kies(onKies, id)}
+        />
+
+        <Fichegroep
+          titel={t("hoekenpaneel.algemeen")}
+          Icoon={IcoonFiche}
+          laadt={fichesLaden}
+          fiches={(algemeneFiches ?? []).map((fiche) => ({
+            id: fiche.id,
+            sleepId: `${ALGEMENE_FICHE_VOORVOEGSEL}${fiche.id}`,
+            naam: fiche.naam,
+            omschrijving: fiche.omschrijving,
+          }))}
+          leeg={t("hoekenpaneel.geenAlgemeneFiches")}
+          naarInstellingen={{ pad: "/instellingen/algemene-fiches", label: t("hoekenpaneel.naarAlgemeneFiches") }}
+          sleepbaar={breed}
+          onKies={(id) => kies(onKiesAlgemeneFiche, id)}
+        />
+      </div>
+    );
 
   if (!breed) {
     return (
@@ -83,10 +114,8 @@ export function Hoekenpaneel({
   /*
     THE COLUMN, FROM `lg`.
 
-    `left-14` is the rail the navigation collapses to, and the two numbers are kept in step by
-    `Schil`, which reserves 56 + 240 for the pair.
-
-    It is `aria-hidden` and inert while closed rather than unmounted, so opening it does not refetch
+    `left-14` is the rail the navigation collapses to, and the two numbers are kept in step by `Schil`, which reserves
+    56 + 240 for the pair. `aria-hidden` and inert while closed rather than unmounted, so opening it does not refetch
     and the slide has something to animate from.
   */
   return (
@@ -101,10 +130,7 @@ export function Hoekenpaneel({
       )}
     >
       <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-6">
-        <h2 className="flex items-center gap-2 text-micro uppercase text-inkt-zwak">
-          <IcoonHoek aria-hidden="true" className="h-4 w-4" />
-          {t("hoekenpaneel.titel")}
-        </h2>
+        <h2 className="text-body font-medium text-inkt">{t("hoekenpaneel.titel")}</h2>
         <button
           type="button"
           onClick={() => zet(false)}
@@ -120,109 +146,115 @@ export function Hoekenpaneel({
   );
 }
 
-/** The corners themselves, or the reason there are none to show. */
-function Fichelijst({
-  hoeken,
+/** What one list in the panel needs of a fiche, whichever kind it is. */
+interface Paneelfiche {
+  id: string;
+  /** The prefixed id dnd-kit carries, which is what tells the agenda's drop handler the kind. */
+  sleepId: string;
+  naam: string;
+  omschrijving: string | null;
+}
+
+/**
+ * One kind of fiche: its heading, then the fiches or the reason there are none.
+ *
+ * The heading is a real `h3` under the panel's `h2`, so a screen reader can jump between the two lists; its glyph is
+ * the one the time grid puts on the same kind of block, which is what connects a fiche here with where it lands.
+ */
+function Fichegroep({
+  titel,
+  Icoon,
   laadt,
-  heeftKlas,
+  fiches,
+  leeg,
+  naarInstellingen,
   sleepbaar,
   onKies,
 }: {
-  hoeken?: HoekWeergave[];
+  titel: string;
+  Icoon: (props: { className?: string; "aria-hidden"?: boolean | "true" }) => ReactNode;
   laadt: boolean;
-  heeftKlas: boolean;
+  fiches: Paneelfiche[];
+  leeg: string;
+  naarInstellingen: { pad: string; label: string };
   /** False on a phone, where the panel covers the calendar and there is nothing to drag onto. */
   sleepbaar: boolean;
-  onKies: (hoekId: string) => void;
+  onKies: (id: string) => void;
 }) {
-  if (!heeftKlas) {
-    return <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>;
-  }
-
-  if (laadt) {
-    return <Laadlijst rijen={3} />;
-  }
-
-  if ((hoeken ?? []).length === 0) {
-    return (
-      <div className="flex flex-col gap-2">
-        <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenHoeken")}</p>
-        {/* A real destination, not a sentence about one. This is where she makes them, and it is two
-            clicks away otherwise. */}
-        <Link
-          to="/instellingen/hoeken"
-          className="text-meta font-medium text-accent underline-offset-2 hover:underline"
-        >
-          {t("hoekenpaneel.naarInstellingen")}
-        </Link>
-      </div>
-    );
-  }
-
   return (
-    <ul className="flex flex-col gap-2">
-      {(hoeken ?? []).map((hoek) => (
-        <li key={hoek.id}>
-          <Fiche hoek={hoek} sleepbaar={sleepbaar} onKies={onKies} />
-        </li>
-      ))}
-    </ul>
+    <section>
+      <h3 className="mb-2 flex items-center gap-2 text-meta font-medium text-inkt-zacht">
+        <Icoon aria-hidden="true" className="h-4 w-4 shrink-0" />
+        {titel}
+      </h3>
+
+      {laadt ? (
+        <Laadlijst rijen={2} />
+      ) : fiches.length === 0 ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-meta text-inkt-zacht">{leeg}</p>
+          {/* A real destination, not a sentence about one: this is where she makes them. */}
+          <Link
+            to={naarInstellingen.pad}
+            className="text-meta font-medium text-accent underline-offset-2 hover:underline"
+          >
+            {naarInstellingen.label}
+          </Link>
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {fiches.map((fiche) => (
+            <li key={fiche.id}>
+              <Fiche fiche={fiche} sleepbaar={sleepbaar} onKies={onKies} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
 /**
- * One hoekfiche: the thing a teacher drags onto a day, or clicks to plan from the day she is on.
+ * One fiche: the thing a teacher drags onto a day, or clicks to plan from the day she is on.
  *
- * Deliberately quiet: a card in the chrome column, not a card competing with the calendar beside it.
- * The description is clamped to two lines, because a corner described in four sentences would push
- * the next fiche off the panel, and the whole point of the list is seeing the corners together.
+ * Deliberately quiet: a card in the chrome column, not a card competing with the calendar beside it. The description
+ * is clamped to two lines, because the point of the list is seeing the fiches together.
  *
- * **Both gestures on one button, the arrangement `Hoekblok` in the lesurenraster already has.** A
- * press that travels six pixels is a drag (see `sleep.ts`), and dnd-kit swallows the click that follows
- * an activated drag, so a drop does not also open the sheet from the agenda's own day; a press that
- * does not travel is a click. On a keyboard Space picks the fiche up, as on every draggable in this
- * agenda. On a phone the panel is a sheet over the calendar, so there is nothing to drag onto and the
- * fiche is only tapped.
- *
- * The id is prefixed because the agenda's drop handler receives ids from two sources: a plaatsingId
- * for an activiteit already on the grid, and this. Without the prefix a drop would have to guess
- * which it got.
+ * **Both gestures on one button.** A press that travels six pixels is a drag (see `sleep.ts`), and dnd-kit swallows
+ * the click that follows an activated drag, so a drop does not also open the sheet from the agenda's own day; a press
+ * that does not travel is a click. On a keyboard Space picks the fiche up, as on every draggable in this agenda. On a
+ * phone the fiche is only tapped.
  */
 function Fiche({
-  hoek,
+  fiche,
   sleepbaar,
   onKies,
 }: {
-  hoek: HoekWeergave;
+  fiche: Paneelfiche;
   sleepbaar: boolean;
-  onKies: (hoekId: string) => void;
+  onKies: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `${FICHE_VOORVOEGSEL}${hoek.id}`,
-  });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: fiche.sleepId });
 
   return (
     <button
       type="button"
       ref={sleepbaar ? setNodeRef : undefined}
-      onClick={() => onKies(hoek.id)}
+      onClick={() => onKies(fiche.id)}
       {...(sleepbaar ? listeners : {})}
       {...(sleepbaar ? attributes : {})}
       className={cn(
         "w-full rounded-veld border border-lijn bg-vlak px-3 py-2.5 text-left",
         "transition-colors duration-150 hover:border-accent",
-        // THE GRABBING HAND SAYS THIS CAN BE PICKED UP (owner, 2026-08-31). Dragging is the gesture
-        // that says which day, so it is the one the cursor announces; a click is the shortcut to the
-        // same sheet from the day the agenda is on. `touch-none` belongs with it, because without it a
-        // touch drag scrolls the panel instead of lifting the fiche. Only where the fiche drags: on a
-        // phone a grabbing hand would promise a gesture the sheet does not have.
+        // The grabbing hand says this can be picked up (owner, 2026-08-31); `touch-none` so a touch drag lifts the
+        // fiche instead of scrolling the panel. Only where it drags.
         sleepbaar ? "cursor-grab touch-none active:cursor-grabbing" : null,
         isDragging && "opacity-40",
       )}
     >
-      <p className="text-meta font-medium text-inkt">{hoek.naam}</p>
-      {hoek.omschrijving ? (
-        <p className="mt-0.5 line-clamp-2 text-micro leading-snug text-inkt-zacht">{hoek.omschrijving}</p>
+      <p className="text-meta font-medium text-inkt">{fiche.naam}</p>
+      {fiche.omschrijving ? (
+        <p className="mt-0.5 line-clamp-2 text-micro leading-snug text-inkt-zacht">{fiche.omschrijving}</p>
       ) : null}
     </button>
   );
