@@ -1,6 +1,6 @@
 import { DndContext } from "@dnd-kit/core";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Tijdraster, type Ficheblokje, type Hoekblokje } from "./Tijdraster";
 import type { Agendadag } from "./roosterdagen";
 import type { GeplandeActiviteit } from "../../lib/types";
@@ -303,5 +303,251 @@ describe("Tijdraster", () => {
     // (the only `border-t-2` in this grid) and not the time label that keeps it from being colour alone.
     expect(container.querySelector(".border-t-2")).toBeNull();
     expect(screen.queryByText(t("periode.vandaag"))).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Empty space under a mouse (owner, 2026-09-14, TB-014): the quarter a click would pick lights up, and a press dragged
+ * across the column asks for that stretch.
+ *
+ * jsdom reports every rectangle at zero, so a pointer's `clientY` is a distance from the top of the grid, which starts
+ * at midnight: minute `m` is at `m * 56 / 60` pixels. One pixel is added so a pointer sits inside its quarter rather
+ * than on the line above it. What these cannot see is the band's tint and whether the page scrolls under a drag; that
+ * is the browser pass.
+ */
+describe("Tijdraster onder de muis", () => {
+  const y = (minuut: number) => minuut * (56 / 60) + 1;
+  const kolom = () => screen.getByRole("button", { name: t("periode.voegToeOp", { dag: "dinsdag 8 september" }) });
+
+  // jsdom has no PointerEvent, so `fireEvent.pointerDown` would build a bare Event with no position and no pointer
+  // type, and every gesture below would read as a keyboard's.
+  beforeAll(() => {
+    if (typeof window.PointerEvent === "function") return;
+    class Aanwijzer extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+        this.pointerType = init.pointerType ?? "mouse";
+      }
+    }
+    vi.stubGlobal("PointerEvent", Aanwijzer);
+  });
+  afterAll(() => vi.unstubAllGlobals());
+
+  it("licht het kwartier onder de muis op, afgerond naar beneden, tot de muis weggaat", () => {
+    toon([dag()]);
+
+    // 9:42 is nearer to 9:45, but it is inside the quarter that starts at 9:30, and the band names that start: it is
+    // what a click there asks for (the next test). A nearest-quarter band would say 9:45 here.
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 42) });
+    expect(screen.getByText("9:30")).toBeInTheDocument();
+
+    // A button held down with no stretch of this column running (a block dragged across it) asks nothing.
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 42), buttons: 1 });
+    expect(screen.queryByText("9:30")).not.toBeInTheDocument();
+
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 42) });
+    fireEvent.pointerLeave(kolom());
+    expect(screen.queryByText("9:30")).not.toBeInTheDocument();
+  });
+
+  it("vraagt bij een klik het kwartier dat oplicht, ook in zijn onderste helft", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // 9:12 is nearer to 9:15 than to 9:00, but it is inside the 9:00 quarter, and that quarter is the one lit up.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60 + 12) });
+    fireEvent.pointerUp(kolom(), { clientY: y(9 * 60 + 12) });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(9 * 60 + 12) });
+
+    // Once, and with no end: a press that stayed in its quarter is a click, and the activiteit's own length decides.
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 9 * 60);
+  });
+
+  it("plant het bereik dat de leerkracht sleept, en toont het terwijl ze sleept", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60 + 20), buttons: 1 });
+    // Both quarters it touches are in it: from the start of the first to the end of the last.
+    expect(screen.getByText(toonBereik(9 * 60, 10 * 60 + 30))).toBeInTheDocument();
+
+    fireEvent.pointerUp(kolom(), { clientY: y(10 * 60 + 20) });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(10 * 60 + 20) });
+
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 9 * 60, 10 * 60 + 30);
+    expect(screen.queryByText(toonBereik(9 * 60, 10 * 60 + 30))).not.toBeInTheDocument();
+  });
+
+  it("geeft omhoog gesleept hetzelfde bereik", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    fireEvent.pointerDown(kolom(), { clientY: y(10 * 60 + 20) });
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 5), buttons: 1 });
+    fireEvent.pointerUp(kolom(), { clientY: y(9 * 60 + 5) });
+
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 9 * 60, 10 * 60 + 30);
+  });
+
+  it("laat een bereik los op Escape, zonder iets te openen", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(11 * 60), buttons: 1 });
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByText(toonBereik(9 * 60, 11 * 60 + 15))).not.toBeInTheDocument();
+
+    // The button is still down after Escape, so the release and the click that follows it must not ask either.
+    fireEvent.pointerUp(kolom(), { clientY: y(11 * 60) });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(11 * 60) });
+    expect(gevraagd).not.toHaveBeenCalled();
+  });
+
+  it("laat een tik op een aanraakscherm het kwartier onder de vinger kiezen, zonder bereik", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // A finger drawn down the grid scrolls it, so a touch press starts no stretch; the click alone answers.
+    fireEvent.pointerDown(kolom(), { clientY: y(13 * 60 + 40), pointerType: "touch" });
+    fireEvent.pointerMove(kolom(), { clientY: y(14 * 60 + 40), pointerType: "touch" });
+    fireEvent.pointerUp(kolom(), { clientY: y(14 * 60 + 40), pointerType: "touch" });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(13 * 60 + 40) });
+
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 13 * 60 + 30);
+  });
+
+  it("vraagt aan het einde van de dag het kwartier dat de band toont, en sleept niet tot middernacht", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // The last quarter a click may start in still fits an activiteit of the default length (50 minutes): 23:00. The
+    // band stops there too, so what it names is what the click asks for, never an off-grid 23:10. Two "23:00" on
+    // screen: the hour label in the gutter, and the band.
+    fireEvent.pointerMove(kolom(), { clientY: y(23 * 60 + 40) });
+    expect(screen.getAllByText("23:00")).toHaveLength(2);
+    fireEvent.pointerDown(kolom(), { clientY: y(23 * 60 + 40) });
+    fireEvent.pointerUp(kolom(), { clientY: y(23 * 60 + 40) });
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 23 * 60);
+
+    // A stretch ends a quarter before midnight at the latest: the wire format stops at 23:59, and "tot 24:00" would
+    // say one time while another was stored.
+    fireEvent.pointerDown(kolom(), { clientY: y(22 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(23 * 60 + 55), buttons: 1 });
+    fireEvent.pointerUp(kolom(), { clientY: y(23 * 60 + 55) });
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 22 * 60, 23 * 60 + 45);
+  });
+
+  it("laat een bereik vallen als de knop is losgelaten waar de kolom het niet hoorde", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60), buttons: 1 });
+    expect(screen.getByText(toonBereik(9 * 60, 10 * 60 + 15))).toBeInTheDocument();
+
+    // The next move says no button is down: the release went somewhere else (a context menu, another window).
+    fireEvent.pointerMove(kolom(), { clientY: y(11 * 60), buttons: 0 });
+    expect(screen.queryByText(toonBereik(9 * 60, 10 * 60 + 15))).not.toBeInTheDocument();
+
+    // So a later release on this column, such as the end of a block drag dropped here, finishes nothing.
+    fireEvent.pointerUp(kolom(), { clientY: y(11 * 60) });
+    expect(gevraagd).not.toHaveBeenCalled();
+  });
+
+  it("hoort een klik zonder indrukken ervoor, ook na een klik met de muis", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // A mouse click: answered on release, and the click that follows it is not asked a second time.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerUp(kolom(), { clientY: y(9 * 60) });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(9 * 60) });
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+
+    // A click with no press before it (some assistive technology sends those) is still heard, at its own quarter.
+    fireEvent.click(kolom(), { detail: 1, clientY: y(14 * 60 + 10) });
+    expect(gevraagd).toHaveBeenCalledTimes(2);
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 14 * 60);
+  });
+
+  it("beslist klik of bereik op hetzelfde kwartier, ook in het laatste uur", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // A press at 23:40 with a tremble inside its own quarter is a click: 23:00, the latest a click may start, with no
+    // end, so the activiteit keeps its own length.
+    fireEvent.pointerDown(kolom(), { clientY: y(23 * 60 + 40) });
+    fireEvent.pointerMove(kolom(), { clientY: y(23 * 60 + 41), buttons: 1 });
+    fireEvent.pointerUp(kolom(), { clientY: y(23 * 60 + 41) });
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 23 * 60);
+
+    // And a real drag up out of that quarter is a stretch, however late it starts.
+    fireEvent.pointerDown(kolom(), { clientY: y(23 * 60 + 40) });
+    fireEvent.pointerMove(kolom(), { clientY: y(23 * 60 + 5), buttons: 1 });
+    fireEvent.pointerUp(kolom(), { clientY: y(23 * 60 + 5) });
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 23 * 60, 23 * 60 + 45);
+  });
+
+  it("laat een bereik vallen als de kolom de aanwijzer kwijtraakt, maar niet na een gewone loslating", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // Capture lost in the middle of a stretch: whatever release comes later finishes nothing.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60), buttons: 1 });
+    fireEvent.lostPointerCapture(kolom(), { bubbles: true });
+    expect(screen.queryByText(toonBereik(9 * 60, 10 * 60 + 15))).not.toBeInTheDocument();
+    fireEvent.pointerUp(kolom(), { clientY: y(10 * 60) });
+    expect(gevraagd).not.toHaveBeenCalled();
+
+    // A normal release lets capture go right after it and before its click: still exactly one question.
+    fireEvent.pointerDown(kolom(), { clientY: y(13 * 60) });
+    fireEvent.pointerUp(kolom(), { clientY: y(13 * 60) });
+    fireEvent.lostPointerCapture(kolom(), { bubbles: true });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(13 * 60) });
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 13 * 60);
+  });
+
+  it("laat een druk die geen eigen klik krijgt er later geen inslikken", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // A right press opens a context menu and is never followed by a click on this column.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60), button: 2 });
+    fireEvent.pointerUp(kolom(), { clientY: y(9 * 60), button: 2 });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(14 * 60 + 10) });
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 14 * 60);
+
+    // Nor is a stretch whose release went somewhere else.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60), buttons: 1 });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60), buttons: 0 });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(15 * 60 + 10) });
+    expect(gevraagd).toHaveBeenCalledTimes(2);
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 15 * 60);
+  });
+
+  it("toont pas een bereik als de druk zijn eerste kwartier verlaat", () => {
+    toon([dag()]);
+
+    // Pressed at 9:00 and trembling inside that quarter: still a click, which gets the activiteit's own length, so no
+    // stretch is promised on screen.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 10), buttons: 1 });
+    expect(screen.queryByText(/^\d{1,2}:\d{2} - \d{1,2}:\d{2}$/)).not.toBeInTheDocument();
+
+    // Into the next quarter, and the stretch appears: both quarters, 9:00 to 9:30.
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 20), buttons: 1 });
+    expect(screen.getByText(toonBereik(9 * 60, 9 * 60 + 30))).toBeInTheDocument();
   });
 });

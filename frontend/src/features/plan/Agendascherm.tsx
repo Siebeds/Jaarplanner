@@ -36,6 +36,7 @@ import { Maandrooster } from "./Maandrooster";
 import { Tijdraster, type Ficheblokje, type Hoekblokje, type Tijddoel } from "./Tijdraster";
 import { STANDAARDBEGIN, alsTijd, minuten, toonTijd } from "./tijd";
 import { beginSleep, doelTijd, eindigSleep, leesKolomId } from "./tijdsleep";
+import { eindeVan, type Gevraagdeplek } from "./gevraagdeplek";
 import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Dagonderschrift } from "./Dagonderschrift";
 import { weekInBeeld } from "./weekInBeeld";
@@ -100,11 +101,12 @@ export function Agendascherm() {
   const { klasId, klas, schooljaarId } = useActieveSelectie();
 
   // The day AND the minute of it the picker was opened from (ADR-0028). The month view has no hours to press, so
-  // it passes the ordinary start of a morning and the teacher drags the block from there.
-  const [kiezer, setKiezer] = useState<{ datum: string; begin: number } | null>(null);
+  // it passes the ordinary start of a morning and the teacher drags the block from there. An `einde` means the
+  // teacher dragged out the stretch in the time grid (TB-014), and that stretch wins over the activiteit's length.
+  const [kiezer, setKiezer] = useState<Gevraagdeplek | null>(null);
   const [geopend, setGeopend] = useState<{ activiteit: GeplandeActiviteit; datum: string } | null>(null);
-  // Making an activiteit that does not exist yet, for the day and the hour the picker was on.
-  const [nieuw, setNieuw] = useState<{ datum: string; begin: number } | null>(null);
+  // Making an activiteit that does not exist yet, for the day and the hour (or the stretch) the picker was on.
+  const [nieuw, setNieuw] = useState<Gevraagdeplek | null>(null);
   const [sleepNaam, setSleepNaam] = useState<string | null>(null);
   // Why a drop was refused before any request went out. Cleared at the start of the next drag, so it
   // describes the last thing she tried rather than accumulating.
@@ -808,7 +810,7 @@ export function Agendascherm() {
                 fichemomenten={ficheblokjes}
                 reeksenPerDag={stroken}
                 vakken={vakken}
-                onVoegToe={(datum, tijd) => setKiezer({ datum, begin: tijd })}
+                onVoegToe={(datum, tijd, einde) => setKiezer({ datum, begin: tijd, einde })}
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
                 onOpenHoek={(plaatsingId) => {
                   verwijderPlaatsing.reset();
@@ -849,6 +851,7 @@ export function Agendascherm() {
       <Activiteitkiezer
         datum={kiezer?.datum ?? null}
         tijd={kiezer ? toonTijd(kiezer.begin) : undefined}
+        eindtijd={kiezer?.einde !== undefined ? toonTijd(kiezer.einde) : undefined}
         klasId={klasId}
         themaIds={kiezer ? themaIdsOpDag(vakken, kiezer.datum) : []}
         bezig={bezig}
@@ -860,10 +863,8 @@ export function Agendascherm() {
               activiteitId,
               datum: kiezer.datum,
               begin: alsTijd(kiezer.begin),
-              // The activiteit's own default length decides where the block ends; the teacher drags the edge from
-              // there. A fixed length here would make every activiteit the same one, which is what the length on
-              // the activiteit exists to avoid.
-              einde: alsTijd(kiezer.begin + duur),
+              // A stretch she dragged out wins over the activiteit's own length (`eindeVan` says why).
+              einde: alsTijd(eindeVan(kiezer, duur)),
             },
             { onSuccess: () => setKiezer(null) },
           );
@@ -992,9 +993,10 @@ export function Agendascherm() {
         // another day without a remount would offer the previous day's half-typed activiteit.
         // Not "leeg": the sheet beside this one uses that fallback, and two siblings sharing a key is
         // a React warning and, one refactor later, two sheets sharing state.
-        key={nieuw ? `nieuw-${nieuw.datum}-${nieuw.begin}` : "geen-nieuwe"}
+        key={nieuw ? `nieuw-${nieuw.datum}-${nieuw.begin}-${nieuw.einde ?? "eigen"}` : "geen-nieuwe"}
         datum={nieuw?.datum ?? null}
         tijd={nieuw ? toonTijd(nieuw.begin) : undefined}
+        eindtijd={nieuw?.einde !== undefined ? toonTijd(nieuw.einde) : undefined}
         klasId={klasId}
         // The same day scoping the picker uses, so the sheet cannot offer a subthema of a thema that
         // the list the teacher just came from did not show.
@@ -1012,7 +1014,8 @@ export function Agendascherm() {
               activiteitId,
               datum: nieuw.datum,
               begin: alsTijd(nieuw.begin),
-              einde: alsTijd(nieuw.begin + duur),
+              // The stretch she dragged out, when she did; the new activiteit's own length otherwise.
+              einde: alsTijd(eindeVan(nieuw, duur)),
             },
             { onSuccess: () => setNieuw(null) },
           );

@@ -33,6 +33,7 @@ import { STANDAARDDUUR } from "./tijd";
 export function Nieuweactiviteitblad({
   datum,
   tijd,
+  eindtijd,
   klasId,
   themaIds,
   /** The subthema running on this day, if one is. Used as the default, never as the only option. */
@@ -45,6 +46,8 @@ export function Nieuweactiviteitblad({
   datum: string | null;
   /** The time the new activiteit will start at, as a teacher reads it ("9:15"). */
   tijd?: string;
+  /** The time it will end at, when the teacher dragged out a stretch; undefined when its own length decides. */
+  eindtijd?: string;
   klasId: string | null;
   themaIds: string[];
   voorstelSubthemaId?: string;
@@ -158,7 +161,9 @@ export function Nieuweactiviteitblad({
           <p className="mt-3 text-meta text-inkt-zacht">
             {tijd === undefined
               ? t("periode.enOpDeze", { dag: volleDag(datum) })
-              : t("tijdraster.enOpDitUur", { dag: volleDag(datum), tijd })}
+              : eindtijd === undefined
+                ? t("tijdraster.enOpDitUur", { dag: volleDag(datum), tijd })
+                : t("tijdraster.enOpDitBereik", { dag: volleDag(datum), begin: tijd, einde: eindtijd })}
           </p>
 
           {/* The activiteit was made and the placement was refused, so the two halves of Bewaren
