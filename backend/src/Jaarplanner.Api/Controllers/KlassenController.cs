@@ -1,4 +1,6 @@
 using Jaarplanner.Application.Planning.Beheer;
+using Jaarplanner.Application.Toegang;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -10,6 +12,11 @@ namespace Jaarplanner.Api.Controllers;
 /// Without this endpoint a fresh deployment had no way to create a class, so every class-scoped
 /// subthema/activiteit was rejected or silently dropped on import, and E3's per-class jaarplan
 /// generation had nothing to generate for.
+/// </para>
+/// <para>
+/// <b>Rights (E6-02):</b> creating, changing and deleting a klas is the row <c>Beheer</c>, directie only (ADR-0030 R2,
+/// R3, R16). That includes the klas's jaarfase, which the klaskiezer lets a teacher set: since slice 3 only directie
+/// may send it, and the frontend has to hide the field for anyone else (slice 4). Reads stay open (I9).
 /// </para>
 /// </summary>
 [ApiController]
@@ -34,6 +41,7 @@ public sealed class KlassenController : ControllerBase
     /// class to another year. Create the school year first via <c>POST /api/schooljaren</c>.
     /// </summary>
     [HttpPost("/api/schooljaren/{schooljaarId:guid}/klassen")]
+    [Authorize(Policy = Rechtenmatrix.Beleid.Beheer)]
     public async Task<ActionResult<KlasWeergave>> Maak(
         Guid schooljaarId,
         [FromBody] KlasCreatie creatie,
@@ -44,10 +52,12 @@ public sealed class KlassenController : ControllerBase
     }
 
     [HttpPut("{klasId:guid}")]
+    [Authorize(Policy = Rechtenmatrix.Beleid.Beheer)]
     public async Task<ActionResult<KlasWeergave>> Wijzig(Guid klasId, [FromBody] KlasCreatie wijziging, CancellationToken cancellationToken) =>
         Ok(await _service.WijzigKlasAsync(klasId, wijziging, cancellationToken));
 
     [HttpDelete("{klasId:guid}")]
+    [Authorize(Policy = Rechtenmatrix.Beleid.Beheer)]
     public async Task<IActionResult> Verwijder(Guid klasId, CancellationToken cancellationToken)
     {
         await _service.VerwijderKlasAsync(klasId, cancellationToken);

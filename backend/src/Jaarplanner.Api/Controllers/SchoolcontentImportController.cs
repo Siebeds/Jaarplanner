@@ -1,6 +1,9 @@
 using Jaarplanner.Api.Infrastructure;
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Schoolcontent.Import;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Infrastructure.SchoolcontentImport;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -37,15 +40,18 @@ public sealed class SchoolcontentImportController : ControllerBase
     private readonly ISchoolcontentParser _parser;
     private readonly ISchoolcontentImportService _importService;
     private readonly ISchoolcontentTemplateGenerator _templateGenerator;
+    private readonly IAuthorizationService _autorisatie;
 
     public SchoolcontentImportController(
         ISchoolcontentParser parser,
         ISchoolcontentImportService importService,
-        ISchoolcontentTemplateGenerator templateGenerator)
+        ISchoolcontentTemplateGenerator templateGenerator,
+        IAuthorizationService autorisatie)
     {
         _parser = parser;
         _importService = importService;
         _templateGenerator = templateGenerator;
+        _autorisatie = autorisatie;
     }
 
     /// <summary>
@@ -91,6 +97,7 @@ public sealed class SchoolcontentImportController : ControllerBase
 
     /// <summary>Parses and diffs the upload without writing anything (FR-1.3 preview).</summary>
     [HttpPost("voorbeeld")]
+    [Authorize(Policy = Rechtenmatrix.Beleid.SchoolcontentImporteren)]
     [RequestSizeLimit(MaxBestandsgrootteBytes)]
     public Task<ActionResult<ImportAntwoord>> Voorbeeld(
         [FromForm] SchoolcontentImportInvoer invoer,
@@ -99,6 +106,7 @@ public sealed class SchoolcontentImportController : ControllerBase
 
     /// <summary>Parses and commits the upload (FR-1.4).</summary>
     [HttpPost]
+    [Authorize(Policy = Rechtenmatrix.Beleid.SchoolcontentImporteren)]
     [RequestSizeLimit(MaxBestandsgrootteBytes)]
     public Task<ActionResult<ImportAntwoord>> Importeer(
         [FromForm] SchoolcontentImportInvoer invoer,
@@ -110,6 +118,15 @@ public sealed class SchoolcontentImportController : ControllerBase
         bool toepassen,
         CancellationToken cancellationToken)
     {
+        // R35 (E6-02): only directie may switch on deleting human decisions, on the preview as well as on the apply, so
+        // a themabeheer holder cannot run it either way. Asked before the file is read, because the answer does not
+        // depend on the file. The route's own row (SchoolcontentImporteren) was already asked by the attribute.
+        if (invoer.MenselijkeBeslissingenVerwijderen
+            && !await _autorisatie.MagAsync(User, HttpContext, Rechtenmatrix.Beleid.MenselijkeBeslissingenVerwijderen))
+        {
+            return Forbid();
+        }
+
         if (invoer.Bestand is null || invoer.Bestand.Length == 0)
         {
             return BadRequest(Probleem("Er is geen bestand meegestuurd."));

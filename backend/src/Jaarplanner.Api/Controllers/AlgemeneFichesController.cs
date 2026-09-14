@@ -1,4 +1,6 @@
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Application.Toegang;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -7,6 +9,12 @@ namespace Jaarplanner.Api.Controllers;
 /// Thin REST controller (Art. VIII) for a class's algemene fiches and their goal links (owner, 2026-09-11). All logic
 /// lives in <see cref="IAlgemeneFicheBeheerService"/>. Shaped like <see cref="HoekenController"/>: the klas travels in
 /// the route for reads and creates, and everything after that keys on the fiche alone.
+/// <para>
+/// <b>Rights (E6-02):</b> every write, the goal links included, is the klas's planning, <c>KlasplanningBewerken</c>
+/// (directie and the klas's own leerkrachten; ADR-0030 §3 names "algemene fiches" in that row; R7, R15, I21). A fiche
+/// belongs to one klas and its links count for that klas's dekking only, so R19, which is about the goal links on
+/// <i>shared</i> activiteiten, does not reach them.
+/// </para>
 /// </summary>
 [ApiController]
 public sealed class AlgemeneFichesController : ControllerBase
@@ -20,6 +28,7 @@ public sealed class AlgemeneFichesController : ControllerBase
         Ok(await _service.HaalFichesOpAsync(klasId, cancellationToken));
 
     [HttpPost("/api/klassen/{klasId:guid}/algemene-fiches")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<AlgemeneFicheWeergave>> Maak(
         Guid klasId,
         [FromBody] AlgemeneFicheInvoer invoer,
@@ -30,6 +39,7 @@ public sealed class AlgemeneFichesController : ControllerBase
     }
 
     [HttpPut("/api/algemene-fiches/{ficheId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFiche, "ficheId")]
     public async Task<ActionResult<AlgemeneFicheWeergave>> Wijzig(
         Guid ficheId,
         [FromBody] AlgemeneFicheInvoer invoer,
@@ -37,6 +47,7 @@ public sealed class AlgemeneFichesController : ControllerBase
         Ok(await _service.WijzigFicheAsync(ficheId, invoer, cancellationToken));
 
     [HttpDelete("/api/algemene-fiches/{ficheId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFiche, "ficheId")]
     public async Task<IActionResult> Verwijder(Guid ficheId, CancellationToken cancellationToken)
     {
         await _service.VerwijderFicheAsync(ficheId, cancellationToken);
@@ -45,6 +56,7 @@ public sealed class AlgemeneFichesController : ControllerBase
 
     /// <summary>Links a goal as a <c>manueel</c> link. Answers with the whole fiche, goal list and all.</summary>
     [HttpPost("/api/algemene-fiches/{ficheId:guid}/doelkoppelingen")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFiche, "ficheId")]
     public async Task<ActionResult<AlgemeneFicheWeergave>> KoppelAanDoel(
         Guid ficheId,
         [FromBody] ThemasController.DoelKoppelingInvoer invoer,
@@ -52,6 +64,7 @@ public sealed class AlgemeneFichesController : ControllerBase
         Ok(await _service.KoppelAanDoelAsync(ficheId, invoer.LeerplandoelCode, cancellationToken));
 
     [HttpDelete("/api/algemene-fiches/{ficheId:guid}/doelkoppelingen/{koppelingId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFiche, "ficheId")]
     public async Task<ActionResult<AlgemeneFicheWeergave>> Ontkoppel(
         Guid ficheId,
         Guid koppelingId,

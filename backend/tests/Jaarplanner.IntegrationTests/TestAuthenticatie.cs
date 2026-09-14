@@ -100,5 +100,12 @@ public static class TestAuthenticatie
                 Schema);
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, Schema)));
         }
+
+        /// <summary>
+        /// A rights refusal answers exactly as the cookie does in production (E6-02 slice 3, fix round 1), so a test can
+        /// tell an authorisation 403 from any other 403 (the anti-forgery check, a wizard run's state) by its detail.
+        /// </summary>
+        protected override Task HandleForbiddenAsync(AuthenticationProperties properties) =>
+            Aanmelding.SchrijfGeenToegangAsync(Context);
     }
 }

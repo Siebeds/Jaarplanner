@@ -1,6 +1,8 @@
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Planning.Rooster;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Planning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -82,7 +84,9 @@ public sealed class SchooljarenController : ControllerBase
     /// <c>Vakantie</c> (breaks a planning period) or <c>VrijeDag</c> (does not) — data the school owns, never a
     /// threshold in code (ADR-0020 §5).
     /// </summary>
+    /// <remarks>Directie only (E6-02: the row <c>Beheer</c>, ADR-0030 R2, R3, R16).</remarks>
     [HttpPost]
+    [Authorize(Policy = Rechtenmatrix.Beleid.Beheer)]
     public async Task<ActionResult<SchooljaarWeergave>> Maak(
         [FromBody] SchooljaarCreatie creatie,
         CancellationToken cancellationToken)

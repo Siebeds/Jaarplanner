@@ -39,8 +39,11 @@ public sealed class RechtenmatrixTests
         [Rechtenmatrix.Beleid.Beheer] = ["Directie"],
         [Rechtenmatrix.Beleid.MenselijkeBeslissingenVerwijderen] = ["Directie"],
         [Rechtenmatrix.Beleid.ThemaBewerken] = ["Directie", "TB"],
+        // Without a Themabron only directie; themabeheer on an empty thema is its own test below (I26).
+        [Rechtenmatrix.Beleid.ThemaVerwijderen] = ["Directie"],
         [Rechtenmatrix.Beleid.SchoolcontentImporteren] = ["Directie", "TB"],
         [Rechtenmatrix.Beleid.ThemaOpbouw] = ["Directie", "TB"],
+        [Rechtenmatrix.Beleid.Wizardinhoud] = ["Directie", "TB"],
         [Rechtenmatrix.Beleid.DoelsuggestiesMaken] = ["Directie", "TB"],
         [Rechtenmatrix.Beleid.DoelsuggestiesBeoordelen] = ["Directie", "TB"],
         [Rechtenmatrix.Beleid.SubthemaBeheren] = ["Directie", "HL"],
@@ -158,6 +161,37 @@ public sealed class RechtenmatrixTests
         Assert.True(Rechtenmatrix.StaatToe(samen, Rechtenmatrix.KlasplanningBewerken, new Klasplanning(EigenKlas)));
         Assert.True(Rechtenmatrix.StaatToe(samen, Rechtenmatrix.ThemaBewerken, bron: null));
         Assert.False(Rechtenmatrix.StaatToe(samen, Rechtenmatrix.Curriculumbeheer, bron: null));
+    }
+
+    // --- Deleting a thema (I26): directie always; themabeheer only while it holds nothing but its own open run's items. ---
+
+    [Fact]
+    public void Themabeheer_verwijdert_een_thema_alleen_zonder_andermans_inhoud()
+    {
+        var zonder = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: false, GekoppeldeLeeftijden: []);
+        var met = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: true, GekoppeldeLeeftijden: []);
+
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, zonder));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, met));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.ThemaVerwijderen, met));
+        foreach (var relatie in new[] { "HL", "LK leeftijd", "LK eigen", "Ander" })
+        {
+            Assert.False(Rechtenmatrix.StaatToe(Relaties[relatie], Rechtenmatrix.ThemaVerwijderen, zonder));
+        }
+
+        // Q4 (a): a goal link on an activiteit of the open run protects the thema, unless themabeheer may also link goals
+        // at that leeftijd, asked through the one DoelenKoppelen rule.
+        var gekoppeld = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: false, GekoppeldeLeeftijden: [Leeftijd]);
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        Assert.True(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, [Leeftijd], [], []), Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        Assert.False(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, ["L1"], [], []), Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["HL"], Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        var tweeLeeftijden = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: false, GekoppeldeLeeftijden: [Leeftijd, "L1"]);
+        Assert.False(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, [Leeftijd], [], []), Rechtenmatrix.ThemaVerwijderen, tweeLeeftijden));
+
+        // The column needs the resource: themabeheer through an attribute (no Themabron) does not pass.
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, bron: null));
     }
 
     // --- Deleting an activiteit: the maker while no goal is linked (R25, R33); the hoofdleerkracht always. ---

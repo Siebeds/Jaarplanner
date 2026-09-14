@@ -1,4 +1,6 @@
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Planning.Weekplanning;
+using Jaarplanner.Application.Toegang;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -16,8 +18,11 @@ namespace Jaarplanner.Api.Controllers;
 /// a 400 and <c>SchoolcontentNietGevondenFout</c> a 404, both through the exception handlers.
 /// </para>
 /// <para>
-/// <b>Unauthenticated, like the other thirteen controllers</b> — filed as E7-11, not fixed here. Stated rather than left
-/// implicit, because this one accepts writes that reshape a teacher's week.
+/// <b>Rights (E6-02 slice 3):</b> every write is the klas's planning, <c>KlasplanningBewerken</c> (directie and the
+/// klas's own leerkrachten; ADR-0030 R7, R15, I21), against the klas in the route. The service finds a plaatsing only
+/// inside that klas's plan, so a route cannot reach another klas's week. Reads stay open (I9).
+/// <i>Until slice 3 this paragraph said the controller was unauthenticated, like the other thirteen; E6-01 gave every
+/// route a session and this story gave its writes a row.</i>
 /// </para>
 /// </summary>
 [ApiController]
@@ -55,6 +60,7 @@ public sealed class WeekplanningController : ControllerBase
     /// </para>
     /// </summary>
     [HttpPost]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<Weekplanningweergave>> PlanActiviteit(
         Guid klasId,
         [FromBody] Dagplanning planning,
@@ -85,6 +91,7 @@ public sealed class WeekplanningController : ControllerBase
     // absolute one, so the endpoint existed and nothing reached it — a 404 the browser pass caught and no test would
     // have, which is the reachable-vs-tested gap this repo has recorded five times.
     [HttpPost("~/api/klassen/{klasId:guid}/jaarplan/subthemaperiodes")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<Weekplanningweergave>> PlaatsSubthema(
         Guid klasId,
         [FromBody] Subthemaperiode periode,
@@ -102,6 +109,7 @@ public sealed class WeekplanningController : ControllerBase
     /// </para>
     /// </summary>
     [HttpPut("{plaatsingId:guid}/dag")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<Weekplanningweergave>> VerplaatsActiviteit(
         Guid klasId,
         Guid plaatsingId,
@@ -124,6 +132,7 @@ public sealed class WeekplanningController : ControllerBase
     /// </para>
     /// </summary>
     [HttpDelete("{plaatsingId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<Weekplanningweergave>> VerwijderActiviteitplaatsing(
         Guid klasId,
         Guid plaatsingId,

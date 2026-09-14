@@ -299,13 +299,15 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         ArgumentNullException.ThrowIfNull(creatie);
         var thema = await LaadThemaAsync(themaId, cancellationToken);
-        VereisLeeftijd(creatie.Leeftijd);
+        // Nullable at binding (E6-02 slice 3 fix round 1), so a missing leeftijd reaches the Dutch refusal as a blank one.
+        var leeftijd = creatie.Leeftijd ?? string.Empty;
+        VereisLeeftijd(leeftijd);
 
         Subthema subthema;
         try
         {
             // The domain ctor enforces the structural scope: a non-blank leeftijd (Art. IX.2).
-            subthema = thema.VoegSubthemaToe(creatie.Naam, creatie.DuurWeken, creatie.Leeftijd);
+            subthema = thema.VoegSubthemaToe(creatie.Naam, creatie.DuurWeken, leeftijd);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -329,14 +331,16 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         ArgumentNullException.ThrowIfNull(wijziging);
         var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
-        VereisLeeftijd(wijziging.Leeftijd);
+        // Nullable at binding, as on the create: a missing leeftijd is refused as a blank one.
+        var leeftijd = wijziging.Leeftijd ?? string.Empty;
+        VereisLeeftijd(leeftijd);
 
         try
         {
             subthema.WijzigNaam(wijziging.Naam);
             subthema.WerkBasisGegevensBij(wijziging.DuurWeken);
             // Re-scoping stays structural: a subthema can never become ageless (Art. IX.2).
-            subthema.WijzigScope(wijziging.Leeftijd);
+            subthema.WijzigScope(leeftijd);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -904,8 +908,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         if (Jaarfasen.LeesLeeftijd(leeftijd) is null)
         {
-            throw new SchoolcontentValidatieFout(
-                $"'{leeftijd}' is geen geldige leeftijd. Kies er een uit: {string.Join(", ", Jaarfasen.Alle)}.");
+            throw SchoolcontentValidatieFout.OngeldigeLeeftijd(leeftijd);
         }
     }
 

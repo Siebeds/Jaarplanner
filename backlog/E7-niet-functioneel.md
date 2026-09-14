@@ -73,6 +73,8 @@
 
   Nothing ends them earlier. An aanstelling or klastoewijzing of a past schooljaar stops granting rights on shared content when that schooljaar ends (R20), but stays stored until the klas, schooljaar or gebruiker is removed. **No route removes a gebruiker or a schooljaar yet** (the gebruiker delete is E6-04's, built in slice 2 of the combined E6-02/E6-04 build; the schooljaar delete is E6-03's), so today only a klastoewijzing can go, with its klas, and every other row here is kept indefinitely. Whether that is the retention the school wants is the register's question, not the code's.
 
+  *Carry-forward (E6-02 slice 3, 2026-09-14):* one more staff fact. `wizardruns.GestartDoorId` records which gebruiker started a thema-opbouw wizard run ([ADR-0030](../docs/adr/0030-rollen-en-rechten-in-de-app.md) R32, I24; migration `Wizardrun`), and `GET /api/thema-opbouw/wizardruns/{runId}` returns it to every signed-in gebruiker. Staff data, so Art. VI.2 allows it, and the register needs an entry. *Retention, as coded:* the column is set to null when the gebruiker is removed (FK `SET NULL`), and the run row itself is deleted with its thema (cascade). Nothing ends it earlier: a finished or closed run keeps its starter. The maker of an activiteit the wizard creates is the maker entry above (I18).
+
 - [ ] **E7-07 — Browser support (NFR-7)**
   Recent Edge, Chrome, Firefox, Safari.
   *Done when:* smoke tests pass on all four.

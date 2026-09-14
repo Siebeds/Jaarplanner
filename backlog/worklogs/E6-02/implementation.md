@@ -1295,3 +1295,527 @@ Development:
 - IntegrationTests, filtered to the two touched suites (`RechtenEndpointsTests`, `CurriculumbeheerAutorisatieTests`)
   against the local `jaarplanner-db`: 21 passed.
 - No migration or frontend file changed.
+## Code slice 3 — enforcement on every route, wizard write actions
+
+- **FR / Article:** FR-3.1, FR-4.3, FR-7.2, FR-10, FR-12.1/12.2; Art. VI.1 (ratified 2026-09-14) with defaults I9, I13,
+  I15–I25; Art. IX.2 (`Activiteit` maker; a move keeps its links and stays at its leeftijd); Art. IV.1, IV.8;
+  ADR-0030 §2, §3 (footnotes ¹–⁵), §4 (b), (c), (e); ADR-0011 §2.
+- **Branch:** `story/E6-02-afdwingen`, from `feature/e6-rollen-rechten` at `0073bd7`. Not pushed, no PR.
+- **Scope held:** no file under `frontend/`, no `nl.json`, no gebruikers/klastoewijzing/aanstelling endpoints (slice 2),
+  nothing personal (R6, E6-10). One EF migration, `20260914114237_Wizardrun`.
+
+### How a route names its row
+
+- **Resource-free row** (directie, themabeheer): `[Authorize(Policy = Rechtenmatrix.Beleid.X)]`, as slice 1 set out.
+- **Resource row**: `[RechtOp(Rechtenmatrix.Beleid.X, Rechtbron.Y, "routeId")]`
+  (`Api/Infrastructure/Autorisatie/RechtOpAttribute.cs`). It is slice 1's `IRechtenbronnen` + `MagAsync` + `Forbid()`,
+  run as an MVC authorisation filter instead of inside the action.
+  - **Why, a deliberate deviation from the brief's wording:** MVC binds and validates a body before an action runs.
+    A check inside the action therefore answers a caller without the right with a 400 for a malformed body, and the
+    validation result is what they learn. As a filter it runs before binding, like the `[Authorize]` rows. It also
+    puts each route's row on the route, where the sweep and a reader can see it.
+- **A resource taken from the body** is checked inside the action, after binding. There are three:
+  - the body leeftijd of a subthema create;
+  - the new leeftijd of a re-scope;
+  - the goal codes of an activiteit create.
+- **A body leeftijd** goes through `Leeftijdsinhoud.UitInvoer`. A `null` is refused before the check, with the write's
+  own 400 and sentence: `SchoolcontentValidatieFout.OngeldigeLeeftijd`, the one sentence that `VereisLeeftijd` now
+  throws too. It never reaches the write unchecked, and it never skips the check (slice-1 audit round 3, finding A;
+  round 4 note). The wizard's two leeftijd inputs do the same before the run is read.
+
+### 404 vs 403 (documented choice)
+
+- **Resource row: 404 before 403.** Resource lookup first, then authorisation (slice 1's pattern). The answer depends
+  on the resource, so it cannot be given for one that does not exist. `RechtOp` throws the service's own
+  `SchoolcontentNietGevondenFout` with the service's own sentence, so the shape and wording match.
+- **Resource-free row: 403 before any lookup,** because its answer does not depend on the resource. A non-TB caller
+  deleting a thema id that does not exist gets 403.
+- **Body-derived resource:** the body's 400 comes first when the resource cannot be built, then 403. A missing parent
+  (the thema of a subthema create) is the service's 404 after that, because that row's answer does not depend on it.
+- **Wizard:** 403 for a caller outside the row, then a body leeftijd's 400, then:
+  - 404 for a run that does not exist;
+  - 403 for a run that has ended;
+  - 404 for an item that does not exist;
+  - 403 for an item the run did not create.
+- Anonymous callers still get 401 from the fallback policy before any of this (`ElkeRouteVraagtEenSessieTests`
+  unchanged and green).
+
+### Route → row table (every endpoint in the endpoint data source)
+
+**Writes.** "Attr" = `[Authorize(Policy)]`; "RechtOp(kind)" = resource filter on that kind; "in action" = checked after
+binding.
+
+| Route | §3 row (policy) | How |
+| --- | --- | --- |
+| `POST api/schooljaren` | Beheer (R2, R3, R16) | Attr |
+| `POST api/schooljaren/{schooljaarId}/klassen` | Beheer | Attr |
+| `PUT api/klassen/{klasId}` (the klaskiezer's jaarfase travels here) | Beheer | Attr |
+| `DELETE api/klassen/{klasId}` | Beheer | Attr |
+| `POST api/opstap-import`, `…/voorbeeld`, `…/minimumdoelen(/voorbeeld)`, `…/leerplandoelen(/voorbeeld)`; `GET api/opstap-import/stand` | Curriculumbeheer (R3; ADR-0022) | Attr, slice 1, unchanged |
+| `POST api/themas`; `PUT`, `DELETE api/themas/{themaId}` | ThemaBewerken (R4, R18) | Attr (delete: see "not clean" 1) |
+| `POST api/themas/{themaId}/themadoelen`; `DELETE …/themadoelen/{themadoelId}` | ThemaBewerken | Attr |
+| `POST api/schoolcontent-import/voorbeeld`, `POST api/schoolcontent-import` | SchoolcontentImporteren (R9, R27, R34), plus MenselijkeBeslissingenVerwijderen (R35) when the form option is true | Attr + in action, before the file is read |
+| `POST api/themas/{themaId}/doelsuggesties/genereer` | DoelsuggestiesMaken (R14) | Attr |
+| `PUT api/themas/{themaId}/doelsuggesties/{id}/status`, `…/{id}/leerplandoel` | DoelsuggestiesBeoordelen (R14) | Attr |
+| `POST api/thema-opbouw/themadoel-suggesties`, `…/subdoel-suggesties` | ThemaOpbouw (R29) | Attr |
+| `POST api/thema-opbouw/wizardruns`; `POST …/{runId}/afronden`, `…/{runId}/sluiten` | ThemaOpbouw (R29) | Attr + run state (service) |
+| `POST …/wizardruns/{runId}/subthemas`; `PUT`, `DELETE …/{runId}/subthemas/{subthemaId}`; `POST …/subthemas/{subthemaId}/subdoelen`; `DELETE …/subdoelen/{subdoelId}`; `POST …/subthemas/{subthemaId}/activiteiten`; `PUT`, `DELETE …/{runId}/activiteiten/{activiteitId}` | **Wizardinhoud** (new row: R29, R32; I18, I22–I25) | Attr + run state (service); activiteit create with goal codes also DoelenKoppelen, in action |
+| `POST api/themas/{themaId}/subthemas` | SubthemaBeheren (R5, R21) at the body leeftijd | in action (UitInvoer, then MagAsync) |
+| `PUT api/subthemas/{subthemaId}` | SubthemaBeheren at the stored and at the new leeftijd (I13); every field of the payload is this row (I16) | RechtOp(Subthema) + in action |
+| `DELETE api/subthemas/{subthemaId}` | SubthemaBeheren | RechtOp(Subthema) |
+| `POST api/subthemas/{subthemaId}/onderzoeksvragen`; `PUT`, `DELETE …/onderzoeksvragen/{ovId}` | SubthemaBeheren (I16) | RechtOp(Subthema) |
+| `POST api/subthemas/{subthemaId}/doelkoppelingen` (creates a subdoel); `DELETE …/subdoelen/{subdoelId}` | SubdoelenBeheren (R24) | RechtOp(Subthema) |
+| `POST api/subthemas/{subthemaId}/activiteiten` | GedeeldeActiviteitBewerken (R17, R23); plus DoelenKoppelen (R19) when the create carries goal codes | RechtOp(Subthema) + in action |
+| `PUT api/activiteiten/{activiteitId}`; `PUT …/{activiteitId}/onderzoeksvraag` | GedeeldeActiviteitBewerken (I15) | RechtOp(Activiteit) |
+| `DELETE api/activiteiten/{activiteitId}` | ActiviteitVerwijderen (R25, R26, R33) | RechtOp(Activiteit) |
+| `PUT api/activiteiten/{activiteitId}/subthema` (move) | ActiviteitVerplaatsen (R19, R23; I19); same leeftijd kept by the domain | RechtOp(Activiteit) |
+| `POST api/activiteiten/{activiteitId}/doelkoppelingen`; `DELETE …/doelkoppelingen/{koppelingId}` | DoelenKoppelen (R19) | RechtOp(Activiteit) |
+| `POST api/klassen/{klasId}/jaarplan/generatie`, `…/periodes/{blokStart}/generatie`, `…/plaatsingen`; `PUT …/plaatsingen/{id}/status`, `…/vergrendeling`, `…/blok`; `DELETE …/plaatsingen/{id}` (the five E3-07 routes as one unit, plus period regeneration and hand placement). Generatieparameters are saved through `POST …/generatie`: there is no route of their own. | KlasplanningBewerken (R7, R15; I21) | RechtOp(Klas) |
+| `POST api/klassen/{klasId}/jaarplan/weekplanning`; `PUT …/weekplanning/{plaatsingId}/dag`; `DELETE …/weekplanning/{plaatsingId}`; `POST api/klassen/{klasId}/jaarplan/subthemaperiodes` | KlasplanningBewerken | RechtOp(Klas) |
+| `POST api/klassen/{klasId}/hoeken`, `…/hoeken/overnemen` | KlasplanningBewerken | RechtOp(Klas) (overnemen writes into the route's klas only) |
+| `PUT`, `DELETE api/hoeken/{hoekId}` | KlasplanningBewerken | RechtOp(Hoek → its klas) |
+| `POST api/klassen/{klasId}/hoekplaatsingen` | KlasplanningBewerken | RechtOp(Klas) |
+| `DELETE api/hoekplaatsingen/{plaatsingId}`; `PUT …/momenten/{momentId}`, `…/uren`; `POST …/verrijkingen`; `PUT`, `DELETE …/verrijkingen/{verrijkingId}` | KlasplanningBewerken | RechtOp(Hoekplaatsing → its klas) |
+| `POST api/klassen/{klasId}/algemene-fiches` | KlasplanningBewerken | RechtOp(Klas) |
+| `PUT`, `DELETE api/algemene-fiches/{ficheId}`; `POST …/doelkoppelingen`; `DELETE …/doelkoppelingen/{koppelingId}` | KlasplanningBewerken (the fiche and its links are one klas's; see "not clean" 3) | RechtOp(AlgemeneFiche → its klas) |
+| `POST api/klassen/{klasId}/algemene-ficheplaatsingen` | KlasplanningBewerken | RechtOp(Klas) |
+| `DELETE api/algemene-ficheplaatsingen/{plaatsingId}`; `PUT …/momenten/{momentId}` | KlasplanningBewerken | RechtOp(AlgemeneFicheplaatsing → its klas) |
+| `POST api/afmelden` | anonymous (ADR-0031) | pinned by the session sweep |
+
+**Every child id under a klas route is scoped to that klas by its service**, so authorising on the route's klas is
+sound. Checked in the code:
+
+- `JaarplanGeneratieService` and `WeekplanningService` find a plaatsing only in `LaadJaarplanAsync(klasId)`.
+- `HoekplaatsingService` and `AlgemeneFicheplaatsingService` refuse a hoek or fiche of another klas.
+
+**Reads**, open to every signed-in gebruiker (I9 for plans, agenda, dekking and exports; school content, goals and
+reference data stay readable):
+
+- `GET api/ik`, `api/jaarfasen`;
+- `api/klassen(/{id})`, `api/schooljaren(/{id}, /{id}/rooster)`;
+- `api/themas(/{id}, /bibliotheek, /{id}/voor-klas/{klasId})`, `api/themas/{id}/doelsuggesties`,
+  `api/subthemas/voor-klas/{klasId}`;
+- `api/klassen/{id}/jaarplan(/parameters, /weekplanning)`, `…/dekking(/voortgang, /export)`, `…/hoeken`,
+  `…/hoekplaatsingen`, `…/algemene-fiches`, `…/algemene-ficheplaatsingen`;
+- `api/leerplandoelen(/facetten, /{code})`, `api/minimumdoelen(/facetten)`, the ongekoppelde-doelen list;
+- `api/schoolcontent-import/sjabloon` (a blank template);
+- `api/thema-opbouw/wizardruns/{runId}`.
+
+**Rows without a route.** `StreefwoordenschatAanpassen` (R28) has none: the streefwoordenschat is not yet a field of a
+subthema (E10-01 adds it). So no subthema update is "only the streefwoordenschat", and every `PUT api/subthemas/{id}`
+is the subthema row (I16).
+
+**Deliberately open writes: none.** §3 opens no write to every gebruiker. The one row that grants "Ander" a write is
+personal content (R6, unbuilt). The sweep's `OpenVoorIedereen` list is therefore empty, with that reason.
+
+### The wizard's write actions (R29, R32; I18, I22–I25) — contract
+
+- **Entity** `Domain/Schoolcontent/Wizardrun.cs`, stored in the tables `wizardruns` and `wizardrunitems`. Fields:
+  - `ThemaId`: unique, cascades with the thema;
+  - `GestartDoorId`: null when there is no row; SetNull when the gebruiker is removed;
+  - `GestartOp` and `LaatsteSchrijfactieOp`;
+  - `AfgerondOp` and `GeslotenOp`;
+  - `Aangemaakt`: an owned list of `(Soort: Subthema|Subdoel|Activiteit, ItemId)`, unique per run and id, with no FK
+    to the items (one column names three tables; a stale id can never match again).
+- **Open** = not finished, not closed, and `now < LaatsteSchrijfactieOp + 14 days`, read from `TimeProvider` on each
+  request. No background job. The fourteen days are a span between instants, so the school's zone does not enter it.
+  Every successful create, edit or delete moves `LaatsteSchrijfactieOp`.
+- **Routes** (`Api/Controllers/WizardrunsController.cs`, base `api/thema-opbouw/wizardruns`):
+
+  | Method + route | Body | Answer |
+  | --- | --- | --- |
+  | `POST /` | `ThemaCreatie` | 201 `WizardrunWeergave`; creates the thema and the run; starter = caller |
+  | `GET /{runId}` | – | 200 `WizardrunWeergave` (read) |
+  | `POST /{runId}/subthemas` | `SubthemaCreatie` (any leeftijd) | 201 `SubthemaWeergave` |
+  | `PUT /{runId}/subthemas/{subthemaId}` | `SubthemaWijzigingInvoer` | 200; only an item this run created (I25), re-scope included |
+  | `DELETE /{runId}/subthemas/{subthemaId}` | – | 204; refused (403) while the subthema holds a subdoel or activiteit the run did not create |
+  | `POST /{runId}/subthemas/{subthemaId}/subdoelen` | `{ leerplandoelCode }` | 200 `SubdoelWeergave`; subthema must be under the run's thema |
+  | `DELETE /{runId}/subthemas/{subthemaId}/subdoelen/{subdoelId}` | – | 204; own item only |
+  | `POST /{runId}/subthemas/{subthemaId}/activiteiten` | `ActiviteitCreatie` | 201 `ActiviteitWeergave`, maker = caller (I18); with goal codes also DoelenKoppelen |
+  | `PUT /{runId}/activiteiten/{activiteitId}` | `ActiviteitWijzigingInvoer` | 200; own item only |
+  | `DELETE /{runId}/activiteiten/{activiteitId}` | – | 204; own item only |
+  | `POST /{runId}/afronden`, `POST /{runId}/sluiten` | – | 200 `WizardrunWeergave` (`isOpen: false`) |
+
+  `WizardrunWeergave` = `{ id, themaId, gestartDoorId, gestartOp, laatsteSchrijfactieOp, sluitUiterlijkOp, afgerondOp,
+  geslotenOp, isOpen, aangemaakt: [{ soort, id }] }`.
+- **Refusals** are a `WizardrunWeigering`, answered 403 by `WizardrunExceptionHandler` with the title "Geen toegang"
+  and these Dutch details:
+  - "Deze wizard is afgelopen." (finished, closed and fourteen silent days share it; the sentence says only what all
+    three guarantee);
+  - "Dit subthema hoort niet bij het thema van deze wizard.";
+  - "Dit is niet in deze wizard aangemaakt.";
+  - the subthema-with-foreign-content sentence.
+
+  These refusals hold for directie too: the wizard action does not exist outside an open run, and directie does the
+  same on the ordinary routes.
+- **Writes go through `ISchoolcontentBeheerService`**, so every rule and sentence of a hand write applies. Each write
+  and the run's bookkeeping share one transaction (`WizardrunService`).
+- **Themabeheer on the ordinary subthema, subdoel and activiteit routes: 403** (I22), pinned. The maker's delete
+  right (R33) is not wizard-specific: `ActiviteitVerwijderen` admits the maker, themabeheer or not.
+- **No screen calls these yet.** E6-05 builds the wizard UI.
+
+### Files changed
+
+| File | Why |
+| --- | --- |
+| `Domain/Schoolcontent/Wizardrun.cs` (new) | The run, its items, `Wizarditemsoort`. |
+| `Application/Schoolcontent/Wizard/IWizardrunService.cs` (new) | Service contract, `WizardrunWeergave`, `WizardrunWeigering`. |
+| `Application/Schoolcontent/Beheer/SchoolcontentBeheerExceptions.cs` | `SchoolcontentValidatieFout.OngeldigeLeeftijd`, the one leeftijd refusal sentence. |
+| `Application/Toegang/Rechtenbronnen.cs` | `IRechtenbronnen` gains `VoorKlasAsync`, `VoorHoekAsync`, `VoorHoekplaatsingAsync`, `VoorAlgemeneFicheAsync`, `VoorAlgemeneFicheplaatsingAsync`. The `UitInvoer` doc block is untouched. |
+| `Application/Toegang/Rechtenmatrix.cs` | Row `Wizardinhoud`; "not expressed" paragraph updated (row 7 is now split into rights row + run state). |
+| `Infrastructure/Toegang/EfRechtenbronnen.cs` | The five klas resolvers (read-only projections). |
+| `Infrastructure/SchoolcontentBeheer/WizardrunService.cs` (new) | The wizard's writes. |
+| `Infrastructure/SchoolcontentBeheer/SchoolcontentBeheerService.cs` | `VereisLeeftijd` body throws the shared sentence (doc blocks untouched). |
+| `Infrastructure/Persistence/Configurations/WizardrunConfiguration.cs` (new), `AppDbContext.cs` | Mapping, `DbSet<Wizardrun>`. |
+| `Infrastructure/Persistence/Migrations/20260914114237_Wizardrun*` + snapshot | The one migration. |
+| `Infrastructure/DependencyInjection.cs` | `IWizardrunService`, in its own marked block beside the wizard's AI assist. |
+| `Api/Infrastructure/Autorisatie/RechtOpAttribute.cs` (new) | The resource-row filter and `Rechtbron`. |
+| `Api/Infrastructure/WizardrunExceptionHandler.cs` (new), `Api/Program.cs` | 403 mapping; stale "next slice" comment updated. |
+| `Api/Controllers/*` | Themas, Subthemas, Activiteiten, Doelsuggesties, ThemaOpbouw, SchoolcontentImport, Schooljaren, Klassen, Jaarplan, Weekplanning, Hoeken, Hoekplaatsingen, AlgemeneFiches, AlgemeneFicheplaatsingen: each write names its row. `WizardrunsController` (new). The weekplanning "unauthenticated" paragraph is struck and replaced. |
+| Tests | See below. |
+
+### Tests added
+
+- **`IntegrationTests/Postgres/ElkeWijzigendeRouteVraagtEenRechtTests`: the sweep.**
+  - Enumerates every non-anonymous POST/PUT/PATCH/DELETE from the endpoint data source and fills every route id with a
+    seeded resource: klas, schooljaar, thema, subthema, activiteit, hoek, hoekplaatsing, fiche, ficheplaatsing and
+    wizard run.
+  - Calls each as a seeded gebruiker with no right and expects 403.
+  - `OpenVoorIedereen` is empty, with its reason. `Lichamen` holds the one body-derived route.
+  - A stale entry in either list fails the test, and it requires at least 70 requests.
+  - The failure message names the route, both declarations, the planning row for agenda-like routes, and what a 404
+    means.
+  - **Proved to fail:** with `[RechtOp]` removed from `DELETE …/weekplanning/{plaatsingId}` it failed and named that
+    route. Restored after.
+- **`IntegrationTests/Postgres/RechtenAfdwingingTests`** (17): per §3 row, the allowed relation through and the nearest
+  denied one 403.
+  - Beheer: every non-directie relation at once, including the klaskiezer's jaarfase PUT.
+  - Thema: themabeheer vs hoofdleerkracht.
+  - Import: themabeheer 400 (reached) vs hoofdleerkracht 403; R35 as themabeheer 403 on preview and on apply;
+    directie reaches both.
+  - Doelsuggesties and the wizard AI: hoofdleerkracht 403 on all five; themabeheer reaches the service (404).
+  - Subthema create: HL K3 201, HL K2, LK K3 and themabeheer 403.
+  - A leeftijd that is no leeftijd: the write's 400 and sentence, for HL and for a no-rights caller; a padded
+    `" K3 "` accepted.
+  - I13 re-scope: HL of K3 alone 403, of K2 alone 403, of both 200.
+  - Onderzoeksvragen and subthema delete follow the subthema row.
+  - Subdoelen: LK 403, HL 200/204.
+  - Shared activiteit: LK K3 creates (maker set) and edits; LK K2 and themabeheer 403.
+  - Goal codes on create: LK 403, HL 201.
+  - Maker delete: a colleague of the same leeftijd 403; the maker 204 without a link and 403 with one; HL 204.
+  - Goal links on an activiteit: LK 403, HL 200/204.
+  - Move: LK without links 200, with links 403, HL 200.
+  - Planning: the LK of K3 blauw edits K3 shared content 200 and plans in blauw (201, and a 404 from the service),
+    but gets 403 on groen's hoeken, fiches, generation and plaatsing, and on groen's hoek by hoek id. HL of K3 plans
+    in no klas (403).
+  - 404 before 403 for resource rows; 403 first for the thema row.
+  - Reads of another klas: 200.
+- **`IntegrationTests/Postgres/WizardrunEndpointsTests`** (10):
+  - the full build flow (create, edit, delete; maker = themabeheer; the item list);
+  - themabeheer 403 on the ordinary routes but 201 in its open run;
+  - hoofdleerkracht 403 on the wizard;
+  - 13 days still open and the write moves the window; 14 days + 1 minute gives 403 "Deze wizard is afgelopen.",
+    for directie too;
+  - I25: another run's item 403, another thema's subthema 403, an HL's subthema under the run's thema 403, a missing
+    item 404;
+  - a subthema holding an LK's activiteit is not deleted (403, still in the database);
+  - finish and close end it for directie too; afterwards themabeheer 403 and HL 200 on the ordinary route (I23);
+  - a leeftijd that is no leeftijd gives the write's 400;
+  - goal codes on a wizard activiteit: themabeheer 403, themabeheer + HL 201;
+  - a missing run gives 404.
+- **`UnitTests/Schoolcontent/WizardrunTests`** (7): open/closed boundary at exactly 14 days, the window moving,
+  finish/close, no write after the end, items per kind, forgetting, guards.
+- **`UnitTests/Toegang/RechtenmatrixTests`:** a `Wizardinhoud` expectation (Directie, TB) × 8 relations.
+- **`IntegrationTests/Postgres/RechtenEndpointsTests`:** two slice-1 tests created content as a gebruiker with no right,
+  which slice 3 now refuses. They seed a builder (themabeheer + HL of the leeftijd) through a new `BewaarBouwerAsync`.
+  Their assertions and comments are unchanged.
+- **Shared seeding:** `IntegrationTests/Postgres/RechtenTestOpzet.cs`.
+
+### Gates
+
+- `cd backend && dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: ✓ (no output).
+- `dotnet dotnet-ef migrations has-pending-model-changes` (with a build): "No changes have been made to the model since
+  the last migration."
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (port 5433):
+  - UnitTests: 1355 passed, 4 skipped (live KOV opt-in).
+  - IntegrationTests: 411 passed, 1 skipped (live Op.stap opt-in).
+  - The ~150 tests on the default directie identity pass unchanged.
+- No frontend file changed.
+
+### Self-check against slice 3
+
+- Every endpoint enumerated from the endpoint data source and mapped (table above) ✓; enforced server-side ✓.
+- Doelsuggesties R14, the thema-opbouw routes R29, and the import with R35 on preview and apply ✓.
+- Subthema create via `UitInvoer`; re-scope at both leeftijden; I16 ✓.
+- Subdoelen, activiteit content/create/delete/move, and goal links ✓.
+- The five jaarplan writes as one unit, plus period regeneration, hand placement, weekplanning, hoeken, fiches and
+  their placements ✓.
+- Schooljaar and klas routes directie-only ✓.
+- (c) and (e) fall out of the rules with no special case: a jaar with no HL leaves the HL rows to directie; a gebruiker
+  with no relation matches no column.
+- 404-vs-403 chosen and documented ✓.
+- Wizard entity, one migration, endpoints, I22–I25 ✓. No screen calls them yet.
+- Sweep ✓, per-row tests ✓, existing tests green ✓.
+
+### For the test-runner
+
+- Backend only. Run `dotnet test` with `JAARPLANNER_TEST_POSTGRES` set. The three new Postgres classes are the evidence.
+- By hand, in Development:
+  1. Insert gebruikers with rights (slice 2 builds the beheer screen).
+  2. Sign in through `/api/aanmelden/ontwikkeling`.
+  3. As a leerkracht of one klas, `POST /api/klassen/{otherKlas}/hoeken` gives 403 with "Geen toegang".
+  4. As themabeheer, `POST /api/thema-opbouw/wizardruns` gives 201, then `POST /api/thema-opbouw/wizardruns/{id}/subthemas`
+     gives 201, while `POST /api/themas/{themaId}/subthemas` gives 403.
+- No Playwright pass is meaningful yet: slice 4 hides the controls. Until then a teacher's screen will show controls
+  that now answer 403.
+
+### Routes that did not map cleanly, and open questions
+
+1. **`DELETE api/themas/{id}` → ThemaBewerken.**
+   - §3 has no thema-delete row, and the delete takes its subthema's, subdoelen and activiteiten at every leeftijd
+     along. By hand those are the hoofdleerkrachten's (R21).
+   - I read "Thema … aanpassen" as covering the thema's lifecycle, as R21 does for subthema's. The service already
+     refuses a thema that any klas has planned.
+   - The owner may want directie only, or the HL right at every leeftijd it holds.
+2. **An activiteit create that carries goal codes also needs DoelenKoppelen (R19)**, on the ordinary and the wizard
+   route. The alternative, letting a leerkracht link goals by creating, would empty R19. The create form offers the
+   goal picker today, so slice 4 must hide it for anyone who is not directie or HL.
+3. **Algemene fiche goal links → KlasplanningBewerken.** §3's planning row names algemene fiches. A fiche is one klas's
+   and its links count only for that klas's dekking, so R19 (goal links on *shared* activiteiten) does not reach them.
+   A leerkracht therefore links goals to their own klas's fiche but not to a shared activiteit. Consistent, but worth
+   the owner knowing.
+4. **The wizard's run state binds directie too** (403 on an ended run or a foreign item). Directie does the same on the
+   ordinary routes. Read as: the wizard action does not exist outside an open run.
+5. **I25 "and nothing else" read strictly for a subthema delete.** It is refused while the subthema holds content the
+   run did not create, which the delete would take along.
+6. **I25 read literally for an activiteit** the run created that an HL later linked a goal to: the wizard may delete it,
+   and the link goes with it. Owner to confirm, or the wizard delete could also require "no links".
+7. **Thema, themadoel and kernwoordenschat edits during a run** go through the ordinary `ThemaBewerken` routes, which
+   themabeheer holds. They do not count as the run's write actions and do not move its fourteen days. E6-05 may want
+   wizard-flavoured routes for them (a default to choose with the wizard UI).
+8. **Any themabeheer holder may continue a run, not only its starter.** I22–I25 do not limit it; the starter is
+   recorded.
+9. **A subdoel has no edit** in the model (it is a link), so I25's "edit" reaches subthema's and activiteiten only.
+10. **Ordering nuance:** in the wizard a body leeftijd's 400 comes before the run's 404/403, because it is checked
+    before the run is read. Harmless: the request is refused either way.
+11. **`GET api/schoolcontent-import/sjabloon` stays open to every gebruiker** (a blank template, a read).
+12. **Stale code comment, not edited:** `DekkingController`'s class doc still calls the read routes unauthenticated
+    debt blocked on E6-01/E6-02. Reads are open by I9, so the sentence is now wrong in fact rather than in rule.
+    Offered for the next touch of that file.
+
+### Docs the orchestrator owns (not edited here)
+
+- **ADR-0030 §3** could note two things:
+  - row 7 is enforced as a rights row (`Wizardinhoud`) plus run state in `IWizardrunService`;
+  - the activiteit create with goal codes needs R19's row too.
+- **E6-02 backlog:** the E2, E3-01 and E3-07 carry-forwards are now met (every route; the five jaarplan writes as one
+  unit, pinned by the sweep).
+- **E7-11:** its authorisation half is now enforced on every write route, not only the Op.stap ones.
+
+### What the frontend (slice 4) must now hide
+
+The server enforces all of this; without slice 4 these controls answer 403.
+
+- **Directie only:**
+  - schooljaar create;
+  - klas create, edit and delete, including the **klaskiezer's jaarfase field** (`PUT /api/klassen/{id}`);
+  - the import's "menselijke beslissingen verwijderen" option;
+  - the E1-22 Op.stap `Laadlink`s (Curriculumbeheer).
+- **Directie + themabeheer:**
+  - the thema form, themadoelen and kernwoordenschat;
+  - the FR-1 import section;
+  - doelsuggestie generate, accept, reject and adjust (`frontend/src/features/themas/ThemadetailScherm.tsx`);
+  - the thema-opbouw AI assist and the wizard (E6-05).
+- **Directie + HL of that leeftijd:**
+  - the subthema form (create, edit, delete, onderzoeksvragen; a re-scope needs HL at both leeftijden);
+  - subdoel controls;
+  - goal-link controls on activiteiten, including the goal picker on the activiteit create form;
+  - moving an activiteit that has links.
+- **Directie + HL + leerkracht of that leeftijd:**
+  - activiteit create (without goals) and content edit;
+  - moving one without links.
+- **Delete an activiteit:** HL, or its maker while no goal is linked. `ActiviteitWeergave.makerId` is in the JSON; the
+  frontend type still lacks it.
+- **Directie + leerkracht of that klas:** every planning control. That is:
+  - generation and period regeneration, hand placement, status, lock, drag and delete of plaatsingen;
+  - the weekplanning and subthemaperiodes;
+  - hoeken and taking them over;
+  - hoekplaatsingen and their moments, hours and verrijkingen;
+  - algemene fiches with their goal links and plaatsingen.
+
+  A hoofdleerkracht alone plans no klas.
+- **A 403 from the server** now carries the ProblemDetails title "Geen toegang". For wizard refusals a Dutch detail
+  comes with it.
+
+### Fix round 1
+
+- **Input:** "# E6-02 slice 3 — Test report (round 1)" in `test-report.md` (FAIL: D1 MAJOR, D2 MINOR) and "## Code
+  slice 3 — audit round 1" in `antagonist.md` (VIOLATIONS FOUND: 2 MAJOR, 5 MINOR, 3 QUESTION). Both are the
+  orchestrator's and are committed unedited.
+- **Owner rulings of 2026-09-14 on the three questions**, which the orchestrator records as defaults I26–I28 on
+  `feature/e6-rollen-rechten`. The constitution, the ADR and the E6 epic file were **not** edited here.
+- **Branch:** `story/E6-02-afdwingen`, on top of `d85c0a5`. **No new migration:** no entity or mapping changed, and
+  `has-pending-model-changes` is clean.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| A (MAJOR) | `DELETE api/themas/{id}` let themabeheer delete content made by hand | **I26.** New row `ThemaVerwijderen`, a resource row. Column `ThemabeheerZonderAndermansInhoud`; resource `Themabron(ThemaId, HeeftAndermansInhoud)` from `IRechtenbronnen.VoorThemaAsync`; `[RechtOp(…, Rechtbron.Thema, "themaId")]`. Directie always. Themabeheer only while every subthema, subdoel and activiteit under the thema was created by the thema's own run **and that run is open** (after the run its items are ordinary content, I23). The planned/scheduled refusal stays in the service, for everyone. "Its own open wizard run" is read as the run that built the thema (one per thema), not as a run of the caller; see open question 1. Tests: themabeheer on a thema holding an HL's subthema 403 (full detail), directie 204; themabeheer on an empty thema 204; themabeheer on a thema holding only its open run's subthema, subdoel and activiteit 204; the same after the run is finished: themabeheer 403, directie 204. The matrix unit test covers the column for all eight relations, and the resource-less case fails closed. |
+| B (MAJOR) | The wizard's edit and delete reached content its run did not create | **I27, three paths, in `WizardrunService`:** (1) a leeftijd change of a run-created subthema is refused while it holds a subdoel or activiteit the run did not create; the same edit at the same leeftijd is still allowed. (2) A wizard delete of an activiteit a goal is linked to needs `DoelenKoppelen` at its leeftijd. (3) A wizard delete of a subthema whose activiteiten carry any link needs the same. The rights question is asked inside the transaction, through `IRechtenService` and `Rechtenmatrix.StaatToe` (the one evaluator), with the caller's id passed by the controller. It is not a controller-side `MagAsync` like `MaakActiviteit`'s, because it depends on state the delete itself reads. Tests, allowed and refused on each path: re-scope 403 / same-leeftijd edit 200; linked activiteit themabeheer 403, themabeheer+HL 204; subthema with a linked activiteit themabeheer 403, themabeheer+HL 204. The build-flow test keeps the allowed re-scope with only the run's own items. |
+| C (MINOR) | A moved activiteit stayed editable and deletable through the wizard | The wizard's activiteit edit and delete check that its **current** subthema is under the run's thema. The refusal is "Deze activiteit staat niet meer onder het thema van deze wizard." Test: directie moves it to another thema; the wizard's PUT and DELETE get 403 with that sentence. |
+| D1 / D (MAJOR / MINOR) | The sweep accepted any 403 | (1) `Aanmelding.SchrijfGeenToegangAsync` now writes the authorisation 403 (title "Geen toegang", detail "Je hebt geen toegang tot deze actie."), and the test scheme's `HandleForbiddenAsync` calls the same writer. The sweep asserts that detail, so a 403 from a run's state or from the anti-forgery check no longer counts. (2) The sweep seeds a subthema, subdoel and activiteit **through the seeded run** and sends the wizard item routes those ids. **Proved:** with `Wizardinhoud` removed from each wizard DELETE route in turn (`…/subthemas/{subthemaId}`, `…/subdoelen/{subdoelId}`, `…/activiteiten/{activiteitId}`), the sweep failed and named that route each time ("answered 204"). The file was restored from a copy, diffed identical, and rebuilt. |
+| D2 (MINOR) | A null leeftijd got ASP.NET Core's English 400 | `SubthemaCreatie.Leeftijd` and `SubthemaWijzigingInvoer.Leeftijd` are `string?`; the wizard uses the same DTOs. The service passes `?? string.Empty` to `VereisLeeftijd`, whose signature and doc blocks are untouched. `OngeldigeLeeftijd` has a sentence of its own for blank or null: "Een subthema heeft een leeftijd nodig. Kies er een uit: JK, K2, K3, L1, L2, L3, L4, L5, L6." (the probe had shown `'' is geen geldige leeftijd`). Tests send `null` and an omitted leeftijd. An HL gets that Dutch 400 on create and edit; so does themabeheer on both wizard routes. A caller without the right gets 403 wherever the right is asked before binding: the ordinary edit (stored leeftijd) and both wizard routes (resource-free rows). **One exception, by design:** on the ordinary create the resource *is* the body leeftijd, so without one there is nothing to ask a right about. A no-rights caller therefore gets the write's Dutch 400 there, before the check and never instead of it. Pinned in `Een_ontbrekende_leeftijd_…`. |
+| E (MINOR) | Wizard sentences unguarded; "bestaat niet meer" for an id that never existed | Reworded to "Deze wizard is niet gevonden.". Every wizard sentence is asserted in full over HTTP, with an em-dash check, through `RechtenTestOpzet.VerwachtAsync`, and a plain fact checks the list has no em dash. Covered: not found, afgelopen, not this thema, the moved activiteit, not in this wizard, the foreign-content delete and re-scope, the two goal-link refusals, and the blank-leeftijd sentence. The item 404s ("Dit subthema bestaat niet meer. …") are the ordinary routes' sentences, shared on purpose, and were left as they are. |
+| F (MINOR) | The run's starter was missing from the processing register | E7-06 carry-forward in `backlog/E7-niet-functioneel.md`: `wizardruns.GestartDoorId`, returned by `GET …/wizardruns/{runId}`; retention SetNull on gebruiker removal, and the row goes with its thema. Only that carry-forward was added. |
+| G (MINOR, code half) | `DekkingController` called its reads unauthenticated | Both paragraphs rewritten: a session since E6-01, reach by default I9, narrowing behind E6-09 must cover the export too. The old wording is kept in a dated note. The doc halves (E6 epic, ADR-0030 §3, E7-11) are the orchestrator's. |
+| Q1–Q3 | Questions | Ruled I26 and I27, handled above. **I28 (the 14-day window):** kept as built; only the wizard's own routes move `LaatsteSchrijfactieOp`. |
+
+**Files changed this round:**
+
+- Api:
+  - `ThemasController` (delete → `ThemaVerwijderen` + doc), `WizardrunsController` (caller passed to both deletes);
+  - `RechtOpAttribute` (`Rechtbron.Thema`);
+  - `Aanmelding` (`SchrijfGeenToegangAsync`, `GeenToegangDetail`);
+  - `DekkingController` (docs).
+- Application:
+  - `Rechtenmatrix` (row, column, `StaatToe` branch);
+  - `Rechtenbronnen` (`VoorThemaAsync`, `Themabron`);
+  - `IWizardrunService` (signatures, docs);
+  - `SchoolcontentBeheerDtos` (nullable leeftijd);
+  - `SchoolcontentBeheerExceptions` (blank sentence).
+- Infrastructure:
+  - `EfRechtenbronnen` (now takes a `TimeProvider`, and `VoorThemaAsync`);
+  - `WizardrunService` (I27, C, sentences, `IRechtenService`);
+  - `SchoolcontentBeheerService` (the two leeftijd call sites only).
+- Tests:
+  - `TestAuthenticatie` (forbid answers like the cookie);
+  - `RechtenTestOpzet` (wizard start, `IdAsync`, `DetailAsync`, `VerwachtAsync`, sentence constants);
+  - the sweep; `WizardrunEndpointsTests`; `RechtenAfdwingingTests` (+4, and the 404 test now uses the thema edit for the resource-free case);
+  - `RechtenmatrixTests` (+I26);
+  - `RechtenEndpointsTests` (the `EfRechtenbronnen` constructor line only).
+- Backlog: the E7-06 carry-forward.
+
+**Gates:**
+
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: exit 0.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433):
+  - UnitTests: 1364 passed, 4 skipped (live KOV opt-in).
+  - IntegrationTests: 419 passed, 1 skipped (live Op.stap opt-in).
+- Guard-removal probes: three failures, each naming its route; the file restored and rebuilt afterwards.
+- No frontend file changed.
+
+**Open questions:**
+
+1. **I26, "its own open wizard run".** I read it as the run that built the thema, which any themabeheer holder may
+   continue (the slice-3 reading the audit judged compliant). If the owner meant the caller's own run, the column needs
+   the starter as well.
+2. **Slice 4 must hide more:**
+   - the thema delete control for themabeheer on a thema holding someone else's content;
+   - the wizard's leeftijd select for a subthema holding someone else's content;
+   - the wizard delete of a linked activiteit, or of a subthema with linked activiteiten, for a caller without the
+     goal-link right.
+
+### Fix round 2
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 2)": PASS, with notes on one flaky Entra test and two small test gaps;
+  - "## Code slice 3 — audit round 2": 0 CRITICAL, 0 MAJOR, 3 MINOR, 1 QUESTION.
+
+  Both are the orchestrator's and are committed unedited.
+- **Owner ruling on Q4, 2026-09-14: option (a), a goal link protects.** The orchestrator records it in the I26/I27
+  text on `feature/e6-rollen-rechten`. The constitution, the ADR and the E6 epic were not edited here.
+- **Branch:** `story/E6-02-afdwingen`, on top of `afe46bc`. No new migration: `Themabron` is not an entity, and no
+  mapping changed.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| Q4 (a) | An HL's goal link on a run-created activiteit left with a themabeheer thema delete (I26) or a wizard re-scope (I27) | **Thema delete:** `Themabron` gains `GekoppeldeLeeftijden`, the leeftijden of the open run's own activiteiten that carry a goal link, computed in `EfRechtenbronnen.VoorThemaAsync`. The resolver knows no caller, so it reports rather than decides. The `ThemaVerwijderen` branch of `StaatToe` then requires, for each of those leeftijden, `StaatToe(rechten, DoelenKoppelen, new Leeftijdsinhoud(leeftijd))`: the one goal-link rule, called, not copied. Directie passes as always. **Wizard re-scope:** when a run-created subthema's leeftijd changes and any activiteit under it carries a goal link, the caller needs `DoelenKoppelen` at **both** the old and the new leeftijd. The ruling says "its leeftijd", but a re-scope gives the link a second one: it moves into the new leeftijd's dekking. Asking at both ends is I13's logic applied to R19, and I chose the stricter reading. The caller's id now travels to `WijzigSubthemaAsync`. Its refusal has a sentence of its own, "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Die mag je niet naar een andere leeftijd meenemen, dus de wizard verandert de leeftijd niet.", because "niet in deze wizard aangemaakt" would be false for the run's own activiteit (the E5-03 rule). **Tests:** the thema delete (themabeheer 403, themabeheer+HL of K3 204, directie 204), and the matrix unit test (the Q4 cases, two leeftijden, HL without themabeheer). The re-scope: themabeheer 403; themabeheer+HL of K3 only 403; themabeheer+HL of K3 and K2 200. The same-leeftijd edit is allowed, and the database shows K3 before and K2 after. |
+| MINOR 1 | `ThemaVerwijderen` cited R4 | Doc and label now cite "(R3; I26)". The doc says the directie column rests on R3 and the themabeheer column is a default (I26, followed under R37), and it records the old citation. |
+| MINOR 2 | Docs made incomplete by I27 and C | `Rechtenmatrix`: the class doc now defines a resource row as any row with a column that needs a resource (including I26's), names `Themabron`, and says the Api asks through `[RechtOp]` or in the action. The wizard paragraph says a run's rules are state plus one relation (I27 with Q4, `DoelenKoppelen` through `StaatToe`). The `Wizardinhoud` doc and label cite I22–I27 and say I27 narrows it. `WizardrunsController`: "Rights" lists all four conditions, and "Order of answers" adds the two 403s (activiteit no longer under the thema; I27). The re-scope, subthema-delete and activiteit-delete summaries cite I27 (and Q4), and the activiteit edit summary names the thema check. |
+| MINOR 3 | "verwijdert ze niet" read as the goals | "… dus de wizard verwijdert deze activiteit niet." in the service and in the test constant. |
+| Test gaps | Test-runner and antagonist notes | **Planned thema:** an empty thema placed in K3 blauw's jaarplan (by hand, at the rooster's first block) is refused to themabeheer with the service's 400 ("staat nog 1 keer in een jaarplan"). **Subthema with links:** after themabeheer's refused delete, the subthema and its activiteit are still in the database. **I28:** an ordinary thema PUT and a themadoel POST by themabeheer leave the run's stored `LaatsteSchrijfactieOp` exactly unchanged. |
+| Nit | `WizardrunService` overstated what READ COMMITTED guarantees | The summary now says the rights question reads the rows as committed just before the write and takes no lock. A link another request adds in between is not seen: the same narrow window the filter-side checks accept, the thema delete's included. |
+| Left, as instructed | The item 404 sentences ("… bestaat niet meer") | Unchanged: a codebase-wide pattern, out of scope. |
+
+**Files changed:**
+
+- Application: `Rechtenmatrix` (docs, labels, the `StaatToe` branch, the column doc), `Rechtenbronnen` (`Themabron`),
+  `IWizardrunService` (re-scope signature and doc).
+- Infrastructure: `EfRechtenbronnen` (`VoorThemaAsync`), `WizardrunService` (Q4 re-scope, sentences, doc).
+- Api: `WizardrunsController` (docs; the caller passed to the re-scope).
+- Tests: `RechtenmatrixTests`, `RechtenAfdwingingTests` (+2), `WizardrunEndpointsTests` (+2, one assertion added).
+
+**Gates:**
+
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: exit 0.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db`, using the container's own password
+  (the one in `docs/dev-setup-secrets.md` does not match; that doc was not edited):
+  - UnitTests: 1364 passed, 4 skipped.
+  - IntegrationTests: 423 passed, 1 skipped.
+- No frontend file changed.
+
+**Open, for the orchestrator:**
+
+1. The Q4 re-scope asks the goal-link right at both leeftijden (the stricter reading, above). If the owner meant the
+   old leeftijd only, it is one condition to drop.
+2. **Slice 4 must also hide** the thema delete for themabeheer when a run activiteit carries a link at a leeftijd where
+   they may not link goals, and the wizard's leeftijd select in the same case.
+
+### Fix round 3
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 3)": PASS;
+  - "## Code slice 3 — audit round 3": 0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION, plus non-blocking nits.
+
+  Both are the orchestrator's and are committed unedited.
+- **Owner answer on Q5, 2026-09-14: both leeftijden.** A wizard re-scope of a subthema whose run activiteiten carry a
+  goal link needs `DoelenKoppelen` at the old and the new leeftijd, as built. It is ratified in I27's text on
+  `feature/e6-rollen-rechten` (`8c95c57`: "When the wizard changes a subthema's leeftijd, that right is needed at both
+  the old and the new leeftijd."). The constitution was not edited here.
+- **Branch:** `story/E6-02-afdwingen`, on top of `e83a875`. No new migration. Nothing else was changed.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| MINOR 1 | The old-leeftijd half of the Q4 re-scope check was untested | `…verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4` gains the missing case: themabeheer + HL of **K2 only** re-scoping K3→K2 gets 403 with `GekoppeldVerhuist` in full, and the database still holds K3 (asserted right after the refusals). **Mutation proof:** with `MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, …)` changed to read `nieuw` (one line), the test **failed** ("Expected 403 …, got 200"). On the real code it passes. The file was restored from a copy, diffed identical, and rebuilt. |
+| Nit | `Themabron.GekoppeldeLeeftijden` defaulted to null, read as "none" | Required, with no default and no `?? []` in `StaatToe`: a second producer that forgets it is now a compile error, not a silent allow. The two unit-test constructions pass `[]`. |
+| Nit | Class-level summaries missed the Q4 leeftijd-change-with-link case | `IWizardrunService` (the fourth bullet), `WizardrunService` (the order of questions) and the `WizardrunWeigering` doc now name it: "remove a goal link or carry one to another leeftijd without the caller's goal-link right there". |
+| Nit | `Wizardinhoud` cited "I22–I27", which includes I26 (the thema delete) | Doc and label cite "I22–I25, I27", and the doc says why I26 is left out. |
+| Nit | The re-scope rule was cited without the ratified wording | Quoted as "at both the old and the new leeftijd" with the Q5 answer in: the `Rechtenmatrix` class doc, the `Wizardinhoud` doc, the `IWizardrunService` class and method docs, the `WizardrunService` re-scope comment, and the `WizardrunsController` "Rights" item and re-scope summary. |
+| Nit | The `ThemaVerwijderen` label's "het" read as the thema | "… themabeheer alleen als het thema niets anders bevat dan wat de eigen open wizard van dat thema aanmaakte, en geen doelkoppeling die de themabeheerder niet mag ontkoppelen (R3; I26)". |
+| Nit | The planned-thema test matched its 400 by substring | Pinned by value through `VerwachtAsync`, with the thema's name read back: "Thema '…' staat nog 1 keer in een jaarplan en kan niet verwijderd worden. Verwijder het thema eerst uit die jaarplannen." |
+
+**Gates:**
+
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: exit 0.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (the container's password):
+  - UnitTests: 1364 passed, 4 skipped.
+  - IntegrationTests: 423 passed, 1 skipped. The new case extends an existing test, so the count is unchanged.
+- Mutation probe: failed as required, then restored.
+- No frontend file changed.
+
+### Owner-approved mini-fix (after audit round 4)
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 4)": PASS;
+  - "## Code slice 3 — audit round 4": 0 CRITICAL, 0 MAJOR, 1 MINOR.
+
+  Both are the orchestrator's and are committed unedited. The three fix rounds were used up; the owner approved this
+  one extra fix, limited to that finding.
+- **The MINOR:** two doc comments in `Rechtenmatrix.cs` dropped the goal-link condition from the re-scope rule: the
+  class doc's wizard paragraph and the `Wizardinhoud` doc. The code asks `DoelenKoppelen` at both leeftijden only
+  while an activiteit under the subthema carries a goal link (`WizardrunService.WijzigSubthemaAsync`). A
+  themabeheer-only re-scope of an unlinked run subthema is pinned at 200.
+- **Fix:** both now say the rule is for "a subthema whose activiteiten carry a goal link". Only those two comment
+  blocks changed. No executable line, test or other source file.
+- **Proof:** `git diff -U0 -- backend`, filtered for changed lines that are neither blank nor start with `//`, `///`
+  or `*`, gives **0 lines**. The only changed lines are the `///` lines of those two blocks.
+- **Gates:**
+  - `dotnet build`: ✓, 0 warnings;
+  - `dotnet format --verify-no-changes`: exit 0;
+  - `Toegang` unit tests: 209 passed.

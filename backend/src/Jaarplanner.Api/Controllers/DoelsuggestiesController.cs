@@ -1,5 +1,7 @@
 using Jaarplanner.Application.AiMatching;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Schoolcontent;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -67,6 +69,7 @@ public sealed class DoelsuggestiesController : ControllerBase
     /// </para>
     /// </summary>
     [HttpPost("genereer")]
+    [Authorize(Policy = Rechtenmatrix.Beleid.DoelsuggestiesMaken)]
     public async Task<ActionResult<DoelMatchResultaat>> Genereer(
         Guid themaId,
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DoelsuggestieGeneratieVerzoek? verzoek,
@@ -89,6 +92,7 @@ public sealed class DoelsuggestiesController : ControllerBase
     /// (manueel). The change persists and drives coverage (E5). No auto-apply (Art. IV.1/IV.2).
     /// </summary>
     [HttpPut("{suggestieId:guid}/status")]
+    [Authorize(Policy = Rechtenmatrix.Beleid.DoelsuggestiesBeoordelen)]
     public async Task<ActionResult<DoelMatchSuggestieWeergave>> WijzigStatus(
         Guid themaId,
         Guid suggestieId,
@@ -109,6 +113,7 @@ public sealed class DoelsuggestiesController : ControllerBase
     /// </para>
     /// </summary>
     [HttpPut("{suggestieId:guid}/leerplandoel")]
+    [Authorize(Policy = Rechtenmatrix.Beleid.DoelsuggestiesBeoordelen)]
     public async Task<ActionResult<DoelMatchSuggestieWeergave>> VervangLeerplandoel(
         Guid themaId,
         Guid suggestieId,
