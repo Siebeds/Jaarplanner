@@ -221,11 +221,13 @@ function Maandcel({
           and went on saying it after the plus was made unconditional, which is the failure mode a
           comment about layout has: nothing rechecks it.
 
-          WHICH CORNER, and why it differs by breakpoint. From `sm` it is the bottom right, because
-          the top right is where the thema band is: the band is full bleed and 16 pixels tall, the
-          plus is 28, so hovering a cell put the plus straight over the name of the running thema.
-          Below `sm` there is no band (the strip above is `hidden sm:flex`), so the top corner is the
-          free one there and the plus stays in it.
+          WHICH CORNER: the bottom right, at every width. From `sm` the top right is where the thema
+          band is: the band is full bleed and 16 pixels tall, the plus is 28, so hovering a cell put
+          the plus straight over the name of the running thema. Below `sm` there is no band, and the
+          plus used to take the top corner there, but a phone cell is about 47 pixels wide and a two
+          digit day number plus a 28 pixel plus is 53: from the 10th on the plus sat on the number
+          (owner, 2026-09-14, TB-012). The phone's activiteit dots therefore sit under the number
+          rather than along the bottom, which leaves this corner free.
 
           `sm:bg-kaart` because the bottom of a cell is where the activiteit chips sit. The plus is
           revealed over them rather than beside them, and a transparent 28 pixel square laid on a
@@ -236,7 +238,7 @@ function Maandcel({
         <Dagplus
           datum={dag.datum}
           onVoegToe={onVoegToe}
-          className="absolute right-1 top-1 z-20 sm:bottom-1 sm:top-auto sm:bg-kaart"
+          className="absolute bottom-1 right-1 z-20 sm:bg-kaart"
         />
       ) : null}
 
@@ -270,8 +272,9 @@ function Maandcel({
           {/* On a phone a column is about 44 pixels, where an activiteit's name truncates to two
               letters and says nothing. So the small screen gets presence instead of names: a dot per
               activiteit, and the day number beside it is the way in. Hidden from assistive
-              technology because the button's own label already carries the count. */}
-          <span aria-hidden="true" className="pointer-events-none relative z-10 flex flex-1 items-end gap-0.5 sm:hidden">
+              technology because the button's own label already carries the count. Directly under the
+              number rather than along the bottom, because the bottom right is the plus's corner. */}
+          <span aria-hidden="true" className="pointer-events-none relative z-10 flex items-center gap-0.5 sm:hidden">
             {dag.activiteiten.slice(0, 3).map((activiteit) => (
               <span key={activiteit.plaatsingId} className="h-1.5 w-1.5 rounded-full bg-accent" />
             ))}
