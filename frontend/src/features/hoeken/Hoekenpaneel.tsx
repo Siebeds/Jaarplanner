@@ -287,7 +287,7 @@ function Fichelijst({
 
   // Both branches below return the same `div` with the tile as its second child, so when a class's first fiche turns the
   // empty branch into the list branch, React keeps the tile's DOM node and with it the focus `sluitNieuw` returned. In a
-  // browser the refetch lands after that focus, and a remounted tile would drop it to <body>. The key keeps the node
+  // browser the refetch usually lands after that focus, and a remounted tile would then drop it to <body>. The key keeps the node
   // too if the siblings are ever reordered.
   const tegel = <Toevoegtegel key="toevoegen" ref={tegelRef} label={lijst.toevoegen} onKies={lijst.onNieuw} />;
 

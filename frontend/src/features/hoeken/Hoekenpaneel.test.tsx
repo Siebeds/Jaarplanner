@@ -185,8 +185,8 @@ describe("Hoekenpaneel: de tegel onderaan maakt een nieuwe fiche (TB-015)", () =
   });
 
   it("houdt de focus op de tegel wanneer de eerste fiche de lege zin vervangt", async () => {
-    // The refetch after the save is held until focus has returned, which is the order a browser gives: there the
-    // network answers long after the frame `sluitNieuw` waits for. In jsdom it would otherwise land first, and the
+    // The refetch after the save is held until focus has returned, which is the order a browser usually gives: there
+    // the network tends to answer after the frame `sluitNieuw` waits for. In jsdom it would otherwise land first, and the
     // test could not tell a kept tile from a remounted one.
     const fiches: object[] = [];
     const vastgehouden = { los: (_antwoord: Response) => {} };

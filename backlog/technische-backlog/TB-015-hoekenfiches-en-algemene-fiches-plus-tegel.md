@@ -2,10 +2,10 @@
 id: TB-015
 titel: Hoekenfiches en algemene fiches: plus-tegel onderaan het zijpaneel om er een aan te maken
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:32
+bijgewerkt: 2026-09-14 16:47
 opgepakt-door: fiche-plus
 branch: ticket/fiche-plus-in-paneel
 pr:
@@ -68,3 +68,5 @@ Geen.
 - 2026-09-14 16:06 · fiche-plus · aangemaakt (status in-uitvoering)
 - 2026-09-14 16:23 · fiche-plus · Tegel gebouwd, tests en lint groen. Antagonist ronde 1: VIOLATIONS FOUND (0 kritiek, 0 groot, 4 klein, 2 vragen): ticketzin over de server, drie te ruime codecommentaren, randtoken, ontbrekende tests. In behandeling.
 - 2026-09-14 16:32 · fiche-plus · Ronde-1-bevindingen verwerkt (ticketzin, commentaren, rand lijn-veld 3,2:1, vier tests, focus na eerste fiche). Browser (Chrome, wegwerpdatabase): op 1440px en 390px een hoek en twee algemene fiches vanuit het paneel aangemaakt, toetsenbord en focusring nagekeken, paneelblad sluit en komt terug op de telefoon. Criteria afgevinkt; frontend 279/279, lint groen. Antagonist ronde 2 loopt.
+- 2026-09-14 16:42 · fiche-plus · Antagonist ronde 2: VIOLATIONS FOUND (0 kritiek, 0 groot, 2 klein, 3 vragen). Opgelost in d7d2ab7: commentaar bij de key noemt nu het juiste mechanisme, en een nieuwe focustest houdt de verversing vast tot de focus terug is; die test faalt op een opzettelijk kapotte versie. Ticketzin 'klaar om te slepen' rechtgezet. Telefoon: na Bewaren op 390px kwam het paneelblad terug met de nieuwe fiche, gezien in de browser. Afscherming per recht gevraagd aan E6-02. Frontend 280/280, lint groen. Ronde 3 loopt.
+- 2026-09-14 16:47 · fiche-plus · in-uitvoering → klaar: Antagonist ronde 3: COMPLIANT. Onderaan het zijpaneel naast de agenda maakt een tegel met een plus een hoek of algemene fiche aan zonder de agenda te verlaten. Frontend 280/280, lint groen, browser nagekeken op 1440px en 390px. Open bij anderen: afscherming per recht (E6-02, gevraagd in de groepschat) en accentrand bij hover (vraag aan de eigenaar).
