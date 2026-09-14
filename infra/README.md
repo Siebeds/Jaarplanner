@@ -110,8 +110,9 @@ pnpm. Run the commands from the repo root.
 
 ## Demo data
 
-`infra/seed-demo.ps1` fills the demo with the fictional kleuter content in `infra/seed-demo.data.json` (TB-003):
-klassen, thema's with themadoelen and subthema's, and per klas algemene fiches and hoeken. It needs Docker besides
+`infra/seed-demo.ps1` fills the demo with the fictional kleuter content in `infra/seed-demo.data.json` (TB-003,
+TB-009): klassen, thema's with themadoelen and subthema's, the subthema's activiteiten (shared by every klas of that
+leeftijd, ADR-0025), and per klas algemene fiches and hoeken. Nothing is planned. It needs Docker besides
 the tools above and a clean working tree (or `-AllowDirty`), and it runs from the commit that is deployed, after
 `migrate-db.ps1`: it refuses when the database's newest migration and the checkout's differ.
 
@@ -130,8 +131,12 @@ the tools above and a clean working tree (or `-AllowDirty`), and it runs from th
   `az postgres flexible-server firewall-rule list --resource-group rg-jaarplanner-demo --server-name pg-jaarplanner-demo-<suffix>`
   (only `AllowAllAzureServicesAndResourcesWithinAzureIps` belongs there) and
   `az role assignment list --scope <vault id>/keys/dataprotection`.
-- A second run creates nothing twice: items are matched by name, and one that exists only gets the goal links from the
-  data file that it lacks. Its other fields stay as they are. Keep the data fictional (ADR-0034).
+- A second run creates nothing twice: items are matched by name, and one that exists gets the goal links from the data
+  file that it lacks. Its other fields stay as they are.
+- An activiteit in the data file may list `doelenWeg`: every run removes those goal links, a link someone made by hand
+  with that code included, and no other link. A code may not be in both `doelen` and `doelenWeg`. Add an entry to
+  correct the demo, and take it out again once a run has removed the link.
+- Keep the data fictional (ADR-0034).
 - The teacher names in the klas names stand in for the link between leerkrachten and klassen until E6-04 builds it.
 
 ## Costs, and switching it off
