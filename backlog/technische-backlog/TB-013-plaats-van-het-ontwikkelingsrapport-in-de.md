@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:15
+bijgewerkt: 2026-09-14 14:16
 opgepakt-door: kindrapport
 branch: ticket/TB-013-ontwikkelingsrapport-zijbalk
-pr:
+pr: 62
 geblokkeerd:
 fr: [FR-13]
 ---
@@ -57,3 +57,4 @@ Geen.
 - 2026-09-14 14:15 · kindrapport · Antagonist ronde 1: VIOLATIONS FOUND (1 MAJOR, 3 MINOR, 2 vragen), verwerkt: de telling in de grondwet teruggezet (R32 is niet geratificeerd), D18 niet meer aan de eigenaar toegeschreven, D17 als plaats en niet als codekeuze, de vraag over 'ONDERAAN' en Leerlingzorg naar bouwticket 1; rapport in backlog/worklogs/TB-013/antagonist-ronde-1.md. De correcties zijn niet opnieuw geauditeerd.
 - 2026-09-14 14:15 · kindrapport · Acceptatiecriteria afgevinkt: R32 letterlijk in ADR-0035 §1.7, uitwerking en D17/D18 in §3.10, FR-13.10 in de functionele analyse, bouwticket 1 brengt de tab mee, auditbevindingen verwerkt
 - 2026-09-14 14:15 · kindrapport · in-uitvoering → klaar: Klaar: de plaats van het ontwikkelingsrapport in de linkerzijbalk staat in ADR-0035 en FR-13.10; geen broncode en geen wijziging aan de grondwet
+- 2026-09-14 14:16 · kindrapport · PR #62
