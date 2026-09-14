@@ -120,7 +120,7 @@ export function PlanScherm() {
                     to={`/agenda/dag/${nuOfStart}`}
                     className="inline-flex h-9 items-center rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
                   >
-                    {t("plan.periodeVanVandaag")}
+                    {t("plan.vandaagInDeAgenda")}
                   </Link>
                 ) : null}
                 <Knop rang="hoofd" className="h-9 min-h-9 px-4 text-meta" onClick={() => setGeneratieOpen(true)}>

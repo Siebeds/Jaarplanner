@@ -17,9 +17,9 @@ import { cn } from "../../lib/cn";
 /**
  * A month, as the grid everyone already knows: seven columns starting on Monday.
  *
- * This is the agenda's opening view, so it does more than answer where the work sits. The day number
- * is a button into that day, every activiteit on it is a button into that activiteit, and the cell
- * is a drop target. What it deliberately does NOT try to be is an editor: a 96 pixel cell cannot
+ * It was the agenda's opening view until the week took that over (TB-012), and it still does more
+ * than answer where the work sits. The day number is a button into that day, every activiteit on it
+ * is a button into that activiteit, and the cell is a drop target. What it deliberately does NOT try to be is an editor: a 96 pixel cell cannot
  * hold a form, and trying is how month views become unusable.
  *
  * The cell used to be one big button. It cannot stay one: a draggable activiteit is itself a button,
@@ -73,8 +73,8 @@ export function Maandrooster({
   // The column headers come from a whole week, not from the first seven days returned. The server
   // clamps a range to the school year, so a month whose grid starts before the first school day
   // comes back short at the front: reading the headers off the data then labelled Tuesday as Monday
-  // and shifted every cell in the month by one column. Visible on the agenda's opening screen in
-  // september, and by construction invisible in any month that starts mid-year.
+  // and shifted every cell in the month by one column. Visible on the month of september, and
+  // by construction invisible in any month that starts mid-year.
   const eersteMaandag = maandagVan(dagen[0].datum);
   const kopdagen = Array.from({ length: 7 }, (_, i) => verschuif(eersteMaandag, i));
 
@@ -155,9 +155,12 @@ function Maandcel({
       ref={setNodeRef}
       aria-current={isVandaag ? "date" : undefined}
       className={cn(
-        // `overflow-hidden` for the subthema strip: it runs to both edges of the cell, so the cell's
-        // own rounded corners have to be the ones that cut it.
-        "group/cel relative flex h-16 w-full flex-col gap-1 overflow-hidden rounded-veld border p-1.5 transition-colors duration-100 sm:h-28",
+        // SQUARE CORNERS, and the strips are why (owner, 2026-09-14, TB-012). The thema, subthema and hoek
+        // strips run full bleed along the top edge, so a rounded cell cut the first letters of the band
+        // into a slant and drew its own border diagonally through the tick that marks where a run
+        // starts. The rounding stays on what sits INSIDE a cell (chips, the plus, today's pill): the cell
+        // is the grid and those are the things in it. `overflow-hidden` still clips a long chip.
+        "group/cel relative flex h-16 w-full flex-col gap-1 overflow-hidden border p-1.5 transition-colors duration-100 sm:h-28",
         // A day outside the month recedes by losing its card, NOT by opacity. `opacity-45` dimmed
         // the text with the surface and took the day number to 2.2:1, and it does it invisibly to
         // any check that reads colour without composing the alpha of every ancestor. Measured after
@@ -192,7 +195,7 @@ function Maandcel({
           subthemaZin(stroken) +
           hoekZin(hoekplaatsingen, dag.datum)
         }
-        className="absolute inset-0 z-0 rounded-veld transition-colors duration-150 hover:bg-vlak-diep/60"
+        className="absolute inset-0 z-0 transition-colors duration-150 hover:bg-vlak-diep/60"
       />
 
       {/* What is running here, along the top edge. Full bleed, so a run reads as a band across the
@@ -218,11 +221,13 @@ function Maandcel({
           and went on saying it after the plus was made unconditional, which is the failure mode a
           comment about layout has: nothing rechecks it.
 
-          WHICH CORNER, and why it differs by breakpoint. From `sm` it is the bottom right, because
-          the top right is where the thema band is: the band is full bleed and 16 pixels tall, the
-          plus is 28, so hovering a cell put the plus straight over the name of the running thema.
-          Below `sm` there is no band (the strip above is `hidden sm:flex`), so the top corner is the
-          free one there and the plus stays in it.
+          WHICH CORNER: the bottom right, at every width. From `sm` the top right is where the thema
+          band is: the band is full bleed and 16 pixels tall, the plus is 28, so hovering a cell put
+          the plus straight over the name of the running thema. Below `sm` there is no band, and the
+          plus used to take the top corner there, but a phone cell is about 47 pixels wide and a two
+          digit day number plus a 28 pixel plus is 53: from the 10th on the plus sat on the number
+          (owner, 2026-09-14, TB-012). The phone's activiteit dots therefore sit under the number
+          rather than along the bottom, which leaves this corner free.
 
           `sm:bg-kaart` because the bottom of a cell is where the activiteit chips sit. The plus is
           revealed over them rather than beside them, and a transparent 28 pixel square laid on a
@@ -233,7 +238,7 @@ function Maandcel({
         <Dagplus
           datum={dag.datum}
           onVoegToe={onVoegToe}
-          className="absolute right-1 top-1 z-20 sm:bottom-1 sm:top-auto sm:bg-kaart"
+          className="absolute bottom-1 right-1 z-20 sm:bg-kaart"
         />
       ) : null}
 
@@ -267,8 +272,9 @@ function Maandcel({
           {/* On a phone a column is about 44 pixels, where an activiteit's name truncates to two
               letters and says nothing. So the small screen gets presence instead of names: a dot per
               activiteit, and the day number beside it is the way in. Hidden from assistive
-              technology because the button's own label already carries the count. */}
-          <span aria-hidden="true" className="pointer-events-none relative z-10 flex flex-1 items-end gap-0.5 sm:hidden">
+              technology because the button's own label already carries the count. Directly under the
+              number rather than along the bottom, because the bottom right is the plus's corner. */}
+          <span aria-hidden="true" className="pointer-events-none relative z-10 flex items-center gap-0.5 sm:hidden">
             {dag.activiteiten.slice(0, 3).map((activiteit) => (
               <span key={activiteit.plaatsingId} className="h-1.5 w-1.5 rounded-full bg-accent" />
             ))}

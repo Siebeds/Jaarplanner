@@ -72,11 +72,11 @@ export function Navigatie() {
     screen with no panel, and a prefix test would offer the switch there.
 
     Both matches are read into their own const before they are combined. Inlining them into one `||`
-    short-circuits the second hook on the month view, which is a rules-of-hooks violation.
+    short-circuits the second hook on the agenda's bare address, which is a rules-of-hooks violation.
   */
-  const opMaand = useMatch("/agenda");
+  const opStart = useMatch("/agenda");
   const opDag = useMatch("/agenda/dag/:datum");
-  const opAgenda = opMaand !== null || opDag !== null;
+  const opAgenda = opStart !== null || opDag !== null;
 
   /*
     `useLayoutEffect` and not `useEffect`: this runs on every navigation away from the agenda, and an
