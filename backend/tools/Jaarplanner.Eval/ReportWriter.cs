@@ -49,7 +49,8 @@ public static class ReportWriter
             "kandidatenlijst telt als fout.");
         sb.AppendLine("- **Recall:** het deel van de gouden codes dat voorgesteld werd.");
         sb.AppendLine("- **Bij de kandidaten:** het deel van de gouden codes dat in de kandidatenlijst stond. Hoger kan de " +
-            "recall niet.");
+            "recall niet. Een geval waarvoor geen kandidaten gevonden konden worden, telt hier en in \"Kandidaten (gem.)\" " +
+            "niet mee; het staat bij Fouten.");
         sb.AppendLine("- **Tokens, kost en latency** tellen elke aanroep die een antwoord kreeg, ook een ongeldig antwoord. " +
             "De latency is die van de laatste poging, zonder wachttijd na een 429.");
         sb.AppendLine();
@@ -59,7 +60,9 @@ public static class ReportWriter
 
         foreach (var variant in rapport.Varianten)
         {
-            var metingen = rapport.Kandidaten.Where(k => k.Variant == variant).ToList();
+            // Only cases where the candidates were found: the same rule as the retrieval table, so that "Bij de
+            // kandidaten" means one thing in the whole report.
+            var metingen = rapport.Kandidaten.Where(k => k.Variant == variant && k.Fout is null).ToList();
             foreach (var model in rapport.Modellen)
             {
                 var rows = rapport.Resultaten.Where(r => r.Variant == variant && r.Model == model).ToList();

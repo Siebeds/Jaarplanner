@@ -289,7 +289,29 @@ public sealed class EvalRunnerTests
         Assert.Equal("kapot", meting.Fout);
         Assert.Equal(30, meting.EmbeddingTokens);
         Assert.Equal("wisselend-embedding", meting.EmbeddingModel);
-        Assert.Contains("| wisselend-embedding | 30 | onbekend | 1 | - |", ReportWriter.Write(rapport));
+
+        // Both tables apply one rule: the failed case is an error, not a case where retrieval found nothing.
+        var markdown = ReportWriter.Write(rapport);
+        Assert.Contains("| wisselend-embedding | 30 | onbekend | 1 | - |", markdown);
+        Assert.Contains("| B: embeddings (wisselend-embedding), top 2 | model | 1 | 1 | - | 0% | - | - |", markdown);
+    }
+
+    /// <summary>
+    /// A call that fails while the caller's stop arrives is recorded, and the run then stops at its next check: a
+    /// requested stop always ends the run as a cancellation, never as a crash.
+    /// </summary>
+    [Fact]
+    public async Task Een_fout_tijdens_een_gevraagde_stop_stopt_de_run()
+    {
+        using var stop = new CancellationTokenSource();
+        var client = new GooiendeClient(() =>
+        {
+            stop.Cancel();
+            return new HttpRequestException("kapot", null, HttpStatusCode.InternalServerError);
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Runner(client).RunAsync(TweeGevallen(), stop.Token));
+        Assert.Equal(1, client.AantalAanroepen);
     }
 
     /// <summary>

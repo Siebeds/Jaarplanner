@@ -183,13 +183,16 @@ public sealed class EvalRunner
         {
             foreach (var geval in evalset.Gevallen)
             {
+                // A requested stop ends the run here, between cases, whatever the last call did.
+                cancellationToken.ThrowIfCancellationRequested();
+
                 // A variant retries its own throttled calls (EmbeddingSelectie), so its token count survives a retry.
                 KandidaatSet kandidaten;
                 try
                 {
                     kandidaten = await variant.SelectAsync(geval, cancellationToken);
                 }
-                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                catch (Exception ex) when (IsFailure(ex, cancellationToken))
                 {
                     // A failed selection may still have spent embedding tokens: they stay in the report.
                     var spent = ex as CandidateSelectionException;
@@ -236,6 +239,7 @@ public sealed class EvalRunner
                 var request = EvalPrompt.Build(geval, kandidaten.Doelen, _goalFormat, _maxSuggestions);
                 foreach (var model in _models)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     resultaten.Add(await AskAsync(variant.Naam, model, geval, codes, request, cancellationToken));
                 }
             }
@@ -289,10 +293,8 @@ public sealed class EvalRunner
                 _log,
                 cancellationToken);
         }
-        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (IsFailure(ex, cancellationToken))
         {
-            // Decided by the token, not the exception type: an HTTP timeout is an OperationCanceledException that
-            // nobody asked for, and it is a failed call like any other.
             _log?.Invoke($"{variant} | {model.Naam} | {geval.Id}: aanroep mislukt ({ex.Message})");
             return new GevalResultaat
             {
@@ -336,4 +338,13 @@ public sealed class EvalRunner
             Fout = parse.IsGeldig ? null : $"ongeldig antwoord: {parse.Fout}",
         };
     }
+
+    /// <summary>
+    /// Whether <paramref name="ex"/> is a failure to record rather than the stop the caller asked for. Only a
+    /// cancellation that was requested is a stop; an HTTP timeout is an OperationCanceledException nobody asked for,
+    /// and any other exception is a failure even when a stop happens to arrive at the same moment (the loop then stops
+    /// at its next check).
+    /// </summary>
+    internal static bool IsFailure(Exception ex, CancellationToken cancellationToken) =>
+        ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested;
 }

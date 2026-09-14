@@ -170,7 +170,12 @@ public sealed class EvalOptionsTests
         }
 
         using var process = Process.Start(start)!;
-        process.WaitForExit(TimeSpan.FromSeconds(30));
+        if (!process.WaitForExit(TimeSpan.FromSeconds(30)))
+        {
+            process.Kill(entireProcessTree: true);
+            Assert.Fail($"git {string.Join(' ', arguments)} did not finish within 30 seconds.");
+        }
+
         Assert.Equal(0, process.ExitCode);
     }
 

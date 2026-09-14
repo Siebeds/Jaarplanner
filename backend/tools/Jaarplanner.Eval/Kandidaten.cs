@@ -159,10 +159,10 @@ public sealed class EmbeddingSelectie : IKandidaatSelectie
             tokens += query.Tokens;
             queryVector = query.Vectors[0];
         }
-        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (EvalRunner.IsFailure(ex, cancellationToken))
         {
-            // The calls that did succeed were paid for; the report must still see them. Decided by the token, not the
-            // exception type: an HTTP timeout is an OperationCanceledException that nobody asked for.
+            // The calls that did succeed were paid for; the report must still see them. A timeout counts as a failure;
+            // only a stop the caller asked for is passed through as a cancellation.
             throw new CandidateSelectionException(ex.Message, tokens, _embeddings.Model, ex);
         }
         finally
