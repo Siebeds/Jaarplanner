@@ -8,7 +8,7 @@ import { Segment } from "../../components/ui/Segment";
 import { Leegte } from "../../components/ui/Leegte";
 import { Knop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
-import { IcoonHoek, IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
+import { IcoonFiche, IcoonHoek, IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
 import { useDagacties, useJaarplan, usePlaatsSubthemaperiode, useRooster, useWeekplanning } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
@@ -120,8 +120,9 @@ export function Agendascherm() {
     null,
   );
 
-  const hoekenOpen = useHoekenpaneel((s) => s.open);
-  const wisselHoeken = useHoekenpaneel((s) => s.wissel);
+  const paneelOpen = useHoekenpaneel((s) => s.open);
+  const paneelSoort = useHoekenpaneel((s) => s.soort);
+  const kiesPaneel = useHoekenpaneel((s) => s.kies);
   // The fiche that was dropped, the day it landed on, and the minute of it when the drop named one. Null means no
   // sheet; a null `begin` means the gesture said nothing about an hour, which is what a month or week drop is.
   const [gevallenFiche, setGevallenFiche] = useState<{ hoekId: string; datum: string; begin: number | null } | null>(
@@ -640,20 +641,33 @@ export function Agendascherm() {
                 upward. One control per viewport, never two at once, which is what made a single
                 control in the toolbar the earlier answer.
               */}
-              <button
-                type="button"
-                onClick={wisselHoeken}
-                aria-pressed={hoekenOpen}
-                className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-veld border px-3 text-meta font-medium transition-colors duration-150 lg:hidden",
-                  hoekenOpen
-                    ? "border-accent bg-accent-zacht text-accent"
-                    : "border-lijn text-inkt-zacht hover:border-accent hover:text-accent",
-                )}
-              >
-                <IcoonHoek aria-hidden="true" className="h-4 w-4" />
-                {t("periode.hoekenfiches")}
-              </button>
+              {/* Two chips since 2026-09-14, one per list, for the reason the sidebar has two switches (owner: "twee
+                  secties ... niet gegroepeerd als fiches"). */}
+              {(
+                [
+                  { soort: "hoeken", label: t("periode.hoekenfiches"), Icoon: IcoonHoek },
+                  { soort: "algemeen", label: t("periode.algemeneFiches"), Icoon: IcoonFiche },
+                ] as const
+              ).map(({ soort, label, Icoon }) => {
+                const aan = paneelOpen && paneelSoort === soort;
+                return (
+                  <button
+                    key={soort}
+                    type="button"
+                    onClick={() => kiesPaneel(soort)}
+                    aria-pressed={aan}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-1.5 rounded-veld border px-3 text-meta font-medium transition-colors duration-150 lg:hidden",
+                      aan
+                        ? "border-accent bg-accent-zacht text-accent"
+                        : "border-lijn text-inkt-zacht hover:border-accent hover:text-accent",
+                    )}
+                  >
+                    <Icoon aria-hidden="true" className="h-4 w-4" />
+                    {label}
+                  </button>
+                );
+              })}
 
               {/* No period, no planner: the sheet spreads a subthema over the days of a themaperiode,
                   and between two periods there are none to spread it over. */}

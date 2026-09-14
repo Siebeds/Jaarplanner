@@ -581,8 +581,8 @@ function Blok({
     An hour of grid is 56 pixels, so the ordinary 50-minute block has 47 of them: three stacked lines do not fit
     and the third was drawn clipped in half, which a browser pass found and no test could. Three tiers instead:
     an hour or more gets the subtitle as well, half an hour or more puts the name and the time on ONE line, and
-    anything shorter keeps the name alone. Nothing is lost either way, because the accessible name on the button
-    carries the whole of it.
+    anything shorter keeps the name alone. What a screen reader needs is not lost with it: the accessible name carries
+    the name, the hours and, for a hoek or an algemene fiche, the word that says which kind it is.
   */
   const duur = einde - blok.begin;
   const toont = duur >= 60 ? "alles" : duur >= 30 ? "tijd" : "naam";
@@ -616,9 +616,13 @@ function Blok({
             } else if (doel.soort === "hoek") onOpenHoek(doel.plaatsingId);
             else onOpenFiche(doel.plaatsingId, doel.momentId);
           }}
+          // The kind is spoken for a hoek and a fiche: they carry no colour, so the word under the name is the only
+          // thing that tells them from each other and from an activiteit, and a short block does not print it.
           aria-label={`${blok.naam}, ${toonBereik(blok.begin, einde)}${
-            kleur ? `, ${t(kleurSleutel(kleur))}` : ""
-          }${blok.activiteit?.valtBuitenThemaperiode ? `, ${t("periode.buitenPeriode")}` : ""}`}
+            blok.doel.soort === "activiteit" ? "" : `, ${blok.onder}`
+          }${kleur ? `, ${t(kleurSleutel(kleur))}` : ""}${
+            blok.activiteit?.valtBuitenThemaperiode ? `, ${t("periode.buitenPeriode")}` : ""
+          }`}
           {...listeners}
           {...attributes}
           className="block h-full w-full cursor-grab touch-none px-2 py-1 text-left active:cursor-grabbing"

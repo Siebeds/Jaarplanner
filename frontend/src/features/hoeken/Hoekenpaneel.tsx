@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, SVGProps } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Link } from "react-router-dom";
 import { Blad } from "../../components/ui/Blad";
@@ -14,13 +14,14 @@ import { useAlgemeneFiches } from "../algemene-fiches/gegevens";
 import { ALGEMENE_FICHE_VOORVOEGSEL } from "../algemene-fiches/sleepids";
 
 /**
- * The fiches beside the agenda: the corners this class has and, under them, its algemene fiches, while she plans
- * (owner, 2026-08-30 for the hoeken; 2026-09-11 for the algemene fiches, "het mag eronder komen te staan").
+ * The side panel beside the agenda: the corners this class has, or its algemene fiches, while she plans (owner,
+ * 2026-08-30 for the hoeken; 2026-09-11 for the algemene fiches).
  *
- * **One panel with two lists, not a second panel.** Both are a short list of things a teacher defined once in
- * Instellingen and drags onto a day, and two switches for two columns that would both want the same 240px is a
- * choice she would have to make every time. So the panel is called *Fiches* and each list keeps its own heading and
- * glyph; the words and the glyph tell them apart, never a colour (Art. XII).
+ * **One list at a time, each behind its own switch** (owner, 2026-09-14: "ik wil twee secties in het meest linkse
+ * side bar, hoekenfiches en algemene fiches, niet gegroepeerd als fiches"). A first version grouped both under one
+ * "Fiches" panel with two headings; he found that not overzichtelijk. So the store says which list is showing
+ * (`soort`), the navigation has a switch for each, and this component draws the one that is on, under that list's own
+ * name and glyph.
  *
  * **Two shapes for one panel, because the app has two.** From `lg` it is a column standing in the space the
  * navigation's labels were using, which is why the navigation collapses to an icon rail when this opens. On a phone
@@ -52,10 +53,11 @@ export function Hoekenpaneel({
   onKiesAlgemeneFiche: (ficheId: string) => void;
 }) {
   const open = useHoekenpaneel((s) => s.open);
+  const soort = useHoekenpaneel((s) => s.soort);
   const zet = useHoekenpaneel((s) => s.zet);
   const breed = useMediaQuery(BREED);
-  const { data: hoeken, isPending: hoekenLaden } = useHoeken(open ? klasId : null);
-  const { data: algemeneFiches, isPending: fichesLaden } = useAlgemeneFiches(open ? klasId : null);
+  const hoeken = useHoeken(open && soort === "hoeken" ? klasId : null);
+  const algemeneFiches = useAlgemeneFiches(open && soort === "algemeen" ? klasId : null);
 
   // On a phone this panel is a sheet over the calendar and the placement sheet is about to open on top of it, so it
   // closes first rather than leaving her two sheets deep. Beside the agenda the column stays.
@@ -64,48 +66,49 @@ export function Hoekenpaneel({
     kiezer(id);
   }
 
-  const inhoud =
-    klasId === null ? (
-      <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>
-    ) : (
-      <div className="flex flex-col gap-6">
-        <Fichegroep
-          titel={t("hoekenpaneel.hoeken")}
-          Icoon={IcoonHoek}
-          laadt={hoekenLaden}
-          fiches={(hoeken ?? []).map((hoek) => ({
+  const lijst: Lijst =
+    soort === "hoeken"
+      ? {
+          titel: t("hoekenpaneel.titel"),
+          sluiten: t("hoekenpaneel.sluiten"),
+          Icoon: IcoonHoek,
+          laadt: klasId !== null && hoeken.isPending,
+          fiches: (hoeken.data ?? []).map((hoek) => ({
             id: hoek.id,
             sleepId: `${FICHE_VOORVOEGSEL}${hoek.id}`,
             naam: hoek.naam,
             omschrijving: hoek.omschrijving,
-          }))}
-          leeg={t("hoekenpaneel.geenHoeken")}
-          naarInstellingen={{ pad: "/instellingen/hoeken", label: t("hoekenpaneel.naarInstellingen") }}
-          sleepbaar={breed}
-          onKies={(id) => kies(onKies, id)}
-        />
-
-        <Fichegroep
-          titel={t("hoekenpaneel.algemeen")}
-          Icoon={IcoonFiche}
-          laadt={fichesLaden}
-          fiches={(algemeneFiches ?? []).map((fiche) => ({
+          })),
+          leeg: t("hoekenpaneel.geenHoeken"),
+          naarInstellingen: { pad: "/instellingen/hoeken", label: t("hoekenpaneel.naarInstellingen") },
+          onKies: (id) => kies(onKies, id),
+        }
+      : {
+          titel: t("hoekenpaneel.algemeenTitel"),
+          sluiten: t("hoekenpaneel.algemeenSluiten"),
+          Icoon: IcoonFiche,
+          laadt: klasId !== null && algemeneFiches.isPending,
+          fiches: (algemeneFiches.data ?? []).map((fiche) => ({
             id: fiche.id,
             sleepId: `${ALGEMENE_FICHE_VOORVOEGSEL}${fiche.id}`,
             naam: fiche.naam,
             omschrijving: fiche.omschrijving,
-          }))}
-          leeg={t("hoekenpaneel.geenAlgemeneFiches")}
-          naarInstellingen={{ pad: "/instellingen/algemene-fiches", label: t("hoekenpaneel.naarAlgemeneFiches") }}
-          sleepbaar={breed}
-          onKies={(id) => kies(onKiesAlgemeneFiche, id)}
-        />
-      </div>
+          })),
+          leeg: t("hoekenpaneel.geenAlgemeneFiches"),
+          naarInstellingen: { pad: "/instellingen/algemene-fiches", label: t("hoekenpaneel.naarAlgemeneFiches") },
+          onKies: (id) => kies(onKiesAlgemeneFiche, id),
+        };
+
+  const inhoud =
+    klasId === null ? (
+      <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>
+    ) : (
+      <Fichelijst lijst={lijst} sleepbaar={breed} />
     );
 
   if (!breed) {
     return (
-      <Blad open={open} onOpenChange={zet} titel={t("hoekenpaneel.titel")}>
+      <Blad open={open} onOpenChange={zet} titel={lijst.titel}>
         {inhoud}
       </Blad>
     );
@@ -115,12 +118,12 @@ export function Hoekenpaneel({
     THE COLUMN, FROM `lg`.
 
     `left-14` is the rail the navigation collapses to, and the two numbers are kept in step by `Schil`, which reserves
-    56 + 240 for the pair. `aria-hidden` and inert while closed rather than unmounted, so opening it does not refetch
-    and the slide has something to animate from.
+    56 + 240 for the pair. `aria-hidden` and inert while closed rather than unmounted, so the slide has something to
+    animate from.
   */
   return (
     <aside
-      aria-label={t("hoekenpaneel.titel")}
+      aria-label={lijst.titel}
       aria-hidden={!open}
       inert={!open}
       className={cn(
@@ -130,11 +133,14 @@ export function Hoekenpaneel({
       )}
     >
       <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-6">
-        <h2 className="text-body font-medium text-inkt">{t("hoekenpaneel.titel")}</h2>
+        <h2 className="flex items-center gap-2 text-micro uppercase text-inkt-zwak">
+          <lijst.Icoon aria-hidden="true" className="h-4 w-4" />
+          {lijst.titel}
+        </h2>
         <button
           type="button"
           onClick={() => zet(false)}
-          aria-label={t("hoekenpaneel.sluiten")}
+          aria-label={lijst.sluiten}
           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
         >
           <IcoonKruis aria-hidden="true" className="h-4 w-4" />
@@ -155,62 +161,47 @@ interface Paneelfiche {
   omschrijving: string | null;
 }
 
-/**
- * One kind of fiche: its heading, then the fiches or the reason there are none.
- *
- * The heading is a real `h3` under the panel's `h2`, so a screen reader can jump between the two lists; its glyph is
- * the one the time grid puts on the same kind of block, which is what connects a fiche here with where it lands.
- */
-function Fichegroep({
-  titel,
-  Icoon,
-  laadt,
-  fiches,
-  leeg,
-  naarInstellingen,
-  sleepbaar,
-  onKies,
-}: {
+/** The list the panel is showing, with everything that differs between the two kinds. */
+interface Lijst {
   titel: string;
-  Icoon: (props: { className?: string; "aria-hidden"?: boolean | "true" }) => ReactNode;
+  sluiten: string;
+  Icoon: (props: SVGProps<SVGSVGElement>) => ReactNode;
   laadt: boolean;
   fiches: Paneelfiche[];
   leeg: string;
   naarInstellingen: { pad: string; label: string };
-  /** False on a phone, where the panel covers the calendar and there is nothing to drag onto. */
-  sleepbaar: boolean;
   onKies: (id: string) => void;
-}) {
-  return (
-    <section>
-      <h3 className="mb-2 flex items-center gap-2 text-meta font-medium text-inkt-zacht">
-        <Icoon aria-hidden="true" className="h-4 w-4 shrink-0" />
-        {titel}
-      </h3>
+}
 
-      {laadt ? (
-        <Laadlijst rijen={2} />
-      ) : fiches.length === 0 ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-meta text-inkt-zacht">{leeg}</p>
-          {/* A real destination, not a sentence about one: this is where she makes them. */}
-          <Link
-            to={naarInstellingen.pad}
-            className="text-meta font-medium text-accent underline-offset-2 hover:underline"
-          >
-            {naarInstellingen.label}
-          </Link>
-        </div>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {fiches.map((fiche) => (
-            <li key={fiche.id}>
-              <Fiche fiche={fiche} sleepbaar={sleepbaar} onKies={onKies} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+/** The fiches themselves, or the reason there are none to show. */
+function Fichelijst({ lijst, sleepbaar }: { lijst: Lijst; sleepbaar: boolean }) {
+  if (lijst.laadt) {
+    return <Laadlijst rijen={3} />;
+  }
+
+  if (lijst.fiches.length === 0) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-meta text-inkt-zacht">{lijst.leeg}</p>
+        {/* A real destination, not a sentence about one: this is where she makes them. */}
+        <Link
+          to={lijst.naarInstellingen.pad}
+          className="text-meta font-medium text-accent underline-offset-2 hover:underline"
+        >
+          {lijst.naarInstellingen.label}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col gap-2">
+      {lijst.fiches.map((fiche) => (
+        <li key={fiche.id}>
+          <Fiche fiche={fiche} sleepbaar={sleepbaar} onKies={lijst.onKies} />
+        </li>
+      ))}
+    </ul>
   );
 }
 

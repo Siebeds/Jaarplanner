@@ -157,7 +157,9 @@ home for that whole set.
   - [x] The register, the ongekoppelde doelen and the Op.stap re-import reference count read the fifth link table.
   - [ ] Agenda: a panel of algemene fiches under the hoekenfiches; drag a fiche onto a day of the time grid; the
     placement sheet asks the weekdays and the times; occurrences drawn and movable in the day and week views.
-  - [ ] Art. V.1 amendment commit (with CLAUDE.md's dekking line), per Art. XI.1.
+  - [x] Art. V.1 amendment commit (with CLAUDE.md's dekking line), per Art. XI.1. *On `main` since 2026-09-11 as
+    `7fc20bc`, with its ratification-log row; the box stayed open until the E10-03 agenda session's antagonist
+    noticed on 2026-09-14.*
   - [ ] Browser pass at 1440 and 390 on the Instellingen half; antagonist audit.
 
   **Gates so far:** 825 unit + 261 integration on real PostgreSQL, 0 skipped; `dotnet format` clean; frontend

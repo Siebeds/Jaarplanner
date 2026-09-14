@@ -247,7 +247,8 @@
     "dagThema": "thema {naam}",
     "dagThemas": "thema's {namen}",
     "dagGeenThema": "nog geen thema in deze periode",
-    "hoekenfiches": "Fiches",
+    "hoekenfiches": "Hoekenfiches",
+    "algemeneFiches": "Algemene fiches",
     "dagHoek": "hoek {naam}",
     "dagHoeken": "hoeken {namen}"
   },
@@ -675,10 +676,10 @@
     "verwijderMislukt": "Verwijderen is niet gelukt."
   },
   "hoekenpaneel": {
-    "titel": "Fiches",
-    "sluiten": "Fiches sluiten",
-    "hoeken": "Hoekenfiches",
-    "algemeen": "Algemene fiches",
+    "titel": "Hoekenfiches",
+    "sluiten": "Hoekenfiches sluiten",
+    "algemeenTitel": "Algemene fiches",
+    "algemeenSluiten": "Algemene fiches sluiten",
     "geenKlas": "Kies eerst een klas.",
     "geenHoeken": "Deze klas heeft nog geen hoeken.",
     "naarInstellingen": "Hoeken instellen",
@@ -716,6 +717,7 @@
     "van": "Van",
     "tot": "Tot",
     "momentUitleg": "De andere dagen van de periode blijven zoals ze zijn.",
+    "geenSchooldag": "Op die dag is er geen school. Kies een schooldag.",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
     "bewaren": "Bewaren",
     "bewarenBezig": "Bezig met bewaren",

@@ -89,16 +89,26 @@ describe("Algemeneficheplaatsingblad", () => {
     expect(geplaatst).not.toHaveBeenCalled();
   });
 
-  it("zegt in de kalender in woorden op welke dagen de fiche al staat, in haar eigen woorden", () => {
+  it("zegt in de kalender alleen op de dagen waarop de fiche echt staat dat ze er al staat", () => {
+    // Wednesdays only, over a window that also holds a Thursday: the window is not the truth, the occurrences are.
     toon({
       ingepland: [
-        { id: "p-1", algemeneFicheId: "f-1", ficheNaam: "turnen", van: "2026-09-01", tot: "2026-09-04", momenten: [] },
+        {
+          id: "p-1",
+          algemeneFicheId: "f-1",
+          ficheNaam: "turnen",
+          van: "2026-09-01",
+          tot: "2026-09-04",
+          momenten: [{ id: "m-1", datum: "2026-09-02", begin: "10:30:00", einde: "11:20:00" }],
+        },
       ],
     });
 
     expect(
       screen.getByRole("button", { name: `${volleDag("2026-09-02")}, ${t("ficheplaatsing.kalenderAlIngepland")}` }),
     ).toBeInTheDocument();
+    // Inside the same window, but no turnen on it: an ordinary day.
+    expect(screen.getByRole("button", { name: volleDag("2026-09-03") })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: t("ficheplaatsing.alIngepland") })).toBeInTheDocument();
   });
 });

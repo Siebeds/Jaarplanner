@@ -88,17 +88,42 @@ public sealed class AlgemeneFicheplaatsingTests
         var maandag = plaatsing.PlanIn(new DateOnly(2026, 8, 31), HalfElf, TwintigOverElf);
         plaatsing.PlanIn(new DateOnly(2026, 9, 14), HalfElf, TwintigOverElf);
 
+        var jaar = Jaar();
+
         // This week the turnles is on Tuesday, an hour later and a little longer.
-        Assert.True(plaatsing.VerplaatsMoment(maandag.Id, new DateOnly(2026, 9, 1), new TimeOnly(11, 30), new TimeOnly(12, 30)));
+        Assert.True(plaatsing.VerplaatsMoment(maandag.Id, new DateOnly(2026, 9, 1), new TimeOnly(11, 30), new TimeOnly(12, 30), jaar));
         Assert.Equal(new DateOnly(2026, 9, 1), maandag.Datum);
         Assert.Equal(new TimeOnly(11, 30), maandag.Begin);
         Assert.Equal(new TimeOnly(12, 30), maandag.Einde);
 
         Assert.Throws<ArgumentException>(() =>
-            plaatsing.VerplaatsMoment(maandag.Id, new DateOnly(2026, 10, 5), HalfElf, TwintigOverElf));
+            plaatsing.VerplaatsMoment(maandag.Id, new DateOnly(2026, 10, 5), HalfElf, TwintigOverElf, jaar));
         Assert.Throws<ArgumentException>(() =>
-            plaatsing.VerplaatsMoment(maandag.Id, new DateOnly(2026, 9, 14), HalfElf, TwintigOverElf));
-        Assert.False(plaatsing.VerplaatsMoment(Guid.NewGuid(), new DateOnly(2026, 9, 1), HalfElf, TwintigOverElf));
+            plaatsing.VerplaatsMoment(maandag.Id, new DateOnly(2026, 9, 14), HalfElf, TwintigOverElf, jaar));
+        Assert.False(plaatsing.VerplaatsMoment(Guid.NewGuid(), new DateOnly(2026, 9, 1), HalfElf, TwintigOverElf, jaar));
+    }
+
+    /// <summary>
+    /// Planning never writes a row on a day without school, so moving one must not either (antagonist, E10-03 round 1):
+    /// the detail sheet's date field reaches any day of the window, not only the open ones the grid accepts.
+    /// </summary>
+    [Fact]
+    public void Een_moment_verplaatsen_naar_een_dag_zonder_school_wordt_geweigerd()
+    {
+        var jaar = Jaar();
+        var plaatsing = new AlgemeneFicheplaatsing(Guid.NewGuid(), Guid.NewGuid(), Start, new DateOnly(2026, 9, 30));
+        var maandag = plaatsing.PlanIn(new DateOnly(2026, 8, 31), HalfElf, TwintigOverElf);
+
+        // A Saturday, a day in the closed week and the vrije dag: all inside the window, none of them a school day.
+        foreach (var dag in new[] { new DateOnly(2026, 9, 5), new DateOnly(2026, 9, 8), new DateOnly(2026, 9, 21) })
+        {
+            var fout = Assert.Throws<ArgumentException>(() =>
+                plaatsing.VerplaatsMoment(maandag.Id, dag, HalfElf, TwintigOverElf, jaar));
+            Assert.Contains("geen school", fout.Message);
+        }
+
+        // A refusal moves nothing.
+        Assert.Equal(new DateOnly(2026, 8, 31), maandag.Datum);
     }
 
     [Fact]

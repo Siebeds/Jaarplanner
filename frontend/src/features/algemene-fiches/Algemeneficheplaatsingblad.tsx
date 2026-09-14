@@ -83,6 +83,14 @@ export function Algemeneficheplaatsingblad({
 
   const reeksen = useMemo(() => [...ingepland].sort((a, b) => a.van.localeCompare(b.van)), [ingepland]);
 
+  // THE DAYS THIS FICHE ACTUALLY STANDS ON, one per occurrence, and not its windows. A hoek runs on every teaching day
+  // of its window, so the window was the hoek's truth; a fiche runs only on the weekdays she chose, and outlining a
+  // September-to-June window would tell her every Tuesday of a Monday lesson is taken (antagonist, round 1).
+  const bezetteDagen = useMemo(
+    () => ingepland.flatMap((plaatsing) => plaatsing.momenten.map((moment) => ({ van: moment.datum, tot: moment.datum }))),
+    [ingepland],
+  );
+
   // Monday to Friday of any week: only the weekday of each date is read, for its label.
   const dagen = useMemo(() => {
     const maandag = maandagVan(startdag);
@@ -185,7 +193,7 @@ export function Algemeneficheplaatsingblad({
               van={van}
               tot={tot}
               loopt={loopt}
-              alIngepland={reeksen}
+              alIngepland={bezetteDagen}
               bezetLabel={t("ficheplaatsing.kalenderAlIngepland")}
               schooljaarVan={schooljaarVan}
               schooljaarTot={schooljaarTot}
@@ -208,7 +216,8 @@ export function Algemeneficheplaatsingblad({
                 setTot(schooljaarTot);
                 setEindFout(false);
               }}
-              className="mt-1"
+              // Pulled out by its own padding, so its words line up with the labels above and below it.
+              className="-ml-4 mt-1"
             >
               {t("ficheplaatsing.totEindeSchooljaar")}
             </Knop>
@@ -243,7 +252,8 @@ export function Algemeneficheplaatsingblad({
                     "inline-flex h-9 min-w-11 items-center justify-center rounded-veld border px-3 text-meta font-medium transition-colors duration-150",
                     aan
                       ? "border-accent bg-accent text-accent-op"
-                      : "border-lijn-veld text-inkt-zacht hover:border-accent hover:text-accent",
+                      : // Hover in ink, like the other form toggles: the accent is rationed, and a hover is none of its uses.
+                        "border-lijn-veld text-inkt-zacht hover:border-inkt hover:text-inkt",
                   )}
                 >
                   {dag.kort}

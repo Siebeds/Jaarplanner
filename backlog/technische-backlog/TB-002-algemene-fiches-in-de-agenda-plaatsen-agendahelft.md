@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:16
+bijgewerkt: 2026-09-14 11:40
 opgepakt-door: E10-03
 branch: story/E10-03-agenda
 pr:
@@ -26,7 +26,9 @@ haar vinkjes in `backlog/E10-eigenaarsvergadering.md` worden mee afgevinkt.*
 
 ## Voorgestelde wijziging
 
-Alleen frontend: de backend (`AlgemeneFicheplaatsingenController`) bestaat al en is getest.
+Vooral frontend: de endpoints (`AlgemeneFicheplaatsingenController`) bestaan al en zijn getest. Eén regel in de
+backend komt erbij, omdat dit scherm hem voor het eerst bereikbaar maakt: één moment verplaatsen weigert een dag
+zonder school (`AlgemeneFicheplaatsing.VerplaatsMoment`), zoals het inplannen al deed.
 
 - `features/algemene-fiches/gegevens.ts`: de plaatsingen lezen, plaatsen, weghalen en één moment verplaatsen.
 - Het fichepaneel naast de agenda krijgt onder de hoekenfiches een tweede lijst: de algemene fiches van de klas,
@@ -53,8 +55,8 @@ Alleen frontend: de backend (`AlgemeneFicheplaatsingenController`) bestaat al en
 ## Buiten scope
 
 De maandweergave tekent geen algemene fiches (ze krijgt wel een drop, die het blad opent zonder uur). De uren van een
-hele periode in één keer aanpassen: daar is geen endpoint voor. De wijziging van Art. V.1 in de grondwet: die
-volgt de eigen procedure van Art. XI.1 en staat als apart vinkje bij E10-03.
+hele periode in één keer aanpassen: daar is geen endpoint voor. De wijziging van Art. V.1 zelf: die staat al op
+`main` (`7fc20bc`, 2026-09-11).
 
 ## Open vragen
 
@@ -64,3 +66,5 @@ Geen.
 
 - 2026-09-14 11:01 · E10-03 · aangemaakt (status in-uitvoering)
 - 2026-09-14 11:16 · E10-03 · Frontend gebouwd: fichepaneel met algemene fiches, plaatsingsblad, detailblad en momenten in het tijdraster; pnpm lint schoon, Vitest 247/247 groen.
+- 2026-09-14 11:26 · E10-03 · Browsercontrole 1440: plaatsen via slepen, blokken in de week, dekking 0 naar 1 van 14 zonder herladen, één dag aanpassen via het detailblad werkt. Antagonist ronde 1: VIOLATIONS FOUND (2 MAJOR, 5 MINOR, 2 vragen); herstel loopt.
+- 2026-09-14 11:40 · E10-03 · Eigenaar 2026-09-14: geen gegroepeerd paneel 'Fiches', maar twee aparte schakelaars in de zijbalk (Hoekenfiches en Algemene fiches), elk met een eigen lijst. Omgebouwd.

@@ -130,10 +130,24 @@ public sealed class AlgemeneFicheplaatsing
 
     /// <summary>
     /// Moves or resizes one occurrence: this week the turnles is on Tuesday, and it runs a little longer.
+    /// <para>
+    /// <b>The day must be a school day, for the reason <see cref="Herhalingsdagen"/> gives.</b> Planning never writes
+    /// a row on a weekend or in a vakantie, so a move must not either: otherwise one occurrence can end up on a closed
+    /// Saturday, drawn in a greyed column and counted among the "schooldagen" of the run. The time grid already refuses
+    /// such a drop; this is the same rule for every other route, the detail sheet's date field first among them
+    /// (antagonist, E10-03 round 1).
+    /// </para>
     /// </summary>
+    /// <param name="schooljaar">The class's school year, whose open weekdays decide which days are allowed.</param>
     /// <returns><c>false</c> when this placement holds no occurrence with that id.</returns>
-    public bool VerplaatsMoment(Guid momentId, DateOnly datum, TimeOnly begin, TimeOnly einde)
+    /// <exception cref="ArgumentException">
+    /// The day lies outside the placement, is a weekend day or a closure, the end is not after the start, or this
+    /// placement already starts at that time on that day.
+    /// </exception>
+    public bool VerplaatsMoment(Guid momentId, DateOnly datum, TimeOnly begin, TimeOnly einde, Schooljaar schooljaar)
     {
+        ArgumentNullException.ThrowIfNull(schooljaar);
+
         var moment = _momenten.Find(m => m.Id == momentId);
         if (moment is null)
         {
@@ -141,6 +155,12 @@ public sealed class AlgemeneFicheplaatsing
         }
 
         BewaakDag(datum, begin, momentId);
+
+        if (schooljaar.OpenWeekdagen(datum, datum).Count == 0)
+        {
+            throw new ArgumentException("Op die dag is er geen school. Kies een schooldag.");
+        }
+
         moment.Verplaats(datum, begin, einde);
         return true;
     }

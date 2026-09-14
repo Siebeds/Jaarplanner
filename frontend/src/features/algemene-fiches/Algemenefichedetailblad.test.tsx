@@ -99,6 +99,17 @@ describe("Algemenefichedetailblad", () => {
     expect(JSON.parse(init.body)).toEqual({ datum: "2026-09-14", begin: "10:30:00", einde: "11:50:00" });
   });
 
+  it("weigert een weekenddag al voor er iets verstuurd wordt", () => {
+    toon({ momentId: "m-2" });
+
+    // Saturday 19 September: inside the window, but no school. A vakantie is the server's to refuse.
+    fireEvent.change(screen.getByLabelText(t("fichedetail.dag")), { target: { value: "2026-09-19" } });
+
+    expect(screen.getByText(t("fichedetail.geenSchooldag"))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("fichedetail.bewaren") })).toBeDisabled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("biedt geen dagvelden aan wanneer het blad een hele periode toont", () => {
     toon({ momentId: null });
     expect(screen.queryByLabelText(t("fichedetail.dag"))).not.toBeInTheDocument();

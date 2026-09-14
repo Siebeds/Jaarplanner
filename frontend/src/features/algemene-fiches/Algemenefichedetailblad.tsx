@@ -3,7 +3,7 @@ import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
 import { Invoer } from "../../components/ui/Veld";
 import { ApiError } from "../../lib/api";
-import { periode as periodeTekst, volleDag } from "../../lib/datum";
+import { periode as periodeTekst, volleDag, weekdagIndex } from "../../lib/datum";
 import { toonBereik } from "../plan/tijd";
 import { t, telWoord } from "../../i18n";
 import {
@@ -145,6 +145,8 @@ function Momentvorm({
   const [einde, setEinde] = useState(moment.einde.slice(0, 5));
 
   const urenOngeldig = begin === "" || einde === "" || einde <= begin;
+  // A weekend the sheet can see coming; a vakantie it cannot, so that one is the server's refusal, shown below.
+  const weekend = datum !== "" && weekdagIndex(datum) >= 5;
   const ongewijzigd =
     datum === moment.datum && begin === moment.begin.slice(0, 5) && einde === moment.einde.slice(0, 5);
   const detail = verplaats.error instanceof ApiError ? verplaats.error.detail : undefined;
@@ -202,6 +204,12 @@ function Momentvorm({
 
       <p className="mt-1.5 text-micro text-inkt-zacht">{t("fichedetail.momentUitleg")}</p>
 
+      {weekend ? (
+        <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
+          {t("fichedetail.geenSchooldag")}
+        </p>
+      ) : null}
+
       {urenOngeldig && begin !== "" && einde !== "" ? (
         <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
           {t("fichedetail.eindeVoorBegin")}
@@ -211,7 +219,7 @@ function Momentvorm({
       <Knop
         type="button"
         className="mt-2"
-        disabled={verplaats.isPending || vergrendeld || urenOngeldig || ongewijzigd || datum === ""}
+        disabled={verplaats.isPending || vergrendeld || urenOngeldig || ongewijzigd || datum === "" || weekend}
         onClick={() => {
           verplaats.reset();
           verplaats.mutate({
