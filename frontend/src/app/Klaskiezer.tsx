@@ -5,6 +5,7 @@ import { Veld, Keuze } from "../components/ui/Veld";
 import { IcoonChevron } from "../components/Iconen";
 import { useActieveSelectie } from "../lib/selectie";
 import { useWijzigKlas } from "../lib/queries";
+import { geenToegangZin, useRechten } from "../lib/rechten";
 import type { KlasWeergave } from "../lib/types";
 import { t } from "../i18n";
 
@@ -21,6 +22,9 @@ import { t } from "../i18n";
 export function Klaskiezer() {
   const [open, setOpen] = useState(false);
   const { klas, schooljaar, schooljaren, klassen, kiesSchooljaar, kiesKlas } = useActieveSelectie();
+  // The jaarfase travels over `PUT /api/klassen/{id}`, the §3 "beheren" row: directie only (E6-02). Everyone else
+  // still picks a schooljaar and a klas here; those are a context, not a write.
+  const { mag } = useRechten();
 
   return (
     <>
@@ -74,7 +78,7 @@ export function Klaskiezer() {
             }
           </Veld>
 
-          {klas ? <Jaarfaseveld klas={klas} /> : null}
+          {klas && mag.beheer ? <Jaarfaseveld klas={klas} /> : null}
         </div>
       </Blad>
     </>
@@ -145,7 +149,8 @@ function Jaarfaseveld({ klas }: { klas: KlasWeergave }) {
               so nothing else would announce it. */}
           {wijzig.isError ? (
             <p role="alert" className="text-meta font-medium text-attentie-inkt">
-              {t("context.jaarFaseMislukt")}
+              {/* "Probeer het opnieuw" would be wrong for a refusal: trying again is refused again. */}
+              {geenToegangZin(wijzig.error) ?? t("context.jaarFaseMislukt")}
             </p>
           ) : null}
         </>

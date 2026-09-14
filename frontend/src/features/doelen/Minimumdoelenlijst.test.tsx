@@ -3,7 +3,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
+import type { Ik } from "../../lib/aanmelding";
 import type { MinimumdoelFacetten, MinimumdoelRegel } from "../../lib/types";
+import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
 import { Minimumdoelenlijst } from "./Minimumdoelenlijst";
 
 /**
@@ -48,7 +50,14 @@ function facetten(overrides: Partial<MinimumdoelFacetten> = {}): MinimumdoelFace
 
 let paden: string[] = [];
 
-function toon(opties: { facetten: MinimumdoelFacetten; regels: MinimumdoelRegel[]; totaal?: number; onWisFilters?: () => void }) {
+function toon(opties: {
+  facetten: MinimumdoelFacetten;
+  regels: MinimumdoelRegel[];
+  totaal?: number;
+  onWisFilters?: () => void;
+  /** Who is looking; directie unless a test says otherwise (E6-02: the Laadlink is directie's). */
+  ik?: Ik;
+}) {
   paden = [];
   vi.stubGlobal(
     "fetch",
@@ -72,7 +81,7 @@ function toon(opties: { facetten: MinimumdoelFacetten; regels: MinimumdoelRegel[
     }),
   );
 
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const client = metIk(new QueryClient({ defaultOptions: { queries: { retry: false } } }), opties.ik ?? DIRECTIE);
   return render(
     <MemoryRouter>
       <QueryClientProvider client={client}>
@@ -91,8 +100,22 @@ describe("Minimumdoelenlijst", () => {
     toon({ facetten: facetten({ totaalAantalMinimumdoelen: 0, aantalTreffers: 0, aantalZonderLeerplandoel: 0, disciplines: [] }), regels: [] });
 
     expect(await screen.findByText(t("doelen.geenMinimumdoelenTitel"))).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: t("doelen.laadIn") })).toHaveAttribute("href", "/inladen");
+    // Straight to the Op.stap section, since that is what "laad ze in" means (E6-02).
+    expect(screen.getByRole("link", { name: t("doelen.laadIn") })).toHaveAttribute("href", "/inladen?bron=opstap");
     expect(screen.queryByText(/decretale bestand/)).not.toBeInTheDocument();
+  });
+
+  // The E1-22 carry-forward closed by E6-02: loading Op.stap is directie's (R3), so for anyone else "Laad ze in bij
+  // Inladen" would point at something they cannot do. Themabeheer loads thema's, not goals.
+  it("wijst alleen directie naar Inladen: themabeheer ziet de lege lijst zonder link", async () => {
+    toon({
+      facetten: facetten({ totaalAantalMinimumdoelen: 0, aantalTreffers: 0, aantalZonderLeerplandoel: 0, disciplines: [] }),
+      regels: [],
+      ik: ikMet({ heeftThemabeheer: true }),
+    });
+
+    expect(await screen.findByText(t("doelen.geenMinimumdoelenTitel"))).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: t("doelen.laadIn") })).not.toBeInTheDocument();
   });
 
   it("toont ingeladen minimumdoelen zonder geconcordeerd leerplandoel in een eigen groep, nooit als een tekort", async () => {

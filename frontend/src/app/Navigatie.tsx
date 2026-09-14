@@ -5,6 +5,8 @@ import { Merk } from "./Merk";
 import { Aanmeldregel } from "./Aanmeldregel";
 import { IcoonHoek } from "../components/Iconen";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
+import { useActieveSelectie } from "../lib/selectie";
+import { useRechten } from "../lib/rechten";
 import { useZijkolom } from "./zijkolom";
 import { t } from "../i18n";
 import { cn } from "../lib/cn";
@@ -54,12 +56,20 @@ import { cn } from "../lib/cn";
  * gone. That reset is not cosmetic. Only `Agendascherm` renders the panel, while the rail here and
  * the inline reservation in `Schil` both follow the store through `useZijkolom`, so without it a teacher who
  * navigated away kept a 56px rail and 296px of reserved width beside a screen with no panel in it.
+ *
+ * **The switch is only for whoever may plan the klas on screen** (E6-02, ADR-0030 §3, R7), because every fiche in
+ * the panel plans a hoek, and `Agendascherm` renders no panel for anyone else. For the same reason as the reset
+ * above, the panel is closed once the rights and the klas are known and say no: a picker switched to a colleague's
+ * klas would otherwise leave the rail and the reservation dressed for a panel that no longer renders.
  */
 export function Navigatie() {
   const paneelOpen = useHoekenpaneel((s) => s.open);
   const zetPaneel = useHoekenpaneel((s) => s.zet);
   const wisselPaneel = useHoekenpaneel((s) => s.wissel);
   const smal = useZijkolom();
+  const { klasId, laadt: selectieLaadt } = useActieveSelectie();
+  const { mag, laadt: rechtenLaden } = useRechten();
+  const magPlannen = mag.klasplanningBewerken(klasId);
 
   /*
     The two routes `Agendascherm` answers, and so the only two that mount a hoekenpaneel. Matched as
@@ -78,9 +88,10 @@ export function Navigatie() {
     effect that fires after paint would let one frame through with the rail still collapsed and the
     padding still reserved. Before paint, the browser only ever sees the settled layout.
   */
+  const magNiet = !rechtenLaden && !selectieLaadt && !magPlannen;
   useLayoutEffect(() => {
-    if (!opAgenda && paneelOpen) zetPaneel(false);
-  }, [opAgenda, paneelOpen, zetPaneel]);
+    if ((!opAgenda || magNiet) && paneelOpen) zetPaneel(false);
+  }, [opAgenda, magNiet, paneelOpen, zetPaneel]);
 
   return (
     <nav
@@ -120,7 +131,7 @@ export function Navigatie() {
 
         {/* Only on the routes that have a panel to switch. Never in the bottom bar, hence `hidden`
             with an `lg` opt-in: the phone keeps exactly its five tabs at every route. */}
-        {opAgenda ? (
+        {opAgenda && magPlannen ? (
           <li className="hidden lg:mt-2 lg:block lg:border-t lg:border-lijn lg:pt-2">
             <Hoekenschakelaar open={paneelOpen} onWissel={wisselPaneel} />
           </li>

@@ -1,8 +1,10 @@
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { Blad } from "../../components/ui/Blad";
 import { Keuze } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
+import { useInBeeld } from "../../components/ui/inBeeld";
 import { useThemasVoorKlas } from "../../lib/queries";
+import { geenToegangZin, useRechten } from "../../lib/rechten";
 import { volleDag } from "../../lib/datum";
 import { t } from "../../i18n";
 import { Activiteitformulier, type ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
@@ -39,6 +41,7 @@ export function Nieuweactiviteitblad({
   voorstelSubthemaId,
   planBezig,
   planFout,
+  planGeweigerd,
   onPlan,
   onSluit,
 }: {
@@ -51,6 +54,8 @@ export function Nieuweactiviteitblad({
   planBezig: boolean;
   /** What the server said about the placement, in Dutch, already composed for the teacher. */
   planFout: string | null;
+  /** The placement was refused for want of a right (a 403): the activiteit exists, and this klas may not be planned. */
+  planGeweigerd: boolean;
   /**
    * Hand the freshly made activiteit to the screen, which owns the placement.
    *
@@ -62,23 +67,30 @@ export function Nieuweactiviteitblad({
 }) {
   const id = useId();
   const { themas, laadt } = useThemasVoorKlas(themaIds, klasId);
+  const { mag } = useRechten();
 
   // Every subthema of every thema running in this period, in the order the picker lists them, so the
   // dropdown and the list above it do not disagree about what this period contains. Subthema's with
   // no activiteiten are in here and deliberately so: an empty subthema is precisely the one a teacher
   // is most likely to be filling, and the picker cannot show it because it has nothing to show.
+  //
+  // Only those this gebruiker may make an activiteit in (E6-02: R17, R23). The picker offers this sheet only when
+  // there is at least one.
   const keuzes = useMemo(
     () =>
       themas.flatMap((thema) =>
-        thema.subthemas.map((sub) => ({
-          id: sub.id,
-          naam: sub.naam,
-          themaId: thema.id,
-          themaNaam: thema.naam,
-          onderzoeksvragen: sub.onderzoeksvragen,
-        })),
+        thema.subthemas
+          .filter((sub) => mag.activiteitBewerken(sub.leeftijd))
+          .map((sub) => ({
+            id: sub.id,
+            naam: sub.naam,
+            leeftijd: sub.leeftijd,
+            themaId: thema.id,
+            themaNaam: thema.naam,
+            onderzoeksvragen: sub.onderzoeksvragen,
+          })),
       ),
-    [themas],
+    [themas, mag],
   );
 
   // Null means "whatever the day suggests", which is not the same as a copy of that suggestion: a
@@ -93,7 +105,9 @@ export function Nieuweactiviteitblad({
 
   async function bewaarEnPlan(invoer: ActiviteitInvoer) {
     if (!actief) return;
-    const nieuw = await maak.mutateAsync({ subthemaId: actief.id, invoer });
+    // Caught and not rethrown: a failed create is the mutation's error, which this sheet shows (fix round 3).
+    const nieuw = await maak.mutateAsync({ subthemaId: actief.id, invoer }).catch(() => null);
+    if (!nieuw) return;
     onPlan(nieuw.id, (nieuw.lengteInLesuren ?? 1) * STANDAARDDUUR);
   }
 
@@ -101,12 +115,33 @@ export function Nieuweactiviteitblad({
   // the activiteit itself, and a second copy of the same sentence in `extra` would appear beside it.
   const maakFout = maak.isError ? maak.error : undefined;
 
+  // A REFUSAL ENDS WHAT THIS SHEET CAN DO (E6-02 slice 4, fix round 3). A refused create made nothing. A refused plan
+  // made the activiteit, and this klas may not be planned. Either way Bewaren would be refused again, or after a
+  // refused plan make a second activiteit, and the day line would promise a plan. So from the refusal on, the sheet
+  // shows the refusal as its only alert, and its close control. Decided on the refusal itself rather than on the rights
+  // it refetches, so the form never shows it first and it is announced once.
+  const maakWeigering = geenToegangZin(maak.error);
+  const weigering =
+    maakWeigering ?? (planGeweigerd && planFout ? `${t("periode.gemaaktNietGepland")} ${planFout}` : null);
+
   if (datum === null) return null;
 
-  if (laadt || !actief) {
+  if (laadt || !actief || weigering) {
     return (
       <Blad open onOpenChange={(open) => !open && onSluit()} maat="breed" titel={t("activiteit.nieuwTitel")}>
-        {laadt ? <Laadlijst rijen={4} /> : <p className="text-body text-inkt-zacht">{t("periode.geenSubthemaOmIn")}</p>}
+        {/* "No subthema" only when nothing failed: after a refusal, or a placement that failed once the activiteit was
+            made, the failure is what this sheet has to say. */}
+        {weigering ? (
+          <Bladfout>{weigering}</Bladfout>
+        ) : laadt ? (
+          <Laadlijst rijen={4} />
+        ) : planFout ? (
+          <Bladfout>
+            {t("periode.gemaaktNietGepland")} {planFout}
+          </Bladfout>
+        ) : (
+          <p className="text-body text-inkt-zacht">{t("periode.geenSubthemaOmIn")}</p>
+        )}
       </Blad>
     );
   }
@@ -114,6 +149,8 @@ export function Nieuweactiviteitblad({
   return (
     <Activiteitformulier
       open
+      // Goal codes on a create need the goal-link right at the subthema's leeftijd (R19); without it, no picker.
+      magDoelen={mag.doelenKoppelen(actief.leeftijd)}
       onderzoeksvragen={actief.onderzoeksvragen}
       bezig={maak.isPending || planBezig}
       fout={maakFout}
@@ -164,12 +201,31 @@ export function Nieuweactiviteitblad({
           {/* The activiteit was made and the placement was refused, so the two halves of Bewaren
               landed differently. Rendered under the day line because that is the half that failed. */}
           {planFout ? (
-            <p className="mt-2 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+            <Bladfout>
               {t("periode.gemaaktNietGepland")} {planFout}
-            </p>
+            </Bladfout>
           ) : null}
         </>
       }
     />
+  );
+}
+
+/**
+ * A failure in this sheet, said as an alert (E6-02 slice 4, fix rounds 2 and 3, F7; WCAG 4.1.3). The sheet stays open
+ * on a failure and is a modal dialog, so this is the only place it can be announced: the agenda's own strip does not
+ * show a refusal that arrives while this sheet is open. Brought into the sheet's view when it appears, since on a
+ * phone it lands below the visible part of the form.
+ */
+function Bladfout({ children }: { children: ReactNode }) {
+  const ref = useInBeeld<HTMLParagraphElement>();
+  return (
+    <p
+      ref={ref}
+      role="alert"
+      className="mt-2 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
+    >
+      {children}
+    </p>
   );
 }

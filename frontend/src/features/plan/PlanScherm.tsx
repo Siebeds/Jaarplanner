@@ -9,6 +9,7 @@ import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
 import { useGenereerJaarplan, useJaarplan, usePlaatsingacties, usePlaatsThema, useRooster } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
+import { geenToegangZin, useRechten } from "../../lib/rechten";
 import { ApiError } from "../../lib/api";
 import type { KoppelingStatus, Planningsblok } from "../../lib/types";
 import { periode, valtBinnen, vandaag } from "../../lib/datum";
@@ -25,9 +26,15 @@ import { Themakiezer } from "./Themakiezer";
  * The strip at the top is both the overview and the navigation. Below it the same year is a vertical
  * list of periods, because that is where a placement can actually be read and acted on. The two are
  * one selection: pressing a period in the strip scrolls to its section.
+ *
+ * **Changing the plan is directie's and this klas's leerkrachten'** (E6-02, ADR-0030 §3, R7, R15): generating, adding
+ * a thema to a period, and the verdict, lock, move and delete of a placement. Anyone else reads every klas's plan
+ * (I9), with one quiet line that says so, as on the agenda this screen belongs to.
  */
 export function PlanScherm() {
   const { klasId, schooljaarId, klas } = useActieveSelectie();
+  const { mag, bekend: rechtenBekend } = useRechten();
+  const magPlannen = mag.klasplanningBewerken(klasId);
   const [gekozenBlok, setGekozenBlok] = useState<string | null>(null);
   const [generatieOpen, setGeneratieOpen] = useState(false);
   const [themakiezerBlok, setThemakiezerBlok] = useState<string | null>(null);
@@ -69,6 +76,13 @@ export function PlanScherm() {
   const bezig =
     acties.beoordeel.isPending || acties.vergrendel.isPending || acties.verplaats.isPending || acties.verwijder.isPending;
 
+  // A refused change from a control with no error line of its own: every placement action, and a thema added to a
+  // period. Only a stale page gets here, since none of them is drawn without the right; the query client then
+  // refetches, so the controls go, and this says why nothing happened. Generating has its own line below.
+  const geweigerd = [acties.beoordeel, acties.vergrendel, acties.verplaats, acties.verwijder, plaatsThema]
+    .map((mutatie) => geenToegangZin(mutatie.error))
+    .find((zin) => zin !== null);
+
   function springNaar(blokStart: string) {
     setGekozenBlok(blokStart);
     document.getElementById(`periode-${blokStart}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -103,6 +117,14 @@ export function PlanScherm() {
           </div>
         ) : (
           <>
+            {/* Once, and only when true: the rights have answered WITH a gebruiker, and that gebruiker may not plan the
+                klas shown. A failed `/api/ik` proves nothing about rights, so it says nothing (fix round 1, F3). */}
+            {rechtenBekend && !magPlannen && klas ? (
+              <p className="mb-3 text-meta text-inkt-zacht">
+                {t("rechten.planningAlleenBekijken", { klas: klas.naam })}
+              </p>
+            ) : null}
+
             <Schooljaarlint
               blokken={blokken}
               spreiding={plan.blokken}
@@ -123,15 +145,26 @@ export function PlanScherm() {
                     {t("plan.periodeVanVandaag")}
                   </Link>
                 ) : null}
-                <Knop rang="hoofd" className="h-9 min-h-9 px-4 text-meta" onClick={() => setGeneratieOpen(true)}>
-                  {t("plan.genereer")}
-                </Knop>
+                {magPlannen ? (
+                  <Knop rang="hoofd" className="h-9 min-h-9 px-4 text-meta" onClick={() => setGeneratieOpen(true)}>
+                    {t("plan.genereer")}
+                  </Knop>
+                ) : null}
               </div>
             </div>
 
             {generatie.isError ? (
               <p className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
                 {foutregel(generatie.error)}
+              </p>
+            ) : null}
+
+            {geweigerd ? (
+              <p
+                role="alert"
+                className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
+              >
+                {geweigerd}
               </p>
             ) : null}
 
@@ -165,14 +198,16 @@ export function PlanScherm() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setThemakiezerBlok(blok.start)}
-                          className="inline-flex h-9 items-center gap-1.5 rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
-                        >
-                          <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-                          {t("plan.voegThemaToe")}
-                        </button>
+                        {magPlannen ? (
+                          <button
+                            type="button"
+                            onClick={() => setThemakiezerBlok(blok.start)}
+                            className="inline-flex h-9 items-center gap-1.5 rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
+                          >
+                            <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+                            {t("plan.voegThemaToe")}
+                          </button>
+                        ) : null}
 
                         <Link
                           to={`/agenda/dag/${blok.start}`}
@@ -188,8 +223,11 @@ export function PlanScherm() {
                     </header>
 
                     {/* An empty period is the most natural place to put a thema, so the empty state
-                        IS the control rather than a sentence sitting next to one. */}
-                    {plaatsingen.length === 0 ? (
+                        IS the control rather than a sentence sitting next to one. For a reader it is
+                        only the sentence. */}
+                    {plaatsingen.length === 0 && !magPlannen ? (
+                      <p className="text-meta text-inkt-zacht">{t("periode.geenThema")}</p>
+                    ) : plaatsingen.length === 0 ? (
                       <button
                         type="button"
                         onClick={() => setThemakiezerBlok(blok.start)}
@@ -205,6 +243,7 @@ export function PlanScherm() {
                             <Plaatsingkaart
                               plaatsing={plaatsing}
                               blokken={blokken}
+                              magBewerken={magPlannen}
                               bezig={bezig}
                               onBeoordeel={(status: KoppelingStatus) =>
                                 acties.beoordeel.mutate({ plaatsingId: plaatsing.id, status })
@@ -256,7 +295,9 @@ export function PlanScherm() {
       </Blad>
 
       <Themakiezer
-        blokStart={themakiezerBlok}
+        // Closed once this gebruiker may not plan the klas (after a 403 the rights are refetched): the picker has no
+        // error line of its own, so the refusal is the line above the periods, which it would otherwise cover.
+        blokStart={magPlannen ? themakiezerBlok : null}
         blokEind={blokken.find((blok) => blok.start === themakiezerBlok)?.eind ?? null}
         reedsGepland={
           new Set(

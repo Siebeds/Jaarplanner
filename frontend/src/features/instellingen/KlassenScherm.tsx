@@ -8,7 +8,7 @@ import { IcoonPlus } from "../../components/Iconen";
 import { useActieveSelectie } from "../../lib/selectie";
 import { useJaarfasen } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
-import { useIk } from "../../lib/aanmelding";
+import { useRechten } from "../../lib/rechten";
 import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Klasformulier } from "./Klasformulier";
@@ -38,19 +38,19 @@ import { useMaakKlas, useVerwijderKlas, useWijzigKlasVolledig } from "./mutaties
  *
  * **Directie defines the klassen; everyone else reads them** (E6-04, ADR-0030 §3 "Gebruikers,
  * klassen en schooljaren beheren", directie only). For anyone else there is no add, edit or delete:
- * the matrix gives those to directie alone, and the server refuses them once the combined E6-02/E6-04
- * build puts that row on the klas routes (its slice 3; until then the routes still admit any
- * session). A button the matrix does not grant would be a control that does nothing (the E3-06
+ * the matrix gives those to directie alone, and the server refuses them on the klas routes (E6-02
+ * slice 3). A button the matrix does not grant would be a control that does nothing (the E3-06
  * rule). Directie also sees who teaches each klas, read from the beheer data, which only directie
- * may read.
+ * may read. The answer is `mag.beheer` from `lib/rechten.ts` (slice 4). *Until slice 3 this said the
+ * routes still admitted any session; that clause is struck because it stopped being true.*
  */
 export function KlassenScherm() {
   const { schooljaar, schooljaren, klassen, laadt, kiesSchooljaar } = useActieveSelectie();
   const [formulier, setFormulier] = useState<{ klas?: KlasWeergave } | null>(null);
   const [teVerwijderen, setTeVerwijderen] = useState<KlasWeergave | null>(null);
 
-  const { data: ik } = useIk();
-  const isDirectie = ik?.isDirectie === true;
+  const { mag } = useRechten();
+  const isDirectie = mag.beheer;
   const beheer = useGebruikersOverzicht(isDirectie);
   const leerkrachten = leerkrachtenPerKlas(beheer.data?.gebruikers);
 

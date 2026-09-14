@@ -1,5 +1,5 @@
 import type { Vertaalsleutel } from "../../i18n";
-import { useIk } from "../../lib/aanmelding";
+import { useRechten } from "../../lib/rechten";
 
 /**
  * The parts of Instellingen, in the order both shapes list them: the column from `lg` and the switch
@@ -38,7 +38,10 @@ export const ONDERDELEN = [
 export type Onderdeel = (typeof ONDERDELEN)[number];
 export type Deel = Onderdeel["deel"];
 
-/** Whether only directie may see this part. The link is hidden, and the server refuses the data. */
+/**
+ * Whether only directie may see this part: the §3 "beheren" row (`mag.beheer`), which is directie only. The link is
+ * hidden, and the server refuses the data.
+ */
 export function isAlleenDirectie(onderdeel: Onderdeel): boolean {
   return "alleenDirectie" in onderdeel && onderdeel.alleenDirectie;
 }
@@ -47,12 +50,12 @@ export function isAlleenDirectie(onderdeel: Onderdeel): boolean {
  * The parts this person may see, in `ONDERDELEN` order. Until `/api/ik` has answered, a
  * directie-only part counts as hidden: a link that appears a moment later is better than one that
  * is offered and then taken away. The column, the phone switch and the route gate all read this,
- * so they cannot disagree about which parts exist.
+ * so they cannot disagree about which parts exist. The answer comes from `lib/rechten.ts` (E6-02
+ * slice 4), the one place the frontend decides what a gebruiker may do.
  */
 export function useZichtbareOnderdelen(): readonly Onderdeel[] {
-  const { data: ik } = useIk();
-  const isDirectie = ik?.isDirectie === true;
-  return ONDERDELEN.filter((onderdeel) => isDirectie || !isAlleenDirectie(onderdeel));
+  const { mag } = useRechten();
+  return ONDERDELEN.filter((onderdeel) => mag.beheer || !isAlleenDirectie(onderdeel));
 }
 
 /** The address of a part. */

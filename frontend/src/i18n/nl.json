@@ -461,6 +461,7 @@
     "gewijzigd": "wijzigt",
     "ongewijzigd": "blijft",
     "nogMeer": "En nog {aantal} meer",
+    "geenRecht": "Je hebt geen recht om iets in te laden.",
     "school": {
       "kort": "Thema's",
       "titel": "Thema's en activiteiten",
@@ -474,8 +475,10 @@
       "themas": "Thema's",
       "subthemas": "Subthema's",
       "activiteiten": "Activiteiten",
-      "bedreigd": "{aantal} koppelingen die jij zelf gezet hebt, staan niet in dit bestand",
+      "bedreigd": "{aantal} vastgelegde koppelingen staan niet in dit bestand",
+      "bedreigdEen": "1 vastgelegde koppeling staat niet in dit bestand",
       "opruimen": "Verwijder die koppelingen. Laat dit uit en ze blijven staan.",
+      "blijvenStaan": "Die koppelingen blijven staan.",
       "eerstHerstellen": "Herstel eerst de rijen hierboven."
     },
     "opstap": {
@@ -580,12 +583,14 @@
     "ontkoppel": "{code} afhalen",
     "toevoegen": "Activiteit toevoegen",
     "bewerkAria": "Activiteit {naam} bewerken",
+    "bekijkAria": "Activiteit {naam} bekijken",
     "verwijderAria": "Activiteit {naam} verwijderen",
     "geen": "Nog geen activiteiten",
     "verwijderTitel": "{naam} verwijderen",
     "verwijderGevolg": "Hiermee verdwijnen ook {doelen} gekoppelde doelen. Dat is niet terug te draaien.",
     "duur": "Hoelang duurt ze meestal",
     "duurUitleg": "{aantal} minuten. In de agenda kan je dat per dag bijstellen.",
+    "minuten": "{aantal} minuten",
     "eenDoel": "1 doel",
     "aantalDoelen": "{aantal} doelen",
     "geenDoel": "Nog geen doel",
@@ -633,6 +638,7 @@
     "geenTreffers": "Niets gevonden",
     "geenThemas": "Nog geen thema's",
     "geenThemasActie": "Maak eerst een thema aan bij Thema's.",
+    "nietsTeKoppelen": "Je kan dit doel hier nergens aan koppelen.",
     "eenSubthema": "1 subthema",
     "aantalSubthemas": "{aantal} subthema's",
     "eenActiviteit": "1 activiteit",
@@ -808,5 +814,11 @@
       "titel": "Aanmelden is niet gelukt",
       "uitleg": "Het aanmelden werd onderbroken of liep mis. Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan de directie."
     }
+  },
+  "rechten": {
+    "geenToegang": "Je hebt geen toegang tot deze actie.",
+    "planningAlleenBekijken": "De planning van {klas} kan je alleen bekijken.",
+    "hoekenAlleenBekijken": "De hoeken van {klas} kan je alleen bekijken.",
+    "fichesAlleenBekijken": "De algemene fiches van {klas} kan je alleen bekijken."
   }
 }

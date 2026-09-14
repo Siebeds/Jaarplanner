@@ -835,3 +835,139 @@ MAJOR 1: the flag's only writer is `Program.cs:69-70`, and no configuration bind
 
 ### Owner decision after round 4 (2026-09-14)
 The three fix rounds were used up. The owner approved one extra mini-fix covering MINOR 1 (the two comments) and QUESTION 2 (the klas and schooljaar not-found sentences without a raw id), and the orchestrator added the test-runner's round-4 LOW notes (focus the list-level alert when the sheet closes on its own), which share that code path. **The owner waived an antagonist review of that mini-fix** ("nee skip de antagonist"). Its evidence is the diff check, the tests and the browser check reported by the implementer.
+
+## Code slice 4 — audit round 1
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff b0a193f d859a10` on `story/E6-02-frontend` (54 files, +2975/−469), plus the "Code slice 4" worklog entry, checked against the server's `Rechtenmatrix`, `EfRechtenbronnen`, every controller policy and `RechtenmatrixTests`.
+- **Verdict:** VIOLATIONS FOUND — 1 MAJOR, 5 MINOR, 1 QUESTION. No CRITICAL.
+- **Gates re-run by the auditor:** `pnpm lint` exit 0; `pnpm test` 45 files, 452/452 green, at `d859a10`.
+
+### Confirmed compliant
+- `lib/rechten.ts` mirrors `Rechtenmatrix.cs`: 18 rows, the same columns, the same `StaatToe` clauses, the union rule; fails closed on `undefined`; `VERWACHT`/`RELATIES` equal the server's `Verwacht`/`Relaties`.
+- Maker delete (R25/R33): `MapActiviteit` sends `MakerId` and every link whatever its status, the same fact as `EfRechtenbronnen`; no maker matches no one; a right-less maker reaches the bin. I13: both ends, as `SubthemasController.Wijzig`.
+- Every frontend write call maps to a gated control whose answer matches the route's policy (all controllers checked).
+- Decision (c): no caller for `useVerplaatsActiviteit`, the doelsuggestie `/leerplandoel` route, wizardruns, thema-opbouw, algemene-ficheplaatsingen, or schooljaar create; nothing to gate.
+- Decision (d): no 403 loop (only mutations trigger it; no mutation fires from any `useEffect`); an unfiltered invalidation refetches only active queries; acceptable given how rare a 403 is.
+- Carry-forwards closed: both `Laadlink`s (`curriculumbeheer`, `?bron=opstap`), the Doelen header (`magInladen`), the klaskiezer jaarfase (`beheer`), `makerId` on `ActiviteitWeergave`.
+- Art. II (no hard-coded Dutch, 10 keys in `nl.json`, em-dash guards green); no new hue; never colour alone. Contrast 6.08/8.44 not re-measured by the auditor.
+
+### Findings to address
+1. **MAJOR F1 (E3-06):** `ergensDoelKoppelen` (`rechten.ts:227-233`) holds for a hoofdleerkracht of ANY leeftijd, but `Bestemmingsblad` lists only the active klas's subthema's. HL K3 with an L1 klas picked (I20 lets a hoofdleerkracht hold no klas) → "Koppel dit doel" (`DoelenScherm.tsx`, both `Doeldetail` call sites) opens a sheet with nothing to press. Gate on the klas's `jaarFasen` (`themaBewerken || jaarFasen.some(subdoelenBeheren || doelenKoppelen)`); add the test.
+2. **MINOR F2 (I26):** an empty thema (`thema.subthemas.length === 0`, which `useThema` carries for every leeftijd) is one the server lets themabeheer delete (`EfRechtenbronnen.VoorThemaAsync` → `HeeftAndermansInhoud = false`); the UI withholds it. Add a thema resource with `leeg`, or record an owner waiver; fix the two comments that say no read carries the fact (`rechten.ts:57-60`, the `ThemadetailScherm.tsx` doc block).
+3. **MINOR F3 (E5-03):** `useRechten().laadt` is `isPending` (`rechten.ts:243-247`), false after a failed `/api/ik` (`aanmelding.ts:37-44`, `retry: false`, `staleTime: Infinity`); the four "kan je alleen bekijken" lines (`Agendascherm`, `PlanScherm`, `Hoekensectie`, `Algemenefichesectie`) and `importeren.geenRecht` then tell directie they lack a right. Gate those sentences on "rights known" (`data !== undefined`); keep the controls fail-closed.
+4. **MINOR F4 (E5-03):** `Subthemaformulier` now filters `fasen` by right, so `fasen.length === 0` can mean "filtered to none" after a live rights loss, yet shows `klasbeheer.leeftijdenOnbekend` ("kon niet geladen worden… Herlaad de pagina"). Tell the two apart (say nothing about loading, or close the form as the pickers do).
+5. **MINOR F5 (E5-03):** `importeren.school.bedreigd` ("koppelingen die jij zelf gezet hebt", `Schoolcontentimport.tsx:137-141`, `nl.json:478`) now reaches themabeheer, who cannot set a subdoel by hand; the list counts every decided link. Reword to what the list guarantees (e.g. "{aantal} vastgelegde koppelingen staan niet in dit bestand"). The new "Die koppelingen blijven staan." is itself true.
+6. **MINOR F6 (CLAUDE.md):** `frontend-design` pass not run over the new reader states (`Activiteitfiche`, read-only `Hoekdetailblad`, reader `Plaatsingkaart`, the quiet lines, the `PlanScherm` refusal alert). Run it, or have the owner waive it.
+
+### For the owner
+- **Q1 (Art. XIV visibility):** open doelsuggesties are hidden from anyone who cannot decide them (`ThemadetailScherm.tsx`, `mag.doelsuggestiesBeoordelen && openSuggesties.length > 0`). Not a violation (I9 covers jaarplan, agenda and dekking; a voorgesteld link covers nothing; `GET /api/themas/{id}/doelsuggesties` stays open). Options: (A) keep them hidden, (B) show them read-only with status and motivation, marked as awaiting directie or themabeheer, (C) show a count only.
+- **F2** may be waived instead of fixed (directie-only thema delete in the UI until E6-05).
+
+### Owner decision on Q1 (2026-09-14)
+Asked by the orchestrator with the three options; the owner chose **(A): keep open doelsuggesties hidden** from anyone who cannot decide them, as built. F6 was resolved by the orchestrator's `frontend-design` pass (recorded in `test-report.md` under slice 4 round 1): no change beyond moving the agenda's 403 refusal into `Aandachtsmelding`.
+
+## Code slice 4 — audit round 2
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff d859a10 5b4eb4a` on `story/E6-02-frontend` (25 files), plus `EfRechtenbronnen.VoorThemaAsync`, `Rechtenmatrix.StaatToe`, `ThemasMetSubtreeQuery`, `HaalThemaVoorKlasAsync`/`Klasleeftijden`, `KlasBeheerService.JaarFasenVoor`, and the agenda's three sheets.
+- **Verdict:** VIOLATIONS FOUND — 1 MINOR. No CRITICAL, no MAJOR. All round-1 findings resolved.
+- **Gates re-run by the auditor:** `pnpm lint` exit 0; `vitest run` 47 files, 472/472 green, at `5b4eb4a` (clean tree).
+
+### Confirmed compliant
+- **F1:** `KlasWeergave.jaarFasen` is `Jaarfasen.VoorKlas(...) ?? []` (`KlasBeheerService.cs:273-274`), the same function that narrows the sheet's `voor-klas` read (`Klasleeftijden.cs:57`, `SchoolcontentBeheerService.cs:145-150`), so for a derivable klas the button asks exactly the sheet's leeftijden. Both `Doeldetail` call sites switched; tests in `DoelenScherm.test.tsx` and `rechten.test.ts`.
+- **F2:** for an empty thema `VoorThemaAsync` yields `HeeftAndermansInhoud = false` and `GekoppeldeLeeftijden = []`; `useThema` reads `ThemasMetSubtreeQuery` (every subthema, unfiltered), so `subthemas.length === 0` is the server's fact. `rechten.ts:117-124` matches `Rechtenmatrix.cs:252-258` for it. The open-run case stays closed until E6-05, as documented. The comments are corrected.
+- **F3:** `bekend = data !== undefined` gates the four quiet lines, and Inladen renders nothing when `!bekend`. The `laadt` users that remain (`Navigatie` panel reset, `Onderdeelpoort` redirect) render no sentence.
+- **F4:** the loading sentence shows only on `jaarfasenFout`; `magSubthemaBlad` closes the form before `nietsToegestaan` can be reached from its only caller; closing by hand resets both mutations; after a rights close, the refusal moves to the fixed `role="alert"` toast.
+- **F5:** "vastgelegde koppelingen staan niet in dit bestand" is what `BedreigdeBeslissingen` guarantees (every decided link the file no longer carries); the singular form goes through `telWoord`; no em dash.
+- **Q1:** kept hidden, with the ruling cited in both comments.
+- **`Aandachtsmelding`:** focuses once on mount, never on a re-render, and the one-task delay is kept. Slice 2's alerts change only in scroll position (not re-measured in a browser for Gebruikers).
+- **Art. II / VI:** no hard-coded Dutch, no em dash, no pupil data, no secrets.
+
+### Finding to address
+1. **MINOR F7 (WCAG 4.1.3; the E5-03 rule on comments):** `Agendamelding` (`Agendascherm.tsx:771`) also mounts its focusing alert on 403s fired from inside three sheets that close only on success: `Nieuweactiviteitblad` `onPlan`, `Activiteitblad` `onVerplaats` and `Subthemaplanner` `onPlan`. `Blad` is a modal Radix dialog (`Blad.tsx:37`). The alert's single focus is sent back by the focus trap, the page is `aria-hidden`, and the centred scroll moves the page under the overlay. It never refocuses after the sheet closes. On the `Nieuweactiviteitblad` path `planFout` is a plain `<p>` (`Nieuweactiviteitblad.tsx:176-180`), so that 403 is announced by nobody. The comment at `Agendamelding.tsx:12-17` holds only for the picker and drag paths. Fix: show the alert only while no agenda sheet is open, and give `planFout` `role="alert"`; or mount the alert only after the sheet closes. Narrow the comment. Add a test for a 403 from `onPlan` with the sheet open. (Modal status verified in code; the focus and aria-hidden consequences follow Radix's modal behaviour and were not browser-measured.)
+
+### For the owner
+- **Art. XIV graadklas:** for a klas whose leeftijd cannot be derived, the sheet widens to every subthema while `jaarFasen` is `[]`, so a hoofdleerkracht is not offered "Koppel dit doel" there. This errs on the side of hiding (no E3-06 breach); leave it to directie's graadklas decision.
+- **The silent 400 on deleting a planned thema** (routed to the owner as a ticket candidate) now reaches themabeheer too, through F2's empty thema; the ticket should name both rights.
+
+## Code slice 4 — audit round 3
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff 5b4eb4a a4d698a` on `story/E6-02-frontend` (18 files), plus `Themarij.tsx`, `Activiteitformulier.tsx` (`alleenLezen` branch, `Activiteitfiche`), `Agendascherm.tsx` (all sheets, `foutTekst`), `lib/queryClient.ts`, `lib/rechten.ts`, `Hoekplaatsingblad`/`Hoekdetailblad`.
+- **Verdict:** VIOLATIONS FOUND — 2 MINOR, 1 QUESTION. No CRITICAL, no MAJOR. F7 and test-runner item 2 resolved.
+- **Gates re-run by the auditor:** `pnpm lint` exit 0; `vitest run` 51 files, 486/486 green, at `a4d698a` (clean tree).
+
+### Confirmed compliant
+- **F7:** a 403 arriving with the new-activiteit sheet, the activiteit sheet or the planner open is placed in the sheet and never mounts on the page; each sheet announces it with its own `role="alert"` (`Planfout`, `Dagfout`, `Resultaat`). The picker path mounts at once (its `onError` close runs in the same notify batch), with the "wait until the picker closes" branch as fallback. An alert already on the page stays mounted when a sheet opens. The bookkeeping set during render settles without a loop.
+- **`useInBeeld`:** sound. It runs once on mount, uses `nearest`, never moves focus, and is guarded for jsdom; browser-measured in view at 390 with `scrollY` 0.
+- **Item 2:** `themasMetKoppelactie` covers every control `Themarij` renders (`themaBewerken`; `subdoelenBeheren`; `doelenKoppelen` with activiteiten; `activiteitBewerken && doelenKoppelen`), with the same functions and the same leeftijd, applied before the search. No right is withheld; it includes more than needed only in the safe direction.
+- **E5-03 rule:** `koppelen.nietsTeKoppelen` is guaranteed by that coverage, and the sheet is reachable only with rights known. "gemaakt maar niet ingepland" is guaranteed in the new `!actief` branch. No em dash; no hard-coded Dutch.
+- **Art. VI / VIII / XIV:** no pupil data, secrets or new dependency; no graadklas assumption.
+
+### Findings to address
+1. **MINOR F8 (the E5-03 rule on comments; WCAG 4.1.3):** `Activiteitblad.tsx:137-142` and `Activiteitblad.test.tsx:116` claim the refusal line is the same node after the refetched rights, "so it is not announced twice". For a leerkracht whose only klas at that leeftijd loses its klastoewijzing, `activiteitBewerken(leeftijd)` goes false too; `Activiteitformulier` then returns `Activiteitfiche` instead of its `Blad` form (`Activiteitformulier.tsx:158-169`), which remounts the dialog and `Dagfout`: a second announcement and scroll. The test keeps the content right constant. Fix: keep one `Blad` across the read-only flip, or narrow the comment and test to "while the content right survives" and test the remount case.
+2. **MINOR F9 (new in fix round 2; the E5-03 rule on comments; WCAG 4.1.3):** any 403 refetches every query (`queryClient.ts:17-20`), and `themasMetKoppelactie` runs on those live rights (`Bestemmingsblad.tsx:72`). After a rights loss with the sheet open, the row holding the `Koppelfout` alert is filtered out with its thema and replaced by a static, unannounced "Je kan dit doel hier nergens aan koppelen.", breaking the invariant recorded at `Themarij.tsx:253`. Fix: decide the thema list once on open (the search box's set-during-render pattern), or keep a thema whose row holds a failure; add a test.
+
+### For the orchestrator / owner
+- **QUESTION (pre-existing, not introduced here):** after a refused placement the new-activiteit sheet keeps its day line promising that Bewaren also plans the activiteit, and a second Bewaren makes a second activiteit; the planner keeps its plan button. Fix inside E6-02 or file a follow-up ticket.
+- **Residual race (not graded):** the two hoek sheets are modal but not counted in `bladOpen`; a refusal arrives while one is open only if a drag's request is still in flight. `Agendamelding.tsx:19` "only while no agenda sheet is open" claims more than the three sheets listed below it.
+
+### Orchestrator's disposition (2026-09-14)
+The QUESTION is taken inside slice 4's fix round 3 rather than filed as a ticket: after a rights loss a control that promises planning is exactly the E3-06 case this slice exists to close. The residual race is handled by narrowing the comment (or counting the hoek sheets), also in fix round 3.
+
+## Code slice 4 — audit round 4
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff a4d698a 960ad89` on `story/E6-02-frontend` (14 files), plus `Activiteitformulier.tsx`, `Nieuweactiviteitblad.tsx`, `Activiteitblad.tsx`, `Subthemaplanner.tsx`, `Bestemmingsblad.tsx`, `Themarij.tsx`, `Nieuweactiviteitregel.tsx`, `Doelkoppelaar.tsx`, `Blad.tsx`, `lib/queryClient.ts`, `lib/rechten.ts`, `Agendascherm.tsx` (585–970).
+- **Verdict:** VIOLATIONS FOUND — 2 MINOR. No CRITICAL, no MAJOR, no QUESTION. Every round-3 item resolved as asked; the two findings are F9's and the QUESTION's class in places the fix did not reach.
+- **Gates re-run by the auditor:** `pnpm lint` exit 0; `vitest run` 51 files, 490/490, at `960ad89` (clean tree).
+
+### Confirmed resolved
+- **Refused create (test-runner round 3):** `weigering` is computed in the same render as `maak.error`, so the form never shows it first; one alert, no "gemaakt" prefix; `geenSubthemaOmIn` reachable only when `weigering`, `laadt` and `planFout` are all empty; `.catch(() => null)` removes the unhandled rejection, and a non-403 create failure still reaches the form's `fout`. Keyed on day and hour, plus `acties.plaats.reset()` on `onNieuw`: no stale refusal survives a reopen.
+- **Refused plan (QUESTION, new-activiteit half):** "gemaakt maar niet ingepland" is guaranteed: `acties.plaats` is reset on open and filled only by `onPlan` after a successful create. No Bewaren, no day line.
+- **F8:** `Blad` keeps its children in one body `div`; `extra` is child index 1 in both states, and `Dagfout` keeps its fragment position; the test asserts that the dialog and the alert are the same elements. Keyboard: `form={id}` keeps Enter-submit in the fields; Enter in the `Dagsectie` fields no longer triggers the activiteit's Bewaren, nor Enter in the `Doelkiezer` search while creating: an improvement.
+- **F9:** the frozen list never shows a control the server refuses, because every row control reads the live `mag`. Accepted cost: after a rights loss a frozen thema can open onto nothing (the F1 state) to keep the alert. Rights gained mid-sheet appear only after a reopen (withholds only).
+- **Agendamelding comment:** "they send none of these requests" is true (`plaatsHoek` and `verwijderPlaatsing` are not among the three errors).
+- **Art. VI.1:** every new gate only withholds; nothing the server matrix denies is shown; the refusal-only sheets hide nothing the gebruiker may still do. No copy added, no em dash, no dependency, no Art. XIV assumption.
+
+### Findings to address (or waive)
+1. **MINOR F10 (the E5-03 rule on comments; WCAG 4.1.3; missed by rounds 1–3, introduced in `d859a10`):** `Themarij.tsx:207` gates `Nieuweactiviteitregel` on live `mag.activiteitBewerken && doelenKoppelen`. A 403 on its create ("Maak en koppel") shows its alert (`Nieuweactiviteitregel.tsx:144-148`), then the refetched rights unmount the form together with the alert. The frozen list keeps the subthema row but not the reason. The test header's claim in `Bestemmingsblad.test.tsx:22-23` is false here. Found by code reading. Fix: keep the regel rendered while it holds an error, with the error checked before the rights as `Activiteitrij` does, plus a test; or narrow the claim.
+2. **MINOR F11 (the E3-06 and E5-03 rules; the QUESTION's planner half):** with `!magPlannen`, `Subthemaplanner.tsx:174` drops only the footer. The select, the date fields, the verdeling, the drag handles and the preview remain, including "Zo komt het te staan" (`nl.json:221`) and `periode.pastNiet`'s instruction to widen the window (`:231`). No rights breach. Fix: when `!magPlannen`, render only `Resultaat`, at its current child position, plus a test.
+
+### Residuals (the implementer's two)
+- **Focus move on the sheet swap (cases 1, 2a): not material.** Focus lands on the refusal sheet's close button, its only action; one alert inserted.
+- **A plan failure that is not a refusal keeps the form: pre-existing (predates E6), not rights-related, not graded.** The day line still promises a plan and a second Bewaren makes a duplicate activiteit. Ticket candidate for the owner.
+
+### Note (not graded)
+- `Activiteitformulier.tsx:158-162` says "only the title, the footer and the block above that section change"; the goals section below `extra` changes as well.
+
+## Code slice 4 — audit round 5
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff 960ad89 fe47e99` on `story/E6-02-frontend`, the owner-approved mini-fix after audit round 4 (a short check, as the owner asked). Read in full: `Nieuweactiviteitregel.tsx`, `Themarij.tsx`, `Subthemaplanner.tsx` (100–342), `Activiteitformulier.tsx` (140–end), `lib/queryClient.ts`, `koppelen/mutaties.ts` (`useKoppelmutatie`), and the changed tests.
+- **Verdict:** COMPLIANT. No CRITICAL, MAJOR, MINOR or QUESTION.
+- **Gates re-run by the auditor:** `vitest run` on the five changed test files, 21/21; `pnpm lint` exit 0; `git status` clean at `fe47e99`.
+
+### Confirmed resolved
+- **F10:** `Themarij.tsx:209-215` always renders the regel with `magMaken={mag.activiteitBewerken(leeftijd) && magKoppelen}`, the same expression the old gate used. `Nieuweactiviteitregel.tsx:62` checks the failure before the rights. Without the right it keeps only the alert (`:161-165`) and Annuleer; the fields, the klas notice and "Maak en koppel" are each left out in their own slot, so the alert stays the same element. The enclosing parent is `Subthemarij`'s local `open` state, not a rights check, and the list is frozen (F9), so nothing above unmounts it. The new test asserts `toBe(melding)` after the rights have arrived, and the subthema button being gone proves they did.
+- **F11:** with `!magPlannen`, `Subthemaplanner.tsx:211-337` leaves out the select, the dates, the verdeling, the preview (with `pastNiet`) and the lesdagen line, each in its own slot. `Resultaat` keeps its child position. The test asserts the same alert element and that every field is gone.
+- **Test defect:** `setQueryData(["ik"], …)` is awaited for one task in the four named tests, as the test-runner prescribed and checked with a probe. The F9 test now checks that the new rights arrived.
+- **Nit:** `Activiteitformulier.tsx:161-162` is now true. Title, footer, form or facts, and the goals section (`:380-450`) switch; the `fout` alert does not.
+
+### Checks run
+- **The E5-03 rule:** every changed comment and test header asserts only what its branch guarantees. The form is reachable without `magMaken` only after an error, because `sluit` resets the mutation. The `Bestemmingsblad.test.tsx` header now names the two rows that check their failure first. The thema and subthema `Koppelfout` alerts (`Themarij.tsx:85, 187`) sit outside their rights gates.
+- **Em dashes:** none in the added lines outside `backlog/`. No copy added (`nl.json` untouched).
+- **Art. VI.1:** nothing is granted beyond the ADR-0030 §3 matrix; every change only withholds. A gebruiker without the right and without an error gets `null` from `Nieuweactiviteitregel`, and every hook runs before that return. `useKoppelmutatie` starts no request on mount.
+- **Nothing new:** the planner's slot positions are unchanged. The refusal-only form has no field and no submit button, so Enter cannot submit it. `ik` has `refetchOnWindowFocus: false`, so the fields vanish only after a refusal's refetch, or after an `ik` invalidation from user management on another screen. No Art. XIV assumption, no dependency, no pupil data.
+
+### Notes (not graded)
+- The implementer's mutation proof (2) (`maakWeigering` null) already failed at `960ad89` (test-runner round 4), so it does not show that the awaited tick matters for that test. The evidence for that test is the test-runner's round-4 probe.
+- Between the rights refetch and `Resultaat` arriving during a refused plan, the planner's body can be briefly empty. It asserts nothing false.
+
+**Slice 4 closed on the gates:** test-runner PASS on every browser criterion (round 4, `960ad89`; the mini-fix's behaviour checked in the implementer's browser pass and its test defect fixed as the test-runner prescribed) and antagonist COMPLIANT (round 5, `fe47e99`).

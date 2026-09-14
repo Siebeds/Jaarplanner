@@ -11,7 +11,9 @@ import { Laadvlak } from "../../components/ui/Laadvlak";
 import { IcoonHoek, IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
 import { useDagacties, useJaarplan, usePlaatsSubthemaperiode, useRooster, useWeekplanning } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
+import { isGeenToegang, useRechten } from "../../lib/rechten";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
+import { Agendamelding } from "./Agendamelding";
 import { ApiError } from "../../lib/api";
 import type { GeplandeActiviteit } from "../../lib/types";
 import {
@@ -88,12 +90,25 @@ function leesWeergave(waarde: string | null): Weergave {
  * not: the other candidate frontend keeps its day agenda in localStorage, where it belongs to one
  * browser and is shared with nobody, which for a plan a school is inspected on is worse than not
  * having it.
+ *
+ * **Every write here is the klas's planning, which is directie's and the klas's own leerkrachten'** (E6-02,
+ * ADR-0030 §3, R7, R15). Everyone else reads any klas's agenda (I9): the same calendar with nothing that adds, drags,
+ * stretches or plans, and one quiet line that says so, because a teacher who switched to a colleague's klas would
+ * otherwise meet her own agenda with its controls gone and no reason. An activiteit's content is a different right
+ * (the leeftijd's), so a block still opens its form for whoever holds that one.
  */
 export function Agendascherm() {
   const { datum: routeDatum } = useParams<{ datum: string }>();
   const [zoek] = useSearchParams();
   const navigeer = useNavigate();
   const { klasId, klas, schooljaarId } = useActieveSelectie();
+  // `bekend`, not "not loading": a failed `/api/ik` proves nothing about rights, so the quiet line waits for an answer
+  // with a gebruiker in it (fix round 1, F3).
+  const { mag, bekend: rechtenBekend } = useRechten();
+  const magPlannen = mag.klasplanningBewerken(klasId);
+  // Whether a subthema can be made for this klas's leeftijd, for the planner's empty state: the sentence that tells a
+  // teacher to go and make one, and the links that take her there, are only for whoever may (R5, R21).
+  const magSubthemaMaken = (klas?.jaarFasen ?? []).some((leeftijd) => mag.subthemaBeheren(leeftijd));
 
   // The day AND the minute of it the picker was opened from (ADR-0028). The month view has no hours to press, so
   // it passes the ordinary start of a morning and the teacher drags the block from there.
@@ -502,11 +517,6 @@ export function Agendascherm() {
   const foutTekst = (fout: unknown) =>
     fout instanceof ApiError && fout.detail ? fout.detail : fout ? t("periode.mislukt") : null;
 
-  const sleepmelding =
-    sleepFout ??
-    (acties.plaats.isError || acties.verplaats.isError || verplaatsMoment.isError
-      ? foutTekst(acties.plaats.error ?? acties.verplaats.error ?? verplaatsMoment.error)
-      : null);
 
   if (!klasId) {
     return (
@@ -559,25 +569,30 @@ export function Agendascherm() {
                 sheet. So this chip is `lg:hidden` and `Navigatie` carries the switch from `lg`
                 upward. One control per viewport, never two at once, which is what made a single
                 control in the toolbar the earlier answer.
+
+                Only for whoever may plan this klas: a fiche is dragged or clicked to plan a hoek.
               */}
-              <button
-                type="button"
-                onClick={wisselHoeken}
-                aria-pressed={hoekenOpen}
-                className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-veld border px-3 text-meta font-medium transition-colors duration-150 lg:hidden",
-                  hoekenOpen
-                    ? "border-accent bg-accent-zacht text-accent"
-                    : "border-lijn text-inkt-zacht hover:border-accent hover:text-accent",
-                )}
-              >
-                <IcoonHoek aria-hidden="true" className="h-4 w-4" />
-                {t("periode.hoekenfiches")}
-              </button>
+              {magPlannen ? (
+                <button
+                  type="button"
+                  onClick={wisselHoeken}
+                  aria-pressed={hoekenOpen}
+                  className={cn(
+                    "inline-flex h-9 items-center gap-1.5 rounded-veld border px-3 text-meta font-medium transition-colors duration-150 lg:hidden",
+                    hoekenOpen
+                      ? "border-accent bg-accent-zacht text-accent"
+                      : "border-lijn text-inkt-zacht hover:border-accent hover:text-accent",
+                  )}
+                >
+                  <IcoonHoek aria-hidden="true" className="h-4 w-4" />
+                  {t("periode.hoekenfiches")}
+                </button>
+              ) : null}
 
               {/* No period, no planner: the sheet spreads a subthema over the days of a themaperiode,
-                  and between two periods there are none to spread it over. */}
-              {blok ? (
+                  and between two periods there are none to spread it over. Nor for anyone who may not plan
+                  this klas. */}
+              {blok && magPlannen ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -651,6 +666,12 @@ export function Agendascherm() {
       />
 
       <Schermvlak breed>
+        {/* Once, above everything, and only when it is true: the rights have answered and this gebruiker holds no
+            planning right on the klas the picker shows. It names the klas, because the picker is what changed. */}
+        {rechtenBekend && !magPlannen && klas ? (
+          <p className="mb-3 text-meta text-inkt-zacht">{t("rechten.planningAlleenBekijken", { klas: klas.naam })}</p>
+        ) : null}
+
         <Dekkingsbalk klasId={klasId} />
 
         <div className="border-t border-lijn" />
@@ -668,17 +689,20 @@ export function Agendascherm() {
         >
           {/* INSIDE the context, and it has to be: a fiche is dragged FROM here ONTO the grid below,
               and dnd-kit registers a draggable through React context rather than through the DOM. The
-              panel is `fixed`, so where it sits on screen owes nothing to where it sits in this tree. */}
-          <Hoekenpaneel
-            klasId={klasId}
-            onKies={(hoekId) => {
-              // A click has no landing point, so the window opens on the day the agenda is standing
-              // on and the sheet offers its own default hour. On a phone the panel closes its own
-              // sheet first; see `Hoekenpaneel`.
-              plaatsHoek.reset();
-              setGevallenFiche({ hoekId, datum: anker, begin: null });
-            }}
-          />
+              panel is `fixed`, so where it sits on screen owes nothing to where it sits in this tree.
+              Not at all for a gebruiker who may not plan this klas: every fiche in it plans a hoek. */}
+          {magPlannen ? (
+            <Hoekenpaneel
+              klasId={klasId}
+              onKies={(hoekId) => {
+                // A click has no landing point, so the window opens on the day the agenda is standing
+                // on and the sheet offers its own default hour. On a phone the panel closes its own
+                // sheet first; see `Hoekenpaneel`.
+                plaatsHoek.reset();
+                setGevallenFiche({ hoekId, datum: anker, begin: null });
+              }}
+            />
+          ) : null}
 
           <div className="mt-3">
             {isPending || !planning ? (
@@ -701,6 +725,7 @@ export function Agendascherm() {
                 vakken={vakken}
                 reeksenPerDag={stroken}
                 hoekplaatsingen={hoekplaatsingen ?? []}
+                magPlannen={magPlannen}
                 onKiesDag={openDag}
                 onVoegToe={(datum) => setKiezer({ datum, begin: STANDAARDBEGIN })}
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
@@ -715,6 +740,7 @@ export function Agendascherm() {
                 hoekmomenten={hoekblokjes}
                 reeksenPerDag={stroken}
                 vakken={vakken}
+                magPlannen={magPlannen}
                 onVoegToe={(datum, tijd) => setKiezer({ datum, begin: tijd })}
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
                 onOpenHoek={(plaatsingId) => {
@@ -741,16 +767,23 @@ export function Agendascherm() {
 
         {/* ONE STRIP FOR EVERYTHING A DRAG CAN GO WRONG WITH, because from the teacher side they are one
             thing: the drop did not do what she meant. `sleepFout` wins, since a refusal decided here
-            fired no request and any server error beside it belongs to an earlier attempt. */}
-        {sleepmelding ? (
-          <p className="mt-4 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-            {sleepmelding}
-          </p>
-        ) : null}
+            fired no request and any server error beside it belongs to an earlier attempt.
+
+            Told which sheets are open, as they render, so a refusal is announced where the teacher is (fix round 2,
+            F7). The picker renders only while this gebruiker may plan. */}
+        <Agendamelding
+          sleepFout={sleepFout}
+          fouten={[acties.plaats.error, acties.verplaats.error, verplaatsMoment.error]}
+          kiezerOpen={magPlannen && kiezer !== null}
+          bladOpen={nieuw !== null || geopend !== null || plannerOpen}
+        />
       </Schermvlak>
 
       <Activiteitkiezer
-        datum={kiezer?.datum ?? null}
+        // Closed as soon as this gebruiker may not plan the klas, which after a 403 is the moment the refetched rights
+        // arrive: the picker has no error line of its own, and left open it would go on offering choices the server
+        // refuses while the reason sits behind it on the page (seen in the browser pass).
+        datum={magPlannen ? (kiezer?.datum ?? null) : null}
         tijd={kiezer ? toonTijd(kiezer.begin) : undefined}
         klasId={klasId}
         themaIds={kiezer ? themaIdsOpDag(vakken, kiezer.datum) : []}
@@ -768,7 +801,14 @@ export function Agendascherm() {
               // the activiteit exists to avoid.
               einde: alsTijd(kiezer.begin + duur),
             },
-            { onSuccess: () => setKiezer(null) },
+            {
+              onSuccess: () => setKiezer(null),
+              // A refusal closes the picker at once rather than when the refetched rights arrive: the refusal's alert
+              // mounts in the same render, and it can only take focus once no dialog holds it (fix round 1).
+              onError: (fout) => {
+                if (isGeenToegang(fout)) setKiezer(null);
+              },
+            },
           );
         }}
         onNieuw={() => {
@@ -829,6 +869,7 @@ export function Agendascherm() {
           <Hoekdetailblad
             open
             plaatsing={open}
+            alleenLezen={!magPlannen}
             bezig={verwijderPlaatsing.isPending}
             fout={verwijderPlaatsing.error}
             onSluit={() => setGeopendeHoek(null)}
@@ -856,6 +897,7 @@ export function Agendascherm() {
         voorstelSubthemaId={nieuw ? voorstelReeks(reeksen, nieuw.datum, rooster?.blokken ?? [])?.subthemaId : undefined}
         planBezig={acties.plaats.isPending}
         planFout={acties.plaats.isError ? foutTekst(acties.plaats.error) : null}
+        planGeweigerd={isGeenToegang(acties.plaats.error)}
         onSluit={() => setNieuw(null)}
         onPlan={(activiteitId, duur) => {
           if (!nieuw) return;
@@ -876,6 +918,8 @@ export function Agendascherm() {
         klasId={klasId}
         // The sheet's empty state is about THIS klas, so it needs the name and not just the id.
         klasNaam={klas?.naam ?? null}
+        magSubthemaMaken={magSubthemaMaken}
+        magPlannen={magPlannen}
         themaIds={themaIdsInPeriode}
         dagen={heelDePeriode?.dagen ?? []}
         bezig={acties.plaats.isPending}
@@ -925,6 +969,7 @@ export function Agendascherm() {
         activiteit={geopend?.activiteit ?? null}
         datum={geopend?.datum ?? ""}
         klasId={klasId}
+        magPlannen={magPlannen}
         vroegste={rooster?.start ?? ""}
         laatste={rooster?.eind ?? ""}
         bezig={bezig}

@@ -6,6 +6,7 @@ import { knopklassen } from "../../components/ui/knopklassen";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { Leegte } from "../../components/ui/Leegte";
 import { cn } from "../../lib/cn";
+import { useRechten } from "../../lib/rechten";
 import { t, type Vertaalsleutel } from "../../i18n";
 
 /**
@@ -40,12 +41,13 @@ export function Minimumdoelenlijst({
 }) {
   const facetten = useMinimumdoelFacetten(filter);
   const lijst = useMinimumdoelenPaginas(filter);
+  const { mag } = useRechten();
 
   if (facetten.isPending || lijst.isPending) return <Laadlijst rijen={6} />;
   if (facetten.isError || lijst.isError) return <Leegte titel={t("doelen.foutTitel")} />;
 
   if (facetten.data.totaalAantalMinimumdoelen === 0) {
-    return <Leegte titel={t("doelen.geenMinimumdoelenTitel")} actie={<Laadlink />} />;
+    return <Leegte titel={t("doelen.geenMinimumdoelenTitel")} actie={mag.curriculumbeheer ? <Laadlink /> : undefined} />;
   }
 
   const regels = lijst.data.pages.flatMap((pagina) => pagina.regels);
@@ -148,10 +150,15 @@ export function Minimumdoelenlijst({
 /**
  * Where the curriculum is loaded: the Op.stap tab of Inladen. A link, not a button, because it navigates. Shared with the
  * leerplandoelen register's empty state, whose old text ("Importeer eerst de Op.stap-bestanden") E1-21 made false.
+ *
+ * **Only for whoever may load Op.stap** (E6-02, closing the E1-22 carry-forward): `mag.curriculumbeheer`, directie. Its
+ * words say "load them", and themabeheer loads the school's thema's, not the goals, so for anyone else it would be a
+ * link to something they cannot do (the E3-06 rule). Each caller asks; this component does not, so a caller that
+ * forgets shows a link rather than a silent hole in its layout. It opens the Op.stap section, not the first one.
  */
 export function Laadlink() {
   return (
-    <Link to="/inladen" className={cn(knopklassen(), "h-9 min-h-9 px-3 text-meta")}>
+    <Link to="/inladen?bron=opstap" className={cn(knopklassen(), "h-9 min-h-9 px-3 text-meta")}>
       {t("doelen.laadIn")}
     </Link>
   );

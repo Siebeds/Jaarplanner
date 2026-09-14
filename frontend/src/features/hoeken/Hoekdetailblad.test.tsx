@@ -76,6 +76,42 @@ function toon(momenten: HoekmomentWeergave[]) {
 
 const openUren = () => fireEvent.click(screen.getByRole("button", { name: t("hoekdetail.urenAanpassen") }));
 
+/*
+  E6-02: a placed hoek is the klas's planning (ADR-0030 §3, R7). A gebruiker who may read the agenda and not plan the
+  klas opens the same sheet and gets what the run is, with nothing that would change it.
+*/
+describe("Hoekdetailblad voor wie de klas alleen mag bekijken", () => {
+  it("toont periode, uren en verrijking, zonder één knop die iets verandert", () => {
+    const client = new QueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <Hoekdetailblad
+          open
+          alleenLezen
+          plaatsing={{
+            ...bouwhoek(maandagDubbel),
+            verrijkingen: [{ id: "v-1", van: "2026-09-14", tot: "2026-09-17", tekst: "herfstboeken" }],
+          }}
+          bezig={false}
+          onVerwijder={() => {}}
+          onSluit={() => {}}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText("herfstboeken")).toBeInTheDocument();
+    expect(screen.getByText(opUur("8:00 - 11:50", t("hoekdetail.aantalSchooldagen", { aantal: 3 })))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("hoekdetail.urenAanpassen") })).toBeNull();
+    expect(screen.queryByRole("button", { name: t("hoekdetail.verwijder") })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Verrijking van .* bewerken/ })).toBeNull();
+    // The doubled-day sentence tells her to drag a day away first: an instruction for a change she cannot make.
+    expect(screen.queryByText(/staat deze hoek meer dan één keer/)).toBeNull();
+    expect(screen.queryByText(t("hoekdetail.verwijderGevolgEen"))).toBeNull();
+    // The way out is the sheet's own close control, once: the footer, whose only button would repeat it, is left out.
+    expect(screen.getAllByRole("button", { name: t("hoekdetail.sluiten") })).toHaveLength(1);
+  });
+});
+
 describe("Hoekdetailblad: de uren van de hoek", () => {
   it("zegt per groep uren op hoeveel dagen, in plaats van de eerste dag voor allemaal te laten spreken", () => {
     toon(maandagKorter);

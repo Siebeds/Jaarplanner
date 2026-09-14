@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Fragment, useId, useState } from "react";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Knop } from "../../components/ui/Knop";
 import { Bevestiging } from "../../components/ui/Bevestiging";
+import { Aandachtsmelding } from "../../components/ui/Aandachtsmelding";
 import { Keuze } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { IcoonPlus } from "../../components/Iconen";
@@ -199,38 +200,6 @@ export function GebruikersScherm() {
         }}
       />
     </>
-  );
-}
-
-/**
- * An alert that appears after the sheet or dialog it is about has closed: the list-level "intussen
- * verwijderd", and the refusal of a removal under the list.
- *
- * **It takes focus once, when it appears** (owner-approved mini-fix after audit round 4). The control
- * that had focus closed with its sheet, so focus would otherwise fall to the page body. And on a phone,
- * the alert sits above or below a list the person may be far down in, so it would render out of view.
- * Focusing it scrolls it into view and lets a screen reader land on it. `tabIndex={-1}` makes it
- * focusable without adding a tab stop.
- *
- * It focuses on mount only, never on a re-render, so it cannot take focus away later. The call is
- * deferred one task, because a closing Radix dialog hands focus back in a deferred step of its own,
- * which would otherwise land after this one.
- */
-function Aandachtsmelding({ children }: { children: ReactNode }) {
-  const melding = useRef<HTMLParagraphElement>(null);
-  useEffect(() => {
-    const taak = window.setTimeout(() => melding.current?.focus(), 0);
-    return () => window.clearTimeout(taak);
-  }, []);
-  return (
-    <p
-      ref={melding}
-      role="alert"
-      tabIndex={-1}
-      className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
-    >
-      {children}
-    </p>
   );
 }
 

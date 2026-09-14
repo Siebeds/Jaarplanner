@@ -16,10 +16,15 @@ import { cn } from "../../lib/cn";
  * A locked placement survives a regeneration. So does one the teacher has decided on, lock or no
  * lock (Art. IX.3) - which is why the lock is offered plainly rather than sold as the way to keep
  * something.
+ *
+ * **All five actions are the klas's planning** (E6-02, ADR-0030 §3, R7). For a gebruiker without that right the card
+ * is what the placement is: its status, its motivation, and "Vergrendeld" as a word when it is locked, since the lock
+ * switch that otherwise carries that fact is not drawn.
  */
 export function Plaatsingkaart({
   plaatsing,
   blokken,
+  magBewerken,
   bezig,
   onBeoordeel,
   onVergrendel,
@@ -28,6 +33,8 @@ export function Plaatsingkaart({
 }: {
   plaatsing: Themaplaatsing;
   blokken: Planningsblok[];
+  /** Whether this gebruiker may change this klas's plan (`mag.klasplanningBewerken`). */
+  magBewerken: boolean;
   bezig: boolean;
   onBeoordeel: (status: "Aanvaard" | "Geweigerd") => void;
   onVergrendel: (vergrendeld: boolean) => void;
@@ -68,6 +75,9 @@ export function Plaatsingkaart({
         </p>
       ) : null}
 
+      {!magBewerken ? (
+        plaatsing.vergrendeld ? <p className="mt-3 text-meta text-inkt-zacht">{t("plan.vergrendeld")}</p> : null
+      ) : (
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {teBeoordelen ? (
           <>
@@ -122,6 +132,7 @@ export function Plaatsingkaart({
           {t("plan.verwijder")}
         </Knop>
       </div>
+      )}
     </article>
   );
 }

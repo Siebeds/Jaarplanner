@@ -28,6 +28,9 @@ import { cn } from "../../lib/cn";
  * Days outside the period the teacher is in are shown rather than blanked, and dimmed: a period
  * rarely starts on the first of the month, and hiding the surrounding days makes the grid lie about
  * what a week looks like.
+ *
+ * **Adding and dragging are the klas's planning** (E6-02, ADR-0030 §3): only for whoever may plan it. Anyone else
+ * still opens every day and every activiteit.
  */
 export function Maandrooster({
   dagen,
@@ -35,6 +38,7 @@ export function Maandrooster({
   vakken,
   reeksenPerDag,
   hoekplaatsingen,
+  magPlannen,
   onKiesDag,
   onOpen,
   onVoegToe,
@@ -60,6 +64,8 @@ export function Maandrooster({
    * there is no derivation step that could disagree with the calendar.
    */
   hoekplaatsingen: readonly HoekplaatsingWeergave[];
+  /** Whether this gebruiker may change this klas's planning (`mag.klasplanningBewerken`). */
+  magPlannen: boolean;
   onKiesDag: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   /** Asked for an activiteit on this day, straight from the month. Lands in lesuur 1. */
@@ -104,6 +110,7 @@ export function Maandrooster({
               isVandaag={dag.datum === nu}
               reeksen={reeksenPerDag.get(dag.datum) ?? LEEG}
               hoekplaatsingen={hoekplaatsingen}
+              magPlannen={magPlannen}
               onKiesDag={onKiesDag}
               onVoegToe={onVoegToe}
               onOpen={onOpen}
@@ -125,6 +132,7 @@ function Maandcel({
   isVandaag,
   reeksen,
   hoekplaatsingen,
+  magPlannen,
   onKiesDag,
   onVoegToe,
   onOpen,
@@ -135,11 +143,12 @@ function Maandcel({
   isVandaag: boolean;
   reeksen: readonly Subthemareeks[];
   hoekplaatsingen: readonly HoekplaatsingWeergave[];
+  magPlannen: boolean;
   onKiesDag: (datum: string) => void;
   onVoegToe: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: dag.datum, disabled: !dag.isLesdag });
+  const { setNodeRef, isOver } = useDroppable({ id: dag.datum, disabled: !dag.isLesdag || !magPlannen });
 
   // Outside the school year there is nothing running, and a strip on a cell that reads "Buiten het
   // schooljaar" would contradict it. The runs are derived from placements, so this cannot happen
@@ -229,7 +238,7 @@ function Maandcel({
           chip reads as one smudged label instead of two things. It masks instead. The cost is that
           on a full day the tail of the bottom chip is hidden WHILE the pointer is in the cell; the
           chip is still there, and the day button's own label carries the count either way. */}
-      {dag.isLesdag ? (
+      {dag.isLesdag && magPlannen ? (
         <Dagplus
           datum={dag.datum}
           onVoegToe={onVoegToe}
@@ -280,7 +289,7 @@ function Maandcel({
           <ul className="pointer-events-none relative z-10 hidden flex-1 flex-col justify-end gap-0.5 overflow-hidden sm:flex">
             {dag.activiteiten.slice(0, 2).map((activiteit) => (
               <li key={activiteit.plaatsingId}>
-                <Maandchip activiteit={activiteit} datum={dag.datum} onOpen={onOpen} />
+                <Maandchip activiteit={activiteit} datum={dag.datum} magPlannen={magPlannen} onOpen={onOpen} />
               </li>
             ))}
             {dag.activiteiten.length > 2 ? (
@@ -298,15 +307,19 @@ function Maandcel({
 function Maandchip({
   activiteit,
   datum,
+  magPlannen,
   onOpen,
 }: {
   activiteit: GeplandeActiviteit;
   datum: string;
+  /** Without it the chip only opens; dnd-kit's "draggable" attributes are left off with the drag. */
+  magPlannen: boolean;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: activiteit.plaatsingId,
     data: { naam: activiteit.activiteitNaam },
+    disabled: !magPlannen,
   });
   const kleur = activiteit.kleur;
 
@@ -323,10 +336,11 @@ function Maandchip({
           ? t("periode.activiteitMetKleur", { naam: activiteit.activiteitNaam, kleur: t(kleurSleutel(kleur)) })
           : undefined
       }
-      {...listeners}
-      {...attributes}
+      {...(magPlannen ? listeners : {})}
+      {...(magPlannen ? attributes : {})}
       className={cn(
-        "pointer-events-auto block w-full cursor-grab touch-none truncate rounded border-l-2 bg-vlak px-1 py-0.5 text-left text-[0.625rem] text-inkt active:cursor-grabbing",
+        "pointer-events-auto block w-full truncate rounded border-l-2 bg-vlak px-1 py-0.5 text-left text-[0.625rem] text-inkt",
+        magPlannen && "cursor-grab touch-none active:cursor-grabbing",
         // The wash takes the FILL. The left border is already spoken for: attentie there means the
         // activiteit falls outside its own themaperiode, and a teacher-chosen hue on the same edge
         // would overwrite that. Listed before the border classes so tailwind-merge keeps the border.

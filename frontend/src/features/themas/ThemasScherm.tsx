@@ -13,6 +13,8 @@ import { useMaakThema } from "./mutaties";
 import { t, telWoord } from "../../i18n";
 import type { Vertaalsleutel } from "../../i18n";
 import { useState } from "react";
+import { useRechten } from "../../lib/rechten";
+import { magInladen } from "../import/secties";
 
 /**
  * The school's own thema library (Art. IX.2).
@@ -20,33 +22,44 @@ import { useState } from "react";
  * School-wide, so there is no class chip here: a thema belongs to the school and only its subthema's
  * are per class. The count of classes that derive from it is on the card instead, which is the honest
  * version of the same information.
+ *
+ * **Making a thema is directie's and themabeheer's** (ADR-0030 §3, R4; E6-02), and Inladen is for whoever can use a
+ * section of it. Everyone else reads the library: no header controls, and an empty library says only that it is
+ * empty.
  */
 export function ThemasScherm() {
   const { data, isPending, isError } = useThemabibliotheek();
   const [nieuwOpen, setNieuwOpen] = useState(false);
   const maak = useMaakThema();
+  const { mag } = useRechten();
 
   return (
     <>
       <Schermkop
         titel={t("themas.titel")}
         rechts={
-          <div className="flex shrink-0 items-center gap-2">
-            <Link to="/inladen" className={cn(knopklassen("stil"), "h-9 min-h-9 px-3 text-meta")}>
-              {t("navigatie.inladen")}
-            </Link>
-            <Knop
-              rang="hoofd"
-              className="h-9 min-h-9 px-3 text-meta"
-              onClick={() => {
-                maak.reset();
-                setNieuwOpen(true);
-              }}
-            >
-              <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-              {t("themas.nieuw")}
-            </Knop>
-          </div>
+          magInladen(mag) || mag.themaBewerken ? (
+            <div className="flex shrink-0 items-center gap-2">
+              {magInladen(mag) ? (
+                <Link to="/inladen" className={cn(knopklassen("stil"), "h-9 min-h-9 px-3 text-meta")}>
+                  {t("navigatie.inladen")}
+                </Link>
+              ) : null}
+              {mag.themaBewerken ? (
+                <Knop
+                  rang="hoofd"
+                  className="h-9 min-h-9 px-3 text-meta"
+                  onClick={() => {
+                    maak.reset();
+                    setNieuwOpen(true);
+                  }}
+                >
+                  <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+                  {t("themas.nieuw")}
+                </Knop>
+              ) : null}
+            </div>
+          ) : undefined
         }
       />
 
@@ -59,9 +72,11 @@ export function ThemasScherm() {
           <Leegte
             titel={t("themas.leegTitel")}
             actie={
-              <Knop rang="hoofd" onClick={() => setNieuwOpen(true)}>
-                {t("themas.nieuw")}
-              </Knop>
+              mag.themaBewerken ? (
+                <Knop rang="hoofd" onClick={() => setNieuwOpen(true)}>
+                  {t("themas.nieuw")}
+                </Knop>
+              ) : undefined
             }
           />
         ) : (

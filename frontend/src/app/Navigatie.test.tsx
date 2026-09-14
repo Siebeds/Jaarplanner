@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Navigatie } from "./Navigatie";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { t } from "../i18n";
+import type { Ik } from "../lib/aanmelding";
+import { DIRECTIE, ikMet, metIk } from "../test/rechten";
 
 /**
  * What the navigation does that is behaviour rather than style.
@@ -23,15 +25,21 @@ import { t } from "../i18n";
   The navigation reads who is signed in (E6-01), so it needs a query client. The network is a promise
   that never settles unless a test says otherwise: the signed-in row then draws nothing, and every test
   below sees the navigation exactly as it was before the row existed.
+
+  Since E6-02 slice 4 the hoekenfiches switch is also a planning right (ADR-0030 §3, R7), so the tests
+  that expect it put a directie in the cache first; directie plans every klas, with or without one chosen.
 */
-const rendermetPad = (pad: string) =>
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+const rendermetPad = (pad: string, ik?: Ik) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  if (ik) metIk(client, ik);
+  return render(
+    <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[pad]}>
         <Navigatie />
       </MemoryRouter>
     </QueryClientProvider>,
   );
+};
 
 const schakelaar = () => screen.queryByRole("button", { name: t("hoekenpaneel.titel") });
 
@@ -46,22 +54,14 @@ afterEach(() => {
 
 describe("Navigatie, aangemeld", () => {
   it("toont wie aangemeld is en biedt afmelden aan", async () => {
+    // Answers per path: the navigation also asks for the schooljaren and klassen now (the hoekenfiches switch is a
+    // right on the chosen klas), and an Ik handed back for those would not be a list.
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            id: "1",
-            naam: "An Peeters",
-            email: "an@school.be",
-            isDirectie: false,
-            heeftThemabeheer: false,
-            hoofdleerkrachtLeeftijden: [],
-            leerkrachtLeeftijden: [],
-            eigenKlasIds: [],
-          }),
-          { status: 200 },
-        ),
+      vi.fn(async (pad: string) =>
+        String(pad).endsWith("/api/ik")
+          ? new Response(JSON.stringify(ikMet({ id: "1", naam: "An Peeters", email: "an@school.be" })), { status: 200 })
+          : new Response("[]", { status: 200 }),
       ),
     );
 
@@ -74,27 +74,38 @@ describe("Navigatie, aangemeld", () => {
 
 describe("Navigatie", () => {
   it("biedt de hoekenschakelaar aan op de agenda", () => {
-    rendermetPad("/agenda");
+    rendermetPad("/agenda", DIRECTIE);
     expect(schakelaar()).toBeInTheDocument();
   });
 
   it("biedt hem ook aan op een losse dag van de agenda", () => {
-    rendermetPad("/agenda/dag/2026-09-01");
+    rendermetPad("/agenda/dag/2026-09-01", DIRECTIE);
     expect(schakelaar()).toBeInTheDocument();
   });
 
   it("biedt hem niet aan op een ander scherm", () => {
-    rendermetPad("/doelen");
+    rendermetPad("/doelen", DIRECTIE);
     expect(schakelaar()).not.toBeInTheDocument();
   });
 
   it("biedt hem niet aan bij thema's per periode, want daar staat geen paneel", () => {
-    rendermetPad("/agenda/periodes");
+    rendermetPad("/agenda/periodes", DIRECTIE);
+    expect(schakelaar()).not.toBeInTheDocument();
+  });
+
+  it("biedt hem niet aan wie de gekozen klas niet mag plannen, want elke fiche plant een hoek", () => {
+    // A hoofdleerkracht with themabeheer and no klas: every right but the planning of a klas.
+    rendermetPad("/agenda", ikMet({ heeftThemabeheer: true, hoofdleerkrachtLeeftijden: ["K3"] }));
+    expect(schakelaar()).not.toBeInTheDocument();
+  });
+
+  it("biedt hem niet aan zolang niet bekend is wie er aangemeld is", () => {
+    rendermetPad("/agenda");
     expect(schakelaar()).not.toBeInTheDocument();
   });
 
   it("opent het paneel en zegt dat het open staat", () => {
-    rendermetPad("/agenda");
+    rendermetPad("/agenda", DIRECTIE);
     const knop = schakelaar();
     expect(knop).toHaveAttribute("aria-pressed", "false");
 
@@ -106,7 +117,7 @@ describe("Navigatie", () => {
 
   it("sluit het paneel wanneer de leerkracht naar een ander scherm gaat", () => {
     useHoekenpaneel.setState({ open: true });
-    rendermetPad("/agenda");
+    rendermetPad("/agenda", DIRECTIE);
 
     fireEvent.click(screen.getByRole("link", { name: t("navigatie.doelen") }));
 

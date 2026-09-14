@@ -419,3 +419,144 @@ None blocking.
 
 ## Notes (not blocking)
 - [LOW, slice 3] The sweep seeds no gebruiker and fills `{jaarfase}` with `"x"`, so a lost guard on a gebruikers route shows as the service's 404 or 400 rather than a write; the sweep still catches it (it requires the 403 no-access detail), but its 404 hint points at seeding. Optional: `"gebruikerId"` (a seeded gebruiker) and `"jaarfase" => "K3"` arms in `Waarde`.
+
+
+# E6-02 slice 4 — Test report (round 1)
+
+**Verdict:** PASS, with one open accessibility finding (defect 1), sent to fix round 1
+**Mode:** both (unit/integration suites; real-browser pass per profile in headless Chrome over CDP at 1440 and 390)
+**Commit:** `d859a10` on `story/E6-02-frontend` (on top of `b0a193f`)
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Doelsuggestie controls only for directie and themabeheer → PASS.** Directie and TB see Vraag suggesties and the open suggestie with Aanvaard/Weiger; HL, LK and no-rights see neither the buttons nor the card (a seeded `Voorgesteld` suggestie present).
+- **Thema form → PASS** (pencil, themadoel "Doel koppelen", "afhalen", "Nieuw thema": directie and TB only). **Thema delete → PASS as built** (bin for directie only; TB gets the pencil, no bin).
+- **FR-1 import section and "menselijke beslissingen verwijderen" → PASS** (section: directie and TB; HL, LK, no-rights see "Je hebt geen recht om iets in te laden."; the opt-in on unit evidence only: `ImportScherm.test.tsx:63-111` renders a real preview with a `bedreigdeBeslissingen` entry, asserting the checkbox for directie and for TB no checkbox plus "Die koppelingen blijven staan.").
+- **Op.stap section and its `Laadlink`s → PASS** (directie gets the switch, `?bron=opstap` opens Op.stap; TB gets the thema section only; "Laad ze in bij Inladen" for directie only). **Inladen buttons → PASS** (Thema's and Doelen headers for directie and TB only).
+- **Subthema form and leeftijd select → PASS** (directie: select JK–L6; HL K3: "Leeftijd K3" stated, no select; pencil and bin only on chapters the gebruiker may manage).
+- **Subdoel and goal-link controls → PASS** (directie, and HL on K3 only; TB, LK, no-rights none). Doelen "Koppel dit doel" for directie, TB and HL; absent for LK and no-rights.
+- **Activiteit create and content → PASS** ("Activiteit toevoegen" and the edit form on K3 for LK and HL, everywhere for directie; L1 activiteiten and TB/no-rights open as "bekijken", a facts sheet with only "Sluiten"; on K3 blauw Lies gets the content form but no day section).
+- **Activiteit delete → PASS** (Lies: bin on "Kring van Lies", hers and unlinked; none on "Lies gekoppeld" or others'; HL and directie on every K3 activiteit).
+- **Planning write controls → PASS** (Lies on K3 groen: seven "Activiteit toevoegen", Subthema inplannen, Hoekenfiches, 6 draggables, the day section, an editable hoek sheet, Genereren / Thema toevoegen / Vergrendeld / Verwijder, Fiches; on K3 blauw none, hoek sheet read-only, the quiet line; TB, HL, no-rights read-only everywhere).
+- **Klaskiezer jaarfase field → PASS** (directie only). **Instellingen Gebruikers and Klassen → PASS** (Gebruikers part and klas buttons for directie; for others the part is gone, the address redirects, Klassen has no write buttons).
+- **One rights helper mirrors the server's `Rechtenmatrix` → PASS.** `RECHTENMATRIX` vs `Rechtenmatrix.cs`: the same 18 policies and columns; `staatToe` follows `StaatToe` clause for clause; `rechten.test.ts`'s `VERWACHT` equals `RechtenmatrixTests.cs`'s `Verwacht` (16 × 8), both activiteit rows tested separately. The one intended difference: no `Themabron`, so `ThemabeheerZonderAndermansInhoud` never matches (fail-closed, documented).
+- **A stale-rights 403 shows the Dutch sentence and refreshes the rights → PASS, see defect 1.** Lies had K3 groen's agenda open; directie deleted her klastoewijzing (200); she picked an activiteit for a day: `403 POST …/jaarplan/weekplanning`, then `200 /api/ik` and the active queries refetched; the picker closed, the add buttons went 7 → 0, Subthema inplannen and Hoekenfiches disappeared, the quiet line and the Dutch sentence appeared. Repeated at 1440 and 390. Unit: `queryClient.test.ts` (403 invalidates; 400 or network error does not) and the `ThemadetailScherm.test.tsx` refused-verdict test (`role=alert`).
+- **At most one quiet line, no em dash, no disabled-with-tooltip → PASS** (once each on the agenda, Thema's per periode, Hoeken, Algemene fiches, only for readers; `nl.json` 0 em dashes; no control that does nothing).
+- **Contrast (browser, alpha composited) → PASS** (quiet line 6.08:1 light / 8.44:1 dark; "Je hebt geen recht om iets in te laden." 17.29:1; the 403 sentence 9.39:1). **At 390 → PASS** (no horizontal overflow for any persona).
+
+## Commands run
+- `pnpm lint` 0; `pnpm test` 45 files, 452/452; `pnpm build` 0 (existing chunk warning); `dotnet build` 0/0; `dotnet test --no-build --filter RechtenEndpointsTests|AanmeldEndpointsTests|GebruikerbeheerEndpointsTests|RechtenmatrixTests|RechtenAfdwingingTests` (Postgres 127.0.0.1:5433) → 144 unit, 93 integration passed.
+- Throwaway DB `jp_tr_e602s4` (migrated; 5 leerplandoelen and 1 doelsuggestie by SQL; seeded over the API: schooljaar 2026-2027, K3 groen, K3 blauw, L1 rood, Tine (TB), Hugo (HL K3), Lies (LK K3 groen), Nico (no rights), thema Herfst with a themadoel, a K3 subthema with a subdoel and an L1 subthema, activiteiten with and without links, placements, a hoek and a fiche). API on 5395, Vite on 5185, stopped; `DROP DATABASE jp_tr_e602s4 WITH (FORCE)`; the owner's database untouched; `git status` clean at `d859a10`.
+
+## Evidence
+- Scripts, results and screenshots in the orchestrator's scratchpad under `tr-s4r1\` (`seed.mjs`, `browser*.mjs`, `live403.mjs`, `verslag*.json`, `live403.json`; `shots\*-themadetail-*.png`, `*-act-kring-*.png`, `*-agenda-*.png`, `*-subthema-nieuw.png`, `*-doeldetail-1440.png`, `lk-*-plaatsing.png`, `lk-blauw-hoek.png`, `themabeheer-agenda-donker.png`, `zonder-inladen.png`, `live403-*.png`).
+
+## Defects
+- **[minor, WCAG 4.1.3]** The agenda's 403 sentence is not announced and sits below the fold on a desktop: it renders in the `sleepmelding` strip (`Agendascherm.tsx:773-777`), a plain `<p>` without `role="alert"`/`aria-live`; at 1440×1000 it is at y=988–1022 (page 1086 px), almost fully out of view; focus is lost because the picker closes. The strip predates this slice; slice 4 routes the new 403 through it. (`PlanScherm.tsx:163` and `Activiteitblad.tsx:275` already use `role="alert"`.)
+- [info, pre-existing] A React warning "Cannot update a component (`DoelenScherm`) while rendering a different component" on the first `/doelen` visit with a fresh profile.
+- [info, pre-existing] Instellingen › Hoeken opens on the first klas, not the header's.
+
+## Orchestrator's frontend-design pass (antagonist F6), 2026-09-14
+Run by the orchestrator with the `frontend-design` skill over the round-1 screenshots (`zonder-recht-act-kring-390`, `lk-blauw-hoek`, `lk-blauw-plaatsing`, `themabeheer-agenda-donker`, `live403-1440-melding`), against ADR-0024 Inkt en Signaal. The read-only activiteitfiche and hoek sheet follow the thema fiche's existing idiom (small labels over facts, ink tokens, a single close button; the accent only on the focus ring; no new hue); the small upper-case labels are the app's established idiom (DEKKING, KERNWOORDENSCHAT), so the house style wins over the generic rule. The agenda quiet line is one short, muted line under the week title, legible in light and dark. **One change:** the 403 refusal renders at the page's bottom, far from the action, below the fold at 1440×1000 and unannounced; it is to use slice 2's `Aandachtsmelding` (focus once, scroll into view), which is item 6 of fix round 1. Observation, no change: on K3 blauw Lies gets "Activiteit bewerken" while that klas's planning is read-only; that is the matrix (content is shared per leeftijd, planning belongs to the klas) and predates this slice.
+
+
+# E6-02 slice 4 — Test report (round 2)
+
+**Verdict:** PASS
+**Mode:** both (suites and the new tests read; flows driven in headless Chrome over CDP at 1440×1000 and 390×844)
+**Commit:** `5b4eb4a` on `story/E6-02-frontend`, on top of `d859a10`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **F1: "Koppel dit doel" follows the chosen klas's leeftijden → PASS.** Hugo (HL K3): with L1 rood no button, with K3 groen the button, at both widths; its sheet lists Herfst and Leeg thema, Herfst offers "Koppel dit doel aan het subthema Bladeren". Tine (TB): the button on both klassen, Herfst offers the thema level. Directie: thema and subthema targets. Lies (LK) and no-rights: no button. Unit: `DoelenScherm.test.tsx` (HL K3: none with L1, the button with K3); `rechten.test.ts` pins `doelKoppelenVoor` (`["JK","K2","K3"]` → true, `["L1"]` → false).
+- **F2: the bin on an empty thema → PASS.** TB: "Leeg thema bewerken" and "Leeg thema verwijderen"; on Herfst the pencil, no bin. Directie: the bin on both. HL, LK, no-rights: no bin. Same at 390. The frontend's `subthemas.length === 0` matches `EfRechtenbronnen.VoorThemaAsync` (only subthema's, subdoelen and activiteiten count as someone else's content). Unit: the `rechten.test.ts` I26 block (9 cases incl. fail-closed with no or the wrong resource) and `ThemadetailScherm.test.tsx`.
+- **Item 6: the agenda's 403 is an alert that takes focus → PASS.** Lies on K3 groen; directie removed her klastoewijzing (200); she planned "Verhaal van de eik" (the pick sends straight away): at 1440×1000 the alert box 932–966 of 1000 (34 px margin), at 390×844 616–650 of 844; `role=alert`, `tabindex=-1`, focused; the picker closed within 400 ms; add buttons 7 → 0 (1440) and 34 → 0 (390); the quiet line "De planning van K3 groen kan je alleen bekijken." Network: `403 POST …/jaarplan/weekplanning`, then `200 /api/ik` and the active queries; the klastoewijzing restored after each run. Unit: `Agendamelding.test.tsx` (403 → focused alert; 400 → plain strip, no alert; a browser-decided refusal wins over a server error; nothing without an error).
+- **Side effect: the centred scroll on Instellingen › Gebruikers → PASS.** 21 gebruikers, Zoë Zwart last. "Intussen verwijderd": her sheet open, she deleted over the API (204), a tick → 404 and refetch; at 390 (scrollY 2962) the sheet closed and "Zoë Zwart is intussen verwijderd en staat niet meer in de lijst." was focused, `role=alert`, in view at 384–437 of 844; at 1440 (scrollY 1311) in view at 284–319 of 1000; exactly one scroll move each time (to 0), no bounce. The removal refusal (409, last directie): focused and in view (519–607 of 844; 884–936 of 1000), one scroll move each time, to the page end.
+- **Round-1 criteria still hold (spot check, each profile at 1440 and 390, no horizontal overflow) → PASS** (directie: every control, both Inladen sections, 7/34 add buttons, no quiet line; TB: pencil, "Doel koppelen", suggesties, activiteiten read-only, thema section only, the quiet line; HL K3: K3 controls only, "Eikels tellen bekijken" on L1, no suggestie, "Je hebt geen recht om iets in te laden.", the quiet line; LK on K3 groen: add and edit on K3, the bin only on "Kring van Lies", 7/34 add buttons; no rights: read only, the quiet line).
+- **F3, F4, F5 → PASS on unit evidence and code reading** (`ImportScherm.test.tsx` and `Hoekensectie.test.tsx` answer `/api/ik` with 500 and assert neither sentence nor control; `Subthemaformulier.test.tsx` covers both empty cases; `ThemadetailScherm.test.tsx` closes the form after a rights loss with no loading sentence; F5's plural and singular in `nl.json` without em dash, via `telWoord`, the singular pinned in `ImportScherm.test.tsx`).
+
+## Commands run
+- `pnpm lint` 0; `pnpm test` 47 files, 472/472; `pnpm build` 0 (existing chunk warning); `dotnet build` 0/0.
+- Throwaway DB `jp_tr_e602s4r2` (migrated; 5 leerplandoelen and 1 `Voorgesteld` doelsuggestie by SQL; seeded as in round 1 plus "Leeg thema" and 16 filler gebruikers). API Development `--no-launch-profile` on 5395, Vite on 5185. Teardown: servers stopped, ports free, `DROP DATABASE jp_tr_e602s4r2 WITH (FORCE)`, the owner's database untouched, `git status` clean at `5b4eb4a`.
+
+## Evidence
+- In the orchestrator's scratchpad under `tr-s4r2\`: scripts (`seed.mjs`, `lib.mjs`, `a.mjs`, `b.mjs`, `c1.mjs`, `c2.mjs`, `f1b.mjs`), results (`verslag-a/b/c1/c2/f1b.json`), screenshots (`shots\live403-{1440,390}.png`, `gebruikers-{390,1440}-{verdwenen,weigering}.png`, `f1b-hl-K3-op-{K3,L1}-*.png`, `themabeheer-leeg-*.png`, `*-herfst-1440.png`).
+
+## Defects
+None blocking.
+
+## Notes (not blocking)
+- [info, pre-existing] The React warning on the first `/doelen` visit.
+- [info] For a HL of K3 the link sheet also lists "Leeg thema" (0 subthema's), which offers nothing to press once opened; the sheet as a whole does offer something, so F1 holds. (Sent to fix round 2.)
+- [info] Two behaviours are proven only in the browser: the picker closing in the 403 `onError`, and `Aandachtsmelding`'s centred `scrollIntoView` (jsdom cannot evaluate it); both verified live at both widths.
+
+
+# E6-02 slice 4 — Test report (round 3)
+
+**Verdict:** FAIL (one MINOR defect in criterion (a): the fix works for a leerkracht who keeps another klas at the same leeftijd, not for one with a single klas; every other check passed)
+**Mode:** both (gates and new tests read, with mutation checks; headless Chrome over CDP at 1440×1000 and 390×844)
+**Commit:** `a4d698a` on `story/E6-02-frontend`, on top of `5b4eb4a`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Gates → PASS.** `pnpm lint` 0; `pnpm test` 51 files, 486/486; `pnpm build` 0 (usual chunk warning).
+- **The new tests pin the behaviour → PASS** (three mutations, each restored): removing the `plek !== "pagina"` guard in `Agendamelding` fails 3 tests; narrowing `dagfout` to `magPlannen` in `Activiteitblad` fails the "same alert after the day section goes" test; making `themasMetKoppelactie` return every thema fails 4 tests. `Subthemaplanner.test.tsx` pins `role=alert` with the count and each reason. Gap: no test covers a refused create from the new-activiteit sheet.
+- **(a) New-activiteit sheet → FAIL.** Carla (LK on K3 groen and K3 blauw; groen removed with the sheet open) passes at both widths: `201` create, `403` weekplanning, `200 /api/ik`; exactly one `role=alert` in the document, inside the dialog, "De activiteit is gemaakt maar niet ingepland. Je hebt geen toegang tot deze actie."; in view inside the sheet (678–712 within 77–931 at 1440; 723–775 within 195–775 at 390); page `scrollY` 0; add buttons 7→0 and 34→0; the quiet line; nothing after closing. **Lies (LK on K3 groen only) fails at both widths:** her create itself is refused (`403 POST /api/subthemas/…/activiteiten`), zero alerts, focus on "Sluiten", and the sheet shows "Er is nog geen subthema voor de leeftijd van deze klas onder de thema's van deze dag. Maak er eerst een bij het thema." (false: Bladeren exists; she lost the right); an uncaught `ApiError … 403` in the console.
+- **(b) The picker path → PASS** (the page alert the only alert, focused, in view: 932–966 of 1000, 616–650 of 844; one centred scroll 0→56 at 1440; add buttons to 0; the quiet line).
+- **(c1) Activiteit sheet, day move → PASS** (`403 PATCH …/dag`; one alert in the dialog, in the scroll area; "Verplaats" disappears and the alert stays; `scrollY` 0; no page alert after closing).
+- **(c2) Subthema planner → PASS** (`403 …/subthemaperiodes` then one per row; one alert "0 van 5 ingepland" with a line per activiteit, in the scroll area; no page scroll; nothing after closing).
+- **(d) Goal-link sheet → PASS** (HL K3 on K3 groen: Herfst, not "Leeg thema"; directie and themabeheer: both; the new empty state with Greta, HL of L2, on L2 geel: "Je kan dit doel hier nergens aan koppelen.", no "Nog geen thema's"; LK and no-rights: no "Koppel dit doel"; no horizontal overflow).
+- **Round-2 spot checks → PASS.** **Copy → PASS** (exactly the `nl.json` values, no em dash).
+
+## Commands run
+- Gates, three mutation runs, `features/plan` and `features/koppelen` re-run after restore (17 files, 132/132). Throwaway DB `jp_tr_e602s4r3` (container password; migrated; six leerplandoelen by SQL; the rest over the API); API on 5395, Vite on 5185; klastoewijzingen restored after every run. Script retries (the test-runner's own selectors and view, not the product). Teardown: all processes stopped, `DROP DATABASE jp_tr_e602s4r3 WITH (FORCE)`, `git status --short` empty at `a4d698a`.
+
+## Evidence
+- In the orchestrator's scratchpad under `tr-s4r3\`: `verslag-r3a/r3c/r3d/r3d3/r3e.json`; screenshots `shots\a-carla-*`, `a-lk-{1440,390}-blad.png` (the defect), `b-kiezer-*`, `c1-activiteit-*`, `c2-planner-*`, `d-*`. Console: the uncaught `ApiError … 403` in both Lies runs, plus the pre-existing `DoelenScherm` warning.
+
+## Defects
+- **[MINOR; WCAG 4.1.3; the E5-03 rule] A refused create from the new-activiteit sheet is not announced, and the sheet then says something false.** Repro: LK with only K3 groen opens "Nieuwe activiteit maken", types a name; directie deletes her K3 groen klastoewijzing; she presses Bewaren. Actual: `403 POST /api/subthemas/{id}/activiteiten`, `/api/ik` refetched; `keuzes` (filtered by `mag.activiteitBewerken`, added in slice 4) empties, `actief` undefined; the `laadt || !actief` branch replaces the form and its `role="alert"` for `maakFout`; with `planFout` null it shows `periode.geenSubthemaOmIn`; nothing is announced; `bewaarEnPlan` awaits `maak.mutateAsync` without a catch (uncaught rejection). Expected: one `role=alert` in the dialog with the refusal (without the "gemaakt maar niet ingepland" prefix, since nothing was created), and not "geen subthema". Test to add in `Nieuweactiviteitblad.test.tsx`.
+
+## Notes (not blocking)
+- [info, confirmed] After a refused plan, focus sits on `body` while the sheet stays open; a second Bewaren would create a second activiteit (sent to fix round 3 with the antagonist's QUESTION).
+- [info] The planner sends one POST per row; each 403 invalidates every query (6 rows gave 6 refetch cycles of about 15 requests); correct, just a lot of traffic.
+- [info] The HL-of-K3-on-L1 case for "Koppel dit doel" was not re-exercised (no K3 doel in that klas's register); covered by round 2 and `DoelenScherm.test.tsx`.
+- [info, pre-existing] The React setState-in-render warning on the first `/doelen` visit.
+
+
+# E6-02 slice 4 — Test report (round 4)
+
+**Verdict:** FAIL on one MINOR test-only defect. Every browser criterion (a)–(d) and every spot-check passes at 1440×1000 and 390×844; all gates green; no product code wrong.
+**Mode:** both (suites, the four tests read, six mutations plus a probe; headless Chrome over CDP with real mouse and key input)
+**Commit:** `960ad89` on `story/E6-02-frontend`, on top of `a4d698a`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Gates → PASS.** `pnpm lint` 0; 51 files, 490/490; `pnpm build` 0 (usual chunk warning).
+- **The four new or changed tests pin the behaviour → FAIL (the F9 test).** Mutations (each restored): `maakWeigering` null fails the refused-create test; removing `|| weigering` fails both refusal tests; removing the `.catch` surfaces as an unhandled rejection; keeping the plan button without `magPlannen` fails the new test; forcing a `Blad` remount fails the `Activiteitblad` identity test. **But with `themasMetKoppelactie(themas, mag)` (live rights) `Bestemmingsblad.test` stays 4/4**: TanStack Query 5.102 delivers cache changes on `setTimeout(0)`, and the tests' synchronous `act(() => qc.setQueryData(["ik"], NIEMAND))` returns before the component re-renders. A probe with an awaited tick inside `act` passes unmutated (4/4, 3/3) and fails under both mutations. Probe files deleted.
+- **(a) Lies's refused create → PASS at both widths.** `403 POST …/activiteiten`, `200 /api/ik`; exactly one `role=alert` inserted inside the dialog ("Je hebt geen toegang tot deze actie."), in view (101–135 in 77–1000; 794–828 in 770–844), page `scrollY` 0; no "gemaakt", no "geen subthema", no day line, no form, only Sluiten; 0 activiteiten created; add buttons 7→0 and 34→0; the quiet line; nothing after closing; console empty.
+- **(b) Carla's refused plan and planner → PASS at both widths.** `201` create, `403 …/weekplanning`; one alert "De activiteit is gemaakt maar niet ingepland. Je hebt geen toegang tot deze actie."; no Bewaren, no day line, no form; exactly 1 activiteit created. Planner: after the rights loss, 403 on `…/subthemaperiodes` and one per row; one alert "0 van 5 ingepland" with a reason per row, in view (627–897 in 77–1000; 481–844 in 195–844); the plan button gone; nothing after closing.
+- **(c) F8 → PASS at both widths.** `403 PUT …/weekplanning/{id}/dag`, `200 /api/ik`; the same dialog element (title "Activiteit bewerken" → "Kring van Lies", only Sluiten); the same alert element, inserted once, unchanged; focus inside the dialog; no page alert after closing; console empty. **Keyboard:** 26 Tab stops, focus never left the dialog; Enter in Dag, Van, Tot and Soort sends 0 writes; Enter in Verwachte uitkomsten and Tab-to-Bewaren+Enter each send one PUT and close; the mouse save works; the goal picker's search is outside the `<form>` (Enter sends 0 writes, no activiteit created).
+- **(d) F9 → PASS in the browser at both widths.** Hugo (HL K3) on NL-K3-02: `403 POST …/doelkoppelingen`, `200 /api/ik`; the same single alert, the row, Herfst and Bladeren stay; "nergens aan koppelen" never appeared; the row's other buttons (following live rights) disappeared; in view; nothing after closing.
+- **Spot-checks → PASS** (add-button counts and quiet lines per profile; "Koppel dit doel" per profile; Greta's empty state; the picker path focused and in view).
+
+## Commands run
+- Gates; `mut.sh` (six mutations) and `probe.sh` (the awaited-tick probe); throwaway DB `jp_tr_e602s4r4` (container password, migrated, six leerplandoelen by SQL, the rest over the API); API on 5395, Vite on 5185; every klastoewijzing and appointment restored. Teardown: servers stopped, `DROP DATABASE jp_tr_e602s4r4 WITH (FORCE)`, profiles deleted, `git status --short` empty at `960ad89`.
+
+## Evidence
+- In the orchestrator's scratchpad under `tr-s4r4\` (`verslag-*.json`, `mut.txt`, `probe.txt`, gate logs; screenshots in `shots\`).
+
+## Defects
+- **[MINOR, test-only]** `Bestemmingsblad.test.tsx` ("houdt een geweigerde koppeling in beeld…") and `Nieuweactiviteitblad.test.tsx` ("meldt een geweigerde aanmaak…, ook als de rechten niets meer laten") change the rights synchronously and assert before the component re-renders, so the F9 test survives the live-rights mutation and the refused-create test's "rights hold nothing" half is not exercised. Fix (verified by the probe): `await act(async () => { qc.setQueryData(["ik"], NIEMAND); await new Promise((r) => setTimeout(r, 0)); });`, plus an assertion in the F9 test that the new rights arrived (the row's subthema button is gone).
+
+## Notes (not blocking)
+- The new-activiteit sheet swaps to a new dialog on a refusal (focus on Sluiten; the alert inserted once).
+- After the planner refusal and after F8, focus stays in the dialog on its content container, never on `<body>`.
+- The planner sends one POST per row (5–6 × 403, each reloading every query).
+
+## Owner decision after round 4 (2026-09-14)
+The three fix rounds were used up. The owner approved one extra mini-fix for the antagonist's F10 and F11; the orchestrator added this test-only defect and the antagonist's comment nit, both on the same topic. A short check follows it.
