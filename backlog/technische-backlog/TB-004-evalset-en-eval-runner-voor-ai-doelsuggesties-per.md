@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:49
+bijgewerkt: 2026-09-14 15:00
 opgepakt-door: ai-doelsuggesties
 branch: ticket/ai-doelsuggesties-eval
 pr:
@@ -139,3 +139,4 @@ wordt gecommit, voor de tests van de runner zelf.
 - 2026-09-14 13:44 · ai-doelsuggesties · antagonist ronde 6: COMPLIANT. Open bij de eigenaar: de go voor de deploy (criterium 3) samen met de bevestiging van de quota (50K tokens per minuut per chatmodel, 100K per embeddingmodel), en de aanvaarding van ADR-0036
 - 2026-09-14 14:48 · ai-doelsuggesties · eigenaar: ADR-0036 aanvaard; Foundry volledig als code (ai-foundry.bicep op subscription-niveau maakt ook de resource group, deploy-ai.ps1 deployt); vergelijking beperkt tot gpt-5.4-mini en text-embedding-3-small, de enige met Data Zone-quota; eval-catalogus in lokale databank jaarplanner_eval (Op.stap 1.2, 5.835 G-doelen)
 - 2026-09-14 14:49 · ai-doelsuggesties · geblokkeerd: wacht op Azure-support: het Foundry-account wordt geweigerd met 715-123420 (unusual activity); de eigenaar opent een supportaanvraag
+- 2026-09-14 15:00 · ai-doelsuggesties · antagonist ronde 7: 0 major, 3 minor (ai-foundry.md sprak ADR-0036 tegen over gedeeld gebruik door dev/tst; regio was een vrije optie; -Skip aanvaardde onbekende namen); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-7.md. Het ADR van TB-006 moet beslissing 3 van ADR-0036 wijzigen voor het gedeelde gebruik door dev en tst

@@ -17,7 +17,6 @@
     ./infra/deploy-ai.ps1 -Skip gpt-5.4-mini -SetEvalEndpoint
 #>
 param(
-    [string]$Location = 'swedencentral',
     [string]$EvaluatorObjectId,
     [string[]]$Skip = @(),
     [switch]$WhatIf,
@@ -28,6 +27,9 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $template = Join-Path $PSScriptRoot 'ai-foundry.bicep'
 $deploymentName = 'jaarplanner-ai'
+# Not an option: Data Zone Standard follows the region, so the region is what keeps prompts in the EU (Art. VI.3).
+# The template allows only this one.
+$Location = 'swedencentral'
 
 function Invoke-Checked([scriptblock]$Command, [string]$What) {
     $output = & $Command
@@ -40,6 +42,18 @@ $az = (Get-Command az -ErrorAction SilentlyContinue).Source
 if (-not $az) {
     $az = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd'
     if (-not (Test-Path $az)) { throw 'The Azure CLI was not found. Install it and run az login.' }
+}
+
+# powershell -File passes "a,b" as one string, so split it. A name the template does not know would match nothing in its
+# filter and deploy everything without a word, so it is refused before anything is sent.
+$Skip = @($Skip | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($Skip.Count -gt 0) {
+    $compiled = (Invoke-Checked { & $az bicep build --file $template --stdout } 'az bicep build' | Out-String) | ConvertFrom-Json
+    $known = @($compiled.parameters.modelDeployments.defaultValue | ForEach-Object { $_.name })
+    $unknown = @($Skip | Where-Object { $known -notcontains $_ })
+    if ($unknown.Count -gt 0) {
+        throw "-Skip names a deployment the template does not have: $($unknown -join ', '). Known: $($known -join ', ')."
+    }
 }
 
 if (-not $EvaluatorObjectId) {

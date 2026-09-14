@@ -4,7 +4,10 @@
 // deleting the group removes nothing else. Everything is in code; infra/deploy-ai.ps1 deploys it (see infra/ai-foundry.md).
 targetScope = 'subscription'
 
-@description('Region of the resource group and the account. Sweden Central offers every model below as Data Zone Standard (EU); Belgium Central offers none of them.')
+@description('Region of the resource group and the account. Data Zone Standard follows the account\'s region, so this is what keeps prompts in the EU (Art. VI.3): Sweden Central offers every model below as Data Zone Standard (EU); Belgium Central offers none of them.')
+@allowed([
+  'swedencentral'
+])
 param location string = 'swedencentral'
 
 @description('The resource group that holds this resource and nothing else.')

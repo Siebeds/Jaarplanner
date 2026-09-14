@@ -4,8 +4,7 @@
 (`backend/tools/Jaarplanner.Eval`). The decision is recorded in
 [ADR-0036](../docs/adr/0036-ai-evaluatieomgeving-en-v1-route.md). It is separate from the demo environment
 (`main.bicep`, ADR-0034) and from any school's environment, in a resource group of its own, so it can be deleted without
-touching anything else. Since the owner's answers to TB-006 (2026-09-14) the school's dev and tst environments will use
-this resource too; prd gets its own.
+touching anything else.
 
 Everything is in code. `ai-foundry.bicep` is deployed at subscription scope and creates the resource group itself;
 `ai-foundry-account.bicep` holds the account, its deployments and the role, and is only deployed through it.
