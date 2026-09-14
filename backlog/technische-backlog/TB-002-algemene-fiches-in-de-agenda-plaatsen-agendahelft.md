@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:40
+bijgewerkt: 2026-09-14 11:46
 opgepakt-door: E10-03
 branch: story/E10-03-agenda
 pr:
@@ -31,8 +31,9 @@ backend komt erbij, omdat dit scherm hem voor het eerst bereikbaar maakt: één 
 zonder school (`AlgemeneFicheplaatsing.VerplaatsMoment`), zoals het inplannen al deed.
 
 - `features/algemene-fiches/gegevens.ts`: de plaatsingen lezen, plaatsen, weghalen en één moment verplaatsen.
-- Het fichepaneel naast de agenda krijgt onder de hoekenfiches een tweede lijst: de algemene fiches van de klas,
-  sleepbaar naar een dag en aanklikbaar.
+- Een tweede schakelaar in de zijbalk (en een tweede chip op een telefoon), *Algemene fiches*, opent een eigen paneel
+  met de algemene fiches van de klas, sleepbaar naar een dag en aanklikbaar. Niet gegroepeerd met de hoekenfiches:
+  zo besliste de eigenaar op 2026-09-14, na een eerste versie met één paneel *Fiches* voor beide.
 - Een nieuw plaatsingsblad vraagt de periode, de weekdagen (ma tot vr) en het begin- en einduur.
 - Het tijdraster (dag en week) tekent de momenten van de fiches; ze zijn te verslepen en in te korten of te verlengen.
 - Een detailblad voor een geplaatste fiche: periode en uren, één moment aanpassen zonder slepen, en de hele periode
@@ -40,14 +41,14 @@ zonder school (`AlgemeneFicheplaatsing.VerplaatsMoment`), zoals het inplannen al
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een klas met algemene fiches, wanneer ik in de agenda het fichepaneel open, dan zie ik die fiches onder
-  de hoekenfiches.
-- [ ] Wanneer ik een algemene fiche op een dag in het tijdraster sleep of erop klik, dan vraagt een blad de periode,
+- [x] Gegeven een klas met algemene fiches, wanneer ik in de agenda op *Algemene fiches* klik (in de zijbalk, of de
+  chip op een telefoon), dan zie ik die fiches in een eigen paneel, los van de hoekenfiches.
+- [x] Wanneer ik een algemene fiche op een dag in het tijdraster sleep of erop klik, dan vraagt een blad de periode,
   de weekdagen en de uren, en na Inplannen staat de fiche op elke gekozen schooldag in de dag- en weekweergave.
-- [ ] Wanneer ik één moment van een geplande fiche versleep of aan de onderkant groter maak, dan wordt alleen dat
+- [x] Wanneer ik één moment van een geplande fiche versleep of aan de onderkant groter maak, dan wordt alleen dat
   moment bewaard; hetzelfde lukt zonder slepen, via het detailblad.
-- [ ] Wanneer ik een geplande fiche weghaal, dan verdwijnen al haar momenten uit de agenda.
-- [ ] Nadat een fiche met doelen voor het eerst is ingepland, telt de dekking haar doelen mee zonder de pagina te
+- [x] Wanneer ik een geplande fiche weghaal, dan verdwijnen al haar momenten uit de agenda.
+- [x] Nadat een fiche met doelen voor het eerst is ingepland, telt de dekking haar doelen mee zonder de pagina te
   herladen, en in Instellingen staat niet meer "Staat nog niet in de agenda".
 - [ ] Vitest en `pnpm lint` groen, gecontroleerd in een echte browser op 1440 en 390 pixels, en de antagonist heeft de
   wijziging gezien.
@@ -68,3 +69,4 @@ Geen.
 - 2026-09-14 11:16 · E10-03 · Frontend gebouwd: fichepaneel met algemene fiches, plaatsingsblad, detailblad en momenten in het tijdraster; pnpm lint schoon, Vitest 247/247 groen.
 - 2026-09-14 11:26 · E10-03 · Browsercontrole 1440: plaatsen via slepen, blokken in de week, dekking 0 naar 1 van 14 zonder herladen, één dag aanpassen via het detailblad werkt. Antagonist ronde 1: VIOLATIONS FOUND (2 MAJOR, 5 MINOR, 2 vragen); herstel loopt.
 - 2026-09-14 11:40 · E10-03 · Eigenaar 2026-09-14: geen gegroepeerd paneel 'Fiches', maar twee aparte schakelaars in de zijbalk (Hoekenfiches en Algemene fiches), elk met een eigen lijst. Omgebouwd.
+- 2026-09-14 11:46 · E10-03 · Criteria 1 tot 5 afgevinkt op bewijs: browser 1440 en 390 (twee schakelaars, slepen en klikken naar het blad, ma en wo sep tot jun geschreven zonder herfstvakantie, één dag aanpassen zonder slepen, vakantiedag en zaterdag geweigerd, weghalen haalt alle momenten weg, dekking 0 naar 1 naar 0 van 14, Instellingen zegt 'Staat 1 keer in de agenda'); Vitest 256/256, backend unit 1133 en integratie 357 op PostgreSQL groen. Criterium 1 herschreven naar de beslissing van de eigenaar (twee schakelaars).
