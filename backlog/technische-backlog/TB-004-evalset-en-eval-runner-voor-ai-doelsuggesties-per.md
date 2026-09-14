@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:17
+bijgewerkt: 2026-09-14 12:33
 opgepakt-door: ai-doelsuggesties
 branch: ticket/ai-doelsuggesties-eval
 pr:
@@ -91,15 +91,15 @@ wordt gecommit, voor de tests van de runner zelf.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de verzonnen evalset en de nep-AI-client, wanneer de runner draait, dan schrijft hij een rapport met per
+- [x] Gegeven de verzonnen evalset en de nep-AI-client, wanneer de runner draait, dan schrijft hij een rapport met per
   variant precisie, recall en (voor B) de recall van de top 25, plus één regel per geval.
-- [ ] Gegeven een modelantwoord met een code die niet in de kandidatenlijst staat, wanneer de runner scoort, dan telt die
+- [x] Gegeven een modelantwoord met een code die niet in de kandidatenlijst staat, wanneer de runner scoort, dan telt die
   code als fout en staat ze in het rapport als onbekende code, nooit als treffer.
 - [ ] Gegeven de Foundry-resource in Sweden Central, wanneer de eigenaar na `az login` de runner vanaf zijn pc start,
   dan loopt hij zonder API-sleutel en toont het rapport tokens, kost en latency per model.
-- [ ] Gegeven de publieke repo, wanneer de runner echte data leest of een rapport schrijft, dan belandt geen van beide in
+- [x] Gegeven de publieke repo, wanneer de runner echte data leest of een rapport schrijft, dan belandt geen van beide in
   git: de map staat in `.gitignore`, en alleen de verzonnen evalset is gecommit.
-- [ ] Gegeven de bestaande thema- en subdoelsuggesties, wanneer de client aangepast is, dan gedragen ze zich zoals
+- [x] Gegeven de bestaande thema- en subdoelsuggesties, wanneer de client aangepast is, dan gedragen ze zich zoals
   voorheen; `dotnet test` en `dotnet format` zijn groen en de runner zit niet in CI.
 
 ## Buiten scope
@@ -124,3 +124,9 @@ wordt gecommit, voor de tests van de runner zelf.
 
 - 2026-09-14 11:09 · ai-doelsuggesties · aangemaakt (status in-uitvoering)
 - 2026-09-14 11:17 · ai-doelsuggesties · eigenaar: eigen instance voor school 1 (sjceik), demo blijft voor pitches; ticket goedgekeurd om te committen en te pushen
+- 2026-09-14 12:01 · ai-doelsuggesties · afwijking: de Foundry-resource staat in infra/ai-foundry.bicep (eigen resource group), niet in main.bicep, zodat de demo en de schoolomgevingen er los van blijven; uitleg in infra/ai-foundry.md
+- 2026-09-14 12:01 · ai-doelsuggesties · afwijking: de AI-client haalt zijn Entra-token zelf op en de DI-registratie blijft onveranderd (claim op DependencyInjection.cs ligt bij E6-02); de client gebruikt nu de v1-route zonder api-version
+- 2026-09-14 12:01 · ai-doelsuggesties · gebouwd: eval-runner (backend/tools/Jaarplanner.Eval), tokenverbruik en Entra in de client, verzonnen voorbeeldset, eval-data/ genegeerd door git; build groen, 130 AI- en eval-tests groen, Bicep compileert
+- 2026-09-14 12:33 · ai-doelsuggesties · antagonist ronde 1: VIOLATIONS FOUND (2 major, 7 minor); verslag en afhandeling in backlog/worklogs/TB-004/antagonist-ronde-1.md
+- 2026-09-14 12:33 · ai-doelsuggesties · opgelost: Entra is een expliciete keuze (AzureAI:Authentication, standaard Key) met tokencache; ADR-0036 (Proposed; ADR-0035 is van TB-005); kost en latency over elk beantwoord verzoek; embeddingtokens overleven een nieuwe poging; Engelse opties; uitvoermap buiten git bewaakt; gekozen themadoelen uitgesloten; quota 50K/100K
+- 2026-09-14 12:33 · ai-doelsuggesties · criteria 1, 2, 4 en 5 afgevinkt: EvalRunnerTests, ScoringTests, EvalOptionsTests (RepoGuard) en AzureAiFoundryClientTests groen; volledige suite 1178 unit / 117 integratie groen, format schoon; criterium 3 wacht op de deploy van de Foundry-resource
