@@ -2,6 +2,8 @@ using System.Globalization;
 using ClosedXML.Excel;
 using Jaarplanner.Application.Dekking;
 using Jaarplanner.Domain.Curriculum;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Jaarplanner.Infrastructure.Dekking;
 
@@ -67,12 +69,18 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
     private static readonly TimeZoneInfo? SchoolZone = Schoolklok.Zone;
 
     private readonly TimeProvider _tijd;
+    private readonly ILogger _logger;
 
     /// <param name="tijd">
     /// The clock for the "opgemaakt op" stamp. Injected rather than read from <c>DateTimeOffset.UtcNow</c> so a test
     /// can assert the stamp instead of asserting that a stamp exists.
     /// </param>
-    public ClosedXmlDekkingExport(TimeProvider tijd) => _tijd = tijd;
+    /// <param name="logger">Where <see cref="Schoolklok"/> reports a host without the school's time zone. DI supplies it.</param>
+    public ClosedXmlDekkingExport(TimeProvider tijd, ILogger<ClosedXmlDekkingExport>? logger = null)
+    {
+        _tijd = tijd;
+        _logger = logger ?? NullLogger<ClosedXmlDekkingExport>.Instance;
+    }
 
     /// <inheritdoc />
     public DekkingExportbestand Genereer(DekkingWeergave dekking)
@@ -287,12 +295,7 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
     /// <c>Genereer</c> read the clock twice, which is the E5-03 rule failing in a code comment.
     /// </para>
     /// </summary>
-    private DateTimeOffset Nu()
-    {
-        var nu = _tijd.GetUtcNow();
-
-        return SchoolZone is null ? nu.ToUniversalTime() : TimeZoneInfo.ConvertTime(nu, SchoolZone);
-    }
+    private DateTimeOffset Nu() => Schoolklok.Nu(_tijd, _logger);
 
     /// <summary>
     /// Writes the table: header row from the single-source column list, then one row per in-scope leerplandoel.

@@ -1198,3 +1198,39 @@ Development:
    - ADR-0030 §3 could note that the two delete rows are one policy.
 4. **`ActiviteitWeergave.makerId` is in the JSON now**, but the frontend `ActiviteitWeergave` type was not extended.
    Slice 4 adds it when it gates the delete.
+
+### Fix round 1
+
+- **Input:**
+  - the test-runner, PASS: `backlog/worklogs/E6-02/test-report.md`, recorded by the orchestrator and committed here
+    unedited;
+  - the antagonist, 0 CRITICAL, 0 MAJOR, 5 MINOR, 1 QUESTION: "Code slice 1 — audit round 1" in
+    `backlog/worklogs/E6-02/antagonist.md`, also committed unedited.
+- **Branch:** `story/E6-02-fundament`, on top of `d6460ef`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | MINOR: E7-11 says every signed-in person can still run the curriculum import | **Fixed in place.** In `backlog/E7-niet-functioneel.md` the false clause is struck, not deleted, with a dated annotation (2026-09-14, E6-02 slice 1, `d6460ef`): the Op.stap routes are directie-only and pinned 403/400/401, and every other matrix row reaches its routes in slice 3. The entry stays `[!]`. |
+| 2 | MINOR: ADR-0022 describes `AddCurriculumbeheerAutorisatie()` and a policy body that no longer exist | **Fixed by a status pointer.** `docs/adr/0022-…` now says: `Curriculumbeheer` is the ADR-0030 §3 Op.stap row, directie only, declared as `Rechtenmatrix.Curriculumbeheer` and registered by `Rechtenbeleid.AddRechtenbeleid()`. The method and body described in decision 1 are gone, the constant's name and value are unchanged, and decision 1's rule stands. Decision 1's text is left as written. |
+| 3 | MINOR: the E7-06 processing register misses the new staff data | **Fixed.** New E6-02 slice 1 carry-forward on E7-06 for `gebruikers.HeeftThemabeheer`, `klastoewijzingen` and `hoofdleerkrachtaanstellingen`. Retention as coded: removed with the gebruiker (all three), with the klas (toewijzing) or with the schooljaar (aanstelling); nothing ends them earlier. A past year's appointment stops granting rights (R20) but stays stored. |
+| 4 | MINOR: `Schoolklok` claimed its callers "say so" on the UTC fallback, but `RechtenService` did not | **Fixed where the fallback happens.** `Schoolklok.Nu` and `Vandaag` now take the caller's `ILogger` (required) and log one warning per process when the zone is missing. `RechtenService` injects `ILogger<RechtenService>`. The export takes an optional `ILogger<ClosedXmlDekkingExport>` (DI supplies it) and now converts through `Schoolklok.Nu`, not its own copy. The class comment states what happens: UTC plus one warning, the export also labels "(UTC)", and the rights path does **not** fail closed. The fallback is testable through an internal overload that takes the zone and the once-only state. |
+| 5 | MINOR: nothing turns a body leeftijd into a `Leeftijdsinhoud` (slice 3's subthema create and I13 re-scope) | **Fixed.** `Leeftijdsinhoud.UitInvoer(string?)` trims and validates with `Jaarfasen.WatIsErMisMet`. It returns the canonical code, or `null` for what the write would refuse; the caller answers null with the service's 400 and never skips the check on it. The record's doc says which way in is for which source. Slice 3 must use it for every body leeftijd, including both ends of an I13 re-scope (the old end comes from `IRechtenbronnen`). |
+| 6 | Test-runner gap: no automated test that removing a schooljaar removes its aanstellingen | **Fixed.** `Een_schooljaar_verwijderen_ruimt_zijn_hoofdleerkrachtaanstellingen_op` in `RechtenEndpointsTests`, next to the klas test. It uses a tracked removal so the owned closures go as in a real delete, and checks that another year's aanstelling and the gebruiker survive. |
+| Q | R25: do `geweigerd` and `voorgesteld` links block the maker's delete? | **Unchanged, as instructed.** The strict reading stays. The orchestrator carries it forward in the E6 epic file and puts it to the owner. |
+
+**Tests added this round:**
+- `UnitTests/Toegang/LeeftijdsinhoudTests` (11 cases): four padded and canonical inputs are accepted and trimmed,
+  agreeing with `WatIsErMisMet`; seven are refused (null, blank, `L7`, `3K`, `k3`, `F1`), also agreeing; and a K3
+  hoofdleerkracht passes `SubthemaBeheren` on a `" K3"` body.
+- `UnitTests/Toegang/SchoolklokTests` (2): with the zone, 30 June 22:30 UTC is 1 July and nothing is logged; without the
+  zone, UTC with exactly one warning over two calls.
+- The Postgres schooljaar-cascade test above.
+
+**Gates:**
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format`, then `--verify-no-changes`: clean.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`):
+  - UnitTests: 1315 passed, 4 skipped (live KOV opt-in).
+  - IntegrationTests: 382 passed, 1 skipped (live Op.stap opt-in).
+- No frontend file changed, so the pnpm gates did not apply.

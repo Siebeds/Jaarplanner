@@ -1,3 +1,5 @@
+using Jaarplanner.Domain.Curriculum;
+
 namespace Jaarplanner.Application.Toegang;
 
 /// <summary>
@@ -28,9 +30,29 @@ public interface IRechtenbronnen
 /// <summary>
 /// Shared content of one leeftijd (a subthema, its subdoelen, its streefwoordenschat, a new activiteit under it): the
 /// resource for the rows whose columns are HL and "LK leeftijd" (ADR-0030 §3).
+/// <para>
+/// <b>Two ways in, one per source.</b> A leeftijd already stored (a subthema's) is canonical, and
+/// <see cref="IRechtenbronnen"/> builds the record from it with the constructor. A leeftijd from anywhere else, such as a
+/// request body (the subthema create, the new leeftijd of an I13 re-scope), goes through <see cref="UitInvoer"/>.
+/// Otherwise <c>" K3"</c> would pass the service's validation (which trims) and then fail the ordinal rights
+/// comparison, so a K3 hoofdleerkracht would be refused on their own leeftijd.
+/// </para>
 /// </summary>
-/// <param name="Leeftijd">The subthema's <c>Leeftijd</c>, one of the nine jaar/fase codes.</param>
-public sealed record Leeftijdsinhoud(string Leeftijd);
+/// <param name="Leeftijd">One of the nine jaar/fase codes, exactly as stored.</param>
+public sealed record Leeftijdsinhoud(string Leeftijd)
+{
+    /// <summary>
+    /// The resource for a leeftijd that did not come from the database. It is trimmed and validated by the rule a
+    /// klas's jaarfase and a subthema's leeftijd obey (<see cref="Jaarfasen.WatIsErMisMet"/>), so it accepts exactly
+    /// what the write it guards will accept, in the form that write will store.
+    /// </summary>
+    /// <returns>
+    /// <c>null</c> when the input is no leeftijd at all. The caller refuses the request as the service would (400 with
+    /// <see cref="Jaarfasen.WatIsErMisMet"/>'s sentence). It never skips the rights check on a null.
+    /// </returns>
+    public static Leeftijdsinhoud? UitInvoer(string? leeftijd) =>
+        Jaarfasen.WatIsErMisMet(leeftijd) is null ? new Leeftijdsinhoud(leeftijd!.Trim()) : null;
+}
 
 /// <summary>The planning of one klas (jaarplan, (her)generatie, agenda, hoeken, algemene fiches): the "LK eigen" resource.</summary>
 public sealed record Klasplanning(Guid KlasId);

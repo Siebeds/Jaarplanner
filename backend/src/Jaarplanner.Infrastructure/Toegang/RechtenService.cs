@@ -1,6 +1,7 @@
 using Jaarplanner.Application.Toegang;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Jaarplanner.Infrastructure.Toegang;
 
@@ -18,12 +19,15 @@ public sealed class RechtenService : IRechtenService
 {
     private readonly AppDbContext _context;
     private readonly TimeProvider _tijd;
+    private readonly ILogger<RechtenService> _logger;
     private readonly Dictionary<Guid, Rechten> _gelezen = [];
 
-    public RechtenService(AppDbContext context, TimeProvider tijd)
+    /// <param name="logger">Where <see cref="Schoolklok"/> reports a host without the school's time zone.</param>
+    public RechtenService(AppDbContext context, TimeProvider tijd, ILogger<RechtenService> logger)
     {
         _context = context;
         _tijd = tijd;
+        _logger = logger;
     }
 
     public async Task<Rechten> HaalRechtenOpAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
@@ -65,7 +69,7 @@ public sealed class RechtenService : IRechtenService
             gebruiker.HeeftThemabeheer,
             klastoewijzingen,
             aanstellingen,
-            Schoolklok.Vandaag(_tijd));
+            Schoolklok.Vandaag(_tijd, _logger));
 
         _gelezen[gebruikerId] = rechten;
         return rechten;

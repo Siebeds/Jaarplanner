@@ -8,6 +8,7 @@ using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Domain.Toegang;
 using Jaarplanner.Infrastructure.Toegang;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
@@ -210,6 +211,29 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         Assert.True(await context.Gebruikers.AnyAsync(g => g.Id == an.Id));
     }
 
+    [PostgresFact]
+    public async Task Een_schooljaar_verwijderen_ruimt_zijn_hoofdleerkrachtaanstellingen_op()
+    {
+        var an = await BewaarGebruikerAsync();
+        var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(200), Vandaag.AddDays(500));
+        var ander = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(190));
+        await StelAanAsync(an.Id, jaar.Id, "K3");
+        await StelAanAsync(an.Id, ander.Id, "L2");
+
+        // Tracked removal rather than ExecuteDelete, so the owned closures go the way a real delete would take them;
+        // the appointment is not loaded, so only the database cascade can remove it.
+        await using (var verwijder = _db.MaakContext())
+        {
+            verwijder.Schooljaren.Remove(await verwijder.Schooljaren.SingleAsync(s => s.Id == jaar.Id));
+            await verwijder.SaveChangesAsync();
+        }
+
+        await using var context = _db.MaakContext();
+        Assert.False(await context.Hoofdleerkrachtaanstellingen.AnyAsync(a => a.SchooljaarId == jaar.Id));
+        Assert.True(await context.Hoofdleerkrachtaanstellingen.AnyAsync(a => a.SchooljaarId == ander.Id));
+        Assert.True(await context.Gebruikers.AnyAsync(g => g.Id == an.Id));
+    }
+
     // --- Uniqueness (R5, R15). ---
 
     [PostgresFact]
@@ -323,7 +347,8 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
     private async Task<Rechten> RechtenOpAsync(Guid gebruikerId, DateTimeOffset nu)
     {
         await using var context = _db.MaakContext();
-        return await new RechtenService(context, new VasteTijd(nu)).HaalRechtenOpAsync(gebruikerId);
+        return await new RechtenService(context, new VasteTijd(nu), NullLogger<RechtenService>.Instance)
+            .HaalRechtenOpAsync(gebruikerId);
     }
 
     private async Task<Gebruiker> BewaarGebruikerAsync(bool directie = false, bool themabeheer = false)

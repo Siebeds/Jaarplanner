@@ -319,3 +319,111 @@ in TB/LK leeftijd/Ander (:590) and footnote ²; backlog edits 1–5 verified aga
 
 *Orchestrator's note:* the second QUESTION and the ratification itself were put to the owner right after this
 verdict; see statements 35 onward.
+
+## Code slice 1 — audit round 1
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 0 MAJOR, 5 MINOR, 1 QUESTION)
+**Scope audited:** `git diff 60020b9 d6460ef` on `story/E6-02-fundament` (47 files). The worktree was clean at `d6460ef`. Slices 2–4 are out of scope and their absence is not reported. `15a044c` (I24/I25) is not in scope either.
+
+The matrix code is faithful to ADR-0030 §3. I compared every row and every column cell, and nothing grants themabeheer or "Ander" a right the matrix withholds. No right the constitution grants is denied, except the dormant R25 reading below. Every finding is drift in the documents around the code, or a seam slice 3 will lean on. Under the rule of this role the slice is **not done** until they are fixed or explicitly waived.
+
+## Findings
+
+### [MINOR] E7-11 now states something false
+- **Article/FR:** Art. VI.1 (E7-11 is its deployment gate); backlog accuracy (CLAUDE.md working agreement).
+- **Where:** `backlog/E7-niet-functioneel.md:105`, "every signed-in person can still run the curriculum import".
+- **Problem:** since `d6460ef` the four Op.stap routes admit directie only (`CurriculumbeheerAutorisatie.cs:26`, pinned 403/400/401 in `RechtenEndpointsTests`). The list of what the gate still waits on is wrong by one item.
+- **Required fix:** annotate the line rather than delete it: the Op.stap routes are directie-only since E6-02 slice 1, and the rest of the matrix waits on slice 3. The entry stays `[!]`.
+
+### [MINOR] ADR-0022 describes a registration and a body that no longer exist
+- **Article/FR:** ADR discipline (supersede, never rewrite); ADR-0011 §2.
+- **Where:** `docs/adr/0022-curriculum-administration-authorisation-seam.md:3`, whose status still says the role half is owed by E6-02, and decision 1, `:35-46`: `AddCurriculumbeheerAutorisatie()`, the `RequireAssertion(_ => true)` body, and "What E6-02 changes".
+- **Problem:** the method is gone (`Program.cs` now calls `AddRechtenbeleid()`). The policy is the matrix row `Rechtenmatrix.Curriculumbeheer`, registered with every other row. A reader following the ADR looks for a file body that is now a constant.
+- **Required fix:** a status pointer. The seam got its answer in E6-02 slice 1: the policy is the Op.stap row of the ADR-0030 §3 matrix, declared in `Rechtenmatrix` and registered by `Rechtenbeleid.AddRechtenbeleid()`, directie only. The name `Curriculumbeheer` is unchanged.
+
+### [MINOR] The processing register carry-forward misses the new staff-data tables
+- **Article/FR:** Art. VI.6 (processing register and retention), Art. VI.2.
+- **Where:** `backlog/E7-niet-functioneel.md:62-63` covers the `Gebruiker` (E6-01) and the activiteit maker only. This slice adds `klastoewijzingen`, `hoofdleerkrachtaanstellingen` and `gebruikers.HeeftThemabeheer` (`20260914093928_RechtenModel.cs`).
+- **Problem:** these record which named staff member teaches which klas and holds which role in which schooljaar. That is staff personal data, which Art. VI.2 allows, but Art. VI.6 needs it registered with a retention rule. The rule exists only in code: cascade on removal of the gebruiker, of the klas (toewijzing) and of the schooljaar (aanstelling).
+- **Required fix:** extend the E6-02 carry-forward of E7-06 with the three facts and that retention.
+
+### [MINOR] `Schoolklok` says its callers announce the UTC fallback; the rights caller does not
+- **Article/FR:** Art. VI.1 / R20; the CLAUDE.md rule that a conditional sentence asserts only what its own condition guarantees (it binds code comments).
+- **Where:** `backend/src/Jaarplanner.Infrastructure/Schoolklok.cs:14-18` ("callers fall back to UTC and say so"); `backend/src/Jaarplanner.Infrastructure/Toegang/RechtenService.cs:68`.
+- **Problem:** on a host without zone data, `Zone` is null and "today" becomes the UTC date. After a schooljaar ends, an HL or "LK leeftijd" right then lasts until 02:00 Brussels (01:00 in winter) instead of midnight. That window fails open, and nothing logs it. The export stamps "UTC" and the rights path says nothing, so the comment is false for one of its two callers. No Dockerfile is in the repo, so I could not check whether a target host lacks the zone.
+- **Required fix:** log a warning once when `Zone` is null, and scope the comment to what each caller does. Optional: in the rights path, fail closed on such a host.
+
+### [MINOR] No single place turns a leeftijd taken from a request body into a `Leeftijdsinhoud`
+- **Article/FR:** ADR-0011 §2 (one decision point); the stated purpose of `IRechtenbronnen` (`Rechtenbronnen.cs:13-18`: "every route asks the same question the same way").
+- **Where:** `backend/src/Jaarplanner.Application/Toegang/Rechtenbronnen.cs:20-24`. It resolves stored ids only.
+- **Problem:** two slice-3 routes have no stored leeftijd to resolve: the subthema create (`POST api/themas/{id}/subthemas`), and the new leeftijd of an I13 re-scope (`PUT api/subthemas/{id}`). Each will build `new Leeftijdsinhoud(body.Leeftijd)` by hand. `Rechten.IsHoofdleerkrachtVan` compares ordinally against the canonical codes, while `Jaarfasen.WatIsErMisMet` (`Jaarfasen.cs:172-182`) accepts a padded code by trimming it. So a validating path accepts `" K3"` while the rights check refuses a K3 hoofdleerkracht. That fails closed, so nothing leaks. But the same question gets asked two ways on two routes, which is what the seam exists to prevent.
+- **Required fix:** before slice 3 uses it, add one normalising entry point, for example `Leeftijdsinhoud.VoorInvoer(string)` or an `IRechtenbronnen` member. It trims and validates through `Jaarfasen`, and every slice-3 route uses it for a body leeftijd, including both ends of an I13 re-scope.
+
+### [QUESTION] R25 "while no goal is linked": the build counts `geweigerd` and `voorgesteld` links
+- **Article/FR:** Art. VI.1 (maker bullet; R25, R31, R33); Art. XIV and "do not invent rules"; Art. IV.2; Art. V.1.
+- **Where:** `Rechtenbronnen.cs:44-48` (the doc of `HeeftDoelkoppelingen`), `EfRechtenbronnen.cs:36` (`Doelkoppelingen.Any()`), `Rechtenmatrix.cs:224-238`.
+- **Judgement:** acceptable to build, and **dormant today**:
+  - activiteit links are only ever created `Manueel` (`SchoolcontentBeheerService.cs:494, :722`);
+  - no route changes the status of an activiteit link (`WijzigStatus` is called only at `DoelMatchingService.cs:246`, thema doelsuggesties, and `JaarplanGeneratieService.cs:686`, placements);
+  - the FR-1 import writes no activiteit links (R27).
+
+  The reading can only withhold the right of the maker. HL and directie can still delete, so it cannot grant anything the constitution denies. The two readings pull in opposite directions:
+  - The stated reason for statement 31 is dekking, and a `geweigerd` or `voorgesteld` link counts for no dekking (Art. V.1). That favours the narrower reading.
+  - A `geweigerd` link is a persisted human decision (Art. IV.2), and letting the maker delete it would erase the decision of a hoofdleerkracht. That favours the stricter one.
+
+  Neither reading is ruled, and this one is not among the defaults Art. VI.1 lists, so it must not live only in a code comment and a worklog. It becomes live with the activiteit-level matching of E8 (Art. IX.2 deferral), the first path to a `voorgesteld` activiteit link.
+- **Required fix:** record it as a default in ADR-0030 §2 (the next free I-number, marked "E6-02, E8"), or put it to the owner. Either way, before E8 builds activiteit-level suggestions.
+
+## Checks run (proof of thoroughness)
+- **Art. VI.1, matrix fidelity.** Every `Matrixrij` against its §3 row, cell by cell:
+  - `Curriculumbeheer`, `Beheer` and `MenselijkeBeslissingenVerwijderen`: directie only.
+  - `ThemaBewerken`, `SchoolcontentImporteren`, `ThemaOpbouw` and both doelsuggestie rows: TB.
+  - `SubthemaBeheren`, `SubdoelenBeheren` and `DoelenKoppelen`: HL only. TB is "–⁵", correctly absent.
+  - `StreefwoordenschatAanpassen` and `GedeeldeActiviteitBewerken`: HL and "LK leeftijd", no TB.
+  - `ActiviteitVerwijderen` is the union of the two delete rows: HL always, and the maker of any relation while no goal is linked (footnote ², including TB and Ander).
+  - `ActiviteitVerplaatsen`: HL, plus "LK leeftijd" only without links (I19). The maker gets nothing.
+  - `KlasplanningBewerken`: "LK eigen" only.
+
+  Four more properties hold:
+  - The TB flag is on resource-free rows only, so footnote ⁵ holds.
+  - A resource row put in an attribute fails closed.
+  - (c) and (e) fall out of the matrix with no special case.
+  - A move stays inside one leeftijd (Art. IX.2, enforced in `Subthema.VerplaatsActiviteitNaar`, `SchoolcontentBeheerService.cs:638`), so "one leeftijd suffices" is true.
+
+  The deferred rows (wizard write actions, R6 personal content, I9 reading) are documented as deferred, not granted.
+- **R20, I21, I12, I20, R22.**
+  - `Rechtenberekening`: `vandaag ≤ Eind`, inclusive.
+  - "LK eigen" has no end date.
+  - A klas with no stated or an unknown jaarfase grants nothing.
+  - An HL needs no klastoewijzing.
+  - `Leeftijdsrechten.VoorKlas` is the only klas-to-leeftijd mapping on the rights path (its one caller is `Rechtenberekening`), and it does not reuse the widening in `Klasleeftijden`.
+- **Test identity (`TestAuthenticatie.cs:56-78`) cannot reach production.**
+  - It lives in the IntegrationTests project, and `Jaarplanner.Api.csproj` references only Application and Infrastructure.
+  - It is registered only through `ConfigureTestServices` (`JaarplannerApiFactory.cs:48-51`).
+  - The production principal carries only the gebruiker-id claim (`Aanmelding.cs:132-133`), so no right can come from a cookie.
+  - No `src` code reads a role or directie claim or names the test id.
+
+  *Consequence for slice 3:* the 152 headerless call sites run as directie, so they prove nothing about denial. A route slice 3 leaves ungated passes every existing test. Slice 3 needs its own denial sweep: every mutating route, as a gebruiker with no rights, answers 403 (the E7-11 enumeration).
+- **Maker stored null when the id has no gebruiker row.** Acceptable.
+  - `ValideerSessieAsync` (`Aanmelding.cs:176-185`) re-reads the gebruiker on every request, so the branch is reachable only by a removal that races the request, or under the test scheme.
+  - Null is the state I17 leaves anyway, and it fails closed: only HL and directie can then delete.
+  - A removal between `AnyAsync` and the insert gives an FK error, never a wrong maker.
+  - The import passes no maker; the only `VoegActiviteitToe` callers are the import and the hand create.
+  - `MakerId` is set only in the constructor, and the `SetNull` FK is pinned on Postgres.
+- **Time.** `Schoolklok.Vandaag` is the Brussels wall clock through `TimeProvider`, pinned at 30 June 22:30 UTC. The zone lookup of the export moved without changing behaviour. For the silent fallback, see the MINOR above.
+- **Art. VI.2, VI.4, VI.6.** No pupil data and no secret in the diff. `/api/ik` exposes only the relations of the caller. Staff data: see the MINOR above.
+- **Art. II.** Domain names are Dutch and in the Art. XII glossary. Comments are English. No hard-coded Dutch in `.ts` or `.tsx`: the diff there is types only. The Dutch `Matrixrij.Actie` labels are not user-facing today.
+  - *Slice 2 note:* `Gebruiker.VereisAndereDirectie` throws an English message. The last-directie refusal is something directie acts on, so slice 2 must show it in Dutch (Art. II.3).
+- **Art. III, IV, V, VII.** No curriculum mutation. No AI or prompt change. Dekking is still computed and untouched. The Op.stap mapping is untouched.
+- **Art. VIII.** No new dependency (no csproj or package change). The layering holds: matrix and computation in Application, EF reads and the clock in Infrastructure, and the policies in the thin Api.
+- **Art. IX.** `Klastoewijzing` (many-to-many, unique per pair), `Hoofdleerkrachtaanstelling` (unique per gebruiker, schooljaar and jaarfase; several per jaarfase) and a nullable `Activiteit.MakerId` match the ADR-0030 Consequences. One migration.
+- **Op.stap stand route.** `GET /api/opstap-import/stand` is now directie-only. That is consistent with its own doc and the Op.stap row, and only `frontend/src/features/import` calls it. Until slice 4 hides the import section, a non-directie sees an erroring screen. That is inside the single delivery of R12, so it is not a finding here.
+- **Art. X.**
+  - Run by me: `dotnet test` UnitTests filtered to Toegang and ActiviteitMaker, 181 passed; `dotnet format --verify-no-changes`, exit 0.
+  - Not run by me: the integration and Postgres suites, and `pnpm lint/test`. The implementer reports them green; I did not verify that.
+
+## Open questions surfaced
+- The link-status reading of R25 (QUESTION above). It becomes live with E8.
+- Art. XIV graadklassen: the seam is in place (`Leeftijdsrechten.VoorKlas`); nothing is hard-assumed.
+- Art. XIV visibility / I9: untouched. Reading still rides the fallback policy, behind E6-09.
+- The wizard's own write actions (I22, I23 and the I24/I25 defaults on `15a044c`): deferred to slice 3 / E6-05, with no resource type yet.
