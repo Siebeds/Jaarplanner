@@ -5,10 +5,10 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 15:27
+bijgewerkt: 2026-09-14 15:33
 opgepakt-door: ai-doelsuggesties
 branch: ticket/ai-doelsuggesties-eval
-pr:
+pr: 67
 geblokkeerd: wacht op Azure-support: het Foundry-account wordt geweigerd met 715-123420 (unusual activity); de eigenaar opent een supportaanvraag
 fr: []
 ---
@@ -144,3 +144,4 @@ wordt gecommit, voor de tests van de runner zelf.
 - 2026-09-14 15:16 · ai-doelsuggesties · eigenaar probeerde de deployment manueel in de portal: zelfde fout 715-123420; hij logt een supportaanvraag bij Azure
 - 2026-09-14 15:21 · ai-doelsuggesties · antagonist ronde 9: 0 major, 2 minor (codecommentaar belandde in de help van deploy-ai.ps1; TB-006 met de hand aangepast zonder werklogregel); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-9.md
 - 2026-09-14 15:27 · ai-doelsuggesties · antagonist ronde 10: COMPLIANT; de bevindingen van ronde 7 tot 9 zijn afgehandeld. Open blijven criterium 3 (wacht op Azure-support) en een nieuwe merge van origin/main voor de PR
+- 2026-09-14 15:33 · ai-doelsuggesties · PR #67
