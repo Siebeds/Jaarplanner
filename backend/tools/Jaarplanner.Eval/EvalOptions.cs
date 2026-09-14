@@ -125,7 +125,7 @@ internal sealed record EvalOptions
 
         if (problems.Count > 0)
         {
-            throw new EvalsetFout(string.Join(Environment.NewLine, problems));
+            throw new EvalException(string.Join(Environment.NewLine, problems));
         }
 
         return new EvalOptions

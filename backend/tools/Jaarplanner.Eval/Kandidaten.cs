@@ -21,6 +21,20 @@ public interface IKandidaatSelectie
 }
 
 /// <summary>
+/// Finding the candidates failed after embedding tokens were already spent. It carries them, so the report can still
+/// show what the failed case cost.
+/// </summary>
+public sealed class CandidateSelectionException(string message, int embeddingTokens, string embeddingModel, Exception inner)
+    : Exception(message, inner)
+{
+    /// <summary>The embedding tokens spent before the failure.</summary>
+    public int EmbeddingTokens { get; } = embeddingTokens;
+
+    /// <summary>The embedding deployment that was used.</summary>
+    public string EmbeddingModel { get; } = embeddingModel;
+}
+
+/// <summary>
 /// Variant A, without retrieval: every leerplandoel of the subthema's jaar/fase. What the model receives is then the
 /// whole relevant part of the catalogue, and the only filter is the one the domain already fixes (Art. IX.2).
 /// </summary>
@@ -51,7 +65,8 @@ public sealed class JaarfaseSelectie : IKandidaatSelectie
 /// from the subthema, of which the top <c>n</c> go to the model. Goal vectors are cached on disk; they hold only the
 /// public catalogue. The subthema's own vector is never cached, so no school content lands in the cache.
 /// <para>
-/// Each embedding call waits out a 429 on its own, so the tokens of batches that already succeeded stay counted.
+/// Each embedding call waits out a 429 on its own, so the tokens of batches that already succeeded stay counted; and a
+/// call that fails for good raises a <see cref="CandidateSelectionException"/> that still carries them.
 /// </para>
 /// </summary>
 public sealed class EmbeddingSelectie : IKandidaatSelectie
@@ -117,6 +132,7 @@ public sealed class EmbeddingSelectie : IKandidaatSelectie
 
         var tokens = 0;
         var added = false;
+        float[] queryVector;
         try
         {
             foreach (var batch in missing.Chunk(BatchSize))
@@ -137,19 +153,24 @@ public sealed class EmbeddingSelectie : IKandidaatSelectie
 
                 added = true;
             }
+
+            var query = await EmbedAsync([VraagTekst(geval)], cancellationToken);
+            tokens += query.Tokens;
+            queryVector = query.Vectoren[0];
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The calls that did succeed were paid for; the report must still see them.
+            throw new CandidateSelectionException(ex.Message, tokens, _embeddings.Model, ex);
         }
         finally
         {
-            // Keep what was paid for, also when a later batch failed.
+            // Keep what was paid for, also when a later call failed.
             if (added)
             {
                 _cache.Save();
             }
         }
-
-        var query = await EmbedAsync([VraagTekst(geval)], cancellationToken);
-        tokens += query.Tokens;
-        var queryVector = query.Vectoren[0];
 
         var top = doelen
             .Select((doel, i) => (doel, score: Cosinus(queryVector, vectors[i])))
@@ -265,13 +286,13 @@ internal static class Jaarfase
 /// Remembers what the catalogue returned per selection, so a run with many cases and two variants reads each jaar/fase
 /// from the database once. The catalogue is read-only reference data, so nothing can go stale within a run.
 /// </summary>
-public sealed class GeheugenCatalogus : ILeerdoelCatalogus
+public sealed class CachingCatalogus : ILeerdoelCatalogus
 {
     private readonly ILeerdoelCatalogus _source;
     private readonly Dictionary<string, IReadOnlyList<Leerplandoel>> _seen = new(StringComparer.Ordinal);
 
     /// <summary>Wraps <paramref name="source"/>.</summary>
-    public GeheugenCatalogus(ILeerdoelCatalogus source)
+    public CachingCatalogus(ILeerdoelCatalogus source)
     {
         ArgumentNullException.ThrowIfNull(source);
         _source = source;

@@ -9,12 +9,12 @@ namespace Jaarplanner.Eval;
 /// Precision and recall are micro-averages over all cases of a variant and model, so a case with many gold codes
 /// weighs more than one with few.
 /// </summary>
-public static class RapportSchrijver
+public static class ReportWriter
 {
     private static readonly CultureInfo Nl = CultureInfo.GetCultureInfo("nl-BE");
 
     /// <summary>The report as markdown.</summary>
-    public static string Schrijf(EvalRapport rapport)
+    public static string Write(EvalRapport rapport)
     {
         ArgumentNullException.ThrowIfNull(rapport);
         var sb = new StringBuilder();

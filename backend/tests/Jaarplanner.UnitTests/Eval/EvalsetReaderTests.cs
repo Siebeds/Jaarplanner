@@ -3,7 +3,7 @@ using Jaarplanner.Eval;
 namespace Jaarplanner.UnitTests.Eval;
 
 /// <summary>Reading and checking an evalset (TB-004).</summary>
-public sealed class EvalsetLezerTests
+public sealed class EvalsetReaderTests
 {
     private const string GeldigGeval =
         """
@@ -14,7 +14,7 @@ public sealed class EvalsetLezerTests
     [Fact]
     public void Het_voorbeeld_in_de_repo_is_een_geldige_evalset()
     {
-        var evalset = EvalsetLezer.LeesBestand(Path.Combine(AppContext.BaseDirectory, "Eval", "voorbeeld-evalset.json"));
+        var evalset = EvalsetReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "Eval", "voorbeeld-evalset.json"));
 
         Assert.Equal(2, evalset.Gevallen.Count);
         var bakker = evalset.Gevallen[0];
@@ -27,7 +27,7 @@ public sealed class EvalsetLezerTests
     [Fact]
     public void Een_minimale_evalset_wordt_gelezen()
     {
-        var evalset = EvalsetLezer.Lees($$"""{"formaatversie":1,"gevallen":[{{GeldigGeval}}]}""");
+        var evalset = EvalsetReader.Read($$"""{"formaatversie":1,"gevallen":[{{GeldigGeval}}]}""");
 
         var geval = Assert.Single(evalset.Gevallen);
         Assert.Equal("Water", geval.Thema.Naam);
@@ -43,14 +43,14 @@ public sealed class EvalsetLezerTests
     [InlineData("""{"gevallen":[{"id":"g1","thema":{"naam":"W"},"goudenCodes":["A"]}]}""")]
     public void Een_onbruikbare_evalset_wordt_geweigerd(string json)
     {
-        Assert.Throws<EvalsetFout>(() => EvalsetLezer.Lees(json));
+        Assert.Throws<EvalException>(() => EvalsetReader.Read(json));
     }
 
     [Fact]
     public void Een_dubbel_geval_id_wordt_geweigerd()
     {
-        var fout = Assert.Throws<EvalsetFout>(() =>
-            EvalsetLezer.Lees($$"""{"gevallen":[{{GeldigGeval}},{{GeldigGeval}}]}"""));
+        var fout = Assert.Throws<EvalException>(() =>
+            EvalsetReader.Read($$"""{"gevallen":[{{GeldigGeval}},{{GeldigGeval}}]}"""));
 
         Assert.Contains("g1", fout.Message);
     }

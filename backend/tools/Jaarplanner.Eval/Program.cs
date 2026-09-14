@@ -55,9 +55,9 @@ internal static class Program
         try
         {
             options = EvalOptions.Read(config);
-            evalset = EvalsetLezer.LeesBestand(options.EvalsetPath);
+            evalset = EvalsetReader.ReadFile(options.EvalsetPath);
         }
-        catch (Exception ex) when (ex is EvalsetFout or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is EvalException or IOException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine(ex.Message);
             Console.Error.WriteLine();
@@ -65,11 +65,27 @@ internal static class Program
             return 2;
         }
 
-        var root = RepoGuard.FindRepoRoot(Directory.GetCurrentDirectory());
-        var output = Path.GetFullPath(options.Out ?? Path.Combine(root ?? Directory.GetCurrentDirectory(), "eval-data"));
-        if (!OutputIsSafe(root, output) || !EvalsetIsSafe(root, options.EvalsetPath))
+        var defaultRoot = RepoGuard.FindRepoRoot(Directory.GetCurrentDirectory()) ?? Directory.GetCurrentDirectory();
+        var output = Path.GetFullPath(options.Out ?? Path.Combine(defaultRoot, "eval-data"));
+        var reportPath = Path.Combine(output, $"rapport-{DateTime.Now:yyyyMMdd-HHmmss}.md");
+        var cacheFolder = Path.Combine(output, "cache");
+
+        // The report quotes the evalset (a school's own content), and this repository is public: inside a repo the
+        // runner writes only where git ignores it, and when git cannot say, it does not write.
+        var unsafeFile = RepoGuard.FirstUnsafe([reportPath, Path.Combine(cacheFolder, "embeddings.json")]);
+        if (unsafeFile is not null)
         {
+            Console.Error.WriteLine(
+                $"{unsafeFile} ligt in de repo op een plaats die git niet negeert (of git kon het niet nagaan). " +
+                "Deze repo is publiek: kies een map onder eval-data/ of buiten de repo.");
             return 2;
+        }
+
+        if (RepoGuard.IsExposed(options.EvalsetPath))
+        {
+            Console.Error.WriteLine(
+                "Let op: de evalset staat in de repo op een plaats die git niet negeert. Een echte evalset hoort " +
+                "onder eval-data/, want deze repo is publiek.");
         }
 
         Directory.CreateDirectory(output);
@@ -83,7 +99,7 @@ internal static class Program
 
         await using var db = new AppDbContext(
             new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(options.ConnectionString).Options);
-        ILeerdoelCatalogus catalogus = new GeheugenCatalogus(new EfLeerdoelCatalogus(db));
+        ILeerdoelCatalogus catalogus = new CachingCatalogus(new EfLeerdoelCatalogus(db));
         using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
 
         // Without a key: the Azure CLI's sign-in, chosen explicitly (ADR-0036), one cached token for every call.
@@ -118,7 +134,7 @@ internal static class Program
             variants.Add(new EmbeddingSelectie(
                 catalogus,
                 new AzureEmbeddingClient(http, options.Endpoint, options.Embedding!, options.ApiKey, entra),
-                new EmbeddingCache(Path.Combine(output, "cache")),
+                new EmbeddingCache(cacheFolder),
                 options.Top,
                 log: Console.WriteLine));
         }
@@ -134,7 +150,7 @@ internal static class Program
         EvalRapport report;
         try
         {
-            report = await runner.DraaiAsync(evalset, stop.Token);
+            report = await runner.RunAsync(evalset, stop.Token);
         }
         catch (OperationCanceledException)
         {
@@ -142,41 +158,9 @@ internal static class Program
             return 1;
         }
 
-        var path = Path.Combine(output, $"rapport-{DateTime.Now:yyyyMMdd-HHmmss}.md");
-        await File.WriteAllTextAsync(path, RapportSchrijver.Schrijf(report));
+        await File.WriteAllTextAsync(reportPath, ReportWriter.Write(report));
         Console.WriteLine();
-        Console.WriteLine($"Rapport: {path}");
+        Console.WriteLine($"Rapport: {reportPath}");
         return 0;
-    }
-
-    // The report quotes the evalset (a school's own content), and this repository is public: inside the repo the
-    // runner writes only where git ignores it, and when git cannot say, it does not write.
-    private static bool OutputIsSafe(string? root, string output)
-    {
-        if (root is null || !RepoGuard.IsInside(root, output)
-            || RepoGuard.IsIgnored(root, Path.Combine(output, "rapport.md")) == true)
-        {
-            return true;
-        }
-
-        Console.Error.WriteLine(
-            $"De uitvoermap {output} ligt in de repo en git negeert ze niet (of git kon het niet nagaan). " +
-            "Deze repo is publiek: kies een map onder eval-data/ of buiten de repo.");
-        return false;
-    }
-
-    // A real evalset placed where git would pick it up is a leak waiting for the next 'git add'. The committed example
-    // is tracked already, so it passes; anything else in a tracked place gets a warning, not a refusal.
-    private static bool EvalsetIsSafe(string? root, string evalset)
-    {
-        if (root is not null && RepoGuard.IsInside(root, evalset)
-            && RepoGuard.IsIgnored(root, evalset) != true && !RepoGuard.IsTracked(root, evalset))
-        {
-            Console.Error.WriteLine(
-                "Let op: de evalset staat in de repo op een plaats die git niet negeert. Een echte evalset hoort " +
-                "onder eval-data/, want deze repo is publiek.");
-        }
-
-        return true;
     }
 }

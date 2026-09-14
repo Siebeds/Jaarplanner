@@ -12,7 +12,7 @@ public sealed class ScoringTests
     [Fact]
     public void Een_code_buiten_de_kandidaten_telt_als_fout_en_nooit_als_treffer()
     {
-        var score = Scoring.Scoor(
+        var score = Scoring.Score(
             gouden: ["A", "B"],
             kandidaatCodes: ["A", "C"],
             voorgesteld: ["A", "B", "C", "X"]);
@@ -33,7 +33,7 @@ public sealed class ScoringTests
     [Fact]
     public void Een_code_met_andere_hoofdletters_is_onbekend()
     {
-        var score = Scoring.Scoor(gouden: ["A"], kandidaatCodes: ["A"], voorgesteld: ["a"]);
+        var score = Scoring.Score(gouden: ["A"], kandidaatCodes: ["A"], voorgesteld: ["a"]);
 
         Assert.Empty(score.Treffers);
         Assert.Equal(["a"], score.Onbekend);
@@ -42,7 +42,7 @@ public sealed class ScoringTests
     [Fact]
     public void Een_dubbel_voorstel_telt_een_keer()
     {
-        var score = Scoring.Scoor(gouden: ["A"], kandidaatCodes: ["A"], voorgesteld: ["A", "A"]);
+        var score = Scoring.Score(gouden: ["A"], kandidaatCodes: ["A"], voorgesteld: ["A", "A"]);
 
         Assert.Equal(1, score.AantalVoorgesteld);
         Assert.Equal(1.0, score.Precisie);
@@ -51,7 +51,7 @@ public sealed class ScoringTests
     [Fact]
     public void Zonder_voorstel_is_er_geen_precisie_en_is_de_recall_nul()
     {
-        var score = Scoring.Scoor(gouden: ["A", "B"], kandidaatCodes: ["A", "B"], voorgesteld: []);
+        var score = Scoring.Score(gouden: ["A", "B"], kandidaatCodes: ["A", "B"], voorgesteld: []);
 
         Assert.Null(score.Precisie);
         Assert.Equal(0.0, score.Recall);
@@ -61,7 +61,7 @@ public sealed class ScoringTests
     [Fact]
     public void Gouden_codes_worden_getrimd_en_ontdubbeld()
     {
-        var score = Scoring.Scoor(gouden: [" A ", "A", ""], kandidaatCodes: ["A"], voorgesteld: ["A"]);
+        var score = Scoring.Score(gouden: [" A ", "A", ""], kandidaatCodes: ["A"], voorgesteld: ["A"]);
 
         Assert.Equal(["A"], score.Gouden);
         Assert.Equal(1.0, score.Recall);

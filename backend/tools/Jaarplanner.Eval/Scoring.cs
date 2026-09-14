@@ -50,7 +50,7 @@ public sealed record GevalScore
 public static class Scoring
 {
     /// <summary>Scores <paramref name="voorgesteld"/> against <paramref name="gouden"/>, given the candidate codes.</summary>
-    public static GevalScore Scoor(
+    public static GevalScore Score(
         IEnumerable<string> gouden,
         IEnumerable<string> kandidaatCodes,
         IEnumerable<string> voorgesteld)

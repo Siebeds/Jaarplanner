@@ -15,8 +15,8 @@ namespace Jaarplanner.Eval;
 /// </summary>
 public sealed record Evalset
 {
-    /// <summary>The format version; <see cref="EvalsetLezer.OndersteundFormaat"/> is the only one read.</summary>
-    public int Formaatversie { get; init; } = EvalsetLezer.OndersteundFormaat;
+    /// <summary>The format version; <see cref="EvalsetReader.SupportedFormat"/> is the only one read.</summary>
+    public int Formaatversie { get; init; } = EvalsetReader.SupportedFormat;
 
     /// <summary>Free text describing where the set came from; shown in the report.</summary>
     public string? Omschrijving { get; init; }
@@ -45,13 +45,13 @@ public sealed record EvalGeval
 }
 
 /// <summary>An evalset or a configuration the runner cannot use; the message says what to fix.</summary>
-public sealed class EvalsetFout(string message) : Exception(message);
+public sealed class EvalException(string message) : Exception(message);
 
 /// <summary>Reads and checks an <see cref="Evalset"/> from JSON.</summary>
-public static class EvalsetLezer
+public static class EvalsetReader
 {
     /// <summary>The one format version this runner reads.</summary>
-    public const int OndersteundFormaat = 1;
+    public const int SupportedFormat = 1;
 
     private static readonly JsonSerializerOptions Opties = new(JsonSerializerDefaults.Web)
     {
@@ -60,10 +60,10 @@ public static class EvalsetLezer
     };
 
     /// <summary>Reads the evalset at <paramref name="pad"/>.</summary>
-    public static Evalset LeesBestand(string pad) => Lees(File.ReadAllText(pad));
+    public static Evalset ReadFile(string pad) => Read(File.ReadAllText(pad));
 
-    /// <summary>Reads an evalset from JSON text and checks it; throws <see cref="EvalsetFout"/> when it is unusable.</summary>
-    public static Evalset Lees(string json)
+    /// <summary>Reads an evalset from JSON text and checks it; throws <see cref="EvalException"/> when it is unusable.</summary>
+    public static Evalset Read(string json)
     {
         Evalset? evalset;
         try
@@ -72,23 +72,23 @@ public static class EvalsetLezer
         }
         catch (JsonException ex)
         {
-            throw new EvalsetFout($"De evalset is geen geldige JSON in het verwachte formaat: {ex.Message}");
+            throw new EvalException($"De evalset is geen geldige JSON in het verwachte formaat: {ex.Message}");
         }
 
         if (evalset is null)
         {
-            throw new EvalsetFout("De evalset is leeg.");
+            throw new EvalException("De evalset is leeg.");
         }
 
-        if (evalset.Formaatversie != OndersteundFormaat)
+        if (evalset.Formaatversie != SupportedFormat)
         {
-            throw new EvalsetFout(
-                $"Formaatversie {evalset.Formaatversie} wordt niet ondersteund; deze runner leest versie {OndersteundFormaat}.");
+            throw new EvalException(
+                $"Formaatversie {evalset.Formaatversie} wordt niet ondersteund; deze runner leest versie {SupportedFormat}.");
         }
 
         if (evalset.Gevallen.Count == 0)
         {
-            throw new EvalsetFout("De evalset bevat geen gevallen.");
+            throw new EvalException("De evalset bevat geen gevallen.");
         }
 
         var ids = new HashSet<string>(StringComparer.Ordinal);
@@ -96,17 +96,17 @@ public static class EvalsetLezer
         {
             if (string.IsNullOrWhiteSpace(geval.Id) || !ids.Add(geval.Id))
             {
-                throw new EvalsetFout($"Het geval-id '{geval.Id}' is leeg of komt meer dan eens voor.");
+                throw new EvalException($"Het geval-id '{geval.Id}' is leeg of komt meer dan eens voor.");
             }
 
             if (string.IsNullOrWhiteSpace(geval.Subthema.Leeftijd))
             {
-                throw new EvalsetFout($"Geval '{geval.Id}' heeft geen leeftijd bij het subthema.");
+                throw new EvalException($"Geval '{geval.Id}' heeft geen leeftijd bij het subthema.");
             }
 
             if (geval.GoudenCodes.Count == 0 || geval.GoudenCodes.Any(string.IsNullOrWhiteSpace))
             {
-                throw new EvalsetFout($"Geval '{geval.Id}' heeft geen gouden codes, of een lege.");
+                throw new EvalException($"Geval '{geval.Id}' heeft geen gouden codes, of een lege.");
             }
         }
 

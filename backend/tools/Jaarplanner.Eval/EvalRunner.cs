@@ -43,7 +43,7 @@ public sealed record KandidaatMeting
     /// <summary>How many of them were among the candidates.</summary>
     public required int GoudenInKandidaten { get; init; }
 
-    /// <summary>Embedding tokens spent on this case, retries included.</summary>
+    /// <summary>Embedding tokens spent on this case, retries and a failed selection included.</summary>
     public int EmbeddingTokens { get; init; }
 
     /// <summary>The embedding deployment, if the variant used one.</summary>
@@ -87,7 +87,7 @@ public sealed record GevalResultaat
     public string? Fout { get; init; }
 }
 
-/// <summary>Everything a run measured; <see cref="RapportSchrijver"/> turns it into markdown.</summary>
+/// <summary>Everything a run measured; <see cref="ReportWriter"/> turns it into markdown.</summary>
 public sealed record EvalRapport
 {
     /// <summary>When the run started.</summary>
@@ -131,13 +131,13 @@ public sealed record EvalRapport
 /// </summary>
 public sealed class EvalRunner
 {
-    private readonly IReadOnlyList<IKandidaatSelectie> _varianten;
-    private readonly IReadOnlyList<EvalModel> _modellen;
-    private readonly DoelWeergave _weergave;
-    private readonly int _maxSuggesties;
-    private readonly IReadOnlyDictionary<string, ModelPrice> _prijzen;
+    private readonly IReadOnlyList<IKandidaatSelectie> _variants;
+    private readonly IReadOnlyList<EvalModel> _models;
+    private readonly DoelWeergave _goalFormat;
+    private readonly int _maxSuggestions;
+    private readonly IReadOnlyDictionary<string, ModelPrice> _prices;
     private readonly Action<string>? _log;
-    private readonly TimeProvider _tijd;
+    private readonly TimeProvider _time;
     private readonly TimeSpan _throttleWait;
 
     /// <summary>Creates a runner over the given variants and models.</summary>
@@ -159,26 +159,26 @@ public sealed class EvalRunner
         }
 
         ArgumentOutOfRangeException.ThrowIfLessThan(maxSuggesties, 1);
-        _varianten = varianten;
-        _modellen = modellen;
-        _weergave = weergave;
-        _maxSuggesties = maxSuggesties;
-        _prijzen = prijzen ?? new Dictionary<string, ModelPrice>();
+        _variants = varianten;
+        _models = modellen;
+        _goalFormat = weergave;
+        _maxSuggestions = maxSuggesties;
+        _prices = prijzen ?? new Dictionary<string, ModelPrice>();
         _log = log;
-        _tijd = tijd ?? TimeProvider.System;
+        _time = tijd ?? TimeProvider.System;
         _throttleWait = throttleWait ?? TimeSpan.FromSeconds(15);
     }
 
     /// <summary>Runs the evalset.</summary>
-    public async Task<EvalRapport> DraaiAsync(Evalset evalset, CancellationToken cancellationToken = default)
+    public async Task<EvalRapport> RunAsync(Evalset evalset, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(evalset);
 
-        var gestart = _tijd.GetUtcNow();
+        var started = _time.GetUtcNow();
         var metingen = new List<KandidaatMeting>();
         var resultaten = new List<GevalResultaat>();
 
-        foreach (var variant in _varianten)
+        foreach (var variant in _variants)
         {
             foreach (var geval in evalset.Gevallen)
             {
@@ -190,7 +190,9 @@ public sealed class EvalRunner
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    var leeg = Scoring.Scoor(geval.GoudenCodes, [], []);
+                    // A failed selection may still have spent embedding tokens: they stay in the report.
+                    var spent = ex as CandidateSelectionException;
+                    var leeg = Scoring.Score(geval.GoudenCodes, [], []);
                     metingen.Add(new KandidaatMeting
                     {
                         Variant = variant.Naam,
@@ -199,9 +201,11 @@ public sealed class EvalRunner
                         AantalKandidaten = 0,
                         AantalGouden = leeg.Gouden.Count,
                         GoudenInKandidaten = 0,
+                        EmbeddingTokens = spent?.EmbeddingTokens ?? 0,
+                        EmbeddingModel = spent?.EmbeddingModel,
                         Fout = ex.Message,
                     });
-                    resultaten.AddRange(_modellen.Select(m => new GevalResultaat
+                    resultaten.AddRange(_models.Select(m => new GevalResultaat
                     {
                         Variant = variant.Naam,
                         Model = m.Naam,
@@ -215,7 +219,7 @@ public sealed class EvalRunner
                 }
 
                 var codes = kandidaten.Doelen.Select(d => d.Code).ToList();
-                var zonderAntwoord = Scoring.Scoor(geval.GoudenCodes, codes, []);
+                var zonderAntwoord = Scoring.Score(geval.GoudenCodes, codes, []);
                 metingen.Add(new KandidaatMeting
                 {
                     Variant = variant.Naam,
@@ -228,31 +232,31 @@ public sealed class EvalRunner
                     EmbeddingModel = kandidaten.EmbeddingModel,
                 });
 
-                var request = EvalPrompt.Bouw(geval, kandidaten.Doelen, _weergave, _maxSuggesties);
-                foreach (var model in _modellen)
+                var request = EvalPrompt.Bouw(geval, kandidaten.Doelen, _goalFormat, _maxSuggestions);
+                foreach (var model in _models)
                 {
-                    resultaten.Add(await VraagAsync(variant.Naam, model, geval, codes, request, cancellationToken));
+                    resultaten.Add(await AskAsync(variant.Naam, model, geval, codes, request, cancellationToken));
                 }
             }
         }
 
         return new EvalRapport
         {
-            Gestart = gestart,
+            Gestart = started,
             Omschrijving = evalset.Omschrijving,
             OpstapVersie = evalset.OpstapVersie,
             AantalGevallen = evalset.Gevallen.Count,
-            Weergave = _weergave,
-            MaxSuggesties = _maxSuggesties,
-            Varianten = _varianten.Select(v => v.Naam).ToList(),
-            Modellen = _modellen.Select(m => m.Naam).ToList(),
+            Weergave = _goalFormat,
+            MaxSuggesties = _maxSuggestions,
+            Varianten = _variants.Select(v => v.Naam).ToList(),
+            Modellen = _models.Select(m => m.Naam).ToList(),
             Kandidaten = metingen,
             Resultaten = resultaten,
-            Prijzen = _prijzen,
+            Prijzen = _prices,
         };
     }
 
-    private async Task<GevalResultaat> VraagAsync(
+    private async Task<GevalResultaat> AskAsync(
         string variant,
         EvalModel model,
         EvalGeval geval,
@@ -261,15 +265,15 @@ public sealed class EvalRunner
         CancellationToken cancellationToken)
     {
         // Only the last attempt is timed: a wait after a 429 says something about the quota, not about the model.
-        var pogingen = 0;
-        var duur = TimeSpan.Zero;
+        var attempts = 0;
+        var duration = TimeSpan.Zero;
         AiCompletion completion;
         try
         {
             completion = await Retry.WhenThrottledAsync(
                 async () =>
                 {
-                    pogingen++;
+                    attempts++;
                     var stopwatch = Stopwatch.StartNew();
                     try
                     {
@@ -277,7 +281,7 @@ public sealed class EvalRunner
                     }
                     finally
                     {
-                        duur = stopwatch.Elapsed;
+                        duration = stopwatch.Elapsed;
                     }
                 },
                 _throttleWait,
@@ -292,9 +296,9 @@ public sealed class EvalRunner
                 Variant = variant,
                 Model = model.Naam,
                 GevalId = geval.Id,
-                Score = Scoring.Scoor(geval.GoudenCodes, codes, []),
-                Pogingen = pogingen,
-                Duur = duur,
+                Score = Scoring.Score(geval.GoudenCodes, codes, []),
+                Pogingen = attempts,
+                Duur = duration,
                 Fout = ex.Message,
             };
         }
@@ -310,7 +314,7 @@ public sealed class EvalRunner
         var voorgesteld = parse.IsGeldig
             ? parse.Suggesties.Select(s => s.Code).Where(c => !themadoelen.Contains(c)).ToList()
             : new List<string>();
-        var score = Scoring.Scoor(geval.GoudenCodes, codes, voorgesteld);
+        var score = Scoring.Score(geval.GoudenCodes, codes, voorgesteld);
 
         _log?.Invoke(
             $"{variant} | {model.Naam} | {geval.Id}: {score.Treffers.Count} van {score.Gouden.Count} gouden doelen, " +
@@ -323,9 +327,9 @@ public sealed class EvalRunner
             GevalId = geval.Id,
             Score = score,
             Beantwoord = true,
-            Pogingen = pogingen,
+            Pogingen = attempts,
             Verbruik = completion.Usage,
-            Duur = duur,
+            Duur = duration,
             Fout = parse.IsGeldig ? null : $"ongeldig antwoord: {parse.Fout}",
         };
     }

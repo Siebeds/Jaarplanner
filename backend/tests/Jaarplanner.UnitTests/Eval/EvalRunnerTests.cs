@@ -47,7 +47,7 @@ public sealed class EvalRunnerTests
             DoelWeergave.Compact,
             maxSuggesties: 8);
 
-        var rapport = await runner.DraaiAsync(TweeGevallen());
+        var rapport = await runner.RunAsync(TweeGevallen());
 
         // 2 variants x 2 cases x 2 models.
         Assert.Equal(8, rapport.Resultaten.Count);
@@ -82,7 +82,7 @@ public sealed class EvalRunnerTests
         Assert.Equal(40, b.EmbeddingTokens);
         Assert.Equal(10, bZand.EmbeddingTokens);
 
-        var markdown = RapportSchrijver.Schrijf(rapport);
+        var markdown = ReportWriter.Write(rapport);
         Assert.Contains("## Samenvatting", markdown);
         Assert.Contains("| A: jaarfase, zonder retrieval | model-a | 2 | 0 | ", markdown);
         Assert.Contains("| B: embeddings (fake-embedding), top 2 | model-b | 2 | 0 | ", markdown);
@@ -106,7 +106,7 @@ public sealed class EvalRunnerTests
             DoelWeergave.Compact,
             maxSuggesties: 8);
 
-        var rapport = await runner.DraaiAsync(TweeGevallen());
+        var rapport = await runner.RunAsync(TweeGevallen());
 
         Assert.All(rapport.Resultaten.Where(r => r.Model == "stuk"), r =>
         {
@@ -115,7 +115,7 @@ public sealed class EvalRunnerTests
             Assert.Equal(0.0, r.Score.Recall);
         });
         Assert.All(rapport.Resultaten.Where(r => r.Model == "heel"), r => Assert.Null(r.Fout));
-        Assert.Contains("| A: jaarfase, zonder retrieval | stuk | 2 | 2 | ", RapportSchrijver.Schrijf(rapport));
+        Assert.Contains("| A: jaarfase, zonder retrieval | stuk | 2 | 2 | ", ReportWriter.Write(rapport));
     }
 
     /// <summary>An answer the production parser rejects counts as "nothing proposed", with the reason in the row.</summary>
@@ -123,7 +123,7 @@ public sealed class EvalRunnerTests
     public async Task Een_ongeldig_antwoord_telt_als_niets_voorgesteld()
     {
         var rapport = await Runner(new FakeAiClient("Hier zijn mijn suggesties!"))
-            .DraaiAsync(new Evalset { Gevallen = [EvalTestData.WaterGeval("W-01")] });
+            .RunAsync(new Evalset { Gevallen = [EvalTestData.WaterGeval("W-01")] });
 
         var rij = Assert.Single(rapport.Resultaten);
         Assert.StartsWith("ongeldig antwoord", rij.Fout, StringComparison.Ordinal);
@@ -137,7 +137,7 @@ public sealed class EvalRunnerTests
     {
         var client = new GooiendeClient(HttpStatusCode.TooManyRequests, aantalKeer: 1, daarna: Antwoord);
 
-        var rapport = await Runner(client).DraaiAsync(new Evalset { Gevallen = [EvalTestData.WaterGeval("W-01")] });
+        var rapport = await Runner(client).RunAsync(new Evalset { Gevallen = [EvalTestData.WaterGeval("W-01")] });
 
         var rij = Assert.Single(rapport.Resultaten);
         Assert.Null(rij.Fout);
@@ -161,8 +161,8 @@ public sealed class EvalRunnerTests
             maxSuggesties: 8,
             prijzen: new Dictionary<string, ModelPrice> { ["geprijsd"] = new() { Input = 0.5m, Output = 2m } });
 
-        var markdown = RapportSchrijver.Schrijf(
-            await runner.DraaiAsync(new Evalset { Gevallen = [EvalTestData.WaterGeval("W-01")] }));
+        var markdown = ReportWriter.Write(
+            await runner.RunAsync(new Evalset { Gevallen = [EvalTestData.WaterGeval("W-01")] }));
 
         Assert.Contains("| 0,5000 |", Regel(markdown, "| A: jaarfase, zonder retrieval | geprijsd |"));
         Assert.Contains("| onbekend |", Regel(markdown, "| A: jaarfase, zonder retrieval | ongeprijsd |"));
@@ -175,9 +175,9 @@ public sealed class EvalRunnerTests
         var verbruik = new AiUsage { InputTokens = 1_000_000, CachedInputTokens = 0, OutputTokens = 0 };
         var prijzen = new Dictionary<string, ModelPrice> { ["model"] = new() { Input = 0.5m, Output = 2m } };
 
-        var markdown = RapportSchrijver.Schrijf(
+        var markdown = ReportWriter.Write(
             await Runner(new VerbruikClient("geen json", verbruik), prijzen)
-                .DraaiAsync(new Evalset { Gevallen = [EvalTestData.WaterGeval("W-01")] }));
+                .RunAsync(new Evalset { Gevallen = [EvalTestData.WaterGeval("W-01")] }));
 
         var regel = Regel(markdown, "| A: jaarfase, zonder retrieval | model |");
         Assert.Contains("| 1 | 1 | ", regel);
@@ -195,7 +195,7 @@ public sealed class EvalRunnerTests
         const string antwoord =
             """{"suggesties":[{"code":"W-01","motivatie":"themadoel"},{"code":"W-02","motivatie":"past"}]}""";
 
-        var rapport = await Runner(new FakeAiClient(antwoord)).DraaiAsync(new Evalset { Gevallen = [geval] });
+        var rapport = await Runner(new FakeAiClient(antwoord)).RunAsync(new Evalset { Gevallen = [geval] });
 
         var score = Assert.Single(rapport.Resultaten).Score;
         Assert.Equal(["W-02"], score.Gekozen);
@@ -207,7 +207,7 @@ public sealed class EvalRunnerTests
     [Fact]
     public async Task Embeddingtokens_blijven_geteld_na_een_nieuwe_poging()
     {
-        var embedder = new DrukkeEmbedder();
+        var embedder = new WisselendeEmbedder(HttpStatusCode.TooManyRequests);
         var selectie = new EmbeddingSelectie(
             new FakeLeerdoelCatalogus(EvalTestData.Catalogus()), embedder, new EmbeddingCache(null), top: 2,
             throttleWait: TimeSpan.Zero);
@@ -219,11 +219,40 @@ public sealed class EvalRunnerTests
         Assert.Equal(3, embedder.AantalAanroepen);
     }
 
+    /// <summary>
+    /// When a later embedding call fails for good, the tokens already paid for stay in the report, together with the
+    /// embedding model and the reason.
+    /// </summary>
+    [Fact]
+    public async Task Betaalde_embeddingtokens_blijven_zichtbaar_als_de_selectie_faalt()
+    {
+        var runner = new EvalRunner(
+            [
+                new EmbeddingSelectie(
+                    new FakeLeerdoelCatalogus(EvalTestData.Catalogus()),
+                    new WisselendeEmbedder(HttpStatusCode.InternalServerError),
+                    new EmbeddingCache(null),
+                    top: 2,
+                    throttleWait: TimeSpan.Zero),
+            ],
+            [new EvalModel("model", new FakeAiClient(Antwoord))],
+            DoelWeergave.Compact,
+            maxSuggesties: 8);
+
+        var rapport = await runner.RunAsync(new Evalset { Gevallen = [EvalTestData.WaterGeval("W-01")] });
+
+        var meting = Assert.Single(rapport.Kandidaten);
+        Assert.NotNull(meting.Fout);
+        Assert.Equal(30, meting.EmbeddingTokens);
+        Assert.Equal("wisselend-embedding", meting.EmbeddingModel);
+        Assert.Contains("| wisselend-embedding | 30 |", ReportWriter.Write(rapport));
+    }
+
     [Fact]
     public async Task De_catalogus_wordt_per_selectie_een_keer_gelezen()
     {
         var bron = new FakeLeerdoelCatalogus(EvalTestData.Catalogus());
-        var catalogus = new GeheugenCatalogus(bron);
+        var catalogus = new CachingCatalogus(bron);
 
         await catalogus.HaalLeerdoelenAsync(new LeerdoelSelectie { JaarFasen = ["K3"] });
         var tweede = await catalogus.HaalLeerdoelenAsync(new LeerdoelSelectie { JaarFasen = ["k3 "] });
@@ -301,21 +330,25 @@ public sealed class EvalRunnerTests
             Task.FromResult(new AiCompletion { Content = inhoud, Usage = verbruik });
     }
 
-    /// <summary>Embeds like <see cref="EvalTestData.FakeEmbedder"/>, but throttles its second call once.</summary>
-    private sealed class DrukkeEmbedder : IEmbeddingClient
+    /// <summary>
+    /// Embeds like <see cref="EvalTestData.FakeEmbedder"/>, but its second call fails with <paramref name="status"/>:
+    /// once for a 429 (which is then retried), and on every later call for anything else.
+    /// </summary>
+    private sealed class WisselendeEmbedder(HttpStatusCode status) : IEmbeddingClient
     {
         private readonly EvalTestData.FakeEmbedder _echt = new();
 
-        public string Model => "druk-embedding";
+        public string Model => "wisselend-embedding";
 
         public int AantalAanroepen { get; private set; }
 
         public Task<EmbeddingAntwoord> EmbedAsync(IReadOnlyList<string> teksten, CancellationToken cancellationToken)
         {
             AantalAanroepen++;
-            if (AantalAanroepen == 2)
+            var faalt = status == HttpStatusCode.TooManyRequests ? AantalAanroepen == 2 : AantalAanroepen >= 2;
+            if (faalt)
             {
-                throw new HttpRequestException("druk", null, HttpStatusCode.TooManyRequests);
+                throw new HttpRequestException("nep-fout", null, status);
             }
 
             return _echt.EmbedAsync(teksten, cancellationToken);
