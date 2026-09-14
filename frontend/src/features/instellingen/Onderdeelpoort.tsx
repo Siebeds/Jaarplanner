@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { useIk } from "../../lib/aanmelding";
+import { useRechten } from "../../lib/rechten";
 import { ONDERDELEN, isAlleenDirectie, padVan, useZichtbareOnderdelen, type Deel } from "./onderdelen";
 
 /**
@@ -13,12 +13,12 @@ import { ONDERDELEN, isAlleenDirectie, padVan, useZichtbareOnderdelen, type Deel
  * not protect. The server answers 403 to the data whatever this component does.
  */
 export function Onderdeelpoort({ deel, children }: { deel: Deel; children: ReactNode }) {
-  const ik = useIk();
+  const { mag, laadt } = useRechten();
   const zichtbaar = useZichtbareOnderdelen();
   const onderdeel = ONDERDELEN.find((o) => o.deel === deel);
 
   if (!onderdeel || !isAlleenDirectie(onderdeel)) return <>{children}</>;
-  if (ik.isPending) return null;
-  if (ik.data?.isDirectie) return <>{children}</>;
+  if (laadt) return null;
+  if (mag.beheer) return <>{children}</>;
   return <Navigate to={padVan(zichtbaar[0].deel)} replace />;
 }

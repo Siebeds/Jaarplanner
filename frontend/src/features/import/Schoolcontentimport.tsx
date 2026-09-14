@@ -3,6 +3,7 @@ import { Knop, Knoplink } from "../../components/ui/Knop";
 import { Segment } from "../../components/ui/Segment";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { ApiError } from "../../lib/api";
+import { useRechten } from "../../lib/rechten";
 import { t } from "../../i18n";
 import { Bestandkiezer } from "./Bestandkiezer";
 import { Beperkt, Foutvlak, Opmerkingen, Telling, Vak } from "./Meldingen";
@@ -28,6 +29,7 @@ import type {
  */
 export function Schoolcontentimport() {
   const opruimId = useId();
+  const { mag } = useRechten();
   const [bestand, setBestand] = useState<File | null>(null);
   const [modus, setModus] = useState<SchoolcontentImportModus>("Toevoegen");
   const [opruimen, setOpruimen] = useState(false);
@@ -155,8 +157,17 @@ export function Schoolcontentimport() {
                 </div>
 
                 {/* The opt-in itself, and only where the count is on screen. Unchecked by default,
-                    and re-checking it after a change is deliberate: it is consent to this list. */}
-                {!getoond.toegepast ? (
+                    and re-checking it after a change is deliberate: it is consent to this list.
+
+                    Directie only (R35, E6-02): the server refuses the option to anyone else, on the
+                    preview and on the import. Themabeheer gets the one sentence its branch guarantees
+                    instead: without the option the import keeps these links (Art. IV.2). */}
+                {!getoond.toegepast && !mag.menselijkeBeslissingenVerwijderen ? (
+                  <p className="mt-3 text-meta font-medium text-attentie-inkt">
+                    {t("importeren.school.blijvenStaan")}
+                  </p>
+                ) : null}
+                {!getoond.toegepast && mag.menselijkeBeslissingenVerwijderen ? (
                   <label htmlFor={opruimId} className="mt-3 flex items-start gap-2.5">
                     <input
                       id={opruimId}

@@ -2,6 +2,7 @@ import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { useThemasVoorKlas } from "../../lib/queries";
+import { useRechten } from "../../lib/rechten";
 import { volleDag } from "../../lib/datum";
 import { t } from "../../i18n";
 import { IcoonPlus } from "../../components/Iconen";
@@ -56,12 +57,16 @@ export function Activiteitkiezer({
   onSluit: () => void;
 }) {
   const { themas, laadt } = useThemasVoorKlas(themaIds, klasId);
+  const { mag } = useRechten();
 
   // Offered only when there is somewhere to put it. An activiteit belongs to a subthema, so a period
   // whose thema's have none cannot take one, and a row that opens a sheet with an empty dropdown is a
   // control that does nothing. It also keeps the sentence under the row true: it promises a subthema
   // of this period, and this is the condition that makes one exist.
-  const kanNieuw = themas.some((thema) => thema.subthemas.length > 0);
+  //
+  // "Somewhere" means a subthema this gebruiker may make an activiteit in (E6-02: R17, R23, the leerkrachten and
+  // hoofdleerkrachten of its leeftijd, and directie). The sheet then offers only those.
+  const kanNieuw = themas.some((thema) => thema.subthemas.some((sub) => mag.activiteitBewerken(sub.leeftijd)));
 
   return (
     <Blad

@@ -56,6 +56,8 @@ function toon(
     hoekmomenten?: Hoekblokje[];
     onVoegToe?: (datum: string, begin: number) => void;
     onOpenHoek?: (plaatsingId: string) => void;
+    onOpen?: (activiteit: GeplandeActiviteit, datum: string) => void;
+    magPlannen?: boolean;
   } = {},
 ) {
   return render(
@@ -65,8 +67,9 @@ function toon(
         hoekmomenten={opties.hoekmomenten ?? []}
         reeksenPerDag={new Map()}
         vakken={[]}
+        magPlannen={opties.magPlannen ?? true}
         onVoegToe={opties.onVoegToe ?? (() => {})}
-        onOpen={() => {}}
+        onOpen={opties.onOpen ?? (() => {})}
         onOpenHoek={opties.onOpenHoek ?? (() => {})}
         onWijzigTijd={() => {}}
       />
@@ -136,6 +139,39 @@ describe("Tijdraster", () => {
     expect(geopend).toHaveBeenCalledWith("hp-1");
   });
 
+  /*
+    E6-02: the grid's three gestures are the klas's planning (ADR-0030 §3, R7). A gebruiker who may not plan this klas
+    reads it: blocks still open, and nothing invites a placement, stretches or drags. The drag semantics matter as much
+    as the pixels, because dnd-kit's attributes tell a screen reader a block is "draggable".
+  */
+  it("biedt wie deze klas niet mag plannen geen toevoegen, rekken of slepen, maar opent een blok wel", () => {
+    const geopend = vi.fn();
+    const { container } = toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])], {
+      magPlannen: false,
+      onOpen: geopend,
+    });
+
+    expect(
+      screen.queryByRole("button", { name: t("periode.voegToeOp", { dag: "dinsdag 8 september" }) }),
+    ).not.toBeInTheDocument();
+    expect(container.querySelector("[data-rekgreep]")).toBeNull();
+
+    const blok = screen.getByRole("button", { name: /kringgesprek/ });
+    expect(blok).not.toHaveAttribute("aria-roledescription");
+    fireEvent.click(blok);
+    expect(geopend).toHaveBeenCalled();
+  });
+
+  it("geeft wie de klas mag plannen de greep en het toevoegen", () => {
+    const { container } = toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])]);
+
+    expect(
+      screen.getByRole("button", { name: t("periode.voegToeOp", { dag: "dinsdag 8 september" }) }),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-rekgreep]")).not.toBeNull();
+    expect(screen.getByRole("button", { name: /kringgesprek/ })).toHaveAttribute("aria-roledescription");
+  });
+
   it("biedt een gesloten dag niets aan en zegt waarom", () => {
     const gevraagd = vi.fn();
     toon([dag([], { isLesdag: false, sluitingsnaam: "Herfstvakantie" })], { onVoegToe: gevraagd });
@@ -174,6 +210,7 @@ describe("Tijdraster", () => {
     { subthemaId: "s1", subthemaNaam: "de speelhoek", van: "2026-09-07", tot: "2026-09-18", aantalDagen: 4 },
   ];
   const midden = {
+    magPlannen: true,
     hoekmomenten: [],
     reeksenPerDag: new Map([
       ["2026-09-10", lopendeReeks],
@@ -252,6 +289,7 @@ describe("Tijdraster", () => {
           hoekmomenten={[]}
           reeksenPerDag={new Map()}
           vakken={[]}
+          magPlannen
           onVoegToe={() => {}}
           onOpen={() => {}}
           onOpenHoek={() => {}}

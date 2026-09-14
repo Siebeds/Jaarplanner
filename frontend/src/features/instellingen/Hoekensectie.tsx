@@ -5,6 +5,7 @@ import { Keuze } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { IcoonPlus } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
+import { useRechten } from "../../lib/rechten";
 import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Hoekformulier } from "./Hoekformulier";
@@ -41,6 +42,10 @@ import {
  * the agenda cannot be deleted, and the row says the three before she reaches for the bin rather than
  * only afterwards. The refusal itself still comes from the server: this count is the one this screen
  * fetched, and the only count that may block a delete is the one the server sees at that moment.
+ *
+ * **A room's corners are that klas's planning** (E6-02, ADR-0030 §3, R7): directie and its own leerkrachten add,
+ * edit, delete and take them over. Anyone else picks any room and reads its corners, with one quiet line naming the
+ * room, because the picker is what made the buttons go.
  */
 export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laadt: boolean }) {
   const [gekozen, setGekozen] = useState<string | null>(null);
@@ -71,6 +76,10 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
   const fout = formulier?.hoek ? wijzig.error : maak.error;
   const andere = klassen.filter((k) => k.id !== klasId);
 
+  const { mag, laadt: rechtenLaden } = useRechten();
+  const magBewerken = mag.klasplanningBewerken(klasId);
+  const klasNaam = klassen.find((k) => k.id === klasId)?.naam;
+
   return (
     <div className="flex flex-col gap-3">
       {/* Which room these corners are in on the left, once above the list, and what she can do in it
@@ -95,34 +104,40 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
           </Keuze>
         </label>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Knop
-            rang="stil"
-            className="h-9 min-h-9 px-3 text-meta"
-            disabled={klasId === null}
-            onClick={() => {
-              neemOver.reset();
-              setOvername(null);
-              setOvernemen(true);
-            }}
-          >
-            {t("hoeken.overnemen")}
-          </Knop>
-          <Knop
-            rang="rustig"
-            className="h-9 min-h-9 px-3 text-meta"
-            disabled={klasId === null}
-            onClick={() => {
-              maak.reset();
-              setOvername(null);
-              setFormulier({});
-            }}
-          >
-            <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-            {t("hoeken.toevoegen")}
-          </Knop>
-        </div>
+        {magBewerken ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Knop
+              rang="stil"
+              className="h-9 min-h-9 px-3 text-meta"
+              disabled={klasId === null}
+              onClick={() => {
+                neemOver.reset();
+                setOvername(null);
+                setOvernemen(true);
+              }}
+            >
+              {t("hoeken.overnemen")}
+            </Knop>
+            <Knop
+              rang="rustig"
+              className="h-9 min-h-9 px-3 text-meta"
+              disabled={klasId === null}
+              onClick={() => {
+                maak.reset();
+                setOvername(null);
+                setFormulier({});
+              }}
+            >
+              <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+              {t("hoeken.toevoegen")}
+            </Knop>
+          </div>
+        ) : null}
       </div>
+
+      {!rechtenLaden && !magBewerken && klasNaam ? (
+        <p className="text-meta text-inkt-zacht">{t("rechten.hoekenAlleenBekijken", { klas: klasNaam })}</p>
+      ) : null}
 
       {laadt || (klasId !== null && isPending) ? (
         <Laadlijst rijen={2} />
@@ -138,18 +153,26 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
             <li key={hoek.id}>
               <Hoekrij
                 hoek={hoek}
-                onBewerk={() => {
-                  wijzig.reset();
-                  setOvername(null);
-                  setFormulier({ hoek });
-                }}
-                onVerwijder={() => {
-                  // The takeover report goes too. It describes what the LAST takeover did, and left
-                  // standing under a row she has just deleted it reads as feedback on the delete.
-                  verwijder.reset();
-                  setOvername(null);
-                  setTeVerwijderen(hoek);
-                }}
+                onBewerk={
+                  magBewerken
+                    ? () => {
+                        wijzig.reset();
+                        setOvername(null);
+                        setFormulier({ hoek });
+                      }
+                    : undefined
+                }
+                onVerwijder={
+                  magBewerken
+                    ? () => {
+                        // The takeover report goes too. It describes what the LAST takeover did, and left
+                        // standing under a row she has just deleted it reads as feedback on the delete.
+                        verwijder.reset();
+                        setOvername(null);
+                        setTeVerwijderen(hoek);
+                      }
+                    : undefined
+                }
               />
             </li>
           ))}
@@ -236,8 +259,9 @@ function Hoekrij({
   onVerwijder,
 }: {
   hoek: HoekWeergave;
-  onBewerk: () => void;
-  onVerwijder: () => void;
+  /** Both absent for a gebruiker who may not change this room's corners: the row is then read-only. */
+  onBewerk?: () => void;
+  onVerwijder?: () => void;
 }) {
   return (
     // Stacked on a phone and side by side from `sm`, which is the shape the Klassen row above uses.
@@ -263,14 +287,20 @@ function Hoekrij({
           spells them out, so the icons made one screen speak two languages about the same two
           actions. That neighbour cannot simply follow: its edit button doubles as "Leeftijd
           instellen", which is a call to action and not a generic edit, and a pencil cannot say it. */}
-      <div className="flex shrink-0 items-center gap-2">
-        <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
-          {t("themabeheer.bewerk")}
-        </Knop>
-        <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
-          {t("themabeheer.verwijder")}
-        </Knop>
-      </div>
+      {onBewerk || onVerwijder ? (
+        <div className="flex shrink-0 items-center gap-2">
+          {onBewerk ? (
+            <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
+              {t("themabeheer.bewerk")}
+            </Knop>
+          ) : null}
+          {onVerwijder ? (
+            <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
+              {t("themabeheer.verwijder")}
+            </Knop>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

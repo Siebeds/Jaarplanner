@@ -2,7 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { KlasWeergave } from "../../lib/types";
+import type { Ik } from "../../lib/aanmelding";
 import { t } from "../../i18n";
+import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
 import type { AlgemeneFicheWeergave } from "../algemene-fiches/gegevens";
 import { Algemenefichesectie } from "./Algemenefichesectie";
 
@@ -38,13 +40,17 @@ function antwoord(body: unknown) {
   return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
-function toon(fiches: AlgemeneFicheWeergave[]) {
+/** A directie by default: the tests below are about what a planner sees, and one at the end about a reader. */
+function toon(fiches: AlgemeneFicheWeergave[], ik: Ik = DIRECTIE) {
   fetchMock = vi.fn((_pad: string, init?: RequestInit) =>
     Promise.resolve(antwoord(init?.method && init.method !== "GET" ? fiches[0] : fiches)),
   );
   vi.stubGlobal("fetch", fetchMock);
 
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const client = metIk(
+    new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }),
+    ik,
+  );
   return render(
     <QueryClientProvider client={client}>
       <Algemenefichesectie klassen={[KLAS]} laadt={false} />
@@ -118,5 +124,34 @@ describe("Algemenefichesectie", () => {
     fireEvent.click(await screen.findByRole("button", { name: t("themabeheer.verwijder") }));
 
     expect(await screen.findByText(t("algemeneFiches.verwijderDoelen", { aantal: 2 }))).toBeInTheDocument();
+  });
+
+  /*
+    E6-02: a klas's fiches, their goals and their placements are that klas's planning (ADR-0030 §3, R7). A leerkracht
+    of another klas reads them, with no control the server would refuse, and one line naming the klas.
+  */
+  it("toont een leerkracht van een andere klas de fiches zonder één knop, en zegt het één keer", async () => {
+    toon([fiche()], ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["een-andere-klas"] }));
+
+    expect(await screen.findByText("Turnen")).toBeInTheDocument();
+    expect(screen.getByText("loopt en springt")).toBeInTheDocument();
+    expect(screen.getByText(t("rechten.fichesAlleenBekijken", { klas: "K3 groen" }))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("algemeneFiches.toevoegen") })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("themabeheer.bewerk") })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("themabeheer.verwijder") })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("algemeneFiches.ontkoppel", { code: "LO-K3-01" }) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("algemeneFiches.koppelVoor", { naam: "Turnen" }) }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("geeft een leerkracht van deze klas de knoppen, zonder de regel", async () => {
+    toon([fiche()], ikMet({ eigenKlasIds: [KLAS.id] }));
+
+    expect(await screen.findByRole("button", { name: t("themabeheer.bewerk") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("algemeneFiches.toevoegen") })).toBeInTheDocument();
+    expect(screen.queryByText(t("rechten.fichesAlleenBekijken", { klas: "K3 groen" }))).not.toBeInTheDocument();
   });
 });

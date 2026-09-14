@@ -6,6 +6,7 @@ import { Invoer } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { Leegte } from "../../components/ui/Leegte";
 import { useThemaVoorKlas } from "../../lib/queries";
+import { useRechten } from "../../lib/rechten";
 import type { GeplandeActiviteit } from "../../lib/types";
 import { t } from "../../i18n";
 import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
@@ -33,11 +34,17 @@ import {
  * from carries a name and a type and nothing else, while the server's edit payload defaults hoek,
  * verwachteUitkomsten, onderzoeksvraagId and kleur to null, so a form that prefilled from the row
  * would erase four fields on the first save.
+ *
+ * **Two rights, two halves** (E6-02, ADR-0030 §3). The activiteit is shared content of its subthema's leeftijd: its
+ * form for whoever may change that (R17, R23), its facts for anyone else, and its goal picker for directie and that
+ * leeftijd's hoofdleerkrachten (R19). The day is this klas's planning: the day section only for whoever may plan the
+ * klas (R7, R15). A teacher reading a colleague's agenda gets the facts and no day controls.
  */
 export function Activiteitblad({
   activiteit,
   datum,
   klasId,
+  magPlannen,
   vroegste,
   laatste,
   bezig,
@@ -49,6 +56,8 @@ export function Activiteitblad({
   activiteit: GeplandeActiviteit | null;
   datum: string;
   klasId: string | null;
+  /** Whether this gebruiker may change this klas's planning: the day section appears only then. */
+  magPlannen: boolean;
   vroegste: string;
   laatste: string;
   /** A day action is running: placing, moving or removing. */
@@ -66,6 +75,7 @@ export function Activiteitblad({
   const wijzig = useWijzigActiviteit(themaId);
   const koppel = useKoppelActiviteitdoel(themaId);
   const ontkoppel = useOntkoppelActiviteitdoel(themaId);
+  const { mag } = useRechten();
 
   const subthema = thema?.subthemas.find((sub) =>
     sub.activiteiten.some((kandidaat) => kandidaat.id === activiteit?.activiteitId),
@@ -117,10 +127,15 @@ export function Activiteitblad({
     );
   }
 
+  // `volledig` was found inside `subthema`, so the leeftijd is there whenever the form is.
+  const leeftijd = subthema?.leeftijd ?? "";
+
   return (
     <Activiteitformulier
       open
       activiteit={volledig}
+      alleenLezen={!mag.activiteitBewerken(leeftijd)}
+      magDoelen={mag.doelenKoppelen(leeftijd)}
       onderzoeksvragen={subthema?.onderzoeksvragen ?? []}
       bezig={wijzig.isPending}
       fout={wijzig.isError ? wijzig.error : undefined}
@@ -132,18 +147,20 @@ export function Activiteitblad({
       }
       onSluit={onSluit}
       extra={
-        <Dagsectie
-          datum={datum}
-          begin={activiteit.begin}
-          einde={activiteit.einde}
-          vroegste={vroegste}
-          laatste={laatste}
-          bezig={bezig}
-          fout={fout}
-          buitenPeriode={activiteit.valtBuitenThemaperiode}
-          onVerplaats={onVerplaats}
-          onVerwijder={onVerwijder}
-        />
+        magPlannen ? (
+          <Dagsectie
+            datum={datum}
+            begin={activiteit.begin}
+            einde={activiteit.einde}
+            vroegste={vroegste}
+            laatste={laatste}
+            bezig={bezig}
+            fout={fout}
+            buitenPeriode={activiteit.valtBuitenThemaperiode}
+            onVerplaats={onVerplaats}
+            onVerwijder={onVerwijder}
+          />
+        ) : undefined
       }
     />
   );

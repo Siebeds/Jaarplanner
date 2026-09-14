@@ -8,6 +8,7 @@ import { Leegte } from "../../components/ui/Leegte";
 import { IcoonKruis, IcoonZoek } from "../../components/Iconen";
 import { useLeerplandoel, useThemabibliotheek, useThemasVoorKlas } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
+import { useRechten } from "../../lib/rechten";
 import { cn } from "../../lib/cn";
 import { t, telWoord } from "../../i18n";
 import { filterBestemmingen, telBestemmingen } from "./bestemmingen";
@@ -43,6 +44,7 @@ export function Bestemmingsblad({
   onOpenChange: (open: boolean) => void;
 }) {
   const { klasId, klas } = useActieveSelectie();
+  const { mag } = useRechten();
   const { data: doel } = useLeerplandoel(open ? code : null);
   const { data: bibliotheek, isPending: bibliotheekLaadt } = useThemabibliotheek();
 
@@ -170,7 +172,14 @@ export function Bestemmingsblad({
           gezocht ? (
             <Leegte titel={t("koppelen.geenTreffers")} />
           ) : (
-            <Leegte titel={t("koppelen.geenThemas")} actie={<p className="text-meta text-inkt-zacht">{t("koppelen.geenThemasActie")}</p>} />
+            // "Maak eerst een thema aan" only for whoever may (R4); a hoofdleerkracht without themabeheer is told
+            // there are none and nothing more.
+            <Leegte
+              titel={t("koppelen.geenThemas")}
+              actie={
+                mag.themaBewerken ? <p className="text-meta text-inkt-zacht">{t("koppelen.geenThemasActie")}</p> : undefined
+              }
+            />
           )
         ) : code === null ? null : (
           <ul className="flex flex-col gap-2">

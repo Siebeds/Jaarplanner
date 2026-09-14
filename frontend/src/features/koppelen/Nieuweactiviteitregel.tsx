@@ -3,6 +3,7 @@ import { Knop } from "../../components/ui/Knop";
 import { Invoer, Keuze, Veld } from "../../components/ui/Veld";
 import { IcoonPlus } from "../../components/Iconen";
 import { ACTIVITEIT_TYPES, type ActiviteitType } from "../../lib/types";
+import { geenToegangZin } from "../../lib/rechten";
 import { t } from "../../i18n";
 import { useMaakActiviteitMetDoel } from "./mutaties";
 
@@ -142,7 +143,7 @@ export function Nieuweactiviteitregel({
 
       {maak.isError ? (
         <p role="alert" className="text-meta text-dekking-niet-gedekt">
-          {t("koppelen.maakMislukt")}
+          {geenToegangZin(maak.error) ?? t("koppelen.maakMislukt")}
         </p>
       ) : null}
 

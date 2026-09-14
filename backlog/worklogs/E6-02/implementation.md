@@ -2132,3 +2132,226 @@ In round 3's repro, Weergave had ended at [381,466], outside the row. **The 20 l
 - `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
 - `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 426 passed, 1 skipped (the same count as before: the two pins are assertions added to existing tests).
 - `pnpm lint`: exit 0. `pnpm test`: 35 files, 262 passed (261 + 1 new). `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+## Code slice 4 — rights-gated controls
+
+- **FR / Article:** FR-10, FR-12.2, FR-1, FR-2, FR-3, FR-4, FR-6, FR-7; Art. VI.1 (ratified 2026-09-14) with defaults I9,
+  I13, I19, I22, I26, I27; Art. II.3/II.5 (Dutch in `nl.json`, no em dash); Art. XII and ADR-0024 (no new hue); ADR-0017
+  (WCAG 2.2 AA); ADR-0030 §3 (the matrix and footnotes ², ³, ⁵, ⁶); the E3-06 rule and the E5-03 rule.
+- **Branch:** `story/E6-02-frontend`, from `feature/e6-rollen-rechten` at `b0a193f`. Not pushed, no PR.
+- **Scope held:** frontend only. No backend file changed: both thema reads map activiteiten through `MapActiviteit`,
+  which already carries `MakerId` and every goal link whatever its status, the same fact `EfRechtenbronnen` decides on.
+
+### The one place: `frontend/src/lib/rechten.ts`
+
+- `RECHTENMATRIX` is the server's `Rechtenmatrix` row for row: the same eighteen policy names, the same columns
+  (`Themabeheer`, `Hoofdleerkracht`, `LeerkrachtLeeftijd`, `LeerkrachtLeeftijdZonderKoppelingen`, `LeerkrachtEigen`,
+  `MakerZonderKoppelingen`, `ThemabeheerZonderAndermansInhoud`). `staatToe(ik, rij, bron)` is `StaatToe` clause for
+  clause: directie passes every row; any matching column is enough (union); a resource column only matches its own kind
+  of resource, so a missing one fails closed. Resources: `leeftijd`, `activiteit` (leeftijd, makerId, has links), `klas`.
+- **There is no thema resource,** so the I26 column never matches in the frontend. That is the server's own fail-closed
+  behaviour for a resource row without its resource, and it makes the thema delete **directie only** in the UI (see
+  decisions).
+- `magVoor(ik)` builds the answers screens ask for (`mag.themaBewerken`, `mag.subthemaBeheren(leeftijd)`,
+  `mag.subthemaHerschikken(van, naar)`, `mag.activiteitVerwijderen({ leeftijd, makerId, doelkoppelingen })`,
+  `mag.klasplanningBewerken(klasId)`, `mag.ergensDoelKoppelen`, …). `useRechten()` returns `{ mag, laadt }` from
+  `/api/ik`; while it loads or when it failed, `mag` holds nothing.
+- `isGeenToegang(fout)` and `geenToegangZin(fout)`: the server's Dutch 403 detail ("Je hebt geen toegang tot deze
+  actie.") or the catalogue twin `rechten.geenToegang`, null for any other failure.
+- Slice 2's three readers of `isDirectie` (`onderdelen.ts`, `Onderdeelpoort`, `KlassenScherm`) now ask `mag.beheer`.
+
+### Control → row
+
+| Control | Screen | Row | Shown to |
+| --- | --- | --- | --- |
+| Jaarfase field | Klaskiezer | Beheer | directie |
+| Gebruikers part; klas add, edit, delete (slice 2, now through `mag.beheer`) | Instellingen | Beheer | directie |
+| "Inladen" in the header | Thema's (`/inladen`), Doelen (`/inladen?bron=opstap`) | a section of `INLAADSECTIES` | directie, TB |
+| `Laadlink` "Laad ze in bij Inladen" (both empty states) | Doelen | Curriculumbeheer | directie |
+| School section | Inladen | SchoolcontentImporteren | directie, TB |
+| Op.stap section | Inladen | Curriculumbeheer | directie |
+| "Verwijder die koppelingen" opt-in | Inladen, school | MenselijkeBeslissingenVerwijderen | directie; TB reads "Die koppelingen blijven staan." |
+| Nieuw thema (header and empty state) | Thema's | ThemaBewerken | directie, TB |
+| Thema bewerken | Thema fiche | ThemaBewerken | directie, TB |
+| Thema verwijderen | Thema fiche | ThemaVerwijderen (no `Themabron`) | directie |
+| Themadoel koppelen, ontkoppelen | Thema fiche | ThemaBewerken | directie, TB |
+| Vraag suggesties | Thema fiche | DoelsuggestiesMaken | directie, TB |
+| Open doelsuggesties with Aanvaard, Weiger | Thema fiche | DoelsuggestiesBeoordelen | directie, TB |
+| Subthema toevoegen | Thema fiche | SubthemaBeheren at ≥ 1 leeftijd | directie, HL |
+| Subthema bewerken, verwijderen (onderzoeksvragen are in the form) | chapter | SubthemaBeheren(leeftijd) | directie, HL of that leeftijd |
+| Leeftijd options in the subthema form | Subthemaformulier | SubthemaBeheren(new); an edit asks both ends (I13) | only allowed leeftijden; one left is stated, not offered |
+| Subdoel koppelen, ontkoppelen | chapter | SubdoelenBeheren(leeftijd) | directie, HL |
+| Activiteit toevoegen | chapter | GedeeldeActiviteitBewerken(leeftijd) | directie, HL, LK leeftijd |
+| An activiteit opens as the form, or as its facts | chapter, agenda | GedeeldeActiviteitBewerken(leeftijd) | form for the row's holders, facts for everyone else |
+| Goal picker on an activiteit: row "+", sheet, and on a create | chapter, sheets, agenda | DoelenKoppelen(leeftijd) (R19) | directie, HL |
+| Activiteit verwijderen | chapter | ActiviteitVerwijderen | directie, HL, the maker while no goal is linked |
+| "Koppel dit doel" | Doelen detail | ThemaBewerken, or SubdoelenBeheren/DoelenKoppelen at some leeftijd | directie, TB, HL |
+| Destination sheet: thema, subthema, activiteit, new activiteit with the doel | Themarij | ThemaBewerken; SubdoelenBeheren; DoelenKoppelen; GedeeldeActiviteitBewerken ∧ DoelenKoppelen | per level |
+| Add to a day (empty column, month plus), drag, resize grip, drop targets | Tijdraster, Maandrooster | KlasplanningBewerken(klas) | directie, LK eigen |
+| Subthema inplannen; hoekenfiches chip, sidebar switch and panel | Agenda, Navigatie | KlasplanningBewerken | directie, LK eigen |
+| "Nieuwe activiteit maken" in the picker, and the subthema's it offers | Activiteitkiezer, Nieuweactiviteitblad | GedeeldeActiviteitBewerken(sub.leeftijd) | directie, HL, LK leeftijd |
+| Day section of an opened activiteit (move, haal weg) | Activiteitblad | KlasplanningBewerken | directie, LK eigen |
+| Hours, verrijking and delete of a placed hoek | Hoekdetailblad | KlasplanningBewerken | read-only sheet otherwise |
+| "Maak er een" instruction and links in the planner's empty state | Subthemaplanner | SubthemaBeheren(klas leeftijd) | directie, HL |
+| Genereren, Thema toevoegen, verdict, lock, move, delete of a placement | Thema's per periode | KlasplanningBewerken | directie, LK eigen |
+| Hoek toevoegen, overnemen, bewerken, verwijderen | Instellingen, Hoeken | KlasplanningBewerken(picked klas) | directie, LK eigen |
+| Fiche toevoegen, bewerken, verwijderen, goal links | Instellingen, Algemene fiches | KlasplanningBewerken(picked klas) | directie, LK eigen |
+
+**Rows with no control to gate, because no screen offers the action:** ActiviteitVerplaatsen (no move panel;
+`useVerplaatsActiviteit` has no caller), StreefwoordenschatAanpassen (no editor, E10-01), ThemaOpbouw and Wizardinhoud
+(no wizard screen, E6-05), the doelsuggestie "aanpassen" route (no UI), algemene ficheplaatsingen (no UI), schooljaar
+create (no UI, E6-03). The rights helper answers all of them, so the screens that come can ask.
+
+### Files changed
+
+| File | Why |
+| --- | --- |
+| `frontend/src/lib/rechten.ts` (new) | The matrix, `staatToe`, `magVoor`, `useRechten`, the 403 helpers. |
+| `frontend/src/lib/queryClient.ts` (new), `App.tsx` | The app's query client; a mutation's 403 refetches every active query, `ik` included. |
+| `frontend/src/lib/types.ts` | `ActiviteitWeergave.makerId`. |
+| `frontend/src/i18n/nl.json` | Group `rechten` (4 keys), `importeren.geenRecht`, `importeren.school.blijvenStaan`, `activiteit.minuten`, `activiteit.bekijkAria`. |
+| `features/import/secties.ts` (new), `ImportScherm.tsx`, `Schoolcontentimport.tsx` | Sections by right, `?bron=`, the R35 opt-in. |
+| `features/instellingen/onderdelen.ts`, `Onderdeelpoort.tsx`, `KlassenScherm.tsx` | Slice 2's gating through `mag.beheer`; a struck stale clause in the `KlassenScherm` doc. |
+| `features/instellingen/Hoekensectie.tsx`, `Algemenefichesectie.tsx` | Planning controls per picked klas; one quiet line. |
+| `app/Klaskiezer.tsx`, `app/Navigatie.tsx` | Jaarfase field; hoekenfiches switch and the panel reset. |
+| `features/doelen/DoelenScherm.tsx`, `Minimumdoelenlijst.tsx`, `Doeldetail.tsx` | Inladen, `Laadlink`, "Koppel dit doel". |
+| `features/themas/ThemasScherm.tsx`, `ThemadetailScherm.tsx`, `Subthemahoofdstuk.tsx`, `Subthemaformulier.tsx` | The thema fiche per row and leeftijd; the 403 line. |
+| `features/activiteiten/Activiteitformulier.tsx` | `alleenLezen` (the facts view) and `magDoelen` (the goal section, on edit and on create). |
+| `features/koppelen/Themarij.tsx`, `Nieuweactiviteitregel.tsx`, `Bestemmingsblad.tsx` | Each level per its row; a 403 named as one. |
+| `features/plan/Agendascherm.tsx`, `Tijdraster.tsx`, `Maandrooster.tsx`, `Activiteitblad.tsx`, `Activiteitkiezer.tsx`, `Nieuweactiviteitblad.tsx`, `Subthemaplanner.tsx`, `PlanScherm.tsx`, `Plaatsingkaart.tsx` | The planning of a klas. |
+| `features/hoeken/Hoekdetailblad.tsx` | `alleenLezen`. |
+| `frontend/src/test/rechten.ts` (new) | `ikMet`, `DIRECTIE`, `metIk`: who is looking, for a test. |
+
+### Key decisions
+
+1. **The thema delete is directie's in the frontend.** I26 gives themabeheer the delete only while the thema holds
+   nothing but its own open wizard run's items, and no read the frontend makes carries a run's state or its item list.
+   Offering the bin to themabeheer would offer it on every thema built by hand, where the server refuses. So the
+   `ThemabeheerZonderAndermansInhoud` column fails closed, as on the server without a `Themabron`. E6-05 can widen it
+   once its screen reads `WizardrunWeergave`.
+2. **Open doelsuggesties are shown only to whoever may decide them** (R14). For anyone else a card waiting on somebody
+   else's verdict is noise, and without its two buttons it would read as a themadoel that is not one.
+3. **A reader gets facts, not a form.** An activiteit row still opens for everyone: the form for whoever may change the
+   content, `Activiteitfiche` (inside `Activiteitformulier`) for anyone else. The agenda's day section appears only for
+   whoever may plan the klas, so the four combinations of the two rights each render truthfully. A placed hoek opens
+   `Hoekdetailblad` with `alleenLezen`. Neither read-only sheet has a footer: its one button would repeat the sheet's
+   own "Sluiten".
+4. **The goal section of the activiteit sheet asks R19 on a create too**, and the create sends no `leerplandoelCodes`
+   field when no picker was offered. `magDoelen` is off by default, so a caller that forgets it offers no picker.
+5. **403, two halves.** (a) `maakQueryClient` refetches every active query after a 403, `ik` included, so a stale
+   control goes away. (b) What the teacher reads: screens that already show the server's `detail` show its Dutch 403
+   sentence unchanged. The ones that failed silently or with "probeer opnieuw" now say it: the thema fiche (one fixed
+   line for its nine inline mutations), Thema's per periode (placement actions and adding a thema), Themarij and
+   Nieuweactiviteitregel (no retry after a refusal), and the klaskiezer. The two pickers without an error line of their
+   own (Activiteitkiezer, Themakiezer) close once the refetched rights say no. The browser pass found the picker left
+   open over the refusal.
+6. **Quiet lines, four, each once per screen and only when true** (the rights answered and the right is absent):
+   the agenda and Thema's per periode ("De planning van {klas} kan je alleen bekijken."), Hoeken and Algemene fiches
+   ("De hoeken / algemene fiches van {klas} kan je alleen bekijken."). They name the klas because the picker is what
+   made the controls go. The thema fiche has none: most of its visitors read, and a per-block hint is the prose this
+   interface cuts first. `text-meta text-inkt-zacht`, no new hue.
+7. **Inladen is gated per section, not per route** (2026-08-03 ruling). `INLAADSECTIES` + `magInladen` are the marker
+   the old frontend had (`magBeheerder` plus a section constant); every link to `/inladen` asks it. A typed address with
+   no allowed section shows "Je hebt geen recht om iets in te laden." `?bron=opstap` asks for the Op.stap section, which
+   the `Laadlink` and the Doelen header now do; a section the gebruiker may not use is never shown.
+8. **Loading state:** `mag` holds nothing while `/api/ik` answers, and the quiet lines wait for `laadt` to be false,
+   so nothing flashes and no false line appears.
+
+### Tests added (262 → 452; 45 files)
+
+- `lib/rechten.test.ts`: the server's `Relaties` × `Verwacht` table, 16 rows × 8 relations; every server row has an
+  expectation (18); directie passes everything; fail closed; union; both activiteit rows (maker with and without links,
+  a colleague, no maker, HL, HL of another leeftijd; move for LK with and without links, HL, never the maker); the
+  helpers (`subthemaHerschikken` I13, `subthemaToevoegen`, `ergensDoelKoppelen`, `klasplanningBewerken`); nothing while
+  loading; `geenToegangZin`.
+- `lib/queryClient.test.ts`: a 403 invalidates everything; a 400 or a network error does not.
+- `features/themas/ThemadetailScherm.test.tsx` (6): LK of K3, HL of K3, TB, directie, a reader opening an activiteit
+  as facts, a refused verdict shown as an alert.
+- `features/themas/ThemasScherm.test.tsx` (4, with the Doelen header), `Subthemaformulier.test.tsx` (3),
+  `features/activiteiten/Activiteitformulier.test.tsx` (4), `features/plan/Plaatsingkaart.test.tsx` (2),
+  `app/Klaskiezer.test.tsx` (2), `features/import/ImportScherm.test.tsx` (5, with the R35 opt-in after a preview),
+  `features/instellingen/Hoekensectie.test.tsx` (2).
+- Extended: `Tijdraster.test.tsx` (+2: no add, no grip, no drag attributes for a reader; all three for a planner),
+  `Themarij.test.tsx` (+4: a 403 named without retry; LK, TB and HL of another leeftijd per level),
+  `Minimumdoelenlijst.test.tsx` (+1, and the link's new `?bron=opstap`), `Algemenefichesectie.test.tsx` (+2),
+  `Hoekdetailblad.test.tsx` (+1), `Navigatie.test.tsx` (+2; the others now say who is signed in).
+
+### Gates
+
+- `cd frontend && pnpm lint`: exit 0 (oxlint and `tsc`).
+- `pnpm test`: 45 files, 452 passed.
+- `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+- No backend file changed, so no dotnet gate applies. The API was built only to run it for the browser pass.
+
+### Browser pass (headless Chrome over CDP, 1440×1000 and 390×844, dark and light)
+
+- API in Development on **5395** against the throwaway database **`jp_spotcheck_e602f`** on the 5433 server (created,
+  migrated with the repo's `dotnet-ef`, seeded over the API, then dropped); Vite on **5185** proxying to it. The owner's
+  dev database was not touched.
+- Seed: schooljaar 2026-2027; K3 groen, K3 blauw, L1 rood; An (themabeheer), Bert (HL K3), Carla (LK of K3 groen), Dirk
+  (no right), and the configured directie; thema Herfst with a K3 subthema (Bladeren sorteren by directie, Carla's
+  kring by Carla) and an L1 subthema; Herfst placed in both K3 klassen, a weekplanning block, a bouwhoek placed for a
+  week, an algemene fiche.
+- **Directie:** every control on every screen; the klaskiezer shows Leeftijd; the Doelen register shows the `Laadlink`.
+- **Themabeheer (An):** thema pencil (no bin), Doel koppelen, Vraag suggesties; activiteiten open as "bekijken"; no
+  Subthema toevoegen; Inladen shows only the thema's section, no switch; Doelen header has Inladen, no `Laadlink`;
+  agenda, plan, hoeken and fiches read-only with the quiet line; klaskiezer without Leeftijd.
+- **Hoofdleerkracht K3 (Bert):** the K3 chapter in full (subthema pencil and bin, Activiteit toevoegen, "+" and bin on
+  every K3 activiteit, subdoel koppelen); the L1 activiteit as "bekijken"; no thema controls; Inladen says
+  "Je hebt geen recht om iets in te laden."; no Inladen link on Doelen; the subthema form states "K3" with no select;
+  planning read-only (a hoofdleerkracht plans no klas).
+- **Leerkracht of K3 groen (Carla):** Activiteit toevoegen in K3 only; content of K3 activiteiten; the bin on "Carla's
+  kring" only; no goal links; the agenda of groen with add, drag, grip, Subthema inplannen and hoekenfiches; Thema's
+  per periode with every control; fiches of groen with controls. Her agenda on **K3 blauw**: no add, drag, grip,
+  planner or hoekenfiches, and "De planning van K3 blauw kan je alleen bekijken."
+- **No right (Dirk):** reads everything; every activiteit opens as facts (Soort, duur "50 minuten", Doelen, one
+  "Sluiten"); a placed hoek opens read-only (period, hours, verrijking, one "Sluiten"); Thema's per periode shows the
+  card without controls and "Nog geen thema" for empty periods.
+- **Live 403:** with Carla's agenda of groen open (7 add buttons), directie removed her klastoewijzing over the API; she
+  then planned "Bladeren sorteren" on a Wednesday. Result: "Je hebt geen toegang tot deze actie." on the page, the
+  picker closed, 0 add buttons, the quiet line shown. The first run found the picker left open over the refusal; fixed
+  (decision 5) and replayed. The klastoewijzing was restored afterwards.
+- **390:** no horizontal overflow on the thema fiche, the agenda or the read-only activiteit sheet for any persona.
+- **Contrast** of the quiet line, measured with alpha composited: 8.44:1 dark, 6.08:1 light (agenda and fiches).
+- Headless Chrome followed the device's dark scheme for the persona pass; the light pass used emulated
+  `prefers-color-scheme: light`.
+
+### Self-check against slice 4
+
+- One place decides, row for row with the server, directie passes all, union holds, nothing while loading, unit-tested
+  against §3: ✓ (`rechten.ts`, `rechten.test.ts`).
+- Every control named in the brief gated per its row: ✓ (table above), with the rows that have no control listed.
+- Slice 3's list: thema delete (directie only, decision 1) ✓; subthema leeftijd select (only allowed leeftijden, one is
+  stated) ✓; Doelen "Inladen" ✓; the agenda's create path and its goal picker (R19 on create) ✓; `makerId` on
+  `ActiviteitWeergave`, links from `doelkoppelingen` ✓; a Dutch 403 ✓.
+- Say less: no disabled buttons with tooltips, no empty toolbars (a card's `acties` and a section's `acties` are
+  `undefined` when empty), four quiet lines, no em dash (catalogue guards green): ✓.
+- The server stays the authority; a 403 shows Dutch and refetches: ✓.
+- **Not claimed:** the *Done when* of E6-02 and E6-04 as wholes; verification is a separate gate.
+
+### For the test-runner
+
+- Automated: `cd frontend && pnpm test` (the files above). No backend change.
+- By hand (Playwright or CDP): run the API in Development on a throwaway database, sign in through
+  `/api/aanmelden/ontwikkeling/{gebruikerId}?terugNaar=/themas`, and seed as above (the scripts used are
+  `seed.mjs`, `browser.mjs`, `browser2.mjs`, `browser3.mjs` in the session scratchpad, not in the repo). Check per
+  persona: `/themas`, `/themas/{id}`, `/agenda/dag/2026-09-15?weergave=week`, `/agenda/periodes`, `/inladen`,
+  `/inladen?bron=opstap`, `/doelen`, `/instellingen/hoeken`, `/instellingen/algemene-fiches`, the klaskiezer sheet, at
+  1440 and 390. For the 403: take a leerkracht's klastoewijzing away while her agenda is open and let her plan.
+
+### Open questions / for the orchestrator
+
+1. **Open doelsuggesties are hidden from non-reviewers** (decision 2). If directie wants leerkrachten to see what the
+   model proposed, they can be shown read-only; that is a small change.
+2. **Hoeken in Instellingen still opens on the first klas**, not the klas in the header picker (pre-existing; Algemene
+   fiches uses the header's klas). A leerkracht therefore lands on a colleague's room and meets the quiet line first.
+   Aligning the two is a one-line change, out of this slice's scope.
+3. **Pre-existing, not rights-related:** a refused thema delete that is not a 403 (a thema still placed in a jaarplan,
+   the service's 400) is still silent on the thema fiche; directie is the only one offered the delete now.
+4. **E6-05 inherits** the wizard-only controls: its leeftijd select on a run subthema holding someone else's subdoel or
+   activiteit (I27), and on one whose run activiteiten carry a goal link, which needs the goal-link right at both
+   leeftijden (Q4/Q5); deleting a run activiteit that carries a goal link, or a run subthema whose activiteiten carry
+   one, without the goal-link right (I27); the thema delete for themabeheer during its own open run (I26, decision 1);
+   the thema-opbouw AI assist (ThemaOpbouw). `lib/rechten.ts` has the rows; the run state is E6-05's to read.
+5. **The `frontend-design` skill** could not be invoked from this agent (no skill tool). The change adds no screen; it
+   follows ADR-0024's idiom (no new hue, one quiet line per screen in an existing token pair, measured in a browser).

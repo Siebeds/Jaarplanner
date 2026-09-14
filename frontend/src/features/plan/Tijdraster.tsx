@@ -72,12 +72,17 @@ type Rasterblok = Blokje & {
  *
  * **The now-line is ink, not a hue** (Art. XII): the accent is rationed to five uses and none of them is this. It
  * carries the current time as text in the hour gutter, so it is never colour alone.
+ *
+ * **The three gestures are the klas's planning, and only whoever may plan it gets them** (E6-02, ADR-0030 §3, R7,
+ * R15): directie and the leerkrachten of this klas. Anyone else reads the grid, every block still opens, and nothing
+ * drags, stretches or invites a click into empty space.
  */
 export function Tijdraster({
   dagen,
   hoekmomenten,
   reeksenPerDag,
   vakken,
+  magPlannen,
   onVoegToe,
   onOpen,
   onOpenHoek,
@@ -92,6 +97,8 @@ export function Tijdraster({
   reeksenPerDag: Map<string, Subthemareeks[]>;
   /** The themaperiode each day sits in, for the same band. */
   vakken: readonly Themavak[];
+  /** Whether this gebruiker may change this klas's planning (`mag.klasplanningBewerken`). Required, so no caller forgets. */
+  magPlannen: boolean;
   /** Asked for an activiteit on this day, starting at this minute of it. */
   onVoegToe: (datum: string, begin: number) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
@@ -210,6 +217,7 @@ export function Tijdraster({
                 dag={dag}
                 blokken={blokken.filter((blok) => blok.datum === dag.datum)}
                 bereik={bereik}
+                magPlannen={magPlannen}
                 onVoegToe={onVoegToe}
                 onOpen={onOpen}
                 onOpenHoek={onOpenHoek}
@@ -382,6 +390,7 @@ function Dagkolom({
   dag,
   blokken,
   bereik,
+  magPlannen,
   onVoegToe,
   onOpen,
   onOpenHoek,
@@ -390,12 +399,13 @@ function Dagkolom({
   dag: Agendadag;
   blokken: Rasterblok[];
   bereik: { van: number; tot: number };
+  magPlannen: boolean;
   onVoegToe: (datum: string, begin: number) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   onOpenHoek: (plaatsingId: string) => void;
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: kolomId(dag.datum), disabled: !dag.isLesdag });
+  const { setNodeRef, isOver } = useDroppable({ id: kolomId(dag.datum), disabled: !dag.isLesdag || !magPlannen });
   const plekken = useMemo(() => kolommen(blokken), [blokken]);
   const voorbeeld = useSleepvoorbeeld(dag.datum);
 
@@ -413,8 +423,10 @@ function Dagkolom({
           (z-0) because they are buttons themselves, and a button inside a button is invalid.
 
           A keyboard press has no position, so it falls back to the ordinary start of a morning rather than to
-          whatever hour the last pointer happened to be over. `detail === 0` is what says so. */}
-      {dag.isLesdag ? (
+          whatever hour the last pointer happened to be over. `detail === 0` is what says so.
+
+          Only for whoever may plan this klas; for anyone else the empty hours are just empty. */}
+      {dag.isLesdag && magPlannen ? (
         <button
           type="button"
           onClick={(gebeurtenis) => {
@@ -454,6 +466,7 @@ function Dagkolom({
           blok={blok}
           plek={plekken.get(blok.id) ?? { kolom: 0, kolommen: 1 }}
           rasterVan={bereik.van}
+          magPlannen={magPlannen}
           onOpen={onOpen}
           onOpenHoek={onOpenHoek}
           onWijzigTijd={onWijzigTijd}
@@ -515,6 +528,7 @@ function Blok({
   blok,
   plek,
   rasterVan,
+  magPlannen,
   onOpen,
   onOpenHoek,
   onWijzigTijd,
@@ -522,6 +536,8 @@ function Blok({
   blok: Rasterblok;
   plek: { kolom: number; kolommen: number };
   rasterVan: number;
+  /** Without it the block only opens: no drag, no grip, and no drag semantics on the button. */
+  magPlannen: boolean;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   onOpenHoek: (plaatsingId: string) => void;
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
@@ -529,6 +545,7 @@ function Blok({
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: blok.id,
     data: { naam: blok.naam, duur: blok.einde - blok.begin },
+    disabled: !magPlannen,
   });
   const [rekEinde, setRekEinde] = useState<number | null>(null);
 
@@ -578,9 +595,13 @@ function Blok({
           aria-label={`${blok.naam}, ${toonBereik(blok.begin, einde)}${
             kleur ? `, ${t(kleurSleutel(kleur))}` : ""
           }${blok.activiteit?.valtBuitenThemaperiode ? `, ${t("periode.buitenPeriode")}` : ""}`}
-          {...listeners}
-          {...attributes}
-          className="block h-full w-full cursor-grab touch-none px-2 py-1 text-left active:cursor-grabbing"
+          // dnd-kit's attributes say "draggable" to a screen reader, so a block that cannot move does not get them.
+          {...(magPlannen ? listeners : {})}
+          {...(magPlannen ? attributes : {})}
+          className={cn(
+            "block h-full w-full px-2 py-1 text-left",
+            magPlannen && "cursor-grab touch-none active:cursor-grabbing",
+          )}
         >
           <span className="flex min-w-0 items-baseline gap-1">
             {blok.doel.soort === "hoek" ? (
@@ -603,17 +624,19 @@ function Blok({
           ) : null}
         </button>
 
-        <Rekgreep
-          onRek={(deltaPx) => setRekEinde(Math.max(blok.begin + KORTSTE, rond(blok.einde + deltaPx / PX_PER_MINUUT)))}
-          onKlaar={() => {
-            if (rekEinde !== null && rekEinde !== blok.einde) {
-              onWijzigTijd(blok.doel, blok.datum, blok.begin, rekEinde);
-            }
-            setRekEinde(null);
-          }}
-          naam={blok.naam}
-          actief={rekEinde !== null}
-        />
+        {magPlannen ? (
+          <Rekgreep
+            onRek={(deltaPx) => setRekEinde(Math.max(blok.begin + KORTSTE, rond(blok.einde + deltaPx / PX_PER_MINUUT)))}
+            onKlaar={() => {
+              if (rekEinde !== null && rekEinde !== blok.einde) {
+                onWijzigTijd(blok.doel, blok.datum, blok.begin, rekEinde);
+              }
+              setRekEinde(null);
+            }}
+            naam={blok.naam}
+            actief={rekEinde !== null}
+          />
+        ) : null}
       </div>
 
       {/* The end it will get, while the edge is being pulled. A block under half an hour prints no time at all, so

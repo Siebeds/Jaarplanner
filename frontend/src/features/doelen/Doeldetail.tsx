@@ -33,8 +33,11 @@ export function Doeldetail({
    * inside one: `DoelenScherm` puts it in a `Blad` on a narrow screen. A second sheet opened from
    * in here stacked on the first, and the phone showed two headers, two close buttons, and none of
    * the destinations. The screen owns both sheets so it can show one at a time.
+   *
+   * Absent for a gebruiker who may link a doel nowhere (E6-02: `mag.ergensDoelKoppelen`), and the button with it: the
+   * sheet it opens would offer them nothing to press.
    */
-  onKoppel: () => void;
+  onKoppel?: () => void;
 }) {
   const { data, isPending, isError } = useLeerplandoel(code);
 
@@ -137,10 +140,12 @@ export function Doeldetail({
           </ul>
         )}
 
-        <Knop rang="rustig" className="mt-1 self-start" onClick={onKoppel}>
-          <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-          {t("doel.koppelAan")}
-        </Knop>
+        {onKoppel ? (
+          <Knop rang="rustig" className="mt-1 self-start" onClick={onKoppel}>
+            <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+            {t("doel.koppelAan")}
+          </Knop>
+        ) : null}
       </Sectie>
     </article>
   );

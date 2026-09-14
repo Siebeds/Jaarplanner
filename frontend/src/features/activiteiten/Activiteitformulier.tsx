@@ -11,6 +11,7 @@ import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { ACTIVITEITKLEUREN, KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "./kleuren";
 import { STANDAARDDUUR } from "../plan/tijd";
+import { Feit } from "../themas/Fiche";
 import { Doelkoppelaar } from "./Doelkoppelaar";
 
 /**
@@ -64,6 +65,12 @@ export interface ActiviteitInvoer {
  * so the caller commits them as they are chosen and this form is honest about that: the list under
  * "Doelen" changes the moment you touch it, and the Bewaren button says nothing about it. That is why
  * linking is offered only on an activiteit that already exists.
+ *
+ * **Two rights meet here, and each branch shows only what its reader holds** (E6-02, ADR-0030 §3). The fields are the
+ * activiteit's content (R17, R23; I15); the goals are R19's, which only directie and that leeftijd's hoofdleerkrachten
+ * hold, also when a new activiteit carries codes on its create. So `magDoelen` gates the goal section in both branches,
+ * and `alleenLezen` replaces the form with the facts for a gebruiker who may not change the content. A reader opening
+ * an activiteit gets what it is, not a form whose Bewaren the server would refuse.
  */
 export function Activiteitformulier({
   open,
@@ -77,6 +84,8 @@ export function Activiteitformulier({
   onOntkoppel,
   koppelenBezig,
   extra,
+  alleenLezen = false,
+  magDoelen = false,
 }: {
   open: boolean;
   /** The activiteit being changed, or undefined when making a new one. */
@@ -93,6 +102,16 @@ export function Activiteitformulier({
   koppelenBezig?: boolean;
   /** A section of the caller's own, rendered below the fields and above the goal links. */
   extra?: ReactNode;
+  /**
+   * The gebruiker may not change this activiteit's content (`mag.activiteitBewerken`): show what it is instead of a
+   * form. Only for an existing activiteit; a new one is only ever opened by someone who may make it.
+   */
+  alleenLezen?: boolean;
+  /**
+   * The gebruiker may link goals at this activiteit's leeftijd (`mag.doelenKoppelen`, R19). Off by default, so a
+   * caller that forgets it offers no picker rather than one the server refuses.
+   */
+  magDoelen?: boolean;
 }) {
   const id = useId();
   const [naam, setNaam] = useState(activiteit?.naam ?? "");
@@ -128,12 +147,26 @@ export function Activiteitformulier({
       lengteInLesuren: lengte,
       // Left off entirely while editing rather than sent empty: the update endpoint has no such field,
       // and an empty list there would read like "remove every goal" to the next person who adds one.
-      ...(activiteit ? {} : { leerplandoelCodes: nieuweCodes }),
+      // Left off too for a gebruiker without the goal-link right, who was offered no picker (R19).
+      ...(activiteit || !magDoelen ? {} : { leerplandoelCodes: nieuweCodes }),
     });
   }
 
   const serverReden = fout instanceof ApiError ? fout.detail : undefined;
   const koppelingen = activiteit?.doelkoppelingen ?? [];
+
+  if (alleenLezen && activiteit) {
+    return (
+      <Activiteitfiche
+        open={open}
+        activiteit={activiteit}
+        onderzoeksvragen={onderzoeksvragen}
+        extra={extra}
+        fout={fout}
+        onSluit={onSluit}
+      />
+    );
+  }
 
   return (
     <Blad
@@ -341,7 +374,7 @@ export function Activiteitformulier({
             The explaining line therefore differs per branch. It has to: one of them would be false in the
             other, and a sentence may only assert what its own branch guarantees. */}
         {activiteit ? (
-          onKoppel && onOntkoppel ? (
+          magDoelen && onKoppel && onOntkoppel ? (
             <section className="border-t border-lijn pt-5">
               <Doelenkop aantal={koppelingen.length} uitleg={t("activiteit.doelenDirect")} />
 
@@ -375,7 +408,7 @@ export function Activiteitformulier({
               </div>
             </section>
           ) : null
-        ) : (
+        ) : magDoelen ? (
           <section className="border-t border-lijn pt-5">
             <Doelenkop aantal={nieuweCodes.length} uitleg={t("activiteit.doelenBijBewaren")} />
 
@@ -408,7 +441,7 @@ export function Activiteitformulier({
               />
             </div>
           </section>
-        )}
+        ) : null}
 
         {fout ? (
           <div role="alert" className="rounded-veld border border-attentie/40 bg-attentie-zacht p-3">
@@ -421,8 +454,11 @@ export function Activiteitformulier({
   );
 }
 
-/** The heading of the doelen section: what it is, how many, and when they are saved. */
-function Doelenkop({ aantal, uitleg }: { aantal: number; uitleg: string }) {
+/**
+ * The heading of the doelen section: what it is, how many, and when they are saved. No `uitleg` where nothing is
+ * saved from here, which is the read-only view.
+ */
+function Doelenkop({ aantal, uitleg }: { aantal: number; uitleg?: string }) {
   return (
     <>
       <div className="flex items-baseline justify-between gap-2">
@@ -430,8 +466,95 @@ function Doelenkop({ aantal, uitleg }: { aantal: number; uitleg: string }) {
         <span className="mono shrink-0 text-micro text-inkt-zwak">{aantal}</span>
       </div>
       {/* Said once, above the list, because when these are written is the one thing the layout cannot show. */}
-      <p className="mt-1 text-meta text-inkt-zacht">{uitleg}</p>
+      {uitleg ? <p className="mt-1 text-meta text-inkt-zacht">{uitleg}</p> : null}
     </>
+  );
+}
+
+/**
+ * An activiteit for a gebruiker who may read it and not change it (E6-02): the same facts the form holds, as facts.
+ *
+ * The same sheet, the same width and the same labels as the form, so the two read as one object in two states. Every
+ * fact is printed only when it has a value, and the goals are listed without a way to add or remove one. What the
+ * caller adds (`extra`: the agenda's day and hours, for a gebruiker who may plan the klas) still sits below.
+ *
+ * No footer: with nothing to save, the sheet's own close control is the only action, and a second "Sluiten" beside it
+ * would be the same control twice under the same name.
+ */
+function Activiteitfiche({
+  open,
+  activiteit,
+  onderzoeksvragen,
+  extra,
+  fout,
+  onSluit,
+}: {
+  open: boolean;
+  activiteit: ActiviteitMetKleur;
+  onderzoeksvragen: OnderzoeksvraagWeergave[];
+  extra?: ReactNode;
+  fout?: unknown;
+  onSluit: () => void;
+}) {
+  const vraag = onderzoeksvragen.find((kandidaat) => kandidaat.id === activiteit.onderzoeksvraagId);
+  const serverReden = fout instanceof ApiError ? fout.detail : undefined;
+
+  return (
+    <Blad
+      open={open}
+      onOpenChange={(o) => !o && onSluit()}
+      maat="breed"
+      titel={activiteit.naam}
+    >
+      <div className="flex flex-col gap-5">
+        <dl className="flex flex-col gap-2">
+          <Feit label={t("activiteit.soort")}>{t(`activiteitsoort.${activiteit.activiteitType}`)}</Feit>
+          {activiteit.activiteitType === "Hoek" && activiteit.hoek ? (
+            <Feit label={t("activiteit.hoek")}>{activiteit.hoek}</Feit>
+          ) : null}
+          <Feit label={t("activiteit.duur")}>
+            {t("activiteit.minuten", { aantal: (activiteit.lengteInLesuren ?? 1) * STANDAARDDUUR })}
+          </Feit>
+          {activiteit.kleur ? <Feit label={t("activiteit.kleur")}>{t(kleurSleutel(activiteit.kleur))}</Feit> : null}
+          {activiteit.verwachteUitkomsten ? (
+            <Feit label={t("activiteit.uitkomsten")}>{activiteit.verwachteUitkomsten}</Feit>
+          ) : null}
+          {vraag ? <Feit label={t("activiteit.onderzoeksvraag")}>{vraag.vraag}</Feit> : null}
+        </dl>
+
+        {extra ? <section className="border-t border-lijn pt-5">{extra}</section> : null}
+
+        <section className="border-t border-lijn pt-5">
+          <Doelenkop aantal={activiteit.doelkoppelingen.length} />
+          {activiteit.doelkoppelingen.length === 0 ? (
+            <p className="mt-2 text-meta text-inkt-zacht">{t("activiteit.geenDoel")}</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1">
+              {activiteit.doelkoppelingen.map((koppeling) => (
+                <li
+                  key={koppeling.id}
+                  className="flex items-center gap-2 rounded-veld border border-lijn bg-kaart px-3 py-1.5"
+                >
+                  <span className="mono min-w-0 truncate text-meta font-medium text-inkt">
+                    {koppeling.leerplandoelCode}
+                  </span>
+                  <Statusmerk status={koppeling.status} className="ml-auto" />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* A refusal that arrived while this was still the form: rights refetched after a 403 turn the form into
+            this view, and the reason must not go with it. */}
+        {fout ? (
+          <div role="alert" className="rounded-veld border border-attentie/40 bg-attentie-zacht p-3">
+            <p className="text-body font-medium text-attentie-inkt">{t("themabeheer.bewaarMislukt")}</p>
+            {serverReden ? <p className="mt-1 text-meta text-attentie-inkt">{serverReden}</p> : null}
+          </div>
+        ) : null}
+      </div>
+    </Blad>
   );
 }
 

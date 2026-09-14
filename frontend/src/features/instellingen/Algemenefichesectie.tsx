@@ -7,6 +7,7 @@ import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { IcoonKruis, IcoonPlus } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
 import { useActieveSelectie } from "../../lib/selectie";
+import { useRechten } from "../../lib/rechten";
 import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
@@ -44,6 +45,10 @@ import {
  * says so. A planned one says how often it is planned and stops there: whether a particular goal
  * then moves this class's figure also depends on the jaar/fase it is measured against, which this row
  * does not know.
+ *
+ * **A klas's fiches, their goals and their placements are that klas's planning** (E6-02, ADR-0030 §3, R7; the fiche
+ * goal links are one klas's, so R19 does not reach them, see the slice 3 worklog). Directie and the klas's own
+ * leerkrachten change them; anyone else reads them, with one quiet line naming the klas.
  */
 export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[]; laadt: boolean }) {
   const { klas: actieveKlas } = useActieveSelectie();
@@ -70,6 +75,9 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
   const fout = formulier?.fiche ? wijzig.error : maak.error;
   const doelFout = koppel.error ?? ontkoppel.error;
 
+  const { mag, laadt: rechtenLaden } = useRechten();
+  const magBewerken = mag.klasplanningBewerken(klasId);
+
   return (
     <div className="flex flex-col gap-3">
       {/* Which room on the left, once above the list, and the action on the right: the row Klassen
@@ -95,19 +103,25 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
           </Keuze>
         </label>
 
-        <Knop
-          rang="rustig"
-          className="h-9 min-h-9 px-3 text-meta"
-          disabled={klasId === null}
-          onClick={() => {
-            maak.reset();
-            setFormulier({});
-          }}
-        >
-          <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-          {t("algemeneFiches.toevoegen")}
-        </Knop>
+        {magBewerken ? (
+          <Knop
+            rang="rustig"
+            className="h-9 min-h-9 px-3 text-meta"
+            disabled={klasId === null}
+            onClick={() => {
+              maak.reset();
+              setFormulier({});
+            }}
+          >
+            <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+            {t("algemeneFiches.toevoegen")}
+          </Knop>
+        ) : null}
       </div>
+
+      {!rechtenLaden && !magBewerken && klas ? (
+        <p className="text-meta text-inkt-zacht">{t("rechten.fichesAlleenBekijken", { klas: klas.naam })}</p>
+      ) : null}
 
       {laadt || (klasId !== null && isPending) ? (
         <Laadlijst rijen={2} />
@@ -121,6 +135,7 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
             <li key={fiche.id}>
               <Ficherij
                 fiche={fiche}
+                magBewerken={magBewerken}
                 fasen={klas?.jaarFasen}
                 doelBezig={
                   (koppel.isPending && koppel.variables?.ficheId === fiche.id) ||
@@ -205,6 +220,7 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
 /** One fiche: what it is, whether it is in the agenda, and the goals it works on. */
 function Ficherij({
   fiche,
+  magBewerken,
   fasen,
   doelBezig,
   onKoppel,
@@ -213,6 +229,8 @@ function Ficherij({
   onVerwijder,
 }: {
   fiche: AlgemeneFicheWeergave;
+  /** Without it the row shows the fiche and its goals, and none of the five controls. */
+  magBewerken: boolean;
   /** The chosen class's jaar/fase, so the goal picker searches the goals this class is measured against. */
   fasen?: string[];
   doelBezig: boolean;
@@ -238,14 +256,16 @@ function Ficherij({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
-            {t("themabeheer.bewerk")}
-          </Knop>
-          <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
-            {t("themabeheer.verwijder")}
-          </Knop>
-        </div>
+        {magBewerken ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={onBewerk}>
+              {t("themabeheer.bewerk")}
+            </Knop>
+            <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={onVerwijder}>
+              {t("themabeheer.verwijder")}
+            </Knop>
+          </div>
+        ) : null}
       </div>
 
       {fiche.doelen.length > 0 ? (
@@ -257,27 +277,31 @@ function Ficherij({
                 <span className="mono block text-micro font-medium text-inkt-zacht">{doel.leerplandoelCode}</span>
                 <span className="line-clamp-2 text-meta text-inkt">{doel.tekst}</span>
               </span>
-              <button
-                type="button"
-                disabled={doelBezig}
-                onClick={() => onOntkoppel(doel.koppelingId)}
-                aria-label={t("algemeneFiches.ontkoppel", { code: doel.leerplandoelCode })}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
-              >
-                <IcoonKruis aria-hidden="true" className="h-4 w-4" />
-              </button>
+              {magBewerken ? (
+                <button
+                  type="button"
+                  disabled={doelBezig}
+                  onClick={() => onOntkoppel(doel.koppelingId)}
+                  aria-label={t("algemeneFiches.ontkoppel", { code: doel.leerplandoelCode })}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
+                >
+                  <IcoonKruis aria-hidden="true" className="h-4 w-4" />
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
       ) : null}
 
-      <Doelkoppelaar
-        bezig={doelBezig}
-        alGekozen={fiche.doelen.map((d) => d.leerplandoelCode)}
-        fasen={fasen}
-        toelichting={t("algemeneFiches.koppelVoor", { naam: fiche.naam })}
-        onKies={onKoppel}
-      />
+      {magBewerken ? (
+        <Doelkoppelaar
+          bezig={doelBezig}
+          alGekozen={fiche.doelen.map((d) => d.leerplandoelCode)}
+          fasen={fasen}
+          toelichting={t("algemeneFiches.koppelVoor", { naam: fiche.naam })}
+          onKies={onKoppel}
+        />
+      ) : null}
     </div>
   );
 }

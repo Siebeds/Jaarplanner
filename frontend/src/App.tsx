@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { maakQueryClient } from "./lib/queryClient";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Schil } from "./app/Schil";
 import { DoelenScherm } from "./features/doelen/DoelenScherm";
@@ -31,17 +32,7 @@ const INSTELLINGEN: Record<Deel, ComponentType> = {
   weergave: WeergaveScherm,
 };
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Reference data changes when someone runs an import, not while a teacher browses. Plan and
-      // dekking are refetched by their own mutations rather than by a shorter stale time.
-      staleTime: 60_000,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const queryClient = maakQueryClient();
 
 export default function App() {
   return (

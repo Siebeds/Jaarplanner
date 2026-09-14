@@ -6,6 +6,7 @@ import { IcoonChevron, IcoonDoelen } from "../../components/Iconen";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
+import type { Mag } from "../../lib/rechten";
 import type { SubthemaWeergave } from "../../lib/types";
 import { KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "../activiteiten/kleuren";
 import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
@@ -45,9 +46,16 @@ import { Blok, Doellijst, Doelregel, Ontkoppel, Subkop } from "./Fiche";
  * **Activiteiten come before subdoelen**, which is the other way round from the version this
  * replaced. The activiteiten are what the teacher built; the subdoelen are the accounting on top of
  * it.
+ *
+ * **Every control asks `mag` about THIS chapter's leeftijd** (E6-02, ADR-0030 §3). A thema holds chapters of several
+ * leeftijden, and a hoofdleerkracht of K3 edits the K3 one and reads the L1 one on the same page. The subthema itself,
+ * its subdoelen and the goal links are directie's and that leeftijd's hoofdleerkrachten'; a new activiteit and its
+ * content are every leerkracht's of that leeftijd too; the delete is the hoofdleerkracht's, or the maker's while no goal
+ * is linked. What nobody here may change is simply not drawn, and an activiteit row still opens, as its facts.
  */
 export function Subthemahoofdstuk({
   subthema,
+  mag,
   onBewerk,
   onVerwijder,
   onNieuweActiviteit,
@@ -59,6 +67,8 @@ export function Subthemahoofdstuk({
   koppelenBezig,
 }: {
   subthema: SubthemaWeergave;
+  /** What the signed-in gebruiker may do, from `useRechten()` on the screen. */
+  mag: Mag;
   onBewerk: () => void;
   onVerwijder: () => void;
   onNieuweActiviteit: () => void;
@@ -75,6 +85,12 @@ export function Subthemahoofdstuk({
   // across a route change is a different feature and would need somewhere to remember it.
   const [open, setOpen] = useState(true);
 
+  const leeftijd = subthema.leeftijd;
+  const magSubthema = mag.subthemaBeheren(leeftijd);
+  const magActiviteit = mag.activiteitBewerken(leeftijd);
+  const magKoppelen = mag.doelenKoppelen(leeftijd);
+  const magSubdoelen = mag.subdoelenBeheren(leeftijd);
+
   return (
     <Blok
       // The leeftijd is the figure and it is LABELLED. The values are free text, from "K3" to "8-9",
@@ -85,18 +101,20 @@ export function Subthemahoofdstuk({
       figuur={subthema.leeftijd}
       onder={telWoord(subthema.duurWeken, "thema.eenWeek", "thema.weken")}
       acties={
-        <>
-          <Bewerkknop
-            omrand
-            label={t("subthemabeheer.bewerkAria", { naam: subthema.naam })}
-            onClick={onBewerk}
-          />
-          <Verwijderknop
-            omrand
-            label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })}
-            onClick={onVerwijder}
-          />
-        </>
+        magSubthema ? (
+          <>
+            <Bewerkknop
+              omrand
+              label={t("subthemabeheer.bewerkAria", { naam: subthema.naam })}
+              onClick={onBewerk}
+            />
+            <Verwijderknop
+              omrand
+              label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })}
+              onClick={onVerwijder}
+            />
+          </>
+        ) : undefined
       }
     >
       <h3>
@@ -165,7 +183,9 @@ export function Subthemahoofdstuk({
 
           <Subkop
             titel={t("thema.activiteitenTitel")}
-            acties={<Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} />}
+            acties={
+              magActiviteit ? <Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} /> : undefined
+            }
           >
             {activiteiten.length === 0 ? (
               <p className="text-meta text-inkt-zacht">{t("activiteit.geen")}</p>
@@ -175,9 +195,14 @@ export function Subthemahoofdstuk({
                   <li key={activiteit.id}>
                     <Activiteitregel
                       activiteit={activiteit}
+                      magBewerken={magActiviteit}
                       onBewerk={() => onBewerkActiviteit(activiteit)}
-                      onVerwijder={() => onVerwijderActiviteit(activiteit)}
-                      onKoppelDoel={(code) => onKoppelActiviteitdoel(activiteit.id, code)}
+                      onVerwijder={
+                        mag.activiteitVerwijderen({ ...activiteit, leeftijd })
+                          ? () => onVerwijderActiviteit(activiteit)
+                          : undefined
+                      }
+                      onKoppelDoel={magKoppelen ? (code) => onKoppelActiviteitdoel(activiteit.id, code) : undefined}
                       koppelenBezig={koppelenBezig}
                     />
                   </li>
@@ -190,12 +215,14 @@ export function Subthemahoofdstuk({
             titel={t("thema.subdoelenTitel")}
             icoon={<IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zacht" />}
             acties={
-              <Doelkoppelaar
-                onKies={onKoppelSubdoel}
-                bezig={koppelenBezig}
-                alGekozen={subthema.subdoelen.map((s) => s.koppeling.leerplandoelCode)}
-                toelichting={t("thema.koppelAanSubthema", { naam: subthema.naam })}
-              />
+              magSubdoelen ? (
+                <Doelkoppelaar
+                  onKies={onKoppelSubdoel}
+                  bezig={koppelenBezig}
+                  alGekozen={subthema.subdoelen.map((s) => s.koppeling.leerplandoelCode)}
+                  toelichting={t("thema.koppelAanSubthema", { naam: subthema.naam })}
+                />
+              ) : undefined
             }
           >
             {subthema.subdoelen.length === 0 ? (
@@ -208,11 +235,13 @@ export function Subthemahoofdstuk({
                       {subdoel.koppeling.leerplandoelCode}
                     </span>
                     <Statusmerk status={subdoel.koppeling.status} className="ml-auto" />
-                    <Ontkoppel
-                      label={t("activiteit.ontkoppel", { code: subdoel.koppeling.leerplandoelCode })}
-                      bezig={koppelenBezig}
-                      onClick={() => onOntkoppelSubdoel(subdoel.id)}
-                    />
+                    {magSubdoelen ? (
+                      <Ontkoppel
+                        label={t("activiteit.ontkoppel", { code: subdoel.koppeling.leerplandoelCode })}
+                        bezig={koppelenBezig}
+                        onClick={() => onOntkoppelSubdoel(subdoel.id)}
+                      />
+                    ) : null}
                   </Doelregel>
                 ))}
               </Doellijst>
@@ -246,18 +275,27 @@ export function Subthemahoofdstuk({
  * **The doelmerk is unconditional**, filled or empty. Absence used to be encoded as absence, so "no
  * doelen" and "this row is just shorter" looked identical, and the question this list is scanned for
  * was the one it refused to answer.
+ *
+ * **The row opens for everyone; its two controls only for whoever holds them** (E6-02). Opening shows the form to a
+ * gebruiker who may change the content and the facts to anyone else, so its label says which. The goal picker and the
+ * bin are left out, not disabled, when their row of the matrix does not hold.
  */
 function Activiteitregel({
   activiteit,
+  magBewerken,
   onBewerk,
   onVerwijder,
   onKoppelDoel,
   koppelenBezig,
 }: {
   activiteit: ActiviteitMetKleur;
+  /** Opening shows the form rather than the facts; only the label differs here. */
+  magBewerken: boolean;
   onBewerk: () => void;
-  onVerwijder: () => void;
-  onKoppelDoel: (leerplandoelCode: string) => void;
+  /** Absent without the delete right. */
+  onVerwijder?: () => void;
+  /** Absent without the goal-link right. */
+  onKoppelDoel?: (leerplandoelCode: string) => void;
   koppelenBezig?: boolean;
 }) {
   const kleur = activiteit.kleur as Activiteitkleur | null;
@@ -271,7 +309,7 @@ function Activiteitregel({
       <button
         type="button"
         onClick={onBewerk}
-        aria-label={t("activiteit.bewerkAria", { naam: activiteit.naam })}
+        aria-label={t(magBewerken ? "activiteit.bewerkAria" : "activiteit.bekijkAria", { naam: activiteit.naam })}
         className="absolute inset-0 z-0 transition-colors duration-150 hover:bg-inkt/[0.035]"
       />
 
@@ -313,20 +351,24 @@ function Activiteitregel({
           {/* `contents` so the wrapper adds no box of its own: the koppelaar's open state is a
               full-width panel that has to stay a direct child of the wrapping row to take its own
               line. */}
-          <div className="pointer-events-auto contents">
-            <Doelkoppelaar
-              compact
-              onKies={onKoppelDoel}
-              bezig={koppelenBezig}
-              alGekozen={codes}
-              toelichting={t("activiteit.koppelAan", { naam: activiteit.naam })}
+          {onKoppelDoel ? (
+            <div className="pointer-events-auto contents">
+              <Doelkoppelaar
+                compact
+                onKies={onKoppelDoel}
+                bezig={koppelenBezig}
+                alGekozen={codes}
+                toelichting={t("activiteit.koppelAan", { naam: activiteit.naam })}
+              />
+            </div>
+          ) : null}
+          {onVerwijder ? (
+            <Verwijderknop
+              className="pointer-events-auto"
+              label={t("activiteit.verwijderAria", { naam: activiteit.naam })}
+              onClick={onVerwijder}
             />
-          </div>
-          <Verwijderknop
-            className="pointer-events-auto"
-            label={t("activiteit.verwijderAria", { naam: activiteit.naam })}
-            onClick={onVerwijder}
-          />
+          ) : null}
         </div>
       </div>
     </div>

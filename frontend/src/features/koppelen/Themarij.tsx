@@ -3,6 +3,7 @@ import { Knop } from "../../components/ui/Knop";
 import { IcoonChevron, IcoonPlus, IcoonVink } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { geenToegangZin, useRechten } from "../../lib/rechten";
 import { MAX_THEMADOELEN } from "../../lib/types";
 import type { Subthemabestemming, Themabestemming } from "./bestemmingen";
 import {
@@ -25,6 +26,11 @@ import { Nieuweactiviteitregel } from "./Nieuweactiviteitregel";
  * is refused by the server, and a button that produces an error for doing the obvious thing is worse
  * than no button. The word "Gekoppeld" carries it, with the tick as reinforcement rather than as the
  * signal (Art. XII, WCAG 2.2 AA 1.4.1).
+ *
+ * **Each level is offered to whoever may link there** (E6-02, ADR-0030 §3): the thema to directie and themabeheer
+ * (R4), a subthema and its activiteiten to directie and that leeftijd's hoofdleerkrachten (R24, R19), and a new
+ * activiteit made with this doel on it likewise, since its create carries a goal code (R19). A level the gebruiker may
+ * not link to still shows where the doel already sits; it just offers nothing to press.
  */
 export function Themarij({
   tak,
@@ -39,6 +45,7 @@ export function Themarij({
 }) {
   const [open, setOpen] = useState(standaardOpen);
   const koppelThema = useKoppelDoelAanThema();
+  const { mag } = useRechten();
 
   const aantalSubthemas = tak.thema.subthemas.length;
 
@@ -75,24 +82,29 @@ export function Themarij({
         {tak.alGekoppeld ? <Gekoppeldmerk /> : null}
       </div>
 
-      <Koppelfout zichtbaar={koppelThema.isError} />
+      <Koppelfout zichtbaar={koppelThema.isError} fout={koppelThema.error} />
 
       {open ? (
         <div className="border-t border-lijn bg-vlak/50 p-2">
-          <div className="flex px-1 pb-2 pt-1">
-            <Koppelactie
-              alGekoppeld={tak.alGekoppeld}
-              // A full thema is not an error state and does not get the attention styling of one:
-              // three themadoelen is what a finished thema looks like. It is said, and the button
-              // is gone.
-              geblokkeerd={tak.themaVol}
-              geblokkeerdeTekst={t("koppelen.themaVol", { max: MAX_THEMADOELEN })}
-              label={t("koppelen.koppelAanThema")}
-              toelichting={t("koppelen.koppelAanThemaUitleg", { thema: tak.thema.naam })}
-              bezig={koppelThema.isPending}
-              onKoppel={() => koppelThema.mutate({ themaId: tak.thema.id, leerplandoelCode: code })}
-            />
-          </div>
+          {/* The thema level only for directie and themabeheer (R4). Without the right there is nothing to say here:
+              the closed row already shows "Gekoppeld" where the doel sits, and "Al 3 themadoelen" explains a button
+              this gebruiker would not get anyway. */}
+          {mag.themaBewerken ? (
+            <div className="flex px-1 pb-2 pt-1">
+              <Koppelactie
+                alGekoppeld={tak.alGekoppeld}
+                // A full thema is not an error state and does not get the attention styling of one:
+                // three themadoelen is what a finished thema looks like. It is said, and the button
+                // is gone.
+                geblokkeerd={tak.themaVol}
+                geblokkeerdeTekst={t("koppelen.themaVol", { max: MAX_THEMADOELEN })}
+                label={t("koppelen.koppelAanThema")}
+                toelichting={t("koppelen.koppelAanThemaUitleg", { thema: tak.thema.naam })}
+                bezig={koppelThema.isPending}
+                onKoppel={() => koppelThema.mutate({ themaId: tak.thema.id, leerplandoelCode: code })}
+              />
+            </div>
+          ) : null}
 
           {tak.subthemas.length === 0 ? (
             // Not a dead end dressed as one: a thema without subthema's for this class is a normal
@@ -126,6 +138,9 @@ function Subthemarij({
 }) {
   const [open, setOpen] = useState(standaardOpen);
   const koppelSubthema = useKoppelDoelAanSubthema();
+  const { mag } = useRechten();
+  const leeftijd = subtak.subthema.leeftijd;
+  const magKoppelen = mag.doelenKoppelen(leeftijd);
 
   return (
     <div className="rounded-veld border border-lijn bg-kaart">
@@ -155,33 +170,48 @@ function Subthemarij({
           </span>
         </button>
 
-        <Koppelactie
-          alGekoppeld={subtak.alGekoppeld}
-          label={t("koppelen.koppelAanSubthema")}
-          toelichting={t("koppelen.koppelAanSubthemaUitleg", { subthema: subtak.subthema.naam })}
-          bezig={koppelSubthema.isPending}
-          onKoppel={() => koppelSubthema.mutate({ subthemaId: subtak.subthema.id, leerplandoelCode: code })}
-        />
+        {/* A subdoel (R24). The mark stays for everyone, since it says where the doel already sits. */}
+        {mag.subdoelenBeheren(leeftijd) ? (
+          <Koppelactie
+            alGekoppeld={subtak.alGekoppeld}
+            label={t("koppelen.koppelAanSubthema")}
+            toelichting={t("koppelen.koppelAanSubthemaUitleg", { subthema: subtak.subthema.naam })}
+            bezig={koppelSubthema.isPending}
+            onKoppel={() => koppelSubthema.mutate({ subthemaId: subtak.subthema.id, leerplandoelCode: code })}
+          />
+        ) : subtak.alGekoppeld ? (
+          <Gekoppeldmerk />
+        ) : null}
       </div>
 
-      <Koppelfout zichtbaar={koppelSubthema.isError} />
+      <Koppelfout zichtbaar={koppelSubthema.isError} fout={koppelSubthema.error} />
 
       {open ? (
         <div className="border-t border-lijn px-2.5 py-2">
           <ul className="flex flex-col gap-1">
             {subtak.activiteiten.map(({ activiteit, alGekoppeld }) => (
               <li key={activiteit.id}>
-                <Activiteitrij activiteitId={activiteit.id} naam={activiteit.naam} alGekoppeld={alGekoppeld} code={code} />
+                <Activiteitrij
+                  activiteitId={activiteit.id}
+                  naam={activiteit.naam}
+                  alGekoppeld={alGekoppeld}
+                  magKoppelen={magKoppelen}
+                  code={code}
+                />
               </li>
             ))}
           </ul>
 
-          <Nieuweactiviteitregel
-            subthemaId={subtak.subthema.id}
-            subthemaNaam={subtak.subthema.naam}
-            code={code}
-            klasId={klasId}
-          />
+          {/* Making an activiteit WITH this doel on it: the create right and the goal-link right at this leeftijd
+              together (R17, R19). A leerkracht makes activiteiten on the thema screen, without a doel. */}
+          {mag.activiteitBewerken(leeftijd) && magKoppelen ? (
+            <Nieuweactiviteitregel
+              subthemaId={subtak.subthema.id}
+              subthemaNaam={subtak.subthema.naam}
+              code={code}
+              klasId={klasId}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -198,11 +228,14 @@ function Activiteitrij({
   activiteitId,
   naam,
   alGekoppeld,
+  magKoppelen,
   code,
 }: {
   activiteitId: string;
   naam: string;
   alGekoppeld: boolean;
+  /** R19 at this activiteit's leeftijd. Without it the row is a name, not a control. */
+  magKoppelen: boolean;
   code: string;
 }) {
   const koppel = useKoppelDoelAanActiviteit();
@@ -217,18 +250,32 @@ function Activiteitrij({
     );
   }
 
+  // Before the rights check, and that order matters: a refusal refetches the rights, and a row that went on to lose
+  // its link control would otherwise take the reason with it.
   if (koppel.isError) {
+    const geweigerd = geenToegangZin(koppel.error) !== null;
     return (
       <div className="rounded-veld px-2.5 py-2">
         <p className="truncate text-body text-inkt">{naam}</p>
-        <Koppelfout zichtbaar />
-        <button
-          type="button"
-          onClick={() => koppel.mutate({ activiteitId, leerplandoelCode: code })}
-          className="mt-1 text-meta font-medium text-accent underline decoration-dotted underline-offset-2 transition-colors duration-150 hover:text-accent-diep"
-        >
-          {t("koppelen.opnieuw")}
-        </button>
+        <Koppelfout zichtbaar fout={koppel.error} />
+        {/* No retry after a refusal: it would be refused again. */}
+        {geweigerd ? null : (
+          <button
+            type="button"
+            onClick={() => koppel.mutate({ activiteitId, leerplandoelCode: code })}
+            className="mt-1 text-meta font-medium text-accent underline decoration-dotted underline-offset-2 transition-colors duration-150 hover:text-accent-diep"
+          >
+            {t("koppelen.opnieuw")}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!magKoppelen) {
+    return (
+      <div className="flex items-center gap-2 rounded-veld px-2.5 py-2">
+        <span className="min-w-0 flex-1 truncate text-body text-inkt">{naam}</span>
       </div>
     );
   }
@@ -277,12 +324,15 @@ function Gekoppeldmerk() {
  * duplicate link and an unknown code, neither of which this sheet can produce: it hides rows that are
  * already linked and it only ever sends a code it was given. So a specific cause would be a guess,
  * and the E5-03 rule says to say less rather than to say something else.
+ *
+ * **One cause it does name: a refusal** (E6-02). A 403 is a fact the server stated, not a guess, and "probeer het
+ * opnieuw" would be false for it, since trying again is refused again.
  */
-function Koppelfout({ zichtbaar }: { zichtbaar: boolean }) {
+function Koppelfout({ zichtbaar, fout }: { zichtbaar: boolean; fout?: unknown }) {
   if (!zichtbaar) return null;
   return (
     <p role="alert" className="px-3 pb-2.5 text-meta text-dekking-niet-gedekt">
-      {t("koppelen.koppelMislukt")}
+      {geenToegangZin(fout) ?? t("koppelen.koppelMislukt")}
     </p>
   );
 }

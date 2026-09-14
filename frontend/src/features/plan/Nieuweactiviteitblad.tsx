@@ -3,6 +3,7 @@ import { Blad } from "../../components/ui/Blad";
 import { Keuze } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { useThemasVoorKlas } from "../../lib/queries";
+import { useRechten } from "../../lib/rechten";
 import { volleDag } from "../../lib/datum";
 import { t } from "../../i18n";
 import { Activiteitformulier, type ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
@@ -62,23 +63,30 @@ export function Nieuweactiviteitblad({
 }) {
   const id = useId();
   const { themas, laadt } = useThemasVoorKlas(themaIds, klasId);
+  const { mag } = useRechten();
 
   // Every subthema of every thema running in this period, in the order the picker lists them, so the
   // dropdown and the list above it do not disagree about what this period contains. Subthema's with
   // no activiteiten are in here and deliberately so: an empty subthema is precisely the one a teacher
   // is most likely to be filling, and the picker cannot show it because it has nothing to show.
+  //
+  // Only those this gebruiker may make an activiteit in (E6-02: R17, R23). The picker offers this sheet only when
+  // there is at least one.
   const keuzes = useMemo(
     () =>
       themas.flatMap((thema) =>
-        thema.subthemas.map((sub) => ({
-          id: sub.id,
-          naam: sub.naam,
-          themaId: thema.id,
-          themaNaam: thema.naam,
-          onderzoeksvragen: sub.onderzoeksvragen,
-        })),
+        thema.subthemas
+          .filter((sub) => mag.activiteitBewerken(sub.leeftijd))
+          .map((sub) => ({
+            id: sub.id,
+            naam: sub.naam,
+            leeftijd: sub.leeftijd,
+            themaId: thema.id,
+            themaNaam: thema.naam,
+            onderzoeksvragen: sub.onderzoeksvragen,
+          })),
       ),
-    [themas],
+    [themas, mag],
   );
 
   // Null means "whatever the day suggests", which is not the same as a copy of that suggestion: a
@@ -114,6 +122,8 @@ export function Nieuweactiviteitblad({
   return (
     <Activiteitformulier
       open
+      // Goal codes on a create need the goal-link right at the subthema's leeftijd (R19); without it, no picker.
+      magDoelen={mag.doelenKoppelen(actief.leeftijd)}
       onderzoeksvragen={actief.onderzoeksvragen}
       bezig={maak.isPending || planBezig}
       fout={maakFout}

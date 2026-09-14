@@ -52,6 +52,7 @@ export function Subthemaplanner({
   open,
   klasId,
   klasNaam,
+  magSubthemaMaken,
   themaIds,
   dagen,
   bezig,
@@ -63,6 +64,11 @@ export function Subthemaplanner({
   klasId: string | null;
   /** Named in the empty state, because which klas is selected is exactly what makes it empty. */
   klasNaam: string | null;
+  /**
+   * Whether this gebruiker may make a subthema for this klas's leeftijd (E6-02: R5, R21). The empty state's
+   * instruction to go and make one, and its links, are only for them.
+   */
+  magSubthemaMaken: boolean;
   themaIds: string[];
   dagen: Dagweergave[];
   bezig: boolean;
@@ -186,7 +192,7 @@ export function Subthemaplanner({
       {laadt ? (
         <Laadlijst rijen={4} />
       ) : subthemas.length === 0 ? (
-        <Nietsomteplannen klasNaam={klasNaam} themas={themas} />
+        <Nietsomteplannen klasNaam={klasNaam} themas={themas} magSubthemaMaken={magSubthemaMaken} />
       ) : (
         <div className="flex flex-col gap-4">
           <Veld label={t("periode.subthema")}>
@@ -347,8 +353,21 @@ export function Subthemaplanner({
  *
  * A period holding no thema at all is a third state, and it says so rather than being folded into the
  * second: there is no thema to make a subthema under, so the way out is a different screen.
+ *
+ * **The way out is only drawn for whoever can take it** (E6-02): making a subthema is directie's and that leeftijd's
+ * hoofdleerkrachten' (R5, R21). A leerkracht is told the klas has none and nothing more, since "Maak er een" would ask
+ * her for something the server refuses. That is the "say less" branch: the sentence about why is dropped with it,
+ * because it ends in the same instruction.
  */
-function Nietsomteplannen({ klasNaam, themas }: { klasNaam: string | null; themas: ThemaWeergave[] }) {
+function Nietsomteplannen({
+  klasNaam,
+  themas,
+  magSubthemaMaken,
+}: {
+  klasNaam: string | null;
+  themas: ThemaWeergave[];
+  magSubthemaMaken: boolean;
+}) {
   if (themas.length === 0) {
     return (
       <div className="flex flex-col items-start gap-3">
@@ -374,11 +393,13 @@ function Nietsomteplannen({ klasNaam, themas }: { klasNaam: string | null; thema
           ? t("periode.geenSubthemaVoorKlasEen", { klas, thema: themas[0].naam })
           : t("periode.geenSubthemaVoorKlasMeer", { klas })}
       </p>
-      <p className="text-meta text-inkt-zacht">{t("periode.subthemaHoortBijLeeftijd")}</p>
+      {magSubthemaMaken ? (
+        <>
+          <p className="text-meta text-inkt-zacht">{t("periode.subthemaHoortBijLeeftijd")}</p>
 
-      {/* A destination, so a link and not a Knop: it goes in the address bar and takes a middle
-          click. One per thema, because the subthema has to be made under one of them. */}
-      <ul className="mt-1 flex flex-col gap-2">
+          {/* A destination, so a link and not a Knop: it goes in the address bar and takes a middle
+              click. One per thema, because the subthema has to be made under one of them. */}
+          <ul className="mt-1 flex flex-col gap-2">
         {themas.map((thema) => (
           <li key={thema.id}>
             <Link
@@ -390,7 +411,9 @@ function Nietsomteplannen({ klasNaam, themas }: { klasNaam: string | null; thema
             </Link>
           </li>
         ))}
-      </ul>
+          </ul>
+        </>
+      ) : null}
     </div>
   );
 }

@@ -2,7 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActiviteitWeergave, SubthemaWeergave, ThemaWeergave } from "../../lib/types";
+import type { Ik } from "../../lib/aanmelding";
 import { t } from "../../i18n";
+import { ikMet, metIk } from "../../test/rechten";
 import type { Themabestemming } from "./bestemmingen";
 import { Themarij } from "./Themarij";
 
@@ -82,8 +84,17 @@ function tak(themadoelCodes: string[] = []): Themabestemming {
   };
 }
 
-function toon(bestemming: Themabestemming, standaardOpen = true) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+/**
+ * Who links, by default: a hoofdleerkracht of K3 who also holds themabeheer, so every level of this K3 tree is
+ * theirs (R4, R19, R24). The E6-02 cases at the end say who else is looking.
+ */
+const KOPPELAAR = ikMet({ heeftThemabeheer: true, hoofdleerkrachtLeeftijden: ["K3"] });
+
+function toon(bestemming: Themabestemming, standaardOpen = true, ik: Ik = KOPPELAAR) {
+  const client = metIk(
+    new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }),
+    ik,
+  );
   return render(
     <QueryClientProvider client={client}>
       <Themarij tak={bestemming} code={CODE} klasId="klas-1" standaardOpen={standaardOpen} />
@@ -196,5 +207,70 @@ describe("Themarij", () => {
     fireEvent.click(screen.getByRole("button", { name: t("koppelen.koppelAanActiviteitUitleg", { activiteit: "Bladerslinger" }) }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(t("koppelen.koppelMislukt"));
+  });
+
+  // E6-02: a stale control meets a refusal. It is named as one, and no retry is offered, since trying again is refused
+  // again.
+  it("noemt een weigering van de server een weigering, zonder opnieuw te laten proberen", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ title: "Geen toegang", detail: "Je hebt geen toegang tot deze actie." }), {
+        status: 403,
+      }),
+    );
+    toon(tak());
+
+    fireEvent.click(screen.getByRole("button", { name: t("koppelen.koppelAanActiviteitUitleg", { activiteit: "Bladerslinger" }) }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Je hebt geen toegang tot deze actie.");
+    expect(screen.queryByRole("button", { name: t("koppelen.opnieuw") })).not.toBeInTheDocument();
+  });
+
+  /*
+    E6-02, ADR-0030 §3: each level is offered to whoever may link there. A leerkracht of K3 may make activiteiten but
+    not link goals to them (R19), a subthema is the hoofdleerkracht's (R24), and a thema is themabeheer's (R4). The
+    tree still says where the doel already sits.
+  */
+  it("biedt een leerkracht van de leeftijd niets om te koppelen, maar toont waar het doel al hangt", () => {
+    toon(tak(), true, ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
+
+    expect(screen.getByText("Bladerslinger")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("koppelen.koppelAanActiviteitUitleg", { activiteit: "Bladerslinger" }) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("koppelen.koppelAanSubthemaUitleg", { subthema: "Bladeren sorteren" }) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("koppelen.koppelAanThemaUitleg", { thema: "Herfst en bladeren" }) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("koppelen.nieuweActiviteitUitleg", { subthema: "Bladeren sorteren" }) }),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText(t("koppelen.gekoppeld")).length).toBeGreaterThan(0);
+  });
+
+  it("biedt themabeheer zonder hoofdleerkrachtschap alleen het thema aan", () => {
+    toon(tak(["NED-1.1"]), true, ikMet({ heeftThemabeheer: true }));
+
+    expect(
+      screen.getByRole("button", { name: t("koppelen.koppelAanThemaUitleg", { thema: "Herfst en bladeren" }) }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("koppelen.koppelAanSubthemaUitleg", { subthema: "Bladeren sorteren" }) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("koppelen.koppelAanActiviteitUitleg", { activiteit: "Bladerslinger" }) }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("biedt een hoofdleerkracht van een andere leeftijd niets in deze K3-boom", () => {
+    toon(tak(), true, ikMet({ hoofdleerkrachtLeeftijden: ["L1"] }));
+
+    expect(
+      screen.queryByRole("button", { name: t("koppelen.koppelAanActiviteitUitleg", { activiteit: "Bladerslinger" }) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("koppelen.koppelAanSubthemaUitleg", { subthema: "Bladeren sorteren" }) }),
+    ).not.toBeInTheDocument();
   });
 });
