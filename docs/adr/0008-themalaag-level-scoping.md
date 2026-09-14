@@ -1,6 +1,16 @@
 # ADR-0008 — Two-tier themalaag with level-based ownership/scoping
 
-- **Status:** Accepted
+- **Status:** Accepted. **Both of its ownership statements are superseded; the two-tier principle stands.**
+  - The per-class scoping of `Subthema`/`Subdoel`/`Activiteit` was superseded by
+    [ADR-0025](0025-subthema-per-leeftijd.md) on 2026-08-30: they are scoped by leeftijd alone.
+  - "Owned by team/directie" for the school-scoped tier was superseded by
+    [ADR-0030](0030-rollen-en-rechten-in-de-app.md) and the Art. VI.1 amendment on the owner's rulings of 2026-09-13.
+    A thema is edited by directie and themabeheer. A subthema and its subdoelen are created, edited and deleted by
+    directie and that jaar's hoofdleerkrachten. Every leerkracht with a klas of that leeftijd also edits the content
+    of its shared activiteiten and its streefwoordenschat, creates activiteiten, and deletes one they created while
+    no goal is linked to it. Goal links by hand stay with directie and the hoofdleerkrachten.
+  - What stands is the principle this ADR exists for: scope is prescribed per level by pedagogy, not by one
+    shared/per-class flag. The text below is left as written.
 - **Date:** 2026-06-29
 - **Deciders:** Architect (Siebe De Saedeleir / team)
 
