@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 13:26
+bijgewerkt: 2026-09-14 13:29
 opgepakt-door: ai-doelsuggesties
 branch: ticket/ai-doelsuggesties-eval
 pr:
@@ -134,3 +134,4 @@ wordt gecommit, voor de tests van de runner zelf.
 - 2026-09-14 12:51 · ai-doelsuggesties · open, blokkeert klaar: de regel voor ADR-0036 in docs/adr/README.md (index en traceability) wacht op de claim van kindrapport op dat bestand; daarnaast wacht criterium 3 op de deploy en ADR-0036 op aanvaarding door de eigenaar
 - 2026-09-14 13:08 · ai-doelsuggesties · antagonist ronde 3: 0 major, 6 minor (timeouts stopten de run, cachefout kon de fout verbergen, retrievaltabel telde fouten als missers, zwakke regressietest, verkeerd cachebestand, halve hernoeming); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-3.md
 - 2026-09-14 13:26 · ai-doelsuggesties · antagonist ronde 4: 0 major, 2 minor (een fout tijdens een gevraagde stop crashte de runner; 'Bij de kandidaten' had twee betekenissen); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-4.md
+- 2026-09-14 13:29 · ai-doelsuggesties · ADR-0036 staat nu in docs/adr/README.md (index en traceability-matrix); dat blokkeert klaar niet meer. Open blijven criterium 3 (deploy) en de aanvaarding van ADR-0036 door de eigenaar
