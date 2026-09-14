@@ -5,11 +5,11 @@ soort: technisch
 status: nieuw
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:36
+bijgewerkt: 2026-09-14 14:36
 opgepakt-door:
 branch:
 pr:
-geblokkeerd: wacht op de eigenaar: wat bij een thema zonder subthema's, en welke bovengrens voor de prompt
+geblokkeerd:
 fr: []
 ---
 
@@ -34,19 +34,23 @@ geen selectie meegeeft.
   kandidaten blijft in het resultaat staan, zodat de omvang zichtbaar is.
 - De doelen compacter uitschrijven (code, domein, subdomein, tekst), of voorbeelden en toelichting inkorten. Welke vorm,
   daarover beslist de meting van TB-004.
-- Een harde bovengrens op de grootte van de prompt. Gaat een aanvraag erover, dan wordt het model niet aangeroepen, wordt
-  er niets bewaard en krijgt de gebruiker een Nederlandse melding die zegt hoe het kleiner kan.
-- Code: `DoelMatchingService`, `MatchingPromptBuilder`, `ThemaOpbouwAssistService`, `ThemaOpbouwPromptBuilder` en zo
-  nodig de aanroep in de frontend.
+- Bij een thema zonder subthema's kiest de gebruiker vóór het genereren één of meer jaarfasen; de kandidaten zijn dan
+  de doelen van die jaarfasen.
+- Een harde bovengrens op de grootte van de prompt, als instelling in de configuratie met standaard 50.000 tokens. Gaat
+  een aanvraag erover, dan wordt het model niet aangeroepen, wordt er niets bewaard en krijgt de gebruiker een
+  Nederlandse melding die zegt hoe het kleiner kan.
+- Code: `DoelMatchingService`, `MatchingPromptBuilder`, `ThemaOpbouwAssistService`, `ThemaOpbouwPromptBuilder`, de
+  aanroep in de frontend en de keuze van de jaarfasen (UI-werk, dus eerst de skill `frontend-design`).
 
 ## Acceptatiecriteria
 
 - [ ] Gegeven een thema met subthema's voor K3 en de volledige Op.stap-import, wanneer suggesties gegenereerd worden,
   dan bevat de prompt alleen K3-doelen en toont het resultaat het aantal kandidaten.
-- [ ] Gegeven een thema zonder subthema's, wanneer suggesties gegenereerd worden, dan gebeurt wat de eigenaar beslist
-  (zie Open vragen), en nooit stilzwijgend de hele catalogus.
-- [ ] Gegeven een kandidatenset boven de bovengrens, wanneer suggesties gevraagd worden, dan wordt het model niet
-  aangeroepen, wordt er niets bewaard en ziet de gebruiker een Nederlandse melding.
+- [ ] Gegeven een thema zonder subthema's, wanneer de gebruiker suggesties wil genereren, dan kiest hij eerst één of meer
+  jaarfasen en bevat de prompt alleen doelen van die jaarfasen; zonder keuze wordt het model niet aangeroepen, en nooit
+  gaat stilzwijgend de hele catalogus mee.
+- [ ] Gegeven een kandidatenset boven de ingestelde bovengrens (standaard 50.000 tokens), wanneer suggesties gevraagd
+  worden, dan wordt het model niet aangeroepen, wordt er niets bewaard en ziet de gebruiker een Nederlandse melding.
 - [ ] Gegeven de nep-AI-client, dan dekken unit tests de drie gevallen hierboven en zijn de snapshot tests van de prompt
   bijgewerkt.
 
@@ -58,11 +62,16 @@ geen selectie meegeeft.
 
 ## Open vragen
 
-- **Een thema zonder subthema's:** de jaarfase van de geselecteerde klas, alle jaarfasen van de school, of de gebruiker
-  laten kiezen?
-- **De bovengrens:** een vast aantal tokens (bijvoorbeeld 50.000), of per model instelbaar?
+Beantwoord door de eigenaar op 2026-09-14:
+
+- **Een thema zonder subthema's:** de gebruiker kiest de jaarfasen. Directie en themabeheer hebben geen eigen klas, dus
+  de gekozen klas zegt weinig over een schoolbreed thema.
+- **De bovengrens:** één instelling in de configuratie, standaard 50.000 tokens, aan te passen zonder codewijziging
+  (bijvoorbeeld na de meting van TB-004). Niet per model.
 
 ## Werklog
 
 - 2026-09-14 11:33 · ai-doelsuggesties · aangemaakt (status nieuw)
 - 2026-09-14 11:36 · ai-doelsuggesties · geblokkeerd: wacht op de eigenaar: wat bij een thema zonder subthema's, en welke bovengrens voor de prompt
+- 2026-09-14 14:35 · ai-doelsuggesties · niet langer geblokkeerd
+- 2026-09-14 14:36 · ai-doelsuggesties · eigenaar besliste: bij een thema zonder subthema's kiest de gebruiker de jaarfasen; bovengrens is een configinstelling, standaard 50.000 tokens
