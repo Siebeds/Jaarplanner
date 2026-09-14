@@ -1527,7 +1527,7 @@ What the pass showed:
 | 360 | Algemene fiches | 74/127 | [183,307] | left [17,49], right [311,343] |
 | 360 | Weergave | 127/127 | [254,339] | left [17,49] |
 
-Light and dark gave identical geometry. Before the fix, the same pass had Algemene fiches at [217,341] under the right fade (round 1's defect, and 0.3px with `scroll-px-8`).
+Light and dark gave identical geometry. Before the fix, the test-runner measured Algemene fiches at [249,373] at 390, its last 19.3px under the right fade. With `scroll-px-8`, this pass measured [217,341], touching the fade by 0.3px, which is why the padding is 36px.
 
 **Gates:**
 - `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
