@@ -32,7 +32,8 @@ goedkoopste SKU's.
 - `infra/deploy-app.ps1` en `infra/migrate-db.ps1` krijgen de omgeving als parameter. `infra/README.md` beschrijft de
   stappen per omgeving.
 - Een nieuw ADR over hosting per school en per omgeving. Voor deze installatie vervangt het de demo-uitzondering van
-  ADR-0034.
+  ADR-0034. Het wijzigt ook beslissing 3 van ADR-0036 (TB-004): die noemt de evaluatie-resource "apart from everything
+  else", en dev en tst gaan hem delen.
 - Voor prd, vóór er echte gegevens in komen:
   - een eigen databaserol voor de app met alleen DML-rechten (E7-05);
   - geen firewallregel die elk Azure-adres toelaat;
