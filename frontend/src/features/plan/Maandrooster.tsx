@@ -17,7 +17,8 @@ import { cn } from "../../lib/cn";
 /**
  * A month, as the grid everyone already knows: seven columns starting on Monday.
  *
- * This is the agenda's opening view, so it does more than answer where the work sits. The day number
+ * It was the agenda's opening view until the week took that over (TB-012), and it still does more
+ * than answer where the work sits. The day number
  * is a button into that day, every activiteit on it is a button into that activiteit, and the cell
  * is a drop target. What it deliberately does NOT try to be is an editor: a 96 pixel cell cannot
  * hold a form, and trying is how month views become unusable.
@@ -155,9 +156,12 @@ function Maandcel({
       ref={setNodeRef}
       aria-current={isVandaag ? "date" : undefined}
       className={cn(
-        // `overflow-hidden` for the subthema strip: it runs to both edges of the cell, so the cell's
-        // own rounded corners have to be the ones that cut it.
-        "group/cel relative flex h-16 w-full flex-col gap-1 overflow-hidden rounded-veld border p-1.5 transition-colors duration-100 sm:h-28",
+        // SQUARE CORNERS, and the strips are why (owner, 2026-09-14, TB-012). The thema, subthema and hoek
+        // strips run full bleed along the top edge, so a rounded cell cut the first letters of the band
+        // into a slant and drew its own border diagonally through the tick that marks where a run
+        // starts. The rounding stays on what sits INSIDE a cell (chips, the plus, today's pill): the cell
+        // is the grid and those are the things in it. `overflow-hidden` still clips a long chip.
+        "group/cel relative flex h-16 w-full flex-col gap-1 overflow-hidden border p-1.5 transition-colors duration-100 sm:h-28",
         // A day outside the month recedes by losing its card, NOT by opacity. `opacity-45` dimmed
         // the text with the surface and took the day number to 2.2:1, and it does it invisibly to
         // any check that reads colour without composing the alpha of every ancestor. Measured after
@@ -192,7 +196,7 @@ function Maandcel({
           subthemaZin(stroken) +
           hoekZin(hoekplaatsingen, dag.datum)
         }
-        className="absolute inset-0 z-0 rounded-veld transition-colors duration-150 hover:bg-vlak-diep/60"
+        className="absolute inset-0 z-0 transition-colors duration-150 hover:bg-vlak-diep/60"
       />
 
       {/* What is running here, along the top edge. Full bleed, so a run reads as a band across the
