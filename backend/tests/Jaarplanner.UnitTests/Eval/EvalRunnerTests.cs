@@ -314,6 +314,21 @@ public sealed class EvalRunnerTests
         Assert.Equal(1, client.AantalAanroepen);
     }
 
+    /// <summary>The same on the very last call of a run: there is no next case, and still no report comes back.</summary>
+    [Fact]
+    public async Task Een_stop_bij_de_laatste_aanroep_stopt_de_run_ook()
+    {
+        using var stop = new CancellationTokenSource();
+        var client = new GooiendeClient(() =>
+        {
+            stop.Cancel();
+            return new HttpRequestException("kapot", null, HttpStatusCode.InternalServerError);
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Runner(client).RunAsync(EenGeval(), stop.Token));
+        Assert.Equal(1, client.AantalAanroepen);
+    }
+
     /// <summary>
     /// A cache that cannot be written is only a lost optimisation: it neither replaces the selection's own error nor
     /// turns a selection that worked into a failure.

@@ -245,6 +245,9 @@ public sealed class EvalRunner
             }
         }
 
+        // The last check: a stop that arrived with the very last call ends the run as a cancellation too, not as a report.
+        cancellationToken.ThrowIfCancellationRequested();
+
         return new EvalRapport
         {
             Gestart = started,
