@@ -1,4 +1,4 @@
-import { Fragment, useId, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Knop } from "../../components/ui/Knop";
 import { Bevestiging } from "../../components/ui/Bevestiging";
@@ -50,9 +50,11 @@ export function GebruikersScherm() {
   // Read from the live list, so the sheet shows what the server answered after every tick.
   const geopend = rechtenVoor === null ? null : (gebruikers.find((g) => g.id === rechtenVoor.id) ?? null);
   // A sheet was open and the loaded list no longer holds that person: someone removed them (another tab, a
-  // colleague), and a write just answered 404, which refetched the list. The sheet then closes by itself, because it
-  // renders only for someone in the list, so the screen says why above the list. This condition proves exactly
-  // that the person was listed when opened and is not now.
+  // colleague). The usual way the screen learns it is a write from the sheet answering 404, which refetches the list
+  // (`bijNietGevonden`); any other refetch that comes back without them, such as the one after a successful tick,
+  // reveals the same removal. The sheet then closes by itself, because it renders only for someone in the list, so
+  // the screen says why above the list. This condition proves exactly that the person was listed when the sheet
+  // opened and is not in the list now, and nothing about which request found out.
   const verdwenen = rechtenVoor !== null && overzicht.data !== undefined && geopend === null ? rechtenVoor.naam : null;
 
   return (
@@ -116,9 +118,7 @@ export function GebruikersScherm() {
               ) : null}
 
               {verdwenen !== null ? (
-                <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-                  {t("gebruikers.verdwenen", { naam: verdwenen })}
-                </p>
+                <Aandachtsmelding key={verdwenen}>{t("gebruikers.verdwenen", { naam: verdwenen })}</Aandachtsmelding>
               ) : null}
 
               {gebruikers.length === 0 ? (
@@ -139,14 +139,16 @@ export function GebruikersScherm() {
             </>
           )}
 
-          {/* The removal the server refused, with its reason: the last directie (ADR-0031 decision 7). Under
-              the list because the dialog is closed by then and the row it is about is still on screen. */}
+          {/* The removal the server refused, with its reason. Under the list because the dialog is closed by
+              then. Two refusals end here: a 409 for the last directie (ADR-0031 decision 7), after which the row it
+              is about is still on screen, and a 404 for a person someone else removed first, after which the refetch
+              (`bijNietGevonden`) has dropped the row and this sentence is what is left to say so. */}
           {verwijder.isError ? (
-            <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+            <Aandachtsmelding>
               {verwijder.error instanceof ApiError && verwijder.error.detail
                 ? verwijder.error.detail
                 : t("gebruikers.verwijderMislukt")}
-            </p>
+            </Aandachtsmelding>
           ) : null}
         </div>
       </Schermvlak>
@@ -197,6 +199,38 @@ export function GebruikersScherm() {
         }}
       />
     </>
+  );
+}
+
+/**
+ * An alert that appears after the sheet or dialog it is about has closed: the list-level "intussen
+ * verwijderd", and the refusal of a removal under the list.
+ *
+ * **It takes focus once, when it appears** (owner-approved mini-fix after audit round 4). The control
+ * that had focus closed with its sheet, so focus would otherwise fall to the page body. And on a phone,
+ * the alert sits above or below a list the person may be far down in, so it would render out of view.
+ * Focusing it scrolls it into view and lets a screen reader land on it. `tabIndex={-1}` makes it
+ * focusable without adding a tab stop.
+ *
+ * It focuses on mount only, never on a re-render, so it cannot take focus away later. The call is
+ * deferred one task, because a closing Radix dialog hands focus back in a deferred step of its own,
+ * which would otherwise land after this one.
+ */
+function Aandachtsmelding({ children }: { children: ReactNode }) {
+  const melding = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    const taak = window.setTimeout(() => melding.current?.focus(), 0);
+    return () => window.clearTimeout(taak);
+  }, []);
+  return (
+    <p
+      ref={melding}
+      role="alert"
+      tabIndex={-1}
+      className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
+    >
+      {children}
+    </p>
   );
 }
 

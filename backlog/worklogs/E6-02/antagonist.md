@@ -622,3 +622,33 @@ MAJOR 1: the flag's only writer is `Program.cs:69-70`, and no configuration bind
 - **Art. II, VI.2, VI.4, VIII, XIV:** clean.
 - **Runs:** vitest (instellingen, catalogue) 46 passed; `pnpm lint` exit 0; `dotnet format --verify-no-changes` exit 0; `GebruikerbeheerEndpointsTests` on the local Postgres 41 of 41 passed.
 - **Not raised:** the doc comment at `GebruikersScherm.tsx:31` ("leaves its subthema's to directie") is (c)'s own framing, not an exclusivity claim.
+
+## Code slice 2 — audit round 4
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION). The round-3 MINOR and both test-runner items are resolved; the new sentences are true in every branch that renders them.
+**Scope audited:** `git diff 02394a3 ef4d23c` (11 files), plus `GebruikerBeheerService.cs:60-488`, `gebruikerbeheer.ts`, `GebruikersScherm.tsx`, `Rechtenblad.tsx:1-115`, the font callback in `Instellingenindeling.tsx`, the query keys in `queries.ts`, and the defaults in `App.tsx`.
+
+### [MINOR] 1. A comment this fix made false (E5-03 rule, which binds comments)
+- **Where:** `GebruikersScherm.tsx:142-143`; secondary `:52-54`.
+- **Problem:** the `verwijder.isError` comment says the alert sits under the list because "the row it is about is still on screen". Since this round a 404 on removal refetches the list (`gebruikerbeheer.ts:172`), so the row is gone. The alert's text stays true. Secondary: the `verdwenen` comment says "a write just answered 404", which its condition does not prove (a refetch after a successful tick can reveal the same removal).
+- **Required fix:** cover the 409 and the 404 in `:142-143`, and phrase the 404 in `:52-54` as the usual path. Comments only.
+
+### [QUESTION] 2. Raw ids in the klas and schooljaar not-found sentences (pre-existing, not introduced)
+- **Where:** `GebruikerBeheerService.cs:208`, `:241`.
+- **Problem:** the fix routes a klas or schooljaar 404 to the open sheet "with the server's sentence", and that sentence carries a GUID. The fix removed the id from the gebruiker sentence for that reason (`:471-473`). The FK-race siblings (`:216`, `:250`) are already id-free.
+- **Owner:** reword in the same style ("Deze klas bestaat niet (meer).") or waive. No constitution rule is breached.
+
+### Checks run (summary)
+- **Round-3 MINOR, resolved.** `bijNietGevonden` is on both write hooks, and the `klassen`/`schooljaren` prefixes match `queries.ts:142`, `:157`. The invalidation is needed (60 s stale time, no refetch on focus, `App.tsx:39-41`). The sheet closes because it renders only for a listed person, the alert sits at list level, and the new Vitest pins it.
+- **"{naam} is intussen verwijderd …" is proven by its condition.** `LeesAsync` lists every gebruiker, so only a delete removes a row. A failed refetch keeps `data`, and a failed first load has none. The invite puts the new person in the cache before `onUitgenodigd`. Directie's own removal clears `rechtenVoor` first. Not raised: a same-name re-invite by a colleague leaves the alert up beside a namesake.
+- **"(meer)" is a correct say-less.** Every `NietGevonden()` branch is true for a never-existing and for a removed id. "Intussen verwijderd" is said only after the pre-check passed or after a tracked read.
+- **Test-runner LOW, resolved.** The lock query locks every directie row, including the target's, so the new theory waits on the lock and ends in `VindNaSlotAsync`. The pre-check reads committed state.
+- **Test-runner MINOR (focus scrolled out of view), resolved.** The focused link is scrolled into view "nearest" when focus is in the row and not on the active link. Two Vitest cases pin it.
+- **No em dash** in the source diff. **Nothing new:** no dependency, endpoint, migration or hue. Art. II, VI.2, VI.4, VIII and XIV are clean.
+- **Runs:** vitest (instellingen, i18n) 49 passed; `pnpm lint` exit 0; `dotnet format --verify-no-changes` exit 0. Postgres suite not run by the auditor (the container password was not given to it); relying on the implementer's 426 passed.
+- **Not raised (for the test-runner):** after a 404 closes the sheet, its trigger row is gone, so focus likely falls to the body (Radix `Blad`, no `onCloseAutoFocus`). The alert announces why. Not checked in a browser.
+
+### Owner decision after round 4 (2026-09-14)
+The three fix rounds were used up. The owner approved one extra mini-fix covering MINOR 1 (the two comments) and QUESTION 2 (the klas and schooljaar not-found sentences without a raw id), and the orchestrator added the test-runner's round-4 LOW notes (focus the list-level alert when the sheet closes on its own), which share that code path. **The owner waived an antagonist review of that mini-fix** ("nee skip de antagonist"). Its evidence is the diff check, the tests and the browser check reported by the implementer.

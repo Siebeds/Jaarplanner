@@ -205,7 +205,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         await VereisGebruikerAsync(gebruikerId, cancellationToken);
         if (!await _context.Klassen.AnyAsync(k => k.Id == klasId, cancellationToken))
         {
-            throw new GebruikerbeheerNietGevondenFout($"Klas {klasId} is niet gevonden.");
+            throw new GebruikerbeheerNietGevondenFout("Deze klas bestaat niet (meer).");
         }
 
         var bestaat = await _context.Klastoewijzingen
@@ -238,7 +238,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         await VereisGebruikerAsync(gebruikerId, cancellationToken);
         if (!await _context.Schooljaren.AnyAsync(s => s.Id == schooljaarId, cancellationToken))
         {
-            throw new GebruikerbeheerNietGevondenFout($"Schooljaar {schooljaarId} is niet gevonden.");
+            throw new GebruikerbeheerNietGevondenFout("Dit schooljaar bestaat niet (meer).");
         }
 
         var bestaat = await _context.Hoofdleerkrachtaanstellingen.AnyAsync(

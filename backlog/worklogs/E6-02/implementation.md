@@ -1568,3 +1568,31 @@ In round 3's repro, Weergave had ended at [381,466], outside the row. **The 20 l
 - `pnpm lint`: exit 0. `pnpm test`: 35 files, 261 passed (258 + 3 new). `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
 
 **Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604d` (created, migrated, seeded over the API, dropped); Vite on 5185; headless Chrome.
+
+### Owner-approved mini-fix (after audit round 4)
+
+- **Input:**
+  - "Code slice 2 — audit round 4" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION.
+  - The round-4 test report in `test-report.md`: PASS, with LOW notes.
+
+  Both are the orchestrator's and are committed unedited with this fix.
+- **Why this is not a fix round:** the three fix rounds were used up. The owner explicitly approved this extra fix and **waived the antagonist review for it**, so no audit round follows. The evidence is the diff, the tests and the browser check below. Only the three items below were changed.
+- **Branch:** `story/E6-04-beheer`, on top of `ef4d23c`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | Audit MINOR (comments only) in `GebruikersScherm.tsx` | **Fixed.** The removal-refusal comment now covers both refusals that end under the list: a 409 for the last directie, after which the row stays on screen, and a 404 for a person someone else removed first, after which the refetch (`bijNietGevonden`) has dropped the row and the sentence is what is left. The `verdwenen` comment presents a 404 from the sheet as the usual path, and says any refetch without the person (such as after a successful tick) reveals the same removal; the condition proves only that the person was listed when the sheet opened and is not now. |
+| 2 | Audit QUESTION, the owner chose to fix: klas and schooljaar not-found sentences showed a raw GUID | **Fixed.** Now "Deze klas bestaat niet (meer)." and "Dit schooljaar bestaat niet (meer).", in the gebruiker sentence's style, with no id and no em dash. Both are pinned by value in `GebruikerbeheerEndpointsTests`: `Koppelen_aan_een_onbekende_klas_of_gebruiker_is_404` and `Aanstellen_in_een_onbekend_schooljaar_is_404`, with ids that do not exist. No other not-found sentence in `GebruikerBeheerService` carries an id; the gebruiker ones were reworded in fix round 3, and the two FK race sentences never had one. |
+| 3 | Test-runner LOW notes: an alert appearing after its sheet closes can render off screen at 390, and focus falls to `body` | **Fixed** with one component, `Aandachtsmelding`, used for the list-level "{naam} is intussen verwijderd …" and for the removal's refusal under the list. It has `tabIndex={-1}` and focuses itself once, on mount, deferred one task so a closing Radix dialog's own focus return cannot land after it. Focusing scrolls it into view. It never focuses on a re-render, so it cannot take focus in any other situation. **New Vitest:** a 404 on a tick closes the sheet, and the list-level alert receives focus and has `tabindex="-1"`. The existing removal-refusal test now also asserts that its alert receives focus. |
+
+**Backend diff check:** `git diff -- backend` shows exactly the two sentences in `GebruikerBeheerService.cs` and the two `Assert.Equal` pins (plus one comment line each) in `GebruikerbeheerEndpointsTests.cs`. Nothing else in the backend changed.
+
+**Browser check at 390** (headless Chrome, light). API in Development on port 5395 against throwaway `jp_spotcheck_e604e` (created, migrated, seeded over the API plus twelve extra people named to sort last, then dropped); Vite on 5185. The page was 3162px tall and the target rows sat low in it (row button at `scrollY` 2318).
+- **404 on a tick:** "Zz Persoon 12" was removed in the database while its sheet was open, then a klas was ticked. The sheet closed, and the alert "Zz Persoon 12 is intussen verwijderd en staat niet meer in de lijst." was focused (`tabindex=-1`), at [396,448] in an 844px viewport, fully in view; the page scrolled to it.
+- **404 on a removal:** "Zz Persoon 11" was removed in the database, then "Gebruiker verwijderen" was confirmed. The row was gone, and the refusal "Deze gebruiker bestaat niet (meer)." under the list was focused, at [573,607], fully in view.
+- **No focus theft:** before any of this, focus was on `body` with no alert. An ordinary tick afterwards kept focus on its box; the earlier refusal, still on screen, did not take focus again.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 426 passed, 1 skipped (the same count as before: the two pins are assertions added to existing tests).
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 262 passed (261 + 1 new). `pnpm build`: exit 0 (the >500 kB chunk warning predates this).

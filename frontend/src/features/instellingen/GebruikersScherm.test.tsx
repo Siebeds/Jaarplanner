@@ -248,6 +248,7 @@ describe("GebruikersScherm", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(reden);
     expect(screen.getByText("An Peeters")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveFocus());
   });
 
   it("houdt de focus op het aangevinkte vakje terwijl de wijziging bewaard wordt, en negeert een tweede vinkje", async () => {
@@ -380,6 +381,33 @@ describe("GebruikersScherm", () => {
     expect(screen.queryByRole("button", { name: t("gebruikers.rechtenVan", { naam: an.naam }) })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: t("gebruikers.rechtenVan", { naam: bert.naam }) })).toBeInTheDocument();
     expect(fetchMock.mock.calls.filter(([pad, init]) => String(pad).endsWith("/api/gebruikers") && !init?.method)).toHaveLength(2);
+  });
+
+  it("zet de focus op de melding boven de lijst als een 404 het blad sluit", async () => {
+    // Owner-approved mini-fix after audit round 4: the control that had focus closed with the sheet, and on a phone the
+    // alert can sit far above the row the person was on. Focusing it brings it into view; it is not a tab stop.
+    const an = gebruiker();
+    const bert = gebruiker({ id: "g-2", naam: "Bert Claes" });
+    toon(
+      { gebruikers: [an, bert], voorbijeSchooljaarIds: [] },
+      (pad, methode) =>
+        methode === "PUT" && pad.endsWith(`/api/gebruikers/${an.id}/klassen/${K3.id}`)
+          ? { status: 404, body: { status: 404, detail: "Deze gebruiker is intussen verwijderd." } }
+          : undefined,
+      { lijstNaFout: { gebruikers: [bert], voorbijeSchooljaarIds: [] } },
+    );
+
+    const blad = await openRechten(an.naam);
+    fireEvent.click(within(blad).getByRole("checkbox", { name: K3.naam }));
+
+    // First the sheet shows the 404 itself, until the refetched list closes it; the list-level alert comes after.
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: t("gebruikers.rechtenVan", { naam: an.naam }) })).not.toBeInTheDocument(),
+    );
+    const melding = await screen.findByText(t("gebruikers.verdwenen", { naam: an.naam }));
+    expect(melding).toHaveAttribute("role", "alert");
+    await waitFor(() => expect(melding).toHaveFocus());
+    expect(melding).toHaveAttribute("tabindex", "-1");
   });
 
   it("zegt per jaarfase wie hoofdleerkracht is, en onderscheidt niemand dit jaar van niemand", async () => {

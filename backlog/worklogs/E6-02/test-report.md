@@ -217,3 +217,37 @@ None.
 - [LOW] The fourth toggle (DELETE `…/directierecht`) raced with a removal has no test and answers "Gebruiker {guid} is niet gevonden." (a GUID in Dutch copy a directie can see), not "Deze gebruiker is intussen verwijderd.".
 - [INFO] The race tests use a fixed 1 s pending window rather than waiting on `pg_locks` (could cause a false failure under heavy load, never a false pass).
 - [INFO] Headless Chrome on Windows draws a classic scrollbar under the switch (existing).
+
+
+# E6-04 slice 2 — Test report (round 4)
+
+**Verdict:** PASS (the round-3 defect is fixed; all gates green; both browser checks pass; two LOW notes)
+**Mode:** both (unit/integration plus a backend mutation run; browser pass in headless Chrome over the DevTools protocol from Node, with real key and mouse input and font files held back; no Playwright MCP in the test-runner's session)
+**Commit:** `ef4d23c` on `story/E6-04-beheer`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Gates → PASS.** `dotnet build` 0/0; UnitTests 1340 passed, 4 skipped; IntegrationTests 426 passed, 1 skipped (+2 race cases); `dotnet format --verify-no-changes` 0; `pnpm lint` 0; `pnpm test` 261/261 (+3); `pnpm build` 0 (usual chunk warning).
+- **The new race tests are deterministic and pin the sentence → PASS.** `Een_directie_afzetten_of_verwijderen_die_intussen_verwijderd_wordt_is_404_en_geen_500` covers `/directierecht` and removal, asserting 404 and exactly "Deze gebruiker is intussen verwijderd."; the request waits on `LeesAndereDirectieOnderSlotAsync`'s `FOR UPDATE` (the target's row included) and then reaches `VindNaSlotAsync`. Mutation (copy outside the worktree): `VindNaSlotAsync` throwing `NietGevonden()` → exactly the two new cases fail (Expected "…intussen verwijderd.", Actual "Deze gebruiker bestaat niet (meer)."). Unmutated, the 8 race tests passed 8/8 three runs in a row. The lifecycle test also pins "Deze gebruiker bestaat niet (meer)." on a GET and a PUT after removal.
+- **Late font while a keyboard user is in the row; focus stays fully in view → PASS.** Directie, 390 and 360, cold cache, woff held back (measured before the font arrived): land on Klassen, Tab 4× to Weergave, font held 3 s → Weergave keeps focus and `:focus-visible`, 0 px outside the row, 0 px under a fade ([284.3,369] vs visible [17,373] at 390; [254.3,339] vs [17,343] at 360; round 3 pushed it to [381,466]). Land on Weergave, Shift+Tab 4× (3 s) and forward Tab 12× (8 s) to Klassen → focus stays, box [21,93.9], 0 px outside, 0 px under a fade at both widths (round 3: [-76,-3.1]). The next Tab behaves normally; controls with the font undelayed give the same positions.
+- **Active part clear of the fades on a fresh landing → PASS** (five parts × 390/360, font undelayed and held 1500 ms: 20 landings, 0 px overlap, active part fully inside the row).
+- **Two-tab 404: sheet closes, list refreshes, alert names the person → PASS.** Seven cases (PUT klassen, DELETE klassen, themabeheer, PUT directierecht, at 1280, low in the list, and a real second browser tab removing through its own sheet): the write answered 404 "Deze gebruiker bestaat niet (meer).", the app refetched `/gebruikers`, `/klassen`, `/schooljaren`, the sheet closed, the row was gone, and one `role="alert"` above the list read "{naam} is intussen verwijderd en staat niet meer in de lijst." (equal to `gebruikers.verdwenen`; 8:1 in dark). Returning to tab A does not refetch by itself (`refetchOnWindowFocus: false`).
+- **No raw id anywhere → PASS** (all 8 cases: id absent from page text and `outerHTML`, no GUID pattern; the eighth, the sheet's own Verwijderen after a removal elsewhere, shows "Deze gebruiker bestaat niet (meer)." under the list).
+
+## Commands run
+- Gates as above (Postgres connection with the container's own password). Mutation copy (1 mutated, 3 unmutated runs; deleted).
+- Browser: throwaway DB `jp_tr_e604_r4`; API Development `--no-launch-profile` on :5395; Vite on :5185; Chrome headless on :9333; 1 schooljaar, 3 klassen, 14 gebruikers seeded; signed in as `directie@jaarplanner.local`.
+- Teardown: all processes killed, ports free; `DROP DATABASE jp_tr_e604_r4 WITH (FORCE)`; profile and mutation copy removed; `git status --short` empty at `ef4d23c`.
+
+## Evidence
+- In the orchestrator's scratchpad under `tr\`: `verslag-r4a.json`, `verslag-r4c.json`, `verslag-r4b.json`; `shots4\R4-390-klassen-3000-na.png`, `shots4\R4c-390-weergave-3000-na.png`, `shots4\L4-*.png`, `shots4\B4-*-voor.png` / `-na.png`. Console: no JS errors (only the browser's own lines for the 8 expected 404s). HTTP ≥ 400: only those 8.
+
+## Defects
+None blocking.
+
+## Notes (not blocking)
+- [LOW] The alert can render off-screen: at 390, for a person low in a long list, the "intussen verwijderd" alert sits above the list out of view (Mieke case, scrollY 1149), so a sighted teacher sees the sheet close and the person vanish with no visible reason; `role="alert"` still announces it. The Greet case's message renders under the list (not measured in view). Possible fix: scroll the alert into view or focus it (`tabIndex={-1}`).
+- [LOW] Focus falls to `<body>` after the sheet closes on its own (all 8 cases), because the trigger no longer exists; focusing the alert fixes both notes.
+- [INFO] The frontend Vitest for the fonts callback was not mutation-run (by reading, the old callback would fail it).
+- [INFO] The race tests use a fixed 1 s waiting window rather than `pg_locks` (could fail falsely under heavy load, never pass falsely).

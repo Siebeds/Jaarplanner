@@ -569,6 +569,8 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         using var onbekendeGebruiker = await client.PutAsync($"/api/gebruikers/{Guid.NewGuid()}/klassen/{jaar.Klassen.Single().Id}", null);
 
         Assert.Equal(HttpStatusCode.NotFound, onbekendeKlas.StatusCode);
+        // Dutch, and no raw id (owner-approved mini-fix after audit round 4).
+        Assert.Equal("Deze klas bestaat niet (meer).", await DetailAsync(onbekendeKlas));
         Assert.Equal(HttpStatusCode.NotFound, onbekendeGebruiker.StatusCode);
     }
 
@@ -771,6 +773,8 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         using var antwoord = await client.PutAsync($"/api/gebruikers/{an.Id}/hoofdleerkracht/{Guid.NewGuid()}/K3", null);
 
         Assert.Equal(HttpStatusCode.NotFound, antwoord.StatusCode);
+        // Dutch, and no raw id (owner-approved mini-fix after audit round 4).
+        Assert.Equal("Dit schooljaar bestaat niet (meer).", await DetailAsync(antwoord));
     }
 
     // --- Removing a gebruiker (I17). ---
