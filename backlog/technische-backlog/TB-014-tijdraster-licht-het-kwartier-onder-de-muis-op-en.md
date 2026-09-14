@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 19:02
+bijgewerkt: 2026-09-14 22:29
 opgepakt-door: agenda-sleep
 branch: ticket/agenda-sleep-om-te-plannen
-pr:
+pr: 70
 geblokkeerd:
 fr: []
 ---
@@ -60,3 +60,4 @@ Geen.
 - 2026-09-14 18:52 · agenda-sleep · antagonist ronde 2: VIOLATIONS FOUND, 0 kritiek, 0 groot, 3 klein, 1 vraag. Foutronde 2: klik of bereik wordt beslist op de echte kwartieren en de grenzen gelden alleen voor het antwoord; de klikwacht wordt alleen gezet door een linkerdruk en gewist bij hoveren; het voorbeeld verschijnt pas buiten het eerste kwartier; tests voor verloren capture, trillende klik in het laatste uur en rechterdruk. Eigenaar besliste (vraag 4) dat ook de kolomtint bij het verplaatsen als 'geselecteerde rij' telt: ADR-0024-aanvulling en index.css bijgewerkt. pnpm lint schoon, vitest 42 bestanden/287 tests groen. Browserronde 5: trilklik om 23:40 opent om 23:00 zonder voorbeeld, omhoog vanaf 23:40 geeft 23:00-23:45, tot middernacht 22:00-23:45, geen voorbeeld bij indrukken, 9:00-10:20 plant 9:00-10:30, klik na rechterklik en na Escape opent; geen consolefouten
 - 2026-09-14 19:02 · agenda-sleep · antagonist ronde 3: VIOLATIONS FOUND, 0 kritiek, 0 groot, 2 klein (een test voor 'geen voorbeeld binnen het eerste kwartier' ontbrak; het commentaar bij de klikwacht zei te weinig). Beide opgelost: test toegevoegd, commentaar zegt nu wat de code doet. Niet opnieuw geaudit: de oplossing is een test en twee commentaarregels. pnpm lint schoon, vitest 42 bestanden/288 tests groen. Servers gestopt, wegwerpdatabase jaarplanner_tb014 verwijderd
 - 2026-09-14 19:02 · agenda-sleep · in-uitvoering → klaar: kwartier licht op onder muis/pen, klik kiest dat kwartier, klikken en slepen plant een activiteit op het gesleepte bereik (ook een nieuwe), Escape laat los, einde van de dag begrensd; drie auditrondes, alle bevindingen opgelost of op beslissing van de eigenaar; lint, 288 tests en vijf browserrondes groen
+- 2026-09-14 22:29 · agenda-sleep · PR #70
