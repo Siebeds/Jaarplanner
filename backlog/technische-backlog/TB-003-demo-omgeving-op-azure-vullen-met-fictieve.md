@@ -8,7 +8,7 @@ aangemaakt: 2026-09-14
 bijgewerkt: 2026-09-14 12:15
 opgepakt-door: demo-seed
 branch: ticket/demo-seed
-pr:
+pr: 56
 geblokkeerd:
 fr: []
 ---
@@ -81,3 +81,4 @@ Geen.
 - 2026-09-14 11:53 · demo-seed · eerste run faalde op de aanmelding (401: PowerShell pakte de id-array uit tot een string); opruimen werkte: tijdelijke rol weg, sessiesleutels ongewijzigd (1), firewall dicht; niets geschreven
 - 2026-09-14 12:05 · demo-seed · run 0f865bf geslaagd: 5 klassen, 9 thema's (18 themadoelen), 9 subthema's (9 subdoelen), 15 fiches (15 doelen), 29 hoeken; tweede run maakte niets aan (alles found); sleutels ongewijzigd (1), rol weg, alleen AllowAllAzure-firewallregel over; criteria 1-3 afgevinkt; antagonist ronde 2: 2 MINOR over formulering, verwerkt; criterium 4 wacht op een blik van de eigenaar in de Azure-app
 - 2026-09-14 12:15 · demo-seed · in-uitvoering → klaar: criterium 4 bevestigd door de eigenaar in de Azure-app; ADR-0034 aangevuld bij beslissing 1 (eigenaar bevestigt de uitzondering, 2026-09-14); gates: 2 antagonistrondes verwerkt, 2 runs + controle na afloop
+- 2026-09-14 12:15 · demo-seed · PR #56
