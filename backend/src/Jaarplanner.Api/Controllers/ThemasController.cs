@@ -13,11 +13,12 @@ namespace Jaarplanner.Api.Controllers;
 /// enforced in the service/domain (Art. IX.2 / IV.2); validation/not-found surface via the shared
 /// exception handler in Program.cs.
 /// <para>
-/// <b>Rights (E6-02, ADR-0030 §3).</b> Every write on the thema itself, its themadoelen and its kernwoordenschat is the
-/// row <c>ThemaBewerken</c> (directie, themabeheer; R4, R18). Creating a subthema under it is not: that is the subthema
-/// row at the leeftijd in the body (<c>SubthemaBeheren</c>: directie and that leeftijd's hoofdleerkrachten; R5, R21), so
-/// themabeheer gets no right here (I22) and the wizard has its own route for it. Reads stay open to every signed-in
-/// gebruiker (I9).
+/// <b>Rights (E6-02, ADR-0030 §3).</b> Creating and changing the thema, its themadoelen and its kernwoordenschat is the
+/// row <c>ThemaBewerken</c> (directie, themabeheer; R4, R18). Deleting it is <c>ThemaVerwijderen</c> (default I26):
+/// themabeheer only while the thema holds nothing but what its own open wizard run created. Creating a subthema under
+/// it is the subthema row at the leeftijd in the body (<c>SubthemaBeheren</c>: directie and that leeftijd's
+/// hoofdleerkrachten; R5, R21), so themabeheer gets no right there (I22) and the wizard has its own route for it. Reads
+/// stay open to every signed-in gebruiker (I9).
 /// </para>
 /// </summary>
 [ApiController]
@@ -74,12 +75,20 @@ public sealed class ThemasController : ControllerBase
         Ok(await _service.WijzigThemaAsync(themaId, wijziging, cancellationToken));
 
     /// <summary>
-    /// Deletes a thema with its subthema's, subdoelen and activiteiten, at every leeftijd. The thema row (R4), read as
-    /// covering the thema's whole lifecycle: §3 names no separate delete row, and a thema in any klas's planning is refused
-    /// by the service anyway. Recorded as an unclean mapping in the E6-02 worklog (slice 3).
+    /// Deletes a thema with its themadoelen, subthema's, subdoelen and activiteiten, at every leeftijd.
+    /// <para>
+    /// <b>Directie may; themabeheer only while the thema holds nothing but what its own open wizard run created</b>
+    /// (default I26, owner 2026-09-14). Anything else under it was made by hand, and deleting it by hand is directie's and
+    /// the hoofdleerkrachten's (R21, R24, R25). A thema that any klas planned or scheduled is refused by the service, for
+    /// everyone.
+    /// </para>
+    /// <para>
+    /// <i>Until fix round 1 of slice 3 this was the row <c>ThemaBewerken</c>, which let themabeheer delete any unplanned
+    /// thema with everything under it (antagonist, MAJOR A).</i>
+    /// </para>
     /// </summary>
     [HttpDelete("{themaId:guid}")]
-    [Authorize(Policy = Rechtenmatrix.Beleid.ThemaBewerken)]
+    [RechtOp(Rechtenmatrix.Beleid.ThemaVerwijderen, Rechtbron.Thema, "themaId")]
     public async Task<IActionResult> Verwijder(Guid themaId, CancellationToken cancellationToken)
     {
         await _service.VerwijderThemaAsync(themaId, cancellationToken);
@@ -103,10 +112,11 @@ public sealed class ThemasController : ControllerBase
     /// Creates a subthema by hand. The row is the subthema's (R5, R21) at the leeftijd in the <b>body</b>, so it is asked
     /// here, after binding, rather than in an attribute.
     /// <para>
-    /// A body leeftijd that is no leeftijd is refused before the check, with the write's own 400 and sentence: it can
-    /// neither reach the write unchecked nor slip past the check (<see cref="Leeftijdsinhoud.UitInvoer"/> and the write's
-    /// validation share one rule). A missing thema is the service's 404, after the check, because the answer of this row
-    /// does not depend on the thema.
+    /// A body leeftijd that is no leeftijd, a missing one included, is refused before the check, with the write's own
+    /// 400 and sentence: it can neither reach the write unchecked nor slip past the check
+    /// (<see cref="Leeftijdsinhoud.UitInvoer"/> and the write's validation share one rule). That is also why a caller
+    /// with no right at all gets that 400 here rather than a 403: without a leeftijd there is no resource to ask about.
+    /// A missing thema is the service's 404, after the check, because the answer of this row does not depend on the thema.
     /// </para>
     /// </summary>
     [HttpPost("{themaId:guid}/subthemas")]

@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using Jaarplanner.Domain.Planning;
+using Jaarplanner.Domain.Curriculum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -10,8 +10,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
-/// E6-02's sweep (ADR-0030 §3, Art. VI.1): <b>every</b> write route the app maps answers 403 to a signed-in gebruiker who
-/// holds no right at all, unless it is on <see cref="OpenVoorIedereen"/> with the §3 row that opens it.
+/// E6-02's sweep (ADR-0030 §3, Art. VI.1): <b>every</b> write route the app maps refuses a signed-in gebruiker who holds
+/// no right at all <b>with the authorisation's own 403</b>, unless it is on <see cref="OpenVoorIedereen"/> with the §3 row
+/// that opens it.
 /// <para>
 /// <b>Enumerated from the endpoint data source, like <c>ElkeRouteVraagtEenSessieTests</c></b>, not from a list of
 /// controllers or a route prefix, so a route added next month (the agenda routes of another branch, say) fails here the
@@ -20,11 +21,20 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// <para>
 /// <b>Resource routes are sent real resources.</b> A resource row answers 404 for an id that names nothing (lookup
 /// before authorisation), so the sweep seeds one of everything a route id can name and fills each id with the real one.
-/// A 403 is then the authorisation's answer, not an accident of a random id.
+/// The wizard's item routes get items <b>the seeded run created</b>, so without their guard the run would let the
+/// request through rather than refuse it for its own reasons.
+/// </para>
+/// <para>
+/// <b>Why the detail, not just the status</b> (test-runner D1, antagonist D, slice 3 round 1). Other things answer 403: the
+/// anti-forgery check, and a wizard run's state (<c>WizardrunWeigering</c>). Either could hide a route that asks no right.
+/// Only the authorisation's refusal carries <see cref="RechtenTestOpzet.GeenToegang"/>, and the tests' stand-in scheme
+/// writes it exactly as the cookie does (<c>Aanmelding.SchrijfGeenToegangAsync</c>).
 /// </para>
 /// </summary>
 public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
 {
+    private const string Doelcode = "SWEEP-01";
+
     private static readonly string[] WijzigendeMethoden = ["POST", "PUT", "PATCH", "DELETE"];
 
     /// <summary>
@@ -57,6 +67,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
 
         _db = await PostgresTestDatabase.MaakAsync("sweep");
         _factory = new PostgresApiFactory(_db.ConnectionString);
+        await RechtenTestOpzet.ZaaiDoelAsync(_db, Doelcode);
     }
 
     public async Task DisposeAsync()
@@ -101,9 +112,10 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
                 using var antwoord = await client.SendAsync(verzoek);
                 verzonden++;
 
-                if (antwoord.StatusCode != HttpStatusCode.Forbidden)
+                var detail = await RechtenTestOpzet.DetailAsync(antwoord);
+                if (antwoord.StatusCode != HttpStatusCode.Forbidden || detail != RechtenTestOpzet.GeenToegang)
                 {
-                    fouten.Add(Melding(sleutel, antwoord.StatusCode));
+                    fouten.Add(Melding(sleutel, antwoord.StatusCode, detail));
                 }
             }
         }
@@ -117,8 +129,9 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         Assert.True(verzonden >= 70, $"Expected the whole write surface, sent only {verzonden} requests.");
     }
 
-    private static string Melding(string sleutel, HttpStatusCode status) =>
-        $"{sleutel} answered {(int)status} to a gebruiker who holds no right at all; every write route must answer 403 here." + Environment.NewLine
+    private static string Melding(string sleutel, HttpStatusCode status, string? detail) =>
+        $"{sleutel} answered {(int)status} \"{detail}\" to a gebruiker who holds no right at all; every write route must answer"
+        + $" 403 \"{RechtenTestOpzet.GeenToegang}\" here." + Environment.NewLine
         + "Decide its row in ADR-0030 §3 (docs/adr/0030-rollen-en-rechten-in-de-app.md) and declare it on the action:" + Environment.NewLine
         + "  - a row that needs no resource (directie, themabeheer): [Authorize(Policy = Rechtenmatrix.Beleid.<Row>)];" + Environment.NewLine
         + "  - a row about a resource: [RechtOp(Rechtenmatrix.Beleid.<Row>, Rechtbron.<Kind>, \"<route id>\")]." + Environment.NewLine
@@ -129,6 +142,10 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             ? "  A 404 means a lookup found nothing for one of the route's ids. Either the route checks no right before its service"
               + " looks the id up (the usual cause: declare its row as above), or this sweep seeded nothing for that id (seed it in"
               + " ZaaiAsync and fill it in Waarde)." + Environment.NewLine
+            : string.Empty)
+        + (status == HttpStatusCode.Forbidden
+            ? "  A 403 with another detail came from something other than the rights check (a wizard run's state, the anti-forgery"
+              + " check), which can hide a route that asks no right: declare its row as above." + Environment.NewLine
             : string.Empty)
         + "  If the route is deliberately open to every signed-in gebruiker, add it to OpenVoorIedereen with the §3 row that says so.";
 
@@ -149,9 +166,14 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             _ => "x",
         }))));
 
-    /// <summary>The seeded resource for each route id, by name; a plaatsing id by the route it is under.</summary>
+    private static bool IsWizardroute(string route) => route.StartsWith("api/thema-opbouw/wizardruns/", StringComparison.Ordinal);
+
+    /// <summary>The seeded resource for each route id, by name; a plaatsing id by the route it is under; a wizard item by its run.</summary>
     private static string Waarde(RoutePatternParameterPart parameter, string route, Zaad zaad) => parameter.Name switch
     {
+        "subthemaId" when IsWizardroute(route) => zaad.RunSubthemaId.ToString(),
+        "subdoelId" when IsWizardroute(route) => zaad.RunSubdoelId.ToString(),
+        "activiteitId" when IsWizardroute(route) => zaad.RunActiviteitId.ToString(),
         "schooljaarId" => zaad.SchooljaarId.ToString(),
         "klasId" => zaad.KlasId.ToString(),
         "themaId" => zaad.ThemaId.ToString(),
@@ -204,10 +226,29 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             begin = "10:30:00",
             einde = "11:20:00",
         }));
-        var runId = await IdAsync(client.PostAsJsonAsync("/api/thema-opbouw/wizardruns", new { naam = $"Wizard {Guid.NewGuid():N}", duurWeken = 4 }));
+
+        // An open run with one item of each kind it creates, so its item routes are sent the run's own items.
+        var run = await RechtenTestOpzet.StartWizardAsync(client);
+        var wizard = $"{RechtenTestOpzet.Wizard}/{run.Id}";
+        var runSubthemaId = await IdAsync(client.PostAsJsonAsync($"{wizard}/subthemas", new { naam = "Wind", duurWeken = 2, leeftijd = "K3" }));
+        var runSubdoelId = await IdAsync(client.PostAsJsonAsync($"{wizard}/subthemas/{runSubthemaId}/subdoelen", new { leerplandoelCode = Doelcode }));
+        var runActiviteitId = await IdAsync(client.PostAsJsonAsync(
+            $"{wizard}/subthemas/{runSubthemaId}/activiteiten", new { naam = "Proef", activiteitType = "Experiment" }));
 
         return new Zaad(
-            schooljaar.Id, klas.Id, themaId, subthemaId, activiteit.Id, hoekId, hoekplaatsingId, ficheId, ficheplaatsingId, runId);
+            schooljaar.Id,
+            klas.Id,
+            themaId,
+            subthemaId,
+            activiteit.Id,
+            hoekId,
+            hoekplaatsingId,
+            ficheId,
+            ficheplaatsingId,
+            run.Id,
+            runSubthemaId,
+            runSubdoelId,
+            runActiviteitId);
     }
 
     private static async Task<Guid> IdAsync(Task<HttpResponseMessage> verzoek)
@@ -227,5 +268,8 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         Guid HoekplaatsingId,
         Guid FicheId,
         Guid FicheplaatsingId,
-        Guid RunId);
+        Guid RunId,
+        Guid RunSubthemaId,
+        Guid RunSubdoelId,
+        Guid RunActiviteitId);
 }

@@ -521,3 +521,53 @@ The two pointers name the R25 carry-forward, which is `ef6468b` on `feature/e6-r
 - `RechtenEndpointsTests.cs:223-224`: "will" should be "may" for E6-03's future delete.
 
 **Checks run:** each rewritten predicate proved equivalent (`VereisLeeftijd`, `WatIsErMisMet`, `UitInvoer`); no sentence, status, stored form, `nl.json`, controller or migration changed; reflection plus metadata test together cover all seven endpoints; E7-06 text verified; R25 premises hold. Run: `dotnet build` 0/0; filtered unit tests 303 passed; `CurriculumbeheerAutorisatieTests` 5 passed; `dotnet format --verify-no-changes` exit 0.
+
+## Code slice 3 — audit round 1
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool). Condensed in layout only.*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 2 MAJOR, 5 MINOR, 3 QUESTION)
+**Scope audited:** `git diff 0073bd7 d85c0a5` on `story/E6-02-afdwingen` (40 files, migration `20260914114237_Wizardrun` included) and the "Code slice 3" worklog section; Art. IV, VI, IX.2 and X read fresh, plus ADR-0030 §2–§4 and the E6-02 story. *Correction to the brief:* I24/I25 are in this branch's base (`15a044c` is an ancestor of `0073bd7`).
+
+### [MAJOR] A. `DELETE api/themas/{id}` lets a themabeheer holder delete, by hand, content the ratified text reserves to directie and the hoofdleerkrachten
+- **Article/FR:** Art. VI.1 (R4, R5/R21, R19, R24, R25, R35); ADR-0030 §3 footnote ⁵.
+- **Where:** `Api/Controllers/ThemasController.cs` (`[HttpDelete("{themaId:guid}")]`, now `[Authorize(Policy = ThemaBewerken)]`); `Infrastructure/SchoolcontentBeheer/SchoolcontentBeheerService.cs:189-226` (cascade to themadoelen, subthema's, subdoelen, activiteiten and their goal links; refuses only a planned or scheduled thema).
+- **Problem:** themabeheer alone deletes an unplanned thema with a hoofdleerkracht's subthema's and subdoelen, `Manueel`-linked activiteiten and others' activiteiten, at every leeftijd. Art. VI.1: "By hand, subdoelen, goal links and deleting any other activiteit are for directie and that jaarfase's hoofdleerkrachten only … The only exceptions are themabeheer's: the FR-1 import, and the wizard for a thema it builds from scratch." R35 withholds even the import switch that removes decided subdoelen. §3 has no thema-delete row; reading R4's "aanpassen" as the whole lifecycle cannot override the "only exceptions" sentence.
+- **Required fix:** fail closed until Q1 is ruled (themabeheer deletes only a thema with no content beyond its own open run's items, otherwise directie); tests for TB on a thema with an HL's subthema (403), TB on an empty thema (204), directie (204).
+
+### [MAJOR] B. The wizard's edit and delete reach content its run did not create; I25's "and nothing else" is applied to one path only
+- **Article/FR:** Art. VI.1 (R19, R25; I13, I19, I25); Art. IX.2.
+- **Where:** `Infrastructure/SchoolcontentBeheer/WizardrunService.cs:91-108` (`WijzigSubthemaAsync`), `:110-139` (`VerwijderSubthemaAsync`, ids only), `:217-231` (`VerwijderActiviteitAsync`, no link guard).
+- **Problem:** (1) a themabeheer holder re-scopes a run-created subthema that meanwhile holds a leerkracht's activiteit or an HL's goal links, carrying them to another leeftijd without I13/I19; (2) the wizard deletes a run-created activiteit an HL has since linked, and the `Manueel` link goes with it (R19, R25); (3) the subthema delete passes when every activiteit under it is run-created, even if linked since.
+- **Required fix:** refuse a leeftijd change of a run-created subthema while it holds a subdoel or activiteit the run did not create; require `DoelenKoppelen` at that leeftijd for a wizard delete that would take a goal link (mirroring `WizardrunsController.MaakActiviteit`); a test per path. Or the owner rules Q2 (b) and I25's text records it.
+
+### [MINOR] C. A run-created activiteit moved out of the run's thema stays editable and deletable through the wizard
+- **Where:** `WizardrunService.cs:198-231` (`VereisEigen` checks list membership only).
+- **Required fix:** also run `VereisSubthemaVanRunAsync` on the activiteit's current subthema in edit and delete.
+
+### [MINOR] D. The sweep accepts any 403
+- **Where:** `IntegrationTests/Postgres/ElkeWijzigendeRouteVraagtEenRechtTests.cs:104`.
+- **Problem:** with `[Authorize(Policy = Wizardinhoud)]` removed from `DELETE …/wizardruns/{runId}/subthemas/{subthemaId}` or `…/activiteiten/{activiteitId}`, a no-rights caller still gets 403 from `WizardrunWeigering`. Otherwise the enumeration is sound.
+- **Required fix:** assert the authorisation detail ("Je hebt geen toegang tot deze actie.", `Aanmelding.cs:168`), not just the status.
+
+### [MINOR] E. Server-composed Dutch: sentences without a value guard, one presupposing a fact
+- **Where:** `WizardrunService.cs:29, :31, :129-131`; `WizardrunEndpointsTests.cs`.
+- **Problem:** "Dit subthema hoort niet bij het thema van deze wizard.", the foreign-content sentence and "Deze wizard bestaat niet meer." are not checked by value; "bestaat niet meer" answers an id that never existed (E5-03 rule).
+- **Required fix:** assert each wizard sentence in full with a no-em-dash check; reword to e.g. "Deze wizard is niet gevonden."
+
+### [MINOR] F. The run's starter is staff personal data with no route to the processing register
+- **Where:** `wizardruns.GestartDoorId` (migration, `WizardrunConfiguration.cs`), exposed on `GET /api/thema-opbouw/wizardruns/{runId}`.
+- **Required fix:** an E7-06 carry-forward naming it, SetNull on removal as its retention rule.
+
+### [MINOR] G. Stale docs this slice made false
+- `Api/Controllers/DekkingController.cs:27-31, :178-181` ("Unauthenticated … blocked on E6-01/E6-02"); E6 epic `:97` ("`POST /api/schooljaren` has no role check"); the E2/E3-01/E3-07 carry-forwards (`:85-87`) now met; E7-11 (`:110`) at E6-02's close; ADR-0030 §3 notes (`Wizardinhoud` + run state in `IWizardrunService`; R19 asked on create with goal codes on both routes; the `[RechtOp]` pattern). Orchestrator's edits; no ruling needed.
+
+### [QUESTION] Q1. What shape should deleting a thema take? (a) directie only; (b) themabeheer only when the thema holds nothing beyond its own open run's items, otherwise directie (the fail-closed interim); (c) themabeheer plus `SubthemaBeheren` at every leeftijd the thema has subthema's in; (d) R4 includes the delete with its cascade, by amendment.
+### [QUESTION] Q2. May the wizard remove goal links a hoofdleerkracht added? (a) no: a wizard delete that would take a link needs `DoelenKoppelen`; (b) yes: the literal I25, recorded in its text.
+### [QUESTION] Q3. Should a thema or themadoel edit during an open run move its 14-day window? (a) keep as built (only the wizard's own routes count); (b) E6-05 adds wizard routes for those steps that count; (c) any ThemaBewerken write on a thema with an open run counts.
+
+### Judged compliant (summary of checks run)
+The `[RechtOp]` filter (fails closed on a missing/unparseable route value or unknown `Rechtbron`; before model binding; 404 before 403 acceptable under I9); body leeftijden through `UitInvoer` (create, I13 at both leeftijden, both wizard inputs); R35 on preview and apply; mappings (b) goal codes on create need R19 and (c) fiche links under klas planning; wizard readings: any themabeheer holder continues a run, directie bound by the run rules on wizard routes, strict subthema delete; the 14-day window via `TimeProvider`; I22 on the ordinary routes; klas scoping of child ids (`EfJaarplanOpslag`, `EfWeekplanningOpslag`, `HoekplaatsingService:89`, `AlgemeneFicheplaatsingService:70`, `HoekBeheerService.NeemOver`); the move's same-leeftijd invariant (`Subthema.cs:156`); the two re-seeded slice-1 tests. Art. II, III, IV, V, VIII, IX: compliant (Dutch identifiers, English comments; no mutation of goals; doelsuggesties gated per R14; dekking untouched; no new package; `Wizardrun` is bookkeeping with sound cascades). 79 attribute-routed writes, 78 excluding the anonymous `afmelden`, each matched to a row. Not re-run by the antagonist: build, format, tests.
+
+### What slice 4 must hide (in addition to the worklog's list)
+The thema delete control per Q1; the subthema form's leeftijd select (I13); the Doelen header's "Inladen" button; the agenda's activiteit-create path with its goal picker; `makerId` on the frontend `ActiviteitWeergave`; a Dutch message for a stale 403.

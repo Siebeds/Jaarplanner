@@ -82,7 +82,8 @@ public sealed class WizardrunsController : ControllerBase
     [Authorize(Policy = Rechtenmatrix.Beleid.Wizardinhoud)]
     public async Task<IActionResult> VerwijderSubthema(Guid runId, Guid subthemaId, CancellationToken cancellationToken)
     {
-        await _service.VerwijderSubthemaAsync(runId, subthemaId, cancellationToken);
+        // The caller travels along for I27: a delete that would take a goal link needs their goal-link right.
+        await _service.VerwijderSubthemaAsync(runId, subthemaId, Aanmelding.GebruikerId(User), cancellationToken);
         return NoContent();
     }
 
@@ -143,7 +144,8 @@ public sealed class WizardrunsController : ControllerBase
     [Authorize(Policy = Rechtenmatrix.Beleid.Wizardinhoud)]
     public async Task<IActionResult> VerwijderActiviteit(Guid runId, Guid activiteitId, CancellationToken cancellationToken)
     {
-        await _service.VerwijderActiviteitAsync(runId, activiteitId, cancellationToken);
+        // The caller travels along for I27: deleting an activiteit a goal is linked to needs their goal-link right.
+        await _service.VerwijderActiviteitAsync(runId, activiteitId, Aanmelding.GebruikerId(User), cancellationToken);
         return NoContent();
     }
 

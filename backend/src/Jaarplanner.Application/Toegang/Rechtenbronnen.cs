@@ -26,6 +26,9 @@ public interface IRechtenbronnen
     /// <summary>An activiteit with its leeftijd, maker and whether any goal is linked to it: for the activiteit rows.</summary>
     Task<Activiteitbron?> VoorActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken = default);
 
+    /// <summary>A thema, with whether it holds content beyond its own open wizard run's items: for deleting it (I26).</summary>
+    Task<Themabron?> VoorThemaAsync(Guid themaId, CancellationToken cancellationToken = default);
+
     // --- The planning of one klas (E6-02 slice 3): every route whose resource belongs to a klas answers with it. ---
 
     /// <summary>The planning of a klas named in the route.</summary>
@@ -89,3 +92,14 @@ public sealed record Klasplanning(Guid KlasId);
 /// See the R25 carry-forward under E6-02 in <c>backlog/E6-beheer-rollen-samenwerking.md</c>.
 /// </param>
 public sealed record Activiteitbron(Guid ActiviteitId, string Leeftijd, Guid? MakerId, bool HeeftDoelkoppelingen);
+
+/// <summary>
+/// A thema, as deleting it needs it (E6-02, default I26). The delete takes every subthema, subdoel and activiteit under
+/// it along, at every leeftijd, so what decides themabeheer's right is whether any of those is someone else's.
+/// </summary>
+/// <param name="ThemaId">The thema.</param>
+/// <param name="HeeftAndermansInhoud">
+/// Whether it holds a subthema, subdoel or activiteit that its own wizard run did not create, or that run has ended (I23:
+/// after the run its items are ordinary shared content). <c>false</c> for an empty thema.
+/// </param>
+public sealed record Themabron(Guid ThemaId, bool HeeftAndermansInhoud);

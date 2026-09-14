@@ -15,6 +15,9 @@ public enum Rechtbron
     /// <summary>An activiteit with its leeftijd, maker and links (<see cref="Activiteitbron"/>).</summary>
     Activiteit,
 
+    /// <summary>A thema, with whether it holds someone else's content (<see cref="Themabron"/>, I26).</summary>
+    Thema,
+
     /// <summary>The planning of the klas in the route (<see cref="Klasplanning"/>).</summary>
     Klas,
 
@@ -115,6 +118,9 @@ public sealed class RechtOpAttribute : Attribute, IAsyncAuthorizationFilter
             case Rechtbron.Activiteit:
                 return await bronnen.VoorActiviteitAsync(id, cancellationToken)
                     ?? throw new SchoolcontentNietGevondenFout("Deze activiteit bestaat niet meer. Iemand anders heeft ze verwijderd.");
+            case Rechtbron.Thema:
+                return await bronnen.VoorThemaAsync(id, cancellationToken)
+                    ?? throw new SchoolcontentNietGevondenFout("Dit thema bestaat niet meer. Iemand anders heeft het verwijderd.");
             case Rechtbron.Klas:
                 return await bronnen.VoorKlasAsync(id, cancellationToken)
                     ?? throw new SchoolcontentNietGevondenFout($"Klas {id} is niet gevonden.");

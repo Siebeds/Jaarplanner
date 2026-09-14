@@ -30,6 +30,14 @@ public sealed class SchoolcontentValidatieFout : Exception
     /// subthema write, and a controller that has to refuse a body leeftijd before its rights check can be asked (E6-02).
     /// The rule itself is <c>Jaarfasen.LeesLeeftijd</c>; this is only its sentence.
     /// </summary>
-    public static SchoolcontentValidatieFout OngeldigeLeeftijd(string? leeftijd) =>
-        new($"'{leeftijd}' is geen geldige leeftijd. Kies er een uit: {string.Join(", ", Jaarplanner.Domain.Curriculum.Jaarfasen.Alle)}.");
+    /// <remarks>
+    /// A missing or blank leeftijd gets a sentence of its own: quoting it would read <c>'' is geen geldige leeftijd</c>.
+    /// </remarks>
+    public static SchoolcontentValidatieFout OngeldigeLeeftijd(string? leeftijd)
+    {
+        var keuze = string.Join(", ", Jaarplanner.Domain.Curriculum.Jaarfasen.Alle);
+        return new(string.IsNullOrWhiteSpace(leeftijd)
+            ? $"Een subthema heeft een leeftijd nodig. Kies er een uit: {keuze}."
+            : $"'{leeftijd}' is geen geldige leeftijd. Kies er een uit: {keuze}.");
+    }
 }

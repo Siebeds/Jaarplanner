@@ -4,15 +4,22 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.Schoolcontent.Wizard;
 
 /// <summary>
-/// The thema-opbouw wizard's own write actions (E6-02, ADR-0030 R29, R32; defaults I18, I22–I25). Themabeheer creates
-/// subthema's, subdoelen and activiteiten only through these, and only for a thema a run built from scratch; the
-/// ordinary routes give it no such right (I22).
+/// The thema-opbouw wizard's own write actions (E6-02, ADR-0030 R29, R32; defaults I18, I22–I25, I27). Themabeheer
+/// creates subthema's, subdoelen and activiteiten only through these, and only for a thema a run built from scratch;
+/// the ordinary routes give it no such right (I22).
 /// <para>
 /// <b>Who may call them is the Api's question</b> (the matrix rows <c>ThemaOpbouw</c> and <c>Wizardinhoud</c>:
 /// directie and themabeheer). <b>What a run allows is this service's</b>, and it holds for everyone, directie included:
-/// the run must be open (I24), content goes only under the run's own thema, and an edit or delete reaches only what the
-/// same run created (I25). Every refusal of that kind is a <see cref="WizardrunWeigering"/>. A missing run or item is a
-/// <see cref="SchoolcontentNietGevondenFout"/>, checked before the refusal, so an id that does not exist says so.
+/// <list type="bullet">
+/// <item>the run must be open (I24);</item>
+/// <item>content goes only under the run's own thema, and an edit or delete reaches an activiteit only while it is still
+/// there;</item>
+/// <item>an edit or delete reaches only what the same run created (I25);</item>
+/// <item>the wizard does not carry someone else's work to another leeftijd, and a wizard delete that would take a goal
+/// link along needs the goal-link right at that leeftijd, exactly as creating one does (I27, R19).</item>
+/// </list>
+/// Every refusal of that kind is a <see cref="WizardrunWeigering"/>. A missing run or item is a
+/// <see cref="SchoolcontentNietGevondenFout"/>, checked before the refusal, so an id that names nothing says so.
 /// </para>
 /// <para>
 /// <b>Every write goes through the ordinary beheer service</b> and so meets the same rules and the same Dutch sentences
@@ -31,14 +38,18 @@ public interface IWizardrunService
     /// <summary>Creates a subthema under the run's thema, at any leeftijd.</summary>
     Task<SubthemaWeergave> MaakSubthemaAsync(Guid runId, SubthemaCreatie creatie, CancellationToken cancellationToken = default);
 
-    /// <summary>Edits a subthema this run created (I25), its leeftijd included.</summary>
+    /// <summary>
+    /// Edits a subthema this run created (I25). Its leeftijd may change only while everything under it is the run's own
+    /// (I27): otherwise someone else's subdoelen or activiteiten would move to another leeftijd with it.
+    /// </summary>
     Task<SubthemaWeergave> WijzigSubthemaAsync(Guid runId, Guid subthemaId, SubthemaWijzigingInvoer wijziging, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a subthema this run created (I25). Refused while it holds a subdoel or activiteit the run did not create,
-    /// because the delete would take that along, and I25 allows "nothing else".
+    /// because the delete would take that along; and while an activiteit under it carries a goal link, unless
+    /// <paramref name="gebruikerId"/> may link goals at that leeftijd (I27, R19).
     /// </summary>
-    Task VerwijderSubthemaAsync(Guid runId, Guid subthemaId, CancellationToken cancellationToken = default);
+    Task VerwijderSubthemaAsync(Guid runId, Guid subthemaId, Guid? gebruikerId, CancellationToken cancellationToken = default);
 
     /// <summary>Creates a subdoel (a manual goal link) on a subthema of the run's thema.</summary>
     Task<SubdoelWeergave> MaakSubdoelAsync(Guid runId, Guid subthemaId, string leerplandoelCode, CancellationToken cancellationToken = default);
@@ -49,11 +60,14 @@ public interface IWizardrunService
     /// <summary>Creates an activiteit on a subthema of the run's thema; <paramref name="makerId"/> is its maker (I18).</summary>
     Task<ActiviteitWeergave> MaakActiviteitAsync(Guid runId, Guid subthemaId, Guid? makerId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default);
 
-    /// <summary>Edits an activiteit this run created (I25).</summary>
+    /// <summary>Edits an activiteit this run created and that is still under the run's thema (I25).</summary>
     Task<ActiviteitWeergave> WijzigActiviteitAsync(Guid runId, Guid activiteitId, ActiviteitWijzigingInvoer wijziging, CancellationToken cancellationToken = default);
 
-    /// <summary>Deletes an activiteit this run created (I25).</summary>
-    Task VerwijderActiviteitAsync(Guid runId, Guid activiteitId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Deletes an activiteit this run created and that is still under the run's thema (I25). Refused while a goal is
+    /// linked to it, unless <paramref name="gebruikerId"/> may link goals at that leeftijd (I27, R19).
+    /// </summary>
+    Task VerwijderActiviteitAsync(Guid runId, Guid activiteitId, Guid? gebruikerId, CancellationToken cancellationToken = default);
 
     /// <summary>Finishes the run. Its thema follows the ordinary rights from then on (I23).</summary>
     Task<WizardrunWeergave> RondAfAsync(Guid runId, CancellationToken cancellationToken = default);
@@ -89,9 +103,9 @@ public sealed record WizardrunWeergave(
 public sealed record WizardrunitemWeergave(Wizarditemsoort Soort, Guid Id);
 
 /// <summary>
-/// A wizard action the run does not allow: it has ended, the content is not under its thema, or the item is not one it
-/// created (I23–I25). The Api answers 403, for directie as well: directie does the same on the ordinary routes.
-/// The message is Dutch and a screen may show it (Art. II.3).
+/// A wizard action the run does not allow: it has ended, the content is not under its thema, the item is not one it
+/// created, or it would carry off someone else's work (I23–I25, I27). The Api answers 403, for directie as well:
+/// directie does the same on the ordinary routes. The message is Dutch and a screen may show it (Art. II.3).
 /// </summary>
 public sealed class WizardrunWeigering : Exception
 {

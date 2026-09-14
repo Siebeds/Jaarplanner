@@ -103,3 +103,47 @@ None.
 - `VereisLeeftijd` now carries three stacked `<summary>` blocks (one stale from before, round 1's, round 2's); the doc comment reads badly.
 - No test pins the klas jaarfase refusal sentences word for word.
 - The endpoint test matches only a `RawText` without a leading `/` (predates this round).
+
+
+# E6-02 slice 3 — Test report (round 1)
+
+**Verdict:** FAIL
+**Mode:** unit/integration (backend only; no Playwright until slice 4)
+**Change verified:** `d85c0a5` on `story/E6-02-afdwingen` (from `0073bd7`), incl. migration `20260914114237_Wizardrun`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **1. Each matrix action allowed/denied per relation and resource, server-side, a test per row → PASS.** Every mutating route carries `[Authorize(Policy)]`, `[RechtOp]` or an in-action check (19 controllers, 79 write attributes, one of them the anonymous `afmelden`). `RechtenAfdwingingTests` (17): per row, the allowed relation gets the service's precise status, the nearest denied relation gets 403. Reads stay open (I9): `Lezen_mag_elke_gebruiker_ook_de_planning_van_een_andere_klas_I9`.
+- **2. Sweep enumerates every mutating endpoint, expects 403, fails naming a route that loses its guard → FAIL (partial).** Enumeration from `EndpointDataSource`, real seeded ids, ≥70 requests, stale-entry check: pass. `[RechtOp]` removed from `PUT api/hoeken/{hoekId}` → the sweep failed and named it: pass. `Wizardinhoud` removed from `DELETE api/thema-opbouw/wizardruns/{runId}/activiteiten/{activiteitId}` → sweep, `WizardrunEndpointsTests` and `RechtenAfdwingingTests` stayed green (28/28): **D1**.
+- **3. Body leeftijden through `UitInvoer`; null refused with the write's own 400 and sentence; never skips the rights check → FAIL (partial).** `L7`, `3K`, `k3`, `""` get the Dutch sentence; `" K3 "` accepted; I13 checked at both leeftijden. A literal `null` never reaches `UitInvoer`: **D2**.
+- **4. FR-1 import (R35) → PASS.** HL 403; TB 400 (reached the controller, no file); TB with the option on 403 on both `/voorbeeld` and apply; directie with the option 400 on both. The option is checked before the file is read.
+- **5a. Wizard endpoints admit TB and directie only → PASS** (`Een_hoofdleerkracht_gebruikt_de_wizard_niet`; the sweep, apart from D1).
+- **5b. Run's own thema, open run, under 14 days since its last write → PASS.** Open while `nu < LaatsteSchrijfactieOp + 14 days` (`Wizardrun.IsOpen`); the unit test pins open at 14 days minus 1 s, closed at exactly 14 days. HTTP test edits `LaatsteSchrijfactieOp` on the real clock: open at 13 days and a write moves the window; at 14 days plus 1 minute 403 "Deze wizard is afgelopen.", for directie too. Afronden/sluiten end the run. Another thema's subthema → 403.
+- **5c. I25 → PASS.** Run B on run A's subthema → 403; an HL's subthema under the run's thema → 403; missing → 404; a subthema holding a leerkracht's activiteit is not deleted (403, row still there).
+- **5d. I18 → PASS.** `MakerId` equals the themabeheer caller.
+- **5e. I22 / R33 → PASS.** TB gets 403 on the ordinary subthema create/PUT, activiteit create, subdoel create, and 201 on its open run's wizard route. Maker delete 204 without a link, 403 with one; a colleague of the same leeftijd 403; an HL 204.
+- **Spot checks → PASS.** HL of K2 on K3 content 403 (create and re-scope); leerkracht of K3 blauw on K3 groen's hoeken, fiches, generatie, plaatsing delete, hoek PUT/DELETE → 403; own planning → 201 / reaches the service.
+- **6. Existing directie tests unchanged; no pending model changes; migration applies → PASS.**
+- **Slice-1 tests changed to seed rights → PASS.** Assertions unchanged; they still test maker = caller and the resolvers.
+
+## Commands run
+- `dotnet build` → 0 warnings, 0 errors.
+- `dotnet test --no-build` (Postgres 127.0.0.1:5433): UnitTests 1355 passed, 4 skipped; IntegrationTests 411 passed, 1 skipped.
+- `dotnet format --verify-no-changes` → exit 0. `has-pending-model-changes` → clean.
+- Temporary null probe (copied in, run, deleted); two guard-removal probes (each restored with `git checkout --`).
+- `git status --short` → empty; `git log -1` → `d85c0a5`.
+
+## Evidence
+- Sweep naming a route: `PUT api/hoeken/{hoekId:guid} answered 400 to a gebruiker who holds no right at all; every write route must answer 403 here.`
+- Blind-spot run with the guard removed: `Passed! - Failed: 0, Passed: 28`.
+- Null probe (subthema create, no-rights caller): `400 {"title":"One or more validation errors occurred.","errors":{"Leeftijd":["The Leeftijd field is required."]}}`.
+- Empty-string probe: `400 {"title":"Ongeldige aanvraag","detail":"'' is geen geldige leeftijd. Kies er een uit: JK, K2, K3, L1, L2, L3, L4, L5, L6."}`.
+
+## Defects
+- **D1 [MAJOR] The sweep does not detect a lost guard on a wizard item delete.** Route `DELETE api/thema-opbouw/wizardruns/{runId}/activiteiten/{activiteitId}`; seeded state: an open run and an ordinary activiteit that run did not create. Removing the `[Authorize(Policy = Rechtenmatrix.Beleid.Wizardinhoud)]` above `VerwijderActiviteit` leaves all 28 tests green, because the 403 then comes from the service's `WizardrunWeigering` ("Dit is niet in deze wizard aangemaakt."). With that guard gone, any signed-in gebruiker could delete an item an open run created, unnoticed. `DELETE …/wizardruns/{runId}/subthemas/{subthemaId}` has the same shape (by reading). Fix: seed items through the seeded run and use those ids for the wizard routes, or let the sweep tell an authorisation 403 from a `WizardrunWeigering` 403.
+- **D2 [MINOR] A `null` leeftijd gets ASP.NET Core's English 400.** Routes: `POST api/themas/{themaId}/subthemas`, `PUT api/subthemas/{subthemaId}`, `POST …/wizardruns/{runId}/subthemas`, `PUT …/wizardruns/{runId}/subthemas/{subthemaId}`; body with `"leeftijd": null` or omitted. Holds for HL, TB, and on create for a no-rights caller (400 instead of 403, no rights check asked). No rights hole (the write is never reached), but `UitInvoer`'s null branch is dead there and untested. Cause: `SubthemaCreatie.Leeftijd` and `SubthemaWijzigingInvoer.Leeftijd` are non-nullable `string` under `<Nullable>enable</Nullable>`, so an implicit `[Required]` fires before the action. Fix: make them `string?` and add a null test (or have the owner accept the automatic 400 and correct the worklog).
+
+## Notes
+- The 14-day window is pinned at the exact edge only by the domain unit test; the HTTP tests edit the timestamp on the real clock.
+- The worklog's manual Development sign-in steps were not run; the Postgres HTTP tests cover the same flows.

@@ -383,8 +383,10 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(niemand.PutAsJsonAsync($"/api/activiteiten/{Guid.NewGuid()}", new { })));
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(niemand.DeleteAsync($"/api/subthemas/{Guid.NewGuid()}")));
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(niemand.DeleteAsync($"/api/hoekplaatsingen/{Guid.NewGuid()}")));
-        // The thema row's answer does not depend on the thema, so it is given before anything is looked up.
-        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(niemand.DeleteAsync($"/api/themas/{Guid.NewGuid()}")));
+        // Deleting a thema is a resource row since I26, so a missing one is looked up first, too.
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(niemand.DeleteAsync($"/api/themas/{Guid.NewGuid()}")));
+        // Editing one is not: that row's answer does not depend on the thema, so it is given before anything is looked up.
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(niemand.PutAsJsonAsync($"/api/themas/{Guid.NewGuid()}", new { })));
     }
 
     // --- Jaarplan, agenda en dekking bekijken (R3, R7; I9): every signed-in gebruiker reads every klas. ---
@@ -400,6 +402,89 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(niemand.GetAsync($"/api/klassen/{school.K3Groen}/dekking")));
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(niemand.GetAsync($"/api/klassen/{school.K3Groen}/hoeken")));
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(niemand.GetAsync("/api/themas")));
+    }
+
+    // --- Een thema verwijderen (R4; default I26): directie; themabeheer only while nothing in it is anyone else's. ---
+
+    [PostgresFact]
+    public async Task Themabeheer_verwijdert_geen_thema_met_de_inhoud_van_een_hoofdleerkracht_directie_wel_I26()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
+        using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
+        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        var themaId = await opzet.ThemaAsync();
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(hoofdleerkracht.PostAsJsonAsync(
+            $"/api/themas/{themaId}/subthemas", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" })));
+
+        await RechtenTestOpzet.VerwachtAsync(themabeheer.DeleteAsync($"/api/themas/{themaId}"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(directie.DeleteAsync($"/api/themas/{themaId}")));
+    }
+
+    [PostgresFact]
+    public async Task Themabeheer_verwijdert_een_leeg_thema_en_een_thema_met_alleen_de_inhoud_van_zijn_open_wizard_I26()
+    {
+        var opzet = Opzet;
+        using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
+
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(themabeheer.DeleteAsync($"/api/themas/{await opzet.ThemaAsync()}")));
+
+        var run = await RechtenTestOpzet.StartWizardAsync(themabeheer);
+        var wizard = $"{RechtenTestOpzet.Wizard}/{run.Id}";
+        var subthemaId = await RechtenTestOpzet.IdAsync(
+            themabeheer.PostAsJsonAsync($"{wizard}/subthemas", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" }), HttpStatusCode.Created);
+        await RechtenTestOpzet.IdAsync(
+            themabeheer.PostAsJsonAsync($"{wizard}/subthemas/{subthemaId}/subdoelen", new { leerplandoelCode = Doelcode }), HttpStatusCode.OK);
+        await RechtenTestOpzet.IdAsync(
+            themabeheer.PostAsJsonAsync($"{wizard}/subthemas/{subthemaId}/activiteiten", new { naam = "Proef", activiteitType = "Experiment" }),
+            HttpStatusCode.Created);
+
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(themabeheer.DeleteAsync($"/api/themas/{run.ThemaId}")));
+    }
+
+    [PostgresFact]
+    public async Task Na_de_wizard_is_zijn_inhoud_gewone_inhoud_en_verwijdert_alleen_directie_het_thema_I26_I23()
+    {
+        var opzet = Opzet;
+        using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
+        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        var run = await RechtenTestOpzet.StartWizardAsync(themabeheer);
+        await RechtenTestOpzet.IdAsync(
+            themabeheer.PostAsJsonAsync($"{RechtenTestOpzet.Wizard}/{run.Id}/subthemas", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" }),
+            HttpStatusCode.Created);
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(themabeheer.PostAsync($"{RechtenTestOpzet.Wizard}/{run.Id}/afronden", null)));
+
+        await RechtenTestOpzet.VerwachtAsync(themabeheer.DeleteAsync($"/api/themas/{run.ThemaId}"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(directie.DeleteAsync($"/api/themas/{run.ThemaId}")));
+    }
+
+    // --- A missing leeftijd (test-runner D2): the write's Dutch 400, and a 403 first wherever the right needs no body. ---
+
+    [PostgresFact]
+    public async Task Een_ontbrekende_leeftijd_krijgt_de_nederlandse_400_en_wie_geen_recht_heeft_waar_het_kan_een_403()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        var themaId = await opzet.ThemaAsync();
+        var subthemaId = await opzet.SubthemaAsync("K3");
+        using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
+        using var niemand = opzet.Als(await opzet.GebruikerAsync());
+        var maken = $"/api/themas/{themaId}/subthemas";
+        var wijzigen = $"/api/subthemas/{subthemaId}";
+
+        foreach (var lichaam in new object[] { new { naam = "Regen", duurWeken = 2, leeftijd = (string?)null }, new { naam = "Regen", duurWeken = 2 } })
+        {
+            await RechtenTestOpzet.VerwachtAsync(hoofdleerkracht.PostAsJsonAsync(maken, lichaam), HttpStatusCode.BadRequest, RechtenTestOpzet.GeenLeeftijd);
+            await RechtenTestOpzet.VerwachtAsync(hoofdleerkracht.PutAsJsonAsync(wijzigen, lichaam), HttpStatusCode.BadRequest, RechtenTestOpzet.GeenLeeftijd);
+
+            // The edit's right is asked at the stored leeftijd before the body is read: no right, no validation answer.
+            await RechtenTestOpzet.VerwachtAsync(niemand.PutAsJsonAsync(wijzigen, lichaam), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+
+            // The create's resource is the leeftijd in the body. Without one there is nothing to ask a right about, so even a
+            // caller with no right gets the write's own refusal, before the check and never instead of it.
+            await RechtenTestOpzet.VerwachtAsync(niemand.PostAsJsonAsync(maken, lichaam), HttpStatusCode.BadRequest, RechtenTestOpzet.GeenLeeftijd);
+        }
     }
 
     private static MultipartFormDataContent Formulier(bool menselijkeBeslissingenVerwijderen) =>

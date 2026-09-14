@@ -333,7 +333,7 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         }
 
         await using var context = _db.MaakContext();
-        var bronnen = new EfRechtenbronnen(context);
+        var bronnen = new EfRechtenbronnen(context, TimeProvider.System);
 
         Assert.Equal(new Leeftijdsinhoud("L3"), await bronnen.VoorSubthemaAsync(subthemaId));
         Assert.Null(await bronnen.VoorSubthemaAsync(Guid.NewGuid()));

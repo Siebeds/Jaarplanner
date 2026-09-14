@@ -37,6 +37,7 @@ public static class Rechtenmatrix
 
         public const string Beheer = "Beheer";
         public const string ThemaBewerken = "ThemaBewerken";
+        public const string ThemaVerwijderen = "ThemaVerwijderen";
         public const string SchoolcontentImporteren = "SchoolcontentImporteren";
         public const string MenselijkeBeslissingenVerwijderen = "MenselijkeBeslissingenVerwijderen";
         public const string ThemaOpbouw = "ThemaOpbouw";
@@ -68,6 +69,18 @@ public static class Rechtenmatrix
     /// <summary>§3 "Thema, themadoelen, kernwoordenschat aanpassen" (R4, R18).</summary>
     public static readonly Matrixrij ThemaBewerken = new(
         Beleid.ThemaBewerken, "Thema, themadoelen, kernwoordenschat aanpassen (R4, R18)", Kolom.Themabeheer);
+
+    /// <summary>
+    /// Deleting a thema with everything under it (R4; default I26, chosen by the owner on 2026-09-14; §3 has no delete
+    /// row of its own). Directie always. Themabeheer only while the thema holds no subthema, subdoel or activiteit other
+    /// than what its own open wizard run created: anything else was made by hand, and deleting it by hand is directie's
+    /// and the hoofdleerkrachten's (R21, R24, R25). The service refuses a planned or scheduled thema for everyone.
+    /// Resource: <see cref="Themabron"/>.
+    /// </summary>
+    public static readonly Matrixrij ThemaVerwijderen = new(
+        Beleid.ThemaVerwijderen,
+        "Een thema verwijderen: themabeheer alleen als het niets anders bevat dan wat zijn eigen open wizard aanmaakte (R4; I26)",
+        Kolom.ThemabeheerZonderAndermansInhoud);
 
     /// <summary>§3 "Thema's en activiteiten importeren, FR-1 …" (R9, R27, R34).</summary>
     public static readonly Matrixrij SchoolcontentImporteren = new(
@@ -176,6 +189,7 @@ public static class Rechtenmatrix
         Curriculumbeheer,
         Beheer,
         ThemaBewerken,
+        ThemaVerwijderen,
         SchoolcontentImporteren,
         MenselijkeBeslissingenVerwijderen,
         ThemaOpbouw,
@@ -215,6 +229,15 @@ public static class Rechtenmatrix
         var kolommen = rij.Kolommen;
 
         if (kolommen.HasFlag(Kolom.Themabeheer) && rechten.HeeftThemabeheer)
+        {
+            return true;
+        }
+
+        // I26: themabeheer deletes a thema only while nothing in it is anyone else's. Needs the Themabron, so an attribute
+        // (resource = HttpContext) fails closed here too.
+        if (kolommen.HasFlag(Kolom.ThemabeheerZonderAndermansInhoud)
+            && rechten.HeeftThemabeheer
+            && bron is Themabron { HeeftAndermansInhoud: false })
         {
             return true;
         }
@@ -295,4 +318,9 @@ public enum Kolom
 
     /// <summary>The maker of an <see cref="Activiteitbron"/> with no goal links, whatever else they hold (§3 footnote ²).</summary>
     MakerZonderKoppelingen = 32,
+
+    /// <summary>
+    /// "TB", only on a <see cref="Themabron"/> that holds nothing beyond its own open wizard run's items (default I26).
+    /// </summary>
+    ThemabeheerZonderAndermansInhoud = 64,
 }
