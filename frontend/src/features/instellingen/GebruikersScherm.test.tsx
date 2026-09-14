@@ -80,7 +80,7 @@ function toon(
   overzicht: GebruikersOverzicht,
   schrijf: Antwoord = () => undefined,
   /** The status the list answers once a write succeeded: 403 after directie gave up their own right. */
-  opties: { lijstNaSchrijven?: number } = {},
+  opties: { lijstNaSchrijven?: number; lijstNaFout?: GebruikersOverzicht } = {},
 ) {
   let huidig = overzicht;
   let lijstStatus = 200;
@@ -92,6 +92,8 @@ function toon(
     const antwoord = await schrijf(pad, methode);
     if (!antwoord) return json({}, 404);
     if (antwoord.status < 300 && opties.lijstNaSchrijven) lijstStatus = opties.lijstNaSchrijven;
+    // What the server holds after a write that found the person gone: the list without them.
+    if (antwoord.status >= 400 && opties.lijstNaFout) huidig = opties.lijstNaFout;
     const bewaard = antwoord.body as GebruikerBeheer | undefined;
     if (antwoord.status < 300 && bewaard?.id) {
       const bestaat = huidig.gebruikers.some((g) => g.id === bewaard.id);
@@ -351,6 +353,33 @@ describe("GebruikersScherm", () => {
     const bevestiging = await screen.findByRole("dialog", { name: t("gebruikers.verwijderTitel", { naam: IK.naam }) });
     expect(bevestiging).toHaveTextContent(t("gebruikers.verwijderZelfGevolg"));
     expect(bevestiging).not.toHaveTextContent(t("gebruikers.verwijderGevolg", { naam: IK.naam }));
+  });
+
+  it("sluit het blad en zegt het boven de lijst als een vinkje een gebruiker raakt die intussen verwijderd is", async () => {
+    // Round 3: after a 404 the list used to go on showing the removed person, with a live sheet whose next tick answered
+    // 404 again. Now a 404 refetches the list, the sheet closes because its person is gone, and the screen says so above
+    // the list.
+    const an = gebruiker();
+    const bert = gebruiker({ id: "g-2", naam: "Bert Claes" });
+    const fetchMock = toon(
+      { gebruikers: [an, bert], voorbijeSchooljaarIds: [] },
+      (pad, methode) =>
+        methode === "PUT" && pad.endsWith(`/api/gebruikers/${an.id}/klassen/${K3.id}`)
+          ? { status: 404, body: { status: 404, detail: "Deze gebruiker is intussen verwijderd." } }
+          : undefined,
+      { lijstNaFout: { gebruikers: [bert], voorbijeSchooljaarIds: [] } },
+    );
+
+    const blad = await openRechten(an.naam);
+    fireEvent.click(within(blad).getByRole("checkbox", { name: K3.naam }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: t("gebruikers.rechtenVan", { naam: an.naam }) })).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(t("gebruikers.verdwenen", { naam: an.naam }));
+    expect(screen.queryByRole("button", { name: t("gebruikers.rechtenVan", { naam: an.naam }) })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("gebruikers.rechtenVan", { naam: bert.naam }) })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([pad, init]) => String(pad).endsWith("/api/gebruikers") && !init?.method)).toHaveLength(2);
   });
 
   it("zegt per jaarfase wie hoofdleerkracht is, en onderscheidt niemand dit jaar van niemand", async () => {

@@ -631,6 +631,36 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal("Deze gebruiker is intussen verwijderd.", await DetailAsync(antwoord));
     }
 
+    /// <summary>
+    /// The fourth toggle, and removal, on a <b>directie</b> removed in between (test-runner, round 3). These two take the
+    /// directie lock first, so they wait there rather than on the save; once the delete commits the row is gone, and the
+    /// answer is the same "intussen verwijderd" 404 as the other writes, not a sentence with a raw id.
+    /// </summary>
+    [PostgresTheory]
+    [InlineData("/directierecht")]
+    [InlineData("")]
+    public async Task Een_directie_afzetten_of_verwijderen_die_intussen_verwijderd_wordt_is_404_en_geen_500(string achtervoegsel)
+    {
+        var an = await BewaarGebruikerAsync(naam: "An", directie: true);
+        await BewaarGebruikerAsync(naam: "Bert", directie: true);
+
+        await using var ander = _db.MaakContext();
+        await ander.Database.BeginTransactionAsync();
+        await ander.Gebruikers.Where(g => g.Id == an.Id).ExecuteDeleteAsync();
+
+        using var client = Client();
+        var schrijf = client.DeleteAsync($"/api/gebruikers/{an.Id}{achtervoegsel}");
+
+        var eerst = await Task.WhenAny(schrijf, Task.Delay(TimeSpan.FromSeconds(1)));
+        Assert.NotSame(schrijf, eerst);
+
+        await ander.Database.CommitTransactionAsync();
+        using var antwoord = await schrijf;
+
+        Assert.Equal(HttpStatusCode.NotFound, antwoord.StatusCode);
+        Assert.Equal("Deze gebruiker is intussen verwijderd.", await DetailAsync(antwoord));
+    }
+
     /// <summary>Taking themabeheer away from someone removed in between: the same 404 on the revoking write.</summary>
     [PostgresFact]
     public async Task Themabeheer_afnemen_van_een_gebruiker_die_intussen_verwijderd_wordt_is_404_en_geen_500()
@@ -771,6 +801,11 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
 
         using var weg = await directie.GetAsync($"/api/gebruikers/{an.Id}");
         Assert.Equal(HttpStatusCode.NotFound, weg.StatusCode);
+        // A second tab after the removal: Dutch, and no raw id (round 3).
+        Assert.Equal("Deze gebruiker bestaat niet (meer).", await DetailAsync(weg));
+        using var tweedeTab = await directie.PutAsync($"/api/gebruikers/{an.Id}/themabeheer", null);
+        Assert.Equal(HttpStatusCode.NotFound, tweedeTab.StatusCode);
+        Assert.Equal("Deze gebruiker bestaat niet (meer).", await DetailAsync(tweedeTab));
     }
 
     // --- Helpers. ---

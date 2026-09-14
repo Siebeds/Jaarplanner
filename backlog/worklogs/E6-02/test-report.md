@@ -182,3 +182,38 @@ None.
 ## Notes (not blocking)
 - `Zodra_een_tweede_directie_zich_aanmeldde_mag_de_eerste_verwijderd_worden` does not first assert a 409 before the bind (covered elsewhere).
 - Headless Chrome on Windows draws a classic scrollbar under the phone switch (pre-existing; phones use overlay scrollbars).
+
+
+# E6-04 slice 2 — Test report (round 3)
+
+**Verdict:** FAIL (one MINOR defect, new in `c5ab799`; the round-2 fade defect is fixed and everything else passes)
+**Mode:** both (unit/integration plus a mutation run; browser pass in headless Chrome 152 over the DevTools protocol from Node, with real keyboard, wheel and mouse input; font files intercepted and held back to simulate a cold, slow cache; no Playwright MCP in the test-runner's session)
+**Commit:** `02394a3` on `story/E6-04-beheer`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Gates → PASS.** `dotnet build` 0/0; UnitTests 1340 passed, 4 skipped; IntegrationTests 424 passed, 1 skipped; `dotnet format --verify-no-changes` 0; `pnpm lint` 0; `pnpm test` 258/258; `pnpm build` 0.
+- **The new race tests are deterministic and pin the 404 and the Dutch sentence → PASS, with a scope note.** Five unmutated runs in a copy outside the worktree: runs 2–5 clean (each write pending > 1 s on the row or FK lock, then 404); run 1 failed all 7 in 1 ms at the moment of the test-runner's own teardown (fixture setup) and did not recur. Mutation `catch (DbUpdateConcurrencyException) when (DateTime.UtcNow.Year < 2000)` → exactly the four `BewaarWijzigingAsync` tests fail (NotFound expected, InternalServerError actual). Scope: three toggles and the removal; the fourth toggle (DELETE directierecht) answers 404 "Gebruiker {guid} is niet gevonden." via the `FOR UPDATE` path, never a 500, but a different sentence.
+- **No fade overlaps the active part; five parts × 390/360 × light/dark → PASS.** 20 cold-cache landings: box and text overlap 0, the active part fully inside the row (Algemene fiches [212.8,337.3] vs fade [341,373] at 390; [182.8,307.3] vs [311,343] at 360), matching the implementer's table.
+- **Contrast of the active label → PASS** (17.78:1 light, 13.12:1 dark, in all 20).
+- **Re-placement after the fonts load (cold cache) → PASS.** Fonts held back 1500 ms: scroll 38/91 before, 44/97 after, overlap 0 both times; without the second placement Algemene fiches would run 2.3 px into the fade.
+- **Nothing steals focus or scrolls the page when the fonts arrive → PASS** (`document.activeElement` unchanged in all 8 keyboard cases; page `scrollY` 600→601 on Gebruikers, a 1 px reflow; 249→249 and 301→301 on Klassen).
+- **Tab into the switch; focus stays where you put it → FAIL** (defect 1: focus keeps the same element, but the row scrolls it out of view).
+- **The reworded (c) sentence renders → PASS** (under K3/L1/L2 "Geen hoofdleerkracht" at 390 and 360; 6.51:1 light, 7.58:1 dark; from `t("gebruikers.zonderHoofdleerkracht")`).
+
+## Commands run
+- Gates as above; mutation copy (5 unmutated runs, 1 mutated run, a scratch test for the fourth toggle; copy deleted).
+- Browser: throwaway DB `jp_tr_e604_r3`; API Development `--no-launch-profile` on :5395; Vite on :5185; 14 gebruikers seeded; signed in as `directie@jaarplanner.local`; cache disabled and cleared before every load; 118 font requests intercepted.
+- Teardown: API, Vite and Chrome stopped (5395, 5185, 9333 free); `DROP DATABASE jp_tr_e604_r3 WITH (FORCE)` (0 rows left); profile deleted; `git status` clean at `02394a3`.
+
+## Evidence
+- In the orchestrator's scratchpad under `tr\`: `verslag-r3.json` (phases A–E), `verslag-r3c.json` (targeted keyboard repro), `shots3\A-*.png`, `shots3\B-*-algemene-fiches.png`, `shots3\C-*.png`, `shots3\E-*.png`, `shots3\R-390-klassen-3000-voor.png` / `-na.png` (the defect). Console: no errors; HTTP ≥ 400: none.
+
+## Defects
+- **[MINOR] After the web font arrives late, the phone switch scrolls a keyboard-focused link entirely out of view** (WCAG 2.2 AA 2.4.7, 2.4.11). Cause: the `document.fonts.ready.then(() => zetInBeeld())` callback from `c5ab799` always calls `scrollIntoView` on the active part, even when focus is on another link in the row. Repro: directie, 390, fonts held back 3 s, land on `/instellingen/klassen`, Tab 4× at human pace so "Weergave" is focused and fully visible (85/85 px); when the font arrives the row scrolls back to 0/97 and Weergave sits at [381,466] against the visible [17,373], still focused, no focus ring visible. Same when landing on Weergave with focus on "Klassen" ([-76,-3.1] at 390, [-106,-33.1] at 360). Control: with fonts undelayed, Weergave stays visible. Possible fix: in the callback, if focus is inside the row and not on the active link, only re-measure, or bring the focused link into view; a Vitest with a mocked `document.fonts.ready`; then re-run the keyboard repro and the 20 landings.
+
+## Notes (not blocking)
+- [LOW] The fourth toggle (DELETE `…/directierecht`) raced with a removal has no test and answers "Gebruiker {guid} is niet gevonden." (a GUID in Dutch copy a directie can see), not "Deze gebruiker is intussen verwijderd.".
+- [INFO] The race tests use a fixed 1 s pending window rather than waiting on `pg_locks` (could cause a false failure under heavy load, never a false pass).
+- [INFO] Headless Chrome on Windows draws a classic scrollbar under the switch (existing).

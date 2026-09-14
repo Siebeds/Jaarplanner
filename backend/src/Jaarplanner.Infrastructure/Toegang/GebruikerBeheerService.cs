@@ -74,7 +74,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
     public async Task<GebruikerBeheerWeergave> HaalGebruikerOpAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
     {
         var gevonden = await LeesAsync(gebruikerId, Schoolklok.Vandaag(_tijd, _logger), cancellationToken);
-        return gevonden.SingleOrDefault() ?? throw NietGevonden(gebruikerId);
+        return gevonden.SingleOrDefault() ?? throw NietGevonden();
     }
 
     public async Task<GebruikerBeheerWeergave> NodigUitAsync(
@@ -129,12 +129,16 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
 
     public async Task<GebruikerBeheerWeergave> NeemDirectierechtAfAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
     {
+        // Checked before the lock, so an id that never existed gets the plain not-found and only a row that vanished
+        // while this request waited for the lock gets "intussen verwijderd" (below).
+        await VereisGebruikerAsync(gebruikerId, cancellationToken);
+
         await using (var transactie = await _context.Database.BeginTransactionAsync(cancellationToken))
         {
             var anderen = await LeesAndereDirectieOnderSlotAsync(gebruikerId, cancellationToken);
 
             // Read after the lock, so a concurrent change that committed while this one waited is what is seen.
-            var gebruiker = await VindAsync(gebruikerId, cancellationToken);
+            var gebruiker = await VindNaSlotAsync(gebruikerId, cancellationToken);
             if (gebruiker.IsDirectie && anderen.Aanmeldbaar < 1)
             {
                 throw new LaatsteDirectieFout(anderen.Totaal == 0
@@ -171,10 +175,13 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
 
     public async Task VerwijderAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
     {
+        // As for a demotion: the plain not-found before the lock, "intussen verwijderd" for a row gone after it.
+        await VereisGebruikerAsync(gebruikerId, cancellationToken);
+
         await using var transactie = await _context.Database.BeginTransactionAsync(cancellationToken);
 
         var anderen = await LeesAndereDirectieOnderSlotAsync(gebruikerId, cancellationToken);
-        var gebruiker = await VindAsync(gebruikerId, cancellationToken);
+        var gebruiker = await VindNaSlotAsync(gebruikerId, cancellationToken);
         if (gebruiker.IsDirectie && anderen.Aanmeldbaar < 1)
         {
             throw new LaatsteDirectieFout(anderen.Totaal == 0
@@ -372,13 +379,18 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
 
     private async Task<Gebruiker> VindAsync(Guid gebruikerId, CancellationToken cancellationToken) =>
         await _context.Gebruikers.SingleOrDefaultAsync(g => g.Id == gebruikerId, cancellationToken)
-        ?? throw NietGevonden(gebruikerId);
+        ?? throw NietGevonden();
+
+    /// <summary>The gebruiker, read after the directie lock. Gone now means removed while this request waited.</summary>
+    private async Task<Gebruiker> VindNaSlotAsync(Guid gebruikerId, CancellationToken cancellationToken) =>
+        await _context.Gebruikers.SingleOrDefaultAsync(g => g.Id == gebruikerId, cancellationToken)
+        ?? throw IntussenVerwijderd();
 
     private async Task VereisGebruikerAsync(Guid gebruikerId, CancellationToken cancellationToken)
     {
         if (!await _context.Gebruikers.AnyAsync(g => g.Id == gebruikerId, cancellationToken))
         {
-            throw NietGevonden(gebruikerId);
+            throw NietGevonden();
         }
     }
 
@@ -398,7 +410,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         catch (DbUpdateConcurrencyException)
         {
             _context.ChangeTracker.Clear();
-            throw new GebruikerbeheerNietGevondenFout("Deze gebruiker is intussen verwijderd.");
+            throw IntussenVerwijderd();
         }
     }
 
@@ -455,8 +467,18 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         Jaarfasen.LeesLeeftijd(jaarfase)
         ?? throw new GebruikerbeheerValidatieFout(Jaarfasen.WatIsErMisMet(jaarfase)!);
 
-    private static GebruikerbeheerNietGevondenFout NietGevonden(Guid gebruikerId) =>
-        new($"Gebruiker {gebruikerId} is niet gevonden.");
+    /// <summary>
+    /// No gebruiker with that id. Worded for directie, who meets it after someone else removed the person (a second
+    /// tab, a colleague), and without the raw id, which means nothing to them (antagonist, slice 2 round 3). "(meer)"
+    /// because this branch cannot tell a removed gebruiker from an id that never existed, so it says both.
+    /// </summary>
+    private static GebruikerbeheerNietGevondenFout NietGevonden() => new("Deze gebruiker bestaat niet (meer).");
+
+    /// <summary>
+    /// The gebruiker existed when this request began and was removed while it waited (for the directie lock or for the
+    /// row itself). Only then is "intussen" true, so only those branches say it.
+    /// </summary>
+    private static GebruikerbeheerNietGevondenFout IntussenVerwijderd() => new("Deze gebruiker is intussen verwijderd.");
 
     private static GebruikerBestaatAlFout BestaatAl(string email) =>
         new($"Er is al een gebruiker met de aanmeldnaam {email}.");

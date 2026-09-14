@@ -39,7 +39,8 @@ export function GebruikersScherm() {
   const verwijder = useVerwijderGebruiker();
 
   const [uitnodigen, setUitnodigen] = useState(false);
-  const [rechtenVoor, setRechtenVoor] = useState<string | null>(null);
+  // Whose sheet is open, with their name, so the screen can still name them once they are gone (round 3).
+  const [rechtenVoor, setRechtenVoor] = useState<{ id: string; naam: string } | null>(null);
   const [teVerwijderen, setTeVerwijderen] = useState<GebruikerBeheer | null>(null);
 
   const gebruikers = overzicht.data?.gebruikers ?? [];
@@ -47,7 +48,12 @@ export function GebruikersScherm() {
   // From the server's clock, not the browser's: "voorbij" is the rights' own rule (R20).
   const voorbij = jaarId !== null && (overzicht.data?.voorbijeSchooljaarIds ?? []).includes(jaarId);
   // Read from the live list, so the sheet shows what the server answered after every tick.
-  const geopend = rechtenVoor === null ? null : (gebruikers.find((g) => g.id === rechtenVoor) ?? null);
+  const geopend = rechtenVoor === null ? null : (gebruikers.find((g) => g.id === rechtenVoor.id) ?? null);
+  // A sheet was open and the loaded list no longer holds that person: someone removed them (another tab, a
+  // colleague), and a write just answered 404, which refetched the list. The sheet then closes by itself, because it
+  // renders only for someone in the list, so the screen says why above the list. This condition proves exactly
+  // that the person was listed when opened and is not now.
+  const verdwenen = rechtenVoor !== null && overzicht.data !== undefined && geopend === null ? rechtenVoor.naam : null;
 
   return (
     <>
@@ -75,7 +81,10 @@ export function GebruikersScherm() {
             <Knop
               rang="hoofd"
               className="h-9 min-h-9 px-3 text-meta"
-              onClick={() => setUitnodigen(true)}
+              onClick={() => {
+                setRechtenVoor(null);
+                setUitnodigen(true);
+              }}
             >
               <IcoonPlus aria-hidden="true" className="h-4 w-4" />
               {t("gebruikers.uitnodigen")}
@@ -106,6 +115,12 @@ export function GebruikersScherm() {
                 </p>
               ) : null}
 
+              {verdwenen !== null ? (
+                <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                  {t("gebruikers.verdwenen", { naam: verdwenen })}
+                </p>
+              ) : null}
+
               {gebruikers.length === 0 ? (
                 <p className="text-body text-inkt-zacht">{t("gebruikers.geenGebruikers")}</p>
               ) : (
@@ -115,7 +130,7 @@ export function GebruikersScherm() {
                       <Gebruikerrij
                         gebruiker={gebruiker}
                         jaarId={jaarId}
-                        onRechten={() => setRechtenVoor(gebruiker.id)}
+                        onRechten={() => setRechtenVoor({ id: gebruiker.id, naam: gebruiker.naam })}
                       />
                     </li>
                   ))}
@@ -142,7 +157,7 @@ export function GebruikersScherm() {
           onUitgenodigd={(gebruiker) => {
             // Straight on to what the new person may do: an invitation with no rights is rarely the goal.
             setUitnodigen(false);
-            setRechtenVoor(gebruiker.id);
+            setRechtenVoor({ id: gebruiker.id, naam: gebruiker.naam });
           }}
         />
       ) : null}

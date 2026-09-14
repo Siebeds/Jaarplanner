@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { del, get, post, put } from "../../lib/api";
+import { ApiError, del, get, post, put } from "../../lib/api";
 import type { Ik } from "../../lib/aanmelding";
 
 /**
@@ -98,6 +98,20 @@ function ververs(qc: QueryClient) {
  * and a refetch would flash "could not be loaded" in the moment before the screen goes. Only `ik`
  * is refetched: that moves the person off this part (`Onderdeelpoort`), or to the sign-in.
  */
+/**
+ * A 404 on a beheer write means the screen shows something that is gone: the gebruiker (removed in
+ * another tab, or by a colleague), or the klas or schooljaar a box points at. The list would
+ * otherwise go on showing it for a minute (the app's stale time), with live boxes that each answer
+ * 404 again. So everything the boxes are built from is fetched afresh; the screen then closes the
+ * sheet of a gebruiker who is no longer in the list and says so above it (round 3).
+ */
+function bijNietGevonden(qc: QueryClient, fout: unknown) {
+  if (!(fout instanceof ApiError) || fout.status !== 404) return;
+  void qc.invalidateQueries({ queryKey: SLEUTEL });
+  void qc.invalidateQueries({ queryKey: ["klassen"] });
+  void qc.invalidateQueries({ queryKey: ["schooljaren"] });
+}
+
 function isEigenAfgang(qc: QueryClient, gebruikerId: string, blijftDirectie: boolean): boolean {
   return qc.getQueryData<Ik>(["ik"])?.id === gebruikerId && !blijftDirectie;
 }
@@ -136,6 +150,7 @@ export function useRechtWijziging() {
       }
       ververs(qc);
     },
+    onError: (fout) => bijNietGevonden(qc, fout),
   });
 }
 
@@ -154,5 +169,6 @@ export function useVerwijderGebruiker() {
       }
       ververs(qc);
     },
+    onError: (fout) => bijNietGevonden(qc, fout),
   });
 }

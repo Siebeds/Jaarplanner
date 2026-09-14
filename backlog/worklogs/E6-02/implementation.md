@@ -1535,3 +1535,36 @@ Light and dark gave identical geometry. Before the fix, the test-runner measured
 - `pnpm lint`: exit 0. `pnpm test`: 35 files, 258 passed. `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
 
 **Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604c` (created, migrated, seeded over the API, dropped); Vite on 5185. It ran the measurements above, and the reworded (c) sentence rendered.
+
+### Fix round 3
+
+- **Input:**
+  - "Code slice 2 — audit round 3" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 1 MINOR; all five round-2 findings resolved.
+  - "E6-04 slice 2 — Test report (round 3)" in `test-report.md`: FAIL on 1 MINOR, plus one LOW note. The round-2 fade defect is fixed (20/20).
+
+  Both are the orchestrator's and are committed unedited with this fix. Nothing was changed beyond the three items below.
+- **Branch:** `story/E6-04-beheer`, on top of `02394a3`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | Audit MINOR: after a 404 the screen still showed the removed gebruiker, with a live sheet whose next tick answered "Gebruiker <guid> is niet gevonden." | **Fixed.** A 404 from either beheer write (`useRechtWijziging`, `useVerwijderGebruiker`) now refetches the overview, the klassen and the schooljaren (`bijNietGevonden`): the boxes are built from all three, and a 404 can mean any one of them is gone. `GebruikersScherm` remembers whose sheet is open, by id and name. When the loaded list no longer holds that person, the sheet (which renders only for someone in the list) closes, and a list-level alert says "{naam} is intussen verwijderd en staat niet meer in de lijst." That condition proves the person was listed when the sheet opened and is not now. A 404 about a klas or schooljaar leaves the person listed, so the sheet stays open with the server's sentence, and the refetch drops the gone box. **The not-found sentence names no raw id:** "Deze gebruiker bestaat niet (meer).", worded that way because that branch cannot tell a removed gebruiker from an id that never existed. It is pinned by value for a GET and a toggle after a removal (the second-tab path). **New Vitest:** a 404 on a klas tick refetches the list, closes the sheet, shows the list-level alert, and the person's row is gone while the other stays. |
+| 2 | Test-runner MINOR: the late-font re-placement scrolled a keyboard-focused link out of view (WCAG 2.4.7, 2.4.11) | **Fixed.** In the `document.fonts.ready` callback, if focus is inside the row and not on the active link, the **focused** link is brought into view ("nearest") and the fades are re-measured; the active part is left alone. Otherwise the active part is placed as before. **New Vitest** (mocked `document.fonts.ready` and `scrollIntoView`): with focus on Weergave while Klassen is active, the font's arrival calls `scrollIntoView` on Weergave and never on Klassen, and Weergave keeps focus. Without focus in the row, it places the active part. **Browser, fonts held back 3 s** (CDP `Fetch` interception, cache disabled), real Tab presses: see the table below. |
+| 3 | Test-runner LOW (folded into 1): DELETE `…/directierecht` racing a removal answered "Gebruiker {guid} is niet gevonden." | **Fixed, and tested.** The two writes that take the directie lock (demotion, removal) first check the gebruiker exists (the plain not-found for an id that never existed). They then read it after the lock with `VindNaSlotAsync`, which answers "Deze gebruiker is intussen verwijderd." if the row vanished while the request waited, which is exactly when that sentence is true. **New race theory** `Een_directie_afzetten_of_verwijderen_die_intussen_verwijderd_wordt_is_404_en_geen_500`: `/directierecht` and removal of a directie, each held on the lock by an uncommitted delete (pending after 1 s), then 404 with that sentence. The concurrency path in `BewaarWijzigingAsync` uses the same `IntussenVerwijderd()`. |
+
+**Keyboard repro with the fonts held back 3 s**, directie, five parts. Positions are viewport x; the row's visible span is its inner edge. In every case the fonts were loading when Tab reached the link and loaded at the second measurement.
+
+| Width | Landing, keys | Before the font | After the font |
+| --- | --- | --- | --- |
+| 390 | Klassen, Tab 4× to Weergave | [284,369] of [17,373], in view, 0px under a fade, focused | [284,369], in view, 0px under a fade, focused |
+| 390 | Weergave, Tab 12× to Klassen | [21,91], in view, 0px, focused | [21,94], in view, 0px, focused |
+| 360 | Klassen, Tab 4× to Weergave | [254,339] of [17,343], in view, 0px, focused | [254,339], in view, 0px, focused |
+| 360 | Weergave, Tab 11× to Klassen | [21,91], in view, 0px, focused | [21,94], in view, 0px, focused |
+
+In round 3's repro, Weergave had ended at [381,466], outside the row. **The 20 landings** (5 parts × 390/360 × light/dark), re-run: identical to fix round 2's table, 0px overlap and the active part fully in the row in every case; label contrast 17.78:1 light, 13.12:1 dark.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 426 passed, 1 skipped (424 + 2 new race cases).
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 261 passed (258 + 3 new). `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+**Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604d` (created, migrated, seeded over the API, dropped); Vite on 5185; headless Chrome.

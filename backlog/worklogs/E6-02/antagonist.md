@@ -599,3 +599,26 @@ Art. VI.1: `Beheer` on the whole controller (`Kolom.Geen`, directie only); 403 t
 
 ### Checks run (summary)
 MAJOR 1: the flag's only writer is `Program.cs:69-70`, and no configuration binds it. `Modus` defaults to Entra, and `Ontwikkeling` outside Development throws at startup (`Aanmelding.cs:57-61`, `AanmeldModusTests` passed); an accidental Development deploy has only the loopback dev sign-in. The dev sign-in binds nobody, and a binding is never undone. `FOR UPDATE` covers every directie row and reads `IsGekoppeld` after the lock; a first login waits on it. The guard is a superset of ADR-0031 decision 7 and E6-04's Done-when. `PostConfigure` forcing false is sound: it keeps the Postgres wiring, the dev-rule test is deliberate, and the mapping `[Fact]` runs without Postgres. The second-branch sentence holds because the caller is a bound directie (race-only exception). Focus fix: mechanism correct; the Vitest pins it, but jsdom does not move focus off a disabled element, so the CDP pass is the evidence (not re-run). The FK test and the removal race test are deterministic and sound. QUESTION 7 copy checked against its conditions; the orchestrator's decision still goes to the owner. The fade adds no hue and is aria-hidden. Art. II, VI.2, VI.4, VIII and XIV are clean; the `KlassenScherm` comment is now true. Runs: vitest (instellingen, catalogue) 46 passed; `pnpm lint` exit 0; `dotnet format --verify-no-changes` exit 0. Postgres suite not run by the auditor: SASL authentication failed and the credentials are in a gitignored `.env`; relying on the implementer's 419 passed.
+
+## Code slice 2 — audit round 3
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 0 MAJOR, 1 MINOR). All five round-2 findings are resolved.
+**Scope audited:** `git diff 3e4ee04 02394a3` (10 files), plus the rest of `GebruikerBeheerService.cs`, `gebruikerbeheer.ts`, `Rechtenblad.tsx`, `GebruikersScherm.tsx`, `Schermkop.tsx:48`, the QueryClient defaults in `App.tsx`, the logging configuration, and Art. VI.1 as it stands on `feature/e6-rollen-rechten` HEAD (I24–I28 with the Q4/Q5 clarifications).
+
+### [MINOR] 1. After the new 404, the screen still shows the removed gebruiker
+- **Where:** `gebruikerbeheer.ts:127-140`, `:143-158` (only `onSuccess`); `App.tsx:39-41` (`staleTime` 60 s, no refetch on focus); `GebruikersScherm.tsx:50`, `:129-135`; `Rechtenblad.tsx:101-105`; `GebruikerBeheerService.cs:458-459`.
+- **Problem:** nothing refreshes the list after "Deze gebruiker is intussen verwijderd.", so the person stays listed with their rights next to an alert saying they are gone. After a toggle the sheet stays open with live boxes, and the next tick answers "Gebruiker <guid> is niet gevonden.", with a raw id shown to directie. The sheet is also reachable without a race (a second tab after a removal in the first), which is the path the fix's doc comment rests on.
+- **Required fix:** on a 404 from a beheer write, refresh the overview or drop the gebruiker from the cache. The alert then has to live at list level, because the sheet closes. Optionally, reword the not-found sentence without the id. Or the owner waives it (race and two-tab edge).
+
+### Checks run (summary)
+- **MINOR 1 (the (c) sentence), resolved.** The new sentence is strictly weaker than (c) and true beside I22, I25–I27, R24/R27/R34 and the leerkracht rights. Its render condition `zonder` guarantees what it says. The catalogue refuses "alleen".
+- **MINOR 2 (E7-06), resolved.** An untick deletes the row (`:215-222`, `:249-261`). Every klas and jaarfase stays tickable for a past year. "No history" holds: no audit table, no action log, `Microsoft.AspNetCore` at Warning, no sensitive-data logging.
+- **MINOR 3 (server sentences), resolved.** (a) needs `Totaal == 0`. (b) can only be reached when the target is the bound caller under Entra, and not at all in Development. All are pinned, and the schooljaar FK sentence by value.
+- **MINOR 4 (500 on a lost row), resolved.** No concurrency token exists, so zero rows means the row is gone. The tests cover three toggles plus the removal. DELETE directierecht serializes under `FOR UPDATE` and ends in the older not-found 404. The 404 is sound: it matches a request after the removal, and a 204 would claim a removal this request did not make.
+- **MINOR 5 (the fade), resolved.** `scroll-px-9` leaves a 4 px gap, matching the table. The `02394a3` figures add up.
+- **Font-load re-placement:** it neither steals focus nor scrolls the page. The header is sticky, so `block: "nearest"` never scrolls vertically; `lg:hidden` makes it a no-op on desktop; the `actueel` guard stops a stale call.
+- **Art. II, VI.2, VI.4, VIII, XIV:** clean.
+- **Runs:** vitest (instellingen, catalogue) 46 passed; `pnpm lint` exit 0; `dotnet format --verify-no-changes` exit 0; `GebruikerbeheerEndpointsTests` on the local Postgres 41 of 41 passed.
+- **Not raised:** the doc comment at `GebruikersScherm.tsx:31` ("leaves its subthema's to directie") is (c)'s own framing, not an exclusivity claim.

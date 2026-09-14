@@ -170,9 +170,21 @@ export function Onderdeelwissel() {
     // The display face can arrive after the first paint and widen every label without a scroll or
     // resize event, which left the fades measured against the fallback font (seen once at 360 in fix
     // round 2). So once the fonts are in, place the active part and measure again.
+    //
+    // **Unless the keyboard is in the row** (round 3, WCAG 2.4.7 and 2.4.11). A teacher who tabbed
+    // to another part before the font arrived had it scrolled clean out of view, still focused, when
+    // the row jumped back to the active part. Then the focused link is the one brought into view,
+    // and the active part is left where the scroll put it.
     let actueel = true;
     void document.fonts?.ready.then(() => {
-      if (actueel) zetInBeeld();
+      if (!actueel) return;
+      const focus = document.activeElement;
+      if (focus instanceof HTMLElement && focus !== rij && rij.contains(focus) && focus.getAttribute("aria-current") !== "page") {
+        if (typeof focus.scrollIntoView === "function") focus.scrollIntoView({ block: "nearest", inline: "nearest" });
+        meet();
+        return;
+      }
+      zetInBeeld();
     });
     rij.addEventListener("scroll", meet, { passive: true });
     window.addEventListener("resize", meet);

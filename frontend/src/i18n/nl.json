@@ -440,6 +440,7 @@
     "verwijderGevolg": "{naam} kan zich dan niet meer aanmelden, en de klassen en aanstellingen van {naam} vervallen. De activiteiten die {naam} maakte blijven bestaan, als gedeelde activiteiten.",
     "verwijderZelfGevolg": "Je wordt meteen afgemeld en kunt je daarna niet meer aanmelden. Je klassen en aanstellingen vervallen. De activiteiten die je maakte blijven bestaan, als gedeelde activiteiten.",
     "verwijderMislukt": "De gebruiker is niet verwijderd.",
+    "verdwenen": "{naam} is intussen verwijderd en staat niet meer in de lijst.",
     "afgevenTitel": "Je eigen directierecht afgeven?",
     "afgevenGevolg": "Je ziet het scherm Gebruikers dan niet meer, en je kunt het directierecht niet zelf terugzetten.",
     "afgevenBevestig": "Directierecht afgeven"
