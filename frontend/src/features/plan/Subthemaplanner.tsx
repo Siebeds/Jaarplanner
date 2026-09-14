@@ -10,6 +10,7 @@ import { Segment } from "../../components/ui/Segment";
 import { Veld, Keuze, Invoer } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { knopklassen } from "../../components/ui/knopklassen";
+import { useInBeeld } from "../../components/ui/inBeeld";
 import { useThemasVoorKlas } from "../../lib/queries";
 import type { Dagweergave, ThemaWeergave } from "../../lib/types";
 import { dagMaand } from "../../lib/datum";
@@ -305,26 +306,11 @@ export function Subthemaplanner({
           ) : null}
 
           {/* What actually happened, after the fact. It names the rows that failed with the reason
-              the server gave, and it never says everything worked when some of it did not. */}
-          {resultaat ? (
-            <section className="flex flex-col gap-2">
-              <p className="text-meta text-inkt-zacht">
-                {t("periode.deelsGelukt", { gelukt: resultaat.gelukt, totaal: resultaat.totaal })}
-              </p>
-              {resultaat.fouten.length > 0 ? (
-                <ul className="flex flex-col gap-1">
-                  {resultaat.fouten.map((fout) => (
-                    <li
-                      key={fout}
-                      className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
-                    >
-                      {fout}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </section>
-          ) : null}
+              the server gave, and it never says everything worked when some of it did not.
+
+              An alert (E6-02 slice 4, fix round 2, F7; WCAG 4.1.3): the planner stays open when a row failed and is
+              a modal dialog, so the agenda's own strip does not show a refusal that arrives while it is open. */}
+          {resultaat ? <Resultaat resultaat={resultaat} /> : null}
 
           {gekozen && beschikbaar.length > 0 ? (
             <p className="text-meta text-inkt-zwak">
@@ -451,6 +437,30 @@ function Voorstelregel({ voorstel }: { voorstel: Voorstel }) {
         {dagMaand(voorstel.datum)} {toonTijd(voorstel.begin)}
       </span>
     </li>
+  );
+}
+
+/** The planner's result as an alert, brought into the sheet's view when it appears (fix round 2, F7). */
+function Resultaat({ resultaat }: { resultaat: { gelukt: number; totaal: number; fouten: string[] } }) {
+  const ref = useInBeeld<HTMLElement>();
+  return (
+    <section ref={ref} role="alert" className="flex flex-col gap-2">
+      <p className="text-meta text-inkt-zacht">
+        {t("periode.deelsGelukt", { gelukt: resultaat.gelukt, totaal: resultaat.totaal })}
+      </p>
+      {resultaat.fouten.length > 0 ? (
+        <ul className="flex flex-col gap-1">
+          {resultaat.fouten.map((fout) => (
+            <li
+              key={fout}
+              className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
+            >
+              {fout}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 

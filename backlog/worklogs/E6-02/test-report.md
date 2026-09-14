@@ -416,3 +416,35 @@ None blocking.
 
 ## Orchestrator's frontend-design pass (antagonist F6), 2026-09-14
 Run by the orchestrator with the `frontend-design` skill over the round-1 screenshots (`zonder-recht-act-kring-390`, `lk-blauw-hoek`, `lk-blauw-plaatsing`, `themabeheer-agenda-donker`, `live403-1440-melding`), against ADR-0024 Inkt en Signaal. The read-only activiteitfiche and hoek sheet follow the thema fiche's existing idiom (small labels over facts, ink tokens, a single close button; the accent only on the focus ring; no new hue); the small upper-case labels are the app's established idiom (DEKKING, KERNWOORDENSCHAT), so the house style wins over the generic rule. The agenda quiet line is one short, muted line under the week title, legible in light and dark. **One change:** the 403 refusal renders at the page's bottom, far from the action, below the fold at 1440×1000 and unannounced; it is to use slice 2's `Aandachtsmelding` (focus once, scroll into view), which is item 6 of fix round 1. Observation, no change: on K3 blauw Lies gets "Activiteit bewerken" while that klas's planning is read-only; that is the matrix (content is shared per leeftijd, planning belongs to the klas) and predates this slice.
+
+
+# E6-02 slice 4 — Test report (round 2)
+
+**Verdict:** PASS
+**Mode:** both (suites and the new tests read; flows driven in headless Chrome over CDP at 1440×1000 and 390×844)
+**Commit:** `5b4eb4a` on `story/E6-02-frontend`, on top of `d859a10`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **F1: "Koppel dit doel" follows the chosen klas's leeftijden → PASS.** Hugo (HL K3): with L1 rood no button, with K3 groen the button, at both widths; its sheet lists Herfst and Leeg thema, Herfst offers "Koppel dit doel aan het subthema Bladeren". Tine (TB): the button on both klassen, Herfst offers the thema level. Directie: thema and subthema targets. Lies (LK) and no-rights: no button. Unit: `DoelenScherm.test.tsx` (HL K3: none with L1, the button with K3); `rechten.test.ts` pins `doelKoppelenVoor` (`["JK","K2","K3"]` → true, `["L1"]` → false).
+- **F2: the bin on an empty thema → PASS.** TB: "Leeg thema bewerken" and "Leeg thema verwijderen"; on Herfst the pencil, no bin. Directie: the bin on both. HL, LK, no-rights: no bin. Same at 390. The frontend's `subthemas.length === 0` matches `EfRechtenbronnen.VoorThemaAsync` (only subthema's, subdoelen and activiteiten count as someone else's content). Unit: the `rechten.test.ts` I26 block (9 cases incl. fail-closed with no or the wrong resource) and `ThemadetailScherm.test.tsx`.
+- **Item 6: the agenda's 403 is an alert that takes focus → PASS.** Lies on K3 groen; directie removed her klastoewijzing (200); she planned "Verhaal van de eik" (the pick sends straight away): at 1440×1000 the alert box 932–966 of 1000 (34 px margin), at 390×844 616–650 of 844; `role=alert`, `tabindex=-1`, focused; the picker closed within 400 ms; add buttons 7 → 0 (1440) and 34 → 0 (390); the quiet line "De planning van K3 groen kan je alleen bekijken." Network: `403 POST …/jaarplan/weekplanning`, then `200 /api/ik` and the active queries; the klastoewijzing restored after each run. Unit: `Agendamelding.test.tsx` (403 → focused alert; 400 → plain strip, no alert; a browser-decided refusal wins over a server error; nothing without an error).
+- **Side effect: the centred scroll on Instellingen › Gebruikers → PASS.** 21 gebruikers, Zoë Zwart last. "Intussen verwijderd": her sheet open, she deleted over the API (204), a tick → 404 and refetch; at 390 (scrollY 2962) the sheet closed and "Zoë Zwart is intussen verwijderd en staat niet meer in de lijst." was focused, `role=alert`, in view at 384–437 of 844; at 1440 (scrollY 1311) in view at 284–319 of 1000; exactly one scroll move each time (to 0), no bounce. The removal refusal (409, last directie): focused and in view (519–607 of 844; 884–936 of 1000), one scroll move each time, to the page end.
+- **Round-1 criteria still hold (spot check, each profile at 1440 and 390, no horizontal overflow) → PASS** (directie: every control, both Inladen sections, 7/34 add buttons, no quiet line; TB: pencil, "Doel koppelen", suggesties, activiteiten read-only, thema section only, the quiet line; HL K3: K3 controls only, "Eikels tellen bekijken" on L1, no suggestie, "Je hebt geen recht om iets in te laden.", the quiet line; LK on K3 groen: add and edit on K3, the bin only on "Kring van Lies", 7/34 add buttons; no rights: read only, the quiet line).
+- **F3, F4, F5 → PASS on unit evidence and code reading** (`ImportScherm.test.tsx` and `Hoekensectie.test.tsx` answer `/api/ik` with 500 and assert neither sentence nor control; `Subthemaformulier.test.tsx` covers both empty cases; `ThemadetailScherm.test.tsx` closes the form after a rights loss with no loading sentence; F5's plural and singular in `nl.json` without em dash, via `telWoord`, the singular pinned in `ImportScherm.test.tsx`).
+
+## Commands run
+- `pnpm lint` 0; `pnpm test` 47 files, 472/472; `pnpm build` 0 (existing chunk warning); `dotnet build` 0/0.
+- Throwaway DB `jp_tr_e602s4r2` (migrated; 5 leerplandoelen and 1 `Voorgesteld` doelsuggestie by SQL; seeded as in round 1 plus "Leeg thema" and 16 filler gebruikers). API Development `--no-launch-profile` on 5395, Vite on 5185. Teardown: servers stopped, ports free, `DROP DATABASE jp_tr_e602s4r2 WITH (FORCE)`, the owner's database untouched, `git status` clean at `5b4eb4a`.
+
+## Evidence
+- In the orchestrator's scratchpad under `tr-s4r2\`: scripts (`seed.mjs`, `lib.mjs`, `a.mjs`, `b.mjs`, `c1.mjs`, `c2.mjs`, `f1b.mjs`), results (`verslag-a/b/c1/c2/f1b.json`), screenshots (`shots\live403-{1440,390}.png`, `gebruikers-{390,1440}-{verdwenen,weigering}.png`, `f1b-hl-K3-op-{K3,L1}-*.png`, `themabeheer-leeg-*.png`, `*-herfst-1440.png`).
+
+## Defects
+None blocking.
+
+## Notes (not blocking)
+- [info, pre-existing] The React warning on the first `/doelen` visit.
+- [info] For a HL of K3 the link sheet also lists "Leeg thema" (0 subthema's), which offers nothing to press once opened; the sheet as a whole does offer something, so F1 holds. (Sent to fix round 2.)
+- [info] Two behaviours are proven only in the browser: the picker closing in the 403 `onError`, and `Aandachtsmelding`'s centred `scrollIntoView` (jsdom cannot evaluate it); both verified live at both widths.

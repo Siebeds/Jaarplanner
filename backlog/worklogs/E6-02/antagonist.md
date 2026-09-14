@@ -867,3 +867,28 @@ The three fix rounds were used up. The owner approved one extra mini-fix coverin
 
 ### Owner decision on Q1 (2026-09-14)
 Asked by the orchestrator with the three options; the owner chose **(A): keep open doelsuggesties hidden** from anyone who cannot decide them, as built. F6 was resolved by the orchestrator's `frontend-design` pass (recorded in `test-report.md` under slice 4 round 1): no change beyond moving the agenda's 403 refusal into `Aandachtsmelding`.
+
+## Code slice 4 — audit round 2
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff d859a10 5b4eb4a` on `story/E6-02-frontend` (25 files), plus `EfRechtenbronnen.VoorThemaAsync`, `Rechtenmatrix.StaatToe`, `ThemasMetSubtreeQuery`, `HaalThemaVoorKlasAsync`/`Klasleeftijden`, `KlasBeheerService.JaarFasenVoor`, and the agenda's three sheets.
+- **Verdict:** VIOLATIONS FOUND — 1 MINOR. No CRITICAL, no MAJOR. All round-1 findings resolved.
+- **Gates re-run by the auditor:** `pnpm lint` exit 0; `vitest run` 47 files, 472/472 green, at `5b4eb4a` (clean tree).
+
+### Confirmed compliant
+- **F1:** `KlasWeergave.jaarFasen` is `Jaarfasen.VoorKlas(...) ?? []` (`KlasBeheerService.cs:273-274`), the same function that narrows the sheet's `voor-klas` read (`Klasleeftijden.cs:57`, `SchoolcontentBeheerService.cs:145-150`), so for a derivable klas the button asks exactly the sheet's leeftijden. Both `Doeldetail` call sites switched; tests in `DoelenScherm.test.tsx` and `rechten.test.ts`.
+- **F2:** for an empty thema `VoorThemaAsync` yields `HeeftAndermansInhoud = false` and `GekoppeldeLeeftijden = []`; `useThema` reads `ThemasMetSubtreeQuery` (every subthema, unfiltered), so `subthemas.length === 0` is the server's fact. `rechten.ts:117-124` matches `Rechtenmatrix.cs:252-258` for it. The open-run case stays closed until E6-05, as documented. The comments are corrected.
+- **F3:** `bekend = data !== undefined` gates the four quiet lines, and Inladen renders nothing when `!bekend`. The `laadt` users that remain (`Navigatie` panel reset, `Onderdeelpoort` redirect) render no sentence.
+- **F4:** the loading sentence shows only on `jaarfasenFout`; `magSubthemaBlad` closes the form before `nietsToegestaan` can be reached from its only caller; closing by hand resets both mutations; after a rights close, the refusal moves to the fixed `role="alert"` toast.
+- **F5:** "vastgelegde koppelingen staan niet in dit bestand" is what `BedreigdeBeslissingen` guarantees (every decided link the file no longer carries); the singular form goes through `telWoord`; no em dash.
+- **Q1:** kept hidden, with the ruling cited in both comments.
+- **`Aandachtsmelding`:** focuses once on mount, never on a re-render, and the one-task delay is kept. Slice 2's alerts change only in scroll position (not re-measured in a browser for Gebruikers).
+- **Art. II / VI:** no hard-coded Dutch, no em dash, no pupil data, no secrets.
+
+### Finding to address
+1. **MINOR F7 (WCAG 4.1.3; the E5-03 rule on comments):** `Agendamelding` (`Agendascherm.tsx:771`) also mounts its focusing alert on 403s fired from inside three sheets that close only on success: `Nieuweactiviteitblad` `onPlan`, `Activiteitblad` `onVerplaats` and `Subthemaplanner` `onPlan`. `Blad` is a modal Radix dialog (`Blad.tsx:37`). The alert's single focus is sent back by the focus trap, the page is `aria-hidden`, and the centred scroll moves the page under the overlay. It never refocuses after the sheet closes. On the `Nieuweactiviteitblad` path `planFout` is a plain `<p>` (`Nieuweactiviteitblad.tsx:176-180`), so that 403 is announced by nobody. The comment at `Agendamelding.tsx:12-17` holds only for the picker and drag paths. Fix: show the alert only while no agenda sheet is open, and give `planFout` `role="alert"`; or mount the alert only after the sheet closes. Narrow the comment. Add a test for a 403 from `onPlan` with the sheet open. (Modal status verified in code; the focus and aria-hidden consequences follow Radix's modal behaviour and were not browser-measured.)
+
+### For the owner
+- **Art. XIV graadklas:** for a klas whose leeftijd cannot be derived, the sheet widens to every subthema while `jaarFasen` is `[]`, so a hoofdleerkracht is not offered "Koppel dit doel" there. This errs on the side of hiding (no E3-06 breach); leave it to directie's graadklas decision.
+- **The silent 400 on deleting a planned thema** (routed to the owner as a ticket candidate) now reaches themabeheer too, through F2's empty thema; the ticket should name both rights.

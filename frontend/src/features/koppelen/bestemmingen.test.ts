@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ActiviteitWeergave, SubthemaWeergave, ThemaWeergave } from "../../lib/types";
-import { filterBestemmingen, telBestemmingen } from "./bestemmingen";
+import { magVoor } from "../../lib/rechten";
+import { DIRECTIE, NIEMAND, ikMet } from "../../test/rechten";
+import { filterBestemmingen, telBestemmingen, themasMetKoppelactie } from "./bestemmingen";
 
 /**
  * The two questions the destination sheet asks of the school's content, tested without a server or a
@@ -148,6 +150,28 @@ describe("filterBestemmingen", () => {
 
     expect(takken).toHaveLength(1);
     expect(takken[0].subthemas).toEqual([]);
+  });
+});
+
+describe("themasMetKoppelactie", () => {
+  // Fix round 2 (the E3-06 rule): only thema's where the gebruiker has a link control to press. HERFST has two K3
+  // subthema's with activiteiten; LEEG has no subthema at all, so only its thema level can take the doel.
+  const LEEG = thema("Leeg thema", []);
+  const namen = (ik: Parameters<typeof magVoor>[0]) =>
+    themasMetKoppelactie([HERFST, LEEG], magVoor(ik)).map((item) => item.naam);
+
+  it("laat een hoofdleerkracht van K3 het lege thema niet zien, wel het thema met K3-subthema's", () => {
+    expect(namen(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }))).toEqual(["Herfst en bladeren"]);
+  });
+
+  it("laat directie en themabeheer beide zien, want zij koppelen ook op themaniveau", () => {
+    expect(namen(DIRECTIE)).toEqual(["Herfst en bladeren", "Leeg thema"]);
+    expect(namen(ikMet({ heeftThemabeheer: true }))).toEqual(["Herfst en bladeren", "Leeg thema"]);
+  });
+
+  it("laat een hoofdleerkracht van een andere leeftijd, en wie niets heeft, geen van beide zien", () => {
+    expect(namen(ikMet({ hoofdleerkrachtLeeftijden: ["L1"] }))).toEqual([]);
+    expect(namen(NIEMAND)).toEqual([]);
   });
 });
 

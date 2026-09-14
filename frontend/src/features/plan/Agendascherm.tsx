@@ -767,8 +767,16 @@ export function Agendascherm() {
 
         {/* ONE STRIP FOR EVERYTHING A DRAG CAN GO WRONG WITH, because from the teacher side they are one
             thing: the drop did not do what she meant. `sleepFout` wins, since a refusal decided here
-            fired no request and any server error beside it belongs to an earlier attempt. */}
-        <Agendamelding sleepFout={sleepFout} fouten={[acties.plaats.error, acties.verplaats.error, verplaatsMoment.error]} />
+            fired no request and any server error beside it belongs to an earlier attempt.
+
+            Told which sheets are open, as they render, so a refusal is announced where the teacher is (fix round 2,
+            F7). The picker renders only while this gebruiker may plan. */}
+        <Agendamelding
+          sleepFout={sleepFout}
+          fouten={[acties.plaats.error, acties.verplaats.error, verplaatsMoment.error]}
+          kiezerOpen={magPlannen && kiezer !== null}
+          bladOpen={nieuw !== null || geopend !== null || plannerOpen}
+        />
       </Schermvlak>
 
       <Activiteitkiezer

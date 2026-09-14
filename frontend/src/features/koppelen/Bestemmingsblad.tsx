@@ -11,7 +11,7 @@ import { useActieveSelectie } from "../../lib/selectie";
 import { useRechten } from "../../lib/rechten";
 import { cn } from "../../lib/cn";
 import { t, telWoord } from "../../i18n";
-import { filterBestemmingen, telBestemmingen } from "./bestemmingen";
+import { filterBestemmingen, telBestemmingen, themasMetKoppelactie } from "./bestemmingen";
 import { Themarij } from "./Themarij";
 
 /**
@@ -67,9 +67,12 @@ export function Bestemmingsblad({
     if (open) setZoek("");
   }
 
+  // Only the thema's with something this gebruiker can press, before the search, so the search and its count work on
+  // the list the gebruiker actually sees (fix round 2).
+  const metKoppelactie = useMemo(() => themasMetKoppelactie(themas, mag), [themas, mag]);
   const takken = useMemo(
-    () => (code ? filterBestemmingen(themas, code, zoek) : []),
-    [themas, code, zoek],
+    () => (code ? filterBestemmingen(metKoppelactie, code, zoek) : []),
+    [metKoppelactie, code, zoek],
   );
 
   /**
@@ -168,6 +171,10 @@ export function Bestemmingsblad({
             <Laadvlak className="h-14" />
             <Laadvlak className="h-14" />
           </div>
+        ) : themas.length > 0 && metKoppelactie.length === 0 ? (
+          // Thema's exist, and none has a control for this gebruiker. "Nog geen thema's" would be false here, so the
+          // sentence says only what this branch knows.
+          <Leegte titel={t("koppelen.nietsTeKoppelen")} />
         ) : takken.length === 0 ? (
           gezocht ? (
             <Leegte titel={t("koppelen.geenTreffers")} />

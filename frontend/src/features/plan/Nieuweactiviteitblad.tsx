@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from "react";
 import { Blad } from "../../components/ui/Blad";
 import { Keuze } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
+import { useInBeeld } from "../../components/ui/inBeeld";
 import { useThemasVoorKlas } from "../../lib/queries";
 import { useRechten } from "../../lib/rechten";
 import { volleDag } from "../../lib/datum";
@@ -114,7 +115,15 @@ export function Nieuweactiviteitblad({
   if (laadt || !actief) {
     return (
       <Blad open onOpenChange={(open) => !open && onSluit()} maat="breed" titel={t("activiteit.nieuwTitel")}>
-        {laadt ? <Laadlijst rijen={4} /> : <p className="text-body text-inkt-zacht">{t("periode.geenSubthemaOmIn")}</p>}
+        {/* A refused placement can take away, with the refetched rights, the last subthema this gebruiker may make an
+            activiteit in. The refusal is then what this sheet has to say, and "no subthema" would be false. */}
+        {laadt ? (
+          <Laadlijst rijen={4} />
+        ) : planFout ? (
+          <Planfout fout={planFout} />
+        ) : (
+          <p className="text-body text-inkt-zacht">{t("periode.geenSubthemaOmIn")}</p>
+        )}
       </Blad>
     );
   }
@@ -173,13 +182,28 @@ export function Nieuweactiviteitblad({
 
           {/* The activiteit was made and the placement was refused, so the two halves of Bewaren
               landed differently. Rendered under the day line because that is the half that failed. */}
-          {planFout ? (
-            <p className="mt-2 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-              {t("periode.gemaaktNietGepland")} {planFout}
-            </p>
-          ) : null}
+          {planFout ? <Planfout fout={planFout} /> : null}
         </>
       }
     />
+  );
+}
+
+/**
+ * The activiteit was made and its placement failed, said as an alert (E6-02 slice 4, fix round 2, F7; WCAG 4.1.3).
+ * The sheet stays open on a failure and is a modal dialog, so this is the only place the failure can be announced:
+ * the agenda's own strip does not show a refusal that arrives while this sheet is open. Brought into the sheet's view
+ * when it appears, since on a phone it lands below the visible part of the form.
+ */
+function Planfout({ fout }: { fout: string }) {
+  const ref = useInBeeld<HTMLParagraphElement>();
+  return (
+    <p
+      ref={ref}
+      role="alert"
+      className="mt-2 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
+    >
+      {t("periode.gemaaktNietGepland")} {fout}
+    </p>
   );
 }

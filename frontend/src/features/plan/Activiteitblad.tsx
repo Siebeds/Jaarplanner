@@ -4,6 +4,7 @@ import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
 import { Invoer } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
+import { useInBeeld } from "../../components/ui/inBeeld";
 import { Leegte } from "../../components/ui/Leegte";
 import { useThemaVoorKlas } from "../../lib/queries";
 import { useRechten } from "../../lib/rechten";
@@ -76,6 +77,9 @@ export function Activiteitblad({
   const koppel = useKoppelActiviteitdoel(themaId);
   const ontkoppel = useOntkoppelActiviteitdoel(themaId);
   const { mag } = useRechten();
+  // Whether a day action was asked from this sheet. The sheet is keyed on the plaatsing, so this starts false on
+  // every open, while `fout` is the agenda's and can belong to an earlier sheet.
+  const [gevraagd, setGevraagd] = useState(false);
 
   const subthema = thema?.subthemas.find((sub) =>
     sub.activiteiten.some((kandidaat) => kandidaat.id === activiteit?.activiteitId),
@@ -130,6 +134,13 @@ export function Activiteitblad({
   // `volledig` was found inside `subthema`, so the leeftijd is there whenever the form is.
   const leeftijd = subthema?.leeftijd ?? "";
 
+  // THE DAY'S FAILURE, OUTSIDE THE DAY SECTION, as an alert (E6-02 slice 4, fix round 2, F7; WCAG 4.1.3). This sheet
+  // stays open on a failure and is a modal dialog, so the agenda's own strip does not show a refusal that arrives while
+  // it is open, and this line is where it is announced. After a refusal the refetched rights take the day section
+  // away; the line stays, in the same place in the tree so it is not announced twice, and says why. For a gebruiker
+  // without the day section it shows only a failure asked from this sheet.
+  const dagfout = fout !== null && (magPlannen || gevraagd) ? fout : null;
+
   return (
     <Activiteitformulier
       open
@@ -147,22 +158,49 @@ export function Activiteitblad({
       }
       onSluit={onSluit}
       extra={
-        magPlannen ? (
-          <Dagsectie
-            datum={datum}
-            begin={activiteit.begin}
-            einde={activiteit.einde}
-            vroegste={vroegste}
-            laatste={laatste}
-            bezig={bezig}
-            fout={fout}
-            buitenPeriode={activiteit.valtBuitenThemaperiode}
-            onVerplaats={onVerplaats}
-            onVerwijder={onVerwijder}
-          />
+        magPlannen || dagfout ? (
+          <>
+            {magPlannen ? (
+              <Dagsectie
+                datum={datum}
+                begin={activiteit.begin}
+                einde={activiteit.einde}
+                vroegste={vroegste}
+                laatste={laatste}
+                bezig={bezig}
+                buitenPeriode={activiteit.valtBuitenThemaperiode}
+                onVerplaats={(...dag) => {
+                  setGevraagd(true);
+                  onVerplaats(...dag);
+                }}
+                onVerwijder={() => {
+                  setGevraagd(true);
+                  onVerwijder();
+                }}
+              />
+            ) : null}
+            {/* The server composes its refusals in Dutch for the person who can act on them (a closed day, a day
+                outside the school year, the same activiteit twice on one day, no right to plan this klas), so they
+                are rendered as they arrive. */}
+            {dagfout ? <Dagfout fout={dagfout} /> : null}
+          </>
         ) : undefined
       }
     />
+  );
+}
+
+/** The day's failure as an alert, brought into the sheet's view when it appears (fix round 2, F7). */
+function Dagfout({ fout }: { fout: string }) {
+  const ref = useInBeeld<HTMLParagraphElement>();
+  return (
+    <p
+      ref={ref}
+      role="alert"
+      className="mt-2 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
+    >
+      {fout}
+    </p>
   );
 }
 
@@ -184,7 +222,6 @@ function Dagsectie({
   vroegste,
   laatste,
   bezig,
-  fout,
   buitenPeriode,
   onVerplaats,
   onVerwijder,
@@ -196,7 +233,6 @@ function Dagsectie({
   vroegste: string;
   laatste: string;
   bezig: boolean;
-  fout: string | null;
   buitenPeriode: boolean;
   onVerplaats: (datum: string, begin: string, einde: string) => void;
   onVerwijder: () => void;
@@ -280,15 +316,6 @@ function Dagsectie({
       {buitenPeriode ? (
         <p className="mt-2 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
           {t("periode.buitenPeriode")}
-        </p>
-      ) : null}
-
-      {/* The server composes its refusals in Dutch for the person who can act on them (a closed day,
-          a day outside the school year, the same activiteit twice on one day), so they are rendered
-          as they arrive. */}
-      {fout ? (
-        <p className="mt-2 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-          {fout}
         </p>
       ) : null}
     </>
