@@ -27,6 +27,12 @@ const VELD: Record<string, Vertaalsleutel> = {
   Leeftijd: "importeren.veld.Leeftijd",
   Nr: "importeren.veld.Nr",
   Omschrijving: "importeren.veld.Omschrijving",
+  // The decree's ordering and kind (TB-010): a minimumdoel imported before them reports all four once, on the import
+  // that fills them in.
+  Leergebied: "importeren.veld.Leergebied",
+  Rubriek: "importeren.veld.Rubriek",
+  Subrubriek: "importeren.veld.Subrubriek",
+  Soort: "importeren.veld.Soort",
 };
 
 export function veldLabel(veld: string): string {

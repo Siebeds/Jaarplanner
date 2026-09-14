@@ -21,6 +21,17 @@ public sealed class MinimumdoelConfiguration : IEntityTypeConfiguration<Minimumd
         builder.Property(m => m.Nr).HasMaxLength(32).IsRequired();
         builder.Property(m => m.Omschrijving).IsRequired();
 
+        // The decree's own ordering and kind (TB-010), decreed content written by the minimumdoelen import only. Nullable,
+        // because every row imported before TB-010 has none until the next import. The kind is stored by name, so a
+        // reordered enum cannot silently change what a row says.
+        builder.Property(m => m.Leergebied).HasColumnName("leergebied").HasMaxLength(Minimumdoel.MaxOrdeningLengte);
+        builder.Property(m => m.Rubriek).HasColumnName("rubriek").HasMaxLength(Minimumdoel.MaxOrdeningLengte);
+        builder.Property(m => m.Subrubriek).HasColumnName("subrubriek").HasMaxLength(Minimumdoel.MaxOrdeningLengte);
+        builder.Property(m => m.Soort)
+            .HasColumnName("soort")
+            .HasConversion<string>()
+            .HasMaxLength(32);
+
         // Import-managed review flag (E1-21, ADR-0032 consequences): set when an applied import no longer finds the ref,
         // cleared when a later one does. Never written by normal app code; defaults false, as for leerplandoelen.
         builder.Property(m => m.NietMeerInOpstap)

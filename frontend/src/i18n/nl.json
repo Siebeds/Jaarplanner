@@ -50,9 +50,14 @@
     "geenTreffersActie": "Wis de filters",
     "geenMinimumdoelenTitel": "Nog geen minimumdoelen",
     "geenMinimumdoelTreffersTitel": "Geen minimumdoelen voor deze filters",
-    "zonderLeerplandoel": "Zonder ingeladen leerplandoel",
     "zonderLeerplandoelEen": "Geen enkel ingeladen leerplandoel verwijst naar dit minimumdoel.",
-    "zonderLeerplandoelMeer": "Geen enkel ingeladen leerplandoel verwijst naar deze minimumdoelen.",
+    "geenLeerplandoel": "Geen ingeladen leerplandoel",
+    "eenLeerplandoel": "1 ingeladen leerplandoel",
+    "aantalLeerplandoelen": "{aantal} ingeladen leerplandoelen",
+    "mijlpaal": "Mijlpaal",
+    "zonderOrdening": "Zonder ordening",
+    "zonderOrdeningEen": "Voor dit minimumdoel is de ordening van het decreet niet bekend. Een nieuwe import van de minimumdoelen vult ze aan als Op.stap ze in een bruikbare vorm meegeeft.",
+    "zonderOrdeningMeer": "Voor deze minimumdoelen is de ordening van het decreet niet bekend. Een nieuwe import van de minimumdoelen vult ze aan als Op.stap ze in een bruikbare vorm meegeeft.",
     "redenDoelsets": "Alleen {doelsets} verwijzen ernaar, en die worden niet ingelezen.",
     "redenGeenDoel": "In de doorgevoerde versie van Op.stap verwijst geen enkel doel ernaar.",
     "redenNietIngelezen": "Een gemeenschappelijk doel verwijst ernaar, maar dat doel kon niet ingelezen worden.",
@@ -63,7 +68,6 @@
     "doelsetPlus": "verdiepingsdoelen",
     "doelsetA": "doelen voor anderstalige nieuwkomers",
     "doelsetOnbekend": "doelen uit doelset {doelset}",
-    "herhaald": "Een minimumdoel kan meer dan eens voorkomen: onder elke discipline en elk subdomein waarin een ingeladen leerplandoel ernaar verwijst.",
     "nogTonen": "Nog {aantal} tonen",
     "foutTitel": "Doelen niet geladen"
   },
@@ -72,6 +76,7 @@
     "kies": "Kies een doel",
     "vervallen": "Vervallen in Op.stap",
     "minimumdoel": "Minimumdoel",
+    "bekijkMinimumdoel": "Bekijk dit minimumdoel",
     "voorbeelden": "Voorbeelden",
     "toelichting": "Toelichting",
     "woordenschat": "Woordenschat",
@@ -82,6 +87,21 @@
     "koppelingLeeftijd": "Leeftijd {leeftijd}",
     "fout": "Doel niet geladen",
     "koppelAan": "Koppel dit doel"
+  },
+  "minimumdoel": {
+    "titel": "Minimumdoel",
+    "mijlpaalK": "Einde 3e kleuterklas",
+    "mijlpaal4": "Einde 4e leerjaar",
+    "mijlpaal6": "Einde 6e leerjaar",
+    "soortTeBereikenIndividueel": "Te bereiken op individueel niveau",
+    "soortTeBereikenPopulatie": "Te bereiken op populatieniveau",
+    "soortNaTeStreven": "Na te streven op populatieniveau",
+    "perJaarFase": "Per jaar of fase",
+    "perJaarFaseLabel": "Ingeladen leerplandoelen per jaar of fase: {lijst}",
+    "verwijzenEen": "1 ingeladen leerplandoel verwijst ernaar",
+    "verwijzenMeer": "{aantal} ingeladen leerplandoelen verwijzen ernaar",
+    "leerplandoelen": "Leerplandoelen",
+    "fout": "Minimumdoel niet geladen"
   },
   "themas": {
     "titel": "Thema's",
@@ -507,7 +527,11 @@
       "OpstapSleutel": "Op.stap-sleutel",
       "Leeftijd": "leeftijd",
       "Nr": "nummer",
-      "Omschrijving": "omschrijving"
+      "Omschrijving": "omschrijving",
+      "Leergebied": "leergebied",
+      "Rubriek": "rubriek",
+      "Subrubriek": "subrubriek",
+      "Soort": "soort"
     }
   },
   "algemeen": {

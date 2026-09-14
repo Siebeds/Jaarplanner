@@ -115,7 +115,15 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
             gewijzigd.Add(new MinimumdoelWijziging(nieuw.Ref, velden));
             if (toepassen)
             {
-                _context.Entry(oud).CurrentValues.SetValues(nieuw);
+                // SetValues copies every property, the leerplandoelen import's reason too, and the incoming row carries
+                // none. A changed text or ordering says nothing about which goals refer to the minimumdoel, so the reason
+                // stays until that import recomputes it (TB-010: the first import after it changes every row it touches).
+                var reden = oud.ZonderLeerplandoelReden;
+                var doelsets = oud.ZonderLeerplandoelDoelsets;
+                var entry = _context.Entry(oud);
+                entry.CurrentValues.SetValues(nieuw);
+                entry.Property(m => m.ZonderLeerplandoelReden).CurrentValue = reden;
+                entry.Property(m => m.ZonderLeerplandoelDoelsets).CurrentValue = doelsets;
                 ZetReviewVlag(oud, false);
             }
         }
@@ -222,10 +230,16 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
         Vergelijk(velden, nameof(Minimumdoel.Leeftijd), oud.Leeftijd, nieuw.Leeftijd);
         Vergelijk(velden, nameof(Minimumdoel.Nr), oud.Nr, nieuw.Nr);
         Vergelijk(velden, nameof(Minimumdoel.Omschrijving), oud.Omschrijving, nieuw.Omschrijving);
+        // The decree's ordering and kind (TB-010). A row imported before them reports them as changed on the next import,
+        // which is how that import fills them in and how the reviewer sees that it does.
+        Vergelijk(velden, nameof(Minimumdoel.Leergebied), oud.Leergebied, nieuw.Leergebied);
+        Vergelijk(velden, nameof(Minimumdoel.Rubriek), oud.Rubriek, nieuw.Rubriek);
+        Vergelijk(velden, nameof(Minimumdoel.Subrubriek), oud.Subrubriek, nieuw.Subrubriek);
+        Vergelijk(velden, nameof(Minimumdoel.Soort), oud.Soort?.ToString(), nieuw.Soort?.ToString());
         return velden;
     }
 
-    private static void Vergelijk(List<VeldWijziging> velden, string veld, string oud, string nieuw)
+    private static void Vergelijk(List<VeldWijziging> velden, string veld, string? oud, string? nieuw)
     {
         if (!string.Equals(oud, nieuw, StringComparison.Ordinal))
         {

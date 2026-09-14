@@ -66,6 +66,11 @@ without asking KOV first. That is recorded here as the context the ruling was ta
    concatenated any more. A row whose `validity.endDate` has passed is not imported.
    **All 998 are imported**, whatever the goal-set scope of decision 5, because the decree applies in full. *(This
    sentence is the implementer's reading; the owner's ruling did not address it.)*
+   *Amended 2026-09-14 (TB-010, owner's choice in session, Art. VII.2 and IX.1 amended in step):* the mapping also
+   reads `path` into `Leergebied`, `Rubriek` and `Subrubriek` (split on ` > `, two or three levels, verbatim; 944 rows
+   have three, 54 two) and `type` into `Soort` (the decree's three kinds: 177 individueel, 632 populatie, 189 na te
+   streven). Any other shape or value leaves them empty and never refuses the row. The minimumdoelen register is now
+   browsed in this ordering; until then it borrowed the discipline of the concorded leerplandoelen.
 4. **An import is a human action, never automatic.** Each source has a preview that writes nothing and an apply, both
    behind `Curriculumbeheer` (ADR-0022), both returning the review report (FR-2.5). The import is non-destructive: a
    minimumdoel that is absent from the source is **kept and reported**, never deleted, because leerplandoelen concord to

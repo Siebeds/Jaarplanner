@@ -170,10 +170,13 @@ export interface LeerplandoelFilterQuery {
 
 // --- Minimumdoelen (the decreed eindtermen, Art. VII.0) ---
 
+/** The decree's kind of minimumdoel, as KOV publishes it (TB-010). */
+export type MinimumdoelSoort = "TeBereikenIndividueel" | "TeBereikenPopulatie" | "NaTeStreven";
+
 /**
- * One row of the minimumdoelen register: a minimumdoel in one (discipline, domein, subdomein) bucket of its concorded
- * leerplandoelen. A minimumdoel no loaded leerplandoel concords arrives once, last, with the three bucket fields null
- * and no codes (E1-22). That null means no loaded goal refers to it, never that the teachers left something out.
+ * One row of the minimumdoelen register: one minimumdoel, in its place in the decree's ordering (TB-010). The three
+ * levels are null when the ordering is not known, which is every minimumdoel imported before TB-010 until the next
+ * minimumdoelen import.
  */
 export interface MinimumdoelRegel {
   ref: string;
@@ -181,14 +184,16 @@ export interface MinimumdoelRegel {
   nr: string;
   /** Decreed text, plain, with its list items on lines of their own (`\n- `): render with `whitespace-pre-line`. */
   omschrijving: string;
-  disciplineNummer: string | null;
-  disciplineNaam: string | null;
-  domein: string | null;
-  subdomein: string | null;
-  leerplandoelCodes: string[];
+  leergebied: string | null;
+  rubriek: string | null;
+  subrubriek: string | null;
+  /** How many stored leerplandoelen concord to it. */
+  aantalLeerplandoelen: number;
+  /** Their distinct jaar/fasen, kleuter before lager, in the server's order. */
+  jaarFasen: string[];
   /**
-   * On a row without a bucket only: why no loaded leerplandoel concords it, as the last applied leerplandoelen import
-   * derived it from its snapshot (owner ruling 2026-09-13). Null when that is not known, and then nothing is said.
+   * Only when no stored leerplandoel concords to it: why, as the last applied leerplandoelen import derived it from its
+   * snapshot (owner ruling 2026-09-13). Null when that is not known, and then nothing is said.
    */
   zonderLeerplandoelReden: ZonderLeerplandoelReden | null;
   /** With `AlleenOvergeslagenDoelsets`: KOV's goal-set marks (`Z`, `V`, …). Empty otherwise. */
@@ -204,25 +209,94 @@ export interface MinimumdoelenPagina {
   aantal: number;
 }
 
+export interface SubrubriekFacet {
+  naam: string;
+  aantal: number;
+}
+
+export interface RubriekFacet {
+  naam: string;
+  aantal: number;
+  /** The minimumdoelen directly under the rubriek, because the decree gives them no third level. */
+  aantalZonderSubrubriek: number;
+  subrubrieken: SubrubriekFacet[];
+}
+
+export interface LeergebiedFacet {
+  naam: string;
+  aantal: number;
+  rubrieken: RubriekFacet[];
+}
+
+export interface LeeftijdFacet {
+  leeftijd: string;
+  aantal: number;
+}
+
+/**
+ * The minimumdoelen tree under the filter, in the decree's order (TB-010). Each minimumdoel sits in one branch, so the
+ * counts add up: the leergebieden plus `aantalZonderOrdening` make `aantalTreffers`.
+ */
 export interface MinimumdoelFacetten {
   /** Every stored minimumdoel, whatever the filter. */
   totaalAantalMinimumdoelen: number;
-  /** Distinct minimumdoelen the filter matches. The facet counts below are rows, and summing them is not this. */
+  /** The minimumdoelen the filter matches. */
   aantalTreffers: number;
-  /** Of those, the ones no loaded leerplandoel concords. */
-  aantalZonderLeerplandoel: number;
-  /** Rows per discipline: what the register lists under that heading. */
-  disciplines: DisciplineFacet[];
-  domeinen: DomeinFacet[];
-  jaarFasen: JaarFaseFacet[];
+  /** Of those, the ones whose ordering is not known. */
+  aantalZonderOrdening: number;
+  leergebieden: LeergebiedFacet[];
+  /** Per leeftijd code (`K-`, `4-`, `6-`), the minimumdoelen the rest of the filter matches. */
+  leeftijden: LeeftijdFacet[];
+}
+
+/** A leerplandoel as the minimumdoel detail lists it. */
+export interface GeconcordeerdLeerplandoel {
+  code: string;
+  tekst: string;
+  disciplineNaam: string | null;
+  domein: string;
+  subdomein: string;
+  nietMeerInOpstap: boolean;
+}
+
+export interface JaarFaseLeerplandoelen {
+  jaarFase: string;
+  leerplandoelen: GeconcordeerdLeerplandoel[];
+}
+
+/** One minimumdoel in full, with the leerplandoelen that concord to it per jaar/fase (TB-010). */
+export interface MinimumdoelDetail {
+  ref: string;
+  leeftijd: string;
+  nr: string;
+  omschrijving: string;
+  leergebied: string | null;
+  rubriek: string | null;
+  subrubriek: string | null;
+  soort: MinimumdoelSoort | null;
+  nietMeerInOpstap: boolean;
+  aantalLeerplandoelen: number;
+  /** Every jaar/fase in order, each with its leerplandoelen (possibly none): the server owns the vocabulary. */
+  jaarFasen: JaarFaseLeerplandoelen[];
+  zonderLeerplandoelReden: ZonderLeerplandoelReden | null;
+  zonderLeerplandoelDoelsets: string[];
 }
 
 export interface MinimumdoelFilterQuery {
   zoek?: string;
+  /** A mijlpaal: `K-`, `4-` or `6-`. */
+  leeftijd?: string;
+  /** Discipline, domein, subdomein and jaar/fase reach a minimumdoel through its concorded leerplandoelen. */
   discipline?: string;
   domein?: string;
   subdomein?: string;
   jaarFase?: string;
+  /** One branch of the tree, for the list: named from the top. */
+  leergebied?: string;
+  rubriek?: string;
+  subrubriek?: string;
+  zonderSubrubriek?: boolean;
+  zonderOrdening?: boolean;
   overslaan?: number;
   aantal?: number;
 }
