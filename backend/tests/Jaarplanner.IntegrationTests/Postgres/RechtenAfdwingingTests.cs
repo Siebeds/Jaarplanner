@@ -459,6 +459,66 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(directie.DeleteAsync($"/api/themas/{run.ThemaId}")));
     }
 
+    [PostgresFact]
+    public async Task Een_doel_op_een_activiteit_van_de_open_wizard_beschermt_het_thema_tegen_themabeheer_Q4()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
+        using var ookHoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, themabeheer: true, hoofdleerkrachtVan: ["K3"]));
+        using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
+        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+
+        // A thema whose only content is its open run's own subthema and activiteit, but a hoofdleerkracht linked a goal
+        // to that activiteit on the ordinary route.
+        async Task<Guid> ThemaMetGekoppeldeWizardactiviteitAsync()
+        {
+            var run = await RechtenTestOpzet.StartWizardAsync(themabeheer);
+            var wizard = $"{RechtenTestOpzet.Wizard}/{run.Id}";
+            var subthemaId = await RechtenTestOpzet.IdAsync(
+                themabeheer.PostAsJsonAsync($"{wizard}/subthemas", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" }), HttpStatusCode.Created);
+            var activiteitId = await RechtenTestOpzet.IdAsync(
+                themabeheer.PostAsJsonAsync($"{wizard}/subthemas/{subthemaId}/activiteiten", new { naam = "Proef", activiteitType = "Experiment" }),
+                HttpStatusCode.Created);
+            Assert.Equal(HttpStatusCode.OK, await StatusAsync(hoofdleerkracht.PostAsJsonAsync(
+                $"/api/activiteiten/{activiteitId}/doelkoppelingen", new { leerplandoelCode = Doelcode })));
+            return run.ThemaId;
+        }
+
+        var eerste = await ThemaMetGekoppeldeWizardactiviteitAsync();
+        await RechtenTestOpzet.VerwachtAsync(themabeheer.DeleteAsync($"/api/themas/{eerste}"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(directie.DeleteAsync($"/api/themas/{eerste}")));
+
+        // Themabeheer that may also link goals at K3 may remove that link, so it may delete the thema.
+        var tweede = await ThemaMetGekoppeldeWizardactiviteitAsync();
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(ookHoofdleerkracht.DeleteAsync($"/api/themas/{tweede}")));
+    }
+
+    [PostgresFact]
+    public async Task Een_gepland_thema_verwijdert_ook_themabeheer_niet_I26()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
+        var themaId = await opzet.ThemaAsync();
+
+        // Empty, so themabeheer holds the right to delete it; but a klas planned it.
+        using (var directie = opzet.Directie())
+        {
+            var rooster = await directie.GetFromJsonAsync<RoosterDto>($"/api/schooljaren/{school.SchooljaarId}/rooster");
+            Assert.Equal(HttpStatusCode.OK, await StatusAsync(directie.PostAsJsonAsync(
+                $"/api/klassen/{school.K3Blauw}/jaarplan/plaatsingen", new { themaId, blokStart = rooster!.Blokken[0].Start })));
+        }
+
+        using var antwoord = await themabeheer.DeleteAsync($"/api/themas/{themaId}");
+        Assert.Equal(HttpStatusCode.BadRequest, antwoord.StatusCode);
+        Assert.Contains("staat nog 1 keer in een jaarplan", await antwoord.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    private sealed record RoosterDto(List<BlokDto> Blokken);
+
+    private sealed record BlokDto(DateOnly Start);
+
     // --- A missing leeftijd (test-runner D2): the write's Dutch 400, and a 403 first wherever the right needs no body. ---
 
     [PostgresFact]

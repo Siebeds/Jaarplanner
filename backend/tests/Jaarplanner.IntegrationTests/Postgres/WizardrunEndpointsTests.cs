@@ -8,12 +8,14 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
 /// The thema-opbouw wizard's own write actions, over HTTP against PostgreSQL (E6-02 slice 3, ADR-0030 R29, R32;
-/// defaults I18, I22–I25, I27). No screen calls them yet (E6-05); these tests are what shows they are real and reachable.
+/// defaults I18, I22–I25, I27, I28). No screen calls them yet (E6-05); these tests are what shows they are real and
+/// reachable.
 /// <para>
 /// What they pin: themabeheer builds a thema from scratch through them and through nothing else (I22); a run ends when
-/// finished, closed or fourteen days silent, for directie too (I24); within a run, an edit or delete reaches only what
-/// that run created and what is still under its thema (I25); it carries off nobody else's work (I27); afterwards the
-/// thema follows the ordinary rights (I23); the maker of a wizard activiteit is the caller (I18).
+/// finished, closed or fourteen days silent, for directie too (I24), and only its own routes move that window (I28);
+/// within a run, an edit or delete reaches only what that run created and what is still under its thema (I25); it
+/// carries off nobody else's work, goal links included (I27 and the owner's Q4 ruling); afterwards the thema follows the
+/// ordinary rights (I23); the maker of a wizard activiteit is the caller (I18).
 /// </para>
 /// <para>
 /// <b>Every sentence the wizard writes is asserted in full</b>, with no em dash (<see cref="VerwachtAsync"/>): a
@@ -39,8 +41,13 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         "Onder dit subthema staan subdoelen of activiteiten die niet in deze wizard aangemaakt zijn. "
         + "Die zouden mee van leeftijd veranderen, dus de wizard verandert de leeftijd niet.";
 
+    private const string GekoppeldVerhuist =
+        "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Die mag je niet naar een andere leeftijd meenemen, "
+        + "dus de wizard verandert de leeftijd niet.";
+
     private const string ActiviteitMetDoelen =
-        "Aan deze activiteit zijn doelen gekoppeld. Je mag op deze leeftijd geen doelen ontkoppelen, dus de wizard verwijdert ze niet.";
+        "Aan deze activiteit zijn doelen gekoppeld. Je mag op deze leeftijd geen doelen ontkoppelen, "
+        + "dus de wizard verwijdert deze activiteit niet.";
 
     private const string SubthemaMetDoelen =
         "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Je mag op deze leeftijd geen doelen ontkoppelen, "
@@ -62,7 +69,7 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         foreach (var zin in new[]
                  {
                      NietGevonden, Afgelopen, NietVanDitThema, ActiviteitWeg, NietInDezeWizard, Verdwijnt, Verhuist,
-                     ActiviteitMetDoelen, SubthemaMetDoelen, GeenLeeftijd,
+                     GekoppeldVerhuist, ActiviteitMetDoelen, SubthemaMetDoelen, GeenLeeftijd,
                  })
         {
             Assert.DoesNotContain('—', zin);
@@ -94,7 +101,7 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
             nu.Aangemaakt.Select(i => (i.Soort, i.Id)).Order());
 
         // Within the open run, what it made may be edited and deleted (I25). The new leeftijd is allowed because
-        // everything under the subthema is the run's own (I27).
+        // everything under the subthema is the run's own and no activiteit carries a goal link (I27).
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client.PutAsJsonAsync($"{Wizard}/{run.Id}/subthemas/{subthemaId}", Subthema("K2", "Wind"))));
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client.PutAsJsonAsync(
             $"{Wizard}/{run.Id}/activiteiten/{activiteit.Id}", new { naam = "Proef met ijs", activiteitType = "Experiment" })));
@@ -158,6 +165,22 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
     }
 
     [PostgresFact]
+    public async Task Een_gewone_thema_of_themadoelwijziging_verschuift_het_venster_van_de_wizard_niet_I28()
+    {
+        var opzet = Opzet;
+        using var client = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
+        var run = await StartWizardAsync(client);
+        var voor = await LaatsteSchrijfactieAsync(run.Id);
+
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client.PutAsJsonAsync(
+            $"/api/themas/{run.ThemaId}", new { naam = $"Hernoemd {Guid.NewGuid():N}", duurWeken = 5, kernwoordenschat = new[] { "regen" } })));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client.PostAsJsonAsync(
+            $"/api/themas/{run.ThemaId}/themadoelen", new { leerplandoelCode = Doelcode })));
+
+        Assert.Equal(voor, await LaatsteSchrijfactieAsync(run.Id));
+    }
+
+    [PostgresFact]
     public async Task De_wizard_raakt_alleen_aan_wat_hij_zelf_aanmaakte_I25()
     {
         var opzet = Opzet;
@@ -209,6 +232,41 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
     }
 
     [PostgresFact]
+    public async Task Een_gekoppelde_wizardactiviteit_verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
+        using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
+        using var alleenK3 = opzet.Als(await opzet.GebruikerAsync(school, themabeheer: true, hoofdleerkrachtVan: ["K3"]));
+        using var beide = opzet.Als(await opzet.GebruikerAsync(school, themabeheer: true, hoofdleerkrachtVan: ["K3", "K2"]));
+        var run = await StartWizardAsync(themabeheer);
+        var subthemaId = await IdAsync(themabeheer.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas", Subthema("K3")), HttpStatusCode.Created);
+        var activiteitId = await IdAsync(
+            themabeheer.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas/{subthemaId}/activiteiten", Activiteit), HttpStatusCode.Created);
+
+        // Everything under the subthema is the run's own, but a hoofdleerkracht linked a goal to its activiteit.
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(hoofdleerkracht.PostAsJsonAsync(
+            $"/api/activiteiten/{activiteitId}/doelkoppelingen", new { leerplandoelCode = Doelcode })));
+        var pad = $"{Wizard}/{run.Id}/subthemas/{subthemaId}";
+
+        await VerwachtAsync(themabeheer.PutAsJsonAsync(pad, Subthema("K2")), HttpStatusCode.Forbidden, GekoppeldVerhuist);
+        // The goal-link right at the old leeftijd only is not enough: the link would land at K2.
+        await VerwachtAsync(alleenK3.PutAsJsonAsync(pad, Subthema("K2")), HttpStatusCode.Forbidden, GekoppeldVerhuist);
+        // An edit at the same leeftijd carries no link anywhere.
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(themabeheer.PutAsJsonAsync(pad, Subthema("K3", "Wind"))));
+
+        await using (var context = _omgeving.Db.MaakContext())
+        {
+            Assert.Equal("K3", (await context.Subthemas.SingleAsync(s => s.Id == subthemaId)).Leeftijd);
+        }
+
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(beide.PutAsJsonAsync(pad, Subthema("K2"))));
+        await using var na = _omgeving.Db.MaakContext();
+        Assert.Equal("K2", (await na.Subthemas.SingleAsync(s => s.Id == subthemaId)).Leeftijd);
+    }
+
+    [PostgresFact]
     public async Task Een_wizardactiviteit_waaraan_iemand_een_doel_koppelde_verwijdert_alleen_wie_mag_koppelen_I27()
     {
         var opzet = Opzet;
@@ -244,6 +302,12 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         await opzet.KoppelAsync(activiteitId, Doelcode);
 
         await VerwachtAsync(themabeheer.DeleteAsync($"{Wizard}/{run.Id}/subthemas/{subthemaId}"), HttpStatusCode.Forbidden, SubthemaMetDoelen);
+        await using (var context = _omgeving.Db.MaakContext())
+        {
+            Assert.True(await context.Subthemas.AnyAsync(s => s.Id == subthemaId));
+            Assert.True(await context.Activiteiten.AnyAsync(a => a.Id == activiteitId));
+        }
+
         Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(ookHoofdleerkracht.DeleteAsync($"{Wizard}/{run.Id}/subthemas/{subthemaId}")));
     }
 
@@ -359,6 +423,16 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
 
     private static async Task<RunDto> HaalOpAsync(HttpClient client, Guid runId) =>
         (await client.GetFromJsonAsync<RunDto>($"{Wizard}/{runId}"))!;
+
+    /// <summary>The stored value itself, not the API's rendering of it, so an unchanged window compares exactly.</summary>
+    private async Task<DateTimeOffset> LaatsteSchrijfactieAsync(Guid runId)
+    {
+        await using var context = _omgeving.Db.MaakContext();
+        return await context.Wizardruns.AsNoTracking()
+            .Where(r => r.Id == runId)
+            .Select(r => r.LaatsteSchrijfactieOp)
+            .SingleAsync();
+    }
 
     private async Task ZetLaatsteSchrijfactieAsync(Guid runId, DateTimeOffset moment)
     {

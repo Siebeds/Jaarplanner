@@ -147,3 +147,39 @@ None.
 ## Notes
 - The 14-day window is pinned at the exact edge only by the domain unit test; the HTTP tests edit the timestamp on the real clock.
 - The worklog's manual Development sign-in steps were not run; the Postgres HTTP tests cover the same flows.
+
+
+# E6-02 slice 3 — Test report (round 2)
+
+**Verdict:** PASS
+**Mode:** unit/integration (backend only; no Playwright until slice 4)
+**Change verified:** `afe46bc` on `story/E6-02-afdwingen`, on top of `d85c0a5`. No new migration.
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Gates → PASS.** `dotnet build` 0/0; UnitTests 1364 passed, 4 skipped (live KOV opt-in); IntegrationTests 418 passed, 1 skipped (live Op.stap opt-in), 1 failed under load: `AanmeldEndpointsTests.Entra_een_token_zonder_acct_krijgt_geen_sessie_maar_de_weigeringspagina` (1 ms), which passed 11/11 when its class ran alone. It tests the Entra refusal page, not the 403 writer this round changed: classed as flaky, not a product defect. `dotnet format --verify-no-changes` exit 0; `has-pending-model-changes` clean.
+- **D1 → PASS.** `Wizardinhoud` removed from one route at a time, rebuilt, sweep + `WizardrunEndpointsTests` + `RechtenAfdwingingTests` run, restored with `git checkout --`:
+  - `DELETE …/wizardruns/{runId}/subthemas/{subthemaId}` → sweep FAIL, names the route, "answered 204";
+  - `DELETE …/subthemas/{subthemaId}/subdoelen/{subdoelId}` → FAIL, names the route, "answered 204";
+  - `DELETE …/wizardruns/{runId}/activiteiten/{activiteitId}` (the round-1 blind spot) → FAIL, names the route, "answered 204";
+  - control, `[RechtOp]` off `PUT api/hoeken/{hoekId}` → FAIL, "answered 400" (and a per-row test failed too).
+  The sweep asserts the detail "Je hebt geen toegang tot deze actie." and sends the wizard item routes the seeded run's own items. On the three wizard probes the other 35 tests stayed green: the sweep is the only net for those guards, and it holds.
+- **D2 → PASS** (committed tests, null and omitted): ordinary create — HL 400 `GeenLeeftijd`, no-rights 400 `GeenLeeftijd` (by design, pinned); ordinary PUT — HL 400, no-rights 403; wizard create — TB 400, HL 403; wizard PUT — TB 400, HL 403. `GeenLeeftijd` = "Een subthema heeft een leeftijd nodig. Kies er een uit: JK, K2, K3, L1, L2, L3, L4, L5, L6."
+- **I26 → PASS.** `[RechtOp(ThemaVerwijderen, Rechtbron.Thema)]`, column `ThemabeheerZonderAndermansInhoud`: HL content → TB 403 (full detail), directie 204; empty → TB 204; only the open run's items → TB 204; after `afronden` → TB 403, directie 204; missing thema → 404 first; unit test over all eight relations, fails closed without a `Themabron`. The planned/scheduled refusal holds by reading (service check after the rights check, unchanged; tested for directie only).
+- **I27 → PASS.** Re-scope of a run subthema holding a leerkracht's activiteit → 403 "…dus de wizard verandert de leeftijd niet." (leeftijd stays K3), same-leeftijd edit 200, re-scope with only the run's items allowed. Linked activiteit delete → TB 403, TB+HL 204. Subthema whose activiteiten carry links → TB 403, TB+HL 204. A run activiteit moved away by directie → 403 on wizard PUT and DELETE.
+- **Wizard sentences → PASS** (each asserted in full with an em-dash check; "Deze wizard is niet gevonden." on POST, afronden and GET).
+- **Round-1 criteria still hold → PASS** (`RechtenAfdwingingTests` now 21; I9 reads; R35; the 14-day edge; I22–I25 and I18 with exact sentences).
+
+## Commands run
+- `dotnet build` (also after the probes) → 0/0. `dotnet test --no-build` (Postgres 127.0.0.1:5433) → the numbers above. `--filter AanmeldEndpointsTests` → 11/11. `dotnet format --verify-no-changes` → 0. `has-pending-model-changes --no-build` → clean.
+- Four guard-removal probes, each restored. Final `git status --short` and `git diff` empty; HEAD `afe46bc`.
+
+## Defects
+None.
+
+## Notes (non-blocking)
+- The password in `docs/dev-setup-secrets.md` does not match the `jaarplanner-db` container (first run: 293 failures with `28P01`); the container's own `POSTGRES_PASSWORD` was used.
+- One flaky test (above).
+- TB on a planned thema delete is not pinned by a test.
+- The subthema-with-links refused delete does not assert the subthema still exists.

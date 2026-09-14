@@ -6,13 +6,15 @@ namespace Jaarplanner.Application.Toegang;
 /// every <see cref="Rijen"/> entry under its <see cref="Matrixrij.Beleid"/> name, and <see cref="StaatToe"/> is the
 /// only code that decides whether a gebruiker's <see cref="Rechten"/> satisfy a row.
 /// <para>
-/// <b>How a row is applied.</b> A row whose columns need no resource (directie, TB) goes on a route as
-/// <c>[Authorize(Policy = Rechtenmatrix.Beleid.X)]</c>. A row with an HL, "LK leeftijd", "LK eigen" or maker column is
-/// resource-based: the controller builds the resource (<see cref="Leeftijdsinhoud"/>, <see cref="Klasplanning"/> or
-/// <see cref="Activiteitbron"/>, via <see cref="IRechtenbronnen"/>) and asks
-/// <c>IAuthorizationService.AuthorizeAsync(User, bron, Rechtenmatrix.Beleid.X)</c>. Put such a row in an attribute by
-/// mistake and it fails closed: the resource is then the <c>HttpContext</c>, which matches no column, so only directie
-/// (and TB where the row has it) passes.
+/// <b>How a row is applied.</b> A row whose columns need no resource (directie, the plain TB column) goes on a route as
+/// <c>[Authorize(Policy = Rechtenmatrix.Beleid.X)]</c>. A row with any column that needs a resource is resource-based:
+/// HL, "LK leeftijd", "LK eigen", the maker, and themabeheer on a thema that holds no one else's content (I26). The Api
+/// builds the resource (<see cref="Leeftijdsinhoud"/>, <see cref="Klasplanning"/>, <see cref="Activiteitbron"/> or
+/// <see cref="Themabron"/>, via <see cref="IRechtenbronnen"/>) and asks
+/// <c>IAuthorizationService.AuthorizeAsync(User, bron, Rechtenmatrix.Beleid.X)</c>: through the <c>[RechtOp]</c> filter,
+/// or in the action when the resource comes from the body. Put such a row in an attribute by mistake and it fails
+/// closed: the resource is then the <c>HttpContext</c>, which matches no resource column, so only directie (and TB where
+/// the row has the plain TB column) passes.
 /// </para>
 /// <para>
 /// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal content (R6) waits for E6-10's shape;
@@ -21,10 +23,13 @@ namespace Jaarplanner.Application.Toegang;
 /// </para>
 /// <para>
 /// <b>The wizard's own write actions (§3 row 7) are split in two.</b> Who may call them is the row
-/// <see cref="Wizardinhoud"/> here: directie and themabeheer. What a run allows (it is open, the content is under its
-/// own thema, an edit or delete reaches only what it created: I23–I25) is state, not a relation, and holds for directie
-/// too, so <c>IWizardrunService</c> enforces it. <i>Until slice 3 this paragraph said the row needed a state the model
-/// did not have; the <c>Wizardrun</c> entity is that state.</i>
+/// <see cref="Wizardinhoud"/> here: directie and themabeheer. What a run allows is <c>IWizardrunService</c>'s, and it
+/// holds for directie too. Most of it is state: the run is open, the content is under its own thema, an edit or delete
+/// reaches only what it created (I23–I25). One part is a relation (I27, with the owner's Q4 ruling of 2026-09-14): a
+/// wizard action that would remove a goal link, or carry one to another leeftijd, needs <see cref="DoelenKoppelen"/>,
+/// which the service asks through <see cref="StaatToe"/> like every other row. <i>Until slice 3 this paragraph said the
+/// row needed a state the model did not have; the <c>Wizardrun</c> entity is that state. Until fix round 2 it called
+/// the whole of it state, which I27 made false.</i>
 /// </para>
 /// </summary>
 public static class Rechtenmatrix
@@ -71,15 +76,18 @@ public static class Rechtenmatrix
         Beleid.ThemaBewerken, "Thema, themadoelen, kernwoordenschat aanpassen (R4, R18)", Kolom.Themabeheer);
 
     /// <summary>
-    /// Deleting a thema with everything under it (R4; default I26, chosen by the owner on 2026-09-14; §3 has no delete
-    /// row of its own). Directie always. Themabeheer only while the thema holds no subthema, subdoel or activiteit other
-    /// than what its own open wizard run created: anything else was made by hand, and deleting it by hand is directie's
-    /// and the hoofdleerkrachten's (R21, R24, R25). The service refuses a planned or scheduled thema for everyone.
-    /// Resource: <see cref="Themabron"/>.
+    /// Deleting a thema with everything under it (R3; I26; §3 has no delete row of its own). The directie column rests
+    /// on R3. <b>The themabeheer column is a default</b> (I26, chosen by the owner on 2026-09-14 and followed under R37,
+    /// not ratified): themabeheer only while the thema holds no subthema, subdoel or activiteit other than what its own
+    /// open wizard run created, because anything else was made by hand, and deleting it by hand is directie's and the
+    /// hoofdleerkrachten's (R21, R24, R25). Under the owner's Q4 ruling a run's own activiteit that carries a goal link
+    /// counts as someone else's too, unless the caller may also link goals at its leeftijd (R19). The service refuses a
+    /// planned or scheduled thema for everyone. Resource: <see cref="Themabron"/>.
+    /// <i>Until fix round 2 this cited R4, whose "aanpassen" round 1 held not to reach a delete.</i>
     /// </summary>
     public static readonly Matrixrij ThemaVerwijderen = new(
         Beleid.ThemaVerwijderen,
-        "Een thema verwijderen: themabeheer alleen als het niets anders bevat dan wat zijn eigen open wizard aanmaakte (R4; I26)",
+        "Een thema verwijderen: themabeheer alleen als het niets anders bevat dan wat zijn eigen open wizard aanmaakte, en geen doel dat het niet mag ontkoppelen (R3; I26)",
         Kolom.ThemabeheerZonderAndermansInhoud);
 
     /// <summary>§3 "Thema's en activiteiten importeren, FR-1 …" (R9, R27, R34).</summary>
@@ -100,12 +108,14 @@ public static class Rechtenmatrix
 
     /// <summary>
     /// §3 "In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt"
-    /// (R29, R32; I18, I22–I25). Who may call the wizard's own write actions: directie and themabeheer. What the run
-    /// allows (open, its own thema, its own items) is state, enforced for everyone by <c>IWizardrunService</c>.
+    /// (R29, R32; I18, I22–I27). Who may call the wizard's own write actions: directie and themabeheer. What the run
+    /// allows is <c>IWizardrunService</c>'s, for everyone: state (open, its own thema, its own items: I23–I25), narrowed
+    /// by I27, under which an action that would remove a goal link or carry one to another leeftijd also needs
+    /// <see cref="DoelenKoppelen"/>.
     /// </summary>
     public static readonly Matrixrij Wizardinhoud = new(
         Beleid.Wizardinhoud,
-        "In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt (R29, R32; I18, I22-I25)",
+        "In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt (R29, R32; I18, I22-I27)",
         Kolom.Themabeheer);
 
     /// <summary>§3 "Doelsuggesties laten maken" (R14).</summary>
@@ -234,10 +244,12 @@ public static class Rechtenmatrix
         }
 
         // I26: themabeheer deletes a thema only while nothing in it is anyone else's. Needs the Themabron, so an attribute
-        // (resource = HttpContext) fails closed here too.
+        // (resource = HttpContext) fails closed here too. Q4 (a): a goal link on one of the open run's own activiteiten
+        // protects it as well, unless the gebruiker may link goals at that leeftijd, which the DoelenKoppelen row answers.
         if (kolommen.HasFlag(Kolom.ThemabeheerZonderAndermansInhoud)
             && rechten.HeeftThemabeheer
-            && bron is Themabron { HeeftAndermansInhoud: false })
+            && bron is Themabron { HeeftAndermansInhoud: false } thema
+            && (thema.GekoppeldeLeeftijden ?? []).All(leeftijd => StaatToe(rechten, DoelenKoppelen, new Leeftijdsinhoud(leeftijd))))
         {
             return true;
         }
@@ -320,7 +332,8 @@ public enum Kolom
     MakerZonderKoppelingen = 32,
 
     /// <summary>
-    /// "TB", only on a <see cref="Themabron"/> that holds nothing beyond its own open wizard run's items (default I26).
+    /// "TB", only on a <see cref="Themabron"/> that holds nothing beyond its own open wizard run's items (default I26),
+    /// and none of those carrying a goal link at a leeftijd where the gebruiker may not link goals (the owner's Q4 ruling).
     /// </summary>
     ThemabeheerZonderAndermansInhoud = 64,
 }

@@ -17,9 +17,11 @@ namespace Jaarplanner.Infrastructure.SchoolcontentBeheer;
 /// says so, and a refusal is only ever about something real.
 /// </para>
 /// <para>
-/// <b>The one rights question inside a run</b> is I27's: may this caller remove a goal link at this leeftijd? It is
-/// asked here, inside the transaction, through <see cref="Rechtenmatrix.StaatToe"/> on the caller's rights, so it uses
-/// the matrix's one evaluator and sees the state the delete will act on.
+/// <b>The one rights question inside a run</b> is I27's, with the owner's Q4 ruling: may this caller remove a goal link
+/// at this leeftijd, or carry one to another? It is asked through <see cref="Rechtenmatrix.StaatToe"/> on the caller's
+/// rights, the matrix's one evaluator, inside the transaction and just before the write. That reads the rows as they are
+/// committed at that moment. It does not lock them (READ COMMITTED), so a link another request adds between the check
+/// and the write is not seen: the same narrow window the filter-side checks accept, the thema delete's (I26) included.
 /// </para>
 /// <para>
 /// <b>One transaction per action.</b> The write goes through <see cref="ISchoolcontentBeheerService"/>, which saves on
@@ -50,8 +52,13 @@ public sealed class WizardrunService : IWizardrunService
         "Onder dit subthema staan subdoelen of activiteiten die niet in deze wizard aangemaakt zijn. "
         + "Die zouden mee van leeftijd veranderen, dus de wizard verandert de leeftijd niet.";
 
+    private const string GekoppeldVerhuist =
+        "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Die mag je niet naar een andere leeftijd meenemen, "
+        + "dus de wizard verandert de leeftijd niet.";
+
     private const string ActiviteitMetDoelen =
-        "Aan deze activiteit zijn doelen gekoppeld. Je mag op deze leeftijd geen doelen ontkoppelen, dus de wizard verwijdert ze niet.";
+        "Aan deze activiteit zijn doelen gekoppeld. Je mag op deze leeftijd geen doelen ontkoppelen, "
+        + "dus de wizard verwijdert deze activiteit niet.";
 
     private const string SubthemaMetDoelen =
         "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Je mag op deze leeftijd geen doelen ontkoppelen, "
@@ -122,7 +129,7 @@ public sealed class WizardrunService : IWizardrunService
     }
 
     public async Task<SubthemaWeergave> WijzigSubthemaAsync(
-        Guid runId, Guid subthemaId, SubthemaWijzigingInvoer wijziging, CancellationToken cancellationToken = default)
+        Guid runId, Guid subthemaId, SubthemaWijzigingInvoer wijziging, Guid? gebruikerId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(wijziging);
         var nu = _tijd.GetUtcNow();
@@ -132,14 +139,26 @@ public sealed class WizardrunService : IWizardrunService
         var huidig = await LaadSubthemaAsync(subthemaId, cancellationToken);
         VereisEigen(run, Wizarditemsoort.Subthema, subthemaId);
 
-        // I27: a new leeftijd moves everything under the subthema with it (Subthema.WijzigScope), so the wizard changes it
-        // only while all of that is the run's own. An invalid leeftijd is not a change: the write refuses it with its own
-        // 400 (and the controller already did).
+        // I27: a new leeftijd moves everything under the subthema with it (Subthema.WijzigScope). An invalid leeftijd is
+        // not a change: the write refuses it with its own 400 (and the controller already did).
         if (Jaarfasen.LeesLeeftijd(wijziging.Leeftijd) is { } nieuw
-            && !string.Equals(nieuw, huidig.Leeftijd, StringComparison.Ordinal)
-            && HeeftAndermansInhoud(run, await OnderliggendAsync(subthemaId, cancellationToken)))
+            && !string.Equals(nieuw, huidig.Leeftijd, StringComparison.Ordinal))
         {
-            throw new WizardrunWeigering(AndermansInhoudVerhuist);
+            // Someone else's subdoelen or activiteiten under it: never through the wizard.
+            if (HeeftAndermansInhoud(run, await OnderliggendAsync(subthemaId, cancellationToken)))
+            {
+                throw new WizardrunWeigering(AndermansInhoudVerhuist);
+            }
+
+            // Q4 (a), owner 2026-09-14: a goal link protects an activiteit the run created, too. The re-scope carries the
+            // link from this leeftijd into the new one's dekking, so the caller needs the goal-link right at both (R19),
+            // the way I13 asks the subthema right at both ends of a re-scope.
+            if (await _context.Activiteiten.AnyAsync(a => a.SubthemaId == subthemaId && a.Doelkoppelingen.Any(), cancellationToken)
+                && !(await MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, cancellationToken)
+                     && await MagDoelenKoppelenAsync(gebruikerId, nieuw, cancellationToken)))
+            {
+                throw new WizardrunWeigering(GekoppeldVerhuist);
+            }
         }
 
         var subthema = await _beheer.WijzigSubthemaAsync(subthemaId, wijziging, cancellationToken);

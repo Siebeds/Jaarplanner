@@ -40,9 +40,12 @@ public interface IWizardrunService
 
     /// <summary>
     /// Edits a subthema this run created (I25). Its leeftijd may change only while everything under it is the run's own
-    /// (I27): otherwise someone else's subdoelen or activiteiten would move to another leeftijd with it.
+    /// (I27): otherwise someone else's subdoelen or activiteiten would move to another leeftijd with it. And while an
+    /// activiteit under it carries a goal link, only for a <paramref name="gebruikerId"/> who may link goals at both the
+    /// old and the new leeftijd, because the link moves with it (the owner's Q4 ruling of 2026-09-14, R19).
     /// </summary>
-    Task<SubthemaWeergave> WijzigSubthemaAsync(Guid runId, Guid subthemaId, SubthemaWijzigingInvoer wijziging, CancellationToken cancellationToken = default);
+    Task<SubthemaWeergave> WijzigSubthemaAsync(
+        Guid runId, Guid subthemaId, SubthemaWijzigingInvoer wijziging, Guid? gebruikerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a subthema this run created (I25). Refused while it holds a subdoel or activiteit the run did not create,

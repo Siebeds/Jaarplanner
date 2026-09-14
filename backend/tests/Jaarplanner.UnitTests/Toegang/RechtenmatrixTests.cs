@@ -179,6 +179,17 @@ public sealed class RechtenmatrixTests
             Assert.False(Rechtenmatrix.StaatToe(Relaties[relatie], Rechtenmatrix.ThemaVerwijderen, zonder));
         }
 
+        // Q4 (a): a goal link on an activiteit of the open run protects the thema, unless themabeheer may also link goals
+        // at that leeftijd, asked through the one DoelenKoppelen rule.
+        var gekoppeld = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: false, GekoppeldeLeeftijden: [Leeftijd]);
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        Assert.True(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, [Leeftijd], [], []), Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        Assert.False(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, ["L1"], [], []), Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["HL"], Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        var tweeLeeftijden = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: false, GekoppeldeLeeftijden: [Leeftijd, "L1"]);
+        Assert.False(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, [Leeftijd], [], []), Rechtenmatrix.ThemaVerwijderen, tweeLeeftijden));
+
         // The column needs the resource: themabeheer through an attribute (no Themabron) does not pass.
         Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, bron: null));
     }

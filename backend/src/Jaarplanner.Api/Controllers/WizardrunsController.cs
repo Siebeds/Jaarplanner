@@ -9,22 +9,30 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// The thema-opbouw wizard's own write actions (E6-02 slice 3, ADR-0030 R29, R32; defaults I18, I22–I25). Thin: the
-/// rules of a run live in <see cref="IWizardrunService"/>.
+/// The thema-opbouw wizard's own write actions (E6-02 slice 3, ADR-0030 R29, R32; defaults I18, I22–I25, I27). Thin:
+/// the rules of a run live in <see cref="IWizardrunService"/>.
 /// <para>
 /// <b>No screen calls these yet.</b> E6-05 builds the wizard; these are its server half, reachable over HTTP and tested
 /// there, so the screen has a contract to build against rather than a promise.
 /// </para>
 /// <para>
 /// <b>Rights.</b> Starting, finishing and closing a run are the row <c>ThemaOpbouw</c>; creating, editing and deleting
-/// content in it are the row <c>Wizardinhoud</c>. Both admit directie and themabeheer only. What a run then allows (it
-/// is open; content goes under its own thema; an edit or delete reaches only what the run created) is state that holds
-/// for directie as well, so the service refuses the rest with a 403 carrying a Dutch sentence.
+/// content in it are the row <c>Wizardinhoud</c>. Both admit directie and themabeheer only. What a run then allows holds
+/// for directie as well, and the service refuses the rest with a 403 carrying a Dutch sentence:
+/// <list type="bullet">
+/// <item>the run is open (I24);</item>
+/// <item>content goes under the run's own thema, and an activiteit it edits or deletes is still there (I25);</item>
+/// <item>an edit or delete reaches only what the run created (I25);</item>
+/// <item>it carries off nobody else's work (I27): no leeftijd change while someone else's content is under a subthema,
+/// and no delete or leeftijd change that would take a goal link along unless the caller may link goals at that leeftijd,
+/// at both ends for a leeftijd change (R19; the owner's Q4 ruling of 2026-09-14).</item>
+/// </list>
 /// </para>
 /// <para>
-/// <b>Order of answers:</b> 403 for a caller outside the row (before anything is read), a body leeftijd that is no
-/// leeftijd is the write's own 400, then 404 for a run that does not exist, 403 for one that has ended, 404 for an item
-/// that does not exist, 403 for one the run did not create.
+/// <b>Order of answers:</b> 403 for a caller outside the row (before anything is read); a body leeftijd that is no
+/// leeftijd is the write's own 400; then 404 for a run that does not exist, 403 for one that has ended, 404 for an item
+/// that does not exist, 403 for one the run did not create, 403 for an activiteit no longer under the run's thema, and
+/// 403 for an action that would carry off someone else's work or a goal link the caller may not move (I27).
 /// </para>
 /// </summary>
 [ApiController]
@@ -67,17 +75,24 @@ public sealed class WizardrunsController : ControllerBase
         return Created($"/api/themas/{subthema.ThemaId}", subthema);
     }
 
-    /// <summary>Edits a subthema this run created, its leeftijd included (I25).</summary>
+    /// <summary>
+    /// Edits a subthema this run created (I25). A new leeftijd is refused while someone else's content is under it, and,
+    /// while an activiteit under it carries a goal link, unless the caller may link goals at both leeftijden (I27, Q4).
+    /// </summary>
     [HttpPut("{runId:guid}/subthemas/{subthemaId:guid}")]
     [Authorize(Policy = Rechtenmatrix.Beleid.Wizardinhoud)]
     public async Task<ActionResult<SubthemaWeergave>> WijzigSubthema(
         Guid runId, Guid subthemaId, [FromBody] SubthemaWijzigingInvoer wijziging, CancellationToken cancellationToken)
     {
         VereisLeeftijd(wijziging.Leeftijd);
-        return Ok(await _service.WijzigSubthemaAsync(runId, subthemaId, wijziging, cancellationToken));
+        // The caller travels along for I27: a leeftijd change that carries a goal link needs their goal-link right.
+        return Ok(await _service.WijzigSubthemaAsync(runId, subthemaId, wijziging, Aanmelding.GebruikerId(User), cancellationToken));
     }
 
-    /// <summary>Deletes a subthema this run created, as long as everything under it is the run's too (I25).</summary>
+    /// <summary>
+    /// Deletes a subthema this run created, as long as everything under it is the run's too (I25), and, while an
+    /// activiteit under it carries a goal link, only for a caller who may link goals at its leeftijd (I27).
+    /// </summary>
     [HttpDelete("{runId:guid}/subthemas/{subthemaId:guid}")]
     [Authorize(Policy = Rechtenmatrix.Beleid.Wizardinhoud)]
     public async Task<IActionResult> VerwijderSubthema(Guid runId, Guid subthemaId, CancellationToken cancellationToken)
@@ -132,14 +147,17 @@ public sealed class WizardrunsController : ControllerBase
         return Created($"/api/activiteiten/{activiteit.Id}", activiteit);
     }
 
-    /// <summary>Edits an activiteit this run created (I25).</summary>
+    /// <summary>Edits an activiteit this run created and that is still under the run's thema (I25).</summary>
     [HttpPut("{runId:guid}/activiteiten/{activiteitId:guid}")]
     [Authorize(Policy = Rechtenmatrix.Beleid.Wizardinhoud)]
     public async Task<ActionResult<ActiviteitWeergave>> WijzigActiviteit(
         Guid runId, Guid activiteitId, [FromBody] ActiviteitWijzigingInvoer wijziging, CancellationToken cancellationToken) =>
         Ok(await _service.WijzigActiviteitAsync(runId, activiteitId, wijziging, cancellationToken));
 
-    /// <summary>Deletes an activiteit this run created (I25).</summary>
+    /// <summary>
+    /// Deletes an activiteit this run created and that is still under the run's thema (I25), and, while a goal is linked
+    /// to it, only for a caller who may link goals at its leeftijd (I27).
+    /// </summary>
     [HttpDelete("{runId:guid}/activiteiten/{activiteitId:guid}")]
     [Authorize(Policy = Rechtenmatrix.Beleid.Wizardinhoud)]
     public async Task<IActionResult> VerwijderActiviteit(Guid runId, Guid activiteitId, CancellationToken cancellationToken)

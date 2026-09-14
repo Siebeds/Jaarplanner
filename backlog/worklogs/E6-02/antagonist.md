@@ -571,3 +571,46 @@ The `[RechtOp]` filter (fails closed on a missing/unparseable route value or unk
 
 ### What slice 4 must hide (in addition to the worklog's list)
 The thema delete control per Q1; the subthema form's leeftijd select (I13); the Doelen header's "Inladen" button; the agenda's activiteit-create path with its goal picker; `makerId` on the frontend `ActiviteitWeergave`; a Dutch message for a stale 403.
+
+## Code slice 3 — audit round 2
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool). Condensed in layout only.*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 0 MAJOR, 3 MINOR, 1 QUESTION)
+**Scope audited:** `git diff d85c0a5 afe46bc` on `story/E6-02-afdwingen` (24 files) plus the slice code it touches (`RechtOpAttribute`, `Rechtenbeleid`, `WizardrunsController`, `SubthemasController`, `WizardrunConfiguration`, `ThemaConfiguration`/`JaarplanConfiguration`, `CsrfHeaderControle`, `TestAuthenticatie`, the sweep); Art. VI.1 read fresh from `feature/e6-rollen-rechten` HEAD (I26–I28, `2dd26a0`), ADR-0030 §2 rows I26–I28 and §3 with footnotes.
+
+**Round 1 resolved:** A (I26: `ThemaVerwijderen`, `Themabron`, open-run items only; tests TB 403/204, directie 204, after-run TB 403), B (I27: re-scope, activiteit delete, subthema delete, each allowed/refused), C (current thema checked via `LaadActiviteitplekAsync`), D/D1 (sweep asserts the authorisation detail; wizard item routes get the run's own items; the CSRF 403 no longer counts), D2 (nullable leeftijd, its own Dutch sentence, tests on all four routes), E (sentences in full, "Deze wizard is niet gevonden."), F (E7-06 carry-forward matches the SetNull FK and the cascade), G code half. I28 as built (only `WizardrunService` calls `Registreer*`).
+
+### [MINOR] 1. `ThemaVerwijderen` cites R4
+- **Where:** `Application/Toegang/Rechtenmatrix.cs:73-83` (doc and label "(R4; I26)").
+- **Problem:** round 1 held that R4's *aanpassen* does not reach the delete; under Art. VI.1's column-level citation rule the TB column would read as ratified. The orchestrator's §3 row would copy it.
+- **Required fix:** cite "(R3; I26)" and say the TB column is a default.
+
+### [MINOR] 2. Docs made false or incomplete by I27 and C
+- `Rechtenmatrix.cs:22-28` ("is state, not a relation … so `IWizardrunService` enforces it"; the service now also asks `DoelenKoppelen`); `:9-16` (no `Themabron`; resource rows defined as those with an HL, LK or maker column); the `Wizardinhoud` row `:101-109` cites I22–I25 although I27 narrows it.
+- `Api/Controllers/WizardrunsController.cs:11-28` (Rights, Order of answers: the two new 403s missing); action summaries `:70` ("its leeftijd included (I25)"), `:80`, `:142` cite only I25.
+- **Required fix:** align with `IWizardrunService.cs`.
+
+### [MINOR] 3. `ActiviteitMetDoelen` "verwijdert ze niet" reads as the goals
+- **Where:** `Infrastructure/SchoolcontentBeheer/WizardrunService.cs:53`.
+- **Required fix:** "… dus de wizard verwijdert deze activiteit niet."; update the constant in `WizardrunEndpointsTests`.
+
+### [QUESTION] Q4. An HL's goal link on a run-created activiteit still leaves with a TB thema delete (I26) or a wizard re-scope (I27 second half)
+- **Where:** `Infrastructure/Toegang/EfRechtenbronnen.cs:58-81` (counts ids, not links); `WizardrunService.cs:137-143` (re-scope counts only non-run items).
+- Both are literal readings; I27's first half closes the same case for the wizard's own delete. The gap is in round 1's option (b) text, not a build error.
+- **Asked:** (a) extend I26 and I27's second half with I27's `DoelenKoppelen` guard (conservative, R19); (b) keep the literal text. The same reading lets a leerkracht's content edits (R23) on run-created activiteiten leave with the delete, which the text allows and needs no ask.
+
+### Judged
+- **I26 reading** (the thema's run, which any TB continues): correct; grammar, round 1's option text and the unique `ThemaId` index support it.
+- **The row:** declared once (`Rechtenmatrix.Rijen`, registered by `Rechtenbeleid.cs:30-35`), one evaluator branch, fails closed without a `Themabron`; consistent with §3's resource pattern apart from MINOR 1.
+- **D2 exception:** acceptable (same order as round 1's accepted `""`/`3K`; reveals nothing stored; the sweep keeps the route covered through `Lichamen`).
+- **I27 in the service:** fails closed (a null caller gets `Rechten.Geen`); the same `IRechtenService` and `StaatToe(DoelenKoppelen, Leeftijdsinhoud)` as `MatrixHandler` (`Rechtenbeleid.cs:89-91`).
+- **Test sign-in 403 body:** weakens nothing; no test relied on an empty body; production forbids through the cookie's `OnRedirectToAccessDenied` with the same writer (proved by reading, not by a test on the real cookie).
+
+### Non-blocking nits
+- `WizardrunService.cs:22` overstates what READ COMMITTED guarantees; the I26 check runs in the filter, outside the service transaction (the same race round 1 accepted for the maker-delete row).
+- No test pins I28 (an ordinary thema/themadoel edit leaves `LaatsteSchrijfactieOp` unchanged).
+- The filter's thema 404 "Dit thema bestaat niet meer. Iemand anders heeft het verwijderd." carries round-1 E's presupposition, copied from the service (`SchoolcontentBeheerService.cs:154, :839`); if the E5-03 rule is applied, apply it to all item 404s together.
+- `Geen_zin_van_de_wizard_draagt_een_em_dash` checks the test's own constants.
+
+**Checks run:** by reading (build, format, tests and probes not re-run by the antagonist). Art. II, III, IV, V, VI.2, VII, VIII, IX, XIV compliant.

@@ -102,4 +102,9 @@ public sealed record Activiteitbron(Guid ActiviteitId, string Leeftijd, Guid? Ma
 /// Whether it holds a subthema, subdoel or activiteit that its own wizard run did not create, or that run has ended (I23:
 /// after the run its items are ordinary shared content). <c>false</c> for an empty thema.
 /// </param>
-public sealed record Themabron(Guid ThemaId, bool HeeftAndermansInhoud);
+/// <param name="GekoppeldeLeeftijden">
+/// The leeftijden at which an activiteit the open run created carries a goal link. Under the owner's ruling on Q4
+/// (2026-09-14) such an activiteit counts as the run's own only for a caller who may link goals at that leeftijd
+/// (<c>DoelenKoppelen</c>), because deleting the thema removes the link (R19). <c>null</c> reads as none.
+/// </param>
+public sealed record Themabron(Guid ThemaId, bool HeeftAndermansInhoud, IReadOnlyList<string>? GekoppeldeLeeftijden = null);
