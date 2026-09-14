@@ -945,3 +945,29 @@ The QUESTION is taken inside slice 4's fix round 3 rather than filed as a ticket
 
 ### Note (not graded)
 - `Activiteitformulier.tsx:158-162` says "only the title, the footer and the block above that section change"; the goals section below `extra` changes as well.
+
+## Code slice 4 — audit round 5
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+- **Auditor:** antagonist (independent), 2026-09-14. **Scope:** `git diff 960ad89 fe47e99` on `story/E6-02-frontend`, the owner-approved mini-fix after audit round 4 (a short check, as the owner asked). Read in full: `Nieuweactiviteitregel.tsx`, `Themarij.tsx`, `Subthemaplanner.tsx` (100–342), `Activiteitformulier.tsx` (140–end), `lib/queryClient.ts`, `koppelen/mutaties.ts` (`useKoppelmutatie`), and the changed tests.
+- **Verdict:** COMPLIANT. No CRITICAL, MAJOR, MINOR or QUESTION.
+- **Gates re-run by the auditor:** `vitest run` on the five changed test files, 21/21; `pnpm lint` exit 0; `git status` clean at `fe47e99`.
+
+### Confirmed resolved
+- **F10:** `Themarij.tsx:209-215` always renders the regel with `magMaken={mag.activiteitBewerken(leeftijd) && magKoppelen}`, the same expression the old gate used. `Nieuweactiviteitregel.tsx:62` checks the failure before the rights. Without the right it keeps only the alert (`:161-165`) and Annuleer; the fields, the klas notice and "Maak en koppel" are each left out in their own slot, so the alert stays the same element. The enclosing parent is `Subthemarij`'s local `open` state, not a rights check, and the list is frozen (F9), so nothing above unmounts it. The new test asserts `toBe(melding)` after the rights have arrived, and the subthema button being gone proves they did.
+- **F11:** with `!magPlannen`, `Subthemaplanner.tsx:211-337` leaves out the select, the dates, the verdeling, the preview (with `pastNiet`) and the lesdagen line, each in its own slot. `Resultaat` keeps its child position. The test asserts the same alert element and that every field is gone.
+- **Test defect:** `setQueryData(["ik"], …)` is awaited for one task in the four named tests, as the test-runner prescribed and checked with a probe. The F9 test now checks that the new rights arrived.
+- **Nit:** `Activiteitformulier.tsx:161-162` is now true. Title, footer, form or facts, and the goals section (`:380-450`) switch; the `fout` alert does not.
+
+### Checks run
+- **The E5-03 rule:** every changed comment and test header asserts only what its branch guarantees. The form is reachable without `magMaken` only after an error, because `sluit` resets the mutation. The `Bestemmingsblad.test.tsx` header now names the two rows that check their failure first. The thema and subthema `Koppelfout` alerts (`Themarij.tsx:85, 187`) sit outside their rights gates.
+- **Em dashes:** none in the added lines outside `backlog/`. No copy added (`nl.json` untouched).
+- **Art. VI.1:** nothing is granted beyond the ADR-0030 §3 matrix; every change only withholds. A gebruiker without the right and without an error gets `null` from `Nieuweactiviteitregel`, and every hook runs before that return. `useKoppelmutatie` starts no request on mount.
+- **Nothing new:** the planner's slot positions are unchanged. The refusal-only form has no field and no submit button, so Enter cannot submit it. `ik` has `refetchOnWindowFocus: false`, so the fields vanish only after a refusal's refetch, or after an `ik` invalidation from user management on another screen. No Art. XIV assumption, no dependency, no pupil data.
+
+### Notes (not graded)
+- The implementer's mutation proof (2) (`maakWeigering` null) already failed at `960ad89` (test-runner round 4), so it does not show that the awaited tick matters for that test. The evidence for that test is the test-runner's round-4 probe.
+- Between the rights refetch and `Resultaat` arriving during a refused plan, the planner's body can be briefly empty. It asserts nothing false.
+
+**Slice 4 closed on the gates:** test-runner PASS on every browser criterion (round 4, `960ad89`; the mini-fix's behaviour checked in the implementer's browser pass and its test defect fixed as the test-runner prescribed) and antagonist COMPLIANT (round 5, `fe47e99`).
