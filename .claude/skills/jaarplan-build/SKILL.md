@@ -25,6 +25,9 @@ fix-loop run from here.** Keep the user informed and **pause after each complete
 ## Source-of-truth order
 `CONSTITUTION.md` > `docs/Functionele_Analyse_Jaarplanner.md` (scope) > `backlog/` > `CLAUDE.md`. On conflict, the higher one wins — and fix the lower document.
 
+## Stories and tickets
+This skill builds **epic stories** (`E<n>-<nn>`). **Tickets** (`FB-nnn`, `TB-nnn` in `backlog/functionele-backlog/` and `backlog/technische-backlog/`, [ADR-0033](../../../docs/adr/0033-ticketbacklog-en-kanbanbord.md)) are worked with the **`ticket-uitvoeren`** skill instead: when the user names a ticket, follow that skill for claiming, the branch and every status change, and reuse steps 4–5 below (test-runner + antagonist, fix rounds) as its gate loop. A ticket never gets a checkbox and never enters the progress table.
+
 ## The loop (run per story)
 
 ### 1. Pick the next story

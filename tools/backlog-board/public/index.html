@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Backlogbord · Jaarplanner</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <h1>Backlogbord</h1>
+        <p id="meta" class="meta">Verbinden…</p>
+      </div>
+      <div class="controls">
+        <div class="segmented" role="group" aria-label="Soort tickets">
+          <button type="button" data-kind="alle" aria-pressed="true">Alle</button>
+          <button type="button" data-kind="FB" aria-pressed="false"><span class="swatch fb" aria-hidden="true"></span>Functioneel</button>
+          <button type="button" data-kind="TB" aria-pressed="false"><span class="swatch tb" aria-hidden="true"></span>Technisch</button>
+        </div>
+        <label class="search">
+          <span class="sr">Zoeken</span>
+          <input id="q" type="search" placeholder="Zoek op titel, id of sessie" autocomplete="off" />
+        </label>
+      </div>
+    </header>
+    <main>
+      <p id="error" class="load-error" role="alert" hidden></p>
+      <section id="invalid" class="invalid" hidden></section>
+      <div id="board" class="board"></div>
+    </main>
+    <dialog id="detail" aria-labelledby="detail-title">
+      <div id="drawer" class="drawer"></div>
+    </dialog>
+  </body>
+</html>
