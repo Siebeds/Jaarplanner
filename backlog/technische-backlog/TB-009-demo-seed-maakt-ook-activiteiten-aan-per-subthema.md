@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:35
+bijgewerkt: 2026-09-14 13:13
 opgepakt-door: demo-seed
 branch: ticket/demo-seed-activiteiten
 pr:
@@ -28,8 +28,9 @@ Een subthema zonder activiteiten toont in de demo weinig van wat een leerkracht 
   subthema met de tekst uit het databestand (anders de eerste, met een waarschuwing als het subthema er geen heeft).
   Een activiteit met dezelfde naam in hetzelfde subthema wordt niet opnieuw aangemaakt, en krijgt alleen de doelen uit
   het databestand die ze nog mist. Een doel dat het databestand bij een activiteit onder `doelenWeg` zet, haalt het
-  script weer weg; een andere koppeling raakt het nooit aan. Zo zijn na de audit drie doelen vervangen die slecht bij
-  hun activiteit pasten.
+  script bij elke run weg, ook als iemand het later met de hand koppelde; een andere koppeling raakt het nooit aan, en
+  een code mag niet tegelijk in `doelen` en `doelenWeg` staan. Zo zijn na de audit drie doelen vervangen die slecht
+  bij hun activiteit pasten; die drie regels zijn daarna weer uit het databestand gehaald.
 - `infra/README.md`: de opsomming van wat het script aanmaakt, aangevuld.
 
 Een activiteit hangt aan een subthema van een leeftijd, niet aan een klas (ADR-0025). Elke klas ziet dus de
@@ -40,6 +41,7 @@ activiteiten van haar leeftijd: de twee K2-klassen delen dezelfde zes, net als d
 - [x] Gegeven de geseede demo, wanneer het script draait, dan heeft elk van de negen subthema's twee activiteiten, elk met een type, een lengte, verwachte uitkomsten, de onderzoeksvraag van het subthema en een doel.
 - [x] Gegeven een geslaagde run, wanneer het script een tweede keer draait, dan maakt het geen activiteit dubbel aan.
 - [x] Gegeven een run, dan staat er erna geen nieuwe onversleutelde rij in `data_protection_keys`, en zijn de firewallregel en de tijdelijke roltoewijzing weer weg.
+- [x] Gegeven de drie activiteiten met een vervangen doel, wanneer het script met hun `doelenWeg` draait, dan dragen ze alleen nog hun nieuwe doelen, verandert geen andere koppeling, en haalt een tweede run niets meer weg.
 
 ## Buiten scope
 
@@ -53,3 +55,4 @@ Geen.
 ## Werklog
 
 - 2026-09-14 12:35 · demo-seed · aangemaakt (status in-uitvoering)
+- 2026-09-14 13:13 · demo-seed · run 0ca70c4: 18 activiteiten en 18 doelen aangemaakt; tweede run: alles found; databasecontrole: 2 activiteiten per subthema, alle 18 aan de onderzoeksvraag van hun eigen subthema; antagonist ronde 1 COMPLIANT met 2 MINOR, verwerkt in fc0d70e: onderzoeksvraag op tekst gekozen, 3 zwakke doelen vervangen via doelenWeg (run: 3 weg, 4 gekoppeld; herhaalde run: niets meer); sleutels telkens ongewijzigd (1), rol en firewallregel telkens weer weg; antagonist ronde 2 loopt

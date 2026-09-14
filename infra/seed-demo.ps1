@@ -26,10 +26,11 @@
     build runs before any secret is read and without build servers, so no build process inherits one.
 
     A second run creates nothing twice. Items are matched by name (klas; thema; subthema by name and leeftijd;
-    activiteit within its subthema; fiche and hoek within their klas), and an item that exists only gets the goal
-    links from the data file that it lacks, as
-    far as the API accepts them (a thema holds at most three themadoelen). Its other fields are left as they are. For an
-    activiteit the data file can also list withdrawn codes (doelenWeg): only those links are removed, through the API.
+    activiteit within its subthema; fiche and hoek within their klas). An item that exists gets the goal links from the
+    data file that it lacks, as far as the API accepts them (a thema holds at most three themadoelen); its other fields
+    are left as they are. An activiteit in the data file may also list withdrawn codes (doelenWeg): every run removes
+    those links through the API, a link someone made by hand with that code included, and no other link. A code in
+    both doelen and doelenWeg is refused before anything else happens.
 
     Needs: the Azure CLI signed in to the subscription, the .NET SDK from global.json, Docker (psql runs in a
     container), and a clean working tree unless -AllowDirty is passed. Run it from the commit that is deployed, after
@@ -176,6 +177,12 @@ function Add-GoalLinks {
 # --- Preconditions, before any secret is read or anything in Azure is touched ----------------------------------------
 
 $data = Get-Content $DataFile -Raw -Encoding UTF8 | ConvertFrom-Json
+
+# A code in both doelen and doelenWeg would be linked and unlinked on alternate runs.
+foreach ($act in @($data.themas | ForEach-Object { $_.subthemas } | ForEach-Object { $_.activiteiten } | Where-Object { $_ })) {
+    $overlap = @($act.doelen | Where-Object { $_ -and (@($act.doelenWeg) -contains $_) })
+    if ($overlap.Count -gt 0) { throw "Activiteit '$($act.naam)' lists $($overlap -join ', ') in both doelen and doelenWeg." }
+}
 
 if (-not (Test-Native { docker info --format '{{.ServerVersion}}' })) { throw 'Docker is not running; it is needed for psql.' }
 
@@ -391,11 +398,15 @@ try {
                 $activiteit = @($subthema.activiteiten | Where-Object { $_.naam -eq $act.naam }) | Select-Object -First 1
                 if ($activiteit) {
                     Add-Stat 'activiteiten found'
-                    # A link the data file withdrew (doelenWeg) is removed; no other link is ever touched.
+                    # A link the data file withdrew (doelenWeg) is removed on every run; no other link is ever touched.
+                    # A refusal is reported and skipped, like a refused link in Add-GoalLinks.
                     $withdrawn = @($act.doelenWeg | Where-Object { $_ })
                     foreach ($koppeling in @($activiteit.doelkoppelingen | Where-Object { $withdrawn -contains $_.leerplandoelCode })) {
-                        Invoke-Api DELETE "/api/activiteiten/$($activiteit.id)/doelkoppelingen/$($koppeling.id)" | Out-Null
-                        Add-Stat 'activiteit goals removed'
+                        try {
+                            Invoke-Api DELETE "/api/activiteiten/$($activiteit.id)/doelkoppelingen/$($koppeling.id)" | Out-Null
+                            Add-Stat 'activiteit goals removed'
+                        }
+                        catch { Write-Warning "Could not remove $($koppeling.leerplandoelCode) from $what. $_" }
                     }
                     Add-GoalLinks -Wanted $act.doelen -Present @($activiteit.doelkoppelingen | ForEach-Object { $_.leerplandoelCode }) `
                         -Path "/api/activiteiten/$($activiteit.id)/doelkoppelingen" -Label 'activiteit goals' -What $what
