@@ -11,8 +11,9 @@ namespace Jaarplanner.Infrastructure.Ai;
 /// <code>
 /// dotnet user-secrets set "AzureAI:ApiKey" "&lt;your-foundry-key&gt;" --project src/Jaarplanner.Api
 /// </code>
-/// The remaining values (<see cref="Endpoint"/>, <see cref="Deployment"/>, <see cref="ApiVersion"/>)
-/// are non-secret and may live in appsettings per environment.
+/// The key is the default way to authenticate (ADR-0012). <see cref="Authentication"/> set to
+/// <see cref="AzureAIAuthentication.Entra"/> signs in with Microsoft Entra instead, as an explicit choice (ADR-0036);
+/// the eval runner uses it. The remaining values are non-secret and may live in appsettings per environment.
 /// </para>
 /// </summary>
 public sealed class AzureAIOptions
@@ -27,20 +28,44 @@ public sealed class AzureAIOptions
     public string? Endpoint { get; init; }
 
     /// <summary>
-    /// Azure AI Foundry API key — a <b>server-side secret</b> (see the type summary). Supplied via
-    /// user-secrets locally / Key Vault in the cloud; never committed, never sent to the frontend.
+    /// How the client authenticates. <see cref="AzureAIAuthentication.Key"/> (the default) requires
+    /// <see cref="ApiKey"/>; <see cref="AzureAIAuthentication.Entra"/> asks Microsoft Entra for a token and ignores the key.
+    /// </summary>
+    public AzureAIAuthentication Authentication { get; init; } = AzureAIAuthentication.Key;
+
+    /// <summary>
+    /// Azure AI Foundry API key — a <b>server-side secret</b> (see the type summary). Required with
+    /// <see cref="AzureAIAuthentication.Key"/>. Supplied via user-secrets locally / Key Vault in the cloud; never
+    /// committed, never sent to the frontend.
     /// </summary>
     public string? ApiKey { get; init; }
 
     /// <summary>
     /// The model deployment name to call (non-secret). Set per environment; a chat-completions
-    /// deployment in an EU data zone (Art. VI.3).
+    /// deployment in an EU data zone (Art. VI.3). On the v1 API it travels as the request's <c>model</c>.
     /// </summary>
     public string? Deployment { get; init; }
 
     /// <summary>
-    /// The Azure OpenAI REST API version (non-secret). Defaults to a recent stable version; override
-    /// per environment as Foundry rolls forward.
+    /// Optional <c>reasoning_effort</c> for a reasoning model (the gpt-5 family: <c>minimal</c>, <c>low</c>,
+    /// <c>medium</c> or <c>high</c>). Left out of the request when empty, so a model that does not know the parameter
+    /// never receives it.
     /// </summary>
-    public string ApiVersion { get; init; } = "2024-10-21";
+    public string? ReasoningEffort { get; init; }
+
+    /// <summary>
+    /// Optional <c>max_completion_tokens</c>, the ceiling reasoning models accept instead of <c>max_tokens</c>. Left
+    /// out of the request when unset.
+    /// </summary>
+    public int? MaxCompletionTokens { get; init; }
+}
+
+/// <summary>How <see cref="AzureAiFoundryClient"/> authenticates (ADR-0036).</summary>
+public enum AzureAIAuthentication
+{
+    /// <summary>The server-side <see cref="AzureAIOptions.ApiKey"/> on the <c>api-key</c> header (ADR-0012). The default.</summary>
+    Key = 0,
+
+    /// <summary>A Microsoft Entra token, chosen explicitly; no key is needed or sent.</summary>
+    Entra = 1,
 }

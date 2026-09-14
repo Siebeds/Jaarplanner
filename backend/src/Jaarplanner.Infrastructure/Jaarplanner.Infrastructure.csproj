@@ -30,6 +30,9 @@
     <!-- Typed HttpClient factory (AddHttpClient<IAiClient, AzureAiFoundryClient>) for the Azure AI
          Foundry client (E2-01). -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
+    <!-- Microsoft Entra sign-in for the AI client when no key is configured (TB-004): a managed identity in Azure,
+         `az login` on a developer's machine. The same version the Api already uses for Key Vault. -->
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <!-- Transitive pin, NOT a direct dependency (E7-12 practice, E6-01). Data Protection above resolves 10.0.9, which
          carries five high-severity advisories (GHSA-23rf-6693-g89p, -8q5v-6pqq-x66h, -cvvh-rhrc-wg4q, -g8r8-53c2-pm3f
          and -mmjf-rqrv-855v); `dotnet list package vulnerable` is clean at 10.0.12. Remove this pin once Data

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Azure.Core;
 using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Generatie;
@@ -9,6 +10,7 @@ using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.Planning;
 using Jaarplanner.UnitTests.Planning;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Jaarplanner.UnitTests.Ai;
@@ -22,20 +24,32 @@ namespace Jaarplanner.UnitTests.Ai;
 /// <para>
 /// <b>No endpoint, no key, no network.</b> The client is a typed <c>HttpClient</c> taking
 /// <c>(HttpClient, IOptions&lt;AzureAIOptions&gt;)</c>, so a stub <see cref="HttpMessageHandler"/> plus dummy options
-/// drives all of it offline. Only a genuine live round-trip against Azure AI Foundry stays out of scope.
+/// drives all of it offline, and an Entra credential is replaced by a <see cref="FakeCredential"/>. Only a genuine live
+/// round-trip against Azure AI Foundry stays out of scope.
 /// </para>
 /// </summary>
 public sealed class AzureAiFoundryClientTests
 {
     private const string Endpoint = "https://jaarplanner-test.openai.azure.com/";
-    private const string Deployment = "gpt-4o-jaarplan";
+    private const string Deployment = "gpt-5-mini-jaarplan";
     private const string ApiKey = "test-key-not-a-real-secret";
 
     private static AzureAIOptions Opties(
         string? endpoint = Endpoint,
         string? apiKey = ApiKey,
-        string? deployment = Deployment) =>
-        new() { Endpoint = endpoint, ApiKey = apiKey, Deployment = deployment };
+        string? deployment = Deployment,
+        AzureAIAuthentication authentication = AzureAIAuthentication.Key,
+        string? reasoningEffort = null,
+        int? maxCompletionTokens = null) =>
+        new()
+        {
+            Endpoint = endpoint,
+            ApiKey = apiKey,
+            Deployment = deployment,
+            Authentication = authentication,
+            ReasoningEffort = reasoningEffort,
+            MaxCompletionTokens = maxCompletionTokens,
+        };
 
     private static AiRequest EenRequest() =>
         new() { SystemPrompt = "systeeminstructies", UserPrompt = "de schoolcontent" };
@@ -52,10 +66,10 @@ public sealed class AzureAiFoundryClientTests
         });
 
     /// <summary>
-    /// The outbound request is exactly what the Azure OpenAI chat-completions API expects: the deployment-scoped
-    /// URI with an <c>api-version</c>, the server-side key on the <c>api-key</c> header (Art. VI.4 — never a bearer
-    /// token in a query string, never exposed to the frontend), both prompt roles, and
-    /// <c>response_format: json_object</c> so the model is *asked* for structured JSON (Art. IV.5).
+    /// The outbound request is exactly what the Azure OpenAI v1 chat-completions API expects (ADR-0036): the
+    /// version-less <c>/openai/v1/chat/completions</c> route with the deployment as <c>model</c>, the server-side key on
+    /// the <c>api-key</c> header (Art. VI.4 — never in a query string, never exposed to the frontend), both prompt
+    /// roles, and <c>response_format: json_object</c> so the model is *asked* for structured JSON (Art. IV.5).
     /// </summary>
     [Fact]
     public async Task De_uitgaande_aanroep_is_een_azure_chat_completion_met_json_response_format()
@@ -70,8 +84,7 @@ public sealed class AzureAiFoundryClientTests
 
         // Note the endpoint's trailing slash is trimmed — a double slash is not a cosmetic issue on this API.
         Assert.Equal(
-            "https://jaarplanner-test.openai.azure.com/openai/deployments/gpt-4o-jaarplan/chat/completions" +
-            "?api-version=2024-10-21",
+            "https://jaarplanner-test.openai.azure.com/openai/v1/chat/completions",
             verzonden.RequestUri!.ToString());
 
         // The key travels as a header, once, and only here.
@@ -82,6 +95,7 @@ public sealed class AzureAiFoundryClientTests
         using var payload = JsonDocument.Parse(handler.LaatsteBody!);
         var root = payload.RootElement;
 
+        Assert.Equal(Deployment, root.GetProperty("model").GetString());
         Assert.Equal("json_object", root.GetProperty("response_format").GetProperty("type").GetString());
 
         var messages = root.GetProperty("messages");
@@ -90,6 +104,146 @@ public sealed class AzureAiFoundryClientTests
         Assert.Equal("systeeminstructies", messages[0].GetProperty("content").GetString());
         Assert.Equal("user", messages[1].GetProperty("role").GetString());
         Assert.Equal("de schoolcontent", messages[1].GetProperty("content").GetString());
+
+        // Parameters that are not configured are not sent: a model that does not know them must never see them.
+        Assert.False(root.TryGetProperty("reasoning_effort", out _));
+        Assert.False(root.TryGetProperty("max_completion_tokens", out _));
+    }
+
+    /// <summary>
+    /// Entra is an explicit choice (ADR-0036): a bearer token for the Cognitive Services scope, and no <c>api-key</c>
+    /// header, even when a key is configured too.
+    /// </summary>
+    [Fact]
+    public async Task Met_entra_gekozen_meldt_de_client_zich_aan_met_een_token()
+    {
+        var handler = new StubHandler(AzureEnvelop("{}"));
+        var credential = new FakeCredential("entra-token");
+        var client = new AzureAiFoundryClient(
+            new HttpClient(handler),
+            Options.Create(Opties(authentication: AzureAIAuthentication.Entra)),
+            new EntraTokenProvider(credential));
+
+        await client.CompleteAsync(EenRequest());
+
+        var verzonden = handler.LaatsteRequest!;
+        Assert.Equal("Bearer", verzonden.Headers.Authorization!.Scheme);
+        Assert.Equal("entra-token", verzonden.Headers.Authorization.Parameter);
+        Assert.False(verzonden.Headers.Contains("api-key"));
+        Assert.Equal([EntraTokenProvider.Scope], credential.GevraagdeScopes);
+    }
+
+    /// <summary>Entra needs no key at all.</summary>
+    [Fact]
+    public async Task Met_entra_is_geen_sleutel_nodig()
+    {
+        var handler = new StubHandler(AzureEnvelop("{}"));
+        var client = new AzureAiFoundryClient(
+            new HttpClient(handler),
+            Options.Create(Opties(apiKey: null, authentication: AzureAIAuthentication.Entra)),
+            new EntraTokenProvider(new FakeCredential("entra-token")));
+
+        await client.CompleteAsync(EenRequest());
+
+        Assert.Equal(1, handler.AantalAanroepen);
+    }
+
+    /// <summary>With the default, the key, Entra is never asked, so a key-based host needs no identity.</summary>
+    [Fact]
+    public async Task Met_de_sleutel_wordt_entra_niet_gevraagd()
+    {
+        var credential = new FakeCredential("ongebruikt");
+        var client = new AzureAiFoundryClient(
+            new HttpClient(new StubHandler(AzureEnvelop("{}"))),
+            Options.Create(Opties()),
+            new EntraTokenProvider(credential));
+
+        await client.CompleteAsync(EenRequest());
+
+        Assert.Equal(0, credential.AantalAanroepen);
+    }
+
+    /// <summary>
+    /// A token is reused until five minutes before it expires, then renewed: a credential such as the Azure CLI's
+    /// would otherwise start a process on every call.
+    /// </summary>
+    [Fact]
+    public async Task Het_token_wordt_hergebruikt_tot_kort_voor_het_verloopt()
+    {
+        var tijd = new VasteTijd(new DateTimeOffset(2026, 9, 14, 12, 0, 0, TimeSpan.Zero));
+        var credential = new FakeCredential("token", geldig: TimeSpan.FromHours(1), tijd);
+        var provider = new EntraTokenProvider(credential, tijd);
+
+        await provider.GetTokenAsync();
+        tijd.Nu = tijd.Nu.AddMinutes(54);
+        await provider.GetTokenAsync();
+        Assert.Equal(1, credential.AantalAanroepen);
+
+        tijd.Nu = tijd.Nu.AddMinutes(2);
+        await provider.GetTokenAsync();
+        Assert.Equal(2, credential.AantalAanroepen);
+    }
+
+    /// <summary>DI still builds the client through the key constructor, with no token provider registered.</summary>
+    [Fact]
+    public void De_di_registratie_bouwt_de_client_zonder_tokenprovider()
+    {
+        var services = new ServiceCollection();
+        services.Configure<AzureAIOptions>(_ => { });
+        services.AddHttpClient<IAiClient, AzureAiFoundryClient>();
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.IsType<AzureAiFoundryClient>(provider.GetRequiredService<IAiClient>());
+    }
+
+    /// <summary>The reasoning settings travel only when configured, under the names the gpt-5 family expects.</summary>
+    [Fact]
+    public async Task Ingestelde_reasoning_parameters_gaan_mee()
+    {
+        var handler = new StubHandler(AzureEnvelop("{}"));
+        var client = new AzureAiFoundryClient(
+            new HttpClient(handler),
+            Options.Create(Opties(reasoningEffort: " minimal ", maxCompletionTokens: 2000)));
+
+        await client.CompleteAsync(EenRequest());
+
+        using var payload = JsonDocument.Parse(handler.LaatsteBody!);
+        Assert.Equal("minimal", payload.RootElement.GetProperty("reasoning_effort").GetString());
+        Assert.Equal(2000, payload.RootElement.GetProperty("max_completion_tokens").GetInt32());
+    }
+
+    /// <summary>The token usage the provider reports comes back on the completion, cached and reasoning tokens included.</summary>
+    [Fact]
+    public async Task Het_tokenverbruik_komt_mee_terug()
+    {
+        var handler = new StubHandler(
+            """
+            {"choices":[{"index":0,"message":{"role":"assistant","content":"{}"}}],
+             "usage":{"prompt_tokens":1200,"completion_tokens":300,
+                      "prompt_tokens_details":{"cached_tokens":1024},
+                      "completion_tokens_details":{"reasoning_tokens":200}}}
+            """);
+        var client = new AzureAiFoundryClient(new HttpClient(handler), Options.Create(Opties()));
+
+        var completion = await client.CompleteAsync(EenRequest());
+
+        Assert.Equal(
+            new AiUsage { InputTokens = 1200, CachedInputTokens = 1024, OutputTokens = 300, ReasoningTokens = 200 },
+            completion.Usage);
+    }
+
+    /// <summary>Without a <c>usage</c> block the completion simply has none; its content still arrives.</summary>
+    [Fact]
+    public async Task Zonder_usage_is_het_verbruik_null()
+    {
+        var client = new AzureAiFoundryClient(
+            new HttpClient(new StubHandler(AzureEnvelop("{}"))), Options.Create(Opties()));
+
+        var completion = await client.CompleteAsync(EenRequest());
+
+        Assert.Null(completion.Usage);
+        Assert.Equal("{}", completion.Content);
     }
 
     /// <summary>
@@ -185,7 +339,8 @@ public sealed class AzureAiFoundryClientTests
 
     /// <summary>
     /// Missing configuration fails loudly on <b>first use</b> and never reaches the network — deliberately not at
-    /// startup, so a dev/test host that never calls AI keeps running with no AI config at all.
+    /// startup, so a dev/test host that never calls AI keeps running with no AI config at all. A missing key is
+    /// missing configuration: it never turns into an Entra sign-in (ADR-0036).
     /// </summary>
     [Theory]
     [InlineData(null, ApiKey, Deployment)]
@@ -199,16 +354,35 @@ public sealed class AzureAiFoundryClientTests
         string? deployment)
     {
         var handler = new StubHandler(AzureEnvelop("{}"));
+        var credential = new FakeCredential("ongebruikt");
         var client = new AzureAiFoundryClient(
-            new HttpClient(handler), Options.Create(Opties(endpoint, apiKey, deployment)));
+            new HttpClient(handler),
+            Options.Create(Opties(endpoint, apiKey, deployment)),
+            new EntraTokenProvider(credential));
 
         var fout = await Assert.ThrowsAsync<InvalidOperationException>(() => client.CompleteAsync(EenRequest()));
 
         // The message names the config keys a deployer must set, and never echoes the key itself.
         Assert.Contains("AzureAI:Endpoint", fout.Message);
+        Assert.Contains("AzureAI:ApiKey", fout.Message);
         Assert.DoesNotContain(ApiKey, fout.Message, StringComparison.Ordinal);
 
-        // Nothing left the process.
+        // Nothing left the process, and no token was requested.
+        Assert.Equal(0, handler.AantalAanroepen);
+        Assert.Equal(0, credential.AantalAanroepen);
+    }
+
+    /// <summary>With Entra chosen, an endpoint and a deployment are still required.</summary>
+    [Fact]
+    public async Task Ook_met_entra_zijn_endpoint_en_deployment_verplicht()
+    {
+        var handler = new StubHandler(AzureEnvelop("{}"));
+        var client = new AzureAiFoundryClient(
+            new HttpClient(handler),
+            Options.Create(Opties(deployment: null, authentication: AzureAIAuthentication.Entra)),
+            new EntraTokenProvider(new FakeCredential("ongebruikt")));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.CompleteAsync(EenRequest()));
         Assert.Equal(0, handler.AantalAanroepen);
     }
 
@@ -219,6 +393,9 @@ public sealed class AzureAiFoundryClientTests
             new AzureAiFoundryClient(null!, Options.Create(Opties())));
         Assert.Throws<ArgumentNullException>(() =>
             new AzureAiFoundryClient(new HttpClient(new StubHandler("{}")), null!));
+        Assert.Throws<ArgumentNullException>(() =>
+            new AzureAiFoundryClient(new HttpClient(new StubHandler("{}")), Options.Create(Opties()), null!));
+        Assert.Throws<ArgumentNullException>(() => new EntraTokenProvider(null!));
 
         var client = new AzureAiFoundryClient(
             new HttpClient(new StubHandler(AzureEnvelop("{}"))), Options.Create(Opties()));
@@ -261,5 +438,34 @@ public sealed class AzureAiFoundryClientTests
                 Content = new StringContent(_antwoord, Encoding.UTF8, "application/json"),
             };
         }
+    }
+
+    /// <summary>An Entra credential that hands out a fixed token and records which scopes were asked for.</summary>
+    private sealed class FakeCredential(string token, TimeSpan? geldig = null, TimeProvider? tijd = null) : TokenCredential
+    {
+        public int AantalAanroepen { get; private set; }
+
+        public IReadOnlyList<string> GevraagdeScopes { get; private set; } = [];
+
+        public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        {
+            AantalAanroepen++;
+            GevraagdeScopes = requestContext.Scopes;
+            var nu = (tijd ?? TimeProvider.System).GetUtcNow();
+            return new AccessToken(token, nu + (geldig ?? TimeSpan.FromHours(1)));
+        }
+
+        public override ValueTask<AccessToken> GetTokenAsync(
+            TokenRequestContext requestContext,
+            CancellationToken cancellationToken) =>
+            ValueTask.FromResult(GetToken(requestContext, cancellationToken));
+    }
+
+    /// <summary>A clock the test moves by hand.</summary>
+    private sealed class VasteTijd(DateTimeOffset nu) : TimeProvider
+    {
+        public DateTimeOffset Nu { get; set; } = nu;
+
+        public override DateTimeOffset GetUtcNow() => Nu;
     }
 }

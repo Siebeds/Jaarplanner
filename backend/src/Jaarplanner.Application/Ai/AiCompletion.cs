@@ -13,4 +13,10 @@ public sealed record AiCompletion
     /// (Art. IV.5), but treated here as an opaque string. Validated/repaired downstream (E2-03).
     /// </summary>
     public required string Content { get; init; }
+
+    /// <summary>
+    /// The token usage the provider reported, or <c>null</c> when it reported none (a fake client never does). For
+    /// measuring cost only (TB-004); nothing in a flow may branch on it.
+    /// </summary>
+    public AiUsage? Usage { get; init; }
 }
