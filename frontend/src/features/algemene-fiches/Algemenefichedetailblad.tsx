@@ -151,6 +151,15 @@ function Momentvorm({
     datum === moment.datum && begin === moment.begin.slice(0, 5) && einde === moment.einde.slice(0, 5);
   const detail = verplaats.error instanceof ApiError ? verplaats.error.detail : undefined;
 
+  // A refusal describes the answer she sent, not the one she is now typing: once a field changes it is cleared, or a
+  // weekend warning ends up stacked on a vakantie refusal from the attempt before it.
+  function wijzig(zet: (waarde: string) => void) {
+    return (waarde: string) => {
+      verplaats.reset();
+      zet(waarde);
+    };
+  }
+
   return (
     <div>
       <p className="text-micro uppercase text-inkt-zwak">{t("fichedetail.ditMoment", { dag: volleDag(moment.datum) })}</p>
@@ -168,7 +177,7 @@ function Momentvorm({
             max={plaatsing.tot}
             value={datum}
             disabled={verplaats.isPending || vergrendeld}
-            onChange={(e) => setDatum(e.target.value)}
+            onChange={(e) => wijzig(setDatum)(e.target.value)}
             className="mt-1"
           />
         </div>
@@ -182,7 +191,7 @@ function Momentvorm({
             step={900}
             value={begin}
             disabled={verplaats.isPending || vergrendeld}
-            onChange={(e) => setBegin(e.target.value)}
+            onChange={(e) => wijzig(setBegin)(e.target.value)}
             className="mt-1"
           />
         </div>
@@ -196,7 +205,7 @@ function Momentvorm({
             step={900}
             value={einde}
             disabled={verplaats.isPending || vergrendeld}
-            onChange={(e) => setEinde(e.target.value)}
+            onChange={(e) => wijzig(setEinde)(e.target.value)}
             className="mt-1"
           />
         </div>

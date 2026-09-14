@@ -110,6 +110,23 @@ describe("Algemenefichedetailblad", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("haalt een weigering weg zodra ze een veld aanpast, want die ging over het vorige antwoord", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "Op die dag is er geen school. Kies een schooldag." }), {
+        status: 400,
+        headers: { "Content-Type": "application/problem+json" },
+      }),
+    );
+    toon({ momentId: "m-2" });
+
+    fireEvent.change(screen.getByLabelText(t("fichedetail.dag")), { target: { value: "2026-11-04" } });
+    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.bewaren") }));
+    expect(await screen.findByText(t("fichedetail.momentMislukt"))).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(t("fichedetail.dag")), { target: { value: "2026-09-15" } });
+    await waitFor(() => expect(screen.queryByText(t("fichedetail.momentMislukt"))).not.toBeInTheDocument());
+  });
+
   it("biedt geen dagvelden aan wanneer het blad een hele periode toont", () => {
     toon({ momentId: null });
     expect(screen.queryByLabelText(t("fichedetail.dag"))).not.toBeInTheDocument();
