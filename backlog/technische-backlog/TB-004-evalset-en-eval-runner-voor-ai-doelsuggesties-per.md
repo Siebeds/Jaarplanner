@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 15:10
+bijgewerkt: 2026-09-14 15:21
 opgepakt-door: ai-doelsuggesties
 branch: ticket/ai-doelsuggesties-eval
 pr:
@@ -141,3 +141,5 @@ wordt gecommit, voor de tests van de runner zelf.
 - 2026-09-14 14:49 · ai-doelsuggesties · geblokkeerd: wacht op Azure-support: het Foundry-account wordt geweigerd met 715-123420 (unusual activity); de eigenaar opent een supportaanvraag
 - 2026-09-14 15:00 · ai-doelsuggesties · antagonist ronde 7: 0 major, 3 minor (ai-foundry.md sprak ADR-0036 tegen over gedeeld gebruik door dev/tst; regio was een vrije optie; -Skip aanvaardde onbekende namen); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-7.md. Het ADR van TB-006 moet beslissing 3 van ADR-0036 wijzigen voor het gedeelde gebruik door dev en tst
 - 2026-09-14 15:10 · ai-doelsuggesties · antagonist ronde 8: 0 major, 2 minor (-Skip vergeleek hoofdletterongevoelig; onbekende parameters werden stil genegeerd) en 1 vraag (de wijziging van ADR-0036 hoort ook in TB-006); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-8.md
+- 2026-09-14 15:16 · ai-doelsuggesties · eigenaar probeerde de deployment manueel in de portal: zelfde fout 715-123420; hij logt een supportaanvraag bij Azure
+- 2026-09-14 15:21 · ai-doelsuggesties · antagonist ronde 9: 0 major, 2 minor (codecommentaar belandde in de help van deploy-ai.ps1; TB-006 met de hand aangepast zonder werklogregel); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-9.md
