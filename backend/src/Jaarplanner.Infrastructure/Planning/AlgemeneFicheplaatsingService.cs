@@ -135,10 +135,16 @@ public sealed class AlgemeneFicheplaatsingService : IAlgemeneFicheplaatsingServi
             .FirstOrDefaultAsync(p => p.Id == plaatsingId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout($"Plaatsing {plaatsingId} is niet gevonden.");
 
+        // The school year decides which days are open, as it does in PlaatsAsync.
+        var klas = await _db.Klassen.FirstOrDefaultAsync(k => k.Id == plaatsing.KlasId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Klas {plaatsing.KlasId} is niet gevonden.");
+        var schooljaar = await _db.Schooljaren.FirstOrDefaultAsync(j => j.Id == klas.SchooljaarId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Schooljaar {klas.SchooljaarId} is niet gevonden.");
+
         bool gevonden;
         try
         {
-            gevonden = plaatsing.VerplaatsMoment(momentId, datum, begin, einde);
+            gevonden = plaatsing.VerplaatsMoment(momentId, datum, begin, einde, schooljaar);
         }
         catch (ArgumentException fout)
         {
