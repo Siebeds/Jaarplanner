@@ -17,11 +17,19 @@ import type { LeerplandoelFilterQuery, MinimumdoelFilterQuery } from "../../lib/
 import { Doelenboom } from "./Doelenboom";
 import { Doeldetail } from "./Doeldetail";
 import { Bestemmingsblad } from "../koppelen/Bestemmingsblad";
-import { Laadlink, Minimumdoelenlijst } from "./Minimumdoelenlijst";
+import { Laadlink, Minimumdoelenboom } from "./Minimumdoelenboom";
+import { Minimumdoeldetail } from "./Minimumdoeldetail";
+import { Mijlpaalkeuze } from "./Mijlpaalkeuze";
 import { Filterblad } from "./Filterblad";
 import { useActieveSelectie } from "../../lib/selectie";
 import { useDoelenfilter } from "../../state/doelenfilter";
 import { Doelsoortbalk } from "./Doelsoortbalk";
+
+/**
+ * What the detail shows: a leerplandoel or a minimumdoel. One selection for both, because the two details link to each
+ * other (TB-010): a minimumdoel lists the leerplandoelen that work it out, and a leerplandoel names its minimumdoel.
+ */
+type Keuze = { soort: "leerplandoel"; code: string } | { soort: "minimumdoel"; ref: string };
 
 /**
  * The curriculum register: Op.stap's leerplandoelen, and the decreed minimumdoelen behind the same
@@ -35,8 +43,19 @@ import { Doelsoortbalk } from "./Doelsoortbalk";
 export function DoelenScherm() {
   // Filter, search and view live in a store rather than in this component, because this component
   // unmounts on every navigation and the teacher's narrowing should not. See `state/doelenfilter.ts`.
-  const { filter, zoek, bron, faseVanKlas, stelFilter, stelZoek, stelBron, volgKlasFase, wisAlles: wisFilter } =
-    useDoelenfilter();
+  const {
+    filter,
+    zoek,
+    bron,
+    mijlpaal,
+    faseVanKlas,
+    stelFilter,
+    stelZoek,
+    stelBron,
+    stelMijlpaal,
+    volgKlasFase,
+    wisAlles: wisFilter,
+  } = useDoelenfilter();
   const [zoekInvoer, setZoekInvoer] = useState(zoek);
   /**
    * THE REGISTER OPENS ON THE SELECTED CLASS'S JAAR/FASE (owner ruling, 2026-08-25).
@@ -61,7 +80,11 @@ export function DoelenScherm() {
     volgKlasFase(eigenFase);
   }
   const [filterOpen, setFilterOpen] = useState(false);
-  const [gekozenCode, setGekozenCode] = useState<string | null>(null);
+  const [gekozen, setGekozen] = useState<Keuze | null>(null);
+  const gekozenCode = gekozen?.soort === "leerplandoel" ? gekozen.code : null;
+  const gekozenRef = gekozen?.soort === "minimumdoel" ? gekozen.ref : null;
+  const kiesLeerplandoel = (code: string) => setGekozen({ soort: "leerplandoel", code });
+  const kiesMinimumdoel = (ref: string) => setGekozen({ soort: "minimumdoel", ref });
 
   /**
    * WHICH SHEET IS SHOWING, and never both.
@@ -69,7 +92,7 @@ export function DoelenScherm() {
    * Up to `lg` the doel detail is itself a `Blad`, so the destination sheet cannot be opened from
    * inside it: two bottom sheets stacked, the phone showed two titles and two close buttons, and the
    * destinations were behind the detail. Both sheets live here instead, and the detail closes while
-   * the destination sheet is up. Closing that one brings the detail back, because `gekozenCode` is
+   * the destination sheet is up. Closing that one brings the detail back, because `gekozen` is
    * untouched by all of this.
    */
   const [koppelenOpen, setKoppelenOpen] = useState(false);
@@ -89,8 +112,14 @@ export function DoelenScherm() {
   );
 
   const minimumdoelFilter = useMemo<MinimumdoelFilterQuery>(
-    () => ({ zoek: zoek || undefined, domein: filter.domein, subdomein: filter.subdomein, jaarFase: filter.jaarFase }),
-    [filter.domein, filter.subdomein, filter.jaarFase, zoek],
+    () => ({
+      zoek: zoek || undefined,
+      leeftijd: mijlpaal ?? undefined,
+      domein: filter.domein,
+      subdomein: filter.subdomein,
+      jaarFase: filter.jaarFase,
+    }),
+    [filter.domein, filter.subdomein, filter.jaarFase, zoek, mijlpaal],
   );
 
   const { data: facetten } = useLeerplandoelFacetten(doelenFilter);
@@ -104,8 +133,6 @@ export function DoelenScherm() {
   // Each doel sits in exactly one domein, so the domein counts under the active filter add up to
   // the number of doelen the filter matches.
   const aantalDoelen = facetten?.domeinen.reduce((som, d) => som + d.aantal, 0) ?? 0;
-  // Not so for a minimumdoel: it sits in every subdomein its goals do, and in none when no loaded goal concords it, so
-  // the same sum over-counted the first and missed the second. The server counts minimumdoelen instead (E1-22).
   const aantalMinimumdoelen = minimumdoelFacetten?.aantalTreffers ?? 0;
 
   const leegRegister = bron === "leerplandoelen" && facetten !== undefined && facetten.totaalAantalDoelen === 0;
@@ -120,6 +147,19 @@ export function DoelenScherm() {
     bron === "leerplandoelen"
       ? telWoord(aantalDoelen, "doelen.eenDoel", "doelen.aantalDoelen")
       : telWoord(aantalMinimumdoelen, "doelen.eenMinimumdoel", "doelen.aantalMinimumdoelen");
+
+  // A fresh element per place it is shown: the column from `lg`, the sheet below it.
+  const detail = () =>
+    gekozenRef !== null ? (
+      <Minimumdoeldetail minimumdoelRef={gekozenRef} onKies={kiesLeerplandoel} />
+    ) : (
+      <Doeldetail
+        code={gekozenCode}
+        onKies={kiesLeerplandoel}
+        onKiesMinimumdoel={kiesMinimumdoel}
+        onKoppel={() => setKoppelenOpen(true)}
+      />
+    );
 
   return (
     <>
@@ -193,8 +233,8 @@ export function DoelenScherm() {
           </p>
         </div>
 
-        {/* Only over the leerplandoelen: a minimumdoel has no doelsoort, so under that view the bar
-            would be measuring something that does not exist. */}
+        {/* The doelsoort bar only over the leerplandoelen, since a minimumdoel has no doelsoort; the minimumdoelen
+            get the decree's own first cut instead, the mijlpaal (TB-010). */}
         {bron === "leerplandoelen" ? (
           <div className="mb-5">
             <Doelsoortbalk
@@ -203,7 +243,11 @@ export function DoelenScherm() {
               onKies={(doelsoort) => stelFilter({ ...filter, doelsoort })}
             />
           </div>
-        ) : null}
+        ) : (
+          <div className="mb-5">
+            <Mijlpaalkeuze leeftijden={minimumdoelFacetten?.leeftijden} actief={mijlpaal} onKies={stelMijlpaal} />
+          </div>
+        )}
 
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-8">
           <div className="min-w-0">
@@ -228,18 +272,25 @@ export function DoelenScherm() {
                   basisFilter={doelenFilter}
                   gefilterd={gefilterd}
                   gekozenCode={gekozenCode}
-                  onKies={setGekozenCode}
+                  onKies={kiesLeerplandoel}
                 />
               )
             ) : (
-              <Minimumdoelenlijst filter={minimumdoelFilter} onKiesDoel={setGekozenCode} onWisFilters={wisAlles} />
+              <Minimumdoelenboom
+                key={JSON.stringify(minimumdoelFilter)}
+                filter={minimumdoelFilter}
+                gefilterd={gefilterd || mijlpaal !== null}
+                gekozenRef={gekozenRef}
+                onKies={kiesMinimumdoel}
+                onWisFilters={wisAlles}
+              />
             )}
           </div>
 
           {/* The detail column. `top` clears the sticky screen header above it. */}
           <aside className="hidden lg:sticky lg:top-[13.5rem] lg:block">
             <div className="max-h-[calc(100dvh-15rem)] overflow-y-auto rounded-kaart border border-lijn bg-kaart p-5 shadow-licht">
-              <Doeldetail code={gekozenCode} onKies={setGekozenCode} onKoppel={() => setKoppelenOpen(true)} />
+              {detail()}
             </div>
           </aside>
         </div>
@@ -249,11 +300,11 @@ export function DoelenScherm() {
           exists twice in the accessibility tree. */}
       {!breed ? (
         <Blad
-          open={gekozenCode !== null && !koppelenOpen}
-          onOpenChange={(open) => !open && setGekozenCode(null)}
-          titel={t("doel.titel")}
+          open={gekozen !== null && !koppelenOpen}
+          onOpenChange={(open) => !open && setGekozen(null)}
+          titel={gekozenRef !== null ? t("minimumdoel.titel") : t("doel.titel")}
         >
-          <Doeldetail code={gekozenCode} onKies={setGekozenCode} onKoppel={() => setKoppelenOpen(true)} />
+          {detail()}
         </Blad>
       ) : null}
 

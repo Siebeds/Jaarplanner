@@ -258,8 +258,11 @@ function Subdomein({
   );
 }
 
-/** The shared shape of the three collapsible levels: name on the left, count and chevron on the right. */
-function Rij({
+/**
+ * The shared shape of the three collapsible levels: name on the left, count and chevron on the right. Exported for the
+ * minimumdoelen tree (TB-010), so the two registers open and read the same way.
+ */
+export function Rij({
   open,
   onToggle,
   aantal,

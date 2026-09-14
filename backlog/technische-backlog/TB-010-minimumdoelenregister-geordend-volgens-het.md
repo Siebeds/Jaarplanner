@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:32
+bijgewerkt: 2026-09-14 14:37
 opgepakt-door: md-boom
 branch: ticket/minimumdoelenboom
 pr:
@@ -84,3 +84,4 @@ de enige wijziging aan het deel *Leerplandoelen* is. Directie heeft het niet bev
 - 2026-09-14 14:10 · md-boom · Antwoord van de eigenaar: de tekst van het amendement is bekrachtigd, de soort wordt bewaard en getoond, en het minimumdoel in het leerplandoeldetail wordt aanklikbaar. De bloktekst hierboven had 'de eigenaar' moeten zeggen in plaats van 'hij'.
 - 2026-09-14 14:21 · md-boom · Antagonist ronde 1 afgewerkt: MAJOR 1 (leergebied van het decreet gescheiden van leergebied/Wereldoriëntatie in Art. VII.0, XII, XIV en de functionele analyse) en MAJOR 2 (de logregel zegt nu dat de eigenaar de tekst bekrachtigde en wat niet van de eigenaar komt). origin/main (TB-005, TB-008, TB-009) gemerged.
 - 2026-09-14 14:32 · md-boom · Antagonist ronde 2: geen MAJOR meer. MINOR 12, 14 en 15 verwerkt (logregel en IX.1 nauwkeuriger, leergebied overal benoemd, tickettekst bijgewerkt). Correctie op de regel van 14:10: de eigenaar koos de soort te bewaren en in het detail van het minimumdoel te tonen. MINOR 11 en 13 zitten in de copy die nog in nl.json moet: 'Uitgewerkt in {aantal} ingeladen leerplandoelen', 'Bekijk dit minimumdoel', en '... als Op.stap ze in een bruikbare vorm meegeeft'.
+- 2026-09-14 14:37 · md-boom · Frontend af: minimumdoelenboom in de ordening van het decreet, mijlpaalfilter, minimumdoeldetail met leerplandoelen per jaar/fase, doorklikken in beide richtingen. nl.json aangepast zonder de claim van E6-02, op uitdrukkelijke vraag van de eigenaar ('forceer de nl.json maar'), gemeld in de groepschat. pnpm lint schoon, 264 frontend-tests groen. De migratie wacht nog op E6-02.
