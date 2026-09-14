@@ -212,16 +212,16 @@ Daarvoor komen de voornaam en de achternaam van de kinderen in de tool. De AI ma
 - de directie;
 - wie van u het nieuwe recht **Leerlingzorg** krijgt, bijvoorbeeld de zorgcoördinator.
 
-Andere leerkrachten zien ze niet.
+Andere leerkrachten zien ze niet. Let op: wie van u het directierecht krijgt, bijvoorbeeld een ICT-coördinator, leest en wijzigt ook alle rapporten.
 
 **Wat we vragen:**
 
 1. Bevestig dat u akkoord gaat dat de tool deze gegevens over kinderen bewaart. De school is er verantwoordelijk voor.
-2. Leg een concrete bewaartermijn vast, bijvoorbeeld tot het einde van het volgende schooljaar. De tool wist niets vanzelf. U wist een schooljaar, en de beheerpagina toont welke schooljaren nog gegevens over kinderen bevatten.
-3. Neem deze verwerking op in het verwerkingsregister van de school. Laat de ouders weten dat de school deze gegevens bewaart, en dat teksten, zonder de namen, door een AI-dienst in de EU herwerkt kunnen worden.
-4. Laat een effectbeoordeling (DPIA) doen. Voor beoordelingen van jonge kinderen, deels met AI, is die volgens de AVG heel waarschijnlijk verplicht voordat de verwerking start.
+2. Leg een concrete bewaartermijn vast, bijvoorbeeld tot het einde van het volgende schooljaar. De tool wist niets vanzelf. U wist een schooljaar. De beheerpagina toont welke schooljaren nog gegevens over kinderen bevatten, en herinnert u eraan.
+3. Neem deze verwerking op in het verwerkingsregister van de school. Laat de ouders weten dat de school deze gegevens bewaart, en dat teksten door een AI-dienst in de EU herwerkt kunnen worden. De namen van de kinderen van de klas worden daarbij vervangen. Een bijnaam of een andere naam die de leerkracht schrijft, wordt niet vervangen.
+4. Laat een effectbeoordeling (DPIA) doen. Voor beoordelingen van jonge kinderen, deels met AI, is die volgens de AVG heel waarschijnlijk verplicht voordat de verwerking start. Neem daarin ook op dat leerkrachten in de teksten zorg- of gezondheidsinformatie kunnen schrijven, zoals logopedie of een diagnose. Dat zijn bijzondere gegevens (AVG art. 9).
 
-**Gevolg zolang dit openstaat.** Het bouwen gaat door. De projecteigenaar besliste bewust dat echte gegevens mogen worden ingevoerd zodra het rapport gebouwd is, ook als punten 2 tot 4 dan nog niet rond zijn. Wij raden aan om ze af te ronden voordat de eerste echte naam in de tool komt.
+**Gevolg zolang dit openstaat.** Het bouwen gaat door. De projecteigenaar besliste bewust dat echte gegevens mogen worden ingevoerd zodra het rapport gebouwd is, ook als punten 2 tot 4 dan nog niet rond zijn. Verwerken voordat de ouders geïnformeerd zijn en de DPIA gedaan is, voldoet voor die periode niet aan de AVG. De school is daarvoor verantwoordelijk. Wij raden aan om punten 2 tot 4 af te ronden voordat de eerste echte naam in de tool komt.
 
 ---
 

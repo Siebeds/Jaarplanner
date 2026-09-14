@@ -12,7 +12,8 @@
 - **Amends:** [ADR-0011](0011-authn-authz-rbac-gdpr.md). **Supersedes its decision §3** ("ownership-aware
   rules"), which assigned class-scoped content to "the owning teacher" at a time when a subthema still named a
   klas. ADR-0011 §1 (personal login over Microsoft Entra ID), §2 (server-side enforcement driven by one
-  configurable matrix, no scattered role checks) and §4 (no pupil PII) stand unchanged.
+  configurable matrix, no scattered role checks) and §4 (no pupil PII) stand unchanged. *(ADR-0011 §4 was narrowed on 2026-09-14 by ADR-0035, for the K3
+  ontwikkelingsrapport only.)*
 - **Relates to:** [ADR-0022](0022-curriculum-administration-authorisation-seam.md) (the `Curriculumbeheer`
   seam), [ADR-0025](0025-subthema-per-leeftijd.md) (content per leeftijd), [ADR-0031](0031-sessielogin-via-de-api.md)
   (the login mechanism).
@@ -680,13 +681,16 @@ The shape of those actions, and when a thema stops being new, are defaults (I22,
 on the ordinary subthema, subdoel and activiteit routes** (I22), which is what the "–" in those rows means, apart from the maker's delete right (R33, the maker² row).
 
 ⁶ **The ontwikkelingsrapport rows** were added on 2026-09-14 from [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md)
-§3.3. The R-numbers in them are ADR-0035's, not this ADR's, and they are ratified by Art. VI.7 as far as they cite
-those rulings.
-- "LK eigen" fills in only during the klas's schooljaar. After it, it reads and downloads only (ADR-0035 R26), which
-  overrides I21 for these rows.
-- "LK leeftijd" on the rapportdoelen row means a klastoewijzing on a klas that grants K3 (D4).
-- A sixth relation applies to these rows only: **Leerlingzorg**, a right directie gives, reads every ontwikkelingsrapport
-  and does nothing else (ADR-0035 R18).
+§3.3. The R-numbers in their labels are ADR-0035's, not this ADR's, and they are ratified by Art. VI.7 as far as they
+cite those rulings. The "Directie" ✓ on them rests on this ADR's R3, as everywhere else in the matrix.
+- **The column definitions widen for these rows only.**
+  - "LK eigen" covers the klas's leerlingen and their reports as well as its planning. It fills in only during the klas's
+    schooljaar; after it, it reads (ADR-0035 R26) and downloads (a default) only, which overrides I21 for these rows.
+  - "LK leeftijd" covers the one K3 set of rapportdoelen and the scale, and means a klastoewijzing on a klas that grants
+    K3, in a schooljaar that has not ended (ADR-0035 D4).
+- **A seventh relation applies to these rows only: Leerlingzorg**, a right directie gives. It reads every
+  ontwikkelingsrapport and does nothing else (ADR-0035 R18); in particular it does not download (ADR-0035 D5). It has no
+  column because it grants on no other row.
 - I9 does not reach these rows, so TB, HL, "LK leeftijd" and "Ander" read no report (ADR-0035 R17). A gebruiker who
   holds several relations still holds their union: a hoofdleerkracht who is also a leerkracht of the klas reads that
   klas's reports as "LK eigen".
@@ -741,7 +745,10 @@ settled", then "Five are open".*
 - **(e) Zorgcoördinator rights.** FA §3.1 marks them *"eventueel beperkte bewerkrechten, ter beslissing"*, which is
   an FA item and not an Art. XIV bullet. R4 lets a zorgcoördinator hold themabeheer, and R7 with I9 gives read
   access. Anything beyond that is still open. The default is that such a gebruiker, or anyone holding none of the
-  four rights, does nothing else, apart from the maker's delete right (R33). *Owner: E6-02.*
+  four rights, does nothing else, apart from the maker's delete right (R33). *Owner: E6-02.* *Since 2026-09-14
+  ([ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md) R18) there are five rights: directie may also give a
+  zorgcoördinator Leerlingzorg, which reads every ontwikkelingsrapport and nothing else. The default above then reads
+  "none of the five rights".*
 - **(f) What accepting a doelsuggestie does to other klassen.** *Settled by statement 17 (R14), 2026-09-13.*
   - ~~R8 lets every leerkracht accept a doelsuggestie.~~ A suggestion hangs on a **school-wide thema**, and an
     accepted one counts for dekking in **every klas that plans that thema**. ~~So under R8 one teacher's acceptance

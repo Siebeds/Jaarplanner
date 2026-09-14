@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:15
+bijgewerkt: 2026-09-14 12:31
 opgepakt-door: kindrapport
 branch: ticket/TB-005-ontwikkelingsrapport-scope
 pr:
@@ -80,3 +80,4 @@ in `docs/besluiten-gevraagd.md` en houdt het werk niet tegen (R20, R27).
 - 2026-09-14 11:59 · kindrapport · Correctie op de regel van 11:36: E6-02 had de grondwet, de functionele analyse en ADR-0030 al om 11:26 vrijgegeven; wat overblijft is hun niet-gepushte wijziging aan Art. VI.1, die bij de merge een klein conflict kan geven
 - 2026-09-14 11:59 · kindrapport · Antagonist ronde 1: VIOLATIONS FOUND (3 MAJOR, 8 MINOR, 4 vragen); de 22 antwoorden kloppen; zeven vragen voorgelegd aan de eigenaar; rapport in backlog/worklogs/TB-005/antagonist-ronde-1.md
 - 2026-09-14 12:15 · kindrapport · Ronde 1 verwerkt: zeven nieuwe antwoorden van de eigenaar (R23 tot R29) in ADR-0035, de eigen ontwerpkeuzes als standaard gemarkeerd, en het amendement geschreven (grondwet, functionele analyse, CLAUDE.md, ADR-0030-matrix, E7-06, E8, vraag 15 aan de directie, drie agent- en skillbestanden)
+- 2026-09-14 12:31 · kindrapport · Antagonist ronde 2: VIOLATIONS FOUND (1 MAJOR, 9 MINOR, 4 vragen), allemaal verwerkt zonder nieuwe vraag aan de eigenaar: de AI krijgt nu alleen de tekst (R21), eigen keuzes als standaard gemarkeerd, de herinnering (R28) overal, AVG art. 9 en de volledige R29 opgenomen; rapport in backlog/worklogs/TB-005/antagonist-ronde-2.md

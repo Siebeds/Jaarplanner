@@ -67,6 +67,7 @@ De Jaarplanner (werktitel) is een webtoepassing die:
 - Flexibele kalender met drag-and-drop en manuele bewerking.
 - (Her)generatie, dekkingsoverzicht, samenwerking en export.
 - Gebruikersbeheer met rollen en rechten.
+- Een ontwikkelingsrapport per kind voor de derde kleuter (FR-13, toegevoegd op 14-09-2026).
 
 #### Buiten scope (mogelijk latere fase)
 
@@ -254,11 +255,11 @@ De beheerder/directie werkt vanuit een centrale beheerpagina (admin). Daar worde
 
 Drie keer per schooljaar schrijven de leerkrachten van de derde kleuter een ontwikkelingsrapport per kind. De ouders krijgen het als PDF- of Word-bestand. Dit is het enige deel van de tool dat gegevens over kinderen bevat.
 
-- **FR-13.1** — Een leerkracht van een K3-klas voert de kinderen van zijn klas met de hand in, één per één, met voornaam en achternaam. Andere gegevens over een kind bewaart de tool niet.
+- **FR-13.1** — Een leerkracht van een K3-klas voert de kinderen van zijn klas met de hand in, één per één, met voornaam en achternaam. De tool heeft geen andere velden over een kind. Wat de leerkracht in de teksten schrijft, is vrije tekst.
 - **FR-13.2** — Elke K3-leerkracht beheert één gedeelde set **rapportdoelen** voor heel K3. Een rapportdoel heeft een titel en bundelt subdoelen uit de eigen thema's. Elke K3-leerkracht beheert ook één **sterrenschaal** voor heel K3: elke gradatie heeft een label en een kleur. Set en schaal gelden altijd, niet per schooljaar, dus een wijziging werkt ook door op oude rapporten.
 - **FR-13.3** — Per kind zijn er drie vaste evaluatiemomenten. Per moment kiest de leerkracht voor elk rapportdoel een ster en schrijft hij er een tekst bij. Per moment schrijft hij ook een algemeen besluit.
 - **FR-13.4** — De leerkracht kan de tekst bij een rapportdoel en het algemene besluit laten herwerken door AI.
-  - Voor de tekst vertrekt, worden de namen van de kinderen van de klas vervangen. De leerkracht krijgt een melding dat een bijnaam of een andere naam niet vervangen wordt.
+  - Alleen die tekst gaat naar de AI. Voor hij vertrekt, worden de namen van de kinderen van de klas vervangen. De leerkracht krijgt een melding dat een bijnaam of een andere naam niet vervangen wordt.
   - Hij aanvaardt het voorstel, past het aan of weigert het. Een weigering wordt bewaard, zonder de voorgestelde tekst.
 - **FR-13.5** — Per moment kan de leerkracht een kindtekening toevoegen, als foto of scan. De tool verwijdert de metagegevens van de foto, zoals de plaats waar ze genomen werd.
 - **FR-13.6** — Het rapport is te downloaden als PDF en als Word, in een nieuw ontwerp. De ouder ziet per rapportdoel de titel, de ster met zijn label en de tekst. De subdoelen ziet alleen de leerkracht, in de tool.
@@ -268,7 +269,7 @@ Drie keer per schooljaar schrijven de leerkrachten van de derde kleuter een ontw
   - wie het recht Leerlingzorg heeft.
 
   Leerkrachten van andere klassen zien ze niet. Na het schooljaar kan de leerkracht de rapporten nog lezen, maar niet meer wijzigen.
-- **FR-13.8** — De gegevens blijven bewaard tot de directie een schooljaar wist. De directie legt een concrete bewaartermijn vast in het verwerkingsregister, en de beheerpagina toont welke schooljaren nog gegevens over kinderen bevatten.
+- **FR-13.8** — De gegevens blijven bewaard tot de directie een schooljaar wist. De directie legt een concrete bewaartermijn vast in het verwerkingsregister, en de beheerpagina toont welke schooljaren nog gegevens over kinderen bevatten en herinnert de directie eraan.
 - **FR-13.9** — Een ontwikkelingsrapport telt nooit mee voor de dekking.
 
 ## 6. Niet-functionele requirements
@@ -280,8 +281,9 @@ Dit zijn de kwaliteitseisen waaraan de tool moet voldoen, los van de concrete fu
 - **NFR-3** — Performance: een jaarplan wordt binnen een redelijke tijd gegenereerd (richtwaarde: enkele tot tientallen seconden); de kalender reageert vlot.
 - **NFR-4** — Beschikbaarheid & hosting: webtoepassing, bereikbaar via de browser, gehost in de cloud (bv. Microsoft Azure), zonder lokale installatie.
 - **NFR-5** — Beveiliging: toegang via persoonlijke login; rolgebaseerde rechten; gegevens versleuteld tijdens transport en in opslag.
-- **NFR-6** — Privacy (GDPR/AVG): de tool verwerkt in de eerste plaats curriculum- en personeelsgegevens (leerkrachtaccounts); géén gevoelige leerlinggegevens in de MVP. Een verwerkingsregister en bewaartermijnen worden voorzien. *(Bijgewerkt op 14-09-2026, [ADR-0035](adr/0035-ontwikkelingsrapport-derde-kleuter.md).)*
+- **NFR-6** — Privacy (GDPR/AVG): de tool verwerkt in de eerste plaats curriculum- en personeelsgegevens (leerkrachtaccounts); géén gevoelige leerlinggegevens in de MVP, behalve in het ontwikkelingsrapport hieronder. Een verwerkingsregister en bewaartermijnen worden voorzien. *(Bijgewerkt op 14-09-2026, [ADR-0035](adr/0035-ontwikkelingsrapport-derde-kleuter.md).)*
   - Het ontwikkelingsrapport van de derde kleuter (FR-13) verwerkt wél gegevens over kinderen: voornaam, achternaam, de sterren, de teksten, het besluit en de kindtekeningen.
+  - De teksten zijn vrije tekst en kunnen ook zorg- of gezondheidsinformatie bevatten (bijzondere gegevens, AVG art. 9).
   - Het verwerkingsregister en een concrete bewaartermijn moeten ook die gegevens dekken.
   - De projecteigenaar besliste dat echte gegevens mogen worden ingevoerd voordat het register en een effectbeoordeling (DPIA) er zijn. De school draagt die verantwoordelijkheid.
 - **NFR-7** — Browserondersteuning: recente versies van de courante browsers (Edge, Chrome, Firefox, Safari).
@@ -291,8 +293,8 @@ Dit zijn de kwaliteitseisen waaraan de tool moet voldoen, los van de concrete fu
 ## 7. AI-werking en kwaliteitsbewaking
 
 - **Mens in de lus** — de AI stelt voor, de leerkracht beslist. Niets wordt zonder validatie als definitief beschouwd. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): bij de doelsuggesties van een thema beslist de directie of wie themabeheer heeft.)*
-- **Transparantie** — elke AI-suggestie gaat gepaard met een korte motivatie.
-- **Brongegevens** — de AI werkt op basis van de door de school ingevoerde thema's en activiteiten en de leerdoelen van de overheid — niet op basis van externe, onbekende bronnen.
+- **Transparantie** — elke AI-suggestie gaat gepaard met een korte motivatie. *(Behalve de herwerking van een tekst in het ontwikkelingsrapport, FR-13.4: daar ziet de leerkracht de oude en de nieuwe tekst naast elkaar, zonder motivatie. Bijgewerkt op 14-09-2026.)*
+- **Brongegevens** — de AI werkt op basis van de door de school ingevoerde thema's en activiteiten en de leerdoelen van de overheid — niet op basis van externe, onbekende bronnen. *(Bij de herwerking van een tekst in het ontwikkelingsrapport krijgt de AI alleen die tekst, zonder de namen van de kinderen van de klas. Bijgewerkt op 14-09-2026.)*
 - **Beperkingen** — AI-suggesties kunnen fouten of hiaten bevatten. De eindverantwoordelijkheid voor de correcte dekking ligt bij de leerkracht en de directie. De tool ondersteunt, maar vervangt geen pedagogische beoordeling.
 - **Aandachtspunt** — verwerking van schoolgegevens door een AI-dienst gebeurt bij voorkeur binnen een Europese, AVG-conforme omgeving (bv. Azure AI Foundry met EU-datazone) — te bevestigen.
 

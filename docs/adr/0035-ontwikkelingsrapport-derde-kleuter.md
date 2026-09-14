@@ -128,10 +128,11 @@ for all of K3, not per klas. **R7 was chosen against the recommendation**, with 
 | R26 | *"Na het einde van het schooljaar: wat mag de leerkracht nog met de rapporten van die klas, tot de directie het schooljaar wist?"* | **"Alleen nog lezen (Aanbevolen)"**: *"De rapporten zijn afgegeven aan de ouders; ze blijven leesbaar maar niet meer te wijzigen. Directie kan nog alles."* | "Lezen en wijzigen"; "Geen toegang meer" |
 | R27 | *"Je koos eerder 'Ja, meteen' voor echte leerlinggegevens. De AVG vraagt voor evaluaties van kinderen waarschijnlijk een effectbeoordeling (DPIA) vóór de verwerking start, plus een ingevuld verwerkingsregister. Houden we 'meteen'?"* | **"'Meteen' blijft"**: *"We leggen vast dat jij bewust afwijkt, met de risico's erbij (AVG art. 13, 30 en 35). De school draagt die verantwoordelijkheid."* | "Eerst register en DPIA (Aanbevolen)" |
 | R28 | *"Je koos 'Tot directie wist'. De AVG vraagt een concrete bewaartermijn in het register. Wat doet de app?"* | **"Termijn + herinnering (Aanbevolen)"**: *"De directie legt een termijn vast in het register (bv. tot eind volgend schooljaar). De app toont op de beheerpagina welke schooljaren nog kindgegevens bevatten en herinnert eraan. Wissen blijft een handeling van de directie."* | "Termijn, geen herinnering" |
-| R29 | *"Drie agent- en skillbestanden (antagonist, implementer, jaarplan-build) behandelen 'leerlinggegevens' vandaag als harde stop. Na het amendement zouden ze elk bouwticket van het rapport blokkeren. Mag ik ze in het amendement mee aanpassen?"* | The owner answered in his own words (excerpt): *"… het amendement mag wat ik hier vraag niet tegenhouden of blokkeren"* | "Ja, pas ze mee aan (Aanbevolen)"; "Nee, ik doe het zelf" |
+| R29 | *"Drie agent- en skillbestanden (antagonist, implementer, jaarplan-build) behandelen 'leerlinggegevens' vandaag als harde stop. Na het amendement zouden ze elk bouwticket van het rapport blokkeren. Mag ik ze in het amendement mee aanpassen?"* | The owner chose neither option and answered in his own words: *"wat bedoel je behandelen als harde stop, ik word gefrustreerd van deze verwoordingen, het amendement mag wat ik hier vraag niet tegenhouden of blokkeren"* | "Ja, pas ze mee aan (Aanbevolen)"; "Nee, ik doe het zelf" |
 
 - **R25 and R27 were chosen against the recommendation.**
-- **R29 is read as consent to change those three texts** so that they do not stop the ontwikkelingsrapport. Pupil
+- **R29 is read as consent to change those three texts** so that they do not stop the ontwikkelingsrapport. The
+  session first answered his question in the conversation: the three texts say that pupil data is always rejected. Pupil
   data outside the report stays a violation for them, and inside the report they check against Art. VI.7.
 
 ## 2. What changes in scope
@@ -164,6 +165,9 @@ Domain names are Dutch (Art. II.1). All of this is **pupil data** except `Rappor
   - A klas already belongs to one schooljaar, so a leerling does too, which is the owner's *"voor dit jaar en mijn
     klas"*.
   - No other field about a child exists: no date of birth, address, parent, or identifier from another system.
+  - *The texts are free text.* The rapportbeoordeling texts and the besluit can carry whatever a teacher writes,
+    including care or health information (AVG art. 9), and that text goes, pseudonymised, to the AI. Question 15 names
+    it for the DPIA.
   - *The kindtekening is where the fields stop protecting.* It is an image the teacher uploads, and it can show the
     child, other children or a written name. The build ticket's copy asks for a photo of the drawing alone, and the app
     cannot check that it is one.
@@ -249,8 +253,8 @@ third kind of AI output, next to goal matches and generated plans, and Art. IV a
 - **Who decides (IV.1):** a leerkracht of the klas during its schooljaar, or directie.
 - **The human decides, and every decision is kept (IV.2, R23).**
   - The server returns a proposal and **never stores the proposed text**. A proposal nobody has decided on yet exists
-    only on the teacher's screen, so `voorgesteld` is not stored for this output. That is the one clarification IV.2
-    gains.
+    only on the teacher's screen, so `voorgesteld` is not stored for this output. *This is session design:* both of
+    R23's options were put on that premise, so R23 did not rule it. It is the one clarification IV.2 gains.
   - The teacher sees both texts and accepts the proposal, edits it, or rejects it. Every decision is stored:
     - `aanvaard`: the proposal was saved unchanged;
     - `manueel`: the teacher typed the text, or edited a proposal before saving;
@@ -261,10 +265,11 @@ third kind of AI output, next to goal matches and generated plans, and Art. IV a
     an unchanged text. A rejection counts only with a valid signature too. The status is then the server's finding, not
     the browser's word, and still no proposal is stored.
 - **No motivation (IV.3, R24).** The teacher sees the old and the new text side by side.
-- **Grounded on the teacher's own text only (IV.4).**
-  - The prompt carries that text. For a rapportbeoordeling it also carries the rapportdoel's title and the gradatie's
-    label.
-  - Nothing else goes in: no subdoelen, no other child, no earlier report.
+- **Grounded on the teacher's own text only (IV.4, R21).**
+  - The prompt carries that text and nothing else: no rapportdoel title, no gradatie, no subdoelen, no other child, no
+    earlier report.
+  - *Corrected after audit round 2:* the first two versions also sent the rapportdoel's title and the gradatie's label.
+    No ruling covered that (R21: *"Alleen de tekst gaat naar de AI"*), and the label is the child's rating.
   - The model is told to keep the meaning and add no facts.
 - **Structured and validated (IV.5).** The model returns JSON with one text field. Before the proposal reaches the
   teacher, the server checks that it is non-empty, within a length limit, and carries exactly the placeholders it was
@@ -436,8 +441,8 @@ question to directie is more than a formality. By R20 and R27 the build does not
 - **Leave it out of scope.** The owner chose to amend (R1).
 - **Keep the report in the school's existing pupil administration.** That is an integration, which stays a non-goal,
   and the owner asked for it in this tool.
-- **Store AI proposals as `voorgesteld`, as for goal matches.** Rejected by R23: it keeps texts about a child that nobody
-  chose to keep.
+- **Store AI proposals as `voorgesteld`, as for goal matches.** Not offered to the owner. Both of R23's options assumed
+  the proposal is not stored, because storing it keeps texts about a child that nobody chose to keep.
 - **Store nothing of a rejected proposal.** Offered and not chosen (R23). It would need an exception to IV.2, while a
   bare status costs no text about the child.
 - **Show the teacher the text as it leaves, before sending.** Offered as recommended and not chosen (R25).
@@ -467,6 +472,8 @@ question to directie is more than a formality. By R20 and R27 the build does not
   The school carries that.
 - **R25:** the name filter is best-effort, and the teacher sees a notice rather than what leaves.
 - **A fifth right** has to fit into E6-02's policy layer while E6-02 is still being built.
+- **Whoever holds the directie right reads and edits every report**, including an ICT-coördinator to whom directie gave
+  that right (Art. VI.1). Question 15 tells directie so, for data minimisation (AVG art. 5(1)(c)).
 
 **Follow-ups**
 
@@ -480,8 +487,8 @@ Build tickets, to be created as FB tickets by the functional architect, or by a 
 4. Een tekst of het besluit laten herwerken door AI, zonder de namen van de klas, met een melding (R21 to R25, D13, D14).
 5. Een kindtekening toevoegen per evaluatiemoment (R10, D15, D16).
 6. Het rapport downloaden als PDF en Word, in een nieuw ontwerp (R11 to R13, D16).
-7. Directie wist de leerlinggegevens van een schooljaar, en de beheerpagina toont welke schooljaren er nog bevatten (R19,
-   R28, D7).
+7. Directie wist de leerlinggegevens van een schooljaar, en de beheerpagina toont welke schooljaren er nog bevatten en
+   herinnert de directie eraan (R19, R28, D7).
 8. Directie geeft het recht Leerlingzorg (R18), next to E6-04's beheer of rights.
 
 Also:

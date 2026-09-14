@@ -157,7 +157,7 @@ Coordination between parallel sessions (see the working agreement above; protoco
   - One timeless K3 set of `Rapportdoel`en (titled groups of decided K3 subdoelen) and one `Gradatie` scale.
   - Per `(Leerling, Evaluatiemoment 1–3)` an `Ontwikkelingsrapport` with an algemeen besluit, a `Rapportbeoordeling` per rapportdoel, and at most one `Kindtekening`.
   - Read by the klas's leerkrachten, directie and Leerlingzorg, and no other klas.
-  - Never counts for dekking. Kept until directie wipes a schooljaar.
+  - Never counts for dekking. Kept until directie wipes a schooljaar; the beheerpagina shows which schooljaren still hold pupil data and reminds directie.
 
 ## Op.stap Excel → model mapping
 > **Source changed 2026-09-11 ([ADR-0032](docs/adr/0032-opstap-api-als-importbron.md), [`CONSTITUTION.md` Art. VII.2](CONSTITUTION.md#article-vii--opstap-taxonomy--excel--model-mapping)):** Op.stap is imported from **KOV's Op.stap API** (`api.katholiekonderwijs.vlaanderen`), by the backend only, and for now **only G goals**. The minimumdoelen mapping lives in `OnderwijsdoelMapping`; the leerplandoelen mapping in `CurriculumdoelMapping` (E1-21). The table below describes the older Excel route, which is no longer the source and **stays available only until the first API import of the leerplandoelen (a snapshot applied); after it, it refuses every file** (Art. VII.2 as amended 2026-09-13, owner-ratified). The Excel files in `assets/opstap-xlsx/` also have empty concordance columns B–D.

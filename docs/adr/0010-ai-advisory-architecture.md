@@ -4,6 +4,11 @@
   ([ADR-0030](0030-rollen-en-rechten-in-de-app.md) R14):* "the teacher decides" below restates Art. IV.1, which is
   clarified to mean the person who holds the right to decide that output. For a plan that is a leerkracht of the klas
   or directie; for a thema's doelsuggesties it is directie or themabeheer. The architecture is unchanged.
+  *Narrowed by [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md) on 2026-09-14:* the AI **rewrite** of a text in
+  the K3 ontwikkelingsrapport is a third kind of AI output. It stores no proposal and carries no motivation, and only
+  the teacher's decision is persisted (Art. IV.2 and IV.3 as amended). It is grounded on the teacher's own text only,
+  with the names of the klas's children replaced before the call. The client, the server-side rule and the validation
+  below apply to it unchanged. The text below is left as written.
 - **Date:** 2026-06-29
 - **Deciders:** Architect (Siebe De Saedeleir / team)
 
