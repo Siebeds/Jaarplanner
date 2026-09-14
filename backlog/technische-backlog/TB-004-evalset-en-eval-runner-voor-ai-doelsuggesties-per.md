@@ -5,11 +5,11 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 13:44
+bijgewerkt: 2026-09-14 14:49
 opgepakt-door: ai-doelsuggesties
 branch: ticket/ai-doelsuggesties-eval
 pr:
-geblokkeerd:
+geblokkeerd: wacht op Azure-support: het Foundry-account wordt geweigerd met 715-123420 (unusual activity); de eigenaar opent een supportaanvraag
 fr: []
 ---
 
@@ -137,3 +137,5 @@ wordt gecommit, voor de tests van de runner zelf.
 - 2026-09-14 13:29 · ai-doelsuggesties · ADR-0036 staat nu in docs/adr/README.md (index en traceability-matrix); dat blokkeert klaar niet meer. Open blijven criterium 3 (deploy) en de aanvaarding van ADR-0036 door de eigenaar
 - 2026-09-14 13:38 · ai-doelsuggesties · antagonist ronde 5: 0 major, 3 minor (stop na de laatste aanroep, Art. VI.7 in ADR-0036, ADR-bereik in CLAUDE.md); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-5.md
 - 2026-09-14 13:44 · ai-doelsuggesties · antagonist ronde 6: COMPLIANT. Open bij de eigenaar: de go voor de deploy (criterium 3) samen met de bevestiging van de quota (50K tokens per minuut per chatmodel, 100K per embeddingmodel), en de aanvaarding van ADR-0036
+- 2026-09-14 14:48 · ai-doelsuggesties · eigenaar: ADR-0036 aanvaard; Foundry volledig als code (ai-foundry.bicep op subscription-niveau maakt ook de resource group, deploy-ai.ps1 deployt); vergelijking beperkt tot gpt-5.4-mini en text-embedding-3-small, de enige met Data Zone-quota; eval-catalogus in lokale databank jaarplanner_eval (Op.stap 1.2, 5.835 G-doelen)
+- 2026-09-14 14:49 · ai-doelsuggesties · geblokkeerd: wacht op Azure-support: het Foundry-account wordt geweigerd met 715-123420 (unusual activity); de eigenaar opent een supportaanvraag

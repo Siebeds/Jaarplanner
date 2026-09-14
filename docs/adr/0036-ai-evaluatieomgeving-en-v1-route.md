@@ -1,9 +1,9 @@
 # ADR-0036 — An evaluation resource for the AI doelsuggesties, the v1 route, and Entra as an explicit choice
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 2026-09-14)
 - **Date:** 2026-09-14
-- **Deciders:** Siebe De Saedeleir (projecteigenaar) for decisions 3 and 4; decisions 1 and 2 are the implementer's
-  proposal within ADR-0010 and ADR-0012, awaiting the owner's acceptance
+- **Deciders:** Siebe De Saedeleir (projecteigenaar): decisions 3 and 4 as his own rulings; decisions 1 and 2, proposed
+  by the implementer within ADR-0010 and ADR-0012, accepted by him on 2026-09-14
 - **Realises:** [ADR-0016](0016-azure-hosting-eu-residency.md), which left the specific Azure services to their own
   ADR, for the AI evaluation only.
 - **Relates to:** [ADR-0010](0010-ai-advisory-architecture.md) (the injectable AI client),
@@ -48,10 +48,14 @@ Three technical facts shaped the rest:
      belongs to TB-006 and gets its own decision.
 3. **One evaluation resource, apart from everything else** (`infra/ai-foundry.bicep`, owner 2026-09-14):
    - a Foundry account (`kind: AIServices`) in **Sweden Central**, in its own resource group `rg-jaarplanner-ai`;
-   - **Data Zone Standard (EU)** deployments only: `gpt-5.4-mini`, `gpt-5-mini`, `text-embedding-3-small`,
-     `text-embedding-3-large`, each pinned to its version (`NoAutoUpgrade`) and capped at a low throughput;
+   - **Data Zone Standard (EU)** deployments only, each pinned to its version (`NoAutoUpgrade`) and capped at a low
+     throughput: `gpt-5.4-mini` and `text-embedding-3-small`. Those are the only two with Data Zone quota on the
+     subscription, so the owner limited the comparison to them (2026-09-14); `gpt-5-mini` and `text-embedding-3-large`
+     need a quota request first;
    - **no keys** (`disableLocalAuth: true`), and one least-privilege role, *Cognitive Services OpenAI User*, for the
-     person who runs the eval.
+     person who runs the eval;
+   - **entirely in code** (owner 2026-09-14): the template is deployed at subscription scope and creates the resource
+     group too, and `infra/deploy-ai.ps1` runs it, so nothing is created by hand.
 4. **Retrieval is chosen by measurement, and evaluation data stays out of git** (owner 2026-09-14):
    - the eval runner (`backend/tools/Jaarplanner.Eval`) compares a model choosing from every goal of a subthema's
      jaar/fase with a model choosing from an embedding top 25, computed in memory. No vector database until the

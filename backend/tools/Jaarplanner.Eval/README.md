@@ -41,14 +41,16 @@ cache there by default.
 
 ## Setting up
 
-1. Deploy the Foundry resource: see [`infra/ai-foundry.md`](../../../infra/ai-foundry.md).
-2. Sign in: `az login`. Without a key the runner signs in through the Azure CLI (Microsoft Entra), and the resource
+1. Sign in: `az login`. Without a key the runner signs in through the Azure CLI (Microsoft Entra), and the resource
    has no keys at all.
-3. Point it at the resource and at a database that holds the Op.stap import:
+2. Deploy the Foundry resource with `./infra/deploy-ai.ps1 -SetEvalEndpoint`, which also writes `AzureAI:Endpoint`
+   into this project's user-secrets: see [`infra/ai-foundry.md`](../../../infra/ai-foundry.md).
+3. Point it at a database that holds the Op.stap import. Use a database of its own (for example `jaarplanner_eval`),
+   migrated and filled through the API's Op.stap import, rather than a dev database someone works in: after the first
+   API import of the leerplandoelen, that database's Excel route refuses every file (Art. VII.2).
 
    ```powershell
-   dotnet user-secrets set "AzureAI:Endpoint" "https://ai-jaarplanner-<suffix>.openai.azure.com/" --project backend/tools/Jaarplanner.Eval
-   dotnet user-secrets set "ConnectionStrings:Postgres" "Host=localhost;Port=5433;Database=jaarplanner;Username=jaarplanner;Password=<...>" --project backend/tools/Jaarplanner.Eval
+   dotnet user-secrets set "ConnectionStrings:Postgres" "Host=127.0.0.1;Port=5433;Database=jaarplanner_eval;Username=jaarplanner;Password=<...>;SSL Mode=Disable" --project backend/tools/Jaarplanner.Eval
    ```
 
 4. Optionally fill in prices (per million tokens) so the report can show a cost, in user-secrets or in
@@ -60,7 +62,7 @@ cache there by default.
 ```powershell
 dotnet run --project backend/tools/Jaarplanner.Eval -- `
   --evalset eval-data/sjceik-kleuter.json `
-  --models gpt-5.4-mini,gpt-5-mini `
+  --models gpt-5.4-mini `
   --embedding text-embedding-3-small `
   --reasoning minimal
 ```
