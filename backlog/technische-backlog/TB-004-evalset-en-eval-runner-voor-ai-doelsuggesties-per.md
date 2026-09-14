@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:33
+bijgewerkt: 2026-09-14 12:51
 opgepakt-door: ai-doelsuggesties
 branch: ticket/ai-doelsuggesties-eval
 pr:
@@ -130,3 +130,5 @@ wordt gecommit, voor de tests van de runner zelf.
 - 2026-09-14 12:33 · ai-doelsuggesties · antagonist ronde 1: VIOLATIONS FOUND (2 major, 7 minor); verslag en afhandeling in backlog/worklogs/TB-004/antagonist-ronde-1.md
 - 2026-09-14 12:33 · ai-doelsuggesties · opgelost: Entra is een expliciete keuze (AzureAI:Authentication, standaard Key) met tokencache; ADR-0036 (Proposed; ADR-0035 is van TB-005); kost en latency over elk beantwoord verzoek; embeddingtokens overleven een nieuwe poging; Engelse opties; uitvoermap buiten git bewaakt; gekozen themadoelen uitgesloten; quota 50K/100K
 - 2026-09-14 12:33 · ai-doelsuggesties · criteria 1, 2, 4 en 5 afgevinkt: EvalRunnerTests, ScoringTests, EvalOptionsTests (RepoGuard) en AzureAiFoundryClientTests groen; volledige suite 1178 unit / 117 integratie groen, format schoon; criterium 3 wacht op de deploy van de Foundry-resource
+- 2026-09-14 12:51 · ai-doelsuggesties · antagonist ronde 2: 0 major, 3 minor, 2 vragen; afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-2.md
+- 2026-09-14 12:51 · ai-doelsuggesties · open, blokkeert klaar: de regel voor ADR-0036 in docs/adr/README.md (index en traceability) wacht op de claim van kindrapport op dat bestand; daarnaast wacht criterium 3 op de deploy en ADR-0036 op aanvaarding door de eigenaar
