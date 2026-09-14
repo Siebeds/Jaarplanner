@@ -110,7 +110,9 @@ export function Minimumdoeldetail({
           </Sectie>
 
           <Sectie
-            titel={telWoord(data.aantalLeerplandoelen, "minimumdoel.uitgewerktInEen", "minimumdoel.uitgewerktInMeer")}
+            // "verwijst ernaar", not "uitgewerkt in": a stored goal KOV has since dropped still refers to it and is counted,
+            // with its "Vervallen in Op.stap" badge below, so the heading claims no more than the concordance (the E5-03 rule).
+            titel={telWoord(data.aantalLeerplandoelen, "minimumdoel.verwijzenEen", "minimumdoel.verwijzenMeer")}
           >
             <div className="flex flex-col gap-3">
               {metDoelen.map((fase) => (

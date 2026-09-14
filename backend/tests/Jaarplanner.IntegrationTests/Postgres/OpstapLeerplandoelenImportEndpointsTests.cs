@@ -458,6 +458,14 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
 
         var zoek = await Get("/api/minimumdoelen?zoek=kansen");
         Assert.Equal(["6-2.5.4"], zoek.GetProperty("regels").EnumerateArray().Select(r => r.GetProperty("ref").GetString()!).ToArray());
+        // The counts follow a search too (TB-010 AC5): the facets and the list share one filter, ILIKE included.
+        var zoekFacetten = await Get("/api/minimumdoelen/facetten?zoek=kansen");
+        Assert.Equal(1, zoekFacetten.GetProperty("aantalTreffers").GetInt32());
+        // The fixture holds a 4- and a 6- minimumdoel; the chips offer the leeftijden that exist, counted under the search.
+        Assert.Equal(
+            ["4-:0", "6-:1"],
+            zoekFacetten.GetProperty("leeftijden").EnumerateArray()
+                .Select(l => $"{l.GetProperty("leeftijd").GetString()}:{l.GetProperty("aantal").GetInt32()}").ToArray());
 
         var gefilterd = await Get("/api/minimumdoelen?domein=Getallenkennis");
         Assert.Equal(["4-2.1.7"], gefilterd.GetProperty("regels").EnumerateArray().Select(r => r.GetProperty("ref").GetString()!).ToArray());

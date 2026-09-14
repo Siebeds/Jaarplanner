@@ -325,7 +325,7 @@ function Minimumdoelrij({
 }
 
 /**
- * "16 leerplandoelen · L1, L2, L3, L4": the count and every jaar/fase that holds one, in the server's order. Listed
+ * "16 ingeladen leerplandoelen · L1, L2, L3, L4": the count and every jaar/fase that holds one, in the server's order. Listed
  * rather than spanned: "K3–L5" would claim the years between, and the row knows only the years it lists (the E5-03
  * rule). Without a concorded goal it says only that, never that something is missing (the E1-22 guard).
  */

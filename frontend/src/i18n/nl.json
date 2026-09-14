@@ -98,8 +98,8 @@
     "soortNaTeStreven": "Na te streven op populatieniveau",
     "perJaarFase": "Per jaar of fase",
     "perJaarFaseLabel": "Ingeladen leerplandoelen per jaar of fase: {lijst}",
-    "uitgewerktInEen": "Uitgewerkt in 1 ingeladen leerplandoel",
-    "uitgewerktInMeer": "Uitgewerkt in {aantal} ingeladen leerplandoelen",
+    "verwijzenEen": "1 ingeladen leerplandoel verwijst ernaar",
+    "verwijzenMeer": "{aantal} ingeladen leerplandoelen verwijzen ernaar",
     "leerplandoelen": "Leerplandoelen",
     "fout": "Minimumdoel niet geladen"
   },

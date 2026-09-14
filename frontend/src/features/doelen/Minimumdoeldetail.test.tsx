@@ -85,7 +85,7 @@ describe("Minimumdoeldetail", () => {
 
     expect(await screen.findByRole("img", { name: t("minimumdoel.perJaarFaseLabel", { lijst: "L1: 2, L2: 1" }) })).toBeInTheDocument();
     expect(
-      screen.getByText(telWoord(3, "minimumdoel.uitgewerktInEen", "minimumdoel.uitgewerktInMeer")),
+      screen.getByText(telWoord(3, "minimumdoel.verwijzenEen", "minimumdoel.verwijzenMeer")),
     ).toBeInTheDocument();
   });
 
@@ -106,7 +106,7 @@ describe("Minimumdoeldetail", () => {
       }),
     );
 
-    expect(await screen.findByText(t("minimumdoel.uitgewerktInEen"))).toBeInTheDocument();
+    expect(await screen.findByText(t("minimumdoel.verwijzenEen"))).toBeInTheDocument();
   });
 
   it("zegt bij een minimumdoel zonder leerplandoel alleen dat en de reden die de import kent, nooit dat er iets ontbreekt", async () => {
@@ -123,6 +123,24 @@ describe("Minimumdoeldetail", () => {
     expect(screen.getByText(t("doelen.redenDoelsets", { doelsets: t("doelen.doelsetZ") }))).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/gedekt|ontbre|niet gekoppeld/i);
+  });
+
+  // Antagonist round 3, MINOR 1: a stored goal KOV has since dropped still refers to the minimumdoel and is counted, so
+  // the heading says that it refers, not that Op.stap works the minimumdoel out in it, and the badge says the rest.
+  it("telt een vervallen leerplandoel mee, maar zegt alleen dat het ernaar verwijst", async () => {
+    toon(
+      detail({
+        aantalLeerplandoelen: 1,
+        jaarFasen: FASEN.map((jaarFase) => ({
+          jaarFase,
+          leerplandoelen: jaarFase === "L2" ? [lpd("1.1.GL2.1", "De leerling leest vlot.", true)] : [],
+        })),
+      }),
+    );
+
+    expect(await screen.findByText(t("minimumdoel.verwijzenEen"))).toBeInTheDocument();
+    expect(screen.getByText(t("doel.vervallen"))).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/uitgewerkt/i);
   });
 
   it("zegt dat het minimumdoel niet geladen is als het er niet is", async () => {
