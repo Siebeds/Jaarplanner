@@ -1,4 +1,5 @@
 import type { Vertaalsleutel } from "../../i18n";
+import { useIk } from "../../lib/aanmelding";
 
 /**
  * The parts of Instellingen, in the order both shapes list them: the column from `lg` and the switch
@@ -16,11 +17,15 @@ import type { Vertaalsleutel } from "../../i18n";
  */
 export const ONDERDELEN = [
   { deel: "klassen", labelSleutel: "instellingen.klassen" },
+  // Beside the klassen because it answers the other half of the same question: which classes the
+  // school has, and who teaches them (E6-04). Directie only (ADR-0030 §3): nobody else sees the
+  // link, and a direct visit lands on the first part they can use (`Onderdeelpoort`).
+  { deel: "gebruikers", labelSleutel: "instellingen.gebruikers", alleenDirectie: true },
   { deel: "hoeken", labelSleutel: "instellingen.hoeken" },
   { deel: "algemene-fiches", labelSleutel: "instellingen.algemeneFiches" },
   // Last because it is the least often touched: a teacher sets light or dark once, if ever, while
-  // the three above it are the school's own content. The order lives here rather than in any one
-  // screen, so this is the only place that sentence stays true.
+  // the parts above it are the school's own content and people. The order lives here rather than in
+  // any one screen, so this is the only place that sentence stays true.
   //
   // Its label is `weergave.titel` rather than an `instellingen.*` twin: the section already owns
   // that word, and a second key with the same Dutch in it is a key that can drift. Note what that
@@ -28,9 +33,27 @@ export const ONDERDELEN = [
   // page title, and the `aria-label` of the light/dark radiogroup. Shortening it for the navigation
   // renames the control for a screen reader too.
   { deel: "weergave", labelSleutel: "weergave.titel" },
-] as const satisfies readonly { deel: string; labelSleutel: Vertaalsleutel }[];
+] as const satisfies readonly { deel: string; labelSleutel: Vertaalsleutel; alleenDirectie?: boolean }[];
 
-export type Deel = (typeof ONDERDELEN)[number]["deel"];
+export type Onderdeel = (typeof ONDERDELEN)[number];
+export type Deel = Onderdeel["deel"];
+
+/** Whether only directie may see this part. The link is hidden, and the server refuses the data. */
+export function isAlleenDirectie(onderdeel: Onderdeel): boolean {
+  return "alleenDirectie" in onderdeel && onderdeel.alleenDirectie;
+}
+
+/**
+ * The parts this person may see, in `ONDERDELEN` order. Until `/api/ik` has answered, a
+ * directie-only part counts as hidden: a link that appears a moment later is better than one that
+ * is offered and then taken away. The column, the phone switch and the route gate all read this,
+ * so they cannot disagree about which parts exist.
+ */
+export function useZichtbareOnderdelen(): readonly Onderdeel[] {
+  const { data: ik } = useIk();
+  const isDirectie = ik?.isDirectie === true;
+  return ONDERDELEN.filter((onderdeel) => isDirectie || !isAlleenDirectie(onderdeel));
+}
 
 /** The address of a part. */
 export function padVan(deel: Deel): string {

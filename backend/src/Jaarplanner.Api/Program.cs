@@ -46,6 +46,10 @@ builder.Services.AddExceptionHandler<OpstapImportExceptionHandler>();
 // placement back to `voorgesteld` (Art. IV.1/IV.2) — to a 400. Planning not-found reuses the school-content 404.
 builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
 
+// Gebruikerbeheer exception handler (E6-04): no such gebruiker/klas/schooljaar → 404, a bad sign-in name or jaarfase
+// → 400, and the two 409s: a sign-in name that exists already, and the last directie (ADR-0031 decision 7).
+builder.Services.AddExceptionHandler<GebruikerbeheerExceptionHandler>();
+
 // The rights matrix (E6-02, Art. VI.1, ADR-0030 §3, ADR-0011 §2): every row of Rechtenmatrix becomes a named policy
 // that requires a signed-in person plus the row's own rights, decided by one handler over the per-request rights
 // service. Curriculumbeheer, the seam the Op.stap import routes already name (ADR-0022), is one of those rows and is

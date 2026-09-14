@@ -1265,3 +1265,200 @@ Development:
   - UnitTests: 1340 passed, 4 skipped (live KOV opt-in).
   - IntegrationTests: 383 passed, 1 skipped (live Op.stap opt-in).
 - No frontend file changed.
+
+## Code slice 2 — E6-04 beheer
+
+- **FR / Article:** FA FR-12.2, FR-10; Art. VI.1 (ratified 2026-09-14: directie maintains gebruikers and rights, may
+  give the directie right to someone else), Art. VI.2 (staff data only), Art. II.3/II.5 (Dutch in `nl.json`, server
+  Dutch only where directie acts on it, no em dash); ADR-0030 §2 I12, I17, I20, I21 and §3 row "Gebruikers, klassen en
+  schooljaren beheren …" (directie only); ADR-0031 decision 3 (invite by UPN, the unbound state) and decision 7 (the
+  last directie cannot be removed or demoted); ADR-0024 (Inkt en Signaal), ADR-0017 (WCAG 2.2 AA).
+- **Branch:** `story/E6-04-beheer`, from `feature/e6-rollen-rechten` at `0073bd7`. Not pushed, no PR.
+- **Scope held to slice 2.** No existing controller's authorisation changed (slice 3), no migration (none needed: the
+  slice 1 tables carry everything), DI in one separate block.
+
+### Files changed
+
+| File | Why |
+| --- | --- |
+| `Application/Toegang/IGebruikerBeheerService.cs` (new) | The use cases, the DTOs (`GebruikersOverzicht`, `GebruikerBeheerWeergave`, `KlastoewijzingBeheerWeergave`, `AanstellingBeheerWeergave`, `GebruikerUitnodiging`) and the faults (404 / 400 / 409, the 409s being `GebruikerBestaatAlFout` and `LaatsteDirectieFout`). |
+| `Infrastructure/Toegang/GebruikerBeheerService.cs` (new) | EF implementation. The last-directie guard locks the directie rows (`SELECT … FOR UPDATE`, id order) inside the writing transaction. "Counts for shared content" uses `Rechtenberekening.TeltNog` on `Schoolklok` and `Leeftijdsrechten.VoorKlas`, the rights' own rules. |
+| `Infrastructure/DependencyInjection.cs` | One registration, in its own commented block after the first-directie bootstrap. |
+| `Api/Controllers/GebruikersController.cs` (new) | Thin; `[Authorize(Policy = Rechtenmatrix.Beleid.Beheer)]` on the class. |
+| `Api/Infrastructure/GebruikerbeheerExceptionHandler.cs` (new), `Program.cs`, `Probleemtitels.cs` | Faults to ProblemDetails (404, 400, 409 "Niet doorgevoerd"); one registration line in `Program.cs`. |
+| `IntegrationTests/Postgres/GebruikerbeheerEndpointsTests.cs` (new) | 27 cases, below. |
+| `frontend/src/features/instellingen/gebruikerbeheer.ts` (new) | Types, the overview query (enabled only for directie), the invite, one rights mutation (PUT gives, DELETE takes), removal; writes go into the cache before the refetch and invalidate `ik`. |
+| `…/instellingen/GebruikersScherm.tsx` (new) | The part: schooljaar picker, "Gebruiker uitnodigen", the per-jaarfase hoofdleerkracht block, the ended-year notice, one row per person, removal behind `Bevestiging`. |
+| `…/instellingen/Rechtenblad.tsx` (new) | The one "Rechten" sheet: directie and themabeheer, klassen of the chosen year, hoofdleerkracht jaarfasen of the chosen year; every tick saves at once; the server's refusal shown above the boxes. |
+| `…/instellingen/Uitnodigingsblad.tsx` (new) | Microsoft sign-in name + naam; on success the new person's Rechten sheet opens. |
+| `…/instellingen/Onderdeelpoort.tsx` (new), `onderdelen.ts`, `Instellingenindeling.tsx`, `App.tsx` | Gebruikers is `alleenDirectie`; `useZichtbareOnderdelen` feeds the column and the phone switch; the gate sends a non-directie direct visit to the first visible part. `Record<Deel, ComponentType>` kept. |
+| `…/instellingen/KlassenScherm.tsx` | Read-only for non-directie (no add/edit/delete); directie sees each klas's leerkrachten by name; the missing-leeftijd callout also says the klas gives its leerkrachten no rights on shared activiteiten (I12), in the same callout. |
+| `frontend/src/i18n/nl.json` | `instellingen.gebruikers`, a `gebruikers` group, four `klasbeheer` keys. |
+| Tests: `GebruikersScherm.test.tsx`, `KlassenScherm.test.tsx` (new), `Instellingenindeling.test.tsx`, `App.test.tsx` | Below. `App.test` now controls `useIk` with a hoisted mock: its one query client would otherwise cache the first `/api/ik` answer for every later test. |
+
+### The API contract (all under the `Beheer` policy: directie only; 401 without a session, 403 for anyone else)
+
+| Route | Body | Answer |
+| --- | --- | --- |
+| `GET /api/gebruikers` | | `{ gebruikers: GebruikerBeheerWeergave[], voorbijeSchooljaarIds: guid[] }` |
+| `GET /api/gebruikers/{id}` | | `GebruikerBeheerWeergave`; 404 |
+| `POST /api/gebruikers` | `{ email, naam, isDirectie?, heeftThemabeheer? }` | 201 + `GebruikerBeheerWeergave`; 400 no single UPN; 409 duplicate |
+| `DELETE /api/gebruikers/{id}` | | 204; 409 last directie; 404 |
+| `PUT` / `DELETE /api/gebruikers/{id}/directierecht` | | 200 + gebruiker; DELETE 409 last directie |
+| `PUT` / `DELETE /api/gebruikers/{id}/themabeheer` | | 200 + gebruiker |
+| `PUT` / `DELETE /api/gebruikers/{id}/klassen/{klasId}` | | 200 + gebruiker; PUT 404 unknown klas |
+| `PUT` / `DELETE /api/gebruikers/{id}/hoofdleerkracht/{schooljaarId}/{jaarfase}` | | 200 + gebruiker; 400 unknown jaarfase; PUT 404 unknown schooljaar |
+
+`GebruikerBeheerWeergave` = `{ id, naam, email, isDirectie, heeftThemabeheer, isAangemeld, klastoewijzingen:
+[{ klasId, klasNaam, jaarfase (nullable), schooljaarId, teltVoorGedeeldeInhoud }], hoofdleerkrachtaanstellingen:
+[{ schooljaarId, jaarfase, teltVoorGedeeldeInhoud }] }`. Every write is idempotent and answers the gebruiker as they are
+afterwards. Refusals carry Dutch `detail` sentences for directie (Art. II.3), pinned by value in the tests.
+
+### Key decisions
+
+- **The guard's transaction boundary is a row lock, not SERIALIZABLE.** Both writes that can take the directie right
+  away lock every directie row in id order, then read the gebruiker, then write, then commit. A concurrent demotion
+  waits, and re-reads the locked set after the first commits, so it counts what is true then. Deterministic (no 40001
+  retry to map) and deadlock-free, because every caller locks in the same order. **Shown to be necessary:** with
+  `FOR UPDATE` removed, the race test fails (200 where 409 belongs); with it, the test passes.
+- **`teltVoorGedeeldeInhoud` is exactly what the rights service grants today.** For an appointment: its year has not
+  ended (R20). For a klastoewijzing: its year has not ended **and** the klas states a jaarfase (R22, I12); `jaarfase:
+  null` in the payload tells the screen which reason applies. `voorbijeSchooljaarIds` covers every schooljaar, so the
+  screen can say a year has ended before anything in it is ticked, and never compares dates in the browser.
+- **Every tick saves at once, one request each.** A save button over a dozen boxes would send a dozen requests that
+  can half fail, and the last-directie refusal belongs beside the box that caused it. The sheet says so once.
+- **The (c) sentence is conditioned on what it claims (the E5-03 rule).** An appointment counts until its year ends,
+  next year's included, so a jaarfase with nobody *this* year may still have a hoofdleerkracht today. That line says
+  "Niemand in dit schooljaar"; only a jaarfase with no appointment that counts anywhere says "Geen hoofdleerkracht",
+  and only then does "Zonder hoofdleerkracht past alleen de directie de subthema's van die leeftijd aan." appear.
+- **The invitation asks for "Microsoft-aanmeldnaam"**, with one line saying it can differ from the e-mail address
+  (ADR-0031 decision 3). Rights are set in the Rechten sheet, which opens straight after the invite.
+- **"Nog niet aangemeld" is text in the row and in the sheet.** The sheet adds the one sentence that states the
+  residual risk as a fact: "Wie zich als eerste met deze aanmeldnaam aanmeldt, krijgt deze rechten."
+- **Checkboxes are ink (`accent-inkt`), not the accent.** Accent uses on these screens: the primary action
+  ("Gebruiker uitnodigen", "Uitnodigen"), the active destination, the focus ring. No new hue.
+- **Removal from the sheet closes the sheet and opens `Bevestiging`**; a refusal lands under the list, as the klas
+  delete already does.
+
+### Tests added
+
+- **Backend, `GebruikerbeheerEndpointsTests` (27, Postgres):**
+  - 403 on all twelve routes for themabeheer, hoofdleerkracht, leerkracht, all three at once, and no right (theory ×5),
+    with nothing changed afterwards; 401 on all twelve without a session; a directie row is allowed.
+  - The overview: JSON names, order, `isAangemeld`, the R20 and I12 flags per item (running, ended and not-yet-started
+    year; a klas without jaarfase) and `voorbijeSchooljaarIds`.
+  - Invite: normalises the UPN and applies the flags; a duplicate differing only in case and spaces is 409 with its
+    exact Dutch sentence; four bad UPNs are 400 with their exact sentence (theory ×4).
+  - Themabeheer and directie granted and revoked, idempotent; revoking from a non-holder is a no-op.
+  - **Last directie:** demote → 409 and remove → 409, each with its exact Dutch value and no em dash. A directie may
+    remove themselves while another remains.
+  - **The race:** a second transaction holds the lock and has demoted Bert without committing. An's demotion must still
+    be waiting after one second, and after that commit it answers 409, with exactly one directie left.
+  - Klastoewijzing: link (idempotent, co-teacher allowed) and unlink (idempotent); the new link shows in that person's
+    `/api/ik` on the next request; 404 for an unknown klas or gebruiker.
+  - Hoofdleerkracht: two on one (year, K3), no klas needed (I20, visible in `/api/ik`), withdrawal; `K7`, `k3`, `3K`
+    refused with `Jaarfasen.WatIsErMisMet`'s sentence (theory ×3); an unknown schooljaar → 404.
+  - **Removal** leaves the activiteit they made with `MakerId` null and removes their klastoewijzingen and aanstellingen
+    (I17, cascade).
+- **Frontend (Vitest, 19 new cases, plus the per-part `App.test` case the new part gets automatically: 233 → 253):**
+  - `GebruikersScherm.test` (10): "nog niet aangemeld" only on the unbound row; rights as words with only the chosen
+    year's klassen and jaarfasen; ticking a klas sends one PUT on that link and stays ticked; ticking a jaarfase
+    appoints; **the last-directie refusal is shown in the server's words and the box stays ticked**; the removal
+    refusal is shown and the row stays; "Geen hoofdleerkracht" vs "Niemand in dit schooljaar", with the (c) sentence
+    only when earned; the ended-year notice once; after an invite the new person's Rechten sheet opens, and the body
+    was trimmed.
+  - `KlassenScherm.test` (3): read-only for a non-directie, with no `/api/gebruikers` request; the I12 sentence in the
+    same callout; directie sees the buttons and the leerkrachten.
+  - `Instellingenindeling.test` (+5): **the part is hidden for a non-directie** (even with TB, HL and a klas), shown to
+    directie in both shapes, hidden while `ik` is pending; the gate redirects a non-directie and keeps directie.
+  - `App.test` (+1): a non-directie opening `/instellingen/gebruikers` through the real route table lands on
+    `/instellingen/klassen`.
+
+### Gates
+
+- `cd backend && dotnet build`: ✓, 0 warnings. `dotnet format`: nothing to change; `--verify-no-changes` exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (port 5433): UnitTests 1340 passed,
+  4 skipped; IntegrationTests 410 passed, 1 skipped (383 before, plus 27 new).
+- `cd frontend && pnpm lint`: ✓ (oxlint exit 0, `tsc` exit 0). `pnpm test`: 35 files, 253 tests passed.
+  `pnpm build`: ✓ (the >500 kB chunk warning predates this change).
+
+### Browser pass (headless Chrome over the DevTools protocol, 1440×1000 and 390×844, dark and light)
+
+The API ran in Development on **port 5395** against a throwaway database, **`jp_spotcheck_e604`**, created and dropped on
+the local server (port 5433). Vite ran on **port 5185**, proxying to it. Seeded over the API:
+- schooljaren: 2026-2027 (running) and 2025-2026 (ended);
+- klassen: K3 groen, L1 blauw, L2 rood (jaarfase set to null by SQL, as on a legacy row), K3 vorig jaar;
+- gebruikers: An (themabeheer, K3 groen, HL K3; bound by SQL), Bert (K3 groen, L1 blauw, K3 vorig jaar), Carla (HL K3
+  and L1 in the ended year), Dirk (a long name, L2 rood), plus the configured first directie.
+
+What the pass showed:
+- **Directie, list:** Gebruikers is in the column and the phone switch; the rows read as intended; "Nog niet aangemeld"
+  is on every unbound row and not on An's; the hoofdleerkracht block shows K3 An Peeters, and L1 "Geen hoofdleerkracht"
+  with the (c) sentence.
+- **Directie, sheet:** ticking L1 blauw for An saved and the row updated. Unticking Directie on the only directie showed
+  "directie@jaarplanner.local is de enige met het directierecht. Geef het directierecht eerst aan iemand anders." and the
+  box stayed ticked.
+- **The ended year (2025-2026):** the notice, Carla as hoofdleerkracht of K3 and L1, and Bert's past klas.
+- **Invite:** "Eva.Janssens@School.be" was stored as `eva.janssens@school.be` and "Rechten van Eva Janssens" opened.
+- **Klassen as directie:** "Leerkrachten: An Peeters, Bert Claes"; L2 rood's callout carries the I12 line.
+- **Bert (not directie):** no Gebruikers link, no klas buttons, no leerkracht names; a direct visit to
+  `/instellingen/gebruikers` lands on `/instellingen/klassen`.
+- **390:** no horizontal overflow on the list or the invite sheet; the Rechten sheet is a bottom sheet with Klaar and
+  Gebruiker verwijderen in the footer; the long name wraps.
+- **Contrast**, measured in the browser with alpha composited:
+  - light: row meta, uitleg, dd, the (c) sentence and the stil "Gebruiker verwijderen" 6.51:1; "Nog niet aangemeld"
+    17.78:1; white on the accent button 6.10:1; the ended-year notice on `vlak-diep` 5.51:1, the lowest;
+  - dark: meta 7.58:1; the refusal alert and the I12 callout 8.00:1; the notice 8.97:1.
+- **A false alarm:** a full-page capture of the desktop sheet looked clipped on the right. The dialog's bounding box at
+  1440 is x=1024, width 416 (26rem), and a viewport-only capture shows it whole, so the clip was the capture mode, not
+  the layout.
+
+### Self-check against the brief
+
+- **Invite, rights, links, removal:** ✓, in the API, the UI and the tests.
+  - Directie invites by UPN (`NormaliseerEmail`; a duplicate is refused in Dutch).
+  - It grants and revokes themabeheer and the directie right.
+  - It links and unlinks klassen, unique per pair.
+  - It appoints and withdraws hoofdleerkrachten per (year, jaarfase), several allowed, validated by the one leeftijd
+    rule.
+  - It removes a gebruiker, with I17 and the cascades.
+- **The last directie** can be neither demoted nor removed. The count is read under a lock in the writing transaction,
+  and the race is tested and shown to need that lock: ✓.
+- **The list** shows naam, UPN, rights as words, whether the invitation is bound, klassen and appointments, and whether
+  each counts (R20): ✓. The per-jaarfase hoofdleerkracht line says it in words when a jaarfase has none: ✓.
+- **Gebruikers is for directie only:** the link is hidden, the address is redirected, and `Record<Deel, ComponentType>`
+  is kept: ✓.
+- **Klassen** is read-only for a non-directie, shows the leerkrachten by name to directie, and puts I12 in the same
+  callout: ✓.
+- **Copy and design:** every string is in `nl.json` with no em dash (the catalogue guards are green), the accent is
+  used only for its uses, and the screens work at 390 and from `lg`: ✓.
+- **Not claimed:** the *Done when* of E6-04 as a whole also needs slice 3 (the server refusing the klas routes to a
+  non-directie) and slice 4. This slice does not claim the story.
+
+### For the test-runner
+
+- **Automated:** `dotnet test` with `JAARPLANNER_TEST_POSTGRES`, filtered on `GebruikerbeheerEndpointsTests` for this
+  slice; `pnpm test` in `frontend`.
+- **By hand, setup:** run the API in Development against a throwaway database; the development sign-in is
+  `/api/aanmelden/ontwikkeling`. Seed a running and an ended schooljaar with klassen (one with its `Jaarfase` set to
+  null by SQL), and invite three or four people over the screen or the API.
+- **As the configured first directie, at `/instellingen/gebruikers`:**
+  1. Invite someone, then open their Rechten.
+  2. Tick a klas and a jaarfase.
+  3. Untick Directie on the only directie: the refusal appears.
+  4. Switch to the ended year: the notice appears.
+  5. Remove someone who made an activiteit: it stays, with maker null.
+- **As a non-directie:** Gebruikers is in neither the column nor the phone switch, `/instellingen/gebruikers` lands on
+  `/instellingen/klassen`, and there are no buttons there.
+- Check at 1440 and 390.
+
+### Open questions / Art. XIV touched
+
+1. **The Klassen part is read-only for a non-directie in the UI only.** The klas routes still admit any session until
+   slice 3 puts the `Beheer` policy on them. That follows from the split; it is noted so the merge order is clear.
+2. **No UI edits a gebruiker's name or UPN.** Neither the brief nor E6-04 asks for it. A typo in a UPN means remove and
+   invite again, which is safe only before the first login. If directie wants an edit, it needs a rule for a bound row,
+   because the UPN no longer identifies the person once the invitation is bound.
+3. **Removing yourself** (allowed while another directie remains) ends your session on the next request. The screen
+   warns no further than the `Bevestiging` text; a sentence could be added if the owner wants one.
+4. **Graadklas (Art. XIV):** untouched. A klas still grants its one stated jaarfase, through `Leeftijdsrechten`.

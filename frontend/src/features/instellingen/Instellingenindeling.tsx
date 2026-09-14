@@ -5,7 +5,7 @@ import { Schermvlak } from "../../app/Schermkop";
 import { IcoonKruis } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { ONDERDELEN, padVan } from "./onderdelen";
+import { padVan, useZichtbareOnderdelen } from "./onderdelen";
 
 /**
  * The frame of Instellingen: its parts in a column of their own from `lg`, and the part itself.
@@ -31,8 +31,13 @@ import { ONDERDELEN, padVan } from "./onderdelen";
  *
  * Before the page in the DOM, so a keyboard user who skipped to the content reaches the other parts
  * in two presses rather than after every control on the page.
+ *
+ * **It lists only the parts this person may see** (E6-04): Gebruikers is directie only, so for
+ * anyone else it is not in the column and not in the phone switch. Both read
+ * `useZichtbareOnderdelen`, so they cannot disagree.
  */
 export function Instellingenindeling() {
+  const onderdelen = useZichtbareOnderdelen();
   return (
     <>
       <nav
@@ -56,7 +61,7 @@ export function Instellingenindeling() {
           </Link>
         </div>
         <ul className="flex flex-col gap-0.5 px-3">
-          {ONDERDELEN.map((onderdeel) => (
+          {onderdelen.map((onderdeel) => (
             <li key={onderdeel.deel}>
               <NavLink
                 to={padVan(onderdeel.deel)}
@@ -126,6 +131,7 @@ export function Onderdeelwissel() {
   // reload and comes back on back/forward (both POP); acting on it there would pull focus into this
   // row on page load, past the skip link and the navigation.
   const vanWissel = navigatietype !== "POP" && (state as { vanWissel?: boolean } | null)?.vanWissel === true;
+  const onderdelen = useZichtbareOnderdelen();
 
   useEffect(() => {
     // The link NavLink itself marked active, rather than one matched here by string: a trailing
@@ -136,7 +142,7 @@ export function Onderdeelwissel() {
   return (
     <nav aria-label={t("instellingen.titel")} className="lg:hidden">
       <ul ref={lijst} className="inline-flex max-w-full overflow-x-auto rounded-veld border border-lijn bg-vlak-diep p-1">
-        {ONDERDELEN.map((onderdeel) => {
+        {onderdelen.map((onderdeel) => {
           const pad = padVan(onderdeel.deel);
           return (
             <li key={onderdeel.deel} className="shrink-0">

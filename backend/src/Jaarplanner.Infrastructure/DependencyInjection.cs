@@ -282,6 +282,11 @@ public static class DependencyInjection
                 sp.GetRequiredService<ILogger<EersteDirectieBootstrap>>()));
         }
 
+        // --- E6-04: directie's beheer of gebruikers and their rights (ADR-0030 §3, directie only). ---
+        // Invite, themabeheer and the directie right, klastoewijzingen, hoofdleerkracht appointments, removal. The Api
+        // puts the Beheer policy on every route over it; the service holds the last-directie rule (ADR-0031 decision 7).
+        services.AddScoped<IGebruikerBeheerService, GebruikerBeheerService>();
+
         // Demo data for the E3-06 review session, OPT-IN ONLY. The flag is checked HERE rather than only
         // inside the service, so an environment that does not ask for it never registers a hosted service
         // that writes to its database at all.
