@@ -19,7 +19,8 @@ namespace Jaarplanner.Application.Toegang;
 /// <para>
 /// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal content (R6) waits for E6-10's shape;
 /// reading and exporting another klas (I9) is every signed-in gebruiker today, which the fallback policy already gives,
-/// and narrowing it is E6-09's seam.
+/// and narrowing it is E6-09's seam; and the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶, ADR-0035), added
+/// on 2026-09-14, get their policies with FR-13, since no route serves them before it.
 /// </para>
 /// <para>
 /// <b>The wizard's own write actions (§3 row 7) are split in two.</b> Who may call them is the row

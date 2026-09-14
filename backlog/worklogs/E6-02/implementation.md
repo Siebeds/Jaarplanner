@@ -2535,3 +2535,49 @@ planned thema, predate this slice and go to the owner as tickets. The React warn
   One full `pnpm test` run before the fixes timed out a `ThemadetailScherm` test at 5.3 s under load. It passed alone
   and in the full rerun; noted in case it recurs.
 - **Not audited:** the gating of main's new controls above had no antagonist pass, and no browser pass.
+
+### Fix after the merge audit
+
+The merge's gate: the antagonist found it COMPLIANT with three MINOR findings, and the test-runner confirmed the same
+test gaps plus one more. Its browser pass stopped when Docker Desktop did, an environment failure. Each item below is
+fixed in one commit on top of `a985cab`.
+
+- **Antagonist MINOR 1, test-runner defects 1 and 2 (the gating of main's controls had no tests).**
+  - New `frontend/src/features/plan/Agendascherm.test.tsx` renders the whole screen, since the gates sit inline in it.
+    The selection is mocked, and `fetch` answers the rooster, jaarplan, weekplanning, hoeken and algemene fiches, with
+    one turnen block on the week it opens.
+    - A reader (leerkracht of K3, another klas): the quiet line, no Hoekenfiches or Algemene fiches chip, no side panel
+      (desktop width, panel open in the store), and the fiche sheet opened from the block has no delete and no Dag field.
+    - A planner of the klas: both chips and the panel, then the sheet with its delete and Dag field. Chips and panel are
+      asserted before the sheet opens, because an open Radix dialog hides the rest of the page from role queries.
+  - `Algemenefichedetailblad.test.tsx`: a reader case mirroring `Hoekdetailblad`'s, opened from a moment on the fiche's
+    only period with goals. It shows the hours, with no delete ("Hele periode uit de agenda halen"), no Dag, Van or Tot
+    field, no Bewaren and no "laatste periode" sentence.
+  - **Mutation proof**, each gate removed once and restored (both files match the commit again afterwards):
+    - M1, the `magPlannen` gate on the chips: the reader case fails.
+    - M2, `alleenLezen={!magPlannen}` on the fiche sheet: the reader case fails.
+    - M3, the `magPlannen` gate on `Hoekenpaneel`: the reader case fails.
+    - M4, the component ignores `alleenLezen` on the moment fields: `Algemenefichedetailblad`'s reader case fails.
+- **Test-runner info 3.** The `ThemadetailScherm.test` fixture gets an L1 subdoel (`REK-1`). The hoofdleerkracht-of-K3
+  case asserts the unlink on the K3 subdoel (`WIS-1`) and none on the L1 one.
+- **Antagonist MINOR 2.** `Rechtenmatrix.cs`'s "Not expressed here, on purpose" now names the six ontwikkelingsrapport
+  rows of ADR-0030 §3 (footnote 6, ADR-0035): they get their policies with FR-13. `RechtenmatrixTests.cs` said "the
+  §3 matrix, row by row"; it now says the matrix as `Rechtenmatrix` declares it, and that those six rows get their
+  tests with their policies. Comment-only.
+- **Antagonist MINOR 3.** `infra/seed-demo.ps1`'s guard compared only the newest `MigrationId` with the newest
+  migration file. Ours (`093928`, `114237`) sort before main's (`124010`), so a demo database with main's migration and
+  not ours passed. It now compares the sets, and refuses in either direction. When any checkout migration is missing
+  from `__EFMigrationsHistory`, the message names the missing ids. When the database holds one the checkout lacks, it
+  names those, which keeps the old guard's refusal of an older checkout. The synopsis says so too.
+  - Not run against Azure. The script parses with PowerShell 5.1's parser, and no stale variable is left.
+  - A dry run of the same two comparisons on hard-coded lists:
+    - main's migration only: refused, naming `RechtenModel` and `Wizardrun` (the old guard passed this);
+    - all present: passes;
+    - an extra one in the database: refused;
+    - only an older one missing: refused.
+- **Gates** (the ones that need no Docker, which was down):
+  - `pnpm lint` clean, `pnpm test` 62 files with 555 passed, `pnpm build` ok.
+  - `dotnet build` 0 errors, `dotnet format --verify-no-changes` clean.
+  - `dotnet test tests/Jaarplanner.UnitTests`: 1450 passed, 4 skipped (the KOV live-API tests).
+  - **The integration tests were not re-run, because Postgres was down.** The only backend change is comments in
+    `Rechtenmatrix.cs` and `RechtenmatrixTests.cs`.

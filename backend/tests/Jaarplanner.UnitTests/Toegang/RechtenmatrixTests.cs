@@ -4,9 +4,10 @@ using Jaarplanner.Application.Toegang;
 namespace Jaarplanner.UnitTests.Toegang;
 
 /// <summary>
-/// The ADR-0030 §3 matrix, row by row and column by column (E6-02, Art. VI.1): each row allows exactly the relations
-/// §3 gives it, on a resource of that row's kind, and nothing else. Directie passes every row (R3); a missing or
-/// foreign resource fails closed.
+/// The ADR-0030 §3 matrix as <see cref="Rechtenmatrix"/> declares it, row by row and column by column (E6-02, Art.
+/// VI.1): each row allows exactly the relations §3 gives it, on a resource of that row's kind, and nothing else.
+/// Directie passes every row (R3); a missing or foreign resource fails closed. The six ontwikkelingsrapport rows of §3
+/// (footnote ⁶) are not declared yet, and get their tests with their policies in FR-13.
 /// </summary>
 public sealed class RechtenmatrixTests
 {

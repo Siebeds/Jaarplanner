@@ -67,7 +67,7 @@ const THEMA: ThemaWeergave = {
       duurWeken: 2,
       leeftijd: "L1",
       onderzoeksvragen: [],
-      subdoelen: [],
+      subdoelen: [{ id: "sd-2", leeftijd: "L1", koppeling: koppeling("REK-1") }],
       activiteiten: [activiteit("a-l1", "Tellen")],
     },
   ],
@@ -163,6 +163,9 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("subthemabeheer.bewerkAria", { naam: "Rekenen" }))).toBeNull();
     expect(knop(t("thema.koppelAanSubthema", { naam: "Bladeren" }))).not.toBeNull();
     expect(knop(t("thema.koppelAanSubthema", { naam: "Rekenen" }))).toBeNull();
+    // The subdoel unlink, on a `Gekoppelddoel` row since TB-016: on the K3 subdoel, not on the L1 one (R24).
+    expect(knop(t("activiteit.ontkoppel", { code: "WIS-1" }))).not.toBeNull();
+    expect(knop(t("activiteit.ontkoppel", { code: "REK-1" }))).toBeNull();
     expect(knop(t("activiteit.koppelAan", { naam: "Andermans spel" }))).not.toBeNull();
     expect(knop(t("activiteit.koppelAan", { naam: "Tellen" }))).toBeNull();
     // Any K3 activiteit, linked or not, whoever made it.
