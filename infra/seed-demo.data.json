@@ -24,9 +24,27 @@
       "kernwoordenschat": ["het blad", "de kastanje", "de paddenstoel", "de wind"],
       "themadoelen": ["4.3.GJK.3", "3.1.GK2.4"],
       "subthemas": [
-        { "naam": "Paddenstoelen zoeken", "leeftijd": "JK", "duurWeken": 2, "onderzoeksvraag": "Waar groeien paddenstoelen?", "subdoelen": ["4.3.GJK.3"] },
-        { "naam": "Bladeren verzamelen", "leeftijd": "K2", "duurWeken": 2, "onderzoeksvraag": "Waarom vallen de bladeren van de bomen?", "subdoelen": ["3.1.GK2.4"] },
-        { "naam": "Het weer in de herfst", "leeftijd": "K3", "duurWeken": 2, "onderzoeksvraag": "Hoe weten we of het morgen gaat regenen?", "subdoelen": ["4.2.GK3.13"] }
+        {
+          "naam": "Paddenstoelen zoeken", "leeftijd": "JK", "duurWeken": 2, "onderzoeksvraag": "Waar groeien paddenstoelen?", "subdoelen": ["4.3.GJK.3"],
+          "activiteiten": [
+            { "naam": "Paddenstoelenwandeling in het park", "type": "Uitstap", "lengteInLesuren": 2, "verwachteUitkomsten": "De kleuters vinden paddenstoelen en vertellen wat ze zien.", "doelen": ["3.2.GJK.1", "3.7.GJK.2"] },
+            { "naam": "Voorleesmoment met een herfstprentenboek", "type": "Prentenboek", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters herkennen de herfst in de prenten van het boek.", "doelen": ["1.6.GJK.5"] }
+          ]
+        },
+        {
+          "naam": "Bladeren verzamelen", "leeftijd": "K2", "duurWeken": 2, "onderzoeksvraag": "Waarom vallen de bladeren van de bomen?", "subdoelen": ["3.1.GK2.4"],
+          "activiteiten": [
+            { "naam": "Bladeren sorteren op kleur en vorm", "type": "Onderzoek", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters sorteren bladeren en vertellen waarom een blad bij een groep hoort.", "doelen": ["3.1.GK2.4"] },
+            { "naam": "Een bladerenmandala leggen", "type": "Hoek", "hoek": "Knutselhoek", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters leggen met bladeren een figuur.", "doelen": ["6.3.GK2.10"] }
+          ]
+        },
+        {
+          "naam": "Het weer in de herfst", "leeftijd": "K3", "duurWeken": 2, "onderzoeksvraag": "Hoe weten we of het morgen gaat regenen?", "subdoelen": ["4.2.GK3.13"],
+          "activiteiten": [
+            { "naam": "Een regenmeter maken", "type": "Experiment", "lengteInLesuren": 2, "verwachteUitkomsten": "De kleuters meten elke dag de regen en vergelijken de dagen.", "doelen": ["4.2.GK3.13"] },
+            { "naam": "Het weerbericht in de kring", "type": "Waarneming", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters vertellen welk weer het is en kiezen het passende weerpictogram.", "doelen": ["4.2.GK3.13"] }
+          ]
+        }
       ]
     },
     {
@@ -36,9 +54,27 @@
       "kernwoordenschat": ["de egel", "de eekhoorn", "het hol", "de winterslaap"],
       "themadoelen": ["3.1.GK2.5", "3.2.GK2.4"],
       "subthemas": [
-        { "naam": "De eekhoorn", "leeftijd": "JK", "duurWeken": 2, "onderzoeksvraag": "Wat eet een eekhoorn?", "subdoelen": ["3.1.GJK.2"] },
-        { "naam": "De egel gaat slapen", "leeftijd": "K2", "duurWeken": 2, "onderzoeksvraag": "Waar slaapt een egel in de winter?", "subdoelen": ["3.2.GK2.4"] },
-        { "naam": "Dieren in de nacht", "leeftijd": "K3", "duurWeken": 2, "onderzoeksvraag": "Welke dieren zijn wakker als wij slapen?", "subdoelen": ["3.1.GK3.7"] }
+        {
+          "naam": "De eekhoorn", "leeftijd": "JK", "duurWeken": 2, "onderzoeksvraag": "Wat eet een eekhoorn?", "subdoelen": ["3.1.GJK.2"],
+          "activiteiten": [
+            { "naam": "Nootjes verstoppen zoals een eekhoorn", "type": "Spel", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters verstoppen nootjes in de zandbak en zoeken ze terug.", "doelen": ["3.1.GJK.2"] },
+            { "naam": "Bewegen als de dieren van het bos", "type": "Beweging", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters bootsen een eekhoorn, een uil en een egel na.", "doelen": ["6.4.GJK.1"] }
+          ]
+        },
+        {
+          "naam": "De egel gaat slapen", "leeftijd": "K2", "duurWeken": 2, "onderzoeksvraag": "Waar slaapt een egel in de winter?", "subdoelen": ["3.2.GK2.4"],
+          "activiteiten": [
+            { "naam": "Een egelhuisje bouwen", "type": "Hoek", "hoek": "Bouwhoek", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters bouwen een schuilplaats van takken en bladeren.", "doelen": ["7.1.GK2.2"] },
+            { "naam": "Wat eten de dieren van het bos?", "type": "Onderzoek", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters koppelen elk bosdier aan wat het eet.", "doelen": ["3.2.GK2.4"] }
+          ]
+        },
+        {
+          "naam": "Dieren in de nacht", "leeftijd": "K3", "duurWeken": 2, "onderzoeksvraag": "Welke dieren zijn wakker als wij slapen?", "subdoelen": ["3.1.GK3.7"],
+          "activiteiten": [
+            { "naam": "De donkere doos", "type": "Experiment", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters ontdekken welke voorwerpen in het donker het licht weerkaatsen.", "doelen": ["3.5.GK3.3"] },
+            { "naam": "Nachtdieren in het prentenboek", "type": "Prentenboek", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters vertellen de kern van het verhaal in eigen woorden.", "doelen": ["1.6.GK3.5"] }
+          ]
+        }
       ]
     },
     {
@@ -72,9 +108,27 @@
       "kernwoordenschat": ["de boer", "de koe", "het kuiken", "de stal"],
       "themadoelen": ["3.1.GK2.13", "3.1.GK3.11"],
       "subthemas": [
-        { "naam": "Dieren op het erf", "leeftijd": "JK", "duurWeken": 2, "onderzoeksvraag": "Welk geluid maakt elk dier?", "subdoelen": ["3.1.GJK.2"] },
-        { "naam": "Van ei tot kuiken", "leeftijd": "K2", "duurWeken": 2, "onderzoeksvraag": "Hoe komt een kuiken uit het ei?", "subdoelen": ["3.1.GK2.13"] },
-        { "naam": "Van graan tot brood", "leeftijd": "K3", "duurWeken": 2, "onderzoeksvraag": "Hoe wordt een graankorrel een boterham?", "subdoelen": ["9-1.2.GK3.2"] }
+        {
+          "naam": "Dieren op het erf", "leeftijd": "JK", "duurWeken": 2, "onderzoeksvraag": "Welk geluid maakt elk dier?", "subdoelen": ["3.1.GJK.2"],
+          "activiteiten": [
+            { "naam": "Dierengeluiden raden", "type": "Spel", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters herkennen de dieren van de boerderij aan hun geluid.", "doelen": ["3.1.GJK.2"] },
+            { "naam": "Uitstap naar de kinderboerderij", "type": "Uitstap", "lengteInLesuren": 3, "verwachteUitkomsten": "De kleuters zien, voelen en benoemen de dieren van de boerderij.", "doelen": ["3.1.GJK.2"] }
+          ]
+        },
+        {
+          "naam": "Van ei tot kuiken", "leeftijd": "K2", "duurWeken": 2, "onderzoeksvraag": "Hoe komt een kuiken uit het ei?", "subdoelen": ["3.1.GK2.13"],
+          "activiteiten": [
+            { "naam": "Kuikens zien uitkomen", "type": "Waarneming", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters volgen hoe een kuiken uit het ei komt en vertellen wat ze zagen.", "doelen": ["3.1.GK2.13"] },
+            { "naam": "Van ei tot kip in prenten", "type": "Onderzoek", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters leggen prenten van ei, kuiken en kip in de juiste volgorde.", "doelen": ["3.1.GK2.14"] }
+          ]
+        },
+        {
+          "naam": "Van graan tot brood", "leeftijd": "K3", "duurWeken": 2, "onderzoeksvraag": "Hoe wordt een graankorrel een boterham?", "subdoelen": ["9-1.2.GK3.2"],
+          "activiteiten": [
+            { "naam": "Zelf broodjes bakken", "type": "Experiment", "lengteInLesuren": 2, "verwachteUitkomsten": "De kleuters kneden deeg en zien hoe het rijst en bakt.", "doelen": ["9-1.2.GK3.2"] },
+            { "naam": "Graan malen met een handmolen", "type": "Onderzoek", "lengteInLesuren": 1, "verwachteUitkomsten": "De kleuters malen graankorrels tot meel en vergelijken het met bloem.", "doelen": ["9-1.2.GK3.2"] }
+          ]
+        }
       ]
     },
     {
