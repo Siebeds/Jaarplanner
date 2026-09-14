@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:06
+bijgewerkt: 2026-09-14 16:23
 opgepakt-door: fiche-plus
 branch: ticket/fiche-plus-in-paneel
 pr:
@@ -54,8 +54,10 @@ link daarheen; zodra er een fiche bestaat, is er in het paneel geen weg meer om 
 ## Buiten scope
 
 Een fiche wijzigen of verwijderen vanuit het paneel, en doelen koppelen aan een algemene fiche: dat blijft in
-Instellingen. Het afschermen van de tegel per recht hoort bij E6-02 (deel 4, het afschermen in de frontend), samen met
-de andere acties van dit paneel; de server weigert al wie het recht niet heeft.
+Instellingen. Het afschermen van de tegel per recht hoort bij E6-02, samen met de andere acties van dit paneel: het
+vierde deel van die story zal de frontend afschermen; het is nog niet gebouwd. De server weigert een hoek of
+algemene fiche in een andere klas pas zodra het derde deel van E6-02 op `main` staat; tot dan weigert niets, net zoals
+bij de knop "Hoek toevoegen" in Instellingen. Deze tegel geeft dus niemand meer dan hij vandaag al kan.
 
 ## Open vragen
 
@@ -64,3 +66,4 @@ Geen.
 ## Werklog
 
 - 2026-09-14 16:06 · fiche-plus · aangemaakt (status in-uitvoering)
+- 2026-09-14 16:23 · fiche-plus · Tegel gebouwd, tests en lint groen. Antagonist ronde 1: VIOLATIONS FOUND (0 kritiek, 0 groot, 4 klein, 2 vragen): ticketzin over de server, drie te ruime codecommentaren, randtoken, ontbrekende tests. In behandeling.

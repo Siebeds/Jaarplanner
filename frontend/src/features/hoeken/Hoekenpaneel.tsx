@@ -1,17 +1,19 @@
-import type { ReactNode, SVGProps } from "react";
+import { useRef, useState, type ReactNode, type Ref, type SVGProps } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Link } from "react-router-dom";
 import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
-import { IcoonFiche, IcoonHoek, IcoonKruis } from "../../components/Iconen";
-import { useHoekenpaneel } from "../../state/hoekenpaneel";
+import { IcoonFiche, IcoonHoek, IcoonKruis, IcoonPlus } from "../../components/Iconen";
+import { useHoekenpaneel, type Paneelsoort } from "../../state/hoekenpaneel";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
-import { useHoeken } from "./gegevens";
+import { useHoeken, useMaakHoek } from "./gegevens";
 import { FICHE_VOORVOEGSEL } from "./sleepids";
-import { useAlgemeneFiches } from "../algemene-fiches/gegevens";
+import { useAlgemeneFiches, useMaakAlgemeneFiche } from "../algemene-fiches/gegevens";
 import { ALGEMENE_FICHE_VOORVOEGSEL } from "../algemene-fiches/sleepids";
+import { Hoekformulier } from "../instellingen/Hoekformulier";
+import { Algemeneficheformulier } from "../instellingen/Algemeneficheformulier";
 
 /**
  * The side panel beside the agenda: the corners this class has, or its algemene fiches, while she plans (owner,
@@ -37,6 +39,11 @@ import { ALGEMENE_FICHE_VOORVOEGSEL } from "../algemene-fiches/sleepids";
  * **A fiche is dragged onto a day of the agenda.** That is why this component is mounted inside the agenda's
  * `DndContext` even though it is `fixed` and paints nowhere near it: dnd-kit registers a draggable through React
  * context, not through the DOM tree.
+ *
+ * **The last tile makes a new one** (owner, 2026-09-14, TB-015). A teacher who notices mid-plan that a corner is
+ * missing used to have to leave the agenda for Instellingen. The tile opens the same form Instellingen uses, and the
+ * list refetches when it saves, so the new fiche lands in this panel ready to plan. Changing and deleting a fiche, and
+ * a fiche's goals, stay in Instellingen: this panel is where fiches are planned, not maintained.
  */
 export function Hoekenpaneel({
   klasId,
@@ -58,12 +65,44 @@ export function Hoekenpaneel({
   const breed = useMediaQuery(BREED);
   const hoeken = useHoeken(open && soort === "hoeken" ? klasId : null);
   const algemeneFiches = useAlgemeneFiches(open && soort === "algemeen" ? klasId : null);
+  const maakHoek = useMaakHoek(klasId);
+  const maakFiche = useMaakAlgemeneFiche(klasId);
+
+  /**
+   * Which kind the create form is making, or null while it is closed.
+   *
+   * Its own state rather than read from `soort`, because on a phone the panel closes while the form is open and the
+   * form must not depend on anything the closed panel still says.
+   */
+  const [nieuw, setNieuw] = useState<Paneelsoort | null>(null);
+  const tegelRef = useRef<HTMLButtonElement>(null);
 
   // On a phone this panel is a sheet over the calendar and the placement sheet is about to open on top of it, so it
   // closes first rather than leaving her two sheets deep. Beside the agenda the column stays.
   function kies(kiezer: (id: string) => void, id: string) {
     if (!breed) zet(false);
     kiezer(id);
+  }
+
+  // The same rule for the create form, with one difference: she came here to add to THIS list, so on a phone the
+  // panel comes back when the form closes, saved or not, and she is back at the list she came from.
+  function openNieuw(welke: Paneelsoort) {
+    if (!breed) zet(false);
+    if (welke === "hoeken") maakHoek.reset();
+    else maakFiche.reset();
+    setNieuw(welke);
+  }
+
+  function sluitNieuw() {
+    setNieuw(null);
+    if (!breed) {
+      zet(true);
+      return;
+    }
+    // Back to the tile she pressed. `Blad` is a Radix dialog without a Radix trigger, so Radix has nothing to return
+    // focus to, and a keyboard user who saves would land on <body> and tab in again from the top of the page. After a
+    // frame, so the form has unmounted first.
+    requestAnimationFrame(() => tegelRef.current?.focus());
   }
 
   const lijst: Lijst =
@@ -82,7 +121,9 @@ export function Hoekenpaneel({
           })),
           leeg: t("hoekenpaneel.geenHoeken"),
           naarInstellingen: { pad: "/instellingen/hoeken", label: t("hoekenpaneel.naarInstellingen") },
+          toevoegen: t("hoeken.toevoegen"),
           onKies: (id) => kies(onKies, id),
+          onNieuw: () => openNieuw("hoeken"),
         }
       : {
           titel: t("hoekenpaneel.algemeenTitel"),
@@ -98,21 +139,52 @@ export function Hoekenpaneel({
           })),
           leeg: t("hoekenpaneel.geenAlgemeneFiches"),
           naarInstellingen: { pad: "/instellingen/algemene-fiches", label: t("hoekenpaneel.naarAlgemeneFiches") },
+          toevoegen: t("algemeneFiches.toevoegen"),
           onKies: (id) => kies(onKiesAlgemeneFiche, id),
+          onNieuw: () => openNieuw("algemeen"),
         };
 
   const inhoud =
     klasId === null ? (
       <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>
     ) : (
-      <Fichelijst lijst={lijst} sleepbaar={breed} />
+      <Fichelijst lijst={lijst} sleepbaar={breed} tegelRef={tegelRef} />
     );
+
+  /*
+    THE CREATE FORM, OUTSIDE BOTH SHAPES.
+
+    A sibling of the panel rather than a child, because on a phone the panel's own sheet closes while the form is
+    open, and a form inside it would close with it. Both forms are portalled dialogs, so where they sit in this tree
+    owes nothing to where they paint.
+  */
+  const formulier =
+    nieuw === "hoeken" ? (
+      <Hoekformulier
+        open
+        bezig={maakHoek.isPending}
+        fout={maakHoek.error}
+        onSluit={sluitNieuw}
+        onBewaar={(invoer) => maakHoek.mutate(invoer, { onSuccess: sluitNieuw })}
+      />
+    ) : nieuw === "algemeen" ? (
+      <Algemeneficheformulier
+        open
+        bezig={maakFiche.isPending}
+        fout={maakFiche.error}
+        onSluit={sluitNieuw}
+        onBewaar={(invoer) => maakFiche.mutate(invoer, { onSuccess: sluitNieuw })}
+      />
+    ) : null;
 
   if (!breed) {
     return (
-      <Blad open={open} onOpenChange={zet} titel={lijst.titel}>
-        {inhoud}
-      </Blad>
+      <>
+        <Blad open={open} onOpenChange={zet} titel={lijst.titel}>
+          {inhoud}
+        </Blad>
+        {formulier}
+      </>
     );
   }
 
@@ -124,33 +196,36 @@ export function Hoekenpaneel({
     animate from.
   */
   return (
-    <aside
-      aria-label={lijst.titel}
-      aria-hidden={!open}
-      inert={!open}
-      className={cn(
-        "fixed inset-y-0 left-14 z-20 flex w-60 flex-col border-r border-lijn bg-kaart",
-        "transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none",
-        open ? "translate-x-0 opacity-100" : "pointer-events-none -translate-x-4 opacity-0",
-      )}
-    >
-      <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-6">
-        <h2 className="flex items-center gap-2 text-micro uppercase text-inkt-zwak">
-          <lijst.Icoon aria-hidden="true" className="h-4 w-4" />
-          {lijst.titel}
-        </h2>
-        <button
-          type="button"
-          onClick={() => zet(false)}
-          aria-label={lijst.sluiten}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
-        >
-          <IcoonKruis aria-hidden="true" className="h-4 w-4" />
-        </button>
-      </div>
+    <>
+      <aside
+        aria-label={lijst.titel}
+        aria-hidden={!open}
+        inert={!open}
+        className={cn(
+          "fixed inset-y-0 left-14 z-20 flex w-60 flex-col border-r border-lijn bg-kaart",
+          "transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none",
+          open ? "translate-x-0 opacity-100" : "pointer-events-none -translate-x-4 opacity-0",
+        )}
+      >
+        <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-6">
+          <h2 className="flex items-center gap-2 text-micro uppercase text-inkt-zwak">
+            <lijst.Icoon aria-hidden="true" className="h-4 w-4" />
+            {lijst.titel}
+          </h2>
+          <button
+            type="button"
+            onClick={() => zet(false)}
+            aria-label={lijst.sluiten}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
+          >
+            <IcoonKruis aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">{inhoud}</div>
-    </aside>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">{inhoud}</div>
+      </aside>
+      {formulier}
+    </>
   );
 }
 
@@ -178,17 +253,30 @@ interface Lijst {
   fiches: Paneelfiche[];
   leeg: string;
   naarInstellingen: { pad: string; label: string };
+  /** The create tile's label: the words Instellingen's own button uses, so one action has one name. */
+  toevoegen: string;
   onKies: (id: string) => void;
+  onNieuw: () => void;
 }
 
-/** The fiches themselves, or the reason there are none to show. */
-function Fichelijst({ lijst, sleepbaar }: { lijst: Lijst; sleepbaar: boolean }) {
+/** The fiches themselves, or the reason there are none to show, and after either the tile that makes one. */
+function Fichelijst({
+  lijst,
+  sleepbaar,
+  tegelRef,
+}: {
+  lijst: Lijst;
+  sleepbaar: boolean;
+  /** The create tile, so focus can return to it when the form closes. */
+  tegelRef: Ref<HTMLButtonElement>;
+}) {
   if (lijst.laadt) {
     return <Laadlijst rijen={3} />;
   }
 
   // A failed request is not an empty class: "nog geen fiches" here would send her to Instellingen to make fiches she
-  // already has (antagonist, E10-03 round 2). So it says only what it knows, and offers no link.
+  // already has (antagonist, E10-03 round 2). So it says only what it knows, and offers no link. Nor the create tile,
+  // for the same reason: a list it could not read is no ground for offering to add to it.
   if (lijst.mislukt) {
     return (
       <p role="alert" className="text-meta text-attentie-inkt">
@@ -197,11 +285,17 @@ function Fichelijst({ lijst, sleepbaar }: { lijst: Lijst; sleepbaar: boolean }) 
     );
   }
 
+  // Keyed, so it keeps its DOM node when a class's first fiche turns the empty branch into the list branch below: the
+  // refetch lands after `sluitNieuw` has returned focus to it, and a remounted tile would drop that focus to <body>.
+  const tegel = <Toevoegtegel key="toevoegen" ref={tegelRef} label={lijst.toevoegen} onKies={lijst.onNieuw} />;
+
   if (lijst.fiches.length === 0) {
     return (
       <div className="flex flex-col gap-2">
         <p className="text-meta text-inkt-zacht">{lijst.leeg}</p>
-        {/* A real destination, not a sentence about one: this is where she makes them. */}
+        {tegel}
+        {/* A real destination, not a sentence about one: Instellingen is also where she changes and deletes what
+            she makes here, and, for the hoeken, where she takes corners over from another class. */}
         <Link
           to={lijst.naarInstellingen.pad}
           className="text-meta font-medium text-accent underline-offset-2 hover:underline"
@@ -213,13 +307,55 @@ function Fichelijst({ lijst, sleepbaar }: { lijst: Lijst; sleepbaar: boolean }) 
   }
 
   return (
-    <ul className="flex flex-col gap-2">
-      {lijst.fiches.map((fiche) => (
-        <li key={fiche.id}>
-          <Fiche fiche={fiche} sleepbaar={sleepbaar} onKies={lijst.onKies} />
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2">
+        {lijst.fiches.map((fiche) => (
+          <li key={fiche.id}>
+            <Fiche fiche={fiche} sleepbaar={sleepbaar} onKies={lijst.onKies} />
+          </li>
+        ))}
+      </ul>
+      {/* After the list and outside it: it is not a fiche, and a screen reader counting the list's items should
+          count only the fiches. */}
+      {tegel}
+    </div>
+  );
+}
+
+/**
+ * The empty slot at the end of the stack: the shape of a fiche, drawn as an outline.
+ *
+ * **Dashed and unfilled, so it reads as a place for a fiche rather than one more fiche.** The fiches above it are
+ * filled cards with a solid edge; this one keeps their width, padding and corner, so the stack ends in the same
+ * rhythm, and gives up their fill. No colour of its own: the accent it takes on hover is the one every fiche above it
+ * takes, and the plus with the words says what it does without it.
+ *
+ * **Its edge is `lijn-veld`, darker than the line the fiches use**, because without a fill the edge is the only thing
+ * drawing the tile, and `index.css` keeps `lijn-veld` for an edge that carries a control: on this white panel
+ * `lijn-sterk` measures 1.61:1 (antagonist, TB-015 round 1).
+ */
+function Toevoegtegel({
+  ref,
+  label,
+  onKies,
+}: {
+  ref: Ref<HTMLButtonElement>;
+  label: string;
+  onKies: () => void;
+}) {
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onKies}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-veld border border-dashed border-lijn-veld px-3 py-2.5 text-left",
+        "text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-inkt",
+      )}
+    >
+      <IcoonPlus aria-hidden="true" className="h-4 w-4 shrink-0" />
+      {label}
+    </button>
   );
 }
 
