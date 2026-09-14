@@ -26,8 +26,9 @@ namespace Jaarplanner.Application.Toegang;
 /// <see cref="Wizardinhoud"/> here: directie and themabeheer. What a run allows is <c>IWizardrunService</c>'s, and it
 /// holds for directie too. Most of it is state: the run is open, the content is under its own thema, an edit or delete
 /// reaches only what it created (I23–I25). One part is a relation (I27, with the owner's Q4 ruling of 2026-09-14): a
-/// wizard action that would remove a goal link, or carry one to another leeftijd, needs <see cref="DoelenKoppelen"/>,
-/// which the service asks through <see cref="StaatToe"/> like every other row. <i>Until slice 3 this paragraph said the
+/// wizard action that would remove a goal link needs <see cref="DoelenKoppelen"/> at that leeftijd, and one that changes
+/// a subthema's leeftijd needs it "at both the old and the new leeftijd" (I27 as ratified on the owner's Q5 answer of
+/// 2026-09-14). The service asks it through <see cref="StaatToe"/> like every other row. <i>Until slice 3 this paragraph said the
 /// row needed a state the model did not have; the <c>Wizardrun</c> entity is that state. Until fix round 2 it called
 /// the whole of it state, which I27 made false.</i>
 /// </para>
@@ -87,7 +88,7 @@ public static class Rechtenmatrix
     /// </summary>
     public static readonly Matrixrij ThemaVerwijderen = new(
         Beleid.ThemaVerwijderen,
-        "Een thema verwijderen: themabeheer alleen als het niets anders bevat dan wat zijn eigen open wizard aanmaakte, en geen doel dat het niet mag ontkoppelen (R3; I26)",
+        "Een thema verwijderen: themabeheer alleen als het thema niets anders bevat dan wat de eigen open wizard van dat thema aanmaakte, en geen doelkoppeling die de themabeheerder niet mag ontkoppelen (R3; I26)",
         Kolom.ThemabeheerZonderAndermansInhoud);
 
     /// <summary>§3 "Thema's en activiteiten importeren, FR-1 …" (R9, R27, R34).</summary>
@@ -108,14 +109,15 @@ public static class Rechtenmatrix
 
     /// <summary>
     /// §3 "In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt"
-    /// (R29, R32; I18, I22–I27). Who may call the wizard's own write actions: directie and themabeheer. What the run
-    /// allows is <c>IWizardrunService</c>'s, for everyone: state (open, its own thema, its own items: I23–I25), narrowed
-    /// by I27, under which an action that would remove a goal link or carry one to another leeftijd also needs
-    /// <see cref="DoelenKoppelen"/>.
+    /// (R29, R32; I18, I22–I25, I27; I26 is the thema delete, not wizard content). Who may call the wizard's own write
+    /// actions: directie and themabeheer. What the run allows is <c>IWizardrunService</c>'s, for everyone: state (open,
+    /// its own thema, its own items: I23–I25), narrowed by I27, under which an action that would remove a goal link also
+    /// needs <see cref="DoelenKoppelen"/> at that leeftijd, and a leeftijd change needs it "at both the old and the new
+    /// leeftijd" (the owner's Q5 answer of 2026-09-14).
     /// </summary>
     public static readonly Matrixrij Wizardinhoud = new(
         Beleid.Wizardinhoud,
-        "In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt (R29, R32; I18, I22-I27)",
+        "In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt (R29, R32; I18, I22-I25, I27)",
         Kolom.Themabeheer);
 
     /// <summary>§3 "Doelsuggesties laten maken" (R14).</summary>
@@ -249,7 +251,7 @@ public static class Rechtenmatrix
         if (kolommen.HasFlag(Kolom.ThemabeheerZonderAndermansInhoud)
             && rechten.HeeftThemabeheer
             && bron is Themabron { HeeftAndermansInhoud: false } thema
-            && (thema.GekoppeldeLeeftijden ?? []).All(leeftijd => StaatToe(rechten, DoelenKoppelen, new Leeftijdsinhoud(leeftijd))))
+            && thema.GekoppeldeLeeftijden.All(leeftijd => StaatToe(rechten, DoelenKoppelen, new Leeftijdsinhoud(leeftijd))))
         {
             return true;
         }

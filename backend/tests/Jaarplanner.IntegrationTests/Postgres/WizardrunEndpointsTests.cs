@@ -239,6 +239,7 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
         using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
         using var alleenK3 = opzet.Als(await opzet.GebruikerAsync(school, themabeheer: true, hoofdleerkrachtVan: ["K3"]));
+        using var alleenK2 = opzet.Als(await opzet.GebruikerAsync(school, themabeheer: true, hoofdleerkrachtVan: ["K2"]));
         using var beide = opzet.Als(await opzet.GebruikerAsync(school, themabeheer: true, hoofdleerkrachtVan: ["K3", "K2"]));
         var run = await StartWizardAsync(themabeheer);
         var subthemaId = await IdAsync(themabeheer.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas", Subthema("K3")), HttpStatusCode.Created);
@@ -251,8 +252,11 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         var pad = $"{Wizard}/{run.Id}/subthemas/{subthemaId}";
 
         await VerwachtAsync(themabeheer.PutAsJsonAsync(pad, Subthema("K2")), HttpStatusCode.Forbidden, GekoppeldVerhuist);
-        // The goal-link right at the old leeftijd only is not enough: the link would land at K2.
+        // I27 as ratified on Q5: "at both the old and the new leeftijd". The old leeftijd only is not enough, because the
+        // link would land at K2...
         await VerwachtAsync(alleenK3.PutAsJsonAsync(pad, Subthema("K2")), HttpStatusCode.Forbidden, GekoppeldVerhuist);
+        // ...and the new leeftijd only is not enough either, because the link would leave K3's dekking.
+        await VerwachtAsync(alleenK2.PutAsJsonAsync(pad, Subthema("K2")), HttpStatusCode.Forbidden, GekoppeldVerhuist);
         // An edit at the same leeftijd carries no link anywhere.
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(themabeheer.PutAsJsonAsync(pad, Subthema("K3", "Wind"))));
 

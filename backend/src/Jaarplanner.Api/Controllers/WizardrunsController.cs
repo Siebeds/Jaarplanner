@@ -24,8 +24,9 @@ namespace Jaarplanner.Api.Controllers;
 /// <item>content goes under the run's own thema, and an activiteit it edits or deletes is still there (I25);</item>
 /// <item>an edit or delete reaches only what the run created (I25);</item>
 /// <item>it carries off nobody else's work (I27): no leeftijd change while someone else's content is under a subthema,
-/// and no delete or leeftijd change that would take a goal link along unless the caller may link goals at that leeftijd,
-/// at both ends for a leeftijd change (R19; the owner's Q4 ruling of 2026-09-14).</item>
+/// and no delete that would take a goal link along unless the caller may link goals at that leeftijd, nor a leeftijd
+/// change that would, unless the caller may link goals "at both the old and the new leeftijd" (R19; I27 with the owner's
+/// Q4 and Q5 answers of 2026-09-14).</item>
 /// </list>
 /// </para>
 /// <para>
@@ -77,7 +78,8 @@ public sealed class WizardrunsController : ControllerBase
 
     /// <summary>
     /// Edits a subthema this run created (I25). A new leeftijd is refused while someone else's content is under it, and,
-    /// while an activiteit under it carries a goal link, unless the caller may link goals at both leeftijden (I27, Q4).
+    /// while an activiteit under it carries a goal link, unless the caller may link goals "at both the old and the new
+    /// leeftijd" (I27 with the owner's Q4 and Q5 answers).
     /// </summary>
     [HttpPut("{runId:guid}/subthemas/{subthemaId:guid}")]
     [Authorize(Policy = Rechtenmatrix.Beleid.Wizardinhoud)]

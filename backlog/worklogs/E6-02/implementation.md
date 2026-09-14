@@ -1735,3 +1735,37 @@ The server enforces all of this; without slice 4 these controls answer 403.
    old leeftijd only, it is one condition to drop.
 2. **Slice 4 must also hide** the thema delete for themabeheer when a run activiteit carries a link at a leeftijd where
    they may not link goals, and the wizard's leeftijd select in the same case.
+
+### Fix round 3
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 3)": PASS;
+  - "## Code slice 3 — audit round 3": 0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION, plus non-blocking nits.
+
+  Both are the orchestrator's and are committed unedited.
+- **Owner answer on Q5, 2026-09-14: both leeftijden.** A wizard re-scope of a subthema whose run activiteiten carry a
+  goal link needs `DoelenKoppelen` at the old and the new leeftijd, as built. It is ratified in I27's text on
+  `feature/e6-rollen-rechten` (`8c95c57`: "When the wizard changes a subthema's leeftijd, that right is needed at both
+  the old and the new leeftijd."). The constitution was not edited here.
+- **Branch:** `story/E6-02-afdwingen`, on top of `e83a875`. No new migration. Nothing else was changed.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| MINOR 1 | The old-leeftijd half of the Q4 re-scope check was untested | `…verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4` gains the missing case: themabeheer + HL of **K2 only** re-scoping K3→K2 gets 403 with `GekoppeldVerhuist` in full, and the database still holds K3 (asserted right after the refusals). **Mutation proof:** with `MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, …)` changed to read `nieuw` (one line), the test **failed** ("Expected 403 …, got 200"). On the real code it passes. The file was restored from a copy, diffed identical, and rebuilt. |
+| Nit | `Themabron.GekoppeldeLeeftijden` defaulted to null, read as "none" | Required, with no default and no `?? []` in `StaatToe`: a second producer that forgets it is now a compile error, not a silent allow. The two unit-test constructions pass `[]`. |
+| Nit | Class-level summaries missed the Q4 leeftijd-change-with-link case | `IWizardrunService` (the fourth bullet), `WizardrunService` (the order of questions) and the `WizardrunWeigering` doc now name it: "remove a goal link or carry one to another leeftijd without the caller's goal-link right there". |
+| Nit | `Wizardinhoud` cited "I22–I27", which includes I26 (the thema delete) | Doc and label cite "I22–I25, I27", and the doc says why I26 is left out. |
+| Nit | The re-scope rule was cited without the ratified wording | Quoted as "at both the old and the new leeftijd" with the Q5 answer in: the `Rechtenmatrix` class doc, the `Wizardinhoud` doc, the `IWizardrunService` class and method docs, the `WizardrunService` re-scope comment, and the `WizardrunsController` "Rights" item and re-scope summary. |
+| Nit | The `ThemaVerwijderen` label's "het" read as the thema | "… themabeheer alleen als het thema niets anders bevat dan wat de eigen open wizard van dat thema aanmaakte, en geen doelkoppeling die de themabeheerder niet mag ontkoppelen (R3; I26)". |
+| Nit | The planned-thema test matched its 400 by substring | Pinned by value through `VerwachtAsync`, with the thema's name read back: "Thema '…' staat nog 1 keer in een jaarplan en kan niet verwijderd worden. Verwijder het thema eerst uit die jaarplannen." |
+
+**Gates:**
+
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: exit 0.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (the container's password):
+  - UnitTests: 1364 passed, 4 skipped.
+  - IntegrationTests: 423 passed, 1 skipped. The new case extends an existing test, so the count is unchanged.
+- Mutation probe: failed as required, then restored.
+- No frontend file changed.

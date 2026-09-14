@@ -105,6 +105,8 @@ public sealed record Activiteitbron(Guid ActiviteitId, string Leeftijd, Guid? Ma
 /// <param name="GekoppeldeLeeftijden">
 /// The leeftijden at which an activiteit the open run created carries a goal link. Under the owner's ruling on Q4
 /// (2026-09-14) such an activiteit counts as the run's own only for a caller who may link goals at that leeftijd
-/// (<c>DoelenKoppelen</c>), because deleting the thema removes the link (R19). <c>null</c> reads as none.
+/// (<c>DoelenKoppelen</c>), because deleting the thema removes the link (R19). <b>Required, with no default:</b> a
+/// producer that forgot it would otherwise allow the delete in silence, so leaving it out is a compile error. Empty
+/// when there is none.
 /// </param>
-public sealed record Themabron(Guid ThemaId, bool HeeftAndermansInhoud, IReadOnlyList<string>? GekoppeldeLeeftijden = null);
+public sealed record Themabron(Guid ThemaId, bool HeeftAndermansInhoud, IReadOnlyList<string> GekoppeldeLeeftijden);

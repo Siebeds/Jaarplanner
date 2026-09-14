@@ -614,3 +614,32 @@ The thema delete control per Q1; the subthema form's leeftijd select (I13); the 
 - `Geen_zin_van_de_wizard_draagt_een_em_dash` checks the test's own constants.
 
 **Checks run:** by reading (build, format, tests and probes not re-run by the antagonist). Art. II, III, IV, V, VI.2, VII, VIII, IX, XIV compliant.
+
+## Code slice 3 — audit round 3
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool). Condensed in layout only.*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION)
+**Scope audited:** `git diff afe46bc e83a875` on `story/E6-02-afdwingen` (12 files) plus `WizardrunService` in full, `EfRechtenbronnen.VoorThemaAsync`, `Rechtenmatrix.StaatToe` and the `DoelenKoppelen` row, `IWizardrunService`, the `WizardrunsController` wizard create with `LeerplandoelCodes`, and the ordinary I13 test. Art. VI.1 read fresh from `feature/e6-rollen-rechten` HEAD (`20bad17`, I26/I27 narrowed by Q4 (a)), ADR-0030 §1 R3, §2 I26/I27, and the §3 column rule.
+
+**Round 2 resolved:** MINOR 1 (R3 is "Directie sees and edits everything", ADR-0030:170, and every directie ✓ rests on it, :605; the doc marks the TB column as a default under R37). MINOR 2 (class doc names `Themabron` and both ways of applying a resource row; the wizard paragraph reads "state plus one relation"; `Wizardinhoud` cites through I27; controller Rights has four items; "Order of answers" matches the code order; summaries cite I27 and Q4). MINOR 3 (service and test constant identical; the em-dash test includes `GekoppeldVerhuist`). Test gaps (planned-thema TB 400 after the filter passes; the subthema and activiteit still exist after the refused delete; I28 pinned on the stored `LaatsteSchrijfactieOp`). The READ COMMITTED sentence is true: the transaction opens before the check (`:137`, `:176`, `:289`), the check runs just before the write, uses the server default isolation, and takes no row locks.
+
+### [MINOR] 1. The old-leeftijd half of the Q4 re-scope check is untested
+- **Where:** `WizardrunService.cs:157`; `WizardrunEndpointsTests` `…verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4`.
+- **Problem:** the four cases (TB 403, TB+HL(K3) 403, same-leeftijd 200, TB+HL(K3,K2) 200) all pass with `MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, …)` deleted, and that is the condition the ratified text asks for ("at its leeftijd"). The ordinary I13 test covers both ends (`RechtenAfdwingingTests.cs:189-190`).
+- **Required fix:** TB+HL(K2 only) re-scoping K3 to K2 gets 403 `GekoppeldVerhuist`, and the leeftijd stays K3.
+
+### [QUESTION] Q5. The re-scope asks the goal-link right at both leeftijden; I27 says "at its leeftijd"
+- **Judged acceptable:** "its leeftijd" is ambiguous for a two-leeftijd action. Taking the link out of the old leeftijd's dekking is an unlink there, and putting it into the new one's is a link there. R19's stated reason covers both, and I13 and I19 apply the same reasoning to moves. The wizard exception is already read as not covering activity links (the wizard create with codes requires `DoelenKoppelen`, `WizardrunsController.cs:135-141`). It withholds only TB+HL(K3) moving a linked subthema to K2, which only the literal default grants.
+- **Asked:** the owner confirms, and I27 (Art. VI.1, FA A.11, ADR-0030 §2) gains "at both leeftijden when the leeftijd changes" at the next amendment. If the owner means the old leeftijd only, drop one condition, knowing such a caller then carries an HL's link into K2's dekking without K2's right.
+
+### Judged
+- **Thema delete (Q4 in I26):** matches. The resolver reports only the open run's own linked activiteiten, since anyone else's content already sets `HeeftAndermansInhoud` (`EfRechtenbronnen.cs:86-96`). After the run ends, everything counts as someone else's. `StaatToe:249-252` requires `DoelenKoppelen` per leeftijd through the one evaluator, which for anyone but directie reaches only `IsHoofdleerkrachtVan`, so (c) holds. A missing `Themabron` fails. Tests: TB 403, directie 204, TB+HL(K3) 204; the unit test adds another leeftijd, two leeftijden, and HL without TB.
+- **Wizard re-scope:** otherwise correct. It runs after the other-people's-content check and has its own true sentence (E5-03). It counts any link. A null caller gets `Rechten.Geen`, so it fails closed.
+
+### Non-blocking nits
+- `Themabron.GekoppeldeLeeftijden = null` counts as "none" (`Rechtenbronnen.cs:110`). No reachable path fails open, since the only producer, `EfRechtenbronnen.cs:98`, supplies it; making it required would make a future producer a compile error rather than a silent allow.
+- `IWizardrunService.cs:18-19`, `WizardrunService.cs:16` and the `WizardrunWeigering` doc name deletes and "someone else's work", but not the Q4 leeftijd-change-with-link case. Incomplete, not false; the method docs and the controller are exact.
+- The `Wizardinhoud` range "I22–I27" includes I26. The `ThemaVerwijderen` label's "het" reads as the thema; `Matrixrij.Actie` is read by no code.
+
+**Checks run:** by reading (build, format and tests not re-run by the antagonist). Art. II, III, IV, V, VI.2, VI.4, VII, VIII, IX, XIV compliant; scope within E6-02.

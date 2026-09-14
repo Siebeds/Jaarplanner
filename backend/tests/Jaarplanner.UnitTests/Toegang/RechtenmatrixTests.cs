@@ -168,8 +168,8 @@ public sealed class RechtenmatrixTests
     [Fact]
     public void Themabeheer_verwijdert_een_thema_alleen_zonder_andermans_inhoud()
     {
-        var zonder = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: false);
-        var met = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: true);
+        var zonder = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: false, GekoppeldeLeeftijden: []);
+        var met = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: true, GekoppeldeLeeftijden: []);
 
         Assert.True(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, zonder));
         Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, met));

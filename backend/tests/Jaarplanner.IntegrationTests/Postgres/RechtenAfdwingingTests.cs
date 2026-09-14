@@ -510,10 +510,20 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
                 $"/api/klassen/{school.K3Blauw}/jaarplan/plaatsingen", new { themaId, blokStart = rooster!.Blokken[0].Start })));
         }
 
-        using var antwoord = await themabeheer.DeleteAsync($"/api/themas/{themaId}");
-        Assert.Equal(HttpStatusCode.BadRequest, antwoord.StatusCode);
-        Assert.Contains("staat nog 1 keer in een jaarplan", await antwoord.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        string naam;
+        using (var directie = opzet.Directie())
+        {
+            naam = (await directie.GetFromJsonAsync<NaamDto>($"/api/themas/{themaId}"))!.Naam;
+        }
+
+        // The service's own sentence, pinned by value (Art. II.3).
+        await RechtenTestOpzet.VerwachtAsync(
+            themabeheer.DeleteAsync($"/api/themas/{themaId}"),
+            HttpStatusCode.BadRequest,
+            $"Thema '{naam}' staat nog 1 keer in een jaarplan en kan niet verwijderd worden. Verwijder het thema eerst uit die jaarplannen.");
     }
+
+    private sealed record NaamDto(string Naam);
 
     private sealed record RoosterDto(List<BlokDto> Blokken);
 

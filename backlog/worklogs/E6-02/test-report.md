@@ -183,3 +183,38 @@ None.
 - One flaky test (above).
 - TB on a planned thema delete is not pinned by a test.
 - The subthema-with-links refused delete does not assert the subthema still exists.
+
+
+# E6-02 slice 3 — Test report (round 3)
+
+**Verdict:** PASS
+**Mode:** unit/integration (backend only; no Playwright until slice 4)
+**Change verified:** `e83a875` on `story/E6-02-afdwingen`, on top of `afe46bc`. No new migration.
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **1. Gates → PASS.** `dotnet build` 0/0. Full `dotnet test --no-build` (Postgres 127.0.0.1:5433, container password): UnitTests 1364 passed, 4 skipped, 0 failed; IntegrationTests 423 passed, 1 skipped, 0 failed (round 2's 419 + 4 new; round 2's flaky `AanmeldEndpointsTests` did not recur). `dotnet format --verify-no-changes` 0. `has-pending-model-changes --no-build` clean.
+- **2a. Q4 thema delete (`Een_doel_op_een_activiteit_van_de_open_wizard_beschermt_het_thema_tegen_themabeheer_Q4`) → PASS.** A thema holding only its open run's own subthema and activiteit, with a K3 HL's goal link on that activiteit: TB 403 ("Je hebt geen toegang tot deze actie."), directie 204; on an identical thema TB+HL(K3) 204. Unit (`Themabeheer_verwijdert_een_thema_alleen_zonder_andermans_inhoud`): TB false; TB+HL(K3) true; TB+HL(L1) false; HL alone false; directie true; two linked leeftijden with the right at one false; `bron: null` false.
+- **2b. Q4 re-scope (`Een_gekoppelde_wizardactiviteit_verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4`) → PASS for the listed cases.** TB K3→K2 403 (`GekoppeldVerhuist` in full); TB+HL(K3) K3→K2 403; same-leeftijd edit 200; database still K3; TB+HL(K3,K2) 200 and the database then holds K2.
+- **2c. Planned thema (`Een_gepland_thema_verwijdert_ook_themabeheer_niet_I26`) → PASS.** TB gets the service's 400 ("staat nog 1 keer in een jaarplan") after the rights filter lets it through.
+- **2d. Rows remain after the refused delete → PASS.** Both the subthema and the activiteit found in a fresh context after the 403 `SubthemaMetDoelen`; the TB+HL delete then gets 204.
+- **2e. I28 (`Een_gewone_thema_of_themadoelwijziging_verschuift_het_venster_van_de_wizard_niet_I28`) → PASS.** An ordinary thema PUT and a themadoel POST leave the stored `LaatsteSchrijfactieOp` exactly equal (read from the database).
+- **3. Sweep with the guard removed → PASS.** `Wizardinhoud` removed from `DELETE …/wizardruns/{runId}/activiteiten/{activiteitId}`: the sweep failed and named the route ("answered 204 … every write route must answer 403 …"; 1 failed, 39 passed). Restored with `git checkout --`.
+- **4. Round-1 and round-2 criteria still hold → PASS.** Full suite green; `RechtenAfdwingingTests` 23, `WizardrunEndpointsTests` 16, `ElkeWijzigendeRouteVraagtEenRechtTests` 1, `ElkeRouteVraagtEenSessieTests` 4, `CurriculumbeheerAutorisatieTests` 5, `RechtenEndpointsTests` 16, `RechtenbeleidTests` 9, `SchoolcontentImportEndpointsTests` 9; unit Toegang/Schoolcontent/GebruikerTests 230. The changed `ActiviteitMetDoelen` sentence is identical in service and test, and covered by the em-dash check with `GekoppeldVerhuist`.
+
+## Extra mutation probes (each restored)
+- Thema-delete Q4 clause replaced by `&& true` → the unit ThemaVerwijderen test and the Q4 thema-delete test fail ("Expected 403 … got 204").
+- New-leeftijd half of the re-scope check dropped → the Q4 re-scope test fails ("Expected 403 `GekoppeldVerhuist` … got 200").
+- Old-leeftijd half (the check reads `nieuw` twice) → `WizardrunEndpointsTests` and `RechtenAfdwingingTests` pass 39/39: **unpinned** (see Notes).
+
+## Commands run
+- `dotnet build` 0/0 at HEAD and after every probe and restore; `dotnet test --no-build` as above; format 0; `has-pending-model-changes` clean; four probes, each restored and rebuilt. Final `git status --short`: only the antagonist's round-3 worklog append (another writer), no backend change; HEAD `e83a875`.
+
+## Defects
+None.
+
+## Notes (non-blocking)
+- The old-leeftijd half of the Q4 re-scope check has no test (confirms the antagonist's round-3 MINOR 1): every refused case lacks the right at K2. Add TB+HL(K2 only) K3→K2 → 403 `GekoppeldVerhuist`, K3 kept.
+- The planned-thema test matches its 400 sentence by substring only.
+- The password in `docs/dev-setup-secrets.md` does not match the `jaarplanner-db` container.

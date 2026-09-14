@@ -15,8 +15,10 @@ namespace Jaarplanner.Application.Schoolcontent.Wizard;
 /// <item>content goes only under the run's own thema, and an edit or delete reaches an activiteit only while it is still
 /// there;</item>
 /// <item>an edit or delete reaches only what the same run created (I25);</item>
-/// <item>the wizard does not carry someone else's work to another leeftijd, and a wizard delete that would take a goal
-/// link along needs the goal-link right at that leeftijd, exactly as creating one does (I27, R19).</item>
+/// <item>the wizard does not carry someone else's work to another leeftijd; a wizard delete that would take a goal link
+/// along needs the goal-link right at that leeftijd, exactly as creating one does; and a leeftijd change that would carry
+/// a goal link along needs it "at both the old and the new leeftijd" (I27, with the owner's Q4 and Q5 answers of
+/// 2026-09-14; R19).</item>
 /// </list>
 /// Every refusal of that kind is a <see cref="WizardrunWeigering"/>. A missing run or item is a
 /// <see cref="SchoolcontentNietGevondenFout"/>, checked before the refusal, so an id that names nothing says so.
@@ -41,8 +43,9 @@ public interface IWizardrunService
     /// <summary>
     /// Edits a subthema this run created (I25). Its leeftijd may change only while everything under it is the run's own
     /// (I27): otherwise someone else's subdoelen or activiteiten would move to another leeftijd with it. And while an
-    /// activiteit under it carries a goal link, only for a <paramref name="gebruikerId"/> who may link goals at both the
-    /// old and the new leeftijd, because the link moves with it (the owner's Q4 ruling of 2026-09-14, R19).
+    /// activiteit under it carries a goal link, only for a <paramref name="gebruikerId"/> who holds the goal-link right
+    /// "at both the old and the new leeftijd", because the link moves with it (I27 as ratified on the owner's Q5 answer
+    /// of 2026-09-14; R19).
     /// </summary>
     Task<SubthemaWeergave> WijzigSubthemaAsync(
         Guid runId, Guid subthemaId, SubthemaWijzigingInvoer wijziging, Guid? gebruikerId, CancellationToken cancellationToken = default);
@@ -107,8 +110,9 @@ public sealed record WizardrunitemWeergave(Wizarditemsoort Soort, Guid Id);
 
 /// <summary>
 /// A wizard action the run does not allow: it has ended, the content is not under its thema, the item is not one it
-/// created, or it would carry off someone else's work (I23–I25, I27). The Api answers 403, for directie as well:
-/// directie does the same on the ordinary routes. The message is Dutch and a screen may show it (Art. II.3).
+/// created, or it would carry off someone else's work, or remove a goal link or carry one to another leeftijd without the
+/// caller's goal-link right there (I23–I25, I27). The Api answers 403, for directie as well: directie does the same on
+/// the ordinary routes. The message is Dutch and a screen may show it (Art. II.3).
 /// </summary>
 public sealed class WizardrunWeigering : Exception
 {

@@ -13,7 +13,8 @@ namespace Jaarplanner.Infrastructure.SchoolcontentBeheer;
 /// <para>
 /// <b>Order of the questions, the same in every action.</b> The run exists (404), the run is open (403), the addressed
 /// subthema, subdoel or activiteit exists (404), it is the run's to touch (403), it is still under the run's thema
-/// (403), and the action would not carry off someone else's work (403, I27). An id that names nothing therefore always
+/// (403), and the action would not carry off someone else's work, nor remove a goal link or carry one to another
+/// leeftijd without the caller's goal-link right there (403, I27). An id that names nothing therefore always
 /// says so, and a refusal is only ever about something real.
 /// </para>
 /// <para>
@@ -151,8 +152,8 @@ public sealed class WizardrunService : IWizardrunService
             }
 
             // Q4 (a), owner 2026-09-14: a goal link protects an activiteit the run created, too. The re-scope carries the
-            // link from this leeftijd into the new one's dekking, so the caller needs the goal-link right at both (R19),
-            // the way I13 asks the subthema right at both ends of a re-scope.
+            // link out of this leeftijd's dekking and into the new one's, so the goal-link right is needed "at both the old
+            // and the new leeftijd" (I27 as ratified on the owner's Q5 answer; R19), as I13 asks the subthema right at both.
             if (await _context.Activiteiten.AnyAsync(a => a.SubthemaId == subthemaId && a.Doelkoppelingen.Any(), cancellationToken)
                 && !(await MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, cancellationToken)
                      && await MagDoelenKoppelenAsync(gebruikerId, nieuw, cancellationToken)))
