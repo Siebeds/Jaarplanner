@@ -271,6 +271,7 @@ Drie keer per schooljaar schrijven de leerkrachten van de derde kleuter een ontw
   Leerkrachten van andere klassen zien ze niet. Na het schooljaar kan de leerkracht de rapporten nog lezen, maar niet meer wijzigen.
 - **FR-13.8**: De gegevens blijven bewaard tot de directie een schooljaar wist. De directie legt een concrete bewaartermijn vast in het verwerkingsregister, en de beheerpagina toont welke schooljaren nog gegevens over kinderen bevatten en herinnert de directie eraan.
 - **FR-13.9**: Een ontwikkelingsrapport telt nooit mee voor de dekking.
+- **FR-13.10**: Het ontwikkelingsrapport krijgt een eigen tab in de linkerzijbalk: onderaan, in een nieuwe sectie, ver onder de fiches *(toegevoegd op 14-09-2026, op beslissing van de projecteigenaar, ADR-0035 R32)*. Alleen wie rapporten mag zien, ziet die tab *(een standaardkeuze, ADR-0035 D18)*.
 
 ## 6. Niet-functionele requirements
 
@@ -365,7 +366,7 @@ Onderstaande punten bepalen mee de uitwerking. Antwoorden hierop laten toe deze 
 - Zijn thema's gedeeld over de hele school (themabibliotheek) of strikt per klas?
 - Zichtbaarheid tussen leerkrachten: schoolbreed, per graad, of beperkter? *Deels beslist door de projecteigenaar op 11-09-2026 (zie [A.11](#a11-rollen-en-rechten)): een leerkracht kan andere klassen inkijken, en de directie ziet alles. Hoeveel andere klassen, blijft een vraag voor de directie.*
 - **Excel-structuur van de thema's/activiteiten**: welke kolommen bevatten de bestaande bestanden vandaag? (Bepaalt het importsjabloon voor FR-1.)
-- **Overzichten**: welke schoolbrede en per-klas overzichten/rapporten heeft de directie nodig op de beheerpagina (bv. dekking per klas, per leergebied, schoolbreed) en in welk exportformaat?
+- **Overzichten**: welke schoolbrede en per-klas overzichten/rapporten heeft de directie nodig op de beheerpagina (bv. dekking per klas, per leergebied, schoolbreed; *welk leergebied hier bedoeld is, ligt niet vast: het leergebied/Wereldoriëntatie van de leerkrachten (Bijlage A.2) of het leergebied van het decreet (aangevuld 2026-09-14, TB-010). Dat is een vraag voor de directie*) en in welk exportformaat?
 - **Exportformaten**: PDF, Excel of beide? Met welke lay-out (bv. voor inspectie of klassenmap)?
 - **Hosting/AI**: akkoord met cloudhosting (Azure) en AI-verwerking binnen een EU-/AVG-conforme omgeving?
 - Is meertaligheid later nodig (bv. voor anderstalige leerkrachten)?
@@ -391,7 +392,7 @@ Er zijn **twee onderscheiden structuren**:
 1. **Ordeningskader** — officiële groeperingstaxonomie met exact drie niveaus: **`Discipline → Domein → Subdomein`**. Geen `cluster`, geen `leergebied` op dit niveau.
 2. **Per-discipline doel-Excel** — de rijen leerplandoelen, met daarnaast `cluster` (**optioneel/nullable**), `code`, `jaarFase`, `voorbeelden`, `toelichting`, `woordenschat` en de `minimumdoelRef`-concordantie.
 
-Regels: `cluster` is nullable; `subdomein`-namen zijn **niet globaal uniek** → groeperingssleutel `(domein, subdomein)`, rij-identiteit = `code`. `leergebied`/`Wereldoriëntatie` is leerkrachttaal, geen kaderniveau (enkel presentatiemapping).
+Regels: `cluster` is nullable; `subdomein`-namen zijn **niet globaal uniek** → groeperingssleutel `(domein, subdomein)`, rij-identiteit = `code`. `leergebied`/`Wereldoriëntatie` is leerkrachttaal, geen kaderniveau (enkel presentatiemapping). *Niet te verwarren met het **leergebied van het decreet** (aangevuld 2026-09-14, TB-010): het eerste niveau van de eigen ordening van een minimumdoel (`leergebied › rubriek › subrubriek`, uit het veld `path` van KOV), dat wél bewaard wordt, alleen-lezen is en enkel het minimumdoelenregister ordent ([`CONSTITUTION.md` Art. IX.1](../CONSTITUTION.md#ix1-curriculum-read-only-reference-data--art-iii)). Het is geen discipline en beantwoordt de open vraag over Wereldoriëntatie niet.*
 
 ### A.3 Disciplines (genummerd) — ontbrekende opsomming
 `Discipline` draagt een **string-`nummer`** (bv. `"9.2"`) en een optionele `parentDiscipline`. Lijst: 1 Nederlands en communicatie · 2 Wiskunde · 3 Wetenschap en techniek · 4 Aardrijkskunde · 5 Geschiedenis · 6 Muzische vorming · 7 Lichamelijke opvoeding en motoriek · 8 ICT · 9.1 Veilige en gezonde levensstijl · 9.2 Leren leren · 9.3 Sociaal en emotioneel leren · 10 Frans · 11 Rooms-katholieke godsdienst.
@@ -418,7 +419,7 @@ De "thema-opbouw wizard" volgens de 10-stappenmethode is een **vaste MVP-feature
 Zie de bijgewerkte open-beslissingenlijst in [`CONSTITUTION.md` Art. XIV](../CONSTITUTION.md#article-xiv--open-decisions-awaiting-directie): aanwezigheid van `cluster` per discipline, `leergebied`/Wereldoriëntatie-mapping, dekkingsdiepte (binair vs. herhaling/opbouw), en de vorm van `jaarFase`-codes (1K/2K/3K ↔ JK/K2/K3).
 
 ### A.9 Nieuwe begrippen
-De glossary (§2.4) wordt aangevuld met: Discipline (genummerd), Leergebied/Wereldoriëntatie, Themadoel, Subdoel, Onderzoeksvraag/probleemstelling, Kernwoordenschat vs. rijke woordenschat, Rijk aanbod/activiteittype, Hoek, Themaperiode/subthemaperiode, Leerlijn (verticale samenhang, ≠ leerroute), Professionele autonomie, Kennisrijk curriculum/kennisrijk thema. Definities: zie [`CONSTITUTION.md` Art. XII](../CONSTITUTION.md#article-xii--glossary-nl--en).
+De glossary (§2.4) wordt aangevuld met: Discipline (genummerd), Leergebied/Wereldoriëntatie, Themadoel, Subdoel, Onderzoeksvraag/probleemstelling, Kernwoordenschat vs. rijke woordenschat, Rijk aanbod/activiteittype, Hoek, Themaperiode/subthemaperiode, Leerlijn (verticale samenhang, ≠ leerroute), Professionele autonomie, Kennisrijk curriculum/kennisrijk thema. Definities: zie [`CONSTITUTION.md` Art. XII](../CONSTITUTION.md#article-xii--glossary-nl--en). *Aangevuld 2026-09-14 (TB-010):* leergebied van het decreet (≠ Leergebied/Wereldoriëntatie), rubriek en subrubriek, en de soort van een minimumdoel (te bereiken op individueel niveau, te bereiken op populatieniveau, na te streven op populatieniveau).
 
 ### A.10 FR-7.3's *"ter beslissing"* is voorlopig beantwoord (projecteigenaar, 19-08-2026)
 FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generatie open. Die regel is op 19-08-2026 door de **projecteigenaar** beslist en staat sindsdien in [`CONSTITUTION.md` Art. IX.3](../CONSTITUTION.md#article-ix--core-data-model-functional): een (her)generatie verwijdert **enkel** een plaatsing die `Voorgesteld` is **en** niet `vergrendeld`. Een plaatsing waarover de leerkracht zelf beslist heeft (`Aanvaard`, `Geweigerd` of `Manueel`) blijft staan **zonder** slot, en een hergeneratie van één periode werkt op dezelfde voorwaarden: die versmalt **welke blokken** bezocht worden, nooit **wat vervangbaar is**.

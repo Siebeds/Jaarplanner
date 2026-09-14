@@ -219,8 +219,9 @@ export interface FichemomentVerplaatsing {
  * Moves or resizes ONE occurrence. Only the placements are refetched: the placement still exists afterwards, so
  * whether the fiche counts for dekking cannot have changed.
  *
- * Not optimistic, for the reason `useVerplaatsHoekmoment` gives: the server refuses a day outside the window and a
- * second start at the same time on one day, and she has to see that refusal rather than watch the block jump back.
+ * Not optimistic, for the reason `useVerplaatsHoekmoment` gives: the server refuses a day outside the window, a day
+ * without school (since E10-03) and a second start at the same time on one day, and she has to see that refusal
+ * rather than watch the block jump back.
  */
 export function useVerplaatsFichemoment() {
   const qc = useQueryClient();

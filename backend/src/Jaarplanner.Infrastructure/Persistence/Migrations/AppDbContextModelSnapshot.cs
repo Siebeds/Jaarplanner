@@ -198,6 +198,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
+                    b.Property<string>("Leergebied")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("leergebied");
+
                     b.Property<bool>("NietMeerInOpstap")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -212,6 +217,21 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<string>("Omschrijving")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Rubriek")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("rubriek");
+
+                    b.Property<string>("Soort")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("soort");
+
+                    b.Property<string>("Subrubriek")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("subrubriek");
 
                     b.Property<string>("ZonderLeerplandoelDoelsets")
                         .HasMaxLength(32)

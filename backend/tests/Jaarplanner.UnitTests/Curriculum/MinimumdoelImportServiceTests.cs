@@ -291,6 +291,58 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
         Assert.Null(gemarkeerd.ZonderLeerplandoelDoelsets);
     }
 
+    /// <summary>
+    /// TB-010: a minimumdoel imported before the decree's ordering was read gets it from the next import, which reports
+    /// the four fields as a change for the reviewer rather than filling them in silently.
+    /// </summary>
+    [Fact]
+    public async Task Een_volgende_import_vult_de_ordening_en_de_soort_aan_en_meldt_ze()
+    {
+        _bron.Geef(Md("1.1"));
+        await _service.ImporteerAsync(toepassen: true);
+        _bron.Geef(new Minimumdoel(
+            "K-1.1", "K-", "1.1", "De kleuters kunnen tellen.",
+            "Wiskunde", "Getallenkennis", "Natuurlijke getallen", MinimumdoelSoort.TeBereikenPopulatie));
+
+        var resultaat = await _service.ImporteerAsync(toepassen: true);
+
+        var wijziging = Assert.Single(resultaat.Diff.Gewijzigd);
+        Assert.Equal(
+            [nameof(Minimumdoel.Leergebied), nameof(Minimumdoel.Rubriek), nameof(Minimumdoel.Subrubriek), nameof(Minimumdoel.Soort)],
+            wijziging.Velden.Select(v => v.Veld).ToArray());
+        Assert.Equal(new VeldWijziging(nameof(Minimumdoel.Soort), null, "TeBereikenPopulatie"), wijziging.Velden[3]);
+        _context.ChangeTracker.Clear();
+        var opgeslagen = await _context.Minimumdoelen.SingleAsync();
+        Assert.Equal(("Wiskunde", "Getallenkennis", "Natuurlijke getallen"), (opgeslagen.Leergebied, opgeslagen.Rubriek, opgeslagen.Subrubriek));
+        Assert.Equal(MinimumdoelSoort.TeBereikenPopulatie, opgeslagen.Soort);
+    }
+
+    /// <summary>
+    /// TB-010: a changed row keeps the leerplandoelen import's reason. <c>SetValues</c> used to clear it along with the
+    /// rest, and the first import after TB-010 changes every stored row, so it would have emptied the reason of all six
+    /// minimumdoelen that have one until the next leerplandoelen import.
+    /// </summary>
+    [Fact]
+    public async Task Een_gewijzigde_rij_houdt_de_reden_zonder_leerplandoel()
+    {
+        _bron.Geef(Md("1.1"));
+        await _service.ImporteerAsync(toepassen: true);
+        var bestaand = await _context.Minimumdoelen.SingleAsync();
+        _context.Entry(bestaand).Property(m => m.ZonderLeerplandoelReden).CurrentValue = ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets;
+        _context.Entry(bestaand).Property(m => m.ZonderLeerplandoelDoelsets).CurrentValue = "Z";
+        await _context.SaveChangesAsync();
+        _bron.Geef(new Minimumdoel("K-1.1", "K-", "1.1", "Nieuwe tekst.", "Lichamelijke opvoeding", "Motorische competenties"));
+
+        await _service.ImporteerAsync(toepassen: true);
+
+        _context.ChangeTracker.Clear();
+        var na = await _context.Minimumdoelen.SingleAsync();
+        Assert.Equal("Nieuwe tekst.", na.Omschrijving);
+        Assert.Equal("Lichamelijke opvoeding", na.Leergebied);
+        Assert.Equal(ZonderLeerplandoelReden.AlleenOvergeslagenDoelsets, na.ZonderLeerplandoelReden);
+        Assert.Equal("Z", na.ZonderLeerplandoelDoelsets);
+    }
+
     /// <summary>Antagonist round 2, MINOR 4: a preview of a return reports it and leaves the flag set.</summary>
     [Fact]
     public async Task Het_voorbeeld_van_een_teruggekeerd_minimumdoel_laat_de_markering_staan()
@@ -345,7 +397,8 @@ public sealed class MinimumdoelImportServiceTests : IDisposable
         // A fresh entity per call, as the real source returns: the service must not depend on reference identity.
         public void Geef(IReadOnlyList<Minimumdoel> doelen, IReadOnlyList<MinimumdoelBronProbleem> problemen) =>
             _antwoord = () => new MinimumdoelBronResultaat(
-                doelen.Select(d => new Minimumdoel(d.Ref, d.Leeftijd, d.Nr, d.Omschrijving)).ToList(),
+                doelen.Select(d => new Minimumdoel(
+                    d.Ref, d.Leeftijd, d.Nr, d.Omschrijving, d.Leergebied, d.Rubriek, d.Subrubriek, d.Soort)).ToList(),
                 problemen);
 
         public void Faal(OpstapBronFout fout) => _antwoord = () => throw fout;
