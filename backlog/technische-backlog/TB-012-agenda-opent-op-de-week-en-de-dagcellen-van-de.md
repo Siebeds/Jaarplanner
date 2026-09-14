@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:35
+bijgewerkt: 2026-09-14 14:37
 opgepakt-door: kalender-week
 branch: ticket/kalender-week-standaard
-pr:
+pr: 63
 geblokkeerd:
 fr: []
 ---
@@ -58,3 +58,4 @@ Geen.
 - 2026-09-14 13:51 · kalender-week · ontwerp vooraf met de frontend-design-skill (cel is het raster, wat erin zit houdt zijn afronding); antagonist: VIOLATIONS FOUND, 0 kritiek, 0 groot, 2 klein (twee onjuiste codecommentaren), beide opgelost; lint en 264 tests opnieuw groen. Open vraag voor de eigenaar: het label 'Periode van vandaag' op Thema's per periode opent nu een week
 - 2026-09-14 13:51 · kalender-week · in-uitvoering → klaar: agenda opent op de week, maandcellen rechte hoeken; gates groen
 - 2026-09-14 14:35 · kalender-week · aanvulling op vraag van de eigenaar: knop 'Periode van vandaag' heet nu 'Vandaag in de agenda' (plan.vandaagInDeAgenda; nl.json bewerkt op uitdrukkelijke toestemming van de eigenaar terwijl E6-02 de claim hield, claim niet overgenomen), en het plusje in de maand staat op elke breedte rechtsonder met de bolletjes onder het dagnummer; lint schoon, 264 tests groen; browser: op 390px 34 van 34 plusjes rechtsonder zonder overlap met een dagnummer, knop opent de week van vandaag. Geen nieuwe auditronde, op uitdrukkelijke vraag van de eigenaar
+- 2026-09-14 14:37 · kalender-week · PR #63
