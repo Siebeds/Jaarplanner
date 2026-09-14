@@ -116,3 +116,122 @@ export function useOntkoppelFicheDoel(klasId: string | null) {
     onSuccess: ververs,
   });
 }
+
+/* ------------------------------------------------------------------------------------------------
+   PLANNING A FICHE IN THE AGENDA (ADR-0029 decision 3)
+
+   A separate read over its own range, like the hoekplaatsingen: a placement is outside the Jaarplan
+   aggregate, so it is outside the weekplanning read model too.
+   ------------------------------------------------------------------------------------------------ */
+
+/** One occurrence in the time grid: this day, from this time to that one. Mirrors `AlgemeneFichemomentWeergave`. */
+export interface AlgemeneFichemomentWeergave {
+  id: string;
+  datum: string;
+  /** `HH:mm:ss`, as the server sends a TimeOnly. */
+  begin: string;
+  einde: string;
+}
+
+/** A planned fiche as the agenda reads it. Mirrors `AlgemeneFicheplaatsingWeergave`. */
+export interface AlgemeneFicheplaatsingWeergave {
+  id: string;
+  algemeneFicheId: string;
+  ficheNaam: string;
+  van: string;
+  tot: string;
+  momenten: AlgemeneFichemomentWeergave[];
+}
+
+/** What the teacher answered in the placement sheet. Mirrors `AlgemeneFicheplaatsingInvoer`. */
+export interface AlgemeneFicheplaatsingInvoer {
+  algemeneFicheId: string;
+  van: string;
+  tot: string;
+  /** ISO weekdays: 1 is maandag, 5 is vrijdag. The server refuses 6 and 7 with a sentence of its own. */
+  weekdagen: number[];
+  /** `HH:mm:ss`. */
+  begin: string;
+  einde: string;
+}
+
+const plaatsingSleutel = (klasId: string | null, van: string, tot: string) =>
+  ["algemene-ficheplaatsingen", klasId, van, tot] as const;
+
+/** The placements overlapping one date range, keyed on the range like the hoekplaatsingen beside them. */
+export function useAlgemeneFicheplaatsingen(klasId: string | null, van: string, tot: string) {
+  return useQuery({
+    queryKey: plaatsingSleutel(klasId, van, tot),
+    queryFn: () =>
+      get<AlgemeneFicheplaatsingWeergave[]>(`/api/klassen/${klasId}/algemene-ficheplaatsingen?van=${van}&tot=${tot}`),
+    enabled: klasId !== null && van.length > 0 && tot.length > 0,
+  });
+}
+
+/**
+ * After a placement is made or removed: every mounted range, the fiche list, and dekking.
+ *
+ * **Dekking because the first placement and the last one move it** (Art. V.1 as amended): a fiche's goals count from
+ * the moment it stands in the agenda once. Which of the two this call was, the screen cannot tell cheaply, and a
+ * refetch of a figure that did not change is the cheaper mistake. The fiche list because its `aantalPlaatsingen` is
+ * what Instellingen reads to say "Staat nog niet in de agenda".
+ */
+function usePlaatsingVerversing() {
+  const qc = useQueryClient();
+  return () => {
+    void qc.invalidateQueries({ queryKey: ["algemene-ficheplaatsingen"] });
+    void qc.invalidateQueries({ queryKey: ["algemene-fiches"] });
+    void qc.invalidateQueries({ queryKey: ["dekking"] });
+  };
+}
+
+export function usePlaatsAlgemeneFiche(klasId: string | null) {
+  const ververs = usePlaatsingVerversing();
+
+  return useMutation({
+    mutationFn: (invoer: AlgemeneFicheplaatsingInvoer) =>
+      post<AlgemeneFicheplaatsingWeergave>(`/api/klassen/${klasId}/algemene-ficheplaatsingen`, invoer),
+    onSuccess: ververs,
+  });
+}
+
+/** Removes a placement with all of its occurrences. */
+export function useVerwijderAlgemeneFicheplaatsing() {
+  const ververs = usePlaatsingVerversing();
+
+  return useMutation({
+    mutationFn: (plaatsingId: string) => del(`/api/algemene-ficheplaatsingen/${plaatsingId}`),
+    onSuccess: ververs,
+  });
+}
+
+/** Where one occurrence should move to, or how long it should run. */
+export interface FichemomentVerplaatsing {
+  plaatsingId: string;
+  momentId: string;
+  datum: string;
+  /** `HH:mm:ss`. A resize sends the unchanged begin with a new einde. */
+  begin: string;
+  einde: string;
+}
+
+/**
+ * Moves or resizes ONE occurrence. Only the placements are refetched: the placement still exists afterwards, so
+ * whether the fiche counts for dekking cannot have changed.
+ *
+ * Not optimistic, for the reason `useVerplaatsHoekmoment` gives: the server refuses a day outside the window and a
+ * second start at the same time on one day, and she has to see that refusal rather than watch the block jump back.
+ */
+export function useVerplaatsFichemoment() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ plaatsingId, momentId, datum, begin, einde }: FichemomentVerplaatsing) =>
+      put<AlgemeneFicheplaatsingWeergave>(`/api/algemene-ficheplaatsingen/${plaatsingId}/momenten/${momentId}`, {
+        datum,
+        begin,
+        einde,
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["algemene-ficheplaatsingen"] }),
+  });
+}

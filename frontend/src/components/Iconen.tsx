@@ -67,6 +67,24 @@ export function IcoonHoek(props: IconProps) {
 }
 
 /**
+ * Algemene fiche: two arrows chasing each other round, the mark for "this comes back".
+ *
+ * What an algemene fiche is, is that it recurs (the onthaal every morning, turnen every Monday), and that is also the
+ * one thing that tells it apart from a hoek and from an activiteit in the time grid, where the three stand side by
+ * side without a hue of their own. A card or a sheet would say "fiche" and nothing a teacher needs.
+ */
+export function IcoonFiche(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4.5 11.5a7.5 7.5 0 0 1 13-5" />
+      <path d="M18 3v3.9h-3.9" />
+      <path d="M19.5 12.5a7.5 7.5 0 0 1-13 5" />
+      <path d="M6 21v-3.9h3.9" />
+    </Icoon>
+  );
+}
+
+/**
  * Instellingen: two rails with a knob on each, not a cog.
  *
  * A cog says "machinery", and nothing behind this destination is machinery: it is where the school

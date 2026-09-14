@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  useHoekenpaneel.setState({ open: false });
+  useHoekenpaneel.setState({ open: false, soort: "hoeken" });
   vi.unstubAllGlobals();
 });
 
@@ -90,6 +90,28 @@ describe("Navigatie", () => {
 
     expect(useHoekenpaneel.getState().open).toBe(true);
     expect(schakelaar()).toHaveAttribute("aria-pressed", "true");
+  });
+
+  /*
+    TWO SWITCHES, ONE COLUMN (owner, 2026-09-14: "twee secties ... niet gegroepeerd als fiches"). Pressing the other
+    switch swaps the list without closing the column first; pressing the one that is on closes it.
+  */
+  it("heeft een eigen schakelaar voor de algemene fiches, die de lijst wisselt en niet eerst sluit", () => {
+    rendermetPad("/agenda");
+    const algemeen = () => screen.getByRole("button", { name: t("hoekenpaneel.algemeenTitel") });
+
+    fireEvent.click(algemeen());
+    expect(useHoekenpaneel.getState()).toMatchObject({ open: true, soort: "algemeen" });
+    expect(algemeen()).toHaveAttribute("aria-pressed", "true");
+    expect(schakelaar()).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(schakelaar()!);
+    expect(useHoekenpaneel.getState()).toMatchObject({ open: true, soort: "hoeken" });
+    expect(schakelaar()).toHaveAttribute("aria-pressed", "true");
+    expect(algemeen()).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(schakelaar()!);
+    expect(useHoekenpaneel.getState().open).toBe(false);
   });
 
   it("sluit het paneel wanneer de leerkracht naar een ander scherm gaat", () => {

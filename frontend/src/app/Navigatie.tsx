@@ -1,9 +1,9 @@
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, type ReactNode, type SVGProps } from "react";
 import { NavLink, useMatch } from "react-router-dom";
 import { BESTEMMINGEN, ONDERAAN, type Bestemming } from "./routes";
 import { Merk } from "./Merk";
 import { Aanmeldregel } from "./Aanmeldregel";
-import { IcoonHoek } from "../components/Iconen";
+import { IcoonFiche, IcoonHoek } from "../components/Iconen";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { useZijkolom } from "./zijkolom";
 import { t } from "../i18n";
@@ -50,6 +50,10 @@ import { cn } from "../lib/cn";
  * agenda toolbar,* because a bottom bar of five tabs has no room for a sixth and the panel has to
  * stay reachable on a phone. One control per viewport, never two at once.
  *
+ * **Since 2026-09-14 there are two switches** (owner: "ik wil twee secties in het meest linkse side bar, hoekenfiches
+ * en algemene fiches, niet gegroepeerd als fiches"): Hoekenfiches and Algemene fiches, one under the other over the
+ * same rule. Both open the same column, each on its own list; see `state/hoekenpaneel.ts`.
+ *
  * **Leaving the agenda closes the panel** (owner, 2026-08-31): press a destination and the panel is
  * gone. That reset is not cosmetic. Only `Agendascherm` renders the panel, while the rail here and
  * the inline reservation in `Schil` both follow the store through `useZijkolom`, so without it a teacher who
@@ -57,8 +61,9 @@ import { cn } from "../lib/cn";
  */
 export function Navigatie() {
   const paneelOpen = useHoekenpaneel((s) => s.open);
+  const paneelSoort = useHoekenpaneel((s) => s.soort);
   const zetPaneel = useHoekenpaneel((s) => s.zet);
-  const wisselPaneel = useHoekenpaneel((s) => s.wissel);
+  const kiesPaneel = useHoekenpaneel((s) => s.kies);
   const smal = useZijkolom();
 
   /*
@@ -121,8 +126,21 @@ export function Navigatie() {
         {/* Only on the routes that have a panel to switch. Never in the bottom bar, hence `hidden`
             with an `lg` opt-in: the phone keeps exactly its five tabs at every route. */}
         {opAgenda ? (
-          <li className="hidden lg:mt-2 lg:block lg:border-t lg:border-lijn lg:pt-2">
-            <Hoekenschakelaar open={paneelOpen} onWissel={wisselPaneel} />
+          <li className="hidden lg:mt-2 lg:flex lg:flex-col lg:gap-0.5 lg:border-t lg:border-lijn lg:pt-2">
+            <Paneelschakelaar
+              naam={t("hoekenpaneel.titel")}
+              Icoon={IcoonHoek}
+              aan={paneelOpen && paneelSoort === "hoeken"}
+              smal={smal}
+              onWissel={() => kiesPaneel("hoeken")}
+            />
+            <Paneelschakelaar
+              naam={t("hoekenpaneel.algemeenTitel")}
+              Icoon={IcoonFiche}
+              aan={paneelOpen && paneelSoort === "algemeen"}
+              smal={smal}
+              onWissel={() => kiesPaneel("algemeen")}
+            />
           </li>
         ) : null}
 
@@ -150,34 +168,47 @@ export function Navigatie() {
 }
 
 /**
- * The hoekenfiches switch: the shape of a sidebar item, deliberately not its behaviour.
+ * A panel switch (Hoekenfiches, Algemene fiches): the shape of a sidebar item, deliberately not its behaviour.
  *
  * It borrows the geometry of a `Tab` so the sidebar reads as one family: the same height, the same
  * icon size, the same rounding and inset. What it does not borrow is the accent. A destination is
  * marked with `bg-accent-zacht` plus the 2px rule that stands for `aria-current`, and a switch
  * copying either would claim to be a place you are rather than a thing that is on.
  *
- * When the panel is open this sits in the 56px rail, so the label is gone and `aria-label` carries
- * it, exactly as the destinations above do.
+ * **Two facts, kept apart since there are two switches.** Whether the label shows follows the rail (`smal`): once
+ * either list is open the navigation is 56px wide, so neither switch has room for words and `aria-label` carries
+ * them, exactly as the destinations above do. Whether this one is pressed follows its own list (`aan`), so the rail
+ * still says which of the two is showing.
  */
-function Hoekenschakelaar({ open, onWissel }: { open: boolean; onWissel: () => void }) {
-  const naam = t("hoekenpaneel.titel");
-
+function Paneelschakelaar({
+  naam,
+  Icoon,
+  aan,
+  smal,
+  onWissel,
+}: {
+  naam: string;
+  Icoon: (props: SVGProps<SVGSVGElement>) => ReactNode;
+  aan: boolean;
+  smal: boolean;
+  onWissel: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onWissel}
-      aria-pressed={open}
-      aria-label={open ? naam : undefined}
-      title={open ? naam : undefined}
+      aria-pressed={aan}
+      aria-label={smal ? naam : undefined}
+      title={smal ? naam : undefined}
       className={cn(
         "flex min-h-11 w-full items-center gap-3 rounded-veld px-3 text-body font-medium",
         "transition-colors duration-150",
-        open ? "justify-center gap-0 bg-vlak-diep px-0 text-inkt" : "text-inkt-zacht hover:bg-vlak hover:text-inkt",
+        smal && "justify-center gap-0 px-0",
+        aan ? "bg-vlak-diep text-inkt" : "text-inkt-zacht hover:bg-vlak hover:text-inkt",
       )}
     >
-      <IcoonHoek aria-hidden="true" className="h-5 w-5 shrink-0" />
-      {open ? null : <span className="truncate">{naam}</span>}
+      <Icoon aria-hidden="true" className="h-5 w-5 shrink-0" />
+      {smal ? null : <span className="truncate">{naam}</span>}
     </button>
   );
 }
