@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:10
+bijgewerkt: 2026-09-14 14:21
 opgepakt-door: md-boom
 branch: ticket/minimumdoelenboom
 pr:
@@ -80,3 +80,4 @@ Directie heeft het niet bevestigd.
 - 2026-09-14 13:45 · md-boom · geblokkeerd: Wacht op de eigenaar: bekrachtigt hij de tekst van het amendement (Art. VII.2 en IX.1), mag de soort bewaard en getoond worden, en mag het minimumdoel in het leerplandoeldetail aanklikbaar zijn (antagonist ronde 1, MAJOR 2).
 - 2026-09-14 14:10 · md-boom · niet langer geblokkeerd
 - 2026-09-14 14:10 · md-boom · Antwoord van de eigenaar: de tekst van het amendement is bekrachtigd, de soort wordt bewaard en getoond, en het minimumdoel in het leerplandoeldetail wordt aanklikbaar. De bloktekst hierboven had 'de eigenaar' moeten zeggen in plaats van 'hij'.
+- 2026-09-14 14:21 · md-boom · Antagonist ronde 1 afgewerkt: MAJOR 1 (leergebied van het decreet gescheiden van leergebied/Wereldoriëntatie in Art. VII.0, XII, XIV en de functionele analyse) en MAJOR 2 (de logregel zegt nu dat de eigenaar de tekst bekrachtigde en wat niet van de eigenaar komt). origin/main (TB-005, TB-008, TB-009) gemerged.
