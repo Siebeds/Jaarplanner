@@ -1,6 +1,6 @@
 import { DndContext } from "@dnd-kit/core";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Tijdraster, type Ficheblokje, type Hoekblokje } from "./Tijdraster";
 import type { Agendadag } from "./roosterdagen";
 import type { GeplandeActiviteit } from "../../lib/types";
@@ -303,5 +303,118 @@ describe("Tijdraster", () => {
     // (the only `border-t-2` in this grid) and not the time label that keeps it from being colour alone.
     expect(container.querySelector(".border-t-2")).toBeNull();
     expect(screen.queryByText(t("periode.vandaag"))).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Empty space under a mouse (owner, 2026-09-14, TB-014): the quarter a click would pick lights up, and a press dragged
+ * across the column asks for that stretch.
+ *
+ * jsdom reports every rectangle at zero, so a pointer's `clientY` is a distance from the top of the grid, which starts
+ * at midnight: minute `m` is at `m * 56 / 60` pixels. One pixel is added so a pointer sits inside its quarter rather
+ * than on the line above it. What these cannot see is the band's tint and whether the page scrolls under a drag; that
+ * is the browser pass.
+ */
+describe("Tijdraster onder de muis", () => {
+  const y = (minuut: number) => minuut * (56 / 60) + 1;
+  const kolom = () => screen.getByRole("button", { name: t("periode.voegToeOp", { dag: "dinsdag 8 september" }) });
+
+  // jsdom has no PointerEvent, so `fireEvent.pointerDown` would build a bare Event with no position and no pointer
+  // type, and every gesture below would read as a keyboard's.
+  beforeAll(() => {
+    if (typeof window.PointerEvent === "function") return;
+    class Aanwijzer extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+        this.pointerType = init.pointerType ?? "mouse";
+      }
+    }
+    vi.stubGlobal("PointerEvent", Aanwijzer);
+  });
+  afterAll(() => vi.unstubAllGlobals());
+
+  it("licht het kwartier onder de muis op, met zijn beginuur erin, tot de muis weggaat", () => {
+    toon([dag()]);
+
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 17) });
+    // 9:17 is inside the quarter that starts at 9:15, and the band names that start: it is what a click would ask for.
+    expect(screen.getByText("9:15")).toBeInTheDocument();
+
+    fireEvent.pointerLeave(kolom());
+    expect(screen.queryByText("9:15")).not.toBeInTheDocument();
+  });
+
+  it("vraagt bij een klik het kwartier dat oplicht, ook in zijn onderste helft", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // 9:12 is nearer to 9:15 than to 9:00, but it is inside the 9:00 quarter, and that quarter is the one lit up.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60 + 12) });
+    fireEvent.pointerUp(kolom(), { clientY: y(9 * 60 + 12) });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(9 * 60 + 12) });
+
+    // Once, and with no end: a press that stayed in its quarter is a click, and the activiteit's own length decides.
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 9 * 60);
+  });
+
+  it("plant het bereik dat de leerkracht sleept, en toont het terwijl ze sleept", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60 + 20), buttons: 1 });
+    // Both quarters it touches are in it: from the start of the first to the end of the last.
+    expect(screen.getByText(toonBereik(9 * 60, 10 * 60 + 30))).toBeInTheDocument();
+
+    fireEvent.pointerUp(kolom(), { clientY: y(10 * 60 + 20) });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(10 * 60 + 20) });
+
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 9 * 60, 10 * 60 + 30);
+    expect(screen.queryByText(toonBereik(9 * 60, 10 * 60 + 30))).not.toBeInTheDocument();
+  });
+
+  it("geeft omhoog gesleept hetzelfde bereik", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    fireEvent.pointerDown(kolom(), { clientY: y(10 * 60 + 20) });
+    fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 5), buttons: 1 });
+    fireEvent.pointerUp(kolom(), { clientY: y(9 * 60 + 5) });
+
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 9 * 60, 10 * 60 + 30);
+  });
+
+  it("laat een bereik los op Escape, zonder iets te openen", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(11 * 60), buttons: 1 });
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByText(toonBereik(9 * 60, 11 * 60 + 15))).not.toBeInTheDocument();
+
+    // The button is still down after Escape, so the release and the click that follows it must not ask either.
+    fireEvent.pointerUp(kolom(), { clientY: y(11 * 60) });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(11 * 60) });
+    expect(gevraagd).not.toHaveBeenCalled();
+  });
+
+  it("laat een tik op een aanraakscherm het kwartier onder de vinger kiezen, zonder bereik", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // A finger drawn down the grid scrolls it, so a touch press starts no stretch; the click alone answers.
+    fireEvent.pointerDown(kolom(), { clientY: y(13 * 60 + 40), pointerType: "touch" });
+    fireEvent.pointerMove(kolom(), { clientY: y(14 * 60 + 40), pointerType: "touch" });
+    fireEvent.pointerUp(kolom(), { clientY: y(14 * 60 + 40), pointerType: "touch" });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(13 * 60 + 40) });
+
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 13 * 60 + 30);
   });
 });
