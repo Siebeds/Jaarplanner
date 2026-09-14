@@ -5,7 +5,7 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:35
+bijgewerkt: 2026-09-14 12:38
 opgepakt-door: E10-03
 branch: story/E10-03-agenda
 pr: 57
@@ -74,3 +74,4 @@ Geen.
 - 2026-09-14 12:07 · E10-03 · Antagonist ronde 3: 2 MINOR opgelost (een mislukte verversing verbergt de geladen lijst niet meer, met test; de aanvulling in ADR-0029 klopt nu ook voor de telefoon). Vitest 258/258, lint schoon. Laatste ronde loopt.
 - 2026-09-14 12:14 · E10-03 · in-uitvoering → klaar: Klaar: algemene fiches plannen in de agenda met een eigen schakelaar naast Hoekenfiches, plaatsingsblad (periode, weekdagen, uren), detailblad en momenten in het tijdraster, plus de schooldagregel bij één moment verplaatsen. Poorten groen: Vitest 258/258, lint, backend unit 1133 en integratie 357 op PostgreSQL, browser 1440 en 390, antagonist ronde 4 COMPLIANT.
 - 2026-09-14 12:35 · E10-03 · PR #57
+- 2026-09-14 12:38 · E10-03 · Eigenaar 2026-09-14: dit ticket voor een story was eenmalig. ADR-0033 beslissing 8 blijft staan: een story krijgt normaal geen ticket; dit ticket is geen precedent.
