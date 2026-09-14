@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:21
+bijgewerkt: 2026-09-14 14:32
 opgepakt-door: md-boom
 branch: ticket/minimumdoelenboom
 pr:
@@ -53,7 +53,8 @@ zoals het is, maar je mag deze optie A onder de minimumdoelen sectie steken dan"
 - [ ] Gegeven het scherm Doelen op *Minimumdoelen*, dan zie ik een boom leergebied › rubriek › subrubriek met
   aantallen, staat elk minimumdoel er precies één keer in, en staan de doelen binnen een tak in de volgorde K, 4, 6.
 - [ ] Elke rij toont de code, de doelzin en hoeveel leerplandoelen naar het minimumdoel verwijzen met hun jaar/fasen
-  (bv. *16 leerplandoelen · L1–L4*); verwijst er geen ingeladen leerplandoel naar, dan zegt de rij dat, en het detail
+  (bv. *16 leerplandoelen · L1, L2, L3, L4*: elk jaar opgesomd, want een bereik zou jaren beloven die leeg kunnen
+  zijn); verwijst er geen ingeladen leerplandoel naar, dan zegt de rij dat, en het detail
   geeft de reden die de import kent.
 - [ ] Wanneer ik een minimumdoel aanklik, dan toont het detail de volledige tekst, de mijlpaal, de soort, het pad en
   de gekoppelde leerplandoelen per jaar/fase; een leerplandoel aanklikken opent het bestaande leerplandoeldetail, en
@@ -69,9 +70,10 @@ zoals het is, maar je mag deze optie A onder de minimumdoelen sectie steken dan"
 
 ## Open vragen
 
-Geen voor de bouw. De keuze voor optie A wijzigt Art. VII.2 en IX.1, en de eigenaar koos haar op 2026-09-14 nadat
-dat in de sessie was voorgelegd; die keuze wordt als ratificatie in het logboek van de constitutie geschreven.
-Directie heeft het niet bevestigd.
+Geen voor de bouw. De keuze voor optie A wijzigt Art. VII.2 en IX.1. Op 2026-09-14 bekrachtigde de eigenaar de
+Nederlandse samenvatting van die tekst ("Bekrachtigen"), koos om de soort te bewaren en in het detail van het
+minimumdoel te tonen, en om het minimumdoel in het leerplandoeldetail aanklikbaar te maken, nadat gezegd was dat dat
+de enige wijziging aan het deel *Leerplandoelen* is. Directie heeft het niet bevestigd.
 
 ## Werklog
 
@@ -81,3 +83,4 @@ Directie heeft het niet bevestigd.
 - 2026-09-14 14:10 · md-boom · niet langer geblokkeerd
 - 2026-09-14 14:10 · md-boom · Antwoord van de eigenaar: de tekst van het amendement is bekrachtigd, de soort wordt bewaard en getoond, en het minimumdoel in het leerplandoeldetail wordt aanklikbaar. De bloktekst hierboven had 'de eigenaar' moeten zeggen in plaats van 'hij'.
 - 2026-09-14 14:21 · md-boom · Antagonist ronde 1 afgewerkt: MAJOR 1 (leergebied van het decreet gescheiden van leergebied/Wereldoriëntatie in Art. VII.0, XII, XIV en de functionele analyse) en MAJOR 2 (de logregel zegt nu dat de eigenaar de tekst bekrachtigde en wat niet van de eigenaar komt). origin/main (TB-005, TB-008, TB-009) gemerged.
+- 2026-09-14 14:32 · md-boom · Antagonist ronde 2: geen MAJOR meer. MINOR 12, 14 en 15 verwerkt (logregel en IX.1 nauwkeuriger, leergebied overal benoemd, tickettekst bijgewerkt). Correctie op de regel van 14:10: de eigenaar koos de soort te bewaren en in het detail van het minimumdoel te tonen. MINOR 11 en 13 zitten in de copy die nog in nl.json moet: 'Uitgewerkt in {aantal} ingeladen leerplandoelen', 'Bekijk dit minimumdoel', en '... als Op.stap ze in een bruikbare vorm meegeeft'.

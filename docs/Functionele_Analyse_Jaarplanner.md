@@ -365,7 +365,7 @@ Onderstaande punten bepalen mee de uitwerking. Antwoorden hierop laten toe deze 
 - Zijn thema's gedeeld over de hele school (themabibliotheek) of strikt per klas?
 - Zichtbaarheid tussen leerkrachten: schoolbreed, per graad, of beperkter? *Deels beslist door de projecteigenaar op 11-09-2026 (zie [A.11](#a11-rollen-en-rechten)): een leerkracht kan andere klassen inkijken, en de directie ziet alles. Hoeveel andere klassen, blijft een vraag voor de directie.*
 - **Excel-structuur van de thema's/activiteiten**: welke kolommen bevatten de bestaande bestanden vandaag? (Bepaalt het importsjabloon voor FR-1.)
-- **Overzichten**: welke schoolbrede en per-klas overzichten/rapporten heeft de directie nodig op de beheerpagina (bv. dekking per klas, per leergebied, schoolbreed) en in welk exportformaat?
+- **Overzichten**: welke schoolbrede en per-klas overzichten/rapporten heeft de directie nodig op de beheerpagina (bv. dekking per klas, per leergebied, schoolbreed; *welk leergebied hier bedoeld is, ligt niet vast: het leergebied/Wereldoriëntatie van de leerkrachten (Bijlage A.2) of het leergebied van het decreet (aangevuld 2026-09-14, TB-010). Dat is een vraag voor de directie*) en in welk exportformaat?
 - **Exportformaten**: PDF, Excel of beide? Met welke lay-out (bv. voor inspectie of klassenmap)?
 - **Hosting/AI**: akkoord met cloudhosting (Azure) en AI-verwerking binnen een EU-/AVG-conforme omgeving?
 - Is meertaligheid later nodig (bv. voor anderstalige leerkrachten)?
