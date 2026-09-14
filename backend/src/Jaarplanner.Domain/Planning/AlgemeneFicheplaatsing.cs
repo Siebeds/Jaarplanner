@@ -133,10 +133,11 @@ public sealed class AlgemeneFicheplaatsing
     /// <para>
     /// <b>The day must be a school day, for the reason <see cref="Herhalingsdagen"/> gives.</b> Planning never writes
     /// a row on a weekend or in a vakantie, so a move must not either: otherwise one occurrence can end up on a
-    /// Saturday or in a vakantie and be counted among the "schooldagen" of the run. The time grid refuses a drop only on
-    /// a closure: it draws Saturday and Sunday as open columns, because the server's <c>IsLesdag</c> counts a weekend as
-    /// open (see <c>Weekplanningweergave</c>). So a block dragged onto a weekend reaches this refusal, and so does the
-    /// detail sheet's date field (antagonist, E10-03 round 1; the grid half corrected in TB-011).
+    /// Saturday or in a vakantie and be counted among the "schooldagen" of the run. The time grid does not refuse a
+    /// weekend: it draws Saturday and Sunday as open columns, because the server's <c>IsLesdag</c> counts a weekend as
+    /// open (see <c>Weekplanningweergave</c>). So a block dragged onto a weekend reaches this refusal, and so does a
+    /// vakantie picked in the detail sheet's date field; the sheet refuses a weekend itself, with the same sentence
+    /// (antagonist, E10-03 round 1; the grid half corrected in TB-011).
     /// </para>
     /// </summary>
     /// <param name="schooljaar">The class's school year, whose open weekdays decide which days are allowed.</param>

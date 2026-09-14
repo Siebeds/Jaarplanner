@@ -184,9 +184,9 @@ public sealed class Hoekplaatsing
     /// <para>
     /// <b>The day must be a school day.</b> The service plans a row only on the open weekdays of the window, so a move
     /// must not write one on a Saturday, in a vakantie or on a vrije dag either: such a row would be counted among the
-    /// hoek's "schooldagen". The time grid refuses a drop only on a closure. It draws Saturday and Sunday as open
-    /// columns, because the server's <c>IsLesdag</c> counts a weekend as open (see <c>Weekplanningweergave</c>), so a
-    /// block dragged onto a weekend reaches this refusal and the agenda shows its sentence. It is the rule
+    /// hoek's "schooldagen". The time grid does not refuse a weekend: it draws Saturday and Sunday as open columns,
+    /// because the server's <c>IsLesdag</c> counts a weekend as open (see <c>Weekplanningweergave</c>), so a block
+    /// dragged onto a weekend reaches this refusal and the agenda shows its sentence. It is the rule
     /// <see cref="AlgemeneFicheplaatsing.VerplaatsMoment"/> applies (TB-011).
     /// </para>
     /// </summary>

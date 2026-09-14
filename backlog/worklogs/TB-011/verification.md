@@ -51,8 +51,10 @@ Setup:
    *"Die dag valt buiten de periode van de hoek."* The window rule speaks first, as intended.
 2. **Placement 21 September – 2 October; the Tuesday 22 block dragged onto Saturday 26 September** (inside the window),
    at 1440×900: `PUT …/momenten/…` answered 400, detail *"Op die dag is er geen school. Kies een schooldag."* The
-   agenda's message strip shows exactly that sentence, and the block stays on Tuesday: block x-positions were equal
-   before and after, and the Saturday column stayed empty. Screenshot: `zaterdag-geweigerd-1440.png`.
+   agenda's message strip holds exactly that sentence, read from the DOM (`p.bg-attentie-zacht`): at this width the
+   strip sits below the fold, and the screenshot shows only a clipped sliver of it. The block stays on Tuesday: block
+   x-positions were equal before and after, and the Saturday column stayed empty, which is what
+   `zaterdag-geweigerd-1440.png` shows. The 390 screenshot below shows the sentence legibly.
 3. **The same at 390×844**, where the three-day week is anchored on Friday 25: the Friday block dragged onto Saturday 26
    gives the same 400 and the same sentence in the strip, and the block stays. No horizontal scroll (scrollWidth 375 =
    clientWidth 375). Screenshot: `zaterdag-geweigerd-390.png`.
