@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 12:14
+bijgewerkt: 2026-09-14 12:35
 opgepakt-door: E10-03
 branch: story/E10-03-agenda
-pr:
+pr: 57
 geblokkeerd:
 fr: [FR-6.2]
 ---
@@ -73,3 +73,4 @@ Geen.
 - 2026-09-14 11:56 · E10-03 · Antagonist ronde 2: geen MAJOR meer, 4 MINOR opgelost (serverzin en nl.json-tweeling vastgepind, ADR-0029 beslissing 7 aangevuld met de beslissing van de eigenaar, foutmelding in plaats van 'nog geen fiches' bij een mislukte lijst, commentaar rechtgezet); de 390-controle was gebeurd. Vitest 257/257, lint schoon, backend unit groen. Ronde 3 loopt.
 - 2026-09-14 12:07 · E10-03 · Antagonist ronde 3: 2 MINOR opgelost (een mislukte verversing verbergt de geladen lijst niet meer, met test; de aanvulling in ADR-0029 klopt nu ook voor de telefoon). Vitest 258/258, lint schoon. Laatste ronde loopt.
 - 2026-09-14 12:14 · E10-03 · in-uitvoering → klaar: Klaar: algemene fiches plannen in de agenda met een eigen schakelaar naast Hoekenfiches, plaatsingsblad (periode, weekdagen, uren), detailblad en momenten in het tijdraster, plus de schooldagregel bij één moment verplaatsen. Poorten groen: Vitest 258/258, lint, backend unit 1133 en integratie 357 op PostgreSQL, browser 1440 en 390, antagonist ronde 4 COMPLIANT.
+- 2026-09-14 12:35 · E10-03 · PR #57
