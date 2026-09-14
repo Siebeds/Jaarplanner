@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:37
+bijgewerkt: 2026-09-14 16:40
 opgepakt-door: agenda-sleep
 branch: ticket/agenda-sleep-om-te-plannen
 pr:
@@ -56,3 +56,4 @@ Geen.
 - 2026-09-14 16:26 · agenda-sleep · browsercontrole headless Chrome (playwright-core) op wegwerpdatabase jaarplanner_tb014, API 5189/Vite 5181: kwartier licht op met beginuur (12:15 op de juiste hoogte, tekst 5,51:1 licht en 8,97:1 donker), niet boven een blok of in de urenkolom; slepen 9:00-10:20 toont en plant 9:00 - 10:30 (blok in het raster), omhoog 14:20-13:05 geeft 13:00-14:30, klik op 11:12 kiest 11:00, Enter kiest 8:30, Escape laat los zonder blad, nieuw-blad noemt het bereik; 390px zonder overloop, tik kiest zijn kwartier; geen consolefouten; alle zes criteria afgevinkt
 - 2026-09-14 16:27 · agenda-sleep · correctie op de vorige regel: criterium 4 was afgevinkt voordat het bewaren bewezen was, en de 'tik' op 390px was een muisklik. Nu wel bewezen (derde ronde): een nieuwe activiteit bewaard vanuit een gesleept bereik staat als 'Nieuw TB-014, 15:00 - 15:45' in het raster, en een echte tik (pointerType touch, hasTouch op 390x844) kiest 10:30 zonder oplichtende band
 - 2026-09-14 16:37 · agenda-sleep · antagonist ronde 1: VIOLATIONS FOUND, 0 kritiek, 0 groot, 7 klein, 4 vragen; in behandeling. Beslissingen van de eigenaar in deze sessie: nl.json-sleutels toevoegen (V4, gevraagd en beantwoord 'Ja, voeg ze toe'), en het gestippelde landingsvoorbeeld in de accentkleur houden als vijfde toepassing 'geselecteerde rij' (bevinding 1). Tickettekst over de tik rechtgezet (bevinding 7): een tik rondt nu af naar beneden
+- 2026-09-14 16:40 · agenda-sleep · foutronde 1 gecommit (89502a4); pnpm lint schoon, vitest 42 bestanden/284 tests groen. Browserronde 4 (headless Chrome, verse metingen per gebaar): om 23:40 licht 23:00 op en vraagt een klik 23:00; slepen 22:00 tot bijna middernacht geeft 22:00 - 23:45 in voorbeeld en titel; donderdag 9:00-10:20 plant 9:00 - 10:30; klik 11:12 kiest 11:00; Escape laat los zonder blad; een klik daarna opent op 15:00; geen consolefouten. Antagonist ronde 2 loopt
