@@ -23,7 +23,7 @@ import { Ontkoppel } from "./Fiche";
  * handful of subdoelen per subthema, which is what makes one request per doel acceptable.
  *
  * **The whole row is the button, and the remove control sits above it.** A stretched `::after` on the
- * button covers the row, so the status mark and the empty space open the detail too; the remove
+ * button covers the row, so the empty space beside the text opens the detail too; the remove
  * control is lifted above that layer and stays a separate target, because removing a doel is the one
  * thing on this row that must never happen by accident.
  */
@@ -50,9 +50,15 @@ export function Gekoppelddoel({
         onClick={() => onToon(code)}
         className="min-w-0 flex-1 text-left after:absolute after:inset-0"
       >
-        <span className="flex items-center gap-2">
+        {/* THE STATUS SITS ON THE CODE LINE, not in a column of its own beside the text. As a third
+            column it took seventy pixels from every line of the goal text, and inside a subthema card
+            at 390, which is already narrowed by its own two controls, that left the text a column of
+            sixty pixels and the status on top of the code. Here it wraps under the code when the line
+            is short, and the sentence below keeps the row's full width. */}
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {data ? <Doelsoortmerk soort={data.doelsoort} /> : null}
           <span className="mono text-micro font-medium text-inkt-zacht">{code}</span>
+          <Statusmerk status={koppeling.status} className="ml-auto" />
         </span>
 
         {/* A doel the register no longer knows keeps its code and nothing else: the row still opens
@@ -65,7 +71,6 @@ export function Gekoppelddoel({
         ) : null}
       </button>
 
-      <Statusmerk status={koppeling.status} className="mt-px" />
       <span className="relative z-10 -my-1.5 flex">
         <Ontkoppel label={ontkoppelLabel} bezig={ontkoppelBezig} onClick={onOntkoppel} />
       </span>
