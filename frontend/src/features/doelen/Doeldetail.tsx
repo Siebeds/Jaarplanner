@@ -39,8 +39,13 @@ export function Doeldetail({
    * inside one: `DoelenScherm` puts it in a `Blad` on a narrow screen. A second sheet opened from
    * in here stacked on the first, and the phone showed two headers, two close buttons, and none of
    * the destinations. The screen owns both sheets so it can show one at a time.
+   *
+   * `null` (TB-016): the thema page opens this detail from a doel it has ALREADY linked, and linking
+   * is the job of the "Doel koppelen" control above that list. With `null` there is no button, rather
+   * than a button that leads nowhere. Required but nullable, not optional, so a caller that forgets it
+   * fails to compile instead of silently losing the register's button.
    */
-  onKoppel: () => void;
+  onKoppel: (() => void) | null;
 }) {
   const { data, isPending, isError } = useLeerplandoel(code);
 
@@ -152,10 +157,12 @@ export function Doeldetail({
           </ul>
         )}
 
-        <Knop rang="rustig" className="mt-1 self-start" onClick={onKoppel}>
-          <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-          {t("doel.koppelAan")}
-        </Knop>
+        {onKoppel ? (
+          <Knop rang="rustig" className="mt-1 self-start" onClick={onKoppel}>
+            <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+            {t("doel.koppelAan")}
+          </Knop>
+        ) : null}
       </Sectie>
     </article>
   );

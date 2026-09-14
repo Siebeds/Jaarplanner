@@ -273,6 +273,9 @@ export function useGenereerDoelsuggesties(themaId: string) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: themaSleutels.suggesties(themaId) });
       void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });
+      // A doel's detail lists every doelsuggestie on it under "Gebruikt in", and the thema screen opens
+      // that detail from its own rows (TB-016).
+      void qc.invalidateQueries({ queryKey: ["leerplandoel"] });
     },
   });
 }
@@ -288,6 +291,8 @@ export function useBeoordeelSuggestie(themaId: string) {
       void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });
       // Accepting a suggestion can make a leerplandoel covered, so the coverage figures move too.
       void qc.invalidateQueries({ queryKey: ["dekking"] });
+      // And the doel's detail shows the suggestion with its status (TB-016).
+      void qc.invalidateQueries({ queryKey: ["leerplandoel"] });
     },
   });
 }

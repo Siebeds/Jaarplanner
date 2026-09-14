@@ -30,6 +30,16 @@ import type { ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
  * Not every write in this file can move that number: renaming a thema cannot. Invalidating anyway is
  * the cheap side of the same trade as above, and the alternative is a per-mutation list that the next
  * mutation will be left off.
+ *
+ * **`leerplandoel` is in it since the thema screen shows a doel's detail (TB-016).** That detail lists
+ * where the school uses the doel, by thema name and level, and every write here can change that list:
+ * a link, an unlink, a rename, a delete. Without it, a doel unlinked as themadoel and then opened from
+ * a subdoel row still listed the themadoel for up to the global stale time.
+ *
+ * The cost is real and deliberate: every linked row on the thema screen reads its text from that same
+ * detail endpoint, so each write here re-reads every one of them, and each read is the full detail
+ * (up to seven queries on the server). TB-017 removes it by sending the text with the thema itself,
+ * which waits for E6-02 to leave that service.
  */
 function useSchoolcontentMutatie<TVariabelen, TAntwoord>(
   uitvoeren: (variabelen: TVariabelen) => Promise<TAntwoord>,
@@ -43,6 +53,7 @@ function useSchoolcontentMutatie<TVariabelen, TAntwoord>(
       void qc.invalidateQueries({ queryKey: ["thema-voor-klas"] });
       void qc.invalidateQueries({ queryKey: ["weekplanning"] });
       void qc.invalidateQueries({ queryKey: ["dekking"] });
+      void qc.invalidateQueries({ queryKey: ["leerplandoel"] });
       if (themaId) void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });
     },
   });
