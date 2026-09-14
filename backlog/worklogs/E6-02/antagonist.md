@@ -664,3 +664,19 @@ The thema delete control per Q1; the subthema form's leeftijd select (I13); the 
 **Checks run:** `dotnet build` 0/0 at `08c10a2`, `Toegang` unit tests 209/209, format exit 0, tree clean. Integration tests not re-run (no `JAARPLANNER_TEST_POSTGRES` in the antagonist's shell). Art. II, III, IV, V, VI.4, VI.7, VII, VIII, IX, XIV compliant; VI.1 compliant in code; scope within E6-02.
 
 Last fix round: the MINOR goes to the owner to fix or waive.
+
+## Code slice 3 — audit round 5
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool). Condensed in layout only.*
+
+**Verdict:** COMPLIANT (0 CRITICAL, 0 MAJOR, 0 MINOR, 0 QUESTION)
+**Scope audited:** `git diff 08c10a2 eaf12e7` on `story/E6-02-afdwingen` (the owner-approved doc-comment fix after round 4; `Rechtenmatrix.cs` plus 3 worklogs). Art. VI.1 I27 read at `feature/e6-rollen-rechten` HEAD, whose last `CONSTITUTION.md` change is still `8c95c57`.
+
+**Round 4 resolved:**
+- MINOR 1: the class doc (`Rechtenmatrix.cs:28-33`) and the `Wizardinhoud` doc (`:112-117`) now limit the both-leeftijden rule to "a subthema whose activiteiten carry a goal link". This matches `WizardrunService.cs:157-159` (any linked activiteit under the subthema; right asked at `huidig.Leeftijd` and at `nieuw`, only on a real change, `:145-146`, after the others'-content refusal, `:149`) and I27's last sentence.
+
+**No executable change:** 4 lines removed and 5 added, all `///`; 0 changed lines outside blank or comment lines; the word diff shows only prose and the `///` markers moved by rewrapping; `WizardrunService.cs` unchanged; the doc XML is well formed. The worklog additions are records only (the round-4 audit and test report, the mini-fix entry) and contain no secret or pupil data.
+
+**Checks run:** by reading (build, format and tests not re-run by the antagonist; the implementer reports build 0/0, format exit 0, `Toegang` 209/209). Art. II, III, IV, V, VI.1, VI.4, VI.7, VII, VIII, IX, X, XIV compliant; scope within E6-02.
+
+Slice 3's audit is closed: test-runner PASS (round 4, `08c10a2`; the round-5 change is comment-only) and antagonist COMPLIANT (round 5, `eaf12e7`).
