@@ -86,6 +86,9 @@ Three technical facts shaped the rest:
   register (E7-06) must name this resource before a real evalset is sent, and the export of a gold set must check its
   free text for pupil names (Art. VI.2).
 - `AzureAI:ApiVersion` in an environment's configuration is now ignored.
+- The key path on the v1 route has run only against a stub. The evaluation resource has no keys
+  (`disableLocalAuth`), so the eval exercises Entra only; the first host that calls a key-based resource on the v1
+  route is the one that verifies it. No host configures AI today.
 
 **Follow-ups**
 
