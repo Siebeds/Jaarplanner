@@ -113,6 +113,18 @@ describe("de Op.stap-import en het minimumdoelenregister (E1-22)", () => {
   });
 });
 
+describe("het gebruikersbeheer (E6-04)", () => {
+  it("zegt bij een leeftijd zonder hoofdleerkracht alleen wat de directie dan beheert, met de leeftijd in de zin zelf", () => {
+    // The E5-03 rule. The sentence shows when a listed jaarfase has no appointment that counts anywhere. ADR-0030 (c)
+    // then leaves its subthema's and subdoelen to directie alone; the leerkrachten of that leeftijd still edit the shared
+    // activiteiten, so the sentence may not claim those. And it names its own referent: an earlier version pointed back
+    // with "die leeftijd" at a list that did not say which (antagonist, slice 2 round 1).
+    const zin = catalogus.gebruikers.zonderHoofdleerkracht;
+    expect(zin).toMatch(/leeftijd zonder hoofdleerkracht/);
+    expect(zin).not.toMatch(/\bdie leeftijd\b|activiteit/i);
+  });
+});
+
 describe("de componenten", () => {
   it("renderen geen Nederlandse tekst die niet uit de catalogus komt", () => {
     // JSX text between two tags. Anything that came from the catalogue arrives inside braces, so

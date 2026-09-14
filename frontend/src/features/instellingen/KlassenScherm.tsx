@@ -38,9 +38,11 @@ import { useMaakKlas, useVerwijderKlas, useWijzigKlasVolledig } from "./mutaties
  *
  * **Directie defines the klassen; everyone else reads them** (E6-04, ADR-0030 §3 "Gebruikers,
  * klassen en schooljaren beheren", directie only). For anyone else there is no add, edit or delete:
- * the server refuses them, and a button the server refuses is a control that does nothing (the
- * E3-06 rule). Directie also sees who teaches each klas, read from the beheer data, which only
- * directie may read.
+ * the matrix gives those to directie alone, and the server refuses them once the combined E6-02/E6-04
+ * build puts that row on the klas routes (its slice 3; until then the routes still admit any
+ * session). A button the matrix does not grant would be a control that does nothing (the E3-06
+ * rule). Directie also sees who teaches each klas, read from the beheer data, which only directie
+ * may read.
  */
 export function KlassenScherm() {
   const { schooljaar, schooljaren, klassen, laadt, kiesSchooljaar } = useActieveSelectie();

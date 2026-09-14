@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { del, get, post, put } from "../../lib/api";
+import type { Ik } from "../../lib/aanmelding";
 
 /**
  * Directie's beheer of gebruikers and their rights (E6-04, ADR-0030 §3: directie only), as
@@ -91,6 +92,16 @@ function ververs(qc: QueryClient) {
   void qc.invalidateQueries({ queryKey: ["ik"] });
 }
 
+/**
+ * After directie changed their OWN standing: they gave up the directie right or removed
+ * themselves. The overview is not refetched, because the server now answers it with 403 (or 401),
+ * and a refetch would flash "could not be loaded" in the moment before the screen goes. Only `ik`
+ * is refetched: that moves the person off this part (`Onderdeelpoort`), or to the sign-in.
+ */
+function isEigenAfgang(qc: QueryClient, gebruikerId: string, blijftDirectie: boolean): boolean {
+  return qc.getQueryData<Ik>(["ik"])?.id === gebruikerId && !blijftDirectie;
+}
+
 export interface Uitnodiging {
   email: string;
   naam: string;
@@ -119,6 +130,10 @@ export function useRechtWijziging() {
     mutationFn: ({ pad, aan }: RechtWijziging) => (aan ? put<GebruikerBeheer>(pad) : del<GebruikerBeheer>(pad)),
     onSuccess: (gebruiker) => {
       zetInCache(qc, gebruiker);
+      if (isEigenAfgang(qc, gebruiker.id, gebruiker.isDirectie)) {
+        void qc.invalidateQueries({ queryKey: ["ik"] });
+        return;
+      }
       ververs(qc);
     },
   });
@@ -133,6 +148,10 @@ export function useVerwijderGebruiker() {
       qc.setQueryData<GebruikersOverzicht>(SLEUTEL, (oud) =>
         oud ? { ...oud, gebruikers: oud.gebruikers.filter((g) => g.id !== gebruikerId) } : oud,
       );
+      if (isEigenAfgang(qc, gebruikerId, false)) {
+        void qc.invalidateQueries({ queryKey: ["ik"] });
+        return;
+      }
       ververs(qc);
     },
   });

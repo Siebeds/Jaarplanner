@@ -67,23 +67,31 @@ function json(inhoud: unknown, status = 200) {
   return new Response(JSON.stringify(inhoud), { status, headers: { "Content-Type": "application/json" } });
 }
 
-/** What the fake server answers to a write; `undefined` is a 404. */
-type Antwoord = (pad: string, methode: string) => { status: number; body?: unknown } | undefined;
+/** What the fake server answers to a write; `undefined` is a 404. May wait, to hold a save in flight. */
+type Schrijfantwoord = { status: number; body?: unknown } | undefined;
+type Antwoord = (pad: string, methode: string) => Schrijfantwoord | Promise<Schrijfantwoord>;
 
 /**
  * Serves the screen's reads, and hands every write to `schrijf`. Stateful like the real server: a
  * write that answers a gebruiker is what the next read of the list returns, because every write
  * is followed by a refetch, and a static list would undo in the test what the server saved.
  */
-function toon(overzicht: GebruikersOverzicht, schrijf: Antwoord = () => undefined) {
+function toon(
+  overzicht: GebruikersOverzicht,
+  schrijf: Antwoord = () => undefined,
+  /** The status the list answers once a write succeeded: 403 after directie gave up their own right. */
+  opties: { lijstNaSchrijven?: number } = {},
+) {
   let huidig = overzicht;
+  let lijstStatus = 200;
   const fetchMock = vi.fn(async (pad: string, init?: RequestInit) => {
     const methode = init?.method ?? "GET";
     if (methode === "GET" && pad.endsWith("/api/ik")) return json(IK);
     if (methode === "GET" && pad.endsWith("/api/jaarfasen")) return json(["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"]);
-    if (methode === "GET" && pad.endsWith("/api/gebruikers")) return json(huidig);
-    const antwoord = schrijf(pad, methode);
+    if (methode === "GET" && pad.endsWith("/api/gebruikers")) return lijstStatus === 200 ? json(huidig) : json({}, lijstStatus);
+    const antwoord = await schrijf(pad, methode);
     if (!antwoord) return json({}, 404);
+    if (antwoord.status < 300 && opties.lijstNaSchrijven) lijstStatus = opties.lijstNaSchrijven;
     const bewaard = antwoord.body as GebruikerBeheer | undefined;
     if (antwoord.status < 300 && bewaard?.id) {
       const bestaat = huidig.gebruikers.some((g) => g.id === bewaard.id);
@@ -238,6 +246,111 @@ describe("GebruikersScherm", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(reden);
     expect(screen.getByText("An Peeters")).toBeInTheDocument();
+  });
+
+  it("houdt de focus op het aangevinkte vakje terwijl de wijziging bewaard wordt, en negeert een tweede vinkje", async () => {
+    // Fix round 1, MINOR 5: a box that turns `disabled` loses focus in a browser, so a keyboard user who ticked it with
+    // Space was dropped on the page body. The boxes wait as `aria-disabled` instead.
+    const an = gebruiker();
+    let laatGaan!: () => void;
+    const vrij = new Promise<void>((klaar) => {
+      laatGaan = klaar;
+    });
+    const fetchMock = toon({ gebruikers: [an], voorbijeSchooljaarIds: [] }, async (pad, methode) => {
+      if (methode !== "PUT" || !pad.endsWith(`/api/gebruikers/${an.id}/klassen/${K3.id}`)) return undefined;
+      await vrij;
+      return {
+        status: 200,
+        body: {
+          ...an,
+          klastoewijzingen: [{ klasId: K3.id, klasNaam: K3.naam, jaarfase: "K3", schooljaarId: JAAR.id, teltVoorGedeeldeInhoud: true }],
+        },
+      };
+    });
+
+    const blad = await openRechten(an.naam);
+    const vakje = within(blad).getByRole("checkbox", { name: K3.naam });
+    vakje.focus();
+    fireEvent.click(vakje);
+
+    await waitFor(() => expect(vakje).toHaveAttribute("aria-disabled", "true"));
+    expect(vakje).not.toBeDisabled();
+    expect(vakje).toHaveFocus();
+    expect(vakje).toBeChecked();
+    fireEvent.click(within(blad).getByRole("checkbox", { name: L1.naam }));
+
+    laatGaan();
+    await waitFor(() => expect(vakje).not.toHaveAttribute("aria-disabled"));
+    expect(vakje).toHaveFocus();
+    expect(vakje).toBeChecked();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method && init.method !== "GET")).toHaveLength(1);
+  });
+
+  it("vraagt bevestiging voor wie het eigen directierecht afgeeft, en toont daarna geen laadfout", async () => {
+    // Fix round 1, QUESTION 7: the one tick you cannot undo yourself asks first, and the moment after it (the list now
+    // answers 403, the gate has not moved you yet) must not flash "could not be loaded".
+    const ikZelf = gebruiker({ id: IK.id, naam: IK.naam, isDirectie: true });
+    const ander = gebruiker({ id: "g-2", naam: "Bert Claes", isDirectie: true });
+    const fetchMock = toon(
+      { gebruikers: [ander, ikZelf], voorbijeSchooljaarIds: [] },
+      (pad, methode) =>
+        methode === "DELETE" && pad.endsWith(`/api/gebruikers/${IK.id}/directierecht`)
+          ? { status: 200, body: { ...ikZelf, isDirectie: false } }
+          : undefined,
+      { lijstNaSchrijven: 403 },
+    );
+    const schrijven = () => fetchMock.mock.calls.filter(([, init]) => init?.method && init.method !== "GET");
+
+    const blad = await openRechten(IK.naam);
+    fireEvent.click(within(blad).getByRole("checkbox", { name: t("gebruikers.directie") }));
+    const vraag = await screen.findByRole("dialog", { name: t("gebruikers.afgevenTitel") });
+    expect(vraag).toHaveTextContent(t("gebruikers.afgevenGevolg"));
+    expect(schrijven()).toHaveLength(0);
+
+    fireEvent.click(within(vraag).getByRole("button", { name: t("themabeheer.annuleer") }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: t("gebruikers.afgevenTitel") })).not.toBeInTheDocument());
+    expect(schrijven()).toHaveLength(0);
+    expect(within(blad).getByRole("checkbox", { name: t("gebruikers.directie") })).toBeChecked();
+
+    fireEvent.click(within(blad).getByRole("checkbox", { name: t("gebruikers.directie") }));
+    fireEvent.click(
+      within(await screen.findByRole("dialog", { name: t("gebruikers.afgevenTitel") })).getByRole("button", {
+        name: t("gebruikers.afgevenBevestig"),
+      }),
+    );
+
+    await waitFor(() => expect(schrijven()).toHaveLength(1));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([pad]) => String(pad).endsWith("/api/ik")).length).toBeGreaterThan(1));
+    await new Promise((klaar) => setTimeout(klaar, 50));
+    expect(screen.queryByText(t("gebruikers.laadMislukt"))).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([pad]) => String(pad).endsWith("/api/gebruikers"))).toHaveLength(1);
+  });
+
+  it("geeft het directierecht van iemand anders meteen af, zonder te vragen", async () => {
+    const ander = gebruiker({ id: "g-2", naam: "Bert Claes", isDirectie: true });
+    const fetchMock = toon({ gebruikers: [ander], voorbijeSchooljaarIds: [] }, (pad, methode) =>
+      methode === "DELETE" && pad.endsWith(`/api/gebruikers/${ander.id}/directierecht`)
+        ? { status: 200, body: { ...ander, isDirectie: false } }
+        : undefined,
+    );
+
+    const blad = await openRechten(ander.naam);
+    fireEvent.click(within(blad).getByRole("checkbox", { name: t("gebruikers.directie") }));
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(true));
+    expect(screen.queryByRole("dialog", { name: t("gebruikers.afgevenTitel") })).not.toBeInTheDocument();
+  });
+
+  it("zegt wie zichzelf verwijdert dat die meteen afgemeld wordt", async () => {
+    const ikZelf = gebruiker({ id: IK.id, naam: IK.naam, isDirectie: true });
+    toon({ gebruikers: [ikZelf], voorbijeSchooljaarIds: [] });
+
+    const blad = await openRechten(IK.naam);
+    fireEvent.click(within(blad).getByRole("button", { name: t("gebruikers.verwijderen") }));
+
+    const bevestiging = await screen.findByRole("dialog", { name: t("gebruikers.verwijderTitel", { naam: IK.naam }) });
+    expect(bevestiging).toHaveTextContent(t("gebruikers.verwijderZelfGevolg"));
+    expect(bevestiging).not.toHaveTextContent(t("gebruikers.verwijderGevolg", { naam: IK.naam }));
   });
 
   it("zegt per jaarfase wie hoofdleerkracht is, en onderscheidt niemand dit jaar van niemand", async () => {

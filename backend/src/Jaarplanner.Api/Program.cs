@@ -2,6 +2,7 @@ using Jaarplanner.Api.Configuration;
 using Jaarplanner.Api.Infrastructure;
 using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Api.Infrastructure.Autorisatie;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Infrastructure;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -61,6 +62,12 @@ builder.Services.AddRechtenbeleid();
 // developer's machine), and a fallback policy under which every endpoint needs that session unless it says otherwise.
 // Who may do what once signed in is E6-02's; this only establishes who someone is.
 var authenticatie = builder.AddJaarplannerAuthenticatie();
+
+// The last-directie guard counts only another directie who can sign in (E6-04, ADR-0031 decision 7). Under Entra that
+// is a bound invitation. The development sign-in binds nobody and is refused outside Development, so only there does
+// an unbound directie count; this line is the one place that says so.
+builder.Services.Configure<GebruikerbeheerOpties>(opties =>
+    opties.OngekoppeldeDirectieKanAanmelden = authenticatie.Modus == AuthenticatieModus.Ontwikkeling);
 
 // Data access + database health check live in Infrastructure (Art. VIII — keep Api thin).
 // This registers AppDbContext (UseNpgsql, connection string from configuration) and a

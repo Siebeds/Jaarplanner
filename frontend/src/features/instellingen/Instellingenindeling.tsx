@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigationType } from "react-router-dom";
 import { Aanmeldregel } from "../../app/Aanmeldregel";
 import { Schermvlak } from "../../app/Schermkop";
@@ -122,6 +122,12 @@ export function Instellingenindeling() {
  *
  * Hidden from `lg` with `lg:hidden`, which is `display: none`, so the column and this row are never
  * in the accessibility tree together although both carry the same name.
+ *
+ * **It says when there is more** (E6-04 fix round 1). With Gebruikers, directie has five parts, and
+ * at 390px the last one starts past the right edge: it scrolled, but nothing said so. So the edge
+ * where parts are hidden fades into the row's own background, the paper-and-ink way of saying
+ * "more this way" without a hue, and the part you are on is scrolled into view when the row
+ * appears, so Weergave is not selected off screen.
  */
 export function Onderdeelwissel() {
   const { pathname, state } = useLocation();
@@ -139,8 +145,36 @@ export function Onderdeelwissel() {
     if (vanWissel) lijst.current?.querySelector<HTMLAnchorElement>('a[aria-current="page"]')?.focus();
   }, [vanWissel, pathname]);
 
+  // Which edges hide a part. Measured, never assumed: a teacher with four parts on a wide phone
+  // may see them all, and then no edge fades. The slack is the row's own padding and border:
+  // scrolling a part into view "nearest" leaves those few pixels hidden, and a fade over them
+  // would dim the edge of the very part that is fully in view (measured at 390, fix round 1).
+  const [verborgen, setVerborgen] = useState({ links: false, rechts: false });
+  useEffect(() => {
+    const rij = lijst.current;
+    if (!rij) return;
+    const speling = 6;
+    const meet = () =>
+      setVerborgen({
+        links: rij.scrollLeft > speling,
+        rechts: rij.scrollLeft + rij.clientWidth < rij.scrollWidth - speling,
+      });
+    const actief = rij.querySelector<HTMLAnchorElement>('a[aria-current="page"]');
+    if (actief && typeof actief.scrollIntoView === "function") {
+      actief.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    meet();
+    rij.addEventListener("scroll", meet, { passive: true });
+    window.addEventListener("resize", meet);
+    return () => {
+      rij.removeEventListener("scroll", meet);
+      window.removeEventListener("resize", meet);
+    };
+  }, [onderdelen.length, pathname]);
+
   return (
     <nav aria-label={t("instellingen.titel")} className="lg:hidden">
+      <div className="relative inline-flex max-w-full">
       <ul ref={lijst} className="inline-flex max-w-full overflow-x-auto rounded-veld border border-lijn bg-vlak-diep p-1">
         {onderdelen.map((onderdeel) => {
           const pad = padVan(onderdeel.deel);
@@ -164,6 +198,19 @@ export function Onderdeelwissel() {
           );
         })}
       </ul>
+      {verborgen.links ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-px left-px w-8 rounded-l-veld bg-linear-to-r from-vlak-diep to-transparent"
+        />
+      ) : null}
+      {verborgen.rechts ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-px right-px w-8 rounded-r-veld bg-linear-to-l from-vlak-diep to-transparent"
+        />
+      ) : null}
+      </div>
     </nav>
   );
 }

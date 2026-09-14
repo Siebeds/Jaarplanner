@@ -103,3 +103,46 @@ None.
 - `VereisLeeftijd` now carries three stacked `<summary>` blocks (one stale from before, round 1's, round 2's); the doc comment reads badly.
 - No test pins the klas jaarfase refusal sentences word for word.
 - The endpoint test matches only a `RawText` without a leading `/` (predates this round).
+
+
+# E6-04 slice 2 — Test report (round 1)
+
+**Verdict:** PASS
+**Mode:** both (unit/integration, and a browser pass in headless Chrome over the DevTools protocol, driven from Bash with real mouse and keyboard input; no Playwright MCP in the test-runner's session)
+**Commit:** `224815f` on `story/E6-04-beheer`
+
+*Recorded by the orchestrator from the test-runner's final message (no Write tool in its session). Condensed in layout only.*
+
+## Criteria checked
+- **Invite by UPN, normalised; a case/whitespace duplicate refused in Dutch → PASS.** `"  Eva.Janssens@School.be "` stored as `eva.janssens@school.be`; `" EVA.JANSSENS@school.be  "` showed "De uitnodiging is niet bewaard. / Er is al een gebruiker met de aanmeldnaam eva.janssens@school.be." API: 409 on a duplicate, 400 "Vul één Microsoft-aanmeldnaam in, zoals an.peeters@school.be." on `"an peeters"`; both pinned by value.
+- **Grant/revoke themabeheer and the directie right → PASS** (row reads "Directie · Themabeheer · …"; unticking removes both; DB `IsDirectie=f`, `HeeftThemabeheer=f`).
+- **Link/unlink leerkrachten to klassen, many-to-many → PASS** (one toewijzing left after unticking; Klassen shows "Leerkrachten: An Peeters, Bert Claes, Eva Janssens"; Bert holds two klassen).
+- **Appoint/withdraw hoofdleerkrachten per (schooljaar, jaarfase), several, no klas needed → PASS** ("K2 / Eva Janssens" without a K2 klas; three on K3; unknown `K7` → 400 with the leeftijd sentence).
+- **Remove a gebruiker; activiteiten stay with no maker (I17); links and appointments go → PASS** (DB: 0 rows for his id; "Regenmeter bouwen" `MakerId` NULL; L2 rood reads "Nog geen leerkracht").
+- **The last directie cannot be removed or demoted; 409 in Dutch; count under a row lock → PASS.** UI refusals: "directie@jaarplanner.local is de enige met het directierecht. Geef het directierecht eerst aan iemand anders." and "… kan niet verwijderd worden. …". `TelAndereDirectieledenOnderSlotAsync` runs `SELECT … WHERE "IsDirectie" ORDER BY "Id" FOR UPDATE` in the writing transaction. **Mutation check:** with ` FOR UPDATE` removed in a disposable copy, `Twee_directieleden_die_elkaar_tegelijk_afzetten_laten_er_een_over` fails (Expected Conflict, Actual OK).
+- **Every new endpoint directie-only: 403 for TB, HL, LK, combined, none; 401 without a session → PASS** (5 × 12 theory plus 401 over 12; own check with real dev-sign-in cookies: 403 for An, Bert, Carla; 401 anonymous).
+- **"Nog niet aangemeld" as text → PASS** (on every unbound row, absent on the bound one; the sheet adds "Wie zich als eerste met deze aanmeldnaam aanmeldt, krijgt deze rechten.").
+- **R20 "no longer counts" → PASS** (the ended-year notice once in the list and once in the sheet; `voorbijeSchooljaarIds` exactly the ended year; per-item flags correct).
+- **I12 note in the same callout → PASS** (one `bg-attentie-zacht` element: "Leeftijd nog niet ingesteld / Zo geeft deze klas haar leerkrachten geen rechten op de gedeelde activiteiten.").
+- **Non-directie: no Gebruikers link, direct visit redirects, Klassen without buttons → PASS** (Bert and An at 1440 and 390: no link, `/instellingen/gebruikers` and `/instellingen` land on `/instellingen/klassen`, no add/edit/delete/leeftijd buttons, no leerkracht names, 0 `/api/gebruikers` requests). Known and accepted: the klas routes are enforced only in slice 3.
+- **Copy in nl.json, Dutch, no em dashes; 390 without overflow; accent only for sanctioned uses → PASS** (43 new keys; `scrollWidth` 390 on every screen and sheet; accent only on the primary actions, the active destination and the focus outline; checkboxes ink).
+
+## Commands run
+- `dotnet build` → 0 warnings, 0 errors. `dotnet test --no-build` (Postgres 127.0.0.1:5433) → UnitTests 1340 passed, 4 skipped; IntegrationTests 410 passed, 1 skipped. `--filter GebruikerbeheerEndpointsTests` → 27/27. `dotnet format --verify-no-changes` → exit 0.
+- Mutation copy (outside the worktree) without ` FOR UPDATE`, race test only → failed as expected.
+- `pnpm lint` → exit 0; `pnpm test` → 253/253; `pnpm build` → exit 0 (existing >500 kB chunk warning).
+- Browser: API in Development, `--no-launch-profile`, on :5395 against throwaway DB `jp_tr_e604_r1`; Vite on :5185. Teardown: both stopped, `DROP DATABASE jp_tr_e604_r1 WITH (FORCE)`, mutation copy deleted, worktree clean at `224815f`.
+
+## Evidence
+- Screenshots `01`–`17` and the log `verslag.txt` in the orchestrator's scratchpad under `tr\shots\`.
+- Contrast (Chrome, alpha composited), all ≥ 4.5:1: row meta 6.51/7.58; "Nog niet aangemeld" 17.78/13.12; ended-year notice on `vlak-diep` 5.51/8.97; "Gebruiker uitnodigen" 6.10/7.06; refusal alerts and I12 callout 9.39/8.00 (light/dark).
+- No console errors; the only HTTP failures were the four deliberate 409s.
+
+## Defects
+None.
+
+## Notes (not blocking)
+- [LOW] The directie's phone Instellingen switch now has five items; "Weergave" sits past the right edge (it scrolls, the page does not overflow).
+- [LOW] The race test covers demotion only; removal shares the locked-count helper without its own concurrent test.
+- [INFO] A list row names a klas without jaarfase without saying it gives no rights; the sheet and the Klassen callout carry the I12 sentence.
+- [INFO] The bootstrap directie shows "Nog niet aangemeld" in Development, because the dev sign-in binds no Entra identity.

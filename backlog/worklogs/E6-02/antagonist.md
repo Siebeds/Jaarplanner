@@ -521,3 +521,46 @@ The two pointers name the R25 carry-forward, which is `ef6468b` on `feature/e6-r
 - `RechtenEndpointsTests.cs:223-224`: "will" should be "may" for E6-03's future delete.
 
 **Checks run:** each rewritten predicate proved equivalent (`VereisLeeftijd`, `WatIsErMisMet`, `UitInvoer`); no sentence, status, stored form, `nl.json`, controller or migration changed; reflection plus metadata test together cover all seven endpoints; E7-06 text verified; R25 premises hold. Run: `dotnet build` 0/0; filtered unit tests 303 passed; `CurriculumbeheerAutorisatieTests` 5 passed; `dotnet format --verify-no-changes` exit 0.
+
+## Code slice 2 — audit round 1
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool). Condensed in layout only.*
+
+**Verdict:** VIOLATIONS FOUND (0 CRITICAL, 1 MAJOR, 5 MINOR, 1 QUESTION)
+**Scope audited:** `git diff 0073bd7 224815f` on `story/E6-04-beheer` (23 files), the "Code slice 2 — E6-04 beheer" worklog section, and what the diff leans on (`Gebruiker`, `Leeftijdsrechten`, `Rechtenberekening`, `RechtenService`, `Rechtenmatrix`, `Jaarfasen`, the FKs to `gebruikers`, the exception-handler order in `Program.cs`, the 403 writer, `ApiError`, `useIk`, ADR-0031 decision 7, the E6-04 story, the E7-06 register, the slice-1 audit's notes for slice 2).
+
+### [MAJOR] 1. The last-directie guard counts invitations nobody has used, so the school can still lose its last working directie
+- **Article/FR:** Art. VI.1; ADR-0031 decision 7 (`0031-sessielogin-via-de-api.md:167-168`); the E6-04 *Done when*; `Gebruiker.cs:91-92` ("a school without directie could never administer itself again").
+- **Where:** `Infrastructure/Toegang/GebruikerBeheerService.cs:250-256` (`SELECT "Id" FROM gebruikers WHERE "IsDirectie" … FOR UPDATE` counts every directie row, bound or not; used at `:126`, `:163`); `frontend/src/features/instellingen/Rechtenblad.tsx:90-96` (the Directie box is offered for every gebruiker, including an unbound invitation and the signed-in directie).
+- **Problem:** in four clicks a directie invites a typo UPN, ticks Directie on it, opens their own sheet and unticks their own Directie; `anderen` is 1, so the server allows it. The only directie left is an invitation nobody can use, and because gebruikers exist the bootstrap does not reopen. If the tenant later hands out that UPN, its holder becomes directie at first login (ADR-0031 decision 3's residual risk, with the directie right). No UPN edit makes it worse. The letter of decision 7 holds; its purpose does not.
+- **Required fix:** count only **bound** directieleden other than the target (`"IsDirectie" AND "EntraObjectId" IS NOT NULL`), keeping the lock and id order; refuse in Dutch saying why, pinned by value; Postgres tests for "refused while only an unbound directie invitation remains" and "allowed once a second bound directie exists". *Waivable only by an owner ruling that an unused invitation counts as a directie.*
+
+### [MINOR] 2. The E7-06 register now says something this slice made false
+- **Where:** `backlog/E7-niet-functioneel.md:74` ("No route removes a gebruiker … yet").
+- **Problem:** `DELETE /api/gebruikers/{id}` now exists and erases the gebruiker row (naam, UPN, Entra ids, themabeheer flag), cascades klastoewijzingen and aanstellingen, and nulls `Activiteit.MakerId` (I17).
+- **Required fix:** update the carry-forward: directie-only, manual removal, only while a directie remains; list what it erases and nulls; the schooljaar delete is still E6-03's; the list's readers are directie only.
+
+### [MINOR] 3. The (c) sentence claims more than its render condition guarantees (the E5-03 rule)
+- **Where:** `nl.json` `gebruikers.zonderHoofdleerkracht` ("Zonder hoofdleerkracht past alleen de directie de subthema's van die leeftijd aan."), rendered at `GebruikersScherm.tsx:298` under `:277`.
+- **Problem:** leerkrachten of that leeftijd edit the streefwoordenschat (a subthema field), and under I25 the wizard edits run-created subthema's; "die leeftijd" has no single referent when several lines say "Geen hoofdleerkracht".
+- **Required fix:** say less (e.g. "Zonder hoofdleerkracht beheert alleen de directie de subthema's en subdoelen van die leeftijd."), or put it on the line it is about; add a catalogue case if general enough.
+
+### [MINOR] 4. Two server-composed Dutch sentences have no value guard, and one sentence is duplicated in dead code
+- **Where:** `GebruikerBeheerService.cs:81` (naam length), `:381` (aanmeldnaam length), `:393` (dead `?? "Kies een leeftijd: …"` fallback duplicating `Jaarfasen.cs:193`).
+- **Required fix:** pin both length sentences by value (no em dash) in `GebruikerbeheerEndpointsTests`; replace the dead fallback with `Jaarfasen.WatIsErMisMet(jaarfase)!` or the domain's own sentence.
+
+### [MINOR] 5. Every box is disabled while one save runs, which probably throws keyboard focus out of the sheet (suspicion)
+- **Where:** `Rechtenblad.tsx:43` (`bezig`) → `disabled={bezig}` on every `Vinkje` (`:94, :101, :126, :142` → `:189`); Radix `Dialog` (`components/ui/Blad.tsx:1`).
+- **Problem:** a control that becomes disabled loses focus to `body`; Radix FocusScope restores focus on removal, not on disable. WCAG 2.4.3 / 2.1.1 in practice. Not verified in a browser.
+- **Required fix:** a keyboard and screen-reader pass; if focus drops, keep the boxes focusable during a save (`aria-disabled` and ignore input, or disable only the others).
+
+### [MINOR] 6. A delete that races a link still ends in a 500 where a 404 belongs
+- **Where:** `GebruikerBeheerService.cs:181-192`, `:213-226`; `BewaarIdempotentAsync` (`:354-364`) catches only 23505.
+- **Required fix:** map `PostgresErrorCodes.ForeignKeyViolation` (23503) to `GebruikerbeheerNietGevondenFout`.
+
+### [QUESTION] 7. Taking away your own directie right happens on one tick, with no confirmation and no way back
+- **Where:** `Rechtenblad.tsx:90-96`; `gebruikerbeheer.ts:89-92` (`ververs` invalidates `ik`, `Onderdeelpoort` redirects; the overview refetch may briefly show `gebruikers.laadMislukt`, false advice).
+- **Asked:** should demoting yourself ask for confirmation, as removal does, and should either name the consequence for yourself? Either is buildable.
+
+### Checks run (summary)
+Art. VI.1: `Beheer` on the whole controller (`Kolom.Geen`, directie only); 403 tested on all twelve routes × five profiles, 401 on all twelve; the frontend only hides and fails closed while `ik` loads. The guard: a real transaction, `FOR UPDATE` in id order, re-read after the lock; the race test waits then refuses; mutual removal/demotion is safe under READ COMMITTED; no deadlock cycle. Art. VI.2/VI.4/VI.6: no pupil data, minimal payload (`isAangemeld` boolean, no Entra id), no secret, every FK to `gebruikers` cascade or SET NULL. Art. II: new strings in `nl.json`, no em dash; last-directie, duplicate UPN, bad UPN and unknown jaarfase sentences pinned by value. Exception handler maps only its own three fault types; 409 title Dutch. R20 reuses `Rechtenberekening.TeltNog`, `Leeftijdsrechten.VoorKlas`, `Schoolklok.Vandaag`. UI rules: never colour alone; accent only on two primary actions and the focus ring; E3-06 respected. Art. VIII/IX/XIV: no new dependency or migration; graadklas seam reused; I9 untouched. Run by the auditor: vitest on the instellingen features, `catalogus.test.ts`, `App.test.tsx` (50 passed); `pnpm lint` clean; `dotnet format --verify-no-changes` exit 0. Not run: the Postgres suite. Open point 1 (klas routes enforced only in slice 3) is inside the single delivery (R12); the new `KlassenScherm` comment saying "the server refuses them" is false at `224815f` and must not reach `main` ahead of slice 3.

@@ -7,9 +7,10 @@ namespace Jaarplanner.Application.Toegang;
 /// (R15), appoints hoofdleerkrachten per (schooljaar, jaarfase) (R5, I20) and removes a gebruiker (I17).
 /// <para>
 /// <b>Who may call it is the Api's business</b>: every route over this service carries the <c>Beheer</c> policy. The
-/// service itself enforces the one rule that is about the data rather than the caller: <b>the last directie cannot be
-/// demoted or removed</b> (ADR-0031 decision 7), with the count of the others read under a lock on the directie rows,
-/// so two directieleden demoting each other at the same moment cannot both succeed.
+/// service itself enforces the one rule that is about the data rather than the caller: <b>the last directie who can
+/// sign in cannot be demoted or removed</b> (ADR-0031 decision 7, <see cref="GebruikerbeheerOpties"/>), with the count
+/// of the others read under a lock on the directie rows, so two directieleden demoting each other at the same moment
+/// cannot both succeed.
 /// </para>
 /// <para>
 /// Staff data only (Art. VI.2): a name, a sign-in name, flags and links. Nothing here reads or writes pupil data.
@@ -130,6 +131,27 @@ public sealed record KlastoewijzingBeheerWeergave(
 /// <param name="Jaarfase">The jaarfase it is for.</param>
 /// <param name="TeltVoorGedeeldeInhoud">Whether its schooljaar has not ended yet (R20), so it gives the right today.</param>
 public sealed record AanstellingBeheerWeergave(Guid SchooljaarId, string Jaarfase, bool TeltVoorGedeeldeInhoud);
+
+/// <summary>
+/// How the last-directie guard (ADR-0031 decision 7) decides who else can still administer the school.
+/// <para>
+/// <b>The guard counts only another directie who can sign in.</b> Under Entra that is an invitation a first login has
+/// bound: an unbound one may never be used (a mistyped sign-in name, someone who never comes), and a school whose only
+/// other directie is such an invitation could lose its last working account. So <see cref="OngekoppeldeDirectieKanAanmelden"/>
+/// is <c>false</c> by default, and that default is the production rule.
+/// </para>
+/// <para>
+/// <b>The one exception is the development sign-in</b> (<c>Authenticatie:Modus = Ontwikkeling</c>, which the Api refuses
+/// to start with outside Development). It signs a developer in by picking any gebruiker and binds nobody, so there every
+/// directie can sign in and none is ever bound; counting only bound ones would make every directie undemotable. The Api
+/// sets this flag from the mode, and nothing else sets it.
+/// </para>
+/// </summary>
+public sealed class GebruikerbeheerOpties
+{
+    /// <summary>Whether an unbound directie invitation counts as a directie who can sign in. Development sign-in only.</summary>
+    public bool OngekoppeldeDirectieKanAanmelden { get; set; }
+}
 
 /// <summary><c>POST /api/gebruikers</c>: who to invite.</summary>
 /// <param name="Email">Their Microsoft sign-in name (UPN). Often not their mailbox address (ADR-0031 decision 3).</param>

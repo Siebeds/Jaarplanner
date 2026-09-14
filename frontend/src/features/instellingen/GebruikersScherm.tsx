@@ -8,6 +8,7 @@ import { IcoonPlus } from "../../components/Iconen";
 import { useActieveSelectie } from "../../lib/selectie";
 import { useJaarfasen } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
+import { useIk } from "../../lib/aanmelding";
 import type { KlasWeergave } from "../../lib/types";
 import { t } from "../../i18n";
 import { Onderdeelwissel } from "./Instellingenindeling";
@@ -32,6 +33,7 @@ import { useGebruikersOverzicht, useVerwijderGebruiker, type GebruikerBeheer } f
  */
 export function GebruikersScherm() {
   const { schooljaar, schooljaren, klassen, kiesSchooljaar } = useActieveSelectie();
+  const { data: ik } = useIk();
   const overzicht = useGebruikersOverzicht(true);
   const { data: jaarfasen } = useJaarfasen();
   const verwijder = useVerwijderGebruiker();
@@ -80,9 +82,12 @@ export function GebruikersScherm() {
             </Knop>
           </div>
 
+          {/* The failure branch only without data. A refetch that fails while a list is on screen keeps the
+              list: it happens in the moment after directie gives up their own right, just before the gate
+              moves them off this part, and "could not be loaded" would be false then. */}
           {overzicht.isPending ? (
             <Laadlijst rijen={3} />
-          ) : overzicht.isError ? (
+          ) : overzicht.isError && !overzicht.data ? (
             <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
               {t("gebruikers.laadMislukt")}
             </p>
@@ -162,7 +167,12 @@ export function GebruikersScherm() {
       <Bevestiging
         open={teVerwijderen !== null}
         titel={t("gebruikers.verwijderTitel", { naam: teVerwijderen?.naam ?? "" })}
-        gevolg={t("gebruikers.verwijderGevolg", { naam: teVerwijderen?.naam ?? "" })}
+        // Removing yourself also signs you out on the next request, so that is said to you, in the second person.
+        gevolg={
+          teVerwijderen !== null && teVerwijderen.id === ik?.id
+            ? t("gebruikers.verwijderZelfGevolg")
+            : t("gebruikers.verwijderGevolg", { naam: teVerwijderen?.naam ?? "" })
+        }
         bevestigLabel={t("themabeheer.verwijder")}
         bezig={verwijder.isPending}
         onSluit={() => setTeVerwijderen(null)}

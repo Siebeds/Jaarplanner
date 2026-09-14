@@ -1,10 +1,17 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Jaarplanner.Api.Infrastructure.Authenticatie;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Domain.Toegang;
+using Jaarplanner.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
@@ -12,11 +19,17 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// Directie's beheer of gebruikers and rights (E6-04, FA FR-12.2, Art. VI.1, ADR-0030 §3 row "Gebruikers … beheren",
 /// directie only) against real PostgreSQL: who may call it, what the overview shows, the invitation, the rights,
 /// klastoewijzingen and appointments, removal with its cascades, and the last-directie guard (ADR-0031 decision 7),
-/// including the lock that stops two directieleden demoting each other at once.
+/// including the lock that stops two directieleden demoting or removing each other at once.
 /// <para>
-/// On Postgres because the guard's lock, the cascades, SET NULL on the maker and the unique indexes are database
-/// behaviour the in-memory provider does not have. The default test identity is directie without a row (see
+/// On Postgres because the guard's lock, the cascades, SET NULL on the maker, the unique indexes and the foreign keys are
+/// database behaviour the in-memory provider does not have. The default test identity is directie without a row (see
 /// <see cref="TestAuthenticatie"/>), so it never counts as one of the directieleden the guard counts.
+/// </para>
+/// <para>
+/// <b>Every request here runs the production rule</b> (<see cref="GebruikerbeheerOpties"/>: only a bound directie can
+/// sign in). The test host starts in Development with the development sign-in, where the Api switches the rule to
+/// "every directie can sign in"; <see cref="_productie"/> switches it back, and the one test of the development rule
+/// uses <see cref="_factory"/> on purpose.
 /// </para>
 /// </summary>
 public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
@@ -25,6 +38,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
 
     private PostgresTestDatabase _db = null!;
     private PostgresApiFactory _factory = null!;
+    private WebApplicationFactory<Program> _productie = null!;
 
     public async Task InitializeAsync()
     {
@@ -35,10 +49,17 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
 
         _db = await PostgresTestDatabase.MaakAsync("gebruikerbeheer");
         _factory = new PostgresApiFactory(_db.ConnectionString);
+        _productie = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.PostConfigure<GebruikerbeheerOpties>(o => o.OngekoppeldeDirectieKanAanmelden = false)));
     }
 
     public async Task DisposeAsync()
     {
+        if (_productie is not null)
+        {
+            await _productie.DisposeAsync();
+        }
+
         if (_factory is not null)
         {
             await _factory.DisposeAsync();
@@ -77,7 +98,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         }
 
         var doel = await BewaarGebruikerAsync(directie: true);
-        using var client = _factory.MaakClientVoor(beller.Id);
+        using var client = ClientVoor(beller.Id);
 
         foreach (var (methode, url, inhoud) in Routes(doel.Id, klasId, jaar.Id))
         {
@@ -100,7 +121,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     {
         var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200), "K3");
         var doel = await BewaarGebruikerAsync(directie: true);
-        using var client = _factory.MaakAnoniemeClient();
+        using var client = AnoniemeClient();
 
         foreach (var (methode, url, inhoud) in Routes(doel.Id, jaar.Klassen.Single().Id, jaar.Id))
         {
@@ -114,7 +135,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     public async Task Een_directie_uit_de_database_mag_het_beheer()
     {
         var directie = await BewaarGebruikerAsync(directie: true);
-        using var client = _factory.MaakClientVoor(directie.Id);
+        using var client = ClientVoor(directie.Id);
 
         using var antwoord = await client.GetAsync("/api/gebruikers");
 
@@ -138,7 +159,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
                 .ExecuteUpdateAsync(zet => zet.SetProperty(k => k.Jaarfase, (string?)null));
         }
 
-        var an = await BewaarGebruikerAsync(naam: "An", themabeheer: true);
+        var an = await BewaarGebruikerAsync(naam: "An", themabeheer: true, gekoppeld: false);
         await WijsToeAsync(an.Id, k3);
         await WijsToeAsync(an.Id, zonderLeeftijd);
         await WijsToeAsync(an.Id, voorbij.Klassen.Single().Id);
@@ -146,9 +167,9 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         await StelAanAsync(an.Id, lopend.Id, "K2");
         await StelAanAsync(an.Id, voorbij.Id, "L6");
         await StelAanAsync(an.Id, volgend.Id, "K3");
-        var bert = await BewaarGebruikerAsync(naam: "Bert", directie: true, gekoppeld: true);
+        var bert = await BewaarGebruikerAsync(naam: "Bert", directie: true);
 
-        using var client = _factory.CreateClient();
+        using var client = Client();
         using var antwoord = await client.GetAsync("/api/gebruikers");
 
         Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
@@ -193,7 +214,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     [PostgresFact]
     public async Task Uitnodigen_bewaart_de_genormaliseerde_aanmeldnaam_met_de_gevraagde_rechten()
     {
-        using var client = _factory.CreateClient();
+        using var client = Client();
 
         using var antwoord = await client.PostAsJsonAsync(
             "/api/gebruikers",
@@ -212,7 +233,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     [PostgresFact]
     public async Task Een_tweede_uitnodiging_voor_dezelfde_aanmeldnaam_wordt_in_het_Nederlands_geweigerd()
     {
-        using var client = _factory.CreateClient();
+        using var client = Client();
         using (var eerste = await client.PostAsJsonAsync("/api/gebruikers", new { email = "an@school.be", naam = "An" }))
         {
             Assert.Equal(HttpStatusCode.Created, eerste.StatusCode);
@@ -233,12 +254,29 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     [InlineData("an peeters@school.be")]
     public async Task Een_ongeldige_aanmeldnaam_wordt_in_het_Nederlands_geweigerd(string email)
     {
-        using var client = _factory.CreateClient();
+        using var client = Client();
 
         using var antwoord = await client.PostAsJsonAsync("/api/gebruikers", new { email, naam = "An" });
 
         Assert.Equal(HttpStatusCode.BadRequest, antwoord.StatusCode);
         Assert.Equal("Vul één Microsoft-aanmeldnaam in, zoals an.peeters@school.be.", await DetailAsync(antwoord));
+    }
+
+    [PostgresFact]
+    public async Task Een_te_lange_naam_of_aanmeldnaam_wordt_in_het_Nederlands_geweigerd()
+    {
+        using var client = Client();
+
+        using var langeNaam = await client.PostAsJsonAsync("/api/gebruikers", new { email = "an@school.be", naam = new string('a', 257) });
+        using var langeAanmeldnaam = await client.PostAsJsonAsync(
+            "/api/gebruikers", new { email = new string('a', 311) + "@school.be", naam = "An" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, langeNaam.StatusCode);
+        Assert.Equal("Een naam is hoogstens 256 tekens lang.", await DetailAsync(langeNaam));
+        Assert.Equal(HttpStatusCode.BadRequest, langeAanmeldnaam.StatusCode);
+        Assert.Equal("Een aanmeldnaam is hoogstens 320 tekens lang.", await DetailAsync(langeAanmeldnaam));
+        await using var context = _db.MaakContext();
+        Assert.Equal(0, await context.Gebruikers.CountAsync());
     }
 
     // --- Themabeheer and the directie right (R4, R16). ---
@@ -248,7 +286,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     {
         var eerste = await BewaarGebruikerAsync(directie: true);
         var an = await BewaarGebruikerAsync();
-        using var client = _factory.CreateClient();
+        using var client = Client();
 
         var metThemabeheer = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/themabeheer");
         var opnieuw = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/themabeheer");
@@ -260,7 +298,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.True(metDirectie.IsDirectie);
         Assert.False(zonderThemabeheer.HeeftThemabeheer);
 
-        // Two directieleden now, so either may lose it; the one who is left may not.
+        // Two bound directieleden now, so either may lose it; the one who is left may not.
         var eersteZonder = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{eerste.Id}/directierecht");
         Assert.False(eersteZonder.IsDirectie);
         using var geweigerd = await client.DeleteAsync($"/api/gebruikers/{an.Id}/directierecht");
@@ -275,7 +313,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     public async Task De_laatste_directie_kan_het_directierecht_niet_verliezen_en_hoort_waarom_in_het_Nederlands()
     {
         var enige = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
-        using var client = _factory.MaakClientVoor(enige.Id);
+        using var client = ClientVoor(enige.Id);
 
         using var antwoord = await client.DeleteAsync($"/api/gebruikers/{enige.Id}/directierecht");
 
@@ -292,7 +330,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     public async Task De_laatste_directie_kan_niet_verwijderd_worden_en_hoort_waarom_in_het_Nederlands()
     {
         var enige = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
-        using var client = _factory.CreateClient();
+        using var client = Client();
 
         using var antwoord = await client.DeleteAsync($"/api/gebruikers/{enige.Id}");
 
@@ -306,12 +344,121 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.True(await context.Gebruikers.AnyAsync(g => g.Id == enige.Id));
     }
 
+    /// <summary>
+    /// MAJOR 1 of the slice 2 audit: an unbound directie invitation is not a directie who can sign in (a mistyped UPN,
+    /// someone who never comes), so it cannot be what lets the last bound one go. The refusal says why.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_directie_die_zich_nog_niet_aanmeldde_telt_niet_mee_voor_de_laatste_directie()
+    {
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
+        await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        using var client = ClientVoor(dirk.Id);
+
+        using var afgeven = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}/directierecht");
+        using var verwijderen = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}");
+
+        Assert.Equal(HttpStatusCode.Conflict, afgeven.StatusCode);
+        Assert.Equal(
+            "Dirk Janssens is de enige met het directierecht die zich al heeft aangemeld. "
+            + "De anderen met het directierecht hebben zich nog niet aangemeld, dus het directierecht kan nog niet weg.",
+            await DetailAsync(afgeven));
+        Assert.Equal(HttpStatusCode.Conflict, verwijderen.StatusCode);
+        Assert.Equal(
+            "Dirk Janssens is de enige met het directierecht die zich al heeft aangemeld, en kan niet verwijderd worden. "
+            + "De anderen met het directierecht hebben zich nog niet aangemeld.",
+            await DetailAsync(verwijderen));
+        await using var context = _db.MaakContext();
+        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == dirk.Id)).IsDirectie);
+    }
+
+    [PostgresFact]
+    public async Task Zodra_een_tweede_directie_zich_aanmeldde_mag_het_directierecht_weg()
+    {
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
+        var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        using var client = ClientVoor(dirk.Id);
+        using (var voorAanmelding = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}/directierecht"))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, voorAanmelding.StatusCode);
+        }
+
+        await BindAsync(eva.Id);
+
+        var afgegeven = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{dirk.Id}/directierecht");
+        Assert.False(afgegeven.IsDirectie);
+    }
+
+    [PostgresFact]
+    public async Task Zodra_een_tweede_directie_zich_aanmeldde_mag_de_eerste_verwijderd_worden()
+    {
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
+        var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        using var client = ClientVoor(dirk.Id);
+        await BindAsync(eva.Id);
+
+        using var antwoord = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, antwoord.StatusCode);
+        await using var context = _db.MaakContext();
+        Assert.False(await context.Gebruikers.AnyAsync(g => g.Id == dirk.Id));
+    }
+
+    [PostgresFact]
+    public async Task Een_directie_die_zich_nog_niet_aanmeldde_mag_zelf_weg_zolang_er_een_aangemelde_blijft()
+    {
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
+        var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        using var client = ClientVoor(dirk.Id);
+
+        var afgegeven = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{eva.Id}/directierecht");
+        using var verwijderd = await client.DeleteAsync($"/api/gebruikers/{eva.Id}");
+
+        Assert.False(afgegeven.IsDirectie);
+        Assert.Equal(HttpStatusCode.NoContent, verwijderd.StatusCode);
+    }
+
+    /// <summary>
+    /// The one place the rule differs, and it is explicit: under the development sign-in nobody is ever bound and every
+    /// directie can sign in by being picked, so there an unbound directie counts. This host is the Development one with
+    /// that sign-in, as a developer's machine runs it.
+    /// </summary>
+    [PostgresFact]
+    public async Task Onder_de_ontwikkelaanmelding_telt_een_directie_die_niet_gekoppeld_is_wel_mee()
+    {
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true, gekoppeld: false);
+        await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        using var client = _factory.MaakClientVoor(dirk.Id);
+
+        using var antwoord = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}/directierecht");
+
+        Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
+    }
+
+    [Fact]
+    public void Alleen_de_ontwikkelaanmelding_laat_een_directie_die_niet_gekoppeld_is_meetellen()
+    {
+        using var entra = new JaarplannerApiFactory().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("Authenticatie:Modus", "Entra");
+            builder.UseSetting("Authenticatie:Entra:TenantId", "11111111-0000-0000-0000-000000000000");
+            builder.UseSetting("Authenticatie:Entra:ClientId", "22222222-0000-0000-0000-000000000000");
+            builder.UseSetting("Authenticatie:Entra:ClientSecret", "test-only-not-a-secret");
+        });
+        using var ontwikkeling = new JaarplannerApiFactory().WithWebHostBuilder(builder =>
+            builder.UseSetting("Authenticatie:Modus", "Ontwikkeling"));
+
+        Assert.False(new GebruikerbeheerOpties().OngekoppeldeDirectieKanAanmelden);
+        Assert.False(entra.Services.GetRequiredService<IOptions<GebruikerbeheerOpties>>().Value.OngekoppeldeDirectieKanAanmelden);
+        Assert.True(ontwikkeling.Services.GetRequiredService<IOptions<GebruikerbeheerOpties>>().Value.OngekoppeldeDirectieKanAanmelden);
+    }
+
     [PostgresFact]
     public async Task Een_directie_mag_zichzelf_verwijderen_zolang_er_een_andere_directie_blijft()
     {
         var ik = await BewaarGebruikerAsync(directie: true);
         var ander = await BewaarGebruikerAsync(directie: true);
-        using var client = _factory.MaakClientVoor(ik.Id);
+        using var client = ClientVoor(ik.Id);
 
         using var antwoord = await client.DeleteAsync($"/api/gebruikers/{ik.Id}");
 
@@ -331,21 +478,39 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     {
         var an = await BewaarGebruikerAsync(naam: "An", directie: true);
         var bert = await BewaarGebruikerAsync(naam: "Bert", directie: true);
+        await using var ander = await HoudDirectieVastEnZetAfAsync(bert.Id);
 
-        await using var ander = _db.MaakContext();
-        await using var transactie = await ander.Database.BeginTransactionAsync();
-        await ander.Database.ExecuteSqlRawAsync("""SELECT "Id" FROM gebruikers WHERE "IsDirectie" ORDER BY "Id" FOR UPDATE""");
-        await ander.Gebruikers.Where(g => g.Id == bert.Id)
-            .ExecuteUpdateAsync(zet => zet.SetProperty(g => g.IsDirectie, false));
-
-        using var client = _factory.CreateClient();
+        using var client = Client();
         var afzetting = client.DeleteAsync($"/api/gebruikers/{an.Id}/directierecht");
 
         var eerst = await Task.WhenAny(afzetting, Task.Delay(TimeSpan.FromSeconds(1)));
         Assert.NotSame(afzetting, eerst);
 
-        await transactie.CommitAsync();
+        await ander.Database.CommitTransactionAsync();
         using var antwoord = await afzetting;
+
+        Assert.Equal(HttpStatusCode.Conflict, antwoord.StatusCode);
+        await using var context = _db.MaakContext();
+        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == an.Id)).IsDirectie);
+        Assert.Equal(1, await context.Gebruikers.CountAsync(g => g.IsDirectie));
+    }
+
+    /// <summary>The same boundary on the other write that can remove a directie: removing An while Bert is being demoted.</summary>
+    [PostgresFact]
+    public async Task Een_directie_verwijderen_terwijl_een_andere_wordt_afgezet_laat_er_een_over()
+    {
+        var an = await BewaarGebruikerAsync(naam: "An", directie: true);
+        var bert = await BewaarGebruikerAsync(naam: "Bert", directie: true);
+        await using var ander = await HoudDirectieVastEnZetAfAsync(bert.Id);
+
+        using var client = Client();
+        var verwijdering = client.DeleteAsync($"/api/gebruikers/{an.Id}");
+
+        var eerst = await Task.WhenAny(verwijdering, Task.Delay(TimeSpan.FromSeconds(1)));
+        Assert.NotSame(verwijdering, eerst);
+
+        await ander.Database.CommitTransactionAsync();
+        using var antwoord = await verwijdering;
 
         Assert.Equal(HttpStatusCode.Conflict, antwoord.StatusCode);
         await using var context = _db.MaakContext();
@@ -362,7 +527,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         var klasId = jaar.Klassen.Single().Id;
         var an = await BewaarGebruikerAsync();
         var bert = await BewaarGebruikerAsync();
-        using var client = _factory.CreateClient();
+        using var client = Client();
 
         var gekoppeld = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/klassen/{klasId}");
         await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/klassen/{klasId}");
@@ -382,7 +547,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{an.Id}/klassen/{klasId}");
 
         // What the link gives shows in the rights at once: the next request reads them afresh.
-        using var alsBert = _factory.MaakClientVoor(bert.Id);
+        using var alsBert = ClientVoor(bert.Id);
         var ik = await alsBert.GetFromJsonAsync<IkDto>("/api/ik");
         Assert.Equal([klasId], ik!.EigenKlasIds);
         Assert.Equal(["K3"], ik.LeerkrachtLeeftijden);
@@ -393,13 +558,42 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     {
         var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200), "K3");
         var an = await BewaarGebruikerAsync();
-        using var client = _factory.CreateClient();
+        using var client = Client();
 
         using var onbekendeKlas = await client.PutAsync($"/api/gebruikers/{an.Id}/klassen/{Guid.NewGuid()}", null);
         using var onbekendeGebruiker = await client.PutAsync($"/api/gebruikers/{Guid.NewGuid()}/klassen/{jaar.Klassen.Single().Id}", null);
 
         Assert.Equal(HttpStatusCode.NotFound, onbekendeKlas.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, onbekendeGebruiker.StatusCode);
+    }
+
+    /// <summary>
+    /// MINOR 6 of the slice 2 audit: the klas exists when the link is checked and is gone when it is inserted. Another
+    /// transaction has deleted it without committing, so the insert's foreign-key check waits for it, and fails once it
+    /// commits. That is a 404 with a Dutch sentence, not a 500.
+    /// </summary>
+    [PostgresFact]
+    public async Task Koppelen_aan_een_klas_die_intussen_verwijderd_wordt_is_404_en_geen_500()
+    {
+        var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200), "K3");
+        var klasId = jaar.Klassen.Single().Id;
+        var an = await BewaarGebruikerAsync();
+
+        await using var ander = _db.MaakContext();
+        await ander.Database.BeginTransactionAsync();
+        await ander.Klassen.Where(k => k.Id == klasId).ExecuteDeleteAsync();
+
+        using var client = Client();
+        var koppeling = client.PutAsync($"/api/gebruikers/{an.Id}/klassen/{klasId}", null);
+
+        var eerst = await Task.WhenAny(koppeling, Task.Delay(TimeSpan.FromSeconds(1)));
+        Assert.NotSame(koppeling, eerst);
+
+        await ander.Database.CommitTransactionAsync();
+        using var antwoord = await koppeling;
+
+        Assert.Equal(HttpStatusCode.NotFound, antwoord.StatusCode);
+        Assert.Equal("De gebruiker of de klas bestaat niet meer.", await DetailAsync(antwoord));
     }
 
     // --- Hoofdleerkrachten (R5, I20). ---
@@ -410,7 +604,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200));
         var an = await BewaarGebruikerAsync();
         var bert = await BewaarGebruikerAsync();
-        using var client = _factory.CreateClient();
+        using var client = Client();
 
         var anAangesteld = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/hoofdleerkracht/{jaar.Id}/K3");
         await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/hoofdleerkracht/{jaar.Id}/K3");
@@ -423,7 +617,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         }
 
         // No klastoewijzing, and still hoofdleerkracht (I20).
-        using (var alsAn = _factory.MaakClientVoor(an.Id))
+        using (var alsAn = ClientVoor(an.Id))
         {
             var ik = await alsAn.GetFromJsonAsync<IkDto>("/api/ik");
             Assert.Equal(["K3"], ik!.HoofdleerkrachtLeeftijden);
@@ -442,7 +636,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     {
         var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200));
         var an = await BewaarGebruikerAsync();
-        using var client = _factory.CreateClient();
+        using var client = Client();
 
         using var aanstellen = await client.PutAsync($"/api/gebruikers/{an.Id}/hoofdleerkracht/{jaar.Id}/{jaarfase}", null);
         using var intrekken = await client.DeleteAsync($"/api/gebruikers/{an.Id}/hoofdleerkracht/{jaar.Id}/{jaarfase}");
@@ -456,7 +650,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     public async Task Aanstellen_in_een_onbekend_schooljaar_is_404()
     {
         var an = await BewaarGebruikerAsync();
-        using var client = _factory.CreateClient();
+        using var client = Client();
 
         using var antwoord = await client.PutAsync($"/api/gebruikers/{an.Id}/hoofdleerkracht/{Guid.NewGuid()}/K3", null);
 
@@ -472,10 +666,10 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         var an = await BewaarGebruikerAsync();
         await WijsToeAsync(an.Id, jaar.Klassen.Single().Id);
         await StelAanAsync(an.Id, jaar.Id, "K3");
-        using var directie = _factory.CreateClient();
+        using var directie = Client();
         var subthemaId = await MaakSubthemaAsync(directie, "K3");
         // Made by An, who is hoofdleerkracht and leerkracht of K3, so the maker is An whatever route rights apply.
-        using var alsAn = _factory.MaakClientVoor(an.Id);
+        using var alsAn = ClientVoor(an.Id);
         var activiteitId = await MaakActiviteitAsync(alsAn, subthemaId);
 
         using var antwoord = await directie.DeleteAsync($"/api/gebruikers/{an.Id}");
@@ -494,6 +688,46 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     }
 
     // --- Helpers. ---
+
+    /// <summary>A client on the production rule, carrying the anti-forgery header as the frontend's fetch does.</summary>
+    private HttpClient Client()
+    {
+        var client = _productie.CreateClient();
+        if (!client.DefaultRequestHeaders.Contains(CsrfHeaderControle.Header))
+        {
+            client.DefaultRequestHeaders.Add(CsrfHeaderControle.Header, "1");
+        }
+
+        return client;
+    }
+
+    private HttpClient ClientVoor(Guid gebruikerId)
+    {
+        var client = Client();
+        client.DefaultRequestHeaders.Add(TestAuthenticatie.GebruikerHeader, gebruikerId.ToString());
+        return client;
+    }
+
+    private HttpClient AnoniemeClient()
+    {
+        var client = Client();
+        client.DefaultRequestHeaders.Add(TestAuthenticatie.AnoniemHeader, "1");
+        return client;
+    }
+
+    /// <summary>
+    /// A second directie tab frozen halfway: a transaction that holds the lock the service takes and has demoted
+    /// <paramref name="gebruikerId"/>, uncommitted. The caller commits it.
+    /// </summary>
+    private async Task<AppDbContext> HoudDirectieVastEnZetAfAsync(Guid gebruikerId)
+    {
+        var ander = _db.MaakContext();
+        await ander.Database.BeginTransactionAsync();
+        await ander.Database.ExecuteSqlRawAsync("""SELECT "Id" FROM gebruikers WHERE "IsDirectie" ORDER BY "Id" FOR UPDATE""");
+        await ander.Gebruikers.Where(g => g.Id == gebruikerId)
+            .ExecuteUpdateAsync(zet => zet.SetProperty(g => g.IsDirectie, false));
+        return ander;
+    }
 
     private static IEnumerable<(HttpMethod Methode, string Url, HttpContent? Inhoud)> Routes(Guid doel, Guid klasId, Guid schooljaarId) =>
     [
@@ -524,11 +758,15 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         return document.RootElement.TryGetProperty("detail", out var detail) ? detail.GetString() : null;
     }
 
+    /// <summary>
+    /// A seeded gebruiker. <paramref name="gekoppeld"/> defaults to true: a signed-in directie is bound, and the
+    /// last-directie guard counts only bound ones (MAJOR 1). Tests about the unbound state say so.
+    /// </summary>
     private async Task<Gebruiker> BewaarGebruikerAsync(
         string naam = "Test",
         bool directie = false,
         bool themabeheer = false,
-        bool gekoppeld = false)
+        bool gekoppeld = true)
     {
         var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", naam, isDirectie: directie);
         if (themabeheer)
@@ -545,6 +783,15 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         context.Gebruikers.Add(gebruiker);
         await context.SaveChangesAsync();
         return gebruiker;
+    }
+
+    /// <summary>What a first login does to an invitation: bind it to an Entra account.</summary>
+    private async Task BindAsync(Guid gebruikerId)
+    {
+        await using var context = _db.MaakContext();
+        var gebruiker = await context.Gebruikers.SingleAsync(g => g.Id == gebruikerId);
+        gebruiker.KoppelAanEntra(Guid.NewGuid(), Guid.NewGuid(), naam: null);
+        await context.SaveChangesAsync();
     }
 
     private async Task<Schooljaar> BewaarSchooljaarAsync(DateOnly start, DateOnly eind, params string[] klasJaarfasen)
