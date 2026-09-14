@@ -96,8 +96,9 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
      for `migrate-db.ps1`. That is recorded on E7-05.
    - *Amended 2026-09-14 (TB-003).* A second operator procedure, `infra/seed-demo.ps1`, fills the demo with
      fictional content through the app's own API. It adds three facts to this decision:
-     - during a seed run the PostgreSQL password is also in the operator's process, and in the environment of the
-       local API and of each short-lived psql container;
+     - during a seed run the PostgreSQL password is also in the operator's process and in the environment of the
+       local API, of the `az` processes that API starts for Key Vault tokens, of the docker CLI and of each psql
+       container. All of them end with the run; the build runs before the password is read;
      - the operator gets **Key Vault Crypto User on the Data Protection key** for the run, unless they hold a role that
        covers it, and the script removes that assignment again;
      - the local API runs in Development with the development sign-in, against the demo database, as the existing

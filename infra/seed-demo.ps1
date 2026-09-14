@@ -20,8 +20,9 @@
     how to find leftovers.
 
     Secrets. The connection string is read from Key Vault into this process. The PG* variables exist only around each
-    psql call, and the API process gets the connection string in its environment. The build runs before any secret is
-    read and without build servers, so no process that outlives the script inherits one.
+    psql call (the docker CLI and the container see them), and the API process gets the connection string in its
+    environment, which the az processes it starts for Key Vault tokens inherit. All of those end with the run. The
+    build runs before any secret is read and without build servers, so no build process inherits one.
 
     A second run creates nothing twice. Items are matched by name (klas; thema; subthema by name and leeftijd; fiche
     and hoek within their klas), and an item that exists only gets the goal links from the data file that it lacks, as
@@ -256,9 +257,9 @@ try {
             --role 'Key Vault Crypto User' --scope $keyScope --query id -o tsv
         Write-Host 'Granted Key Vault Crypto User on the Data Protection key for this run.'
     }
-    # A new role assignment takes a while to reach the vault's data plane. This probe proves read access only; if
-    # unwrap has not arrived yet, the API cannot unwrap and cannot wrap a new key either, so the sign-in fails and
-    # nothing is written (it fails closed).
+    # A new role assignment takes a while to reach the vault's data plane. This probe proves read access only. If
+    # unwrap has not arrived when the API starts, the API cannot use the existing key; a key it writes instead is still
+    # wrapped (DataProtection__KeyVaultSleutel below), and the comparison after the run reports it.
     $deadline = (Get-Date).AddMinutes(10)
     while ($true) {
         if (Test-Native { az keyvault key show --id $keyUri --output none }) { break }

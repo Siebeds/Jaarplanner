@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 11:53
+bijgewerkt: 2026-09-14 12:05
 opgepakt-door: demo-seed
 branch: ticket/demo-seed
 pr:
@@ -26,9 +26,10 @@ Een nieuw script `infra/seed-demo.ps1` met de data in `infra/seed-demo.data.json
 Geen wijziging aan de broncode van de app.
 
 - **Route: de app's eigen API, lokaal gestart tegen de demodatabase**, zodat elke domeinregel en validatie meedraait
-  en alle inhoud via de API gaat. Zoals `migrate-db.ps1`: de connection string komt uit Key Vault en belandt alleen in
-  het script, de lokale API en de kortlevende psql-container, en de PostgreSQL-firewall staat alleen tijdens de run
-  open voor het adres van de operator.
+  en alle inhoud via de API gaat. Zoals `migrate-db.ps1`: de connection string komt uit Key Vault en belandt in het
+  script, de lokale API en de `az`-processen die die start voor Key Vault-tokens, de docker CLI en de psql-container;
+  die stoppen allemaal met de run. De PostgreSQL-firewall staat alleen tijdens de run open voor het adres van de
+  operator.
 - **Geen onversleutelde sessiesleutel.** Een lokale API in Development zonder Key Vault-instelling zou een nieuwe,
   onversleutelde sessiesleutel in de demodatabase zetten, die de Azure-app daarna kan gaan gebruiken (ADR-0031
   beslissing 5 verbiedt precies dat). Het script start de API daarom met `DataProtection__KeyVaultSleutel`, zodat
@@ -55,9 +56,9 @@ Geen wijziging aan de broncode van de app.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de demo zonder klassen, wanneer `infra/seed-demo.ps1` draait, dan staan er vijf kleuterklassen in 2026-2027, elk met de naam van een demoleerkracht, en thema's die met een emoji beginnen.
-- [ ] Gegeven een geslaagde run, wanneer het script een tweede keer draait, dan maakt het niets dubbel aan.
-- [ ] Gegeven een run, dan staat er erna geen nieuwe onversleutelde rij in `data_protection_keys`, eindigt de run met een fout als er een verscheen, en zijn de firewallregel en de tijdelijke roltoewijzing weer weg, ook als de run faalt.
+- [x] Gegeven de demo zonder klassen, wanneer `infra/seed-demo.ps1` draait, dan staan er vijf kleuterklassen in 2026-2027, elk met de naam van een demoleerkracht, en thema's die met een emoji beginnen.
+- [x] Gegeven een geslaagde run, wanneer het script een tweede keer draait, dan maakt het niets dubbel aan.
+- [x] Gegeven een run, dan staat er erna geen nieuwe onversleutelde rij in `data_protection_keys`, eindigt de run met een fout als er een verscheen, en zijn de firewallregel en de tijdelijke roltoewijzing weer weg, ook als de run faalt.
 - [ ] Gegeven de geseede demo, wanneer Demo Directie zich aanmeldt op de Azure-app, dan tonen Klassen, Thema's (met subthema's), Algemene fiches en Hoeken de nieuwe inhoud.
 
 ## Buiten scope
@@ -78,3 +79,4 @@ Geen.
 - 2026-09-14 11:06 · demo-seed · aangemaakt (status in-uitvoering)
 - 2026-09-14 11:24 · demo-seed · script infra/seed-demo.ps1 en data infra/seed-demo.data.json geschreven; parse in PowerShell 5.1 en psql verify-full getest; antagonist loopt
 - 2026-09-14 11:53 · demo-seed · eerste run faalde op de aanmelding (401: PowerShell pakte de id-array uit tot een string); opruimen werkte: tijdelijke rol weg, sessiesleutels ongewijzigd (1), firewall dicht; niets geschreven
+- 2026-09-14 12:05 · demo-seed · run 0f865bf geslaagd: 5 klassen, 9 thema's (18 themadoelen), 9 subthema's (9 subdoelen), 15 fiches (15 doelen), 29 hoeken; tweede run maakte niets aan (alles found); sleutels ongewijzigd (1), rol weg, alleen AllowAllAzure-firewallregel over; criteria 1-3 afgevinkt; antagonist ronde 2: 2 MINOR over formulering, verwerkt; criterium 4 wacht op een blik van de eigenaar in de Azure-app

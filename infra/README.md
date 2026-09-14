@@ -127,7 +127,7 @@ the tools above and a clean working tree (or `-AllowDirty`), and it runs from th
   after: an unwrapped row that appeared is deleted and the run ends with an error; a new wrapped row is only reported.
 - It opens the PostgreSQL firewall to your address and removes that rule and the temporary key role again when it
   ends or fails. Closing the window skips that; look for leftovers with
-  `az postgres flexible-server firewall-rule list --resource-group rg-jaarplanner-demo --name pg-jaarplanner-demo-<suffix>`
+  `az postgres flexible-server firewall-rule list --resource-group rg-jaarplanner-demo --server-name pg-jaarplanner-demo-<suffix>`
   (only `AllowAllAzureServicesAndResourcesWithinAzureIps` belongs there) and
   `az role assignment list --scope <vault id>/keys/dataprotection`.
 - A second run creates nothing twice: items are matched by name, and one that exists only gets the goal links from the
