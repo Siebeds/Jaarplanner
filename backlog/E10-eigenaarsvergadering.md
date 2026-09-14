@@ -49,6 +49,9 @@ home for that whole set.
   *Done when:* a teacher standing in the agenda can open a running subthema, read its streefwoorden beside the
   thema's two lists, add and remove words, and save; the list survives a reload; and a second class of the same
   leeftijd sees the same list, with the interface saying so before the save rather than after.
+  *Rights (ADR-0030 R28, ratified 2026-09-14):* streefwoordenschat is shared content. Directie, that jaar's
+  hoofdleerkrachten and every leerkracht with a klas of that leeftijd edit it, so the done-when stands. See ADR-0026's
+  status pointer.
 
   > **⚠ Blocked on two things, and the first is hard.**
   > 1. **ADR-0025 does not exist.** Session `verbeteringen` removed `Subthema.KlasId` on 2026-08-30 and

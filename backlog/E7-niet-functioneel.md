@@ -60,6 +60,7 @@
   Staff/curriculum data only; verwerkingsregister + bewaartermijnen documented.
   *Done when:* no pupil PII path exists; register & retention written down.
   *Carry-forward (E6-01, 2026-09-11):* the first personal data the app stores lands with E6-01. That is a `Gebruiker`'s naam, e-mail, Entra tenant id and object id, plus session cookies and the Data Protection keys that encrypt them, all in the application database ([ADR-0031](../docs/adr/0031-sessielogin-via-de-api.md)). It is staff data, so Art. VI.2 allows it, but the register needs an entry for it, and a retention rule for a `Gebruiker` who leaves the school.
+  *Carry-forward (E6-02 amendment, ratified 2026-09-14):* the register also covers the activiteit **maker** (ADR-0030 R26), which links school content to a named staff member; its right follows the person (R33). Retention when the gebruiker leaves: the activiteit becomes purely shared (default I17).
 
 - [ ] **E7-07 — Browser support (NFR-7)**
   Recent Edge, Chrome, Firefox, Safari.

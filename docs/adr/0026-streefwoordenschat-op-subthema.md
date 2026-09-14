@@ -1,6 +1,17 @@
 # ADR-0026 — Streefwoordenschat is a third vocabulary list, on the subthema
 
-- **Status:** Proposed
+- **Status:** Proposed. *Pointer added with the owner's rulings of 2026-09-13
+  ([ADR-0030](0030-rollen-en-rechten-in-de-app.md) R28):* streefwoordenschat is a field of the `Subthema`, but the
+  owner ruled it **shared content**. Directie, that jaar's hoofdleerkrachten and every leerkracht with a klas of that
+  leeftijd edit it, as they edit the content of shared activiteiten.
+  - So *"A K3-groen teacher edits K3-blauw's list"* (Consequences) holds under the rights model, and E10-01's
+    done-when stands as written.
+  - The subthema's other fields follow the subthema itself (directie, hoofdleerkrachten). That is a default,
+    ADR-0030 I16.
+  - *Replaced in fix round 2:* this pointer first said the opposite (that the list followed the subthema row),
+    before the owner ruled on it. The second was ratified with Art. VI.1 on 2026-09-14.
+
+  The text below is left as written.
 - **Date:** 2026-08-30
 - **Deciders:** Project owner (ruling of 2026-08-30, recorded below). **Directie/leerkrachten have not confirmed
   the pedagogy** — the question is filed as question 10 in [`docs/besluiten-gevraagd.md`](../besluiten-gevraagd.md).
