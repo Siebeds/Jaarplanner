@@ -1,0 +1,51 @@
+{
+  "formaatversie": 1,
+  "omschrijving": "Verzonnen voorbeeld dat het formaat toont. De codes bestaan niet in Op.stap.",
+  "opstapVersie": null,
+  "gevallen": [
+    {
+      "id": "voorbeeld-k3-bakker",
+      "thema": {
+        "naam": "Beroepen",
+        "invalshoeken": "Wie helpt ons in de buurt?"
+      },
+      "subthema": {
+        "naam": "De bakker",
+        "leeftijd": "K3",
+        "onderzoeksvragen": [
+          { "vraag": "Hoe wordt meel brood?" }
+        ],
+        "activiteiten": [
+          {
+            "naam": "Brood bakken in de klas",
+            "hoek": "Kookhoek",
+            "verwachteUitkomsten": "De kleuters wegen meel af en volgen een recept in stappen."
+          },
+          {
+            "naam": "Bezoek aan de bakkerij",
+            "verwachteUitkomsten": "De kleuters stellen vragen aan de bakker en vertellen erover in de kring."
+          }
+        ]
+      },
+      "goudenCodes": [ "VB-WIS-K3-01", "VB-NED-K3-02" ]
+    },
+    {
+      "id": "voorbeeld-jk-water",
+      "thema": {
+        "naam": "Water"
+      },
+      "subthema": {
+        "naam": "Plassen en spatten",
+        "leeftijd": "JK",
+        "activiteiten": [
+          {
+            "naam": "Spelen aan de watertafel",
+            "hoek": "Watertafel",
+            "verwachteUitkomsten": "De kleuters gieten water over en merken wat drijft en wat zinkt."
+          }
+        ]
+      },
+      "goudenCodes": [ "VB-WO-JK-01" ]
+    }
+  ]
+}

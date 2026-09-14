@@ -28,6 +28,13 @@
     <ProjectReference Include="..\..\src\Jaarplanner.Domain\Jaarplanner.Domain.csproj" />
     <ProjectReference Include="..\..\src\Jaarplanner.Application\Jaarplanner.Application.csproj" />
     <ProjectReference Include="..\..\src\Jaarplanner.Infrastructure\Jaarplanner.Infrastructure.csproj" />
+    <!-- The eval runner's scoring, prompt and report logic (TB-004) is tested here; the runner itself never runs in CI. -->
+    <ProjectReference Include="..\..\tools\Jaarplanner.Eval\Jaarplanner.Eval.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The committed, fictional example evalset: a test keeps it readable by the runner. -->
+    <None Include="..\..\tools\Jaarplanner.Eval\voorbeeld-evalset.json" Link="Eval\voorbeeld-evalset.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
