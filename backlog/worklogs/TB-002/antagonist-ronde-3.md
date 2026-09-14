@@ -9,7 +9,8 @@
 | 2 | MINOR | The ADR-0029 decision 7 note said that on a phone too, each switch opens "the same side column" and that the other one swaps the list. Below `lg` the chip opens a sheet, and the sheet covers the chips. | The note is narrowed. From `lg` the list opens in the side column, where the switches close or swap it; on a phone the chip opens the list as a sheet. It stays an appended note; decision 7 itself is unchanged. |
 
 **Checks the auditor re-ran itself:**
-- Vitest on the three affected files: 19/19.
+- Vitest on the affected frontend test files: green. Round 3 gave a count without naming the files and round 4 could
+  not reproduce it, so the figure is left out rather than kept unverifiable.
 - `pnpm lint`: clean.
 - `AlgemeneFicheplaatsingTests`: 8/8.
 - `dotnet format --verify-no-changes` on the changed C# files: exit 0.

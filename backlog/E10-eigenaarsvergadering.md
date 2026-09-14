@@ -157,13 +157,19 @@ home for that whole set.
   - [x] Dekking: a goal linked to a planned fiche of the klas is gedekt, named as `DekkendeFiches`, in the
     dekkingsoverzicht, the vooruitzicht and the export; an unplanned fiche and another class's fiche do not count.
   - [x] The register, the ongekoppelde doelen and the Op.stap re-import reference count read the fifth link table.
-  - [ ] Agenda: a switch *Algemene fiches* of its own beside *Hoekenfiches*, opening the class's fiches (owner,
+  - [x] Agenda: a switch *Algemene fiches* of its own beside *Hoekenfiches*, opening the class's fiches (owner,
     2026-09-14: "ik wil twee secties in het meest linkse side bar, hoekenfiches en algemene fiches, niet gegroepeerd
     als fiches", which replaced "a panel of algemene fiches under the hoekenfiches"); drag or click a fiche onto a day
     of the time grid; the placement sheet asks the weekdays and the times; occurrences drawn and movable in the day
     and week views. *Built 2026-09-14 on `story/E10-03-agenda`, shown on the board as
     [TB-002](technische-backlog/TB-002-algemene-fiches-in-de-agenda-plaatsen-agendahelft.md) at the owner's request;
-    this story stays the source.*
+    this story stays the source.* **Gates, 2026-09-14:**
+    - Frontend: Vitest 258/258, lint clean.
+    - Backend: unit 1133, and integration 357 on real PostgreSQL.
+    - Browser at 1440 and 390 on a throwaway database.
+    - Antagonist rounds 1–4, the last COMPLIANT on `db1383a`; reports in `worklogs/TB-002/`.
+
+    The branch adds one backend rule: moving one occurrence refuses a day without school.
   - [x] Art. V.1 amendment commit (with CLAUDE.md's dekking line), per Art. XI.1. *On `main` since 2026-09-11 as
     `7fc20bc`, with its ratification-log row; the box stayed open until the E10-03 agenda session's antagonist
     noticed on 2026-09-14.*
