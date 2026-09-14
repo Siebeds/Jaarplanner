@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:40
+bijgewerkt: 2026-09-14 18:52
 opgepakt-door: agenda-sleep
 branch: ticket/agenda-sleep-om-te-plannen
 pr:
@@ -57,3 +57,4 @@ Geen.
 - 2026-09-14 16:27 · agenda-sleep · correctie op de vorige regel: criterium 4 was afgevinkt voordat het bewaren bewezen was, en de 'tik' op 390px was een muisklik. Nu wel bewezen (derde ronde): een nieuwe activiteit bewaard vanuit een gesleept bereik staat als 'Nieuw TB-014, 15:00 - 15:45' in het raster, en een echte tik (pointerType touch, hasTouch op 390x844) kiest 10:30 zonder oplichtende band
 - 2026-09-14 16:37 · agenda-sleep · antagonist ronde 1: VIOLATIONS FOUND, 0 kritiek, 0 groot, 7 klein, 4 vragen; in behandeling. Beslissingen van de eigenaar in deze sessie: nl.json-sleutels toevoegen (V4, gevraagd en beantwoord 'Ja, voeg ze toe'), en het gestippelde landingsvoorbeeld in de accentkleur houden als vijfde toepassing 'geselecteerde rij' (bevinding 1). Tickettekst over de tik rechtgezet (bevinding 7): een tik rondt nu af naar beneden
 - 2026-09-14 16:40 · agenda-sleep · foutronde 1 gecommit (89502a4); pnpm lint schoon, vitest 42 bestanden/284 tests groen. Browserronde 4 (headless Chrome, verse metingen per gebaar): om 23:40 licht 23:00 op en vraagt een klik 23:00; slepen 22:00 tot bijna middernacht geeft 22:00 - 23:45 in voorbeeld en titel; donderdag 9:00-10:20 plant 9:00 - 10:30; klik 11:12 kiest 11:00; Escape laat los zonder blad; een klik daarna opent op 15:00; geen consolefouten. Antagonist ronde 2 loopt
+- 2026-09-14 18:52 · agenda-sleep · antagonist ronde 2: VIOLATIONS FOUND, 0 kritiek, 0 groot, 3 klein, 1 vraag. Foutronde 2: klik of bereik wordt beslist op de echte kwartieren en de grenzen gelden alleen voor het antwoord; de klikwacht wordt alleen gezet door een linkerdruk en gewist bij hoveren; het voorbeeld verschijnt pas buiten het eerste kwartier; tests voor verloren capture, trillende klik in het laatste uur en rechterdruk. Eigenaar besliste (vraag 4) dat ook de kolomtint bij het verplaatsen als 'geselecteerde rij' telt: ADR-0024-aanvulling en index.css bijgewerkt. pnpm lint schoon, vitest 42 bestanden/287 tests groen. Browserronde 5: trilklik om 23:40 opent om 23:00 zonder voorbeeld, omhoog vanaf 23:40 geeft 23:00-23:45, tot middernacht 22:00-23:45, geen voorbeeld bij indrukken, 9:00-10:20 plant 9:00-10:30, klik na rechterklik en na Escape opent; geen consolefouten

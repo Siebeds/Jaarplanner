@@ -457,6 +457,7 @@ function Dagkolom({
       className={cn(
         "relative min-w-0 border-l border-lijn first:border-l-0",
         !dag.isLesdag && "bg-vlak-diep/60",
+        // The accent as its selected-row use: the day a moved block would land on (ADR-0024 amendment, 2026-09-14).
         isOver && dag.isLesdag && "bg-accent-zacht/60",
       )}
     >
@@ -564,7 +565,9 @@ type Trek = { anker: number; nu: number };
  * **Two limits at the end of the day, so that what the grid shows is what gets sent.** A click starts no later than
  * the last quarter that still fits an activiteit of the default length, and the band stops at that quarter too,
  * because it names what the click asks for. A stretch ends no later than a quarter before midnight: the wire format
- * stops at 23:59, so a stretch drawn to midnight would say one time and store another.
+ * stops at 23:59, so a stretch drawn to midnight would say one time and store another. Both limits bound the answer,
+ * never the quarters the gesture is read from, so whether a press was a click or a stretch is decided on the quarters
+ * the pointer was really in.
  *
  * **A mouse draws a stretch, a finger does not.** On a touchscreen a finger drawn down the grid scrolls the hours,
  * which a phone cannot give up, and there is no hover to show. A tap still picks its quarter, through the click. A pen
@@ -584,8 +587,9 @@ function useLegePlek(
   const [zweef, setZweef] = useState<number | null>(null);
   const [trek, setTrek] = useState<Trek | null>(null);
   const lopend = useRef<Trek | null>(null);
-  // Whether the press behind the coming click was a mouse's or a pen's. Those are answered on release, so the click
-  // that follows must not ask a second time; a tap and a keyboard press are answered by the click alone.
+  // Whether the coming click belongs to a primary mouse or pen press that its release already answered, so the click
+  // must not ask a second time. Only such a press sets it. A tap and a keyboard press are answered by the click alone,
+  // and a hover clears it: nothing is held, so no answered press is waiting for its click.
   const doorAanwijzer = useRef(false);
 
   const zet = (volgende: Trek | null) => {
@@ -593,14 +597,23 @@ function useLegePlek(
     setTrek(volgende);
   };
 
-  // The two limits above: the latest quarter a click (and so the band) may name, and the latest a stretch may reach.
+  // The two limits above: the latest quarter a click (and so the band) may name, and the latest end a stretch may have.
   const laatsteKlik = vloer(bereik.tot - STANDAARDDUUR);
-  const laatsteTrek = bereik.tot - 2 * STAP;
+  const laatsteEinde = bereik.tot - STAP;
 
-  const kwartier = (clientY: number, knop: HTMLElement, uiterst: number) => {
+  // The quarter the pointer is in, kept inside the grid and nothing more: the limits belong to the answer.
+  const kwartier = (clientY: number, knop: HTMLElement) => {
     const vak = knop.getBoundingClientRect();
-    return Math.min(Math.max(vloer((clientY - vak.top) / PX_PER_MINUUT + bereik.van), bereik.van), uiterst);
+    return Math.min(Math.max(vloer((clientY - vak.top) / PX_PER_MINUUT + bereik.van), bereik.van), bereik.tot - STAP);
   };
+
+  // What a stretch between two different quarters asks for: both of them, ended no later than `laatsteEinde`. Two
+  // different quarters inside the grid put the earlier one at least two quarters before midnight, so the begin always
+  // stays before that end.
+  const bereikTussen = (a: number, b: number) => ({
+    begin: Math.min(a, b),
+    einde: Math.min(Math.max(a, b) + STAP, laatsteEinde),
+  });
 
   // Escape lets go of a stretch the teacher did not mean. Listened for only while one is being drawn.
   const trekt = trek !== null;
@@ -617,26 +630,34 @@ function useLegePlek(
 
   const gebaren = {
     onPointerDown(gebeurtenis: ReactPointerEvent<HTMLButtonElement>) {
-      doorAanwijzer.current = gebeurtenis.pointerType !== "touch";
-      if (!doorAanwijzer.current || gebeurtenis.button !== 0) return;
+      const primair = gebeurtenis.pointerType !== "touch" && gebeurtenis.button === 0;
+      doorAanwijzer.current = primair;
+      if (!primair) return;
       // No text selected while the pointer crosses the hour labels on its way down the grid.
       gebeurtenis.preventDefault();
-      const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget, laatsteKlik);
+      const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget);
       zet({ anker: hier, nu: hier });
       setZweef(null);
       gebeurtenis.currentTarget.setPointerCapture?.(gebeurtenis.pointerId);
     },
     onPointerMove(gebeurtenis: ReactPointerEvent<HTMLButtonElement>) {
       if (gebeurtenis.pointerType === "touch") return;
+      const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget);
       if (lopend.current && (gebeurtenis.buttons & 1) === 1) {
-        const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget, laatsteTrek);
         if (hier !== lopend.current.nu) zet({ ...lopend.current, nu: hier });
         return;
       }
       // The primary button came up where this column never heard it, so the stretch it was drawing is over.
       if (lopend.current) zet(null);
-      // A button held down with no stretch of this column running is not asking which quarter a click would pick.
-      setZweef(gebeurtenis.buttons === 0 ? kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget, laatsteKlik) : null);
+      if (gebeurtenis.buttons === 0) {
+        // Nothing is held, so no answered press is waiting for its click: a release and its click arrive together,
+        // with no move between them.
+        doorAanwijzer.current = false;
+        setZweef(Math.min(hier, laatsteKlik));
+      } else {
+        // A button held down with no stretch of this column running is not asking which quarter a click would pick.
+        setZweef(null);
+      }
     },
     onPointerLeave() {
       setZweef(null);
@@ -645,8 +666,12 @@ function useLegePlek(
       const gesleept = lopend.current;
       if (!gesleept) return;
       zet(null);
-      if (gesleept.anker === gesleept.nu) onVoegToe(datum, gesleept.anker);
-      else onVoegToe(datum, Math.min(gesleept.anker, gesleept.nu), Math.max(gesleept.anker, gesleept.nu) + STAP);
+      if (gesleept.anker === gesleept.nu) {
+        onVoegToe(datum, Math.min(gesleept.anker, laatsteKlik));
+        return;
+      }
+      const { begin, einde } = bereikTussen(gesleept.anker, gesleept.nu);
+      onVoegToe(datum, begin, einde);
     },
     onPointerCancel() {
       zet(null);
@@ -667,13 +692,13 @@ function useLegePlek(
       const alBeantwoord = doorAanwijzer.current;
       doorAanwijzer.current = false;
       if (alBeantwoord) return;
-      onVoegToe(datum, kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget, laatsteKlik));
+      onVoegToe(datum, Math.min(kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget), laatsteKlik));
     },
   };
 
-  const stuk = trek
-    ? { begin: Math.min(trek.anker, trek.nu), einde: Math.max(trek.anker, trek.nu) + STAP }
-    : null;
+  // Drawn only once the press has left its first quarter. Until then it is a click, which gets the activiteit's own
+  // length, and a one-quarter preview would promise a length it will not get.
+  const stuk = trek && trek.anker !== trek.nu ? bereikTussen(trek.anker, trek.nu) : null;
 
   return { zweef, stuk, gebaren };
 }

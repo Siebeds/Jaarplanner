@@ -477,4 +477,63 @@ describe("Tijdraster onder de muis", () => {
     expect(gevraagd).toHaveBeenCalledTimes(2);
     expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 14 * 60);
   });
+
+  it("beslist klik of bereik op hetzelfde kwartier, ook in het laatste uur", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // A press at 23:40 with a tremble inside its own quarter is a click: 23:00, the latest a click may start, with no
+    // end, so the activiteit keeps its own length.
+    fireEvent.pointerDown(kolom(), { clientY: y(23 * 60 + 40) });
+    fireEvent.pointerMove(kolom(), { clientY: y(23 * 60 + 41), buttons: 1 });
+    fireEvent.pointerUp(kolom(), { clientY: y(23 * 60 + 41) });
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 23 * 60);
+
+    // And a real drag up out of that quarter is a stretch, however late it starts.
+    fireEvent.pointerDown(kolom(), { clientY: y(23 * 60 + 40) });
+    fireEvent.pointerMove(kolom(), { clientY: y(23 * 60 + 5), buttons: 1 });
+    fireEvent.pointerUp(kolom(), { clientY: y(23 * 60 + 5) });
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 23 * 60, 23 * 60 + 45);
+  });
+
+  it("laat een bereik vallen als de kolom de aanwijzer kwijtraakt, maar niet na een gewone loslating", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // Capture lost in the middle of a stretch: whatever release comes later finishes nothing.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60), buttons: 1 });
+    fireEvent.lostPointerCapture(kolom(), { bubbles: true });
+    expect(screen.queryByText(toonBereik(9 * 60, 10 * 60 + 15))).not.toBeInTheDocument();
+    fireEvent.pointerUp(kolom(), { clientY: y(10 * 60) });
+    expect(gevraagd).not.toHaveBeenCalled();
+
+    // A normal release lets capture go right after it and before its click: still exactly one question.
+    fireEvent.pointerDown(kolom(), { clientY: y(13 * 60) });
+    fireEvent.pointerUp(kolom(), { clientY: y(13 * 60) });
+    fireEvent.lostPointerCapture(kolom(), { bubbles: true });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(13 * 60) });
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenCalledWith("2026-09-08", 13 * 60);
+  });
+
+  it("laat een druk die geen eigen klik krijgt er later geen inslikken", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { onVoegToe: gevraagd });
+
+    // A right press opens a context menu and is never followed by a click on this column.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60), button: 2 });
+    fireEvent.pointerUp(kolom(), { clientY: y(9 * 60), button: 2 });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(14 * 60 + 10) });
+    expect(gevraagd).toHaveBeenCalledTimes(1);
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 14 * 60);
+
+    // Nor is a stretch whose release went somewhere else.
+    fireEvent.pointerDown(kolom(), { clientY: y(9 * 60) });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60), buttons: 1 });
+    fireEvent.pointerMove(kolom(), { clientY: y(10 * 60), buttons: 0 });
+    fireEvent.click(kolom(), { detail: 1, clientY: y(15 * 60 + 10) });
+    expect(gevraagd).toHaveBeenCalledTimes(2);
+    expect(gevraagd).toHaveBeenLastCalledWith("2026-09-08", 15 * 60);
+  });
 });

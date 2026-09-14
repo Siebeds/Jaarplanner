@@ -100,11 +100,12 @@ stand unchanged and are not restated here.**
 
 ## Amendment (2026-09-14) — a selection being made counts as a selected row
 
-The agenda's time grid draws a dashed landing preview in the accent while a block is being moved (since 2026-09-11)
-and, since TB-014, while a stretch of empty time is being dragged out to plan an activiteit. Neither was named among
-the five uses of decision 4, and the first was never recorded anywhere. The project owner ruled on 2026-09-14 that both
-count under the fifth use, **a selected row**: what the preview draws is the stretch of time the teacher is selecting,
-and only while she selects it. The ration itself is unchanged and still five. Anything that merely points at a time
+The agenda's time grid draws in the accent while a block is being moved: a dashed landing preview, and a light tint
+over the day column the block would land in (both since 2026-09-11). Since TB-014 it draws the same preview while a
+stretch of empty time is being dragged out to plan an activiteit. None of the three was named among the five uses of
+decision 4, and the two older ones were never recorded anywhere. The project owner ruled on 2026-09-14 that all three
+count under the fifth use, **a selected row**: they draw the time the teacher is selecting, the day and the stretch of
+it, and only while she selects it. The ration itself is unchanged and still five. Anything that merely points at a time
 without selecting it does not qualify: the band that lights up the quarter under the pointer before it is pressed
-stays ink. Recorded as well above `--color-accent` in `frontend/src/index.css` and on `Landingsvak` in
+stays ink. Recorded as well above `--color-accent` in `frontend/src/index.css`, and on `Landingsvak` and `Dagkolom` in
 `frontend/src/features/plan/Tijdraster.tsx`.
