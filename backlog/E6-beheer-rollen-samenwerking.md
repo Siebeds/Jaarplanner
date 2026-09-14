@@ -31,7 +31,7 @@
 >   through its own actions.
 > - R37: the build follows the defaults as written until the owner changes one.
 >
-> **Everything else in that ADR is a default, not a ruling:** I1, I2, I6 with (a), I9 with (d), I12, I13, I15–I25,
+> **Everything else in that ADR is a default, not a ruling:** I1, I2, I6 with (a), I9 with (d), I12, I13, I15–I28,
 > (c), (e). The matrix is ratified only as far as the rulings each row cites.
 
 - [x] **E6-01 — Authentication (personal login)** — *built 2026-09-11 on `story/E6-01-authenticatie` and merged into `main` as PR #48 (`7e23dcf`); mechanism in [ADR-0031](../docs/adr/0031-sessielogin-via-de-api.md) (Accepted).* **Closed 2026-09-13 by owner ruling, without a round trip against a real tenant.** The code-round-1 audit asked whether E6-01 may close without one; the owner answered yes, because that round trip is a prerequisite on E7-11 before any real deployment either way. *What the `[x]` does not carry:* the last audit round (code round 2 on `e27cc53`: 0 MAJOR, 6 MINOR) was fixed in `3dff436` and not re-audited, and `worklogs/E6-01/` holds only `implementation.md`, which records code round 1 but not round 2 (the round-2 findings and fixes are in the commit message of `3dff436`).
@@ -74,7 +74,7 @@
 
   Ref: FR-10/§3.2, Art. VI.1, ADR-0030.
   ~~*Waits on part 1 of the Art. XI amendment*~~ **Satisfied on 2026-09-14:** part 1 is ratified (ADR-0030 §5).
-  *Defaults it builds on* (ADR-0030 §2; the owner ruled that the build follows them, R37): I1, I2, I9, I12, I13, I15–I25.
+  *Defaults it builds on* (ADR-0030 §2; the owner ruled that the build follows them, R37): I1, I2, I9, I12, I13, I15–I28.
   *Open questions this story owns (ADR-0030 §4):*
   - **(b) Import: settled** (R9, R27, R34, R35). What this story owes is the gate, including the directie-only option. Gate the section rather than the route, as the 2026-08-03 ruling asked. The frontend marker it relied on (`magBeheerder` plus a section constant) no longer exists in `frontend/src`, so recreate it.
   - **(c)** A jaar with no hoofdleerkracht: only directie does, by hand, what a hoofdleerkracht would, until ruled otherwise.

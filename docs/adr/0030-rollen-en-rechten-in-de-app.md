@@ -535,7 +535,7 @@ follows until the owner confirms or corrects it.
 - I10 was retired by statement 29 (R29), and I14 by statements 26, 30 and 31 (R23–R25); I14's move clause survives,
   corrected, as I19. Statement 33 ruled the delete half of I18 (R33).
 - I10–I14 were added on 2026-09-13 in the first draft, I15–I21 in fix round 2 and I22–I23 in fix round 3, all by
-  session `E6-02`. I24 and I25 were added on 2026-09-14 with the owner's choice of both (the round-4 note above).
+  session `E6-02`. I24 and I25 were added on 2026-09-14 with the owner's choice of both (the round-4 note above), and I26–I28 the same day, when the three questions of the E6-02 slice 3 audit were put to the owner.
 - **Statement 37 (R37):** the build follows these defaults as written. That does not ratify them. Each stays a
   default that the owner can change on its own.
 - **A row of the §3 matrix is ratified only as far as the rulings it cites**, counted at column level (§3).
@@ -567,6 +567,9 @@ follows until the owner confirms or corrects it.
 | I23 | **What counts as a "new" thema** for R32. Statement 29's option said *"Wie een thema van nul opbouwt"*; statement 32's said *"voor een thema dat het daar van nul opbouwt"*. | A thema the wizard itself created, until that wizard run is finished or closed. From then on the ordinary rights apply: its subthema's and subdoelen are the hoofdleerkracht's. | E6-02, E6-05 |
 | I24 | **When a wizard run ends.** Round 4's first QUESTION: nothing in the model marks a run as finished or closed, so the "new" window of I23 had no end the server could see. | A run ends when themabeheer or directie finishes or closes it, or **14 days after the wizard's last write action** in it, whichever comes first. From then on its thema is no longer new and the ordinary rights apply. *Chosen by the owner on 2026-09-14, when session `E6-02` put the two defaults E6-05 owed; the build follows it (R37).* | E6-02, E6-05 |
 | I25 | **Whether the wizard may edit what it created earlier in the same run.** R32 and the matrix grant only *aanmaken*. | Yes, narrowly: while its run is open, the wizard's own write actions may also **edit and delete** a subthema, subdoel or activiteit **that the same run created**, and nothing else. *Chosen by the owner on 2026-09-14, with I24.* | E6-02, E6-05 |
+| I26 | **Who deletes a thema.** §3 has no delete row, and the delete cascades to subthema's, subdoelen and linked activiteiten that R19, R24 and R25 reserve to directie and the hoofdleerkrachten (slice 3 audit round 1, MAJOR A, Q1). | A themabeheer holder deletes a thema only when it holds no subthema, subdoel or activiteit other than what its own open wizard run created; any other thema only directie deletes. A thema placed in a jaarplan is deleted by nobody, as before. *Chosen by the owner on 2026-09-14 (Q1, option b); the build follows it (R37).* | E6-02 |
+| I27 | **The wizard and other people's work.** I25 let the wizard delete a run-created activiteit a hoofdleerkracht had since linked, and re-scope a run-created subthema holding others' content (MAJOR B, Q2). | The wizard's own write actions do not delete an activiteit that carries a goal link, or a subthema whose activiteiten carry one, unless the caller also holds the goal-link right at that leeftijd (R19); and they do not change the leeftijd of a subthema the run created while it holds a subdoel or activiteit the run did not create (I13). **Narrows I25.** *Chosen by the owner on 2026-09-14 (Q2, option a).* | E6-02, E6-05 |
+| I28 | **What keeps a wizard run open.** R29 and §3 make the thema and its themadoelen wizard steps, but they are edited on the ordinary routes (Q3). | Only the wizard's own write actions move a run's last-write time (I24); editing the thema or its themadoelen through the ordinary routes does not. E6-05 may revisit this when the wizard screen exists. *Chosen by the owner on 2026-09-14 (Q3, option a, as built).* | E6-02, E6-05 |
 | D1 | The first directie account is provisioned from configuration, because nobody exists yet to add it. | As ADR-0031 decision 7. | **E6-01** |
 | D2 | The reason offered with question 6, *"Entra cannot express a hoofdleerkracht per jaar per schooljaar without a group per jaar per year"*, is the session's argument. It is not the owner's stated reason. | None: it is a rationale, not a rule. | None |
 
@@ -950,7 +953,7 @@ added them.
   - E6-01 (Gebruiker and login; closed on R11);
   - E6-02 and E6-04, **built and delivered together** (R12):
     - the matrix as policies;
-    - (b)'s gate, (c) and (e), and the defaults I1, I2, I9, I12, I13 and I15–I25;
+    - (b)'s gate, (c) and (e), and the defaults I1, I2, I9, I12, I13 and I15–I28;
     - R19–R37, including the one-place klas→leeftijden mapping, the activiteit maker and the wizard's own write
       actions;
     - users, assignments, appointments, themabeheer and the directie right (R15, R16);
